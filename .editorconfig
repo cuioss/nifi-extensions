@@ -1,0 +1,15 @@
+# EditorConfig is awesome: http://EditorConfig.org
+
+# top-most EditorConfig file
+root = true
+
+# Unix-style newlines
+[*]
+end_of_line = lf
+
+# Use common format rules
+[*.{js,java,xml,properties,xhtml}]
+charset = utf-8
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true

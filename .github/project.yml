@@ -1,0 +1,6 @@
+name: cui-java-module-template
+pages-reference: cui-java-module-template
+sonar-project-key: cuioss_cui-java-module-template
+release:
+  current-version: 1.0.0
+  next-version: 1.1.0-SNAPSHOT

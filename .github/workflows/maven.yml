@@ -1,0 +1,103 @@
+# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
+
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation. 
+
+name: Master Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version: [17,20]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up JDK ${{ matrix.version }}
+      uses: actions/setup-java@v3
+      with:
+        java-version: ${{ matrix.version }}
+        distribution: 'temurin'
+        cache: maven
+    - name: Build with Maven, Java ${{ matrix.version }}
+      run: mvn -B package -Dmaven.compiler.source=${{ matrix.version }} -Dmaven.compiler.target=${{ matrix.version }}
+
+  sonar-build:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        
+    - name: Set up JDK 17 for Sonar-build
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+        
+    - name: Cache SonarCloud packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.sonar/cache
+        key: ${{ runner.os }}-sonar
+        restore-keys: ${{ runner.os }}-sonar
+        
+    - uses: radcortez/project-metadata-action@1.1
+      name: Retrieve project metadata from '.github/project.yml'
+      id: metadata
+      with:
+        github-token: ${{secrets.GITHUB_TOKEN}}
+        metadata-file-path: '.github/project.yml'
+        local-file: true
+        
+    - name: Build and analyze
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: mvn -B verify -Psonar -Dsonar.projectKey=${{steps.metadata.outputs.sonar-project-key}} sonar:sonar
+
+  deploy-snapshot:
+    needs: sonar-build
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up JDK 17 for snapshot release
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        server-id: sonatype-nexus-snapshots
+        server-username: MAVEN_USERNAME
+        server-password: MAVEN_CENTRAL_TOKEN
+        gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+        gpg-passphrase: MAVEN_GPG_PASSPHRASE
+        cache: maven
+
+    - name: Extract project version
+      id: project
+      run: echo ::set-output name=version::$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+
+    - name: Deploy Snapshot with Maven, version ${{ steps.project.outputs.version }}
+      if: ${{endsWith(steps.project.outputs.version, '-SNAPSHOT')}}
+      run: |
+        mvn -B -Prelease-snapshot javadoc:aggregate
+        mvn -B -Prelease-snapshot deploy -Dmaven.test.skip=true
+      env:
+        MAVEN_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
+        MAVEN_CENTRAL_TOKEN: ${{ secrets.OSS_SONATYPE_PASSWORD }}
+        MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}

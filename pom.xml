@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>de.cuioss</groupId>
+        <artifactId>cui-java-parent</artifactId>
+        <version>0.7.7</version>
+        <relativePath />
+    </parent>
+    <artifactId>cui-java-module-template</artifactId>
+    <name>cui java module template</name>
+    <version>1.0.0-SNAPSHOT</version>
+    <description>Template module for cuioss open source projects.
+    </description>
+    <packaging>jar</packaging>
+    <url>https://github.com/cuioss/cui-java-module-template/</url>
+    <scm>
+        <url>https://github.com/cuioss/cui-java-module-template/</url>
+        <connection>
+            scm:git:https://github.com/cuioss/cui-java-module-template.git</connection>
+        <developerConnection>
+            scm:git:https://github.com/cuioss/cui-java-module-template/</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+    <issueManagement>
+        <url>https://github.com/cuioss/cui-java-module-template/issues</url>
+        <system>GitHub Issues</system>
+    </issueManagement>
+    <properties>
+        <maven.jar.plugin.automatic.module.name>de.cuioss.template</maven.jar.plugin.automatic.module.name>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
+        <!-- Unit testing -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+        </dependency>
+    </dependencies>
+</project>
