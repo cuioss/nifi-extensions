@@ -27,17 +27,3 @@ Some extensions to https://nifi.apache.org/[Apache Nifi]
         <artifactId>nifi-extensions</artifactId>
     </dependency>
 ----
-
-== Customization
-
-* `SONAR_TOKEN` -> Sonar-Cloud
-
-
-A sonar token can be derived from https://sonarcloud.io/account/security
-
-=== Further Steps
-
-* `src/site/asciidoc/about.adoc`: Adjust content
-* Review / Enable the elements under 'Security' Tab
-* Review / Add Collaborators
-* Add (link) the resulting maven-documentation: https://github.com/cuioss/cuioss.github.io/edit/main/README.md[github.io-documentation] 
