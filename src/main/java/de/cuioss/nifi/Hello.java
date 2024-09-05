@@ -1,4 +1,4 @@
-package de.cuioss.template;
+package de.cuioss.nifi;
 
 import lombok.ToString;
 

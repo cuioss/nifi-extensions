@@ -17,7 +17,7 @@
     <body>
         <links>
             <item name="Home"
-                href="https://github.com/cuioss/cui-java-module-template" />
+                href="https://github.com/cuioss/nifi-extensions" />
         </links>
         <menu name="Overview">
         <item name="About" href="about.html"></item>

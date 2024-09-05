@@ -1,4 +1,4 @@
-package de.cuioss.template;
+package de.cuioss.nifi;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

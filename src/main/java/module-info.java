@@ -1,5 +1,5 @@
-module de.cuioss.template {
-    exports de.cuioss.template;
+module de.cuioss.nifi {
+    exports de.cuioss.nifi;
 
     requires static lombok;
 }
