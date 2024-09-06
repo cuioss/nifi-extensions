@@ -26,10 +26,10 @@ jobs:
         metadata-file-path: '.github/project.yml'
         local-file: true
 
-    - name: Set up JDK 17
+    - name: Set up JDK 21
       uses: actions/setup-java@v3
       with:
-        java-version: '17'
+        java-version: '21'
         distribution: 'temurin'
         server-id: sonatype-nexus-snapshots
         server-username: MAVEN_USERNAME
@@ -46,11 +46,11 @@ jobs:
     - name: Maven release ${{steps.metadata.outputs.current-version}}
       run: |
         git checkout -b release
-        mvn -B -Prelease release:clean release:prepare -DreleaseVersion=${{steps.metadata.outputs.current-version}} -DdevelopmentVersion=${{steps.metadata.outputs.next-version}}
-        mvn -B -Prelease javadoc:aggregate site:site site:stage
+        ./mvnw -B -Prelease release:clean release:prepare -DreleaseVersion=${{steps.metadata.outputs.current-version}} -DdevelopmentVersion=${{steps.metadata.outputs.next-version}}
+        ./mvnw -B -Prelease javadoc:aggregate site:site site:stage
         git checkout ${{vars.GITHUB_BASE_REF}}
         git rebase release
-        mvn -B -Prelease release:perform -DskipTests
+        ./mvnw -B -Prelease release:perform -DskipTests
       env:
         MAVEN_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
         MAVEN_CENTRAL_TOKEN: ${{ secrets.OSS_SONATYPE_PASSWORD }}
