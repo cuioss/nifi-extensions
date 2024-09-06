@@ -34,9 +34,93 @@
     </issueManagement>
 
     <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <!-- Repository-Urls -->
+        <public.repo.url>https://oss.sonatype.org/content/groups/public</public.repo.url>
+        <staging.repo.url>https://oss.sonatype.org/content/groups/staging</staging.repo.url>
+        <snapshot.repo.url>
+            https://s01.oss.sonatype.org/content/repositories/snapshots
+        </snapshot.repo.url>
+        <deploy.staging.repo.url>
+            https://s01.oss.sonatype.org/service/local/staging/deploy/maven2
+        </deploy.staging.repo.url>
+
         <version.nifi>2.0.0-M4</version.nifi>
         <version.cui.parent>0.7.7</version.cui.parent>
+        <!-- Sonar related-->
+        <sonar.organization>cuioss-github</sonar.organization>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <sonar.maven.plugin.version>4.0.0.4121</sonar.maven.plugin.version>
+        <jacoco.maven.plugin.version>0.8.12</jacoco.maven.plugin.version>
+        <!-- Sonatype -->
+        <nexus.staging.maven.plugin.version>1.7.0</nexus.staging.maven.plugin.version>
     </properties>
+
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <name>Oliver Wolff</name>
+            <url>https://github.com/cuioss</url>
+            <roles>
+                <role>owner</role>
+                <role>developer</role>
+            </roles>
+        </developer>
+    </developers>
+    <organization>
+        <url>https://github.com/cuioss</url>
+        <name>CUI-OpenSource-Software</name>
+    </organization>
+
+    <repositories>
+        <repository>
+            <id>sonatype-nexus-snapshots</id>
+            <name>Sonatype Nexus Snapshots</name>
+            <url>${snapshot.repo.url}</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>sonatype-nexus-public</id>
+            <name>Sonatype Nexus Public Repo</name>
+            <url>${public.repo.url}</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>sonatype-nexus-snapshots</id>
+            <name>Sonatype Nexus Snapshots</name>
+            <url>${snapshot.repo.url}</url>
+        </snapshotRepository>
+        <repository>
+            <id>sonatype-nexus-staging</id>
+            <name>Sonatype Nexus Public Repo</name>
+            <url>${deploy.staging.repo.url}</url>
+        </repository>
+        <site>
+            <id>cuioss-home</id>
+            <url>https://cuioss.github.io/</url>
+        </site>
+    </distributionManagement>
+
     <dependencyManagement>
         <dependencies>
             <!-- Incoming-->
@@ -77,4 +161,39 @@
         <module>nifi-cuioss-processors</module>
         <module>nifi-cuioss-nar</module>
     </modules>
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.sonarsource.scanner.maven</groupId>
+                    <artifactId>sonar-maven-plugin</artifactId>
+                    <version>${sonar.maven.plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${jacoco.maven.plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>prepare-agent</id>
+                            <goals>
+                                <goal>prepare-agent</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>report</id>
+                            <goals>
+                                <goal>report</goal>
+                            </goals>
+                            <configuration>
+                                <formats>
+                                    <format>XML</format>
+                                </formats>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
 </project>
