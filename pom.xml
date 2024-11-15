@@ -55,6 +55,8 @@
         <jacoco.maven.plugin.version>0.8.12</jacoco.maven.plugin.version>
         <!-- Sonatype -->
         <nexus.staging.maven.plugin.version>1.7.0</nexus.staging.maven.plugin.version>
+        <!-- The version needs to be aligned with the one defined within the nifi boms. Otherwise, it's getting messy-->
+        <version.junit.jupiter>5.11.3</version.junit.jupiter>
     </properties>
 
     <licenses>
@@ -123,11 +125,12 @@
 
     <dependencyManagement>
         <dependencies>
+
             <!-- Incoming-->
             <dependency>
-                <groupId>de.cuioss</groupId>
-                <artifactId>cui-java-bom</artifactId>
-                <version>${version.cui.parent}</version>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${version.junit.jupiter}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -141,6 +144,13 @@
                 <artifactId>nifi-mock</artifactId>
                 <version>${version.nifi}</version>
                 <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>de.cuioss</groupId>
+                <artifactId>cui-java-bom</artifactId>
+                <version>${version.cui.parent}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
             <!-- outgoing-->
             <dependency>
