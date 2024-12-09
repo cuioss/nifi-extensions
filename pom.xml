@@ -47,7 +47,7 @@
         </deploy.staging.repo.url>
 
         <version.nifi>2.0.0</version.nifi>
-        <version.cui.parent>0.8.3</version.cui.parent>
+        <version.cui.parent>0.8.4</version.cui.parent>
         <!-- Sonar related-->
         <sonar.organization>cuioss-github</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
