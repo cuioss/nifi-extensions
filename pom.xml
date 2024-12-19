@@ -37,7 +37,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <!-- Repository-Urls -->
-        <public.repo.url>https://oss.sonatype.org/content/groups/public</public.repo.url>
+        <public.repo.url>https://repo.maven.apache.org/maven2</public.repo.url>
         <staging.repo.url>https://oss.sonatype.org/content/groups/staging</staging.repo.url>
         <snapshot.repo.url>
             https://s01.oss.sonatype.org/content/repositories/snapshots
@@ -48,7 +48,7 @@
 
         <version.nifi>2.0.0</version.nifi>
         <version.cui.parent>0.8.5</version.cui.parent>
-        <version.cui.portal.core>1.1.0</version.cui.portal.core>
+        <version.cui.portal.core>1.1.1</version.cui.portal.core>
         <!-- Sonar related-->
         <sonar.organization>cuioss-github</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
