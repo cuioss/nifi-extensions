@@ -46,7 +46,7 @@
             https://s01.oss.sonatype.org/service/local/staging/deploy/maven2
         </deploy.staging.repo.url>
 
-        <version.nifi>2.0.0</version.nifi>
+        <version.nifi>2.1.0</version.nifi>
         <version.cui.parent>0.8.5</version.cui.parent>
         <version.cui.portal.core>1.1.1</version.cui.portal.core>
         <!-- Sonar related-->
