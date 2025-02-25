@@ -63,17 +63,36 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 * All configuration must be done through the NiFi UI
 * Provide user-friendly configuration interface
 * Support dynamic configuration updates
+* Include a "Test Connection" button for JWKS endpoint URLs
+** Button should validate that the JWKS endpoint is accessible
+** Provide immediate feedback on connection success/failure
+** Display appropriate error messages for connection failures
 
 ==== Token Validation Configuration
 * Configure multiple issuers through UI
 * Each issuer configuration consists of:
-** Issuer identifier (String)
+** Issuer Identifier (String)
 ** One of:
 *** JWKS endpoint URL for key retrieval
 *** Direct public key configuration for signature verification
 * Support dynamic addition/removal of issuers
 * Validate configuration inputs
 * Provide clear error messages for invalid configurations
+
+==== Verification
+* Provide a token testing interface in the UI
+* Include a text area for pasting JWT tokens
+* Add a "Verify Token" button to test token against current configuration
+* For valid tokens:
+** Display token validation success message
+** Show decoded token payload (claims)
+** Display which issuer validated the token
+** Show what attributes would be added to the flow file
+* For invalid tokens:
+** Display validation failure reason
+** Show detailed error information
+** Suggest possible fixes based on error type
+* Support testing without affecting processor state or flow files
 
 ==== Authorization Configuration
 * Require Valid Token (Boolean)
@@ -93,9 +112,9 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 * Support validation of header presence and format
 
 ==== Configuration Properties
-* List of trusted issuers (Dynamic Property)
+* List of Issuer Identifiers (Dynamic Property)
 * Per issuer configuration:
-** Issuer identifier
+** Issuer Identifier
 ** JWKS endpoint URL or public key
 ** Validation rules
 * Token location configuration
@@ -113,6 +132,21 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 * Minimal memory footprint
 * Quick failure detection for invalid tokens
 * Scalable multi-issuer support
+* Specific performance metrics:
+** Token validation throughput: >1000 tokens/second
+** JWKS cache refresh: <5 seconds
+** Token validation latency: <50ms per token
+** Memory usage: <100MB additional heap usage
+
+=== Error Handling Requirements
+* Standardized error codes for all failure scenarios
+* Descriptive error messages without sensitive information
+* Error categories with specific codes:
+** INFO level messages: 001-099
+** WARN level messages: 100-199
+** ERROR level messages: 200-299
+* Recovery mechanisms for transient errors
+* Proper logging of errors with appropriate severity levels
 
 == Integration Requirements
 
@@ -121,6 +155,12 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 * Proper error handling and recovery
 * Support for NiFi's configuration framework
 * Integration with NiFi's security features
+
+=== Integration Examples
+* Example flow for API gateway pattern
+* Example flow for service-to-service authentication
+* Example flow for token transformation
+* Example flow for multi-tenant API routing
 
 === Documentation Requirements
 * Clear configuration guide
@@ -132,10 +172,13 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 == Testing Requirements
 
 === Unit Testing
-* Complete test coverage for all validation scenarios
-* Mock issuer configurations
-* Error handling verification
-* Performance testing
+* Minimum 80% line coverage (critical paths 100%)
+* Use JUnit 5 with @ParameterizedTest for validation scenarios
+* Leverage cui-test-utilities for:
+  ** Mock issuer configurations
+  ** Error case generation
+  ** Log message verification
+* Performance testing with >1000 tokens/sec throughput
 
 === Integration Testing
 * End-to-end flow testing
@@ -150,4 +193,4 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 * Meets performance requirements
 * Passes all security requirements
 * Complete documentation
-* Test coverage meets standards (minimum 80%)
+* Test coverage meets standards
