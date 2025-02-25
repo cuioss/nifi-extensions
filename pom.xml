@@ -48,7 +48,7 @@
 
         <version.nifi>2.0.0</version.nifi>
         <version.cui.parent>0.9.0</version.cui.parent>
-        <version.cui.portal.core>1.1.1</version.cui.portal.core>
+        <version.cui.portal.core>1.2.0</version.cui.portal.core>
         <!-- Sonar related-->
         <sonar.organization>cuioss-github</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
