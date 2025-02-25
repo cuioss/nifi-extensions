@@ -1,0 +1,153 @@
+= JWT Validation Processor Requirements
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+== Overview
+This document outlines the requirements for the JWT Validation Processor, a component designed to enhance Apache NiFi's capabilities in handling REST API authentication through JWT tokens.
+
+== General Requirements
+
+=== REST API Support Enhancement
+* Enable simplified REST API endpoint provisioning in NiFi
+* Provide standardized JWT validation capabilities
+* Support OAuth 2.0 token validation workflow
+
+== MultiIssuerJWTTokenAuthenticator
+
+=== Core Functionality
+* Name: MultiIssuerJWTTokenAuthenticator
+* Extract JWT (JSON Web Token) from HTTP Bearer token header
+* Validate token structure and signature
+* Extract token information
+* Route flow files based on validation results
+
+=== Token Validation Requirements
+* Verify token structure (header, payload, signature)
+* Validate token signature using issuer public key/certificate
+* Check token expiration (exp claim)
+* Verify token issuer (iss claim)
+* Validate token audience if present (aud claim)
+* Support multiple token issuers
+
+=== Multiple Issuer Support
+* Configure multiple trusted issuers
+* Store issuer-specific validation configurations
+* Support different signing algorithms per issuer
+* Allow dynamic issuer key/certificate updates
+
+=== Input Requirements
+* Accept JWT token in flow file
+* Support configurable token location in flow file
+* Handle various token formats (Bearer, raw JWT)
+
+=== Output Requirements
+==== Success Path
+* Route validated tokens to "success" relationship
+* Extract and provide token claims as flow file attributes
+* Include validation metadata (issuer, validation time)
+
+==== Failure Path
+* Route invalid tokens to "authentication-failed" relationship
+* Provide detailed failure reason as flow file attribute
+* Support different failure categories:
+** Invalid token structure
+** Expired token
+** Invalid signature
+** Unknown issuer
+** Invalid claims
+
+=== Configuration Requirements
+==== UI Configuration
+* All configuration must be done through the NiFi UI
+* Provide user-friendly configuration interface
+* Support dynamic configuration updates
+
+==== Token Validation Configuration
+* Configure multiple issuers through UI
+* Each issuer configuration consists of:
+** Issuer identifier (String)
+** One of:
+*** JWKS endpoint URL for key retrieval
+*** Direct public key configuration for signature verification
+* Support dynamic addition/removal of issuers
+* Validate configuration inputs
+* Provide clear error messages for invalid configurations
+
+==== Authorization Configuration
+* Require Valid Token (Boolean)
+** When true: Valid token results in success relationship
+** When false: Token validation result is informational only
+* Required Scopes (List of String)
+** List of OAuth scopes that must be present in token
+** Empty list means no specific scopes required
+* Required Roles (List of String)
+** List of roles that must be present in token
+** Empty list means no specific roles required
+* All configured requirements (scopes and roles) must be met for success
+
+==== Token Location
+* Extract token from Bearer Authorization header
+* Format: "Bearer <token>"
+* Support validation of header presence and format
+
+==== Configuration Properties
+* List of trusted issuers (Dynamic Property)
+* Per issuer configuration:
+** Issuer identifier
+** JWKS endpoint URL or public key
+** Validation rules
+* Token location configuration
+* Required claims configuration
+* Output attribute mapping
+
+=== Security Requirements
+* Secure storage of issuer certificates/keys
+* No sensitive information logging
+* Proper error handling without information leakage
+* Compliance with security best practices
+
+=== Performance Requirements
+* Efficient token validation
+* Minimal memory footprint
+* Quick failure detection for invalid tokens
+* Scalable multi-issuer support
+
+== Integration Requirements
+
+=== NiFi Integration
+* Compatible with NiFi's processor lifecycle
+* Proper error handling and recovery
+* Support for NiFi's configuration framework
+* Integration with NiFi's security features
+
+=== Documentation Requirements
+* Clear configuration guide
+* Usage examples
+* Troubleshooting guide
+* Security considerations
+* Performance tuning recommendations
+
+== Testing Requirements
+
+=== Unit Testing
+* Complete test coverage for all validation scenarios
+* Mock issuer configurations
+* Error handling verification
+* Performance testing
+
+=== Integration Testing
+* End-to-end flow testing
+* Multiple issuer scenarios
+* Error handling scenarios
+* Load testing
+
+== Success Criteria
+* Successful JWT validation with multiple issuers
+* Proper routing of valid/invalid tokens
+* Clear error messaging for invalid tokens
+* Meets performance requirements
+* Passes all security requirements
+* Complete documentation
+* Test coverage meets standards (minimum 80%)

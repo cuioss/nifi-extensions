@@ -1,0 +1,221 @@
+= MultiIssuerJWTTokenAuthenticator Specification
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+== Overview
+This document provides the technical specification for implementing the MultiIssuerJWTTokenAuthenticator processor.
+For functional requirements, see link:requirements.adoc[Requirements Document].
+
+== Technical Components
+
+=== Processor Implementation
+[cols="1,2"]
+|===
+|Component |Specification
+
+|Package
+|de.cuioss.nifi.processors.cuioss.auth
+
+|Class Name
+|MultiIssuerJWTTokenAuthenticator
+
+|Base Class
+|AbstractProcessor
+|===
+
+=== Dependencies
+[cols="1,2"]
+|===
+|Component |Purpose
+
+|portal-authentication-token
+|Core JWT validation functionality using `TokenFactory` and `JwksAwareTokenParser`
+
+|portal-keycloak-integration-test
+|Integration testing framework for token validation
+|===
+
+== Implementation Details
+
+=== Token Validation Flow
+[plantuml]
+....
+@startuml
+participant "HandleHttpRequest" as http
+participant "MultiIssuerJWTTokenAuthenticator" as auth
+participant "TokenFactory" as factory
+participant "JwksAwareTokenParser" as parser
+database "JWKS Endpoint" as jwks
+
+http -> auth: FlowFile with\nBearer Token
+activate auth
+
+auth -> auth: Extract Bearer Token
+auth -> factory: Validate Token
+activate factory
+
+factory -> parser: Parse Token
+activate parser
+
+alt JWKS Configuration
+    parser -> jwks: Fetch Public Keys
+    jwks --> parser: JWKS Response
+else Direct Public Key
+    parser -> parser: Use Configured\nPublic Key
+end
+
+parser --> factory: Validation Result
+deactivate parser
+
+factory --> auth: ParsedAccessToken
+deactivate factory
+
+alt Valid Token
+    auth -> auth: Extract Claims
+    auth --> http: Route to 'success'
+else Invalid Token
+    auth -> auth: Create Error Details
+    auth --> http: Route to 'authentication-failed'
+end
+
+deactivate auth
+@enduml
+....
+
+=== Core Components
+
+==== TokenFactory Integration
+* Utilizes `TokenFactory` from portal-authentication-token
+* Configures multiple `JwksAwareTokenParser` instances based on UI configuration
+* Handles token validation and parsing
+
+==== Configuration Management
+===== Token Validation Configuration
+* Dynamic Properties for Issuer Configuration:
+** Property Name: Issuer Identifier
+** Property Value: JWKS URL or Public Key (PEM format)
+* Regular Properties:
+** Token Header Name (default: Authorization)
+** Token Refresh Interval (minutes)
+** Required Claims
+
+===== Authorization Configuration
+[cols="2,1,2"]
+|===
+|Property |Type |Description
+
+|Require Valid Token
+|Boolean
+|When true, only valid tokens result in success relationship
+
+|Required Scopes
+|List<String>
+|List of OAuth scopes that must be present in token
+
+|Required Roles
+|List<String>
+|List of roles that must be present in token
+|===
+
+=== Relationships
+[cols="1,2"]
+|===
+|Relationship |Description
+
+|success
+|Valid tokens with extracted claims as attributes
+
+|authentication-failed
+|Invalid tokens with error details
+|===
+
+=== Flow File Attribute Handling
+
+==== Input Attributes
+* None required - token extracted from HTTP header
+
+==== Output Attributes (Success)
+* jwt.issuer: Token issuer
+* jwt.subject: Token subject
+* jwt.claims.*: All extracted claims
+* jwt.validatedAt: Validation timestamp
+* jwt.scopes: List of token scopes
+* jwt.roles: List of token roles
+* jwt.authorization.passed: Boolean indicating if all authorization requirements were met
+
+==== Output Attributes (Failure)
+* jwt.error.reason: Detailed error message
+* jwt.error.code: Error classification code
+* jwt.authorization.failed.reason: If token was valid but authorization failed, contains the reason
+
+=== Authorization Flow
+[plantuml]
+....
+@startuml
+start
+:Validate Token;
+
+if (Token Valid?) then (yes)
+  if (Require Valid Token?) then (yes)
+    if (Check Required Scopes) then (present)
+      if (Check Required Roles) then (present)
+        :Route to 'success';
+      else (missing)
+        :Add authorization.failed.reason;
+        :Route to 'authentication-failed';
+      endif
+    else (missing)
+      :Add authorization.failed.reason;
+      :Route to 'authentication-failed';
+    endif
+  else (no)
+    :Route to 'success';
+  endif
+else (no)
+  :Add error details;
+  :Route to 'authentication-failed';
+endif
+stop
+@enduml
+....
+
+== Integration Testing
+
+=== Test Framework
+* Utilizes portal-keycloak-integration-test
+* Provides mock JWKS endpoints
+* Generates test tokens
+
+=== Test Scenarios
+* See link:requirements.adoc#testing-requirements[Testing Requirements]
+
+== Security Considerations
+
+=== Token Handling
+* No token storage in processor state
+* Secure key handling for direct public key configuration
+* Regular JWKS refresh for security updates
+
+=== Error Handling
+* No sensitive information in error messages
+* Proper logging levels for security events
+* Validation of configuration inputs
+
+== Implementation Guidelines
+
+=== Code Organization
+* Follow NiFi processor development best practices
+* Implement proper exception handling
+* Use CuiLogger for logging
+
+=== Configuration Validation
+* Validate JWKS URLs
+* Verify public key format
+* Check required configuration properties
+
+=== Performance Considerations
+* Cache JWKS responses
+* Optimize token validation path
+* Handle concurrent requests efficiently
