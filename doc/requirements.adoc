@@ -116,10 +116,6 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 * Per issuer configuration:
 ** Issuer Identifier
 ** JWKS endpoint URL or public key
-** Validation rules
-* Token location configuration
-* Required claims configuration
-* Output attribute mapping
 
 === Security Requirements
 * Secure storage of issuer certificates/keys

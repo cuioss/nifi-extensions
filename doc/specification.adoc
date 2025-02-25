@@ -127,7 +127,6 @@ private TokenFactory createTokenFactory() {
 * Regular Properties:
 ** Token Header Name (default: Authorization)
 ** Token Refresh Interval (minutes)
-** Required Claims
 
 ===== JWKS Endpoint Test Button Implementation
 * Implement custom UI element using NiFi's CustomUiContext
