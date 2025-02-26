@@ -26,11 +26,8 @@ link:../specification.adoc[Back to Main Specification]
 |===
 |Component |Purpose
 
-|nimbus-jose-jwt
-|JWT parsing and validation
-
-|gson
-|JSON processing
+|de.cuioss.portal.authentication:portal-authentication-token
+|Token handling framework
 
 |cui-java-tools
 |Logging and utilities
@@ -38,157 +35,50 @@ link:../specification.adoc[Back to Main Specification]
 
 == Core Components
 
-=== Token Parser
-The token parser is responsible for extracting and parsing JWT tokens from flow files.
+=== TokenFactory
+The TokenFactory serves as the primary entry point for token operations. It provides:
+
+* Centralized token creation and validation
+* Support for multiple token types (Access, ID, Refresh)
+* Automatic parser selection based on token characteristics
 
 [source,java]
 ----
-public class JwtTokenParser {
-    
-    private static final CuiLogger LOGGER = new CuiLogger(JwtTokenParser.class);
-    
-    /**
-     * Extracts a JWT token from the specified header
-     */
-    public Optional<String> extractToken(FlowFile flowFile, String headerName, ProcessSession session) {
-        String headerValue = flowFile.getAttribute(headerName);
-        
-        if (headerValue == null) {
-            LOGGER.debug("No token found in header: %s", headerName);
-            return Optional.empty();
-        }
-        
-        // Check for Bearer prefix
-        if (headerValue.startsWith("Bearer ")) {
-            return Optional.of(headerValue.substring(7));
-        }
-        
-        // Assume raw token
-        return Optional.of(headerValue);
-    }
-    
-    /**
-     * Parses a JWT token string into its components
-     */
-    public ParsedJwtToken parseToken(String tokenString) throws TokenValidationException {
-        try {
-            SignedJWT signedJWT = SignedJWT.parse(tokenString);
-            JWTClaimsSet claimsSet = signedJWT.getJWTClaimsSet();
-            
-            return new ParsedJwtToken.Builder()
-                .tokenString(tokenString)
-                .header(signedJWT.getHeader())
-                .claims(claimsSet)
-                .build();
-        } catch (ParseException e) {
-            LOGGER.debug(e, "Failed to parse JWT token: %s", e.getMessage());
-            throw new TokenValidationException("Invalid token format", e);
-        }
-    }
-}
+// Create a factory with multiple token parsers
+TokenFactory factory = TokenFactory.of(parser1, parser2);
+
+// Create and validate tokens
+Optional<ParsedAccessToken> accessToken = factory.createAccessToken(tokenString);
+Optional<ParsedIdToken> idToken = factory.createIdToken(tokenString);
 ----
 
-=== Token Validator
-The token validator verifies the token signature and validates claims.
+=== JwksAwareTokenParser
+The JwksAwareTokenParser handles secure token validation using JWKS endpoints:
+
+* Automatic public key retrieval and caching
+* Configurable key refresh intervals
+* TLS support for secure key retrieval
 
 [source,java]
 ----
-public class JwtTokenValidator {
-    
-    private static final CuiLogger LOGGER = new CuiLogger(JwtTokenValidator.class);
-    private final JwksCache jwksCache;
-    
-    public JwtTokenValidator(JwksCache jwksCache) {
-        this.jwksCache = jwksCache;
-    }
-    
-    /**
-     * Validates a JWT token
-     */
-    public ValidationResult validateToken(ParsedJwtToken token) {
-        try {
-            // Verify signature
-            if (!verifySignature(token)) {
-                return ValidationResult.invalid("Invalid token signature");
-            }
-            
-            // Verify expiration
-            if (isTokenExpired(token)) {
-                return ValidationResult.invalid("Token has expired");
-            }
-            
-            // Verify issuer
-            String issuer = token.getClaims().getIssuer();
-            if (!isKnownIssuer(issuer)) {
-                return ValidationResult.invalid("Unknown token issuer: " + issuer);
-            }
-            
-            return ValidationResult.valid();
-        } catch (Exception e) {
-            LOGGER.error(e, "Error validating token: %s", e.getMessage());
-            return ValidationResult.invalid("Error validating token: " + e.getMessage());
-        }
-    }
-    
-    private boolean verifySignature(ParsedJwtToken token) {
-        // Implementation details for signature verification
-        return true;
-    }
-    
-    private boolean isTokenExpired(ParsedJwtToken token) {
-        // Check if token is expired
-        return false;
-    }
-    
-    private boolean isKnownIssuer(String issuer) {
-        // Check if issuer is configured
-        return true;
-    }
-}
+// Configure a parser for a specific issuer
+JwksAwareTokenParser parser = JwksAwareTokenParser.builder()
+    .jwksIssuer("https://auth.example.com")
+    .jwksEndpoint("https://auth.example.com/.well-known/jwks.json")
+    .jwksRefreshIntervall(60)
+    .build();
 ----
 
-=== JWKS Client
-The JWKS client retrieves and caches JSON Web Key Sets from configured endpoints.
+=== Multi-Issuer Support
+The MultiIssuerJWTTokenAuthenticator supports multiple issuers by utilizing a TokenFactory with multiple JwksAwareTokenParsers.
 
 [source,java]
 ----
-public class JwksClient {
-    
-    private static final CuiLogger LOGGER = new CuiLogger(JwksClient.class);
-    
-    /**
-     * Retrieves a JWKS from the specified URL
-     */
-    public JWKSet retrieveJwks(String jwksUrl) throws IOException {
-        try {
-            // Create HTTP client with appropriate timeouts
-            HttpClient client = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(5))
-                .build();
-            
-            // Create request
-            HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(jwksUrl))
-                .timeout(Duration.ofSeconds(5))
-                .GET()
-                .build();
-            
-            // Execute request
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            
-            // Check response
-            if (response.statusCode() == 200) {
-                return JWKSet.parse(response.body());
-            } else {
-                LOGGER.error(ERROR.JWKS_RETRIEVAL_FAILED.format(jwksUrl, response.statusCode()));
-                throw new IOException("Failed to retrieve JWKS: HTTP " + response.statusCode());
-            }
-        } catch (Exception e) {
-            LOGGER.error(e, ERROR.JWKS_RETRIEVAL_FAILED.format(jwksUrl, e.getMessage()));
-            throw new IOException("Error retrieving JWKS: " + e.getMessage(), e);
-        }
-    }
-}
+// Create a factory with multiple parsers for different issuers
+TokenFactory factory = TokenFactory.of(parser1, parser2, parser3);
+
+// Use the factory to validate tokens from different issuers
+Optional<ParsedAccessToken> accessToken = factory.createAccessToken(tokenString);
 ----
 
 == Relationships

@@ -31,45 +31,44 @@ private Optional<String> extractToken(FlowFile flowFile, String headerName) {
 ----
 
 === Signature Validation
-The processor validates JWT token signatures using the appropriate key from the configured issuers.
+The processor uses the TokenFactory from portal-authentication-token to validate token signatures. The TokenFactory delegates to the appropriate JwksAwareTokenParser based on the token's issuer.
 
 [source,java]
 ----
-private boolean validateSignature(SignedJWT signedJWT) throws JOSEException {
-    // Get the key ID from the JWT header
-    String keyId = signedJWT.getHeader().getKeyID();
+// Initialize the token factory with parsers for each configured issuer
+private void initializeTokenFactory() {
+    List<JwksAwareTokenParser> parsers = new ArrayList<>();
     
-    // Get the issuer from the JWT claims
-    String issuer = signedJWT.getJWTClaimsSet().getIssuer();
-    
-    // Find the appropriate JWK for this issuer and key ID
-    JWK jwk = jwksCache.getJwk(issuer, keyId);
-    if (jwk == null) {
-        LOGGER.debug("No matching JWK found for issuer %s and key ID %s", issuer, keyId);
-        return false;
+    for (Map.Entry<String, String> issuerEntry : issuers.entrySet()) {
+        String issuerName = issuerEntry.getKey();
+        String jwksEndpoint = issuerEntry.getValue();
+        
+        JwksAwareTokenParser parser = JwksAwareTokenParser.builder()
+            .jwksIssuer(issuerName)
+            .jwksEndpoint(jwksEndpoint)
+            .jwksRefreshIntervall(jwksRefreshInterval)
+            .build();
+            
+        parsers.add(parser);
     }
     
-    // Convert JWK to a verifier
-    JWSVerifier verifier = createVerifierForJwk(jwk);
-    if (verifier == null) {
-        LOGGER.debug("Unable to create verifier for JWK");
-        return false;
-    }
-    
-    // Verify the signature
-    return signedJWT.verify(verifier);
+    tokenFactory = TokenFactory.of(parsers.toArray(new JwksAwareTokenParser[0]));
 }
 
-private JWSVerifier createVerifierForJwk(JWK jwk) throws JOSEException {
-    if (jwk instanceof RSAKey) {
-        return new RSASSAVerifier((RSAKey) jwk);
-    } else if (jwk instanceof ECKey) {
-        return new ECDSAVerifier((ECKey) jwk);
-    } else if (jwk instanceof OctetSequenceKey) {
-        return new MACVerifier((OctetSequenceKey) jwk);
+// Validate a token
+private ValidationResult validateToken(String tokenString) {
+    try {
+        Optional<ParsedAccessToken> accessToken = tokenFactory.createAccessToken(tokenString);
+        
+        if (accessToken.isPresent()) {
+            // Token is valid, check additional requirements (scopes, etc.)
+            return validateTokenClaims(accessToken.get());
+        } else {
+            return ValidationResult.invalid("Invalid token");
+        }
+    } catch (Exception e) {
+        return ValidationResult.invalid("Error validating token: " + e.getMessage());
     }
-    
-    return null;
 }
 ----
 
