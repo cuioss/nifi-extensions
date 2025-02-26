@@ -7,8 +7,10 @@
 link:../specification.adoc[Back to Main Specification]
 
 == Security Considerations
+_See Requirement link:../requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
 
 === Token Handling
+_See Requirement link:../requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
 
 The processor implements secure token handling practices:
 
@@ -58,6 +60,7 @@ private static final Set<String> SENSITIVE_CLAIMS = new HashSet<>(Arrays.asList(
 ----
 
 === Key Management
+_See Requirement link:../requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
 
 The processor implements secure key management practices:
 
@@ -126,6 +129,7 @@ private ValidationResult validatePublicKey(String pemKey) {
 ----
 
 === Transport Security
+_See Requirement link:../requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
 
 The processor implements secure transport practices:
 
@@ -165,6 +169,7 @@ private SSLContext createSecureSslContext() {
 ----
 
 === Logging Security
+_See Requirement link:../requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
 
 The processor implements secure logging practices:
 
@@ -194,8 +199,10 @@ private void logSecureError(Exception e, String message, Object... args) {
 ----
 
 == Security Best Practices
+_See Requirement link:../requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
 
 === Secure Configuration
+_See Requirement link:../requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuration Requirements]_
 
 The following best practices should be followed when configuring the processor:
 
@@ -205,6 +212,7 @@ The following best practices should be followed when configuring the processor:
 * Implement proper authorization rules
 
 === Regular Key Rotation
+_See Requirement link:../requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
 
 Key rotation is an important security practice:
 
@@ -213,6 +221,7 @@ Key rotation is an important security practice:
 * Monitor for key rotation events
 
 === Monitoring and Alerting
+_See Requirement link:../requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
 
 Implement monitoring and alerting for security events:
 

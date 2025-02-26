@@ -7,8 +7,10 @@
 link:../specification.adoc[Back to Main Specification]
 
 == Integration Examples
+_See Requirement link:../requirements.adoc#NIFI-AUTH-12[NIFI-AUTH-12: Integration Requirements]_
 
 === API Gateway Pattern
+_See Requirement link:../requirements.adoc#NIFI-AUTH-12.1[NIFI-AUTH-12.1: API Gateway Integration]_
 
 The MultiIssuerJWTTokenAuthenticator can be used as part of an API Gateway pattern to authenticate and authorize incoming requests.
 
@@ -90,6 +92,7 @@ The MultiIssuerJWTTokenAuthenticator can be used as part of an API Gateway patte
 ----
 
 === Service-to-Service Authentication
+_See Requirement link:../requirements.adoc#NIFI-AUTH-12.2[NIFI-AUTH-12.2: Service-to-Service Integration]_
 
 The MultiIssuerJWTTokenAuthenticator can be used to authenticate service-to-service communication.
 
@@ -161,6 +164,7 @@ The MultiIssuerJWTTokenAuthenticator can be used to authenticate service-to-serv
 ----
 
 === Multi-Tenant API Routing
+_See Requirement link:../requirements.adoc#NIFI-AUTH-12.3[NIFI-AUTH-12.3: Multi-Tenant Integration]_
 
 The MultiIssuerJWTTokenAuthenticator can be used to route requests based on the tenant information in the JWT token.
 
@@ -281,6 +285,7 @@ assertEquals("true", resultFlowFile.getAttribute("jwt.authorization.passed"));
 ----
 
 ==== Role-Based Authorization Flow
+_See Requirement link:../requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Authorization Requirements]_
 
 This flow demonstrates role-based authorization using JWT tokens:
 
@@ -318,8 +323,10 @@ assertNotNull(resultFlowFile.getAttribute("jwt.roles"));
 ----
 
 === Code Examples
+_See Requirement link:../requirements.adoc#NIFI-AUTH-13[NIFI-AUTH-13: Documentation Requirements]_
 
 ==== Custom Token Validator
+_See Requirement link:../requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
 Example of implementing a custom token validator:
 
@@ -399,6 +406,7 @@ public class CustomJwtTokenValidator implements JwtTokenValidator {
 ----
 
 ==== Custom JWKS Client
+_See Requirement link:../requirements.adoc#NIFI-AUTH-3.2[NIFI-AUTH-3.2: Signature Validation]_
 
 Example of implementing a custom JWKS client with caching:
 

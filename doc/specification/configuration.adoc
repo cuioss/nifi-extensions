@@ -7,8 +7,10 @@
 link:../specification.adoc[Back to Main Specification]
 
 == Configuration Properties
+_See Requirement link:../requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuration Requirements]_
 
 === Static Properties
+_See Requirement link:../requirements.adoc#NIFI-AUTH-7.6[NIFI-AUTH-7.6: Configuration Properties]_
 [cols="2,1,2"]
 |===
 |Property |Type |Description
@@ -27,6 +29,7 @@ link:../specification.adoc[Back to Main Specification]
 |===
 
 === Dynamic Properties
+_See Requirement link:../requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Validation Configuration]_
 Dynamic properties are used to configure token issuers. Each property represents a single issuer configuration.
 
 [cols="2,1,2"]
@@ -39,6 +42,7 @@ Dynamic properties are used to configure token issuers. Each property represents
 |===
 
 == UI Configuration
+_See Requirement link:../requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
 
 === Property Descriptors
 [source,java]
@@ -96,6 +100,7 @@ protected PropertyDescriptor getSupportedDynamicPropertyDescriptor(final String 
 === Custom UI Components
 
 ==== JWKS Endpoint Test Button
+_See Requirement link:../requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
 The JWKS Endpoint Test Button allows users to validate that a JWKS endpoint is accessible and returns valid JWKS data.
 
 [source,javascript]
@@ -171,6 +176,7 @@ define(['jquery'], function ($) {
 ----
 
 ==== Token Verification Interface
+_See Requirement link:../requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
 The Token Verification Interface allows users to test JWT tokens against the current processor configuration.
 
 [source,javascript]
@@ -276,6 +282,7 @@ define(['jquery'], function ($) {
 == Configuration Examples
 
 === Basic Configuration
+_See Requirement link:../requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Validation Configuration]_
 [source,properties]
 ----
 # Static properties
@@ -289,6 +296,7 @@ azure: https://login.microsoftonline.com/common/discovery/keys
 ----
 
 === Multi-Issuer Configuration
+_See Requirement link:../requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
 [source,properties]
 ----
 # Static properties
@@ -304,6 +312,7 @@ legacy-system: -----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBC
 ----
 
 === Authorization Configuration
+_See Requirement link:../requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: Authorization Configuration]_
 [source,properties]
 ----
 # Static properties

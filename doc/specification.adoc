@@ -5,10 +5,12 @@
 :sectnums:
 
 == Overview
+_See Requirement link:requirements.adoc#NIFI-AUTH-1[NIFI-AUTH-1: REST API Support Enhancement]_
 This document provides the technical specification for implementing the MultiIssuerJWTTokenAuthenticator processor.
 For functional requirements, see link:requirements.adoc[Requirements Document].
 
 == Document Structure
+_See Requirement link:requirements.adoc#NIFI-AUTH-13[NIFI-AUTH-13: Documentation Requirements]_
 This specification is organized into the following documents:
 
 * link:specification/technical-components.adoc[Technical Components] - Core implementation details

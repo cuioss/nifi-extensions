@@ -9,21 +9,24 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 
 == General Requirements
 
-=== REST API Support Enhancement
+[#NIFI-AUTH-1]
+=== NIFI-AUTH-1: REST API Support Enhancement
 * Enable simplified REST API endpoint provisioning in NiFi
 * Provide standardized JWT validation capabilities
 * Support OAuth 2.0 token validation workflow
 
 == MultiIssuerJWTTokenAuthenticator
 
-=== Core Functionality
+[#NIFI-AUTH-2]
+=== NIFI-AUTH-2: Core Functionality
 * Name: MultiIssuerJWTTokenAuthenticator
 * Extract JWT (JSON Web Token) from HTTP Bearer token header
 * Validate token structure and signature
 * Extract token information
 * Route flow files based on validation results
 
-=== Token Validation Requirements
+[#NIFI-AUTH-3]
+=== NIFI-AUTH-3: Token Validation Requirements
 * Verify token structure (header, payload, signature)
 * Validate token signature using issuer public key/certificate
 * Check token expiration (exp claim)
@@ -31,24 +34,30 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 * Validate token audience if present (aud claim)
 * Support multiple token issuers
 
-=== Multiple Issuer Support
+[#NIFI-AUTH-4]
+=== NIFI-AUTH-4: Multiple Issuer Support
 * Configure multiple trusted issuers
 * Store issuer-specific validation configurations
 * Support different signing algorithms per issuer
 * Allow dynamic issuer key/certificate updates
 
-=== Input Requirements
+[#NIFI-AUTH-5]
+=== NIFI-AUTH-5: Input Requirements
 * Accept JWT token in flow file
 * Support configurable token location in flow file
 * Handle various token formats (Bearer, raw JWT)
 
-=== Output Requirements
-==== Success Path
+[#NIFI-AUTH-6]
+=== NIFI-AUTH-6: Output Requirements
+
+[#NIFI-AUTH-6.1]
+==== NIFI-AUTH-6.1: Success Path
 * Route validated tokens to "success" relationship
 * Extract and provide token claims as flow file attributes
 * Include validation metadata (issuer, validation time)
 
-==== Failure Path
+[#NIFI-AUTH-6.2]
+==== NIFI-AUTH-6.2: Failure Path
 * Route invalid tokens to "authentication-failed" relationship
 * Provide detailed failure reason as flow file attribute
 * Support different failure categories:
@@ -58,8 +67,11 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 ** Unknown issuer
 ** Invalid claims
 
-=== Configuration Requirements
-==== UI Configuration
+[#NIFI-AUTH-7]
+=== NIFI-AUTH-7: Configuration Requirements
+
+[#NIFI-AUTH-7.1]
+==== NIFI-AUTH-7.1: UI Configuration
 * All configuration must be done through the NiFi UI
 * Provide user-friendly configuration interface
 * Support dynamic configuration updates
@@ -68,7 +80,8 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 ** Provide immediate feedback on connection success/failure
 ** Display appropriate error messages for connection failures
 
-==== Token Validation Configuration
+[#NIFI-AUTH-7.2]
+==== NIFI-AUTH-7.2: Token Validation Configuration
 * Configure multiple issuers through UI
 * Each issuer configuration consists of:
 ** Issuer Identifier (String)
@@ -79,7 +92,8 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 * Validate configuration inputs
 * Provide clear error messages for invalid configurations
 
-==== Verification
+[#NIFI-AUTH-7.3]
+==== NIFI-AUTH-7.3: Verification
 * Provide a token testing interface in the UI
 * Include a text area for pasting JWT tokens
 * Add a "Verify Token" button to test token against current configuration
@@ -94,7 +108,8 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 ** Suggest possible fixes based on error type
 * Support testing without affecting processor state or flow files
 
-==== Authorization Configuration
+[#NIFI-AUTH-7.4]
+==== NIFI-AUTH-7.4: Authorization Configuration
 * Require Valid Token (Boolean)
 ** When true: Valid token results in success relationship
 ** When false: Token validation result is informational only
@@ -106,24 +121,28 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 ** Empty list means no specific roles required
 * All configured requirements (scopes and roles) must be met for success
 
-==== Token Location
+[#NIFI-AUTH-7.5]
+==== NIFI-AUTH-7.5: Token Location
 * Extract token from Bearer Authorization header
 * Format: "Bearer <token>"
 * Support validation of header presence and format
 
-==== Configuration Properties
+[#NIFI-AUTH-7.6]
+==== NIFI-AUTH-7.6: Configuration Properties
 * List of Issuer Identifiers (Dynamic Property)
 * Per issuer configuration:
 ** Issuer Identifier
 ** JWKS endpoint URL or public key
 
-=== Security Requirements
+[#NIFI-AUTH-8]
+=== NIFI-AUTH-8: Security Requirements
 * Secure storage of issuer certificates/keys
 * No sensitive information logging
 * Proper error handling without information leakage
 * Compliance with security best practices
 
-=== Performance Requirements
+[#NIFI-AUTH-9]
+=== NIFI-AUTH-9: Performance Requirements
 * Efficient token validation
 * Minimal memory footprint
 * Quick failure detection for invalid tokens
@@ -134,7 +153,8 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 ** Token validation latency: <50ms per token
 ** Memory usage: <100MB additional heap usage
 
-=== Error Handling Requirements
+[#NIFI-AUTH-10]
+=== NIFI-AUTH-10: Error Handling Requirements
 * Standardized error codes for all failure scenarios
 * Descriptive error messages without sensitive information
 * Error categories with specific codes:
@@ -146,19 +166,22 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 
 == Integration Requirements
 
-=== NiFi Integration
+[#NIFI-AUTH-11]
+=== NIFI-AUTH-11: NiFi Integration
 * Compatible with NiFi's processor lifecycle
 * Proper error handling and recovery
 * Support for NiFi's configuration framework
 * Integration with NiFi's security features
 
-=== Integration Examples
+[#NIFI-AUTH-12]
+=== NIFI-AUTH-12: Integration Examples
 * Example flow for API gateway pattern
 * Example flow for service-to-service authentication
 * Example flow for token transformation
 * Example flow for multi-tenant API routing
 
-=== Documentation Requirements
+[#NIFI-AUTH-13]
+=== NIFI-AUTH-13: Documentation Requirements
 * Clear configuration guide
 * Usage examples
 * Troubleshooting guide
@@ -167,7 +190,8 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 
 == Testing Requirements
 
-=== Unit Testing
+[#NIFI-AUTH-14]
+=== NIFI-AUTH-14: Unit Testing
 * Minimum 80% line coverage (critical paths 100%)
 * Use JUnit 5 with @ParameterizedTest for validation scenarios
 * Leverage cui-test-utilities for:
@@ -176,13 +200,17 @@ This document outlines the requirements for the JWT Validation Processor, a comp
   ** Log message verification
 * Performance testing with >1000 tokens/sec throughput
 
-=== Integration Testing
+[#NIFI-AUTH-15]
+=== NIFI-AUTH-15: Integration Testing
 * End-to-end flow testing
 * Multiple issuer scenarios
 * Error handling scenarios
 * Load testing
 
 == Success Criteria
+
+[#NIFI-AUTH-16]
+=== NIFI-AUTH-16: Success Criteria
 * Successful JWT validation with multiple issuers
 * Proper routing of valid/invalid tokens
 * Clear error messaging for invalid tokens

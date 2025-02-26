@@ -7,8 +7,10 @@
 link:../specification.adoc[Back to Main Specification]
 
 == Token Validation Process
+_See Requirement link:../requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
 === Token Extraction
+_See Requirement link:../requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requirements]_
 The processor extracts JWT tokens from flow file attributes. By default, it looks for the "Authorization" header, but this can be configured.
 
 [source,java]
@@ -31,6 +33,7 @@ private Optional<String> extractToken(FlowFile flowFile, String headerName) {
 ----
 
 === Signature Validation
+_See Requirement link:../requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 The processor uses the TokenFactory from portal-authentication-token to validate token signatures. The TokenFactory delegates to the appropriate JwksAwareTokenParser based on the token's issuer.
 
 [source,java]
@@ -73,6 +76,7 @@ private ValidationResult validateToken(String tokenString) {
 ----
 
 === Claims Validation
+_See Requirement link:../requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 The processor validates various JWT claims, including expiration, not-before, issuer, and audience.
 
 [source,java]
@@ -109,6 +113,7 @@ private ValidationResult validateClaims(JWTClaimsSet claimsSet) {
 ----
 
 === Authorization Rules
+_See Requirement link:../requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: Authorization Configuration]_
 The processor can enforce authorization rules based on token scopes and roles.
 
 [source,java]
@@ -259,6 +264,7 @@ public class StandardJwksEndpointValidator implements JwksEndpointValidator {
 ----
 
 === Caching Strategy
+_See Requirement link:../requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Performance Requirements]_
 The processor implements a caching strategy for JWKS to improve performance and reduce network requests.
 
 [source,java]
@@ -362,6 +368,7 @@ public class JwksCache {
 ----
 
 === Error Handling
+_See Requirement link:../requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
 The processor implements robust error handling for JWKS retrieval and token validation.
 
 [source,java]
@@ -385,6 +392,7 @@ private ValidationResult handleJwksRetrievalError(String jwksUrl, Exception e) {
 ----
 
 == Token Verification UI
+_See Requirement link:../requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
 
 === Implementation
 The Token Verification UI allows users to test JWT tokens against the current processor configuration.

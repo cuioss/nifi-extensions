@@ -7,8 +7,10 @@
 link:../specification.adoc[Back to Main Specification]
 
 == Error Handling Implementation
+_See Requirement link:../requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
 
 === Error Categories
+_See Requirement link:../requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
 The processor categorizes errors into the following categories:
 
 [cols="1,3"]
@@ -35,6 +37,7 @@ The processor categorizes errors into the following categories:
 |===
 
 === Error Codes
+_See Requirement link:../requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
 The processor uses the following error codes:
 
 [cols="1,2,2"]
@@ -131,6 +134,7 @@ public class AuthLogMessages {
 ----
 
 === Error Attributes
+_See Requirement link:../requirements.adoc#NIFI-AUTH-6.2[NIFI-AUTH-6.2: Failure Path]_
 When a token validation fails, the processor adds the following attributes to the flow file:
 
 [cols="1,2"]
@@ -224,6 +228,7 @@ private void handleTokenValidationException(FlowFile flowFile, TokenValidationEx
 ----
 
 === Configuration Exceptions
+_See Requirement link:../requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuration Requirements]_
 The processor handles configuration exceptions during onTrigger and onScheduled:
 
 [source,java]
@@ -303,6 +308,7 @@ private void configureIssuers(ProcessContext context) throws ConfigurationExcept
 ----
 
 === Runtime Exceptions
+_See Requirement link:../requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
 The processor handles runtime exceptions during token validation:
 
 [source,java]
