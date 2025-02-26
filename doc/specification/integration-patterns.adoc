@@ -57,7 +57,7 @@ The MultiIssuerJWTTokenAuthenticator can be used as part of an API Gateway patte
     
     <!-- Authenticate JWT token -->
     <processor>
-        <type>de.cuioss.nifi.processors.cuioss.auth.MultiIssuerJWTTokenAuthenticator</type>
+        <type>de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator</type>
         <properties>
             <property name="Token Header Name">Authorization</property>
             <property name="JWKS Refresh Interval">15 min</property>
@@ -130,7 +130,7 @@ The MultiIssuerJWTTokenAuthenticator can be used to authenticate service-to-serv
     
     <!-- Authenticate service token -->
     <processor>
-        <type>de.cuioss.nifi.processors.cuioss.auth.MultiIssuerJWTTokenAuthenticator</type>
+        <type>de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator</type>
         <properties>
             <property name="Token Header Name">X-Service-Auth</property>
             <property name="JWKS Refresh Interval">15 min</property>
@@ -208,7 +208,7 @@ The MultiIssuerJWTTokenAuthenticator can be used to route requests based on the 
     
     <!-- Authenticate JWT token -->
     <processor>
-        <type>de.cuioss.nifi.processors.cuioss.auth.MultiIssuerJWTTokenAuthenticator</type>
+        <type>de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator</type>
         <properties>
             <property name="Token Header Name">Authorization</property>
             <property name="JWKS Refresh Interval">15 min</property>

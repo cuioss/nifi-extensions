@@ -12,7 +12,7 @@ link:../specification.adoc[Back to Main Specification]
 |Component |Specification
 
 |Package
-|de.cuioss.nifi.processors.cuioss.auth
+|de.cuioss.nifi.processors.auth
 
 |Class Name
 |MultiIssuerJWTTokenAuthenticator

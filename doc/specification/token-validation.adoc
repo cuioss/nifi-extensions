@@ -413,7 +413,7 @@ public class TokenVerificationResource extends ApplicationResource {
             }
             
             // Verify that the processor is a MultiIssuerJWTTokenAuthenticator
-            if (!processor.getComponentType().equals("de.cuioss.nifi.processors.cuioss.auth.MultiIssuerJWTTokenAuthenticator")) {
+            if (!processor.getComponentType().equals("de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator")) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity("Processor is not a MultiIssuerJWTTokenAuthenticator")
                         .build();
