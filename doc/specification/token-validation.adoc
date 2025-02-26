@@ -1,0 +1,507 @@
+= MultiIssuerJWTTokenAuthenticator Token Validation
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+link:../specification.adoc[Back to Main Specification]
+
+== Token Validation Process
+
+=== Token Extraction
+The processor extracts JWT tokens from flow file attributes. By default, it looks for the "Authorization" header, but this can be configured.
+
+[source,java]
+----
+private Optional<String> extractToken(FlowFile flowFile, String headerName) {
+    String headerValue = flowFile.getAttribute(headerName);
+    
+    if (headerValue == null) {
+        return Optional.empty();
+    }
+    
+    // Check for Bearer prefix
+    if (headerValue.startsWith("Bearer ")) {
+        return Optional.of(headerValue.substring(7));
+    }
+    
+    // Assume raw token
+    return Optional.of(headerValue);
+}
+----
+
+=== Signature Validation
+The processor validates JWT token signatures using the appropriate key from the configured issuers.
+
+[source,java]
+----
+private boolean validateSignature(SignedJWT signedJWT) throws JOSEException {
+    // Get the key ID from the JWT header
+    String keyId = signedJWT.getHeader().getKeyID();
+    
+    // Get the issuer from the JWT claims
+    String issuer = signedJWT.getJWTClaimsSet().getIssuer();
+    
+    // Find the appropriate JWK for this issuer and key ID
+    JWK jwk = jwksCache.getJwk(issuer, keyId);
+    if (jwk == null) {
+        LOGGER.debug("No matching JWK found for issuer %s and key ID %s", issuer, keyId);
+        return false;
+    }
+    
+    // Convert JWK to a verifier
+    JWSVerifier verifier = createVerifierForJwk(jwk);
+    if (verifier == null) {
+        LOGGER.debug("Unable to create verifier for JWK");
+        return false;
+    }
+    
+    // Verify the signature
+    return signedJWT.verify(verifier);
+}
+
+private JWSVerifier createVerifierForJwk(JWK jwk) throws JOSEException {
+    if (jwk instanceof RSAKey) {
+        return new RSASSAVerifier((RSAKey) jwk);
+    } else if (jwk instanceof ECKey) {
+        return new ECDSAVerifier((ECKey) jwk);
+    } else if (jwk instanceof OctetSequenceKey) {
+        return new MACVerifier((OctetSequenceKey) jwk);
+    }
+    
+    return null;
+}
+----
+
+=== Claims Validation
+The processor validates various JWT claims, including expiration, not-before, issuer, and audience.
+
+[source,java]
+----
+private ValidationResult validateClaims(JWTClaimsSet claimsSet) {
+    // Check expiration time
+    Date expirationTime = claimsSet.getExpirationTime();
+    if (expirationTime != null && expirationTime.before(new Date())) {
+        return ValidationResult.invalid("Token has expired");
+    }
+    
+    // Check not-before time
+    Date notBeforeTime = claimsSet.getNotBeforeTime();
+    if (notBeforeTime != null && notBeforeTime.after(new Date())) {
+        return ValidationResult.invalid("Token not yet valid");
+    }
+    
+    // Check issuer
+    String issuer = claimsSet.getIssuer();
+    if (issuer == null || !isKnownIssuer(issuer)) {
+        return ValidationResult.invalid("Unknown token issuer: " + issuer);
+    }
+    
+    // Check audience (if configured)
+    if (requiredAudience != null && !requiredAudience.isEmpty()) {
+        List<String> audiences = claimsSet.getAudience();
+        if (audiences == null || !audiences.contains(requiredAudience)) {
+            return ValidationResult.invalid("Token audience does not match required audience");
+        }
+    }
+    
+    return ValidationResult.valid();
+}
+----
+
+=== Authorization Rules
+The processor can enforce authorization rules based on token scopes and roles.
+
+[source,java]
+----
+private ValidationResult validateAuthorization(JWTClaimsSet claimsSet) {
+    // Check required scopes
+    if (requiredScopes != null && !requiredScopes.isEmpty()) {
+        Set<String> tokenScopes = extractScopes(claimsSet);
+        if (!tokenScopes.containsAll(requiredScopes)) {
+            return ValidationResult.invalid("Token missing required scopes");
+        }
+    }
+    
+    // Check required roles
+    if (requiredRoles != null && !requiredRoles.isEmpty()) {
+        Set<String> tokenRoles = extractRoles(claimsSet);
+        if (!tokenRoles.containsAll(requiredRoles)) {
+            return ValidationResult.invalid("Token missing required roles");
+        }
+    }
+    
+    return ValidationResult.valid();
+}
+
+private Set<String> extractScopes(JWTClaimsSet claimsSet) {
+    // Extract scopes from token claims
+    Set<String> scopes = new HashSet<>();
+    
+    // Check for 'scope' claim as space-separated string
+    Object scopeClaim = claimsSet.getClaim("scope");
+    if (scopeClaim instanceof String) {
+        String scopeString = (String) scopeClaim;
+        scopes.addAll(Arrays.asList(scopeString.split(" ")));
+    }
+    
+    // Check for 'scopes' claim as array
+    Object scopesClaim = claimsSet.getClaim("scopes");
+    if (scopesClaim instanceof List) {
+        for (Object scope : (List<?>) scopesClaim) {
+            if (scope instanceof String) {
+                scopes.add((String) scope);
+            }
+        }
+    }
+    
+    return scopes;
+}
+
+private Set<String> extractRoles(JWTClaimsSet claimsSet) {
+    // Extract roles from token claims
+    Set<String> roles = new HashSet<>();
+    
+    // Check for 'roles' claim as array
+    Object rolesClaim = claimsSet.getClaim("roles");
+    if (rolesClaim instanceof List) {
+        for (Object role : (List<?>) rolesClaim) {
+            if (role instanceof String) {
+                roles.add((String) role);
+            }
+        }
+    }
+    
+    // Check for roles in 'realm_access' claim (Keycloak format)
+    Object realmAccess = claimsSet.getClaim("realm_access");
+    if (realmAccess instanceof Map) {
+        Map<?, ?> realmAccessMap = (Map<?, ?>) realmAccess;
+        Object realmRoles = realmAccessMap.get("roles");
+        if (realmRoles instanceof List) {
+            for (Object role : (List<?>) realmRoles) {
+                if (role instanceof String) {
+                    roles.add((String) role);
+                }
+            }
+        }
+    }
+    
+    return roles;
+}
+----
+
+== JWKS Endpoint Validator Service
+
+=== Implementation
+The JWKS Endpoint Validator Service validates that a JWKS endpoint is accessible and returns valid JWKS data.
+
+[source,java]
+----
+public class StandardJwksEndpointValidator implements JwksEndpointValidator {
+    
+    private static final CuiLogger LOGGER = new CuiLogger(StandardJwksEndpointValidator.class);
+    
+    @Override
+    public ValidationResult validateJwksEndpoint(String jwksUrl) {
+        try {
+            // Create HTTP client with appropriate timeouts
+            HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .build();
+            
+            // Create request
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(jwksUrl))
+                .timeout(Duration.ofSeconds(5))
+                .GET()
+                .build();
+            
+            // Execute request
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            // Check response
+            if (response.statusCode() == 200) {
+                // Validate JWKS format
+                if (isValidJwksFormat(response.body())) {
+                    return new ValidationResult.Builder()
+                        .valid(true)
+                        .explanation("Successfully connected to JWKS endpoint")
+                        .build();
+                } else {
+                    return new ValidationResult.Builder()
+                        .valid(false)
+                        .explanation("Response is not a valid JWKS format")
+                        .build();
+                }
+            } else {
+                return new ValidationResult.Builder()
+                    .valid(false)
+                    .explanation("Failed to connect to JWKS endpoint: HTTP " + response.statusCode())
+                    .build();
+            }
+        } catch (Exception e) {
+            LOGGER.error(e, "Error validating JWKS endpoint: %s", e.getMessage());
+            return new ValidationResult.Builder()
+                .valid(false)
+                .explanation("Error connecting to JWKS endpoint: " + e.getMessage())
+                .build();
+        }
+    }
+    
+    private boolean isValidJwksFormat(String body) {
+        try {
+            JsonObject jwks = JsonParser.parseString(body).getAsJsonObject();
+            return jwks.has("keys") && jwks.get("keys").isJsonArray();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+}
+----
+
+=== Caching Strategy
+The processor implements a caching strategy for JWKS to improve performance and reduce network requests.
+
+[source,java]
+----
+public class JwksCache {
+    
+    private static final CuiLogger LOGGER = new CuiLogger(JwksCache.class);
+    
+    private final Map<String, CachedJwks> jwksCache = new ConcurrentHashMap<>();
+    private final Map<String, String> issuerToJwksUrl = new ConcurrentHashMap<>();
+    private final JwksClient jwksClient;
+    private final long refreshIntervalMillis;
+    
+    public JwksCache(JwksClient jwksClient, long refreshIntervalMillis) {
+        this.jwksClient = jwksClient;
+        this.refreshIntervalMillis = refreshIntervalMillis;
+    }
+    
+    /**
+     * Registers an issuer with its JWKS URL
+     */
+    public void registerIssuer(String issuer, String jwksUrl) {
+        issuerToJwksUrl.put(issuer, jwksUrl);
+    }
+    
+    /**
+     * Gets a JWK for the specified issuer and key ID
+     */
+    public JWK getJwk(String issuer, String keyId) {
+        // Get the JWKS URL for this issuer
+        String jwksUrl = issuerToJwksUrl.get(issuer);
+        if (jwksUrl == null) {
+            LOGGER.debug("No JWKS URL registered for issuer: %s", issuer);
+            return null;
+        }
+        
+        // Get or load the JWKS
+        JWKSet jwkSet = getJwkSet(jwksUrl);
+        if (jwkSet == null) {
+            return null;
+        }
+        
+        // Find the key by ID
+        return jwkSet.getKeyByKeyId(keyId);
+    }
+    
+    /**
+     * Gets a JWKSet for the specified URL, loading it if necessary
+     */
+    private JWKSet getJwkSet(String jwksUrl) {
+        CachedJwks cachedJwks = jwksCache.get(jwksUrl);
+        
+        // Check if we need to load or refresh the JWKS
+        if (cachedJwks == null || isExpired(cachedJwks)) {
+            try {
+                JWKSet jwkSet = jwksClient.retrieveJwks(jwksUrl);
+                cachedJwks = new CachedJwks(jwkSet, System.currentTimeMillis());
+                jwksCache.put(jwksUrl, cachedJwks);
+            } catch (IOException e) {
+                LOGGER.error(e, "Failed to load JWKS from %s: %s", jwksUrl, e.getMessage());
+                // Return the expired JWKS if we have one, rather than failing
+                if (cachedJwks != null) {
+                    LOGGER.warn(WARN.USING_EXPIRED_JWKS.format(jwksUrl));
+                    return cachedJwks.getJwkSet();
+                }
+                return null;
+            }
+        }
+        
+        return cachedJwks.getJwkSet();
+    }
+    
+    /**
+     * Checks if a cached JWKS is expired
+     */
+    private boolean isExpired(CachedJwks cachedJwks) {
+        return System.currentTimeMillis() - cachedJwks.getTimestamp() > refreshIntervalMillis;
+    }
+    
+    /**
+     * Class to hold a cached JWKSet and its timestamp
+     */
+    private static class CachedJwks {
+        private final JWKSet jwkSet;
+        private final long timestamp;
+        
+        public CachedJwks(JWKSet jwkSet, long timestamp) {
+            this.jwkSet = jwkSet;
+            this.timestamp = timestamp;
+        }
+        
+        public JWKSet getJwkSet() {
+            return jwkSet;
+        }
+        
+        public long getTimestamp() {
+            return timestamp;
+        }
+    }
+}
+----
+
+=== Error Handling
+The processor implements robust error handling for JWKS retrieval and token validation.
+
+[source,java]
+----
+private ValidationResult handleJwksRetrievalError(String jwksUrl, Exception e) {
+    LOGGER.error(e, ERROR.JWKS_RETRIEVAL_FAILED.format(jwksUrl, e.getMessage()));
+    
+    // Determine the type of error
+    if (e instanceof ConnectException) {
+        return ValidationResult.invalid("Failed to connect to JWKS endpoint: Connection refused");
+    } else if (e instanceof SocketTimeoutException) {
+        return ValidationResult.invalid("Failed to connect to JWKS endpoint: Connection timed out");
+    } else if (e instanceof UnknownHostException) {
+        return ValidationResult.invalid("Failed to connect to JWKS endpoint: Unknown host");
+    } else if (e instanceof SSLException) {
+        return ValidationResult.invalid("Failed to connect to JWKS endpoint: SSL/TLS error");
+    } else {
+        return ValidationResult.invalid("Failed to retrieve JWKS: " + e.getMessage());
+    }
+}
+----
+
+== Token Verification UI
+
+=== Implementation
+The Token Verification UI allows users to test JWT tokens against the current processor configuration.
+
+[source,java]
+----
+@Path("/processors/{id}/verify-token")
+public class TokenVerificationResource extends ApplicationResource {
+    
+    private static final CuiLogger LOGGER = new CuiLogger(TokenVerificationResource.class);
+    
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response verifyToken(
+            @PathParam("id") String processorId,
+            TokenVerificationRequest request) {
+        
+        try {
+            // Get the processor
+            ProcessorNode processor = getProcessorNode(processorId);
+            if (processor == null) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity("Processor not found")
+                        .build();
+            }
+            
+            // Verify that the processor is a MultiIssuerJWTTokenAuthenticator
+            if (!processor.getComponentType().equals("de.cuioss.nifi.processors.cuioss.auth.MultiIssuerJWTTokenAuthenticator")) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("Processor is not a MultiIssuerJWTTokenAuthenticator")
+                        .build();
+            }
+            
+            // Get the processor instance
+            MultiIssuerJWTTokenAuthenticator processorInstance = 
+                (MultiIssuerJWTTokenAuthenticator) processor.getProcessor();
+            
+            // Verify the token
+            TokenVerificationResult result = processorInstance.verifyToken(request.getToken());
+            
+            // Return the result
+            return Response.ok(result).build();
+        } catch (Exception e) {
+            LOGGER.error(e, "Error verifying token: %s", e.getMessage());
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Error verifying token: " + e.getMessage())
+                    .build();
+        }
+    }
+    
+    private ProcessorNode getProcessorNode(String processorId) {
+        return serviceFacade.getProcessorNode(processorId);
+    }
+}
+----
+
+=== REST Endpoint
+The processor provides a REST endpoint for token verification.
+
+[source,java]
+----
+/**
+ * Verifies a JWT token against the current processor configuration
+ */
+public TokenVerificationResult verifyToken(String tokenString) {
+    try {
+        // Parse the token
+        SignedJWT signedJWT = SignedJWT.parse(tokenString);
+        JWTClaimsSet claimsSet = signedJWT.getJWTClaimsSet();
+        
+        // Validate signature
+        boolean validSignature = validateSignature(signedJWT);
+        if (!validSignature) {
+            return TokenVerificationResult.invalid("Invalid token signature");
+        }
+        
+        // Validate claims
+        ValidationResult claimsResult = validateClaims(claimsSet);
+        if (!claimsResult.isValid()) {
+            return TokenVerificationResult.invalid(claimsResult.getExplanation());
+        }
+        
+        // Validate authorization
+        ValidationResult authResult = validateAuthorization(claimsSet);
+        if (!authResult.isValid()) {
+            return TokenVerificationResult.invalid(authResult.getExplanation());
+        }
+        
+        // Create successful result
+        TokenVerificationResult result = TokenVerificationResult.valid();
+        result.setIssuer(claimsSet.getIssuer());
+        result.setSubject(claimsSet.getSubject());
+        result.setExpiresAt(claimsSet.getExpirationTime().getTime() / 1000);
+        result.setClaims(claimsSet.getClaims());
+        
+        // Add attributes that would be added to a flow file
+        Map<String, String> attributes = new HashMap<>();
+        attributes.put("jwt.issuer", claimsSet.getIssuer());
+        attributes.put("jwt.subject", claimsSet.getSubject());
+        attributes.put("jwt.validatedAt", String.valueOf(System.currentTimeMillis()));
+        
+        // Add all claims as attributes
+        for (Map.Entry<String, Object> claim : claimsSet.getClaims().entrySet()) {
+            attributes.put("jwt.claims." + claim.getKey(), 
+                           claim.getValue() != null ? claim.getValue().toString() : "");
+        }
+        
+        result.setAttributes(attributes);
+        
+        return result;
+    } catch (ParseException e) {
+        return TokenVerificationResult.invalid("Invalid token format: " + e.getMessage());
+    } catch (Exception e) {
+        LOGGER.error(e, "Error verifying token: %s", e.getMessage());
+        return TokenVerificationResult.invalid("Error verifying token: " + e.getMessage());
+    }
+}
+----

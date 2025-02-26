@@ -1,0 +1,497 @@
+= MultiIssuerJWTTokenAuthenticator Integration Patterns
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+link:../specification.adoc[Back to Main Specification]
+
+== Integration Examples
+
+=== API Gateway Pattern
+
+The MultiIssuerJWTTokenAuthenticator can be used as part of an API Gateway pattern to authenticate and authorize incoming requests.
+
+.API Gateway Pattern
+[ditaa]
+----
+    +----------------+        +----------------+        +----------------+
+    |                |        |                |        |                |
+    |  API Client    |------->|  API Gateway   |------->|  Backend API  |
+    |                |        |                |        |                |
+    +----------------+        +----------------+        +----------------+
+                                      |
+                                      v
+                              +----------------+
+                              |                |
+                              |  JWT Token     |
+                              |  Authenticator |
+                              |                |
+                              +----------------+
+                                      |
+                                      v
+                              +----------------+
+                              |                |
+                              |  Identity      |
+                              |  Provider      |
+                              |                |
+                              +----------------+
+----
+
+.Example Flow
+[source,xml]
+----
+<flow>
+    <!-- Handle incoming HTTP requests -->
+    <processor>
+        <type>org.apache.nifi.processors.standard.HandleHttpRequest</type>
+        <properties>
+            <property name="HTTP Context Map">HTTP Context Map</property>
+            <property name="Listening Port">8080</property>
+            <property name="Base Path">/api</property>
+        </properties>
+        <relationships>
+            <relationship name="success">Authentication</relationship>
+        </relationships>
+    </processor>
+    
+    <!-- Authenticate JWT token -->
+    <processor>
+        <type>de.cuioss.nifi.processors.cuioss.auth.MultiIssuerJWTTokenAuthenticator</type>
+        <properties>
+            <property name="Token Header Name">Authorization</property>
+            <property name="JWKS Refresh Interval">15 min</property>
+            <property name="Require Valid Token">true</property>
+            <property name="keycloak">https://auth.example.com/realms/master/protocol/openid-connect/certs</property>
+        </properties>
+        <relationships>
+            <relationship name="success">RouteRequest</relationship>
+            <relationship name="authentication-failed">HandleAuthFailure</relationship>
+        </relationships>
+    </processor>
+    
+    <!-- Route request to appropriate backend -->
+    <processor>
+        <type>org.apache.nifi.processors.standard.RouteOnAttribute</type>
+        <properties>
+            <property name="Route Strategy">Route to Property name</property>
+            <property name="users">${jwt.claims.resource_access:contains('users-api')}</property>
+            <property name="products">${jwt.claims.resource_access:contains('products-api')}</property>
+            <property name="orders">${jwt.claims.resource_access:contains('orders-api')}</property>
+        </properties>
+        <relationships>
+            <relationship name="users">UsersBackend</relationship>
+            <relationship name="products">ProductsBackend</relationship>
+            <relationship name="orders">OrdersBackend</relationship>
+            <relationship name="unmatched">HandleUnauthorized</relationship>
+        </relationships>
+    </processor>
+</flow>
+----
+
+=== Service-to-Service Authentication
+
+The MultiIssuerJWTTokenAuthenticator can be used to authenticate service-to-service communication.
+
+.Service-to-Service Authentication
+[ditaa]
+----
+    +----------------+        +----------------+        +----------------+
+    |                |        |                |        |                |
+    |  Service A     |------->|  JWT Token     |------->|  Service B    |
+    |                |        |  Authenticator |        |                |
+    +----------------+        +----------------+        +----------------+
+           |                         |
+           |                         |
+           v                         v
+    +----------------+        +----------------+
+    |                |        |                |
+    |  Token         |        |  Identity      |
+    |  Issuer        |        |  Provider      |
+    |                |        |                |
+    +----------------+        +----------------+
+----
+
+.Example Flow
+[source,xml]
+----
+<flow>
+    <!-- Receive message from Service A -->
+    <processor>
+        <type>org.apache.nifi.processors.standard.ListenHTTP</type>
+        <properties>
+            <property name="Port">8081</property>
+            <property name="Base Path">/service</property>
+        </properties>
+        <relationships>
+            <relationship name="success">Authentication</relationship>
+        </relationships>
+    </processor>
+    
+    <!-- Authenticate service token -->
+    <processor>
+        <type>de.cuioss.nifi.processors.cuioss.auth.MultiIssuerJWTTokenAuthenticator</type>
+        <properties>
+            <property name="Token Header Name">X-Service-Auth</property>
+            <property name="JWKS Refresh Interval">15 min</property>
+            <property name="Require Valid Token">true</property>
+            <property name="Required Scopes">service:read,service:write</property>
+            <property name="Required Roles">service-client</property>
+            <property name="internal-auth">https://internal-auth.example.com/jwks</property>
+        </properties>
+        <relationships>
+            <relationship name="success">ProcessRequest</relationship>
+            <relationship name="authentication-failed">HandleAuthFailure</relationship>
+        </relationships>
+    </processor>
+    
+    <!-- Process the authenticated request -->
+    <processor>
+        <type>org.apache.nifi.processors.standard.InvokeHTTP</type>
+        <properties>
+            <property name="HTTP Method">POST</property>
+            <property name="Remote URL">http://service-b-internal:8080/api</property>
+        </properties>
+        <relationships>
+            <relationship name="response">HandleResponse</relationship>
+            <relationship name="failure">HandleFailure</relationship>
+        </relationships>
+    </processor>
+</flow>
+----
+
+=== Multi-Tenant API Routing
+
+The MultiIssuerJWTTokenAuthenticator can be used to route requests based on the tenant information in the JWT token.
+
+.Multi-Tenant API Routing
+[ditaa]
+----
+    +----------------+        +----------------+        +----------------+
+    |                |        |                |        |                |
+    |  Tenant A      |------->|  API Gateway   |------->|  Tenant A     |
+    |  Client        |        |                |        |  Backend      |
+    +----------------+        +----------------+        +----------------+
+                                      ^
+                                      |
+    +----------------+                |                +----------------+
+    |                |                |                |                |
+    |  Tenant B      |----------------+--------------->|  Tenant B     |
+    |  Client        |                                 |  Backend      |
+    +----------------+                                 +----------------+
+                                      |
+                                      v
+                              +----------------+
+                              |                |
+                              |  JWT Token     |
+                              |  Authenticator |
+                              |                |
+                              +----------------+
+----
+
+.Example Flow
+[source,xml]
+----
+<flow>
+    <!-- Handle incoming HTTP requests -->
+    <processor>
+        <type>org.apache.nifi.processors.standard.HandleHttpRequest</type>
+        <properties>
+            <property name="HTTP Context Map">HTTP Context Map</property>
+            <property name="Listening Port">8080</property>
+            <property name="Base Path">/api</property>
+        </properties>
+        <relationships>
+            <relationship name="success">Authentication</relationship>
+        </relationships>
+    </processor>
+    
+    <!-- Authenticate JWT token -->
+    <processor>
+        <type>de.cuioss.nifi.processors.cuioss.auth.MultiIssuerJWTTokenAuthenticator</type>
+        <properties>
+            <property name="Token Header Name">Authorization</property>
+            <property name="JWKS Refresh Interval">15 min</property>
+            <property name="Require Valid Token">true</property>
+            <property name="tenant-a">https://auth.tenant-a.example.com/jwks</property>
+            <property name="tenant-b">https://auth.tenant-b.example.com/jwks</property>
+        </properties>
+        <relationships>
+            <relationship name="success">RouteTenant</relationship>
+            <relationship name="authentication-failed">HandleAuthFailure</relationship>
+        </relationships>
+    </processor>
+    
+    <!-- Route request based on tenant -->
+    <processor>
+        <type>org.apache.nifi.processors.standard.RouteOnAttribute</type>
+        <properties>
+            <property name="Route Strategy">Route to Property name</property>
+            <property name="tenant-a">${jwt.issuer:contains('tenant-a')}</property>
+            <property name="tenant-b">${jwt.issuer:contains('tenant-b')}</property>
+        </properties>
+        <relationships>
+            <relationship name="tenant-a">TenantABackend</relationship>
+            <relationship name="tenant-b">TenantBBackend</relationship>
+            <relationship name="unmatched">HandleUnknownTenant</relationship>
+        </relationships>
+    </processor>
+</flow>
+----
+
+== Implementation Examples
+
+=== Example Flows
+
+==== Basic JWT Authentication Flow
+
+This flow demonstrates basic JWT authentication for an API:
+
+1. Receive HTTP request with JWT token
+2. Authenticate and validate the token
+3. Process the request if token is valid
+4. Return appropriate response
+
+[source,java]
+----
+// Configure the processor
+TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
+runner.setProperty(MultiIssuerJWTTokenAuthenticator.TOKEN_HEADER, "Authorization");
+runner.setProperty(MultiIssuerJWTTokenAuthenticator.JWKS_REFRESH_INTERVAL, "15 min");
+runner.setProperty(MultiIssuerJWTTokenAuthenticator.REQUIRE_VALID_TOKEN, "true");
+runner.setProperty("keycloak", "https://auth.example.com/realms/master/protocol/openid-connect/certs");
+
+// Create a flow file with a JWT token
+Map<String, String> attributes = new HashMap<>();
+attributes.put("Authorization", "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...");
+runner.enqueue("Request body".getBytes(), attributes);
+
+// Run the processor
+runner.run();
+
+// Check the results
+runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 1);
+MockFlowFile resultFlowFile = runner.getFlowFilesForRelationship(
+    MultiIssuerJWTTokenAuthenticator.SUCCESS).get(0);
+
+// Verify token attributes were added
+assertEquals("keycloak", resultFlowFile.getAttribute("jwt.issuer"));
+assertNotNull(resultFlowFile.getAttribute("jwt.subject"));
+assertEquals("true", resultFlowFile.getAttribute("jwt.authorization.passed"));
+----
+
+==== Role-Based Authorization Flow
+
+This flow demonstrates role-based authorization using JWT tokens:
+
+1. Receive HTTP request with JWT token
+2. Authenticate and validate the token
+3. Check for required roles in the token
+4. Route to appropriate handler based on roles
+
+[source,java]
+----
+// Configure the processor with role requirements
+TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
+runner.setProperty(MultiIssuerJWTTokenAuthenticator.TOKEN_HEADER, "Authorization");
+runner.setProperty(MultiIssuerJWTTokenAuthenticator.JWKS_REFRESH_INTERVAL, "15 min");
+runner.setProperty(MultiIssuerJWTTokenAuthenticator.REQUIRE_VALID_TOKEN, "true");
+runner.setProperty(MultiIssuerJWTTokenAuthenticator.REQUIRED_ROLES, "admin,power-user");
+runner.setProperty("keycloak", "https://auth.example.com/realms/master/protocol/openid-connect/certs");
+
+// Create a flow file with a JWT token containing roles
+Map<String, String> attributes = new HashMap<>();
+attributes.put("Authorization", "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...");
+runner.enqueue("Request body".getBytes(), attributes);
+
+// Run the processor
+runner.run();
+
+// Check the results - should succeed if token has required roles
+runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 1);
+MockFlowFile resultFlowFile = runner.getFlowFilesForRelationship(
+    MultiIssuerJWTTokenAuthenticator.SUCCESS).get(0);
+
+// Verify authorization attributes
+assertEquals("true", resultFlowFile.getAttribute("jwt.authorization.passed"));
+assertNotNull(resultFlowFile.getAttribute("jwt.roles"));
+----
+
+=== Code Examples
+
+==== Custom Token Validator
+
+Example of implementing a custom token validator:
+
+[source,java]
+----
+public class CustomJwtTokenValidator implements JwtTokenValidator {
+    
+    private static final CuiLogger LOGGER = new CuiLogger(CustomJwtTokenValidator.class);
+    private final JwksCache jwksCache;
+    private final Set<String> trustedIssuers;
+    
+    public CustomJwtTokenValidator(JwksCache jwksCache, Set<String> trustedIssuers) {
+        this.jwksCache = jwksCache;
+        this.trustedIssuers = trustedIssuers;
+    }
+    
+    @Override
+    public ValidationResult validateToken(ParsedJwtToken token) {
+        try {
+            // Verify signature
+            if (!verifySignature(token)) {
+                return ValidationResult.invalid("Invalid token signature");
+            }
+            
+            // Verify expiration
+            if (isTokenExpired(token)) {
+                return ValidationResult.invalid("Token has expired");
+            }
+            
+            // Verify issuer is trusted
+            String issuer = token.getClaims().getIssuer();
+            if (!isTrustedIssuer(issuer)) {
+                return ValidationResult.invalid("Untrusted token issuer: " + issuer);
+            }
+            
+            // Custom validation logic
+            ValidationResult customValidationResult = performCustomValidation(token);
+            if (!customValidationResult.isValid()) {
+                return customValidationResult;
+            }
+            
+            return ValidationResult.valid();
+        } catch (Exception e) {
+            LOGGER.error(e, "Error validating token: %s", e.getMessage());
+            return ValidationResult.invalid("Error validating token: " + e.getMessage());
+        }
+    }
+    
+    private boolean verifySignature(ParsedJwtToken token) {
+        // Implementation for signature verification
+        return true;
+    }
+    
+    private boolean isTokenExpired(ParsedJwtToken token) {
+        // Check if token is expired
+        Date expirationTime = token.getClaims().getExpirationTime();
+        return expirationTime != null && expirationTime.before(new Date());
+    }
+    
+    private boolean isTrustedIssuer(String issuer) {
+        // Check if issuer is in the trusted issuers list
+        return trustedIssuers.contains(issuer);
+    }
+    
+    private ValidationResult performCustomValidation(ParsedJwtToken token) {
+        // Custom validation logic
+        // For example, check for specific claims or values
+        
+        // Check for required custom claim
+        if (!token.getClaims().getClaims().containsKey("custom-claim")) {
+            return ValidationResult.invalid("Missing required custom claim");
+        }
+        
+        return ValidationResult.valid();
+    }
+}
+----
+
+==== Custom JWKS Client
+
+Example of implementing a custom JWKS client with caching:
+
+[source,java]
+----
+public class CustomJwksClient {
+    
+    private static final CuiLogger LOGGER = new CuiLogger(CustomJwksClient.class);
+    private final Map<String, CachedJwks> jwksCache = new ConcurrentHashMap<>();
+    private final long cacheTimeoutMillis;
+    
+    public CustomJwksClient(long cacheTimeoutMillis) {
+        this.cacheTimeoutMillis = cacheTimeoutMillis;
+    }
+    
+    /**
+     * Retrieves a JWKS from the specified URL, using cache if available
+     */
+    public JWKSet getJwks(String jwksUrl) throws IOException {
+        // Check cache first
+        CachedJwks cachedJwks = jwksCache.get(jwksUrl);
+        if (cachedJwks != null && !isCacheExpired(cachedJwks)) {
+            return cachedJwks.getJwkSet();
+        }
+        
+        // Cache miss or expired, retrieve from URL
+        JWKSet jwkSet = retrieveJwks(jwksUrl);
+        
+        // Update cache
+        jwksCache.put(jwksUrl, new CachedJwks(jwkSet, System.currentTimeMillis()));
+        
+        return jwkSet;
+    }
+    
+    /**
+     * Retrieves a JWKS from the specified URL
+     */
+    private JWKSet retrieveJwks(String jwksUrl) throws IOException {
+        try {
+            // Create HTTP client with appropriate timeouts
+            HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .build();
+            
+            // Create request
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(jwksUrl))
+                .timeout(Duration.ofSeconds(5))
+                .GET()
+                .build();
+            
+            // Execute request
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            // Check response
+            if (response.statusCode() == 200) {
+                return JWKSet.parse(response.body());
+            } else {
+                LOGGER.error(ERROR.JWKS_RETRIEVAL_FAILED.format(jwksUrl, response.statusCode()));
+                throw new IOException("Failed to retrieve JWKS: HTTP " + response.statusCode());
+            }
+        } catch (Exception e) {
+            LOGGER.error(e, ERROR.JWKS_RETRIEVAL_FAILED.format(jwksUrl, e.getMessage()));
+            throw new IOException("Error retrieving JWKS: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Checks if a cached JWKS is expired
+     */
+    private boolean isCacheExpired(CachedJwks cachedJwks) {
+        return System.currentTimeMillis() - cachedJwks.getTimestamp() > cacheTimeoutMillis;
+    }
+    
+    /**
+     * Class to hold a cached JWKSet and its timestamp
+     */
+    private static class CachedJwks {
+        private final JWKSet jwkSet;
+        private final long timestamp;
+        
+        public CachedJwks(JWKSet jwkSet, long timestamp) {
+            this.jwkSet = jwkSet;
+            this.timestamp = timestamp;
+        }
+        
+        public JWKSet getJwkSet() {
+            return jwkSet;
+        }
+        
+        public long getTimestamp() {
+            return timestamp;
+        }
+    }
+}
+----

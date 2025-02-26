@@ -1,0 +1,246 @@
+= MultiIssuerJWTTokenAuthenticator Security
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+link:../specification.adoc[Back to Main Specification]
+
+== Security Considerations
+
+=== Token Handling
+
+The processor implements secure token handling practices:
+
+* Tokens are never logged in their entirety
+* Tokens are processed in memory and not persisted
+* Sensitive claims are handled securely
+
+[source,java]
+----
+// Secure token logging - only log part of the token for debugging
+private void logTokenDebug(String token) {
+    if (token.length() > 10) {
+        String tokenPrefix = token.substring(0, 5);
+        String tokenSuffix = token.substring(token.length() - 5);
+        LOGGER.debug("Processing token: %s...%s", tokenPrefix, tokenSuffix);
+    }
+}
+
+// Secure handling of sensitive claims
+private Map<String, String> sanitizeClaimsForAttributes(Map<String, Object> claims) {
+    Map<String, String> attributes = new HashMap<>();
+    
+    for (Map.Entry<String, Object> entry : claims.entrySet()) {
+        String key = entry.getKey();
+        Object value = entry.getValue();
+        
+        // Skip null values
+        if (value == null) {
+            continue;
+        }
+        
+        // Handle sensitive claims
+        if (SENSITIVE_CLAIMS.contains(key)) {
+            attributes.put("jwt.claims." + key, "[REDACTED]");
+        } else {
+            attributes.put("jwt.claims." + key, value.toString());
+        }
+    }
+    
+    return attributes;
+}
+
+// List of sensitive claim names
+private static final Set<String> SENSITIVE_CLAIMS = new HashSet<>(Arrays.asList(
+    "password", "secret", "credential", "pin"
+));
+----
+
+=== Key Management
+
+The processor implements secure key management practices:
+
+* JWKS endpoints should use HTTPS
+* Public keys are validated before use
+* Key rotation is handled automatically via JWKS refresh
+
+[source,java]
+----
+// Validate JWKS URL is using HTTPS
+private ValidationResult validateJwksUrl(String jwksUrl) {
+    try {
+        URL url = new URL(jwksUrl);
+        
+        // Check for HTTPS
+        if (!"https".equalsIgnoreCase(url.getProtocol())) {
+            return new ValidationResult.Builder()
+                .valid(false)
+                .explanation("JWKS URL should use HTTPS for security")
+                .build();
+        }
+        
+        return new ValidationResult.Builder()
+            .valid(true)
+            .build();
+    } catch (MalformedURLException e) {
+        return new ValidationResult.Builder()
+            .valid(false)
+            .explanation("Invalid URL format: " + e.getMessage())
+            .build();
+    }
+}
+
+// Validate public key format
+private ValidationResult validatePublicKey(String pemKey) {
+    try {
+        // Parse PEM key
+        PemReader pemReader = new PemReader(new StringReader(pemKey));
+        PemObject pemObject = pemReader.readPemObject();
+        pemReader.close();
+        
+        // Check key type
+        if (pemObject == null || !"PUBLIC KEY".equals(pemObject.getType())) {
+            return new ValidationResult.Builder()
+                .valid(false)
+                .explanation("Invalid public key format")
+                .build();
+        }
+        
+        // Try to create public key
+        byte[] keyBytes = pemObject.getContent();
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
+        keyFactory.generatePublic(keySpec);
+        
+        return new ValidationResult.Builder()
+            .valid(true)
+            .build();
+    } catch (Exception e) {
+        return new ValidationResult.Builder()
+            .valid(false)
+            .explanation("Invalid public key: " + e.getMessage())
+            .build();
+    }
+}
+----
+
+=== Transport Security
+
+The processor implements secure transport practices:
+
+* HTTPS is enforced for JWKS endpoints
+* TLS configuration is validated
+* Connection timeouts are implemented
+
+[source,java]
+----
+// Create HTTP client with secure defaults
+private HttpClient createSecureHttpClient() {
+    return HttpClient.newBuilder()
+        .connectTimeout(Duration.ofSeconds(5))
+        .followRedirects(HttpClient.Redirect.NORMAL)
+        .sslContext(createSecureSslContext())
+        .build();
+}
+
+// Create secure SSL context
+private SSLContext createSecureSslContext() {
+    try {
+        // Create SSL context with TLS v1.2 or higher
+        SSLContext sslContext = SSLContext.getInstance("TLSv1.2");
+        sslContext.init(null, null, null);
+        
+        return sslContext;
+    } catch (Exception e) {
+        LOGGER.error(e, "Failed to create secure SSL context: %s", e.getMessage());
+        // Fall back to default SSL context
+        try {
+            return SSLContext.getDefault();
+        } catch (NoSuchAlgorithmException ex) {
+            throw new RuntimeException("Failed to get default SSL context", ex);
+        }
+    }
+}
+----
+
+=== Logging Security
+
+The processor implements secure logging practices:
+
+* Tokens are never logged in full
+* Sensitive information is redacted
+* Error messages don't reveal sensitive details
+
+[source,java]
+----
+// Secure error logging
+private void logSecureError(Exception e, String message, Object... args) {
+    // Sanitize any potential sensitive information in args
+    Object[] sanitizedArgs = new Object[args.length];
+    for (int i = 0; i < args.length; i++) {
+        if (args[i] instanceof String && ((String) args[i]).length() > 100) {
+            // Likely a token or other sensitive data, truncate it
+            String value = (String) args[i];
+            sanitizedArgs[i] = value.substring(0, 10) + "...";
+        } else {
+            sanitizedArgs[i] = args[i];
+        }
+    }
+    
+    // Log the error with sanitized args
+    LOGGER.error(e, message, sanitizedArgs);
+}
+----
+
+== Security Best Practices
+
+=== Secure Configuration
+
+The following best practices should be followed when configuring the processor:
+
+* Use HTTPS for all JWKS endpoints
+* Regularly rotate keys and certificates
+* Set appropriate refresh intervals for JWKS
+* Implement proper authorization rules
+
+=== Regular Key Rotation
+
+Key rotation is an important security practice:
+
+* Configure identity providers to rotate keys regularly
+* Set appropriate JWKS refresh intervals
+* Monitor for key rotation events
+
+=== Monitoring and Alerting
+
+Implement monitoring and alerting for security events:
+
+* Monitor for authentication failures
+* Alert on suspicious token validation patterns
+* Track JWKS endpoint availability
+* Monitor for expired certificates
+
+[source,java]
+----
+// Track authentication failures
+private AtomicLong authFailureCounter = new AtomicLong(0);
+
+// Track JWKS refresh failures
+private AtomicLong jwksRefreshFailureCounter = new AtomicLong(0);
+
+// Report metrics
+private void reportMetrics() {
+    // Report authentication failures
+    long failures = authFailureCounter.getAndSet(0);
+    if (failures > 0) {
+        LOGGER.warn(WARN.AUTH_FAILURES_DETECTED.format(failures));
+    }
+    
+    // Report JWKS refresh failures
+    long refreshFailures = jwksRefreshFailureCounter.getAndSet(0);
+    if (refreshFailures > 0) {
+        LOGGER.warn(WARN.JWKS_REFRESH_FAILURES.format(refreshFailures));
+    }
+}
+----

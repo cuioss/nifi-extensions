@@ -1,0 +1,411 @@
+= MultiIssuerJWTTokenAuthenticator Error Handling
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+link:../specification.adoc[Back to Main Specification]
+
+== Error Handling Implementation
+
+=== Error Categories
+The processor categorizes errors into the following categories:
+
+[cols="1,3"]
+|===
+|Category |Description
+
+|Token Format Errors
+|Errors related to malformed or unparseable tokens
+
+|Signature Validation Errors
+|Errors related to invalid token signatures
+
+|Claims Validation Errors
+|Errors related to invalid token claims (expiration, issuer, etc.)
+
+|Authorization Errors
+|Errors related to insufficient permissions (scopes, roles)
+
+|JWKS Retrieval Errors
+|Errors related to retrieving JWKS from endpoints
+
+|Configuration Errors
+|Errors related to processor configuration
+|===
+
+=== Error Codes
+The processor uses the following error codes:
+
+[cols="1,2,2"]
+|===
+|Code |Category |Description
+
+|AUTH-001
+|Token Format
+|Invalid token format
+
+|AUTH-002
+|Signature Validation
+|Invalid token signature
+
+|AUTH-003
+|Claims Validation
+|Token has expired
+
+|AUTH-004
+|Claims Validation
+|Token not yet valid (nbf)
+
+|AUTH-005
+|Claims Validation
+|Unknown token issuer
+
+|AUTH-006
+|Claims Validation
+|Invalid audience
+
+|AUTH-007
+|Authorization
+|Missing required scopes
+
+|AUTH-008
+|Authorization
+|Missing required roles
+
+|AUTH-009
+|JWKS Retrieval
+|Failed to retrieve JWKS
+
+|AUTH-010
+|Configuration
+|Invalid processor configuration
+|===
+
+=== Error Messages
+The processor uses the following error messages:
+
+[source,java]
+----
+public class AuthLogMessages {
+    
+    public static final String PREFIX = "AUTH";
+    
+    public static class INFO {
+        public static final LogRecord TOKEN_VALIDATED = new LogRecord(PREFIX + "-001", 
+            "Successfully validated token from issuer '%s'");
+        public static final LogRecord JWKS_REFRESHED = new LogRecord(PREFIX + "-002", 
+            "Successfully refreshed JWKS from endpoint '%s'");
+    }
+    
+    public static class WARN {
+        public static final LogRecord USING_EXPIRED_JWKS = new LogRecord(PREFIX + "-100", 
+            "Using expired JWKS from endpoint '%s' because refresh failed");
+        public static final LogRecord TOKEN_MISSING = new LogRecord(PREFIX + "-101", 
+            "No token found in header '%s'");
+    }
+    
+    public static class ERROR {
+        public static final LogRecord INVALID_TOKEN_FORMAT = new LogRecord(PREFIX + "-200", 
+            "Invalid token format: %s");
+        public static final LogRecord INVALID_TOKEN_SIGNATURE = new LogRecord(PREFIX + "-201", 
+            "Invalid token signature for issuer '%s'");
+        public static final LogRecord TOKEN_EXPIRED = new LogRecord(PREFIX + "-202", 
+            "Token has expired");
+        public static final LogRecord TOKEN_NOT_YET_VALID = new LogRecord(PREFIX + "-203", 
+            "Token not yet valid");
+        public static final LogRecord UNKNOWN_ISSUER = new LogRecord(PREFIX + "-204", 
+            "Unknown token issuer: %s");
+        public static final LogRecord INVALID_AUDIENCE = new LogRecord(PREFIX + "-205", 
+            "Token audience does not match required audience");
+        public static final LogRecord MISSING_REQUIRED_SCOPES = new LogRecord(PREFIX + "-206", 
+            "Token missing required scopes: %s");
+        public static final LogRecord MISSING_REQUIRED_ROLES = new LogRecord(PREFIX + "-207", 
+            "Token missing required roles: %s");
+        public static final LogRecord JWKS_RETRIEVAL_FAILED = new LogRecord(PREFIX + "-208", 
+            "Failed to retrieve JWKS from endpoint '%s': %s");
+        public static final LogRecord INVALID_CONFIGURATION = new LogRecord(PREFIX + "-209", 
+            "Invalid processor configuration: %s");
+    }
+}
+----
+
+=== Error Attributes
+When a token validation fails, the processor adds the following attributes to the flow file:
+
+[cols="1,2"]
+|===
+|Attribute |Description
+
+|jwt.error.reason
+|Detailed error message
+
+|jwt.error.code
+|Error classification code
+
+|jwt.error.category
+|Error category
+
+|jwt.authorization.failed.reason
+|If token was valid but authorization failed, contains the reason
+|===
+
+[source,java]
+----
+private void addErrorAttributes(FlowFile flowFile, String errorCode, String errorReason) {
+    Map<String, String> attributes = new HashMap<>();
+    
+    // Add error information
+    attributes.put("jwt.error.code", errorCode);
+    attributes.put("jwt.error.reason", errorReason);
+    
+    // Determine error category
+    String category = determineErrorCategory(errorCode);
+    attributes.put("jwt.error.category", category);
+    
+    // Update flowfile with attributes
+    flowFile = session.putAllAttributes(flowFile, attributes);
+}
+
+private String determineErrorCategory(String errorCode) {
+    if (errorCode.startsWith("AUTH-00")) {
+        return "TOKEN_FORMAT";
+    } else if (errorCode.equals("AUTH-002")) {
+        return "SIGNATURE_VALIDATION";
+    } else if (errorCode.startsWith("AUTH-00") && Integer.parseInt(errorCode.substring(5)) <= 6) {
+        return "CLAIMS_VALIDATION";
+    } else if (errorCode.equals("AUTH-007") || errorCode.equals("AUTH-008")) {
+        return "AUTHORIZATION";
+    } else if (errorCode.equals("AUTH-009")) {
+        return "JWKS_RETRIEVAL";
+    } else if (errorCode.equals("AUTH-010")) {
+        return "CONFIGURATION";
+    } else {
+        return "UNKNOWN";
+    }
+}
+----
+
+== Exception Handling
+
+=== Token Validation Exceptions
+The processor handles token validation exceptions as follows:
+
+[source,java]
+----
+public class TokenValidationException extends Exception {
+    
+    private final String errorCode;
+    
+    public TokenValidationException(String message, String errorCode) {
+        super(message);
+        this.errorCode = errorCode;
+    }
+    
+    public TokenValidationException(String message, String errorCode, Throwable cause) {
+        super(message, cause);
+        this.errorCode = errorCode;
+    }
+    
+    public String getErrorCode() {
+        return errorCode;
+    }
+}
+
+private void handleTokenValidationException(FlowFile flowFile, TokenValidationException e) {
+    LOGGER.error(e, e.getMessage());
+    
+    // Add error attributes
+    addErrorAttributes(flowFile, e.getErrorCode(), e.getMessage());
+    
+    // Route to failure relationship
+    session.transfer(flowFile, AUTHENTICATION_FAILED);
+}
+----
+
+=== Configuration Exceptions
+The processor handles configuration exceptions during onTrigger and onScheduled:
+
+[source,java]
+----
+@Override
+public void onScheduled(final ProcessContext context) {
+    try {
+        // Initialize the processor
+        initialize(context);
+    } catch (Exception e) {
+        LOGGER.error(e, ERROR.INVALID_CONFIGURATION.format(e.getMessage()));
+        throw new ProcessException("Failed to initialize processor: " + e.getMessage(), e);
+    }
+}
+
+private void initialize(ProcessContext context) throws ConfigurationException {
+    try {
+        // Get configuration properties
+        String tokenHeader = context.getProperty(TOKEN_HEADER).getValue();
+        long refreshInterval = context.getProperty(JWKS_REFRESH_INTERVAL).asTimePeriod(TimeUnit.MILLISECONDS);
+        
+        // Initialize JWKS client and cache
+        jwksClient = new JwksClient();
+        jwksCache = new JwksCache(jwksClient, refreshInterval);
+        
+        // Configure issuers from dynamic properties
+        configureIssuers(context);
+    } catch (Exception e) {
+        throw new ConfigurationException("Failed to initialize processor: " + e.getMessage(), e);
+    }
+}
+
+private void configureIssuers(ProcessContext context) throws ConfigurationException {
+    // Clear existing issuers
+    issuers.clear();
+    
+    // Get dynamic properties
+    Map<PropertyDescriptor, String> dynamicProperties = context.getProperties();
+    
+    // Process each dynamic property
+    for (Map.Entry<PropertyDescriptor, String> entry : dynamicProperties.entrySet()) {
+        PropertyDescriptor descriptor = entry.getKey();
+        String value = entry.getValue();
+        
+        // Skip static properties
+        if (!descriptor.isDynamic()) {
+            continue;
+        }
+        
+        // Process issuer configuration
+        String issuerName = descriptor.getName();
+        String issuerConfig = value.trim();
+        
+        try {
+            if (issuerConfig.startsWith("http")) {
+                // JWKS URL
+                jwksCache.registerIssuer(issuerName, issuerConfig);
+                issuers.add(issuerName);
+            } else if (issuerConfig.startsWith("-----BEGIN")) {
+                // PEM-encoded public key
+                // Implementation for PEM keys
+                issuers.add(issuerName);
+            } else {
+                throw new ConfigurationException("Invalid issuer configuration for " + issuerName + 
+                                                ": must be a URL or PEM-encoded public key");
+            }
+        } catch (Exception e) {
+            throw new ConfigurationException("Failed to configure issuer " + issuerName + ": " + e.getMessage(), e);
+        }
+    }
+    
+    // Ensure at least one issuer is configured
+    if (issuers.isEmpty()) {
+        throw new ConfigurationException("No issuers configured. At least one issuer must be configured.");
+    }
+}
+----
+
+=== Runtime Exceptions
+The processor handles runtime exceptions during token validation:
+
+[source,java]
+----
+@Override
+public void onTrigger(final ProcessContext context, final ProcessSession session) throws ProcessException {
+    FlowFile flowFile = session.get();
+    if (flowFile == null) {
+        return;
+    }
+    
+    try {
+        // Process the flow file
+        processFlowFile(flowFile, context, session);
+    } catch (Exception e) {
+        // Log the error
+        LOGGER.error(e, "Unexpected error processing flow file: %s", e.getMessage());
+        
+        // Add error attributes
+        Map<String, String> attributes = new HashMap<>();
+        attributes.put("jwt.error.reason", "Unexpected error: " + e.getMessage());
+        attributes.put("jwt.error.code", "AUTH-999");
+        attributes.put("jwt.error.category", "RUNTIME_ERROR");
+        flowFile = session.putAllAttributes(flowFile, attributes);
+        
+        // Route to failure relationship
+        session.transfer(flowFile, AUTHENTICATION_FAILED);
+    }
+}
+----
+
+== User Feedback
+
+=== UI Error Messages
+The processor provides clear error messages in the UI for configuration issues:
+
+[source,java]
+----
+@Override
+protected Collection<ValidationResult> customValidate(ValidationContext validationContext) {
+    final List<ValidationResult> results = new ArrayList<>();
+    
+    // Ensure at least one issuer is configured
+    if (validationContext.getProperties().keySet().stream()
+            .noneMatch(PropertyDescriptor::isDynamic)) {
+        results.add(new ValidationResult.Builder()
+            .subject("Issuers")
+            .valid(false)
+            .explanation("At least one issuer must be configured")
+            .build());
+    }
+    
+    // Validate each issuer configuration
+    for (PropertyDescriptor descriptor : validationContext.getProperties().keySet()) {
+        if (descriptor.isDynamic()) {
+            String value = validationContext.getProperty(descriptor).getValue();
+            
+            if (!value.startsWith("http") && !value.startsWith("-----BEGIN")) {
+                results.add(new ValidationResult.Builder()
+                    .subject(descriptor.getDisplayName())
+                    .valid(false)
+                    .explanation("Issuer configuration must be a URL or PEM-encoded public key")
+                    .build());
+            }
+        }
+    }
+    
+    return results;
+}
+----
+
+=== Processor Logging
+The processor implements comprehensive logging for all operations:
+
+[source,java]
+----
+// Successful token validation
+LOGGER.info(INFO.TOKEN_VALIDATED.format(issuer));
+
+// JWKS refresh
+LOGGER.info(INFO.JWKS_REFRESHED.format(jwksUrl));
+
+// Using expired JWKS
+LOGGER.warn(WARN.USING_EXPIRED_JWKS.format(jwksUrl));
+
+// Missing token
+LOGGER.warn(WARN.TOKEN_MISSING.format(headerName));
+
+// Invalid token format
+LOGGER.error(ERROR.INVALID_TOKEN_FORMAT.format(e.getMessage()));
+
+// Invalid token signature
+LOGGER.error(ERROR.INVALID_TOKEN_SIGNATURE.format(issuer));
+
+// Token expired
+LOGGER.error(ERROR.TOKEN_EXPIRED.format());
+
+// Unknown issuer
+LOGGER.error(ERROR.UNKNOWN_ISSUER.format(issuer));
+
+// JWKS retrieval failed
+LOGGER.error(e, ERROR.JWKS_RETRIEVAL_FAILED.format(jwksUrl, e.getMessage()));
+
+// Invalid configuration
+LOGGER.error(ERROR.INVALID_CONFIGURATION.format(e.getMessage()));
+----

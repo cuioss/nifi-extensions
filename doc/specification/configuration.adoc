@@ -1,0 +1,318 @@
+= MultiIssuerJWTTokenAuthenticator Configuration
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+link:../specification.adoc[Back to Main Specification]
+
+== Configuration Properties
+
+=== Static Properties
+[cols="2,1,2"]
+|===
+|Property |Type |Description
+
+|Token Header Name
+|String
+|Name of the header containing the JWT token (default: Authorization)
+
+|JWKS Refresh Interval
+|Time Period
+|How often to refresh the JWKS cache (default: 15 minutes)
+
+|Require Valid Token
+|Boolean
+|When true, only valid tokens result in success relationship
+|===
+
+=== Dynamic Properties
+Dynamic properties are used to configure token issuers. Each property represents a single issuer configuration.
+
+[cols="2,1,2"]
+|===
+|Property |Type |Description
+
+|Issuer Identifier
+|String
+|Value can be either a JWKS URL or a PEM-encoded public key
+|===
+
+== UI Configuration
+
+=== Property Descriptors
+[source,java]
+----
+public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Builder()
+    .name("Token Header Name")
+    .displayName("Token Header Name")
+    .description("Name of the header containing the JWT token")
+    .required(true)
+    .defaultValue("Authorization")
+    .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+    .build();
+
+public static final PropertyDescriptor JWKS_REFRESH_INTERVAL = new PropertyDescriptor.Builder()
+    .name("JWKS Refresh Interval")
+    .displayName("JWKS Refresh Interval")
+    .description("How often to refresh the JWKS cache")
+    .required(true)
+    .defaultValue("15 min")
+    .addValidator(StandardValidators.TIME_PERIOD_VALIDATOR)
+    .build();
+
+public static final PropertyDescriptor REQUIRE_VALID_TOKEN = new PropertyDescriptor.Builder()
+    .name("Require Valid Token")
+    .displayName("Require Valid Token")
+    .description("When true, only valid tokens result in success relationship")
+    .required(true)
+    .defaultValue("true")
+    .allowableValues("true", "false")
+    .build();
+
+@Override
+protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
+    final List<PropertyDescriptor> properties = new ArrayList<>();
+    properties.add(TOKEN_HEADER);
+    properties.add(JWKS_REFRESH_INTERVAL);
+    properties.add(REQUIRE_VALID_TOKEN);
+    return properties;
+}
+
+@Override
+protected PropertyDescriptor getSupportedDynamicPropertyDescriptor(final String propertyDescriptorName) {
+    return new PropertyDescriptor.Builder()
+        .name(propertyDescriptorName)
+        .displayName("Issuer Configuration: " + propertyDescriptorName)
+        .description("Configuration for issuer: " + propertyDescriptorName + 
+                     ". Value can be either a JWKS URL or a PEM-encoded public key.")
+        .required(true)
+        .dynamic(true)
+        .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+        .build();
+}
+----
+
+=== Custom UI Components
+
+==== JWKS Endpoint Test Button
+The JWKS Endpoint Test Button allows users to validate that a JWKS endpoint is accessible and returns valid JWKS data.
+
+[source,javascript]
+----
+// UI Extension for JWKS Test Button
+define(['jquery'], function ($) {
+    return {
+        /**
+         * Initialize the custom UI.
+         */
+        init: function (element, propertyDescriptor, propertyValue, callback) {
+            // Create the test button
+            var testButton = $('<button type="button" class="test-jwks-button">Test Connection</button>');
+            var resultContainer = $('<div class="test-jwks-result"></div>');
+            
+            // Add elements to the DOM
+            $(element).append(testButton).append(resultContainer);
+            
+            // Handle button click
+            testButton.on('click', function () {
+                // Only test if the value looks like a URL
+                if (propertyValue && propertyValue.startsWith('http')) {
+                    resultContainer.html('<span class="fa fa-spinner fa-spin"></span> Testing connection...');
+                    
+                    // Make AJAX request to test the connection
+                    $.ajax({
+                        type: 'POST',
+                        url: '../nifi-api/processors/validate-jwks',
+                        data: JSON.stringify({
+                            jwksUrl: propertyValue
+                        }),
+                        contentType: 'application/json',
+                        dataType: 'json'
+                    }).done(function (response) {
+                        if (response.valid) {
+                            resultContainer.html('<span class="fa fa-check" style="color: green;"></span> ' + 
+                                                'Connection successful');
+                        } else {
+                            resultContainer.html('<span class="fa fa-times" style="color: red;"></span> ' + 
+                                                'Connection failed: ' + response.explanation);
+                        }
+                    }).fail(function (xhr) {
+                        resultContainer.html('<span class="fa fa-times" style="color: red;"></span> ' + 
+                                            'Test failed: ' + xhr.responseText);
+                    });
+                } else {
+                    resultContainer.html('<span class="fa fa-times" style="color: red;"></span> ' + 
+                                        'Not a valid URL');
+                }
+            });
+            
+            callback({
+                validate: function () {
+                    return true;
+                },
+                getValue: function () {
+                    return propertyValue;
+                },
+                setValue: function (newValue) {
+                    propertyValue = newValue;
+                }
+            });
+        },
+        
+        /**
+         * Clean up any resources before the element is removed from the DOM.
+         */
+        cleanup: function (element) {
+            $(element).find('.verify-token-button').off();
+        }
+    };
+}
+----
+
+==== Token Verification Interface
+The Token Verification Interface allows users to test JWT tokens against the current processor configuration.
+
+[source,javascript]
+----
+define(['jquery'], function ($) {
+    return {
+        /**
+         * Initialize the custom UI.
+         */
+        init: function (element, processorId, callback) {
+            // Create UI elements
+            var container = $('<div class="token-verification-container"></div>');
+            var tokenInput = $('<textarea class="token-input" placeholder="Paste JWT token here..."></textarea>');
+            var verifyButton = $('<button type="button" class="verify-token-button">Verify Token</button>');
+            var resultContainer = $('<div class="verification-result"></div>');
+            
+            // Add elements to the DOM
+            container.append(tokenInput)
+                    .append(verifyButton)
+                    .append(resultContainer);
+            $(element).append(container);
+            
+            // Handle button click
+            verifyButton.on('click', function () {
+                var token = tokenInput.val().trim();
+                if (!token) {
+                    resultContainer.html('<div class="message-warning">Please enter a JWT token.</div>');
+                    return;
+                }
+                
+                resultContainer.html('<span class="fa fa-spinner fa-spin"></span> Verifying token...');
+                
+                // Make AJAX request to verify the token
+                $.ajax({
+                    type: 'POST',
+                    url: '../nifi-api/processors/' + processorId + '/verify-token',
+                    data: JSON.stringify({
+                        token: token
+                    }),
+                    contentType: 'application/json',
+                    dataType: 'json'
+                }).done(function (response) {
+                    if (response.valid) {
+                        // Show success message with token details
+                        var html = '<div class="message-success">Token is valid!</div>';
+                        html += '<div class="token-details">';
+                        html += '<h4>Token Details:</h4>';
+                        html += '<table class="token-info-table">';
+                        html += '<tr><td>Issuer:</td><td>' + response.issuer + '</td></tr>';
+                        html += '<tr><td>Subject:</td><td>' + response.subject + '</td></tr>';
+                        html += '<tr><td>Expires:</td><td>' + new Date(response.expiresAt * 1000).toLocaleString() + '</td></tr>';
+                        
+                        // Add claims
+                        html += '<tr><td colspan="2"><h4>Claims:</h4></td></tr>';
+                        for (var claim in response.claims) {
+                            html += '<tr><td>' + claim + ':</td><td>' + JSON.stringify(response.claims[claim]) + '</td></tr>';
+                        }
+                        
+                        // Add attributes that would be added
+                        html += '<tr><td colspan="2"><h4>FlowFile Attributes:</h4></td></tr>';
+                        for (var attr in response.attributes) {
+                            html += '<tr><td>' + attr + ':</td><td>' + response.attributes[attr] + '</td></tr>';
+                        }
+                        
+                        html += '</table>';
+                        html += '</div>';
+                        resultContainer.html(html);
+                    } else {
+                        // Show error message
+                        var html = '<div class="message-error">Token validation failed!</div>';
+                        html += '<div class="error-details">';
+                        html += '<h4>Error Details:</h4>';
+                        html += '<p>' + response.reason + '</p>';
+                        
+                        // Add suggestion if available
+                        if (response.suggestion) {
+                            html += '<h4>Suggestion:</h4>';
+                            html += '<p>' + response.suggestion + '</p>';
+                        }
+                        
+                        html += '</div>';
+                        resultContainer.html(html);
+                    }
+                }).fail(function (xhr) {
+                    resultContainer.html('<div class="message-error">Verification request failed: ' + 
+                                         xhr.responseText + '</div>');
+                });
+            });
+            
+            callback();
+        },
+        
+        /**
+         * Clean up any resources before the element is removed from the DOM.
+         */
+        cleanup: function (element) {
+            $(element).find('.verify-token-button').off();
+        }
+    };
+}
+----
+
+== Configuration Examples
+
+=== Basic Configuration
+[source,properties]
+----
+# Static properties
+Token Header Name: Authorization
+JWKS Refresh Interval: 15 min
+Require Valid Token: true
+
+# Dynamic properties (issuers)
+keycloak: https://auth.example.com/realms/master/protocol/openid-connect/certs
+azure: https://login.microsoftonline.com/common/discovery/keys
+----
+
+=== Multi-Issuer Configuration
+[source,properties]
+----
+# Static properties
+Token Header Name: Authorization
+JWKS Refresh Interval: 30 min
+Require Valid Token: true
+
+# Dynamic properties (issuers)
+internal-keycloak: https://auth.internal.example.com/realms/master/protocol/openid-connect/certs
+customer-keycloak: https://auth.customer.example.com/realms/master/protocol/openid-connect/certs
+partner-auth: https://auth.partner.example.com/.well-known/jwks.json
+legacy-system: -----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
+----
+
+=== Authorization Configuration
+[source,properties]
+----
+# Static properties
+Token Header Name: Authorization
+JWKS Refresh Interval: 15 min
+Require Valid Token: true
+Required Scopes: api:read,api:write
+Required Roles: admin,power-user
+
+# Dynamic properties (issuers)
+keycloak: https://auth.example.com/realms/master/protocol/openid-connect/certs
+----

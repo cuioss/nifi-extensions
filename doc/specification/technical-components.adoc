@@ -1,0 +1,272 @@
+= MultiIssuerJWTTokenAuthenticator Technical Components
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+link:../specification.adoc[Back to Main Specification]
+
+== Processor Implementation
+[cols="1,2"]
+|===
+|Component |Specification
+
+|Package
+|de.cuioss.nifi.processors.cuioss.auth
+
+|Class Name
+|MultiIssuerJWTTokenAuthenticator
+
+|Base Class
+|AbstractProcessor
+|===
+
+== Dependencies
+[cols="1,2"]
+|===
+|Component |Purpose
+
+|nimbus-jose-jwt
+|JWT parsing and validation
+
+|gson
+|JSON processing
+
+|cui-java-tools
+|Logging and utilities
+|===
+
+== Core Components
+
+=== Token Parser
+The token parser is responsible for extracting and parsing JWT tokens from flow files.
+
+[source,java]
+----
+public class JwtTokenParser {
+    
+    private static final CuiLogger LOGGER = new CuiLogger(JwtTokenParser.class);
+    
+    /**
+     * Extracts a JWT token from the specified header
+     */
+    public Optional<String> extractToken(FlowFile flowFile, String headerName, ProcessSession session) {
+        String headerValue = flowFile.getAttribute(headerName);
+        
+        if (headerValue == null) {
+            LOGGER.debug("No token found in header: %s", headerName);
+            return Optional.empty();
+        }
+        
+        // Check for Bearer prefix
+        if (headerValue.startsWith("Bearer ")) {
+            return Optional.of(headerValue.substring(7));
+        }
+        
+        // Assume raw token
+        return Optional.of(headerValue);
+    }
+    
+    /**
+     * Parses a JWT token string into its components
+     */
+    public ParsedJwtToken parseToken(String tokenString) throws TokenValidationException {
+        try {
+            SignedJWT signedJWT = SignedJWT.parse(tokenString);
+            JWTClaimsSet claimsSet = signedJWT.getJWTClaimsSet();
+            
+            return new ParsedJwtToken.Builder()
+                .tokenString(tokenString)
+                .header(signedJWT.getHeader())
+                .claims(claimsSet)
+                .build();
+        } catch (ParseException e) {
+            LOGGER.debug(e, "Failed to parse JWT token: %s", e.getMessage());
+            throw new TokenValidationException("Invalid token format", e);
+        }
+    }
+}
+----
+
+=== Token Validator
+The token validator verifies the token signature and validates claims.
+
+[source,java]
+----
+public class JwtTokenValidator {
+    
+    private static final CuiLogger LOGGER = new CuiLogger(JwtTokenValidator.class);
+    private final JwksCache jwksCache;
+    
+    public JwtTokenValidator(JwksCache jwksCache) {
+        this.jwksCache = jwksCache;
+    }
+    
+    /**
+     * Validates a JWT token
+     */
+    public ValidationResult validateToken(ParsedJwtToken token) {
+        try {
+            // Verify signature
+            if (!verifySignature(token)) {
+                return ValidationResult.invalid("Invalid token signature");
+            }
+            
+            // Verify expiration
+            if (isTokenExpired(token)) {
+                return ValidationResult.invalid("Token has expired");
+            }
+            
+            // Verify issuer
+            String issuer = token.getClaims().getIssuer();
+            if (!isKnownIssuer(issuer)) {
+                return ValidationResult.invalid("Unknown token issuer: " + issuer);
+            }
+            
+            return ValidationResult.valid();
+        } catch (Exception e) {
+            LOGGER.error(e, "Error validating token: %s", e.getMessage());
+            return ValidationResult.invalid("Error validating token: " + e.getMessage());
+        }
+    }
+    
+    private boolean verifySignature(ParsedJwtToken token) {
+        // Implementation details for signature verification
+        return true;
+    }
+    
+    private boolean isTokenExpired(ParsedJwtToken token) {
+        // Check if token is expired
+        return false;
+    }
+    
+    private boolean isKnownIssuer(String issuer) {
+        // Check if issuer is configured
+        return true;
+    }
+}
+----
+
+=== JWKS Client
+The JWKS client retrieves and caches JSON Web Key Sets from configured endpoints.
+
+[source,java]
+----
+public class JwksClient {
+    
+    private static final CuiLogger LOGGER = new CuiLogger(JwksClient.class);
+    
+    /**
+     * Retrieves a JWKS from the specified URL
+     */
+    public JWKSet retrieveJwks(String jwksUrl) throws IOException {
+        try {
+            // Create HTTP client with appropriate timeouts
+            HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .build();
+            
+            // Create request
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(jwksUrl))
+                .timeout(Duration.ofSeconds(5))
+                .GET()
+                .build();
+            
+            // Execute request
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            // Check response
+            if (response.statusCode() == 200) {
+                return JWKSet.parse(response.body());
+            } else {
+                LOGGER.error(ERROR.JWKS_RETRIEVAL_FAILED.format(jwksUrl, response.statusCode()));
+                throw new IOException("Failed to retrieve JWKS: HTTP " + response.statusCode());
+            }
+        } catch (Exception e) {
+            LOGGER.error(e, ERROR.JWKS_RETRIEVAL_FAILED.format(jwksUrl, e.getMessage()));
+            throw new IOException("Error retrieving JWKS: " + e.getMessage(), e);
+        }
+    }
+}
+----
+
+== Relationships
+[cols="1,2"]
+|===
+|Relationship |Description
+
+|success
+|Valid tokens with extracted claims as attributes
+
+|authentication-failed
+|Invalid tokens with error details
+|===
+
+[source,java]
+----
+public static final Relationship SUCCESS = new Relationship.Builder()
+    .name("success")
+    .description("FlowFiles with valid tokens will be routed to this relationship")
+    .build();
+
+public static final Relationship AUTHENTICATION_FAILED = new Relationship.Builder()
+    .name("authentication-failed")
+    .description("FlowFiles with invalid tokens will be routed to this relationship")
+    .build();
+
+@Override
+public Set<Relationship> getRelationships() {
+    final Set<Relationship> relationships = new HashSet<>();
+    relationships.add(SUCCESS);
+    relationships.add(AUTHENTICATION_FAILED);
+    return relationships;
+}
+----
+
+== Flow File Attribute Handling
+
+=== Input Attributes
+* None required - token extracted from HTTP header
+
+=== Output Attributes (Success)
+* jwt.issuer: Token issuer
+* jwt.subject: Token subject
+* jwt.claims.*: All extracted claims
+* jwt.validatedAt: Validation timestamp
+* jwt.scopes: List of token scopes
+* jwt.roles: List of token roles
+* jwt.authorization.passed: Boolean indicating if all authorization requirements were met
+
+=== Output Attributes (Failure)
+* jwt.error.reason: Detailed error message
+* jwt.error.code: Error classification code
+* jwt.authorization.failed.reason: If token was valid but authorization failed, contains the reason
+
+[source,java]
+----
+private void addSuccessAttributes(FlowFile flowFile, ParsedJwtToken token) {
+    Map<String, String> attributes = new HashMap<>();
+    
+    // Add basic token information
+    attributes.put("jwt.issuer", token.getIssuer());
+    attributes.put("jwt.subject", token.getSubject());
+    attributes.put("jwt.validatedAt", String.valueOf(System.currentTimeMillis()));
+    
+    // Add all claims as attributes
+    for (Map.Entry<String, Object> claim : token.getClaims().entrySet()) {
+        attributes.put("jwt.claims." + claim.getKey(), 
+                       claim.getValue() != null ? claim.getValue().toString() : "");
+    }
+    
+    // Add scopes and roles
+    attributes.put("jwt.scopes", String.join(",", token.getScopes()));
+    attributes.put("jwt.roles", String.join(",", token.getRoles()));
+    
+    // Add authorization status
+    attributes.put("jwt.authorization.passed", "true");
+    
+    // Update flowfile with attributes
+    flowFile = session.putAllAttributes(flowFile, attributes);
+}
+----
