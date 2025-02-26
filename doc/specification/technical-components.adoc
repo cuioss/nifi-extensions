@@ -38,7 +38,7 @@ link:../specification.adoc[Back to Main Specification]
 === TokenFactory
 The TokenFactory serves as the primary entry point for token operations. It provides:
 
-* Centralized token creation and validation
+* Centralized token validation
 * Support for multiple token types (Access, ID, Refresh)
 * Automatic parser selection based on token characteristics
 
