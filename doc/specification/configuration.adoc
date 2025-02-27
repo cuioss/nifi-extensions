@@ -11,33 +11,38 @@ _See Requirement link:../requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuratio
 
 === Static Properties
 _See Requirement link:../requirements.adoc#NIFI-AUTH-7.6[NIFI-AUTH-7.6: Configuration Properties]_
-[cols="2,1,2"]
+[cols="2,1,1,2"]
 |===
-|Property |Type |Description
+|Property |Type |Default |Description
 
 |Token Header Name
 |String
-|Name of the header containing the JWT token (default: Authorization)
+|Authorization
+|Name of the header containing the JWT token
 
 |JWKS Refresh Interval
 |Time Period
-|How often to refresh the JWKS cache (default: 15 minutes)
+|15 minutes
+|How often to refresh the JWKS cache
 
 |Require Valid Token
 |Boolean
+|true
 |When true, only valid tokens result in success relationship
 |===
 
 === Dynamic Properties
 _See Requirement link:../requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Validation Configuration]_
+
 Dynamic properties are used to configure token issuers. Each property represents a single issuer configuration.
 
-[cols="2,1,2"]
+[cols="2,1,1,2"]
 |===
-|Property |Type |Description
+|Property |Type |Default |Description
 
 |Issuer Identifier
 |String
+|N/A
 |Value can be either a JWKS URL or a PEM-encoded public key
 |===
 
@@ -101,6 +106,7 @@ protected PropertyDescriptor getSupportedDynamicPropertyDescriptor(final String 
 
 ==== JWKS Endpoint Test Button
 _See Requirement link:../requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
+
 The JWKS Endpoint Test Button allows users to validate that a JWKS endpoint is accessible and returns valid JWKS data.
 
 [source,javascript]
@@ -177,6 +183,7 @@ define(['jquery'], function ($) {
 
 ==== Token Verification Interface
 _See Requirement link:../requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
+
 The Token Verification Interface allows users to test JWT tokens against the current processor configuration.
 
 [source,javascript]
@@ -279,10 +286,12 @@ define(['jquery'], function ($) {
 }
 ----
 
+
 == Configuration Examples
 
 === Basic Configuration
 _See Requirement link:../requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Validation Configuration]_
+
 [source,properties]
 ----
 # Static properties
@@ -297,6 +306,7 @@ azure: https://login.microsoftonline.com/common/discovery/keys
 
 === Multi-Issuer Configuration
 _See Requirement link:../requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
+
 [source,properties]
 ----
 # Static properties
@@ -313,6 +323,7 @@ legacy-system: -----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBC
 
 === Authorization Configuration
 _See Requirement link:../requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: Authorization Configuration]_
+
 [source,properties]
 ----
 # Static properties

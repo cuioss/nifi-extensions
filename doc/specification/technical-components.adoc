@@ -8,57 +8,56 @@ link:../specification.adoc[Back to Main Specification]
 
 == Processor Implementation
 _See Requirement link:../requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
-[cols="1,2"]
+
+[cols="1,1,2"]
 |===
-|Component |Specification
+|Component |Default |Specification
 
 |Package
+|N/A
 |de.cuioss.nifi.processors.auth
 
 |Class Name
+|N/A
 |MultiIssuerJWTTokenAuthenticator
 
 |Base Class
+|N/A
 |AbstractProcessor
 |===
 
 == Dependencies
 _See Requirement link:../requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: NiFi Integration]_
-[cols="1,2"]
+
+[cols="1,1,2"]
 |===
-|Component |Purpose
+|Component |Default |Purpose
 
 |de.cuioss.portal.authentication:portal-authentication-token
+|N/A
 |Token handling framework
 
 |cui-java-tools
+|N/A
 |Logging and utilities
 |===
 
 == Core Components
+_See Requirement link:../requirements.adoc#NIFI-AUTH-2.1[NIFI-AUTH-2.1: Core Components]_
 
 === TokenFactory
 _See Requirement link:../requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+
 The TokenFactory serves as the primary entry point for token operations. It provides:
 
 * Centralized token validation
-* Support for multiple token types (Access, ID, Refresh)
-* Automatic parser selection based on token characteristics
-
-[source,java]
-----
-// Create a factory with multiple token parsers
-TokenFactory factory = TokenFactory.of(parser1, parser2);
-
-// Create and validate tokens
-Optional<ParsedAccessToken> accessToken = factory.createAccessToken(tokenString);
-Optional<ParsedIdToken> idToken = factory.createIdToken(tokenString);
-----
+* Multi-issuer support
+* Token parsing and verification
 
 === JwksAwareTokenParser
 _See Requirement link:../requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
-The JwksAwareTokenParser handles secure token validation using JWKS endpoints:
 
+The JwksAwareTokenParser handles secure token validation using JWKS endpoints:
 * Automatic public key retrieval and caching
 * Configurable key refresh intervals
 * TLS support for secure key retrieval
@@ -75,6 +74,7 @@ JwksAwareTokenParser parser = JwksAwareTokenParser.builder()
 
 === Multi-Issuer Support
 _See Requirement link:../requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
+
 The MultiIssuerJWTTokenAuthenticator supports multiple issuers by utilizing a TokenFactory with multiple JwksAwareTokenParsers.
 
 [source,java]
@@ -88,14 +88,17 @@ Optional<ParsedAccessToken> accessToken = factory.createAccessToken(tokenString)
 
 == Relationships
 _See Requirement link:../requirements.adoc#NIFI-AUTH-6[NIFI-AUTH-6: Output Requirements]_
-[cols="1,2"]
+
+[cols="1,1,2"]
 |===
-|Relationship |Description
+|Relationship |Default |Description
 
 |success
+|N/A
 |Valid tokens with extracted claims as attributes
 
 |authentication-failed
+|N/A
 |Invalid tokens with error details
 |===
 
@@ -124,10 +127,12 @@ public Set<Relationship> getRelationships() {
 
 === Input Attributes
 _See Requirement link:../requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requirements]_
+
 * None required - token extracted from HTTP header
 
 === Output Attributes (Success)
 _See Requirement link:../requirements.adoc#NIFI-AUTH-6.1[NIFI-AUTH-6.1: Success Path]_
+
 * jwt.issuer: Token issuer
 * jwt.subject: Token subject
 * jwt.claims.*: All extracted claims
@@ -138,6 +143,7 @@ _See Requirement link:../requirements.adoc#NIFI-AUTH-6.1[NIFI-AUTH-6.1: Success 
 
 === Output Attributes (Failure)
 _See Requirement link:../requirements.adoc#NIFI-AUTH-6.2[NIFI-AUTH-6.2: Failure Path]_
+
 * jwt.error.reason: Detailed error message
 * jwt.error.code: Error classification code
 * jwt.authorization.failed.reason: If token was valid but authorization failed, contains the reason
