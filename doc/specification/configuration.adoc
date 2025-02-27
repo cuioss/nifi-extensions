@@ -107,13 +107,12 @@ _See Requirement link:../requirements.adoc#NIFI-AUTH-5.2[NIFI-AUTH-5.2: Dynamic 
 
 Dynamic properties are used to configure token issuers. Each property represents a single issuer configuration.
 
-[cols="2,1,1,2"]
+[cols="2,1,2"]
 |===
-|Property |Type |Default |Description
+|Property |Type |Description
 
 |Issuer Identifier
 |String
-|N/A
 |Value can be either a JWKS URL or a PEM-encoded public key
 |===
 

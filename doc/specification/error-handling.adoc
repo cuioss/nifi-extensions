@@ -14,32 +14,26 @@ _See Requirement link:../requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Hand
 
 The processor categorizes errors into the following categories:
 
-[cols="1,1,3"]
+[cols="1,3"]
 |===
-|Category |Default |Description
+|Category |Description
 
 |Token Format Errors
-|N/A
 |Errors related to malformed or unparseable tokens
 
 |Signature Validation Errors
-|N/A
 |Errors related to invalid token signatures
 
 |Claims Validation Errors
-|N/A
 |Errors related to invalid token claims (expiration, issuer, etc.)
 
 |Authorization Errors
-|N/A
 |Errors related to insufficient permissions (scopes, roles)
 
 |JWKS Retrieval Errors
-|N/A
 |Errors related to retrieving JWKS from endpoints
 
 |Configuration Errors
-|N/A
 |Errors related to processor configuration
 |===
 
@@ -48,58 +42,48 @@ _See Requirement link:../requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Hand
 
 The processor uses the following error codes:
 
-[cols="1,2,1,2"]
+[cols="1,2,2"]
 |===
-|Code |Category |Default |Description
+|Code |Category |Description
 
 |AUTH-001
 |Token Format
-|N/A
 |Invalid token format
 
 |AUTH-002
 |Signature Validation
-|N/A
 |Invalid token signature
 
 |AUTH-003
 |Claims Validation
-|N/A
 |Token has expired
 
 |AUTH-004
 |Claims Validation
-|N/A
 |Token not yet valid (nbf)
 
 |AUTH-005
 |Claims Validation
-|N/A
 |Unknown token issuer
 
 |AUTH-006
 |Claims Validation
-|N/A
 |Invalid audience
 
 |AUTH-007
 |Authorization
-|N/A
 |Missing required scopes
 
 |AUTH-008
 |Authorization
-|N/A
 |Missing required roles
 
 |AUTH-009
 |JWKS Retrieval
-|N/A
 |Failed to retrieve JWKS
 
 |AUTH-010
 |Configuration
-|N/A
 |Invalid processor configuration
 |===
 
@@ -108,45 +92,110 @@ The processor uses the following error messages:
 
 [source,java]
 ----
-public class AuthLogMessages {
+import de.cuioss.tools.logging.LogRecord;
+import de.cuioss.tools.logging.LogRecordModel;
+import lombok.experimental.UtilityClass;
+
+/**
+ * Provides logging messages for the JWT authentication processor.
+ * All messages follow the format: AUTH-[identifier]: [message]
+ */
+@UtilityClass
+public final class AuthLogMessages {
     
-    public static final String PREFIX = "AUTH";
+    private static final String PREFIX = "AUTH";
     
-    public static class INFO {
-        public static final LogRecord TOKEN_VALIDATED = new LogRecord(PREFIX + "-001", 
-            "Successfully validated token from issuer '%s'");
-        public static final LogRecord JWKS_REFRESHED = new LogRecord(PREFIX + "-002", 
-            "Successfully refreshed JWKS from endpoint '%s'");
+    @UtilityClass
+    public static final class INFO {
+        public static final LogRecord TOKEN_VALIDATED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(1)
+                .template("Successfully validated token from issuer '%s'")
+                .build();
+                
+        public static final LogRecord JWKS_REFRESHED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(2)
+                .template("Successfully refreshed JWKS from endpoint '%s'")
+                .build();
     }
     
-    public static class WARN {
-        public static final LogRecord USING_EXPIRED_JWKS = new LogRecord(PREFIX + "-100", 
-            "Using expired JWKS from endpoint '%s' because refresh failed");
-        public static final LogRecord TOKEN_MISSING = new LogRecord(PREFIX + "-101", 
-            "No token found in header '%s'");
+    @UtilityClass
+    public static final class WARN {
+        public static final LogRecord USING_EXPIRED_JWKS = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(100)
+                .template("Using expired JWKS from endpoint '%s' because refresh failed")
+                .build();
+                
+        public static final LogRecord TOKEN_MISSING = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(101)
+                .template("No token found in header '%s'")
+                .build();
     }
     
-    public static class ERROR {
-        public static final LogRecord INVALID_TOKEN_FORMAT = new LogRecord(PREFIX + "-200", 
-            "Invalid token format: %s");
-        public static final LogRecord INVALID_TOKEN_SIGNATURE = new LogRecord(PREFIX + "-201", 
-            "Invalid token signature for issuer '%s'");
-        public static final LogRecord TOKEN_EXPIRED = new LogRecord(PREFIX + "-202", 
-            "Token has expired");
-        public static final LogRecord TOKEN_NOT_YET_VALID = new LogRecord(PREFIX + "-203", 
-            "Token not yet valid");
-        public static final LogRecord UNKNOWN_ISSUER = new LogRecord(PREFIX + "-204", 
-            "Unknown token issuer: %s");
-        public static final LogRecord INVALID_AUDIENCE = new LogRecord(PREFIX + "-205", 
-            "Token audience does not match required audience");
-        public static final LogRecord MISSING_REQUIRED_SCOPES = new LogRecord(PREFIX + "-206", 
-            "Token missing required scopes: %s");
-        public static final LogRecord MISSING_REQUIRED_ROLES = new LogRecord(PREFIX + "-207", 
-            "Token missing required roles: %s");
-        public static final LogRecord JWKS_RETRIEVAL_FAILED = new LogRecord(PREFIX + "-208", 
-            "Failed to retrieve JWKS from endpoint '%s': %s");
-        public static final LogRecord INVALID_CONFIGURATION = new LogRecord(PREFIX + "-209", 
-            "Invalid processor configuration: %s");
+    @UtilityClass
+    public static final class ERROR {
+        public static final LogRecord INVALID_TOKEN_FORMAT = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(200)
+                .template("Invalid token format: %s")
+                .build();
+                
+        public static final LogRecord INVALID_TOKEN_SIGNATURE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(201)
+                .template("Invalid token signature for issuer '%s'")
+                .build();
+                
+        public static final LogRecord TOKEN_EXPIRED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(202)
+                .template("Token has expired")
+                .build();
+                
+        public static final LogRecord TOKEN_NOT_YET_VALID = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(203)
+                .template("Token not yet valid")
+                .build();
+                
+        public static final LogRecord UNKNOWN_ISSUER = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(204)
+                .template("Unknown token issuer: %s")
+                .build();
+                
+        public static final LogRecord INVALID_AUDIENCE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(205)
+                .template("Token audience does not match required audience")
+                .build();
+                
+        public static final LogRecord MISSING_REQUIRED_SCOPES = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(206)
+                .template("Token missing required scopes: %s")
+                .build();
+                
+        public static final LogRecord MISSING_REQUIRED_ROLES = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(207)
+                .template("Token missing required roles: %s")
+                .build();
+                
+        public static final LogRecord JWKS_RETRIEVAL_FAILED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(208)
+                .template("Failed to retrieve JWKS from endpoint '%s': %s")
+                .build();
+                
+        public static final LogRecord INVALID_CONFIGURATION = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(209)
+                .template("Invalid processor configuration: %s")
+                .build();
     }
 }
 ----
@@ -156,20 +205,17 @@ _See Requirement link:../requirements.adoc#NIFI-AUTH-6.2[NIFI-AUTH-6.2: Failure 
 
 When a token validation fails, the processor adds the following attributes to the flow file:
 
-[cols="1,1,2"]
+[cols="1,2"]
 |===
-|Attribute |Default |Description
+|Attribute |Description
 
 |jwt.error.code
-|N/A
 |Error code for the failure
 
 |jwt.error.reason
-|N/A
 |Internationalized error message
 
 |jwt.error.category
-|N/A
 |Category of the error
 |===
 
