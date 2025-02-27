@@ -218,3 +218,17 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 * Passes all security requirements
 * Complete documentation
 * Test coverage meets standards
+
+== Internationalization Requirements
+
+[#NIFI-AUTH-17]
+=== NIFI-AUTH-17: Internationalization Support
+* All user-presented strings must support i18n / Resource Bundle
+* Initial support for English and German languages
+* Internationalized components must include:
+** UI elements (property names, descriptions)
+** Error messages
+** Log messages
+** Documentation strings
+* Resource bundles must follow standard Java ResourceBundle pattern
+* Default to English when a translation is not available

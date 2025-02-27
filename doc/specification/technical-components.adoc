@@ -40,6 +40,10 @@ _See Requirement link:../requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: NiFi Integ
 |cui-java-tools
 |N/A
 |Logging and utilities
+
+|cui-i18n-bundle
+|N/A
+|Internationalization support
 |===
 
 == Core Components

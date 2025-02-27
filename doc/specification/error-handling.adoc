@@ -160,31 +160,62 @@ When a token validation fails, the processor adds the following attributes to th
 |===
 |Attribute |Default |Description
 
-|jwt.error.reason
-|N/A
-|Detailed error message
-
 |jwt.error.code
 |N/A
-|Error classification code
+|Error code for the failure
+
+|jwt.error.reason
+|N/A
+|Internationalized error message
 
 |jwt.error.category
 |N/A
-|Error category
-
-|jwt.authorization.failed.reason
-|N/A
-|If token was valid but authorization failed, contains the reason
+|Category of the error
 |===
+
+=== Internationalized Error Handling
+_See Requirement link:../requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+
+The processor implements internationalized error messages:
 
 [source,java]
 ----
-private void addErrorAttributes(FlowFile flowFile, String errorCode, String errorReason) {
+// Load resource bundle
+private static final ResourceBundle MESSAGES = ResourceBundle.getBundle(
+    "de.cuioss.nifi.processors.auth.messages.Messages",
+    Locale.getDefault());
+
+// Error enum with message keys
+public enum ERROR {
+    TOKEN_EXPIRED("error.token.expired"),
+    UNKNOWN_ISSUER("error.unknown.issuer"),
+    JWKS_RETRIEVAL_FAILED("error.jwks.retrieval.failed"),
+    INVALID_CONFIGURATION("error.invalid.configuration"),
+    TOKEN_FORMAT("error.token.format"),
+    SIGNATURE_VALIDATION("error.signature.validation"),
+    CLAIMS_VALIDATION("error.claims.validation"),
+    AUTHORIZATION("error.authorization");
+    
+    private final String messageKey;
+    
+    ERROR(String messageKey) {
+        this.messageKey = messageKey;
+    }
+    
+    public String format(Object... args) {
+        return MessageFormat.format(MESSAGES.getString(messageKey), args);
+    }
+}
+
+private void addErrorAttributes(FlowFile flowFile, String errorCode, ERROR error, Object... args) {
     Map<String, String> attributes = new HashMap<>();
+    
+    // Get localized error message
+    String errorMessage = error.format(args);
     
     // Add error information
     attributes.put("jwt.error.code", errorCode);
-    attributes.put("jwt.error.reason", errorReason);
+    attributes.put("jwt.error.reason", errorMessage);
     
     // Determine error category
     String category = determineErrorCategory(errorCode);
@@ -193,27 +224,9 @@ private void addErrorAttributes(FlowFile flowFile, String errorCode, String erro
     // Update flowfile with attributes
     flowFile = session.putAllAttributes(flowFile, attributes);
 }
-
-private String determineErrorCategory(String errorCode) {
-    if (errorCode.startsWith("AUTH-00")) {
-        return "TOKEN_FORMAT";
-    } else if (errorCode.equals("AUTH-002")) {
-        return "SIGNATURE_VALIDATION";
-    } else if (errorCode.startsWith("AUTH-00") && Integer.parseInt(errorCode.substring(5)) <= 6) {
-        return "CLAIMS_VALIDATION";
-    } else if (errorCode.equals("AUTH-007") || errorCode.equals("AUTH-008")) {
-        return "AUTHORIZATION";
-    } else if (errorCode.equals("AUTH-009")) {
-        return "JWKS_RETRIEVAL";
-    } else if (errorCode.equals("AUTH-010")) {
-        return "CONFIGURATION";
-    } else {
-        return "UNKNOWN";
-    }
-}
 ----
 
-== Exception Handling
+=== Exception Handling
 
 === Token Validation Exceptions
 The processor handles token validation exceptions as follows:
@@ -243,7 +256,7 @@ private void handleTokenValidationException(FlowFile flowFile, TokenValidationEx
     LOGGER.error(e, e.getMessage());
     
     // Add error attributes
-    addErrorAttributes(flowFile, e.getErrorCode(), e.getMessage());
+    addErrorAttributes(flowFile, e.getErrorCode(), ERROR.INVALID_TOKEN_FORMAT);
     
     // Route to failure relationship
     session.transfer(flowFile, AUTHENTICATION_FAILED);

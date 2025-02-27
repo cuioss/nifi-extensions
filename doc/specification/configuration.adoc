@@ -49,13 +49,22 @@ Dynamic properties are used to configure token issuers. Each property represents
 == UI Configuration
 _See Requirement link:../requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
 
-=== Property Descriptors
+=== Internationalized Property Descriptors
+_See Requirement link:../requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+
+The processor uses internationalized strings for all UI elements:
+
 [source,java]
 ----
+// Load resource bundle
+private static final ResourceBundle MESSAGES = ResourceBundle.getBundle(
+    "de.cuioss.nifi.processors.auth.messages.Messages",
+    Locale.getDefault());
+
 public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Builder()
     .name("Token Header Name")
-    .displayName("Token Header Name")
-    .description("Name of the header containing the JWT token")
+    .displayName(MESSAGES.getString("property.token.header.name"))
+    .description(MESSAGES.getString("property.token.header.description"))
     .required(true)
     .defaultValue("Authorization")
     .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
@@ -63,8 +72,8 @@ public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Bui
 
 public static final PropertyDescriptor JWKS_REFRESH_INTERVAL = new PropertyDescriptor.Builder()
     .name("JWKS Refresh Interval")
-    .displayName("JWKS Refresh Interval")
-    .description("How often to refresh the JWKS cache")
+    .displayName(MESSAGES.getString("property.jwks.refresh.interval.name"))
+    .description(MESSAGES.getString("property.jwks.refresh.interval.description"))
     .required(true)
     .defaultValue("15 min")
     .addValidator(StandardValidators.TIME_PERIOD_VALIDATOR)
@@ -72,8 +81,8 @@ public static final PropertyDescriptor JWKS_REFRESH_INTERVAL = new PropertyDescr
 
 public static final PropertyDescriptor REQUIRE_VALID_TOKEN = new PropertyDescriptor.Builder()
     .name("Require Valid Token")
-    .displayName("Require Valid Token")
-    .description("When true, only valid tokens result in success relationship")
+    .displayName(MESSAGES.getString("property.require.valid.token.name"))
+    .description(MESSAGES.getString("property.require.valid.token.description"))
     .required(true)
     .defaultValue("true")
     .allowableValues("true", "false")
@@ -117,44 +126,68 @@ define(['jquery'], function ($) {
         /**
          * Initialize the custom UI.
          */
-        init: function (element, propertyDescriptor, propertyValue, callback) {
-            // Create the test button
-            var testButton = $('<button type="button" class="test-jwks-button">Test Connection</button>');
-            var resultContainer = $('<div class="test-jwks-result"></div>');
+        init: function (element, propertyValue, callback) {
+            // Load i18n resources
+            var i18n = {
+                en: {
+                    testConnection: "Test Connection",
+                    connectionSuccessful: "Connection successful",
+                    connectionFailed: "Connection failed: ",
+                    testFailed: "Test failed: ",
+                    notValidUrl: "Not a valid URL"
+                },
+                de: {
+                    testConnection: "Verbindung testen",
+                    connectionSuccessful: "Verbindung erfolgreich",
+                    connectionFailed: "Verbindung fehlgeschlagen: ",
+                    testFailed: "Test fehlgeschlagen: ",
+                    notValidUrl: "Keine gültige URL"
+                }
+            };
+            
+            // Determine language based on browser locale
+            var lang = (navigator.language || navigator.userLanguage).substring(0, 2);
+            var texts = i18n[lang] || i18n.en; // Default to English if language not supported
+            
+            // Create UI elements
+            var container = $('<div class="jwks-verification-container"></div>');
+            var verifyButton = $('<button type="button" class="verify-jwks-button">' + texts.testConnection + '</button>');
+            var resultContainer = $('<div class="verification-result"></div>');
             
             // Add elements to the DOM
-            $(element).append(testButton).append(resultContainer);
+            container.append(verifyButton).append(resultContainer);
+            $(element).append(container);
             
             // Handle button click
-            testButton.on('click', function () {
-                // Only test if the value looks like a URL
-                if (propertyValue && propertyValue.startsWith('http')) {
-                    resultContainer.html('<span class="fa fa-spinner fa-spin"></span> Testing connection...');
+            verifyButton.on('click', function () {
+                var jwksUrl = propertyValue;
+                if (jwksUrl && jwksUrl.startsWith('http')) {
+                    resultContainer.html('<span class="fa fa-spinner fa-spin"></span>');
                     
-                    // Make AJAX request to test the connection
+                    // Make AJAX request to verify JWKS URL
                     $.ajax({
                         type: 'POST',
-                        url: '../nifi-api/processors/validate-jwks',
+                        url: '../nifi-api/processors/verify-jwks',
                         data: JSON.stringify({
-                            jwksUrl: propertyValue
+                            jwksUrl: jwksUrl
                         }),
                         contentType: 'application/json',
                         dataType: 'json'
                     }).done(function (response) {
                         if (response.valid) {
                             resultContainer.html('<span class="fa fa-check" style="color: green;"></span> ' + 
-                                                'Connection successful');
+                                                texts.connectionSuccessful);
                         } else {
                             resultContainer.html('<span class="fa fa-times" style="color: red;"></span> ' + 
-                                                'Connection failed: ' + response.explanation);
+                                                texts.connectionFailed + response.explanation);
                         }
                     }).fail(function (xhr) {
                         resultContainer.html('<span class="fa fa-times" style="color: red;"></span> ' + 
-                                            'Test failed: ' + xhr.responseText);
+                                            texts.testFailed + xhr.responseText);
                     });
                 } else {
                     resultContainer.html('<span class="fa fa-times" style="color: red;"></span> ' + 
-                                        'Not a valid URL');
+                                        texts.notValidUrl);
                 }
             });
             
@@ -175,7 +208,7 @@ define(['jquery'], function ($) {
          * Clean up any resources before the element is removed from the DOM.
          */
         cleanup: function (element) {
-            $(element).find('.verify-token-button').off();
+            $(element).find('.verify-jwks-button').off();
         }
     };
 }
@@ -194,10 +227,52 @@ define(['jquery'], function ($) {
          * Initialize the custom UI.
          */
         init: function (element, processorId, callback) {
+            // Load i18n resources
+            var i18n = {
+                en: {
+                    tokenPlaceholder: "Paste JWT token here...",
+                    verifyButton: "Verify Token",
+                    enterToken: "Please enter a JWT token.",
+                    verifyingToken: "Verifying token...",
+                    tokenValid: "Token is valid!",
+                    tokenDetails: "Token Details:",
+                    issuer: "Issuer:",
+                    subject: "Subject:",
+                    expires: "Expires:",
+                    claims: "Claims:",
+                    flowFileAttributes: "FlowFile Attributes:",
+                    tokenInvalid: "Token validation failed!",
+                    errorDetails: "Error Details:",
+                    suggestion: "Suggestion:",
+                    verificationFailed: "Verification request failed: "
+                },
+                de: {
+                    tokenPlaceholder: "JWT-Token hier einfügen...",
+                    verifyButton: "Token überprüfen",
+                    enterToken: "Bitte geben Sie ein JWT-Token ein.",
+                    verifyingToken: "Token wird überprüft...",
+                    tokenValid: "Token ist gültig!",
+                    tokenDetails: "Token-Details:",
+                    issuer: "Aussteller:",
+                    subject: "Betreff:",
+                    expires: "Läuft ab:",
+                    claims: "Claims:",
+                    flowFileAttributes: "FlowFile-Attribute:",
+                    tokenInvalid: "Token-Validierung fehlgeschlagen!",
+                    errorDetails: "Fehlerdetails:",
+                    suggestion: "Vorschlag:",
+                    verificationFailed: "Überprüfungsanfrage fehlgeschlagen: "
+                }
+            };
+            
+            // Determine language based on browser locale
+            var lang = (navigator.language || navigator.userLanguage).substring(0, 2);
+            var texts = i18n[lang] || i18n.en; // Default to English if language not supported
+            
             // Create UI elements
             var container = $('<div class="token-verification-container"></div>');
-            var tokenInput = $('<textarea class="token-input" placeholder="Paste JWT token here..."></textarea>');
-            var verifyButton = $('<button type="button" class="verify-token-button">Verify Token</button>');
+            var tokenInput = $('<textarea class="token-input" placeholder="' + texts.tokenPlaceholder + '"></textarea>');
+            var verifyButton = $('<button type="button" class="verify-token-button">' + texts.verifyButton + '</button>');
             var resultContainer = $('<div class="verification-result"></div>');
             
             // Add elements to the DOM
@@ -210,11 +285,11 @@ define(['jquery'], function ($) {
             verifyButton.on('click', function () {
                 var token = tokenInput.val().trim();
                 if (!token) {
-                    resultContainer.html('<div class="message-warning">Please enter a JWT token.</div>');
+                    resultContainer.html('<div class="message-warning">' + texts.enterToken + '</div>');
                     return;
                 }
                 
-                resultContainer.html('<span class="fa fa-spinner fa-spin"></span> Verifying token...');
+                resultContainer.html('<span class="fa fa-spinner fa-spin"></span> ' + texts.verifyingToken);
                 
                 // Make AJAX request to verify the token
                 $.ajax({
@@ -228,22 +303,22 @@ define(['jquery'], function ($) {
                 }).done(function (response) {
                     if (response.valid) {
                         // Show success message with token details
-                        var html = '<div class="message-success">Token is valid!</div>';
+                        var html = '<div class="message-success">' + texts.tokenValid + '</div>';
                         html += '<div class="token-details">';
-                        html += '<h4>Token Details:</h4>';
+                        html += '<h4>' + texts.tokenDetails + '</h4>';
                         html += '<table class="token-info-table">';
-                        html += '<tr><td>Issuer:</td><td>' + response.issuer + '</td></tr>';
-                        html += '<tr><td>Subject:</td><td>' + response.subject + '</td></tr>';
-                        html += '<tr><td>Expires:</td><td>' + new Date(response.expiresAt * 1000).toLocaleString() + '</td></tr>';
+                        html += '<tr><td>' + texts.issuer + '</td><td>' + response.issuer + '</td></tr>';
+                        html += '<tr><td>' + texts.subject + '</td><td>' + response.subject + '</td></tr>';
+                        html += '<tr><td>' + texts.expires + '</td><td>' + new Date(response.expiresAt * 1000).toLocaleString(lang) + '</td></tr>';
                         
                         // Add claims
-                        html += '<tr><td colspan="2"><h4>Claims:</h4></td></tr>';
+                        html += '<tr><td colspan="2"><h4>' + texts.claims + '</h4></td></tr>';
                         for (var claim in response.claims) {
                             html += '<tr><td>' + claim + ':</td><td>' + JSON.stringify(response.claims[claim]) + '</td></tr>';
                         }
                         
                         // Add attributes that would be added
-                        html += '<tr><td colspan="2"><h4>FlowFile Attributes:</h4></td></tr>';
+                        html += '<tr><td colspan="2"><h4>' + texts.flowFileAttributes + '</h4></td></tr>';
                         for (var attr in response.attributes) {
                             html += '<tr><td>' + attr + ':</td><td>' + response.attributes[attr] + '</td></tr>';
                         }
@@ -253,14 +328,14 @@ define(['jquery'], function ($) {
                         resultContainer.html(html);
                     } else {
                         // Show error message
-                        var html = '<div class="message-error">Token validation failed!</div>';
+                        var html = '<div class="message-error">' + texts.tokenInvalid + '</div>';
                         html += '<div class="error-details">';
-                        html += '<h4>Error Details:</h4>';
+                        html += '<h4>' + texts.errorDetails + '</h4>';
                         html += '<p>' + response.reason + '</p>';
                         
                         // Add suggestion if available
                         if (response.suggestion) {
-                            html += '<h4>Suggestion:</h4>';
+                            html += '<h4>' + texts.suggestion + '</h4>';
                             html += '<p>' + response.suggestion + '</p>';
                         }
                         
@@ -268,7 +343,7 @@ define(['jquery'], function ($) {
                         resultContainer.html(html);
                     }
                 }).fail(function (xhr) {
-                    resultContainer.html('<div class="message-error">Verification request failed: ' + 
+                    resultContainer.html('<div class="message-error">' + texts.verificationFailed + 
                                          xhr.responseText + '</div>');
                 });
             });

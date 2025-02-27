@@ -20,4 +20,5 @@ This specification is organized into the following documents:
 * link:specification/testing.adoc[Testing] - Unit and integration testing
 * link:specification/security.adoc[Security] - Security considerations
 * link:specification/integration-patterns.adoc[Integration Patterns] - Integration examples
+* link:specification/internationalization.adoc[Internationalization] - i18n implementation
 * link:LogMessage.md[Log Messages] - Log message documentation

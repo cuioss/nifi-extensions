@@ -1,0 +1,174 @@
+= MultiIssuerJWTTokenAuthenticator Internationalization
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+link:../specification.adoc[Back to Main Specification]
+
+== Internationalization Implementation
+_See Requirement link:../requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+
+The MultiIssuerJWTTokenAuthenticator implements comprehensive internationalization support for all user-presented strings, with initial support for English and German languages.
+
+=== Resource Bundle Structure
+_See Requirement link:../requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+
+The processor uses standard Java ResourceBundle for internationalization:
+
+[source,java]
+----
+// Base resource bundle
+private static final ResourceBundle MESSAGES = ResourceBundle.getBundle(
+    "de.cuioss.nifi.processors.auth.messages.Messages",
+    Locale.getDefault());
+
+// Access messages
+String message = MESSAGES.getString("error.token.expired");
+----
+
+=== Resource Bundle Files
+The processor includes the following resource bundle files:
+
+[cols="1,2"]
+|===
+|File |Description
+
+|Messages.properties
+|Default (English) messages
+
+|Messages_de.properties
+|German translations
+|===
+
+=== Internationalized Components
+
+==== UI Elements
+_See Requirement link:../requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+
+All UI elements (property names, descriptions) are internationalized:
+
+[source,java]
+----
+public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Builder()
+    .name("Token Header Name")
+    .displayName(MESSAGES.getString("property.token.header.name"))
+    .description(MESSAGES.getString("property.token.header.description"))
+    .required(true)
+    .defaultValue("Authorization")
+    .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+    .build();
+----
+
+==== Error Messages
+_See Requirement link:../requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+
+All error messages displayed to users are internationalized:
+
+[source,java]
+----
+private void addErrorAttributes(FlowFile flowFile, String errorCode, String errorKey, Object... args) {
+    Map<String, String> attributes = new HashMap<>();
+    
+    // Get localized error message
+    String errorMessage = MessageFormat.format(MESSAGES.getString(errorKey), args);
+    
+    // Add error information
+    attributes.put("jwt.error.code", errorCode);
+    attributes.put("jwt.error.reason", errorMessage);
+    
+    // Update flowfile with attributes
+    flowFile = session.putAllAttributes(flowFile, attributes);
+}
+----
+
+==== Log Messages
+_See Requirement link:../requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+
+All log messages are internationalized:
+
+[source,java]
+----
+// Define error enum with message keys
+public enum ERROR {
+    TOKEN_EXPIRED("error.token.expired"),
+    UNKNOWN_ISSUER("error.unknown.issuer"),
+    JWKS_RETRIEVAL_FAILED("error.jwks.retrieval.failed");
+    
+    private final String messageKey;
+    
+    ERROR(String messageKey) {
+        this.messageKey = messageKey;
+    }
+    
+    public String format(Object... args) {
+        return MessageFormat.format(MESSAGES.getString(messageKey), args);
+    }
+}
+
+// Usage
+LOGGER.error(ERROR.UNKNOWN_ISSUER.format(issuer));
+----
+
+=== Sample Resource Bundle Content
+
+==== English (Default)
+[source,properties]
+----
+# Property descriptors
+property.token.header.name=Token Header Name
+property.token.header.description=Name of the header containing the JWT token
+property.jwks.refresh.interval.name=JWKS Refresh Interval
+property.jwks.refresh.interval.description=How often to refresh the JWKS cache
+property.require.valid.token.name=Require Valid Token
+property.require.valid.token.description=When true, only valid tokens result in success relationship
+
+# Error messages
+error.token.expired=Token has expired
+error.unknown.issuer=Unknown token issuer: {0}
+error.jwks.retrieval.failed=Failed to retrieve JWKS from {0}: {1}
+error.invalid.configuration=Invalid configuration: {0}
+error.token.format=Invalid token format
+error.signature.validation=Token signature validation failed
+error.claims.validation=Token claims validation failed: {0}
+error.authorization=Authorization failed: {0}
+----
+
+==== German
+[source,properties]
+----
+# Property descriptors
+property.token.header.name=Token-Header-Name
+property.token.header.description=Name des Headers, der das JWT-Token enthält
+property.jwks.refresh.interval.name=JWKS-Aktualisierungsintervall
+property.jwks.refresh.interval.description=Wie oft der JWKS-Cache aktualisiert werden soll
+property.require.valid.token.name=Gültiges Token erforderlich
+property.require.valid.token.description=Wenn wahr, führen nur gültige Token zur Erfolgsbeziehung
+
+# Error messages
+error.token.expired=Token ist abgelaufen
+error.unknown.issuer=Unbekannter Token-Aussteller: {0}
+error.jwks.retrieval.failed=JWKS konnte nicht von {0} abgerufen werden: {1}
+error.invalid.configuration=Ungültige Konfiguration: {0}
+error.token.format=Ungültiges Token-Format
+error.signature.validation=Token-Signaturvalidierung fehlgeschlagen
+error.claims.validation=Token-Claims-Validierung fehlgeschlagen: {0}
+error.authorization=Autorisierung fehlgeschlagen: {0}
+----
+
+=== Implementation Strategy
+_See Requirement link:../requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+
+The internationalization implementation follows these principles:
+
+1. All user-visible strings are externalized to resource bundles
+
+2. Resource bundles follow the standard Java ResourceBundle pattern
+
+3. Message formatting uses java.text.MessageFormat for parameter substitution
+
+4. The processor respects the system's default locale
+
+5. English is used as the fallback language
+
+6. Resource bundles are loaded once during processor initialization
