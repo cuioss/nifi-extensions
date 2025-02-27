@@ -274,38 +274,93 @@ private void addErrorAttributes(FlowFile flowFile, String errorCode, ERROR error
 
 === Exception Handling
 
-=== Token Validation Exceptions
-The processor handles token validation exceptions as follows:
+=== Token Validation Approach
+_See Requirement link:../requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+
+The processor handles token validation using TokenFactory from cui-portal-core. For detailed implementation, see link:token-validation.adoc[Token Validation Specification].
 
 [source,java]
 ----
-public class TokenValidationException extends Exception {
-    
-    private final String errorCode;
-    
-    public TokenValidationException(String message, String errorCode) {
-        super(message);
-        this.errorCode = errorCode;
+@Override
+public void onTrigger(final ProcessContext context, final ProcessSession session) {
+    FlowFile flowFile = session.get();
+    if (flowFile == null) {
+        return;
     }
     
-    public TokenValidationException(String message, String errorCode, Throwable cause) {
-        super(message, cause);
-        this.errorCode = errorCode;
-    }
-    
-    public String getErrorCode() {
-        return errorCode;
+    try {
+        // Get token from header
+        String tokenHeader = context.getProperty(TOKEN_HEADER).getValue();
+        String token = getTokenFromFlowFile(flowFile, tokenHeader);
+        
+        if (token == null) {
+            // Handle missing token
+            LOGGER.warn(AuthLogMessages.WARN.TOKEN_MISSING.format(tokenHeader));
+            addErrorAttributes(flowFile, "AUTH-001", AuthLogMessages.ERROR.INVALID_TOKEN_FORMAT);
+            session.transfer(flowFile, AUTHENTICATION_FAILED);
+            return;
+        }
+        
+        // Get the token parser from configuration
+        JwksAwareTokenParser tokenParser = getConfiguredTokenParser(context);
+        
+        // Create TokenFactory and validate token
+        TokenFactory tokenFactory = TokenFactory.of(tokenParser);
+        Optional<ParsedAccessToken> accessToken = tokenFactory.createAccessToken(token);
+        
+        if (accessToken.isEmpty()) {
+            // Token validation failed
+            addErrorAttributes(flowFile, "AUTH-002", AuthLogMessages.ERROR.INVALID_TOKEN_FORMAT);
+            session.transfer(flowFile, AUTHENTICATION_FAILED);
+            return;
+        }
+        
+        // Token is valid, extract claims and add to flow file
+        ParsedAccessToken parsedToken = accessToken.get();
+        Map<String, String> claims = extractClaims(parsedToken);
+        flowFile = session.putAllAttributes(flowFile, claims);
+        
+        // Transfer to success relationship
+        session.transfer(flowFile, AUTHENTICATION_SUCCESS);
+        
+    } catch (Exception e) {
+        // Handle unexpected exceptions
+        LOGGER.error(e, "Unexpected error during token validation: %s", e.getMessage());
+        addErrorAttributes(flowFile, "AUTH-010", AuthLogMessages.ERROR.INVALID_CONFIGURATION);
+        session.transfer(flowFile, AUTHENTICATION_FAILED);
     }
 }
 
-private void handleTokenValidationException(FlowFile flowFile, TokenValidationException e) {
-    LOGGER.error(e, e.getMessage());
+/**
+ * Creates a JwksAwareTokenParser from the processor configuration.
+ */
+private JwksAwareTokenParser getConfiguredTokenParser(ProcessContext context) {
+    // Get dynamic properties for issuers
+    Map<String, String> dynamicProperties = getDynamicProperties(context);
     
-    // Add error attributes
-    addErrorAttributes(flowFile, e.getErrorCode(), ERROR.INVALID_TOKEN_FORMAT);
+    // For each issuer, create a token parser
+    for (Map.Entry<String, String> entry : dynamicProperties.entrySet()) {
+        String issuerName = entry.getKey();
+        String jwksUrl = entry.getValue();
+        
+        // Create and return the token parser for this issuer
+        return JwksAwareTokenParser.builder()
+            .jwksIssuer(issuerName)
+            .jwksEndpoint(jwksUrl)
+            .jwksRefreshIntervall(getRefreshInterval(context))
+            .build();
+    }
     
-    // Route to failure relationship
-    session.transfer(flowFile, AUTHENTICATION_FAILED);
+    throw new IllegalStateException("No token issuers configured");
+}
+
+/**
+ * Gets the refresh interval from the processor configuration.
+ */
+private int getRefreshInterval(ProcessContext context) {
+    return context.getProperty(JWKS_REFRESH_INTERVAL)
+        .asTimePeriod(TimeUnit.SECONDS)
+        .intValue();
 }
 ----
 

@@ -36,43 +36,99 @@ private Optional<String> extractToken(FlowFile flowFile, String headerName) {
 === Signature Validation
 _See Requirement link:../requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
-The processor uses the TokenFactory from portal-authentication-token to validate token signatures. The TokenFactory delegates to the appropriate JwksAwareTokenParser based on the token's issuer.
+The processor uses the TokenFactory from portal-authentication-token to validate token signatures. The implementation follows a simple two-step approach:
+
+1. Get the token parser from the current configuration
+2. Use TokenFactory to create and validate the access token
 
 [source,java]
 ----
-// Initialize the token factory with parsers for each configured issuer
-private void initializeTokenFactory() {
-    List<JwksAwareTokenParser> parsers = new ArrayList<>();
+/**
+ * Validates a token using TokenFactory.
+ */
+private Optional<ParsedAccessToken> validateToken(String tokenString) {
+    // Get the token parser from configuration
+    JwksAwareTokenParser tokenParser = getConfiguredTokenParser();
     
-    for (Map.Entry<String, String> issuerEntry : issuers.entrySet()) {
-        String issuerName = issuerEntry.getKey();
-        String jwksEndpoint = issuerEntry.getValue();
-        
-        JwksAwareTokenParser parser = JwksAwareTokenParser.builder()
-            .jwksIssuer(issuerName)
-            .jwksEndpoint(jwksEndpoint)
-            .jwksRefreshIntervall(jwksRefreshInterval)
-            .build();
-            
-        parsers.add(parser);
-    }
-    
-    tokenFactory = TokenFactory.of(parsers.toArray(new JwksAwareTokenParser[0]));
+    // Create TokenFactory and validate token
+    TokenFactory tokenFactory = TokenFactory.of(tokenParser);
+    return tokenFactory.createAccessToken(tokenString);
 }
 
-// Validate a token
-private ValidationResult validateToken(String tokenString) {
-    try {
-        Optional<ParsedAccessToken> accessToken = tokenFactory.createAccessToken(tokenString);
+/**
+ * Creates a JwksAwareTokenParser from the processor configuration.
+ */
+private JwksAwareTokenParser getConfiguredTokenParser() {
+    // Get dynamic properties for issuers
+    Map<String, String> dynamicProperties = getDynamicProperties();
+    
+    // For each issuer, create a token parser
+    for (Map.Entry<String, String> entry : dynamicProperties.entrySet()) {
+        String issuerName = entry.getKey();
+        String jwksUrl = entry.getValue();
         
-        if (accessToken.isPresent()) {
-            // Token is valid, check additional requirements (scopes, etc.)
-            return validateTokenClaims(accessToken.get());
-        } else {
-            return ValidationResult.invalid("Invalid token");
+        // Create and return the token parser for this issuer
+        return JwksAwareTokenParser.builder()
+            .jwksIssuer(issuerName)
+            .jwksEndpoint(jwksUrl)
+            .jwksRefreshIntervall(jwksRefreshInterval)
+            .build();
+    }
+    
+    throw new IllegalStateException("No token issuers configured");
+}
+----
+
+=== Implementation in onTrigger
+_See Requirement link:../requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+
+The token validation is implemented in the onTrigger method:
+
+[source,java]
+----
+@Override
+public void onTrigger(final ProcessContext context, final ProcessSession session) {
+    FlowFile flowFile = session.get();
+    if (flowFile == null) {
+        return;
+    }
+    
+    try {
+        // Get token from header
+        String tokenHeader = context.getProperty(TOKEN_HEADER).getValue();
+        String token = getTokenFromFlowFile(flowFile, tokenHeader);
+        
+        if (token == null) {
+            // Handle missing token
+            LOGGER.warn(AuthLogMessages.WARN.TOKEN_MISSING.format(tokenHeader));
+            addErrorAttributes(flowFile, "AUTH-001", AuthLogMessages.ERROR.INVALID_TOKEN_FORMAT);
+            session.transfer(flowFile, AUTHENTICATION_FAILED);
+            return;
         }
+        
+        // Validate token
+        Optional<ParsedAccessToken> accessToken = validateToken(token);
+        
+        if (accessToken.isEmpty()) {
+            // Token validation failed
+            addErrorAttributes(flowFile, "AUTH-002", AuthLogMessages.ERROR.INVALID_TOKEN_FORMAT);
+            session.transfer(flowFile, AUTHENTICATION_FAILED);
+            return;
+        }
+        
+        // Token is valid, extract claims and add to flow file
+        ParsedAccessToken parsedToken = accessToken.get();
+        Map<String, String> claims = extractClaims(parsedToken);
+        flowFile = session.putAllAttributes(flowFile, claims);
+        
+        // Transfer to success relationship
+        session.transfer(flowFile, AUTHENTICATION_SUCCESS);
+        
     } catch (Exception e) {
-        return ValidationResult.invalid("Error validating token: " + e.getMessage());
+        // Handle unexpected exceptions
+        LOGGER.error(e, "Unexpected error during token validation: %s", e.getMessage());
+        addErrorAttributes(flowFile, "AUTH-010", AuthLogMessages.ERROR.INVALID_CONFIGURATION);
+        session.transfer(flowFile, AUTHENTICATION_FAILED);
     }
 }
 ----
