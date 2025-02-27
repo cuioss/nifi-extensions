@@ -10,7 +10,10 @@ link:../specification.adoc[Back to Main Specification]
 _See Requirement link:../requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuration Requirements]_
 
 === Static Properties
-_See Requirement link:../requirements.adoc#NIFI-AUTH-7.6[NIFI-AUTH-7.6: Configuration Properties]_
+_See Requirement link:../requirements.adoc#NIFI-AUTH-5.3[NIFI-AUTH-5.3: Advanced Properties]_
+
+The following properties are configured as advanced properties and are only shown when the user clicks the "Advanced" button in the processor configuration dialog.
+
 [cols="2,1,1,2"]
 |===
 |Property |Type |Default |Description
@@ -31,8 +34,76 @@ _See Requirement link:../requirements.adoc#NIFI-AUTH-7.6[NIFI-AUTH-7.6: Configur
 |When true, only valid tokens result in success relationship
 |===
 
+==== Implementation of Advanced Properties
+_See Requirement link:../requirements.adoc#NIFI-AUTH-5.3[NIFI-AUTH-5.3: Advanced Properties]_
+
+The advanced properties are implemented using the `displayName` property with a special prefix to indicate they should be displayed in the advanced tab:
+
+[source,java]
+----
+public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Builder()
+    .name("Token Header Name")
+    .displayName("Token Header Name")
+    .description(i18nResolver.getTranslatedString("property.token.header.description"))
+    .required(true)
+    .defaultValue("Authorization")
+    .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+    .expressionLanguageSupported(ExpressionLanguageScope.NONE)
+    .build();
+
+public static final PropertyDescriptor JWKS_REFRESH_INTERVAL = new PropertyDescriptor.Builder()
+    .name("JWKS Refresh Interval")
+    .displayName("JWKS Refresh Interval")
+    .description(i18nResolver.getTranslatedString("property.jwks.refresh.description"))
+    .required(true)
+    .defaultValue("15 min")
+    .addValidator(StandardValidators.TIME_PERIOD_VALIDATOR)
+    .expressionLanguageSupported(ExpressionLanguageScope.NONE)
+    .build();
+
+public static final PropertyDescriptor REQUIRE_VALID_TOKEN = new PropertyDescriptor.Builder()
+    .name("Require Valid Token")
+    .displayName("Require Valid Token")
+    .description(i18nResolver.getTranslatedString("property.require.valid.token.description"))
+    .required(true)
+    .defaultValue("true")
+    .allowableValues("true", "false")
+    .addValidator(StandardValidators.BOOLEAN_VALIDATOR)
+    .expressionLanguageSupported(ExpressionLanguageScope.NONE)
+    .build();
+
+@Override
+protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
+    final List<PropertyDescriptor> properties = new ArrayList<>();
+    properties.add(TOKEN_HEADER);
+    properties.add(JWKS_REFRESH_INTERVAL);
+    properties.add(REQUIRE_VALID_TOKEN);
+    return properties;
+}
+
+@Override
+protected PropertyDescriptor getSupportedDynamicPropertyDescriptor(final String propertyDescriptorName) {
+    return new PropertyDescriptor.Builder()
+        .name(propertyDescriptorName)
+        .displayName(propertyDescriptorName)
+        .description(i18nResolver.getTranslatedString("property.issuer.description"))
+        .required(false)
+        .dynamic(true)
+        .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+        .expressionLanguageSupported(ExpressionLanguageScope.NONE)
+        .build();
+}
+
+@Override
+public boolean isAdvanced(PropertyDescriptor property) {
+    return TOKEN_HEADER.equals(property) || 
+           JWKS_REFRESH_INTERVAL.equals(property) || 
+           REQUIRE_VALID_TOKEN.equals(property);
+}
+----
+
 === Dynamic Properties
-_See Requirement link:../requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Validation Configuration]_
+_See Requirement link:../requirements.adoc#NIFI-AUTH-5.2[NIFI-AUTH-5.2: Dynamic Properties]_
 
 Dynamic properties are used to configure token issuers. Each property represents a single issuer configuration.
 

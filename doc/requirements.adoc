@@ -47,6 +47,20 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 * Support configurable token location in flow file
 * Handle various token formats (Bearer, raw JWT)
 
+[#NIFI-AUTH-5.1]
+==== NIFI-AUTH-5.1: Token Location
+* Extract token from Bearer Authorization header
+* Format: "Bearer <token>"
+* Support validation of header presence and format
+
+[#NIFI-AUTH-5.2]
+==== NIFI-AUTH-5.2: Dynamic Properties
+The processor must support dynamic properties for custom claim mapping.
+
+[#NIFI-AUTH-5.3]
+==== NIFI-AUTH-5.3: Advanced Properties
+The processor must support advanced properties that are only shown when explicitly requested by the user.
+
 [#NIFI-AUTH-6]
 === NIFI-AUTH-6: Output Requirements
 
