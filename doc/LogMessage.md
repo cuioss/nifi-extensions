@@ -1,6 +1,6 @@
 # Log Messages for MultiIssuerJWTTokenAuthenticator
 
-_See Requirement [NIFI-AUTH-10: Error Handling Requirements](requirements.adoc#NIFI-AUTH-10)_
+_See Requirement [NIFI-AUTH-10: Error Handling Requirements](Requirements.adoc#NIFI-AUTH-10)_
 
 All messages follow the format: [JWTAuth]-[identifier]: [message]
 

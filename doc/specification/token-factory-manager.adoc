@@ -1,0 +1,261 @@
+= TokenFactoryManager
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+link:../Specification.adoc[Back to Main Specification]
+
+== Overview
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+
+The `TokenFactoryManager` is responsible for managing the creation and caching of `TokenFactory` instances. It uses NiFi's StateManager to track configuration changes and ensures that the TokenFactory is only recreated when necessary.
+
+== Implementation
+
+[source,java]
+----
+/**
+ * Manages the creation and caching of TokenFactory instances.
+ * Uses NiFi's StateManager to track configuration changes and ensure TokenFactory
+ * is only recreated when necessary.
+ * 
+ * @see org.apache.nifi.components.state.StateManager
+ * @see <a href="https://nifi.apache.org/docs/nifi-docs/html/developer-guide.html#state-manager">NiFi Developer Guide: State Manager</a>
+ */
+public class TokenFactoryManager {
+    
+    private static final CuiLogger LOGGER = new CuiLogger(TokenFactoryManager.class);
+    
+    // Key for storing the configuration hash in the state manager
+    private static final String CONFIG_HASH_KEY = "config.hash";
+    
+    // Private constructor to prevent instantiation
+    private TokenFactoryManager() {
+        // Utility class, no instances needed
+    }
+    
+    /**
+     * Creates or retrieves a TokenFactory based on the current configuration.
+     * Uses NiFi's StateManager to track configuration changes.
+     * 
+     * @param context The ProcessContext containing the current configuration
+     * @return A TokenFactory instance configured with the current settings
+     * @throws IOException If there is an error accessing the state manager
+     * @see org.apache.nifi.processor.ProcessContext#getStateManager()
+     */
+    public static TokenFactory getTokenFactory(ProcessContext context) throws IOException {
+        // Get the StateManager from the context
+        // https://nifi.apache.org/docs/nifi-docs/javadoc/nifi-api/org/apache/nifi/processor/ProcessContext.html#getStateManager--
+        final StateManager stateManager = context.getStateManager();
+        final StateMap stateMap;
+        
+        try {
+            // Get current state with LOCAL scope
+            // https://nifi.apache.org/docs/nifi-docs/javadoc/nifi-api/org/apache/nifi/components/state/StateManager.html#getState-org.apache.nifi/components/state/Scope-
+            stateMap = stateManager.getState(Scope.LOCAL);
+            
+            // Calculate hash of current configuration
+            String currentConfigHash = calculateConfigHash(context);
+            String storedConfigHash = stateMap.get(CONFIG_HASH_KEY);
+            
+            // Check if configuration has changed or TokenFactory is null
+            if (!currentConfigHash.equals(storedConfigHash)) {
+                LOGGER.debug("Configuration changed, creating new TokenFactory");
+                
+                // Create new TokenFactory
+                TokenFactory tokenFactory = createTokenFactory(context);
+                
+                // Store new configuration hash
+                // https://nifi.apache.org/docs/nifi-docs/javadoc/nifi-api/org/apache/nifi/components/state/StateMap.html#toMap--
+                Map<String, String> newState = new HashMap<>(stateMap.toMap());
+                newState.put(CONFIG_HASH_KEY, currentConfigHash);
+                
+                // Update state with new hash
+                // https://nifi.apache.org/docs/nifi-docs/javadoc/nifi-api/org/apache/nifi/components/state/StateManager.html#setState-java.util.Map-org.apache.nifi/components/state/Scope-
+                // https://nifi.apache.org/docs/nifi-docs/javadoc/nifi-api/org/apache/nifi/components/state/StateManager.html#replace-org.apache.nifi.components.state.StateMap-java.util.Map-org.apache.nifi/components/state/Scope-
+                if (stateMap.getVersion() == -1) {
+                    stateManager.setState(newState, Scope.LOCAL);
+                } else {
+                    stateManager.replace(stateMap, newState, Scope.LOCAL);
+                }
+                
+                LOGGER.debug("Updated configuration hash in state manager");
+                return tokenFactory;
+            } else {
+                // Configuration hasn't changed, use cached TokenFactory
+                // Retrieve the TokenFactory from the cache
+                return getCachedTokenFactory(context);
+            }
+        } catch (IOException e) {
+            LOGGER.error(e, "Failed to access state manager: %s", e.getMessage());
+            // If state manager fails, still create TokenFactory
+            return createTokenFactory(context);
+        }
+    }
+    
+    /**
+     * Retrieves the cached TokenFactory or creates a new one if not available.
+     * This method is used internally by getTokenFactory.
+     * 
+     * @param context The ProcessContext containing the current configuration
+     * @return A TokenFactory instance
+     */
+    private static TokenFactory getCachedTokenFactory(ProcessContext context) {
+        // In a real implementation, this would retrieve from a cache
+        // For simplicity in this example, we'll just create a new one
+        try {
+            return createTokenFactory(context);
+        } catch (Exception e) {
+            LOGGER.error(e, "Failed to retrieve cached TokenFactory: %s", e.getMessage());
+            throw new ProcessException("Failed to retrieve cached TokenFactory", e);
+        }
+    }
+    
+    /**
+     * Calculates a hash of the current configuration to detect changes.
+     * This is used to determine if the TokenFactory needs to be recreated.
+     * 
+     * @param context The ProcessContext containing the current configuration
+     * @return A hash string representing the current configuration
+     */
+    private static String calculateConfigHash(ProcessContext context) {
+        StringBuilder configBuilder = new StringBuilder();
+        
+        // Add all dynamic properties to the hash
+        Map<PropertyDescriptor, String> properties = context.getProperties();
+        for (Map.Entry<PropertyDescriptor, String> entry : properties.entrySet()) {
+            PropertyDescriptor descriptor = entry.getKey();
+            if (descriptor.isDynamic()) {
+                configBuilder.append(descriptor.getName())
+                    .append("=")
+                    .append(entry.getValue())
+                    .append(";");
+            }
+        }
+        
+        // Add refresh interval to the hash
+        configBuilder.append("refreshInterval=")
+            .append(context.getProperty(JWKS_REFRESH_INTERVAL).getValue());
+        
+        // Calculate MD5 hash of the configuration string
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] digest = md.digest(configBuilder.toString().getBytes(StandardCharsets.UTF_8));
+            return DatatypeConverter.printHexBinary(digest);
+        } catch (NoSuchAlgorithmException e) {
+            // Fallback to simple hash if MD5 is not available
+            return String.valueOf(configBuilder.toString().hashCode());
+        }
+    }
+    
+    /**
+     * Creates a new TokenFactory with all configured issuers.
+     * 
+     * @param context The ProcessContext containing the current configuration
+     * @return A new TokenFactory instance
+     */
+    private static TokenFactory createTokenFactory(ProcessContext context) {
+        // Get dynamic properties for issuers
+        Map<PropertyDescriptor, String> dynamicProperties = context.getProperties();
+        List<JwksAwareTokenParser> parsers = new ArrayList<>();
+        
+        // Get refresh interval from configuration
+        long refreshInterval = context.getProperty(JWKS_REFRESH_INTERVAL)
+            .asTimePeriod(TimeUnit.SECONDS)
+            .intValue();
+            
+        // Create a parser for each issuer
+        for (Map.Entry<PropertyDescriptor, String> entry : dynamicProperties.entrySet()) {
+            PropertyDescriptor descriptor = entry.getKey();
+            
+            // Skip static properties
+            if (!descriptor.isDynamic()) {
+                continue;
+            }
+            
+            String issuerName = descriptor.getName();
+            String jwksUrl = entry.getValue();
+            
+            // Create a parser for this issuer
+            JwksAwareTokenParser parser = JwksAwareTokenParser.builder()
+                .jwksIssuer(issuerName)
+                .jwksEndpoint(jwksUrl)
+                .jwksRefreshIntervall(refreshInterval)
+                .build();
+                
+            parsers.add(parser);
+            LOGGER.debug("Added token parser for issuer '%s' with JWKS URL '%s'", 
+                issuerName, jwksUrl);
+        }
+        
+        if (parsers.isEmpty()) {
+            throw new ProcessException("No token issuers configured");
+        }
+        
+        // Create the TokenFactory with all parsers
+        TokenFactory newTokenFactory = TokenFactory.of(parsers.toArray(new JwksAwareTokenParser[0]));
+        LOGGER.info("Created new TokenFactory with %d issuers", parsers.size());
+        return newTokenFactory;
+    }
+    
+    /**
+     * Clears any cached TokenFactory state.
+     * This should be called when processor properties are modified.
+     * 
+     * @param context The ProcessContext containing the current configuration
+     */
+    public static void clearTokenFactoryState(ProcessContext context) {
+        try {
+            // Clear the state in the StateManager
+            context.getStateManager().clear(Scope.LOCAL);
+            LOGGER.debug("Cleared TokenFactory state due to property change");
+        } catch (IOException e) {
+            LOGGER.error(e, "Failed to clear TokenFactory state: %s", e.getMessage());
+        }
+    }
+}
+----
+
+== Usage in the Processor
+
+The `TokenFactoryManager` is used by the `MultiIssuerJWTTokenAuthenticator` processor to manage the creation and caching of `TokenFactory` instances. The processor uses the `getTokenFactory` method to retrieve a configured `TokenFactory` and the `clearTokenFactoryState` method to clear the cached state when processor properties are modified.
+
+[source,java]
+----
+@Override
+protected void onPropertyModified(PropertyDescriptor descriptor, String oldValue, String newValue) {
+    // Clear TokenFactory state when any property is modified
+    TokenFactoryManager.clearTokenFactoryState(getProcessContext());
+}
+
+@Override
+public void onTrigger(ProcessContext context, ProcessSession session) throws ProcessException {
+    FlowFile flowFile = session.get();
+    if (flowFile == null) {
+        return;
+    }
+    
+    try {
+        // Get TokenFactory from manager
+        TokenFactory tokenFactory = TokenFactoryManager.getTokenFactory(context);
+        
+        // Extract token from flowFile
+        String headerName = context.getProperty(TOKEN_HEADER_NAME).getValue();
+        Optional<String> tokenOpt = extractToken(flowFile, headerName);
+        
+        // Process token if present
+        if (tokenOpt.isPresent()) {
+            processToken(tokenFactory, tokenOpt.get(), flowFile, context, session);
+        } else {
+            // Handle missing token
+            handleMissingToken(flowFile, context, session);
+        }
+    } catch (Exception e) {
+        // Handle errors
+        handleError(flowFile, e, context, session);
+    }
+}
+----
+
+link:token-validation.adoc[Back to Token Validation]

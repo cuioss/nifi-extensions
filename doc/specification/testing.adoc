@@ -4,13 +4,13 @@
 :toc-title: Table of Contents
 :sectnums:
 
-link:../specification.adoc[Back to Main Specification]
+link:../Specification.adoc[Back to Main Specification]
 
 == Unit Testing
-_See Requirement link:../requirements.adoc#NIFI-AUTH-14[NIFI-AUTH-14: Unit Testing]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-14[NIFI-AUTH-14: Unit Testing]_
 
 === Unit Testing JWKS Endpoint Validator
-_See Requirement link:../requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
 
 The JWKS Endpoint Validator can be unit tested using MockWebServer to simulate HTTP responses.
 
@@ -129,7 +129,7 @@ public class JwksEndpointValidatorTest {
 ----
 
 === Unit Testing Token Validation
-_See Requirement link:../requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
 [source,java]
 ----
@@ -250,10 +250,10 @@ public class JwtTokenValidatorTest {
 ----
 
 == Integration Testing
-_See Requirement link:../requirements.adoc#NIFI-AUTH-15[NIFI-AUTH-15: Integration Testing]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-15[NIFI-AUTH-15: Integration Testing]_
 
 === Integration Testing with Real Tokens
-_See Requirement link:../requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
 Integration tests with real tokens can be implemented using Keycloak as the token issuer.
 

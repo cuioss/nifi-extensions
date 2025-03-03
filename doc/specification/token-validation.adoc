@@ -4,13 +4,13 @@
 :toc-title: Table of Contents
 :sectnums:
 
-link:../specification.adoc[Back to Main Specification]
+link:../Specification.adoc[Back to Main Specification]
 
 == Token Validation Process
-_See Requirement link:../requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
 === Token Extraction
-_See Requirement link:../requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requirements]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requirements]_
 
 The processor extracts JWT tokens from flow file attributes. By default, it looks for the "Authorization" header, but this can be configured.
 
@@ -34,137 +34,140 @@ private Optional<String> extractToken(FlowFile flowFile, String headerName) {
 ----
 
 === Signature Validation
-_See Requirement link:../requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
-The processor uses the TokenFactory from portal-authentication-token to validate token signatures. The implementation follows a simple two-step approach:
+The processor uses a dedicated `TokenFactoryManager` class to manage the creation and caching of the `TokenFactory`. This approach separates the concerns of token validation from token factory management.
 
-1. Get the token parser from the current configuration
-2. Use TokenFactory to create and validate the access token
+For the detailed implementation of the TokenFactoryManager, see link:token-factory-manager.adoc[TokenFactoryManager].
+
+The processor is then simplified to use the TokenFactoryManager:
 
 [source,java]
 ----
 /**
- * Validates a token using TokenFactory.
+ * Processor implementation for JWT token validation.
  */
-private Optional<ParsedAccessToken> validateToken(String tokenString) {
-    // Get the token parser from configuration
-    JwksAwareTokenParser tokenParser = getConfiguredTokenParser();
-    
-    // Create TokenFactory and validate token
-    TokenFactory tokenFactory = TokenFactory.of(tokenParser);
-    return tokenFactory.createAccessToken(tokenString);
-}
+public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
-/**
- * Creates a JwksAwareTokenParser from the processor configuration.
- */
-private JwksAwareTokenParser getConfiguredTokenParser() {
-    // Get dynamic properties for issuers
-    Map<String, String> dynamicProperties = getDynamicProperties();
+    private static final CuiLogger LOGGER = new CuiLogger(MultiIssuerJWTTokenAuthenticator.class);
     
-    // For each issuer, create a token parser
-    for (Map.Entry<String, String> entry : dynamicProperties.entrySet()) {
-        String issuerName = entry.getKey();
-        String jwksUrl = entry.getValue();
-        
-        // Create and return the token parser for this issuer
-        return JwksAwareTokenParser.builder()
-            .jwksIssuer(issuerName)
-            .jwksEndpoint(jwksUrl)
-            .jwksRefreshIntervall(jwksRefreshInterval)
-            .build();
+    /**
+     * Validates a token using the TokenFactory.
+     * 
+     * @param tokenString The JWT token string to validate
+     * @param context The ProcessContext containing the current configuration
+     * @return An Optional containing the parsed token if valid, or empty if invalid
+     * @throws IOException If there is an error accessing the state manager
+     */
+    private Optional<ParsedAccessToken> validateToken(String tokenString, ProcessContext context) throws IOException {
+        // Get the TokenFactory from the manager
+        TokenFactory tokenFactory = TokenFactoryManager.getTokenFactory(context);
+        return tokenFactory.createAccessToken(tokenString);
     }
     
-    throw new IllegalStateException("No token issuers configured");
-}
-----
-
-=== Implementation in onTrigger
-_See Requirement link:../requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
-
-The token validation is implemented in the onTrigger method:
-
-[source,java]
-----
-@Override
-public void onTrigger(final ProcessContext context, final ProcessSession session) {
-    FlowFile flowFile = session.get();
-    if (flowFile == null) {
-        return;
+    /**
+     * Called when the processor is scheduled to run.
+     * Initializes the TokenFactory.
+     * 
+     * @see org.apache.nifi.processor.AbstractProcessor#onScheduled(org.apache.nifi.processor.ProcessContext)
+     */
+    @Override
+    public void onScheduled(final ProcessContext context) {
+        try {
+            // Initialize the token factory
+            TokenFactoryManager.getTokenFactory(context);
+        } catch (IOException e) {
+            LOGGER.error(e, "Failed to initialize TokenFactory: %s", e.getMessage());
+            throw new ProcessException("Failed to initialize TokenFactory", e);
+        }
     }
     
-    try {
-        // Get token from header
-        String tokenHeader = context.getProperty(TOKEN_HEADER).getValue();
-        String token = getTokenFromFlowFile(flowFile, tokenHeader);
-        
-        if (token == null) {
-            // Handle missing token
-            LOGGER.warn(AuthLogMessages.WARN.TOKEN_MISSING.format(tokenHeader));
-            addErrorAttributes(flowFile, "AUTH-001", AuthLogMessages.ERROR.INVALID_TOKEN_FORMAT);
-            session.transfer(flowFile, AUTHENTICATION_FAILED);
+    /**
+     * Called when a processor property is modified.
+     * Resets the TokenFactory when relevant properties change.
+     * 
+     * @see org.apache.nifi.processor.AbstractProcessor#onPropertyModified(org.apache.nifi.components.PropertyDescriptor, java.lang.String, java.lang.String)
+     */
+    @Override
+    public void onPropertyModified(PropertyDescriptor descriptor, String oldValue, String newValue) {
+        // Reset TokenFactory when properties change
+        if (descriptor.isDynamic() || JWKS_REFRESH_INTERVAL.equals(descriptor)) {
+            TokenFactoryManager.clearTokenFactoryState(getProcessContext());
+            LOGGER.debug("Reset TokenFactory due to property change: %s", descriptor.getName());
+        }
+    }
+    
+    @Override
+    public void onTrigger(final ProcessContext context, final ProcessSession session) {
+        FlowFile flowFile = session.get();
+        if (flowFile == null) {
             return;
         }
         
-        // Validate token
-        Optional<ParsedAccessToken> accessToken = validateToken(token);
-        
-        if (accessToken.isEmpty()) {
-            // Token validation failed
-            addErrorAttributes(flowFile, "AUTH-002", AuthLogMessages.ERROR.INVALID_TOKEN_FORMAT);
+        try {
+            // Get token from header
+            String tokenHeader = context.getProperty(TOKEN_HEADER).getValue();
+            Optional<String> token = getTokenFromFlowFile(flowFile, tokenHeader);
+            
+            if (token.isEmpty()) {
+                // Handle missing token
+                LOGGER.warn(AuthLogMessages.WARN.TOKEN_MISSING.format(tokenHeader));
+                addErrorAttributes(flowFile, "AUTH-001", AuthLogMessages.ERROR.INVALID_TOKEN_FORMAT);
+                session.transfer(flowFile, AUTHENTICATION_FAILED);
+                return;
+            }
+            
+            // Validate token using the TokenFactory from the manager
+            Optional<ParsedAccessToken> accessToken = validateToken(token, context);
+            
+            if (accessToken.isEmpty()) {
+                // Token validation failed
+                addErrorAttributes(flowFile, "AUTH-002", AuthLogMessages.ERROR.INVALID_TOKEN_FORMAT);
+                session.transfer(flowFile, AUTHENTICATION_FAILED);
+                return;
+            }
+            
+            // Token is valid, extract claims and add to flow file
+            ParsedAccessToken parsedToken = accessToken.get();
+            Map<String, String> claims = extractClaims(parsedToken);
+            flowFile = session.putAllAttributes(flowFile, claims);
+            
+            // Transfer to success relationship
+            session.transfer(flowFile, AUTHENTICATION_SUCCESS);
+            
+        } catch (Exception e) {
+            // Handle unexpected exceptions
+            LOGGER.error(e, "Unexpected error during token validation: %s", e.getMessage());
+            addErrorAttributes(flowFile, "AUTH-010", AuthLogMessages.ERROR.INVALID_CONFIGURATION);
             session.transfer(flowFile, AUTHENTICATION_FAILED);
-            return;
         }
-        
-        // Token is valid, extract claims and add to flow file
-        ParsedAccessToken parsedToken = accessToken.get();
-        Map<String, String> claims = extractClaims(parsedToken);
-        flowFile = session.putAllAttributes(flowFile, claims);
-        
-        // Transfer to success relationship
-        session.transfer(flowFile, AUTHENTICATION_SUCCESS);
-        
-    } catch (Exception e) {
-        // Handle unexpected exceptions
-        LOGGER.error(e, "Unexpected error during token validation: %s", e.getMessage());
-        addErrorAttributes(flowFile, "AUTH-010", AuthLogMessages.ERROR.INVALID_CONFIGURATION);
-        session.transfer(flowFile, AUTHENTICATION_FAILED);
     }
 }
 ----
 
 === Claims Validation
-_See Requirement link:../requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
 The processor validates various JWT claims, including expiration, not-before, issuer, and audience.
 
 [source,java]
 ----
-private ValidationResult validateClaims(JWTClaimsSet claimsSet) {
+/**
+ * Validates the claims in a token.
+ * 
+ * @param token The parsed access token to validate
+ * @return A ValidationResult indicating whether the claims are valid
+ */
+private ValidationResult validateClaims(ParsedAccessToken token) {
     // Check expiration time
-    Date expirationTime = claimsSet.getExpirationTime();
-    if (expirationTime != null && expirationTime.before(new Date())) {
+    if (token.isExpired()) {
         return ValidationResult.invalid("Token has expired");
     }
     
     // Check not-before time
-    Date notBeforeTime = claimsSet.getNotBeforeTime();
-    if (notBeforeTime != null && notBeforeTime.after(new Date())) {
+    if (token.getNotBeforeTime() != null && 
+        token.getNotBeforeTime().isAfter(Instant.now())) {
         return ValidationResult.invalid("Token not yet valid");
-    }
-    
-    // Check issuer
-    String issuer = claimsSet.getIssuer();
-    if (issuer == null || !isKnownIssuer(issuer)) {
-        return ValidationResult.invalid("Unknown token issuer: " + issuer);
-    }
-    
-    // Check audience (if configured)
-    if (requiredAudience != null && !requiredAudience.isEmpty()) {
-        List<String> audiences = claimsSet.getAudience();
-        if (audiences == null || !audiences.contains(requiredAudience)) {
-            return ValidationResult.invalid("Token audience does not match required audience");
-        }
     }
     
     return ValidationResult.valid();
@@ -172,85 +175,87 @@ private ValidationResult validateClaims(JWTClaimsSet claimsSet) {
 ----
 
 === Authorization Rules
-_See Requirement link:../requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: Authorization Configuration]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: Authorization Configuration]_
 
 The processor can enforce authorization rules based on token scopes and roles.
 
 [source,java]
 ----
-private ValidationResult validateAuthorization(JWTClaimsSet claimsSet) {
+/**
+ * Validates authorization rules based on token scopes and roles.
+ * 
+ * @param token The parsed access token to validate
+ * @return A ValidationResult indicating whether the authorization is valid
+ */
+private ValidationResult validateAuthorization(ParsedAccessToken token) {
     // Check required scopes
-    if (requiredScopes != null && !requiredScopes.isEmpty()) {
-        Set<String> tokenScopes = extractScopes(claimsSet);
-        if (!tokenScopes.containsAll(requiredScopes)) {
-            return ValidationResult.invalid("Token missing required scopes");
-        }
+    Set<String> missingScopes = token.determineMissingScopes(requiredScopes);
+    if (!missingScopes.isEmpty()) {
+        return ValidationResult.invalid("Token missing required scopes: " + String.join(", ", missingScopes));
     }
     
     // Check required roles
     if (requiredRoles != null && !requiredRoles.isEmpty()) {
-        Set<String> tokenRoles = extractRoles(claimsSet);
+        Set<String> tokenRoles = token.getRoles();
         if (!tokenRoles.containsAll(requiredRoles)) {
-            return ValidationResult.invalid("Token missing required roles");
+            // Calculate missing roles
+            Set<String> missingRoles = new HashSet<>(requiredRoles);
+            missingRoles.removeAll(tokenRoles);
+            return ValidationResult.invalid("Token missing required roles: " + String.join(", ", missingRoles));
         }
     }
     
     return ValidationResult.valid();
 }
 
-private Set<String> extractScopes(JWTClaimsSet claimsSet) {
-    // Extract scopes from token claims
-    Set<String> scopes = new HashSet<>();
+/**
+ * Extracts claims from a token and converts them to a map of attributes.
+ * 
+ * @param token The parsed access token
+ * @return A map of claim names to string values
+ */
+private Map<String, String> extractClaims(ParsedAccessToken token) {
+    Map<String, String> claims = new HashMap<>();
     
-    // Check for 'scope' claim as space-separated string
-    Object scopeClaim = claimsSet.getClaim("scope");
-    if (scopeClaim instanceof String) {
-        String scopeString = (String) scopeClaim;
-        scopes.addAll(Arrays.asList(scopeString.split(" ")));
+    // Add standard claims
+    claims.put("jwt.subject", token.getSubjectId());
+    claims.put("jwt.issuer", token.getIssuer());
+    
+    // Add expiration time if available
+    if (token.getExpirationTime() != null) {
+        claims.put("jwt.exp", String.valueOf(token.getExpirationTime().getEpochSecond()));
     }
     
-    // Check for 'scopes' claim as array
-    Object scopesClaim = claimsSet.getClaim("scopes");
-    if (scopesClaim instanceof List) {
-        for (Object scope : (List<?>) scopesClaim) {
-            if (scope instanceof String) {
-                scopes.add((String) scope);
-            }
+    // Add issued-at time if available
+    if (token.getIssuedAt() != null) {
+        claims.put("jwt.iat", String.valueOf(token.getIssuedAt().getEpochSecond()));
+    }
+    
+    // Add scopes
+    Set<String> scopes = token.getScopes();
+    if (!scopes.isEmpty()) {
+        claims.put("jwt.scope", String.join(" ", scopes));
+    }
+    
+    // Add roles
+    Set<String> roles = token.getRoles();
+    if (!roles.isEmpty()) {
+        claims.put("jwt.roles", String.join(",", roles));
+    }
+    
+    // Add additional custom claims
+    Map<String, Object> customClaims = token.getCustomClaims();
+    for (Map.Entry<String, Object> entry : customClaims.entrySet()) {
+        String key = entry.getKey();
+        Object value = entry.getValue();
+        
+        // Skip complex objects, only include simple values
+        if (value instanceof String || value instanceof Number || value instanceof Boolean) {
+            claims.put("jwt." + key, String.valueOf(value));
         }
     }
     
-    return scopes;
-}
-
-private Set<String> extractRoles(JWTClaimsSet claimsSet) {
-    // Extract roles from token claims
-    Set<String> roles = new HashSet<>();
-    
-    // Check for 'roles' claim as array
-    Object rolesClaim = claimsSet.getClaim("roles");
-    if (rolesClaim instanceof List) {
-        for (Object role : (List<?>) rolesClaim) {
-            if (role instanceof String) {
-                roles.add((String) role);
-            }
-        }
-    }
-    
-    // Check for roles in 'realm_access' claim (Keycloak format)
-    Object realmAccess = claimsSet.getClaim("realm_access");
-    if (realmAccess instanceof Map) {
-        Map<?, ?> realmAccessMap = (Map<?, ?>) realmAccess;
-        Object realmRoles = realmAccessMap.get("roles");
-        if (realmRoles instanceof List) {
-            for (Object role : (List<?>) realmRoles) {
-                if (role instanceof String) {
-                    roles.add((String) role);
-                }
-            }
-        }
-    }
-    
-    return roles;
+    return claims;
 }
 ----
 
@@ -323,138 +328,39 @@ public class StandardJwksEndpointValidator implements JwksEndpointValidator {
 }
 ----
 
-=== Caching Strategy
-_See Requirement link:../requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Performance Requirements]_
+== Service Facade Interface
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
 
-The processor implements a caching strategy for JWKS to improve performance and reduce network requests.
-
-[source,java]
-----
-public class JwksCache {
-    
-    private static final CuiLogger LOGGER = new CuiLogger(JwksCache.class);
-    
-    private final Map<String, CachedJwks> jwksCache = new ConcurrentHashMap<>();
-    private final Map<String, String> issuerToJwksUrl = new ConcurrentHashMap<>();
-    private final JwksClient jwksClient;
-    private final long refreshIntervalMillis;
-    
-    public JwksCache(JwksClient jwksClient, long refreshIntervalMillis) {
-        this.jwksClient = jwksClient;
-        this.refreshIntervalMillis = refreshIntervalMillis;
-    }
-    
-    /**
-     * Registers an issuer with its JWKS URL
-     */
-    public void registerIssuer(String issuer, String jwksUrl) {
-        issuerToJwksUrl.put(issuer, jwksUrl);
-    }
-    
-    /**
-     * Gets a JWK for the specified issuer and key ID
-     */
-    public JWK getJwk(String issuer, String keyId) {
-        // Get the JWKS URL for this issuer
-        String jwksUrl = issuerToJwksUrl.get(issuer);
-        if (jwksUrl == null) {
-            LOGGER.debug("No JWKS URL registered for issuer: %s", issuer);
-            return null;
-        }
-        
-        // Get or load the JWKS
-        JWKSet jwkSet = getJwkSet(jwksUrl);
-        if (jwkSet == null) {
-            return null;
-        }
-        
-        // Find the key by ID
-        return jwkSet.getKeyByKeyId(keyId);
-    }
-    
-    /**
-     * Gets a JWKSet for the specified URL, loading it if necessary
-     */
-    private JWKSet getJwkSet(String jwksUrl) {
-        CachedJwks cachedJwks = jwksCache.get(jwksUrl);
-        
-        // Check if we need to load or refresh the JWKS
-        if (cachedJwks == null || isExpired(cachedJwks)) {
-            try {
-                JWKSet jwkSet = jwksClient.retrieveJwks(jwksUrl);
-                cachedJwks = new CachedJwks(jwkSet, System.currentTimeMillis());
-                jwksCache.put(jwksUrl, cachedJwks);
-            } catch (IOException e) {
-                LOGGER.error(e, "Failed to load JWKS from %s: %s", jwksUrl, e.getMessage());
-                // Return the expired JWKS if we have one, rather than failing
-                if (cachedJwks != null) {
-                    LOGGER.warn(WARN.USING_EXPIRED_JWKS.format(jwksUrl));
-                    return cachedJwks.getJwkSet();
-                }
-                return null;
-            }
-        }
-        
-        return cachedJwks.getJwkSet();
-    }
-    
-    /**
-     * Checks if a cached JWKS is expired
-     */
-    private boolean isExpired(CachedJwks cachedJwks) {
-        return System.currentTimeMillis() - cachedJwks.getTimestamp() > refreshIntervalMillis;
-    }
-    
-    /**
-     * Class to hold a cached JWKSet and its timestamp
-     */
-    private static class CachedJwks {
-        private final JWKSet jwkSet;
-        private final long timestamp;
-        
-        public CachedJwks(JWKSet jwkSet, long timestamp) {
-            this.jwkSet = jwkSet;
-            this.timestamp = timestamp;
-        }
-        
-        public JWKSet getJwkSet() {
-            return jwkSet;
-        }
-        
-        public long getTimestamp() {
-            return timestamp;
-        }
-    }
-}
-----
-
-=== Error Handling
-_See Requirement link:../requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
-
-The processor implements robust error handling for JWKS retrieval and token validation.
+The service facade provides access to NiFi's internal services and components.
 
 [source,java]
 ----
-private ValidationResult handleJwksRetrievalError(String jwksUrl, Exception e) {
-    LOGGER.error(e, ERROR.JWKS_RETRIEVAL_FAILED.format(jwksUrl, e.getMessage()));
+/**
+ * Interface for accessing NiFi services and components
+ */
+public interface ServiceFacade {
     
-    // Determine the type of error
-    if (e instanceof ConnectException) {
-        return ValidationResult.invalid("Failed to connect to JWKS endpoint: Connection refused");
-    } else if (e instanceof SocketTimeoutException) {
-        return ValidationResult.invalid("Failed to connect to JWKS endpoint: Connection timed out");
-    } else if (e instanceof UnknownHostException) {
-        return ValidationResult.invalid("Failed to connect to JWKS endpoint: Unknown host");
-    } else if (e instanceof SSLException) {
-        return ValidationResult.invalid("Failed to connect to JWKS endpoint: SSL/TLS error");
-    } else {
-        return ValidationResult.invalid("Failed to retrieve JWKS: " + e.getMessage());
-    }
+    /**
+     * Gets a processor node by ID
+     * 
+     * @param processorId The ID of the processor
+     * @return The processor node, or null if not found
+     */
+    ProcessorNode getProcessorNode(String processorId);
+    
+    /**
+     * Gets the process context for a processor
+     * 
+     * @return The process context
+     */
+    ProcessContext getProcessContext();
 }
 ----
 
-== Token Verification UI
-_See Requirement link:../requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
+link:../specification/token-validation.adoc#_token_validation_process[Back to Token Validation Process]
+
+== Token Verification REST Endpoint
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
 
 === Implementation
 The Token Verification UI allows users to test JWT tokens against the current processor configuration.
@@ -494,7 +400,7 @@ public class TokenVerificationResource extends ApplicationResource {
                 (MultiIssuerJWTTokenAuthenticator) processor.getProcessor();
             
             // Verify the token
-            TokenVerificationResult result = processorInstance.verifyToken(request.getToken());
+            TokenVerificationResult result = processorInstance.verifyToken(request.getToken(), getProcessContext());
             
             // Return the result
             return Response.ok(result).build();
@@ -509,6 +415,10 @@ public class TokenVerificationResource extends ApplicationResource {
     private ProcessorNode getProcessorNode(String processorId) {
         return serviceFacade.getProcessorNode(processorId);
     }
+    
+    private ProcessContext getProcessContext() {
+        return serviceFacade.getProcessContext();
+    }
 }
 ----
 
@@ -520,54 +430,64 @@ The processor provides a REST endpoint for token verification.
 /**
  * Verifies a JWT token against the current processor configuration
  */
-public TokenVerificationResult verifyToken(String tokenString) {
+public TokenVerificationResult verifyToken(String tokenString, ProcessContext context) {
     try {
-        // Parse the token
-        SignedJWT signedJWT = SignedJWT.parse(tokenString);
-        JWTClaimsSet claimsSet = signedJWT.getJWTClaimsSet();
+        // Get the TokenFactory from the manager
+        TokenFactory tokenFactory = TokenFactoryManager.getTokenFactory(context);
         
-        // Validate signature
-        boolean validSignature = validateSignature(signedJWT);
-        if (!validSignature) {
-            return TokenVerificationResult.invalid("Invalid token signature");
+        // Use the TokenFactory to create a ParsedAccessToken
+        Optional<ParsedAccessToken> parsedToken = tokenFactory.createAccessToken(tokenString);
+        
+        if (parsedToken.isEmpty()) {
+            return TokenVerificationResult.invalid("Invalid token: Could not parse or validate token");
         }
         
-        // Validate claims
-        ValidationResult claimsResult = validateClaims(claimsSet);
-        if (!claimsResult.isValid()) {
-            return TokenVerificationResult.invalid(claimsResult.getExplanation());
-        }
+        // Token is valid if we got here (signature and basic validation is done by the TokenFactory)
+        ParsedAccessToken token = parsedToken.get();
         
-        // Validate authorization
-        ValidationResult authResult = validateAuthorization(claimsSet);
-        if (!authResult.isValid()) {
-            return TokenVerificationResult.invalid(authResult.getExplanation());
+        // Check if token is expired
+        if (token.isExpired()) {
+            return TokenVerificationResult.invalid("Token has expired");
         }
         
         // Create successful result
         TokenVerificationResult result = TokenVerificationResult.valid();
-        result.setIssuer(claimsSet.getIssuer());
-        result.setSubject(claimsSet.getSubject());
-        result.setExpiresAt(claimsSet.getExpirationTime().getTime() / 1000);
-        result.setClaims(claimsSet.getClaims());
+        result.setIssuer(token.getIssuer());
+        result.setSubject(token.getSubjectId());
+        result.setExpiresAt(token.getExpirationTime().toEpochSecond());
         
         // Add attributes that would be added to a flow file
         Map<String, String> attributes = new HashMap<>();
-        attributes.put("jwt.issuer", claimsSet.getIssuer());
-        attributes.put("jwt.subject", claimsSet.getSubject());
+        attributes.put("jwt.issuer", token.getIssuer());
+        attributes.put("jwt.subject", token.getSubjectId());
         attributes.put("jwt.validatedAt", String.valueOf(System.currentTimeMillis()));
         
-        // Add all claims as attributes
-        for (Map.Entry<String, Object> claim : claimsSet.getClaims().entrySet()) {
-            attributes.put("jwt.claims." + claim.getKey(), 
-                           claim.getValue() != null ? claim.getValue().toString() : "");
+        // Add email if present
+        token.getEmail().ifPresent(email -> attributes.put("jwt.claims.email", email));
+        
+        // Add name if present
+        token.getName().ifPresent(name -> attributes.put("jwt.claims.name", name));
+        
+        // Add preferred username if present
+        token.getPreferredUsername().ifPresent(username -> 
+            attributes.put("jwt.claims.preferred_username", username));
+        
+        // Add scopes
+        Set<String> scopes = token.getScopes();
+        if (!scopes.isEmpty()) {
+            attributes.put("jwt.claims.scope", String.join(" ", scopes));
+        }
+        
+        // Add roles
+        Set<String> roles = token.getRoles();
+        if (!roles.isEmpty()) {
+            attributes.put("jwt.claims.roles", String.join(",", roles));
         }
         
         result.setAttributes(attributes);
+        result.setClaims(token.getJsonWebToken().getClaims());
         
         return result;
-    } catch (ParseException e) {
-        return TokenVerificationResult.invalid("Invalid token format: " + e.getMessage());
     } catch (Exception e) {
         LOGGER.error(e, "Error verifying token: %s", e.getMessage());
         return TokenVerificationResult.invalid("Error verifying token: " + e.getMessage());

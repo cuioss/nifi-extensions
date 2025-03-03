@@ -4,15 +4,15 @@
 :toc-title: Table of Contents
 :sectnums:
 
-link:../specification.adoc[Back to Main Specification]
+link:../Specification.adoc[Back to Main Specification]
 
 == Internationalization Implementation
-_See Requirement link:../requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
 The MultiIssuerJWTTokenAuthenticator implements comprehensive internationalization support for all user-presented strings, with initial support for English and German languages.
 
 === Resource Bundle Structure
-_See Requirement link:../requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
 The processor uses standard Java ResourceBundle for internationalization:
 
@@ -44,7 +44,7 @@ The processor includes the following resource bundle files:
 === Internationalized Components
 
 ==== UI Elements
-_See Requirement link:../requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
 All UI elements (property names, descriptions) are internationalized:
 
@@ -61,7 +61,7 @@ public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Bui
 ----
 
 ==== Error Messages
-_See Requirement link:../requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
 All error messages displayed to users are internationalized:
 
@@ -83,7 +83,7 @@ private void addErrorAttributes(FlowFile flowFile, String errorCode, String erro
 ----
 
 ==== Log Messages
-_See Requirement link:../requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
 All log messages are internationalized:
 
@@ -157,7 +157,7 @@ error.authorization=Autorisierung fehlgeschlagen: {0}
 ----
 
 === Implementation Strategy
-_See Requirement link:../requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
 The internationalization implementation follows these principles:
 

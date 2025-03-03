@@ -4,13 +4,13 @@
 :toc-title: Table of Contents
 :sectnums:
 
-link:../specification.adoc[Back to Main Specification]
+link:../Specification.adoc[Back to Main Specification]
 
 == Configuration Properties
-_See Requirement link:../requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuration Requirements]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuration Requirements]_
 
 === Static Properties
-_See Requirement link:../requirements.adoc#NIFI-AUTH-5.3[NIFI-AUTH-5.3: Advanced Properties]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-5.3[NIFI-AUTH-5.3: Advanced Properties]_
 
 The following properties are configured as advanced properties and are only shown when the user clicks the "Advanced" button in the processor configuration dialog.
 
@@ -35,7 +35,7 @@ The following properties are configured as advanced properties and are only show
 |===
 
 ==== Implementation of Advanced Properties
-_See Requirement link:../requirements.adoc#NIFI-AUTH-5.3[NIFI-AUTH-5.3: Advanced Properties]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-5.3[NIFI-AUTH-5.3: Advanced Properties]_
 
 The advanced properties are implemented using the `displayName` property with a special prefix to indicate they should be displayed in the advanced tab:
 
@@ -103,7 +103,7 @@ public boolean isAdvanced(PropertyDescriptor property) {
 ----
 
 === Dynamic Properties
-_See Requirement link:../requirements.adoc#NIFI-AUTH-5.2[NIFI-AUTH-5.2: Dynamic Properties]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-5.2[NIFI-AUTH-5.2: Dynamic Properties]_
 
 Dynamic properties are used to configure token issuers. Each property represents a single issuer configuration.
 
@@ -117,10 +117,10 @@ Dynamic properties are used to configure token issuers. Each property represents
 |===
 
 == UI Configuration
-_See Requirement link:../requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
 
 === Internationalized Property Descriptors
-_See Requirement link:../requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
 The processor uses internationalized strings for all UI elements:
 
@@ -184,7 +184,7 @@ protected PropertyDescriptor getSupportedDynamicPropertyDescriptor(final String 
 === Custom UI Components
 
 ==== JWKS Endpoint Test Button
-_See Requirement link:../requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
 
 The JWKS Endpoint Test Button allows users to validate that a JWKS endpoint is accessible and returns valid JWKS data.
 
@@ -285,7 +285,7 @@ define(['jquery'], function ($) {
 ----
 
 ==== Token Verification Interface
-_See Requirement link:../requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
 
 The Token Verification Interface allows users to test JWT tokens against the current processor configuration.
 
@@ -435,7 +435,7 @@ define(['jquery'], function ($) {
 == Configuration Examples
 
 === Basic Configuration
-_See Requirement link:../requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Validation Configuration]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Validation Configuration]_
 
 [source,properties]
 ----
@@ -450,7 +450,7 @@ azure: https://login.microsoftonline.com/common/discovery/keys
 ----
 
 === Multi-Issuer Configuration
-_See Requirement link:../requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
 
 [source,properties]
 ----
@@ -467,7 +467,7 @@ legacy-system: -----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBC
 ----
 
 === Authorization Configuration
-_See Requirement link:../requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: Authorization Configuration]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: Authorization Configuration]_
 
 [source,properties]
 ----

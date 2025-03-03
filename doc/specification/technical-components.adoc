@@ -4,10 +4,10 @@
 :toc-title: Table of Contents
 :sectnums:
 
-link:../specification.adoc[Back to Main Specification]
+link:../Specification.adoc[Back to Main Specification]
 
 == Processor Implementation
-_See Requirement link:../requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
 
 [cols="1,2"]
 |===
@@ -24,7 +24,7 @@ _See Requirement link:../requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functio
 |===
 
 == Dependencies
-_See Requirement link:../requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: NiFi Integration]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: NiFi Integration]_
 
 [cols="1,2"]
 |===
@@ -41,10 +41,10 @@ _See Requirement link:../requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: NiFi Integ
 |===
 
 == Core Components
-_See Requirement link:../requirements.adoc#NIFI-AUTH-2.1[NIFI-AUTH-2.1: Core Components]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-2.1[NIFI-AUTH-2.1: Core Components]_
 
 === TokenFactory
-_See Requirement link:../requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
 The TokenFactory serves as the primary entry point for token operations. It provides:
 
@@ -53,7 +53,7 @@ The TokenFactory serves as the primary entry point for token operations. It prov
 * Token parsing and verification
 
 === JwksAwareTokenParser
-_See Requirement link:../requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
 The JwksAwareTokenParser handles secure token validation using JWKS endpoints:
 
@@ -72,7 +72,7 @@ JwksAwareTokenParser parser = JwksAwareTokenParser.builder()
 ----
 
 === Multi-Issuer Support
-_See Requirement link:../requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
 
 The MultiIssuerJWTTokenAuthenticator supports multiple issuers by utilizing a TokenFactory with multiple JwksAwareTokenParsers.
 
@@ -86,7 +86,7 @@ Optional<ParsedAccessToken> accessToken = factory.createAccessToken(tokenString)
 ----
 
 == Relationships
-_See Requirement link:../requirements.adoc#NIFI-AUTH-6[NIFI-AUTH-6: Output Requirements]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-6[NIFI-AUTH-6: Output Requirements]_
 
 [cols="1,2"]
 |===
@@ -123,12 +123,12 @@ public Set<Relationship> getRelationships() {
 == Flow File Attribute Handling
 
 === Input Attributes
-_See Requirement link:../requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requirements]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requirements]_
 
 * None required - token extracted from HTTP header
 
 === Output Attributes (Success)
-_See Requirement link:../requirements.adoc#NIFI-AUTH-6.1[NIFI-AUTH-6.1: Success Path]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-6.1[NIFI-AUTH-6.1: Success Path]_
 
 * jwt.issuer: Token issuer
 * jwt.subject: Token subject
@@ -138,7 +138,7 @@ _See Requirement link:../requirements.adoc#NIFI-AUTH-6.1[NIFI-AUTH-6.1: Success 
 * jwt.roles: List of token roles
 
 === Output Attributes (Failure)
-_See Requirement link:../requirements.adoc#NIFI-AUTH-6.2[NIFI-AUTH-6.2: Failure Path]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-6.2[NIFI-AUTH-6.2: Failure Path]_
 
 * jwt.error.reason: Detailed error message
 * jwt.error.code: Error classification code
