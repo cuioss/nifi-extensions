@@ -47,7 +47,7 @@
         </deploy.staging.repo.url>
 
         <version.nifi>2.3.0</version.nifi>
-        <version.cui.parent>0.9.3</version.cui.parent>
+        <version.cui.parent>0.9.9.1</version.cui.parent>
         <version.cui.portal.core>1.2.0</version.cui.portal.core>
         <!-- Sonar related-->
         <sonar.organization>cuioss-github</sonar.organization>
