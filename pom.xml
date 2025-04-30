@@ -34,6 +34,7 @@
     </issueManagement>
 
     <properties>
+        <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <!-- Repository-Urls -->
@@ -54,6 +55,12 @@
         <jacoco.maven.plugin.version>0.8.13</jacoco.maven.plugin.version>
         <!-- Sonatype -->
         <nexus.staging.maven.plugin.version>1.7.0</nexus.staging.maven.plugin.version>
+        <!-- OpenRewrite -->
+        <open.rewrite.maven.plugin.version>6.7.0</open.rewrite.maven.plugin.version>
+        <rewrite-testing-frameworks.version>3.7.0</rewrite-testing-frameworks.version>
+        <rewrite-migrate-java.version>3.8.0</rewrite-migrate-java.version>
+        <project.build.outputTimestamp>2025-04-30T06:58:46Z</project.build.outputTimestamp>
+
         <!-- The version needs to be aligned with the one defined within the nifi boms. Otherwise, it's getting messy-->
         <version.junit.jupiter>5.11.3</version.junit.jupiter>
         <version.lombok>1.18.38</version.lombok>
@@ -253,6 +260,23 @@
                         </execution>
                     </executions>
                 </plugin>
+                <plugin>
+                    <groupId>org.openrewrite.maven</groupId>
+                    <artifactId>rewrite-maven-plugin</artifactId>
+                    <version>${open.rewrite.maven.plugin.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.openrewrite.recipe</groupId>
+                            <artifactId>rewrite-migrate-java</artifactId>
+                            <version>${rewrite-migrate-java.version}</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.openrewrite.recipe</groupId>
+                            <artifactId>rewrite-testing-frameworks</artifactId>
+                            <version>${rewrite-testing-frameworks.version}</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
             </plugins>
         </pluginManagement>
     </build>
@@ -277,6 +301,49 @@
                     <plugin>
                         <groupId>org.sonarsource.scanner.maven</groupId>
                         <artifactId>sonar-maven-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <!-- Usage: ./mvnw -Prewrite rewrite:run -->
+            <!-- Unifies all OpenRewrite modernization and preparation recipes -->
+            <id>rewrite</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.openrewrite.maven</groupId>
+                        <artifactId>rewrite-maven-plugin</artifactId>
+                        <configuration>
+                            <activeRecipes>
+                                <recipe>org.openrewrite.java.AddApache2LicenseHeader</recipe>
+                                <recipe>org.openrewrite.java.format.AutoFormat</recipe>
+                                <recipe>org.openrewrite.java.format.NormalizeLineBreaks</recipe>
+                                <recipe>org.openrewrite.java.format.RemoveTrailingWhitespace</recipe>
+                                <recipe>org.openrewrite.java.migrate.UpgradeToJava17</recipe>
+                                <recipe>org.openrewrite.java.migrate.util.JavaUtilAPIs</recipe>
+                                <recipe>org.openrewrite.java.migrate.util.OptionalNotEmptyToIsPresent</recipe>
+                                <recipe>org.openrewrite.java.migrate.util.OptionalNotPresentToIsEmpty</recipe>
+                                <recipe>org.openrewrite.java.migrate.util.ReplaceStreamCollectWithToList</recipe>
+                                <recipe>org.openrewrite.java.migrate.util.UseLocaleOf</recipe>
+                                <recipe>org.openrewrite.java.migrate.util.UseMapOf</recipe>
+                                <recipe>org.openrewrite.java.OrderImports</recipe>
+                                <recipe>org.openrewrite.java.RemoveUnusedImports</recipe>
+                                <recipe>org.openrewrite.java.ShortenFullyQualifiedTypeReferences</recipe>
+                                <recipe>org.openrewrite.java.testing.junit5.JUnit5BestPractices</recipe>
+                                <recipe>org.openrewrite.java.testing.junit5.RemoveTryCatchFailBlocks</recipe>
+                                <recipe>org.openrewrite.staticanalysis.EqualsAvoidsNull</recipe>
+                                <recipe>org.openrewrite.staticanalysis.NoPrimitiveWrappersForToStringOrCompareTo</recipe>
+                            </activeRecipes>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>rewrite</id>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>

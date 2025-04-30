@@ -21,17 +21,17 @@ import org.apache.nifi.util.TestRunners;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class JWTTokenExtractorTest {
+class JWTTokenExtractorTest {
 
     private TestRunner testRunner;
 
     @BeforeEach
-    public void init() {
+    void init() {
         testRunner = TestRunners.newTestRunner(JWTTokenExtractor.class);
     }
 
     @Test
-    public void testProcessor() {
+    void processor() {
 
     }
 
