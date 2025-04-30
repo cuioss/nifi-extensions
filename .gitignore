@@ -8,4 +8,4 @@
 *.project
 .DS_Store
 .asciidoctorconfig.adoc
-/.vscode/
+**/.vscode

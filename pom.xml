@@ -47,8 +47,6 @@
         </deploy.staging.repo.url>
 
         <version.nifi>2.3.0</version.nifi>
-        <version.cui.parent>0.9.3</version.cui.parent>
-        <version.cui.portal.core>1.2.0</version.cui.portal.core>
         <!-- Sonar related-->
         <sonar.organization>cuioss-github</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
@@ -58,6 +56,15 @@
         <nexus.staging.maven.plugin.version>1.7.0</nexus.staging.maven.plugin.version>
         <!-- The version needs to be aligned with the one defined within the nifi boms. Otherwise, it's getting messy-->
         <version.junit.jupiter>5.11.3</version.junit.jupiter>
+        <version.lombok>1.18.38</version.lombok>
+        <version.parsson>1.1.7</version.parsson>
+        <!-- CUI-OSS -->
+        <version.cui.test.juli.logger>2.0.1</version.cui.test.juli.logger>
+        <version.cui.test.generator>2.2.0</version.cui.test.generator>
+        <version.cui.test.value.objects>2.0.1</version.cui.test.value.objects>
+        <version.cui.test.mockwebserver>1.1.0</version.cui.test.mockwebserver>
+        <version.cui.java.tools>2.2.1</version.cui.java.tools>
+        <version.cui-jwt-validation>1.0.0-SNAPSHOT</version.cui-jwt-validation>
     </properties>
 
     <licenses>
@@ -126,7 +133,12 @@
 
     <dependencyManagement>
         <dependencies>
-
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${version.lombok}</version>
+                <scope>provided</scope>
+            </dependency>
             <!-- Incoming-->
             <dependency>
                 <groupId>org.junit</groupId>
@@ -146,19 +158,49 @@
                 <version>${version.nifi}</version>
                 <scope>test</scope>
             </dependency>
+            <!-- CUI-OSS -->
             <dependency>
                 <groupId>de.cuioss</groupId>
-                <artifactId>cui-java-bom</artifactId>
-                <version>${version.cui.parent}</version>
-                <type>pom</type>
-                <scope>import</scope>
+                <artifactId>cui-java-tools</artifactId>
+                <version>${version.cui.java.tools}</version>
+                <scope>compile</scope>
             </dependency>
             <dependency>
-                <groupId>de.cuioss.portal</groupId>
-                <artifactId>bom</artifactId>
-                <version>${version.cui.portal.core}</version>
-                <type>pom</type>
-                <scope>import</scope>
+                <groupId>de.cuioss.test</groupId>
+                <artifactId>cui-test-juli-logger</artifactId>
+                <version>${version.cui.test.juli.logger}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>de.cuioss.test</groupId>
+                <artifactId>cui-test-value-objects</artifactId>
+                <version>${version.cui.test.value.objects}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>de.cuioss.test</groupId>
+                <artifactId>cui-test-generator</artifactId>
+                <version>${version.cui.test.generator}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>de.cuioss.test</groupId>
+                <artifactId>cui-test-mockwebserver-junit5</artifactId>
+                <version>${version.cui.test.mockwebserver}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>de.cuioss</groupId>
+                <artifactId>cui-jwt-validation</artifactId>
+                <version>${version.cui-jwt-validation}</version>
+                <scope>compile</scope>
+            </dependency>
+            <!-- Implementation of jakarta.json-api: Used for cui-jwt-validation-->
+            <dependency>
+                <groupId>org.eclipse.parsson</groupId>
+                <artifactId>parsson</artifactId>
+                <version>${version.parsson}</version>
+                <scope>runtime</scope>
             </dependency>
             <!-- outgoing-->
             <dependency>

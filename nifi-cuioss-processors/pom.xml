@@ -30,9 +30,16 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
         </dependency>
+        <!--dependency>
+            <groupId>de.cuioss</groupId>
+            <artifactId>cui-jwt-validation</artifactId>
+            <scope>compile</scope>
+        </dependency -->
+        <!-- Implementation of jakarta.json-api: Used for cui-jwt-validation-->
         <dependency>
-            <groupId>de.cuioss.portal.authentication</groupId>
-            <artifactId>portal-authentication-token</artifactId>
+            <groupId>org.eclipse.parsson</groupId>
+            <artifactId>parsson</artifactId>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.nifi</groupId>
@@ -46,6 +53,11 @@
         <dependency>
             <groupId>org.apache.nifi</groupId>
             <artifactId>nifi-mock</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>de.cuioss.test</groupId>
+            <artifactId>cui-test-mockwebserver-junit5</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
