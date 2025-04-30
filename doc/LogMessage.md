@@ -39,7 +39,6 @@ All messages follow the format: [JWTAuth]-[identifier]: [message]
 | JWTAuth-208 | Processor | Unknown token issuer: %s | Logged when a token has an unknown issuer |
 | JWTAuth-209 | Processor | Token audience does not match required audience | Logged when a token's audience doesn't match the required audience |
 | JWTAuth-210 | Processor | Token missing required scopes: %s | Logged when a token is missing required scopes |
-| JWTAuth-211 | Processor | Token missing required roles: %s | Logged when a token is missing required roles |
 | JWTAuth-212 | Processor | Failed to retrieve JWKS from endpoint '%s': %s | Logged when JWKS retrieval fails |
 | JWTAuth-213 | Processor | Invalid processor configuration: %s | Logged when the processor has an invalid configuration |
 

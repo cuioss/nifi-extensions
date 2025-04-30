@@ -130,10 +130,7 @@ The processor must support advanced properties that are only shown when explicit
 * Required Scopes (List of String)
 ** List of OAuth scopes that must be present in token
 ** Empty list means no specific scopes required
-* Required Roles (List of String)
-** List of roles that must be present in token
-** Empty list means no specific roles required
-* All configured requirements (scopes and roles) must be met for success
+* All configured requirements (scopes) must be met for success
 
 [#NIFI-AUTH-7.5]
 ==== NIFI-AUTH-7.5: Token Location

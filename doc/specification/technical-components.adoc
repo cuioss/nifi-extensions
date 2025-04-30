@@ -43,19 +43,19 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: NiFi Integ
 == Core Components
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-2.1[NIFI-AUTH-2.1: Core Components]_
 
-=== TokenFactory
+=== TokenValidator
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
-The TokenFactory serves as the primary entry point for token operations. It provides:
+The TokenValidator serves as the primary entry point for token operations. It provides:
 
 * Centralized token validation
 * Multi-issuer support
 * Token parsing and verification
 
-=== JwksAwareTokenParser
+=== IssuerConfig
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
-The JwksAwareTokenParser handles secure token validation using JWKS endpoints:
+The IssuerConfig handles secure token validation using JWKS endpoints:
 
 * Automatic public key retrieval and caching
 * Configurable key refresh intervals
@@ -63,8 +63,8 @@ The JwksAwareTokenParser handles secure token validation using JWKS endpoints:
 
 [source,java]
 ----
-// Configure a parser for a specific issuer
-JwksAwareTokenParser parser = JwksAwareTokenParser.builder()
+// Configure an issuer config for a specific issuer
+IssuerConfig issuerConfig = IssuerConfig.builder()
     .jwksIssuer("https://auth.example.com")
     .jwksEndpoint("https://auth.example.com/.well-known/jwks.json")
     .jwksRefreshIntervall(60)
@@ -74,15 +74,15 @@ JwksAwareTokenParser parser = JwksAwareTokenParser.builder()
 === Multi-Issuer Support
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
 
-The MultiIssuerJWTTokenAuthenticator supports multiple issuers by utilizing a TokenFactory with multiple JwksAwareTokenParsers.
+The MultiIssuerJWTTokenAuthenticator supports multiple issuers by utilizing a TokenValidator with multiple IssuerConfig instances.
 
 [source,java]
 ----
-// Create a factory with multiple parsers for different issuers
-TokenFactory factory = TokenFactory.of(parser1, parser2, parser3);
+// Create a validator with multiple issuer configs for different issuers
+TokenValidator validator = new TokenValidator(issuerConfig1, issuerConfig2, issuerConfig3);
 
-// Use the factory to validate tokens from different issuers
-Optional<ParsedAccessToken> accessToken = factory.createAccessToken(tokenString);
+// Use the validator to validate tokens from different issuers
+Optional<AccessTokenContent> accessToken = validator.createAccessToken(tokenString);
 ----
 
 == Relationships
@@ -135,7 +135,6 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-6.1[NIFI-AUTH-6.1: Success 
 * jwt.claims.*: All extracted claims
 * jwt.validatedAt: Validation timestamp
 * jwt.scopes: List of token scopes
-* jwt.roles: List of token roles
 
 === Output Attributes (Failure)
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-6.2[NIFI-AUTH-6.2: Failure Path]_
@@ -148,25 +147,24 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-6.2[NIFI-AUTH-6.2: Failure 
 ----
 private void addSuccessAttributes(FlowFile flowFile, ParsedJwtToken token) {
     Map<String, String> attributes = new HashMap<>();
-    
+
     // Add basic token information
     attributes.put("jwt.issuer", token.getIssuer());
     attributes.put("jwt.subject", token.getSubject());
     attributes.put("jwt.validatedAt", String.valueOf(System.currentTimeMillis()));
-    
+
     // Add all claims as attributes
     for (Map.Entry<String, Object> claim : token.getClaims().entrySet()) {
         attributes.put("jwt.claims." + claim.getKey(), 
                        claim.getValue() != null ? claim.getValue().toString() : "");
     }
-    
-    // Add scopes and roles
+
+    // Add scopes
     attributes.put("jwt.scopes", String.join(",", token.getScopes()));
-    attributes.put("jwt.roles", String.join(",", token.getRoles()));
-    
+
     // Add authorization status
     attributes.put("jwt.authorization.passed", "true");
-    
+
     // Update flowfile with attributes
     flowFile = session.putAllAttributes(flowFile, attributes);
 }

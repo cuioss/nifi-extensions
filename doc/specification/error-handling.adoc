@@ -102,9 +102,9 @@ import lombok.experimental.UtilityClass;
  */
 @UtilityClass
 public final class AuthLogMessages {
-    
+
     private static final String PREFIX = "AUTH";
-    
+
     @UtilityClass
     public static final class INFO {
         public static final LogRecord TOKEN_VALIDATED = LogRecordModel.builder()
@@ -112,14 +112,14 @@ public final class AuthLogMessages {
                 .identifier(1)
                 .template("Successfully validated token from issuer '%s'")
                 .build();
-                
+
         public static final LogRecord JWKS_REFRESHED = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(2)
                 .template("Successfully refreshed JWKS from endpoint '%s'")
                 .build();
     }
-    
+
     @UtilityClass
     public static final class WARN {
         public static final LogRecord USING_EXPIRED_JWKS = LogRecordModel.builder()
@@ -127,14 +127,14 @@ public final class AuthLogMessages {
                 .identifier(100)
                 .template("Using expired JWKS from endpoint '%s' because refresh failed")
                 .build();
-                
+
         public static final LogRecord TOKEN_MISSING = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(101)
                 .template("No token found in header '%s'")
                 .build();
     }
-    
+
     @UtilityClass
     public static final class ERROR {
         public static final LogRecord INVALID_TOKEN_FORMAT = LogRecordModel.builder()
@@ -142,55 +142,55 @@ public final class AuthLogMessages {
                 .identifier(200)
                 .template("Invalid token format: %s")
                 .build();
-                
+
         public static final LogRecord INVALID_TOKEN_SIGNATURE = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(201)
                 .template("Invalid token signature for issuer '%s'")
                 .build();
-                
+
         public static final LogRecord TOKEN_EXPIRED = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(202)
                 .template("Token has expired")
                 .build();
-                
+
         public static final LogRecord TOKEN_NOT_YET_VALID = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(203)
                 .template("Token not yet valid")
                 .build();
-                
+
         public static final LogRecord UNKNOWN_ISSUER = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(204)
                 .template("Unknown token issuer: %s")
                 .build();
-                
+
         public static final LogRecord INVALID_AUDIENCE = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(205)
                 .template("Token audience does not match required audience")
                 .build();
-                
+
         public static final LogRecord MISSING_REQUIRED_SCOPES = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(206)
                 .template("Token missing required scopes: %s")
                 .build();
-                
+
         public static final LogRecord MISSING_REQUIRED_ROLES = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(207)
                 .template("Token missing required roles: %s")
                 .build();
-                
+
         public static final LogRecord JWKS_RETRIEVAL_FAILED = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(208)
                 .template("Failed to retrieve JWKS from endpoint '%s': %s")
                 .build();
-                
+
         public static final LogRecord INVALID_CONFIGURATION = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(209)
@@ -241,13 +241,13 @@ public enum ERROR {
     SIGNATURE_VALIDATION("error.signature.validation"),
     CLAIMS_VALIDATION("error.claims.validation"),
     AUTHORIZATION("error.authorization");
-    
+
     private final String messageKey;
-    
+
     ERROR(String messageKey) {
         this.messageKey = messageKey;
     }
-    
+
     public String format(Object... args) {
         return MessageFormat.format(MESSAGES.getString(messageKey), args);
     }
@@ -255,18 +255,18 @@ public enum ERROR {
 
 private void addErrorAttributes(FlowFile flowFile, String errorCode, ERROR error, Object... args) {
     Map<String, String> attributes = new HashMap<>();
-    
+
     // Get localized error message
     String errorMessage = error.format(args);
-    
+
     // Add error information
     attributes.put("jwt.error.code", errorCode);
     attributes.put("jwt.error.reason", errorMessage);
-    
+
     // Determine error category
     String category = determineErrorCategory(errorCode);
     attributes.put("jwt.error.category", category);
-    
+
     // Update flowfile with attributes
     flowFile = session.putAllAttributes(flowFile, attributes);
 }
@@ -277,7 +277,7 @@ private void addErrorAttributes(FlowFile flowFile, String errorCode, ERROR error
 === Token Validation Approach
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
-The processor handles token validation using TokenFactory from cui-portal-core. For detailed implementation, see link:token-validation.adoc[Token Validation Specification].
+The processor handles token validation using TokenValidator from cui-jwt-validation. For detailed implementation, see link:token-validation.adoc[Token Validation Specification].
 
 [source,java]
 ----
@@ -287,12 +287,12 @@ public void onTrigger(final ProcessContext context, final ProcessSession session
     if (flowFile == null) {
         return;
     }
-    
+
     try {
         // Get token from header
         String tokenHeader = context.getProperty(TOKEN_HEADER).getValue();
         String token = getTokenFromFlowFile(flowFile, tokenHeader);
-        
+
         if (token == null) {
             // Handle missing token
             LOGGER.warn(AuthLogMessages.WARN.TOKEN_MISSING.format(tokenHeader));
@@ -300,29 +300,29 @@ public void onTrigger(final ProcessContext context, final ProcessSession session
             session.transfer(flowFile, AUTHENTICATION_FAILED);
             return;
         }
-        
-        // Get the token parser from configuration
-        JwksAwareTokenParser tokenParser = getConfiguredTokenParser(context);
-        
-        // Create TokenFactory and validate token
-        TokenFactory tokenFactory = TokenFactory.of(tokenParser);
-        Optional<ParsedAccessToken> accessToken = tokenFactory.createAccessToken(token);
-        
+
+        // Get the issuer config from configuration
+        IssuerConfig issuerConfig = getConfiguredIssuerConfig(context);
+
+        // Create TokenValidator and validate token
+        TokenValidator tokenValidator = new TokenValidator(issuerConfig);
+        Optional<AccessTokenContent> accessToken = tokenValidator.createAccessToken(token);
+
         if (accessToken.isEmpty()) {
             // Token validation failed
             addErrorAttributes(flowFile, "AUTH-002", AuthLogMessages.ERROR.INVALID_TOKEN_FORMAT);
             session.transfer(flowFile, AUTHENTICATION_FAILED);
             return;
         }
-        
+
         // Token is valid, extract claims and add to flow file
-        ParsedAccessToken parsedToken = accessToken.get();
+        AccessTokenContent parsedToken = accessToken.get();
         Map<String, String> claims = extractClaims(parsedToken);
         flowFile = session.putAllAttributes(flowFile, claims);
-        
+
         // Transfer to success relationship
         session.transfer(flowFile, AUTHENTICATION_SUCCESS);
-        
+
     } catch (Exception e) {
         // Handle unexpected exceptions
         LOGGER.error(e, "Unexpected error during token validation: %s", e.getMessage());
@@ -332,25 +332,25 @@ public void onTrigger(final ProcessContext context, final ProcessSession session
 }
 
 /**
- * Creates a JwksAwareTokenParser from the processor configuration.
+ * Creates an IssuerConfig from the processor configuration.
  */
-private JwksAwareTokenParser getConfiguredTokenParser(ProcessContext context) {
+private IssuerConfig getConfiguredIssuerConfig(ProcessContext context) {
     // Get dynamic properties for issuers
     Map<String, String> dynamicProperties = getDynamicProperties(context);
-    
-    // For each issuer, create a token parser
+
+    // For each issuer, create an issuer config
     for (Map.Entry<String, String> entry : dynamicProperties.entrySet()) {
         String issuerName = entry.getKey();
         String jwksUrl = entry.getValue();
-        
-        // Create and return the token parser for this issuer
-        return JwksAwareTokenParser.builder()
+
+        // Create and return the issuer config for this issuer
+        return IssuerConfig.builder()
             .jwksIssuer(issuerName)
             .jwksEndpoint(jwksUrl)
             .jwksRefreshIntervall(getRefreshInterval(context))
             .build();
     }
-    
+
     throw new IllegalStateException("No token issuers configured");
 }
 
@@ -387,11 +387,11 @@ private void initialize(ProcessContext context) throws ConfigurationException {
         // Get configuration properties
         String tokenHeader = context.getProperty(TOKEN_HEADER).getValue();
         long refreshInterval = context.getProperty(JWKS_REFRESH_INTERVAL).asTimePeriod(TimeUnit.MILLISECONDS);
-        
+
         // Initialize JWKS client and cache
         jwksClient = new JwksClient();
         jwksCache = new JwksCache(jwksClient, refreshInterval);
-        
+
         // Configure issuers from dynamic properties
         configureIssuers(context);
     } catch (Exception e) {
@@ -402,24 +402,24 @@ private void initialize(ProcessContext context) throws ConfigurationException {
 private void configureIssuers(ProcessContext context) throws ConfigurationException {
     // Clear existing issuers
     issuers.clear();
-    
+
     // Get dynamic properties
     Map<PropertyDescriptor, String> dynamicProperties = context.getProperties();
-    
+
     // Process each dynamic property
     for (Map.Entry<PropertyDescriptor, String> entry : dynamicProperties.entrySet()) {
         PropertyDescriptor descriptor = entry.getKey();
         String value = entry.getValue();
-        
+
         // Skip static properties
         if (!descriptor.isDynamic()) {
             continue;
         }
-        
+
         // Process issuer configuration
         String issuerName = descriptor.getName();
         String issuerConfig = value.trim();
-        
+
         try {
             if (issuerConfig.startsWith("http")) {
                 // JWKS URL
@@ -437,7 +437,7 @@ private void configureIssuers(ProcessContext context) throws ConfigurationExcept
             throw new ConfigurationException("Failed to configure issuer " + issuerName + ": " + e.getMessage(), e);
         }
     }
-    
+
     // Ensure at least one issuer is configured
     if (issuers.isEmpty()) {
         throw new ConfigurationException("No issuers configured. At least one issuer must be configured.");
@@ -458,21 +458,21 @@ public void onTrigger(final ProcessContext context, final ProcessSession session
     if (flowFile == null) {
         return;
     }
-    
+
     try {
         // Process the flow file
         processFlowFile(flowFile, context, session);
     } catch (Exception e) {
         // Log the error
         LOGGER.error(e, "Unexpected error processing flow file: %s", e.getMessage());
-        
+
         // Add error attributes
         Map<String, String> attributes = new HashMap<>();
         attributes.put("jwt.error.reason", "Unexpected error: " + e.getMessage());
         attributes.put("jwt.error.code", "AUTH-999");
         attributes.put("jwt.error.category", "RUNTIME_ERROR");
         flowFile = session.putAllAttributes(flowFile, attributes);
-        
+
         // Route to failure relationship
         session.transfer(flowFile, AUTHENTICATION_FAILED);
     }
@@ -489,7 +489,7 @@ The processor provides clear error messages in the UI for configuration issues:
 @Override
 protected Collection<ValidationResult> customValidate(ValidationContext validationContext) {
     final List<ValidationResult> results = new ArrayList<>();
-    
+
     // Ensure at least one issuer is configured
     if (validationContext.getProperties().keySet().stream()
             .noneMatch(PropertyDescriptor::isDynamic)) {
@@ -499,12 +499,12 @@ protected Collection<ValidationResult> customValidate(ValidationContext validati
             .explanation("At least one issuer must be configured")
             .build());
     }
-    
+
     // Validate each issuer configuration
     for (PropertyDescriptor descriptor : validationContext.getProperties().keySet()) {
         if (descriptor.isDynamic()) {
             String value = validationContext.getProperty(descriptor).getValue();
-            
+
             if (!value.startsWith("http") && !value.startsWith("-----BEGIN")) {
                 results.add(new ValidationResult.Builder()
                     .subject(descriptor.getDisplayName())
@@ -514,7 +514,7 @@ protected Collection<ValidationResult> customValidate(ValidationContext validati
             }
         }
     }
-    
+
     return results;
 }
 ----
