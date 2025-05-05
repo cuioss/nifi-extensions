@@ -46,7 +46,7 @@
             https://s01.oss.sonatype.org/service/local/staging/deploy/maven2
         </deploy.staging.repo.url>
 
-        <version.nifi>2.3.0</version.nifi>
+        <version.nifi>2.4.0</version.nifi>
         <!-- Sonar related-->
         <sonar.organization>cuioss-github</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
