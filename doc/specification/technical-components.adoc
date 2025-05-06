@@ -93,10 +93,13 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-6[NIFI-AUTH-6: Output Requi
 |Relationship |Description
 
 |success
-|Valid tokens with extracted claims as attributes
+|FlowFiles that have been successfully processed with valid token data attached
 
-|authentication-failed
-|Invalid tokens with error details
+|failure
+|FlowFiles that contained invalid tokens or encountered errors during processing
+
+|unauthorized
+|FlowFiles that contained tokens that failed validation (expired, invalid signature, etc.)
 |===
 
 [source,java]
@@ -169,3 +172,72 @@ private void addSuccessAttributes(FlowFile flowFile, ParsedJwtToken token) {
     flowFile = session.putAllAttributes(flowFile, attributes);
 }
 ----
+
+== JavaScript Module Structure
+
+=== Directory Organization
+
+The JavaScript code is organized according to the following structure:
+
+[source]
+----
+src/
+└── main/
+    └── resources/
+        └── js/
+            ├── components/      # UI Components
+            │   ├── jwks-endpoint-validator.js
+            │   └── token-verification.js
+            ├── services/        # API and utility services
+            │   ├── api-client.js
+            │   └── token-parser.js
+            ├── utils/           # Utility functions
+            │   ├── validation.js
+            │   └── formatting.js
+            └── index.js         # Main entry point
+----
+
+This structure provides clear separation of concerns:
+
+* *components/* - Contains UI components and their associated logic
+* *services/* - Houses service modules for API communication and core functionality
+* *utils/* - Provides utility functions and helpers that are used across the application
+
+=== Module Naming Conventions
+
+JavaScript modules follow these naming conventions:
+
+* Module files use kebab-case naming (e.g., `jwks-endpoint-validator.js`)
+* Functions and variables use camelCase naming (e.g., `validateEndpoint()`)
+* Classes and constructor functions use PascalCase (e.g., `TokenValidator`)
+* Constants use UPPER_SNAKE_CASE (e.g., `DEFAULT_REFRESH_INTERVAL`)
+
+=== Module Export Pattern
+
+Each module should have a clear, consistent export pattern:
+
+[source,javascript]
+----
+// Service module example
+const TokenService = {
+  parseToken,
+  validateToken,
+  extractClaims
+};
+
+export default TokenService;
+----
+
+=== Integration Points
+
+The JavaScript module and the main Java modules integrate through:
+
+1. REST API endpoints for JWKS validation and token verification
+2. WebJar packaging of JavaScript resources
+3. Maven build integration
+
+== See Also
+* link:token-validation.adoc[Token Validation] - Details on the token validation process
+* link:token-factory-manager.adoc[Token Factory Manager] - How token factories are created and managed
+* link:configuration.adoc[Configuration] - Configuration properties and UI elements
+* link:../Specification.adoc[Back to Main Specification]

@@ -7,6 +7,8 @@
 == Overview
 This document outlines the requirements for the JWT Validation Processor, a component designed to enhance Apache NiFi's capabilities in handling REST API authentication through JWT tokens.
 
+For detailed implementation specifications, see the link:Specification.adoc[Specification Document].
+
 == General Requirements
 
 [#NIFI-AUTH-1]
@@ -14,6 +16,8 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 * Enable simplified REST API endpoint provisioning in NiFi
 * Provide standardized JWT validation capabilities
 * Support OAuth 2.0 token validation workflow
+
+_Implementation details: link:Specification.adoc[Main Specification]_
 
 == MultiIssuerJWTTokenAuthenticator
 
@@ -25,6 +29,8 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 * Extract token information
 * Route flow files based on validation results
 
+_Implementation details: link:specification/technical-components.adoc[Technical Components]_
+
 [#NIFI-AUTH-3]
 === NIFI-AUTH-3: Token Validation Requirements
 * Verify token structure (header, payload, signature)
@@ -34,6 +40,8 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 * Validate token audience if present (aud claim)
 * Support multiple token issuers
 
+_Implementation details: link:specification/token-validation.adoc[Token Validation]_
+
 [#NIFI-AUTH-4]
 === NIFI-AUTH-4: Multiple Issuer Support
 * Configure multiple trusted issuers
@@ -41,11 +49,15 @@ This document outlines the requirements for the JWT Validation Processor, a comp
 * Support different signing algorithms per issuer
 * Allow dynamic issuer key/certificate updates
 
+_Implementation details: link:specification/token-factory-manager.adoc[Token Factory Manager]_
+
 [#NIFI-AUTH-5]
 === NIFI-AUTH-5: Input Requirements
 * Accept JWT token in flow file
 * Support configurable token location in flow file
 * Handle various token formats (Bearer, raw JWT)
+
+_Implementation details: link:specification/technical-components.adoc[Technical Components]_
 
 [#NIFI-AUTH-5.1]
 ==== NIFI-AUTH-5.1: Token Location
@@ -83,6 +95,8 @@ The processor must support advanced properties that are only shown when explicit
 
 [#NIFI-AUTH-7]
 === NIFI-AUTH-7: Configuration Requirements
+
+_Implementation details: link:specification/configuration.adoc[Configuration]_
 
 [#NIFI-AUTH-7.1]
 ==== NIFI-AUTH-7.1: UI Configuration
@@ -152,6 +166,8 @@ The processor must support advanced properties that are only shown when explicit
 * Proper error handling without information leakage
 * Compliance with security best practices
 
+_Implementation details: link:specification/security.adoc[Security]_
+
 [#NIFI-AUTH-9]
 === NIFI-AUTH-9: Performance Requirements
 * Efficient token validation
@@ -164,6 +180,8 @@ The processor must support advanced properties that are only shown when explicit
 ** Token validation latency: <50ms per token
 ** Memory usage: <100MB additional heap usage
 
+_Implementation details: link:specification/technical-components.adoc[Technical Components]_
+
 [#NIFI-AUTH-10]
 === NIFI-AUTH-10: Error Handling Requirements
 * Standardized error codes for all failure scenarios
@@ -174,6 +192,8 @@ The processor must support advanced properties that are only shown when explicit
 ** ERROR level messages: 200-299
 * Recovery mechanisms for transient errors
 * Proper logging of errors with appropriate severity levels
+
+_Implementation details: link:specification/error-handling.adoc[Error Handling]_
 
 == Integration Requirements
 
@@ -191,6 +211,8 @@ The processor must support advanced properties that are only shown when explicit
 * Example flow for token transformation
 * Example flow for multi-tenant API routing
 
+_Implementation details: link:specification/integration-patterns.adoc[Integration Patterns]_
+
 [#NIFI-AUTH-13]
 === NIFI-AUTH-13: Documentation Requirements
 * Clear configuration guide
@@ -198,6 +220,8 @@ The processor must support advanced properties that are only shown when explicit
 * Troubleshooting guide
 * Security considerations
 * Performance tuning recommendations
+
+_Implementation details: link:Specification.adoc[Specification Document]_
 
 == Testing Requirements
 
@@ -210,6 +234,8 @@ The processor must support advanced properties that are only shown when explicit
   ** Error case generation
   ** Log message verification
 * Performance testing with >1000 tokens/sec throughput
+
+_Implementation details: link:specification/testing.adoc[Testing]_
 
 [#NIFI-AUTH-15]
 === NIFI-AUTH-15: Integration Testing
@@ -243,3 +269,5 @@ The processor must support advanced properties that are only shown when explicit
 ** Documentation strings
 * Resource bundles must follow standard Java ResourceBundle pattern
 * Default to English when a translation is not available
+
+_Implementation details: link:specification/internationalization.adoc[Internationalization]_

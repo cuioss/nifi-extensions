@@ -32,15 +32,26 @@ The following properties are configured as advanced properties and are only show
 |Boolean
 |true
 |When true, only valid tokens result in success relationship
+
+|Token Location
+|String
+|AUTHORIZATION_HEADER
+|Where to find the token (AUTHORIZATION_HEADER, CUSTOM_HEADER, FLOW_FILE_CONTENT)
+
+|Custom Header Name
+|String
+|null
+|Name of custom header when Token Location is set to CUSTOM_HEADER
 |===
 
 ==== Implementation of Advanced Properties
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-5.3[NIFI-AUTH-5.3: Advanced Properties]_
 
-The advanced properties are implemented using the `displayName` property with a special prefix to indicate they should be displayed in the advanced tab:
+The advanced properties are implemented using the `isAdvanced` method in NiFi 2.3.0:
 
 [source,java]
 ----
+// Property Descriptors for NiFi 2.3.0
 public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Builder()
     .name("Token Header Name")
     .displayName("Token Header Name")
@@ -72,12 +83,36 @@ public static final PropertyDescriptor REQUIRE_VALID_TOKEN = new PropertyDescrip
     .expressionLanguageSupported(ExpressionLanguageScope.NONE)
     .build();
 
+public static final PropertyDescriptor TOKEN_LOCATION = new PropertyDescriptor.Builder()
+    .name("Token Location")
+    .displayName("Token Location")
+    .description(i18nResolver.getTranslatedString("property.token.location.description"))
+    .required(true)
+    .defaultValue("AUTHORIZATION_HEADER")
+    .allowableValues("AUTHORIZATION_HEADER", "CUSTOM_HEADER", "FLOW_FILE_CONTENT")
+    .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+    .expressionLanguageSupported(ExpressionLanguageScope.NONE)
+    .dependsOn(REQUIRE_VALID_TOKEN, "true")
+    .build();
+
+public static final PropertyDescriptor CUSTOM_HEADER_NAME = new PropertyDescriptor.Builder()
+    .name("Custom Header Name")
+    .displayName("Custom Header Name")
+    .description(i18nResolver.getTranslatedString("property.custom.header.name.description"))
+    .required(false)
+    .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+    .expressionLanguageSupported(ExpressionLanguageScope.NONE)
+    .dependsOn(TOKEN_LOCATION, "CUSTOM_HEADER")
+    .build();
+
 @Override
 protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
     final List<PropertyDescriptor> properties = new ArrayList<>();
     properties.add(TOKEN_HEADER);
     properties.add(JWKS_REFRESH_INTERVAL);
     properties.add(REQUIRE_VALID_TOKEN);
+    properties.add(TOKEN_LOCATION);
+    properties.add(CUSTOM_HEADER_NAME);
     return properties;
 }
 
@@ -89,7 +124,7 @@ protected PropertyDescriptor getSupportedDynamicPropertyDescriptor(final String 
         .description(i18nResolver.getTranslatedString("property.issuer.description"))
         .required(false)
         .dynamic(true)
-        .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+        .addValidator(new JwksEndpointValidator())
         .expressionLanguageSupported(ExpressionLanguageScope.NONE)
         .build();
 }
@@ -98,14 +133,16 @@ protected PropertyDescriptor getSupportedDynamicPropertyDescriptor(final String 
 public boolean isAdvanced(PropertyDescriptor property) {
     return TOKEN_HEADER.equals(property) || 
            JWKS_REFRESH_INTERVAL.equals(property) || 
-           REQUIRE_VALID_TOKEN.equals(property);
+           REQUIRE_VALID_TOKEN.equals(property) ||
+           TOKEN_LOCATION.equals(property) ||
+           CUSTOM_HEADER_NAME.equals(property);
 }
 ----
 
 === Dynamic Properties
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-5.2[NIFI-AUTH-5.2: Dynamic Properties]_
 
-Dynamic properties are used to configure token issuers. Each property represents a single issuer configuration.
+Dynamic properties are used to configure token issuers. Each property represents a single issuer configuration. In NiFi 2.3.0, these are validated using custom validators.
 
 [cols="2,1,2"]
 |===
@@ -116,25 +153,116 @@ Dynamic properties are used to configure token issuers. Each property represents
 |Value can be either a JWKS URL or a PEM-encoded public key
 |===
 
+==== Custom Validator for JWKS Endpoints
+
+NiFi 2.3.0 supports custom validators for property values:
+
+[source,java]
+----
+public class JwksEndpointValidator implements Validator {
+    @Override
+    public ValidationResult validate(String subject, String input, ValidationContext context) {
+        if (StringUtils.isBlank(input)) {
+            return new ValidationResult.Builder()
+                .input(input)
+                .subject(subject)
+                .valid(false)
+                .explanation("Value cannot be empty")
+                .build();
+        }
+        
+        // Check if the input is a URL
+        if (input.startsWith("http://") || input.startsWith("https://")) {
+            // Validate JWKS URL
+            try {
+                URL url = new URL(input);
+                
+                // Check for HTTPS
+                if (!"https".equalsIgnoreCase(url.getProtocol())) {
+                    return new ValidationResult.Builder()
+                        .input(input)
+                        .subject(subject)
+                        .valid(false)
+                        .explanation("JWKS URL must use HTTPS for security")
+                        .build();
+                }
+                
+                return new ValidationResult.Builder()
+                    .input(input)
+                    .subject(subject)
+                    .valid(true)
+                    .build();
+            } catch (MalformedURLException e) {
+                return new ValidationResult.Builder()
+                    .input(input)
+                    .subject(subject)
+                    .valid(false)
+                    .explanation("Invalid URL format: " + e.getMessage())
+                    .build();
+            }
+        } else {
+            // Validate as PEM-encoded public key
+            try {
+                // Check if input starts with PEM header
+                if (!input.startsWith("-----BEGIN")) {
+                    return new ValidationResult.Builder()
+                        .input(input)
+                        .subject(subject)
+                        .valid(false)
+                        .explanation("Invalid public key format. Must be PEM-encoded")
+                        .build();
+                }
+                
+                // Basic PEM validation (detailed validation happens at runtime)
+                if (!input.contains("-----BEGIN PUBLIC KEY-----") || !input.contains("-----END PUBLIC KEY-----")) {
+                    return new ValidationResult.Builder()
+                        .input(input)
+                        .subject(subject)
+                        .valid(false)
+                        .explanation("Invalid PEM format for public key")
+                        .build();
+                }
+                
+                return new ValidationResult.Builder()
+                    .input(input)
+                    .subject(subject)
+                    .valid(true)
+                    .build();
+            } catch (Exception e) {
+                return new ValidationResult.Builder()
+                    .input(input)
+                    .subject(subject)
+                    .valid(false)
+                    .explanation("Invalid public key: " + e.getMessage())
+                    .build();
+            }
+        }
+    }
+}
+----
+
 == UI Configuration
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
+
+NiFi 2.3.0 supports enhanced UI capabilities for processors.
 
 === Internationalized Property Descriptors
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
-The processor uses internationalized strings for all UI elements:
+The processor uses internationalized strings for all UI elements through the i18nResolver API:
 
 [source,java]
 ----
-// Load resource bundle
-private static final ResourceBundle MESSAGES = ResourceBundle.getBundle(
-    "de.cuioss.nifi.processors.auth.messages.Messages",
-    Locale.getDefault());
+// Configure internationalization in NiFi 2.3.0
+@Override
+protected void init(final ProcessorInitializationContext context) {
+    i18nResolver = NiFiI18nResolver.createDefault(context.getLogger());
+}
 
 public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Builder()
     .name("Token Header Name")
-    .displayName(MESSAGES.getString("property.token.header.name"))
-    .description(MESSAGES.getString("property.token.header.description"))
+    .displayName(i18nResolver.getTranslatedString("property.token.header.name"))
+    .description(i18nResolver.getTranslatedString("property.token.header.description"))
     .required(true)
     .defaultValue("Authorization")
     .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
@@ -142,8 +270,8 @@ public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Bui
 
 public static final PropertyDescriptor JWKS_REFRESH_INTERVAL = new PropertyDescriptor.Builder()
     .name("JWKS Refresh Interval")
-    .displayName(MESSAGES.getString("property.jwks.refresh.interval.name"))
-    .description(MESSAGES.getString("property.jwks.refresh.interval.description"))
+    .displayName(i18nResolver.getTranslatedString("property.jwks.refresh.interval.name"))
+    .description(i18nResolver.getTranslatedString("property.jwks.refresh.interval.description"))
     .required(true)
     .defaultValue("15 min")
     .addValidator(StandardValidators.TIME_PERIOD_VALIDATOR)
@@ -151,8 +279,8 @@ public static final PropertyDescriptor JWKS_REFRESH_INTERVAL = new PropertyDescr
 
 public static final PropertyDescriptor REQUIRE_VALID_TOKEN = new PropertyDescriptor.Builder()
     .name("Require Valid Token")
-    .displayName(MESSAGES.getString("property.require.valid.token.name"))
-    .description(MESSAGES.getString("property.require.valid.token.description"))
+    .displayName(i18nResolver.getTranslatedString("property.require.valid.token.name"))
+    .description(i18nResolver.getTranslatedString("property.require.valid.token.description"))
     .required(true)
     .defaultValue("true")
     .allowableValues("true", "false")
@@ -171,57 +299,37 @@ protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
 protected PropertyDescriptor getSupportedDynamicPropertyDescriptor(final String propertyDescriptorName) {
     return new PropertyDescriptor.Builder()
         .name(propertyDescriptorName)
-        .displayName("Issuer Configuration: " + propertyDescriptorName)
-        .description("Configuration for issuer: " + propertyDescriptorName + 
-                     ". Value can be either a JWKS URL or a PEM-encoded public key.")
+        .displayName(i18nResolver.getTranslatedString("property.issuer.name", propertyDescriptorName))
+        .description(i18nResolver.getTranslatedString("property.issuer.description", propertyDescriptorName))
         .required(true)
         .dynamic(true)
-        .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+        .addValidator(new JwksEndpointValidator())
         .build();
 }
 ----
 
-=== Custom UI Components
+=== Custom UI Components in NiFi 2.3.0
 
 ==== JWKS Endpoint Test Button
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
 
-The JWKS Endpoint Test Button allows users to validate that a JWKS endpoint is accessible and returns valid JWKS data.
+The JWKS Endpoint Test Button uses NiFi 2.3.0's improved custom UI capabilities:
 
 [source,javascript]
 ----
-// UI Extension for JWKS Test Button
-define(['jquery'], function ($) {
+// UI Extension for JWKS Test Button using NiFi 2.3.0 API
+define(['jquery', 'nf.Common'], function ($, nfCommon) {
     return {
         /**
          * Initialize the custom UI.
          */
         init: function (element, propertyValue, callback) {
-            // Load i18n resources
-            var i18n = {
-                en: {
-                    testConnection: "Test Connection",
-                    connectionSuccessful: "Connection successful",
-                    connectionFailed: "Connection failed: ",
-                    testFailed: "Test failed: ",
-                    notValidUrl: "Not a valid URL"
-                },
-                de: {
-                    testConnection: "Verbindung testen",
-                    connectionSuccessful: "Verbindung erfolgreich",
-                    connectionFailed: "Verbindung fehlgeschlagen: ",
-                    testFailed: "Test fehlgeschlagen: ",
-                    notValidUrl: "Keine gültige URL"
-                }
-            };
-            
-            // Determine language based on browser locale
-            var lang = (navigator.language || navigator.userLanguage).substring(0, 2);
-            var texts = i18n[lang] || i18n.en; // Default to English if language not supported
+            // Get i18n resources from NiFi Common
+            var i18n = nfCommon.getI18n();
             
             // Create UI elements
             var container = $('<div class="jwks-verification-container"></div>');
-            var verifyButton = $('<button type="button" class="verify-jwks-button">' + texts.testConnection + '</button>');
+            var verifyButton = $('<button type="button" class="verify-jwks-button">' + i18n['processor.jwt.testConnection'] + '</button>');
             var resultContainer = $('<div class="verification-result"></div>');
             
             // Add elements to the DOM
@@ -234,7 +342,7 @@ define(['jquery'], function ($) {
                 if (jwksUrl && jwksUrl.startsWith('http')) {
                     resultContainer.html('<span class="fa fa-spinner fa-spin"></span>');
                     
-                    // Make AJAX request to verify JWKS URL
+                    // Make AJAX request to verify JWKS URL using NiFi 2.3.0 API
                     $.ajax({
                         type: 'POST',
                         url: '../nifi-api/processors/verify-jwks',
@@ -246,18 +354,18 @@ define(['jquery'], function ($) {
                     }).done(function (response) {
                         if (response.valid) {
                             resultContainer.html('<span class="fa fa-check" style="color: green;"></span> ' + 
-                                                texts.connectionSuccessful);
+                                                i18n['processor.jwt.connectionSuccessful']);
                         } else {
                             resultContainer.html('<span class="fa fa-times" style="color: red;"></span> ' + 
-                                                texts.connectionFailed + response.explanation);
+                                                i18n['processor.jwt.connectionFailed'] + response.explanation);
                         }
                     }).fail(function (xhr) {
                         resultContainer.html('<span class="fa fa-times" style="color: red;"></span> ' + 
-                                            texts.testFailed + xhr.responseText);
+                                            i18n['processor.jwt.testFailed'] + xhr.responseText);
                     });
                 } else {
                     resultContainer.html('<span class="fa fa-times" style="color: red;"></span> ' + 
-                                        texts.notValidUrl);
+                                        i18n['processor.jwt.notValidUrl']);
                 }
             });
             
@@ -287,62 +395,24 @@ define(['jquery'], function ($) {
 ==== Token Verification Interface
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
 
-The Token Verification Interface allows users to test JWT tokens against the current processor configuration.
+The Token Verification Interface in NiFi 2.3.0:
 
 [source,javascript]
 ----
-define(['jquery'], function ($) {
+// Token verification UI using NiFi 2.3.0 API
+define(['jquery', 'nf.Common'], function ($, nfCommon) {
     return {
         /**
          * Initialize the custom UI.
          */
         init: function (element, processorId, callback) {
-            // Load i18n resources
-            var i18n = {
-                en: {
-                    tokenPlaceholder: "Paste JWT token here...",
-                    verifyButton: "Verify Token",
-                    enterToken: "Please enter a JWT token.",
-                    verifyingToken: "Verifying token...",
-                    tokenValid: "Token is valid!",
-                    tokenDetails: "Token Details:",
-                    issuer: "Issuer:",
-                    subject: "Subject:",
-                    expires: "Expires:",
-                    claims: "Claims:",
-                    flowFileAttributes: "FlowFile Attributes:",
-                    tokenInvalid: "Token validation failed!",
-                    errorDetails: "Error Details:",
-                    suggestion: "Suggestion:",
-                    verificationFailed: "Verification request failed: "
-                },
-                de: {
-                    tokenPlaceholder: "JWT-Token hier einfügen...",
-                    verifyButton: "Token überprüfen",
-                    enterToken: "Bitte geben Sie ein JWT-Token ein.",
-                    verifyingToken: "Token wird überprüft...",
-                    tokenValid: "Token ist gültig!",
-                    tokenDetails: "Token-Details:",
-                    issuer: "Aussteller:",
-                    subject: "Betreff:",
-                    expires: "Läuft ab:",
-                    claims: "Claims:",
-                    flowFileAttributes: "FlowFile-Attribute:",
-                    tokenInvalid: "Token-Validierung fehlgeschlagen!",
-                    errorDetails: "Fehlerdetails:",
-                    suggestion: "Vorschlag:",
-                    verificationFailed: "Überprüfungsanfrage fehlgeschlagen: "
-                }
-            };
-            
-            // Determine language based on browser locale
-            var lang = (navigator.language || navigator.userLanguage).substring(0, 2);
-            var texts = i18n[lang] || i18n.en; // Default to English if language not supported
+            // Get i18n resources from NiFi Common
+            var i18n = nfCommon.getI18n();
             
             // Create UI elements
             var container = $('<div class="token-verification-container"></div>');
-            var tokenInput = $('<textarea class="token-input" placeholder="' + texts.tokenPlaceholder + '"></textarea>');
-            var verifyButton = $('<button type="button" class="verify-token-button">' + texts.verifyButton + '</button>');
+            var tokenInput = $('<textarea class="token-input" placeholder="' + i18n['processor.jwt.tokenPlaceholder'] + '"></textarea>');
+            var verifyButton = $('<button type="button" class="verify-token-button">' + i18n['processor.jwt.verifyButton'] + '</button>');
             var resultContainer = $('<div class="verification-result"></div>');
             
             // Add elements to the DOM
@@ -355,13 +425,13 @@ define(['jquery'], function ($) {
             verifyButton.on('click', function () {
                 var token = tokenInput.val().trim();
                 if (!token) {
-                    resultContainer.html('<div class="message-warning">' + texts.enterToken + '</div>');
+                    resultContainer.html('<div class="message-warning">' + i18n['processor.jwt.enterToken'] + '</div>');
                     return;
                 }
                 
-                resultContainer.html('<span class="fa fa-spinner fa-spin"></span> ' + texts.verifyingToken);
+                resultContainer.html('<span class="fa fa-spinner fa-spin"></span> ' + i18n['processor.jwt.verifyingToken']);
                 
-                // Make AJAX request to verify the token
+                // Make AJAX request to verify the token using NiFi 2.3.0 API
                 $.ajax({
                     type: 'POST',
                     url: '../nifi-api/processors/' + processorId + '/verify-token',
@@ -373,22 +443,27 @@ define(['jquery'], function ($) {
                 }).done(function (response) {
                     if (response.valid) {
                         // Show success message with token details
-                        var html = '<div class="message-success">' + texts.tokenValid + '</div>';
+                        var html = '<div class="message-success">' + i18n['processor.jwt.tokenValid'] + '</div>';
                         html += '<div class="token-details">';
-                        html += '<h4>' + texts.tokenDetails + '</h4>';
+                        html += '<h4>' + i18n['processor.jwt.tokenDetails'] + '</h4>';
                         html += '<table class="token-info-table">';
-                        html += '<tr><td>' + texts.issuer + '</td><td>' + response.issuer + '</td></tr>';
-                        html += '<tr><td>' + texts.subject + '</td><td>' + response.subject + '</td></tr>';
-                        html += '<tr><td>' + texts.expires + '</td><td>' + new Date(response.expiresAt * 1000).toLocaleString(lang) + '</td></tr>';
+                        html += '<tr><td>' + i18n['processor.jwt.issuer'] + '</td><td>' + response.issuer + '</td></tr>';
+                        html += '<tr><td>' + i18n['processor.jwt.subject'] + '</td><td>' + response.subject + '</td></tr>';
+                        html += '<tr><td>' + i18n['processor.jwt.expires'] + '</td><td>' + 
+                               new Date(response.expiresAt * 1000).toLocaleString() + '</td></tr>';
                         
-                        // Add claims
-                        html += '<tr><td colspan="2"><h4>' + texts.claims + '</h4></td></tr>';
+                        // Add claims with improved formatting
+                        html += '<tr><td colspan="2"><h4>' + i18n['processor.jwt.claims'] + '</h4></td></tr>';
                         for (var claim in response.claims) {
-                            html += '<tr><td>' + claim + ':</td><td>' + JSON.stringify(response.claims[claim]) + '</td></tr>';
+                            var claimValue = response.claims[claim];
+                            // Format claim value based on type
+                            var displayValue = typeof claimValue === 'object' ? 
+                                              JSON.stringify(claimValue, null, 2) : String(claimValue);
+                            html += '<tr><td>' + claim + ':</td><td><pre>' + displayValue + '</pre></td></tr>';
                         }
                         
                         // Add attributes that would be added
-                        html += '<tr><td colspan="2"><h4>' + texts.flowFileAttributes + '</h4></td></tr>';
+                        html += '<tr><td colspan="2"><h4>' + i18n['processor.jwt.flowFileAttributes'] + '</h4></td></tr>';
                         for (var attr in response.attributes) {
                             html += '<tr><td>' + attr + ':</td><td>' + response.attributes[attr] + '</td></tr>';
                         }
@@ -397,15 +472,20 @@ define(['jquery'], function ($) {
                         html += '</div>';
                         resultContainer.html(html);
                     } else {
-                        // Show error message
-                        var html = '<div class="message-error">' + texts.tokenInvalid + '</div>';
+                        // Show error message with improved formatting
+                        var html = '<div class="message-error">' + i18n['processor.jwt.tokenInvalid'] + '</div>';
                         html += '<div class="error-details">';
-                        html += '<h4>' + texts.errorDetails + '</h4>';
+                        html += '<h4>' + i18n['processor.jwt.errorDetails'] + '</h4>';
                         html += '<p>' + response.reason + '</p>';
+                        
+                        // Add error code if available
+                        if (response.errorCode) {
+                            html += '<p><strong>Error Code:</strong> ' + response.errorCode + '</p>';
+                        }
                         
                         // Add suggestion if available
                         if (response.suggestion) {
-                            html += '<h4>' + texts.suggestion + '</h4>';
+                            html += '<h4>' + i18n['processor.jwt.suggestion'] + '</h4>';
                             html += '<p>' + response.suggestion + '</p>';
                         }
                         
@@ -413,7 +493,7 @@ define(['jquery'], function ($) {
                         resultContainer.html(html);
                     }
                 }).fail(function (xhr) {
-                    resultContainer.html('<div class="message-error">' + texts.verificationFailed + 
+                    resultContainer.html('<div class="message-error">' + i18n['processor.jwt.verificationFailed'] + 
                                          xhr.responseText + '</div>');
                 });
             });
@@ -431,8 +511,7 @@ define(['jquery'], function ($) {
 }
 ----
 
-
-== Configuration Examples
+== Configuration Examples for NiFi 2.3.0
 
 === Basic Configuration
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Validation Configuration]_
@@ -443,13 +522,14 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Va
 Token Header Name: Authorization
 JWKS Refresh Interval: 15 min
 Require Valid Token: true
+Token Location: AUTHORIZATION_HEADER
 
 # Dynamic properties (issuers)
 keycloak: https://auth.example.com/realms/master/protocol/openid-connect/certs
 azure: https://login.microsoftonline.com/common/discovery/keys
 ----
 
-=== Multi-Issuer Configuration
+=== Multi-Issuer Configuration with Custom Token Location
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
 
 [source,properties]
@@ -458,6 +538,8 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Iss
 Token Header Name: Authorization
 JWKS Refresh Interval: 30 min
 Require Valid Token: true
+Token Location: CUSTOM_HEADER
+Custom Header Name: X-JWT-Token
 
 # Dynamic properties (issuers)
 internal-keycloak: https://auth.internal.example.com/realms/master/protocol/openid-connect/certs
@@ -466,8 +548,8 @@ partner-auth: https://auth.partner.example.com/.well-known/jwks.json
 legacy-system: -----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
 ----
 
-=== Authorization Configuration
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: Authorization Configuration]_
+=== Content-Based Token Validation
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-5.1[NIFI-AUTH-5.1: Token Location]_
 
 [source,properties]
 ----
@@ -475,9 +557,17 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: Authoriz
 Token Header Name: Authorization
 JWKS Refresh Interval: 15 min
 Require Valid Token: true
-Required Scopes: api:read,api:write
-Required Roles: admin,power-user
+Token Location: FLOW_FILE_CONTENT
 
 # Dynamic properties (issuers)
 keycloak: https://auth.example.com/realms/master/protocol/openid-connect/certs
 ----
+
+== See Also
+
+* link:token-validation.adoc[Token Validation]
+* link:security.adoc[Security]
+* link:technical-components.adoc[Technical Components]
+* link:integration-patterns.adoc[Integration Patterns]
+* link:../Requirements.adoc[Requirements]
+* link:../Specification.adoc[Main Specification]

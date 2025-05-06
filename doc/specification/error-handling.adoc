@@ -9,6 +9,8 @@ link:../Specification.adoc[Back to Main Specification]
 == Error Handling Implementation
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
 
+The MultiIssuerJWTTokenAuthenticator implements comprehensive error handling using the cui-jwt-validation library to detect and report validation issues in a consistent manner.
+
 === Error Categories
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
 
@@ -86,6 +88,101 @@ The processor uses the following error codes:
 |Configuration
 |Invalid processor configuration
 |===
+
+=== Integration with cui-jwt-validation
+
+The processor leverages the cui-jwt-validation library's error reporting capabilities, which are mapped to NiFi's error handling mechanisms:
+
+[source,java]
+----
+/**
+ * Maps cui-jwt-validation errors to processor error codes and messages.
+ */
+private void handleValidationError(FlowFile flowFile, ProcessSession session, ValidationError error) {
+    String errorCode;
+    String category;
+    String message;
+    
+    switch (error.getErrorType()) {
+        case TOKEN_EXPIRED:
+            errorCode = "AUTH-003";
+            category = "CLAIMS_VALIDATION";
+            message = ERROR.TOKEN_EXPIRED.format();
+            break;
+            
+        case INVALID_SIGNATURE:
+            errorCode = "AUTH-002";
+            category = "SIGNATURE_VALIDATION";
+            message = ERROR.INVALID_TOKEN_SIGNATURE.format(error.getIssuer().orElse("unknown"));
+            break;
+            
+        case INVALID_ISSUER:
+            errorCode = "AUTH-005";
+            category = "CLAIMS_VALIDATION";
+            message = ERROR.UNKNOWN_ISSUER.format(error.getIssuer().orElse("unknown"));
+            break;
+            
+        case INVALID_AUDIENCE:
+            errorCode = "AUTH-006";
+            category = "CLAIMS_VALIDATION";
+            message = ERROR.INVALID_AUDIENCE.format();
+            break;
+            
+        // Other error types...
+            
+        default:
+            errorCode = "AUTH-001";
+            category = "TOKEN_FORMAT";
+            message = ERROR.INVALID_TOKEN_FORMAT.format(error.getMessage());
+    }
+    
+    // Add error attributes to flow file
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("jwt.error.code", errorCode);
+    attributes.put("jwt.error.reason", message);
+    attributes.put("jwt.error.category", category);
+    session.putAllAttributes(flowFile, attributes);
+    
+    // Log the error
+    LOGGER.error("{}-{}: {}", "AUTH", errorCode.substring(5), message);
+    
+    // Transfer to failure relationship
+    session.transfer(flowFile, AUTHENTICATION_FAILED);
+}
+----
+
+=== Error Handling with cui-test-keycloak-integration during Testing
+
+During testing with cui-test-keycloak-integration, error handling can be verified by generating various error conditions:
+
+[source,java]
+----
+@Test
+@DisplayName("Verify correct error attributes for expired token")
+public void testExpiredTokenErrorAttributes() throws Exception {
+    // Get an expired token
+    String expiredToken = keycloakClient.getExpiredAccessToken("test-user");
+    
+    // Create test flow file with token
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("Authorization", "Bearer " + expiredToken);
+    runner.enqueue("test data".getBytes(), attributes);
+    
+    // Run the processor
+    runner.run();
+    
+    // Verify results
+    runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED, 1);
+    
+    // Verify error attributes
+    MockFlowFile resultFlowFile = runner.getFlowFilesForRelationship(
+        MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED).get(0);
+    
+    assertEquals("AUTH-003", resultFlowFile.getAttribute("jwt.error.code"));
+    assertEquals("Token has expired", resultFlowFile.getAttribute("jwt.error.reason"));
+    assertEquals("CLAIMS_VALIDATION", resultFlowFile.getAttribute("jwt.error.category"));
+}
+----
 
 === Error Messages
 The processor uses the following error messages:
@@ -273,6 +370,29 @@ private void addErrorAttributes(FlowFile flowFile, String errorCode, ERROR error
 ----
 
 === Exception Handling
+
+The processor implements a consistent exception handling strategy that ensures all errors are properly logged and flow files are routed to the appropriate relationship with informative attributes:
+
+[source,java]
+----
+try {
+    // Process token validation
+    validateAndRouteToken(flowFile, token, context, session);
+} catch (TokenFormatException e) {
+    // Handle token format exceptions
+    handleTokenException(flowFile, session, "AUTH-001", "TOKEN_FORMAT", e.getMessage());
+} catch (SignatureVerificationException e) {
+    // Handle signature verification exceptions
+    handleTokenException(flowFile, session, "AUTH-002", "SIGNATURE_VALIDATION", e.getMessage());
+} catch (JwksRetrievalException e) {
+    // Handle JWKS retrieval exceptions
+    handleTokenException(flowFile, session, "AUTH-009", "JWKS_RETRIEVAL", e.getMessage());
+} catch (Exception e) {
+    // Handle unexpected exceptions
+    LOGGER.error(e, "Unexpected error during token validation: %s", e.getMessage());
+    handleTokenException(flowFile, session, "AUTH-999", "INTERNAL_ERROR", "Unexpected error: " + e.getMessage());
+}
+----
 
 === Token Validation Approach
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
@@ -554,3 +674,67 @@ LOGGER.error(e, ERROR.JWKS_RETRIEVAL_FAILED.format(jwksUrl, e.getMessage()));
 // Invalid configuration
 LOGGER.error(ERROR.INVALID_CONFIGURATION.format(e.getMessage()));
 ----
+
+=== Processor Testing Error Scenarios
+
+Testing error scenarios is facilitated using the cui-test-mockwebserver-junit5 library for unit tests and cui-test-keycloak-integration for integration tests:
+
+[source,java]
+----
+@Test
+@DisplayName("Test invalid token signature")
+public void testInvalidSignatureToken() throws Exception {
+    // Setup tampered token with invalid signature
+    String validToken = keycloakClient.getAccessToken("test-user", "password");
+    String tamperedToken = tamperTokenSignature(validToken);
+    
+    // Create test flow file
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("Authorization", "Bearer " + tamperedToken);
+    runner.enqueue("test data".getBytes(), attributes);
+    
+    // Run the processor
+    runner.run();
+    
+    // Verify results
+    runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED, 1);
+    
+    // Verify error attributes
+    MockFlowFile resultFlowFile = runner.getFlowFilesForRelationship(
+        MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED).get(0);
+    
+    assertEquals("AUTH-002", resultFlowFile.getAttribute("jwt.error.code"));
+    assertTrue(resultFlowFile.getAttribute("jwt.error.reason").contains("Invalid token signature"));
+    assertEquals("SIGNATURE_VALIDATION", resultFlowFile.getAttribute("jwt.error.category"));
+}
+
+/**
+ * Helper method to tamper with a token's signature for testing invalid signatures
+ */
+private String tamperTokenSignature(String token) {
+    String[] parts = token.split("\\.");
+    if (parts.length != 3) {
+        throw new IllegalArgumentException("Invalid JWT token");
+    }
+    
+    // Tamper with signature (last part)
+    StringBuilder tampered = new StringBuilder();
+    tampered.append(parts[0]).append('.').append(parts[1]).append('.');
+    
+    // Change one character in the signature to make it invalid
+    char[] signature = parts[2].toCharArray();
+    if (signature.length > 0) {
+        signature[0] = signature[0] == 'a' ? 'b' : 'a';
+    }
+    tampered.append(new String(signature));
+    
+    return tampered.toString();
+}
+----
+
+== See Also
+* link:token-validation.adoc[Token Validation]
+* link:security.adoc[Security Considerations]
+* link:internationalization.adoc[Internationalization]
+* link:../Specification.adoc[Main Specification]
+* link:../Requirements.adoc[Requirements]

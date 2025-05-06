@@ -1,0 +1,200 @@
+= JavaScript Testing Strategy
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+== Overview
+
+This document outlines the testing strategy for JavaScript components in the NiFi Extensions project, specifically focusing on interactive UI components like the "JWKS Endpoint Test Button" and "Token Verification Interface". It defines the general tools, strategy, and technical setup used for JavaScript testing within the project.
+
+== JavaScript Components
+
+=== Current JavaScript Components
+
+The following JavaScript components require testing:
+
+1. *JWKS Endpoint Test Button* - Validates connectivity to a JWKS endpoint
+2. *Token Verification Interface* - Allows testing of JWT tokens against the current configuration
+
+== Testing Tools and Framework
+
+=== Core Technologies
+
+* *Node.js* - JavaScript runtime environment
+* *npm* - Node package manager
+* *Jest* - JavaScript testing framework
+* *ESLint* - JavaScript linting tool
+* *frontend-maven-plugin* - Maven plugin to integrate Node.js and npm with the Maven build process
+
+=== Integration with Maven
+
+The JavaScript testing is integrated into the Maven build process using the `frontend-maven-plugin`. This integration ensures that JavaScript tests are executed as part of the standard build cycle.
+
+[source,xml]
+----
+<plugin>
+    <groupId>com.github.eirslett</groupId>
+    <artifactId>frontend-maven-plugin</artifactId>
+    <configuration>
+        <nodeVersion>${version.nodejs}</nodeVersion>
+        <installDirectory>target</installDirectory>
+    </configuration>
+    <executions>
+        <execution>
+            <id>install node and npm</id>
+            <goals>
+                <goal>install-node-and-npm</goal>
+            </goals>
+        </execution>
+        <execution>
+            <id>npm install</id>
+            <goals>
+                <goal>npm</goal>
+            </goals>
+            <configuration>
+                <arguments>install</arguments>
+            </configuration>
+        </execution>
+        <execution>
+            <id>npm test</id>
+            <goals>
+                <goal>npm</goal>
+            </goals>
+            <phase>test</phase>
+            <configuration>
+                <arguments>test</arguments>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>
+----
+
+== Test Structure
+
+=== Test Types
+
+==== Unit Tests
+
+Unit tests focus on testing individual JavaScript functions and components in isolation:
+
+* Test individual UI component behaviors
+* Mock API calls and DOM interactions
+* Ensure proper handling of success and error cases
+
+==== Integration Tests
+
+Integration tests verify the interaction between JavaScript components and the backend services:
+
+* Test JWKS endpoint validation with mock server responses
+* Verify token verification with sample JWT tokens
+* Test error handling and user feedback mechanisms
+
+=== Test Coverage
+
+A minimum coverage threshold of 80% is enforced for JavaScript code:
+
+[source,javascript]
+----
+// jest.config.js
+module.exports = {
+  // ...
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
+    }
+  }
+};
+----
+
+== Testing the JWKS Endpoint Test Button
+
+=== Functionality to Test
+
+1. Button click handling
+2. AJAX request to validate endpoint
+3. Success state display
+4. Error state display with appropriate messages
+5. Loading state during validation
+
+=== Sample Test Case
+
+[source,javascript]
+----
+// Example Jest test for JWKS Endpoint Validator
+describe('JWKS Endpoint Validator', () => {
+  beforeEach(() => {
+    // Set up DOM elements and mocks
+  });
+  
+  test('should show success message when endpoint is valid', async () => {
+    // Mock successful fetch response
+    // Trigger button click
+    // Assert success message is displayed
+  });
+  
+  test('should show error message when endpoint is invalid', async () => {
+    // Mock failed fetch response
+    // Trigger button click
+    // Assert error message is displayed with correct text
+  });
+});
+----
+
+== Testing the Token Verification Interface
+
+=== Functionality to Test
+
+1. Token input handling
+2. Token validation request processing
+3. Display of decoded token claims
+4. Validation error handling and display
+5. Response to different token types (valid, expired, malformed)
+
+=== Sample Test Case
+
+[source,javascript]
+----
+// Example Jest test for Token Verification Interface
+describe('Token Verification Interface', () => {
+  beforeEach(() => {
+    // Set up DOM elements and mocks
+  });
+  
+  test('should display decoded claims for valid token', async () => {
+    // Mock successful validation response
+    // Set token input value
+    // Trigger verification
+    // Assert claims are correctly displayed
+  });
+  
+  test('should show expired token error', async () => {
+    // Mock expired token response
+    // Set token input value
+    // Trigger verification
+    // Assert error message about expiration is displayed
+  });
+});
+----
+
+== Continuous Integration
+
+JavaScript tests are automatically executed as part of the Maven build process. The build will fail if any of the following conditions are met:
+
+* Test failures
+* Coverage thresholds not met
+* ESLint errors
+
+== See also
+* link:testing.adoc[Testing]
+* link:token-validation.adoc[Token Validation]
+* link:configuration.adoc[Configuration]
+* link:../Specification.adoc[Main Specification]
+* link:../Requirements.adoc[Requirements]
+
+== Conclusion
+
+This testing strategy ensures that JavaScript components in the NiFi Extensions project are thoroughly tested, maintainable, and integrated with the overall build process. By following these guidelines, the quality and reliability of interactive UI components like the JWKS Endpoint Test Button and Token Verification Interface are maintained at a high standard.
