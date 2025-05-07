@@ -525,6 +525,7 @@ private Map<String, String> extractClaims(AccessTokenContent token) {
 ----
 
 == See also
+
 * link:token-factory-manager.adoc[Token Factory Manager]
 * link:security.adoc[Security Considerations]
 * link:error-handling.adoc[Error Handling]

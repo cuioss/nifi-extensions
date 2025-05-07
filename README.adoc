@@ -11,7 +11,6 @@ Gate Status]]
 image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-extensions&metric=ncloc[Lines of Code,link=https://sonarcloud.io/summary/new_code?id=cuioss_nifi-extensions]
 image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-extensions&metric=coverage[Coverage,link=https://sonarcloud.io/summary/new_code?id=cuioss_nifi-extensions]
 
-
 https://cuioss.github.io/nifi-extensions/about.html[Generated Documentation on github-pages]
 
 == What is it?

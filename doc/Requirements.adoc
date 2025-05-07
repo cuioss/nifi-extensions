@@ -13,6 +13,7 @@ For detailed implementation specifications, see the link:Specification.adoc[Spec
 
 [#NIFI-AUTH-1]
 === NIFI-AUTH-1: REST API Support Enhancement
+
 * Enable simplified REST API endpoint provisioning in NiFi
 * Provide standardized JWT validation capabilities
 * Support OAuth 2.0 token validation workflow
@@ -23,6 +24,7 @@ _Implementation details: link:Specification.adoc[Main Specification]_
 
 [#NIFI-AUTH-2]
 === NIFI-AUTH-2: Core Functionality
+
 * Name: MultiIssuerJWTTokenAuthenticator
 * Extract JWT (JSON Web Token) from HTTP Bearer token header
 * Validate token structure and signature
@@ -33,6 +35,7 @@ _Implementation details: link:specification/technical-components.adoc[Technical 
 
 [#NIFI-AUTH-3]
 === NIFI-AUTH-3: Token Validation Requirements
+
 * Verify token structure (header, payload, signature)
 * Validate token signature using issuer public key/certificate
 * Check token expiration (exp claim)
@@ -44,6 +47,7 @@ _Implementation details: link:specification/token-validation.adoc[Token Validati
 
 [#NIFI-AUTH-4]
 === NIFI-AUTH-4: Multiple Issuer Support
+
 * Configure multiple trusted issuers
 * Store issuer-specific validation configurations
 * Support different signing algorithms per issuer
@@ -53,6 +57,7 @@ _Implementation details: link:specification/token-factory-manager.adoc[Token Fac
 
 [#NIFI-AUTH-5]
 === NIFI-AUTH-5: Input Requirements
+
 * Accept JWT token in flow file
 * Support configurable token location in flow file
 * Handle various token formats (Bearer, raw JWT)
@@ -61,16 +66,19 @@ _Implementation details: link:specification/technical-components.adoc[Technical 
 
 [#NIFI-AUTH-5.1]
 ==== NIFI-AUTH-5.1: Token Location
+
 * Extract token from Bearer Authorization header
 * Format: "Bearer <token>"
 * Support validation of header presence and format
 
 [#NIFI-AUTH-5.2]
 ==== NIFI-AUTH-5.2: Dynamic Properties
+
 The processor must support dynamic properties for custom claim mapping.
 
 [#NIFI-AUTH-5.3]
 ==== NIFI-AUTH-5.3: Advanced Properties
+
 The processor must support advanced properties that are only shown when explicitly requested by the user.
 
 [#NIFI-AUTH-6]
@@ -78,20 +86,22 @@ The processor must support advanced properties that are only shown when explicit
 
 [#NIFI-AUTH-6.1]
 ==== NIFI-AUTH-6.1: Success Path
+
 * Route validated tokens to "success" relationship
 * Extract and provide token claims as flow file attributes
 * Include validation metadata (issuer, validation time)
 
 [#NIFI-AUTH-6.2]
 ==== NIFI-AUTH-6.2: Failure Path
+
 * Route invalid tokens to "authentication-failed" relationship
 * Provide detailed failure reason as flow file attribute
 * Support different failure categories:
-** Invalid token structure
-** Expired token
-** Invalid signature
-** Unknown issuer
-** Invalid claims
+  ** Invalid token structure
+  ** Expired token
+  ** Invalid signature
+  ** Unknown issuer
+  ** Invalid claims
 
 [#NIFI-AUTH-7]
 === NIFI-AUTH-7: Configuration Requirements
@@ -100,91 +110,99 @@ _Implementation details: link:specification/configuration.adoc[Configuration]_
 
 [#NIFI-AUTH-7.1]
 ==== NIFI-AUTH-7.1: UI Configuration
+
 * All configuration must be done through the NiFi UI
 * Provide user-friendly configuration interface
 * Support dynamic configuration updates
 * Include a "Test Connection" button for JWKS endpoint URLs
-** Button should validate that the JWKS endpoint is accessible
-** Provide immediate feedback on connection success/failure
-** Display appropriate error messages for connection failures
+  ** Button should validate that the JWKS endpoint is accessible
+  ** Provide immediate feedback on connection success/failure
+  ** Display appropriate error messages for connection failures
 
 [#NIFI-AUTH-7.2]
 ==== NIFI-AUTH-7.2: Token Validation Configuration
+
 * Configure multiple issuers through UI
 * Each issuer configuration consists of:
-** Issuer Identifier (String)
-** One of:
-*** JWKS endpoint URL for key retrieval
-*** Direct public key configuration for signature verification
+  ** Issuer Identifier (String)
+  ** One of:
+    *** JWKS endpoint URL for key retrieval
+    *** Direct public key configuration for signature verification
 * Support dynamic addition/removal of issuers
 * Validate configuration inputs
 * Provide clear error messages for invalid configurations
 
 [#NIFI-AUTH-7.3]
 ==== NIFI-AUTH-7.3: Verification
+
 * Provide a token testing interface in the UI
 * Include a text area for pasting JWT tokens
 * Add a "Verify Token" button to test token against current configuration
 * For valid tokens:
-** Display token validation success message
-** Show decoded token payload (claims)
-** Display which issuer validated the token
-** Show what attributes would be added to the flow file
+  ** Display token validation success message
+  ** Show decoded token payload (claims)
+  ** Display which issuer validated the token
+  ** Show what attributes would be added to the flow file
 * For invalid tokens:
-** Display validation failure reason
-** Show detailed error information
-** Suggest possible fixes based on error type
+  ** Display validation failure reason
+  ** Show detailed error information
+  ** Suggest possible fixes based on error type
 * Support testing without affecting processor state or flow files
 
 [#NIFI-AUTH-7.4]
 ==== NIFI-AUTH-7.4: Authorization Configuration
+
 * Require Valid Token (Boolean)
-** When true: Valid token results in success relationship
-** When false: Token validation result is informational only
+  ** When true: Valid token results in success relationship
+  ** When false: Token validation result is informational only
 * Required Scopes (List of String)
-** List of OAuth scopes that must be present in token
-** Empty list means no specific scopes required
+  ** List of OAuth scopes that must be present in token
+  ** Empty list means no specific scopes required
 * All configured requirements (scopes) must be met for success
 
 [#NIFI-AUTH-7.5]
 ==== NIFI-AUTH-7.5: Token Location
+
 * Extract token from Bearer Authorization header
 * Format: "Bearer <token>"
 * Support validation of header presence and format
 
 [#NIFI-AUTH-7.6]
 ==== NIFI-AUTH-7.6: Configuration Properties
+
 * List of Issuer Identifiers (Dynamic Property)
 * Per issuer configuration:
-** Issuer Identifier
-** JWKS endpoint URL or public key
+  ** Issuer Identifier
+  ** JWKS endpoint URL or public key
 
 [#NIFI-AUTH-7.7]
 ==== NIFI-AUTH-7.7: Static Configuration for Container Environments
+
 * Support static configuration via properties files for container deployments
 * Configuration format options:
-** NiFi properties file (.properties)
-** YAML configuration (.yml, .yaml) 
-** JSON configuration (.json)
+  ** NiFi properties file (.properties)
+  ** YAML configuration (.yml, .yaml) 
+  ** JSON configuration (.json)
 * Static configuration must:
-** Be active by default when present
-** Override UI-based configuration when present
-** Be displayed (read-only) in the configuration dialog
-** Support all configuration options available in UI
-** Include explicit documentation for container deployment scenarios
+  ** Be active by default when present
+  ** Override UI-based configuration when present
+  ** Be displayed (read-only) in the configuration dialog
+  ** Support all configuration options available in UI
+  ** Include explicit documentation for container deployment scenarios
 * Properties file location options:
-** Standard NiFi configuration directory
-** Environment variable pointing to configuration file
-** JVM system property pointing to configuration file
+  ** Standard NiFi configuration directory
+  ** Environment variable pointing to configuration file
+  ** JVM system property pointing to configuration file
 * Configuration reload:
-** Support periodic checking for configuration changes
-** Allow runtime reload without restart
-** Log configuration changes at appropriate level
+  ** Support periodic checking for configuration changes
+  ** Allow runtime reload without restart
+  ** Log configuration changes at appropriate level
 
 _Implementation details: link:specification/configuration.adoc[Configuration]_
 
 [#NIFI-AUTH-8]
 === NIFI-AUTH-8: Security Requirements
+
 * Secure storage of issuer certificates/keys
 * No sensitive information logging
 * Proper error handling without information leakage
@@ -194,26 +212,28 @@ _Implementation details: link:specification/security.adoc[Security]_
 
 [#NIFI-AUTH-9]
 === NIFI-AUTH-9: Performance Requirements
+
 * Efficient token validation
 * Minimal memory footprint
 * Quick failure detection for invalid tokens
 * Scalable multi-issuer support
 * Specific performance metrics:
-** Token validation throughput: >1000 tokens/second
-** JWKS cache refresh: <5 seconds
-** Token validation latency: <50ms per token
-** Memory usage: <100MB additional heap usage
+  ** Token validation throughput: >1000 tokens/second
+  ** JWKS cache refresh: <5 seconds
+  ** Token validation latency: <50ms per token
+  ** Memory usage: <100MB additional heap usage
 
 _Implementation details: link:specification/technical-components.adoc[Technical Components]_
 
 [#NIFI-AUTH-10]
 === NIFI-AUTH-10: Error Handling Requirements
+
 * Standardized error codes for all failure scenarios
 * Descriptive error messages without sensitive information
 * Error categories with specific codes:
-** INFO level messages: 001-099
-** WARN level messages: 100-199
-** ERROR level messages: 200-299
+  ** INFO level messages: 001-099
+  ** WARN level messages: 100-199
+  ** ERROR level messages: 200-299
 * Recovery mechanisms for transient errors
 * Proper logging of errors with appropriate severity levels
 
@@ -223,6 +243,7 @@ _Implementation details: link:specification/error-handling.adoc[Error Handling]_
 
 [#NIFI-AUTH-11]
 === NIFI-AUTH-11: NiFi Integration
+
 * Compatible with NiFi's processor lifecycle
 * Proper error handling and recovery
 * Support for NiFi's configuration framework
@@ -230,6 +251,7 @@ _Implementation details: link:specification/error-handling.adoc[Error Handling]_
 
 [#NIFI-AUTH-12]
 === NIFI-AUTH-12: Integration Examples
+
 * Example flow for API gateway pattern
 * Example flow for service-to-service authentication
 * Example flow for token transformation
@@ -239,6 +261,7 @@ _Implementation details: link:specification/integration-patterns.adoc[Integratio
 
 [#NIFI-AUTH-13]
 === NIFI-AUTH-13: Documentation Requirements
+
 * Clear configuration guide
 * Usage examples
 * Troubleshooting guide
@@ -251,6 +274,7 @@ _Implementation details: link:Specification.adoc[Specification Document]_
 
 [#NIFI-AUTH-14]
 === NIFI-AUTH-14: Unit Testing
+
 * Minimum 80% line coverage (critical paths 100%)
 * Use JUnit 5 with @ParameterizedTest for validation scenarios
 * Leverage cui-test-utilities for:
@@ -263,6 +287,7 @@ _Implementation details: link:specification/testing.adoc[Testing]_
 
 [#NIFI-AUTH-15]
 === NIFI-AUTH-15: Integration Testing
+
 * End-to-end flow testing
 * Multiple issuer scenarios
 * Error handling scenarios
@@ -272,6 +297,7 @@ _Implementation details: link:specification/testing.adoc[Testing]_
 
 [#NIFI-AUTH-16]
 === NIFI-AUTH-16: Success Criteria
+
 * Successful JWT validation with multiple issuers
 * Proper routing of valid/invalid tokens
 * Clear error messaging for invalid tokens
@@ -284,13 +310,14 @@ _Implementation details: link:specification/testing.adoc[Testing]_
 
 [#NIFI-AUTH-17]
 === NIFI-AUTH-17: Internationalization Support
+
 * All user-presented strings must support i18n / Resource Bundle
 * Initial support for English and German languages
 * Internationalized components must include:
-** UI elements (property names, descriptions)
-** Error messages
-** Log messages
-** Documentation strings
+  ** UI elements (property names, descriptions)
+  ** Error messages
+  ** Log messages
+  ** Documentation strings
 * Resource bundles must follow standard Java ResourceBundle pattern
 * Default to English when a translation is not available
 
@@ -300,23 +327,25 @@ _Implementation details: link:specification/internationalization.adoc[Internatio
 
 [#NIFI-AUTH-18]
 === NIFI-AUTH-18: Security Event Monitoring
+
 * Expose TokenValidator's SecurityEventCounter metrics
 * Track key metrics:
-** Total tokens processed
-** Valid tokens processed
-** Invalid tokens processed, categorized by error type:
-*** Malformed tokens
-*** Expired tokens
-*** Invalid signatures
-*** Missing required claims
-*** Other validation errors
+  ** Total tokens processed
+  ** Valid tokens processed
+  ** Invalid tokens processed, categorized by error type:
+    *** Malformed tokens
+    *** Expired tokens
+    *** Invalid signatures
+    *** Missing required claims
+    *** Other validation errors
 * Security event metrics must be accessible through:
-** NiFi UI component interface
-** NiFi's metrics subsystem
-** External monitoring systems via standardized endpoints
+  ** NiFi UI component interface
+  ** NiFi's metrics subsystem
+  ** External monitoring systems via standardized endpoints
 
 [#NIFI-AUTH-18.1]
 ==== NIFI-AUTH-18.1: NiFi UI Integration
+
 * Display real-time security event metrics in processor status
 * Include aggregated metrics in processor details view
 * Provide metrics breakdown in the UI configuration dialog
@@ -324,6 +353,7 @@ _Implementation details: link:specification/internationalization.adoc[Internatio
 
 [#NIFI-AUTH-18.2]
 ==== NIFI-AUTH-18.2: Metrics System Integration
+
 * Integrate with NiFi's internal metrics reporting system
 * Register all security event metrics as NiFi reportable metrics
 * Apply standard NiFi metric naming conventions
@@ -331,6 +361,7 @@ _Implementation details: link:specification/internationalization.adoc[Internatio
 
 [#NIFI-AUTH-18.3]
 ==== NIFI-AUTH-18.3: External Monitoring System Support
+
 * Expose metrics in Prometheus-compatible format
 * Define standard metric naming convention
 * Provide metadata tags for metric categorization
