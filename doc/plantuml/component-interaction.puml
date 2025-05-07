@@ -1,63 +1,54 @@
 @startuml component-interaction
-skinparam defaultTextAlignment center
-skinparam componentStyle uml2
 
-title "JWT Processor Core Component Interaction"
+skinparam componentStyle rectangle
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+skinparam ArrowColor black
+skinparam ArrowThickness 1.5
 
-package "NiFi Processor" {
-  [MultiIssuerJWTTokenAuthenticator] as processor
+title "Component Interaction Diagram - NiFi Extensions"
+
+!define COMPONENT(name) component name as "name"
+
+cloud "External Services" {
+  [Authentication Provider]
+  [API Services]
 }
 
-package "Core Components" {
-  [TokenValidator] as validator
-  [IssuerConfig] as issuerConfig
-  [TokenExtractor] as extractor
-  [TokenAttributeWriter] as writer
-  [SecurityEventCounter] as counter
+package "Apache NiFi" {
+  [NiFi Core] as NiFiCore
+
+  package "CUI OSS Extensions" {
+    [Token Factory Manager] as TokenFactory
+    [JWT Token Extractor] as JWTExtractor
+    [Token Validator] as TokenValidator
+    [API Gateway] as APIGateway
+    [Error Handler] as ErrorHandler
+    [Configuration Manager] as ConfigManager
+  }
 }
 
-package "Token Content" {
-  [AccessTokenContent] as tokenContent
-  [ValidationFailure] as failure
-}
+database "Properties Repository" as PropsRepo
 
-package "External Services" {
-  [JWKS Endpoint] as jwks
-}
+NiFiCore ..> "CUI OSS Extensions" : uses
+TokenFactory --> [Authentication Provider] : requests tokens
+JWTExtractor --> TokenFactory : gets token specs
+TokenValidator --> TokenFactory : validates tokens
+APIGateway --> [API Services] : routes requests
+APIGateway --> TokenValidator : validates requests
+ErrorHandler <-- TokenValidator : reports errors
+ErrorHandler <-- APIGateway : reports errors
+ConfigManager --> PropsRepo : loads/stores configs
+TokenFactory --> ConfigManager : reads configuration
+JWTExtractor --> ConfigManager : reads configuration
+TokenValidator --> ConfigManager : reads configuration
+APIGateway --> ConfigManager : reads configuration
 
-' Relationships
-processor --> validator : uses
-processor --> extractor : uses to extract token
-processor --> writer : uses to write attributes
-validator --> issuerConfig : configured with
-validator --> counter : reports events to
-validator --> tokenContent : returns on success
-validator --> failure : returns on failure
-issuerConfig --> jwks : fetches public keys from
+note right of TokenFactory: Manages token creation\nand lifecycle
 
-note right of validator
-  Validates tokens using configured issuers
-  Returns TokenContent or ValidationFailure
-end note
+note bottom of ConfigManager: Provides centralized\nconfiguration management
 
-note right of issuerConfig
-  Maintains configuration for each issuer:
-  - JWKS URI
-  - Expected claims
-  - Validation rules
-end note
-
-note bottom of counter
-  Tracks security events:
-  - Valid tokens
-  - Invalid tokens
-  - Malformed tokens
-  - Expired tokens
-end note
-
-note bottom of writer
-  Writes token data to FlowFile attributes
-  based on validation results
-end note
+note right of APIGateway: Routes API requests and\nhandles multi-tenant scenarios
 
 @enduml

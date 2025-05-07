@@ -1,18 +1,15 @@
-@startuml
-title API Gateway Pattern
+@startuml api-gateway-pattern
+skinparam componentStyle rectangle
 
 actor "API Client" as client
 component "API Gateway" as gateway
 component "Backend API" as backend
-component "JWT Token\nAuthenticator" as auth
+component "JWT Token\nAuthenticator" as authenticator
 component "Identity\nProvider" as idp
 
-client -> gateway
-gateway -> backend
-gateway -> auth
-auth -> idp
+client --> gateway
+gateway --> backend
+gateway --> authenticator
+authenticator --> idp
 
-note bottom of auth
-  MultiIssuerJWTTokenAuthenticator
-end note
 @enduml

@@ -1,18 +1,15 @@
-@startuml
-title Service-to-Service Authentication
+@startuml service-to-service-authentication
+skinparam componentStyle rectangle
 
 component "Service A" as serviceA
-component "JWT Token\nAuthenticator" as auth
+component "JWT Token\nAuthenticator" as authenticator
 component "Service B" as serviceB
-component "Token\nIssuer" as issuer
+component "Token\nIssuer" as tokenIssuer
 component "Identity\nProvider" as idp
 
-serviceA -> auth
-auth -> serviceB
-serviceA -> issuer
-auth -> idp
+serviceA --> authenticator
+authenticator --> serviceB
+serviceA --> tokenIssuer
+authenticator --> idp
 
-note bottom of auth
-  MultiIssuerJWTTokenAuthenticator
-end note
 @enduml

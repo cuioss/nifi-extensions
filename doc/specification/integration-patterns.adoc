@@ -21,30 +21,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-12.1[NIFI-AUTH-12.1: API Ga
 The MultiIssuerJWTTokenAuthenticator can be used as part of an API Gateway pattern to authenticate and authorize incoming requests.
 
 .API Gateway Pattern
-[ditaa]
-----
-    +----------------+        +----------------+        +----------------+
-    |                |        |                |        |                |
-    |  API Client    |------->|  API Gateway   |------->|  Backend API  |
-    |                |        |                |        |                |
-    +----------------+        +----------------+        +----------------+
-                                      |
-                                      v
-                              +----------------+
-                              |                |
-                              |  JWT Token     |
-                              |  Authenticator |
-                              |                |
-                              +----------------+
-                                      |
-                                      v
-                              +----------------+
-                              |                |
-                              |  Identity      |
-                              |  Provider      |
-                              |                |
-                              +----------------+
-----
+image::../plantuml/api-gateway-pattern.png[]
 
 .Example Flow
 [source,xml]
@@ -103,23 +80,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-12.2[NIFI-AUTH-12.2: Servic
 The MultiIssuerJWTTokenAuthenticator can be used to authenticate service-to-service communication.
 
 .Service-to-Service Authentication
-[ditaa]
-----
-    +----------------+        +----------------+        +----------------+
-    |                |        |                |        |                |
-    |  Service A     |------->|  JWT Token     |------->|  Service B    |
-    |                |        |  Authenticator |        |                |
-    +----------------+        +----------------+        +----------------+
-           |                         |
-           |                         |
-           v                         v
-    +----------------+        +----------------+
-    |                |        |                |
-    |  Token         |        |  Identity      |
-    |  Issuer        |        |  Provider      |
-    |                |        |                |
-    +----------------+        +----------------+
-----
+image::../plantuml/service-to-service-authentication.png[]
 
 .Example Flow
 [source,xml]
@@ -175,29 +136,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-12.3[NIFI-AUTH-12.3: Multi-
 The MultiIssuerJWTTokenAuthenticator can be used to route requests based on the tenant information in the JWT token.
 
 .Multi-Tenant API Routing
-[ditaa]
-----
-    +----------------+        +----------------+        +----------------+
-    |                |        |                |        |                |
-    |  Tenant A      |------->|  API Gateway   |------->|  Tenant A     |
-    |  Client        |        |                |        |  Backend      |
-    +----------------+        +----------------+        +----------------+
-                                      ^
-                                      |
-    +----------------+                |                +----------------+
-    |                |                |                |                |
-    |  Tenant B      |----------------+--------------->|  Tenant B     |
-    |  Client        |                                 |  Backend      |
-    +----------------+                                 +----------------+
-                                      |
-                                      v
-                              +----------------+
-                              |                |
-                              |  JWT Token     |
-                              |  Authenticator |
-                              |                |
-                              +----------------+
-----
+image::../plantuml/multi-tenant-api-routing.png[]
 
 .Example Flow
 [source,xml]

@@ -7,6 +7,10 @@
 link:../Specification.adoc[Back to Main Specification]
 
 == Overview
+
+.Token Factory Manager Architecture
+image::../plantuml/token-factory-manager.png[Token Factory Manager Architecture]
+
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
 This document describes how the MultiIssuerJWTTokenAuthenticator processor uses the https://github.com/cuioss/cui-jwt-validation[cui-jwt-validation] library to validate JWT tokens. The cui-jwt-validation library provides a robust implementation for JWT token validation with support for multiple issuers, JWKS endpoints, and caching.

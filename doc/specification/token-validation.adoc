@@ -12,7 +12,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Valida
 === Token Extraction
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requirements]_
 
-The processor extracts JWT tokens from flow files based on the configured token location. In NiFi 2.3.0, there are multiple possible token locations: Authorization header, custom header, or flow file content.
+The processor extracts JWT tokens from flow files based on the configured token location. In NiFi 2.4.0, there are multiple possible token locations: Authorization header, custom header, or flow file content.
 
 [source,java]
 ----
@@ -73,7 +73,7 @@ private Optional<String> extractTokenFromContent(FlowFile flowFile, ProcessSessi
 === Token Structure Validation
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
-In NiFi 2.3.0, the processor performs thorough initial validation of token structure before attempting signature validation:
+In NiFi 2.4.0, the processor performs thorough initial validation of token structure before attempting signature validation:
 
 [source,java]
 ----
@@ -135,12 +135,12 @@ private ValidationResult validateTokenStructure(String tokenString) {
 === Signature Validation
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
-NiFi 2.3.0 implements improved token validation with improved security features using the https://github.com/cuioss/cui-jwt-validation[cui-jwt-validation] library version 2.0.
+NiFi 2.4.0 implements improved token validation with improved security features using the https://github.com/cuioss/cui-jwt-validation[cui-jwt-validation] library version 2.0.
 
 [source,java]
 ----
 /**
- * Enhanced processor implementation for JWT token validation in NiFi 2.3.0.
+ * Enhanced processor implementation for JWT token validation in NiFi 2.4.0.
  */
 public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
@@ -182,7 +182,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     /**
      * Initializes the TokenValidator with configured issuers.
-     * NiFi 2.3.0 adds improved support for multiple key types and algorithms.
+     * NiFi 2.4.0 adds improved support for multiple key types and algorithms.
      * 
      * @return A new TokenValidator instance
      */
@@ -236,7 +236,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             throw new ProcessException("No token issuers configured");
         }
 
-        // Create token validator options with enhanced security in NiFi 2.3.0
+        // Create token validator options with enhanced security in NiFi 2.4.0
         TokenValidatorOptions options = TokenValidatorOptions.builder()
             .requireStrongKeys(true) // Ensure strong keys (RSA ≥ 2048 bits, EC ≥ 256 bits)
             .requireKeyIdHeader(true) // Require 'kid' header in tokens
@@ -249,7 +249,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     /**
      * Gets the supported signature algorithms.
-     * NiFi 2.3.0 adds support for additional algorithms.
+     * NiFi 2.4.0 adds support for additional algorithms.
      */
     private Set<String> getSupportedAlgorithms() {
         // Support RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512
@@ -261,12 +261,12 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 === Claims Validation
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
-In NiFi 2.3.0, the processor implements enhanced claims validation features:
+In NiFi 2.4.0, the processor implements enhanced claims validation features:
 
 [source,java]
 ----
 /**
- * Validates the claims in a token with enhanced validation in NiFi 2.3.0.
+ * Validates the claims in a token with enhanced validation in NiFi 2.4.0.
  * 
  * @param token The parsed access token to validate
  * @return A ValidationResult indicating whether the claims are valid
@@ -283,7 +283,7 @@ private ValidationResult validateClaims(AccessTokenContent token, ProcessContext
         return ValidationResult.invalid("Token not yet valid");
     }
     
-    // NiFi 2.3.0: Check audience if configured
+    // NiFi 2.4.0: Check audience if configured
     String requiredAudience = context.getProperty(REQUIRED_AUDIENCE).getValue();
     if (requiredAudience != null && !requiredAudience.isEmpty()) {
         boolean audienceMatch = false;
@@ -334,13 +334,13 @@ private ValidationResult validateClaims(AccessTokenContent token, ProcessContext
 === Authorization Rules
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: Authorization Configuration]_
 
-In NiFi 2.3.0, the processor implements enhanced authorization rule checking:
+In NiFi 2.4.0, the processor implements enhanced authorization rule checking:
 
 [source,java]
 ----
 /**
  * Validates authorization rules based on token scopes and roles.
- * Enhanced in NiFi 2.3.0 to support roles and expressions.
+ * Enhanced in NiFi 2.4.0 to support roles and expressions.
  * 
  * @param token The parsed access token to validate
  * @param context The process context
@@ -390,7 +390,7 @@ private ValidationResult validateAuthorization(AccessTokenContent token, Process
         }
     }
     
-    // NiFi 2.3.0: Check authorization expression if configured
+    // NiFi 2.4.0: Check authorization expression if configured
     String expression = context.getProperty(AUTHORIZATION_EXPRESSION).getValue();
     if (expression != null && !expression.isEmpty()) {
         // Use JEL (Jakarta Expression Language) for evaluating expressions
@@ -466,7 +466,7 @@ private Set<String> extractRolesFromToken(AccessTokenContent token) {
 
 /**
  * Extracts claims from a token and converts them to a map of attributes.
- * Enhanced in NiFi 2.3.0 with better handling of complex objects.
+ * Enhanced in NiFi 2.4.0 with better handling of complex objects.
  * 
  * @param token The parsed access token
  * @return A map of claim names to string values

@@ -4,7 +4,7 @@
 :toc-title: Table of Contents
 :sectnums:
 
-This document provides information about building and developing the cui-jwt-validation library.
+This document provides information about building and developing the nifi-extensions.
 
 == Updating the Maven Wrapper
 
@@ -17,51 +17,6 @@ To update the Maven Wrapper scripts (mvnw, mvnw.cmd, .mvn/wrapper), run the foll
 
 This will update the Maven Wrapper to the latest version provided by the takari-maven-wrapper-plugin.
 
-== Reproducible Builds
-
-This project implements several measures to ensure reproducible builds. The following practices are already in place:
-
-* All plugin and dependency versions are pinned in all `pom.xml` files. No LATEST, RELEASE, or version ranges are used.
-* The Maven Wrapper is present (`mvnw`, `mvnw.cmd`, `.mvn/wrapper/maven-wrapper.properties`) and pins Maven `3.9.6`.
-* Java version is set explicitly in the root `pom.xml`, inherited by all modules.:
-
-[source,xml]
-----
-<maven.compiler.source>17</maven.compiler.source>
-<maven.compiler.target>17</maven.compiler.target>
-----
-
-* Reproducibility configuration is set for JAR/WAR plugins in all modules: project.build.outputTimestamp
-
-* No non-deterministic resource filtering is used (no timestamp, hostname, or environment injection in resources).
-* All GitHub Actions in `.github/workflows/` are pinned by commit hash (uses: `...@<commit-sha>`).
-* The build environment is documented: builds are tested on Linux with `Java 17` and Maven `3.9.6` using `./mvnw`.
-
-=== Verifying Reproducibility
-
-To verify that builds are reproducible, you can perform the following steps:
-
-. Clean the project and perform the first build:
-+
-[source,bash]
-----
-./mvnw clean verify
-cp target/*.jar /tmp/first-build.jar
-----
-. Clean the project and perform the second build:
-+
-[source,bash]
-----
-./mvnw clean verify
-----
-. Compare the two build artifacts:
-+
-[source,bash]
-----
-diffoscope target/*.jar /tmp/first-build.jar || (echo "Builds differ!" && exit 1)
-----
-
-If the builds are reproducible, there should be no differences reported by `diffoscope`.
 
 == PlantUML Diagrams
 
@@ -101,7 +56,7 @@ If you have PlantUML installed locally, you can use the provided script to gener
 
 [source,bash]
 ----
-./generate-plantuml.sh
+./doc/plantuml/generate-plantuml.sh
 ----
 
 This script will:
@@ -152,7 +107,7 @@ To add a new diagram:
 1. Create a new `.puml` file in the `/doc/plantuml/` directory
 2. Add your PlantUML content to the file
 3. Generate the PNG image using one of the following methods:
-   a. Run the `./generate-plantuml.sh` script (recommended if PlantUML is installed locally)
+   a. Run the `./doc/plantuml/generate-plantuml.sh` script (recommended if PlantUML is installed locally)
    b. Run the Maven build with the `build-plantuml` profile
 4. Reference the generated PNG in your documentation
 

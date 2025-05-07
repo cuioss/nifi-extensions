@@ -10,7 +10,7 @@ _See Requirement link:Requirements.adoc#NIFI-AUTH-1[NIFI-AUTH-1: REST API Suppor
 This document provides the technical specification for implementing the MultiIssuerJWTTokenAuthenticator processor.
 For functional requirements, see link:Requirements.adoc[Requirements Document].
 
-The MultiIssuerJWTTokenAuthenticator is compatible with NiFi 2.3.0 and leverages the cui-jwt-validation library for token validation.
+The MultiIssuerJWTTokenAuthenticator is compatible with NiFi 2.4.0 and leverages the cui-jwt-validation library for token validation.
 
 == Document Structure
 _See Requirement link:Requirements.adoc#NIFI-AUTH-13[NIFI-AUTH-13: Documentation Requirements]_
@@ -32,7 +32,7 @@ This specification is organized into the following documents:
 The MultiIssuerJWTTokenAuthenticator uses the following key dependencies:
 
 === Runtime Dependencies
-* Apache NiFi 2.3.0
+* Apache NiFi 2.4.0
 * cui-jwt-validation 1.0.0
 * Caffeine 3.2.0 (for caching)
 * Jakarta JSON API 2.1.3
@@ -45,7 +45,7 @@ The MultiIssuerJWTTokenAuthenticator uses the following key dependencies:
 * JUnit 5 with JUnit Jupiter for modern testing approaches
 * Mockito for mocking dependencies during testing
 
-These libraries provide a robust foundation for implementing and testing JWT authentication in NiFi 2.3.0 environments.
+These libraries provide a robust foundation for implementing and testing JWT authentication in NiFi 2.4.0 environments.
 
 == Key Technical Features
 
@@ -120,54 +120,12 @@ The processor includes:
 
 The high-level architecture of the MultiIssuerJWTTokenAuthenticator consists of the following components:
 
-[plantuml,architecture,png]
-....
-@startuml
-package "NiFi Framework" {
-  [NiFi Core] as NiFiCore
-  [Processor API] as ProcessorAPI
-}
-
-package "MultiIssuerJWTTokenAuthenticator" {
-  [JWT Processor] as JWTProcessor
-  [Token Factory Manager] as TokenManager
-  [Configuration Handler] as ConfigHandler
-  [Token Validator] as TokenValidator
-  [Error Handler] as ErrorHandler
-}
-
-package "cui-jwt-validation" {
-  [JWT Validation Core] as ValidationCore
-  [JWKS Client] as JWKSClient
-  [Token Factory] as TokenFactory
-}
-
-package "External Services" {
-  [Identity Provider 1] as IDP1
-  [Identity Provider 2] as IDP2
-}
-
-NiFiCore --> ProcessorAPI : uses
-ProcessorAPI --> JWTProcessor : extends
-
-JWTProcessor --> ConfigHandler : configures
-JWTProcessor --> TokenManager : manages
-JWTProcessor --> ErrorHandler : handles errors
-JWTProcessor --> TokenValidator : validates tokens
-
-TokenManager --> TokenFactory : creates
-TokenValidator --> ValidationCore : uses
-ValidationCore --> JWKSClient : retrieves keys
-
-JWKSClient --> IDP1 : retrieves JWKS
-JWKSClient --> IDP2 : retrieves JWKS
-@enduml
-....
+image::plantuml/architecture.png[Architecture Diagram]
 
 == Implementation Notes
 
-=== NiFi 2.3.0 Compatibility
-The processor is designed specifically for NiFi 2.3.0 and takes advantage of its improved:
+=== NiFi 2.4.0 Compatibility
+The processor is designed specifically for NiFi 2.4.0 and takes advantage of its improved:
 * Processor API features
 * Expression language support
 * Security framework
@@ -183,6 +141,6 @@ The processor fully leverages the cui-jwt-validation library's capabilities:
 
 == Conclusion
 
-The MultiIssuerJWTTokenAuthenticator processor provides a robust and flexible solution for JWT token validation in NiFi 2.3.0. It leverages the cui-jwt-validation library to ensure secure and efficient token processing while supporting multiple token issuers and providing comprehensive error handling.
+The MultiIssuerJWTTokenAuthenticator processor provides a robust and flexible solution for JWT token validation in NiFi 2.4.0. It leverages the cui-jwt-validation library to ensure secure and efficient token processing while supporting multiple token issuers and providing comprehensive error handling.
 
 The implementation follows best practices for security, performance, and maintainability, ensuring a reliable component for NiFi authentication flows.
