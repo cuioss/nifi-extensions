@@ -159,6 +159,30 @@ _Implementation details: link:specification/configuration.adoc[Configuration]_
 ** Issuer Identifier
 ** JWKS endpoint URL or public key
 
+[#NIFI-AUTH-7.7]
+==== NIFI-AUTH-7.7: Static Configuration for Container Environments
+* Support static configuration via properties files for container deployments
+* Configuration format options:
+** NiFi properties file (.properties)
+** YAML configuration (.yml, .yaml) 
+** JSON configuration (.json)
+* Static configuration must:
+** Be active by default when present
+** Override UI-based configuration when present
+** Be displayed (read-only) in the configuration dialog
+** Support all configuration options available in UI
+** Include explicit documentation for container deployment scenarios
+* Properties file location options:
+** Standard NiFi configuration directory
+** Environment variable pointing to configuration file
+** JVM system property pointing to configuration file
+* Configuration reload:
+** Support periodic checking for configuration changes
+** Allow runtime reload without restart
+** Log configuration changes at appropriate level
+
+_Implementation details: link:specification/configuration.adoc[Configuration]_
+
 [#NIFI-AUTH-8]
 === NIFI-AUTH-8: Security Requirements
 * Secure storage of issuer certificates/keys

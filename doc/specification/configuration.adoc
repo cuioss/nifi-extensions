@@ -44,6 +44,402 @@ The following properties are configured as advanced properties and are only show
 |Name of custom header when Token Location is set to CUSTOM_HEADER
 |===
 
+=== Static Configuration for Container Environments
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.7[NIFI-AUTH-7.7: Static Configuration for Container Environments]_
+
+In container environments, it is often preferred to use static configuration rather than configuring processors through the UI. The MultiIssuerJWTTokenAuthenticator processor supports static configuration through various file formats.
+
+==== Configuration File Formats
+
+The following file formats are supported for static configuration:
+
+[cols="2,4"]
+|===
+|Format |Description
+
+|NiFi Properties (.properties)
+|Standard Java properties format used by NiFi
+
+|YAML Configuration (.yml, .yaml)
+|YAML format for more structured configuration
+
+|JSON Configuration (.json)
+|JSON format for structured configuration
+|===
+
+==== Configuration Behavior
+
+The static configuration has the following behavior:
+
+[cols="2,4"]
+|===
+|Behavior |Description
+
+|Active by Default
+|When a valid configuration file is present, it will be loaded and used automatically without requiring additional activation steps
+
+|UI Display
+|The static configuration values will be displayed in the processor configuration dialog for transparency
+
+|Read-Only in UI
+|Static configuration values displayed in the UI cannot be edited through the UI, ensuring consistency with the file-based configuration
+
+|Configuration Precedence
+|Static configuration takes precedence over UI-configured values
+|===
+
+==== Configuration File Locations
+
+The processor will look for configuration files in the following locations (in order of precedence):
+
+1. Path specified by `jwt.config.path` JVM system property
+2. Path specified by `JWT_CONFIG_PATH` environment variable
+3. `conf/jwt-validation.properties`, `conf/jwt-validation.yml`, or `conf/jwt-validation.json` in the NiFi installation directory
+
+==== Configuration Properties
+
+The static configuration file supports all properties available through the UI:
+
+[cols="2,1,1,2"]
+|===
+|Property |Format |Default |Description
+
+|issuers
+|List
+|Empty
+|List of JWT issuers to trust
+
+|issuers.<name>.jwksUrl
+|URL
+|null
+|JWKS endpoint URL for the issuer
+
+|issuers.<name>.publicKey
+|String
+|null
+|PEM-encoded public key for the issuer
+
+|tokenHeaderName
+|String
+|Authorization
+|Name of the header containing the JWT token
+
+|jwksRefreshInterval
+|Duration
+|15 minutes
+|How often to refresh the JWKS cache
+
+|requireValidToken
+|Boolean
+|true
+|When true, only valid tokens result in success relationship
+
+|tokenLocation
+|String
+|AUTHORIZATION_HEADER
+|Where to find the token (AUTHORIZATION_HEADER, CUSTOM_HEADER, FLOW_FILE_CONTENT)
+
+|customHeaderName
+|String
+|null
+|Name of custom header when Token Location is set to CUSTOM_HEADER
+|===
+
+==== Sample Configuration Files
+
+*Properties File Format:*
+
+[source,properties]
+----
+# JWT Authenticator Configuration
+tokenHeaderName=Authorization
+jwksRefreshInterval=15 minutes
+requireValidToken=true
+tokenLocation=AUTHORIZATION_HEADER
+
+# Issuer configurations
+issuers.google.jwksUrl=https://www.googleapis.com/oauth2/v3/certs
+issuers.internal.publicKey=-----BEGIN PUBLIC KEY-----\nMIIB...AQAB\n-----END PUBLIC KEY-----
+----
+
+*YAML Format:*
+
+[source,yaml]
+----
+# JWT Authenticator Configuration
+tokenHeaderName: Authorization
+jwksRefreshInterval: "15 minutes"
+requireValidToken: true
+tokenLocation: AUTHORIZATION_HEADER
+
+# Issuer configurations
+issuers:
+  google:
+    jwksUrl: https://www.googleapis.com/oauth2/v3/certs
+  internal:
+    publicKey: |
+      -----BEGIN PUBLIC KEY-----
+      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
+      -----END PUBLIC KEY-----
+----
+
+*JSON Format:*
+
+[source,json]
+----
+{
+  "tokenHeaderName": "Authorization",
+  "jwksRefreshInterval": "15 minutes",
+  "requireValidToken": true,
+  "tokenLocation": "AUTHORIZATION_HEADER",
+  "issuers": {
+    "google": {
+      "jwksUrl": "https://www.googleapis.com/oauth2/v3/certs"
+    },
+    "internal": {
+      "publicKey": "-----BEGIN PUBLIC KEY-----\nMIIB...AQAB\n-----END PUBLIC KEY-----"
+    }
+  }
+}
+----
+
+==== Configuration Precedence 
+
+When both static configuration and UI configuration are present:
+
+1. Static configuration takes precedence over UI configuration
+2. Properties defined in the static configuration override corresponding UI settings
+3. Properties not defined in the static configuration retain their UI-configured values
+
+==== Configuration Display in UI
+
+When static configuration is active:
+
+1. The UI displays all configuration values from the static configuration
+2. UI fields for static-configured properties are shown as read-only
+3. A visual indicator shows which properties are from static configuration
+4. A timestamp shows when the static configuration was last loaded
+
+==== Configuration Reloading
+
+The processor supports automatic reloading of static configuration:
+
+1. Configuration files are checked periodically for changes (default: 5 minutes)
+2. The reload interval is configurable via `jwt.auth.config.reload.interval` system property
+3. Changes to static configuration are logged at INFO level
+4. Configuration reloads without requiring a processor restart
+5. If the new configuration is invalid, the processor retains the previous valid configuration
+
+==== Implementation for Container Environments
+
+For container environments, the recommended approach is:
+
+1. Mount a configuration file into the container at a known location
+2. Set the `JWT_AUTH_CONFIG_FILE` environment variable to point to this location
+3. Use YAML or JSON format for better readability and structure
+4. Include all required issuer configurations in the static file
+5. For Kubernetes deployments, use ConfigMaps or Secrets to manage the configuration
+
+==== Environment Variable Configuration
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.7[NIFI-AUTH-7.7: Static Configuration for Container Environments]_
+
+For container environments, configuration can also be provided through environment variables:
+
+[cols="2,1,3"]
+|===
+|Environment Variable |Type |Description
+
+|JWT_TOKEN_HEADER_NAME
+|String
+|Name of the header containing the JWT token
+
+|JWT_JWKS_REFRESH_INTERVAL
+|Duration
+|How often to refresh the JWKS cache (format: "15 minutes", "1 hour", etc.)
+
+|JWT_REQUIRE_VALID_TOKEN
+|Boolean
+|When true, only valid tokens result in success relationship
+
+|JWT_TOKEN_LOCATION
+|String
+|Where to find the token (AUTHORIZATION_HEADER, CUSTOM_HEADER, FLOW_FILE_CONTENT)
+
+|JWT_CUSTOM_HEADER_NAME
+|String
+|Name of custom header when Token Location is set to CUSTOM_HEADER
+
+|JWT_ISSUER_{name}_JWKS_URL
+|URL
+|JWKS endpoint URL for the issuer with name {name}
+
+|JWT_ISSUER_{name}_PUBLIC_KEY
+|String
+|PEM-encoded public key for the issuer with name {name}
+|===
+
+==== Environment Variable Examples
+
+[source,bash]
+----
+# Basic configuration
+export JWT_TOKEN_HEADER_NAME=Authorization
+export JWT_JWKS_REFRESH_INTERVAL="30 minutes"
+export JWT_REQUIRE_VALID_TOKEN=true
+export JWT_TOKEN_LOCATION=AUTHORIZATION_HEADER
+
+# Issuer configurations
+export JWT_ISSUER_GOOGLE_JWKS_URL=https://www.googleapis.com/oauth2/v3/certs
+export JWT_ISSUER_INTERNAL_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nMIIB...AQAB\n-----END PUBLIC KEY-----"
+----
+
+==== Environment Variable Precedence
+
+The configuration precedence order is:
+1. Static configuration files
+2. Environment variables
+3. UI configuration
+
+When environment variables are used in combination with static configuration files:
+1. Properties defined in static configuration files override corresponding environment variables
+2. Environment variables override UI settings for properties not defined in static files
+
+==== Container Orchestration Support
+
+For Kubernetes and other container orchestration platforms:
+
+[source,yaml]
+----
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jwt-auth-config
+data:
+  JWT_TOKEN_HEADER_NAME: "Authorization"
+  JWT_JWKS_REFRESH_INTERVAL: "30 minutes"
+  JWT_REQUIRE_VALID_TOKEN: "true"
+  JWT_TOKEN_LOCATION: "AUTHORIZATION_HEADER"
+  JWT_ISSUER_GOOGLE_JWKS_URL: "https://www.googleapis.com/oauth2/v3/certs"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: jwt-auth-secrets
+type: Opaque
+stringData:
+  JWT_ISSUER_INTERNAL_PUBLIC_KEY: |
+    -----BEGIN PUBLIC KEY-----
+    MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
+    -----END PUBLIC KEY-----
+----
+
+==== Implementation for Environment Variables
+
+The processor loads configuration from environment variables during initialization:
+
+[source,java]
+----
+private void loadEnvironmentVariables() {
+    Map<String, String> envVars = System.getenv();
+    
+    // Load basic configuration
+    String tokenHeader = envVars.get("JWT_TOKEN_HEADER_NAME");
+    if (tokenHeader != null) {
+        config.setTokenHeaderName(tokenHeader);
+    }
+    
+    String refreshInterval = envVars.get("JWT_JWKS_REFRESH_INTERVAL");
+    if (refreshInterval != null) {
+        config.setJwksRefreshInterval(TimeUtil.parseDuration(refreshInterval));
+    }
+    
+    String requireValidToken = envVars.get("JWT_REQUIRE_VALID_TOKEN");
+    if (requireValidToken != null) {
+        config.setRequireValidToken(Boolean.parseBoolean(requireValidToken));
+    }
+    
+    String tokenLocation = envVars.get("JWT_TOKEN_LOCATION");
+    if (tokenLocation != null) {
+        config.setTokenLocation(TokenLocation.valueOf(tokenLocation));
+    }
+    
+    String customHeaderName = envVars.get("JWT_CUSTOM_HEADER_NAME");
+    if (customHeaderName != null) {
+        config.setCustomHeaderName(customHeaderName);
+    }
+    
+    // Load issuer configurations
+    Map<String, IssuerConfig> issuers = new HashMap<>();
+    
+    for (Map.Entry<String, String> entry : envVars.entrySet()) {
+        String key = entry.getKey();
+        String value = entry.getValue();
+        
+        if (key.startsWith("JWT_ISSUER_") && key.endsWith("_JWKS_URL")) {
+            // Extract issuer name from environment variable
+            String issuerName = key.substring("JWT_ISSUER_".length(), 
+                                            key.length() - "_JWKS_URL".length())
+                                .toLowerCase();
+            
+            IssuerConfig issuerConfig = issuers.getOrDefault(issuerName, new IssuerConfig());
+            issuerConfig.setJwksUrl(value);
+            issuers.put(issuerName, issuerConfig);
+        } else if (key.startsWith("JWT_ISSUER_") && key.endsWith("_PUBLIC_KEY")) {
+            // Extract issuer name from environment variable
+            String issuerName = key.substring("JWT_ISSUER_".length(),
+                                            key.length() - "_PUBLIC_KEY".length())
+                                .toLowerCase();
+            
+            IssuerConfig issuerConfig = issuers.getOrDefault(issuerName, new IssuerConfig());
+            issuerConfig.setPublicKey(value);
+            issuers.put(issuerName, issuerConfig);
+        }
+    }
+    
+    // Add issuers to configuration
+    for (Map.Entry<String, IssuerConfig> entry : issuers.entrySet()) {
+        config.addIssuer(entry.getKey(), entry.getValue());
+    }
+}
+----
+
+==== Security Considerations for Static Configuration
+
+When using static configuration:
+
+1. Ensure configuration files have appropriate access controls
+2. Do not store sensitive keys in plain text in the configuration file
+3. For production environments, use external secret management systems
+4. Consider using environment variables for sensitive values in the configuration
+5. When using issuer public keys, ensure they are properly formatted and secure
+
+==== UI Implementation for Static Configuration
+
+When static configuration is active:
+
+[source,java]
+----
+@Override
+public void onTrigger(final ProcessContext context, final ProcessSession session) throws ProcessException {
+    // Check if static configuration is active
+    if (staticConfigurationManager.isStaticConfigurationActive()) {
+        // Log that static configuration is being used
+        if (logger.isDebugEnabled()) {
+            logger.debug("Using static configuration from: {}", 
+                staticConfigurationManager.getConfigurationSource());
+        }
+        
+        // Use the static configuration
+        JWTProcessorConfig config = staticConfigurationManager.getProcessorConfig();
+        
+        // Process with static configuration
+        processWithConfiguration(context, session, config);
+    } else {
+        // Use UI-configured settings
+        processWithUIConfiguration(context, session);
+    }
+}
+----
 ==== Implementation of Advanced Properties
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-5.3[NIFI-AUTH-5.3: Advanced Properties]_
 
@@ -162,7 +558,7 @@ NiFi 2.3.0 supports custom validators for property values:
 public class JwksEndpointValidator implements Validator {
     @Override
     public ValidationResult validate(String subject, String input, ValidationContext context) {
-        if (StringUtils.isBlank(input)) {
+        if (MoreStrings.isBlank(input)) {
             return new ValidationResult.Builder()
                 .input(input)
                 .subject(subject)

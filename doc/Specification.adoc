@@ -69,6 +69,17 @@ The processor validates JWT tokens using the cui-jwt-validation library with:
 * Custom scope and role validation
 * Support for all standard JWT algorithms including RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, and ES512
 
+=== Static Configuration Support
+_See Requirement link:Requirements.adoc#NIFI-AUTH-7.7[NIFI-AUTH-7.7: Static Configuration for Container Environments]_
+
+The processor supports static configuration for container deployments:
+* Configuration via properties files (.properties), YAML (.yml, .yaml), or JSON (.json)
+* Active by default when present
+* Environment variable and system property support for configuration paths
+* Configuration displayed (read-only) in the UI when static configuration is active
+* Automatic reloading of configuration changes
+* Comprehensive documentation for container deployment scenarios
+
 === Caching and Performance
 _See Requirement link:Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Performance Requirements]_
 
