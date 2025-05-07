@@ -1,0 +1,361 @@
+= JWT Token Processor Static Configuration
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+link:../Specification.adoc[Back to Main Specification]
+
+== Static Configuration for Container Environments
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.7[NIFI-AUTH-7.7: Static Configuration for Container Environments]_
+
+This document details the static configuration support for JWT validation in container environments. This capability addresses requirement link:../Requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Container-based Integration].
+
+== Overview
+
+In container environments, it is often preferred to use static configuration rather than configuring processors through the UI. The JWT token processor supports static configuration through external files, which is especially useful in containerized environments where configuration can be injected as mounted files.
+
+== Configuration File Formats
+
+The processor supports loading issuer configurations from external files. The following file formats are supported:
+
+=== Properties Format (.properties)
+
+```properties
+# Example properties configuration
+issuer.count=2
+
+# First issuer configuration
+issuer.1.name=Primary Auth Server
+issuer.1.enabled=true
+issuer.1.id=primary-auth
+issuer.1.issuerUrl=https://auth.example.org
+issuer.1.jwksUrl=https://auth.example.org/.well-known/jwks.json
+issuer.1.tokenExpiration=3600
+issuer.1.requiredClaims=aud,sub
+issuer.1.aud=my-api
+issuer.1.roles=admin,user
+
+# Second issuer configuration
+issuer.2.name=Secondary Auth Server
+issuer.2.enabled=false
+issuer.2.id=secondary-auth
+issuer.2.issuerUrl=https://auth2.example.org
+issuer.2.jwksUrl=https://auth2.example.org/.well-known/jwks.json
+issuer.2.tokenExpiration=7200
+issuer.2.requiredClaims=aud,sub,roles
+issuer.2.aud=my-secondary-api
+issuer.2.roles=viewer
+```
+
+=== YAML Format (.yaml, .yml)
+
+```yaml
+issuers:
+  - name: "Primary Auth Server"
+    enabled: true
+    id: "primary-auth"
+    issuerUrl: "https://auth.example.org"
+    jwksUrl: "https://auth.example.org/.well-known/jwks.json"
+    tokenExpiration: 3600
+    requiredClaims: ["aud", "sub"]
+    claims:
+      aud: "my-api"
+      roles: "admin,user"
+  
+  - name: "Secondary Auth Server"
+    enabled: false
+    id: "secondary-auth"
+    issuerUrl: "https://auth2.example.org"
+    jwksUrl: "https://auth2.example.org/.well-known/jwks.json"
+    tokenExpiration: 7200
+    requiredClaims: ["aud", "sub", "roles"]
+    claims:
+      aud: "my-secondary-api"
+      roles: "viewer"
+```
+
+== Configuration Behavior
+
+The static configuration has the following behavior:
+
+[cols="2,4"]
+|===
+|Behavior |Description
+
+|Active by Default
+|When a valid configuration file is present, it will be loaded and used automatically without requiring additional activation steps
+
+|UI Display
+|The static configuration values will be displayed in the processor configuration dialog for transparency
+
+|Read-Only in UI
+|Static configuration values displayed in the UI cannot be edited through the UI, ensuring consistency with the file-based configuration
+
+|Configuration Precedence
+|Static configuration takes precedence over UI-configured values
+|===
+
+== Configuration File Locations
+
+The processor will look for configuration files in the following locations (in order of precedence):
+
+1. Path specified by `jwt.config.path` JVM system property
+2. Path specified by `JWT_CONFIG_PATH` environment variable
+3. `conf/jwt-validation.properties` or `conf/jwt-validation.yml` in the NiFi installation directory
+
+== Runtime Configuration Loading
+
+The JWTTokenExtractor processor checks for configuration file updates at regular intervals, allowing for dynamic reconfiguration without restarting NiFi or the processor.
+
+=== Configuration Refresh Behavior
+
+1. The processor checks for file modification timestamps at a configurable interval
+2. If changes are detected, the configuration is reloaded
+3. Configuration errors are logged and the processor falls back to the last valid configuration
+4. A flowfile attribute `jwt.config.refreshed` is set to `true` on the first flowfile processed after a configuration refresh
+5. If the currently selected issuer becomes disabled during a configuration refresh, a warning is logged and the processor continues using the last valid configuration until a new issuer is selected
+
+=== Issuer State Changes
+
+The processor handles issuer state changes gracefully:
+
+1. When an issuer is disabled, it is immediately removed from the available options in the UI dropdown
+2. When a new issuer is added or an existing one is enabled, it becomes available in the UI dropdown without requiring a restart
+3. If all issuers become disabled, the processor logs an error and stops processing flowfiles until at least one enabled issuer is configured
+4. Changes to an enabled issuer's configuration are applied immediately without interrupting processing
+
+== Container Environment Integration
+
+=== Kubernetes ConfigMap Example
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jwt-issuers-config
+data:
+  issuers.yaml: |
+    issuers:
+      - name: "Primary Auth Server"
+        enabled: true
+        id: "primary-auth"
+        issuerUrl: "https://auth.example.org"
+        jwksUrl: "https://auth.example.org/.well-known/jwks.json"
+        tokenExpiration: 3600
+        requiredClaims: ["aud", "sub"]
+        claims:
+          aud: "my-api"
+          roles: "admin,user"
+      - name: "Secondary Auth Server"
+        enabled: false
+        id: "secondary-auth"
+        issuerUrl: "https://auth2.example.org"
+        jwksUrl: "https://auth2.example.org/.well-known/jwks.json"
+        tokenExpiration: 7200
+        requiredClaims: ["aud", "sub", "roles"]
+        claims:
+          aud: "my-secondary-api"
+          roles: "viewer"
+```
+
+=== Docker Compose Example
+
+```yaml
+version: '3'
+services:
+  nifi:
+    image: apache/nifi:2.3.0
+    ports:
+      - "8443:8443"
+    volumes:
+      - ./config/issuers.yaml:/opt/nifi/nifi-current/config/issuers.yaml:ro
+    environment:
+      - NIFI_WEB_HTTPS_PORT=8443
+      - SINGLE_USER_CREDENTIALS_USERNAME=admin
+      - SINGLE_USER_CREDENTIALS_PASSWORD=Password123
+```
+
+Example contents of the mounted `issuers.yaml` file:
+
+```yaml
+issuers:
+  - name: "Primary Auth Server"
+    enabled: true
+    id: "primary-auth"
+    issuerUrl: "https://auth.example.org"
+    jwksUrl: "https://auth.example.org/.well-known/jwks.json"
+    tokenExpiration: 3600
+    requiredClaims: ["aud", "sub"]
+    claims:
+      aud: "my-api"
+      roles: "admin,user"
+```
+
+== Environment Variable Configuration
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.7[NIFI-AUTH-7.7: Static Configuration for Container Environments]_
+
+For container environments, configuration can also be provided through environment variables:
+
+[cols="2,1,3"]
+|===
+|Environment Variable |Type |Description
+
+|JWT_TOKEN_HEADER_NAME
+|String
+|Name of the header containing the JWT token
+
+|JWT_JWKS_REFRESH_INTERVAL
+|Duration
+|How often to refresh the JWKS cache (format: "15 minutes", "1 hour", etc.)
+
+|JWT_REQUIRE_VALID_TOKEN
+|Boolean
+|When true, only valid tokens result in success relationship
+
+|JWT_TOKEN_LOCATION
+|String
+|Where to find the token (AUTHORIZATION_HEADER, CUSTOM_HEADER, FLOW_FILE_CONTENT)
+
+|JWT_CUSTOM_HEADER_NAME
+|String
+|Name of custom header when Token Location is set to CUSTOM_HEADER
+
+|JWT_ISSUER_{name}_JWKS_URL
+|URL
+|JWKS endpoint URL for the issuer with name {name}
+
+|JWT_ISSUER_{name}_PUBLIC_KEY
+|String
+|PEM-encoded public key for the issuer with name {name}
+|===
+
+=== Environment Variable Examples
+
+[source,bash]
+----
+# Basic configuration
+export JWT_TOKEN_HEADER_NAME=Authorization
+export JWT_JWKS_REFRESH_INTERVAL="30 minutes"
+export JWT_REQUIRE_VALID_TOKEN=true
+export JWT_TOKEN_LOCATION=AUTHORIZATION_HEADER
+
+# Issuer configurations
+export JWT_ISSUER_GOOGLE_JWKS_URL=https://www.googleapis.com/oauth2/v3/certs
+export JWT_ISSUER_INTERNAL_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nMIIB...AQAB\n-----END PUBLIC KEY-----"
+----
+
+=== Environment Variable Precedence
+
+The configuration precedence order is:
+1. Static configuration files
+2. Environment variables
+3. UI configuration
+
+When environment variables are used in combination with static configuration files:
+1. Properties defined in static configuration files override corresponding environment variables
+2. Environment variables override UI settings for properties not defined in static files
+
+=== Container Orchestration Support
+
+For Kubernetes and other container orchestration platforms:
+
+[source,yaml]
+----
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jwt-auth-config
+data:
+  JWT_TOKEN_HEADER_NAME: "Authorization"
+  JWT_JWKS_REFRESH_INTERVAL: "30 minutes"
+  JWT_REQUIRE_VALID_TOKEN: "true"
+  JWT_TOKEN_LOCATION: "AUTHORIZATION_HEADER"
+  JWT_ISSUER_GOOGLE_JWKS_URL: "https://www.googleapis.com/oauth2/v3/certs"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: jwt-auth-secrets
+type: Opaque
+stringData:
+  JWT_ISSUER_INTERNAL_PUBLIC_KEY: |
+    -----BEGIN PUBLIC KEY-----
+    MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
+    -----END PUBLIC KEY-----
+----
+
+== Error Handling
+
+The processor implements robust error handling for configuration loading:
+
+1. If the configuration file cannot be read or parsed, an error is logged and the processor falls back to the last valid configuration
+2. If no valid configuration has been loaded, flowfiles are routed to the `failure` relationship
+3. Detailed error information is added to flowfile attributes with the prefix `jwt.config.error`
+
+== Security Considerations
+
+=== File Permissions
+
+When deploying in containerized environments, ensure that:
+
+1. Configuration files have appropriate read permissions for the NiFi process user
+2. Configuration files are mounted as read-only to prevent unauthorized modifications
+3. Sensitive configuration is properly secured using Kubernetes Secrets or similar mechanisms
+
+=== JWKS URL Security
+
+1. JWKS URLs should use HTTPS to ensure secure key retrieval
+2. Consider using mutual TLS authentication for JWKS endpoints in high-security environments
+3. Implement proper network security controls to restrict access to JWKS endpoints
+
+== Implementation Example
+
+=== Static Configuration Loading
+
+[source,java]
+----
+private void loadEnvironmentVariables() {
+    Map<String, String> envVars = System.getenv();
+    
+    // Load basic configuration
+    String tokenHeader = envVars.get("JWT_TOKEN_HEADER_NAME");
+    if (tokenHeader != null) {
+        config.setTokenHeaderName(tokenHeader);
+    }
+    
+    // Other environment variable loading logic
+    // ...
+}
+
+@Override
+public void onTrigger(final ProcessContext context, final ProcessSession session) throws ProcessException {
+    // Check if static configuration is active
+    if (staticConfigurationManager.isStaticConfigurationActive()) {
+        // Log that static configuration is being used
+        if (logger.isDebugEnabled()) {
+            logger.debug("Using static configuration from: {}", 
+                staticConfigurationManager.getConfigurationSource());
+        }
+        
+        // Use the static configuration
+        JWTProcessorConfig config = staticConfigurationManager.getProcessorConfig();
+        
+        // Process with static configuration
+        processWithConfiguration(context, session, config);
+    } else {
+        // Use UI-configured settings
+        processWithUIConfiguration(context, session);
+    }
+}
+----
+
+== See Also
+
+* link:configuration.adoc[General Configuration]
+* link:configuration-ui.adoc[UI Configuration]
+* link:token-validation.adoc[Token Validation]
+* link:security.adoc[Security]
+* link:error-handling.adoc[Error Handling]
+* link:../Requirements.adoc[Requirements]
+* link:../Specification.adoc[Main Specification]

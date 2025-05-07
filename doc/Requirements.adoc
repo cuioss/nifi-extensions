@@ -295,3 +295,46 @@ _Implementation details: link:specification/testing.adoc[Testing]_
 * Default to English when a translation is not available
 
 _Implementation details: link:specification/internationalization.adoc[Internationalization]_
+
+== Observability Requirements
+
+[#NIFI-AUTH-18]
+=== NIFI-AUTH-18: Security Event Monitoring
+* Expose TokenValidator's SecurityEventCounter metrics
+* Track key metrics:
+** Total tokens processed
+** Valid tokens processed
+** Invalid tokens processed, categorized by error type:
+*** Malformed tokens
+*** Expired tokens
+*** Invalid signatures
+*** Missing required claims
+*** Other validation errors
+* Security event metrics must be accessible through:
+** NiFi UI component interface
+** NiFi's metrics subsystem
+** External monitoring systems via standardized endpoints
+
+[#NIFI-AUTH-18.1]
+==== NIFI-AUTH-18.1: NiFi UI Integration
+* Display real-time security event metrics in processor status
+* Include aggregated metrics in processor details view
+* Provide metrics breakdown in the UI configuration dialog
+* Support runtime metric reset functionality
+
+[#NIFI-AUTH-18.2]
+==== NIFI-AUTH-18.2: Metrics System Integration
+* Integrate with NiFi's internal metrics reporting system
+* Register all security event metrics as NiFi reportable metrics
+* Apply standard NiFi metric naming conventions
+* Support all NiFi metric aggregation mechanisms
+
+[#NIFI-AUTH-18.3]
+==== NIFI-AUTH-18.3: External Monitoring System Support
+* Expose metrics in Prometheus-compatible format
+* Define standard metric naming convention
+* Provide metadata tags for metric categorization
+* Support metric scraping via NiFi's monitoring endpoints
+* Include proper documentation for external system configuration
+
+_Implementation details: link:specification/observability.adoc[Observability]_

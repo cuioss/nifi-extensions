@@ -1,0 +1,436 @@
+= JWT Token Processor Observability
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+link:../Specification.adoc[Back to Main Specification]
+
+== Overview
+
+This document details the observability capabilities of the JWT Token Processor, focusing on security event metrics collection, reporting, and integration with monitoring systems. It addresses requirement link:../Requirements.adoc#NIFI-AUTH-18[NIFI-AUTH-18: Security Event Monitoring].
+
+== Security Event Metrics
+
+The JWT Token Processor leverages the SecurityEventCounter provided by the cui-jwt-validation library to track key security events during token processing and validation.
+
+=== Available Metrics
+
+The following metrics are tracked:
+
+[cols="2,4"]
+|===
+|Metric Name |Description
+
+|totalProcessedTokens
+|Total number of tokens that have been processed by the validator
+
+|validTokens
+|Number of tokens that passed all validation checks
+
+|invalidTokens
+|Total number of tokens that failed validation for any reason
+
+|malformedTokens
+|Number of tokens with structural issues, incorrect format, or parsing problems
+
+|expiredTokens
+|Number of tokens that were rejected because they were expired
+
+|invalidSignatureTokens
+|Number of tokens with invalid, tampered, or unverifiable signatures
+
+|missingClaimTokens
+|Number of tokens missing required claims (e.g., sub, iss, exp)
+
+|invalidClaimTokens
+|Number of tokens with invalid claim values (e.g., wrong audience)
+
+|processingErrors
+|Number of unexpected errors during token processing
+|===
+
+== NiFi UI Integration
+
+=== Processor Status Display
+
+The JWT Token Processor displays key metrics directly in the NiFi UI processor status:
+
+[source]
+----
+Running | Processed: 15,423 | Valid: 15,126 | Invalid: 297
+----
+
+=== Processor Details View
+
+When selecting the processor, the detailed metrics are displayed in the Processor Details pane:
+
+[cols="2,2"]
+|===
+|Metric |Value
+
+|Tokens Processed
+|15,423
+
+|Valid Tokens
+|15,126 (98.1%)
+
+|Invalid Tokens
+|297 (1.9%)
+
+|Malformed
+|42
+
+|Expired
+|198
+
+|Invalid Signature
+|37
+
+|Missing Claims
+|15
+
+|Invalid Claims
+|5
+|===
+
+=== Configuration Dialog Metrics Tab
+
+A dedicated "Metrics" tab in the processor configuration dialog provides:
+
+1. Detailed breakdown of all security event metrics
+2. Percentage calculations and trend indicators
+3. A "Reset Metrics" button to clear counters
+4. Historical metrics chart (last 24 hours)
+
+== NiFi Metrics Integration
+
+=== NiFi Metrics Registry
+
+The processor registers all security event metrics with NiFi's metrics registry using the following approach:
+
+[source,java]
+----
+@OnScheduled
+public void onScheduled(final ProcessContext context) {
+    // Register metrics with NiFi metrics system
+    MetricsRegistry metricsRegistry = context.getMetricsRegistry();
+    
+    // Register all security event counters
+    CounterMetric totalProcessedMetric = metricsRegistry.counter(
+            METRIC_NAMESPACE, 
+            METRIC_GROUP, 
+            "total-processed-tokens", 
+            "Total number of tokens processed");
+            
+    // ... register other metrics similarly
+    
+    // Link SecurityEventCounter to NiFi metrics system
+    securityEventRegistry = new NifiSecurityEventRegistry(
+            securityEventCounter,
+            metricsRegistry,
+            METRIC_NAMESPACE,
+            METRIC_GROUP);
+}
+----
+
+=== NiFi Reporter Integration
+
+The metrics are available to all NiFi Reporter implementations through the standard metrics registry. This includes:
+
+1. JMX Reporter
+2. Graphite Reporter
+3. Ganglia Reporter
+4. Custom NiFi reporters
+
+=== Metrics Naming Convention
+
+All metrics follow the standard NiFi naming convention:
+
+[source]
+----
+namespace=jwt-processor
+group=security-events
+metric_name=<event-type>
+----
+
+Example of full metric names:
+
+* `jwt-processor.security-events.total-processed-tokens`
+* `jwt-processor.security-events.valid-tokens`
+* `jwt-processor.security-events.invalid-tokens`
+
+== External Monitoring System Integration
+
+=== Prometheus Integration
+
+==== NiFi Prometheus Endpoint
+
+The JWT Token Processor exposes its metrics through NiFi's built-in Prometheus endpoint at:
+
+[source]
+----
+http(s)://<nifi-host>:<nifi-port>/nifi-api/metrics/prometheus
+----
+
+The metrics are formatted according to Prometheus exposition format:
+
+[source]
+----
+# HELP jwt_processor_total_processed_tokens Total number of tokens processed
+# TYPE jwt_processor_total_processed_tokens counter
+jwt_processor_total_processed_tokens{component_id="f23a6614-0173-1000-ffff-ffffa96fffff",component_type="JWTTokenExtractor",component_name="ValidateJWT"} 15423
+
+# HELP jwt_processor_valid_tokens Number of tokens successfully validated
+# TYPE jwt_processor_valid_tokens counter
+jwt_processor_valid_tokens{component_id="f23a6614-0173-1000-ffff-ffffa96fffff",component_type="JWTTokenExtractor",component_name="ValidateJWT"} 15126
+
+# ... other metrics
+----
+
+==== Labels and Metadata
+
+All Prometheus metrics include the following labels:
+
+* `component_id`: The processor instance ID
+* `component_type`: Always "JWTTokenExtractor"
+* `component_name`: The processor name assigned in NiFi
+* `instance`: The NiFi instance name/ID
+
+==== Prometheus Configuration Example
+
+Sample Prometheus scrape configuration:
+
+[source,yaml]
+----
+scrape_configs:
+  - job_name: 'nifi'
+    metrics_path: '/nifi-api/metrics/prometheus'
+    basic_auth:
+      username: 'monitor'
+      password: 'monitor-password'
+    static_configs:
+      - targets: ['nifi-server:8443']
+    scheme: https
+    tls_config:
+      insecure_skip_verify: false
+      ca_file: /etc/prometheus/certs/nifi-ca.crt
+----
+
+=== Grafana Dashboard
+
+A sample Grafana dashboard template is provided, with panels for:
+
+1. Total tokens processed (counter)
+2. Token validation success rate (gauge)
+3. Error breakdown by type (pie chart)
+4. Token validation trends over time (time series)
+5. Alert thresholds for high error rates
+
+== Implementation
+
+=== SecurityEventCounter Integration
+
+The processor integrates with the cui-jwt-validation SecurityEventCounter as follows:
+
+1. Obtain SecurityEventCounter from TokenValidator
+2. Expose counter through processor properties
+3. Update NiFi metrics on each token processing cycle
+4. Provide reset capability through processor life cycle
+
+[source,java]
+----
+public class JWTTokenExtractor extends AbstractProcessor {
+
+    private TokenValidator tokenValidator;
+    private SecurityEventCounter securityEventCounter;
+    private NifiSecurityEventRegistry securityEventRegistry;
+    
+    @Override
+    protected void init(ProcessorInitializationContext context) {
+        // ... existing initialization code ...
+        
+        // Initialize token validator with security event tracking
+        tokenValidator = new TokenValidator(); 
+        securityEventCounter = tokenValidator.getSecurityEventCounter();
+    }
+    
+    @OnScheduled
+    public void onScheduled(final ProcessContext context) {
+        // ... existing scheduled code ...
+        
+        // Register with metrics registry
+        initializeMetrics(context);
+    }
+    
+    @OnUnscheduled
+    public void onUnscheduled(final ProcessContext context) {
+        // ... existing unscheduled code ...
+        
+        // Deregister metrics if needed
+        if (securityEventRegistry != null) {
+            securityEventRegistry.deregister();
+        }
+    }
+    
+    @Override
+    public void onTrigger(final ProcessContext context, final ProcessSession session) {
+        // ... existing processing code ...
+        
+        // Update metrics after token processing
+        updateMetrics();
+    }
+    
+    // Helper methods
+    private void initializeMetrics(ProcessContext context) {
+        // Initialize metrics registry integration
+    }
+    
+    private void updateMetrics() {
+        // Update NiFi metrics from security event counter
+        if (securityEventRegistry != null) {
+            securityEventRegistry.updateMetrics();
+        }
+    }
+}
+----
+
+=== NifiSecurityEventRegistry Class
+
+A dedicated class provides the bridge between SecurityEventCounter and NiFi's metrics system:
+
+[source,java]
+----
+/**
+ * Bridges between SecurityEventCounter and NiFi's metrics registry
+ */
+public class NifiSecurityEventRegistry {
+    
+    private final SecurityEventCounter securityEventCounter;
+    private final MetricsRegistry metricsRegistry;
+    private final String namespace;
+    private final String group;
+    
+    private final Map<String, CounterMetric> counterMetrics = new HashMap<>();
+    
+    public NifiSecurityEventRegistry(
+            SecurityEventCounter securityEventCounter,
+            MetricsRegistry metricsRegistry,
+            String namespace,
+            String group) {
+        
+        this.securityEventCounter = securityEventCounter;
+        this.metricsRegistry = metricsRegistry;
+        this.namespace = namespace;
+        this.group = group;
+        
+        initializeCounters();
+    }
+    
+    private void initializeCounters() {
+        // Register all counter metrics with NiFi
+        counterMetrics.put("total-processed-tokens", 
+                metricsRegistry.counter(namespace, group, "total-processed-tokens", 
+                "Total number of tokens processed"));
+        
+        // ... initialize other metrics
+    }
+    
+    public void updateMetrics() {
+        // Update NiFi metrics from the security event counter
+        counterMetrics.get("total-processed-tokens")
+                .setValue(securityEventCounter.getTotalProcessedTokens());
+        counterMetrics.get("valid-tokens")
+                .setValue(securityEventCounter.getValidTokens());
+        // ... update other metrics
+    }
+    
+    public void deregister() {
+        // Cleanup any resources
+    }
+}
+----
+
+=== Prometheus Endpoint Custom Export
+
+If additional customization is required beyond NiFi's built-in Prometheus endpoint, a custom implementation can be provided:
+
+[source,java]
+----
+@Path("/metrics/jwt")
+@Api(
+        value = "/metrics/jwt",
+        description = "Endpoint for retrieving JWT processor metrics in Prometheus format"
+)
+public class JwtMetricsResource extends ApplicationResource {
+
+    @GET
+    @Consumes(MediaType.WILDCARD)
+    @Produces(MediaType.TEXT_PLAIN)
+    @Path("prometheus")
+    @ApiOperation(
+            value = "Get JWT metrics in Prometheus format",
+            notes = "Returns the JWT processor metrics in Prometheus exposition format"
+    )
+    public Response getPrometheusMetrics() {
+        // Security check
+        authorizeBulletinAccess();
+        
+        // Collect metrics from all JWT processors
+        StringBuilder prometheusMetrics = new StringBuilder();
+        
+        // ... build Prometheus-formatted metrics
+        
+        return Response.ok(prometheusMetrics.toString()).build();
+    }
+}
+----
+
+== Security Considerations
+
+=== Metric Access Control
+
+1. Access to metrics endpoints should be secured with appropriate authentication
+2. Consider creating a dedicated "metrics" role with limited permissions
+3. Monitoring systems should use dedicated service accounts
+
+=== Data Privacy
+
+1. Metrics contain only aggregate counts, no token content or PII
+2. Instance identifiers can be anonymized if needed
+3. No sensitive information is exposed in metric names or values
+
+=== Audit Trail Integration
+
+Security event metrics can be integrated with NiFi's Provenance Repository:
+
+[source,java]
+----
+@Override
+public void onTrigger(final ProcessContext context, final ProcessSession session) {
+    // ... existing processing code ...
+    
+    // Record validation failures to provenance
+    if (validationResult.isInvalid()) {
+        session.getProvenanceReporter().route(flowFile, 
+            RelationshipType.FAILURE, 
+            "JWT validation failed: " + validationResult.getReason(),
+            System.currentTimeMillis() - startTime);
+            
+        // Increment security event counter
+        securityEventCounter.incrementInvalidTokens();
+        
+        // Update metrics
+        updateMetrics();
+    }
+}
+----
+
+== See Also
+
+* link:configuration.adoc[Configuration]
+* link:security.adoc[Security]
+* link:technical-components.adoc[Technical Components]
+* link:error-handling.adoc[Error Handling]
+* link:../Requirements.adoc[Requirements]
+* link:../Specification.adoc[Main Specification]
