@@ -1,0 +1,67 @@
+@startuml error-handling-flow
+skinparam defaultTextAlignment center
+skinparam componentStyle uml2
+
+title "JWT Token Validation Error Handling Flow"
+
+start
+
+:NiFi Processor receives JWT token;
+
+partition "Token Validation Process" {
+  if (Token format valid?) then (yes)
+    if (Signature valid?) then (yes)
+      if (Claims valid?) then (yes)
+        :Token validation successful;
+        :Route to success relationship;
+      else (no)
+        :Claims Validation Error;
+        note right
+          Error codes: AUTH-005, AUTH-006
+          - Missing required claim
+          - Invalid audience
+          - Invalid scope
+        end note
+      endif
+    else (no)
+      :Signature Validation Error;
+      note right
+        Error codes: AUTH-003, AUTH-004
+        - Invalid signature
+        - Expired token
+        - Token not yet valid
+      end note
+    endif
+  else (no)
+    :Token Format Error;
+    note right
+      Error codes: AUTH-001, AUTH-002
+      - Empty token
+      - Malformed token
+      - Invalid token format
+    end note
+  endif
+}
+
+partition "Error Processing" {
+  if (Validation failed?) then (yes)
+    :Add error attributes to FlowFile;
+    note right
+      - jwt.error.code
+      - jwt.error.message
+      - jwt.error.details
+    end note
+    
+    :Log validation failure;
+    
+    :Increment security event counter;
+    
+    :Route to failure relationship;
+  else (no)
+    :Normal processing continues;
+  endif
+}
+
+stop
+
+@enduml

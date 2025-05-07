@@ -1,0 +1,18 @@
+@startuml
+title API Gateway Pattern
+
+actor "API Client" as client
+component "API Gateway" as gateway
+component "Backend API" as backend
+component "JWT Token\nAuthenticator" as auth
+component "Identity\nProvider" as idp
+
+client -> gateway
+gateway -> backend
+gateway -> auth
+auth -> idp
+
+note bottom of auth
+  MultiIssuerJWTTokenAuthenticator
+end note
+@enduml

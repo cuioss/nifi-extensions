@@ -1,0 +1,18 @@
+@startuml multi-tenant-api-routing
+skinparam componentStyle rectangle
+
+actor "Tenant A\nClient" as tenantA
+actor "Tenant B\nClient" as tenantB
+component "API Gateway" as gateway
+component "JWT Token\nAuthenticator" as authenticator
+component "Tenant A\nBackend" as backendA
+component "Tenant B\nBackend" as backendB
+
+tenantA --> gateway
+tenantB --> gateway
+gateway --> authenticator
+gateway --> backendA
+gateway --> backendB
+authenticator ..> gateway : validates tokens
+
+@enduml

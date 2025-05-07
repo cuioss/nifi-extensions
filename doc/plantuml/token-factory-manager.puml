@@ -1,0 +1,41 @@
+@startuml token-factory-manager
+skinparam defaultTextAlignment center
+skinparam componentStyle uml2
+
+title "Token Factory Manager Architecture"
+
+package "NiFi Processor" {
+  [MultiIssuerJWTTokenAuthenticator] as processor
+}
+
+package "cui-jwt-validation" {
+  [TokenValidator] as validator
+  [IssuerConfig] as config
+  [AccessTokenContent] as token
+  [JWTParser] as parser
+}
+
+cloud "Authentication Servers" {
+  [JWKS Endpoint 1] as jwks1
+  [JWKS Endpoint 2] as jwks2
+}
+
+processor --> validator : creates
+validator --> config : configured with
+validator --> token : validates and returns
+validator --> parser : uses
+
+jwks1 <-- config : fetches keys
+jwks2 <-- config : fetches keys
+
+note bottom of processor
+  Configurable with multiple issuers 
+  for JWT token validation
+end note
+
+note right of validator
+  Handles token validation logic
+  with caching and key rotation
+end note
+
+@enduml

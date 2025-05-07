@@ -1,0 +1,45 @@
+@startuml
+skinparam componentStyle rectangle
+
+title "Token Validation with cui-jwt-validation Library"
+
+actor "NiFi Flow" as Flow
+component "MultiIssuerJWTToken\nAuthenticator" as Processor
+component "TokenValidator" as Validator
+component "IssuerConfig\nIssuer 1" as Issuer1
+component "IssuerConfig\nIssuer 2" as Issuer2
+database "JWKS Endpoint 1" as JWKS1
+database "JWKS Endpoint 2" as JWKS2
+cloud "Cache" as Cache
+
+Flow -> Processor : FlowFile with JWT Token
+Processor -> Validator : validate(token)
+Validator --> Processor : AccessTokenContent\nor ValidationFailure
+
+Validator --> Issuer1 : Use for validation
+Validator --> Issuer2 : Use for validation
+Issuer1 --> JWKS1 : Fetch public keys
+Issuer2 --> JWKS2 : Fetch public keys
+
+Issuer1 <--> Cache : Cache validation results
+Issuer2 <--> Cache : Cache validation results
+
+note right of Processor
+  1. Extracts token from incoming FlowFile
+  2. Validates token using TokenValidator
+  3. Routes FlowFile based on validation result
+end note
+
+note right of Validator
+  1. Selects appropriate IssuerConfig
+  2. Verifies token signature and claims
+  3. Returns validation result
+end note
+
+note right of Cache
+  Improves performance by caching:
+  - JWKS public keys
+  - Validation results
+end note
+
+@enduml

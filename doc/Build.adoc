@@ -1,0 +1,170 @@
+= Building and Development Guide
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+This document provides information about building and developing the cui-jwt-validation library.
+
+== Updating the Maven Wrapper
+
+To update the Maven Wrapper scripts (mvnw, mvnw.cmd, .mvn/wrapper), run the following command:
+
+[source,shell]
+----
+./mvnw wrapper:wrapper
+----
+
+This will update the Maven Wrapper to the latest version provided by the takari-maven-wrapper-plugin.
+
+== Reproducible Builds
+
+This project implements several measures to ensure reproducible builds. The following practices are already in place:
+
+* All plugin and dependency versions are pinned in all `pom.xml` files. No LATEST, RELEASE, or version ranges are used.
+* The Maven Wrapper is present (`mvnw`, `mvnw.cmd`, `.mvn/wrapper/maven-wrapper.properties`) and pins Maven `3.9.6`.
+* Java version is set explicitly in the root `pom.xml`, inherited by all modules.:
+
+[source,xml]
+----
+<maven.compiler.source>17</maven.compiler.source>
+<maven.compiler.target>17</maven.compiler.target>
+----
+
+* Reproducibility configuration is set for JAR/WAR plugins in all modules: project.build.outputTimestamp
+
+* No non-deterministic resource filtering is used (no timestamp, hostname, or environment injection in resources).
+* All GitHub Actions in `.github/workflows/` are pinned by commit hash (uses: `...@<commit-sha>`).
+* The build environment is documented: builds are tested on Linux with `Java 17` and Maven `3.9.6` using `./mvnw`.
+
+=== Verifying Reproducibility
+
+To verify that builds are reproducible, you can perform the following steps:
+
+. Clean the project and perform the first build:
++
+[source,bash]
+----
+./mvnw clean verify
+cp target/*.jar /tmp/first-build.jar
+----
+. Clean the project and perform the second build:
++
+[source,bash]
+----
+./mvnw clean verify
+----
+. Compare the two build artifacts:
++
+[source,bash]
+----
+diffoscope target/*.jar /tmp/first-build.jar || (echo "Builds differ!" && exit 1)
+----
+
+If the builds are reproducible, there should be no differences reported by `diffoscope`.
+
+== PlantUML Diagrams
+
+This project uses PlantUML for creating diagrams in the documentation.
+To ensure compatibility with GitHub's rendering capabilities, we follow these practices:
+
+=== PlantUML File Structure
+
+All PlantUML diagrams are stored in separate files under the `/doc/plantuml/` directory with the `.puml` extension.
+This separation allows for:
+
+* Better version control of diagrams
+* Easier maintenance and updates
+* Compatibility with GitHub's rendering limitations
+* Generation of PNG images for documentation
+
+Each PlantUML file should include the following directive at the beginning to ensure it can be rendered without requiring a local Graphviz installation:
+
+[source]
+----
+@startuml
+' Configure PlantUML to use its own rendering engine
+!pragma layout smetana
+...
+@enduml
+----
+
+The `!pragma layout smetana` directive tells PlantUML to use its own internal rendering engine (Smetana) instead of relying on Graphviz, which eliminates the dependency on the local filesystem.
+
+=== Generating PNG Images
+
+There are two ways to generate PNG images from PlantUML files:
+
+==== Option 1: Using the Local PlantUML Installation (Recommended)
+
+If you have PlantUML installed locally, you can use the provided script to generate PNG images:
+
+[source,bash]
+----
+./generate-plantuml.sh
+----
+
+This script will:
+
+1. Find all `.puml` files in the `/doc/plantuml/` directory
+2. Generate corresponding PNG images with the same base name using the locally installed PlantUML
+3. Place the generated images in the same directory
+
+This method is faster and doesn't require a Maven build.
+
+==== Option 2: Using Maven
+
+Alternatively, you can use the `build-plantuml` Maven profile:
+
+[source,bash]
+----
+./mvnw generate-resources -Pbuild-plantuml
+----
+
+This command will:
+
+1. Process all `.puml` files in the `/doc/plantuml/` directory
+2. Generate corresponding PNG images with the same base name
+3. Place the generated images in the same directory
+
+=== Referencing Images in Documentation
+
+To reference the generated PNG images in AsciiDoc documentation, use the following syntax:
+
+For documents in the root directory (like README.adoc):
+
+[source]
+----
+image::doc/plantuml/diagram-name.png[Diagram Title]
+----
+
+For documents in the `doc` directory:
+
+[source]
+----
+image::plantuml/diagram-name.png[Diagram Title]
+----
+
+=== Adding New Diagrams
+
+To add a new diagram:
+
+1. Create a new `.puml` file in the `/doc/plantuml/` directory
+2. Add your PlantUML content to the file
+3. Generate the PNG image using one of the following methods:
+   a. Run the `./generate-plantuml.sh` script (recommended if PlantUML is installed locally)
+   b. Run the Maven build with the `build-plantuml` profile
+4. Reference the generated PNG in your documentation
+
+=== Automated Reproducibility Verification
+
+The reproducibility of the build is automatically verified in the GitHub Actions pipeline. The "reproducible-build" workflow performs two builds with identical configuration and compares the generated artifacts using diffoscope. The build is considered reproducible only if no differences are detected. The result is displayed as a badge in the README.
+
+Workflow procedure:
+
+1. First build and storing the JAR artifact
+2. Second build with identical configuration
+3. Comparison of the two artifacts with diffoscope
+4. If differences are detected, the workflow fails
+
+The diffoscope output can be used for analysis in case of failure. More information can be found in the workflow under `.github/workflows/maven.yml` (Job: `reproducible-build`).

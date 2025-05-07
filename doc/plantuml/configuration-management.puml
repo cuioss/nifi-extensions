@@ -1,0 +1,74 @@
+@startuml configuration-management
+skinparam defaultTextAlignment center
+skinparam componentStyle uml2
+
+title "JWT Processor Configuration Management Flow"
+
+package "Processor Configuration" {
+  [NiFi Property Descriptor] as properties
+  [IssuerConfigLoader] as configLoader
+  [ConfigurationValidator] as configValidator
+}
+
+package "Configuration Storage" {
+  database "Issuer Configurations" as issuerConfigs {
+    [Issuer 1 Config] as config1
+    [Issuer 2 Config] as config2
+    [Issuer 3 Config] as config3
+  }
+}
+
+package "Configuration Components" {
+  [TokenValidatorFactory] as validatorFactory
+  [CachingStrategy] as cachingStrategy
+  [KeyRotationPolicy] as keyRotation
+}
+
+package "External Resources" {
+  [JWKS Endpoint 1] as jwks1
+  [JWKS Endpoint 2] as jwks2
+  [JWKS Endpoint 3] as jwks3
+}
+
+' Relationships
+properties --> configLoader : provides raw config
+configLoader --> configValidator : validates
+configValidator --> issuerConfigs : stores valid configs
+validatorFactory --> issuerConfigs : uses
+cachingStrategy --> issuerConfigs : applied to
+keyRotation --> issuerConfigs : applied to
+
+config1 --> jwks1 : fetches keys from
+config2 --> jwks2 : fetches keys from
+config3 --> jwks3 : fetches keys from
+
+note right of properties
+  Configuration properties:
+  - Issuer URLs
+  - Required claims
+  - Audience values
+  - Cache settings
+end note
+
+note bottom of configValidator
+  Validates:
+  - Well-formed URLs
+  - Reachable endpoints
+  - Logical claim rules
+end note
+
+note right of cachingStrategy
+  Controls:
+  - JWKS caching
+  - Validation result caching
+  - Cache expiration
+end note
+
+note right of keyRotation
+  Manages:
+  - Key rotation schedule
+  - Force refresh policy
+  - Key ID tracking
+end note
+
+@enduml

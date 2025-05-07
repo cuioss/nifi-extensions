@@ -1,0 +1,63 @@
+@startuml component-interaction
+skinparam defaultTextAlignment center
+skinparam componentStyle uml2
+
+title "JWT Processor Core Component Interaction"
+
+package "NiFi Processor" {
+  [MultiIssuerJWTTokenAuthenticator] as processor
+}
+
+package "Core Components" {
+  [TokenValidator] as validator
+  [IssuerConfig] as issuerConfig
+  [TokenExtractor] as extractor
+  [TokenAttributeWriter] as writer
+  [SecurityEventCounter] as counter
+}
+
+package "Token Content" {
+  [AccessTokenContent] as tokenContent
+  [ValidationFailure] as failure
+}
+
+package "External Services" {
+  [JWKS Endpoint] as jwks
+}
+
+' Relationships
+processor --> validator : uses
+processor --> extractor : uses to extract token
+processor --> writer : uses to write attributes
+validator --> issuerConfig : configured with
+validator --> counter : reports events to
+validator --> tokenContent : returns on success
+validator --> failure : returns on failure
+issuerConfig --> jwks : fetches public keys from
+
+note right of validator
+  Validates tokens using configured issuers
+  Returns TokenContent or ValidationFailure
+end note
+
+note right of issuerConfig
+  Maintains configuration for each issuer:
+  - JWKS URI
+  - Expected claims
+  - Validation rules
+end note
+
+note bottom of counter
+  Tracks security events:
+  - Valid tokens
+  - Invalid tokens
+  - Malformed tokens
+  - Expired tokens
+end note
+
+note bottom of writer
+  Writes token data to FlowFile attributes
+  based on validation results
+end note
+
+@enduml
