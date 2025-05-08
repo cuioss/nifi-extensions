@@ -86,9 +86,9 @@ void testProcessWithValidToken() {
     final TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
     
     // Configure processor
-    runner.setProperty("Token Location", "AUTHORIZATION_HEADER");
-    runner.setProperty("Token Header", "Authorization");
-    runner.setProperty("Required Audience", "api://test");
+    runner.setProperty("token.location", "AUTHORIZATION_HEADER");
+    runner.setProperty("token.header", "Authorization");
+    runner.setProperty("required.audience", "api://test");
     runner.setProperty("auth-server", "https://auth.example.com/.well-known/jwks.json");
     
     // Mock the TokenValidator
@@ -135,8 +135,8 @@ void testProcessorWithMultipleIssuersIntegration() {
     final TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
     
     // Configure processor with multiple issuers
-    runner.setProperty("Token Location", "AUTHORIZATION_HEADER");
-    runner.setProperty("Token Header", "Authorization");
+    runner.setProperty("token.location", "AUTHORIZATION_HEADER");
+    runner.setProperty("token.header", "Authorization");
     runner.setProperty("issuer1", getTestJwksUrl("/jwks1.json"));
     runner.setProperty("issuer2", getTestJwksUrl("/jwks2.json"));
     
@@ -183,8 +183,8 @@ void testTokenSizeLimit() {
     final TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
     
     // Configure processor with a small token size limit
-    runner.setProperty("Token Location", "AUTHORIZATION_HEADER");
-    runner.setProperty("Maximum Token Size", "100");
+    runner.setProperty("token.location", "AUTHORIZATION_HEADER");
+    runner.setProperty("maximum.token.size", "100");
     runner.setProperty("auth-server", getTestJwksUrl());
     
     // Create a flow file with a token exceeding the size limit
@@ -223,7 +223,7 @@ void testHighThroughputPerformance() {
     final TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
     
     // Configure processor
-    runner.setProperty("Token Location", "AUTHORIZATION_HEADER");
+    runner.setProperty("token.location", "AUTHORIZATION_HEADER");
     runner.setProperty("auth-server", getTestJwksUrl());
     
     // Create many flow files with tokens

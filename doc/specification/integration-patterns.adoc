@@ -54,10 +54,10 @@ In this pattern, the processor:
     <processor>
         <type>de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator</type>
         <properties>
-            <property name="Token Location">AUTHORIZATION_HEADER</property>
-            <property name="Token Header">Authorization</property>
-            <property name="JWKS Refresh Interval">3600</property>
-            <property name="Require Valid Token">true</property>
+            <property name="token.location">AUTHORIZATION_HEADER</property>
+            <property name="token.header">Authorization</property>
+            <property name="jwks.refresh.interval">3600</property>
+            <property name="require.valid.token">true</property>
             <property name="keycloak">https://auth.example.com/realms/master/protocol/openid-connect/certs</property>
         </properties>
         <relationships>
@@ -125,12 +125,12 @@ In this pattern, the processor:
     <processor>
         <type>de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator</type>
         <properties>
-            <property name="Token Location">CUSTOM_HEADER</property>
-            <property name="Custom Header Name">X-Service-Auth</property>
-            <property name="JWKS Refresh Interval">3600</property>
-            <property name="Require Valid Token">true</property>
-            <property name="Required Scopes">service:read,service:write</property>
-            <property name="Required Roles">service-client</property>
+            <property name="token.location">CUSTOM_HEADER</property>
+            <property name="custom.header.name">X-Service-Auth</property>
+            <property name="jwks.refresh.interval">3600</property>
+            <property name="require.valid.token">true</property>
+            <property name="required.scopes">service:read,service:write</property>
+            <property name="required.roles">service-client</property>
             <property name="internal-auth">https://internal-auth.example.com/jwks</property>
         </properties>
         <relationships>
@@ -195,10 +195,10 @@ In this pattern, the processor:
     <processor>
         <type>de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator</type>
         <properties>
-            <property name="Token Location">AUTHORIZATION_HEADER</property>
-            <property name="Token Header">Authorization</property>
-            <property name="JWKS Refresh Interval">3600</property>
-            <property name="Require Valid Token">true</property>
+            <property name="token.location">AUTHORIZATION_HEADER</property>
+            <property name="token.header">Authorization</property>
+            <property name="jwks.refresh.interval">3600</property>
+            <property name="require.valid.token">true</property>
             <property name="tenant-a">https://auth.tenant-a.example.com/jwks</property>
             <property name="tenant-b">https://auth.tenant-b.example.com/jwks</property>
         </properties>

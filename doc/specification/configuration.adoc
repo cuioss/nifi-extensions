@@ -37,27 +37,27 @@ _See Requirement: link:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Core Pr
 |===
 |Property |Default |Description |Required
 
-|Token Location
+|token.location
 |AUTHORIZATION_HEADER
 |Defines where to extract the token from (AUTHORIZATION_HEADER, CUSTOM_HEADER, FLOW_FILE_CONTENT)
 |Yes
 
-|Token Header
+|token.header
 |Authorization
 |The header name containing the token when using AUTHORIZATION_HEADER
 |No
 
-|Custom Header Name
+|custom.header.name
 |X-Authorization
 |The custom header name when using CUSTOM_HEADER
 |No
 
-|Bearer Token Prefix
+|bearer.token.prefix
 |Bearer
 |The prefix to strip from the token (e.g., "Bearer ")
 |No
 
-|Require Valid Token
+|require.valid.token
 |true
 |Whether to require a valid token for processing
 |Yes
@@ -71,17 +71,17 @@ _See Requirement: link:../Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Authorizati
 |===
 |Property |Default |Description |Required
 
-|Required Audience
+|required.audience
 |
 |Audience string that must be included in the token audience claim
 |No
 
-|Required Scopes
+|required.scopes
 |
 |Comma-separated list of scopes required for authorization
 |No
 
-|Required Roles
+|required.roles
 |
 |Comma-separated list of roles required for authorization
 |No
@@ -95,12 +95,12 @@ _See Requirement: link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Performan
 |===
 |Property |Default |Description |Required
 
-|JWKS Refresh Interval
+|jwks.refresh.interval
 |3600
 |Interval in seconds for refreshing JWKS keys
 |Yes
 
-|Maximum Token Size
+|maximum.token.size
 |16384
 |Maximum token size in bytes
 |Yes
@@ -172,15 +172,15 @@ For detailed information about environment variable configuration, see link:conf
 [source,properties]
 ----
 # Static properties
-Token Location = AUTHORIZATION_HEADER
-Token Header = Authorization
-Bearer Token Prefix = Bearer
-Require Valid Token = true
-Required Audience = api://my-service
-JWKS Refresh Interval = 3600
+token.location = AUTHORIZATION_HEADER
+token.header = Authorization
+bearer.token.prefix = Bearer
+require.valid.token = true
+required.audience = api://my-service
+jwks.refresh.interval = 3600
 
 # Dynamic properties (issuers)
-auth server = https://auth-server.example.com/.well-known/jwks.json
+auth.server = https://auth-server.example.com/.well-known/jwks.json
 ----
 
 === Advanced Configuration with Multiple Issuers
@@ -188,20 +188,20 @@ auth server = https://auth-server.example.com/.well-known/jwks.json
 [source,properties]
 ----
 # Static properties
-Token Location = AUTHORIZATION_HEADER
-Token Header = Authorization
-Bearer Token Prefix = Bearer
-Require Valid Token = true
-Required Scopes = read,write
-JWKS Refresh Interval = 1800
+token.location = AUTHORIZATION_HEADER
+token.header = Authorization
+bearer.token.prefix = Bearer
+require.valid.token = true
+required.scopes = read,write
+jwks.refresh.interval = 1800
 
 # Dynamic properties (issuers)
-auth server production = https://auth.example.com/.well-known/jwks.json
-auth server production.audience = api://my-service-prod
+auth.server.production = https://auth.example.com/.well-known/jwks.json
+auth.server.production.audience = api://my-service-prod
 
-auth server testing = https://auth-test.example.com/.well-known/jwks.json
-auth server testing.audience = api://my-service-test
-auth server testing.enabled = false  # Disabled in production
+auth.server.testing = https://auth-test.example.com/.well-known/jwks.json
+auth.server.testing.audience = api://my-service-test
+auth.server.testing.enabled = false  # Disabled in production
 ----
 
 == Related Topics
