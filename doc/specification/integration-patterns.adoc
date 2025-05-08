@@ -450,7 +450,8 @@ public class CustomJwksClient {
 ----
 
 == See Also
-* link:technical-components.adoc[Technical Components] - Core implementation details
-* link:token-factory-manager.adoc[Token Factory Manager] - Token generation and management
-* link:token-validation.adoc[Token Validation] - Details on the token validation process
-* link:../Specification.adoc[Back to Main Specification]
+
+* link:token-validation.adoc[Token Validation] - Details on token validation
+* link:configuration.adoc[Configuration] - Configuration options and UI
+* link:security.adoc[Security] - Security considerations
+* link:../Specification.adoc[Main Specification]

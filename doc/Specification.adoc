@@ -20,7 +20,6 @@ This specification is organized into the following documents:
 * link:specification/technical-components.adoc[Technical Components] - Core implementation details
 * link:specification/configuration.adoc[Configuration] - Configuration properties and UI
 * link:specification/token-validation.adoc[Token Validation] - Token validation implementation
-* link:specification/token-factory-manager.adoc[Token Factory Manager] - Token factory creation and caching
 * link:specification/error-handling.adoc[Error Handling] - Error handling implementation
 * link:specification/testing.adoc[Testing] - Unit and integration testing
 * link:specification/security.adoc[Security] - Security considerations

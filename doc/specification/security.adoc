@@ -6,11 +6,14 @@
 
 link:../Specification.adoc[Back to Main Specification]
 
+* link:token-validation.adoc[Token Validation]
+* link:error-handling.adoc[Error Handling]
+* link:technical-components.adoc[Technical Components]
+
 == See also
 * link:token-validation.adoc[Token Validation Specification]
 * link:technical-components.adoc[Technical Components]
 * link:configuration.adoc[Configuration Specification]
-* link:token-factory-manager.adoc[Token Factory Manager]
 
 == Security Considerations
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_

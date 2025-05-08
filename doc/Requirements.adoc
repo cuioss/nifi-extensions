@@ -53,7 +53,7 @@ _Implementation details: link:specification/token-validation.adoc[Token Validati
 * Support different signing algorithms per issuer
 * Allow dynamic issuer key/certificate updates
 
-_Implementation details: link:specification/token-factory-manager.adoc[Token Factory Manager]_
+_Implementation details: link:specification/token-validation.adoc[Token Validation]_
 
 [#NIFI-AUTH-5]
 === NIFI-AUTH-5: Input Requirements

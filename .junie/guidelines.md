@@ -20,7 +20,6 @@ This file provides guidance to Junie when working with code in this repository.
 - Error handling: `doc/specification/error-handling.adoc`
 - Integration patterns: `doc/specification/integration-patterns.adoc`
 - Internationalization: `doc/specification/internationalization.adoc`
-- Token factory manager: `doc/specification/token-factory-manager.adoc`
 - Token validation: `doc/specification/token-validation.adoc`
 - Log messages: `doc/LogMessage.md`
 

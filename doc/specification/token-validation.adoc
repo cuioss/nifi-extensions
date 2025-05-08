@@ -9,6 +9,9 @@ link:../Specification.adoc[Back to Main Specification]
 == Token Validation Process
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
+.Token Validation Architecture
+image::../plantuml/token-validation-flow.png[Token Validation Flow]
+
 === Token Extraction
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requirements]_
 
@@ -90,10 +93,13 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @return The TokenValidator instance
      */
     private TokenValidator getTokenValidator() {
-        if (tokenValidator == null) {
+        if (tokenValidator == null || configurationChanged) {
             synchronized (lock) {
-                if (tokenValidator == null) {
+                // Double-check under lock
+                if (tokenValidator == null || configurationChanged) {
+                    LOGGER.debug("Initializing TokenValidator with current configuration");
                     tokenValidator = initializeTokenValidator();
+                    configurationChanged = false;
                 }
             }
         }
@@ -108,20 +114,40 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private TokenValidator initializeTokenValidator() {
         List<IssuerConfig> issuers = new ArrayList<>();
 
-        // Get dynamic properties for issuers
+        // Get all properties from context
         Map<PropertyDescriptor, String> properties = getProperties();
+        
+        // Process issuer configurations from dynamic properties
         for (Map.Entry<PropertyDescriptor, String> entry : properties.entrySet()) {
             PropertyDescriptor descriptor = entry.getKey();
 
-            // Skip static properties
+            // We only care about dynamic properties for issuer configuration
             if (!descriptor.isDynamic()) {
                 continue;
             }
 
             String issuerName = descriptor.getName();
             String issuerUrl = entry.getValue();
-            IssuerConfig config;
+            
+            // Check if this issuer is enabled
+            boolean isEnabled = true; // Default to enabled
+            
+            // Look for an "enabled" property for this issuer
+            PropertyDescriptor enabledProp = getPropertyDescriptor(issuerName + ".enabled");
+            if (enabledProp != null) {
+                String enabledValue = properties.get(enabledProp);
+                if (enabledValue != null) {
+                    isEnabled = Boolean.parseBoolean(enabledValue);
+                }
+            }
+            
+            // Skip disabled issuers
+            if (!isEnabled) {
+                LOGGER.debug("Skipping disabled issuer: %s", issuerName);
+                continue;
+            }
 
+            IssuerConfig config;
             // Handle different issuer config types
             if (issuerUrl.startsWith("http")) {
                 // Create HTTP JWKS loader config with refresh interval
@@ -157,7 +183,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         }
 
         if (issuers.isEmpty()) {
-            throw new ProcessException("No token issuers configured");
+            throw new ProcessException("No enabled token issuers configured");
         }
 
         // Create a validator with all configured issuers
@@ -165,33 +191,51 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     }
 
     /**
-     * Creates a ParserConfig with security settings for token processing.
+     * Gets a PropertyDescriptor for a specific property name.
      */
-    private ParserConfig createParserConfig() {
-        return ParserConfig.builder()
-            .maxTokenSize(8 * 1024)         // Limit token size to 8KB
-            .maxPayloadSize(8 * 1024)       // Limit payload size to 8KB
-            .logWarningsOnDecodeFailure(true) // Log warnings when token decoding fails
-            .build();
+    private PropertyDescriptor getPropertyDescriptor(String propertyName) {
+        for (PropertyDescriptor descriptor : getPropertyDescriptors()) {
+            if (descriptor.getName().equals(propertyName)) {
+                return descriptor;
+            }
+        }
+        return null;
     }
-    
-    /**
-     * Gets the refresh interval for JWKS in seconds.
-     */
-    private int getRefreshInterval() {
-        String intervalProperty = getProperty(JWKS_REFRESH_INTERVAL).getValue();
-        // Convert from minutes to seconds
-        return Integer.parseInt(intervalProperty) * 60;
-    }
-    
-    /**
-     * Gets the required audience if configured.
-     */
-    private String getRequiredAudience() {
-        return getProperty(REQUIRED_AUDIENCE).getValue();
+
+    @Override
+    public void onPropertyModified(PropertyDescriptor descriptor, String oldValue, String newValue) {
+        // Only rebuild TokenValidator when relevant properties change
+        if (descriptor.isDynamic() || 
+            JWKS_REFRESH_INTERVAL.equals(descriptor) || 
+            REQUIRED_AUDIENCE.equals(descriptor)) {
+            
+            configurationChanged = true;
+            LOGGER.debug("Relevant configuration changed for property '%s', TokenValidator will be recreated on next use", 
+                descriptor.getDisplayName());
+        } else {
+            LOGGER.debug("Property '%s' changed but doesn't affect TokenValidator configuration", 
+                descriptor.getDisplayName());
+        }
     }
 }
 ----
+
+== Maven Integration
+
+To use the cui-jwt-validation library in the NiFi processor, add the following dependency to the pom.xml file:
+
+[source,xml]
+----
+<dependency>
+    <groupId>de.cuioss</groupId>
+    <artifactId>cui-jwt-validation</artifactId>
+    <version>${version.cui-jwt-validation}</version>
+</dependency>
+----
+
+This will provide access to all the library features needed for token validation.
+
+== Best Practices
 
 == Handling TokenValidator Lifecycle in NiFi
 
@@ -234,14 +278,22 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     // Track if configuration has changed
     private volatile boolean configurationChanged = true;
 
-    // Store the last configuration hash to detect changes
-    private volatile int lastConfigurationHash;
-
     @Override
     public void onPropertyModified(PropertyDescriptor descriptor, String oldValue, String newValue) {
-        // Mark configuration as changed when properties change
-        configurationChanged = true;
-        LOGGER.debug("Configuration changed, TokenValidator will be recreated on next use");
+        // Only rebuild TokenValidator when relevant properties change
+        if (descriptor.isDynamic() || 
+            JWKS_REFRESH_INTERVAL.equals(descriptor) || 
+            REQUIRED_AUDIENCE.equals(descriptor)) {
+            
+            // Mark configuration as changed when relevant properties change
+            configurationChanged = true;
+            LOGGER.debug("Relevant configuration changed for property '%s', TokenValidator will be recreated on next use", 
+                descriptor.getDisplayName());
+        } else {
+            // Log that this property doesn't affect TokenValidator
+            LOGGER.debug("Property '%s' changed but doesn't affect TokenValidator configuration", 
+                descriptor.getDisplayName());
+        }
     }
     
     /**
@@ -254,46 +306,13 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             synchronized (lock) {
                 // Double-check under lock
                 if (tokenValidator == null || configurationChanged) {
-                    // Create new configuration hash
-                    int newConfigHash = calculateConfigurationHash();
-                    
-                    // Only recreate if hash changed or validator is null
-                    if (tokenValidator == null || lastConfigurationHash != newConfigHash) {
-                        LOGGER.debug("Initializing TokenValidator with current configuration");
-                        tokenValidator = initializeTokenValidator();
-                        lastConfigurationHash = newConfigHash;
-                    }
-                    
-                    // Reset flag
+                    LOGGER.debug("Initializing TokenValidator with current configuration");
+                    tokenValidator = initializeTokenValidator();
                     configurationChanged = false;
                 }
             }
         }
         return tokenValidator;
-    }
-    
-    /**
-     * Calculate a hash of the current configuration to detect changes.
-     */
-    private int calculateConfigurationHash() {
-        // Get all properties and create a string representation
-        StringBuilder configString = new StringBuilder();
-        Map<PropertyDescriptor, String> properties = getProperties();
-        
-        // Sort keys for consistency
-        List<PropertyDescriptor> sortedKeys = new ArrayList<>(properties.keySet());
-        sortedKeys.sort(Comparator.comparing(PropertyDescriptor::getName));
-        
-        // Build string representation
-        for (PropertyDescriptor descriptor : sortedKeys) {
-            configString.append(descriptor.getName())
-                        .append("=")
-                        .append(properties.get(descriptor))
-                        .append(";");
-        }
-        
-        // Return hash code
-        return configString.toString().hashCode();
     }
 
     /**
@@ -311,7 +330,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         for (Map.Entry<PropertyDescriptor, String> entry : properties.entrySet()) {
             PropertyDescriptor descriptor = entry.getKey();
 
-            // Skip static properties
+            // We only care about dynamic properties for issuer configuration
             if (!descriptor.isDynamic()) {
                 continue;
             }
@@ -395,7 +414,6 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     // ... existing code ...
 }
 ----
-
 === Special NiFi Lifecycle Considerations
 
 NiFi processors have specific lifecycle events that need to be handled:
@@ -578,7 +596,6 @@ Based on the cui-jwt-validation library recommendations, the processor follows t
 
 == See also
 
-* link:token-factory-manager.adoc[Token Factory Manager]
 * link:security.adoc[Security Considerations]
 * link:error-handling.adoc[Error Handling]
 * link:../Usage.adoc[cui-jwt-validation Usage Guide]

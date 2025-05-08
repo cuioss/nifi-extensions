@@ -51,7 +51,7 @@ Optional<RefreshTokenContent> refreshToken = validator.createRefreshToken(tokenS
 ----
 
 == Multi-Issuer Support
-_See link:specification/technical-components.adoc#_multiissuersupport[Multi-Issuer Support Technical Specification]_'
+_See link:specification/technical-components.adoc[Technical Specification] for details_
 
 The module provides robust support for multi-issuer environments:
 
@@ -90,7 +90,7 @@ SecurityEventCounter securityEventCounter = validator.getSecurityEventCounter();
 ----
 
 == Custom Claim Mappers
-_See link:specification/technical-components.adoc#_customclaimmappers[Custom Claim Mappers Technical Specification]_'
+_See link:specification/technical-components.adoc[Technical Specification] for details_
 
 The module supports custom claim mappers that take precedence over the default ones:
 
@@ -118,8 +118,145 @@ TokenValidator validator = new TokenValidator(issuerConfig);
 Optional<AccessTokenContent> accessToken = validator.createAccessToken(tokenString);
 ----
 
+== Roles and Groups Configuration
+
+The library provides built-in support for role-based and group-based access control through the "roles" and "groups" claims. These claims are common in many JWT implementations but are not part of the core JWT or OpenID Connect specifications.
+
+=== Default Mapping Behavior
+
+By default, both "roles" and "groups" claims use the `JsonCollectionMapper`, which can automatically detect:
+
+* JSON arrays of strings: `"roles": ["admin", "user"]`
+* JSON strings (treated as a single value): `"roles": "admin"`
+
+The `JsonCollectionMapper` has the following limitations:
+
+* It only detects JSON arrays and JSON strings
+* It does not split space-separated or comma-separated strings
+* It treats nested structures as single string values
+
+=== Supported JSON Structures
+
+The following JSON structures are automatically detected and properly mapped:
+
+[source]
+----
+# JSON array of strings - each element becomes a separate role/group
+{
+  "roles": ["admin", "user", "manager"],
+  "groups": ["group1", "group2", "group3"]
+}
+
+# Single string value - becomes a single-element list
+{
+  "roles": "admin",
+  "groups": "group1"
+}
+
+# JSON array with mixed types - non-string values are converted to strings
+{
+  "roles": ["admin", 123, true],
+  "groups": ["group1", {"id": "group2"}]
+}
+----
+
+=== Unsupported JSON Structures
+
+The following JSON structures are NOT automatically split into multiple values by the default `JsonCollectionMapper`:
+
+[source]
+----
+# Space-separated string - treated as a single value "admin user manager"
+{
+  "roles": "admin user manager"
+}
+
+# Comma-separated string - treated as a single value "admin,user,manager"
+{
+  "roles": "admin,user,manager"
+}
+
+# Nested arrays - inner arrays are converted to string representation
+{
+  "roles": [["admin"], ["user"]]
+}
+
+# Custom format - treated as a single value
+{
+  "roles": "admin:user:manager"
+}
+----
+
+NOTE: Character-separated strings (like comma or colon-separated) can be handled using the `StringSplitterMapper`. See the <<Using StringSplitterMapper for Delimited Strings>> section for details.
+
+=== Using Roles and Groups
+
+The `AccessTokenContent` class provides methods for working with roles and groups:
+
+[source,java]
+----
+// Get all roles from the token
+List<String> roles = accessToken.getRoles();
+
+// Get all groups from the token
+List<String> groups = accessToken.getGroups();
+
+// Check if the token has specific roles
+boolean hasRoles = accessToken.providesRoles(List.of("admin", "user"));
+
+// Check if the token has specific groups
+boolean hasGroups = accessToken.providesGroups(List.of("group1", "group2"));
+
+// Get missing roles
+Set<String> missingRoles = accessToken.determineMissingRoles(requiredRoles);
+
+// Get missing groups
+Set<String> missingGroups = accessToken.determineMissingGroups(requiredGroups);
+----
+
+=== Custom Mapping for Roles and Groups
+
+If your identity provider uses a different format for roles or groups, you can configure a custom mapper:
+
+==== Using StringSplitterMapper for Delimited Strings
+
+The library provides a `StringSplitterMapper` that can split string claims by a specified character. This is useful when roles or groups are provided as a single string with values separated by a specific character:
+
+[source,java]
+----
+// Create a mapper that splits by comma
+StringSplitterMapper commaMapper = new StringSplitterMapper(',');
+
+// Create a mapper that splits by colon
+StringSplitterMapper colonMapper = new StringSplitterMapper(':');
+
+// Configure the issuer to use the custom mappers
+IssuerConfig issuerConfig = IssuerConfig.builder()
+        .issuer("https://issuer.com")
+        .jwksLoader(jwksLoader)
+        .claimMapper("roles", commaMapper) // For comma-separated roles
+        .claimMapper("groups", colonMapper) // For colon-separated groups
+        .build();
+----
+
+The `StringSplitterMapper` is particularly useful for handling formats that the default `JsonCollectionMapper` doesn't support:
+
+* Comma-separated strings: `"roles": "admin,user,manager"` → `["admin", "user", "manager"]`
+* Colon-separated strings: `"roles": "admin:user:manager"` → `["admin", "user", "manager"]`
+* Any other character-separated strings
+
+The mapper:
+* Only works with string values (not arrays or other types)
+* Trims whitespace from each value
+* Omits empty values
+* Preserves the original string in the claim value
+
+==== Using Other Custom Mappers
+
+You can also implement your own custom mappers for special formats:
+
 == Security Settings
-_See link:specification/technical-components.adoc#_parserconfig[ParserConfig Technical Specification]_'
+_See link:specification/technical-components.adoc[Technical Specification] for details_
 
 The `ParserConfig` class provides important security settings for token processing:
 

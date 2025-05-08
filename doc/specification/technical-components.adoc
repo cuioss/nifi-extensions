@@ -237,7 +237,9 @@ The JavaScript module and the main Java modules integrate through:
 3. Maven build integration
 
 == See Also
+
 * link:token-validation.adoc[Token Validation] - Details on the token validation process
-* link:token-factory-manager.adoc[Token Factory Manager] - How token factories are created and managed
-* link:configuration.adoc[Configuration] - Configuration properties and UI elements
+* link:configuration.adoc[Configuration] - Configuration properties and UI
+* link:security.adoc[Security] - Security considerations
+* link:error-handling.adoc[Error Handling] - Details on error handling
 * link:../Specification.adoc[Back to Main Specification]

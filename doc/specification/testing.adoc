@@ -602,6 +602,5 @@ By using cui-test-keycloak-integration for integration testing and cui-test-mock
 * link:security.adoc[Security Specification]
 * link:token-validation.adoc[Token Validation]
 * link:javascript-testing.adoc[JavaScript Testing]
-* link:token-factory-manager.adoc[Token Factory Manager]
 * link:../Requirements.adoc[Requirements]
 * link:../Specification.adoc[Main Specification]
