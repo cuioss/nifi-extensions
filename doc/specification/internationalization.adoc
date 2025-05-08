@@ -6,15 +6,17 @@
 
 link:../Specification.adoc[Back to Main Specification]
 
-== Internationalization Implementation
+== Internationalization Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
-The MultiIssuerJWTTokenAuthenticator implements comprehensive internationalization support for all user-presented strings, with initial support for English and German languages. NiFi 2.3.0 provides enhanced internationalization capabilities that are leveraged by this processor.
+The MultiIssuerJWTTokenAuthenticator implements comprehensive internationalization (i18n) support for all user-facing content, with initial support for English and German languages. This document outlines the internationalization approach, resource bundle structure, and implementation details.
 
-=== Resource Bundle Structure in NiFi 2.3.0
+== I18n Framework Integration
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
-The processor uses NiFi 2.3.0's improved internationalization support through the NiFiI18nResolver API:
+=== NiFi I18n Framework
+
+The processor integrates with NiFi's built-in internationalization framework using the `I18nResolver` API:
 
 [source,java]
 ----
@@ -34,8 +36,9 @@ String message = i18nResolver.getTranslatedString("error.token.expired");
 String formattedMessage = i18nResolver.getTranslatedString("error.unknown.issuer", issuer);
 ----
 
-=== Resource Bundle Files
-The processor includes the following resource bundle files:
+=== Resource Bundle Structure
+
+Resource bundles follow the NiFi convention for processor internationalization:
 
 [cols="1,2"]
 |===
@@ -48,19 +51,15 @@ The processor includes the following resource bundle files:
 |German translations
 |===
 
-=== Bundle Location
-
-In NiFi 2.3.0, resource bundles are located in:
+These files are located in the standard NiFi location:
 `src/main/resources/i18n/[bundlename].properties`
 
-This follows the NiFi convention for processor internationalization.
+== Internationalized Components
 
-=== Internationalized Components
+=== Processor Properties
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-17.1[NIFI-AUTH-17.1: UI Elements]_
 
-==== UI Elements
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
-
-All UI elements (property names, descriptions) are internationalized using the NiFi 2.3.0 i18n framework:
+All processor properties (names, descriptions, etc.) are internationalized:
 
 [source,java]
 ----
@@ -74,10 +73,12 @@ public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Bui
     .build();
 ----
 
-==== Error Messages
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+For more details on property configuration, see link:configuration.adoc[Configuration].
 
-All error messages displayed to users are internationalized:
+=== Error Messages
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-17.2[NIFI-AUTH-17.2: Error Messages]_
+
+All error messages are internationalized and consistently applied throughout the processor:
 
 [source,java]
 ----
@@ -96,10 +97,12 @@ private void addErrorAttributes(FlowFile flowFile, String errorCode, String erro
 }
 ----
 
-==== Log Messages
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+For more details on error handling, see link:error-handling.adoc[Error Handling].
 
-All log messages are internationalized using the NiFi 2.3.0 structured logging approach:
+=== Log Messages
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-17.3[NIFI-AUTH-17.3: Log Messages]_
+
+The processor uses the CuiLogger implementation for structured logging with internationalized messages:
 
 [source,java]
 ----
@@ -125,10 +128,12 @@ private static final CuiLogger LOGGER = new CuiLogger(MultiIssuerJWTTokenAuthent
 LOGGER.error(exception, ERROR.UNKNOWN_ISSUER.format(issuer));
 ----
 
-==== Custom UI Components
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+For more information about log message structure, see link:../LogMessage.md[Log Message Documentation].
 
-Custom UI components like the Token Verification Interface also leverage NiFi 2.3.0's i18n support:
+=== Custom UI Components
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-17.4[NIFI-AUTH-17.4: Custom UI]_
+
+Custom UI components like the Token Verification Interface also leverage NiFi's i18n support:
 
 [source,javascript]
 ----
@@ -150,9 +155,35 @@ define(['jquery', 'nf.Common'], function ($, nfCommon) {
 });
 ----
 
-=== Sample Resource Bundle Content for NiFi 2.3.0
+For more details on UI implementation, see link:configuration-ui.adoc[UI Configuration].
 
-==== English (Default)
+== Resource Bundle Keys
+
+=== Key Categories
+
+Resource bundle keys are organized into logical categories for better maintainability:
+
+1. **Property Descriptors**: Keys for processor property names and descriptions
+2. **UI Components**: Keys for custom UI elements
+3. **Error Messages**: Keys for error messages
+4. **Validation Messages**: Keys for validation feedback
+5. **Tooltips**: Keys for UI tooltips and help text
+
+=== Key Naming Conventions
+
+Resource keys follow these naming conventions:
+
+* `property.[property-name].[attribute]` - For processor properties
+* `processor.jwt.[element]` - For UI elements specific to the JWT processor
+* `error.[category].[type]` - For error messages
+* `validation.[field].[rule]` - For validation messages
+
+== Example Resource Bundle Content
+
+=== English (Default)
+
+The English resource bundle includes base translations for all keys used in the processor:
+
 [source,properties]
 ----
 # Property descriptors
@@ -162,48 +193,22 @@ property.jwks.refresh.interval.name=JWKS Refresh Interval
 property.jwks.refresh.interval.description=How often to refresh the JWKS cache
 property.require.valid.token.name=Require Valid Token
 property.require.valid.token.description=When true, only valid tokens result in success relationship
-property.token.location.name=Token Location
-property.token.location.description=Where to find the token (Authorization header, custom header, or flow file content)
-property.custom.header.name.name=Custom Header Name
-property.custom.header.name.description=Name of custom header when Token Location is set to CUSTOM_HEADER
-
-# UI components
-processor.jwt.tokenPlaceholder=Paste JWT token here...
-processor.jwt.verifyButton=Verify Token
-processor.jwt.testConnection=Test Connection
-processor.jwt.connectionSuccessful=Connection successful
-processor.jwt.connectionFailed=Connection failed: 
-processor.jwt.testFailed=Test failed: 
-processor.jwt.notValidUrl=Not a valid URL
-processor.jwt.enterToken=Please enter a JWT token.
-processor.jwt.verifyingToken=Verifying token...
-processor.jwt.tokenValid=Token is valid!
-processor.jwt.tokenDetails=Token Details:
-processor.jwt.issuer=Issuer:
-processor.jwt.subject=Subject:
-processor.jwt.expires=Expires:
-processor.jwt.claims=Claims:
-processor.jwt.flowFileAttributes=FlowFile Attributes:
-processor.jwt.tokenInvalid=Token validation failed!
-processor.jwt.errorDetails=Error Details:
-processor.jwt.suggestion=Suggestion:
-processor.jwt.verificationFailed=Verification request failed: 
 
 # Error messages
 error.token.expired=Token has expired
 error.unknown.issuer=Unknown token issuer: {0}
 error.jwks.retrieval.failed=Failed to retrieve JWKS from {0}: {1}
-error.invalid.configuration=Invalid configuration: {0}
-error.token.format=Invalid token format
-error.signature.validation=Token signature validation failed
-error.claims.validation=Token claims validation failed: {0}
-error.authorization=Authorization failed: {0}
-error.token.weak.algorithm=Token uses weak signature algorithm: {0}
-error.token.no.kid=Token contains no Key ID (kid)
-error.token.key.not.found=No matching key found for Key ID: {0}
+
+# UI components
+processor.jwt.tokenPlaceholder=Paste JWT token here...
+processor.jwt.verifyButton=Verify Token
+processor.jwt.connectionSuccessful=Connection successful
 ----
 
-==== German
+=== German
+
+The German resource bundle provides translations for German-speaking users:
+
 [source,properties]
 ----
 # Property descriptors
@@ -211,74 +216,60 @@ property.token.header.name=Token-Header-Name
 property.token.header.description=Name des Headers, der das JWT-Token enthält
 property.jwks.refresh.interval.name=JWKS-Aktualisierungsintervall
 property.jwks.refresh.interval.description=Wie oft der JWKS-Cache aktualisiert werden soll
-property.require.valid.token.name=Gültiges Token erforderlich
-property.require.valid.token.description=Wenn wahr, führen nur gültige Token zur Erfolgsbeziehung
-property.token.location.name=Token-Position
-property.token.location.description=Wo das Token zu finden ist (Autorisierungs-Header, benutzerdefinierter Header oder Flow-File-Inhalt)
-property.custom.header.name.name=Benutzerdefinierter Header-Name
-property.custom.header.name.description=Name des benutzerdefinierten Headers, wenn Token-Position auf CUSTOM_HEADER gesetzt ist
-
-# UI components
-processor.jwt.tokenPlaceholder=JWT-Token hier einfügen...
-processor.jwt.verifyButton=Token überprüfen
-processor.jwt.testConnection=Verbindung testen
-processor.jwt.connectionSuccessful=Verbindung erfolgreich
-processor.jwt.connectionFailed=Verbindung fehlgeschlagen: 
-processor.jwt.testFailed=Test fehlgeschlagen: 
-processor.jwt.notValidUrl=Keine gültige URL
-processor.jwt.enterToken=Bitte geben Sie ein JWT-Token ein.
-processor.jwt.verifyingToken=Token wird überprüft...
-processor.jwt.tokenValid=Token ist gültig!
-processor.jwt.tokenDetails=Token-Details:
-processor.jwt.issuer=Aussteller:
-processor.jwt.subject=Betreff:
-processor.jwt.expires=Läuft ab:
-processor.jwt.claims=Claims:
-processor.jwt.flowFileAttributes=FlowFile-Attribute:
-processor.jwt.tokenInvalid=Token-Validierung fehlgeschlagen!
-processor.jwt.errorDetails=Fehlerdetails:
-processor.jwt.suggestion=Vorschlag:
-processor.jwt.verificationFailed=Überprüfungsanfrage fehlgeschlagen: 
 
 # Error messages
 error.token.expired=Token ist abgelaufen
 error.unknown.issuer=Unbekannter Token-Aussteller: {0}
 error.jwks.retrieval.failed=JWKS konnte nicht von {0} abgerufen werden: {1}
-error.invalid.configuration=Ungültige Konfiguration: {0}
-error.token.format=Ungültiges Token-Format
-error.signature.validation=Token-Signaturvalidierung fehlgeschlagen
-error.claims.validation=Token-Claims-Validierung fehlgeschlagen: {0}
-error.authorization=Autorisierung fehlgeschlagen: {0}
-error.token.weak.algorithm=Token verwendet schwachen Signaturalgorithmus: {0}
-error.token.no.kid=Token enthält keine Key-ID (kid)
-error.token.key.not.found=Kein passender Schlüssel für Key-ID gefunden: {0}
+
+# UI components
+processor.jwt.tokenPlaceholder=JWT-Token hier einfügen...
+processor.jwt.verifyButton=Token überprüfen
+processor.jwt.connectionSuccessful=Verbindung erfolgreich
 ----
 
-=== Implementation Strategy for NiFi 2.3.0
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+== Implementation Details
 
-The internationalization implementation in NiFi 2.3.0 follows these principles:
+=== Locale Resolution
 
-1. All user-visible strings are externalized to resource bundles using NiFi's built-in i18n framework
+The processor uses NiFi's locale resolution approach:
 
-2. Resource bundles follow NiFi 2.3.0's naming conventions and location standards
+1. Use the locale set in NiFi's user preferences (when available)
+2. Fall back to the system default locale
+3. Use English as the ultimate fallback
 
-3. The CuiLogger implementation provides structured logging with internationalized messages
+=== Message Formatting
 
-4. The processor respects the system's default locale through NiFi's locale handling
+For messages requiring parameter substitution, the processor uses the standard Java `MessageFormat` approach:
 
-5. English is used as the fallback language
+[source,java]
+----
+// Message with parameters in resource bundle
+// error.unknown.issuer=Unknown token issuer: {0}
 
-6. UI components leverage NiFi 2.3.0's i18n support through the nf.Common module
+// Code to format message with parameters
+String issuer = "https://unknown-issuer.example.com";
+String message = i18nResolver.getTranslatedString("error.unknown.issuer", issuer);
+// Result: "Unknown token issuer: https://unknown-issuer.example.com"
+----
 
-=== Testing Internationalization
+=== Key Management
 
-NiFi 2.3.0 provides improved tools for testing internationalization:
+To ensure all keys are properly maintained:
+
+1. A centralized `I18nKeys` class defines all used key constants
+2. Unit tests verify that all required keys exist in all bundles
+3. Documentation lists all required keys for translators
+
+== Testing Internationalization
+
+=== Key Existence Testing
+
+To verify resource bundle completeness:
 
 [source,java]
 ----
 @Test
-@DisplayName("Verify that all required i18n keys are present in bundles")
 public void testI18nKeysExist() {
     // Create resolver with specific locale
     I18nResolver resolver = NiFiI18nResolver.createResolver(Locale.ENGLISH);
@@ -286,19 +277,49 @@ public void testI18nKeysExist() {
     // Test for existence of required keys
     assertNotNull(resolver.getTranslatedString("property.token.header.name"));
     assertNotNull(resolver.getTranslatedString("error.token.expired"));
-    assertNotNull(resolver.getTranslatedString("processor.jwt.tokenPlaceholder"));
     
     // Test German locale
     resolver = NiFiI18nResolver.createResolver(Locale.GERMAN);
     assertNotNull(resolver.getTranslatedString("property.token.header.name"));
     assertNotNull(resolver.getTranslatedString("error.token.expired"));
-    assertNotNull(resolver.getTranslatedString("processor.jwt.tokenPlaceholder"));
 }
 ----
 
-== See also
+=== UI Testing
+
+UI internationalization is tested both programmatically and manually:
+
+1. **Automated Tests**: Verify resource key resolution
+2. **Manual Tests**: Visual verification with different locales
+3. **Screenshot Comparison**: Automated screenshot comparison between locales
+
+For more details on testing, see link:testing.adoc[Testing].
+
+== Translation Workflow
+
+=== Adding a New Language
+
+To add support for a new language:
+
+1. Create a new resource bundle file: `nifi-cuioss-processors-resources_[language-code].properties`
+2. Translate all keys from the default bundle
+3. Include the new bundle in the build process
+4. Update documentation to mention the new supported language
+
+=== Updating Translations
+
+When adding new features:
+
+1. Add new keys to the default (English) resource bundle
+2. Add corresponding keys to all other language bundles
+3. Run verification tests to ensure all bundles contain the required keys
+
+== See Also
+
 * link:configuration.adoc[Configuration]
 * link:error-handling.adoc[Error Handling]
-* link:security.adoc[Security Specification]
-* link:../Requirements.adoc[Requirements]
-* link:../Specification.adoc[Main Specification]
+* link:configuration-ui.adoc[UI Configuration]
+* link:testing.adoc[Testing]
+* link:../LogMessage.md[Log Message Documentation]
+* link:../Requirements.adoc#NIFI-AUTH-17[Internationalization Requirements]
+* link:../Specification.adoc[Back to Main Specification]

@@ -7,14 +7,14 @@ package "NiFi Framework" {
 package "MultiIssuerJWTTokenAuthenticator" {
   [JWT Processor] as JWTProcessor
   [Configuration Handler] as ConfigHandler
-  [Token Validator] as TokenValidator
+  [MultiIssuerJWTTokenProcessor] as MultiIssuerJWTTokenProcessor
   [Error Handler] as ErrorHandler
 }
 
 package "cui-jwt-validation" {
-  [JWT Validation Core] as ValidationCore
+  [TokenValidator] as TokenValidator
   [JWKS Client] as JWKSClient
-  [Token Factory] as TokenFactory
+  [Validation Pipeline] as ValidationPipeline
 }
 
 package "External Services" {
@@ -26,12 +26,12 @@ NiFiCore --> ProcessorAPI : uses
 ProcessorAPI --> JWTProcessor : extends
 
 JWTProcessor --> ConfigHandler : configures
-JWTProcessor --> TokenValidator : validates tokens
+JWTProcessor --> MultiIssuerJWTTokenProcessor : validates tokens
 JWTProcessor --> ErrorHandler : handles errors
 
-TokenValidator --> ValidationCore : uses
-ValidationCore --> JWKSClient : retrieves keys
-ValidationCore --> TokenFactory : creates tokens
+MultiIssuerJWTTokenProcessor --> TokenValidator : uses
+TokenValidator --> JWKSClient : retrieves keys
+TokenValidator --> ValidationPipeline : creates tokens
 
 JWKSClient --> IDP1 : retrieves JWKS
 JWKSClient --> IDP2 : retrieves JWKS

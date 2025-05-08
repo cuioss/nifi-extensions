@@ -6,427 +6,182 @@
 
 link:../Specification.adoc[Back to Main Specification]
 
-* link:token-validation.adoc[Token Validation]
-* link:error-handling.adoc[Error Handling]
-* link:technical-components.adoc[Technical Components]
-
-== See also
-* link:token-validation.adoc[Token Validation Specification]
-* link:technical-components.adoc[Technical Components]
-* link:configuration.adoc[Configuration Specification]
-
-== Security Considerations
+== Security Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
 
-=== Token Handling
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
+The MultiIssuerJWTTokenAuthenticator is designed to provide robust token validation following security best practices. This document outlines the security considerations, implementation details, and recommendations for deploying the processor securely.
 
-The processor implements secure token handling practices:
+== Token Validation Security
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-8.1[NIFI-AUTH-8.1: Token Validation Security]_
 
-* Tokens are never logged in their entirety
-* Tokens are processed in memory and not persisted
-* Sensitive claims are handled securely
-* JSON Web Token (JWT) validation follows latest security standards
+=== JWT Validation Best Practices
+
+The processor implements these JWT validation security best practices:
+
+1. **Signature Verification**: All tokens are validated against trusted issuer keys
+2. **Expiration Checking**: Expired tokens are rejected
+3. **Issuer Verification**: Only configured issuers are accepted
+4. **Audience Validation**: Tokens must include the expected audience claim
+5. **Key Rotation Support**: Automated JWKS key rotation
+6. **Algorithm Restrictions**: Only secure algorithms are allowed
+
+=== Algorithm Restrictions
+
+The processor restricts token algorithms to those considered secure:
+
+[cols="1,3"]
+|===
+|Algorithm |Security Status
+
+|RS256, RS384, RS512
+|Secure - RSA with SHA-2
+
+|ES256, ES384, ES512
+|Secure - ECDSA with SHA-2
+
+|PS256, PS384, PS512
+|Secure - RSA PSS with SHA-2
+
+|HS256, HS384, HS512
+|**Not recommended** - Requires shared secret
+
+|none
+|**Blocked** - "none" algorithm is never allowed
+|===
+
+For more details on token validation implementation, see link:token-validation.adoc[Token Validation].
+
+== JWKS Endpoint Security
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-8.2[NIFI-AUTH-8.2: JWKS Endpoint Security]_
+
+The processor implements these JWKS endpoint security measures:
+
+1. **HTTPS Enforcement**: Production environments should use HTTPS for JWKS endpoints
+2. **Certificate Validation**: TLS certificates are validated by default
+3. **Key Caching**: Keys are cached to prevent DoS attacks
+4. **Timeout Handling**: HTTP connections have reasonable timeouts
+5. **Response Validation**: JWKS responses are validated before use
+
+=== JWKS HTTP Client Configuration
+
+The processor's HTTP client for JWKS endpoints is configured with these security settings:
 
 [source,java]
 ----
-// Secure token logging - only log part of the token for debugging
-private void logTokenDebug(String token) {
-    if (token.length() > 10) {
-        String tokenPrefix = token.substring(0, 5);
-        String tokenSuffix = token.substring(token.length() - 5);
-        LOGGER.debug(DEBUG.TOKEN_PROCESSING.format(tokenPrefix, tokenSuffix));
-    }
-}
-
-// Secure handling of sensitive claims
-private Map<String, String> sanitizeClaimsForAttributes(Map<String, Object> claims) {
-    Map<String, String> attributes = new HashMap<>();
-    
-    for (Map.Entry<String, Object> entry : claims.entrySet()) {
-        String key = entry.getKey();
-        Object value = entry.getValue();
-        
-        // Skip null values
-        if (value == null) {
-            continue;
-        }
-        
-        // Handle sensitive claims
-        if (SENSITIVE_CLAIMS.contains(key)) {
-            attributes.put("jwt.claims." + key, "[REDACTED]");
-        } else {
-            attributes.put("jwt.claims." + key, value.toString());
-        }
-    }
-    
-    return attributes;
-}
-
-// List of sensitive claim names - expanded with NiFi 2.3.0 security guidelines
-private static final Set<String> SENSITIVE_CLAIMS = new HashSet<>(Arrays.asList(
-    "password", "secret", "credential", "pin", "auth_time", "private_key_jwt"
-));
-----
-
-=== Key Management
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
-
-The processor implements secure key management practices:
-
-* JWKS endpoints must use HTTPS
-* Public keys are validated before use
-* Key rotation is handled automatically via JWKS refresh
-* Support for RSA and Elliptic Curve cryptography (EC) keys
-* Minimum key sizes enforced (2048 bits for RSA, 256 bits for EC)
-
-[source,java]
-----
-// Validate JWKS URL is using HTTPS
-private ValidationResult validateJwksUrl(String jwksUrl) {
-    try {
-        URL url = new URL(jwksUrl);
-        
-        // Check for HTTPS
-        if (!"https".equalsIgnoreCase(url.getProtocol())) {
-            return new ValidationResult.Builder()
-                .valid(false)
-                .explanation("JWKS URL must use HTTPS for security")
-                .build();
-        }
-        
-        return new ValidationResult.Builder()
-            .valid(true)
-            .build();
-    } catch (MalformedURLException e) {
-        return new ValidationResult.Builder()
-            .valid(false)
-            .explanation("Invalid URL format: " + e.getMessage())
-            .build();
-    }
-}
-
-// Validate public key format and strength
-private ValidationResult validatePublicKey(String pemKey) {
-    try {
-        // Parse PEM key
-        PemReader pemReader = new PemReader(new StringReader(pemKey));
-        PemObject pemObject = pemReader.readPemObject();
-        pemReader.close();
-        
-        // Check key type
-        if (pemObject == null || !"PUBLIC KEY".equals(pemObject.getType())) {
-            return new ValidationResult.Builder()
-                .valid(false)
-                .explanation("Invalid public key format")
-                .build();
-        }
-        
-        // Try to create public key and validate key strength
-        byte[] keyBytes = pemObject.getContent();
-        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-        try {
-            X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
-            RSAPublicKey rsaKey = (RSAPublicKey) keyFactory.generatePublic(keySpec);
-            
-            // Check RSA key size (minimum 2048 bits per NIST recommendations)
-            if (rsaKey.getModulus().bitLength() < 2048) {
-                return new ValidationResult.Builder()
-                    .valid(false)
-                    .explanation("RSA key size must be at least 2048 bits")
-                    .build();
-            }
-        } catch (Exception e) {
-            // Not an RSA key, try EC
-            try {
-                KeyFactory ecKeyFactory = KeyFactory.getInstance("EC");
-                X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
-                ECPublicKey ecKey = (ECPublicKey) ecKeyFactory.generatePublic(keySpec);
-                
-                // Check EC key size (minimum 256 bits per NIST recommendations)
-                if (ecKey.getParams().getCurve().getField().getFieldSize() < 256) {
-                    return new ValidationResult.Builder()
-                        .valid(false)
-                        .explanation("EC key size must be at least 256 bits")
-                        .build();
-                }
-            } catch (Exception ecException) {
-                return new ValidationResult.Builder()
-                    .valid(false)
-                    .explanation("Unsupported key type. Only RSA and EC are supported.")
-                    .build();
-            }
-        }
-        
-        return new ValidationResult.Builder()
-            .valid(true)
-            .build();
-    } catch (Exception e) {
-        return new ValidationResult.Builder()
-            .valid(false)
-            .explanation("Invalid public key: " + e.getMessage())
-            .build();
-    }
-}
-----
-
-=== Transport Security
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
-
-The processor implements secure transport practices:
-
-* HTTPS is required for JWKS endpoints
-* TLS 1.2 or higher is enforced
-* Connection timeouts are implemented
-* Redirect limits are enforced
-
-[source,java]
-----
-// Create HTTP client with secure defaults for NiFi 2.3.0
+/**
+ * Creates a secure HTTP client for JWKS endpoint communication.
+ * 
+ * @return Configured HttpClient
+ */
 private HttpClient createSecureHttpClient() {
     return HttpClient.newBuilder()
-        .connectTimeout(Duration.ofSeconds(5))
+        .connectTimeout(Duration.ofSeconds(10))
         .followRedirects(HttpClient.Redirect.NORMAL)
-        .sslContext(createSecureSslContext())
         .build();
 }
-
-// Create secure SSL context
-private SSLContext createSecureSslContext() {
-    try {
-        // Create SSL context with TLS v1.2 or higher
-        SSLContext sslContext = SSLContext.getInstance("TLSv1.2");
-        
-        // Initialize with secure parameters
-        TrustManager[] trustManagers = createSecureTrustManagers();
-        sslContext.init(null, trustManagers, null);
-        
-        return sslContext;
-    } catch (Exception e) {
-        LOGGER.error(ERROR.SSL_CONTEXT_CREATION_FAILED.format(e.getMessage()));
-        // Fall back to default SSL context
-        try {
-            return SSLContext.getDefault();
-        } catch (NoSuchAlgorithmException ex) {
-            throw new RuntimeException("Failed to get default SSL context", ex);
-        }
-    }
-}
-
-// Create trust managers with secure validation
-private TrustManager[] createSecureTrustManagers() {
-    return new TrustManager[] {
-        new X509TrustManager() {
-            @Override
-            public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-                throw new CertificateException("Client certificates not accepted");
-            }
-
-            @Override
-            public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-                // Verify certificate is not expired and is valid
-                for (X509Certificate cert : chain) {
-                    cert.checkValidity();
-                    
-                    // Verify key size
-                    PublicKey publicKey = cert.getPublicKey();
-                    if (publicKey instanceof RSAPublicKey && ((RSAPublicKey) publicKey).getModulus().bitLength() < 2048) {
-                        throw new CertificateException("Server certificate uses weak RSA key (less than 2048 bits)");
-                    }
-                    
-                    // Verify signature algorithm is not weak (e.g., MD5, SHA1)
-                    String sigAlgName = cert.getSigAlgName().toUpperCase();
-                    if (sigAlgName.contains("MD5") || sigAlgName.contains("SHA1")) {
-                        throw new CertificateException("Server certificate uses weak signature algorithm: " + sigAlgName);
-                    }
-                }
-            }
-
-            @Override
-            public X509Certificate[] getAcceptedIssuers() {
-                return new X509Certificate[0];
-            }
-        }
-    };
-}
 ----
 
-=== Logging Security
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
+For more details on JWKS configuration, see link:configuration.adoc#jwks-configuration[JWKS Configuration].
 
-The processor implements secure logging practices:
+== Multi-Issuer Security
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-8.3[NIFI-AUTH-8.3: Multi-Issuer Security]_
 
-* Tokens are never logged in full
-* Sensitive information is redacted
-* Error messages don't reveal sensitive details
-* Structured logging with consistent error codes
+The multi-issuer support introduces additional security considerations:
 
-[source,java]
+1. **Issuer Isolation**: Each issuer is validated independently
+2. **Key Separation**: Each issuer has its own key set
+3. **Dynamic Configuration**: Issuers can be enabled/disabled without redeployment
+4. **Per-Issuer Audience**: Each issuer can have specific audience requirements
+
+=== Issuer Security Configuration
+
+Each issuer can have specific security settings:
+
+[source,properties]
 ----
-// Secure error logging
-private void logSecureError(Exception e, String errorCode, Object... args) {
-    // Sanitize any potential sensitive information in args
-    Object[] sanitizedArgs = new Object[args.length];
-    for (int i = 0; i < args.length; i++) {
-        if (args[i] instanceof String && ((String) args[i]).length() > 100) {
-            // Likely a token or other sensitive data, truncate it
-            String value = (String) args[i];
-            sanitizedArgs[i] = value.substring(0, 10) + "...";
-        } else {
-            sanitizedArgs[i] = args[i];
-        }
-    }
-    
-    // Log the error with sanitized args and consistent error code
-    LOGGER.error(e, ERROR.valueOf(errorCode).format(sanitizedArgs));
-}
+# Production issuer with strict settings
+auth-server-production=https://auth.example.com/.well-known/jwks.json
+auth-server-production.audience=api://my-service-prod
+
+# Development issuer with relaxed settings (disabled in production)
+auth-server-development=https://auth-dev.example.com/.well-known/jwks.json
+auth-server-development.enabled=false
 ----
 
-== Security Best Practices
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
+For more details on multi-issuer implementation, see link:technical-components.adoc#multi-issuer-support[Multi-Issuer Support].
 
-=== Secure Configuration
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuration Requirements]_
+== Runtime Security
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-8.4[NIFI-AUTH-8.4: Runtime Security]_
 
-The following best practices should be followed when configuring the processor:
+=== Resource Protection
 
-* Use HTTPS for all JWKS endpoints
-* Regularly rotate keys and certificates
-* Set appropriate refresh intervals for JWKS
-* Implement proper authorization rules
-* Use TLS 1.2 or higher for all connections
-* Follow the latest OIDC and OAuth 2.0 security recommendations
+The processor implements resource protection measures:
 
-=== Regular Key Rotation
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
+1. **Memory Usage Limits**: Token size limits prevent memory exhaustion attacks
+2. **CPU Protection**: Parsing complexity is limited to prevent CPU attacks
+3. **Caching Optimization**: Effective caching reduces resource usage
+4. **Error Rate Limiting**: Failed validation attempts are tracked
 
-Key rotation is an important security practice:
+=== Memory Usage Considerations
 
-* Configure identity providers to rotate keys regularly (recommended every 90 days)
-* Set appropriate JWKS refresh intervals (recommended 5-15 minutes)
-* Implement proper handling of key rotation events
-* Monitor for key rotation failures
-* Support rolling key updates without service interruption
+The processor protects against memory-related attacks:
 
-=== Monitoring and Alerting
+[source,properties]
+----
+# Limit token size to prevent memory exhaustion
+Maximum Token Size=16384
+----
+
+For more details on performance and resource considerations, see link:configuration.adoc#performance-considerations[Performance Considerations].
+
+== Security Event Monitoring
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
 
-Implement monitoring and alerting for security events:
+The processor tracks security events for monitoring and alerting:
 
-* Monitor for authentication failures
-* Alert on suspicious token validation patterns
-* Track JWKS endpoint availability
-* Monitor for expired certificates
-* Implement rate limiting for token validation failures
+1. **Invalid Token Count**: Tracks tokens with invalid signatures
+2. **Expired Token Count**: Tracks expired tokens separately
+3. **Malformed Token Count**: Tracks unparseable tokens
+4. **Unauthorized Access Attempts**: Tracks authorization failures
 
-[source,java]
-----
-// Track authentication failures with sliding window
-private final SlidingWindowCounter authFailureCounter = new SlidingWindowCounter(Duration.ofMinutes(5));
+For details on security event monitoring implementation, see link:token-validation.adoc#security-event-monitoring[Security Event Monitoring].
 
-// Track JWKS refresh failures
-private final SlidingWindowCounter jwksRefreshFailureCounter = new SlidingWindowCounter(Duration.ofMinutes(5));
+== Security Recommendations
 
-// Track suspicious activity
-private final Map<String, SlidingWindowCounter> clientActivityTracker = new ConcurrentHashMap<>();
+=== Deployment Recommendations
 
-// Report metrics
-private void reportMetrics() {
-    // Report authentication failures
-    long failures = authFailureCounter.getCount();
-    if (failures > 10) { // Threshold for alerting
-        LOGGER.warn(WARN.AUTH_FAILURES_DETECTED.format(failures));
-    }
-    
-    // Report JWKS refresh failures
-    long refreshFailures = jwksRefreshFailureCounter.getCount();
-    if (refreshFailures > 0) {
-        LOGGER.warn(WARN.JWKS_REFRESH_FAILURES.format(refreshFailures));
-    }
-    
-    // Report suspicious client activity
-    for (Map.Entry<String, SlidingWindowCounter> entry : clientActivityTracker.entrySet()) {
-        String clientId = entry.getKey();
-        long count = entry.getValue().getCount();
-        
-        // Alert on high failure rates
-        if (count > 20) { // Threshold for suspicious activity
-            LOGGER.warn(WARN.SUSPICIOUS_CLIENT_ACTIVITY.format(clientId, count));
-        }
-    }
-}
+1. **Use HTTPS for JWKS Endpoints**: Always use HTTPS for JWKS endpoints in production
+2. **Regular Key Rotation**: Configure appropriate key rotation intervals
+3. **Specific Audience Claims**: Use specific audience claims rather than generic ones
+4. **Limit Token Size**: Set appropriate maximum token size
+5. **Monitor Security Events**: Track validation failures for security insights
 
-// Helper class for tracking events in a sliding time window
-private static class SlidingWindowCounter {
-    private final Duration windowDuration;
-    private final ConcurrentLinkedQueue<Long> events = new ConcurrentLinkedQueue<>();
-    
-    public SlidingWindowCounter(Duration windowDuration) {
-        this.windowDuration = windowDuration;
-    }
-    
-    public void increment() {
-        events.add(System.currentTimeMillis());
-        cleanup();
-    }
-    
-    public long getCount() {
-        cleanup();
-        return events.size();
-    }
-    
-    private void cleanup() {
-        long cutoff = System.currentTimeMillis() - windowDuration.toMillis();
-        while (!events.isEmpty() && events.peek() < cutoff) {
-            events.poll();
-        }
-    }
-}
-----
+=== Configuration Best Practices
 
-=== Token Validation Security
+1. **Disable Unused Issuers**: Disable any issuers not needed in production
+2. **Require Valid Token**: Set "Require Valid Token" to true in production
+3. **Use Specific Scopes**: Configure required scopes for authorization
+4. **Set Up Role-Based Access**: Use roles for fine-grained authorization
 
-NiFi 2.3.0 introduces enhanced security measures for JWT token validation:
+For more details on configuration, see link:configuration.adoc[Configuration].
 
-* Support for additional signature algorithms (RSA-PSS, ECDSA)
-* Enforcement of minimum key sizes
-* Rejection of tokens with weak algorithms (e.g., none, HS256 with short keys)
-* Protection against common JWT attacks (signature stripping, algorithm switching)
-* Proper validation of "kid" (Key ID) claims
+== Testing Security
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-12[NIFI-AUTH-12: Testing]_
 
-[source,java]
-----
-// Validate token security properties before signature validation
-private ValidationResult validateTokenSecurity(ParsedJwtToken token) {
-    // Check if algorithm is secure
-    String algorithm = token.getHeader().getAlgorithm();
-    
-    // Reject "none" algorithm
-    if ("none".equalsIgnoreCase(algorithm)) {
-        return new ValidationResult.Builder()
-            .valid(false)
-            .explanation("Unsecured JWT tokens (algorithm 'none') are not accepted")
-            .build();
-    }
-    
-    // Reject weak HMAC algorithms with short keys
-    if ((algorithm.equals("HS256") || algorithm.equals("HS384") || algorithm.equals("HS512"))) {
-        return new ValidationResult.Builder()
-            .valid(false)
-            .explanation("HMAC algorithms are not accepted with public key validation")
-            .build();
-    }
-    
-    // Validate presence of key ID for proper key selection
-    if (token.getHeader().getKeyID() == null) {
-        return new ValidationResult.Builder()
-            .valid(false)
-            .explanation("Token must contain a Key ID (kid) in the header")
-            .build();
-    }
-    
-    return new ValidationResult.Builder()
-        .valid(true)
-        .build();
-}
-----
+The processor's security features are tested through:
+
+1. **Unit Tests**: Verify security validations function correctly
+2. **Integration Tests**: Test with real token issuers
+3. **Security Tests**: Specifically test security edge cases
+4. **Performance Tests**: Verify resource protection
+
+For more details on security testing, see link:testing.adoc[Testing].
+
+== See Also
+
+* link:token-validation.adoc[Token Validation]
+* link:configuration.adoc[Configuration]
+* link:error-handling.adoc[Error Handling]
+* link:technical-components.adoc[Technical Components]
+* link:../Requirements.adoc#NIFI-AUTH-8[Security Requirements]
+* link:../Specification.adoc[Back to Main Specification]

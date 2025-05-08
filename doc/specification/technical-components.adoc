@@ -30,8 +30,8 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: NiFi Integ
 |===
 |Component |Purpose
 
-|de.cuioss.portal.authentication:portal-authentication-token
-|Token handling framework
+|de.cuioss.portal.authentication:cui-jwt-validation
+|Token validation framework
 
 |cui-java-tools
 |Logging and utilities
@@ -51,39 +51,37 @@ The TokenValidator serves as the primary entry point for token operations. It pr
 * Centralized token validation
 * Multi-issuer support
 * Token parsing and verification
+* Automatic key retrieval and caching
+* Claim validation including audience checks
+
+For detailed implementation of token validation, see link:token-validation.adoc[Token Validation Specification].
 
 === IssuerConfig
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
-The IssuerConfig handles secure token validation using JWKS endpoints:
+The IssuerConfig handles token validation for a specific issuer. It allows configuration of:
 
-* Automatic public key retrieval and caching
-* Configurable key refresh intervals
-* TLS support for secure key retrieval
+* JWKS endpoints for dynamic key retrieval
+* Static public keys for environments without JWKS endpoints
+* Audience validation settings
+* Custom claim validation rules
+* Key refresh intervals
 
-[source,java]
-----
-// Configure an issuer config for a specific issuer
-IssuerConfig issuerConfig = IssuerConfig.builder()
-    .jwksIssuer("https://auth.example.com")
-    .jwksEndpoint("https://auth.example.com/.well-known/jwks.json")
-    .jwksRefreshIntervall(60)
-    .build();
-----
+For more configuration details, see link:configuration.adoc[Configuration Specification].
 
 === Multi-Issuer Support
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
 
-The MultiIssuerJWTTokenAuthenticator supports multiple issuers by utilizing a TokenValidator with multiple IssuerConfig instances.
+The MultiIssuerJWTTokenAuthenticator supports multiple issuers simultaneously, allowing validation of tokens from different identity providers without complex flow configuration.
 
-[source,java]
-----
-// Create a validator with multiple issuer configs for different issuers
-TokenValidator validator = new TokenValidator(issuerConfig1, issuerConfig2, issuerConfig3);
+For detailed implementation examples and integration patterns, see link:integration-patterns.adoc[Integration Patterns].
 
-// Use the validator to validate tokens from different issuers
-Optional<AccessTokenContent> accessToken = validator.createAccessToken(tokenString);
-----
+== TokenValidator Lifecycle in NiFi
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: NiFi Integration]_
+
+The cui-jwt-validation library's `TokenValidator` is designed to be stateful and maintain caches for performance optimization. In the MultiIssuerJWTTokenAuthenticator processor, the TokenValidator instance is managed with careful attention to NiFi's processor lifecycle.
+
+For complete details on TokenValidator lifecycle management, including thread safety and resource management, see link:token-validation.adoc#handling-tokenvalidator-lifecycle-in-nifi[Handling TokenValidator Lifecycle in NiFi].
 
 == Relationships
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-6[NIFI-AUTH-6: Output Requirements]_
@@ -128,113 +126,20 @@ public Set<Relationship> getRelationships() {
 === Input Attributes
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requirements]_
 
-* None required - token extracted from HTTP header
+* None required - token extracted from HTTP header or configured location
 
-=== Output Attributes (Success)
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-6.1[NIFI-AUTH-6.1: Success Path]_
+=== Output Attributes
+_See Requirements link:../Requirements.adoc#NIFI-AUTH-6.1[NIFI-AUTH-6.1: Success Path] and link:../Requirements.adoc#NIFI-AUTH-6.2[NIFI-AUTH-6.2: Failure Path]_
 
-* jwt.issuer: Token issuer
-* jwt.subject: Token subject
-* jwt.claims.*: All extracted claims
-* jwt.validatedAt: Validation timestamp
-* jwt.scopes: List of token scopes
+For detailed information about attribute handling and token validation output, see link:token-validation.adoc#flow-file-attribute-generation[Flow File Attribute Generation].
 
-=== Output Attributes (Failure)
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-6.2[NIFI-AUTH-6.2: Failure Path]_
+== Error Handling
 
-* jwt.error.reason: Detailed error message
-* jwt.error.code: Error classification code
-* jwt.authorization.failed.reason: If token was valid but authorization failed, contains the reason
+The processor implements comprehensive error handling using standardized error codes and consistent messages. For complete details on error handling strategies and implementation, see link:error-handling.adoc[Error Handling Specification].
 
-[source,java]
-----
-private void addSuccessAttributes(FlowFile flowFile, ParsedJwtToken token) {
-    Map<String, String> attributes = new HashMap<>();
+== Security Considerations
 
-    // Add basic token information
-    attributes.put("jwt.issuer", token.getIssuer());
-    attributes.put("jwt.subject", token.getSubject());
-    attributes.put("jwt.validatedAt", String.valueOf(System.currentTimeMillis()));
-
-    // Add all claims as attributes
-    for (Map.Entry<String, Object> claim : token.getClaims().entrySet()) {
-        attributes.put("jwt.claims." + claim.getKey(), 
-                       claim.getValue() != null ? claim.getValue().toString() : "");
-    }
-
-    // Add scopes
-    attributes.put("jwt.scopes", String.join(",", token.getScopes()));
-
-    // Add authorization status
-    attributes.put("jwt.authorization.passed", "true");
-
-    // Update flowfile with attributes
-    flowFile = session.putAllAttributes(flowFile, attributes);
-}
-----
-
-== JavaScript Module Structure
-
-=== Directory Organization
-
-The JavaScript code is organized according to the following structure:
-
-[source]
-----
-src/
-└── main/
-    └── resources/
-        └── js/
-            ├── components/      # UI Components
-            │   ├── jwks-endpoint-validator.js
-            │   └── token-verification.js
-            ├── services/        # API and utility services
-            │   ├── api-client.js
-            │   └── token-parser.js
-            ├── utils/           # Utility functions
-            │   ├── validation.js
-            │   └── formatting.js
-            └── index.js         # Main entry point
-----
-
-This structure provides clear separation of concerns:
-
-* *components/* - Contains UI components and their associated logic
-* *services/* - Houses service modules for API communication and core functionality
-* *utils/* - Provides utility functions and helpers that are used across the application
-
-=== Module Naming Conventions
-
-JavaScript modules follow these naming conventions:
-
-* Module files use kebab-case naming (e.g., `jwks-endpoint-validator.js`)
-* Functions and variables use camelCase naming (e.g., `validateEndpoint()`)
-* Classes and constructor functions use PascalCase (e.g., `TokenValidator`)
-* Constants use UPPER_SNAKE_CASE (e.g., `DEFAULT_REFRESH_INTERVAL`)
-
-=== Module Export Pattern
-
-Each module should have a clear, consistent export pattern:
-
-[source,javascript]
-----
-// Service module example
-const TokenService = {
-  parseToken,
-  validateToken,
-  extractClaims
-};
-
-export default TokenService;
-----
-
-=== Integration Points
-
-The JavaScript module and the main Java modules integrate through:
-
-1. REST API endpoints for JWKS validation and token verification
-2. WebJar packaging of JavaScript resources
-3. Maven build integration
+Security is paramount in JWT token validation. For information about security implementation, best practices, and threat mitigations, see link:security.adoc[Security Specification].
 
 == See Also
 
@@ -242,4 +147,6 @@ The JavaScript module and the main Java modules integrate through:
 * link:configuration.adoc[Configuration] - Configuration properties and UI
 * link:security.adoc[Security] - Security considerations
 * link:error-handling.adoc[Error Handling] - Details on error handling
+* link:testing.adoc[Testing] - Unit and integration testing approach
+* link:integration-patterns.adoc[Integration Patterns] - Common integration scenarios
 * link:../Specification.adoc[Back to Main Specification]

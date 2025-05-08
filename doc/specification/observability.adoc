@@ -1,4 +1,4 @@
-= JWT Token Processor Observability
+= MultiIssuerJWTTokenAuthenticator Observability
 :toc:
 :toclevels: 3
 :toc-title: Table of Contents
@@ -6,24 +6,24 @@
 
 link:../Specification.adoc[Back to Main Specification]
 
-== Overview
+== Observability Overview
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-18[NIFI-AUTH-18: Security Event Monitoring]_
 
-This document details the observability capabilities of the JWT Token Processor, focusing on security event metrics collection, reporting, and integration with monitoring systems. It addresses requirement link:../Requirements.adoc#NIFI-AUTH-18[NIFI-AUTH-18: Security Event Monitoring].
+The MultiIssuerJWTTokenAuthenticator implements comprehensive observability features for monitoring token validation, security events, and processor performance. This document outlines the metrics collection, monitoring integration, and security event tracking provided by the processor.
 
 == Security Event Metrics
 
-The JWT Token Processor leverages the SecurityEventCounter provided by the cui-jwt-validation library to track key security events during token processing and validation.
-
 === Available Metrics
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-18.1[NIFI-AUTH-18.1: Security Event Collection]_
 
-The following metrics are tracked:
+The processor leverages the SecurityEventCounter from the cui-jwt-validation library to track key security events:
 
 [cols="2,4"]
 |===
 |Metric Name |Description
 
 |totalProcessedTokens
-|Total number of tokens that have been processed by the validator
+|Total number of tokens processed by the validator
 
 |validTokens
 |Number of tokens that passed all validation checks
@@ -50,11 +50,40 @@ The following metrics are tracked:
 |Number of unexpected errors during token processing
 |===
 
+=== Metrics Implementation
+
+The processor collects metrics using the SecurityEventCounter provided by the cui-jwt-validation library:
+
+[source,java]
+----
+/**
+ * Gets the security event counter from the TokenValidator to report metrics.
+ */
+private void logSecurityMetrics() {
+    if (tokenValidator != null) {
+        SecurityEventCounter counter = tokenValidator.getSecurityEventCounter();
+        
+        LOGGER.info("Token validation metrics - " +
+            "Processed: %d, Valid: %d, Invalid: %d, Expired: %d, Malformed: %d",
+            counter.getTotalProcessedTokens(),
+            counter.getValidTokens(),
+            counter.getInvalidTokens(),
+            counter.getExpiredTokens(),
+            counter.getMalformedTokens());
+    }
+}
+----
+
+For more information on token validation implementation, see link:token-validation.adoc#security-event-monitoring[Security Event Monitoring].
+
 == NiFi UI Integration
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-18.2[NIFI-AUTH-18.2: UI Display]_
+
+The processor integrates metrics into the NiFi UI for operational visibility.
 
 === Processor Status Display
 
-The JWT Token Processor displays key metrics directly in the NiFi UI processor status:
+The processor displays key metrics directly in the NiFi UI status:
 
 [source]
 ----
@@ -63,7 +92,7 @@ Running | Processed: 15,423 | Valid: 15,126 | Invalid: 297
 
 === Processor Details View
 
-When selecting the processor, the detailed metrics are displayed in the Processor Details pane:
+When selecting the processor, detailed metrics are displayed in the Processor Details pane:
 
 [cols="2,2"]
 |===
@@ -103,14 +132,22 @@ A dedicated "Metrics" tab in the processor configuration dialog provides:
 3. A "Reset Metrics" button to clear counters
 4. Historical metrics chart (last 24 hours)
 
+For more information on the UI components, see link:configuration-ui.adoc[UI Configuration].
+
 == NiFi Metrics Integration
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-18.3[NIFI-AUTH-18.3: Metrics Reporting]_
+
+The processor registers metrics with NiFi's metrics system for integration with monitoring tools.
 
 === NiFi Metrics Registry
 
-The processor registers all security event metrics with NiFi's metrics registry using the following approach:
+The processor registers security event metrics with NiFi's metrics registry:
 
 [source,java]
 ----
+/**
+ * Registers metrics with NiFi metrics system during processor initialization.
+ */
 @OnScheduled
 public void onScheduled(final ProcessContext context) {
     // Register metrics with NiFi metrics system
@@ -134,15 +171,6 @@ public void onScheduled(final ProcessContext context) {
 }
 ----
 
-=== NiFi Reporter Integration
-
-The metrics are available to all NiFi Reporter implementations through the standard metrics registry. This includes:
-
-1. JMX Reporter
-2. Graphite Reporter
-3. Ganglia Reporter
-4. Custom NiFi reporters
-
 === Metrics Naming Convention
 
 All metrics follow the standard NiFi naming convention:
@@ -160,13 +188,14 @@ Example of full metric names:
 * `jwt-processor.security-events.valid-tokens`
 * `jwt-processor.security-events.invalid-tokens`
 
-== External Monitoring System Integration
+== External Monitoring Integration
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-18.4[NIFI-AUTH-18.4: Monitoring Integration]_
 
 === Prometheus Integration
 
 ==== NiFi Prometheus Endpoint
 
-The JWT Token Processor exposes its metrics through NiFi's built-in Prometheus endpoint at:
+The processor exposes metrics through NiFi's built-in Prometheus endpoint:
 
 [source]
 ----
@@ -179,11 +208,11 @@ The metrics are formatted according to Prometheus exposition format:
 ----
 # HELP jwt_processor_total_processed_tokens Total number of tokens processed
 # TYPE jwt_processor_total_processed_tokens counter
-jwt_processor_total_processed_tokens{component_id="f23a6614-0173-1000-ffff-ffffa96fffff",component_type="JWTTokenExtractor",component_name="ValidateJWT"} 15423
+jwt_processor_total_processed_tokens{component_id="f23a6614-0173-1000-ffff-ffffa96fffff",component_type="MultiIssuerJWTTokenAuthenticator",component_name="ValidateJWT"} 15423
 
 # HELP jwt_processor_valid_tokens Number of tokens successfully validated
 # TYPE jwt_processor_valid_tokens counter
-jwt_processor_valid_tokens{component_id="f23a6614-0173-1000-ffff-ffffa96fffff",component_type="JWTTokenExtractor",component_name="ValidateJWT"} 15126
+jwt_processor_valid_tokens{component_id="f23a6614-0173-1000-ffff-ffffa96fffff",component_type="MultiIssuerJWTTokenAuthenticator",component_name="ValidateJWT"} 15126
 
 # ... other metrics
 ----
@@ -193,7 +222,7 @@ jwt_processor_valid_tokens{component_id="f23a6614-0173-1000-ffff-ffffa96fffff",c
 All Prometheus metrics include the following labels:
 
 * `component_id`: The processor instance ID
-* `component_type`: Always "JWTTokenExtractor"
+* `component_type`: Always "MultiIssuerJWTTokenAuthenticator"
 * `component_name`: The processor name assigned in NiFi
 * `instance`: The NiFi instance name/ID
 
@@ -219,7 +248,7 @@ scrape_configs:
 
 === Grafana Dashboard
 
-A sample Grafana dashboard template is provided, with panels for:
+A sample Grafana dashboard template is provided with the following panels:
 
 1. Total tokens processed (counter)
 2. Token validation success rate (gauge)
@@ -227,27 +256,29 @@ A sample Grafana dashboard template is provided, with panels for:
 4. Token validation trends over time (time series)
 5. Alert thresholds for high error rates
 
-== Implementation
+For more information on monitoring integration, see link:security.adoc#security-event-monitoring[Security Event Monitoring].
+
+== Implementation Details
 
 === SecurityEventCounter Integration
 
 The processor integrates with the cui-jwt-validation SecurityEventCounter as follows:
 
-1. Obtain SecurityEventCounter from TokenValidator
-2. Expose counter through processor properties
-3. Update NiFi metrics on each token processing cycle
-4. Provide reset capability through processor life cycle
+1. Initialize TokenValidator with SecurityEventCounter
+2. Track all validation events through TokenValidator
+3. Expose counter through NiFi metrics registry
+4. Periodically log metrics for operational visibility
 
 [source,java]
 ----
-public class JWTTokenExtractor extends AbstractProcessor {
+public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     private TokenValidator tokenValidator;
     private SecurityEventCounter securityEventCounter;
     private NifiSecurityEventRegistry securityEventRegistry;
     
     @Override
-    protected void init(ProcessorInitializationContext context) {
+    protected void init(final ProcessorInitializationContext context) {
         // ... existing initialization code ...
         
         // Initialize token validator with security event tracking
@@ -280,24 +311,12 @@ public class JWTTokenExtractor extends AbstractProcessor {
         // Update metrics after token processing
         updateMetrics();
     }
-    
-    // Helper methods
-    private void initializeMetrics(ProcessContext context) {
-        // Initialize metrics registry integration
-    }
-    
-    private void updateMetrics() {
-        // Update NiFi metrics from security event counter
-        if (securityEventRegistry != null) {
-            securityEventRegistry.updateMetrics();
-        }
-    }
 }
 ----
 
 === NifiSecurityEventRegistry Class
 
-A dedicated class provides the bridge between SecurityEventCounter and NiFi's metrics system:
+A dedicated class bridges the cui-jwt-validation SecurityEventCounter and NiFi's metrics system:
 
 [source,java]
 ----
@@ -351,58 +370,29 @@ public class NifiSecurityEventRegistry {
 }
 ----
 
-=== Prometheus Endpoint Custom Export
-
-If additional customization is required beyond NiFi's built-in Prometheus endpoint, a custom implementation can be provided:
-
-[source,java]
-----
-@Path("/metrics/jwt")
-@Api(
-        value = "/metrics/jwt",
-        description = "Endpoint for retrieving JWT processor metrics in Prometheus format"
-)
-public class JwtMetricsResource extends ApplicationResource {
-
-    @GET
-    @Consumes(MediaType.WILDCARD)
-    @Produces(MediaType.TEXT_PLAIN)
-    @Path("prometheus")
-    @ApiOperation(
-            value = "Get JWT metrics in Prometheus format",
-            notes = "Returns the JWT processor metrics in Prometheus exposition format"
-    )
-    public Response getPrometheusMetrics() {
-        // Security check
-        authorizeBulletinAccess();
-        
-        // Collect metrics from all JWT processors
-        StringBuilder prometheusMetrics = new StringBuilder();
-        
-        // ... build Prometheus-formatted metrics
-        
-        return Response.ok(prometheusMetrics.toString()).build();
-    }
-}
-----
-
 == Security Considerations
 
 === Metric Access Control
 
-1. Access to metrics endpoints should be secured with appropriate authentication
+Metrics should be secured with appropriate access controls:
+
+1. Access to metrics endpoints should be secured with authentication
 2. Consider creating a dedicated "metrics" role with limited permissions
 3. Monitoring systems should use dedicated service accounts
 
 === Data Privacy
 
+Security metrics are designed to protect sensitive information:
+
 1. Metrics contain only aggregate counts, no token content or PII
 2. Instance identifiers can be anonymized if needed
 3. No sensitive information is exposed in metric names or values
 
+For more information on security considerations, see link:security.adoc[Security].
+
 === Audit Trail Integration
 
-Security event metrics can be integrated with NiFi's Provenance Repository:
+Security events can be integrated with NiFi's Provenance Repository for compliance and auditing:
 
 [source,java]
 ----
@@ -413,7 +403,7 @@ public void onTrigger(final ProcessContext context, final ProcessSession session
     // Record validation failures to provenance
     if (validationResult.isInvalid()) {
         session.getProvenanceReporter().route(flowFile, 
-            RelationshipType.FAILURE, 
+            AUTHENTICATION_FAILED, 
             "JWT validation failed: " + validationResult.getReason(),
             System.currentTimeMillis() - startTime);
             
@@ -428,9 +418,9 @@ public void onTrigger(final ProcessContext context, final ProcessSession session
 
 == See Also
 
-* link:configuration.adoc[Configuration]
 * link:security.adoc[Security]
+* link:token-validation.adoc[Token Validation]
+* link:configuration-ui.adoc[UI Configuration]
 * link:technical-components.adoc[Technical Components]
-* link:error-handling.adoc[Error Handling]
-* link:../Requirements.adoc[Requirements]
-* link:../Specification.adoc[Main Specification]
+* link:../Requirements.adoc#NIFI-AUTH-18[Security Event Monitoring]
+* link:../Specification.adoc[Back to Main Specification]

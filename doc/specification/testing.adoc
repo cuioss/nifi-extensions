@@ -6,601 +6,320 @@
 
 link:../Specification.adoc[Back to Main Specification]
 
+== Testing Strategy
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-12[NIFI-AUTH-12: Testing]_
+
+The MultiIssuerJWTTokenAuthenticator processor is tested through a comprehensive set of tests that cover various aspects of functionality, security, and performance.
+
+=== Testing Layers
+
+The testing strategy includes these layers:
+
+1. **Unit Testing**: Testing individual components in isolation
+2. **Integration Testing**: Testing components working together
+3. **System Testing**: Testing the processor in a NiFi environment
+4. **Security Testing**: Testing security aspects specifically
+5. **Performance Testing**: Testing under load and stress conditions
+
 == Unit Testing
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-14[NIFI-AUTH-14: Unit Testing]_
 
-=== Unit Testing JWKS Endpoint Validator
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
+=== TokenValidator Testing
 
-The JWKS Endpoint Validator can be unit tested using the `cui-test-mockwebserver-junit5` library to simulate HTTP responses. This library provides a simplified way to mock web server responses for testing HTTP clients.
+Unit tests for the TokenValidator component verify:
 
-[source,xml]
-----
-<!-- Dependencies for testing JWKS endpoints -->
-<dependency>
-    <groupId>de.cuioss.test</groupId>
-    <artifactId>cui-test-mockwebserver-junit5</artifactId>
-    <version>1.0.0</version>
-    <scope>test</scope>
-</dependency>
-----
+1. **Token Parsing**: Correct parsing of various token formats
+2. **Signature Validation**: Proper validation of token signatures
+3. **Claim Validation**: Proper validation of token claims
+4. **Error Handling**: Proper handling of validation errors
 
 [source,java]
 ----
-import de.cuioss.test.mockwebserver.junit5.EnableMockWebServer;
-import de.cuioss.test.mockwebserver.junit5.MockWebServerExtension;
-import de.cuioss.test.mockwebserver.MockWebServerWrapper;
+@Test
+void shouldValidateTokenWithCorrectSignature() {
+    // Arrange
+    String validToken = createValidToken();
+    TokenValidator validator = createTokenValidator();
+    
+    // Act
+    Optional<AccessTokenContent> result = validator.createAccessToken(validToken);
+    
+    // Assert
+    assertTrue(result.isPresent(), "Valid token should be accepted");
+    assertEquals("test-subject", result.get().getSubject(), "Subject should match");
+}
 
-@EnableMockWebServer
-public class JwksEndpointValidatorTest {
-
-    @RegisterExtension
-    MockWebServerExtension mockWebServerExtension = new MockWebServerExtension();
-
-    private StandardJwksEndpointValidator validator;
-    private MockWebServerWrapper mockWebServer;
-    private String baseUrl;
-
-    @BeforeEach
-    public void setup() {
-        // Get the mock web server from the extension
-        mockWebServer = mockWebServerExtension.getMockWebServerWrapper();
-        baseUrl = mockWebServer.getBaseUrl();
-        
-        // Create validator
-        validator = new StandardJwksEndpointValidator();
-    }
-
-    @Test
-    @DisplayName("Validate a properly formatted JWKS endpoint")
-    public void testValidJwksEndpoint() {
-        // Setup mock response
-        String validJwks = "{"
-                + "\"keys\": ["
-                + "  {"
-                + "    \"kty\": \"RSA\","
-                + "    \"kid\": \"key1\","
-                + "    \"use\": \"sig\","
-                + "    \"alg\": \"RS256\","
-                + "    \"n\": \"base64-encoded-modulus\","
-                + "    \"e\": \"AQAB\""
-                + "  }"
-                + "]"
-                + "}";
-        
-        mockWebServer.enqueue(validJwks);
-        
-        // Test validation
-        ValidationResult result = validator.validateJwksEndpoint(baseUrl + "/auth/realms/master/protocol/openid-connect/certs");
-        
-        // Verify result
-        assertTrue(result.isValid());
-        assertEquals("Successfully connected to JWKS endpoint", result.getExplanation());
-        
-        // Verify request using the cui-test-mockwebserver API
-        mockWebServer.verify()
-            .requestTo("/auth/realms/master/protocol/openid-connect/certs")
-            .withMethod("GET")
-            .called();
-    }
-
-    @Test
-    @DisplayName("Verify handling of invalid JWKS format")
-    public void testInvalidJwksFormat() {
-        // Setup mock response with invalid JWKS format
-        String invalidJwks = "{ \"not-keys\": [] }";
-        
-        mockWebServer.enqueue(invalidJwks);
-        
-        // Test validation
-        ValidationResult result = validator.validateJwksEndpoint(baseUrl);
-        
-        // Verify result
-        assertFalse(result.isValid());
-        assertEquals("Response is not a valid JWKS format", result.getExplanation());
-    }
-
-    @Test
-    @DisplayName("Verify handling of HTTP error responses")
-    public void testHttpError() {
-        // Setup mock response with HTTP error
-        mockWebServer.enqueue(404);
-        
-        // Test validation
-        ValidationResult result = validator.validateJwksEndpoint(baseUrl);
-        
-        // Verify result
-        assertFalse(result.isValid());
-        assertEquals("Failed to connect to JWKS endpoint: HTTP 404", result.getExplanation());
-    }
-
-    @Test
-    @DisplayName("Verify handling of connection errors")
-    public void testConnectionError() {
-        // Test with invalid URL to simulate connection error
-        ValidationResult result = validator.validateJwksEndpoint("http://invalid-url.example");
-        
-        // Verify result
-        assertFalse(result.isValid());
-        assertTrue(result.getExplanation().startsWith("Error connecting to JWKS endpoint:"));
-    }
+@Test
+void shouldRejectTokenWithInvalidSignature() {
+    // Arrange
+    String invalidToken = createTokenWithInvalidSignature();
+    TokenValidator validator = createTokenValidator();
+    
+    // Act
+    Optional<AccessTokenContent> result = validator.createAccessToken(invalidToken);
+    
+    // Assert
+    assertFalse(result.isPresent(), "Invalid signature should be rejected");
 }
 ----
 
-=== Unit Testing Token Validation
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+For more details on TokenValidator implementation, see link:token-validation.adoc[Token Validation].
+
+=== Processor Testing
+
+Unit tests for the processor verify:
+
+1. **Property Validation**: Correct validation of processor properties
+2. **Token Extraction**: Proper extraction of tokens from different locations
+3. **Flow File Routing**: Proper routing of flow files to relationships
+4. **Attribute Generation**: Proper generation of output attributes
 
 [source,java]
 ----
-public class JwtTokenValidatorTest {
-
-    private JwtTokenValidator validator;
-    private JwksCache mockJwksCache;
-
-    @BeforeEach // Updated from @Before to JUnit 5 annotation
-    public void setup() {
-        mockJwksCache = mock(JwksCache.class);
-        validator = new JwtTokenValidator(mockJwksCache);
-    }
-
-    @Test
-    @DisplayName("Verify validation of a valid token") // Added DisplayName annotation
-    public void testValidToken() throws Exception {
-        // Create a valid token
-        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                .issuer("test-issuer")
-                .subject("test-subject")
-                .expirationTime(new Date(System.currentTimeMillis() + 3600000)) // 1 hour in future
-                .build();
-        
-        SignedJWT signedJWT = createSignedJWT(claimsSet);
-        ParsedJwtToken token = new ParsedJwtToken.Builder()
-                .tokenString(signedJWT.serialize())
-                .header(signedJWT.getHeader())
-                .claims(claimsSet)
-                .build();
-        
-        // Mock signature verification
-        when(mockJwksCache.getJwk(anyString(), anyString())).thenReturn(createMockJWK());
-        
-        // Test validation
-        ValidationResult result = validator.validateToken(token);
-        
-        // Verify result
-        assertTrue(result.isValid());
-    }
-
-    @Test
-    @DisplayName("Verify rejection of an expired token") // Added DisplayName annotation
-    public void testExpiredToken() throws Exception {
-        // Create an expired token
-        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                .issuer("test-issuer")
-                .subject("test-subject")
-                .expirationTime(new Date(System.currentTimeMillis() - 3600000)) // 1 hour in past
-                .build();
-        
-        SignedJWT signedJWT = createSignedJWT(claimsSet);
-        ParsedJwtToken token = new ParsedJwtToken.Builder()
-                .tokenString(signedJWT.serialize())
-                .header(signedJWT.getHeader())
-                .claims(claimsSet)
-                .build();
-        
-        // Test validation
-        ValidationResult result = validator.validateToken(token);
-        
-        // Verify result
-        assertFalse(result.isValid());
-        assertEquals("Token has expired", result.getExplanation());
-    }
-
-    @Test
-    @DisplayName("Verify rejection of tokens with unknown issuers") // Added DisplayName annotation
-    public void testUnknownIssuer() throws Exception {
-        // Create a token with unknown issuer
-        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                .issuer("unknown-issuer")
-                .subject("test-subject")
-                .expirationTime(new Date(System.currentTimeMillis() + 3600000))
-                .build();
-        
-        SignedJWT signedJWT = createSignedJWT(claimsSet);
-        ParsedJwtToken token = new ParsedJwtToken.Builder()
-                .tokenString(signedJWT.serialize())
-                .header(signedJWT.getHeader())
-                .claims(claimsSet)
-                .build();
-        
-        // Test validation
-        ValidationResult result = validator.validateToken(token);
-        
-        // Verify result
-        assertFalse(result.isValid());
-        assertEquals("Unknown token issuer: unknown-issuer", result.getExplanation());
-    }
-
-    private SignedJWT createSignedJWT(JWTClaimsSet claimsSet) throws Exception {
-        // Create a signed JWT for testing
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048);
-        KeyPair keyPair = keyGen.generateKeyPair();
-        
-        JWSSigner signer = new RSASSASigner(keyPair.getPrivate());
-        
-        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.RS256)
-                .keyID("test-key-id")
-                .build();
-        
-        SignedJWT signedJWT = new SignedJWT(header, claimsSet);
-        signedJWT.sign(signer);
-        
-        return signedJWT;
-    }
-
-    private JWK createMockJWK() throws Exception {
-        // Create a mock JWK for testing
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048);
-        KeyPair keyPair = keyGen.generateKeyPair();
-        
-        return new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
-                .keyID("test-key-id")
-                .build();
-    }
+@Test
+void testProcessWithValidToken() {
+    // Set up processor with mock services
+    final TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
+    
+    // Configure processor
+    runner.setProperty("Token Location", "AUTHORIZATION_HEADER");
+    runner.setProperty("Token Header", "Authorization");
+    runner.setProperty("Required Audience", "api://test");
+    runner.setProperty("auth-server", "https://auth.example.com/.well-known/jwks.json");
+    
+    // Mock the TokenValidator
+    TokenValidator mockValidator = mock(TokenValidator.class);
+    when(mockValidator.createAccessToken(anyString())).thenReturn(Optional.of(createTestToken()));
+    
+    // Set the mock validator on the processor using reflection
+    FieldUtils.writeField(runner.getProcessor(), "tokenValidator", mockValidator, true);
+    
+    // Create a test flow file with a token
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("http.headers.authorization", "Bearer eyJhbGciOiJS..."); 
+    runner.enqueue("test data".getBytes(), attributes);
+    
+    // Run the processor
+    runner.run();
+    
+    // Verify results
+    runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 1);
+    
+    // Verify output attributes
+    MockFlowFile flowFile = runner.getFlowFilesForRelationship(MultiIssuerJWTTokenAuthenticator.SUCCESS).get(0);
+    flowFile.assertAttributeExists("jwt.content.sub");
+    flowFile.assertAttributeExists("jwt.content.iss");
+    flowFile.assertAttributeExists("jwt.validatedAt");
 }
 ----
+
+See link:technical-components.adoc[Technical Components] for processor implementation details.
 
 == Integration Testing
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-15[NIFI-AUTH-15: Integration Testing]_
 
-=== Integration Testing with Real Tokens Using cui-test-keycloak-integration
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+Integration tests verify multiple components working together:
 
-Integration tests with real tokens can be implemented using the `cui-test-keycloak-integration` library, which provides a robust approach for testing against a real Keycloak instance.
-
-[source,xml]
-----
-<!-- Dependencies for integration testing with cui-test-keycloak-integration -->
-<dependency>
-    <groupId>de.cuioss.test</groupId>
-    <artifactId>cui-test-keycloak-integration</artifactId>
-    <version>1.0.0</version>
-    <scope>test</scope>
-</dependency>
-----
+1. **TokenValidator with Real JWTs**: Testing with actual JWT tokens
+2. **TokenValidator with JWKS Endpoints**: Testing with mock JWKS endpoints
+3. **TokenValidator with Multiple Issuers**: Testing with multiple token issuers
 
 [source,java]
 ----
-import de.cuioss.test.keycloak.junit5.EnableKeycloakIntegration;
-import de.cuioss.test.keycloak.configuration.KeycloakConfiguration;
-import de.cuioss.test.keycloak.client.KeycloakClient;
-import de.cuioss.test.keycloak.KeycloakContainer;
-
-@EnableKeycloakIntegration
-@Tag("IntegrationTest")
-public class TokenKeycloakITTest {
-
-    private static final Logger LOG = LoggerFactory.getLogger(TokenKeycloakITTest.class);
+@Test
+void testProcessorWithMultipleIssuersIntegration() {
+    // Set up processor
+    final TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
     
-    /**
-     * The KeycloakContainer is automatically managed by the cui-test-keycloak-integration
-     * library. It's configured through the @KeycloakConfiguration annotation.
-     */
-    @KeycloakConfiguration(
-        realmName = "nifi-test",
-        realmConfigFile = "test-realm.json",
-        clientId = "nifi-test-client",
-        clientSecret = "${client-secret}"
-    )
-    private KeycloakContainer keycloakContainer;
+    // Configure processor with multiple issuers
+    runner.setProperty("Token Location", "AUTHORIZATION_HEADER");
+    runner.setProperty("Token Header", "Authorization");
+    runner.setProperty("issuer1", getTestJwksUrl("/jwks1.json"));
+    runner.setProperty("issuer2", getTestJwksUrl("/jwks2.json"));
     
-    /**
-     * The KeycloakClient provides helper methods for interacting with Keycloak.
-     */
-    @Inject
-    private KeycloakClient keycloakClient;
+    // Set up mock JWKS endpoints with WireMock
+    // ... (WireMock setup code)
     
-    private TestRunner runner;
-
-    @BeforeEach
-    public void setup() {
-        // Setup processor
-        runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
-        runner.setProperty(MultiIssuerJWTTokenAuthenticator.TOKEN_HEADER, "Authorization");
-        runner.setProperty(MultiIssuerJWTTokenAuthenticator.JWKS_REFRESH_INTERVAL, "5 min");
-        runner.setProperty(MultiIssuerJWTTokenAuthenticator.REQUIRE_VALID_TOKEN, "true");
-        runner.setProperty(MultiIssuerJWTTokenAuthenticator.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
-        
-        // Configure issuer with JWKS URL from the keycloak container
-        String jwksUrl = keycloakContainer.getJwksUrl();
-        runner.setProperty("nifi-test-issuer", jwksUrl);
-        
-        LOG.info("Keycloak started at: {}", keycloakContainer.getAuthServerUrl());
-        LOG.info("JWKS URL: {}", jwksUrl);
-    }
-
-    @Test
-    @DisplayName("Verify successful validation of valid tokens")
-    public void testValidToken() throws Exception {
-        // Get a valid token from Keycloak using the client
-        String token = keycloakClient.getAccessToken("test-user", "password");
-        
-        // Create test flow file
-        Map<String, String> attributes = new HashMap<>();
-        attributes.put("Authorization", "Bearer " + token);
-        runner.enqueue("test data".getBytes(), attributes);
-        
-        // Run the processor
-        runner.run();
-        
-        // Verify results
-        runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 1);
-        
-        // Verify attributes
-        MockFlowFile resultFlowFile = runner.getFlowFilesForRelationship(
-            MultiIssuerJWTTokenAuthenticator.SUCCESS).get(0);
-        
-        // Verify token attributes
-        assertEquals("nifi-test", resultFlowFile.getAttribute("jwt.claims.iss"));
-        assertNotNull(resultFlowFile.getAttribute("jwt.subject"));
-        assertNotNull(resultFlowFile.getAttribute("jwt.validatedAt"));
-        assertEquals("true", resultFlowFile.getAttribute("jwt.authorization.passed"));
-    }
-
-    @Test
-    @DisplayName("Verify rejection of expired tokens")
-    public void testExpiredToken() throws Exception {
-        // Get an expired token using the client's helper method
-        String token = keycloakClient.getExpiredAccessToken("test-user");
-        
-        // Create test flow file
-        Map<String, String> attributes = new HashMap<>();
-        attributes.put("Authorization", "Bearer " + token);
-        runner.enqueue("test data".getBytes(), attributes);
-        
-        // Run the processor
-        runner.run();
-        
-        // Verify results
-        runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED, 1);
-        
-        // Verify attributes
-        MockFlowFile resultFlowFile = runner.getFlowFilesForRelationship(
-            MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED).get(0);
-        
-        assertEquals("Token has expired", resultFlowFile.getAttribute("jwt.error.reason"));
-        assertEquals("AUTH-003", resultFlowFile.getAttribute("jwt.error.code"));
-    }
+    // Create test flow files with tokens from different issuers
+    createFlowFileWithToken(runner, createToken("issuer1"));
     
-    @Test
-    @DisplayName("Verify handling of tokens with specific audience")
-    public void testTokenWithAudience() throws Exception {
-        // Get a token with specific audience
-        String token = keycloakClient.getAccessTokenWithAudience("test-user", "password", "specific-audience");
-        
-        // Configure processor to require this audience
-        runner.setProperty(MultiIssuerJWTTokenAuthenticator.REQUIRED_AUDIENCE, "specific-audience");
-        
-        // Create test flow file
-        Map<String, String> attributes = new HashMap<>();
-        attributes.put("Authorization", "Bearer " + token);
-        runner.enqueue("test data".getBytes(), attributes);
-        
-        // Run the processor
-        runner.run();
-        
-        // Verify results
-        runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 1);
-    }
+    // Run the processor
+    runner.run(2); // Process 2 flow files
     
-    @Test
-    @DisplayName("Verify handling of tokens with specific roles")
-    public void testTokenWithRoles() throws Exception {
-        // Get a token with specific roles
-        String token = keycloakClient.getAccessTokenWithRoles("test-user", "password", Arrays.asList("admin", "user"));
-        
-        // Configure processor to require the admin role
-        runner.setProperty(MultiIssuerJWTTokenAuthenticator.REQUIRED_ROLES, "admin");
-        
-        // Create test flow file
-        Map<String, String> attributes = new HashMap<>();
-        attributes.put("Authorization", "Bearer " + token);
-        runner.enqueue("test data".getBytes(), attributes);
-        
-        // Run the processor
-        runner.run();
-        
-        // Verify results
-        runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 1);
-    }
+    // Verify results
+    runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 2);
 }
 ----
 
-==== Example Implementation from cui-jwt-validation
-Here's an example from the cui-jwt-validation project showing how to use the cui-test-keycloak-integration library:
+For more details on integration patterns, see link:integration-patterns.adoc[Integration Patterns].
+
+== System Testing
+
+System tests verify the processor in a real NiFi environment:
+
+1. **Deployment Testing**: Testing deployment in a NiFi instance
+2. **Configuration Testing**: Testing configuration through the UI
+3. **Flow Testing**: Testing in a complete flow with other processors
+
+For more details on system testing approach, see link:configuration-ui.adoc[UI Configuration].
+
+== Security Testing
+
+Security tests focus on security aspects of the processor:
+
+1. **Token Attack Testing**: Testing with malformed or malicious tokens
+2. **Algorithm Attack Testing**: Testing with weak or forbidden algorithms
+3. **Resource Attack Testing**: Testing with very large tokens or high request rates
+4. **JWKS Security Testing**: Testing JWKS endpoint security
 
 [source,java]
 ----
-/**
- * Integration test for token validation against a real Keycloak instance.
- * Uses the cui-test-keycloak-integration library for simplified testing.
- */
-@EnableKeycloakIntegration
-@Tag("IntegrationTest")
-class TokenKeycloakITTest {
-
-    @KeycloakConfiguration(
-        realmName = "cui",
-        realmConfigurationFile = "cui/test-realm.json",
-        clientId = "vault-api",
-        clientSecret = "${client-secret:configure-me}"
-    )
-    private KeycloakContainer container;
-
-    @Inject
-    private KeycloakClient keycloakClient;
-
-    private TokenValidator validator;
-
-    @BeforeEach
-    void setUp() {
-        // Create a token validator configured with the Keycloak JWKS URL
-        IssuerConfig issuerConfig = IssuerConfig.builder()
-            .jwksIssuer("cui")
-            .jwksEndpoint(container.getJwksUrl())
-            .build();
-
-        validator = new TokenValidator(issuerConfig);
-    }
-
-    @Test
-    void shouldValidateToken() {
-        // Get a valid token from Keycloak
-        String accessToken = keycloakClient.getAccessToken("test-user", "password");
-
-        // Validate the token
-        Optional<AccessTokenContent> optionalToken = validator.createAccessToken(accessToken);
-
-        // Verify token is valid and contains expected claims
-        assertTrue(optionalToken.isPresent());
-        AccessTokenContent token = optionalToken.get();
-        assertEquals("cui", token.getIssuer());
-        assertEquals("test-user", token.getPreferredUsername().orElse(null));
-        assertFalse(token.isExpired());
-    }
-
-    @Test
-    void shouldHandleExpiredToken() {
-        // Get an expired token
-        String expiredToken = keycloakClient.getExpiredAccessToken("test-user");
-
-        // Attempt to validate expired token
-        Optional<AccessTokenContent> optionalToken = validator.createAccessToken(expiredToken);
-        
-        // Token should be parsed but marked as expired
-        assertTrue(optionalToken.isPresent());
-        AccessTokenContent token = optionalToken.get();
-        assertTrue(token.isExpired());
-    }
-
-    @Test
-    void shouldVerifyAudience() {
-        // Get token with specific audience claim
-        String token = keycloakClient.getAccessTokenWithAudience("test-user", "password", "expected-audience");
-        
-        // Create validator that requires specific audience
-        TokenValidatorOptions options = TokenValidatorOptions.builder()
-            .requireAudience("expected-audience")
-            .build();
-            
-        IssuerConfig issuerConfig = IssuerConfig.builder()
-            .jwksIssuer("cui")
-            .jwksEndpoint(container.getJwksUrl())
-            .build();
-
-        TokenValidator audienceValidator = new TokenValidator(options, issuerConfig);
-        
-        // Validate the token
-        Optional<AccessTokenContent> optionalToken = audienceValidator.createAccessToken(token);
-        
-        // Token should be valid
-        assertTrue(optionalToken.isPresent());
-        AccessTokenContent parsedToken = optionalToken.get();
-        assertTrue(parsedToken.getAudiences().contains("expected-audience"));
-    }
+@Test
+void testTokenSizeLimit() {
+    // Set up processor
+    final TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
+    
+    // Configure processor with a small token size limit
+    runner.setProperty("Token Location", "AUTHORIZATION_HEADER");
+    runner.setProperty("Maximum Token Size", "100");
+    runner.setProperty("auth-server", getTestJwksUrl());
+    
+    // Create a flow file with a token exceeding the size limit
+    String oversizedToken = "Bearer " + generateOversizedToken(200); // Generate token > 100 bytes
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("http.headers.authorization", oversizedToken);
+    runner.enqueue("test data".getBytes(), attributes);
+    
+    // Run the processor
+    runner.run();
+    
+    // Verify the token was rejected due to size
+    runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED, 1);
+    MockFlowFile flowFile = runner.getFlowFilesForRelationship(MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED).get(0);
+    flowFile.assertAttributeExists("jwt.error.reason");
+    flowFile.assertAttributeEquals("jwt.error.code", "AUTH-001");
 }
 ----
 
-==== Configuring Test Realm
+For more details on security considerations, see link:security.adoc[Security].
 
-To configure a test realm for integration testing, create a `test-realm.json` file in your test resources:
+== Performance Testing
 
-[source,json]
+Performance tests verify the processor under load:
+
+1. **Throughput Testing**: Testing with high flow file rates
+2. **Token Size Testing**: Testing with various token sizes
+3. **Concurrent Processing Testing**: Testing with multiple threads
+4. **Cache Performance Testing**: Testing JWKS caching efficiency
+
+[source,java]
 ----
-{
-  "realm": "nifi-test",
-  "enabled": true,
-  "accessTokenLifespan": 60,
-  "clients": [
-    {
-      "clientId": "nifi-test-client",
-      "enabled": true,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "test-secret",
-      "redirectUris": ["http://localhost:*"],
-      "standardFlowEnabled": true,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": true,
-      "serviceAccountsEnabled": true,
-      "authorizationServicesEnabled": true,
-      "publicClient": false
+@Test
+void testHighThroughputPerformance() {
+    // Set up processor
+    final TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
+    
+    // Configure processor
+    runner.setProperty("Token Location", "AUTHORIZATION_HEADER");
+    runner.setProperty("auth-server", getTestJwksUrl());
+    
+    // Create many flow files with tokens
+    for (int i = 0; i < 1000; i++) {
+        Map<String, String> attributes = new HashMap<>();
+        attributes.put("http.headers.authorization", "Bearer " + createTestToken());
+        runner.enqueue("test data".getBytes(), attributes);
     }
-  ],
-  "users": [
-    {
-      "username": "test-user",
-      "email": "test@example.com",
-      "enabled": true,
-      "credentials": [
-        {
-          "type": "password",
-          "value": "password",
-          "temporary": false
-        }
-      ],
-      "realmRoles": ["user"],
-      "clientRoles": {
-        "nifi-test-client": ["nifi-user", "nifi-admin"]
-      }
-    }
-  ],
-  "roles": {
-    "realm": [
-      {
-        "name": "user",
-        "description": "User role"
-      },
-      {
-        "name": "admin",
-        "description": "Administrator role"
-      }
-    ],
-    "client": {
-      "nifi-test-client": [
-        {
-          "name": "nifi-user",
-          "description": "NiFi User"
-        },
-        {
-          "name": "nifi-admin",
-          "description": "NiFi Administrator"
-        }
-      ]
-    }
-  }
+    
+    // Run the processor with timing
+    long startTime = System.currentTimeMillis();
+    runner.run(1000);
+    long endTime = System.currentTimeMillis();
+    
+    // Verify throughput
+    runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 1000);
+    
+    // Calculate and log throughput
+    long duration = endTime - startTime;
+    double throughputPerSecond = (1000.0 / duration) * 1000;
+    System.out.println("Throughput: " + throughputPerSecond + " tokens/second");
+    
+    // Assert minimum throughput requirement
+    assertTrue(throughputPerSecond > 100, "Throughput should exceed 100 tokens/second");
 }
 ----
 
-=== Benefits of using cui-test-keycloak-integration
+== Test Data Generation
 
-Using the cui-test-keycloak-integration library provides several advantages:
+=== JWT Token Generation
 
-1. **Automated Lifecycle Management**: The library manages the Keycloak container's lifecycle automatically.
+Test JWT tokens are generated with various characteristics for testing:
 
-2. **Simple Configuration**: Configure your test realm using a JSON configuration file.
+[source,java]
+----
+private String createTestToken() {
+    return JWT.create()
+        .withSubject("test-subject")
+        .withIssuer("test-issuer")
+        .withAudience("api://test")
+        .withClaim("scope", "read write")
+        .withExpiresAt(Date.from(Instant.now().plusSeconds(3600)))
+        .sign(algorithm);
+}
 
-3. **Convenient Helper Methods**: The KeycloakClient API provides simple methods to obtain tokens with different characteristics (expired tokens, tokens with specific roles or audiences, etc.).
+private String createExpiredToken() {
+    return JWT.create()
+        .withSubject("test-subject")
+        .withIssuer("test-issuer")
+        .withAudience("api://test")
+        .withExpiresAt(Date.from(Instant.now().minusSeconds(3600)))
+        .sign(algorithm);
+}
+----
 
-4. **Realistic Testing**: Tests against a real Keycloak instance ensure compatibility with actual production environments.
+=== JWKS Endpoint Simulation
 
-5. **Integration with JUnit 5**: Uses modern testing practices with JUnit 5 extensions and annotations.
+Test JWKS endpoints are simulated for testing:
 
-By using cui-test-keycloak-integration for integration testing and cui-test-mockwebserver-junit5 for unit testing, you can ensure comprehensive test coverage of your JWT validation components, from individual validators to the full authorization flow.
+[source,java]
+----
+private void setupMockJwksEndpoint(WireMockServer wireMockServer, String path, RSAPublicKey publicKey) {
+    JWK jwk = new RSAKey.Builder(publicKey)
+        .keyID("test-key-id")
+        .algorithm(JWSAlgorithm.RS256)
+        .build();
+    
+    JWKSet jwkSet = new JWKSet(jwk);
+    String jwksJson = jwkSet.toString();
+    
+    wireMockServer.stubFor(get(urlEqualTo(path))
+        .willReturn(aResponse()
+            .withHeader("Content-Type", "application/json")
+            .withBody(jwksJson)));
+}
+----
 
-== See also
-* link:security.adoc[Security Specification]
+== Test Coverage
+
+The test suite aims for high coverage across all areas:
+
+1. **Line Coverage**: >90% line coverage for core components
+2. **Branch Coverage**: >85% branch coverage for decision points
+3. **Method Coverage**: >95% method coverage
+
+Test coverage is measured and reported during the build process.
+
+== Test Execution
+
+Tests are run automatically as part of the build process:
+
+1. **Unit Tests**: Run during `mvn test`
+2. **Integration Tests**: Run during `mvn verify`
+3. **Performance Tests**: Run manually or on demand
+
+== See Also
+
 * link:token-validation.adoc[Token Validation]
+* link:configuration.adoc[Configuration]
+* link:security.adoc[Security]
+* link:technical-components.adoc[Technical Components]
 * link:javascript-testing.adoc[JavaScript Testing]
-* link:../Requirements.adoc[Requirements]
-* link:../Specification.adoc[Main Specification]
+* link:../Requirements.adoc#NIFI-AUTH-12[Testing Requirements]
+* link:../Specification.adoc[Back to Main Specification]

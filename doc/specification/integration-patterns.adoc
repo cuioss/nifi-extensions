@@ -6,24 +6,32 @@
 
 link:../Specification.adoc[Back to Main Specification]
 
-== See also
-* link:token-validation.adoc[Token Validation Specification]
-* link:configuration.adoc[Configuration Specification]
-* link:technical-components.adoc[Technical Components]
-* link:security.adoc[Security Specification]
-
-== Integration Examples
+== Integration Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-12[NIFI-AUTH-12: Integration Requirements]_
+
+This document provides integration patterns and examples for the MultiIssuerJWTTokenAuthenticator processor in different scenarios. The processor is designed to be flexible and can be integrated into various architectures and workflows.
+
+== Common Integration Patterns
 
 === API Gateway Pattern
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-12.1[NIFI-AUTH-12.1: API Gateway Integration]_
 
-The MultiIssuerJWTTokenAuthenticator can be used as part of an API Gateway pattern to authenticate and authorize incoming requests.
+The MultiIssuerJWTTokenAuthenticator can be used as part of an API Gateway pattern to authenticate and authorize incoming requests before routing them to backend services.
 
 .API Gateway Pattern
 image::../plantuml/api-gateway-pattern.png[]
 
-.Example Flow
+==== API Gateway Flow
+
+In this pattern, the processor:
+
+1. Receives HTTP requests from clients with JWT tokens
+2. Validates tokens against configured issuers
+3. Extracts claims for authorization decisions
+4. Routes authenticated requests to appropriate backends
+
+==== Example Configuration
+
 [source,xml]
 ----
 <flow>
@@ -44,8 +52,9 @@ image::../plantuml/api-gateway-pattern.png[]
     <processor>
         <type>de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator</type>
         <properties>
-            <property name="Token Header Name">Authorization</property>
-            <property name="JWKS Refresh Interval">15 min</property>
+            <property name="Token Location">AUTHORIZATION_HEADER</property>
+            <property name="Token Header">Authorization</property>
+            <property name="JWKS Refresh Interval">3600</property>
             <property name="Require Valid Token">true</property>
             <property name="keycloak">https://auth.example.com/realms/master/protocol/openid-connect/certs</property>
         </properties>
@@ -60,9 +69,9 @@ image::../plantuml/api-gateway-pattern.png[]
         <type>org.apache.nifi.processors.standard.RouteOnAttribute</type>
         <properties>
             <property name="Route Strategy">Route to Property name</property>
-            <property name="users">${jwt.claims.resource_access:contains('users-api')}</property>
-            <property name="products">${jwt.claims.resource_access:contains('products-api')}</property>
-            <property name="orders">${jwt.claims.resource_access:contains('orders-api')}</property>
+            <property name="users">${jwt.content.resource_access:contains('users-api')}</property>
+            <property name="products">${jwt.content.resource_access:contains('products-api')}</property>
+            <property name="orders">${jwt.content.resource_access:contains('orders-api')}</property>
         </properties>
         <relationships>
             <relationship name="users">UsersBackend</relationship>
@@ -74,15 +83,27 @@ image::../plantuml/api-gateway-pattern.png[]
 </flow>
 ----
 
+For more details on token validation in this scenario, see link:token-validation.adoc[Token Validation].
+
 === Service-to-Service Authentication
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-12.2[NIFI-AUTH-12.2: Service-to-Service Integration]_
 
-The MultiIssuerJWTTokenAuthenticator can be used to authenticate service-to-service communication.
+The MultiIssuerJWTTokenAuthenticator can be used to authenticate service-to-service communication, where one service presents credentials to access another.
 
 .Service-to-Service Authentication
 image::../plantuml/service-to-service-authentication.png[]
 
-.Example Flow
+==== Service Authentication Flow
+
+In this pattern, the processor:
+
+1. Validates service tokens from client services
+2. Verifies required scopes for service operations
+3. Ensures appropriate service roles are present
+4. Preserves the authenticated service identity for downstream use
+
+==== Example Configuration
+
 [source,xml]
 ----
 <flow>
@@ -102,8 +123,9 @@ image::../plantuml/service-to-service-authentication.png[]
     <processor>
         <type>de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator</type>
         <properties>
-            <property name="Token Header Name">X-Service-Auth</property>
-            <property name="JWKS Refresh Interval">15 min</property>
+            <property name="Token Location">CUSTOM_HEADER</property>
+            <property name="Custom Header Name">X-Service-Auth</property>
+            <property name="JWKS Refresh Interval">3600</property>
             <property name="Require Valid Token">true</property>
             <property name="Required Scopes">service:read,service:write</property>
             <property name="Required Roles">service-client</property>
@@ -130,15 +152,27 @@ image::../plantuml/service-to-service-authentication.png[]
 </flow>
 ----
 
+For more details on configuring service authentication, see link:configuration.adoc#authorization-configuration[Authorization Configuration].
+
 === Multi-Tenant API Routing
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-12.3[NIFI-AUTH-12.3: Multi-Tenant Integration]_
 
-The MultiIssuerJWTTokenAuthenticator can be used to route requests based on the tenant information in the JWT token.
+The MultiIssuerJWTTokenAuthenticator can be used to route requests based on tenant information in JWT tokens for multi-tenant architectures.
 
 .Multi-Tenant API Routing
 image::../plantuml/multi-tenant-api-routing.png[]
 
-.Example Flow
+==== Multi-Tenant Flow
+
+In this pattern, the processor:
+
+1. Validates tokens from different tenant identity providers
+2. Identifies the tenant from token claims (issuer, custom claims)
+3. Routes requests to tenant-specific backends
+4. Preserves tenant context for downstream processing
+
+==== Example Configuration
+
 [source,xml]
 ----
 <flow>
@@ -155,12 +189,13 @@ image::../plantuml/multi-tenant-api-routing.png[]
         </relationships>
     </processor>
     
-    <!-- Authenticate JWT token -->
+    <!-- Authenticate JWT token with multiple tenant issuers -->
     <processor>
         <type>de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator</type>
         <properties>
-            <property name="Token Header Name">Authorization</property>
-            <property name="JWKS Refresh Interval">15 min</property>
+            <property name="Token Location">AUTHORIZATION_HEADER</property>
+            <property name="Token Header">Authorization</property>
+            <property name="JWKS Refresh Interval">3600</property>
             <property name="Require Valid Token">true</property>
             <property name="tenant-a">https://auth.tenant-a.example.com/jwks</property>
             <property name="tenant-b">https://auth.tenant-b.example.com/jwks</property>
@@ -176,8 +211,8 @@ image::../plantuml/multi-tenant-api-routing.png[]
         <type>org.apache.nifi.processors.standard.RouteOnAttribute</type>
         <properties>
             <property name="Route Strategy">Route to Property name</property>
-            <property name="tenant-a">${jwt.issuer:contains('tenant-a')}</property>
-            <property name="tenant-b">${jwt.issuer:contains('tenant-b')}</property>
+            <property name="tenant-a">${jwt.content.iss:contains('tenant-a')}</property>
+            <property name="tenant-b">${jwt.content.iss:contains('tenant-b')}</property>
         </properties>
         <relationships>
             <relationship name="tenant-a">TenantABackend</relationship>
@@ -188,270 +223,121 @@ image::../plantuml/multi-tenant-api-routing.png[]
 </flow>
 ----
 
+For more details on multi-issuer support, see link:technical-components.adoc#multi-issuer-support[Multi-Issuer Support].
+
 == Implementation Examples
 
-=== Example Flows
+=== Test Integration Examples
 
-==== Basic JWT Authentication Flow
+==== Basic JWT Authentication Test
 
-This flow demonstrates basic JWT authentication for an API:
-
-1. Receive HTTP request with JWT token
-2. Authenticate and validate the token
-3. Process the request if token is valid
-4. Return appropriate response
+This example demonstrates how to test basic JWT authentication in a NiFi flow:
 
 [source,java]
 ----
-// Configure the processor
-TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
-runner.setProperty(MultiIssuerJWTTokenAuthenticator.TOKEN_HEADER, "Authorization");
-runner.setProperty(MultiIssuerJWTTokenAuthenticator.JWKS_REFRESH_INTERVAL, "15 min");
-runner.setProperty(MultiIssuerJWTTokenAuthenticator.REQUIRE_VALID_TOKEN, "true");
-runner.setProperty("keycloak", "https://auth.example.com/realms/master/protocol/openid-connect/certs");
+/**
+ * Tests basic JWT token authentication flow.
+ */
+@Test
+void testBasicJwtAuthentication() {
+    // Configure the processor
+    TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
+    runner.setProperty(MultiIssuerJWTTokenAuthenticator.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
+    runner.setProperty(MultiIssuerJWTTokenAuthenticator.TOKEN_HEADER, "Authorization");
+    runner.setProperty(MultiIssuerJWTTokenAuthenticator.JWKS_REFRESH_INTERVAL, "3600");
+    runner.setProperty(MultiIssuerJWTTokenAuthenticator.REQUIRE_VALID_TOKEN, "true");
+    runner.setProperty("keycloak", "https://auth.example.com/realms/master/protocol/openid-connect/certs");
 
-// Create a flow file with a JWT token
-Map<String, String> attributes = new HashMap<>();
-attributes.put("Authorization", "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...");
-runner.enqueue("Request body".getBytes(), attributes);
+    // Create a flow file with a JWT token
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("http.headers.authorization", "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...");
+    runner.enqueue("Request body".getBytes(), attributes);
 
-// Run the processor
-runner.run();
+    // Run the processor
+    runner.run();
 
-// Check the results
-runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 1);
-MockFlowFile resultFlowFile = runner.getFlowFilesForRelationship(
-    MultiIssuerJWTTokenAuthenticator.SUCCESS).get(0);
+    // Check the results
+    runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 1);
+    MockFlowFile resultFlowFile = runner.getFlowFilesForRelationship(
+        MultiIssuerJWTTokenAuthenticator.SUCCESS).get(0);
 
-// Verify token attributes were added
-assertEquals("keycloak", resultFlowFile.getAttribute("jwt.issuer"));
-assertNotNull(resultFlowFile.getAttribute("jwt.subject"));
-assertEquals("true", resultFlowFile.getAttribute("jwt.authorization.passed"));
-----
-
-==== Role-Based Authorization Flow
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Authorization Requirements]_
-
-This flow demonstrates role-based authorization using JWT tokens:
-
-1. Receive HTTP request with JWT token
-2. Authenticate and validate the token
-3. Check for required roles in the token
-4. Route to appropriate handler based on roles
-
-[source,java]
-----
-// Configure the processor with role requirements
-TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
-runner.setProperty(MultiIssuerJWTTokenAuthenticator.TOKEN_HEADER, "Authorization");
-runner.setProperty(MultiIssuerJWTTokenAuthenticator.JWKS_REFRESH_INTERVAL, "15 min");
-runner.setProperty(MultiIssuerJWTTokenAuthenticator.REQUIRE_VALID_TOKEN, "true");
-runner.setProperty(MultiIssuerJWTTokenAuthenticator.REQUIRED_ROLES, "admin,power-user");
-runner.setProperty("keycloak", "https://auth.example.com/realms/master/protocol/openid-connect/certs");
-
-// Create a flow file with a JWT token containing roles
-Map<String, String> attributes = new HashMap<>();
-attributes.put("Authorization", "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...");
-runner.enqueue("Request body".getBytes(), attributes);
-
-// Run the processor
-runner.run();
-
-// Check the results - should succeed if token has required roles
-runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 1);
-MockFlowFile resultFlowFile = runner.getFlowFilesForRelationship(
-    MultiIssuerJWTTokenAuthenticator.SUCCESS).get(0);
-
-// Verify authorization attributes
-assertEquals("true", resultFlowFile.getAttribute("jwt.authorization.passed"));
-assertNotNull(resultFlowFile.getAttribute("jwt.roles"));
-----
-
-=== Code Examples
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-13[NIFI-AUTH-13: Documentation Requirements]_
-
-==== Custom Token Validator
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
-
-Example of implementing a custom token validator:
-
-[source,java]
-----
-public class CustomJwtTokenValidator implements JwtTokenValidator {
-    
-    private static final CuiLogger LOGGER = new CuiLogger(CustomJwtTokenValidator.class);
-    private final JwksCache jwksCache;
-    private final Set<String> trustedIssuers;
-    
-    public CustomJwtTokenValidator(JwksCache jwksCache, Set<String> trustedIssuers) {
-        this.jwksCache = jwksCache;
-        this.trustedIssuers = trustedIssuers;
-    }
-    
-    @Override
-    public ValidationResult validateToken(ParsedJwtToken token) {
-        try {
-            // Verify signature
-            if (!verifySignature(token)) {
-                return ValidationResult.invalid("Invalid token signature");
-            }
-            
-            // Verify expiration
-            if (isTokenExpired(token)) {
-                return ValidationResult.invalid("Token has expired");
-            }
-            
-            // Verify issuer is trusted
-            String issuer = token.getClaims().getIssuer();
-            if (!isTrustedIssuer(issuer)) {
-                return ValidationResult.invalid("Untrusted token issuer: " + issuer);
-            }
-            
-            // Custom validation logic
-            ValidationResult customValidationResult = performCustomValidation(token);
-            if (!customValidationResult.isValid()) {
-                return customValidationResult;
-            }
-            
-            return ValidationResult.valid();
-        } catch (Exception e) {
-            LOGGER.error(e, "Error validating token: %s", e.getMessage());
-            return ValidationResult.invalid("Error validating token: " + e.getMessage());
-        }
-    }
-    
-    private boolean verifySignature(ParsedJwtToken token) {
-        // Implementation for signature verification
-        return true;
-    }
-    
-    private boolean isTokenExpired(ParsedJwtToken token) {
-        // Check if token is expired
-        Date expirationTime = token.getClaims().getExpirationTime();
-        return expirationTime != null && expirationTime.before(new Date());
-    }
-    
-    private boolean isTrustedIssuer(String issuer) {
-        // Check if issuer is in the trusted issuers list
-        return trustedIssuers.contains(issuer);
-    }
-    
-    private ValidationResult performCustomValidation(ParsedJwtToken token) {
-        // Custom validation logic
-        // For example, check for specific claims or values
-        
-        // Check for required custom claim
-        if (!token.getClaims().getClaims().containsKey("custom-claim")) {
-            return ValidationResult.invalid("Missing required custom claim");
-        }
-        
-        return ValidationResult.valid();
-    }
+    // Verify token attributes were added
+    assertEquals("keycloak", resultFlowFile.getAttribute("jwt.issuer"));
+    assertNotNull(resultFlowFile.getAttribute("jwt.content.sub"));
+    assertEquals("true", resultFlowFile.getAttribute("jwt.authorization.passed"));
 }
 ----
 
-==== Custom JWKS Client
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-3.2[NIFI-AUTH-3.2: Signature Validation]_
+For more details on testing, see link:testing.adoc[Testing].
 
-Example of implementing a custom JWKS client with caching:
+==== Role-Based Authorization Test
+
+This example demonstrates how to test role-based authorization using JWT tokens:
 
 [source,java]
 ----
-public class CustomJwksClient {
-    
-    private static final CuiLogger LOGGER = new CuiLogger(CustomJwksClient.class);
-    private final Map<String, CachedJwks> jwksCache = new ConcurrentHashMap<>();
-    private final long cacheTimeoutMillis;
-    
-    public CustomJwksClient(long cacheTimeoutMillis) {
-        this.cacheTimeoutMillis = cacheTimeoutMillis;
-    }
-    
-    /**
-     * Retrieves a JWKS from the specified URL, using cache if available
-     */
-    public JWKSet getJwks(String jwksUrl) throws IOException {
-        // Check cache first
-        CachedJwks cachedJwks = jwksCache.get(jwksUrl);
-        if (cachedJwks != null && !isCacheExpired(cachedJwks)) {
-            return cachedJwks.getJwkSet();
-        }
-        
-        // Cache miss or expired, retrieve from URL
-        JWKSet jwkSet = retrieveJwks(jwksUrl);
-        
-        // Update cache
-        jwksCache.put(jwksUrl, new CachedJwks(jwkSet, System.currentTimeMillis()));
-        
-        return jwkSet;
-    }
-    
-    /**
-     * Retrieves a JWKS from the specified URL
-     */
-    private JWKSet retrieveJwks(String jwksUrl) throws IOException {
-        try {
-            // Create HTTP client with appropriate timeouts
-            HttpClient client = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(5))
-                .build();
-            
-            // Create request
-            HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(jwksUrl))
-                .timeout(Duration.ofSeconds(5))
-                .GET()
-                .build();
-            
-            // Execute request
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            
-            // Check response
-            if (response.statusCode() == 200) {
-                return JWKSet.parse(response.body());
-            } else {
-                LOGGER.error(ERROR.JWKS_RETRIEVAL_FAILED.format(jwksUrl, response.statusCode()));
-                throw new IOException("Failed to retrieve JWKS: HTTP " + response.statusCode());
-            }
-        } catch (Exception e) {
-            LOGGER.error(e, ERROR.JWKS_RETRIEVAL_FAILED.format(jwksUrl, e.getMessage()));
-            throw new IOException("Error retrieving JWKS: " + e.getMessage(), e);
-        }
-    }
-    
-    /**
-     * Checks if a cached JWKS is expired
-     */
-    private boolean isCacheExpired(CachedJwks cachedJwks) {
-        return System.currentTimeMillis() - cachedJwks.getTimestamp() > cacheTimeoutMillis;
-    }
-    
-    /**
-     * Class to hold a cached JWKSet and its timestamp
-     */
-    private static class CachedJwks {
-        private final JWKSet jwkSet;
-        private final long timestamp;
-        
-        public CachedJwks(JWKSet jwkSet, long timestamp) {
-            this.jwkSet = jwkSet;
-            this.timestamp = timestamp;
-        }
-        
-        public JWKSet getJwkSet() {
-            return jwkSet;
-        }
-        
-        public long getTimestamp() {
-            return timestamp;
-        }
-    }
+/**
+ * Tests JWT token validation with role-based authorization.
+ */
+@Test
+void testRoleBasedAuthorization() {
+    // Configure the processor with role requirements
+    TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
+    runner.setProperty(MultiIssuerJWTTokenAuthenticator.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
+    runner.setProperty(MultiIssuerJWTTokenAuthenticator.TOKEN_HEADER, "Authorization");
+    runner.setProperty(MultiIssuerJWTTokenAuthenticator.JWKS_REFRESH_INTERVAL, "3600");
+    runner.setProperty(MultiIssuerJWTTokenAuthenticator.REQUIRE_VALID_TOKEN, "true");
+    runner.setProperty(MultiIssuerJWTTokenAuthenticator.REQUIRED_ROLES, "admin,power-user");
+    runner.setProperty("keycloak", "https://auth.example.com/realms/master/protocol/openid-connect/certs");
+
+    // Create a flow file with a JWT token containing roles
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("http.headers.authorization", "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...");
+    runner.enqueue("Request body".getBytes(), attributes);
+
+    // Run the processor
+    runner.run();
+
+    // Check the results - should succeed if token has required roles
+    runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 1);
+    MockFlowFile resultFlowFile = runner.getFlowFilesForRelationship(
+        MultiIssuerJWTTokenAuthenticator.SUCCESS).get(0);
+
+    // Verify authorization attributes
+    assertEquals("true", resultFlowFile.getAttribute("jwt.authorization.passed"));
 }
 ----
+
+For authorization implementation details, see link:token-validation.adoc#authorization-checking[Authorization Checking].
+
+== Best Practices for Integration
+
+=== Security Considerations
+
+When integrating the MultiIssuerJWTTokenAuthenticator, follow these security best practices:
+
+1. **Use HTTPS for JWKS Endpoints**: Always use HTTPS for JWKS endpoints in production environments
+2. **Configure Appropriate Refresh Intervals**: Set JWKS refresh intervals based on key rotation policies
+3. **Validate Audiences**: Use specific audience validation for each service
+4. **Handle Failures Properly**: Implement proper error handling for authentication failures
+
+For more security best practices, see link:security.adoc[Security].
+
+=== Performance Optimization
+
+For optimal performance in high-throughput environments:
+
+1. **Tune JWKS Refresh Interval**: Balance security with performance by setting appropriate refresh intervals
+2. **Configure Maximum Token Size**: Limit token size to prevent resource exhaustion
+3. **Use Specific Required Claims**: Only require claims that are needed for authorization decisions
+
+For performance considerations, see link:configuration.adoc#performance-considerations[Performance Considerations].
 
 == See Also
 
 * link:token-validation.adoc[Token Validation] - Details on token validation
 * link:configuration.adoc[Configuration] - Configuration options and UI
 * link:security.adoc[Security] - Security considerations
-* link:../Specification.adoc[Main Specification]
+* link:testing.adoc[Testing] - Testing approach and examples
+* link:technical-components.adoc[Technical Components] - Core components and implementation
+* link:../Specification.adoc[Back to Main Specification]

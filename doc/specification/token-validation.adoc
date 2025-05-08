@@ -3,6 +3,7 @@
 :toclevels: 3
 :toc-title: Table of Contents
 :sectnums:
+:imagesdir: ../plantuml
 
 link:../Specification.adoc[Back to Main Specification]
 
@@ -10,7 +11,7 @@ link:../Specification.adoc[Back to Main Specification]
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
 .Token Validation Architecture
-image::../plantuml/token-validation-flow.png[Token Validation Flow]
+image::token-validation-flow.png[Token Validation Flow]
 
 === Token Extraction
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requirements]_
@@ -43,6 +44,8 @@ private Optional<String> extractToken(FlowFile flowFile, ProcessContext context)
 // ...existing code...
 ----
 
+For more information about token location configuration, see link:configuration.adoc#token-location[Token Location Configuration].
+
 == Integration with cui-jwt-validation Library
 
 The MultiIssuerJWTTokenAuthenticator processor leverages the cui-jwt-validation library rather than implementing token validation logic directly. The library handles token structure validation, signature verification, claim validation including audience checks, and other aspects of JWT token processing.
@@ -56,6 +59,8 @@ The processor utilizes the following key features from the cui-jwt-validation li
 * **AccessTokenContent**: Parsed token with convenient access to claims and validation status
 * **HttpJwksLoaderConfig**: Configuration for JWKS key loading with automatic key rotation
 
+For more details on the cui-jwt-validation library, see link:../library/cui-jwt-validation.adoc[Library Documentation].
+
 === How the Processor Uses cui-jwt-validation
 
 In NiFi 2.4.0, the processor initializes and uses the cui-jwt-validation library as follows:
@@ -63,179 +68,19 @@ In NiFi 2.4.0, the processor initializes and uses the cui-jwt-validation library
 [source,java]
 ----
 /**
- * Enhanced processor implementation for JWT token validation in NiFi 2.4.0.
+ * Validates a token using the TokenValidator from cui-jwt-validation.
+ * 
+ * @param tokenString The JWT token string to validate
+ * @return An Optional containing the parsed token if valid, or empty if invalid
  */
-public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
-
-    private static final CuiLogger LOGGER = new CuiLogger(MultiIssuerJWTTokenAuthenticator.class);
-
-    // TokenValidator instance for validating tokens
-    private volatile TokenValidator tokenValidator;
-
-    // Lock for thread-safe initialization
-    private final Object lock = new Object();
-
-    /**
-     * Validates a token using the TokenValidator from cui-jwt-validation.
-     * 
-     * @param tokenString The JWT token string to validate
-     * @return An Optional containing the parsed token if valid, or empty if invalid
-     */
-    private Optional<AccessTokenContent> validateToken(String tokenString) {
-        // Get the TokenValidator
-        TokenValidator validator = getTokenValidator();
-        return validator.createAccessToken(tokenString);
-    }
-
-    /**
-     * Gets or initializes the TokenValidator with improved error handling.
-     * 
-     * @return The TokenValidator instance
-     */
-    private TokenValidator getTokenValidator() {
-        if (tokenValidator == null || configurationChanged) {
-            synchronized (lock) {
-                // Double-check under lock
-                if (tokenValidator == null || configurationChanged) {
-                    LOGGER.debug("Initializing TokenValidator with current configuration");
-                    tokenValidator = initializeTokenValidator();
-                    configurationChanged = false;
-                }
-            }
-        }
-        return tokenValidator;
-    }
-
-    /**
-     * Initializes the TokenValidator with configured issuers.
-     * 
-     * @return A new TokenValidator instance
-     */
-    private TokenValidator initializeTokenValidator() {
-        List<IssuerConfig> issuers = new ArrayList<>();
-
-        // Get all properties from context
-        Map<PropertyDescriptor, String> properties = getProperties();
-        
-        // Process issuer configurations from dynamic properties
-        for (Map.Entry<PropertyDescriptor, String> entry : properties.entrySet()) {
-            PropertyDescriptor descriptor = entry.getKey();
-
-            // We only care about dynamic properties for issuer configuration
-            if (!descriptor.isDynamic()) {
-                continue;
-            }
-
-            String issuerName = descriptor.getName();
-            String issuerUrl = entry.getValue();
-            
-            // Check if this issuer is enabled
-            boolean isEnabled = true; // Default to enabled
-            
-            // Look for an "enabled" property for this issuer
-            PropertyDescriptor enabledProp = getPropertyDescriptor(issuerName + ".enabled");
-            if (enabledProp != null) {
-                String enabledValue = properties.get(enabledProp);
-                if (enabledValue != null) {
-                    isEnabled = Boolean.parseBoolean(enabledValue);
-                }
-            }
-            
-            // Skip disabled issuers
-            if (!isEnabled) {
-                LOGGER.debug("Skipping disabled issuer: %s", issuerName);
-                continue;
-            }
-
-            IssuerConfig config;
-            // Handle different issuer config types
-            if (issuerUrl.startsWith("http")) {
-                // Create HTTP JWKS loader config with refresh interval
-                HttpJwksLoaderConfig httpConfig = HttpJwksLoaderConfig.builder()
-                    .jwksUrl(issuerUrl)
-                    .refreshIntervalSeconds(getRefreshInterval())
-                    .build();
-                
-                // Configure issuer with HTTP-based JWKS loading
-                config = IssuerConfig.builder()
-                    .issuer(issuerName)
-                    .httpJwksLoaderConfig(httpConfig)
-                    .expectedAudience(getRequiredAudience()) // Set expected audience if configured
-                    .build();
-                
-                LOGGER.debug("Added JWKS issuer config for '%s' with endpoint '%s'", 
-                    issuerName, issuerUrl);
-            } else if (issuerUrl.contains("-----BEGIN PUBLIC KEY-----")) {
-                // Direct public key configuration
-                config = IssuerConfig.builder()
-                    .issuer(issuerName)
-                    .jwksContent(createJwksContentFromPublicKey(issuerUrl))
-                    .expectedAudience(getRequiredAudience()) // Set expected audience if configured
-                    .build();
-                
-                LOGGER.debug("Added public key issuer config for '%s'", issuerName);
-            } else {
-                throw new ProcessException("Invalid issuer configuration for '" + 
-                    issuerName + "'. Must be a JWKS URL or PEM public key");
-            }
-
-            issuers.add(config);
-        }
-
-        if (issuers.isEmpty()) {
-            throw new ProcessException("No enabled token issuers configured");
-        }
-
-        // Create a validator with all configured issuers
-        return new TokenValidator(createParserConfig(), issuers.toArray(new IssuerConfig[0]));
-    }
-
-    /**
-     * Gets a PropertyDescriptor for a specific property name.
-     */
-    private PropertyDescriptor getPropertyDescriptor(String propertyName) {
-        for (PropertyDescriptor descriptor : getPropertyDescriptors()) {
-            if (descriptor.getName().equals(propertyName)) {
-                return descriptor;
-            }
-        }
-        return null;
-    }
-
-    @Override
-    public void onPropertyModified(PropertyDescriptor descriptor, String oldValue, String newValue) {
-        // Only rebuild TokenValidator when relevant properties change
-        if (descriptor.isDynamic() || 
-            JWKS_REFRESH_INTERVAL.equals(descriptor) || 
-            REQUIRED_AUDIENCE.equals(descriptor)) {
-            
-            configurationChanged = true;
-            LOGGER.debug("Relevant configuration changed for property '%s', TokenValidator will be recreated on next use", 
-                descriptor.getDisplayName());
-        } else {
-            LOGGER.debug("Property '%s' changed but doesn't affect TokenValidator configuration", 
-                descriptor.getDisplayName());
-        }
-    }
+private Optional<AccessTokenContent> validateToken(String tokenString) {
+    // Get the TokenValidator
+    TokenValidator validator = getTokenValidator();
+    return validator.createAccessToken(tokenString);
 }
 ----
 
-== Maven Integration
-
-To use the cui-jwt-validation library in the NiFi processor, add the following dependency to the pom.xml file:
-
-[source,xml]
-----
-<dependency>
-    <groupId>de.cuioss</groupId>
-    <artifactId>cui-jwt-validation</artifactId>
-    <version>${version.cui-jwt-validation}</version>
-</dependency>
-----
-
-This will provide access to all the library features needed for token validation.
-
-== Best Practices
+For more details on the TokenValidator initialization, see link:technical-components.adoc#tokenvalidator[TokenValidator Component].
 
 == Handling TokenValidator Lifecycle in NiFi
 
@@ -256,201 +101,6 @@ Creating a new `TokenValidator` for each flowfile would defeat these caching mec
 3. Potential rate limiting or blocking from identity providers
 4. Increased CPU and memory usage
 
-=== Proper Implementation in NiFi
-
-To properly implement the TokenValidator in a NiFi processor:
-
-[source,java]
-----
-/**
- * Processor implementation for JWT token validation using cui-jwt-validation.
- */
-public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
-
-    private static final CuiLogger LOGGER = new CuiLogger(MultiIssuerJWTTokenAuthenticator.class);
-
-    // TokenValidator instance for validating tokens - volatile for thread-safety
-    private volatile TokenValidator tokenValidator;
-
-    // Lock for thread-safe initialization
-    private final Object lock = new Object();
-    
-    // Track if configuration has changed
-    private volatile boolean configurationChanged = true;
-
-    @Override
-    public void onPropertyModified(PropertyDescriptor descriptor, String oldValue, String newValue) {
-        // Only rebuild TokenValidator when relevant properties change
-        if (descriptor.isDynamic() || 
-            JWKS_REFRESH_INTERVAL.equals(descriptor) || 
-            REQUIRED_AUDIENCE.equals(descriptor)) {
-            
-            // Mark configuration as changed when relevant properties change
-            configurationChanged = true;
-            LOGGER.debug("Relevant configuration changed for property '%s', TokenValidator will be recreated on next use", 
-                descriptor.getDisplayName());
-        } else {
-            // Log that this property doesn't affect TokenValidator
-            LOGGER.debug("Property '%s' changed but doesn't affect TokenValidator configuration", 
-                descriptor.getDisplayName());
-        }
-    }
-    
-    /**
-     * Gets or initializes the TokenValidator.
-     * 
-     * @return The TokenValidator instance
-     */
-    private TokenValidator getTokenValidator() {
-        if (tokenValidator == null || configurationChanged) {
-            synchronized (lock) {
-                // Double-check under lock
-                if (tokenValidator == null || configurationChanged) {
-                    LOGGER.debug("Initializing TokenValidator with current configuration");
-                    tokenValidator = initializeTokenValidator();
-                    configurationChanged = false;
-                }
-            }
-        }
-        return tokenValidator;
-    }
-
-    /**
-     * Initializes the TokenValidator with configured issuers.
-     * 
-     * @return A new TokenValidator instance
-     */
-    private TokenValidator initializeTokenValidator() {
-        List<IssuerConfig> issuers = new ArrayList<>();
-
-        // Get all properties from context
-        Map<PropertyDescriptor, String> properties = getProperties();
-        
-        // Process issuer configurations from dynamic properties
-        for (Map.Entry<PropertyDescriptor, String> entry : properties.entrySet()) {
-            PropertyDescriptor descriptor = entry.getKey();
-
-            // We only care about dynamic properties for issuer configuration
-            if (!descriptor.isDynamic()) {
-                continue;
-            }
-
-            String issuerName = descriptor.getName();
-            String issuerUrl = entry.getValue();
-            
-            // Check if this issuer is enabled
-            boolean isEnabled = true; // Default to enabled
-            
-            // Look for an "enabled" property for this issuer
-            PropertyDescriptor enabledProp = getPropertyDescriptor(issuerName + ".enabled");
-            if (enabledProp != null) {
-                String enabledValue = properties.get(enabledProp);
-                if (enabledValue != null) {
-                    isEnabled = Boolean.parseBoolean(enabledValue);
-                }
-            }
-            
-            // Skip disabled issuers
-            if (!isEnabled) {
-                LOGGER.debug("Skipping disabled issuer: %s", issuerName);
-                continue;
-            }
-
-            IssuerConfig config;
-            // Handle different issuer config types
-            if (issuerUrl.startsWith("http")) {
-                // Create HTTP JWKS loader config with refresh interval
-                HttpJwksLoaderConfig httpConfig = HttpJwksLoaderConfig.builder()
-                    .jwksUrl(issuerUrl)
-                    .refreshIntervalSeconds(getRefreshInterval())
-                    .build();
-                
-                // Configure issuer with HTTP-based JWKS loading
-                config = IssuerConfig.builder()
-                    .issuer(issuerName)
-                    .httpJwksLoaderConfig(httpConfig)
-                    .expectedAudience(getRequiredAudience()) // Set expected audience if configured
-                    .build();
-                
-                LOGGER.debug("Added JWKS issuer config for '%s' with endpoint '%s'", 
-                    issuerName, issuerUrl);
-            } else if (issuerUrl.contains("-----BEGIN PUBLIC KEY-----")) {
-                // Direct public key configuration
-                config = IssuerConfig.builder()
-                    .issuer(issuerName)
-                    .jwksContent(createJwksContentFromPublicKey(issuerUrl))
-                    .expectedAudience(getRequiredAudience()) // Set expected audience if configured
-                    .build();
-                
-                LOGGER.debug("Added public key issuer config for '%s'", issuerName);
-            } else {
-                throw new ProcessException("Invalid issuer configuration for '" + 
-                    issuerName + "'. Must be a JWKS URL or PEM public key");
-            }
-
-            issuers.add(config);
-        }
-
-        if (issuers.isEmpty()) {
-            throw new ProcessException("No enabled token issuers configured");
-        }
-
-        // Create a validator with all configured issuers
-        return new TokenValidator(createParserConfig(), issuers.toArray(new IssuerConfig[0]));
-    }
-
-    /**
-     * Gets a PropertyDescriptor for a specific property name.
-     */
-    private PropertyDescriptor getPropertyDescriptor(String propertyName) {
-        for (PropertyDescriptor descriptor : getPropertyDescriptors()) {
-            if (descriptor.getName().equals(propertyName)) {
-                return descriptor;
-            }
-        }
-        return null;
-    }
-    
-    // ... existing code ...
-}
-----
-=== Special NiFi Lifecycle Considerations
-
-NiFi processors have specific lifecycle events that need to be handled:
-
-1. **@OnScheduled**: Perform initialization when the processor is scheduled
-2. **@OnStopped**: Clean up resources when the processor is stopped
-3. **@OnUnscheduled**: Optional cleanup when the processor is unscheduled
-
-Example implementation:
-
-[source,java]
-----
-/**
- * Initialize the processor when scheduled.
- */
-@OnScheduled
-public void onScheduled(final ProcessContext context) {
-    // Ensure TokenValidator is initialized
-    getTokenValidator();
-    LOGGER.info("TokenValidator initialized with %d issuers", getIssuerCount());
-}
-
-/**
- * Clean up resources when the processor is stopped.
- */
-@OnStopped
-public void onStopped() {
-    synchronized (lock) {
-        // Clean up TokenValidator resources if needed
-        if (tokenValidator != null) {
-            // Allow the TokenValidator to be garbage collected
-            tokenValidator = null;
-            LOGGER.debug("TokenValidator resources released");
-        }
-    }
-}
-----
 === Thread Safety Considerations
 
 Multiple NiFi threads may access the TokenValidator concurrently:
@@ -469,6 +119,16 @@ The TokenValidator uses resources that should be properly managed:
 3. Memory for caches
 
 By maintaining a single TokenValidator instance and only recreating it when configuration changes, the processor can benefit from the library's caching while properly managing resources in the NiFi environment.
+
+=== Special NiFi Lifecycle Considerations
+
+NiFi processors have specific lifecycle events that need to be handled:
+
+1. **@OnScheduled**: Perform initialization when the processor is scheduled
+2. **@OnStopped**: Clean up resources when the processor is stopped
+3. **@OnUnscheduled**: Optional cleanup when the processor is unscheduled
+
+For detailed implementation of this lifecycle management, see link:technical-components.adoc#tokenvalidator-lifecycle-in-nifi[TokenValidator Lifecycle in NiFi].
 
 === Authorization Checking
 
@@ -521,6 +181,8 @@ private ValidationResult validateAuthorization(AccessTokenContent token, Process
     return ValidationResult.valid();
 }
 ----
+
+For more information on authorization configuration, see link:configuration.adoc#authorization-configuration[Authorization Configuration].
 
 === Flow File Attribute Generation
 
@@ -582,6 +244,23 @@ private void logSecurityMetrics() {
 }
 ----
 
+For details on security event monitoring implementation, see link:observability.adoc[Observability Specification].
+
+== Maven Integration
+
+To use the cui-jwt-validation library in the NiFi processor, add the following dependency to the pom.xml file:
+
+[source,xml]
+----
+<dependency>
+    <groupId>de.cuioss</groupId>
+    <artifactId>cui-jwt-validation</artifactId>
+    <version>${version.cui-jwt-validation}</version>
+</dependency>
+----
+
+This will provide access to all the library features needed for token validation.
+
 == Best Practices
 
 Based on the cui-jwt-validation library recommendations, the processor follows these best practices:
@@ -594,8 +273,13 @@ Based on the cui-jwt-validation library recommendations, the processor follows t
 6. Sets appropriate refresh intervals for JWKS key rotation
 7. Implements proper error handling for token validation failures
 
+For more details on security best practices, see link:security.adoc[Security Considerations].
+
 == See also
 
+* link:technical-components.adoc[Technical Components]
+* link:configuration.adoc[Configuration]
 * link:security.adoc[Security Considerations]
 * link:error-handling.adoc[Error Handling]
-* link:../Usage.adoc[cui-jwt-validation Usage Guide]
+* link:../library/cui-jwt-validation.adoc[Library Documentation]
+* link:../Specification.adoc[Back to Main Specification]

@@ -1,4 +1,4 @@
-= JWT Token Processor Configuration
+= MultiIssuerJWTTokenAuthenticator Configuration
 :toc:
 :toclevels: 3
 :toc-title: Table of Contents
@@ -6,177 +6,280 @@
 
 link:../Specification.adoc[Back to Main Specification]
 
-== Overview
-
-This document details the configuration options for the JWT token validation processor in NiFi. It covers both UI-based configuration and static configuration for container environments.
-
-== Configuration Properties
+== Configuration Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuration Requirements]_
 
-=== Core Properties
+The MultiIssuerJWTTokenAuthenticator processor provides extensive configuration options for:
 
-The following core properties control the JWT token processor behavior:
+* Multiple token issuers
+* Token extraction methods
+* Authorization requirements
+* JWKS endpoint configuration
+* Performance tuning
 
-[cols="2,1,1,2"]
+This document covers the configuration options available in the processor. For UI configuration details, see link:configuration-ui.adoc[UI Configuration].
+
+== Configuration Properties
+
+=== Static Properties
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: Static Configuration Properties]_
+
+The processor provides the following static configuration properties:
+
+[cols="1,1,3,1"]
 |===
-|Property |Type |Default |Description
-
-|Token Header Name
-|String
-|Authorization
-|Name of the header containing the JWT token
-
-|JWKS Refresh Interval
-|Time Period
-|15 minutes
-|How often to refresh the JWKS cache
-
-|Require Valid Token
-|Boolean
-|true
-|When true, only valid tokens result in success relationship
+|Property |Default |Description |Required
 
 |Token Location
-|String
 |AUTHORIZATION_HEADER
-|Where to find the token (AUTHORIZATION_HEADER, CUSTOM_HEADER, FLOW_FILE_CONTENT)
+|Defines where to extract the token from (AUTHORIZATION_HEADER, CUSTOM_HEADER, FLOW_FILE_CONTENT)
+|Yes
+
+|Token Header
+|Authorization
+|The header name containing the token when using AUTHORIZATION_HEADER
+|No
 
 |Custom Header Name
-|String
-|null
-|Name of custom header when Token Location is set to CUSTOM_HEADER
-|===
-
-=== Issuer Properties
-
-Each issuer configuration supports the following properties:
-
-[cols="1,3,1,1"]
-|===
-|Property |Description |Required |Default
-
-|name
-|A descriptive name for the issuer
-|Yes
-|N/A
-
-|enabled
-|Flag to enable or disable the issuer
+|X-Authorization
+|The custom header name when using CUSTOM_HEADER
 |No
+
+|Bearer Token Prefix
+|Bearer
+|The prefix to strip from the token (e.g., "Bearer ")
+|No
+
+|Require Valid Token
+|true
+|Whether to require a valid token for processing
+|Yes
+
+|Required Audience
+|
+|Audience string that must be included in the token audience claim
+|No
+
+|Required Scopes
+|
+|Comma-separated list of scopes required for authorization
+|No
+
+|Required Roles
+|
+|Comma-separated list of roles required for authorization
+|No
+
+|JWKS Refresh Interval
+|3600
+|Interval in seconds for refreshing JWKS keys
+|Yes
+
+|Maximum Token Size
+|16384
+|Maximum token size in bytes
+|Yes
+|===
+
+For details about static property implementation in NiFi, see link:configuration-static.adoc[Static Configuration Implementation].
+
+=== Dynamic Properties
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Dynamic Configuration Properties]_
+
+The processor supports dynamic properties for defining token issuers:
+
+[cols="1,3,1"]
+|===
+|Property |Description |Example
+
+|<issuer-name>
+|The JWKS URL or public key for the issuer
+|https://auth.example.com/.well-known/jwks.json
+
+|<issuer-name>.enabled
+|Whether this issuer is enabled (true/false)
 |true
 
-|id
-|Unique identifier for the issuer
-|Yes
-|N/A
-
-|issuerUrl
-|The URL of the token issuer, must match the 'iss' claim in the token
-|Yes
-|N/A
-
-|jwksUrl
-|URL to the JSON Web Key Set (JWKS) endpoint for retrieving public keys
-|Yes
-|N/A
-
-|tokenExpiration
-|Maximum allowed token lifetime in seconds
-|No
-|3600
-
-|requiredClaims
-|Comma-separated list of claims that must be present in the token
-|No
-|None
-
-|claims
-|Map of claim names and their expected values
-|No
-|None
+|<issuer-name>.audience
+|Override the required audience for this specific issuer
+|api://my-service
 |===
 
-== Dynamic Properties
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-5.2[NIFI-AUTH-5.2: Dynamic Properties]_
+=== Configuration Examples
 
-Dynamic properties are used to configure token issuers. Each property represents a single issuer configuration.
-
-[cols="2,1,2"]
-|===
-|Property |Type |Description
-
-|Issuer Identifier
-|String
-|Value can be either a JWKS URL or a PEM-encoded public key
-|===
-
-== Configuration Examples
-
-=== Basic Configuration
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Validation Configuration]_
+==== Basic Configuration with Single Issuer
 
 [source,properties]
 ----
 # Static properties
-Token Header Name: Authorization
-JWKS Refresh Interval: 15 min
-Require Valid Token: true
-Token Location: AUTHORIZATION_HEADER
+Token Location=AUTHORIZATION_HEADER
+Token Header=Authorization
+Bearer Token Prefix=Bearer
+Require Valid Token=true
+Required Audience=api://my-service
+JWKS Refresh Interval=3600
 
 # Dynamic properties (issuers)
-keycloak: https://auth.example.com/realms/master/protocol/openid-connect/certs
-azure: https://login.microsoftonline.com/common/discovery/keys
+auth-server=https://auth-server.example.com/.well-known/jwks.json
 ----
 
-=== Multi-Issuer Configuration with Custom Token Location
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
+==== Advanced Configuration with Multiple Issuers
 
 [source,properties]
 ----
 # Static properties
-Token Header Name: Authorization
-JWKS Refresh Interval: 30 min
-Require Valid Token: true
-Token Location: CUSTOM_HEADER
-Custom Header Name: X-JWT-Token
+Token Location=AUTHORIZATION_HEADER
+Token Header=Authorization
+Bearer Token Prefix=Bearer
+Require Valid Token=true
+Required Scopes=read,write
+JWKS Refresh Interval=1800
 
 # Dynamic properties (issuers)
-internal-keycloak: https://auth.internal.example.com/realms/master/protocol/openid-connect/certs
-customer-keycloak: https://auth.customer.example.com/realms/master/protocol/openid-connect/certs
-partner-auth: https://auth.partner.example.com/.well-known/jwks.json
-legacy-system: -----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
+auth-server-production=https://auth.example.com/.well-known/jwks.json
+auth-server-production.audience=api://my-service-prod
+
+auth-server-testing=https://auth-test.example.com/.well-known/jwks.json
+auth-server-testing.audience=api://my-service-test
+auth-server-testing.enabled=false  # Disabled in production
+
+# Static key configuration
+internal-auth=-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnzyis1ZjfNB0bBgKFMSv\nvkTtwlvBsaJq7S5wA+kzeVOVpVWwkWdVha4s38XM/pa/yr47av7+z3VTmvDRyAHc\naT92whREFpLv9cj5lTeJSibyr/Mrm/YtjCZVWgaOYIhwrXwKLqPr/11inWsAkfIy\ntvHWTxZYEcXLgAXFuUuaS3uF9gEiNQwzGTU1v0FqkqTBr4B8nW3HCN47XUu0t8Y0\ne+lf4s4OxQawWD79J9/5d3Ry0vbV3Am1FtGJiJvOwRsIfVChDpYStTcHTCMqtvWb\nV6L11BWkpzGXSW4Hv43qa+GSYOD2QU68Mb59oSk2OB+BtOLpJofmbGEGgvmwyCI9\nMwIDAQAB\n-----END PUBLIC KEY-----
 ----
 
-=== Content-Based Token Validation
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-5.1[NIFI-AUTH-5.1: Token Location]_
+== Token Location Configuration
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requirements]_
+
+The processor supports multiple token extraction methods, configured via the "Token Location" property:
+
+=== Authorization Header (Default)
+
+The default token location is the Authorization header:
+
+[source,http]
+----
+GET /api/resource HTTP/1.1
+Host: example.com
+Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+----
+
+=== Custom Header
+
+For systems that use a different header name:
+
+[source,http]
+----
+GET /api/resource HTTP/1.1
+Host: example.com
+X-Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+----
+
+=== Flow File Content
+
+When the token is contained in the flow file content:
+
+[source,json]
+----
+{
+  "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "payload": {
+    // Additional data
+  }
+}
+----
+
+For implementation details on token extraction, see link:token-validation.adoc#token-extraction[Token Extraction].
+
+== Authorization Configuration
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Authorization Requirements]_
+
+The processor supports configurable authorization rules through the following properties:
+
+=== Required Audience
+
+Validates that tokens include a specific audience claim:
 
 [source,properties]
 ----
-# Static properties
-Token Header Name: Authorization
-JWKS Refresh Interval: 15 min
-Require Valid Token: true
-Token Location: FLOW_FILE_CONTENT
-
-# Dynamic properties (issuers)
-keycloak: https://auth.example.com/realms/master/protocol/openid-connect/certs
+Required Audience=api://my-service
 ----
 
-== Security Considerations
+This ensures tokens were issued specifically for your service.
 
-=== JWKS URL Security
+=== Required Scopes
 
-1. JWKS URLs should use HTTPS to ensure secure key retrieval
-2. Consider using mutual TLS authentication for JWKS endpoints in high-security environments
-3. Implement proper network security controls to restrict access to JWKS endpoints
+Validates that tokens include all required scopes:
 
-== See Also
+[source,properties]
+----
+Required Scopes=read,write,delete
+----
+
+The processor checks that all listed scopes are present in the token.
+
+=== Required Roles
+
+Validates that tokens include all required roles:
+
+[source,properties]
+----
+Required Roles=admin,manager
+----
+
+The processor checks that all listed roles are present in the token's role claims.
+
+For authorization implementation details, see link:token-validation.adoc#authorization-checking[Authorization Checking].
+
+== JWKS Configuration
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+
+=== Refresh Interval
+
+The JWKS Refresh Interval property controls how frequently the processor checks for updated JWKS keys:
+
+[source,properties]
+----
+JWKS Refresh Interval=3600
+----
+
+This value represents seconds between refreshes. Lower values provide faster key rotation but increase network traffic.
+
+=== Performance Considerations
+
+* **Key Caching**: JWKS keys are cached in memory for performance
+* **Background Refresh**: Keys are refreshed in a background thread
+* **Connection Pooling**: HTTP connections are pooled for efficiency
+* **Response Caching**: HTTP response caching based on Cache-Control headers
+
+For JWKS implementation details, see link:token-validation.adoc#integration-with-cui-jwt-validation-library[Integration with cui-jwt-validation Library].
+
+== Dynamic Property Handling
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Dynamic Configuration Properties]_
+
+The processor supports multiple issuers through dynamic properties:
+
+=== Issuer Naming
+
+Dynamic properties use the following naming conventions:
+
+* **Base Name**: The issuer identifier (e.g., `auth-server-production`)
+* **Enabled Flag**: `<base>.enabled` (e.g., `auth-server-production.enabled`)
+* **Audience Override**: `<base>.audience` (e.g., `auth-server-production.audience`)
+
+=== Value Types
+
+Dynamic properties accept two types of values:
+
+1. **JWKS URL**: HTTP/HTTPS URL to a JWKS endpoint (e.g., `https://auth.example.com/.well-known/jwks.json`)
+2. **Public Key**: PEM-encoded public key for static key configuration
+
+For dynamic property implementation details, see link:technical-components.adoc#multi-issuer-support[Multi-Issuer Support].
+
+== See also
 
 * link:configuration-ui.adoc[UI Configuration]
-* link:configuration-static.adoc[Static Configuration]
+* link:configuration-static.adoc[Static Configuration Implementation]
 * link:token-validation.adoc[Token Validation]
-* link:security.adoc[Security]
 * link:technical-components.adoc[Technical Components]
-* link:integration-patterns.adoc[Integration Patterns]
-* link:../Requirements.adoc[Requirements]
-* link:../Specification.adoc[Main Specification]
+* link:../Requirements.adoc#NIFI-AUTH-7[Configuration Requirements]
+* link:../Specification.adoc[Back to Main Specification]
