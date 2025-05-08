@@ -8,12 +8,7 @@
 link:../Specification.adoc[Back to Main Specification]
 
 == Overview
-[.requirement]
-_See Requirement: link:../Requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuration Requirements]_
-
-== Configuration Overview
-[.requirement]
-_See Requirement: link:../Requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuration Requirements]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuration Requirements]_
 
 The MultiIssuerJWTTokenAuthenticator processor provides comprehensive configuration options for validating and processing JWT tokens. This document serves as the central reference for all configuration options.
 
@@ -30,8 +25,7 @@ The processor supports three configuration methods:
 The processor provides the following configuration categories:
 
 === Core Properties
-[.requirement]
-_See Requirement: link:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Core Properties]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Validation Configuration]_
 
 [cols="1,1,3,1"]
 |===
@@ -64,8 +58,7 @@ _See Requirement: link:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Core Pr
 |===
 
 === Authorization Properties
-[.requirement]
-_See Requirement: link:../Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Authorization Requirements]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: Authorization Configuration]_
 
 [cols="1,1,3,1"]
 |===
@@ -88,8 +81,7 @@ _See Requirement: link:../Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Authorizati
 |===
 
 === Performance Properties
-[.requirement]
-_See Requirement: link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Performance Requirements]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Performance Requirements]_
 
 [cols="1,1,3,1"]
 |===
@@ -107,8 +99,7 @@ _See Requirement: link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Performan
 |===
 
 === Dynamic Properties (Issuers)
-[.requirement]
-_See Requirement: link:../Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multi-Issuer Support]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
 
 The processor supports multiple issuers through dynamic properties:
 
@@ -204,10 +195,17 @@ auth.server.testing.audience = api://my-service-test
 auth.server.testing.enabled = false  # Disabled in production
 ----
 
-== Related Topics
+== See Also
 
-* link:configuration-ui.adoc[UI Configuration] - Details on configuring the processor through the NiFi UI
-* link:configuration-static.adoc[Static Configuration] - Configuration for container environments
-* link:token-validation.adoc[Token Validation] - How tokens are validated using the configuration
-* link:error-handling.adoc[Error Handling] - Handling configuration errors
-* link:technical-components.adoc[Technical Components] - Implementation details
+=== Core Documentation
+* link:../Specification.adoc[Main Specification]
+* link:../Requirements.adoc[Requirements]
+
+=== Configuration Details
+* link:configuration-ui.adoc[UI Configuration]
+* link:configuration-static.adoc[Static Configuration]
+
+=== Related Implementation
+* link:token-validation.adoc[Token Validation]
+* link:technical-components.adoc[Technical Components]
+* link:error-handling.adoc[Error Handling]

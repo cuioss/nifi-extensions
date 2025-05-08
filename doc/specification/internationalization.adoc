@@ -316,10 +316,14 @@ When adding new features:
 
 == See Also
 
-* link:configuration.adoc[Configuration]
-* link:error-handling.adoc[Error Handling]
-* link:configuration-ui.adoc[UI Configuration]
-* link:testing.adoc[Testing]
-* link:../LogMessage.md[Log Message Documentation]
+=== Core Documentation
+* link:../Specification.adoc[Main Specification]
+* link:../Requirements.adoc[Requirements]
 * link:../Requirements.adoc#NIFI-AUTH-17[Internationalization Requirements]
-* link:../Specification.adoc[Back to Main Specification]
+* link:../LogMessage.md[Log Message Documentation]
+
+=== Related Implementation
+* link:configuration.adoc[Configuration]
+* link:configuration-ui.adoc[UI Configuration]
+* link:error-handling.adoc[Error Handling]
+* link:testing.adoc[Testing]

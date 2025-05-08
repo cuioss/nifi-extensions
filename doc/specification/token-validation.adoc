@@ -8,25 +8,16 @@
 link:../Specification.adoc[Back to Main Specification]
 
 == Token Validation Overview
-[.requirement]
---
-[REQ-NIFI-AUTH-3] Token Validation Requirements
---
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
 == Token Validation Process
-[.requirement]
---
-[REQ-NIFI-AUTH-3] Token Validation Requirements
---
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
 .Token Validation Architecture
 image::token-validation-flow.png[Token Validation Flow]
 
 === Token Extraction
-[.requirement]
---
-[REQ-NIFI-AUTH-5] Input Requirements
---
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requirements]_
 
 The processor extracts JWT tokens from flow files based on the configured token location. In NiFi 2.4.0, there are multiple possible token locations: Authorization header, custom header, or flow file content.
 
@@ -274,11 +265,16 @@ Based on the cui-jwt-validation library recommendations, the processor follows t
 
 For more details on security best practices, see link:security.adoc[Security Considerations].
 
-== See also
+== See Also
 
+=== Core Documentation
+* link:../Specification.adoc[Main Specification]
+* link:../Requirements.adoc[Requirements]
+* link:../library/cui-jwt-validation.adoc[Library Documentation]
+
+=== Implementation
 * link:technical-components.adoc[Technical Components]
 * link:configuration.adoc[Configuration]
 * link:security.adoc[Security Considerations]
 * link:error-handling.adoc[Error Handling]
-* link:../library/cui-jwt-validation.adoc[Library Documentation]
-* link:../Specification.adoc[Back to Main Specification]
+* link:observability.adoc[Observability]

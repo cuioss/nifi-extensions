@@ -54,7 +54,7 @@ These libraries provide a robust foundation for implementing and testing JWT aut
 The MultiIssuerJWTTokenAuthenticator processor implements the following key technical features:
 
 === Multiple Issuer Support
-_See Requirement link:Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Multi-issuer Support]_
+_See Requirement link:Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
 
 The processor supports configuring multiple JWT token issuers, each with its own:
 
@@ -86,7 +86,7 @@ The processor supports static configuration for container deployments:
 * Comprehensive documentation for container deployment scenarios
 
 === Caching and Performance
-_See Requirement link:Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Performance Requirements]_
+_See Requirement link:Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Performance Requirements]_
 
 The processor implements efficient caching for:
 

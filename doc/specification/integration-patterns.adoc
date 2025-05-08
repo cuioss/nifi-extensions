@@ -337,9 +337,14 @@ For performance considerations, see link:configuration.adoc#performance-consider
 
 == See Also
 
-* link:token-validation.adoc[Token Validation] - Details on token validation
-* link:configuration.adoc[Configuration] - Configuration options and UI
-* link:security.adoc[Security] - Security considerations
-* link:testing.adoc[Testing] - Testing approach and examples
-* link:technical-components.adoc[Technical Components] - Core components and implementation
-* link:../Specification.adoc[Back to Main Specification]
+=== Core Documentation
+* link:../Specification.adoc[Main Specification]
+* link:../Requirements.adoc[Requirements]
+* link:../Requirements.adoc#NIFI-AUTH-12[Integration Requirements]
+
+=== Related Implementation
+* link:token-validation.adoc[Token Validation]
+* link:configuration.adoc[Configuration]
+* link:security.adoc[Security]
+* link:testing.adoc[Testing]
+* link:technical-components.adoc[Technical Components]

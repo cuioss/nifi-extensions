@@ -185,9 +185,13 @@ For more details on security testing, see link:testing.adoc[Testing].
 
 == See Also
 
+=== Core Documentation
+* link:../Specification.adoc[Main Specification]
+* link:../Requirements.adoc[Requirements]
+* link:../Requirements.adoc#NIFI-AUTH-8[Security Requirements]
+
+=== Related Implementation
 * link:token-validation.adoc[Token Validation]
 * link:configuration.adoc[Configuration]
 * link:error-handling.adoc[Error Handling]
 * link:technical-components.adoc[Technical Components]
-* link:../Requirements.adoc#NIFI-AUTH-8[Security Requirements]
-* link:../Specification.adoc[Back to Main Specification]

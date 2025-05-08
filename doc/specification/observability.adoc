@@ -418,9 +418,13 @@ public void onTrigger(final ProcessContext context, final ProcessSession session
 
 == See Also
 
+=== Core Documentation
+* link:../Specification.adoc[Main Specification]
+* link:../Requirements.adoc[Requirements]
+* link:../Requirements.adoc#NIFI-AUTH-18[Security Event Monitoring Requirements]
+
+=== Related Implementation
 * link:security.adoc[Security]
 * link:token-validation.adoc[Token Validation]
 * link:configuration-ui.adoc[UI Configuration]
 * link:technical-components.adoc[Technical Components]
-* link:../Requirements.adoc#NIFI-AUTH-18[Security Event Monitoring]
-* link:../Specification.adoc[Back to Main Specification]

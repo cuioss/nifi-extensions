@@ -8,16 +8,12 @@
 link:../Specification.adoc[Back to Main Specification]
 
 == Component Architecture
-[.requirement]
-_See Requirement: link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Architecture Requirements]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
 
-== Technical Components Overview
-[.requirement]
-_See Requirement: link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Component Requirements]_
+== Overview
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
 
-== Component Overview
-[.requirement]
-_See Requirement: link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Technical Requirements]_
+This document describes the technical components of the MultiIssuerJWTTokenAuthenticator processor, their responsibilities, and how they interact to provide JWT token validation capabilities in NiFi. The processor is designed for NiFi 2.4.0 and leverages the cui-jwt-validation library for token validation functionality.
 
 == Processor Implementation
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
@@ -54,7 +50,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: NiFi Integ
 |===
 
 == Core Components
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-2.1[NIFI-AUTH-2.1: Core Components]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
 
 === TokenValidator
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_

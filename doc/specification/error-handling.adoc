@@ -8,8 +8,7 @@
 link:../Specification.adoc[Back to Main Specification]
 
 == Error Handling Overview
-[.requirement]
-_See Requirement: link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Error Handling Requirements]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
 
 == Error Handling Implementation
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
@@ -129,10 +128,15 @@ For information about how errors are handled in the UI, see link:configuration-u
 
 For details on how error handling is tested, including specific test cases and verification approaches, see link:testing.adoc[Testing Specification].
 
-== See also
+== See Also
 
+=== Core Documentation
+* link:../Specification.adoc[Main Specification]
+* link:../Requirements.adoc[Requirements]
+* link:../LogMessage.md[Log Message Documentation]
+
+=== Related Implementation
 * link:token-validation.adoc[Token Validation]
 * link:security.adoc[Security]
-* link:../LogMessage.md[Log Message Documentation]
-* link:../Requirements.adoc#NIFI-AUTH-10[Error Handling Requirements]
-* link:../Specification.adoc[Back to Main Specification]
+* link:configuration-ui.adoc[UI Configuration]
+* link:testing.adoc[Testing]
