@@ -172,15 +172,15 @@ For detailed information about environment variable configuration, see link:conf
 [source,properties]
 ----
 # Static properties
-Token Location=AUTHORIZATION_HEADER
-Token Header=Authorization
-Bearer Token Prefix=Bearer
-Require Valid Token=true
-Required Audience=api://my-service
-JWKS Refresh Interval=3600
+Token Location = AUTHORIZATION_HEADER
+Token Header = Authorization
+Bearer Token Prefix = Bearer
+Require Valid Token = true
+Required Audience = api://my-service
+JWKS Refresh Interval = 3600
 
 # Dynamic properties (issuers)
-auth-server=https://auth-server.example.com/.well-known/jwks.json
+auth server = https://auth-server.example.com/.well-known/jwks.json
 ----
 
 === Advanced Configuration with Multiple Issuers
@@ -188,20 +188,20 @@ auth-server=https://auth-server.example.com/.well-known/jwks.json
 [source,properties]
 ----
 # Static properties
-Token Location=AUTHORIZATION_HEADER
-Token Header=Authorization
-Bearer Token Prefix=Bearer
-Require Valid Token=true
-Required Scopes=read,write
-JWKS Refresh Interval=1800
+Token Location = AUTHORIZATION_HEADER
+Token Header = Authorization
+Bearer Token Prefix = Bearer
+Require Valid Token = true
+Required Scopes = read,write
+JWKS Refresh Interval = 1800
 
 # Dynamic properties (issuers)
-auth-server-production=https://auth.example.com/.well-known/jwks.json
-auth-server-production.audience=api://my-service-prod
+auth server production = https://auth.example.com/.well-known/jwks.json
+auth server production.audience = api://my-service-prod
 
-auth-server-testing=https://auth-test.example.com/.well-known/jwks.json
-auth-server-testing.audience=api://my-service-test
-auth-server-testing.enabled=false  # Disabled in production
+auth server testing = https://auth-test.example.com/.well-known/jwks.json
+auth server testing.audience = api://my-service-test
+auth server testing.enabled = false  # Disabled in production
 ----
 
 == Related Topics

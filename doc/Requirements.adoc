@@ -181,8 +181,7 @@ _Implementation details: link:specification/configuration.adoc[Configuration]_
 * Support static configuration via properties files for container deployments
 * Configuration format options:
   ** NiFi properties file (.properties)
-  ** YAML configuration (.yml, .yaml) 
-  ** JSON configuration (.json)
+  ** YAML configuration (.yml, .yaml)
 * Static configuration must:
   ** Be active by default when present
   ** Override UI-based configuration when present

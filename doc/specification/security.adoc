@@ -103,12 +103,12 @@ Each issuer can have specific security settings:
 [source,properties]
 ----
 # Production issuer with strict settings
-auth-server-production=https://auth.example.com/.well-known/jwks.json
-auth-server-production.audience=api://my-service-prod
+auth server production = https://auth.example.com/.well-known/jwks.json
+auth server production.audience = api://my-service-prod
 
 # Development issuer with relaxed settings (disabled in production)
-auth-server-development=https://auth-dev.example.com/.well-known/jwks.json
-auth-server-development.enabled=false
+auth server development = https://auth-dev.example.com/.well-known/jwks.json
+auth server development.enabled = false
 ----
 
 For more details on multi-issuer implementation, see link:technical-components.adoc#multi-issuer-support[Multi-Issuer Support].

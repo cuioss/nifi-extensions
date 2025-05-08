@@ -73,46 +73,6 @@ issuers:
       roles: "viewer"
 ----
 
-=== JSON Format (.json)
-
-[source,json]
-----
-{
-  "issuers": [
-    {
-      "name": "Primary Auth Server",
-      "enabled": true,
-      "id": "primary-auth",
-      "issuerUrl": "https://auth.example.org",
-      "jwksUrl": "https://auth.example.org/.well-known/jwks.json",
-      "tokenExpiration": 3600,
-      "requiredClaims": ["aud", "sub"],
-      "claims": {
-        "aud": "my-api",
-        "roles": "admin,user"
-      }
-    },
-    {
-      "name": "Secondary Auth Server",
-      "enabled": false,
-      "id": "secondary-auth",
-      "issuerUrl": "https://auth2.example.org",
-      "jwksUrl": "https://auth2.example.org/.well-known/jwks.json",
-      "tokenExpiration": 7200,
-      "requiredClaims": ["aud", "sub", "roles"],
-      "claims": {
-        "aud": "my-secondary-api",
-        "roles": "viewer"
-      }
-    }
-  ],
-  "tokenHeader": "Authorization",
-  "tokenLocation": "AUTHORIZATION_HEADER",
-  "jwksRefreshInterval": 3600,
-  "requireValidToken": true
-}
-----
-
 == Static Configuration Behavior
 
 The static configuration has the following behavioral characteristics:
@@ -141,13 +101,10 @@ The processor looks for configuration files in the following locations (in order
 1. Path specified by `jwt.config.path` JVM system property
 2. Path specified by `JWT_CONFIG_PATH` environment variable
 3. `conf/jwt-validation.properties` or `conf/jwt-validation.yml` in the NiFi installation directory
-4. `conf/jwt-validation.json` in the NiFi installation directory
 
 == Dynamic Configuration Loading
 
 === Configuration Refresh Behavior
-
-The processor supports dynamic configuration updates without NiFi restarts:
 
 [source,java]
 ----
