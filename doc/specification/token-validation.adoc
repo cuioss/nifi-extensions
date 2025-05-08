@@ -37,105 +37,25 @@ private Optional<String> extractToken(FlowFile flowFile, ProcessContext context)
     }
 }
 
-private Optional<String> extractTokenFromHeader(FlowFile flowFile, String headerName) {
-    String headerValue = flowFile.getAttribute(headerName);
-
-    if (headerValue == null) {
-        return Optional.empty();
-    }
-
-    // Check for Bearer prefix
-    if (headerValue.startsWith("Bearer ")) {
-        return Optional.of(headerValue.substring(7));
-    }
-
-    // Assume raw token
-    return Optional.of(headerValue);
-}
-
-private Optional<String> extractTokenFromContent(FlowFile flowFile, ProcessSession session) {
-    // Read the flow file content
-    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    session.read(flowFile, inputStream -> StreamUtils.copy(inputStream, baos));
-    
-    String content = baos.toString(StandardCharsets.UTF_8);
-    
-    // Trim whitespace and validate
-    String token = content.trim();
-    if (token.isEmpty()) {
-        return Optional.empty();
-    }
-    
-    return Optional.of(token);
-}
+// ...existing code...
 ----
 
-=== Token Structure Validation
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+== Integration with cui-jwt-validation Library
 
-In NiFi 2.4.0, the processor performs thorough initial validation of token structure before attempting signature validation:
+The MultiIssuerJWTTokenAuthenticator processor leverages the cui-jwt-validation library rather than implementing token validation logic directly. The library handles token structure validation, signature verification, claim validation including audience checks, and other aspects of JWT token processing.
 
-[source,java]
-----
-private ValidationResult validateTokenStructure(String tokenString) {
-    try {
-        // Split the token into parts
-        String[] tokenParts = tokenString.split("\\.");
-        
-        // JWT must have 3 parts: header, payload, signature
-        if (tokenParts.length != 3) {
-            return ValidationResult.invalid("Invalid token format: token must have header, payload, and signature");
-        }
-        
-        // Validate header
-        String headerJson = new String(Base64.getUrlDecoder().decode(tokenParts[0]), StandardCharsets.UTF_8);
-        JsonObject header = JsonParser.parseString(headerJson).getAsJsonObject();
-        
-        // Check required header fields
-        if (!header.has("alg")) {
-            return ValidationResult.invalid("Invalid token format: missing 'alg' in header");
-        }
-        
-        // Check algorithm security
-        String algorithm = header.get("alg").getAsString();
-        if ("none".equalsIgnoreCase(algorithm)) {
-            return ValidationResult.invalid("Invalid token: 'none' algorithm not accepted");
-        }
-        
-        // Additional validation for header fields
-        if (!header.has("typ") || !"JWT".equalsIgnoreCase(header.get("typ").getAsString())) {
-            LOGGER.warn(WARNING.TOKEN_MISSING_TYP.format());
-            // Don't fail for missing 'typ', but warn about it
-        }
-        
-        // Validate payload structure
-        String payloadJson = new String(Base64.getUrlDecoder().decode(tokenParts[1]), StandardCharsets.UTF_8);
-        JsonObject payload = JsonParser.parseString(payloadJson).getAsJsonObject();
-        
-        // Check for required claims
-        if (!payload.has("iss")) {
-            return ValidationResult.invalid("Invalid token format: missing 'iss' claim");
-        }
-        
-        return ValidationResult.valid();
-    } catch (IllegalArgumentException e) {
-        // Base64 decoding failed
-        return ValidationResult.invalid("Invalid token format: not properly Base64Url encoded");
-    } catch (JsonSyntaxException e) {
-        // JSON parsing failed
-        return ValidationResult.invalid("Invalid token format: header or payload is not valid JSON");
-    } catch (Exception e) {
-        // Unexpected error
-        LOGGER.error(e, ERROR.TOKEN_VALIDATION_FAILED.format(e.getMessage()));
-        return ValidationResult.invalid("Token validation failed: " + e.getMessage());
-    }
-}
-----
+=== Library Features Used
 
-=== Signature Validation
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+The processor utilizes the following key features from the cui-jwt-validation library:
 
-NiFi 2.4.0 implements improved token validation with improved security features using the https://github.com/cuioss/cui-jwt-validation[cui-jwt-validation] library version 2.0.
+* **TokenValidator**: Main entry point for token operations
+* **IssuerConfig**: Configuration for each trusted token issuer with customizable validation settings
+* **AccessTokenContent**: Parsed token with convenient access to claims and validation status
+* **HttpJwksLoaderConfig**: Configuration for JWKS key loading with automatic key rotation
+
+=== How the Processor Uses cui-jwt-validation
+
+In NiFi 2.4.0, the processor initializes and uses the cui-jwt-validation library as follows:
 
 [source,java]
 ----
@@ -153,7 +73,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private final Object lock = new Object();
 
     /**
-     * Validates a token using the TokenValidator from cui-jwt-validation 2.0.
+     * Validates a token using the TokenValidator from cui-jwt-validation.
      * 
      * @param tokenString The JWT token string to validate
      * @return An Optional containing the parsed token if valid, or empty if invalid
@@ -182,7 +102,6 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     /**
      * Initializes the TokenValidator with configured issuers.
-     * NiFi 2.4.0 adds improved support for multiple key types and algorithms.
      * 
      * @return A new TokenValidator instance
      */
@@ -200,27 +119,32 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             }
 
             String issuerName = descriptor.getName();
-            String issuerConfig = entry.getValue();
+            String issuerUrl = entry.getValue();
             IssuerConfig config;
 
             // Handle different issuer config types
-            if (issuerConfig.startsWith("http")) {
-                // JWKS URL configuration
+            if (issuerUrl.startsWith("http")) {
+                // Create HTTP JWKS loader config with refresh interval
+                HttpJwksLoaderConfig httpConfig = HttpJwksLoaderConfig.builder()
+                    .jwksUrl(issuerUrl)
+                    .refreshIntervalSeconds(getRefreshInterval())
+                    .build();
+                
+                // Configure issuer with HTTP-based JWKS loading
                 config = IssuerConfig.builder()
-                    .jwksIssuer(issuerName)
-                    .jwksEndpoint(issuerConfig)
-                    .jwksRefreshInterval(getRefreshInterval())
-                    .supportedAlgorithms(getSupportedAlgorithms())
+                    .issuer(issuerName)
+                    .httpJwksLoaderConfig(httpConfig)
+                    .expectedAudience(getRequiredAudience()) // Set expected audience if configured
                     .build();
                 
                 LOGGER.debug("Added JWKS issuer config for '%s' with endpoint '%s'", 
-                    issuerName, issuerConfig);
-            } else if (issuerConfig.contains("-----BEGIN PUBLIC KEY-----")) {
+                    issuerName, issuerUrl);
+            } else if (issuerUrl.contains("-----BEGIN PUBLIC KEY-----")) {
                 // Direct public key configuration
                 config = IssuerConfig.builder()
-                    .jwksIssuer(issuerName)
-                    .publicKey(issuerConfig)
-                    .supportedAlgorithms(getSupportedAlgorithms())
+                    .issuer(issuerName)
+                    .jwksContent(createJwksContentFromPublicKey(issuerUrl))
+                    .expectedAudience(getRequiredAudience()) // Set expected audience if configured
                     .build();
                 
                 LOGGER.debug("Added public key issuer config for '%s'", issuerName);
@@ -236,111 +160,306 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             throw new ProcessException("No token issuers configured");
         }
 
-        // Create token validator options with enhanced security in NiFi 2.4.0
-        TokenValidatorOptions options = TokenValidatorOptions.builder()
-            .requireStrongKeys(true) // Ensure strong keys (RSA ≥ 2048 bits, EC ≥ 256 bits)
-            .requireKeyIdHeader(true) // Require 'kid' header in tokens
-            .rejectInsecureAlgorithms(true) // Reject weak algorithms
-            .build();
-
-        // Create the TokenValidator with all issuers and options
-        return new TokenValidator(options, issuers.toArray(new IssuerConfig[0]));
+        // Create a validator with all configured issuers
+        return new TokenValidator(createParserConfig(), issuers.toArray(new IssuerConfig[0]));
     }
 
     /**
-     * Gets the supported signature algorithms.
-     * NiFi 2.4.0 adds support for additional algorithms.
+     * Creates a ParserConfig with security settings for token processing.
      */
-    private Set<String> getSupportedAlgorithms() {
-        // Support RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512
-        return Set.of("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "PS256", "PS384", "PS512");
+    private ParserConfig createParserConfig() {
+        return ParserConfig.builder()
+            .maxTokenSize(8 * 1024)         // Limit token size to 8KB
+            .maxPayloadSize(8 * 1024)       // Limit payload size to 8KB
+            .logWarningsOnDecodeFailure(true) // Log warnings when token decoding fails
+            .build();
+    }
+    
+    /**
+     * Gets the refresh interval for JWKS in seconds.
+     */
+    private int getRefreshInterval() {
+        String intervalProperty = getProperty(JWKS_REFRESH_INTERVAL).getValue();
+        // Convert from minutes to seconds
+        return Integer.parseInt(intervalProperty) * 60;
+    }
+    
+    /**
+     * Gets the required audience if configured.
+     */
+    private String getRequiredAudience() {
+        return getProperty(REQUIRED_AUDIENCE).getValue();
     }
 }
 ----
 
-=== Claims Validation
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+== Handling TokenValidator Lifecycle in NiFi
 
-In NiFi 2.4.0, the processor implements enhanced claims validation features:
+The cui-jwt-validation library's `TokenValidator` is designed to be stateful and maintain caches for performance optimization, particularly for JWKS keys and validation results. In a NiFi processor, it's important to preserve this instance between invocations while handling configuration changes appropriately.
+
+=== TokenValidator Stateful Behavior
+
+The `TokenValidator` maintains important caches:
+
+* JWKS keys from remote endpoints
+* Public keys parsed from the JWKS
+* Background refresh tasks for key rotation
+
+Creating a new `TokenValidator` for each flowfile would defeat these caching mechanisms and cause:
+
+1. Excessive network traffic to JWKS endpoints
+2. Higher latency for token validation
+3. Potential rate limiting or blocking from identity providers
+4. Increased CPU and memory usage
+
+=== Proper Implementation in NiFi
+
+To properly implement the TokenValidator in a NiFi processor:
 
 [source,java]
 ----
 /**
- * Validates the claims in a token with enhanced validation in NiFi 2.4.0.
- * 
- * @param token The parsed access token to validate
- * @return A ValidationResult indicating whether the claims are valid
+ * Processor implementation for JWT token validation using cui-jwt-validation.
  */
-private ValidationResult validateClaims(AccessTokenContent token, ProcessContext context) {
-    // Check expiration time
-    if (token.isExpired()) {
-        return ValidationResult.invalid("Token has expired");
-    }
+public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
-    // Check not-before time
-    if (token.getNotBeforeTime() != null && 
-        token.getNotBeforeTime().isAfter(Instant.now())) {
-        return ValidationResult.invalid("Token not yet valid");
+    private static final CuiLogger LOGGER = new CuiLogger(MultiIssuerJWTTokenAuthenticator.class);
+
+    // TokenValidator instance for validating tokens - volatile for thread-safety
+    private volatile TokenValidator tokenValidator;
+
+    // Lock for thread-safe initialization
+    private final Object lock = new Object();
+    
+    // Track if configuration has changed
+    private volatile boolean configurationChanged = true;
+
+    // Store the last configuration hash to detect changes
+    private volatile int lastConfigurationHash;
+
+    @Override
+    public void onPropertyModified(PropertyDescriptor descriptor, String oldValue, String newValue) {
+        // Mark configuration as changed when properties change
+        configurationChanged = true;
+        LOGGER.debug("Configuration changed, TokenValidator will be recreated on next use");
     }
     
-    // NiFi 2.4.0: Check audience if configured
-    String requiredAudience = context.getProperty(REQUIRED_AUDIENCE).getValue();
-    if (requiredAudience != null && !requiredAudience.isEmpty()) {
-        boolean audienceMatch = false;
-        
-        // Check if token has the required audience
-        Set<String> audiences = token.getAudiences();
-        if (audiences != null) {
-            for (String audience : audiences) {
-                if (audience.equals(requiredAudience)) {
-                    audienceMatch = true;
-                    break;
+    /**
+     * Gets or initializes the TokenValidator.
+     * 
+     * @return The TokenValidator instance
+     */
+    private TokenValidator getTokenValidator() {
+        if (tokenValidator == null || configurationChanged) {
+            synchronized (lock) {
+                // Double-check under lock
+                if (tokenValidator == null || configurationChanged) {
+                    // Create new configuration hash
+                    int newConfigHash = calculateConfigurationHash();
+                    
+                    // Only recreate if hash changed or validator is null
+                    if (tokenValidator == null || lastConfigurationHash != newConfigHash) {
+                        LOGGER.debug("Initializing TokenValidator with current configuration");
+                        tokenValidator = initializeTokenValidator();
+                        lastConfigurationHash = newConfigHash;
+                    }
+                    
+                    // Reset flag
+                    configurationChanged = false;
                 }
             }
         }
-        
-        if (!audienceMatch) {
-            return ValidationResult.invalid("Token audience does not include required audience: " + 
-                                          requiredAudience);
-        }
+        return tokenValidator;
     }
     
-    // Additional claim validations can be configured via dynamic properties
-    Map<PropertyDescriptor, String> properties = context.getProperties();
-    for (Map.Entry<PropertyDescriptor, String> entry : properties.entrySet()) {
-        PropertyDescriptor descriptor = entry.getKey();
+    /**
+     * Calculate a hash of the current configuration to detect changes.
+     */
+    private int calculateConfigurationHash() {
+        // Get all properties and create a string representation
+        StringBuilder configString = new StringBuilder();
+        Map<PropertyDescriptor, String> properties = getProperties();
         
-        // Look for claim validation properties
-        if (descriptor.getName().startsWith("validate-claim:")) {
-            String claimName = descriptor.getName().substring("validate-claim:".length());
-            String requiredValue = entry.getValue();
-            
-            // Get the actual claim value
-            Object actualValue = token.getJsonWebToken().getClaim(claimName);
-            String actualValueStr = (actualValue != null) ? actualValue.toString() : null;
-            
-            // Compare values
-            if (!Objects.equals(requiredValue, actualValueStr)) {
-                return ValidationResult.invalid("Token claim '" + claimName + "' value mismatch. " +
-                    "Expected: '" + requiredValue + "', Actual: '" + actualValueStr + "'");
-            }
+        // Sort keys for consistency
+        List<PropertyDescriptor> sortedKeys = new ArrayList<>(properties.keySet());
+        sortedKeys.sort(Comparator.comparing(PropertyDescriptor::getName));
+        
+        // Build string representation
+        for (PropertyDescriptor descriptor : sortedKeys) {
+            configString.append(descriptor.getName())
+                        .append("=")
+                        .append(properties.get(descriptor))
+                        .append(";");
         }
+        
+        // Return hash code
+        return configString.toString().hashCode();
     }
 
-    return ValidationResult.valid();
+    /**
+     * Initializes the TokenValidator with configured issuers.
+     * 
+     * @return A new TokenValidator instance
+     */
+    private TokenValidator initializeTokenValidator() {
+        List<IssuerConfig> issuers = new ArrayList<>();
+
+        // Get all properties from context
+        Map<PropertyDescriptor, String> properties = getProperties();
+        
+        // Process issuer configurations from dynamic properties
+        for (Map.Entry<PropertyDescriptor, String> entry : properties.entrySet()) {
+            PropertyDescriptor descriptor = entry.getKey();
+
+            // Skip static properties
+            if (!descriptor.isDynamic()) {
+                continue;
+            }
+
+            String issuerName = descriptor.getName();
+            String issuerUrl = entry.getValue();
+            
+            // Check if this issuer is enabled
+            boolean isEnabled = true; // Default to enabled
+            
+            // Look for an "enabled" property for this issuer
+            PropertyDescriptor enabledProp = getPropertyDescriptor(issuerName + ".enabled");
+            if (enabledProp != null) {
+                String enabledValue = properties.get(enabledProp);
+                if (enabledValue != null) {
+                    isEnabled = Boolean.parseBoolean(enabledValue);
+                }
+            }
+            
+            // Skip disabled issuers
+            if (!isEnabled) {
+                LOGGER.debug("Skipping disabled issuer: %s", issuerName);
+                continue;
+            }
+
+            IssuerConfig config;
+            // Handle different issuer config types
+            if (issuerUrl.startsWith("http")) {
+                // Create HTTP JWKS loader config with refresh interval
+                HttpJwksLoaderConfig httpConfig = HttpJwksLoaderConfig.builder()
+                    .jwksUrl(issuerUrl)
+                    .refreshIntervalSeconds(getRefreshInterval())
+                    .build();
+                
+                // Configure issuer with HTTP-based JWKS loading
+                config = IssuerConfig.builder()
+                    .issuer(issuerName)
+                    .httpJwksLoaderConfig(httpConfig)
+                    .expectedAudience(getRequiredAudience()) // Set expected audience if configured
+                    .build();
+                
+                LOGGER.debug("Added JWKS issuer config for '%s' with endpoint '%s'", 
+                    issuerName, issuerUrl);
+            } else if (issuerUrl.contains("-----BEGIN PUBLIC KEY-----")) {
+                // Direct public key configuration
+                config = IssuerConfig.builder()
+                    .issuer(issuerName)
+                    .jwksContent(createJwksContentFromPublicKey(issuerUrl))
+                    .expectedAudience(getRequiredAudience()) // Set expected audience if configured
+                    .build();
+                
+                LOGGER.debug("Added public key issuer config for '%s'", issuerName);
+            } else {
+                throw new ProcessException("Invalid issuer configuration for '" + 
+                    issuerName + "'. Must be a JWKS URL or PEM public key");
+            }
+
+            issuers.add(config);
+        }
+
+        if (issuers.isEmpty()) {
+            throw new ProcessException("No enabled token issuers configured");
+        }
+
+        // Create a validator with all configured issuers
+        return new TokenValidator(createParserConfig(), issuers.toArray(new IssuerConfig[0]));
+    }
+
+    /**
+     * Gets a PropertyDescriptor for a specific property name.
+     */
+    private PropertyDescriptor getPropertyDescriptor(String propertyName) {
+        for (PropertyDescriptor descriptor : getPropertyDescriptors()) {
+            if (descriptor.getName().equals(propertyName)) {
+                return descriptor;
+            }
+        }
+        return null;
+    }
+    
+    // ... existing code ...
 }
 ----
 
-=== Authorization Rules
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: Authorization Configuration]_
+=== Special NiFi Lifecycle Considerations
 
-In NiFi 2.4.0, the processor implements enhanced authorization rule checking:
+NiFi processors have specific lifecycle events that need to be handled:
+
+1. **@OnScheduled**: Perform initialization when the processor is scheduled
+2. **@OnStopped**: Clean up resources when the processor is stopped
+3. **@OnUnscheduled**: Optional cleanup when the processor is unscheduled
+
+Example implementation:
+
+[source,java]
+----
+/**
+ * Initialize the processor when scheduled.
+ */
+@OnScheduled
+public void onScheduled(final ProcessContext context) {
+    // Ensure TokenValidator is initialized
+    getTokenValidator();
+    LOGGER.info("TokenValidator initialized with %d issuers", getIssuerCount());
+}
+
+/**
+ * Clean up resources when the processor is stopped.
+ */
+@OnStopped
+public void onStopped() {
+    synchronized (lock) {
+        // Clean up TokenValidator resources if needed
+        if (tokenValidator != null) {
+            // Allow the TokenValidator to be garbage collected
+            tokenValidator = null;
+            LOGGER.debug("TokenValidator resources released");
+        }
+    }
+}
+----
+=== Thread Safety Considerations
+
+Multiple NiFi threads may access the TokenValidator concurrently:
+
+1. Use `volatile` for the TokenValidator instance
+2. Synchronize initialization with a lock object
+3. Use double-checked locking for efficiency
+4. Make configuration change detection thread-safe
+
+=== Resource Management
+
+The TokenValidator uses resources that should be properly managed:
+
+1. HTTP connections for JWKS endpoints
+2. Background threads for key rotation
+3. Memory for caches
+
+By maintaining a single TokenValidator instance and only recreating it when configuration changes, the processor can benefit from the library's caching while properly managing resources in the NiFi environment.
+
+=== Authorization Checking
+
+While the cui-jwt-validation library handles basic token validation including issuer, expiration, and audience checks, the processor adds additional authorization checks for specific NiFi use cases:
 
 [source,java]
 ----
 /**
  * Validates authorization rules based on token scopes and roles.
- * Enhanced in NiFi 2.4.0 to support roles and expressions.
  * 
  * @param token The parsed access token to validate
  * @param context The process context
@@ -352,121 +471,47 @@ private ValidationResult validateAuthorization(AccessTokenContent token, Process
         return ValidationResult.valid();
     }
     
-    // Check required scopes
+    // Check required scopes using determineMissingScopes from AccessTokenContent
     String scopesProperty = context.getProperty(REQUIRED_SCOPES).getValue();
     if (scopesProperty != null && !scopesProperty.isEmpty()) {
         Set<String> requiredScopes = Arrays.stream(scopesProperty.split(","))
             .map(String::trim)
             .collect(Collectors.toSet());
         
-        // Determine missing scopes
-        Set<String> tokenScopes = token.getScopes();
-        Set<String> missingScopes = new HashSet<>(requiredScopes);
-        missingScopes.removeAll(tokenScopes);
-        
+        Set<String> missingScopes = token.determineMissingScopes(requiredScopes);
         if (!missingScopes.isEmpty()) {
             return ValidationResult.invalid("Token missing required scopes: " + 
                 String.join(", ", missingScopes));
         }
     }
     
-    // Check required roles
+    // Check required roles - leveraging determineMissingRoles if available
     String rolesProperty = context.getProperty(REQUIRED_ROLES).getValue();
     if (rolesProperty != null && !rolesProperty.isEmpty()) {
         Set<String> requiredRoles = Arrays.stream(rolesProperty.split(","))
             .map(String::trim)
             .collect(Collectors.toSet());
         
-        // Get token roles from 'roles' claim or 'realm_access.roles'
-        Set<String> tokenRoles = extractRolesFromToken(token);
-        
-        // Determine missing roles
-        Set<String> missingRoles = new HashSet<>(requiredRoles);
-        missingRoles.removeAll(tokenRoles);
-        
+        // Use determineMissingRoles if it exists, otherwise calculate manually
+        Set<String> missingRoles = token.determineMissingRoles(requiredRoles);
         if (!missingRoles.isEmpty()) {
             return ValidationResult.invalid("Token missing required roles: " + 
                 String.join(", ", missingRoles));
         }
     }
     
-    // NiFi 2.4.0: Check authorization expression if configured
-    String expression = context.getProperty(AUTHORIZATION_EXPRESSION).getValue();
-    if (expression != null && !expression.isEmpty()) {
-        // Use JEL (Jakarta Expression Language) for evaluating expressions
-        try {
-            ELProcessor processor = new ELProcessor();
-            
-            // Add token claims as variables
-            Map<String, Object> claims = token.getJsonWebToken().getClaims();
-            for (Map.Entry<String, Object> claim : claims.entrySet()) {
-                processor.defineBean(claim.getKey(), claim.getValue());
-            }
-            
-            // Add special variables
-            processor.defineBean("scopes", token.getScopes());
-            processor.defineBean("roles", extractRolesFromToken(token));
-            processor.defineBean("now", Instant.now());
-            
-            // Evaluate expression
-            Boolean result = (Boolean) processor.eval(expression);
-            if (result == null || !result) {
-                return ValidationResult.invalid("Token failed authorization expression: " + expression);
-            }
-        } catch (Exception e) {
-            LOGGER.error(e, ERROR.AUTHORIZATION_EXPRESSION_FAILED.format(e.getMessage()));
-            return ValidationResult.invalid("Error evaluating authorization expression: " + e.getMessage());
-        }
-    }
-    
     return ValidationResult.valid();
 }
+----
 
-/**
- * Extracts roles from a JWT token.
- * 
- * @param token The access token
- * @return A set of role strings
- */
-private Set<String> extractRolesFromToken(AccessTokenContent token) {
-    Set<String> roles = new HashSet<>();
-    
-    // Look for direct 'roles' claim
-    Object rolesClaim = token.getJsonWebToken().getClaim("roles");
-    if (rolesClaim instanceof List) {
-        for (Object role : (List<?>) rolesClaim) {
-            if (role != null) {
-                roles.add(role.toString());
-            }
-        }
-    } else if (rolesClaim instanceof String) {
-        // Handle comma or space-separated roles
-        for (String role : ((String) rolesClaim).split("[,\\s]+")) {
-            if (!role.isEmpty()) {
-                roles.add(role);
-            }
-        }
-    }
-    
-    // Look for Keycloak-style 'realm_access.roles' claim
-    Object realmAccess = token.getJsonWebToken().getClaim("realm_access");
-    if (realmAccess instanceof Map) {
-        Object realmRoles = ((Map<?, ?>) realmAccess).get("roles");
-        if (realmRoles instanceof List) {
-            for (Object role : (List<?>) realmRoles) {
-                if (role != null) {
-                    roles.add(role.toString());
-                }
-            }
-        }
-    }
-    
-    return roles;
-}
+=== Flow File Attribute Generation
 
+After token validation, the processor extracts token claims and adds them to the flow file's attributes, using a simplified consistent approach:
+
+[source,java]
+----
 /**
  * Extracts claims from a token and converts them to a map of attributes.
- * Enhanced in NiFi 2.4.0 with better handling of complex objects.
  * 
  * @param token The parsed access token
  * @return A map of claim names to string values
@@ -474,58 +519,66 @@ private Set<String> extractRolesFromToken(AccessTokenContent token) {
 private Map<String, String> extractClaims(AccessTokenContent token) {
     Map<String, String> claims = new HashMap<>();
 
-    // Add standard claims
-    claims.put("jwt.subject", token.getSubjectId());
-    claims.put("jwt.issuer", token.getIssuer());
+    // Add validation metadata
     claims.put("jwt.validatedAt", Instant.now().toString());
     claims.put("jwt.authorization.passed", "true");
-
-    // Add expiration time if available
-    token.getExpirationTime().ifPresent(expTime -> 
-        claims.put("jwt.exp", String.valueOf(expTime.getEpochSecond())));
-
-    // Add issued-at time if available
-    token.getIssuedAt().ifPresent(iatTime -> 
-        claims.put("jwt.iat", String.valueOf(iatTime.getEpochSecond())));
-
-    // Add scopes
-    Set<String> scopes = token.getScopes();
-    if (!scopes.isEmpty()) {
-        claims.put("jwt.scope", String.join(" ", scopes));
-    }
-
-    // Add additional custom claims with improved handling of complex objects
-    Map<String, Object> customClaims = token.getJsonWebToken().getClaims();
-    for (Map.Entry<String, Object> entry : customClaims.entrySet()) {
-        String key = entry.getKey();
-        Object value = entry.getValue();
-        
-        // Skip null values
-        if (value == null) {
-            continue;
-        }
-
-        // Handle different value types
-        if (value instanceof String || value instanceof Number || value instanceof Boolean) {
-            // Handle simple values directly
-            claims.put("jwt.claims." + key, String.valueOf(value));
-        } else if (value instanceof Collection || value instanceof Map) {
-            // Convert complex objects to JSON
-            try {
-                String jsonValue = new Gson().toJson(value);
-                claims.put("jwt.claims." + key, jsonValue);
-            } catch (Exception e) {
-                LOGGER.warn(WARN.COMPLEX_CLAIM_CONVERSION_FAILED.format(key, e.getMessage()));
-            }
-        }
-    }
-
+    
+    // Add all token claims with consistent "jwt.content." prefix
+    token.getClaims().forEach((key, claimValue) -> {
+        claims.put("jwt.content." + key, claimValue.getOriginalString());
+    });
+    
     return claims;
 }
 ----
+
+This approach:
+
+1. Uses a consistent namespace ("jwt.content.") for all token claims
+2. Leverages the `getClaims()` method which returns all claims as ClaimValue objects
+3. Uses `getOriginalString()` to properly convert all value types to strings
+4. Eliminates the need to distinguish between standard and custom claims
+5. Simplifies the code significantly while maintaining full functionality
+
+=== Security Event Monitoring
+
+The cui-jwt-validation library provides a SecurityEventCounter that tracks security events during token validation. The processor can access this counter for monitoring and reporting:
+
+[source,java]
+----
+/**
+ * Retrieves security event metrics from the TokenValidator.
+ */
+private void logSecurityMetrics() {
+    if (tokenValidator != null) {
+        SecurityEventCounter counter = tokenValidator.getSecurityEventCounter();
+        
+        LOGGER.info("Token validation metrics - " +
+            "Processed: %d, Valid: %d, Invalid: %d, Expired: %d, Malformed: %d",
+            counter.getTotalProcessedTokens(),
+            counter.getValidTokens(),
+            counter.getInvalidTokens(),
+            counter.getExpiredTokens(),
+            counter.getMalformedTokens());
+    }
+}
+----
+
+== Best Practices
+
+Based on the cui-jwt-validation library recommendations, the processor follows these best practices:
+
+1. Uses the TokenValidator as the main entry point for all token operations
+2. Configures IssuerConfig with appropriate validation settings for each issuer
+3. Uses ParserConfig to set token size limits and security settings
+4. Requires HTTPS for JWKS endpoints in production environments
+5. Validates token scopes and roles before granting access to protected resources
+6. Sets appropriate refresh intervals for JWKS key rotation
+7. Implements proper error handling for token validation failures
 
 == See also
 
 * link:token-factory-manager.adoc[Token Factory Manager]
 * link:security.adoc[Security Considerations]
 * link:error-handling.adoc[Error Handling]
+* link:../Usage.adoc[cui-jwt-validation Usage Guide]
