@@ -3,8 +3,21 @@
 :toclevels: 3
 :toc-title: Table of Contents
 :sectnums:
+:imagesdir: ../plantuml
 
 link:../Specification.adoc[Back to Main Specification]
+
+== Component Architecture
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Architecture Requirements]_
+
+== Technical Components Overview
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Component Requirements]_
+
+== Component Overview
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Technical Requirements]_
 
 == Processor Implementation
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
@@ -143,10 +156,22 @@ Security is paramount in JWT token validation. For information about security im
 
 == See Also
 
-* link:token-validation.adoc[Token Validation] - Details on the token validation process
-* link:configuration.adoc[Configuration] - Configuration properties and UI
-* link:security.adoc[Security] - Security considerations
-* link:error-handling.adoc[Error Handling] - Details on error handling
-* link:testing.adoc[Testing] - Unit and integration testing approach
-* link:integration-patterns.adoc[Integration Patterns] - Common integration scenarios
-* link:../Specification.adoc[Back to Main Specification]
+=== Core Documentation
+* link:../Specification.adoc[Main Specification]
+* link:../Requirements.adoc[Requirements]
+
+=== Configuration
+* link:configuration.adoc[Configuration Overview]
+* link:configuration-ui.adoc[UI Configuration]
+* link:configuration-static.adoc[Static Configuration]
+
+=== Implementation
+* link:token-validation.adoc[Token Validation]
+* link:error-handling.adoc[Error Handling]
+* link:security.adoc[Security]
+* link:internationalization.adoc[Internationalization]
+* link:observability.adoc[Observability]
+
+=== Integration
+* link:integration-patterns.adoc[Integration Patterns]
+* link:testing.adoc[Testing]

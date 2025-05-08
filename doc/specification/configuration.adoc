@@ -3,28 +3,35 @@
 :toclevels: 3
 :toc-title: Table of Contents
 :sectnums:
+:imagesdir: ../plantuml
 
 link:../Specification.adoc[Back to Main Specification]
 
+== Overview
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuration Requirements]_
+
 == Configuration Overview
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuration Requirements]_
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuration Requirements]_
 
-The MultiIssuerJWTTokenAuthenticator processor provides extensive configuration options for:
+The MultiIssuerJWTTokenAuthenticator processor provides comprehensive configuration options for validating and processing JWT tokens. This document serves as the central reference for all configuration options.
 
-* Multiple token issuers
-* Token extraction methods
-* Authorization requirements
-* JWKS endpoint configuration
-* Performance tuning
+=== Configuration Methods
 
-This document covers the configuration options available in the processor. For UI configuration details, see link:configuration-ui.adoc[UI Configuration].
+The processor supports three configuration methods:
+
+1. **UI Configuration** - Interactive configuration through the NiFi Web UI
+2. **Static Configuration Files** - Configuration through properties, YAML, or JSON files
+3. **Environment Variables** - Configuration through environment variables for containerized environments
 
 == Configuration Properties
 
-=== Static Properties
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: Static Configuration Properties]_
+The processor provides the following configuration categories:
 
-The processor provides the following static configuration properties:
+=== Core Properties
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Core Properties]_
 
 [cols="1,1,3,1"]
 |===
@@ -54,6 +61,15 @@ The processor provides the following static configuration properties:
 |true
 |Whether to require a valid token for processing
 |Yes
+|===
+
+=== Authorization Properties
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Authorization Requirements]_
+
+[cols="1,1,3,1"]
+|===
+|Property |Default |Description |Required
 
 |Required Audience
 |
@@ -69,6 +85,15 @@ The processor provides the following static configuration properties:
 |
 |Comma-separated list of roles required for authorization
 |No
+|===
+
+=== Performance Properties
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Performance Requirements]_
+
+[cols="1,1,3,1"]
+|===
+|Property |Default |Description |Required
 
 |JWKS Refresh Interval
 |3600
@@ -81,12 +106,11 @@ The processor provides the following static configuration properties:
 |Yes
 |===
 
-For details about static property implementation in NiFi, see link:configuration-static.adoc[Static Configuration Implementation].
+=== Dynamic Properties (Issuers)
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multi-Issuer Support]_
 
-=== Dynamic Properties
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Dynamic Configuration Properties]_
-
-The processor supports dynamic properties for defining token issuers:
+The processor supports multiple issuers through dynamic properties:
 
 [cols="1,3,1"]
 |===
@@ -105,9 +129,45 @@ The processor supports dynamic properties for defining token issuers:
 |api://my-service
 |===
 
-=== Configuration Examples
+== Configuration Methods
 
-==== Basic Configuration with Single Issuer
+=== UI Configuration
+
+The processor provides a comprehensive user interface for configuration through the NiFi Web UI. UI Configuration includes:
+
+* Core and advanced property configuration
+* Dynamic issuer management
+* JWKS endpoint verification
+* Token validation testing
+
+For detailed information about UI configuration, see link:configuration-ui.adoc[UI Configuration].
+
+=== Static Configuration Files
+
+For containerized environments and automated deployments, the processor supports configuration through external files in multiple formats:
+
+* Properties (.properties)
+* YAML (.yaml, .yml)
+* JSON (.json)
+
+Static configuration files can be placed in standard locations or specified through system properties and environment variables.
+
+For detailed information about static file configuration, see link:configuration-static.adoc[Static Configuration].
+
+=== Environment Variables
+
+For container environments, configuration can also be provided through environment variables, making it suitable for Kubernetes, Docker, and other container orchestration platforms.
+
+The configuration precedence order is:
+1. Static configuration files
+2. Environment variables
+3. UI configuration
+
+For detailed information about environment variable configuration, see link:configuration-static.adoc#environment-variable-configuration[Environment Variable Configuration].
+
+== Common Configuration Scenarios
+
+=== Basic Configuration with Single Issuer
 
 [source,properties]
 ----
@@ -123,7 +183,7 @@ JWKS Refresh Interval=3600
 auth-server=https://auth-server.example.com/.well-known/jwks.json
 ----
 
-==== Advanced Configuration with Multiple Issuers
+=== Advanced Configuration with Multiple Issuers
 
 [source,properties]
 ----
@@ -142,144 +202,12 @@ auth-server-production.audience=api://my-service-prod
 auth-server-testing=https://auth-test.example.com/.well-known/jwks.json
 auth-server-testing.audience=api://my-service-test
 auth-server-testing.enabled=false  # Disabled in production
-
-# Static key configuration
-internal-auth=-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnzyis1ZjfNB0bBgKFMSv\nvkTtwlvBsaJq7S5wA+kzeVOVpVWwkWdVha4s38XM/pa/yr47av7+z3VTmvDRyAHc\naT92whREFpLv9cj5lTeJSibyr/Mrm/YtjCZVWgaOYIhwrXwKLqPr/11inWsAkfIy\ntvHWTxZYEcXLgAXFuUuaS3uF9gEiNQwzGTU1v0FqkqTBr4B8nW3HCN47XUu0t8Y0\ne+lf4s4OxQawWD79J9/5d3Ry0vbV3Am1FtGJiJvOwRsIfVChDpYStTcHTCMqtvWb\nV6L11BWkpzGXSW4Hv43qa+GSYOD2QU68Mb59oSk2OB+BtOLpJofmbGEGgvmwyCI9\nMwIDAQAB\n-----END PUBLIC KEY-----
 ----
 
-== Token Location Configuration
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requirements]_
+== Related Topics
 
-The processor supports multiple token extraction methods, configured via the "Token Location" property:
-
-=== Authorization Header (Default)
-
-The default token location is the Authorization header:
-
-[source,http]
-----
-GET /api/resource HTTP/1.1
-Host: example.com
-Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
-----
-
-=== Custom Header
-
-For systems that use a different header name:
-
-[source,http]
-----
-GET /api/resource HTTP/1.1
-Host: example.com
-X-Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
-----
-
-=== Flow File Content
-
-When the token is contained in the flow file content:
-
-[source,json]
-----
-{
-  "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "payload": {
-    // Additional data
-  }
-}
-----
-
-For implementation details on token extraction, see link:token-validation.adoc#token-extraction[Token Extraction].
-
-== Authorization Configuration
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Authorization Requirements]_
-
-The processor supports configurable authorization rules through the following properties:
-
-=== Required Audience
-
-Validates that tokens include a specific audience claim:
-
-[source,properties]
-----
-Required Audience=api://my-service
-----
-
-This ensures tokens were issued specifically for your service.
-
-=== Required Scopes
-
-Validates that tokens include all required scopes:
-
-[source,properties]
-----
-Required Scopes=read,write,delete
-----
-
-The processor checks that all listed scopes are present in the token.
-
-=== Required Roles
-
-Validates that tokens include all required roles:
-
-[source,properties]
-----
-Required Roles=admin,manager
-----
-
-The processor checks that all listed roles are present in the token's role claims.
-
-For authorization implementation details, see link:token-validation.adoc#authorization-checking[Authorization Checking].
-
-== JWKS Configuration
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
-
-=== Refresh Interval
-
-The JWKS Refresh Interval property controls how frequently the processor checks for updated JWKS keys:
-
-[source,properties]
-----
-JWKS Refresh Interval=3600
-----
-
-This value represents seconds between refreshes. Lower values provide faster key rotation but increase network traffic.
-
-=== Performance Considerations
-
-* **Key Caching**: JWKS keys are cached in memory for performance
-* **Background Refresh**: Keys are refreshed in a background thread
-* **Connection Pooling**: HTTP connections are pooled for efficiency
-* **Response Caching**: HTTP response caching based on Cache-Control headers
-
-For JWKS implementation details, see link:token-validation.adoc#integration-with-cui-jwt-validation-library[Integration with cui-jwt-validation Library].
-
-== Dynamic Property Handling
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Dynamic Configuration Properties]_
-
-The processor supports multiple issuers through dynamic properties:
-
-=== Issuer Naming
-
-Dynamic properties use the following naming conventions:
-
-* **Base Name**: The issuer identifier (e.g., `auth-server-production`)
-* **Enabled Flag**: `<base>.enabled` (e.g., `auth-server-production.enabled`)
-* **Audience Override**: `<base>.audience` (e.g., `auth-server-production.audience`)
-
-=== Value Types
-
-Dynamic properties accept two types of values:
-
-1. **JWKS URL**: HTTP/HTTPS URL to a JWKS endpoint (e.g., `https://auth.example.com/.well-known/jwks.json`)
-2. **Public Key**: PEM-encoded public key for static key configuration
-
-For dynamic property implementation details, see link:technical-components.adoc#multi-issuer-support[Multi-Issuer Support].
-
-== See also
-
-* link:configuration-ui.adoc[UI Configuration]
-* link:configuration-static.adoc[Static Configuration Implementation]
-* link:token-validation.adoc[Token Validation]
-* link:technical-components.adoc[Technical Components]
-* link:../Requirements.adoc#NIFI-AUTH-7[Configuration Requirements]
-* link:../Specification.adoc[Back to Main Specification]
+* link:configuration-ui.adoc[UI Configuration] - Details on configuring the processor through the NiFi UI
+* link:configuration-static.adoc[Static Configuration] - Configuration for container environments
+* link:token-validation.adoc[Token Validation] - How tokens are validated using the configuration
+* link:error-handling.adoc[Error Handling] - Handling configuration errors
+* link:technical-components.adoc[Technical Components] - Implementation details

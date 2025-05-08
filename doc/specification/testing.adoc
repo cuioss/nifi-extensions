@@ -3,8 +3,13 @@
 :toclevels: 3
 :toc-title: Table of Contents
 :sectnums:
+:imagesdir: ../plantuml
 
 link:../Specification.adoc[Back to Main Specification]
+
+== Testing Overview
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-12[NIFI-AUTH-12: Testing Requirements]_
 
 == Testing Strategy
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-12[NIFI-AUTH-12: Testing]_

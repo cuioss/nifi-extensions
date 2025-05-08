@@ -9,76 +9,136 @@ link:../Specification.adoc[Back to Main Specification]
 == UI Configuration Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
 
-The MultiIssuerJWTTokenAuthenticator provides a comprehensive user interface for configuration, validation, and monitoring. This document details the UI components, their functionality, and implementation in NiFi.
+This document covers the user interface elements and interaction patterns for configuring the MultiIssuerJWTTokenAuthenticator processor. For general configuration properties and options, see link:configuration.adoc[Configuration].
 
-== Configuration Properties
+== UI Property Organization
 
-=== Core Properties
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Core Properties]_
+The processor UI organizes properties into logical groups for better usability:
 
-The processor exposes the following core properties in the NiFi UI:
+=== Standard Properties Tab
 
-[cols="2,1,1,2"]
-|===
-|Property |Type |Default |Description
+Properties in the UI are organized into sections:
 
-|Token Location
-|Enum
-|AUTHORIZATION_HEADER
-|Where to find the JWT token (AUTHORIZATION_HEADER, CUSTOM_HEADER, FLOW_FILE_CONTENT)
+1. **Basic Properties**: Core settings displayed by default
+   - Token Location
+   - Custom Header Name
+   - Required Audience
 
-|Custom Header Name
-|String
-|null
-|Name of custom header when Token Location is set to CUSTOM_HEADER
+2. **Advanced Properties**: Additional settings available through the "Advanced" button
+   - Token Header
+   - JWKS Refresh Interval
+   - Require Valid Token
+   - Required Roles
+   - Required Scopes
+   - Maximum Token Size
 
-|Required Audience
-|String
-|null
-|Required audience claim value (aud) that must be present in the token
-|===
+3. **Dynamic Properties**: User-defined issuer configurations
+   - Each issuer has its own property entry with the issuer name as the property name
 
-=== Advanced Properties
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-5.3[NIFI-AUTH-5.3: Advanced Properties]_
+=== Property Dependencies
 
-The following properties are available when the user clicks the "Advanced" button in the processor configuration dialog:
+The processor implements property dependencies to enhance usability:
 
-[cols="2,1,1,2"]
-|===
-|Property |Type |Default |Description
+[source,java]
+----
+@OnPropertyModified("Token Location")
+public void onTokenLocationModified(final PropertyConfiguration oldValue, 
+                                    final PropertyConfiguration newValue) {
+    String newLocation = newValue.getValue();
+    if ("CUSTOM_HEADER".equals(newLocation)) {
+        // Make Custom Header Name property visible and required
+        getPropertyConfiguration("Custom Header Name").setVisible(true).setRequired(true);
+    } else {
+        // Hide Custom Header Name property
+        getPropertyConfiguration("Custom Header Name").setVisible(false).setRequired(false);
+    }
+}
+----
 
-|Token Header
-|String
-|Authorization
-|Name of the header containing the JWT token
+== Custom UI Components
 
-|JWKS Refresh Interval
-|Time Period
-|15 minutes
-|How often to refresh the JWKS cache
+The processor provides several custom UI components to aid in configuration and validation:
 
-|Require Valid Token
-|Boolean
-|true
-|When true, only valid tokens result in success relationship
+=== JWKS Endpoint Test Button
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: JWKS Verification]_
 
-|Required Roles
-|String
-|null
-|Comma-separated list of roles required for authorization
+The processor includes a custom UI component to test JWKS endpoint connectivity:
 
-|Required Scopes
-|String
-|null
-|Comma-separated list of scopes required for authorization
+[source,javascript]
+----
+/**
+ * JWKS Test Button UI component.
+ */
+define(['jquery', 'nf.Common'], function ($, nfCommon) {
+    return {
+        /**
+         * Initialize the custom UI.
+         */
+        init: function (element, propertyValue, callback) {
+            // Get i18n resources from NiFi Common
+            var i18n = nfCommon.getI18n();
+            
+            // Create UI elements
+            var container = $('<div class="jwks-verification-container"></div>');
+            var verifyButton = $('<button type="button" class="verify-jwks-button">' + 
+                               i18n['processor.jwt.testConnection'] + '</button>');
+            var resultContainer = $('<div class="verification-result"></div>');
+            
+            // Add elements to the DOM
+            container.append(verifyButton).append(resultContainer);
+            $(element).append(container);
+            
+            // Handle button click - simplified for documentation
+            verifyButton.on('click', function () {
+                // Implementation details...
+            });
+            
+            // Initialize callback
+            callback({
+                validate: function () { return true; },
+                getValue: function () { return propertyValue; },
+                setValue: function (newValue) { propertyValue = newValue; }
+            });
+        }
+    };
+}
+----
 
-|Maximum Token Size
-|Integer
-|8192
-|Maximum allowed size of the JWT token in bytes
-|===
+=== Token Verification Interface
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
 
-For more details on these properties and their functionality, see link:configuration.adoc[Configuration].
+The processor includes a token verification interface to test JWT tokens:
+
+[.text-center]
+image::../plantuml/token-verification-ui.png[Token Verification UI, align="center"]
+
+This interface allows users to:
+
+1. Paste a JWT token for validation
+2. Verify the token against the configured issuers
+3. View detailed token information including claims
+4. Diagnose validation failures
+
+== Custom UI Tabs
+
+The processor configuration dialog includes custom tabs for extended functionality:
+
+=== Properties Tab
+The standard NiFi properties tab with the processor's configuration properties.
+
+=== Verification Tab
+Provides the token verification interface for testing tokens against the current configuration.
+
+=== Metrics Tab
+Displays security event metrics and validation statistics:
+
+* Token validation success/failure rates
+* Issuer usage statistics
+* Performance metrics (validation time)
+* Recent validation errors
+
+=== Help Tab
+Provides inline documentation and usage examples specific to the processor.
 
 == Internationalized UI Elements
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
@@ -113,36 +173,13 @@ public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Bui
 
 For more details on internationalization, see link:internationalization.adoc[Internationalization].
 
-== Issuer Configuration UI
+== Custom Validators
 
-=== Dynamic Issuer Management
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multi-Issuer Support]_
+The processor uses custom validators in the UI to ensure proper configuration:
 
-The processor provides a dynamic interface for configuring multiple token issuers:
+=== JWKS Endpoint Validator
 
-1. Each issuer is defined as a separate processor property with its JWKS URL or public key
-2. The property name serves as the issuer identifier and the property value contains the JWKS URL or public key
-3. Dynamic properties allow users to add any number of issuers
-
-[source,java]
-----
-@Override
-protected PropertyDescriptor getSupportedDynamicPropertyDescriptor(final String propertyName) {
-    return new PropertyDescriptor.Builder()
-        .name(propertyName)
-        .displayName(i18nResolver.getTranslatedString("property.issuer.name", propertyName))
-        .description(i18nResolver.getTranslatedString("property.issuer.description"))
-        .required(false)
-        .dynamic(true)
-        .addValidator(new JwksEndpointValidator())
-        .identifiesExternalResource(ExternalResourceType.URL, ExternalResourceType.FILE)
-        .build();
-}
-----
-
-=== Custom Validator for JWKS Endpoints
-
-The processor uses a custom validator for JWKS endpoint URLs and public keys:
+Validates JWKS endpoint URLs and public keys:
 
 [source,java]
 ----
@@ -163,425 +200,54 @@ public class JwksEndpointValidator implements Validator {
         
         // Check if the input is a URL
         if (input.startsWith("http://") || input.startsWith("https://")) {
-            // Validate JWKS URL
-            try {
-                URL url = new URL(input);
-                
-                // Check for HTTPS
-                if (!"https".equalsIgnoreCase(url.getProtocol())) {
-                    return new ValidationResult.Builder()
-                        .input(input)
-                        .subject(subject)
-                        .valid(false)
-                        .explanation("JWKS URL must use HTTPS for security")
-                        .build();
-                }
-                
-                return new ValidationResult.Builder()
-                    .input(input)
-                    .subject(subject)
-                    .valid(true)
-                    .build();
-            } catch (MalformedURLException e) {
+            // Validate HTTPS requirement
+            if (!input.startsWith("https://")) {
                 return new ValidationResult.Builder()
                     .input(input)
                     .subject(subject)
                     .valid(false)
-                    .explanation("Invalid URL format: " + e.getMessage())
+                    .explanation("JWKS URL must use HTTPS for security")
                     .build();
             }
+            
+            // Valid URL format
+            return new ValidationResult.Builder()
+                .input(input)
+                .subject(subject)
+                .valid(true)
+                .build();
         } else {
-            // Validate as PEM-encoded public key
-            // Basic validation logic for PEM format
+            // Validate as PEM-encoded public key format
             return validatePemFormat(input, subject);
         }
     }
     
-    /**
-     * Validates PEM format for public keys.
-     */
-    private ValidationResult validatePemFormat(String input, String subject) {
-        // Implementation details...
-        return new ValidationResult.Builder()
-            .input(input)
-            .subject(subject)
-            .valid(true)
-            .build();
-    }
+    // Additional validation methods...
 }
 ----
-
-For details on token validation, see link:token-validation.adoc[Token Validation].
-
-== Custom UI Components
-
-=== JWKS Endpoint Test Button
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: JWKS Verification]_
-
-The processor includes a custom UI component to test JWKS endpoint connectivity:
-
-[source,javascript]
-----
-/**
- * JWKS Test Button UI component.
- */
-define(['jquery', 'nf.Common'], function ($, nfCommon) {
-    return {
-        /**
-         * Initialize the custom UI.
-         */
-        init: function (element, propertyValue, callback) {
-            // Get i18n resources from NiFi Common
-            var i18n = nfCommon.getI18n();
-            
-            // Create UI elements
-            var container = $('<div class="jwks-verification-container"></div>');
-            var verifyButton = $('<button type="button" class="verify-jwks-button">' + 
-                               i18n['processor.jwt.testConnection'] + '</button>');
-            var resultContainer = $('<div class="verification-result"></div>');
-            
-            // Add elements to the DOM
-            container.append(verifyButton).append(resultContainer);
-            $(element).append(container);
-            
-            // Handle button click
-            verifyButton.on('click', function () {
-                var jwksUrl = propertyValue;
-                if (jwksUrl && jwksUrl.startsWith('http')) {
-                    resultContainer.html('<span class="fa fa-spinner fa-spin"></span>');
-                    
-                    // Make AJAX request to verify JWKS URL
-                    $.ajax({
-                        type: 'POST',
-                        url: '../nifi-api/processors/verify-jwks',
-                        data: JSON.stringify({
-                            jwksUrl: jwksUrl
-                        }),
-                        contentType: 'application/json',
-                        dataType: 'json'
-                    }).done(function (response) {
-                        if (response.valid) {
-                            resultContainer.html('<span class="fa fa-check" style="color: green;"></span> ' + 
-                                                i18n['processor.jwt.connectionSuccessful']);
-                        } else {
-                            resultContainer.html('<span class="fa fa-times" style="color: red;"></span> ' + 
-                                                i18n['processor.jwt.connectionFailed'] + response.explanation);
-                        }
-                    }).fail(function (xhr) {
-                        resultContainer.html('<span class="fa fa-times" style="color: red;"></span> ' + 
-                                            i18n['processor.jwt.testFailed'] + xhr.responseText);
-                    });
-                } else {
-                    resultContainer.html('<span class="fa fa-times" style="color: red;"></span> ' + 
-                                        i18n['processor.jwt.notValidUrl']);
-                }
-            });
-            
-            // Initialize callback
-            callback({
-                validate: function () {
-                    return true;
-                },
-                getValue: function () {
-                    return propertyValue;
-                },
-                setValue: function (newValue) {
-                    propertyValue = newValue;
-                }
-            });
-        },
-        
-        /**
-         * Clean up any resources before the element is removed from the DOM.
-         */
-        cleanup: function (element) {
-            $(element).find('.verify-jwks-button').off();
-        }
-    };
-}
-----
-
-=== Token Verification Interface
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
-
-The processor includes a token verification interface to test JWT tokens:
-
-[source,javascript]
-----
-/**
- * Token Verification UI component.
- */
-define(['jquery', 'nf.Common'], function ($, nfCommon) {
-    return {
-        /**
-         * Initialize the custom UI.
-         */
-        init: function (element, processorId, callback) {
-            // Get i18n resources from NiFi Common
-            var i18n = nfCommon.getI18n();
-            
-            // Create UI elements
-            var container = $('<div class="token-verification-container"></div>');
-            var tokenInput = $('<textarea class="token-input" placeholder="' + 
-                              i18n['processor.jwt.tokenPlaceholder'] + '"></textarea>');
-            var verifyButton = $('<button type="button" class="verify-token-button">' + 
-                               i18n['processor.jwt.verifyButton'] + '</button>');
-            var resultContainer = $('<div class="verification-result"></div>');
-            
-            // Add elements to the DOM
-            container.append(tokenInput)
-                    .append(verifyButton)
-                    .append(resultContainer);
-            $(element).append(container);
-            
-            // Handle button click
-            verifyButton.on('click', function () {
-                var token = tokenInput.val().trim();
-                if (!token) {
-                    resultContainer.html('<div class="message-warning">' + i18n['processor.jwt.enterToken'] + '</div>');
-                    return;
-                }
-                
-                resultContainer.html('<span class="fa fa-spinner fa-spin"></span> ' + i18n['processor.jwt.verifyingToken']);
-                
-                // Make AJAX request to verify the token
-                $.ajax({
-                    type: 'POST',
-                    url: '../nifi-api/processors/' + processorId + '/verify-token',
-                    data: JSON.stringify({
-                        token: token
-                    }),
-                    contentType: 'application/json',
-                    dataType: 'json'
-                }).done(function (response) {
-                    if (response.valid) {
-                        // Show success message with token details
-                        displaySuccessResult(response, i18n, resultContainer);
-                    } else {
-                        // Show error message with details
-                        displayErrorResult(response, i18n, resultContainer);
-                    }
-                }).fail(function (xhr) {
-                    resultContainer.html('<div class="message-error">' + i18n['processor.jwt.verificationFailed'] + 
-                                         xhr.responseText + '</div>');
-                });
-            });
-            
-            // Initialize callback
-            callback();
-        },
-        
-        /**
-         * Clean up any resources before the element is removed from the DOM.
-         */
-        cleanup: function (element) {
-            $(element).find('.verify-token-button').off();
-        }
-    };
-    
-    /**
-     * Displays successful token validation results.
-     */
-    function displaySuccessResult(response, i18n, resultContainer) {
-        var html = '<div class="message-success">' + i18n['processor.jwt.tokenValid'] + '</div>';
-        html += '<div class="token-details">';
-        html += '<h4>' + i18n['processor.jwt.tokenDetails'] + '</h4>';
-        html += '<table class="token-info-table">';
-        html += '<tr><td>' + i18n['processor.jwt.issuer'] + '</td><td>' + response.issuer + '</td></tr>';
-        html += '<tr><td>' + i18n['processor.jwt.subject'] + '</td><td>' + response.subject + '</td></tr>';
-        html += '<tr><td>' + i18n['processor.jwt.expires'] + '</td><td>' + 
-               new Date(response.expiresAt * 1000).toLocaleString() + '</td></tr>';
-        
-        // Add claims with improved formatting
-        html += '<tr><td colspan="2"><h4>' + i18n['processor.jwt.claims'] + '</h4></td></tr>';
-        for (var claim in response.claims) {
-            var claimValue = response.claims[claim];
-            // Format claim value based on type
-            var displayValue = typeof claimValue === 'object' ? 
-                              JSON.stringify(claimValue, null, 2) : String(claimValue);
-            html += '<tr><td>' + claim + ':</td><td><pre>' + displayValue + '</pre></td></tr>';
-        }
-        
-        html += '</table>';
-        html += '</div>';
-        resultContainer.html(html);
-    }
-    
-    /**
-     * Displays token validation error results.
-     */
-    function displayErrorResult(response, i18n, resultContainer) {
-        var html = '<div class="message-error">' + i18n['processor.jwt.tokenInvalid'] + '</div>';
-        html += '<div class="error-details">';
-        html += '<h4>' + i18n['processor.jwt.errorDetails'] + '</h4>';
-        html += '<p>' + response.reason + '</p>';
-        
-        // Add error code if available
-        if (response.errorCode) {
-            html += '<p><strong>Error Code:</strong> ' + response.errorCode + '</p>';
-        }
-        
-        // Add suggestion if available
-        if (response.suggestion) {
-            html += '<h4>' + i18n['processor.jwt.suggestion'] + '</h4>';
-            html += '<p>' + response.suggestion + '</p>';
-        }
-        
-        html += '</div>';
-        resultContainer.html(html);
-    }
-}
-----
-
-For additional details on token verification, see link:token-validation.adoc#token-verification[Token Verification].
-
-== UI Layout and Organization
-
-=== Property Organization
-
-Properties in the UI are organized logically for usability:
-
-1. **Basic Properties**: Core settings displayed by default
-   - Token Location
-   - Custom Header Name
-   - Required Audience
-
-2. **Advanced Properties**: Additional settings available through the "Advanced" button
-   - Token Header
-   - JWKS Refresh Interval
-   - Require Valid Token
-   - Required Roles
-   - Required Scopes
-   - Maximum Token Size
-
-3. **Dynamic Properties**: User-defined issuer configurations
-   - Each issuer has its own property entry with the issuer name as the property name
-
-For more information on property organization, see link:configuration.adoc[Configuration].
-
-=== Custom Tabs
-
-The processor configuration dialog includes custom tabs for extended functionality:
-
-1. **Properties Tab**: Standard property configuration
-2. **Verification Tab**: Token verification interface
-3. **Metrics Tab**: Security event metrics and statistics
-4. **Help Tab**: Documentation and usage examples
-
-These tabs are implemented using NiFi's custom UI extension capabilities.
-
-== API Integration
-
-=== Verification API Endpoints
-
-The processor registers custom REST API endpoints for UI functionality:
-
-[source,java]
-----
-/**
- * REST endpoint for token verification.
- */
-@Path("/processors/{id}/verify-token")
-@Api(
-    value = "/processors/{id}/verify-token",
-    description = "Endpoint for verifying JWT tokens"
-)
-public class TokenVerificationResource extends ApplicationResource {
-
-    @POST
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    @ApiOperation(
-        value = "Verify token",
-        notes = "Verifies a JWT token using the processor's configuration"
-    )
-    @ApiResponses({
-        @ApiResponse(code = 200, message = "Token verification result"),
-        @ApiResponse(code = 400, message = "Invalid request"),
-        @ApiResponse(code = 404, message = "Processor not found"),
-        @ApiResponse(code = 500, message = "Server error")
-    })
-    public Response verifyToken(
-            @PathParam("id") String processorId,
-            TokenVerificationRequest request) {
-        
-        // Implementation details...
-        return Response.ok(result).build();
-    }
-}
-----
-
-=== JWKS Verification Endpoint
-
-A dedicated REST API endpoint for JWKS verification:
-
-[source,java]
-----
-/**
- * REST endpoint for JWKS verification.
- */
-@Path("/processors/verify-jwks")
-@Api(
-    value = "/processors/verify-jwks",
-    description = "Endpoint for verifying JWKS endpoints"
-)
-public class JwksVerificationResource extends ApplicationResource {
-
-    @POST
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    @ApiOperation(
-        value = "Verify JWKS endpoint",
-        notes = "Verifies a JWKS endpoint by attempting to retrieve keys"
-    )
-    public Response verifyJwksEndpoint(JwksVerificationRequest request) {
-        // Implementation details...
-        return Response.ok(result).build();
-    }
-}
-----
-
-For more details on API implementations, see link:technical-components.adoc#rest-api-integration[REST API Integration].
 
 == UI State Management
 
-=== Property Dependencies
+=== UI Configuration Persistence
 
-The processor implements property dependencies to enhance usability:
+UI configuration state is persisted through several mechanisms:
 
-[source,java]
-----
-@OnPropertyModified("Token Location")
-public void onTokenLocationModified(final PropertyConfiguration oldValue, 
-                                    final PropertyConfiguration newValue) {
-    String newLocation = newValue.getValue();
-    if ("CUSTOM_HEADER".equals(newLocation)) {
-        // Make Custom Header Name property visible and required
-        getPropertyConfiguration("Custom Header Name").setVisible(true).setRequired(true);
-    } else {
-        // Hide Custom Header Name property
-        getPropertyConfiguration("Custom Header Name").setVisible(false).setRequired(false);
-    }
-}
-----
+1. **NiFi Flow Configuration**: Most settings are stored in the NiFi flow configuration
+2. **Browser Storage**: Some UI-specific state (like verification results) is stored in browser local storage
+3. **In-memory State**: Processor metrics are stored in memory and lost on restart
 
-=== Configuration Persistence
+=== Static Configuration Display
 
-UI configuration state is persisted using NiFi's configuration management:
+When static configuration is active, the UI:
 
-1. Most settings are stored in the NiFi flow configuration
-2. Custom UI state (like verification results) is stored in browser local storage
-3. Processor metrics are stored in memory and lost on restart
+1. Displays the static configuration values as read-only
+2. Shows a notification indicating that static configuration is active
+3. Disables editing of properties defined in the static configuration
+4. Allows editing of properties not defined in the static configuration
 
-For more information on configuration persistence, see link:configuration-static.adoc[Static Configuration].
+== Related Topics
 
-== See Also
-
-* link:configuration.adoc[Configuration]
+* link:configuration.adoc[Configuration Overview]
 * link:configuration-static.adoc[Static Configuration]
 * link:token-validation.adoc[Token Validation]
 * link:internationalization.adoc[Internationalization]
-* link:technical-components.adoc[Technical Components]
-* link:security.adoc[Security]
-* link:../Requirements.adoc#NIFI-AUTH-7[UI Requirements]
-* link:../Specification.adoc[Back to Main Specification]

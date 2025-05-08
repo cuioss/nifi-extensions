@@ -7,14 +7,26 @@
 
 link:../Specification.adoc[Back to Main Specification]
 
+== Token Validation Overview
+[.requirement]
+--
+[REQ-NIFI-AUTH-3] Token Validation Requirements
+--
+
 == Token Validation Process
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+[.requirement]
+--
+[REQ-NIFI-AUTH-3] Token Validation Requirements
+--
 
 .Token Validation Architecture
 image::token-validation-flow.png[Token Validation Flow]
 
 === Token Extraction
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requirements]_
+[.requirement]
+--
+[REQ-NIFI-AUTH-5] Input Requirements
+--
 
 The processor extracts JWT tokens from flow files based on the configured token location. In NiFi 2.4.0, there are multiple possible token locations: Authorization header, custom header, or flow file content.
 
@@ -222,29 +234,16 @@ This approach:
 
 === Security Event Monitoring
 
-The cui-jwt-validation library provides a SecurityEventCounter that tracks security events during token validation. The processor can access this counter for monitoring and reporting:
+The processor uses the SecurityEventCounter from the cui-jwt-validation library to track and report security events related to token validation:
 
-[source,java]
-----
-/**
- * Retrieves security event metrics from the TokenValidator.
- */
-private void logSecurityMetrics() {
-    if (tokenValidator != null) {
-        SecurityEventCounter counter = tokenValidator.getSecurityEventCounter();
-        
-        LOGGER.info("Token validation metrics - " +
-            "Processed: %d, Valid: %d, Invalid: %d, Expired: %d, Malformed: %d",
-            counter.getTotalProcessedTokens(),
-            counter.getValidTokens(),
-            counter.getInvalidTokens(),
-            counter.getExpiredTokens(),
-            counter.getMalformedTokens());
-    }
-}
-----
+* Total tokens processed
+* Valid tokens
+* Invalid tokens (with breakdowns by error type)
+* Processing errors
 
-For details on security event monitoring implementation, see link:observability.adoc[Observability Specification].
+This counter provides insight into authentication patterns, potential security issues, and operational monitoring.
+
+For comprehensive details on security event monitoring implementation, metrics collection, and integration with monitoring systems, see link:observability.adoc[Observability Specification].
 
 == Maven Integration
 

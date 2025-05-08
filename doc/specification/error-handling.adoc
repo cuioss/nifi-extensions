@@ -3,8 +3,13 @@
 :toclevels: 3
 :toc-title: Table of Contents
 :sectnums:
+:imagesdir: ../plantuml
 
 link:../Specification.adoc[Back to Main Specification]
+
+== Error Handling Overview
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Error Handling Requirements]_
 
 == Error Handling Implementation
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_

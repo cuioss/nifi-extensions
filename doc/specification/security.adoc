@@ -1,18 +1,19 @@
-= MultiIssuerJWTTokenAuthenticator Security
+= MultiIssuerJWTTokenAuthenticator Security Specification
 :toc:
 :toclevels: 3
 :toc-title: Table of Contents
 :sectnums:
+:imagesdir: ../plantuml
 
 link:../Specification.adoc[Back to Main Specification]
 
 == Security Overview
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
-
-The MultiIssuerJWTTokenAuthenticator is designed to provide robust token validation following security best practices. This document outlines the security considerations, implementation details, and recommendations for deploying the processor securely.
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Security Requirements]_
 
 == Token Validation Security
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-8.1[NIFI-AUTH-8.1: Token Validation Security]_
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-8.1[NIFI-AUTH-8.1: Token Validation Security]_
 
 === JWT Validation Best Practices
 
@@ -52,7 +53,8 @@ The processor restricts token algorithms to those considered secure:
 For more details on token validation implementation, see link:token-validation.adoc[Token Validation].
 
 == JWKS Endpoint Security
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-8.2[NIFI-AUTH-8.2: JWKS Endpoint Security]_
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-8.2[NIFI-AUTH-8.2: JWKS Endpoint Security]_
 
 The processor implements these JWKS endpoint security measures:
 
@@ -84,7 +86,8 @@ private HttpClient createSecureHttpClient() {
 For more details on JWKS configuration, see link:configuration.adoc#jwks-configuration[JWKS Configuration].
 
 == Multi-Issuer Security
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-8.3[NIFI-AUTH-8.3: Multi-Issuer Security]_
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-8.3[NIFI-AUTH-8.3: Multi-Issuer Security]_
 
 The multi-issuer support introduces additional security considerations:
 
@@ -111,7 +114,8 @@ auth-server-development.enabled=false
 For more details on multi-issuer implementation, see link:technical-components.adoc#multi-issuer-support[Multi-Issuer Support].
 
 == Runtime Security
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-8.4[NIFI-AUTH-8.4: Runtime Security]_
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-8.4[NIFI-AUTH-8.4: Runtime Security]_
 
 === Resource Protection
 
@@ -135,7 +139,8 @@ Maximum Token Size=16384
 For more details on performance and resource considerations, see link:configuration.adoc#performance-considerations[Performance Considerations].
 
 == Security Event Monitoring
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
 
 The processor tracks security events for monitoring and alerting:
 
@@ -166,7 +171,8 @@ For details on security event monitoring implementation, see link:token-validati
 For more details on configuration, see link:configuration.adoc[Configuration].
 
 == Testing Security
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-12[NIFI-AUTH-12: Testing]_
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-12[NIFI-AUTH-12: Testing]_
 
 The processor's security features are tested through:
 

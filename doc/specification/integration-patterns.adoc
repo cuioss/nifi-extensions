@@ -3,11 +3,13 @@
 :toclevels: 3
 :toc-title: Table of Contents
 :sectnums:
+:imagesdir: ../plantuml
 
 link:../Specification.adoc[Back to Main Specification]
 
 == Integration Overview
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-12[NIFI-AUTH-12: Integration Requirements]_
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: NiFi Integration]_
 
 This document provides integration patterns and examples for the MultiIssuerJWTTokenAuthenticator processor in different scenarios. The processor is designed to be flexible and can be integrated into various architectures and workflows.
 
@@ -19,7 +21,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-12.1[NIFI-AUTH-12.1: API Ga
 The MultiIssuerJWTTokenAuthenticator can be used as part of an API Gateway pattern to authenticate and authorize incoming requests before routing them to backend services.
 
 .API Gateway Pattern
-image::../plantuml/api-gateway-pattern.png[]
+image::api-gateway-pattern.png[]
 
 ==== API Gateway Flow
 
@@ -91,7 +93,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-12.2[NIFI-AUTH-12.2: Servic
 The MultiIssuerJWTTokenAuthenticator can be used to authenticate service-to-service communication, where one service presents credentials to access another.
 
 .Service-to-Service Authentication
-image::../plantuml/service-to-service-authentication.png[]
+image::service-to-service-authentication.png[]
 
 ==== Service Authentication Flow
 
@@ -160,7 +162,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-12.3[NIFI-AUTH-12.3: Multi-
 The MultiIssuerJWTTokenAuthenticator can be used to route requests based on tenant information in JWT tokens for multi-tenant architectures.
 
 .Multi-Tenant API Routing
-image::../plantuml/multi-tenant-api-routing.png[]
+image::multi-tenant-api-routing.png[]
 
 ==== Multi-Tenant Flow
 

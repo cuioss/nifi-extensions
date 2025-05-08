@@ -9,11 +9,11 @@ link:../Specification.adoc[Back to Main Specification]
 == Static Configuration Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.7[NIFI-AUTH-7.7: Static Configuration for Container Environments]_
 
-In container environments and automated deployments, it is often preferred to use static configuration rather than configuring processors through the UI. The MultiIssuerJWTTokenAuthenticator supports comprehensive static configuration options through files and environment variables, making it suitable for container-based deployments.
+This document covers static configuration options for the MultiIssuerJWTTokenAuthenticator processor, focusing on container environments and automated deployments. For general configuration properties and options, see link:configuration.adoc[Configuration].
 
 == Configuration File Formats
 
-The processor supports loading issuer configurations from external files in multiple formats:
+The processor supports loading configurations from external files in multiple formats:
 
 === Properties Format (.properties)
 
@@ -73,7 +73,47 @@ issuers:
       roles: "viewer"
 ----
 
-== Configuration Behavior
+=== JSON Format (.json)
+
+[source,json]
+----
+{
+  "issuers": [
+    {
+      "name": "Primary Auth Server",
+      "enabled": true,
+      "id": "primary-auth",
+      "issuerUrl": "https://auth.example.org",
+      "jwksUrl": "https://auth.example.org/.well-known/jwks.json",
+      "tokenExpiration": 3600,
+      "requiredClaims": ["aud", "sub"],
+      "claims": {
+        "aud": "my-api",
+        "roles": "admin,user"
+      }
+    },
+    {
+      "name": "Secondary Auth Server",
+      "enabled": false,
+      "id": "secondary-auth",
+      "issuerUrl": "https://auth2.example.org",
+      "jwksUrl": "https://auth2.example.org/.well-known/jwks.json",
+      "tokenExpiration": 7200,
+      "requiredClaims": ["aud", "sub", "roles"],
+      "claims": {
+        "aud": "my-secondary-api",
+        "roles": "viewer"
+      }
+    }
+  ],
+  "tokenHeader": "Authorization",
+  "tokenLocation": "AUTHORIZATION_HEADER",
+  "jwksRefreshInterval": 3600,
+  "requireValidToken": true
+}
+----
+
+== Static Configuration Behavior
 
 The static configuration has the following behavioral characteristics:
 
@@ -85,38 +125,29 @@ The static configuration has the following behavioral characteristics:
 |When a valid configuration file is present, it's automatically loaded and used
 
 |UI Transparency
-|Static configuration values are displayed in the processor configuration dialog
+|Static configuration values are displayed in the processor configuration dialog as read-only
 
-|Read-Only in UI
-|Static configuration values displayed in the UI cannot be edited through the UI
+|UI Integration
+|UI displays a notification when static configuration is active
 
 |Configuration Precedence
 |Static configuration takes precedence over UI-configured values
 |===
 
-For more information on general configuration options, see link:configuration.adoc[Configuration].
-
 == Configuration File Locations
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.7[NIFI-AUTH-7.7: Static Configuration for Container Environments]_
 
 The processor looks for configuration files in the following locations (in order of precedence):
 
 1. Path specified by `jwt.config.path` JVM system property
 2. Path specified by `JWT_CONFIG_PATH` environment variable
 3. `conf/jwt-validation.properties` or `conf/jwt-validation.yml` in the NiFi installation directory
-
-This approach allows for flexible configuration in various deployment scenarios.
+4. `conf/jwt-validation.json` in the NiFi installation directory
 
 == Dynamic Configuration Loading
 
 === Configuration Refresh Behavior
 
 The processor supports dynamic configuration updates without NiFi restarts:
-
-1. The processor checks for file modification timestamps at a configurable interval
-2. If changes are detected, the configuration is automatically reloaded
-3. Configuration errors are logged and the processor falls back to the last valid configuration
-4. A flowfile attribute `jwt.config.refreshed` is set to `true` on the first flowfile processed after a configuration refresh
 
 [source,java]
 ----
@@ -140,19 +171,74 @@ private void checkAndReloadConfiguration() {
 }
 ----
 
+Key features of dynamic configuration:
+
+1. The processor monitors the configuration file for changes
+2. When changes are detected, configuration is automatically reloaded
+3. On reload failure, the processor falls back to the previous valid configuration
+4. An attribute `jwt.config.refreshed=true` is added to the first flowfile processed after a reload
+
 === Issuer State Changes
 
 The processor handles issuer state changes gracefully:
 
 1. When an issuer is disabled, it is immediately removed from the available options
 2. When a new issuer is added or enabled, it becomes available without requiring a restart
-3. If all issuers become disabled, the processor logs an error and stops processing
-4. Changes to an enabled issuer's configuration are applied immediately
+3. Changes to an enabled issuer's configuration are applied immediately
 
-For more details on dynamic configuration handling, see link:token-validation.adoc#handling-tokenvalidator-lifecycle-in-nifi[TokenValidator Lifecycle in NiFi].
+== Environment Variable Configuration
+
+For container environments, configuration can also be provided through environment variables:
+
+[cols="2,1,3"]
+|===
+|Environment Variable |Type |Description
+
+|JWT_TOKEN_HEADER_NAME
+|String
+|Name of the header containing the JWT token
+
+|JWT_JWKS_REFRESH_INTERVAL
+|Duration
+|How often to refresh the JWKS cache (format: "15 minutes", "1 hour", etc.)
+
+|JWT_REQUIRE_VALID_TOKEN
+|Boolean
+|When true, only valid tokens result in success relationship
+
+|JWT_TOKEN_LOCATION
+|String
+|Where to find the token (AUTHORIZATION_HEADER, CUSTOM_HEADER, FLOW_FILE_CONTENT)
+
+|JWT_CUSTOM_HEADER_NAME
+|String
+|Name of custom header when Token Location is set to CUSTOM_HEADER
+
+|JWT_ISSUER_{name}_JWKS_URL
+|URL
+|JWKS endpoint URL for the issuer with name {name}
+
+|JWT_ISSUER_{name}_PUBLIC_KEY
+|String
+|PEM-encoded public key for the issuer with name {name}
+|===
+
+=== Environment Variable Examples
+
+[source,bash]
+----
+# Basic configuration
+export JWT_TOKEN_HEADER_NAME=Authorization
+export JWT_JWKS_REFRESH_INTERVAL="30 minutes"
+export JWT_REQUIRE_VALID_TOKEN=true
+export JWT_TOKEN_LOCATION=AUTHORIZATION_HEADER
+
+# Issuer configurations
+export JWT_ISSUER_GOOGLE_JWKS_URL=https://www.googleapis.com/oauth2/v3/certs
+export JWT_ISSUER_INTERNAL_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nMIIB...AQAB\n-----END PUBLIC KEY-----"
+----
 
 == Container Environment Integration
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.7[NIFI-AUTH-7.7: Static Configuration for Container Environments]_
 
 === Kubernetes ConfigMap Example
 
@@ -206,110 +292,9 @@ services:
       - JWT_JWKS_REFRESH_INTERVAL=30 minutes
 ----
 
-For more information on container deployment, see link:technical-components.adoc#tokenvalidator-lifecycle-in-nifi[TokenValidator Lifecycle in NiFi].
-
-== Environment Variable Configuration
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.7[NIFI-AUTH-7.7: Static Configuration for Container Environments]_
-
-For container environments, configuration can also be provided through environment variables:
-
-[cols="2,1,3"]
-|===
-|Environment Variable |Type |Description
-
-|JWT_TOKEN_HEADER_NAME
-|String
-|Name of the header containing the JWT token
-
-|JWT_JWKS_REFRESH_INTERVAL
-|Duration
-|How often to refresh the JWKS cache (format: "15 minutes", "1 hour", etc.)
-
-|JWT_REQUIRE_VALID_TOKEN
-|Boolean
-|When true, only valid tokens result in success relationship
-
-|JWT_TOKEN_LOCATION
-|String
-|Where to find the token (AUTHORIZATION_HEADER, CUSTOM_HEADER, FLOW_FILE_CONTENT)
-
-|JWT_CUSTOM_HEADER_NAME
-|String
-|Name of custom header when Token Location is set to CUSTOM_HEADER
-
-|JWT_ISSUER_{name}_JWKS_URL
-|URL
-|JWKS endpoint URL for the issuer with name {name}
-
-|JWT_ISSUER_{name}_PUBLIC_KEY
-|String
-|PEM-encoded public key for the issuer with name {name}
-|===
-
-=== Environment Variable Examples
-
-[source,bash]
-----
-# Basic configuration
-export JWT_TOKEN_HEADER_NAME=Authorization
-export JWT_JWKS_REFRESH_INTERVAL="30 minutes"
-export JWT_REQUIRE_VALID_TOKEN=true
-export JWT_TOKEN_LOCATION=AUTHORIZATION_HEADER
-
-# Issuer configurations
-export JWT_ISSUER_GOOGLE_JWKS_URL=https://www.googleapis.com/oauth2/v3/certs
-export JWT_ISSUER_INTERNAL_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nMIIB...AQAB\n-----END PUBLIC KEY-----"
-----
-
-=== Environment Variable Precedence
-
-The configuration precedence order is:
-1. Static configuration files
-2. Environment variables
-3. UI configuration
-
-When environment variables are used in combination with static configuration files:
-1. Properties defined in static configuration files override corresponding environment variables
-2. Environment variables override UI settings for properties not defined in static files
-
-=== Container Orchestration Example
-
-For Kubernetes and other container orchestration platforms:
-
-[source,yaml]
-----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: jwt-auth-config
-data:
-  JWT_TOKEN_HEADER_NAME: "Authorization"
-  JWT_JWKS_REFRESH_INTERVAL: "30 minutes"
-  JWT_REQUIRE_VALID_TOKEN: "true"
-  JWT_TOKEN_LOCATION: "AUTHORIZATION_HEADER"
-  JWT_ISSUER_GOOGLE_JWKS_URL: "https://www.googleapis.com/oauth2/v3/certs"
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: jwt-auth-secrets
-type: Opaque
-stringData:
-  JWT_ISSUER_INTERNAL_PUBLIC_KEY: |
-    -----BEGIN PUBLIC KEY-----
-    MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
-    -----END PUBLIC KEY-----
-----
-
-For guidance on secure deployment, see link:security.adoc[Security Considerations].
-
 == Error Handling
 
 The processor implements robust error handling for configuration loading:
-
-1. If the configuration file cannot be read or parsed, an error is logged and the processor falls back to the last valid configuration
-2. If no valid configuration has been loaded, flowfiles are routed to the `failure` relationship
-3. Detailed error information is added to flowfile attributes with the prefix `jwt.config.error`
 
 [source,java]
 ----
@@ -327,10 +312,13 @@ private void handleConfigurationError(FlowFile flowFile, ProcessSession session,
 }
 ----
 
-For more information on error handling, see link:error-handling.adoc[Error Handling].
+Error handling features:
+
+1. If a configuration file cannot be parsed, an error is logged and the processor falls back to the last valid configuration
+2. If no valid configuration has been loaded, flowfiles are routed to the `failure` relationship
+3. Detailed error information is added to flowfile attributes with the prefix `jwt.config.error`
 
 == Security Considerations
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
 
 === File Permissions
 
@@ -338,105 +326,20 @@ When deploying in containerized environments, ensure that:
 
 1. Configuration files have appropriate read permissions for the NiFi process user
 2. Configuration files are mounted as read-only to prevent unauthorized modifications
-3. Sensitive configuration is properly secured using Kubernetes Secrets or similar mechanisms
+3. Sensitive configuration like private keys are properly secured using Kubernetes Secrets or similar mechanisms
 
 === JWKS URL Security
 
+Best practices for secure configuration:
+
 1. JWKS URLs should use HTTPS to ensure secure key retrieval
-2. Consider using mutual TLS authentication for JWKS endpoints in high-security environments
+2. Use mutual TLS authentication for JWKS endpoints in high-security environments
 3. Implement proper network security controls to restrict access to JWKS endpoints
 
-For comprehensive security guidance, see link:security.adoc[Security].
+== Related Topics
 
-== Implementation Details
-
-=== Configuration Loading
-
-The processor implements a flexible configuration loading mechanism:
-
-[source,java]
-----
-/**
- * Loads configuration from environment variables.
- */
-private void loadEnvironmentVariables() {
-    Map<String, String> envVars = System.getenv();
-    
-    // Load basic configuration
-    String tokenHeader = envVars.get("JWT_TOKEN_HEADER_NAME");
-    if (tokenHeader != null) {
-        config.setTokenHeaderName(tokenHeader);
-    }
-    
-    // Load issuer configurations from environment variables
-    loadIssuersFromEnvironment(envVars);
-}
-
-/**
- * Determines whether to use static or UI configuration and processes accordingly.
- */
-@Override
-public void onTrigger(final ProcessContext context, final ProcessSession session) throws ProcessException {
-    // Check if static configuration is active
-    if (staticConfigurationManager.isStaticConfigurationActive()) {
-        // Log that static configuration is being used
-        if (getLogger().isDebugEnabled()) {
-            getLogger().debug("Using static configuration from: {}", 
-                staticConfigurationManager.getConfigurationSource());
-        }
-        
-        // Use the static configuration
-        JWTProcessorConfig config = staticConfigurationManager.getProcessorConfig();
-        
-        // Process with static configuration
-        processWithConfiguration(context, session, config);
-    } else {
-        // Use UI-configured settings
-        processWithUIConfiguration(context, session);
-    }
-}
-----
-
-=== Configuration Reloading
-
-The processor implements a thread-safe configuration reload mechanism:
-
-[source,java]
-----
-/**
- * Reloads configuration if the file has changed.
- * Uses double-checked locking pattern for thread safety.
- */
-private void checkAndReloadConfigurationThreadSafe() {
-    long currentModified = configFile.lastModified();
-    if (currentModified > lastLoadedTimestamp) {
-        synchronized (configLock) {
-            // Double-check under lock
-            if (currentModified > lastLoadedTimestamp) {
-                try {
-                    StaticConfiguration newConfig = configLoader.loadFromFile(configFile);
-                    applyConfiguration(newConfig);
-                    lastLoadedTimestamp = currentModified;
-                    configurationRefreshed = true;
-                    getLogger().info("Configuration reloaded from {}", configFile);
-                } catch (Exception e) {
-                    getLogger().error("Failed to reload configuration, using previous configuration", e);
-                }
-            }
-        }
-    }
-}
-----
-
-For additional implementation details, see link:technical-components.adoc[Technical Components].
-
-== See Also
-
-* link:configuration.adoc[Configuration]
+* link:configuration.adoc[Configuration Overview]
 * link:configuration-ui.adoc[UI Configuration]
 * link:token-validation.adoc[Token Validation]
 * link:security.adoc[Security]
 * link:error-handling.adoc[Error Handling]
-* link:technical-components.adoc[Technical Components]
-* link:../Requirements.adoc#NIFI-AUTH-7.7[Static Configuration Requirements]
-* link:../Specification.adoc[Back to Main Specification]
