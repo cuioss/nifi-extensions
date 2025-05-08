@@ -6,7 +6,6 @@ package "NiFi Framework" {
 
 package "MultiIssuerJWTTokenAuthenticator" {
   [JWT Processor] as JWTProcessor
-  [Token Factory Manager] as TokenManager
   [Configuration Handler] as ConfigHandler
   [Token Validator] as TokenValidator
   [Error Handler] as ErrorHandler
@@ -27,13 +26,12 @@ NiFiCore --> ProcessorAPI : uses
 ProcessorAPI --> JWTProcessor : extends
 
 JWTProcessor --> ConfigHandler : configures
-JWTProcessor --> TokenManager : manages
-JWTProcessor --> ErrorHandler : handles errors
 JWTProcessor --> TokenValidator : validates tokens
+JWTProcessor --> ErrorHandler : handles errors
 
-TokenManager --> TokenFactory : creates
 TokenValidator --> ValidationCore : uses
 ValidationCore --> JWKSClient : retrieves keys
+ValidationCore --> TokenFactory : creates tokens
 
 JWKSClient --> IDP1 : retrieves JWKS
 JWKSClient --> IDP2 : retrieves JWKS
