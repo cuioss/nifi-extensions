@@ -1,0 +1,178 @@
+= Usage Guide
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+== Overview
+
+This document provides usage examples for the cui-jwt-validation library. For detailed technical specifications, see the link:specification/technical-components.adoc[Technical Components] document.
+
+=== Document Navigation
+
+* link:../README.adoc[README] - Project overview and introduction
+* link:Requirements.adoc[Requirements] - Functional and non-functional requirements
+* link:Specification.adoc[Specification] - Technical specifications
+* link:LogMessages.adoc[Log Messages] - Reference for all log messages
+* link:threat-model/Threat-Model.adoc[Threat Model] - Security analysis and mitigations
+* link:Build.adoc[Building and Development] - Information for contributors
+
+== TokenValidator: The Main Entry Point
+_See link:specification/technical-components.adoc#_tokenvalidator[TokenValidator Technical Specification]_'
+
+The `TokenValidator` serves as the primary entry point for token operations.
+It provides:
+
+* Centralized token creation and validation
+* Support for multiple token types (Access, ID, Refresh)
+* Pipeline-based token validation
+* Support for multiple issuers
+
+[source,java]
+----
+// Create issuer configurations
+IssuerConfig issuerConfig = IssuerConfig.builder()
+        .issuer("https://issuer1.com")
+        .expectedAudience("client-id") // Can add multiple audiences with multiple calls
+        .expectedClientId("client-id") // Can add multiple client IDs with multiple calls
+        // Configure JWKS loading (one of the following options)
+        .httpJwksLoaderConfig(httpJwksLoaderConfig) // Option 1: HTTP-based JWKS
+        // .jwksFilePath("/path/to/jwks.json") // Option 2: File-based JWKS
+        // .jwksContent(jwksContent) // Option 3: In-memory JWKS content
+        .build();
+
+// Create a validator with multiple issuer configurations
+TokenValidator validator = new TokenValidator(issuerConfig);
+
+// Create and validate tokens
+Optional<AccessTokenContent> accessToken = validator.createAccessToken(tokenString);
+Optional<IdTokenContent> idToken = validator.createIdToken(tokenString);
+Optional<RefreshTokenContent> refreshToken = validator.createRefreshToken(tokenString);
+----
+
+== Multi-Issuer Support
+_See link:specification/technical-components.adoc#_multiissuersupport[Multi-Issuer Support Technical Specification]_'
+
+The module provides robust support for multi-issuer environments:
+
+[source,java]
+----
+// Create JWKS loader configurations for different issuers
+// Option 1: HTTP-based JWKS loader with automatic key rotation
+HttpJwksLoaderConfig httpConfig = HttpJwksLoaderConfig.builder()
+        .jwksUrl("https://issuer1.com/.well-known/jwks.json")
+        .refreshIntervalSeconds(60) // Refresh keys every 60 seconds
+        .build();
+
+// Create issuer configurations
+IssuerConfig issuerHttpConfig = IssuerConfig.builder()
+        .issuer("https://issuer1.com")
+        .httpJwksLoaderConfig(httpConfig) // Configure HTTP-based JWKS loading
+        .build();
+
+IssuerConfig issuerPathConfig = IssuerConfig.builder()
+        .issuer("https://issuer2.com")
+        .jwksFilePath("/path/to/jwks.json") // Configure file-based JWKS loading
+        .build();
+
+IssuerConfig issuerMemoryConfig = IssuerConfig.builder()
+        .issuer("https://issuer3.com")
+        .jwksContent("{\"keys\":[{\"kty\":\"RSA\",\"kid\":\"key-id\",\"use\":\"sig\",\"alg\":\"RS256\",\"n\":\"...\",\"e\":\"...\"}]}") // Configure in-memory JWKS loading
+        .build();
+
+// Create a validator supporting all issuers
+// The validator creates a SecurityEventCounter internally and passes it to all components
+TokenValidator validator = new TokenValidator(
+        issuerHttpConfig, issuerPathConfig, issuerMemoryConfig);
+
+// You can access the SecurityEventCounter for monitoring security events
+SecurityEventCounter securityEventCounter = validator.getSecurityEventCounter();
+----
+
+== Custom Claim Mappers
+_See link:specification/technical-components.adoc#_customclaimmappers[Custom Claim Mappers Technical Specification]_'
+
+The module supports custom claim mappers that take precedence over the default ones:
+
+* Configure custom ClaimMapper instances for specific claims
+* Handle non-standard claims like "role" from specific identity providers
+* Extend the system with custom claim mapping logic
+
+[source,java]
+----
+// Create a custom claim mapper for the "role" claim
+ClaimMapper roleMapper = new JsonCollectionMapper();
+
+// Add the custom mapper to the issuer configuration
+IssuerConfig issuerConfig = IssuerConfig.builder()
+        .issuer("https://issuer.com")
+        .jwksLoader(jwksLoader)
+        // Add custom claim mapper for "role" claim
+        .claimMapper("role", roleMapper)
+        .build();
+
+// Create a validator with the configured issuer
+TokenValidator validator = new TokenValidator(issuerConfig);
+
+// The custom mapper will be used when processing tokens with the "role" claim
+Optional<AccessTokenContent> accessToken = validator.createAccessToken(tokenString);
+----
+
+== Security Settings
+_See link:specification/technical-components.adoc#_parserconfig[ParserConfig Technical Specification]_'
+
+The `ParserConfig` class provides important security settings for token processing:
+
+[source,java]
+----
+// Create a TokenValidator with custom security settings
+ParserConfig config = ParserConfig.builder()
+        .maxTokenSize(4 * 1024)        // Limit token size to 4KB (default is 8KB)
+        .maxPayloadSize(4 * 1024)      // Limit payload size to 4KB (default is 8KB)
+        .maxStringSize(2 * 1024)       // Limit JSON string size to 2KB (default is 4KB)
+        .maxArraySize(32)              // Limit JSON array size to 32 elements (default is 64)
+        .maxDepth(5)                   // Limit JSON parsing depth to 5 levels (default is 10)
+        .logWarningsOnDecodeFailure(true) // Log warnings when token decoding fails
+        .build();
+
+TokenValidator validator = new TokenValidator(
+        config,
+        issuerConfig);
+----
+
+These security settings help prevent various attacks:
+
+* `maxTokenSize`: Prevents memory exhaustion attacks from oversized tokens
+* `maxPayloadSize`: Prevents memory exhaustion attacks from oversized payloads
+* `maxStringSize`, `maxArraySize`, `maxDepth`: Prevent JSON parsing attacks
+
+== Best Practices
+
+=== General Recommendations
+
+1. Always use `TokenValidator` as the main entry point for all token operations
+2. Configure `IssuerConfig` with appropriate validation settings for each issuer
+3. Use `ParserConfig` to customize token size limits and security settings
+4. Use TLS for JWKS endpoints in production environments
+5. Validate token scopes and roles before granting access to protected resources (the final check for correct scopes must be in the client library)
+6. Handle token expiration appropriately with proper error messages
+7. Check token expiration in client code, especially if the token is kept longer than the request duration
+8. Configure expected audience and client ID for enhanced security
+
+=== Security Recommendations
+
+1. Use HTTP-based JWKS loaders with automatic key rotation in production
+2. Set appropriate refresh intervals for JWKS key rotation (e.g., 60 seconds)
+3. Configure token size limits to prevent memory exhaustion attacks
+4. Use secure TLS versions (TLS 1.2+) for JWKS endpoint communication
+5. Implement proper error handling for token validation failures
+6. Don't store sensitive information in tokens
+7. Validate all token claims, especially issuer, audience, and expiration (implicitly done)
+8. Remember that while token expiration is checked during validation, tokens can expire after validation - implement additional expiration checks in client code
+
+=== Performance Recommendations
+
+1. Use appropriate cache settings for JWKS keys to reduce network requests
+2. Configure adaptive window size for token validation to handle clock skew
+3. Use background refresh for JWKS keys to avoid blocking token validation
+4. Consider token size when designing your authentication architecture
