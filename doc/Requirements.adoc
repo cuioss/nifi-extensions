@@ -315,7 +315,6 @@ _Implementation details: link:specification/testing.adoc[Testing]_
 * Internationalized components must include:
   ** UI elements (property names, descriptions)
   ** Error messages
-  ** Log messages
   ** Documentation strings
 * Resource bundles must follow standard Java ResourceBundle pattern
 * Default to English when a translation is not available

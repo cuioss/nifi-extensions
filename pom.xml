@@ -37,24 +37,18 @@
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <!-- Repository-Urls -->
-        <public.repo.url>https://repo.maven.apache.org/maven2</public.repo.url>
-        <staging.repo.url>https://oss.sonatype.org/content/groups/staging</staging.repo.url>
-        <snapshot.repo.url>
-            https://s01.oss.sonatype.org/content/repositories/snapshots
-        </snapshot.repo.url>
-        <deploy.staging.repo.url>
-            https://s01.oss.sonatype.org/service/local/staging/deploy/maven2
-        </deploy.staging.repo.url>
-
         <version.nifi>2.4.0</version.nifi>
         <!-- Sonar related-->
         <sonar.organization>cuioss-github</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <!-- Core -->
+        <maven.compiler.plugin.version>3.14.0</maven.compiler.plugin.version>
+        <maven.gpg.plugin.version>3.2.7</maven.gpg.plugin.version>
+        <central-publishing-maven-plugin.version>0.7.0</central-publishing-maven-plugin.version>
         <sonar.maven.plugin.version>5.1.0.4751</sonar.maven.plugin.version>
         <jacoco.maven.plugin.version>0.8.13</jacoco.maven.plugin.version>
         <!-- Sonatype -->
-        <nexus.staging.maven.plugin.version>1.7.0</nexus.staging.maven.plugin.version>
+
         <!-- OpenRewrite -->
         <open.rewrite.maven.plugin.version>6.7.0</open.rewrite.maven.plugin.version>
         <rewrite-testing-frameworks.version>3.7.0</rewrite-testing-frameworks.version>
@@ -96,41 +90,16 @@
         <name>CUI-OpenSource-Software</name>
     </organization>
 
-    <repositories>
-        <repository>
-            <id>sonatype-nexus-snapshots</id>
-            <name>Sonatype Nexus Snapshots</name>
-            <url>${snapshot.repo.url}</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
-        <repository>
-            <id>sonatype-nexus-public</id>
-            <name>Sonatype Nexus Public Repo</name>
-            <url>${public.repo.url}</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
-
     <distributionManagement>
         <snapshotRepository>
-            <id>sonatype-nexus-snapshots</id>
-            <name>Sonatype Nexus Snapshots</name>
-            <url>${snapshot.repo.url}</url>
+            <id>central</id>
+            <name>Maven Central Snapshots</name>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
         </snapshotRepository>
         <repository>
-            <id>sonatype-nexus-staging</id>
-            <name>Sonatype Nexus Public Repo</name>
-            <url>${deploy.staging.repo.url}</url>
+            <id>central</id>
+            <name>Maven Central Releases</name>
+            <url>https://central.sonatype.com/repository/maven-releases/</url>
         </repository>
         <site>
             <id>cuioss-home</id>
@@ -231,6 +200,54 @@
     <build>
         <pluginManagement>
             <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven.compiler.plugin.version}</version>
+                    <configuration>
+                        <source>${maven.compiler.source}</source>
+                        <target>${maven.compiler.target}</target>
+                        <annotationProcessorPaths>
+                            <annotationProcessorPath>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${version.lombok}</version>
+                            </annotationProcessorPath>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>${maven.gpg.plugin.version}</version>
+                    <configuration>
+                        <gpgArguments>
+                            <arg>--pinentry-mode</arg>
+                            <arg>loopback</arg>
+                        </gpgArguments>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>sign-artifacts</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>sign</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.sonatype.central</groupId>
+                    <artifactId>central-publishing-maven-plugin</artifactId>
+                    <version>${central-publishing-maven-plugin.version}</version>
+                    <extensions>true</extensions>
+                    <configuration>
+                        <publishingServerId>central</publishingServerId>
+                        <centralUrl>https://central.sonatype.com/</centralUrl>
+                        <autoPublish>true</autoPublish>
+                        <waitUntil>published</waitUntil>
+                    </configuration>
+                </plugin>
                 <plugin>
                     <groupId>org.sonarsource.scanner.maven</groupId>
                     <artifactId>sonar-maven-plugin</artifactId>
@@ -333,7 +350,8 @@
                                 <recipe>org.openrewrite.java.testing.junit5.JUnit5BestPractices</recipe>
                                 <recipe>org.openrewrite.java.testing.junit5.RemoveTryCatchFailBlocks</recipe>
                                 <recipe>org.openrewrite.staticanalysis.EqualsAvoidsNull</recipe>
-                                <recipe>org.openrewrite.staticanalysis.NoPrimitiveWrappersForToStringOrCompareTo</recipe>
+                                <recipe>org.openrewrite.staticanalysis.NoPrimitiveWrappersForToStringOrCompareTo
+                                </recipe>
                             </activeRecipes>
                         </configuration>
                         <executions>

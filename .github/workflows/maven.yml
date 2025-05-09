@@ -10,7 +10,7 @@ name: Master Build
 
 on:
   push:
-    branches: [ "main", "feature/*"]
+    branches: [ "main", "feature/*" ]
   pull_request:
     branches: [ "main" ]
 
@@ -20,85 +20,99 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        version: [21,24]
+        version: [ 21,24 ]
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up JDK ${{ matrix.version }}
-      uses: actions/setup-java@v4
-      with:
-        java-version: ${{ matrix.version }}
-        distribution: 'temurin'
-        cache: maven
-    - name: Build with Maven, Java ${{ matrix.version }}
-      run: ./mvnw -B package -Dmaven.compiler.source=${{ matrix.version }} -Dmaven.compiler.target=${{ matrix.version }}
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up JDK ${{ matrix.version }}
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          java-version: ${{ matrix.version }}
+          distribution: 'temurin'
+          cache: maven
+      - name: Build with Maven, Java ${{ matrix.version }}
+        run: ./mvnw -B package -Dmaven.compiler.source=${{ matrix.version }} -Dmaven.compiler.target=${{ matrix.version }}
 
   sonar-build:
     needs: build
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+        with:
+          egress-policy: audit
 
-    - name: Set up JDK 21 for Sonar-build
-      uses: actions/setup-java@v4
-      with:
-        java-version: '21'
-        distribution: 'temurin'
-        cache: maven
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
 
-    - name: Cache SonarCloud packages
-      uses: actions/cache@v3
-      with:
-        path: ~/.sonar/cache
-        key: ${{ runner.os }}-sonar
-        restore-keys: ${{ runner.os }}-sonar
+      - name: Set up JDK 21 for Sonar-build
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
 
-    - uses: radcortez/project-metadata-action@1.1
-      name: Retrieve project metadata from '.github/project.yml'
-      id: metadata
-      with:
-        github-token: ${{secrets.GITHUB_TOKEN}}
-        metadata-file-path: '.github/project.yml'
-        local-file: true
+      - name: Cache SonarCloud packages
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
 
-    - name: Build and analyze
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      run: ./mvnw -B verify -Psonar -Dsonar.projectKey=${{steps.metadata.outputs.sonar-project-key}} sonar:sonar
+      - uses: radcortez/project-metadata-action@203f7ffba8db2669b2c9b4d4c2e90b186c588fa5 # 1.1
+        name: Retrieve project metadata from '.github/project.yml'
+        id: metadata
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          metadata-file-path: '.github/project.yml'
+          local-file: true
+
+      - name: Build and analyze
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ./mvnw -B verify -Psonar -Dsonar.projectKey=${{steps.metadata.outputs.sonar-project-key}} sonar:sonar
 
   deploy-snapshot:
     needs: sonar-build
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up JDK 21 for snapshot release
-      uses: actions/setup-java@v4
-      with:
-        java-version: '21'
-        distribution: 'temurin'
-        server-id: sonatype-nexus-snapshots
-        server-username: MAVEN_USERNAME
-        server-password: MAVEN_CENTRAL_TOKEN
-        gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
-        gpg-passphrase: MAVEN_GPG_PASSPHRASE
-        cache: maven
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+        with:
+          egress-policy: audit
 
-    - name: Extract project version
-      id: project
-      run: echo ::set-output name=version::$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up JDK 17 for snapshot release
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          server-id: central
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+          cache: maven
 
-    - name: Deploy Snapshot with Maven, version ${{ steps.project.outputs.version }}
-      if: ${{endsWith(steps.project.outputs.version, '-SNAPSHOT')}}
-      run: |
-        ./mvnw -B -Prelease-snapshot javadoc:aggregate
-        ./mvnw -B -Prelease-snapshot deploy -Dmaven.test.skip=true
-      env:
-        MAVEN_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
-        MAVEN_CENTRAL_TOKEN: ${{ secrets.OSS_SONATYPE_PASSWORD }}
-        MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      - name: Extract project version
+        id: project
+        run: echo ::set-output name=version::$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
+
+      - name: Deploy Snapshot with Maven, version ${{ steps.project.outputs.version }}
+        if: ${{endsWith(steps.project.outputs.version, '-SNAPSHOT')}}
+        run: |
+          ./mvnw -B -Prelease-snapshot javadoc:aggregate
+          ./mvnw -B -Prelease-snapshot deploy -Dmaven.test.skip=true
+        env:
+          MAVEN_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.OSS_SONATYPE_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
