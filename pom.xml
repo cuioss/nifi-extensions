@@ -56,7 +56,7 @@
         <project.build.outputTimestamp>2025-04-30T06:58:46Z</project.build.outputTimestamp>
 
         <!-- The version needs to be aligned with the one defined within the nifi boms. Otherwise, it's getting messy-->
-        <version.junit.jupiter>5.11.3</version.junit.jupiter>
+        <version.junit.jupiter>5.12.2</version.junit.jupiter>
         <version.lombok>1.18.38</version.lombok>
         <version.parsson>1.1.7</version.parsson>
         <!-- CUI-OSS -->
