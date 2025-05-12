@@ -1,0 +1,248 @@
+= cui-test-mockwebserver-junit5
+:toc: macro
+:toclevels: 3
+:sectnumlevels: 1
+
+[.discrete]
+== Status
+
+image:https://github.com/cuioss/cui-test-mockwebserver-junit5/actions/workflows/maven.yml/badge.svg[Java CI with Maven,link=https://github.com/cuioss/cui-test-mockwebserver-junit5/actions/workflows/maven.yml]
+image:http://img.shields.io/:license-apache-blue.svg[License,link=http://www.apache.org/licenses/LICENSE-2.0.html]
+image:https://maven-badges.herokuapp.com/maven-central/de.cuioss.test/cui-test-mockwebserver-junit5/badge.svg[Maven Central,link=https://maven-badges.herokuapp.com/maven-central/de.cuioss.test/cui-test-mockwebserver-junit5]
+
+https://sonarcloud.io/summary/new_code?id=cuioss_cui-test-mockwebserver-junit5[image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_cui-test-mockwebserver-junit5&metric=alert_status[Quality
+Gate Status]]
+image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_cui-test-mockwebserver-junit5&metric=ncloc[Lines of Code,link=https://sonarcloud.io/summary/new_code?id=cuioss_cui-test-mockwebserver-junit5]
+image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_cui-test-mockwebserver-junit5&metric=coverage[Coverage,link=https://sonarcloud.io/summary/new_code?id=cuioss_cui-test-mockwebserver-junit5]
+
+
+https://cuioss.github.io/cui-test-mockwebserver-junit5/about.html[Generated Documentation on github-pages]
+
+[.discrete]
+== What is it?
+
+A junit 5 extension for link:https://github.com/square/okhttp/tree/master/mockwebserver[MockWebServer]
+ providing some convenience,
+compared to the original.
+
+=== Maven Coordinates
+
+[source,xml]
+----
+    <dependency>
+        <groupId>de.cuioss.test</groupId>
+        <artifactId>cui-test-mockwebserver-junit5</artifactId>
+    </dependency>
+----
+
+toc::[]
+
+== Using MockWebServer
+
+The MockWebServer extension provides a simple way to test HTTP/HTTPS interactions in your application. It allows you to configure mock responses for specific endpoints and verify that your code correctly handles these responses.
+
+=== Happy Path Example
+
+Here's a basic example showing how to use the MockWebServer extension with both `@MockResponseConfig` and `@ModuleDispatcher` annotations:
+
+[source,java]
+----
+@EnableMockWebServer(useHttps = true)
+class MockWebServerTest {
+
+    @Test
+    @DisplayName("Should handle GET request with @MockResponseConfig")
+    @MockResponseConfig(
+        path = "/api/users",
+        method = HttpMethodMapper.GET,
+        jsonContentKeyValue = "users=[]",
+        status = 200
+    )
+    void shouldHandleGetRequest(URIBuilder uriBuilder, SSLContext sslContext) throws IOException {
+        // Create HttpClient with the injected SSL context
+        HttpClient client = HttpClient.newBuilder()
+                .sslContext(sslContext)
+                .build();
+
+        // Create request to the configured endpoint
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(uriBuilder.addPathSegment("api").addPathSegment("users").build())
+                .GET()
+                .build();
+
+        // Send request
+        HttpResponse<String> response = client.send(request, 
+                HttpResponse.BodyHandlers.ofString());
+
+        // Verify response
+        assertEquals(200, response.statusCode());
+        assertEquals("{\"users\":[]}", response.body());
+    }
+
+    @Test
+    @DisplayName("Should handle POST request with @ModuleDispatcher")
+    @ModuleDispatcher
+    void shouldHandlePostRequest(URIBuilder uriBuilder, SSLContext sslContext) {
+        // Send POST request to the endpoint configured by getModuleDispatcher()
+        // ...
+    }
+
+    // This method will be called by the @ModuleDispatcher annotation
+    ModuleDispatcherElement getModuleDispatcher() {
+        return new BaseAllAcceptDispatcher("/api/posts")
+                .withPostResponse(new mockwebserver3.MockResponse.Builder()
+                        .code(201)
+                        .addHeader("Content-Type", "application/json")
+                        .body("{\"id\":\"123\",\"status\":\"created\"}")
+                        .build());
+    }
+}
+----
+
+=== Parameter Resolvers
+
+The MockWebServer extension provides several parameter resolvers that can inject useful objects into your test methods:
+
+[cols="1,3"]
+|===
+|Parameter Type |Description
+
+|`MockWebServer`
+|The actual MockWebServer instance that can be used to configure responses, check received requests, etc.
+
+|`URIBuilder`
+|A utility for building URIs that point to the MockWebServer instance. The builder is pre-configured with the server's host, port, and scheme.
+
+|`SSLContext`
+|When HTTPS is enabled, this provides access to the SSL context used by the server.
+|===
+
+Example of using multiple parameter resolvers:
+
+[source,java]
+----
+@EnableMockWebServer(useHttps = true)
+class ParameterResolverTest {
+
+    @Test
+    @DisplayName("Should inject multiple parameters")
+    void shouldInjectMultipleParameters(
+            MockWebServer server, 
+            URIBuilder uriBuilder,
+            SSLContext sslContext) {
+
+        // All parameters are automatically injected
+        assertNotNull(server);
+        assertNotNull(uriBuilder);
+        assertNotNull(sslContext);
+
+        // URIBuilder is configured with server details
+        assertEquals(server.getPort(), uriBuilder.getPort());
+        assertEquals("https", uriBuilder.build().getScheme());
+    }
+}
+----
+
+==== URIBuilder Usage Tips
+
+When building URIs with multiple path segments,
+prefer using the `addPathSegments` method instead of chaining multiple `addPathSegment` calls:
+
+[source,java]
+----
+// RECOMMENDED - Use addPathSegments for multiple path segments
+URI uri = uriBuilder.addPathSegments("api", "users", "123").build();
+
+// Less efficient approach
+URI uri = uriBuilder.addPathSegment("api").addPathSegment("users").addPathSegment("123").build();
+----
+
+==== Using with WeldUnit
+
+If you use unit-testing with WeldUnit,
+the parameter resolution might fail because of WeldUnit trying to resolve the corresponding Parameter,
+without knowing how to resolve it.
+In that cases, you can use `@ExplicitParamInjection` on method or class.
+
+=== @MockResponseConfig Annotation
+
+The `@MockResponseConfig` annotation allows you to define mock responses for specific paths and HTTP methods. It can be applied at the class or method level and is repeatable.
+
+For detailed information about using `@MockResponseConfig`, including the new context-aware behavior, see link:doc/MockResponse.adoc[Working with @MockResponse].
+
+=== @ModuleDispatcher Annotation
+
+The `@ModuleDispatcher` annotation provides more flexibility for configuring complex request handling logic.
+
+For detailed information about using `@ModuleDispatcher` and implementing the `ModuleDispatcherElement` interface, see link:doc/ModuleDispatcher.adoc[Working with @ModuleDispatcher and ModuleDispatcherElement].
+
+=== @EnableMockWebServer Options
+
+The `@EnableMockWebServer` annotation supports several configuration options:
+
+==== HTTP Mode (Default)
+
+[source,java]
+----
+@EnableMockWebServer(useHttps = false)
+class HttpModeTest {
+    // ...
+}
+----
+
+==== Manual Server Start
+
+[source,java]
+----
+@EnableMockWebServer(useHttps = true, manualStart = true)
+class ManualStartTest {
+
+    @Test
+    void shouldStartServerManually(MockWebServer server, URIBuilder uriBuilder) {
+        // Here we need the MockWebServer parameter to control server lifecycle
+
+        // Server is not started automatically
+        assertFalse(server.getStarted());
+
+        // Start the server manually
+        server.start();
+
+        // Now the server is running
+        assertTrue(server.getStarted());
+
+        // The URIBuilder is updated with the server's port
+        URI uri = uriBuilder.addPathSegment("api").build();
+        assertEquals(server.getPort(), uri.getPort());
+
+        // Don't forget to shut down the server
+        server.shutdown();
+    }
+}
+----
+
+==== Manual Server Start Considerations
+
+When using `manualStart = true`, you need to be careful with the injected `URIBuilder` parameter:
+
+* Before the server is started, the injected `URIBuilder` is a placeholder that cannot be used to build URIs
+* If you try to build a URI from this placeholder, it will throw an `IllegalStateException`
+* You must create a proper `URIBuilder` *after* manually starting the server
+
+[source,java]
+----
+// INCORRECT - Will throw IllegalStateException if server not started
+URI uri = uriBuilder.addPathSegment("api").build();
+
+// CORRECT - Create a proper URIBuilder after starting the server
+server.start();
+URIBuilder properUriBuilder = URIBuilder.from(server.url("/").url());
+URI uri = properUriBuilder.addPathSegment("api").build();
+----
+
+=== HTTPS Support and Certificates
+
+For detailed information about using HTTPS with the MockWebServer extension and configuring certificates for testing, see link:doc/HttpsSupport.adoc[HTTPS Support and Certificates].
+
+== Migration Guide
+
+For detailed information about migrating from older versions of the MockWebServer extension to the current version, see link:doc/Migration.adoc[Migration Guide].

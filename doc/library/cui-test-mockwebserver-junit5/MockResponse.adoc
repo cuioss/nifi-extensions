@@ -1,0 +1,160 @@
+= Working with @MockResponse
+:toc: macro
+:toclevels: 3
+:sectnumlevels: 1
+
+The `@MockResponseConfig` annotation allows you to define mock responses for specific paths and HTTP methods in your tests. It can be applied at the class or method level and is repeatable.
+
+toc::[]
+
+== Basic Usage
+
+The `@MockResponseConfig` annotation provides a simple way to configure mock responses without writing custom dispatcher code:
+
+[source,java]
+----
+@EnableMockWebServer(useHttps = true)
+@MockResponseConfig(
+    path = "/api/users",
+    method = HttpMethodMapper.GET,
+    status = 200,
+    jsonContentKeyValue = "users=[]"
+)
+class MockResponseTest {
+    // ...
+}
+----
+
+== Multiple Responses
+
+You can define multiple responses by using the annotation multiple times:
+
+[source,java]
+----
+@EnableMockWebServer(useHttps = true)
+@MockResponseConfig(
+    path = "/api/users",
+    method = HttpMethodMapper.GET,
+    status = 200,
+    jsonContentKeyValue = "users=[]"
+)
+@MockResponseConfig(
+    path = "/api/users",
+    method = HttpMethodMapper.POST,
+    status = 201
+)
+class MultipleResponsesTest {
+    // ...
+}
+----
+
+== Content Types
+
+The annotation supports different types of content:
+
+[source,java]
+----
+// Text content (Content-Type: text/plain)
+@MockResponseConfig(
+    path = "/api/text",
+    textContent = "Hello, World!"
+)
+
+// JSON content (Content-Type: application/json)
+@MockResponseConfig(
+    path = "/api/json",
+    jsonContentKeyValue = "message=Hello,count=42"
+)
+
+// Raw string content (no Content-Type set)
+@MockResponseConfig(
+    path = "/api/raw",
+    stringContent = "<custom>content</custom>"
+)
+----
+
+== Custom Headers
+
+You can add custom headers to your responses:
+
+[source,java]
+----
+@MockResponseConfig(
+    path = "/api/data",
+    status = 200,
+    jsonContentKeyValue = "key=value",
+    headers = {"X-Custom-Header=Custom Value", "Cache-Control=no-cache"},
+    contentType = "application/json; charset=utf-8"
+)
+----
+
+== Context-Aware Behavior
+
+Starting with version 1.2, `@MockResponseConfig` annotations are context-aware. This means that each test method only has access to:
+
+1. Its own method-level `@MockResponseConfig` annotations
+2. Class-level `@MockResponseConfig` annotations from its containing class and parent classes
+3. For nested test classes, only annotations from the class hierarchy up to the test method's class
+
+=== Example
+
+[source,java]
+----
+@EnableMockWebServer
+@MockResponseConfig(path = "/class-level", status = 200, textContent = "Class Level Response")
+class ContextAwareMockResponseTest {
+
+    @Test
+    @MockResponseConfig(path = "/method-a", status = 200, textContent = "Method A Response")
+    void shouldOnlyAccessMethodAAndClassLevelResponses(URIBuilder uriBuilder) {
+        // This test can access:
+        // - /class-level (from class annotation)
+        // - /method-a (from method annotation)
+        // But NOT /method-b (from other method)
+    }
+
+    @Test
+    @MockResponseConfig(path = "/method-b", status = 200, textContent = "Method B Response")
+    void shouldOnlyAccessMethodBAndClassLevelResponses(URIBuilder uriBuilder) {
+        // This test can access:
+        // - /class-level (from class annotation)
+        // - /method-b (from method annotation)
+        // But NOT /method-a (from other method)
+    }
+}
+----
+
+=== Nested Classes
+
+For nested test classes, the context-aware behavior ensures that only annotations from the direct hierarchy are included:
+
+[source,java]
+----
+@EnableMockWebServer
+@MockResponseConfig(path = "/outer-class", status = 200)
+class OuterTest {
+
+    @Test
+    @MockResponseConfig(path = "/outer-method", status = 200)
+    void outerTestMethod(URIBuilder uriBuilder) {
+        // Can access /outer-class and /outer-method
+    }
+
+    @Nested
+    @MockResponseConfig(path = "/nested-class", status = 200)
+    class NestedTest {
+        
+        @Test
+        @MockResponseConfig(path = "/nested-method", status = 200)
+        void nestedTestMethod(URIBuilder uriBuilder) {
+            // Can access:
+            // - /outer-class (from parent class)
+            // - /nested-class (from nested class)
+            // - /nested-method (from method)
+            // But NOT /outer-method (from parent class method)
+        }
+    }
+}
+----
+
+This context-aware behavior ensures that each test method only has access to the mock responses that are relevant to its specific context, preventing unintended interactions between test methods.

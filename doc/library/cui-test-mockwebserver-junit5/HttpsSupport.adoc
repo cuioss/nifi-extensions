@@ -1,0 +1,173 @@
+= HTTPS Support and Certificates
+:toc: macro
+:toclevels: 3
+:sectnumlevels: 1
+
+This document explains how to use HTTPS with the MockWebServer extension and how to configure certificates for testing.
+
+toc::[]
+
+== HTTPS Support
+
+When HTTPS is enabled, the extension automatically makes the SSLContext available for parameter injection, simplifying HTTPS testing.
+
+=== Extension-Provided Certificates
+
+The simplest approach is to let the extension generate certificates for you:
+
+[source,java]
+----
+@EnableMockWebServer(
+        useHttps = true
+)
+@ModuleDispatcher(provider = BaseAllAcceptDispatcher.class, providerMethod = "getOptimisticAPIDispatcher")
+@DisplayName("HttpClient HTTPS Test")
+class ExtensionProvidedHttpsTest {
+
+    /**
+     * Tests a basic HTTPS connection to a default endpoint.
+     * This demonstrates the most common use case for HTTPS testing.
+     * <p>
+     * The SSLContext is directly injected as a parameter using the parameter resolving feature.
+     */
+    @Test
+    @DisplayName("Should successfully connect to HTTPS server with extension-provided certificate")
+    void shouldConnectToHttpsServer(MockWebServer server, URIBuilder serverURIBuilder, SSLContext sslContext) 
+            throws IOException, InterruptedException {
+        // Arrange
+        assertNotNull(sslContext, "SSLContext should be injected as a parameter");
+        assertNotNull(serverURIBuilder, "URL builder should be injected as a parameter");
+
+        // Verify the URL builder creates HTTPS URLs
+        URI uri = serverURIBuilder.build();
+        assertEquals("https", uri.getScheme(), "Server URL should use HTTPS");
+
+        // Configure HttpClient with the injected SSLContext
+        HttpClient client = HttpClient.newBuilder()
+                .sslContext(sslContext)
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
+
+        // Act: Make an HTTPS request using the URL builder
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(serverURIBuilder.addPathSegments("api", "test").build())
+                .GET()
+                .build();
+
+        // Assert: Verify successful connection and response
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        assertEquals(200, response.statusCode(), "Should receive 200 OK response");
+        assertEquals(EndpointAnswerHandler.RESPONSE_SUCCESSFUL_BODY, response.body(), 
+                "Response body should match expected content");
+    }
+}
+----
+
+=== Custom Certificate Provision with @TestProvidedCertificate
+
+For more control over certificate creation, use the `@TestProvidedCertificate` annotation. This approach allows you to provide custom certificates in a flexible way:
+
+[source,java]
+----
+@EnableMockWebServer(useHttps = true)
+@TestProvidedCertificate(methodName = "createTestCertificates")
+@DisplayName("Custom Certificate Test")
+class CustomCertificateTest {
+
+    /**
+     * This method provides custom certificates for the test.
+     * It will be called by the CertificateResolver.
+     */
+    public static HandshakeCertificates createTestCertificates() {
+        // Create self-signed certificates with custom parameters
+        return KeyMaterialUtil.createSelfSignedHandshakeCertificates(
+                7, // validity in days
+                KeyAlgorithm.RSA_2048);
+    }
+
+    @Test
+    @DisplayName("Should use custom certificates for HTTPS")
+    void shouldUseCustomCertificates(MockWebServer server, SSLContext sslContext) {
+        // Arrange
+        assertNotNull(sslContext, "SSLContext should be injected");
+
+        // Act & Assert
+        HttpClient client = HttpClient.newBuilder()
+                .sslContext(sslContext)
+                .build();
+
+        // Test HTTPS connection with the custom certificates
+        // ...
+    }
+}
+----
+
+=== Using a Provider Class
+
+You can also use a separate provider class for better reuse of certificate creation logic:
+
+[source,java]
+----
+@EnableMockWebServer(useHttps = true)
+@TestProvidedCertificate(providerClass = TestCertificateProvider.class, methodName = "provideHandshakeCertificates")
+@DisplayName("Certificate Provider Test")
+class CertificateProviderTest {
+
+    @Test
+    @DisplayName("Should use certificates from provider class")
+    void shouldUseCertificatesFromProvider(SSLContext sslContext) {
+        // The SSLContext is created using certificates from TestCertificateProvider
+        assertNotNull(sslContext, "SSLContext should be injected");
+
+        // Use the SSLContext for HTTPS connections
+        // ...
+    }
+}
+----
+
+The certificate provider class implementation:
+
+[source,java]
+----
+public class TestCertificateProvider {
+
+    private static HandshakeCertificates certificates;
+
+    private TestCertificateProvider() {
+        // Utility class should not be instantiated
+    }
+
+    /**
+     * Provides HandshakeCertificates for HTTPS testing.
+     * This method will be called by the CertificateResolver.
+     */
+    public static HandshakeCertificates provideHandshakeCertificates() {
+        if (certificates == null) {
+            // Create self-signed certificates with a short validity period for unit tests
+            certificates = KeyMaterialUtil.createSelfSignedHandshakeCertificates(
+                    1, KeyAlgorithm.RSA_2048);
+        }
+        return certificates;
+    }
+}
+----
+
+== HTTPS Configuration Options
+
+[cols="1,3"]
+|===
+|Option |Description
+
+|`useHttps`
+|Enable HTTPS support (default: false). When enabled, the server will use HTTPS instead of HTTP.
+
+|`@TestProvidedCertificate`
+|Annotation to specify custom certificate provision for HTTPS testing.
+
+|`methodName`
+|Name of the static method that provides certificates. The method must return `HandshakeCertificates`.
+
+|`providerClass`
+|Class that contains the certificate provider method. If not specified, the test class itself is used.
+|===

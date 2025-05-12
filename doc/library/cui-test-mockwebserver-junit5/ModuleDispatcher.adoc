@@ -1,0 +1,428 @@
+= Working with @ModuleDispatcher and ModuleDispatcherElement
+:toc: macro
+:toclevels: 3
+:sectnumlevels: 1
+
+The `@ModuleDispatcher` annotation provides flexibility for configuring complex request handling logic in your tests. This document explains how to use `@ModuleDispatcher` and implement the `ModuleDispatcherElement` interface.
+
+toc::[]
+
+== @ModuleDispatcher Annotation
+
+The `@ModuleDispatcher` annotation provides more flexibility for configuring complex request handling logic.
+
+=== Using a Dispatcher Class
+
+[source,java]
+----
+@EnableMockWebServer(useHttps = true)
+@ModuleDispatcher(UserApiDispatcher.class)
+class DispatcherClassTest {
+    // ...
+}
+
+// Custom dispatcher implementation
+class UserApiDispatcher implements ModuleDispatcherElement {
+    @Override
+    public String getBaseUrl() {
+        return "/api/users";
+    }
+
+    @Override
+    public Optional<MockResponse> handleGet(@NonNull RecordedRequest request) {
+        return Optional.of(new MockResponse.Builder()
+                .addHeader("Content-Type", "application/json")
+                .body("{\"users\":[]}")
+                .code(HttpServletResponse.SC_OK)
+                .build());
+    }
+    @Override
+    public @NonNull Set<HttpMethodMapper> supportedMethods() {
+        return Set.of(HttpMethodMapper.GET);
+    }
+}
+----
+
+=== Using a Provider Method
+
+[source,java]
+----
+@EnableMockWebServer(useHttps = true)
+@ModuleDispatcher(provider = DispatcherFactory.class, providerMethod = "createApiDispatcher")
+class ProviderMethodTest {
+    // ...
+}
+
+// Factory class
+class DispatcherFactory {
+    public static ModuleDispatcherElement createApiDispatcher() {
+        // Create a dispatcher for the /api path
+        var apiDispatcher = new BaseAllAcceptDispatcher("/api");
+
+        // By default, it will return positive responses for all HTTP methods
+        // GET: 200 OK, POST: 200 OK, PUT: 201 Created, DELETE: 204 No Content
+
+        return apiDispatcher;
+    }
+}
+----
+
+=== Using a Test Class Method
+
+[source,java]
+----
+@EnableMockWebServer(useHttps = true)
+@ModuleDispatcher // No parameters means look for getModuleDispatcher() method
+class TestMethodDispatcherTest {
+
+    // This method will be called to get the dispatcher
+    ModuleDispatcherElement getModuleDispatcher() {
+        return new BaseAllAcceptDispatcher("/api");
+    }
+
+    // ...
+}
+----
+
+=== Using a Custom Dispatcher with Path-Based Responses
+
+You can create a custom dispatcher that uses the `RecordedRequest.getPath()` method to return different responses based on the request path:
+
+[source,java]
+----
+@EnableMockWebServer(useHttps = true)
+@ModuleDispatcher // No parameters means look for getModuleDispatcher() method
+class PathBasedDispatcherTest {
+
+    // This method will be called to get the dispatcher
+    ModuleDispatcherElement getModuleDispatcher() {
+        return new ModuleDispatcherElement() {
+            @Override
+            public String getBaseUrl() {
+                return "/api/users";
+            }
+
+            @Override
+            public Optional<MockResponse> handleGet(@NonNull RecordedRequest request) {
+                String path = request.getPath();
+
+                // Return different responses based on the path
+                if (path.endsWith("/api/users/active")) {
+                    return Optional.of(new MockResponse.Builder()
+                        .code(200)
+                        .addHeader("Content-Type", "application/json")
+                        .body("{\"users\":[{\"id\":1,\"name\":\"John\",\"status\":\"active\"}]}")
+                        .build());
+                } else if (path.endsWith("/api/users/inactive")) {
+                    return Optional.of(new MockResponse.Builder()
+                        .code(200)
+                        .addHeader("Content-Type", "application/json")
+                        .body("{\"users\":[{\"id\":2,\"name\":\"Jane\",\"status\":\"inactive\"}]}")
+                        .build());
+                } else if (path.matches(".*/api/users/\\d+")) {
+                    // Extract user ID from path using regex
+                    String userId = path.substring(path.lastIndexOf('/') + 1);
+                    return Optional.of(new MockResponse.Builder()
+                        .code(200)
+                        .addHeader("Content-Type", "application/json")
+                        .body("{\"id\":" + userId + ",\"name\":\"User " + userId + "\"}")
+                        .build());
+                }
+
+                // Default response for /api/users
+                return Optional.of(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body("{\"users\":[]}")
+                    .build());
+            }
+
+            @Override
+            public @NonNull Set<HttpMethodMapper> supportedMethods() {
+                return Set.of(HttpMethodMapper.GET);
+            }
+        };
+    }
+
+    @Test
+    void shouldReturnDifferentResponsesBasedOnPath(URIBuilder uriBuilder, SSLContext sslContext) throws Exception {
+        // Create HttpClient with SSL context
+        HttpClient client = HttpClient.newBuilder()
+                .sslContext(sslContext)
+                .build();
+
+        // Test different paths
+
+        // 1. Get all users (empty list)
+        HttpRequest allUsersRequest = HttpRequest.newBuilder()
+                .uri(uriBuilder.addPathSegments("api", "users").build())
+                .GET()
+                .build();
+        HttpResponse<String> allUsersResponse = client.send(allUsersRequest, 
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, allUsersResponse.statusCode());
+        assertEquals("{\"users\":[]}", allUsersResponse.body());
+
+        // 2. Get active users
+        HttpRequest activeUsersRequest = HttpRequest.newBuilder()
+                .uri(uriBuilder.addPathSegments("api", "users", "active").build())
+                .GET()
+                .build();
+        HttpResponse<String> activeUsersResponse = client.send(activeUsersRequest, 
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, activeUsersResponse.statusCode());
+        assertEquals("{\"users\":[{\"id\":1,\"name\":\"John\",\"status\":\"active\"}]}", 
+                activeUsersResponse.body());
+
+        // 3. Get user by ID
+        HttpRequest userRequest = HttpRequest.newBuilder()
+                .uri(uriBuilder.addPathSegments("api", "users", "42").build())
+                .GET()
+                .build();
+        HttpResponse<String> userResponse = client.send(userRequest, 
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, userResponse.statusCode());
+        assertEquals("{\"id\":42,\"name\":\"User 42\"}", userResponse.body());
+    }
+}
+----
+
+== ModuleDispatcherElement Interface
+
+`ModuleDispatcherElement` enables reusable request handling in `EnableMockWebServer` contexts. It returns an `Optional<MockResponse>` for matching requests.
+
+The interface requires implementing the following methods:
+
+1. `String getBaseUrl()` - Returns the base URL path that this dispatcher handles
+2. `Set<HttpMethodMapper> supportedMethods()` - Returns the set of HTTP methods supported by this dispatcher element
+3. HTTP method handlers like `handleGet()`, `handlePost()`, etc. (only for methods returned by `supportedMethods()`)
+
+== EndpointAnswerHandler for Adapting Existing Dispatchers
+
+The `EndpointAnswerHandler` class provides a flexible way to manage HTTP responses in test scenarios. It's particularly useful when adapting existing dispatchers to customize their behavior for specific test cases.
+
+=== Purpose and Features
+
+* Pre-configured responses for common HTTP status codes (200 OK, 204 No Content, 401 Unauthorized, etc.)
+* Factory methods for creating handlers for different HTTP methods
+* Methods for dynamically changing responses during tests
+* Support for resetting to default responses
+
+=== Usage with BaseAllAcceptDispatcher
+
+The `BaseAllAcceptDispatcher` class uses `EndpointAnswerHandler` internally to manage responses for different HTTP methods:
+
+[source,java]
+----
+// Create a dispatcher for /api endpoints
+var dispatcher = new BaseAllAcceptDispatcher("/api");
+
+// Customize GET response
+dispatcher.getGetResult().setResponse(
+    new MockResponse.Builder()
+        .code(200)
+        .addHeader("Content-Type", "application/json")
+        .body("{\"data\":\"custom response\"}")
+        .build()
+);
+
+// Set response to a predefined status
+dispatcher.getPostResult().respondCreated();
+
+// Reset to default responses
+dispatcher.reset();
+----
+
+=== Creating Custom Handlers
+
+You can create custom handlers for specific HTTP methods:
+
+[source,java]
+----
+// Create a handler for GET requests
+var getHandler = EndpointAnswerHandler.forPositiveGetRequest();
+
+// Create a handler for POST requests
+var postHandler = EndpointAnswerHandler.forPositivePostRequest();
+
+// Create a handler for PUT requests
+var putHandler = EndpointAnswerHandler.forPositivePutRequest();
+
+// Create a handler for DELETE requests
+var deleteHandler = EndpointAnswerHandler.forPositiveDeleteRequest();
+----
+
+=== Customizing Responses
+
+`EndpointAnswerHandler` provides methods for setting specific responses:
+
+[source,java]
+----
+// Set a custom response
+handler.setResponse(new MockResponse.Builder()
+    .code(200)
+    .addHeader("Content-Type", "application/json")
+    .body("{\"status\":\"success\"}")
+    .build());
+
+// Use predefined responses
+handler.respondOk();           // 200 OK
+handler.respondNoContent();    // 204 No Content
+handler.respondCreated();      // 201 Created
+handler.respondForbidden();    // 403 Forbidden
+handler.respondUnauthorized(); // 401 Unauthorized
+handler.respondNotFound();     // 404 Not Found
+
+// Reset to the default response
+handler.resetToDefaultResponse();
+----
+
+=== Integration with Custom Dispatchers
+
+When implementing a custom `ModuleDispatcherElement`, you can use `EndpointAnswerHandler` to manage responses:
+
+[source,java]
+----
+public class CustomApiDispatcher implements ModuleDispatcherElement {
+
+    private final String baseUrl;
+    private final EndpointAnswerHandler getHandler = EndpointAnswerHandler.forPositiveGetRequest();
+    private final EndpointAnswerHandler postHandler = EndpointAnswerHandler.forPositivePostRequest();
+
+    public CustomApiDispatcher(String baseUrl) {
+        this.baseUrl = baseUrl;
+    }
+
+    @Override
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    @Override
+    public Set<HttpMethodMapper> supportedMethods() {
+        return Set.of(HttpMethodMapper.GET, HttpMethodMapper.POST);
+    }
+
+    @Override
+    public Optional<MockResponse> handleGet(@NonNull RecordedRequest request) {
+        // You can add custom logic here based on the request
+        if (request.getPath().endsWith("/special")) {
+            return Optional.of(new MockResponse.Builder()
+                .code(200)
+                .body("{\"special\":true}")
+                .build());
+        }
+
+        // Default to the handler's response
+        return getHandler.respond();
+    }
+
+    @Override
+    public Optional<MockResponse> handlePost(@NonNull RecordedRequest request) {
+        return postHandler.respond();
+    }
+
+    // Method to configure the dispatcher for specific test scenarios
+    public void configureForErrorScenario() {
+        getHandler.respondNotFound();
+        postHandler.respondForbidden();
+    }
+
+    // Method to reset to default behavior
+    public void reset() {
+        getHandler.resetToDefaultResponse();
+        postHandler.resetToDefaultResponse();
+    }
+}
+----
+Example JWKS endpoint dispatcher:
+
+[source,java]
+----
+/**
+ * Handles JWKS file resolution from the mock OAuth server, serving
+ * "src/test/resources/token/test-public-key.jwks"
+ */
+public class JwksResolveDispatcher implements ModuleDispatcherElement {
+
+    /** "/oidc/jwks.json" */
+    public static final String LOCAL_PATH = "/oidc/jwks.json";
+
+    @Getter
+    @Setter
+    private int callCounter = 0;
+
+    @Override
+    public Optional<MockResponse> handleGet(@NonNull RecordedRequest request) {
+        callCounter++;
+        return Optional.of(new MockResponse.Builder()
+                .addHeader("Content-Type", "application/json")
+                .body(FileLoaderUtility
+                        .toStringUnchecked(FileLoaderUtility.getLoaderForPath(PUBLIC_KEY_JWKS)))
+                .code(SC_OK)
+                .build());
+    }
+
+    @Override
+    public String getBaseUrl() {
+        return LOCAL_PATH;
+    }
+
+    @Override
+    public @NonNull Set<HttpMethodMapper> supportedMethods() {
+        return Set.of(HttpMethodMapper.GET);
+    }
+
+    /**
+     * Verifies request count
+     *
+     * @param expected Expected number of requests
+     */
+    public void assertCallsAnswered(int expected) {
+        assertEquals(expected, callCounter);
+    }
+}
+----
+
+Implementation example:
+
+[source,java]
+----
+@EnableAutoWeld
+@EnablePortalConfiguration
+@EnableMockWebServer(useHttps = true)
+@ModuleDispatcher(UserApiDispatcher.class)
+class TokenParserProducerTest implements ShouldBeNotNull<TokenParserProducer> {
+
+    private final JwksResolveDispatcher jwksResolveDispatcher = new JwksResolveDispatcher();
+
+    @BeforeEach
+    void setupConfiguration(URIBuilder uriBuilder, SSLContext sslContext) {
+        configuration.put(VERIFY_SIGNATURE_JWKS_URL,
+                uriBuilder.setPath(jwksResolveDispatcher.getBaseUrl()).build());
+        configuration.update(SSLCONTEXT, sslContext);
+        configuration.update(VERIFY_SIGNATURE_REFRESH_INTERVAL, "60");
+        jwksResolveDispatcher.setCallCounter(0);
+    }
+
+    @Test
+    void shouldCacheMultipleCalls() {
+        jwksResolveDispatcher.assertCallsAnswered(0);
+        String token = validSignedJWTWithClaims(PATIENT_ACCESS_TOKEN);
+        JWTParser parser = parserProvider.get();
+
+        for (int i = 0; i < 100; i++) {
+            JsonWebToken jsonWebToken = assertDoesNotThrow(() -> ParsedToken.jsonWebTokenFrom(token, parser, LOGGER));
+            assertValidJsonWebToken(jsonWebToken, token);
+        }
+        // Note: Initial implementation results in 2 calls instead of 1
+        assertTrue(jwksResolveDispatcher.getCallCounter() < 3);
+
+        for (int i = 0; i < 100; i++) {
+            JsonWebToken jsonWebToken = assertDoesNotThrow(() -> ParsedToken.jsonWebTokenFrom(token, parser, LOGGER));
+            assertValidJsonWebToken(jsonWebToken, token);
+        }
+        assertTrue(jwksResolveDispatcher.getCallCounter() < 3);
+    }
+}
+----
