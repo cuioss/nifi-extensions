@@ -216,52 +216,72 @@ The processor uses custom validators in the UI to ensure proper configuration:
 
 === JWKS Endpoint Validator
 
-Validates JWKS endpoint URLs and public keys:
+The JWKS Endpoint Validator is now type-aware and uses the JwksLoaderFactory directly to validate the JWKS configuration for the selected type. It also uses a SecurityEventCounter to track and report validation problems.
+
+- The validator receives the JWKS type (e.g., "server", "file", "memory") as a parameter.
+- It uses JwksLoaderFactory to create the appropriate loader for the type and input value.
+- A new SecurityEventCounter is created for each validation attempt.
+- The loader is used to load and validate the JWKS, and any errors are reported using the SecurityEventCounter.
+- The ValidationResult reflects the outcome, including error details if validation fails.
 
 [source,java]
 ----
-/**
- * Validates JWKS URLs and public keys.
- */
 public class JwksEndpointValidator implements Validator {
     @Override
     public ValidationResult validate(String subject, String input, ValidationContext context) {
-        if (StringUtils.isBlank(input)) {
-            return new ValidationResult.Builder()
-                .input(input)
-                .subject(subject)
-                .valid(false)
-                .explanation("Value cannot be empty")
-                .build();
-        }
-        
-        // Check if the input is a URL
-        if (input.startsWith("http://") || input.startsWith("https://")) {
-            // Validate HTTPS requirement
-            if (!input.startsWith("https://")) {
+        String jwksType = context.getProperty("jwksType"); // e.g., "server", "file", "memory"
+        SecurityEventCounter counter = new SecurityEventCounter();
+        JwksLoader loader = null;
+        switch (jwksType) {
+            case "server":
+                // TODO: Validate Correct URL
+                HttpJwksLoaderConfig config = HttpJwksLoaderConfig.builder()
+                        .jwksUrl(input).requestTimeoutSeconds(2).build();
+                
+                loader = JwksLoaderFactory.createHttpLoader(config, counter)
+                break;
+            case "file":
+                // TODO: Validate file existence and content
+                loader = JwksLoaderFactory.createFileLoader(input, counter);
+                break;
+            case "memory":
+                loader = JwksLoaderFactory.createInMemoryLoader(input, counter);
+                break;
+            default:
+                counter.incrementError("Unknown JWKS type");
                 return new ValidationResult.Builder()
                     .input(input)
                     .subject(subject)
                     .valid(false)
-                    .explanation("JWKS URL must use HTTPS for security")
+                    .explanation("Unknown JWKS type: " + jwksType)
                     .build();
-            }
-            
-            // Valid URL format
+        }
+        if(loader.getFirstKeyInfo().isPresent()) {
+            LOGGER.info("JWKS validation successful for type: %s", jwksType);
             return new ValidationResult.Builder()
                 .input(input)
                 .subject(subject)
                 .valid(true)
                 .build();
-        } else {
-            // Validate as PEM-encoded public key format
-            return validatePemFormat(input, subject);
-        }
+        })
+
+        var errorReasons = counter.getCounters()
+            .stream()
+            .map(SecurityEventCounter.EventType::getName).distinct()
+            .collect(Collectors.joining(", "));
+
+                        
+        return new ValidationResult.Builder()
+            .input(input)
+            .subject(subject)
+            .valid(false)
+            .explanation(errorReasons)
+            .build();    
     }
-    
-    // Additional validation methods...
 }
 ----
+
+This approach ensures that the validator is flexible, robust, and provides detailed feedback for all supported JWKS types.
 
 == UI State Management
 
