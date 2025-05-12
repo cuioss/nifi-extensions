@@ -31,7 +31,7 @@ package "Apache NiFi" {
 
 database "Properties Repository" as PropsRepo
 
-NiFiCore ..> "CUI OSS Extensions" : uses
+NiFiCore ..> [CUI OSS Extensions] : uses
 TokenFactory --> [Authentication Provider] : requests tokens
 JWTExtractor --> TokenFactory : gets token specs
 TokenValidator --> TokenFactory : validates tokens

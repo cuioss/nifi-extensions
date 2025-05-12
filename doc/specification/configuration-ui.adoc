@@ -79,22 +79,28 @@ public void onTokenLocationModified(final PropertyConfiguration oldValue,
 
 The processor provides several custom UI components to aid in configuration and validation:
 
-=== JWKS Endpoint Test Button
+=== JWKS Validation Button
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: JWKS Verification]_
 
-The processor includes a custom UI component to test JWKS endpoint connectivity:
+The processor includes a custom UI component to validate the JWKS configuration for the selected type:
+
+- **JWKS-Server**: Validates the endpoint connectivity and key structure.
+- **Local File**: Validates the file existence and content.
+- **In Memory**: Validates the pasted JWKS content format and keys.
+
+The validation button adapts to the selected JWKS type and always validates the current input.
 
 [source,javascript]
 ----
 /**
- * JWKS Test Button UI component.
+ * JWKS Validation Button UI component.
  */
 define(['jquery', 'nf.Common'], function ($, nfCommon) {
     return {
         /**
          * Initialize the custom UI.
          */
-        init: function (element, propertyValue, callback) {
+        init: function (element, propertyValue, jwks_type, callback) {
             // Get i18n resources from NiFi Common
             var i18n = nfCommon.getI18n();
             
@@ -110,27 +116,27 @@ define(['jquery', 'nf.Common'], function ($, nfCommon) {
             
             // Handle button click - simplified for documentation
             verifyButton.on('click', function () {
-                // Implementation details...
+                // Implementation details depend on jwks_type ("server", "file", "memory")
             });
             
             // Initialize callback
             callback({
                 validate: function () { return true; },
                 getValue: function () { return propertyValue; },
-                setValue: function (newValue) { propertyValue = newValue; }
+                setValue: function (newValue) { propertyValue = newValue; },
+                jwks_type: jwks_type
             });
         }
     };
 }
 ----
-
 === Token Verification Interface
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
 
 The processor includes a token verification interface to test JWT tokens:
 
 [.text-center]
-image::../plantuml/token-verification-ui.png[Token Verification UI, align="center"]
+image::../plantuml/token-verification-ui.png[Token Verification UI (Success), align="center"]
 
 This interface allows users to:
 
@@ -138,6 +144,13 @@ This interface allows users to:
 2. Verify the token against the configured issuers
 3. View detailed token information including claims
 4. Diagnose validation failures
+
+In case of an error, the interface displays a clear error message and does not show token details:
+
+[.text-center]
+image::../plantuml/token-verification-ui_001.png[Token Verification UI (Error), align="center"]
+
+The error state highlights the invalid status in red and provides the reason for the failure (e.g., signature verification failed).
 
 == Custom UI Tabs
 

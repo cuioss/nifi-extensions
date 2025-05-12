@@ -1,6 +1,6 @@
 @startsalt
 {+
-  {* Token Verification UI}
+  {* Token Verification UI (Success)}
   {
     {/ 
       {* Input Token}
@@ -34,6 +34,34 @@
           + Key ID
           ++ kid: 12345abcde
         }
+      }
+    }
+  }
+  {
+    [Back to Configuration] | [Export Token Details]
+  }
+}
+@endsalt
+
+@startsalt
+{+
+  {* Token Verification UI (Error)}
+  {
+    {/ 
+      {* Input Token}
+      {
+        {
+          Enter JWT Token:
+          {INPUT: eyJhbGciO... }
+        }
+        {
+          [Verify Token]
+        }
+      }
+      {* Verification Result}
+      {
+        Status: <color:red>**Invalid**</color>
+        Reason: Signature verification failed
       }
     }
   }
