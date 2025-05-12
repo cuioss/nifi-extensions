@@ -154,6 +154,30 @@ void testProcessorWithMultipleIssuersIntegration() {
 }
 ----
 
+=== Integration Testing with Keycloak
+
+For integration tests with real tokens and a real identity provider, use the cui-test-keycloak-integration library. This library provides:
+
+* A pre-configured Keycloak test realm (`oauth_integration_tests`)
+* Ready-to-use user (`testUser` / `drowssap`) and client (`test_client`)
+* A base class for integration tests using Testcontainers and Keycloak
+* Consistent constants and configuration for all tests
+
+Add the following dependency to your test scope:
+
+[source,xml]
+----
+<dependency>
+    <groupId>de.cuioss.test</groupId>
+    <artifactId>cui-test-keycloak-integration</artifactId>
+    <scope>test</scope>
+</dependency>
+----
+
+For full usage details and advanced configuration, see link:../library/cui-test-keycloak-integration/README.adoc[cui-test-keycloak-integration documentation].
+
+You can find example integration tests in the KeycloakITBaseTest class linked from the documentation.
+
 For more details on integration patterns, see link:integration-patterns.adoc[Integration Patterns].
 
 == System Testing

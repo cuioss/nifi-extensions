@@ -1,0 +1,85 @@
+
+== What is it?
+
+Simple project unifying / configuring integration tests using testcontainers and keycloak. Or to put it another way: Copy-Paste-Prevention.
+Technically, it sits on top of https://github.com/dasniko/testcontainers-keycloak/tree/main[testcontainers-keycloak]
+
+It provides:
+
+* A configured Test-Realm for importing: `oauth_integration_tests`
+* A class with configured constants that are consistent with the test-realm:  link:https://github.com/cuioss/cui-test-keycloak-integration/tree/main/src/main/java/de/cuioss/test/keycloakit/TestRealm.java[TestRealm]
+* A Baseclass for creating concrete IT-Tests: link:https://github.com/cuioss/cui-test-keycloak-integration/tree/main/src/main/java/de/cuioss/test/keycloakit/KeycloakITBase.java[KeycloakITBase]
+
+== How to use it
+
+=== Dependencies
+
+[source, xml]
+<dependency>
+    <groupId>de.cuioss.test</groupId>
+    <artifactId>cui-test-keycloak-integration</artifactId>
+    <scope>test</scope>
+</dependency>
+<!-- Simple implementation that is actually a bridge to juli logging. Used for test-containers slf4j -->
+<dependency>
+    <groupId>org.slf4j</groupId>
+    <artifactId>slf4j-jdk14</artifactId>
+    <scope>test</scope>
+</dependency>
+<!-- Bridge jakarta-commons logging  to slf4j -->
+<dependency>
+    <groupId>org.slf4j</groupId>
+    <artifactId>jcl-over-slf4j</artifactId>
+    <scope>test</scope>
+</dependency>
+
+=== Testing
+
+For usage details see link:https://github.com/cuioss/cui-test-keycloak-integration/tree/main/src/test/java/de/cuioss/test/keycloakit/KeycloakITBaseTest.java[KeycloakITBaseTest]
+
+== Configuration of the Test-Realm
+
+=== Realm
+
+*Name*: `oauth_integration_tests`
+
+*Path*: `oauth_integration_tests-realm.json`
+
+=== User
+
+*UserName*: `testUser`
+
+*Password*: `drowssap`
+
+*email*: `testUser@example.com`
+
+*First Name*: `Test`
+
+*Last Name*: `User`
+
+=== OIDC-Client
+
+*Client ID*: `test_client`
+
+*Client Secret*: `yTKslWLtf4giJcWCaoVJ20H8sy6STexM`
+
+== Exporting updated configuration
+
+Tested for keycloak 26.0.1
+
+For a Local Docker-Container You need a mounted persistent volume for the h2-DB:
+
+[source, shell]
+mkdir -m 777 ./keycloak_data
+
+[source, shell]
+docker run -p 8080:8080 -v ./keycloak_data:/opt/keycloak/data/h2 -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin quay.io/keycloak/keycloak:26.0.1 start-dev
+
+Precondition: Local Docker-Container, with mounted persistent volume for h2
+
+Stop the keycloak if it is running.
+
+Start the keycloak exporter, as below:
+
+[source, shell]
+docker run --rm --name keycloak_exporter -v ./keycloak_data:/opt/keycloak/data/h2 -e KC_DB_PASSWORD=admin -e KC_DB_USERNAME=admin quay.io/keycloak/keycloak:26.0.1 export --realm oauth_integration_tests --dir /opt/keycloak/data/h2/export --users realm_file
