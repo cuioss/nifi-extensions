@@ -171,6 +171,13 @@
                 <version>${version.cui-jwt-validation}</version>
                 <scope>compile</scope>
             </dependency>
+            <dependency>
+                <groupId>de.cuioss</groupId>
+                <artifactId>cui-jwt-validation</artifactId>
+                <version>${version.cui-jwt-validation}</version>
+                <classifier>test</classifier>
+                <scope>test</scope>
+            </dependency>
             <!-- Implementation of jakarta.json-api: Used for cui-jwt-validation-->
             <dependency>
                 <groupId>org.eclipse.parsson</groupId>
@@ -243,7 +250,6 @@
                     <extensions>true</extensions>
                     <configuration>
                         <publishingServerId>central</publishingServerId>
-                        <centralUrl>https://central.sonatype.com/</centralUrl>
                         <autoPublish>true</autoPublish>
                         <waitUntil>published</waitUntil>
                     </configuration>

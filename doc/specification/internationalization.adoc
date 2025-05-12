@@ -102,6 +102,11 @@ For more details on error handling, see link:error-handling.adoc[Error Handling]
 === Log Messages
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-17.3[NIFI-AUTH-17.3: Log Messages]_
 
+[NOTE]
+====
+Log messages (as defined in LogMessage.md) are not internationalized. They are always written in English for consistency in logs and monitoring systems.
+====
+
 The processor uses the CuiLogger implementation for structured logging with internationalized messages:
 
 [source,java]

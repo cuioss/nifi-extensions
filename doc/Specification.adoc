@@ -27,6 +27,11 @@ This specification is organized into the following documents:
 * link:specification/internationalization.adoc[Internationalization] - i18n implementation
 * link:LogMessage.md[Log Messages] - Log message documentation
 
+[NOTE]
+====
+Log messages (as defined in LogMessage.md) are not internationalized. They are always written in English for consistency in logs and monitoring systems.
+====
+
 == Libraries and Dependencies
 
 The MultiIssuerJWTTokenAuthenticator uses the following key dependencies:

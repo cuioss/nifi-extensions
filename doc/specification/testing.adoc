@@ -328,3 +328,7 @@ Tests are run automatically as part of the build process:
 * link:javascript-testing.adoc[JavaScript Testing]
 * link:../Requirements.adoc#NIFI-AUTH-12[Testing Requirements]
 * link:../Specification.adoc[Back to Main Specification]
+
+== JWT Validation Test Utilities
+
+For detailed documentation on the cui-jwt-validation test utilities, see link:../library/cui-jwt-validation/unit-testing.adoc[JWT Validation Test Utilities].

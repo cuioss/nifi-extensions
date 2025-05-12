@@ -319,6 +319,11 @@ _Implementation details: link:specification/testing.adoc[Testing]_
 * Resource bundles must follow standard Java ResourceBundle pattern
 * Default to English when a translation is not available
 
+[NOTE]
+====
+Log messages (as defined in LogMessage.md) are not internationalized. They are always written in English for consistency in logs and monitoring systems.
+====
+
 _Implementation details: link:specification/internationalization.adoc[Internationalization]_
 
 == Observability Requirements

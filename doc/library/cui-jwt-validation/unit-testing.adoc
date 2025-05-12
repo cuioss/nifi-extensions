@@ -1,0 +1,228 @@
+= JWT Validation Test Utilities
+:doctype: book
+:toc: left
+:toclevels: 3
+:sectnums:
+:sectnumlevels: 3
+:icons: font
+
+== Overview
+
+This document describes the test utilities provided by the `cui-jwt-validation` project for testing JWT validation functionality in your applications.
+
+== Test Artifact
+
+The project provides a test artifact with the classifier `test` that contains utility classes for testing JWT validation. This artifact is published alongside the main artifact and can be included in your project's test dependencies.
+
+=== Maven Dependency
+
+To use the test utilities in your project, add the following dependency to your `pom.xml`:
+
+[source,xml]
+----
+<dependency>
+    <groupId>de.cuioss</groupId>
+    <artifactId>cui-jwt-validation</artifactId>
+    <version>${version}</version>
+    <classifier>test</classifier>
+    <scope>test</scope>
+</dependency>
+----
+
+=== Contents
+
+The test artifact includes the following packages:
+
+* `de.cuioss.jwt.validation.test` - Core test utilities
+* `de.cuioss.jwt.validation.test.dispatcher` - Mock dispatchers for JWKS resolution
+* `de.cuioss.jwt.validation.test.generator` - Token and claim generators
+* `de.cuioss.jwt.validation.test.util` - Utility classes for testing
+
+== Key Test Utilities
+
+=== TestTokenProducer
+
+The `TestTokenProducer` class provides methods for creating JWT tokens for testing purposes:
+
+[source,java]
+----
+// Create a valid signed JWT with default claims
+String token = TestTokenProducer.validSignedEmptyJWT();
+
+// Create a valid signed JWT with custom claims
+String tokenWithClaims = TestTokenProducer.validSignedJWTWithClaims("path/to/claims.json");
+
+// Create a valid signed JWT with custom expiration
+String tokenWithExpiration = TestTokenProducer.validSignedJWTExpireAt(Instant.now().plus(1, ChronoUnit.HOURS));
+----
+
+=== InMemoryKeyMaterialHandler
+
+The `InMemoryKeyMaterialHandler` class provides access to private and public keys used for signing and verifying tokens. Unlike the original `KeyMaterialHandler`, this class:
+
+* Creates keys on the fly
+* Stores keys in static fields instead of the filesystem
+* Supports multiple algorithms (RS256, RS384, RS512)
+* Uses BouncyCastle for key material generation
+
+==== Key Features
+
+* *Multiple Algorithm Support*: Supports RS256, RS384, and RS512 algorithms
+* *Dynamic Key Generation*: Generates keys on demand without requiring filesystem access
+* *In-Memory Storage*: Stores keys in static fields for fast access
+* *BouncyCastle Integration*: Uses BouncyCastle for cryptographic operations
+
+==== Usage Examples
+
+[source,java]
+----
+// Get default private key for RS256
+PrivateKey privateKey = InMemoryKeyMaterialHandler.getDefaultPrivateKey();
+
+// Get default public key for RS256
+PublicKey publicKey = InMemoryKeyMaterialHandler.getDefaultPublicKey();
+
+// Get private key for a specific algorithm
+PrivateKey rs384PrivateKey = InMemoryKeyMaterialHandler.getDefaultPrivateKey(InMemoryKeyMaterialHandler.Algorithm.RS384);
+
+// Get public key for a specific algorithm
+PublicKey rs384PublicKey = InMemoryKeyMaterialHandler.getDefaultPublicKey(InMemoryKeyMaterialHandler.Algorithm.RS384);
+
+// Get private key for a specific algorithm and key ID
+PrivateKey customPrivateKey = InMemoryKeyMaterialHandler.getPrivateKey(InMemoryKeyMaterialHandler.Algorithm.RS512, "custom-key-id");
+
+// Create JWKS content for the default RS256 key
+String jwks = InMemoryKeyMaterialHandler.createDefaultJwks();
+
+// Create JWKS content for a specific algorithm
+String rs384Jwks = InMemoryKeyMaterialHandler.createDefaultJwks(InMemoryKeyMaterialHandler.Algorithm.RS384);
+
+// Create JWKS content with all supported algorithms
+String multiAlgorithmJwks = InMemoryKeyMaterialHandler.createMultiAlgorithmJwks();
+
+// Create a JwksLoader for the default RS256 key
+JwksLoader jwksLoader = InMemoryKeyMaterialHandler.createDefaultJwksLoader();
+
+// Create a JwksLoader for a specific algorithm
+JwksLoader rs384JwksLoader = InMemoryKeyMaterialHandler.createDefaultJwksLoader(InMemoryKeyMaterialHandler.Algorithm.RS384, securityEventCounter);
+
+// Create a JwksLoader with all supported algorithms
+JwksLoader multiAlgorithmJwksLoader = InMemoryKeyMaterialHandler.createMultiAlgorithmJwksLoader(securityEventCounter);
+----
+
+=== InMemoryJWKSFactory
+
+The `InMemoryJWKSFactory` class provides factory methods for creating JWKS content for testing purposes. Unlike the original `JWKSFactory`, this class:
+
+* Supports multiple algorithms (RS256, RS384, RS512)
+* Creates keys on the fly
+* Stores keys in static fields instead of the filesystem
+* Uses BouncyCastle for key material generation
+
+==== Key Features
+
+* *Multiple Algorithm Support*: Supports RS256, RS384, and RS512 algorithms
+* *Dynamic JWKS Generation*: Generates JWKS content on demand without requiring filesystem access
+* *Compatibility*: Provides a similar API to the original JWKSFactory for backward compatibility
+
+==== Usage Examples
+
+[source,java]
+----
+// Create JWKS content for the default RS256 key
+String jwks = InMemoryJWKSFactory.createDefaultJwks();
+
+// Create JWKS content for a specific algorithm
+String rs384Jwks = InMemoryJWKSFactory.createDefaultJwks(InMemoryKeyMaterialHandler.Algorithm.RS384);
+
+// Create JWKS content with a specific key ID
+String customJwks = InMemoryJWKSFactory.createValidJwksWithKeyId("custom-key-id");
+
+// Create JWKS content with a specific algorithm and key ID
+String customRs384Jwks = InMemoryJWKSFactory.createValidJwksWithKeyId(InMemoryKeyMaterialHandler.Algorithm.RS384, "custom-key-id");
+
+// Create JWKS content with all supported algorithms
+String multiAlgorithmJwks = InMemoryJWKSFactory.createMultiAlgorithmJwks();
+
+// Create a JwksLoader for the default RS256 key
+JwksLoader jwksLoader = InMemoryJWKSFactory.createDefaultJwksLoader(securityEventCounter);
+
+// Create a JwksLoader for a specific algorithm
+JwksLoader rs384JwksLoader = InMemoryJWKSFactory.createJwksLoader(InMemoryKeyMaterialHandler.Algorithm.RS384, securityEventCounter);
+
+// Create a JwksLoader with all supported algorithms
+JwksLoader multiAlgorithmJwksLoader = InMemoryJWKSFactory.createMultiAlgorithmJwksLoader(securityEventCounter);
+----
+
+=== Testing In-Memory Key Material
+
+The `InMemoryKeyHandlingTest` class provides tests for the `InMemoryKeyMaterialHandler` and `InMemoryJWKSFactory` classes. These tests verify that:
+
+. Keys can be generated for all supported algorithms
+. JWKS content can be created for each algorithm
+. Multi-algorithm JWKS content can be created
+. JwksLoaders can be created with the default key
+. Tokens can be created and verified with the default key
+. The InMemoryJWKSFactory can create valid JWKS content
+
+=== JwtTokenTamperingUtil
+
+The `JwtTokenTamperingUtil` class provides methods for tampering with JWT tokens for testing validation:
+
+[source,java]
+----
+// Create a tampered token with modified claims
+String tamperedToken = JwtTokenTamperingUtil.tamperWithClaim(originalToken, "sub", "modified-subject");
+
+// Create a token with an invalid signature
+String invalidSignatureToken = JwtTokenTamperingUtil.invalidateSignature(originalToken);
+----
+
+=== Token Generators
+
+The test artifact includes various token generators for creating different types of tokens:
+
+* `AccessTokenGenerator` - Generates access tokens
+* `IDTokenGenerator` - Generates ID tokens
+* `RefreshTokenGenerator` - Generates refresh tokens
+* `ValidTokenContentGenerator` - Generates valid token content
+* `InvalidTokenContentGenerator` - Generates invalid token content for testing validation
+
+== Usage Examples
+
+=== Testing Token Validation
+
+[source,java]
+----
+@Test
+void shouldValidateToken() {
+    // Arrange
+    String token = TestTokenProducer.validSignedJWTWithClaims(TestTokenProducer.SOME_SCOPES);
+    TokenValidator validator = new TokenValidator();
+
+    // Act
+    ValidationResult result = validator.validate(token);
+
+    // Assert
+    assertTrue(result.isValid());
+}
+----
+
+=== Testing Invalid Tokens
+
+[source,java]
+----
+@Test
+void shouldRejectTamperedToken() {
+    // Arrange
+    String validToken = TestTokenProducer.validSignedEmptyJWT();
+    String tamperedToken = JwtTokenTamperingUtil.tamperWithClaim(validToken, "iss", "invalid-issuer");
+    TokenValidator validator = new TokenValidator();
+
+    // Act
+    ValidationResult result = validator.validate(tamperedToken);
+
+    // Assert
+    assertFalse(result.isValid());
+}
+----
