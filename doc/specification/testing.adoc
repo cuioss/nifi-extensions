@@ -253,53 +253,99 @@ void testHighThroughputPerformance() {
 
 == Test Data Generation
 
-=== JWT Token Generation
+Test data for JWT validation is best generated using the cui-jwt-validation test utilities. These utilities provide:
 
-Test JWT tokens are generated with various characteristics for testing:
+* Easy creation of valid and invalid JWT tokens
+* In-memory key material and JWKS generation (no filesystem required)
+* Token tampering utilities for negative testing
+* Support for multiple algorithms (RS256, RS384, RS512)
 
-[source,java]
-----
-private String createTestToken() {
-    return JWT.create()
-        .withSubject("test-subject")
-        .withIssuer("test-issuer")
-        .withAudience("api://test")
-        .withClaim("scope", "read write")
-        .withExpiresAt(Date.from(Instant.now().plusSeconds(3600)))
-        .sign(algorithm);
-}
+For full documentation, see link:../library/cui-jwt-validation/unit-testing.adoc[JWT Validation Test Utilities].
 
-private String createExpiredToken() {
-    return JWT.create()
-        .withSubject("test-subject")
-        .withIssuer("test-issuer")
-        .withAudience("api://test")
-        .withExpiresAt(Date.from(Instant.now().minusSeconds(3600)))
-        .sign(algorithm);
-}
-----
-
-=== JWKS Endpoint Simulation
-
-Test JWKS endpoints are simulated for testing:
+=== Example: Creating Test Tokens
 
 [source,java]
 ----
-private void setupMockJwksEndpoint(WireMockServer wireMockServer, String path, RSAPublicKey publicKey) {
-    JWK jwk = new RSAKey.Builder(publicKey)
-        .keyID("test-key-id")
-        .algorithm(JWSAlgorithm.RS256)
-        .build();
-    
-    JWKSet jwkSet = new JWKSet(jwk);
-    String jwksJson = jwkSet.toString();
-    
-    wireMockServer.stubFor(get(urlEqualTo(path))
-        .willReturn(aResponse()
-            .withHeader("Content-Type", "application/json")
-            .withBody(jwksJson)));
+// Create a valid signed JWT with default claims
+String token = TestTokenProducer.validSignedEmptyJWT();
+
+// Create a valid signed JWT with custom claims
+String tokenWithClaims = TestTokenProducer.validSignedJWTWithClaims("path/to/claims.json");
+
+// Create a valid signed JWT with custom expiration
+String tokenWithExpiration = TestTokenProducer.validSignedJWTExpireAt(Instant.now().plus(1, ChronoUnit.HOURS));
+----
+
+=== Example: In-Memory JWKS and Key Material
+
+[source,java]
+----
+// Get default private/public key for RS256
+PrivateKey privateKey = InMemoryKeyMaterialHandler.getDefaultPrivateKey();
+PublicKey publicKey = InMemoryKeyMaterialHandler.getDefaultPublicKey();
+
+// Create JWKS content for the default RS256 key
+String jwks = InMemoryKeyMaterialHandler.createDefaultJwks();
+
+// Create a JwksLoader for the default RS256 key
+JwksLoader jwksLoader = InMemoryKeyMaterialHandler.createDefaultJwksLoader();
+----
+
+=== Example: Tampering with Tokens
+
+[source,java]
+----
+// Create a tampered token with modified claims
+String tamperedToken = JwtTokenTamperingUtil.tamperWithClaim(originalToken, "sub", "modified-subject");
+
+// Create a token with an invalid signature
+String invalidSignatureToken = JwtTokenTamperingUtil.invalidateSignature(originalToken);
+----
+
+== MockWebServer-based Testing
+
+The project uses the cui-test-mockwebserver-junit5 extension for robust HTTP/HTTPS endpoint simulation in tests. This extension provides:
+
+* Easy annotation-based setup for HTTP/HTTPS servers
+* Context-aware mock responses with @MockResponseConfig
+* Flexible request handling with @ModuleDispatcher
+* Built-in support for HTTPS and custom certificates
+* Parameter injection for MockWebServer, URIBuilder, and SSLContext
+
+For details, see:
+
+* link:../library/cui-test-mockwebserver-junit5/README.adoc[MockWebServer JUnit5 Extension Overview]
+* link:../library/cui-test-mockwebserver-junit5/MockResponse.adoc[Working with @MockResponse]
+* link:../library/cui-test-mockwebserver-junit5/ModuleDispatcher.adoc[Working with @ModuleDispatcher]
+* link:../library/cui-test-mockwebserver-junit5/HttpsSupport.adoc[HTTPS Support and Certificates]
+
+=== Example: Simulating a JWKS Endpoint
+
+Instead of manual WireMock or custom server code, use the extension as follows:
+
+[source,java]
+----
+@EnableMockWebServer(useHttps = true)
+@MockResponseConfig(
+    path = "/.well-known/jwks.json",
+    method = HttpMethodMapper.GET,
+    status = 200,
+    jsonContentKeyValue = "keys=[{kty=RSA,kid=key1,alg=RS256,n=...,e=AQAB}]"
+)
+class JwksEndpointTest {
+    @Test
+    void shouldFetchJwks(URIBuilder uriBuilder, SSLContext sslContext) {
+        // Use uriBuilder to get the JWKS endpoint URL
+        String jwksUrl = uriBuilder.addPathSegments(".well-known", "jwks.json").build().toString();
+        // Pass jwksUrl to your processor or validator under test
+        // ...
+    }
 }
 ----
+
+For more advanced scenarios (dynamic responses, custom dispatchers, HTTPS certs), see the linked documentation above.
+
+For advanced JWKS endpoint simulation and HTTP/HTTPS testing, see the MockWebServer-based Testing section above and the detailed documentation in doc/library/cui-test-mockwebserver-junit5/.
 
 == Test Coverage
 
