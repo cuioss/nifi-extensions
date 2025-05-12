@@ -20,57 +20,59 @@ The processor supports loading configurations from external files in multiple fo
 [source,properties]
 ----
 # Example properties configuration
-issuer.count=2
+jwt.validation.issuer.count=2
 
 # First issuer configuration
-issuer.1.name=Primary Auth Server
-issuer.1.enabled=true
-issuer.1.id=primary-auth
-issuer.1.issuerUrl=https://auth.example.org
-issuer.1.jwksUrl=https://auth.example.org/.well-known/jwks.json
-issuer.1.tokenExpiration=3600
-issuer.1.requiredClaims=aud,sub
-issuer.1.aud=my-api
-issuer.1.roles=admin,user
+jwt.validation.issuer.1.name=Primary Auth Server
+jwt.validation.issuer.1.enabled=true
+jwt.validation.issuer.1.id=primary-auth
+jwt.validation.issuer.1.issuerUrl=https://auth.example.org
+jwt.validation.issuer.1.jwksUrl=https://auth.example.org/.well-known/jwks.json
+jwt.validation.issuer.1.tokenExpiration=3600
+jwt.validation.issuer.1.requiredClaims=aud,sub
+jwt.validation.issuer.1.aud=my-api
+jwt.validation.issuer.1.roles=admin,user
 
 # Second issuer configuration
-issuer.2.name=Secondary Auth Server
-issuer.2.enabled=false
-issuer.2.id=secondary-auth
-issuer.2.issuerUrl=https://auth2.example.org
-issuer.2.jwksUrl=https://auth2.example.org/.well-known/jwks.json
-issuer.2.tokenExpiration=7200
-issuer.2.requiredClaims=aud,sub,roles
-issuer.2.aud=my-secondary-api
-issuer.2.roles=viewer
+jwt.validation.issuer.2.name=Secondary Auth Server
+jwt.validation.issuer.2.enabled=false
+jwt.validation.issuer.2.id=secondary-auth
+jwt.validation.issuer.2.issuerUrl=https://auth2.example.org
+jwt.validation.issuer.2.jwksUrl=https://auth2.example.org/.well-known/jwks.json
+jwt.validation.issuer.2.tokenExpiration=7200
+jwt.validation.issuer.2.requiredClaims=aud,sub,roles
+jwt.validation.issuer.2.aud=my-secondary-api
+jwt.validation.issuer.2.roles=viewer
 ----
 
 === YAML Format (.yaml, .yml)
 
 [source,yaml]
 ----
-issuers:
-  - name: "Primary Auth Server"
-    enabled: true
-    id: "primary-auth"
-    issuerUrl: "https://auth.example.org"
-    jwksUrl: "https://auth.example.org/.well-known/jwks.json"
-    tokenExpiration: 3600
-    requiredClaims: ["aud", "sub"]
-    claims:
-      aud: "my-api"
-      roles: "admin,user"
-  
-  - name: "Secondary Auth Server"
-    enabled: false
-    id: "secondary-auth"
-    issuerUrl: "https://auth2.example.org"
-    jwksUrl: "https://auth2.example.org/.well-known/jwks.json"
-    tokenExpiration: 7200
-    requiredClaims: ["aud", "sub", "roles"]
-    claims:
-      aud: "my-secondary-api"
-      roles: "viewer"
+jwt:
+  validation:
+    issuers:
+      - name: "Primary Auth Server"
+        enabled: true
+        id: "primary-auth"
+        issuerUrl: "https://auth.example.org"
+        jwksUrl: "https://auth.example.org/.well-known/jwks.json"
+        tokenExpiration: 3600
+        requiredClaims: ["aud", "sub"]
+        claims:
+          aud: "my-api"
+          roles: "admin,user"
+      
+      - name: "Secondary Auth Server"
+        enabled: false
+        id: "secondary-auth"
+        issuerUrl: "https://auth2.example.org"
+        jwksUrl: "https://auth2.example.org/.well-known/jwks.json"
+        tokenExpiration: 7200
+        requiredClaims: ["aud", "sub", "roles"]
+        claims:
+          aud: "my-secondary-api"
+          roles: "viewer"
 ----
 
 == Static Configuration Behavior
@@ -207,27 +209,29 @@ metadata:
   name: jwt-issuers-config
 data:
   issuers.yaml: |
-    issuers:
-      - name: "Primary Auth Server"
-        enabled: true
-        id: "primary-auth"
-        issuerUrl: "https://auth.example.org"
-        jwksUrl: "https://auth.example.org/.well-known/jwks.json"
-        tokenExpiration: 3600
-        requiredClaims: ["aud", "sub"]
-        claims:
-          aud: "my-api"
-          roles: "admin,user"
-      - name: "Secondary Auth Server"
-        enabled: false
-        id: "secondary-auth"
-        issuerUrl: "https://auth2.example.org"
-        jwksUrl: "https://auth2.example.org/.well-known/jwks.json"
-        tokenExpiration: 7200
-        requiredClaims: ["aud", "sub", "roles"]
-        claims:
-          aud: "my-secondary-api"
-          roles: "viewer"
+    jwt:
+      validation:
+        issuers:
+          - name: "Primary Auth Server"
+            enabled: true
+            id: "primary-auth"
+            issuerUrl: "https://auth.example.org"
+            jwksUrl: "https://auth.example.org/.well-known/jwks.json"
+            tokenExpiration: 3600
+            requiredClaims: ["aud", "sub"]
+            claims:
+              aud: "my-api"
+              roles: "admin,user"
+          - name: "Secondary Auth Server"
+            enabled: false
+            id: "secondary-auth"
+            issuerUrl: "https://auth2.example.org"
+            jwksUrl: "https://auth2.example.org/.well-known/jwks.json"
+            tokenExpiration: 7200
+            requiredClaims: ["aud", "sub", "roles"]
+            claims:
+              aud: "my-secondary-api"
+              roles: "viewer"
 ----
 
 === Docker Compose Example

@@ -17,12 +17,10 @@ The MultiIssuerJWTTokenAuthenticator processor provides comprehensive configurat
 The processor supports three configuration methods:
 
 1. **UI Configuration** - Interactive configuration through the NiFi Web UI
-2. **Static Configuration Files** - Configuration through properties, YAML, or JSON files
+2. **Static Configuration Files** - Configuration through properties or YAML files
 3. **Environment Variables** - Configuration through environment variables for containerized environments
 
 == Configuration Properties
-
-The processor provides the following configuration categories:
 
 === Core Properties
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Validation Configuration]_
@@ -31,27 +29,27 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Va
 |===
 |Property |Default |Description |Required
 
-|token.location
+|jwt.validation.token.location
 |AUTHORIZATION_HEADER
 |Defines where to extract the token from (AUTHORIZATION_HEADER, CUSTOM_HEADER, FLOW_FILE_CONTENT)
 |Yes
 
-|token.header
+|jwt.validation.token.header
 |Authorization
 |The header name containing the token when using AUTHORIZATION_HEADER
 |No
 
-|custom.header.name
+|jwt.validation.custom.header.name
 |X-Authorization
 |The custom header name when using CUSTOM_HEADER
 |No
 
-|bearer.token.prefix
+|jwt.validation.bearer.token.prefix
 |Bearer
 |The prefix to strip from the token (e.g., "Bearer ")
 |No
 
-|require.valid.token
+|jwt.validation.require.valid.token
 |true
 |Whether to require a valid token for processing
 |Yes
@@ -64,17 +62,17 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: Authoriz
 |===
 |Property |Default |Description |Required
 
-|required.audience
+|jwt.validation.required.audience
 |
 |Audience string that must be included in the token audience claim
 |No
 
-|required.scopes
+|jwt.validation.required.scopes
 |
 |Comma-separated list of scopes required for authorization
 |No
 
-|required.roles
+|jwt.validation.required.roles
 |
 |Comma-separated list of roles required for authorization
 |No
@@ -87,12 +85,12 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Performance 
 |===
 |Property |Default |Description |Required
 
-|jwks.refresh.interval
+|jwt.validation.jwks.refresh.interval
 |3600
 |Interval in seconds for refreshing JWKS keys
 |Yes
 
-|maximum.token.size
+|jwt.validation.maximum.token.size
 |16384
 |Maximum token size in bytes
 |Yes
@@ -107,15 +105,15 @@ The processor supports multiple issuers through dynamic properties:
 |===
 |Property |Description |Example
 
-|<issuer-name>
+|jwt.validation.<issuer-name>
 |The JWKS URL or public key for the issuer
 |https://auth.example.com/.well-known/jwks.json
 
-|<issuer-name>.enabled
+|jwt.validation.<issuer-name>.enabled
 |Whether this issuer is enabled (true/false)
 |true
 
-|<issuer-name>.audience
+|jwt.validation.<issuer-name>.audience
 |Override the required audience for this specific issuer
 |api://my-service
 |===
@@ -139,7 +137,6 @@ For containerized environments and automated deployments, the processor supports
 
 * Properties (.properties)
 * YAML (.yaml, .yml)
-* JSON (.json)
 
 Static configuration files can be placed in standard locations or specified through system properties and environment variables.
 
@@ -163,15 +160,15 @@ For detailed information about environment variable configuration, see link:conf
 [source,properties]
 ----
 # Static properties
-token.location = AUTHORIZATION_HEADER
-token.header = Authorization
-bearer.token.prefix = Bearer
-require.valid.token = true
-required.audience = api://my-service
-jwks.refresh.interval = 3600
+jwt.validation.token.location = AUTHORIZATION_HEADER
+jwt.validation.token.header = Authorization
+jwt.validation.bearer.token.prefix = Bearer
+jwt.validation.require.valid.token = true
+jwt.validation.required.audience = api://my-service
+jwt.validation.jwks.refresh.interval = 3600
 
 # Dynamic properties (issuers)
-auth.server = https://auth-server.example.com/.well-known/jwks.json
+jwt.validation.auth.server = https://auth-server.example.com/.well-known/jwks.json
 ----
 
 === Advanced Configuration with Multiple Issuers
@@ -179,20 +176,20 @@ auth.server = https://auth-server.example.com/.well-known/jwks.json
 [source,properties]
 ----
 # Static properties
-token.location = AUTHORIZATION_HEADER
-token.header = Authorization
-bearer.token.prefix = Bearer
-require.valid.token = true
-required.scopes = read,write
-jwks.refresh.interval = 1800
+jwt.validation.token.location = AUTHORIZATION_HEADER
+jwt.validation.token.header = Authorization
+jwt.validation.bearer.token.prefix = Bearer
+jwt.validation.require.valid.token = true
+jwt.validation.required.scopes = read,write
+jwt.validation.jwks.refresh.interval = 1800
 
 # Dynamic properties (issuers)
-auth.server.production = https://auth.example.com/.well-known/jwks.json
-auth.server.production.audience = api://my-service-prod
+jwt.validation.auth.server.production = https://auth.example.com/.well-known/jwks.json
+jwt.validation.auth.server.production.audience = api://my-service-prod
 
-auth.server.testing = https://auth-test.example.com/.well-known/jwks.json
-auth.server.testing.audience = api://my-service-test
-auth.server.testing.enabled = false  # Disabled in production
+jwt.validation.auth.server.testing = https://auth-test.example.com/.well-known/jwks.json
+jwt.validation.auth.server.testing.audience = api://my-service-test
+jwt.validation.auth.server.testing.enabled = false  # Disabled in production
 ----
 
 == See Also

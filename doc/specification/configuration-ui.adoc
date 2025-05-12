@@ -20,17 +20,17 @@ The processor UI organizes properties into logical groups for better usability:
 Properties in the UI are organized into sections:
 
 1. **Basic Properties**: Core settings displayed by default
-   - Token Location
-   - Custom Header Name
-   - Required Audience
+   - jwt.validation.token.location
+   - jwt.validation.custom.header.name
+   - jwt.validation.required.audience
 
 2. **Advanced Properties**: Additional settings available through the "Advanced" button
-   - Token Header
-   - JWKS Refresh Interval
-   - Require Valid Token
-   - Required Roles
-   - Required Scopes
-   - Maximum Token Size
+   - jwt.validation.token.header
+   - jwt.validation.jwks.refresh.interval
+   - jwt.validation.require.valid.token
+   - jwt.validation.required.roles
+   - jwt.validation.required.scopes
+   - jwt.validation.maximum.token.size
 
 3. **Dynamic Properties**: User-defined issuer configurations
    - Each issuer has its own property entry with the issuer name as the property name
@@ -41,16 +41,16 @@ The processor implements property dependencies to enhance usability:
 
 [source,java]
 ----
-@OnPropertyModified("Token Location")
+@OnPropertyModified("jwt.validation.token.location")
 public void onTokenLocationModified(final PropertyConfiguration oldValue, 
                                     final PropertyConfiguration newValue) {
     String newLocation = newValue.getValue();
     if ("CUSTOM_HEADER".equals(newLocation)) {
         // Make Custom Header Name property visible and required
-        getPropertyConfiguration("Custom Header Name").setVisible(true).setRequired(true);
+        getPropertyConfiguration("jwt.validation.custom.header.name").setVisible(true).setRequired(true);
     } else {
         // Hide Custom Header Name property
-        getPropertyConfiguration("Custom Header Name").setVisible(false).setRequired(false);
+        getPropertyConfiguration("jwt.validation.custom.header.name").setVisible(false).setRequired(false);
     }
 }
 ----
