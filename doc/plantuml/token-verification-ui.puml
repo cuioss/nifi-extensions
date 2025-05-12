@@ -1,0 +1,44 @@
+@startsalt
+{+
+  {* Token Verification UI}
+  {
+    {/ 
+      {* Input Token}
+      {
+        {
+          Enter JWT Token:
+          {INPUT: eyJhbGciO... }
+        }
+        {
+          [Verify Token]
+        }
+      }
+      {* Verification Result}
+      {
+        Status: <color:green>**Valid**</color> | Verified against: Primary Auth Server
+      }
+      {* Token Details}
+      {
+        {T
+          + Issuer
+          ++ <b>https://auth.example.org</b>
+          + Claims
+          ++ sub: 1234567890
+          ++ name: John Doe
+          ++ aud: my-api 
+          ++ scope: read write
+          ++ roles: ["admin", "user"]
+          ++ iat: 1516239022
+          + Signature
+          ++ <color:green>**Valid**</color>
+          + Key ID
+          ++ kid: 12345abcde
+        }
+      }
+    }
+  }
+  {
+    [Back to Configuration] | [Export Token Details]
+  }
+}
+@endsalt

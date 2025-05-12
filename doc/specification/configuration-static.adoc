@@ -11,6 +11,9 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.7[NIFI-AUTH-7.7: Static C
 
 This document covers static configuration options for the MultiIssuerJWTTokenAuthenticator processor, focusing on container environments and automated deployments. For general configuration properties and options, see link:configuration.adoc[Configuration].
 
+[.text-center]
+image::../plantuml/configuration-properties.png[Configuration Properties Hierarchy, align="center"]
+
 == Configuration File Formats
 
 The processor supports loading configurations from external files in multiple formats:
@@ -30,7 +33,8 @@ jwt.validation.issuer.1.issuerUrl=https://auth.example.org
 jwt.validation.issuer.1.jwksUrl=https://auth.example.org/.well-known/jwks.json
 jwt.validation.issuer.1.tokenExpiration=3600
 jwt.validation.issuer.1.requiredClaims=aud,sub
-jwt.validation.issuer.1.aud=my-api
+jwt.validation.issuer.1.audience=my-api
+jwt.validation.issuer.1.scopes=read,write
 jwt.validation.issuer.1.roles=admin,user
 
 # Second issuer configuration
@@ -41,7 +45,8 @@ jwt.validation.issuer.2.issuerUrl=https://auth2.example.org
 jwt.validation.issuer.2.jwksUrl=https://auth2.example.org/.well-known/jwks.json
 jwt.validation.issuer.2.tokenExpiration=7200
 jwt.validation.issuer.2.requiredClaims=aud,sub,roles
-jwt.validation.issuer.2.aud=my-secondary-api
+jwt.validation.issuer.2.audience=my-secondary-api
+jwt.validation.issuer.2.scopes=read
 jwt.validation.issuer.2.roles=viewer
 ----
 
@@ -59,9 +64,9 @@ jwt:
         jwksUrl: "https://auth.example.org/.well-known/jwks.json"
         tokenExpiration: 3600
         requiredClaims: ["aud", "sub"]
-        claims:
-          aud: "my-api"
-          roles: "admin,user"
+        audience: "my-api" 
+        scopes: "read,write"
+        roles: "admin,user"
       
       - name: "Secondary Auth Server"
         enabled: false
@@ -70,9 +75,9 @@ jwt:
         jwksUrl: "https://auth2.example.org/.well-known/jwks.json"
         tokenExpiration: 7200
         requiredClaims: ["aud", "sub", "roles"]
-        claims:
-          aud: "my-secondary-api"
-          roles: "viewer"
+        audience: "my-secondary-api"
+        scopes: "read"
+        roles: "viewer"
 ----
 
 == Static Configuration Behavior
@@ -219,9 +224,9 @@ data:
             jwksUrl: "https://auth.example.org/.well-known/jwks.json"
             tokenExpiration: 3600
             requiredClaims: ["aud", "sub"]
-            claims:
-              aud: "my-api"
-              roles: "admin,user"
+            audience: "my-api" 
+            scopes: "read,write"
+            roles: "admin,user"
           - name: "Secondary Auth Server"
             enabled: false
             id: "secondary-auth"
@@ -229,9 +234,9 @@ data:
             jwksUrl: "https://auth2.example.org/.well-known/jwks.json"
             tokenExpiration: 7200
             requiredClaims: ["aud", "sub", "roles"]
-            claims:
-              aud: "my-secondary-api"
-              roles: "viewer"
+            audience: "my-secondary-api"
+            scopes: "read"
+            roles: "viewer"
 ----
 
 === Docker Compose Example

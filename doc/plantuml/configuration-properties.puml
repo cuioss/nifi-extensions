@@ -1,0 +1,42 @@
+@startuml configuration-properties
+skinparam backgroundColor white
+skinparam defaultTextAlignment left
+skinparam packageStyle rectangle
+
+title JWT Token Authenticator: Configuration Properties
+
+package "jwt.validation" as jv {
+  class "Core Properties" as core {
+    token.location: AUTHORIZATION_HEADER|CUSTOM_HEADER|FLOW_FILE_CONTENT
+    token.header: Authorization
+    custom.header.name: X-Authorization
+    bearer.token.prefix: Bearer
+    require.valid.token: true|false
+    jwks.refresh.interval: 3600
+    maximum.token.size: 16384
+  }
+  
+  class "Issuer 1" as issuer1 {
+    <issuer-name>: URL
+    <issuer-name>.enabled: true|false
+    <issuer-name>.audience: api://my-service
+    <issuer-name>.scopes: read,write
+    <issuer-name>.roles: admin,user
+  }
+  
+  class "Issuer 2" as issuer2 {
+    <issuer-name>: URL
+    <issuer-name>.enabled: true|false
+    <issuer-name>.audience: api://other-service
+    <issuer-name>.scopes: read
+    <issuer-name>.roles: viewer
+  }
+}
+
+note right of issuer1 
+  Dynamic properties:
+  Multiple issuers can be configured
+  with their own authentication rules
+end note
+
+@enduml

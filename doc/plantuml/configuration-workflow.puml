@@ -1,0 +1,49 @@
+@startuml configuration-workflow
+skinparam backgroundColor white
+skinparam activityDiamondBackgroundColor #f0f0f0
+skinparam activityDiamondBorderColor #cccccc
+
+title JWT Token Authenticator: Configuration Workflow
+
+start
+
+:Processor Initializes;
+
+if (Static Config Files Present?) then (yes)
+  :Load Configuration from Files;
+else (no)
+  if (Environment Variables Set?) then (yes)
+    :Load Configuration from Environment;
+  else (no)
+    :Use UI Configuration;
+  endif
+endif
+
+:Initialize Token Validator;
+
+:Load and Cache JWKS Keys;
+
+repeat
+  :Process Flow File;
+  
+  :Extract JWT Token;
+  
+  if (Token Valid?) then (yes)
+    :Apply Authorization Rules;
+    
+    if (Meets Requirements?) then (yes)
+      :Route to Success;
+    else (no)
+      :Route to Authorization Failure;
+    endif
+    
+  else (no)
+    :Route to Validation Failure;
+  endif
+  
+repeat while (More Flow Files?) is (yes)
+-> no;
+
+stop
+
+@enduml

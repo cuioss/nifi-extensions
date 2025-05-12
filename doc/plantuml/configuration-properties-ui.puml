@@ -1,0 +1,24 @@
+@startsalt
+{+
+  {* Configuration Properties UI}
+  {
+    {/ 
+      {* Basic Properties}
+      {
+        Token Location: {SELECT: AUTHORIZATION_HEADER | CUSTOM_HEADER | FLOW_FILE_CONTENT}
+        Custom Header Name: {INPUT: X-Authorization}
+      }
+      {* Advanced Properties}
+      {
+        Token Header: {INPUT: Authorization}
+        JWKS Refresh Interval: {INPUT: 3600}
+        Require Valid Token: {CHECK: true}
+        Maximum Token Size: {INPUT: 16384}
+      }
+    }
+    {
+      [Save] [Reset] [Advanced >>]
+    }
+  }
+}
+@endsalt

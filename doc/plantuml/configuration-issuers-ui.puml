@@ -1,0 +1,50 @@
+@startsalt
+{+
+  {* Issuer Management UI}
+  {
+    {/ 
+      {* Issuers List}
+      {
+        {*
+          Name: Primary Auth
+          Enabled: [X]
+          Audience: api://my-service
+          Scopes: read,write
+          Roles: admin,user
+          [Edit] [Del]
+        }
+        {*
+          Name: Secondary Auth
+          Enabled: [ ]
+          Audience: api://test
+          Scopes: read
+          Roles: viewer
+          [Edit] [Del]
+        }
+      }
+      [Add Issuer]
+    }
+    {
+      {* Edit Issuer Dialog}
+      {
+        Name: {INPUT: Primary Auth} *
+        Type: {SELECT: JWKS-Server | Local File | In Memory} *
+        // JWKS-Server
+        JWKS URL: {INPUT: https://auth.example.org/.well-known/jwks.json} (optional)
+        [Validate]
+        // Local File
+        Local File Path: {INPUT: /etc/keys/jwks.json} (optional)
+        [Validate]
+        // In Memory
+        JWKS (Paste): {TEXTAREA: -----BEGIN JWKS----- ... -----END JWKS-----} (optional)
+        [Validate]
+        Audience: {INPUT: api://my-service} (optional)
+        Scopes: {INPUT: read,write} (optional)
+        Roles: {INPUT: admin,user} (optional)
+        Enabled: {CHECK: true}
+        [Save] [Cancel]
+      }
+    }
+  }
+}
+@endsalt

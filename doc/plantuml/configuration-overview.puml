@@ -1,0 +1,50 @@
+@startuml configuration-overview
+skinparam backgroundColor white
+skinparam componentStyle rectangle
+skinparam defaultTextAlignment center
+
+title JWT Token Authenticator Configuration Overview
+
+package "Configuration Sources" as sources {
+  [UI Configuration] as ui
+  [Static Config Files] as files
+  [Environment Variables] as env
+}
+
+package "Configuration Categories" as categories {
+  [Core Properties] as core
+  [Issuers Configuration] as issuers
+  [Performance Settings] as perf
+}
+
+package "Configuration Components" as components {
+  [Token Location] as token
+  [Validation Rules] as validation
+  [JWKS Endpoints] as jwks
+  [Identity Providers] as idp
+}
+
+ui --> categories : provides
+files --> categories : provides
+env --> categories : provides
+
+core --> components : includes
+issuers --> components : includes 
+perf --> components : includes
+
+note bottom of sources
+  Precedence:
+  1. Static Config Files
+  2. Environment Variables
+  3. UI Configuration
+end note
+
+note right of issuers
+  Each issuer has:
+  - JWKS URL
+  - Audience
+  - Roles
+  - Scopes
+end note
+
+@enduml

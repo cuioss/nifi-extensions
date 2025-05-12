@@ -11,29 +11,49 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Confi
 
 This document covers the user interface elements and interaction patterns for configuring the MultiIssuerJWTTokenAuthenticator processor. For general configuration properties and options, see link:configuration.adoc[Configuration].
 
+[.text-center]
+image::../plantuml/configuration-workflow.png[Configuration Workflow Diagram, align="center"]
+
 == UI Property Organization
 
 The processor UI organizes properties into logical groups for better usability:
 
 === Standard Properties Tab
 
+[.text-center]
+image::../plantuml/configuration-properties-ui.png[Configuration Properties UI, align="center"]
+
 Properties in the UI are organized into sections:
 
 1. **Basic Properties**: Core settings displayed by default
    - jwt.validation.token.location
    - jwt.validation.custom.header.name
-   - jwt.validation.required.audience
 
 2. **Advanced Properties**: Additional settings available through the "Advanced" button
    - jwt.validation.token.header
    - jwt.validation.jwks.refresh.interval
    - jwt.validation.require.valid.token
-   - jwt.validation.required.roles
-   - jwt.validation.required.scopes
    - jwt.validation.maximum.token.size
 
 3. **Dynamic Properties**: User-defined issuer configurations
    - Each issuer has its own property entry with the issuer name as the property name
+   - Issuer-specific authorization settings:
+     - jwt.validation.<issuer-name>.audience
+     - jwt.validation.<issuer-name>.scopes
+     - jwt.validation.<issuer-name>.roles
+
+=== Dynamic Properties
+
+[.text-center]
+image::../plantuml/configuration-issuers-ui.png[Issuer Management UI, align="center"]
+
+Each issuer requires a unique Name and a validated Type. The Type determines how the JWKS is provided:
+
+- **JWKS-Server**: Enter a JWKS URL and use the Validate button to check connectivity and key structure.
+- **Local File**: Enter a file path and use the Validate button to check file existence and content.
+- **In Memory**: Paste the JWKS content and use the Validate button to check the format and keys.
+
+Validation of the selected Type is mandatory before an issuer can be saved. All other fields (Audience, Scopes, Roles) are optional.
 
 === Property Dependencies
 
@@ -130,6 +150,10 @@ The standard NiFi properties tab with the processor's configuration properties.
 Provides the token verification interface for testing tokens against the current configuration.
 
 === Metrics Tab
+
+[.text-center]
+image::../plantuml/configuration-metrics-ui.png[Metrics & Statistics UI, align="center"]
+
 Displays security event metrics and validation statistics:
 
 * Token validation success/failure rates
