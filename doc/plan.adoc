@@ -1,0 +1,212 @@
+= MultiIssuerJWTTokenAuthenticator TODO List
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+== Overview
+
+This document lists the actionable tasks required to fully implement the MultiIssuerJWTTokenAuthenticator according to the requirements and specifications. All tasks are traceable to requirements/specifications and use standard status indicators.
+
+== Implementation Tasks
+
+=== Core Components
+
+==== C1. MultiIssuerJWTTokenAuthenticator Processor
+[ ] _Priority:_ High
+
+_Description:_ Implement the processor class and relationships, integrate cui-jwt-validation for token validation, support multiple issuers and dynamic issuer configuration, implement property descriptors and dynamic properties, output attributes for success/failure, and error handling with standardized error codes.
+
+_Rationale:_ This is the core component that provides JWT validation and routing, fulfilling the main requirements for authentication and authorization in NiFi flows. See Requirements NIFI-AUTH-2, NIFI-AUTH-3, NIFI-AUTH-4 in link:Requirements.adoc[Requirements].
+
+_Specification Reference:_
+- link:specification/technical-components.adoc#_multiissuerjwttokenauthenticator[Technical Components: MultiIssuerJWTTokenAuthenticator]
+- link:specification/token-validation.adoc[Token Validation]
+- link:specification/configuration.adoc#_core_properties[Configuration: Core Properties]
+- link:specification/error-handling.adoc[Error Handling]
+
+_Postconditions for each step:_
+
+* Verify with a Maven build: `./mvnw -Prewrite rewrite:run clean install javadoc:javadoc` (fix all Javadoc errors/warnings, all tests must pass)
+* GIT commit each verified step
+
+==== C2. Configuration Support
+[ ] _Priority:_ High
+
+_Description:_ Implement UI configuration, static configuration file support, environment variable support, and ensure configuration precedence and reload.
+
+_Rationale:_ Flexible configuration is required for both UI and containerized deployments. See Requirements NIFI-AUTH-7.1, NIFI-AUTH-7.7 in link:Requirements.adoc[Requirements].
+
+_Specification Reference:_
+- link:specification/configuration-ui.adoc[UI Configuration]
+- link:specification/configuration-static.adoc[Static Configuration]
+- link:specification/configuration.adoc#_configuration_methods[Configuration: Methods]
+
+_Postconditions for each step:_
+
+* Verify with a Maven build: `./mvnw -Prewrite rewrite:run clean install javadoc:javadoc` (fix all Javadoc errors/warnings, all tests must pass)
+* GIT commit each verified step
+
+==== S1. Security &amp; Performance
+[ ] _Priority:_ High
+
+_Description:_ Enforce secure algorithms, key management, and HTTPS; implement caching, memory, and performance limits; integrate security event monitoring.
+
+_Rationale:_ Security and performance are critical for safe and efficient token validation. See Requirements NIFI-AUTH-8, NIFI-AUTH-9 in link:Requirements.adoc[Requirements].
+
+_Specification Reference:_
+- link:specification/security.adoc[Security]
+- link:specification/configuration.adoc#_performance_properties[Configuration: Performance Properties]
+- link:specification/observability.adoc#_security_event_monitoring[Observability: Security Event Monitoring]
+
+_Postconditions for each step:_
+
+* Verify with a Maven build: `./mvnw -Prewrite rewrite:run clean install javadoc:javadoc` (fix all Javadoc errors/warnings, all tests must pass)
+* GIT commit each verified step
+
+==== I1. Internationalization (i18n)
+[ ] _Priority:_ Medium
+
+_Description:_ Internationalize all user-facing strings, provide resource bundles for English and German, and internationalize error messages and UI components.
+
+_Rationale:_ Internationalization ensures usability for a broader audience and compliance with requirements. See Requirements NIFI-AUTH-17 in link:Requirements.adoc[Requirements].
+
+_Specification Reference:_
+- link:specification/internationalization.adoc[Internationalization]
+- link:specification/configuration-ui.adoc#_internationalized_ui_elements[UI Configuration: Internationalized UI Elements]
+
+_Postconditions for each step:_
+
+* Verify with a Maven build: `./mvnw -Prewrite rewrite:run clean install javadoc:javadoc` (fix all Javadoc errors/warnings, all tests must pass)
+* GIT commit each verified step
+
+== Testing
+_See link:specification/testing.adoc[Testing Specification]_
+
+==== T1. Unit Testing
+[ ] _Priority:_ High
+
+_Description:_ Implement unit tests for all core logic and achieve required test coverage.
+
+_Rationale:_ Unit testing ensures correctness and maintainability. See Requirements NIFI-AUTH-14.
+
+_Specification Reference:_
+- link:specification/testing.adoc#_unit_testing[Testing: Unit Testing]
+
+_Postconditions for each step:_
+
+* Verify with a Maven build: `./mvnw -Prewrite rewrite:run clean install javadoc:javadoc` (fix all Javadoc errors/warnings, all tests must pass)
+* GIT commit each verified step
+
+==== T2. Integration Testing
+[ ] _Priority:_ High
+
+_Description:_ Implement integration tests with Keycloak and mock JWKS endpoint tests.
+
+_Rationale:_ Integration testing validates end-to-end scenarios and external dependencies. See Requirements NIFI-AUTH-15.
+
+_Specification Reference:_
+- link:specification/testing.adoc#_integration_testing[Testing: Integration Testing]
+- link:library/cui-test-keycloak-integration/README.adoc[Keycloak Integration]
+- link:library/cui-test-mockwebserver-junit5/README.adoc[MockWebServer Integration]
+
+_Postconditions for each step:_
+
+* Verify with a Maven build: `./mvnw -Prewrite rewrite:run clean install javadoc:javadoc` (fix all Javadoc errors/warnings, all tests must pass)
+* GIT commit each verified step
+
+==== T3. JavaScript/UI Testing
+[ ] _Priority:_ Medium
+
+_Description:_ Implement JavaScript/UI tests for the configuration and verification UI.
+
+_Rationale:_ UI testing ensures a robust and user-friendly interface. See Requirements NIFI-AUTH-16.4.
+
+_Specification Reference:_
+- link:specification/javascript-testing.adoc[JavaScript Testing]
+
+_Postconditions for each step:_
+
+* Verify with a Maven build: `./mvnw -Prewrite rewrite:run clean install javadoc:javadoc` (fix all Javadoc errors/warnings, all tests must pass)
+* GIT commit each verified step
+
+== Documentation
+_See Requirements NIFI-AUTH-13_
+
+==== DOC1. Documentation
+[ ] _Priority:_ Medium
+
+_Description:_ Maintain and update all AsciiDoc documentation, update PlantUML diagrams as needed, and ensure all cross-references and See Also sections are present and correct.
+
+_Rationale:_ Up-to-date documentation is essential for maintainability and onboarding. See Requirements NIFI-AUTH-13.
+
+_Specification Reference:_
+- link:Specification.adoc[Specification]
+- link:Build.adoc[Build and PlantUML]
+
+_Postconditions for each step:_
+
+* Verify with a Maven build: `./mvnw -Prewrite rewrite:run clean install javadoc:javadoc` (fix all Javadoc errors/warnings, all tests must pass)
+* GIT commit each verified step
+
+== Observability &amp; Metrics
+_See Requirements NIFI-AUTH-18 in link:Requirements.adoc[Requirements]_
+
+==== O1. Observability &amp; Metrics
+[ ] _Priority:_ Medium
+
+_Description:_ Expose processor metrics in NiFi UI, integrate with NiFi metrics system, and expose Prometheus-compatible metrics.
+
+_Rationale:_ Observability is required for operational monitoring and compliance. See Requirements NIFI-AUTH-18.
+
+_Specification Reference:_
+- link:specification/observability.adoc[Observability]
+
+_Postconditions for each step:_
+
+* Verify with a Maven build: `./mvnw -Prewrite rewrite:run clean install javadoc:javadoc` (fix all Javadoc errors/warnings, all tests must pass)
+* GIT commit each verified step
+
+== Security
+_See Requirements NIFI-AUTH-8_
+
+==== S2. Security
+[ ] _Priority:_ High
+
+_Description:_ Implement input validation and authentication checks, and ensure no sensitive information is logged.
+
+_Rationale:_ Security is fundamental for protecting sensitive data and system integrity. See Requirements NIFI-AUTH-8.
+
+_Specification Reference:_
+- link:specification/security.adoc[Security]
+
+_Postconditions for each step:_
+
+* Verify with a Maven build: `./mvnw -Prewrite rewrite:run clean install javadoc:javadoc` (fix all Javadoc errors/warnings, all tests must pass)
+* GIT commit each verified step
+
+== Task Status Indicators
+
+* `[ ]` - Task not started or in progress
+* `[x]` - Task completed
+* `[~]` - Task partially completed
+* `[!]` - Task blocked or has issues
+
+== Relationship to Other Documentation
+
+This plan references:
+
+* link:Requirements.adoc[Requirements]
+* link:Specification.adoc[Specification]
+* link:specification/technical-components.adoc[Technical Components]
+* link:specification/testing.adoc[Testing]
+* link:specification/security.adoc[Security]
+* link:specification/configuration.adoc[Configuration]
+* link:specification/internationalization.adoc[Internationalization]
+* link:specification/observability.adoc[Observability]
+* link:../.junie/guidelines.md[Project Guidelines]
+
+== Implementation Notes
+
+* _Note: If any requirement or specification is unclear or incomplete, update the corresponding section in Specification.adoc or the relevant specification file before implementation._
+* _Document any assumptions or clarifications in the code and documentation._
