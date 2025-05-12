@@ -236,6 +236,55 @@ This counter provides insight into authentication patterns, potential security i
 
 For comprehensive details on security event monitoring implementation, metrics collection, and integration with monitoring systems, see link:observability.adoc[Observability Specification].
 
+=== Token Verification Interface: Isolated Validation
+
+For the Token Verification Interface (UI token testing), the processor must:
+
+- Reuse the configured IssuerConfig objects from the main processor configuration.
+- Create a new SecurityEventCounter for each UI verification request, to capture only the errors relevant to the current test.
+- Create a new TokenValidator for each UI verification request, passing in the IssuerConfigs and the new SecurityEventCounter.
+- Validate the token using the new TokenValidator instance.
+- Return both the validation result and the error details (from the SecurityEventCounter) to the UI.
+
+This ensures that UI-driven token tests do not pollute the main processor's security metrics and provide detailed, isolated error feedback for the user.
+
+[source,java]
+----
+public TokenVerificationResult verifyTokenForUi(String tokenString, List<IssuerConfig> issuerConfigs) {
+    // 1. Create a new SecurityEventCounter for this request
+    SecurityEventCounter eventCounter = new SecurityEventCounter();
+
+    // 2. Create a new TokenValidator with the existing IssuerConfigs and the new counter
+    TokenValidator validator = new TokenValidator(eventCounter, issuerConfigs);
+
+    // 3. Validate the token
+    Optional<AccessTokenContent> result = validator.createAccessToken(tokenString);
+
+    // 4. Prepare the response for the UI
+    if (result.isPresent()) {
+        // Token is valid
+        return TokenVerificationResult.success(result.get(), eventCounter);
+    } else {
+        // Token is invalid, get error details from the counter
+        return TokenVerificationResult.failure(eventCounter.getLastError(), eventCounter);
+    }
+}
+----
+
+=== UI REST Integration for Token Verification
+
+The Token Verification Interface in the UI communicates with a backend REST endpoint (e.g., `/api/token/verify`). The backend handler:
+
+- Retrieves the current IssuerConfig objects from the processor configuration.
+- Creates a new SecurityEventCounter for this request.
+- Instantiates a new TokenValidator with the IssuerConfigs and the new SecurityEventCounter.
+- Calls `createAccessToken(tokenString)` on the TokenValidator.
+- Returns the validation result and error details (from the SecurityEventCounter) as a JSON response to the UI.
+
+This ensures that each UI verification is isolated, does not affect processor metrics, and provides detailed feedback to the user.
+
+For more details, see the Token Verification Interface section in link:configuration-ui.adoc[UI Configuration].
+
 == Maven Integration
 
 To use the cui-jwt-validation library in the NiFi processor, add the following dependency to the pom.xml file:

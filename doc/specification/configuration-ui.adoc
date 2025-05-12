@@ -145,6 +145,18 @@ This interface allows users to:
 3. View detailed token information including claims
 4. Diagnose validation failures
 
+==== Backend Integration (REST Call)
+
+When the user clicks "Verify Token", the UI sends the JWT token to a backend REST endpoint (e.g., `/api/token/verify`). The backend:
+
+- Retrieves the current IssuerConfig objects from the processor configuration.
+- Creates a new SecurityEventCounter for this request.
+- Instantiates a new TokenValidator with the IssuerConfigs and the new SecurityEventCounter.
+- Calls `createAccessToken(tokenString)` on the TokenValidator.
+- Returns the validation result and error details (from the SecurityEventCounter) as a JSON response to the UI.
+
+This ensures that each UI verification is isolated, does not affect processor metrics, and provides detailed feedback to the user.
+
 In case of an error, the interface displays a clear error message and does not show token details:
 
 [.text-center]
