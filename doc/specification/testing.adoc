@@ -140,8 +140,6 @@ void testProcessorWithMultipleIssuersIntegration() {
     runner.setProperty("issuer1", getTestJwksUrl("/jwks1.json"));
     runner.setProperty("issuer2", getTestJwksUrl("/jwks2.json"));
     
-    // Set up mock JWKS endpoints with WireMock
-    // ... (WireMock setup code)
     
     // Create test flow files with tokens from different issuers
     createFlowFileWithToken(runner, createToken("issuer1"));
