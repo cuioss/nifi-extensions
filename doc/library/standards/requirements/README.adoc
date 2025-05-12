@@ -1,0 +1,72 @@
+= Requirements Standards
+:toc: left
+:toclevels: 3
+:sectnums:
+
+== Purpose
+This directory contains standards for requirements and specification documentation in CUI projects. These standards serve as independent, authoritative sources of truth for documentation requirements without being tied to specific implementation processes.
+
+== Standards Documents
+
+* xref:requirements-document.adoc[Requirements Document Structure] - Standards for requirements documentation
+* xref:specification-documents.adoc[Specification Documents Structure] - Standards for technical specification documents
+* xref:new-project-guide.adoc[New Project Guide] - Standards for requirements and specification documentation in new projects
+* xref:planning.adoc[Planning Documentation] - Standards for project planning documentation
+* xref:specification_and_implementation.adoc[Specification and Implementation Documentation] - Guidelines for linking specifications and implementation
+
+== Key Principles
+
+. All requirements must be traceable to specifications
+. All specifications must be traceable back to requirements
+. Documentation must follow AsciiDoc format
+. Requirements must be specific, measurable, achievable, relevant, and time-bound
+. Documentation structure must be consistent across all projects
+. Implemented specifications must link to their implementation
+. Specifications must be kept in sync with implementations
+
+== Implementation Linkage
+
+When a specification has been implemented and verified, the specification document must be updated to:
+
+. Add an AsciiDoc link to the actual implementation code
+. Remove any document-local code examples that are now redundant
+. Replace detailed implementation descriptions with references to the actual implementation
+. Mark the specification as implemented with a status indicator
+
+=== Example Implementation Linkage
+
+[source,asciidoc]
+----
+== Token Validation Specification
+
+=== Status: IMPLEMENTED
+
+This specification has been implemented in the following classes:
+
+* link:../src/main/java/de/cuioss/jwt/TokenValidator.java[TokenValidator]
+* link:../src/main/java/de/cuioss/jwt/TokenValidatorFactory.java[TokenValidatorFactory]
+
+Refer to the implementation and associated JavaDoc for detailed behavior.
+----
+
+=== Test Implementation Linkage
+
+The same principle applies to test specifications:
+
+. Add links to the actual test implementations
+. Remove redundant test code examples from the specification
+. Reference the test implementation for detailed test cases
+
+[source,asciidoc]
+----
+== Token Validation Test Specification
+
+=== Status: IMPLEMENTED
+
+Test cases have been implemented in:
+
+* link:../src/test/java/de/cuioss/jwt/TokenValidatorTest.java[TokenValidatorTest]
+* link:../src/test/java/de/cuioss/jwt/integration/TokenValidationIntegrationTest.java[TokenValidationIntegrationTest]
+
+Refer to the test implementations for detailed test cases and coverage.
+----

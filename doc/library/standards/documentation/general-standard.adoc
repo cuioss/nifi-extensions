@@ -1,0 +1,45 @@
+= General Documentation Standards
+:toc: left
+:toclevels: 3
+:sectnums:
+
+== Purpose
+Defines comprehensive standards for all documentation across the codebase, including general documentation rules and principles.
+
+== Related Documentation
+* xref:javadoc-standards.adoc[Javadoc Standards]: Specific standards for Javadoc documentation
+* xref:javadoc-maintenance.adoc[Javadoc Maintenance]: Process for maintaining Javadoc documentation
+* xref:readme-structure.adoc[README Structure]: Standard structure for README.adoc files
+
+== Core Documentation Standards
+
+=== General Principles
+* Only document existing code elements - no speculative or planned features
+* All references must be verified to exist
+* Use linking instead of duplication
+* Code examples must come from actual unit tests
+* Use consistent terminology across all documentation
+* All public APIs must be documented
+* All changes require successful documentation build
+
+=== Terminology Standards
+* Maintain "Java Bean Specification" terminology
+* Apply consistently across all documentation types
+* Follow project glossary and naming conventions
+* Use technical terms consistently
+
+=== Code Example Requirements
+==== Technical Requirements
+* Must be complete and compilable
+* Include all necessary imports
+* Show proper error handling
+* Follow project coding standards
+* Be verified by unit tests
+
+==== Structure Requirements
+* Start with setup/configuration
+* Show main functionality
+* Include error handling
+* Demonstrate cleanup if needed
+* Use clear variable names
+* Include comments for complex steps

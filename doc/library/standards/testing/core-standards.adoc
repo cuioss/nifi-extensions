@@ -1,0 +1,153 @@
+= Testing Core Standards
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+
+== Purpose
+
+This document defines the core standards and best practices for writing and maintaining tests across all CUI projects.
+
+== Related Documentation
+
+* xref:README.adoc[Testing Standards Overview]
+* xref:../logging/testing-guide.adoc[Logging Testing Guide]
+* xref:../documentation/javadoc-standards.adoc[Javadoc Standards]
+
+== Core Testing Principles
+
+=== Test Coverage
+
+* All public methods must have unit tests
+* All business logic must have appropriate test coverage
+* Edge cases and error conditions must be tested
+* Test coverage should aim for at least 80% line coverage
+
+=== Test Independence
+
+* Tests must be independent and not rely on other tests
+* Tests must not depend on execution order
+* Tests must clean up after themselves
+* Tests must not have side effects that affect other tests
+
+=== Test Clarity
+
+* Test names must clearly describe what is being tested
+* Test methods should follow the Arrange-Act-Assert pattern
+* Each test should test one specific behavior
+* Comments should explain complex test setups or assertions
+
+=== Test Maintenance
+
+* Tests must be maintained alongside production code
+* Failing tests must be fixed promptly
+* Tests should be refactored when production code changes
+* Test code should follow the same quality standards as production code
+
+== Test Types
+
+=== Unit Tests
+
+* Focus on testing a single unit of code in isolation
+* Mock or stub dependencies
+* Should be fast and lightweight
+* Should cover all code paths
+
+=== Integration Tests
+
+* Test interaction between components
+* May use real dependencies or test doubles
+* Should verify correct integration behavior
+* Should be isolated from external systems when possible
+
+=== System Tests
+
+* Test the entire system as a whole
+* Verify end-to-end functionality
+* May involve multiple components and services
+* Should simulate real-world usage
+
+== Test Code Changes
+
+=== Scope of Changes
+
+When adapting test code (e.g., to new logging standards), changes must be strictly limited to the test-related modifications:
+
+* DO NOT modify production code that is unrelated to the current task
+* DO NOT refactor or "improve" other aspects of the code while working on test changes
+* Each change should have a single, clear purpose
+
+.Example - Updating tests for new logging standard
+[source,java]
+----
+// CORRECT - Only change logging related code
+- import static de.cuioss.portal.core.PortalCoreLogMessages.SERVLET;  // New import
+- assertLogMessagePresentContaining(TestLogLevel.WARN, SERVLET.WARN.USER_NOT_LOGGED_IN);  // Updated assertion
+
+// INCORRECT - Making unrelated changes
+- Refactoring test method names
+- Changing test data structures
+- Modifying production code formatting
+- Adding new test cases unrelated to logging
+----
+
+=== Implementation Guidelines
+
+==== Change Strategy
+
+* Identify all affected test files
+* Plan changes before implementation
+* Make changes systematically and consistently
+* Review changes to ensure they stay within scope
+
+==== Documentation
+
+* Document the specific purpose of test changes
+* Note any test-specific configurations or requirements
+* Keep commit messages focused on the test changes
+
+=== Quality Assurance
+
+==== Verification
+
+* Run affected test suites
+* Verify only intended changes were made
+* Check for unintended side effects
+* Ensure test coverage remains consistent
+
+==== Review Process
+
+* Separate test changes from production code changes
+* Focus review on the specific test modifications
+* Ensure changes adhere to testing standards
+
+== Best Practices
+
+=== Test Organization
+
+* Group related tests in the same test class
+* Use descriptive test method names
+* Follow a consistent naming convention
+* Organize tests in a logical order
+
+=== Test Data
+
+* Use meaningful test data
+* Avoid hardcoded values
+* Consider edge cases
+* Use test data builders when appropriate
+
+=== Assertions
+
+* Use specific assertions
+* Include meaningful error messages
+* Verify only what is necessary
+* Use assertion libraries appropriately
+
+== Important Notes
+
+* All rules are normative and must be applied unconditionally
+* Test code should be treated with the same care as production code
+* Tests should be maintainable and readable
+* Focus on testing behavior, not implementation details

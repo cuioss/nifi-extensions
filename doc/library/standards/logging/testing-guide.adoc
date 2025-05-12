@@ -1,0 +1,235 @@
+= Logging Testing Guide
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+
+== Purpose
+
+This document provides comprehensive guidance and examples for testing logging implementations according to the xref:core-standards.adoc[Logging Core Standards]. It includes both specific standards and practical examples to ensure consistent and effective logging tests across CUI projects.
+
+== Related Documentation
+
+* xref:core-standards.adoc[Logging Core Standards]
+* xref:implementation-guide.adoc[Logging Implementation Guide]
+* xref:../testing/README.adoc[Testing Standards]
+* xref:../testing/core-standards.adoc[Testing Core Standards]
+
+== Testing Requirements
+
+=== Required Test Coverage
+
+All production code that uses logging must have appropriate tests that verify:
+
+1. *Correct Log Level*: Messages are logged at the intended level
+2. *Correct Message Content*: The message content matches the expected template
+3. *Correct Message ID*: The message ID follows the defined pattern
+4. *Parameter Substitution*: Parameters are correctly substituted into the message template
+5. *Exception Handling*: Exceptions are properly included in log messages
+
+=== Required Coverage Levels
+
+* All INFO level messages
+* All WARN level messages
+* All ERROR level messages
+* All FATAL level messages
+* Parameter substitution cases
+* Exception logging cases
+* Template-based logging
+
+=== Optional Coverage
+
+* DEBUG level messages
+* TRACE level messages
+* Test logging itself
+
+== Testing Framework
+
+=== Required Tools
+
+All logging tests must use:
+
+* `cui-test-juli-logger`: Primary testing framework
+* `@EnableTestLogger` annotation on test classes
+* `de.cuioss.test.juli.TestLogLevel` for log level constants
+* `de.cuioss.test.juli.LogAsserts` for assertions
+
+=== Core Components
+
+* `cui-test-juli-logger`: Primary testing framework
+* `de.cuioss.test.juli.TestLogLevel`: Log level constants
+* `de.cuioss.test.juli.LogAsserts`: Assertion methods
+* `@EnableTestLogger`: Test class annotation
+
+=== LogAsserts Methods
+
+[source,java]
+----
+// Exact message match
+assertLogMessagePresent(TestLogLevel level, String message)
+
+// Partial message match
+assertLogMessagePresentContaining(TestLogLevel level, String partialMessage)
+
+// Verify no message exists
+assertNoLogMessagePresent(TestLogLevel level, Logger logger)
+
+// Verify exactly one message exists
+assertSingleLogMessagePresent(TestLogLevel level, String message)
+----
+
+== Testing Patterns
+
+=== Basic Test Structure
+
+All logging tests should follow this structure:
+
+1. *Setup*: Configure the test environment and prepare input data
+2. *Exercise*: Execute the code that should produce log messages
+3. *Verify*: Assert that the expected log messages were produced
+4. *Teardown*: Clean up any resources (usually handled by the test framework)
+
+[source,java]
+----
+@EnableTestLogger
+class ResourceBundleLocatorTest {
+    private static final CuiLogger LOGGER = new CuiLogger(ResourceBundleLocator.class);
+
+    @Test
+    void shouldLogSuccessfulOperation() {
+        // given
+        var resourceName = "test.properties";
+
+        // when
+        loadResource(resourceName);
+
+        // then
+        assertSingleLogMessagePresent(
+            TestLogLevel.INFO,
+            BUNDLE.INFO.RESOURCE_LOADED.format(resourceName));
+    }
+}
+----
+
+=== Testing Exception Logging
+
+[source,java]
+----
+@Test
+void shouldLogException() {
+    // given
+    var errorMessage = "Invalid configuration";
+    var exception = new IllegalStateException(errorMessage);
+
+    // when
+    try {
+        throw exception;
+    } catch (Exception e) {
+        LOGGER.error(ERROR.CONFIGURATION_ERROR.format(errorMessage), e);
+    }
+
+    // then
+    assertSingleLogMessagePresent(
+        TestLogLevel.ERROR,
+        ERROR.CONFIGURATION_ERROR.format(errorMessage));
+}
+----
+
+=== Testing Multiple Parameters
+
+[source,java]
+----
+@Test
+void shouldLogMultipleParameters() {
+    // given
+    var userId = "user123";
+    var role = "admin";
+
+    // when
+    LOGGER.info(INFO.USER_ROLE_ASSIGNED.format(userId, role));
+
+    // then
+    assertSingleLogMessagePresent(
+        TestLogLevel.INFO,
+        INFO.USER_ROLE_ASSIGNED.format(userId, role));
+}
+----
+
+=== Testing No Logging
+
+[source,java]
+----
+@Test
+void shouldNotLogInNormalCase() {
+    // when
+    performNormalOperation();
+
+    // then
+    assertNoLogMessagePresent(TestLogLevel.WARN, LOGGER);
+    assertNoLogMessagePresent(TestLogLevel.ERROR, LOGGER);
+}
+----
+
+== Best Practices
+
+=== Test Organization
+
+* Create dedicated test methods for each logging scenario
+* Use descriptive test method names that explain the scenario
+* Group related tests in the same test class
+* Follow the given/when/then pattern for clarity
+* One test method per logging scenario
+* Keep tests focused on logging verification
+
+=== Assertion Usage
+
+* Use the most specific assertion method available
+* Verify both the presence and absence of messages
+* Check the exact message content when possible
+* Use `resolveIdentifierString()` for ID verification
+* Verify both success and failure cases
+
+=== Test Data
+
+* Use meaningful test data that represents real-world scenarios
+* Test with various parameter values, including edge cases
+* Consider internationalization aspects if relevant
+* Test with different exception types when applicable
+* Avoid hardcoded strings
+* Test all parameter combinations
+
+== Common Pitfalls
+
+* Not testing parameter substitution with different values
+* Missing tests for exception logging scenarios
+* Not verifying the absence of unexpected log messages
+* Using incorrect log levels in assertions
+* Not testing all required log levels (INFO/WARN/ERROR/FATAL)
+* Testing implementation details instead of behavior
+
+== Important Notes
+
+* All rules are normative and must be applied unconditionally
+* Test all required log levels (INFO/WARN/ERROR/FATAL)
+* Always verify both presence and absence of messages
+* Keep tests focused on logging verification
+* Reference these rules with '@llm-rules'
+
+== Success Criteria
+
+A logging test suite is considered successful when:
+
+1. All required messages are tested with appropriate assertions
+2. Tests verify both success and failure scenarios
+3. Parameter substitution is tested with various values
+4. Exception logging is verified with different exception types
+5. The absence of unexpected logging is confirmed
+6. All tests are deterministic and reliable
+
+== See Also
+
+* xref:core-standards.adoc[Logging Core Standards]
+* xref:implementation-guide.adoc[Logging Implementation Guide]
+* xref:../testing/core-standards.adoc[Testing Core Standards]
+* xref:../java/dsl-style-constants.adoc[DSL-Style Constants Pattern]

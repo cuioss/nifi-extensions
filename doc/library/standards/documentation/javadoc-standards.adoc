@@ -1,0 +1,185 @@
+= Javadoc Standards
+:toc: left
+:toclevels: 3
+:sectnums:
+
+== Purpose
+Defines specific standards for Javadoc documentation across the codebase, ensuring consistency and completeness.
+
+== Related Documentation
+* xref:general-standard.adoc[General Documentation Standards]: Core documentation standards
+* xref:javadoc-maintenance.adoc[Javadoc Maintenance]: Process for maintaining Javadoc documentation
+* xref:readme-structure.adoc[README Structure]: Standard structure for README.adoc files
+
+== Javadoc Standards
+
+=== Package Documentation
+* Every package must have package-info.java
+* Package documentation must describe the package purpose
+* Include cross-references to related packages
+* List key components and interfaces
+* Provide usage examples where appropriate
+
+=== Class/Interface Documentation
+* Every public and protected class/interface must be documented
+* Include clear purpose statement
+* Document inheritance relationships
+* Specify thread-safety guarantees
+* Include @since tag with version information
+* Document serialization if applicable
+* Include usage examples for complex classes
+
+=== Method Documentation
+* Every public and protected method must be documented
+* Document parameters with @param tags
+* Document return values with @return tags
+* Document exceptions with @throws tags
+* Include usage examples for complex methods
+* Document thread-safety considerations
+* Use @see for related methods
+* Use @deprecated with migration path if applicable
+
+=== Field Documentation
+* Document all public and protected fields
+* Include validation rules and constraints
+* Document default values
+* Use @deprecated with migration path if applicable
+
+=== Annotation Documentation
+* Document purpose and applicability
+* Document all elements with @param tags
+* Specify default values
+* Include usage examples
+* Document processing requirements
+
+== Documentation Structure
+
+=== Package Documentation
+==== Required Sections
+* Overview explaining purpose and scope
+* Key Components listing main classes/interfaces
+* Best Practices section with guidelines
+* Cross-references to related components
+* Author and version information
+
+==== Organization
+* Clear hierarchy of information
+* Logical grouping of related items
+* Consistent section ordering
+* Proper use of subsections
+
+=== Class/Interface Documentation
+==== Core Elements
+* Clear purpose description
+* Parameter descriptions with validation rules
+* Return value descriptions
+* Exception documentation
+* Usage examples from unit tests
+* Version information with @since tags
+* Thread-safety notes where applicable
+
+==== Structure Requirements
+* Consistent organization
+* Clear separation of concerns
+* Proper grouping of related methods
+* Logical ordering of sections
+
+=== Method Documentation
+==== Required Elements
+* Precise description of functionality
+* Parameter validation rules
+* Return value guarantees
+* Exception conditions
+* Thread-safety notes where applicable
+* Usage examples for complex methods
+
+==== Organization
+* Standard order of elements
+* Clear parameter descriptions
+* Explicit preconditions
+* Detailed post-conditions
+
+==== Non-public Methods: Private, package-private, protected
+* Document only if necessary
+* Use @implSpec tag for implementation details
+* Include usage examples if complex
+* Do not comment on trivial methods
+* Do not comment in the form of "Stating the obvious"
+
+=== Field Documentation
+==== Public Fields: Document all public fields
+* Include usage examples if complex
+* Do not comment on trivial fields
+* Do not comment in the form of "Stating the obvious"
+* Do not comment standard fields like serialVersionUID, LOGGER, etc.
+
+==== Private Fields: Document only if necessary
+* Include usage examples if complex
+* Do not comment on trivial fields
+* Do not comment in the form of "Stating the obvious"
+* Do not comment standard fields like serialVersionUID, LOGGER, etc.
+
+=== Enum Documentation
+* Document the enum purpose
+* Document each enum constant
+* Document methods specific to the enum
+* Include usage examples
+
+== Javadoc Formatting
+
+=== HTML Formatting
+* Use HTML tags sparingly
+* Ensure all HTML tags are properly closed
+* Use `<p>` for paragraph breaks
+* Use `<code>` for inline code
+* Use `<pre>` for code blocks
+* Use `<ul>` and `<li>` for lists
+
+=== Code Examples
+* Use `<pre>` and `<code>` tags for code examples
+* Include complete, compilable examples
+* Show proper error handling
+* Follow project coding standards
+
+=== Links and References
+* Use `{@link}` for references to classes, methods, and fields
+* Use `{@linkplain}` for plain text links
+* Use `{@code}` for inline code that is not a link
+* Use `{@literal}` for text with special characters
+* Verify all references exist
+
+=== Tag Order
+* @param (in parameter order)
+* @return
+* @throws (in alphabetical order)
+* @see
+* @since
+* @deprecated
+* @author (if applicable)
+* @version (if applicable)
+
+== Special Documentation Cases
+
+=== Builder Classes
+* Document the builder purpose
+* Document each builder method
+* Include complete builder usage example
+* Document validation rules
+
+=== Factory Methods
+* Document factory purpose
+* Document creation conditions
+* Document returned instance guarantees
+* Include usage examples
+
+=== Fluent APIs
+* Document method chaining pattern
+* Document terminal operations
+* Include complete fluent API example
+* Document state changes
+
+=== Generic Types
+* Document type parameters with @param tags
+* Explain type constraints
+* Document wildcard usage
+* Include examples with different type arguments

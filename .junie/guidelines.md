@@ -24,37 +24,37 @@ This file provides guidance to Junie when working with code in this repository.
 - Log messages: `doc/LogMessage.md`
 
 ## CUI Standards Documentation
-- Standards Overview: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/README.adoc`
+- Standards Overview: `doc/library/standards/README.adoc`
 
 ### Java Standards
-- Java Code Standards: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/java/java-code-standards.adoc`
-- DSL-Style Constants: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/java/dsl-style-constants.adoc`
-- Java README: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/java/README.adoc`
+- Java Code Standards: `doc/library/standards/java/java-code-standards.adoc`
+- DSL-Style Constants: `doc/library/standards/java/dsl-style-constants.adoc`
+- Java README: `doc/library/standards/java/README.adoc`
 
 ### Documentation Standards
-- General Documentation: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/documentation/general-standard.adoc`
-- Javadoc Standards: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/documentation/javadoc-standards.adoc`
-- Javadoc Maintenance: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/documentation/javadoc-maintenance.adoc`
-- README Structure: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/documentation/readme-structure.adoc`
-- Documentation README: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/documentation/README.adoc`
+- General Documentation: `doc/library/standards/documentation/general-standard.adoc`
+- Javadoc Standards: `doc/library/standards/documentation/javadoc-standards.adoc`
+- Javadoc Maintenance: `doc/library/standards/documentation/javadoc-maintenance.adoc`
+- README Structure: `doc/library/standards/documentation/readme-structure.adoc`
+- Documentation README: `doc/library/standards/documentation/README.adoc`
 
 ### Logging Standards
-- Logging Core Standards: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/logging/core-standards.adoc`
-- Logging Implementation Guide: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/logging/implementation-guide.adoc`
-- Logging Testing Guide: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/logging/testing-guide.adoc`
-- Logging README: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/logging/README.adoc`
+- Logging Core Standards: `doc/library/standards/logging/core-standards.adoc`
+- Logging Implementation Guide: `doc/library/standards/logging/implementation-guide.adoc`
+- Logging Testing Guide: `doc/library/standards/logging/testing-guide.adoc`
+- Logging README: `doc/library/standards/logging/README.adoc`
 
 ### Testing Standards
-- Testing Core Standards: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/testing/core-standards.adoc`
-- Quality Standards: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/testing/quality-standards.adoc`
-- Testing README: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/testing/README.adoc`
+- Testing Core Standards: `doc/library/standards/testing/core-standards.adoc`
+- Quality Standards: `doc/library/standards/testing/quality-standards.adoc`
+- Testing README: `doc/library/standards/testing/README.adoc`
 
 ### Requirements Standards
-- Requirements Documents: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/requirements/requirements-document.adoc`
-- Specification Documents: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/requirements/specification-documents.adoc`
-- New Project Guide: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/requirements/new-project-guide.adoc`
-- Planning: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/requirements/planning.adoc`
-- Requirements README: `https://github.com/cuioss/cui-llm-rules/tree/main/standards/requirements/README.adoc`
+- Requirements Documents: `doc/library/standards/requirements/requirements-document.adoc`
+- Specification Documents: `doc/library/standards/requirements/specification-documents.adoc`
+- New Project Guide: `doc/library/standards/requirements/new-project-guide.adoc`
+- Planning: `doc/library/standards/requirements/planning.adoc`
+- Requirements README: `doc/library/standards/requirements/README.adoc`
 
 ## Code Style Guidelines
 - Follow package structure: reverse domain name notation (de.cuioss.jwt.validation)

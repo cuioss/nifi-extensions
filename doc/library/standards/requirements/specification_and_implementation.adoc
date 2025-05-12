@@ -1,0 +1,192 @@
+= Specification and Implementation Documentation
+:toc: left
+:toclevels: 3
+:sectnums:
+
+== Purpose
+This document defines the standard approach for distributing information between specification documents and implementation code in CUI projects. It establishes clear guidelines for what information belongs in specification documents versus implementation code, ensuring a holistic view of the system while avoiding duplication.
+
+== Related Documentation
+* link:specification/security.adoc[Security Specification]: Example of a specification document following these guidelines
+* https://github.com/cuioss/cui-llm-rules/blob/main/standards/README.adoc#creating-new-standards-documents[CUI Standards Documentation]: Guidelines for creating standards documents
+
+== Information Distribution Guidelines
+
+=== Core Principles
+1. *Separation of Concerns*: Clearly separate specification information from implementation details
+2. *Single Source of Truth*: Each piece of information should have one authoritative source
+3. *Holistic View*: Maintain a comprehensive view of the system through proper cross-referencing
+4. *Appropriate Context*: Place information where it provides the most value to its intended audience
+
+=== Documentation Lifecycle
+
+The documentation lifecycle follows these key principles:
+
+1. *Specification First*: Initially, the specification document is the source of truth, containing detailed requirements, constraints, and expected behaviors.
+
+2. *Implementation Integration*: Once implementation is in place:
+   * The specification should be updated to link to the implementation classes and corresponding tests
+   * Source code and implementation details should be removed from the specification
+   * The specification should focus on the "what" rather than the "how"
+   * Implementation details should be documented in JavaDoc
+
+=== Specification Documents
+
+Specification documents should contain:
+
+1. *Requirements*: What the system must do
+2. *Constraints*: Limitations and boundaries the system must operate within
+3. *Standards*: Technical standards the system must adhere to
+4. *Architecture*: High-level system structure and component relationships
+5. *References*: Links to implementation classes that fulfill the specification
+6. *Verification*: References to tests that verify the implementation meets the specification
+
+Specification documents should NOT contain:
+
+1. Implementation details (how the code works internally)
+2. Code snippets (except for API usage examples)
+3. Class-specific behavior that isn't relevant to the overall specification
+4. Detailed method descriptions that belong in JavaDoc
+5. Transitionary states (e.g., "has been moved", "was refactored") - document the current state, not the transition
+
+=== Implementation Code
+
+Implementation code documentation (JavaDoc) should contain:
+
+1. *Purpose*: What the class/method does
+2. *Usage*: How to use the class/method
+3. *Implementation Details*: How the code works internally
+4. *Edge Cases*: Special cases and error handling
+5. *References*: Links back to the specification documents for requirements context
+6. *Examples*: Code examples showing how to use the class/method
+
+Implementation code documentation should NOT contain:
+
+1. Extensive requirement explanations that belong in specification documents
+2. Architectural overviews that span multiple components
+3. Standards definitions that apply to multiple classes
+
+== Cross-Referencing Approach
+
+=== From Specification to Implementation
+
+Specification documents should reference implementation classes using:
+
+1. Direct links to the Java files:
+```
+link:../src/main/java/com/example/MyClass.java[MyClass]
+```
+
+2. Lists of implementing classes for each specification section:
+```
+The following classes implement this specification:
+
+* link:../src/main/java/com/example/ClassA.java[ClassA]
+* link:../src/main/java/com/example/ClassB.java[ClassB]
+```
+
+3. References to verification tests:
+```
+The following tests verify the implementation:
+
+* link:../src/test/java/com/example/MyClassTest.java[MyClassTest]
+```
+
+=== From Implementation to Specification
+
+JavaDoc in implementation classes should reference specification documents using:
+
+1. Links to the specific specification document:
+```java
+/**
+ * This class implements the widget processing functionality.
+ * <p>
+ * For more details on the requirements, see the
+ * <a href="../../../../../../../doc/specification/widgets.adoc">Widget Specification</a>.
+ */
+```
+
+2. Requirement references:
+```java
+/**
+ * Implements requirement: {@code REQ-123: Widget Validation}
+ */
+```
+
+== Example Structure
+
+=== Specification Document Example
+
+```asciidoc
+= Widget Processing Specification
+:toc: left
+:toclevels: 3
+:sectnums:
+
+== Widget Validation
+_See Requirement link:../Requirements.adoc#REQ-123[REQ-123: Widget Validation]_
+
+=== Status: IMPLEMENTED
+
+The following classes implement this specification:
+
+* link:../src/main/java/com/example/WidgetValidator.java[WidgetValidator]
+* link:../src/main/java/com/example/WidgetProcessor.java[WidgetProcessor]
+
+The widget validation ensures that all widgets meet the required standards before processing.
+
+For implementation details, see the JavaDoc of the link:../src/main/java/com/example/WidgetValidator.java[WidgetValidator] class.
+
+The following tests verify the implementation:
+
+* link:../src/test/java/com/example/WidgetValidatorTest.java[WidgetValidatorTest]
+```
+
+=== Implementation JavaDoc Example
+
+```java
+/**
+ * Validates widgets according to the defined standards.
+ * <p>
+ * This class provides comprehensive validation for widgets, ensuring they
+ * meet all required standards before processing.
+ * <p>
+ * Implements requirement: {@code REQ-123: Widget Validation}
+ * <p>
+ * For more details on the validation requirements, see the
+ * <a href="../../../../../../../doc/specification/widgets.adoc">Widget Specification</a>.
+ *
+ * @author John Doe
+ */
+public class WidgetValidator {
+    // Implementation details...
+}
+```
+
+== Benefits of This Approach
+
+1. *Clear Responsibility*: Each document has a clear purpose and audience
+2. *Reduced Duplication*: Information exists in only one authoritative location
+3. *Improved Maintainability*: Changes to implementation details don't require updating specification documents
+4. *Better Navigation*: Developers can easily move between specification and implementation
+5. *Holistic View*: The system can be understood both at a high level (specification) and in detail (implementation)
+6. *Separation of Concerns*: Specification authors can focus on requirements, developers on implementation
+
+== Implementation Process
+
+When implementing a new feature or modifying an existing one:
+
+1. Start with the specification document to understand requirements
+2. Implement the code with proper JavaDoc referencing the specification
+3. Update the specification document with links to the implementation classes
+4. Add links to verification tests in the specification document
+5. Remove any implementation details, source code, or transitionary language from the specification
+6. Review both specification and implementation to ensure consistency
+
+When updating documentation:
+
+1. Identify whether the information belongs in specification or implementation
+2. Move implementation details from specification documents to JavaDoc
+3. Add cross-references between specification and implementation
+4. Remove any references to transitionary states, focusing on the current state
+5. Ensure a holistic view is maintained through proper linking

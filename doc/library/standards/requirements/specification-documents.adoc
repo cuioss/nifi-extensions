@@ -1,0 +1,65 @@
+= Specification Documents Structure and Format
+:toc: left
+:toclevels: 3
+:sectnums:
+
+== Purpose
+Defines the structure and format for specification documents in CUI projects, ensuring consistency and traceability to requirements.
+
+== Document Location and Naming
+. The main specification document must be located at `doc/Specification.adoc`
+. Individual specification documents must be located in `doc/specification/` directory
+. Individual specification documents must follow a consistent naming convention:
+.. Use lowercase with hyphens for multi-word names
+.. Example: `technical-components.adoc`, `error-handling.adoc`
+. All specification documents must follow AsciiDoc format
+
+== Main Specification Document Structure
+. The main specification document (`Specification.adoc`) must include:
+.. Title: `= [Project Name] Specification`
+.. Table of contents: `:toc:`, `:toclevels: 3`, `:toc-title: Table of Contents`, `:sectnums:`
+.. Overview section with a backtracking link to the corresponding requirement
+.. Document Structure section listing all individual specification documents with links
+.. Each section must include a backtracking link to the corresponding requirement
+
+== Individual Specification Document Structure
+. Each individual specification document must include:
+.. Title: `= [Project Name] [Component/Feature]`
+.. Table of contents: `:toc:`, `:toclevels: 3`, `:toc-title: Table of Contents`, `:sectnums:`
+.. A link back to the main specification document at the top: `link:../Specification.adoc[Back to Main Specification]`
+.. Sections organized by component, feature, or aspect
+.. Each section must include a backtracking link to the corresponding requirement
+
+== Backtracking Links Format
+. Each specification section must include a backtracking link to the corresponding requirement
+. The backtracking link must follow this exact format:
++
+[source]
+----
+_See Requirement link:../Requirements.adoc#PREFIX-NUM[PREFIX-NUM: Requirement Title]_
+----
+. For specification files in subdirectories, use relative paths:
++
+[source]
+----
+_See Requirement link:../Requirements.adoc#PREFIX-NUM[PREFIX-NUM: Requirement Title]_
+----
+. For specification files in the root directory, use direct path:
++
+[source]
+----
+_See Requirement link:Requirements.adoc#PREFIX-NUM[PREFIX-NUM: Requirement Title]_
+----
+. There must be exactly ONE empty line after each backtracking link before the content begins
+. This empty line is required to create a proper paragraph separation in the rendered document
+
+== Specification Content
+. Specifications must provide detailed implementation guidance
+. Include code examples where appropriate
+. Provide diagrams for complex components or workflows
+. Reference external documentation when necessary
+. Ensure all implementation details are traceable to requirements
+
+== Related Documentation
+* xref:requirements-document.adoc[Requirements Document Structure]
+* xref:new-project-guide.adoc[New Project Guide]

@@ -1,0 +1,157 @@
+= Java Coding Standards
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+
+== Purpose
+
+This document defines general best practices and standards for writing Java code in CUI projects. These standards ensure consistent, maintainable, and high-quality code across all Java projects.
+
+== Related Documentation
+
+* xref:README.adoc[Java Standards]
+* xref:../documentation/javadoc-standards.adoc[Javadoc Standards]
+* xref:../logging/implementation-guide.adoc[Logging Implementation Guide]
+
+== General Principles
+
+. *Code Readability*: Write code that is easy to read and understand
+. *Maintainability*: Design code that is easy to modify and extend
+. *Consistency*: Follow consistent patterns across the codebase
+. *Testability*: Write code that is easy to test
+. *Performance*: Consider performance implications in design decisions
+
+== Code Organization
+
+=== Package Structure
+
+. Use reverse domain name notation for package names
+. Organize packages by feature rather than layer
+. Keep package cohesion high
+
+=== Class Structure
+
+. Follow the Single Responsibility Principle
+. Keep classes small and focused
+. Use proper access modifiers (public, protected, private)
+
+=== Method Design
+
+. Keep methods short and focused
+. Use meaningful method names
+. Follow the Command-Query Separation principle
+
+== Coding Practices
+
+=== Naming Conventions
+
+. Use meaningful and descriptive names
+. Follow standard Java naming conventions
+. Avoid abbreviations unless widely understood
+
+=== Exception Handling
+
+. Use checked exceptions for recoverable conditions
+. Use unchecked exceptions for programming errors
+. Don't catch generic Exception
+. Include meaningful error messages
+
+=== Documentation
+
+. Follow Javadoc standards (see xref:../documentation/javadoc-standards.adoc[Javadoc Standards])
+
+== Best Practices
+
+. Prefer immutable objects
+. Use final fields where appropriate
+. Consider using records for data carriers
+. Use interface types for declarations
+. Prefer immutable collections
+. Use appropriate collection types for use cases
+. Use streams for complex data transformations
+. Keep lambda expressions short and clear
+. Avoid side effects in streams
+. Always use the most recent features from the version to compile against (e.g., usage of Record-classes for Java 17)
+. Use Lombok where sensible
+. Prefer delegation over inheritance.
+. Prefer Imports over fully qualified class names. Where applicable
+
+=== Using Lombok
+
+Lombok can help reduce boilerplate code and improve readability. Here are some guidelines on when to use specific Lombok annotations:
+
+. Use `@Delegate` for delegation over inheritance:
+[source,java]
+----
+public class Printer {
+    @Delegate
+    private final PrinterService printerService = new PrinterServiceImpl();
+}
+----
+
+. Use `@Builder` for building complex objects:
+[source,java]
+----
+@Builder
+public class User {
+    private String id;
+    private String name;
+    private String email;
+}
+----
+
+. Use `@Value` for immutable objects:
+[source,java]
+----
+@Value
+public class Address {
+    String street;
+    String city;
+    String zipCode;
+}
+----
+
+== Best Practices Examples
+
+=== Using Records for Data Carriers
+
+[source,java]
+----
+public record User(String id, String name, String email) {}
+----
+
+=== Using Streams for Complex Data Transformations
+
+[source,java]
+----
+List<String> names = users.stream()
+    .filter(user -> user.getAge() > 18)
+    .map(User::getName)
+    .sorted()
+    .toList();
+----
+
+=== Keeping Lambda Expressions Short and Clear
+
+[source,java]
+----
+List<Integer> lengths = strings.stream()
+    .map(String::length)
+    .toList();
+----
+
+=== Avoiding Side Effects in Streams
+
+[source,java]
+----
+// Avoid this
+List<String> names = new ArrayList<>();
+users.stream().forEach(user -> names.add(user.getName()));
+
+// Prefer this
+List<String> names = users.stream()
+    .map(User::getName)
+    .toList();
+----

@@ -1,0 +1,226 @@
+= Quality Standards and Testing Framework
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+
+== Purpose
+
+This document defines comprehensive quality standards, testing framework guidelines, and quality verification processes for CUI OSS projects.
+
+== Related Documentation
+
+* xref:README.adoc[Testing Standards Overview]
+* xref:core-standards.adoc[Core Testing Standards]
+* xref:../logging/testing-guide.adoc[Logging Testing Guide]
+* xref:../documentation/javadoc-standards.adoc[Javadoc Standards]
+* xref:../java/README.adoc[Java Standards]
+
+== Core Testing Standards
+
+=== Test Structure and Organization
+
+* Follow AAA pattern (Arrange-Act-Assert)
+* One logical assertion per test
+* Clear test naming convention
+* Descriptive test documentation
+* Independent test execution
+* Clean test environment
+* Predictable test data
+
+=== Coverage Requirements
+
+* Minimum 80% line coverage
+* Minimum 80% branch coverage
+* Critical paths must have 100% coverage
+* All public APIs must be tested
+* Edge cases must be covered
+* No coverage regressions allowed
+* Regular coverage review
+* Use Maven profile `-Pcoverage` for verifying coverage metrics
+
+=== Testing Tools and Frameworks
+
+==== Required Frameworks
+
+1. JUnit 5
+   * Use `@DisplayName` for readable test names
+   * Leverage parameterized tests (see <<parameterized-tests-best-practices,Parameterized Tests Best Practices>>)
+   * Apply proper test lifecycle annotations
+
+==== CUI Testing Utilities
+
+1. https://github.com/cuioss/cui-test-generator[cui-test-generator]
+   * Use for generating test data
+   * Follow builder patterns
+   * Document generator configurations
+
+2. https://github.com/cuioss/cui-test-value-objects[cui-test-value-objects]
+   * Leverage for value object testing
+   * Follow equality testing guidelines
+   * Include serialization tests
+
+3. https://github.com/cuioss/cui-jsf-test-basic[cui-jsf-test-basic]
+   * Use for JSF component testing
+   * Follow component test patterns
+   * Include lifecycle tests
+
+4. https://github.com/cuioss/cui-test-mockwebserver-junit5[cui-test-mockwebserver-junit5]
+   * Use for testing HTTP client interactions
+   * Mock HTTP server responses
+   * Test request/response handling
+
+=== Test Categories
+
+==== Unit Tests
+
+* Test single units in isolation
+* Mock all dependencies
+* Fast execution
+* High maintainability
+
+==== Integration Tests
+
+* Test component interactions
+* Minimal mocking
+* Cover critical paths
+* Include error scenarios
+* Regular maintenance required
+
+==== System Tests
+
+* End-to-end scenarios
+* Real dependencies where possible
+* Cover main user flows
+* Include performance criteria
+
+== Quality Verification
+
+=== Quality Analysis Tools
+
+* SonarCloud for static code analysis
+* JUnit for unit testing
+* Mutation testing for test quality
+* Regular code reviews
+* Continuous integration checks
+
+=== Quality Metrics
+
+* Code coverage
+* Code duplication
+* Complexity metrics
+* Issue density
+* Technical debt ratio
+
+=== Best Practices
+
+==== Test Quality
+
+* Regular test review
+* Mutation testing
+* Test failure analysis
+* DRY in test utilities
+* Clear test documentation
+* Consistent patterns
+
+[[parameterized-tests-best-practices]]
+=== Parameterized Tests Best Practices
+
+* *Minimum Test Cases*: Parameterized tests should have at least 3 test cases to justify the overhead
+** For fewer than 3 test cases, use direct test methods instead
+** Convert existing parameterized tests with fewer than 3 cases to direct methods
+
+* *Method Source Organization*:
+** Use descriptive method names for test case providers
+** Group related test cases together
+** Document each test case's purpose in the provider method
+** Return `Stream<Arguments>` with clear parameter descriptions
+** *Limit to test data only*: Method sources should only provide input data, expected outputs, and optionally error messages
+** *Avoid strategy pattern*: Do not use method sources to implement different testing strategies or behaviors
+
+* *Test Case Naming*:
+** Use the `name` parameter in `@ParameterizedTest` for descriptive test names
+** Include parameter values in the name template where appropriate
+** Example: `@ParameterizedTest(name = "{0}: {1} should result in {2}")`
+
+* *Test Case Documentation*:
+** Document the purpose of each test case in the provider method
+** Include edge cases and boundary conditions
+** Explain the relationship between inputs and expected outputs
+
+* *Maintenance Considerations*:
+** Regularly review parameterized tests for relevance
+** Avoid excessive parameterization that obscures test intent
+** Balance between coverage and maintainability
+** Refactor tests that use method sources as strategy patterns into separate test methods
+
+=== Performance
+
+* Fast test execution
+* Efficient resource usage
+* Parallel test execution where possible
+* Regular performance monitoring
+
+=== Review Process
+
+Regular Review Points:
+
+* After major feature completion
+* Before creating pull requests
+* During code review process
+* Post-merge verification
+
+=== Documentation
+
+* Record quality findings
+* Document remediation steps
+* Note technical debt decisions
+* Update quality metrics
+* Track coverage changes
+
+== Success Criteria
+
+=== Test Coverage
+
+* All coverage requirements met
+* Critical paths fully covered
+* Test quality sufficient
+* No coverage regressions
+
+=== Quality Analysis
+
+* All quality gates passed
+* New issues addressed
+* Impact assessed
+* Clear remediation paths
+* Documentation complete
+
+=== Security
+
+* No critical vulnerabilities
+* Security hotspots reviewed
+* Dependencies verified
+* Security standards met
+
+== Maven Coverage Profile
+
+To verify code coverage in your project, use the Maven profile `-Pcoverage`:
+
+[source,bash]
+----
+./mvnw clean verify -Pcoverage
+----
+
+This profile will:
+
+* Enable JaCoCo code coverage analysis
+* Generate detailed coverage reports
+* Enforce minimum coverage thresholds
+* Fail the build if coverage requirements are not met
+
+== See Also
+
+* xref:../java/README.adoc[Java Standards]
+* xref:../documentation/javadoc-standards.adoc[Javadoc Standards]
+* xref:../logging/README.adoc[Logging Standards]

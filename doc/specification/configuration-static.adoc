@@ -16,6 +16,12 @@ image::../plantuml/configuration-properties.png[Configuration Properties Hierarc
 
 == Configuration File Formats
 
+[NOTE]
+====
+The authoritative list and description of all configuration properties is maintained in link:configuration.adoc[Configuration].
+This document only provides format- and environment-specific examples for static configuration. Refer to the main property table in configuration.adoc for property meanings, defaults, and requirements.
+====
+
 The processor supports loading configurations from external files in multiple formats:
 
 === Properties Format (.properties)

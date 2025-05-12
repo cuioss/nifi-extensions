@@ -1,0 +1,127 @@
+= Refactoring Process Documentation
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+This document describes the process and structure used for managing refactoring tasks in the cui-jwt-token-handling project.
+
+== Task Structure
+
+=== Categories and Numbering
+
+Tasks are organized into categories, each with its own prefix for task numbering:
+
+* *C* - Code Structure and Design tasks (e.g., C1, C2, C3)
+* *P* - Performance Improvements tasks (e.g., P1, P2)
+* *S* - Security Enhancements tasks (e.g., S1, S2, S3)
+* *T* - Testing Improvements tasks (e.g., T1, T2, T3)
+* *D* - Dependency Management tasks (e.g., D1, D2)
+* *DOC* - Documentation Improvements tasks (e.g., DOC1, DOC2, DOC3)
+* *F* - Future Enhancements tasks (e.g., F1, F2, F3)
+
+This categorization allows for:
+
+* Easy reference to specific tasks (e.g., "implement task C4")
+* Clear organization of tasks by type
+* Independent numbering within each category
+* Simplified addition of new tasks without renumbering existing ones
+
+=== Task Format
+
+Each task follows a consistent format:
+
+[source]
+----
+=== [Category][Number]. [Task Title]
+[ ] *Priority:* [High/Medium/Low]
+
+*Description:* [Detailed description of the task]
+
+*Rationale:* [Explanation of why this task is important]
+----
+
+Example:
+[source]
+----
+=== C1. Document Bouncy Castle Usage
+[x] *Priority:* Medium
+
+*Description:* Ensure that the usage of Bouncy Castle for cryptographic operations is consistently documented throughout the codebase and documentation.
+
+*Rationale:* Clear documentation of cryptographic dependencies is important for security reviews and understanding the library's security model.
+----
+
+=== Task Components
+
+Each task consists of:
+
+1. *Task Identifier*: A unique identifier combining category prefix and number (e.g., C1, P2)
+2. *Task Title*: A brief, descriptive title
+3. *Checkbox*: For tracking completion status `[ ]` (incomplete) or `[x]` (complete)
+4. *Priority*: High, Medium, or Low
+5. *Description*: Detailed explanation of what needs to be done
+6. *Rationale*: Explanation of why the task is important
+
+== Progress Tracking
+
+Progress is tracked using checkboxes in the task list:
+
+* `[ ]` - Task not started or in progress
+* `[x]` - Task completed
+
+This simple visual indicator allows for quick assessment of project status. The checkboxes are updated manually after completing a task according to the Task Completion Process.
+
+=== Current Progress
+
+Progress can be assessed by:
+
+1. Counting completed tasks within each category
+2. Calculating the overall completion percentage
+3. Focusing on high-priority tasks first
+
+== Task Completion Process
+
+After implementing any task in the refactoring document, follow these steps:
+
+1. *Clean-Up Code*: Use `./mvnw -Prewrite rewrite:run` -> verify with `./mvnw clean install` -> Fix if necessary and commit
+2. *Clean-Up Javadoc*: `./mvnw clean install -Pjavadoc` -> Fix all errors and warnings, verify until they are all corrected
+3. *Verify Documentation*: Ensure the documentation is updated correctly
+4. *Commit Changes*: Commit the changes with a git commit. Use the task name (e.g., "C1. Document Bouncy Castle Usage") as the commit message
+5. *Update Status*: Check the checkbox for the completed task in the Refactorings.adoc file
+
+This standardized process ensures:
+
+* Consistent code quality
+* Complete and accurate documentation
+* Clear tracking of completed work
+* Maintainable codebase
+
+== Adding New Tasks
+
+When adding new tasks to the refactoring list:
+
+1. Identify the appropriate category
+2. Use the next available number within that category
+3. Follow the standard task format
+4. Include priority, description, and rationale
+5. Start with an unchecked checkbox `[ ]`
+
+== Best Practices
+
+=== Task Implementation
+
+* Focus on one task at a time
+* Complete the entire Task Completion Process before moving to the next task
+* Prioritize tasks based on their priority level (High, Medium, Low)
+* Document any unexpected challenges or decisions made during implementation
+
+=== Documentation Updates
+
+* Keep the Refactorings.adoc file up to date
+* Document any changes to the refactoring process in this document
+* Ensure all team members understand the process
+
+== Conclusion
+
+This structured approach to refactoring ensures that improvements are made systematically, with clear tracking of progress and consistent quality standards. The categorization and numbering system provides flexibility while maintaining organization, and the standardized completion process ensures that all aspects of code quality are addressed.

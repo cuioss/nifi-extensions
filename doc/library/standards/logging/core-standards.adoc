@@ -1,0 +1,213 @@
+= Logging Core Standards
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+
+== Purpose
+
+This document defines comprehensive standards for logging across the codebase, including configuration, implementation, and documentation requirements.
+
+== Related Documentation
+
+* xref:README.adoc[Logging Standards Overview]
+* xref:implementation-guide.adoc[Logging Implementation Guide]
+* xref:testing-guide.adoc[Logging Testing Guide]
+* xref:dsl-style-constants.adoc[DSL-Style Constants Pattern]
+* xref:../java/README.adoc[Java Standards]
+
+== Important Note on Code Changes
+
+When adapting code to these logging standards:
+
+* Only modify logging-related code (imports, log statements, assertions)
+* DO NOT change any unrelated production or test code
+* DO NOT refactor or "improve" other aspects while implementing logging changes
+* Keep changes focused solely on logging standard compliance
+
+== Core Standards
+
+=== Logger Configuration
+
+==== Required Setup
+
+* Use `de.cuioss.tools.logging.CuiLogger` with constant name 'LOGGER'
+* Logger must be private static final
+* Module/artifact: cui-java-tools
+
+[source,java]
+----
+private static final CuiLogger LOGGER = new CuiLogger(YourClass.class);
+----
+
+==== Prohibited Practices
+
+* No log4j or slf4j usage
+* No System.out or System.err - use appropriate logger level
+* No direct logger instantiation
+
+=== Logging Standards
+
+==== Method Requirements
+
+* Exception parameter always comes first
+* Use '%s' for string substitutions (not '{}')
+* Use `de.cuioss.tools.logging.LogRecord` for template logging
+
+[source,java]
+----
+// With exception:
+LOGGER.error(exception, ERROR.DATABASE_CONNECTION.format(url));
+
+// With parameters:
+LOGGER.info(INFO.USER_LOGIN.format(username));
+----
+
+==== Testing Configuration
+
+* Use cui-test-juli-logger for testing
+* Use `de.cuioss.test.juli.TestLogLevel` for log levels
+
+== Implementation Guidelines
+
+=== LogRecord Usage
+
+==== Core Requirements
+
+* Use LogRecord API for structured logging
+* Use LogRecord#format for parameterized messages
+* Required for INFO/WARN/ERROR/FATAL in production
+* Use LogRecord#resolveIdentifierString() for testing
+
+==== Module Organization
+
+* Aggregate LogRecords in module-specific 'LogMessages'
+* Create unique module prefix (e.g., "Portal", "Authentication")
+* Store prefix as constant in LogMessages
+
+==== Message Identifiers
+
+* 001-99: INFO level
+* 100-199: WARN level
+* 200-299: ERROR level
+* 300-399: FATAL level
+* 500-599: DEBUG level (optional)
+* 600-699: TRACE level (optional)
+
+=== LogMessages Implementation
+
+==== Class Structure and Organization
+
+* Follow the xref:dsl-style-constants.adoc[DSL-Style Constants Pattern]
+* Import category level constant, NOT its members
+* See xref:implementation-guide.adoc[Logging Implementation Guide] for examples
+
+==== Implementation Rules
+
+* Create final utility class
+* Name pattern: [Module][Component]LogMessages
+* Place in module's root package
+* Define module-specific prefix constant
+
+==== Documentation Requirements
+
+* Purpose description
+* Complete message format
+* Parameter descriptions
+* Log level specification
+
+== Documentation Requirements
+
+=== doc/LogMessages.adoc Format
+
+The documentation must be maintained in `doc/LogMessages.adoc` for each module and must follow this format:
+
+[source,asciidoc]
+----
+= Log Messages for [Module Name]
+:toc: left
+:toclevels: 2
+
+== Overview
+
+All messages follow the format: [Module-Prefix]-[identifier]: [message]
+
+== INFO Level (001-099)
+
+[cols="1,1,2,2", options="header"]
+|===
+|ID |Component |Message |Description
+|PortalAuth-001 |AUTH |User '%s' successfully logged in |Logged when a user successfully authenticates
+|PortalAuth-002 |AUTH |User '%s' logged out |Logged when a user logs out of the system
+|===
+
+== WARN Level (100-199)
+
+[cols="1,1,2,2", options="header"]
+|===
+|ID |Component |Message |Description
+|PortalAuth-100 |AUTH |Login failed for user '%s' |Logged when a login attempt fails
+|===
+
+== ERROR Level (200-299)
+
+[cols="1,1,2,2", options="header"]
+|===
+|ID |Component |Message |Description
+|PortalAuth-200 |AUTH |Authentication error occurred: %s |Logged when a system error occurs
+|===
+----
+
+=== Documentation Rules
+
+. Every LogMessages class must have a corresponding documentation file at `doc/LogMessages.adoc`
+. Documentation must be updated whenever log messages are modified
+. Documentation must exactly match the implementation - this is a success criterion
+. Messages must be organized in separate tables by log level, with level ranges in headers:
+** INFO Level (001-099)
+** WARN Level (100-199)
+** ERROR Level (200-299)
+** FATAL Level (300-399)
+. Include all metadata:
+** Full identifier with module prefix
+** Module/component name
+** Exact message template
+** Clear description of when the message is used
+* Other Level like debug or trace are not to be documented that way
+
+== Success Criteria
+
+=== Logger Configuration
+
+* Only CuiLogger is used
+* Logger is private static final
+* No prohibited logging frameworks
+
+=== Implementation
+
+* All log messages use LogRecord
+* Message identifiers follow level ranges
+* DSL-Style pattern is followed
+* Imports are correct
+* On validating you must ensure, that there is no "dangling" LogRecords, saying each type must be used. If it is not used, analyze the codebase, whether it has somewhere to be used. Remove it otherwise. Remove it from doc/LogMessages.adoc as well
+
+=== Documentation
+
+* doc/LogMessages.adoc exists for each module
+* All messages are documented
+* Format matches specification
+* IDs and messages match implementation
+
+=== Testing
+
+* All INFO/WARN/ERROR/FATAL messages have tests
+* Tests use cui-test-juli-logger
+* Assertions follow standard patterns
+
+== Important Notes
+
+* All rules are normative and must be applied unconditionally
+* Focus changes only on logging-related code
+* Documentation must be kept in sync with implementation
+* When in doubt about log levels, prefer higher severity

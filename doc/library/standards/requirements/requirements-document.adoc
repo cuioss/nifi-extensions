@@ -1,0 +1,74 @@
+= Requirements Document Structure and Format
+:toc: left
+:toclevels: 3
+:sectnums:
+
+== Purpose
+Defines the structure and format for requirements documents in CUI projects, ensuring consistency and traceability.
+
+== Document Location and Naming
+. Requirements must be located in the project under `doc/Requirements.adoc`
+. The document must follow AsciiDoc format with proper headings, sections, and formatting
+
+== Document Structure
+. The document must include:
+.. Title: `= [Project Name] Requirements`
+.. Table of contents: `:toc:`, `:toclevels: 3`, `:toc-title: Table of Contents`, `:sectnums:`
+.. Overview section explaining the purpose of the requirements
+.. General Requirements section
+.. Specific requirements sections organized by component or feature
+
+== Requirements Format
+. Each requirement must have a unique ID with a consistent prefix
+.. Format: `[#PREFIX-NUM]`
+.. Example: `[#NIFI-AUTH-1]`
+. Each requirement must have a descriptive title
+.. Format: `=== PREFIX-NUM: Descriptive Title`
+.. Example: `=== NIFI-AUTH-1: REST API Support Enhancement`
+. Requirements must be organized hierarchically
+.. Major requirements: Level 3 headings (`===`)
+.. Sub-requirements: Level 4 headings (`====`)
+. Each requirement must be described using bullet points
+.. Main points should be clear and concise
+.. Use sub-bullets for additional details
+. Each requirement must be traceable to corresponding specification documents
+.. Specifications must include backtracking links to requirements
+.. Requirements should reference implementation specifications where appropriate
+
+== Requirements Numbering
+. Major requirements must use a sequential number (e.g., `PREFIX-1`, `PREFIX-2`)
+. Sub-requirements must use a decimal notation (e.g., `PREFIX-1.1`, `PREFIX-1.2`)
+. Requirements must maintain a consistent numbering scheme throughout the document
+. When adding new requirements, assign the next available number in the sequence
+. Never reuse requirement IDs, even if a requirement is removed or replaced
+. When a requirement is no longer applicable, mark it as deprecated rather than removing it
+.. Format: `=== PREFIX-NUM: [DEPRECATED] Descriptive Title`
+
+== Requirements Content
+. Requirements must be specific, measurable, achievable, relevant, and time-bound (https://www.atlassian.com/blog/productivity/how-to-write-smart-goals[SMART principles])
+. Requirements must clearly state what is needed, not how it should be implemented
+. Requirements must be testable
+. Requirements must be traceable to corresponding specification documents
+. For logging requirements, refer to the logging standards and ensure requirements align with established standards
+
+== Prefix Selection
+. When creating requirements for a new project, prompt the user to select a prefix
+. Provide a numbered list of recommended prefixes based on the project domain
+. Suggested prefixes should be short (3-5 characters) and relevant to the project
+. Example prefixes to recommend:
+.. `NIFI-` for Apache NiFi related projects
+.. `SEC-` for security-related projects
+.. `API-` for API-related projects
+.. `UI-` for user interface projects
+.. `DB-` for database projects
+.. `INT-` for integration projects
+
+== Updating Requirements
+. When adding new requirements, maintain the existing structure and formatting
+. When modifying requirements, preserve the requirement ID and update only the content
+. When removing requirements, mark them as deprecated rather than deleting them
+. When refactoring requirements, ensure all specification documents are updated to maintain traceability
+
+== Related Documentation
+* xref:specification-documents.adoc[Specification Documents Structure]
+* xref:new-project-guide.adoc[New Project Guide]

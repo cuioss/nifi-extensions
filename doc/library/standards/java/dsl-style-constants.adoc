@@ -1,0 +1,128 @@
+= DSL-Style Nested Constants Pattern
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+
+== Purpose
+
+This document defines a design pattern for organizing related constants in a hierarchical, discoverable manner. This pattern is particularly useful when dealing with a large number of related constants that can be logically grouped by multiple dimensions, such as log messages.
+
+== Related Documentation
+
+* xref:README.adoc[Java Standards]
+* xref:../logging/implementation-guide.adoc[Logging Implementation Guide]
+
+== Key Characteristics
+
+. *Hierarchical Organization*: Constants are organized in nested static classes, each representing a dimension or category
+. *Type Safety*: Each level in the hierarchy is a proper type, enabling IDE support and compile-time checks
+. *Discoverable API*: The structure guides users through available options via IDE auto-completion
+. *Immutable*: All elements are final and preferably immutable
+. *Self-Documenting*: The hierarchy itself documents the relationship between constants
+
+== Implementation Guidelines
+
+. Use `@UtilityClass` for all levels to prevent instantiation
+. Make all classes and constants public static final
+. Use meaningful names for each level that represent the dimension they categorize
+. Consider using interfaces to define common behavior across similar categories
+
+== Example Structure
+
+[source,java]
+----
+@UtilityClass
+public final class ModuleConstants {
+    @UtilityClass
+    public static final class CATEGORY_A {
+        @UtilityClass
+        public static final class TYPE_1 {
+            public static final Item CONSTANT_1 = ...;
+        }
+    }
+}
+----
+
+== Usage Example
+
+[source,java]
+----
+// Instead of:
+ModuleConstants.CONSTANT_1
+
+// Use:
+ModuleConstants.CATEGORY_A.TYPE_1.CONSTANT_1
+----
+
+== Common Use Cases
+
+. *Logging Systems*: Organizing messages by module, level, and component
+. *Configuration*: Grouping settings by feature, environment, and type
+. *Error Codes*: Categorizing by module, severity, and subsystem
+. *Resource Bundles*: Organizing by language, region, and resource type
+
+== Benefits
+
+. *Improved Code Organization*: Clear structure for related constants
+. *Better Maintainability*: Easy to add new categories without changing existing code
+. *Enhanced Developer Experience*: IDE auto-completion guides developers
+. *Type Safety*: Compile-time verification of constant usage
+. *Documentation*: Structure itself documents relationships
+
+== Best Practices
+
+. Keep hierarchy depth reasonable (3-4 levels maximum)
+. Use consistent naming conventions across all levels
+. Document the purpose of each category level
+. Consider using enums for the lowest level when appropriate
+. Maintain consistent ordering within each level
+
+== Logging-Specific Implementation
+
+For logging systems, the recommended structure is:
+
+[source,java]
+----
+@UtilityClass
+public final class ModuleLogMessages {
+    public static final String PREFIX = "MODULE";
+    
+    @UtilityClass
+    public static final class INFO {
+        public static final LogRecord MESSAGE_1 = LogRecordModel.builder()
+            .template("Message template with %s")
+            .prefix(PREFIX)
+            .identifier(1)
+            .build();
+    }
+    
+    @UtilityClass
+    public static final class WARN {
+        // WARN level messages
+    }
+    
+    @UtilityClass
+    public static final class ERROR {
+        // ERROR level messages
+    }
+    
+    @UtilityClass
+    public static final class FATAL {
+        // FATAL level messages
+    }
+}
+----
+
+This structure allows for intuitive access to log messages by level:
+
+[source,java]
+----
+import static com.example.ModuleLogMessages.INFO;
+import static com.example.ModuleLogMessages.ERROR;
+
+// Usage:
+LOGGER.info(INFO.MESSAGE_1.format("parameter"));
+LOGGER.error(exception, ERROR.SYSTEM_FAILURE.format());
+----

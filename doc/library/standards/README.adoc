@@ -1,0 +1,139 @@
+= CUI Standards Documentation
+:toc: left
+:toclevels: 3
+:sectnums:
+
+== Purpose
+This directory contains all standardization documents for CUI projects, defining coding, documentation, and technical standards. These standards serve as independent, authoritative sources of truth for technical requirements without being tied to specific implementation processes.
+
+== Documentation Format
+All standards documentation in this directory uses AsciiDoc format with the following conventions:
+
+* Files use the `.adoc` extension
+* Each document includes a table of contents (TOC) on the left side
+* Section numbering is enabled for easier reference
+* Standard heading hierarchy is used consistently
+
+== Directory Structure
+* xref:documentation/README.adoc[Documentation Standards]
+** xref:documentation/general-standard.adoc[General Standard] - Foundational documentation requirements and formats
+** xref:documentation/javadoc-standards.adoc[Javadoc Standards] - Standards for creating and maintaining Javadoc
+** xref:documentation/javadoc-maintenance.adoc[Javadoc Maintenance] - Standards for Javadoc error resolution and quality assurance
+** xref:documentation/readme-structure.adoc[README Structure] - Standard format and content for README files
+* xref:java/README.adoc[Java Standards]
+** xref:java/dsl-style-constants.adoc[DSL-Style Constants] - Standards for organizing constants in a hierarchical manner
+* xref:logging/README.adoc[Logging Standards]
+** xref:logging/core-standards.adoc[Core Standards] - Fundamental logging requirements and formats
+** xref:logging/implementation-guide.adoc[Implementation Guide] - Standards for implementing logging functionality
+** xref:logging/testing-guide.adoc[Testing Guide] - Standards for testing logging implementations
+* xref:requirements/README.adoc[Requirements Standards]
+** xref:requirements/requirements-document.adoc[Requirements Document] - Standards for requirements documentation
+** xref:requirements/specification-documents.adoc[Specification Documents] - Standards for technical specification documents
+** xref:requirements/new-project-guide.adoc[New Project Guide] - Standards for documentation in new projects
+* xref:testing/README.adoc[Testing Standards]
+** xref:testing/core-standards.adoc[Core Standards] - Fundamental testing standards and requirements
+** xref:testing/quality-standards.adoc[Quality Standards] - Standards for test quality and coverage
+* xref:process/refactoring_process.adoc[Refactoring Process] - Process for code refactoring and improvement
+
+== Standards vs. Implementation
+
+A clear distinction between standards and implementation processes is essential:
+
+* *Standards* define the technical requirements, constraints, and expectations that must be met.
+* *Implementation* describes the specific processes, tools, and methods used to meet those standards.
+
+This separation ensures that:
+
+1. Standards remain applicable regardless of the specific tools or processes used
+2. Teams can adapt their implementation approaches while maintaining compliance with standards
+3. Standards documentation remains focused on the "what" rather than the "how"
+4. Documentation can evolve independently of specific implementation details
+
+== Standards Documentation Rules
+
+All documents within the standards directory must adhere to the following rules:
+
+1. *Document Format*: 
+   * Use AsciiDoc format with `.adoc` extension
+   * Include proper document header with title, TOC, and section numbering
+   * Use consistent heading hierarchy
+   * Include cross-references to related documents
+
+2. *Content Requirements*:
+   * Each document must have a clear purpose statement
+   * Include a "Related Documentation" section with cross-references
+   * All rules must be clearly stated and normative
+   * Use consistent terminology across all documents
+   * Reference these rules with '@llm-rules'
+   * Focus solely on standards and requirements, not on implementation processes
+   * Avoid references to specific tools, progress tracking, or procedural steps
+
+3. *Document Structure*:
+   * Place documents in the appropriate subdirectory based on topic
+   * Update the main README.adoc when adding new documents
+   * Avoid duplicating content across multiple documents
+   * Update all links that referred to previous documents
+   * Documents in the standards directory must not reference anything within llm-rules
+
+4. *Code Examples*:
+   * Include practical, runnable code examples where appropriate
+   * Use syntax highlighting for code blocks
+   * Follow the established coding standards in examples
+   * Provide explanations for complex code patterns
+
+5. *Maintenance*:
+   * Keep documents up-to-date with current best practices
+   * Remove duplicate content when found
+   * Consolidate related information into a single authoritative source
+   * Ensure all cross-references remain valid
+
+== Creating New Standards Documents
+When creating new standards documents, follow these guidelines:
+
+1. Use AsciiDoc format with `.adoc` extension
+2. Include the following document header:
++
+[source,asciidoc]
+----
+= Document Title
+:toc: left
+:toclevels: 3
+:sectnums:
+
+== Purpose
+Brief description of the document's purpose.
+
+== Related Documentation
+* xref:path/to/related-doc.adoc[Related Document]: Brief description
+----
+
+3. Place the document in the appropriate subdirectory
+4. Update this README.adoc to include the new document
+5. Follow the structure patterns defined in existing documents
+
+== Content Migration and References
+
+When moving or consolidating content within the standards directory, follow these guidelines:
+
+1. *Content Migration*:
+   * Ensure all content is properly formatted in AsciiDoc
+   * Update all cross-references in the new document
+   * Remove duplicate content after migration is complete
+
+2. *Reference Updates*:
+   * Update all references to the migrated document in other files
+   * Use xref for references in AsciiDoc files (e.g., `xref:path/to/document.adoc[Document Title]`)
+   * Check for and update references in all standards documents
+
+3. *Handling References from llm-rules*:
+   * If a document in the standards directory needs to be referenced from llm-rules, use one of these approaches:
+     .. Create a proxy document in standards that redirects to the appropriate content
+     .. Update the llm-rules document to point directly to the standards document
+     .. Consolidate the content from both sources into a single authoritative document
+
+4. *Resolving Circular References*:
+   * If you encounter circular references between standards and llm-rules, please select from these options:
+     .. Move all related content to standards and update references
+     .. Create a new consolidated document in standards that combines all related content
+     .. Refactor the document structure to eliminate the circular dependency
+     .. Maintain separate documents but clearly define their relationship and purpose
