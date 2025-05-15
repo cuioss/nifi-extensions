@@ -12,4 +12,5 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-de.cuioss.nifi.processors.cuioss.JWTTokenExtractor
+de.cuioss.nifi.processors.auth.JWTTokenAuthenticator
+de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator

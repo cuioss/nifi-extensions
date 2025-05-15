@@ -45,12 +45,16 @@ void shouldValidateTokenWithCorrectSignature() {
     String validToken = createValidToken();
     TokenValidator validator = createTokenValidator();
     
-    // Act
-    Optional<AccessTokenContent> result = validator.createAccessToken(validToken);
-    
-    // Assert
-    assertTrue(result.isPresent(), "Valid token should be accepted");
-    assertEquals("test-subject", result.get().getSubject(), "Subject should match");
+    try {
+        // Act
+        AccessTokenContent result = validator.createAccessToken(validToken);
+        
+        // Assert
+        assertNotNull(result, "Valid token should be accepted");
+        assertEquals("test-subject", result.getSubject(), "Subject should match");
+    } catch (TokenValidationException e) {
+        fail("Valid token should not throw exception: " + e.getMessage());
+    }
 }
 
 @Test
@@ -59,11 +63,13 @@ void shouldRejectTokenWithInvalidSignature() {
     String invalidToken = createTokenWithInvalidSignature();
     TokenValidator validator = createTokenValidator();
     
-    // Act
-    Optional<AccessTokenContent> result = validator.createAccessToken(invalidToken);
+    // Act & Assert
+    TokenValidationException exception = assertThrows(TokenValidationException.class, () -> {
+        validator.createAccessToken(invalidToken);
+    }, "Invalid signature should throw TokenValidationException");
     
-    // Assert
-    assertFalse(result.isPresent(), "Invalid signature should be rejected");
+    // Verify the exception contains expected information
+    assertEquals(SecurityEventCounter.EventType.SIGNATURE_VALIDATION_FAILED, exception.getEventType());
 }
 ----
 
@@ -93,7 +99,12 @@ void testProcessWithValidToken() {
     
     // Mock the TokenValidator
     TokenValidator mockValidator = mock(TokenValidator.class);
-    when(mockValidator.createAccessToken(anyString())).thenReturn(Optional.of(createTestToken()));
+    // Configure mock to return a test token instead of throwing exception
+    try {
+        when(mockValidator.createAccessToken(anyString())).thenReturn(createTestToken());
+    } catch (TokenValidationException e) {
+        fail("Mock setup should not throw exception");
+    }
     
     // Set the mock validator on the processor using reflection
     FieldUtils.writeField(runner.getProcessor(), "tokenValidator", mockValidator, true);

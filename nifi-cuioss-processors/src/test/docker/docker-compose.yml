@@ -1,0 +1,20 @@
+version: '3'
+
+services:
+  nifi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8443:8443"
+    environment:
+      - NIFI_WEB_HTTPS_PORT=8443
+      - SINGLE_USER_CREDENTIALS_USERNAME=admin
+      - SINGLE_USER_CREDENTIALS_PASSWORD=ctsBtRBKHRAx69EqUghvvgEvjnaLjFEB
+    volumes:
+      - ../../../nifi-cuioss-nar/target:/opt/nifi/nifi-current/extensions
+    healthcheck:
+      test: ["CMD", "curl", "-k", "--fail", "https://localhost:8443/nifi/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5

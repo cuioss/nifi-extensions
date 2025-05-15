@@ -1,0 +1,220 @@
+/**
+ * Styles for MultiIssuerJWTTokenAuthenticator custom UI components.
+ */
+
+/* JWKS Validation Button */
+
+.jwks-verification-container {
+    margin: 10px 0;
+}
+
+.verify-jwks-button {
+    margin-right: 10px;
+    padding: 5px 10px;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.verify-jwks-button:hover {
+    background-color: #e5e5e5;
+}
+
+.verification-result {
+    margin-top: 10px;
+    padding: 5px;
+    min-height: 20px;
+}
+
+/* Token Verification Interface */
+
+.token-verification-container {
+    margin: 15px 0;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.token-input-section {
+    margin-bottom: 15px;
+}
+
+.token-input {
+    width: 100%;
+    margin: 5px 0;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-family: monospace;
+}
+
+.verify-token-button {
+    padding: 8px 15px;
+    background-color: #0074d9;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.verify-token-button:hover {
+    background-color: #0063b1;
+}
+
+.token-results-section {
+    margin-top: 20px;
+}
+
+.token-results-content {
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    background-color: #fff;
+    min-height: 50px;
+}
+
+.token-valid {
+    color: #2ecc40;
+    font-weight: bold;
+    padding: 5px;
+    margin-bottom: 10px;
+}
+
+.token-invalid {
+    color: #ff4136;
+    font-weight: bold;
+    padding: 5px;
+    margin-bottom: 10px;
+}
+
+.token-error {
+    color: #ff4136;
+    padding: 5px;
+}
+
+.token-loading {
+    color: #0074d9;
+    padding: 5px;
+}
+
+.token-details {
+    margin-top: 15px;
+}
+
+.token-claims-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+}
+
+.token-claims-table th {
+    text-align: left;
+    padding: 8px;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    width: 30%;
+}
+
+.token-claims-table td {
+    padding: 8px;
+    border: 1px solid #ddd;
+}
+
+.token-raw-claims {
+    background-color: #f5f5f5;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    overflow: auto;
+    max-height: 300px;
+    font-family: monospace;
+    white-space: pre-wrap;
+}
+
+.token-error-details {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #fff5f5;
+    border: 1px solid #ffcccb;
+    border-radius: 3px;
+}
+
+.token-error-message {
+    color: #ff4136;
+    font-weight: bold;
+}
+
+.token-error-category {
+    margin-top: 5px;
+}
+
+/* Metrics Display */
+
+.metrics-container {
+    margin: 15px 0;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.metrics-section {
+    margin-bottom: 20px;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.metric-card {
+    padding: 15px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.metric-value {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+.metric-label {
+    color: #666;
+    font-size: 14px;
+}
+
+.metrics-chart {
+    margin-top: 20px;
+    height: 300px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+}
+
+/* Help text and tooltips */
+
+.help-tooltip {
+    display: inline-block;
+    margin-left: 5px;
+    color: #0074d9;
+    cursor: help;
+}
+
+.help-text {
+    margin: 10px 0;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-style: italic;
+    color: #666;
+}

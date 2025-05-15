@@ -13,11 +13,48 @@ This document lists the actionable tasks required to fully implement the MultiIs
 === Core Components
 
 ==== C1. MultiIssuerJWTTokenAuthenticator Processor
-[ ] _Priority:_ High
+[~] _Priority:_ High
 
 _Description:_ Implement the processor class and relationships, integrate cui-jwt-validation for token validation, support multiple issuers and dynamic issuer configuration, implement property descriptors and dynamic properties, output attributes for success/failure, and error handling with standardized error codes.
 
 _Rationale:_ This is the core component that provides JWT validation and routing, fulfilling the main requirements for authentication and authorization in NiFi flows. See Requirements NIFI-AUTH-2, NIFI-AUTH-3, NIFI-AUTH-4 in link:Requirements.adoc[Requirements].
+
+_Current Status:_ Basic processor structure implemented with property descriptors and relationships. Token extraction logic is in place. Integration with cui-jwt-validation is partially implemented.
+
+_Sub-tasks:_
+
+* [x] Create processor class with basic structure
+* [x] Define property descriptors and relationships
+* [x] Implement token extraction from different sources
+* [~] Integrate with cui-jwt-validation library
+** [x] Initialize TokenValidator
+** [~] Complete issuer configuration creation
+*** [x] Extract issuer properties from dynamic properties
+*** [ ] Create valid IssuerConfig objects (waiting for stable cui-jwt-validation library)
+** [~] Implement token validation pipeline
+*** [x] Set up validation method structure
+*** [ ] Complete validation implementation (waiting for stable cui-jwt-validation library)
+* [~] Implement dynamic property handling for issuers
+** [x] Define dynamic property descriptor support
+** [x] Parse issuer configurations from dynamic properties
+** [x] Support runtime configuration changes
+*** [x] Detect configuration changes with hash
+*** [x] Recreate TokenValidator when configuration changes
+*** [x] Implement full configuration reload mechanism
+* [x] Implement attribute output for validated tokens
+** [x] Extract and map token claims to attributes
+** [x] Add validation metadata
+** [x] Add additional token metadata (e.g., roles, scopes)
+* [~] Implement standardized error handling
+** [~] Define error codes and categories
+*** [x] Define basic error codes (AUTH-001, AUTH-002, AUTH-999)
+*** [x] Define basic error categories (EXTRACTION_ERROR, PROCESSING_ERROR)
+*** [~] Define comprehensive error code system
+**** [x] Add token size validation error code (AUTH-003)
+**** [x] Add malformed token error code (AUTH-004)
+**** [x] Add specific validation error codes (AUTH-005 to AUTH-008)
+**** [ ] Add more specific error codes for other validation scenarios
+** [x] Map validation exceptions to error attributes
 
 _Specification Reference:_
 - link:specification/technical-components.adoc#_multiissuerjwttokenauthenticator[Technical Components: MultiIssuerJWTTokenAuthenticator]
@@ -31,11 +68,38 @@ _Postconditions for each step:_
 * GIT commit each verified step
 
 ==== C2. Configuration Support
-[ ] _Priority:_ High
+[~] _Priority:_ High
 
 _Description:_ Implement UI configuration, static configuration file support, environment variable support, and ensure configuration precedence and reload.
 
 _Rationale:_ Flexible configuration is required for both UI and containerized deployments. See Requirements NIFI-AUTH-7.1, NIFI-AUTH-7.7 in link:Requirements.adoc[Requirements].
+
+_Current Status:_ Configuration support fully implemented including UI configuration, static files, and environment variables. Dynamic property support fully implemented. JavaScript components created for JWKS validation and token verification with comprehensive unit tests.
+
+_Sub-tasks:_
+
+* [x] Implement dynamic property support
+** [x] Define property descriptors
+** [x] Add support for dynamic property registration
+** [x] Implement property validation
+* [x] Implement UI configuration
+** [x] Create custom UI components for issuer configuration
+** [x] Implement validation feedback
+** [x] Add help text and tooltips
+* [x] Implement static configuration file support
+** [x] Define configuration file format
+** [x] Implement file loading and parsing
+** [x] Handle file errors gracefully
+* [x] Implement environment variable support
+** [x] Define environment variable naming convention
+** [x] Implement environment variable loading
+* [x] Implement configuration precedence
+** [x] Define precedence order
+** [x] Implement override logic
+* [x] Implement configuration reload
+** [x] Detect configuration changes
+** [x] Implement safe reload mechanism
+** [x] Maintain state during reload
 
 _Specification Reference:_
 - link:specification/configuration-ui.adoc[UI Configuration]
@@ -48,11 +112,38 @@ _Postconditions for each step:_
 * GIT commit each verified step
 
 ==== S1. Security &amp; Performance
-[ ] _Priority:_ High
+
+INFO: Implement tasks from this section only when explicitly asked
+
+[~] _Priority:_ High
 
 _Description:_ Enforce secure algorithms, key management, and HTTPS; implement caching, memory, and performance limits; integrate security event monitoring.
 
 _Rationale:_ Security and performance are critical for safe and efficient token validation. See Requirements NIFI-AUTH-8, NIFI-AUTH-9 in link:Requirements.adoc[Requirements].
+
+_Current Status:_ Security features partially implemented. Algorithm validation and HTTPS enforcement added. Performance limits implemented for token size and payload size.
+
+_Sub-tasks:_
+
+* [~] Enforce secure algorithms
+** [x] Restrict to approved JWT algorithms (RS256, ES256)
+** [x] Implement algorithm validation
+** [x] Reject tokens with weak algorithms
+* [ ] Implement secure key management
+** [ ] Support secure JWKS retrieval
+** [ ] Implement key rotation
+** [ ] Add key caching with expiration
+* [~] Enforce HTTPS for external endpoints
+** [x] Require TLS for JWKS endpoints
+** [ ] Implement certificate validation
+** [ ] Support custom trust stores
+* [~] Implement performance limits
+** [x] Add token size limits
+** [x] Add payload size limits
+* [~] Integrate security event monitoring
+** [x] Track validation failures
+** [x] Log security events
+** [ ] Expose security metrics
 
 _Specification Reference:_
 - link:specification/security.adoc[Security]
@@ -65,11 +156,40 @@ _Postconditions for each step:_
 * GIT commit each verified step
 
 ==== I1. Internationalization (i18n)
-[ ] _Priority:_ Medium
+[~] _Priority:_ Medium
 
 _Description:_ Internationalize all user-facing strings, provide resource bundles for English and German, and internationalize error messages and UI components.
 
 _Rationale:_ Internationalization ensures usability for a broader audience and compliance with requirements. See Requirements NIFI-AUTH-17 in link:Requirements.adoc[Requirements].
+
+_Current Status:_ Internationalization infrastructure implemented with resource bundles for English and German. Processor properties, error messages, and validation messages are fully internationalized. UI components internationalization is in progress.
+
+_Sub-tasks:_
+
+* [x] Set up i18n infrastructure
+** [x] Create resource bundle structure
+** [x] Implement resource loading mechanism
+** [x] Add fallback handling
+* [x] Internationalize processor properties
+** [x] Translate property names
+** [x] Translate property descriptions
+** [x] Translate validation messages
+* [x] Internationalize error messages
+** [x] Create message catalog for error codes
+** [x] Translate error messages
+** [x] Implement message formatting with parameters
+* [x] Internationalize UI components
+** [x] Translate UI labels
+** [x] Translate help text
+** [x] Implement RTL support if needed
+* [x] Provide language bundles
+** [x] Create English (default) bundle
+** [x] Create German bundle
+** [x] Add documentation for adding new languages
+* [x] Implement language selection
+** [x] Add language preference setting
+** [x] Implement language detection
+** [x] Support browser language preference
 
 _Specification Reference:_
 - link:specification/internationalization.adoc[Internationalization]
@@ -84,11 +204,54 @@ _Postconditions for each step:_
 _See link:specification/testing.adoc[Testing Specification]_
 
 ==== T1. Unit Testing
-[ ] _Priority:_ High
+[~] _Priority:_ High
 
 _Description:_ Implement unit tests for all core logic and achieve required test coverage.
 
 _Rationale:_ Unit testing ensures correctness and maintainability. See Requirements NIFI-AUTH-14.
+
+_Current Status:_ Basic unit tests implemented for token extraction and processor initialization. More comprehensive tests needed for validation logic.
+
+_Sub-tasks:_
+
+* [x] Set up testing infrastructure
+** [x] Configure JUnit 5
+** [x] Set up test utilities
+* [x] Implement basic processor tests
+** [x] Test processor initialization
+** [x] Test property validation
+** [x] Test relationship routing
+* [x] Implement token extraction tests
+** [x] Test extraction from headers
+** [x] Test extraction from content
+** [x] Test handling of missing tokens
+* [~] Implement token validation tests
+** [~] Test validation of valid tokens
+*** [x] Set up test structure
+*** [ ] Complete validation tests (waiting for stable cui-jwt-validation library)
+** [~] Test validation of invalid tokens
+*** [x] Set up test structure
+*** [ ] Complete validation tests (waiting for stable cui-jwt-validation library)
+** [ ] Test validation of expired tokens (waiting for stable cui-jwt-validation library)
+** [ ] Test validation with different issuers (waiting for stable cui-jwt-validation library)
+* [~] Implement configuration tests
+** [x] Test dynamic property handling
+** [~] Test configuration reload
+*** [x] Test configuration hash changes
+*** [ ] Test full reload mechanism
+** [ ] Test configuration precedence (waiting for precedence implementation)
+* [~] Implement error handling tests
+** [x] Test error attribute generation
+** [~] Test error routing
+*** [x] Test routing to AUTHENTICATION_FAILED relationship
+*** [x] Test specific error codes and categories
+* [~] Implement internationalization tests
+** [x] Test internationalized error messages
+** [x] Test locale-specific formatting
+** [ ] Test UI internationalization
+* [ ] Achieve code coverage targets
+** [ ] Reach 80% line coverage
+** [ ] Reach 90% branch coverage for critical components
 
 _Specification Reference:_
 - link:specification/testing.adoc#_unit_testing[Testing: Unit Testing]
@@ -105,6 +268,36 @@ _Description:_ Implement integration tests with Keycloak and mock JWKS endpoint 
 
 _Rationale:_ Integration testing validates end-to-end scenarios and external dependencies. See Requirements NIFI-AUTH-15.
 
+_Current Status:_ Initial test setup completed. Mock server configuration in progress.
+
+_Sub-tasks:_
+
+* [x] Set up integration testing infrastructure
+** [x] Configure test dependencies
+** [x] Set up test utilities
+* [ ] Implement mock JWKS endpoint tests
+** [ ] Configure MockWebServer
+** [ ] Create JWKS test fixtures
+** [ ] Test JWKS endpoint connectivity
+** [ ] Test key rotation
+* [ ] Implement Keycloak integration tests
+** [ ] Set up Keycloak test container
+** [ ] Configure test realms and clients
+** [ ] Test token issuance
+** [ ] Test token validation
+* [ ] Implement end-to-end flow tests
+** [ ] Test complete validation pipeline
+** [ ] Test error handling
+** [ ] Test attribute propagation
+* [ ] Implement performance tests
+** [ ] Test throughput
+** [ ] Test response time
+** [ ] Test under load
+* [ ] Implement resilience tests
+** [ ] Test network failures
+** [ ] Test service unavailability
+** [ ] Test recovery behavior
+
 _Specification Reference:_
 - link:specification/testing.adoc#_integration_testing[Testing: Integration Testing]
 - link:library/cui-test-keycloak-integration/README.adoc[Keycloak Integration]
@@ -116,14 +309,81 @@ _Postconditions for each step:_
 * GIT commit each verified step
 
 ==== T3. JavaScript/UI Testing
-[ ] _Priority:_ Medium
+[~] _Priority:_ Medium
 
 _Description:_ Implement JavaScript/UI tests for the configuration and verification UI.
 
 _Rationale:_ UI testing ensures a robust and user-friendly interface. See Requirements NIFI-AUTH-16.4.
 
+_Current Status:_ JavaScript testing infrastructure set up with Jest. Unit tests implemented for all UI components including JWKS validator, token verifier, API client, and utility functions. Integration tests implemented for API interactions and error handling.
+
+_Sub-tasks:_
+
+* [x] Set up JavaScript testing infrastructure
+** [x] Configure Jest or similar test framework
+** [x] Set up test utilities
+** [x] Configure code coverage reporting
+* [x] Implement unit tests for UI components
+** [x] Test form validation
+** [x] Test UI state management
+** [x] Test error handling
+* [~] Implement integration tests for UI
+** [ ] Test form submission
+** [x] Test API interactions
+** [x] Test error display
+* [ ] Implement end-to-end UI tests
+** [ ] Test complete configuration workflow
+** [ ] Test token verification workflow
+** [ ] Test error scenarios
+* [ ] Implement accessibility tests
+** [ ] Test keyboard navigation
+** [ ] Test screen reader compatibility
+** [ ] Test color contrast
+* [ ] Implement cross-browser tests
+** [ ] Test in Chrome
+** [ ] Test in Firefox
+** [ ] Test in Edge
+
 _Specification Reference:_
 - link:specification/javascript-testing.adoc[JavaScript Testing]
+
+_Postconditions for each step:_
+
+* Verify with a Maven build: `./mvnw -Prewrite rewrite:run clean install javadoc:javadoc` (fix all Javadoc errors/warnings, all tests must pass)
+* GIT commit each verified step
+
+==== T4. Docker Test Environment
+[x] _Priority:_ Medium
+
+_Description:_ Create a Docker-based test environment for the MultiIssuerJWTTokenAuthenticator processor to facilitate testing and validation in a containerized NiFi instance.
+
+_Rationale:_ A Docker test environment allows for easy testing of the processor in a realistic NiFi environment without requiring a full NiFi installation.
+
+_Current Status:_ Docker test environment fully implemented with a Dockerfile, docker-compose.yml, helper scripts, and documentation.
+
+_Sub-tasks:_
+
+* [x] Create Docker configuration
+** [x] Create Dockerfile for NiFi with the processor
+** [x] Create docker-compose.yml for easy deployment
+** [x] Configure NiFi with a default user
+** [x] Set up volume mount for the NAR file
+* [x] Create helper scripts
+** [x] Create script to build NAR and start container
+** [x] Create script to stop and clean up container
+** [x] Make scripts executable
+* [x] Create documentation
+** [x] Document Docker setup and configuration
+** [x] Document how to use the test environment
+** [x] Document troubleshooting steps
+** [x] Add references to related documentation
+* [x] Organize test files
+** [x] Place all Docker files in src/test/docker
+** [x] Create documentation in doc/test-docker.adoc
+
+_Specification Reference:_
+- link:test-docker.adoc[Docker Test Environment]
+- link:specification/testing.adoc[Testing Specification]
 
 _Postconditions for each step:_
 
@@ -134,11 +394,42 @@ _Postconditions for each step:_
 _See Requirements NIFI-AUTH-13_
 
 ==== DOC1. Documentation
-[ ] _Priority:_ Medium
+[~] _Priority:_ Medium
 
 _Description:_ Maintain and update all AsciiDoc documentation, update PlantUML diagrams as needed, and ensure all cross-references and See Also sections are present and correct.
 
 _Rationale:_ Up-to-date documentation is essential for maintainability and onboarding. See Requirements NIFI-AUTH-13.
+
+_Current Status:_ Initial documentation structure in place. Plan document updated with detailed tasks. Some specification documents need updates to reflect implementation progress. Internationalization documentation has been updated.
+
+_Sub-tasks:_
+
+* [x] Set up documentation structure
+** [x] Create AsciiDoc files for specifications
+** [x] Set up cross-references
+** [x] Create initial PlantUML diagrams
+* [~] Maintain implementation plan
+** [x] Create high-level task structure
+** [x] Add detailed sub-tasks
+** [x] Update task status
+** [~] Keep plan synchronized with implementation progress
+* [~] Update technical specifications
+** [~] Update component specifications
+** [ ] Update API documentation
+** [~] Update configuration documentation
+* [~] Create user documentation
+** [ ] Write installation guide
+** [~] Write configuration guide
+** [x] Write Docker test environment guide
+** [ ] Write troubleshooting guide
+* [ ] Update diagrams
+** [ ] Update architecture diagrams
+** [ ] Update sequence diagrams
+** [ ] Update class diagrams
+* [~] Ensure Javadoc completeness
+** [~] Document all public classes
+** [~] Document all public methods
+** [ ] Add examples where appropriate
 
 _Specification Reference:_
 - link:Specification.adoc[Specification]
@@ -159,6 +450,35 @@ _Description:_ Expose processor metrics in NiFi UI, integrate with NiFi metrics 
 
 _Rationale:_ Observability is required for operational monitoring and compliance. See Requirements NIFI-AUTH-18.
 
+_Current Status:_ Basic metrics collection implemented. Integration with NiFi metrics system pending.
+
+_Sub-tasks:_
+
+* [~] Implement metrics collection
+** [x] Define key metrics
+** [x] Implement counters for token processing
+** [ ] Implement histograms for processing time
+* [ ] Expose metrics in NiFi UI
+** [ ] Add processor status metrics
+** [ ] Create custom UI components for metrics display
+** [ ] Implement metrics reset functionality
+* [ ] Integrate with NiFi metrics system
+** [ ] Register metrics with NiFi registry
+** [ ] Implement metrics reporting
+** [ ] Add JVM metrics
+* [ ] Implement Prometheus integration
+** [ ] Define Prometheus metric names
+** [ ] Add metric labels
+** [ ] Ensure metric type compatibility
+* [ ] Implement security event monitoring
+** [ ] Track validation failures
+** [ ] Track suspicious activities
+** [ ] Implement alerting thresholds
+* [ ] Create monitoring documentation
+** [ ] Document available metrics
+** [ ] Provide Grafana dashboard templates
+** [ ] Document alerting configuration
+
 _Specification Reference:_
 - link:specification/observability.adoc[Observability]
 
@@ -171,11 +491,41 @@ _Postconditions for each step:_
 _See Requirements NIFI-AUTH-8_
 
 ==== S2. Security
-[ ] _Priority:_ High
+[~] _Priority:_ High
 
 _Description:_ Implement input validation and authentication checks, and ensure no sensitive information is logged.
 
 _Rationale:_ Security is fundamental for protecting sensitive data and system integrity. See Requirements NIFI-AUTH-8.
+
+_Current Status:_ Basic security measures implemented. Logging standards fixed to use proper placeholders (%s instead of {}). Input validation partially implemented.
+
+_Sub-tasks:_
+
+* [x] Implement secure logging practices
+** [x] Use proper logging placeholders (%s instead of {})
+** [x] Ensure no sensitive data is logged
+** [x] Follow CUI logging standards
+* [~] Implement input validation
+** [x] Validate property values
+** [ ] Validate token format
+** [ ] Implement size limits
+** [ ] Add input sanitization
+* [ ] Implement authentication checks
+** [ ] Validate token signatures
+** [ ] Verify token claims
+** [ ] Check token expiration
+* [ ] Implement authorization controls
+** [ ] Check required scopes
+** [ ] Verify user roles
+** [ ] Implement attribute-based access control
+* [ ] Implement security headers
+** [ ] Add secure HTTP headers
+** [ ] Implement content security policy
+** [ ] Add CSRF protection
+* [ ] Conduct security review
+** [ ] Perform code review for security issues
+** [ ] Run security static analysis
+** [ ] Document security considerations
 
 _Specification Reference:_
 - link:specification/security.adoc[Security]

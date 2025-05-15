@@ -20,7 +20,7 @@
                 href="https://github.com/cuioss/nifi-extensions" />
         </links>
         <menu name="Overview">
-        <item name="About" href="about.html"></item>
+            <item name="About" href="about.html"></item>
             <item name="JavaDoc" href="apidocs/index.html" />
         </menu>
         <menu ref="reports" />

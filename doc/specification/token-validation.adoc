@@ -74,15 +74,15 @@ In NiFi 2.4.0, the processor initializes and uses the cui-jwt-validation library
  * Validates a token using the TokenValidator from cui-jwt-validation.
  * 
  * @param tokenString The JWT token string to validate
- * @return An Optional containing the parsed token if valid, or empty if invalid
+ * @return The parsed token if valid
+ * @throws TokenValidationException if the token is invalid
  */
-private Optional<AccessTokenContent> validateToken(String tokenString) {
+private AccessTokenContent validateToken(String tokenString) {
     // Get the TokenValidator
     TokenValidator validator = getTokenValidator();
     return validator.createAccessToken(tokenString);
 }
 ----
-
 For more details on the TokenValidator initialization, see link:technical-components.adoc#tokenvalidator[TokenValidator Component].
 
 == Handling TokenValidator Lifecycle in NiFi
@@ -257,16 +257,15 @@ public TokenVerificationResult verifyTokenForUi(String tokenString, List<IssuerC
     // 2. Create a new TokenValidator with the existing IssuerConfigs and the new counter
     TokenValidator validator = new TokenValidator(eventCounter, issuerConfigs);
 
-    // 3. Validate the token
-    Optional<AccessTokenContent> result = validator.createAccessToken(tokenString);
-
-    // 4. Prepare the response for the UI
-    if (result.isPresent()) {
-        // Token is valid
-        return TokenVerificationResult.success(result.get(), eventCounter);
-    } else {
-        // Token is invalid, get error details from the counter
-        return TokenVerificationResult.failure(eventCounter.getLastError(), eventCounter);
+    try {
+        // 3. Validate the token - will throw TokenValidationException if invalid
+        AccessTokenContent accessToken = validator.createAccessToken(tokenString);
+        
+        // 4. Token is valid, prepare successful response
+        return TokenVerificationResult.success(accessToken, eventCounter);
+    } catch (TokenValidationException e) {
+        // 5. Token is invalid, get error details from the exception
+        return TokenVerificationResult.failure(e.getMessage(), eventCounter, e.getEventType());
     }
 }
 ----
@@ -278,8 +277,8 @@ The Token Verification Interface in the UI communicates with a backend REST endp
 - Retrieves the current IssuerConfig objects from the processor configuration.
 - Creates a new SecurityEventCounter for this request.
 - Instantiates a new TokenValidator with the IssuerConfigs and the new SecurityEventCounter.
-- Calls `createAccessToken(tokenString)` on the TokenValidator.
-- Returns the validation result and error details (from the SecurityEventCounter) as a JSON response to the UI.
+- Calls `createAccessToken(tokenString)` on the TokenValidator, catching any TokenValidationException.
+- Returns the validation result and error details (from the exception if validation failed) as a JSON response to the UI.
 
 This ensures that each UI verification is isolated, does not affect processor metrics, and provides detailed feedback to the user.
 

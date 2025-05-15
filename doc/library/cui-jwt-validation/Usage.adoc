@@ -45,9 +45,10 @@ IssuerConfig issuerConfig = IssuerConfig.builder()
 TokenValidator validator = new TokenValidator(issuerConfig);
 
 // Create and validate tokens
-Optional<AccessTokenContent> accessToken = validator.createAccessToken(tokenString);
-Optional<IdTokenContent> idToken = validator.createIdToken(tokenString);
-Optional<RefreshTokenContent> refreshToken = validator.createRefreshToken(tokenString);
+// These methods will throw TokenValidationException if validation fails
+AccessTokenContent accessToken = validator.createAccessToken(tokenString);
+IdTokenContent idToken = validator.createIdToken(tokenString);
+RefreshTokenContent refreshToken = validator.createRefreshToken(tokenString);
 ----
 
 == Multi-Issuer Support
@@ -115,7 +116,8 @@ IssuerConfig issuerConfig = IssuerConfig.builder()
 TokenValidator validator = new TokenValidator(issuerConfig);
 
 // The custom mapper will be used when processing tokens with the "role" claim
-Optional<AccessTokenContent> accessToken = validator.createAccessToken(tokenString);
+// This method will throw TokenValidationException if validation fails
+AccessTokenContent accessToken = validator.createAccessToken(tokenString);
 ----
 
 == Roles and Groups Configuration
@@ -302,10 +304,111 @@ These security settings help prevent various attacks:
 2. Set appropriate refresh intervals for JWKS key rotation (e.g., 60 seconds)
 3. Configure token size limits to prevent memory exhaustion attacks
 4. Use secure TLS versions (TLS 1.2+) for JWKS endpoint communication
-5. Implement proper error handling for token validation failures
+5. Implement proper error handling for TokenValidationException, which provides detailed information about validation failures including the event type and category
 6. Don't store sensitive information in tokens
 7. Validate all token claims, especially issuer, audience, and expiration (implicitly done)
 8. Remember that while token expiration is checked during validation, tokens can expire after validation - implement additional expiration checks in client code
+
+=== Exception Handling Example
+
+The library uses `TokenValidationException` to signal validation failures. This exception contains detailed information about the failure, including an `EventType` that categorizes the issue:
+
+[source,java]
+----
+// Import statements
+import de.cuioss.tools.logging.CuiLogger;
+import de.cuioss.jwt.validation.security.SecurityEventCounter;
+import de.cuioss.jwt.validation.exception.TokenValidationException;
+import de.cuioss.jwt.validation.domain.token.AccessTokenContent;
+import java.util.Set;
+
+// Initialize logger
+private static final CuiLogger LOGGER = new CuiLogger(YourClassName.class);
+
+try {
+    // Attempt to validate and create a token
+    AccessTokenContent accessToken = validator.createAccessToken(tokenString);
+
+    // If validation succeeds, use the token
+    LOGGER.info("Token validated successfully for subject: %s", accessToken.getSubject());
+
+    // Check if token has required roles
+    if (accessToken.providesRoles(requiredRoles)) {
+        // Proceed with authorized operation
+    } else {
+        // Handle insufficient permissions
+        Set<String> missingRoles = accessToken.determineMissingRoles(requiredRoles);
+        LOGGER.info("Missing required roles: %s", missingRoles);
+    }
+
+} catch (TokenValidationException e) {
+    // Handle validation failure based on the event category first, then type for finer control
+    SecurityEventCounter.EventType eventType = e.getEventType();
+    SecurityEventCounter.EventCategory category = eventType.getCategory();
+
+    // First handle based on category
+    switch (category) {
+        case INVALID_STRUCTURE:
+            // Handle structure issues (malformed tokens, size violations, etc.)
+            LOGGER.warn("Token structure issue: %s (Event type: %s)", e.getMessage(), eventType);
+            // Implement appropriate response for invalid token structure
+            break;
+
+        case INVALID_SIGNATURE:
+            // Handle signature issues with finer-grained control
+            if (eventType == SecurityEventCounter.EventType.SIGNATURE_VALIDATION_FAILED) {
+                // Handle invalid signature
+                LOGGER.error("Token signature validation failed: %s", e.getMessage());
+                // Log security event, possibly trigger alerts for potential tampering
+            } else if (eventType == SecurityEventCounter.EventType.KEY_NOT_FOUND) {
+                // Handle missing key
+                LOGGER.warn("Key not found: %s", e.getMessage());
+                // Implement appropriate response
+            } else {
+                // Handle other signature issues
+                LOGGER.warn("Signature issue: %s (Event type: %s)", e.getMessage(), eventType);
+            }
+            break;
+
+        case SEMANTIC_ISSUES:
+            // Handle semantic issues with finer-grained control
+            if (eventType == SecurityEventCounter.EventType.TOKEN_EXPIRED) {
+                // Handle expired token
+                LOGGER.warn("Token has expired: %s", e.getMessage());
+                // Prompt user to refresh their session
+            } else if (eventType == SecurityEventCounter.EventType.ISSUER_MISMATCH) {
+                // Handle issuer mismatch
+                LOGGER.warn("Token issuer not recognized: %s", e.getMessage());
+                // Log security event, possibly block repeated attempts
+            } else if (eventType == SecurityEventCounter.EventType.AUDIENCE_MISMATCH) {
+                // Handle audience mismatch
+                LOGGER.warn("Token audience doesn't match expected value: %s", e.getMessage());
+                // Log security event
+            } else {
+                // Handle other semantic issues
+                LOGGER.warn("Token validation failed: %s (Event type: %s)", e.getMessage(), eventType);
+            }
+            break;
+
+        default:
+            // Handle other validation failures
+            LOGGER.warn("Token validation failed: %s (Event type: %s)", e.getMessage(), eventType);
+            // Log the event for monitoring
+            break;
+    }
+}
+}
+----
+
+This example demonstrates how to:
+
+1. Attempt to validate a token using the TokenValidator
+2. Handle successful validation by using the token content
+3. Catch TokenValidationException and handle different failure scenarios based on the event type
+4. Implement specific handling for common validation failures
+5. Use the event category for broader classification of issues
+
+For a complete list of event types and categories, refer to the `SecurityEventCounter.EventType` and `SecurityEventCounter.EventCategory` enums.
 
 === Performance Recommendations
 

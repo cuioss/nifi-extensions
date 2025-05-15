@@ -233,8 +233,6 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>${maven.compiler.plugin.version}</version>
                     <configuration>
-                        <source>${maven.compiler.source}</source>
-                        <target>${maven.compiler.target}</target>
                         <annotationProcessorPaths>
                             <annotationProcessorPath>
                                 <groupId>org.projectlombok</groupId>
@@ -242,6 +240,7 @@
                                 <version>${version.lombok}</version>
                             </annotationProcessorPath>
                         </annotationProcessorPaths>
+                        <release>17</release>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -360,6 +359,7 @@
                         <artifactId>rewrite-maven-plugin</artifactId>
                         <configuration>
                             <activeRecipes>
+                                <!-- Java Recipes -->
                                 <recipe>org.openrewrite.java.AddApache2LicenseHeader</recipe>
                                 <recipe>org.openrewrite.java.format.AutoFormat</recipe>
                                 <recipe>org.openrewrite.java.format.NormalizeLineBreaks</recipe>
@@ -379,6 +379,7 @@
                                 <recipe>org.openrewrite.staticanalysis.EqualsAvoidsNull</recipe>
                                 <recipe>org.openrewrite.staticanalysis.NoPrimitiveWrappersForToStringOrCompareTo
                                 </recipe>
+
                             </activeRecipes>
                         </configuration>
                         <executions>

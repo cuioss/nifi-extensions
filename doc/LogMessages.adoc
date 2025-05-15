@@ -1,0 +1,59 @@
+= Log Messages for MultiIssuerJWTTokenAuthenticator
+:toc: left
+:toclevels: 2
+
+== Overview
+
+All messages follow the format: [AUTH]-[identifier]: [message]
+
+== INFO Level (001-099)
+
+[cols="1,1,2,2", options="header"]
+|===
+|ID |Component |Message |Description
+|AUTH-001 |Processor |MultiIssuerJWTTokenAuthenticator initialized |Logged when the processor is initialized
+|AUTH-002 |Processor |MultiIssuerJWTTokenAuthenticator stopped and resources cleaned up |Logged when the processor is stopped
+|AUTH-003 |Processor |Detected configuration change, creating new TokenValidator instance |Logged when a configuration change is detected
+|AUTH-004 |Processor |Configuration hash changed from '%s' to '%s' |Logged when the configuration hash changes
+|AUTH-005 |Processor |Cleaning up resources before configuration reload |Logged when resources are being cleaned up before configuration reload
+|AUTH-006 |Processor |Removing issuer configuration for %s from cache as it no longer exists |Logged when an issuer configuration is removed from cache
+|AUTH-007 |Processor |Found issuer configuration for %s: %s |Logged when an issuer configuration is found
+|AUTH-008 |Processor |Reusing cached issuer configuration for %s |Logged when a cached issuer configuration is reused
+|AUTH-009 |Processor |Created and cached new issuer configuration for %s |Logged when a new issuer configuration is created and cached
+|AUTH-010 |Processor |Created %s issuer configurations |Logged when issuer configurations are created
+|AUTH-011 |Processor |No 'issuer' property specified for issuer %s, will use issuer name as default |Logged when no issuer property is specified
+|AUTH-012 |Processor |Using issuer name '%s' as default issuer value |Logged when using issuer name as default
+|AUTH-013 |Processor |Creating issuer configuration for %s with properties: jwksUrl=%s, issuer=%s, audience=%s, clientId=%s |Logged when creating an issuer configuration
+|AUTH-014 |Processor |TokenValidator successfully initialized with %s issuers |Logged when TokenValidator is successfully initialized
+|AUTH-015 |Processor |Token validation metrics - Processed flow files: %d |Logged when token validation metrics are reported
+|AUTH-016 |Processor |Security event counter is available for monitoring |Logged when security event counter is available
+|AUTH-017 |Processor |Security event counter is not available for monitoring |Logged when security event counter is not available
+|===
+
+== WARN Level (100-199)
+
+[cols="1,1,2,2", options="header"]
+|===
+|ID |Component |Message |Description
+|AUTH-100 |Processor |No token found in the specified location: %s |Logged when no token is found in the specified location
+|AUTH-101 |Processor |Token exceeds maximum size limit of %d bytes |Logged when token exceeds maximum size limit
+|AUTH-102 |Processor |Token is malformed (missing segments) |Logged when token is malformed
+|AUTH-103 |Processor |Token validation failed: %s |Logged when token validation fails
+|AUTH-104 |Processor |Error during resource cleanup: %s |Logged when an error occurs during resource cleanup
+|AUTH-105 |Processor |No valid issuer configurations found. Token validation will fail. |Logged when no valid issuer configurations are found
+|AUTH-106 |Processor |Using insecure http:// for jwks-url in issuer %s. This is not recommended for production. |Logged when using insecure http:// for jwks-url
+|AUTH-107 |Processor |Neither 'audience' nor 'client-id' specified for issuer %s. This reduces security as token audience will not be validated. |Logged when neither audience nor client-id is specified
+|AUTH-108 |Processor |Missing required property 'jwks-url' for issuer %s |Logged when required property 'jwks-url' is missing
+|AUTH-109 |Processor |IssuerConfig creation not yet fully implemented. Validation will fail. |Logged when IssuerConfig creation is not yet fully implemented
+|AUTH-110 |Processor |Issuer configuration for %s is invalid and will be skipped |Logged when an issuer configuration is invalid and will be skipped
+|===
+
+== ERROR Level (200-299)
+
+[cols="1,1,2,2", options="header"]
+|===
+|ID |Component |Message |Description
+|AUTH-200 |Processor |Error creating issuer configuration for %s: %s |Logged when an error occurs creating issuer configuration
+|AUTH-201 |Processor |Error processing flow file: %s |Logged when an error occurs processing flow file
+|AUTH-202 |Processor |Error creating IssuerConfig for %s: %s |Logged when an error occurs creating IssuerConfig
+|===

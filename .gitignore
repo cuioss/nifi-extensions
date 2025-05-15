@@ -9,3 +9,4 @@
 .DS_Store
 .asciidoctorconfig.adoc
 **/.vscode
+/nifi-cuioss-processors/node_modules/

@@ -1,0 +1,68 @@
+{
+  "name": "nifi-cuioss-processors",
+  "version": "1.0.0",
+  "description": "JavaScript components for MultiIssuerJWTTokenAuthenticator",
+  "scripts": {
+    "test": "jest --bail",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/main/webapp/js src/test/js && stylelint \"src/main/webapp/css/**/*.css\"",
+    "lint:fix": "eslint --fix src/main/webapp/js src/test/js && stylelint --fix \"src/main/webapp/css/**/*.css\"",
+    "lint:watch": "eslint --watch src/main/webapp/js src/test/js",
+    "lint:css": "stylelint \"src/main/webapp/css/**/*.css\"",
+    "lint:css:fix": "stylelint --fix \"src/main/webapp/css/**/*.css\""
+  },
+  "devDependencies": {
+    "@babel/core": "^7.23.7",
+    "@babel/preset-env": "^7.23.7",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "babel-jest": "^29.7.0",
+    "eslint": "^8.56.0",
+    "eslint-plugin-jest": "^27.6.0",
+    "eslint-plugin-jquery": "^1.5.1",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "msw": "^2.8.2",
+    "stylelint": "^15.11.0",
+    "stylelint-config-standard": "^34.0.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "testMatch": [
+      "<rootDir>/src/test/js/**/*.test.js"
+    ],
+    "moduleDirectories": [
+      "node_modules",
+      "src/main/webapp/js"
+    ],
+    "moduleNameMapper": {
+      "^jquery$": "<rootDir>/src/test/js/mocks/jquery.js",
+      "^nf.Common$": "<rootDir>/src/test/js/mocks/nf-common.js",
+      "^components/jwksValidator$": "<rootDir>/src/test/js/mocks/jwksValidator.js",
+      "^components/tokenVerifier$": "<rootDir>/src/test/js/mocks/tokenVerifier.js",
+      "^services/apiClient$": "<rootDir>/src/test/js/mocks/apiClient.js",
+      "^utils/formatters$": "<rootDir>/src/test/js/mocks/formatters.js"
+    },
+    "setupFilesAfterEnv": [
+      "<rootDir>/src/test/js/setup.js"
+    ],
+    "collectCoverageFrom": [
+      "src/main/webapp/js/**/*.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 80,
+        "branches": 70,
+        "functions": 80,
+        "lines": 80
+      }
+    },
+    "transform": {
+      "^.+\\.[t|j]sx?$": "babel-jest"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(@testing-library)/)"
+    ]
+  }
+}
