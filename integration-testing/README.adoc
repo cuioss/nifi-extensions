@@ -1,0 +1,269 @@
+= NiFi Docker Test Environment
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+== Overview
+
+This document describes the Docker-based test environment for the MultiIssuerJWTTokenAuthenticator NiFi processor. The test environment provides containerized NiFi and Keycloak instances, allowing for easy testing and validation of the processor's functionality with real JWT tokens.
+
+== Prerequisites
+
+To use the Docker test environment, you need to have the following installed:
+
+* Docker
+* Docker Compose
+* curl (for the helper scripts)
+* Maven (or use the included Maven wrapper)
+
+== Test Environment Structure
+
+The test environment consists of the following components:
+
+=== Docker Configuration
+
+The Docker configuration is located in the `src/main/docker` directory and includes:
+
+* `Dockerfile`: Defines the NiFi container with the necessary configuration
+* `docker-compose.yml`: Configures the Docker containers, including port mappings, volume mounts, and networking
+* Helper scripts:
+** `run-test-container.sh`: Builds the NAR file and starts the Docker containers
+** `stop-test-container.sh`: Stops and removes the Docker containers
+* Keycloak configuration:
+** `keycloak/oauth_integration_tests-realm.json`: Realm configuration for Keycloak
+
+=== NiFi Configuration
+
+The NiFi container is configured with:
+
+* HTTPS enabled on port 9095
+* A default user for login (username: admin, password: ctsBtRBKHRAx69EqUghvvgEvjnaLjFEB)
+* The MultiIssuerJWTTokenAuthenticator processor installed via a volume mount
+
+=== Keycloak Configuration
+
+The Keycloak container is configured with:
+
+* HTTP enabled on port 9080
+* HTTPS enabled on port 9085
+* Admin console access (username: admin, password: admin)
+* A pre-configured realm (`oauth_integration_tests`) with:
+** A test user (username: testUser, password: drowssap)
+** A test client (client ID: test_client, client secret: yTKslWLtf4giJcWCaoVJ20H8sy6STexM)
+
+== Using the Test Environment
+
+=== Starting the Test Environment
+
+To start the test environment:
+
+1. Navigate to the project root directory
+2. Run the helper script:
+
+[source,bash]
+----
+./integration-testing/src/main/docker/run-test-container.sh
+----
+
+This script will:
+
+1. Build the NAR file using Maven
+2. Start the Docker containers using Docker Compose
+3. Wait for NiFi and Keycloak to start
+4. Display information about how to access the NiFi UI and Keycloak Admin Console
+
+=== Accessing the NiFi UI
+
+Once the containers are running, you can access the NiFi UI at:
+
+[source]
+----
+https://localhost:9095/nifi/
+----
+
+Login with the following credentials:
+
+* Username: admin
+* Password: ctsBtRBKHRAx69EqUghvvgEvjnaLjFEB
+
+NOTE: Your browser may warn about an untrusted certificate. This is expected as the container uses a self-signed certificate. You can safely proceed.
+
+=== Accessing the Keycloak Admin Console
+
+You can access the Keycloak Admin Console at:
+
+[source]
+----
+http://localhost:9080/admin/
+----
+
+Login with the following credentials:
+
+* Username: admin
+* Password: admin
+
+=== Testing the Processor with Keycloak
+
+To test the MultiIssuerJWTTokenAuthenticator processor with Keycloak:
+
+1. Drag the processor onto the canvas
+2. Configure the processor with the following properties:
+   * Set the JWKS URL to `http://keycloak:9080/realms/oauth_integration_tests/protocol/openid-connect/certs`
+   * Configure other properties as needed
+3. Obtain a token from Keycloak using one of the following methods:
+   * Use the Keycloak Admin Console to create a token
+   * Use the token endpoint directly: `http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/token`
+   * Use curl to get a token:
++
+[source,bash]
+----
+curl -X POST \
+  http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=password&client_id=test_client&client_secret=yTKslWLtf4giJcWCaoVJ20H8sy6STexM&username=testUser&password=drowssap'
+----
+4. Use the token in your NiFi flow to test the processor
+5. Connect the processor to other processors as needed
+6. Start the flow and observe the results
+
+=== Stopping the Test Environment
+
+To stop the test environment:
+
+1. Navigate to the project root directory
+2. Run the helper script:
+
+[source,bash]
+----
+./integration-testing/src/main/docker/stop-test-container.sh
+----
+
+This script will stop and remove the Docker containers.
+
+== Troubleshooting
+
+=== Containers Fail to Start
+
+If either container fails to start, check the Docker logs:
+
+[source,bash]
+----
+docker compose -f src/main/docker/docker-compose.yml logs
+----
+
+You can also check logs for a specific service:
+
+[source,bash]
+----
+docker compose -f src/main/docker/docker-compose.yml logs nifi
+docker compose -f src/main/docker/docker-compose.yml logs keycloak
+----
+
+=== NAR File Not Found
+
+If the NAR file is not found, ensure that the build process completed successfully:
+
+[source,bash]
+----
+./mvnw clean package -DskipTests
+----
+
+=== Cannot Access NiFi UI
+
+If you cannot access the NiFi UI:
+
+1. Check that the container is running:
+
+[source,bash]
+----
+docker ps | grep nifi
+----
+
+2. Check the container logs for any errors:
+
+[source,bash]
+----
+docker compose -f src/main/docker/docker-compose.yml logs nifi
+----
+
+3. Ensure that port 9095 is not being used by another application.
+
+=== Cannot Access Keycloak Admin Console
+
+If you cannot access the Keycloak Admin Console:
+
+1. Check that the container is running:
+
+[source,bash]
+----
+docker ps | grep keycloak
+----
+
+2. Check the container logs for any errors:
+
+[source,bash]
+----
+docker compose -f src/main/docker/docker-compose.yml logs keycloak
+----
+
+3. Ensure that ports 9080 and 9085 are not being used by another application.
+
+=== Realm Import Issues
+
+If the Keycloak realm is not imported correctly:
+
+1. Check the Keycloak logs for import errors:
+
+[source,bash]
+----
+docker compose -f src/main/docker/docker-compose.yml logs keycloak
+----
+
+2. Verify that the realm configuration file is correctly formatted:
+
+[source,bash]
+----
+cat src/main/docker/keycloak/oauth_integration_tests-realm.json
+----
+
+3. Try importing the realm manually through the Keycloak Admin Console.
+
+=== Cannot Obtain Token from Keycloak
+
+If you cannot obtain a token from Keycloak:
+
+1. Verify that the Keycloak container is running and the realm is imported correctly
+2. Check that you're using the correct client ID and secret
+3. Verify that the user credentials are correct
+4. Try accessing the token endpoint directly in a browser to see any error messages
+
+== Development Workflow
+
+For development and testing:
+
+1. Make changes to the processor code
+2. Build the NAR file:
+
+[source,bash]
+----
+./mvnw clean package -DskipTests
+----
+
+3. The changes will be automatically available in the running container due to the volume mount
+
+If you need to restart the container:
+
+[source,bash]
+----
+./integration-testing/src/main/docker/stop-test-container.sh
+./integration-testing/src/main/docker/run-test-container.sh
+----
+
+== See Also
+
+* link:../doc/Specification.adoc[Main Specification]
+* link:../doc/Requirements.adoc[Requirements]
+* link:../doc/specification/testing.adoc[Testing Specification]
+* link:../doc/plan.adoc[Implementation Plan]
+* link:../doc/library/cui-test-keycloak-integration/README.adoc[Keycloak Integration]

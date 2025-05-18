@@ -379,10 +379,10 @@ _Sub-tasks:_
 ** [x] Add references to related documentation
 * [x] Organize test files
 ** [x] Place all Docker files in src/test/docker
-** [x] Create documentation in doc/test-docker.adoc
+** [x] Create documentation in integration-testing/README.adoc
 
 _Specification Reference:_
-- link:test-docker.adoc[Docker Test Environment]
+- link:../integration-testing/README.adoc[Docker Test Environment]
 - link:specification/testing.adoc[Testing Specification]
 
 _Postconditions for each step:_

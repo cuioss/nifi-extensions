@@ -1,0 +1,42 @@
+{
+  "realm": "oauth_integration_tests",
+  "enabled": true,
+  "users": [
+    {
+      "username": "testUser",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "drowssap",
+          "temporary": false
+        }
+      ],
+      "firstName": "Test",
+      "lastName": "User",
+      "email": "testUser@example.com",
+      "realmRoles": ["user"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "test_client",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "yTKslWLtf4giJcWCaoVJ20H8sy6STexM",
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "directAccessGrantsEnabled": true
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "user",
+        "description": "User role"
+      }
+    ]
+  }
+}

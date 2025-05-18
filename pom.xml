@@ -224,6 +224,7 @@
     <modules>
         <module>nifi-cuioss-processors</module>
         <module>nifi-cuioss-nar</module>
+        <module>integration-testing</module>
     </modules>
     <build>
         <pluginManagement>
