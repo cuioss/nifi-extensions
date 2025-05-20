@@ -10,10 +10,30 @@ cd "$(dirname "$0")/../../../.."
 
 # Build the NAR file
 echo "Building NAR file..."
-./mvnw clean package -DskipTests
+./mvnw package -DskipTests
 
 # Navigate to the Docker directory
 cd integration-testing/src/main/docker
+
+# Ensure the necessary directories exist
+echo "Ensuring necessary directories exist..."
+# Ensure the NiFi configuration directory exists
+if [ ! -d "./nifi/conf" ]; then
+  echo "Creating NiFi configuration directory..."
+  mkdir -p ./nifi/conf
+fi
+
+# Ensure the Keycloak import directory exists
+if [ ! -d "./keycloak" ]; then
+  echo "Creating Keycloak import directory..."
+  mkdir -p ./keycloak
+fi
+
+# Ensure the NiFi NAR extensions directory exists in the parent project
+if [ ! -d "../../../nifi-cuioss-nar/target" ]; then
+  echo "Creating NiFi NAR extensions directory..."
+  mkdir -p ../../../nifi-cuioss-nar/target
+fi
 
 # Start the Docker containers
 echo "Starting NiFi and Keycloak test containers..."

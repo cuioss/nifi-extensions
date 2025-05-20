@@ -28,8 +28,16 @@ The Docker configuration is located in the `src/main/docker` directory and inclu
 * `Dockerfile`: Defines the NiFi container with the necessary configuration
 * `docker-compose.yml`: Configures the Docker containers, including port mappings, volume mounts, and networking
 * Helper scripts:
-** `run-test-container.sh`: Builds the NAR file and starts the Docker containers
+** `run-test-container.sh`: Creates necessary directories, builds the NAR file, and starts the Docker containers
 ** `stop-test-container.sh`: Stops and removes the Docker containers
+* NiFi configuration:
+** `nifi/conf/`: Directory containing NiFi configuration files
+*** `nifi.properties`: Main NiFi configuration file
+*** `authorizers.xml`: Defines how users are authorized
+*** `bootstrap.conf`: Configuration for the bootstrap process
+*** `logback.xml`: Logging configuration
+*** `login-identity-providers.xml`: Defines how users authenticate
+*** `state-management.xml`: Defines how state is managed
 * Keycloak configuration:
 ** `keycloak/oauth_integration_tests-realm.json`: Realm configuration for Keycloak
 
@@ -40,6 +48,38 @@ The NiFi container is configured with:
 * HTTPS enabled on port 9095
 * A default user for login (username: admin, password: ctsBtRBKHRAx69EqUghvvgEvjnaLjFEB)
 * The MultiIssuerJWTTokenAuthenticator processor installed via a volume mount
+* Custom configuration files mounted from `src/main/docker/nifi/conf/` to `/opt/nifi/nifi-current/conf/` in the container
+
+==== Configuration Files
+
+The following configuration files are provided:
+
+* `nifi.properties`: The main configuration file for NiFi. It defines core properties, repository locations, web server settings, security settings, and more.
+* `authorizers.xml`: Defines how users are authorized in NiFi. For the test environment, we use the single-user-authorizer.
+* `bootstrap.conf`: Configuration for the bootstrap process, including JVM settings and memory allocation.
+* `logback.xml`: Logging configuration, including log levels, appenders, and log file locations.
+* `login-identity-providers.xml`: Defines how users authenticate in NiFi. For the test environment, we use the single-user-provider with the admin user.
+* `state-management.xml`: Defines how state is managed in NiFi, including local and cluster state providers.
+
+==== Customizing the Configuration
+
+To customize the NiFi configuration:
+
+1. Modify the files in the `src/main/docker/nifi/conf/` directory
+2. Restart the containers using the helper scripts:
+
+[source,bash]
+----
+./integration-testing/src/main/docker/stop-test-container.sh
+./integration-testing/src/main/docker/run-test-container.sh
+----
+
+Common customizations include:
+
+* Changing memory settings in `bootstrap.conf`
+* Adjusting log levels in `logback.xml`
+* Modifying security settings in `nifi.properties`
+* Adding or changing users in `login-identity-providers.xml`
 
 === Keycloak Configuration
 
@@ -52,6 +92,29 @@ The Keycloak container is configured with:
 ** A test user (username: testUser, password: drowssap)
 ** A test client (client ID: test_client, client secret: yTKslWLtf4giJcWCaoVJ20H8sy6STexM)
 
+=== Persistent Storage
+
+The test environment is configured with minimal persistent storage. Only the NiFi configuration and NAR deployment are preserved between container restarts, simplifying the setup and reducing resource usage.
+
+==== NiFi Persistent Storage
+
+NiFi does not use persistent storage for logs or repositories. Only the configuration files and NAR deployment are mounted from the host:
+
+* `nifi/conf/`: Configuration files mounted from the host to the container
+* `../../../../nifi-cuioss-nar/target`: NAR files mounted from the host to the container
+
+NOTE: Since logs are not persisted, you'll need to view them while the container is running:
+
+[source,bash]
+----
+docker compose exec nifi ls -la /opt/nifi/nifi-current/logs
+docker compose exec nifi cat /opt/nifi/nifi-current/logs/nifi-app.log
+----
+
+==== Keycloak Persistent Storage
+
+Keycloak uses an in-memory database (`dev-mem`) and does not persist any data between container restarts. This simplifies the setup and avoids permission issues with file-based storage. Only the realm import files are mounted from the host.
+
 == Using the Test Environment
 
 === Starting the Test Environment
@@ -59,19 +122,23 @@ The Keycloak container is configured with:
 To start the test environment:
 
 1. Navigate to the project root directory
-2. Run the helper script:
+2. Run the run-test-container script:
 
 [source,bash]
 ----
 ./integration-testing/src/main/docker/run-test-container.sh
 ----
 
-This script will:
+The run-test-container script will:
 
 1. Build the NAR file using Maven
-2. Start the Docker containers using Docker Compose
-3. Wait for NiFi and Keycloak to start
-4. Display information about how to access the NiFi UI and Keycloak Admin Console
+2. Ensure all necessary directories exist with appropriate permissions
+3. Start the Docker containers using Docker Compose
+4. Wait for NiFi and Keycloak to start
+5. Display information about how to access the NiFi UI and Keycloak Admin Console
+
+
+The containers use ephemeral storage for most data, with only the NiFi configuration and NAR deployment preserved between container restarts. This simplifies the setup and reduces resource usage.
 
 === Accessing the NiFi UI
 
@@ -208,6 +275,66 @@ docker compose -f src/main/docker/docker-compose.yml logs keycloak
 ----
 
 3. Ensure that ports 9080 and 9085 are not being used by another application.
+
+=== Storage and Log Access
+
+Since we're using ephemeral storage for most data, there are a few things to keep in mind:
+
+1. All logs and data will be lost when the containers are stopped
+2. You need to view logs while the containers are running
+3. Any changes made in NiFi will be lost when the container is restarted
+
+To view logs while the containers are running:
+
+[source,bash]
+----
+# List all log files
+docker compose exec nifi ls -la /opt/nifi/nifi-current/logs/
+
+# View the application log
+docker compose exec nifi cat /opt/nifi/nifi-current/logs/nifi-app.log
+
+# View the bootstrap log
+docker compose exec nifi cat /opt/nifi/nifi-current/logs/nifi-bootstrap.log
+
+# View the user log
+docker compose exec nifi cat /opt/nifi/nifi-current/logs/nifi-user.log
+
+# Follow the application log (similar to tail -f)
+docker compose exec nifi tail -f /opt/nifi/nifi-current/logs/nifi-app.log
+----
+
+NOTE: The storage configuration has been simplified to only include essential host-mounted directories for NiFi configuration and NAR deployment. All other data is stored in ephemeral container storage. This approach simplifies the setup and reduces resource usage.
+
+=== Known Issues
+
+There are some known issues with the Docker test environment:
+
+1. NiFi may fail to start properly with a NullPointerException when trying to set the single user credentials. This is related to the login identity provider configuration. If you encounter this issue, you may need to modify the docker-compose.yml file to use a different approach for setting the single user credentials.
+
+2. Keycloak uses an in-memory database by design, which means all data is lost when the container is stopped. This is intentional to simplify the setup and reduce resource usage.
+
+3. [FIXED] NiFi may produce access-related exceptions when starting. This was due to missing or inaccessible repository directories. The issue has been fixed by configuring NiFi to use ephemeral storage.
+
+4. [FIXED] NiFi may produce a `java.lang.reflect.InaccessibleObjectException` related to `sun.nio.ch.FileChannelImpl.setUninterruptible()`. This is due to Java module system restrictions in Java 9+ that prevent reflective access to internal JDK classes. The issue has been fixed by adding the `--add-opens=java.base/sun.nio.ch=ALL-UNNAMED` JVM argument to the bootstrap.conf file.
+
+These issues are being investigated and will be addressed in a future update.
+
+=== Cleaning Up
+
+Since we're using ephemeral storage for most data, cleaning up is much simpler:
+
+[source,bash]
+----
+# Stop the containers
+./integration-testing/src/main/docker/stop-test-container.sh
+----
+
+This will stop and remove the containers. Since we're not using Docker volumes for persistent storage, all data will be automatically removed when the containers are stopped.
+
+NOTE: Both NiFi and Keycloak use ephemeral storage, so all data is automatically cleared when the containers are stopped.
+
+TIP: If you want to remove any Docker images that are no longer needed, you can use `docker system prune` to clean up unused Docker resources.
 
 === Realm Import Issues
 

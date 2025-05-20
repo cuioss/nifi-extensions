@@ -9,8 +9,14 @@ services:
       - NIFI_WEB_HTTPS_PORT=9095
       - SINGLE_USER_CREDENTIALS_USERNAME=admin
       - SINGLE_USER_CREDENTIALS_PASSWORD=ctsBtRBKHRAx69EqUghvvgEvjnaLjFEB
+      - NIFI_HOME=/opt/nifi/nifi-current
+      - NIFI_LOG_DIR=/opt/nifi/nifi-current/logs
+      - NIFI_BOOTSTRAP_CONF=/opt/nifi/nifi-current/conf/bootstrap.conf
+      - NIFI_CONF_DIR=/opt/nifi/nifi-current/conf
+      - NIFI_SECURITY_USER_LOGIN_IDENTITY_PROVIDER=single-user-provider
     volumes:
-      - ../../../nifi-cuioss-nar/target:/opt/nifi/nifi-current/extensions
+      - ../../../../nifi-cuioss-nar/target:/opt/nifi/nifi-current/extensions
+      - ./nifi/conf:/opt/nifi/nifi-current/conf
     healthcheck:
       test: ["CMD", "curl", "-k", "--fail", "--insecure", "--retry", "5", "--retry-delay", "10", "--max-time", "15", "https://localhost:9095/nifi/"]
       interval: 60s
@@ -29,6 +35,7 @@ services:
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=admin
       - KC_HEALTH_ENABLED=true
+      - KC_DB=dev-mem
     volumes:
       - ./keycloak:/opt/keycloak/data/import
     command: 
@@ -45,3 +52,4 @@ services:
 networks:
   nifi-keycloak-network:
     driver: bridge
+
