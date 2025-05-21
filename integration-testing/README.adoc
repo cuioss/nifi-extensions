@@ -101,7 +101,7 @@ The test environment is configured with minimal persistent storage. Only the NiF
 NiFi does not use persistent storage for logs or repositories. Only the configuration files and NAR deployment are mounted from the host:
 
 * `nifi/conf/`: Configuration files mounted from the host to the container
-* `../../../../nifi-cuioss-nar/target`: NAR files mounted from the host to the container
+* `../../../target/nifi-deploy`: NAR files mounted from the host to the container's lib directory
 
 NOTE: Since logs are not persisted, you'll need to view them while the container is running:
 

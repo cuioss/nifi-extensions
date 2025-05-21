@@ -1,0 +1,85 @@
+= Integration Testing Requirements
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+== Overview
+
+This document defines the requirements for the integration testing module, which provides a Docker-based test environment for validating NiFi extensions.
+
+== Implementation Requirements
+
+This section outlines the concrete requirements that need to be implemented, with checkboxes to track status.
+
+=== Container Configuration
+* [x] NiFi version must be 2.4.0
+* [x] Keycloak version must be 26.0.1
+
+=== File Paths and Volumes
+* [x] Path for NAR to be copied to/read from: `target/nifi-deploy/`
+* [x] This path should be mounted as a volume to allow NAR updates without container restart
+* [x] NiFi configuration source must be `integration-testing/src/main/docker/nifi/conf`
+* [x] Keycloak realm file `integration-testing/src/main/docker/keycloak/oauth_integration_tests-realm.json` must be copied to Keycloak for bootstrap
+
+=== Build and Deployment
+* [x] Create a separate script for building and copying the NAR to the deployment location
+
+== Functional Requirements
+
+=== Docker Environment
+
+==== Container Setup
+* The environment must include a NiFi container and a Keycloak container
+* Both containers must be configured to work together in a shared network
+* The NiFi container must expose HTTPS on port 9095
+* The Keycloak container must expose HTTP on port 9080 and HTTPS on port 9085
+
+==== NiFi Configuration
+* NiFi must be configured with HTTPS enabled
+* NiFi must have a default admin user for authentication
+* The nifi-cuioss-nar extension must be deployed to the NiFi container
+
+==== Keycloak Configuration
+* Keycloak must be configured with a test realm
+* The realm must include a test user and client for token generation
+
+=== Deployment Process
+
+==== Build Process
+* The environment must build the NAR file before starting containers
+* The NAR file must be copied to the appropriate deployment location
+
+==== Container Management
+* The environment must provide scripts for starting and stopping containers
+* The start script must ensure all necessary directories exist
+
+== Verification Requirements
+
+=== Verification Process
+* Use `run-test-container.sh` to start the verification
+* Always stop the container after verification using `stop-test-container.sh`
+* Verify that the NAR file is present under `target/nifi-deploy/`
+
+=== Container Verification
+* Both NiFi and Keycloak containers must start successfully without errors
+* Verification must be performed using `docker compose logs nifi` and `docker compose logs keycloak`
+
+=== NAR Deployment Verification
+* The nifi-cuioss-nar file must be successfully deployed to the NiFi container
+* Verification must be performed using `docker compose logs nifi | grep -i "nifi-cuioss-nar"`
+
+== Non-Functional Requirements
+
+=== Usability
+* The environment must be easy to set up and use
+* Clear documentation must be provided for all operations
+
+=== Maintainability
+* The environment must use volume mounts for configuration to simplify updates
+* Container configuration must be externalized in docker-compose.yml
+
+=== Performance
+* The environment should start up in a reasonable time frame
+* Resource usage should be minimized where possible
+

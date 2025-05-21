@@ -15,7 +15,7 @@ services:
       - NIFI_CONF_DIR=/opt/nifi/nifi-current/conf
       - NIFI_SECURITY_USER_LOGIN_IDENTITY_PROVIDER=single-user-provider
     volumes:
-      - ../../../../nifi-cuioss-nar/target:/opt/nifi/nifi-current/extensions
+      - ../../../target/nifi-deploy:/opt/nifi/nifi-current/nar_extensions
       - ./nifi/conf:/opt/nifi/nifi-current/conf
     healthcheck:
       test: ["CMD", "curl", "-k", "--fail", "--insecure", "--retry", "5", "--retry-delay", "10", "--max-time", "15", "https://localhost:9095/nifi/"]
@@ -52,4 +52,3 @@ services:
 networks:
   nifi-keycloak-network:
     driver: bridge
-

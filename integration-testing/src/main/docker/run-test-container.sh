@@ -8,9 +8,9 @@ set -e
 # Navigate to the project root
 cd "$(dirname "$0")/../../../.."
 
-# Build the NAR file
-echo "Building NAR file..."
-./mvnw package -DskipTests
+# Call the copy-deployment.sh script to build and copy the NAR file
+echo "Calling copy-deployment.sh to build and copy the NAR file..."
+./integration-testing/src/main/docker/copy-deployment.sh
 
 # Navigate to the Docker directory
 cd integration-testing/src/main/docker
