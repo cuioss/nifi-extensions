@@ -91,6 +91,7 @@
     <logger name="org.apache.nifi.processors" level="INFO"/>
     <logger name="org.apache.nifi.processors.standard.LogAttribute" level="INFO"/>
     <logger name="org.apache.nifi.controller.repository.StandardProcessSession" level="WARN" />
+    <logger name="org.apache.nifi.controller.repository" level="warn" />
 
     <!-- Logger for managing logging statements for nifi clusters. -->
     <logger name="org.apache.nifi.cluster" level="INFO"/>

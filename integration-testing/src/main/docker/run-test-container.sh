@@ -5,34 +5,36 @@
 # Exit on error
 set -e
 
-# Navigate to the project root
-cd "$(dirname "$0")/../../../.."
+# Define paths
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 
 # Call the copy-deployment.sh script to build and copy the NAR file
 echo "Calling copy-deployment.sh to build and copy the NAR file..."
-./integration-testing/src/main/docker/copy-deployment.sh
+"${SCRIPT_DIR}/copy-deployment.sh"
 
-# Navigate to the Docker directory
-cd integration-testing/src/main/docker
+# Change to the Docker directory
+cd "${SCRIPT_DIR}"
 
 # Ensure the necessary directories exist
 echo "Ensuring necessary directories exist..."
 # Ensure the NiFi configuration directory exists
-if [ ! -d "./nifi/conf" ]; then
+if [ ! -d "${SCRIPT_DIR}/nifi/conf" ]; then
   echo "Creating NiFi configuration directory..."
-  mkdir -p ./nifi/conf
+  mkdir -p "${SCRIPT_DIR}/nifi/conf"
 fi
 
 # Ensure the Keycloak import directory exists
-if [ ! -d "./keycloak" ]; then
+if [ ! -d "${SCRIPT_DIR}/keycloak" ]; then
   echo "Creating Keycloak import directory..."
-  mkdir -p ./keycloak
+  mkdir -p "${SCRIPT_DIR}/keycloak"
 fi
 
 # Ensure the NiFi NAR extensions directory exists in the parent project
-if [ ! -d "../../../nifi-cuioss-nar/target" ]; then
+NAR_TARGET_DIR="${PROJECT_ROOT}/nifi-cuioss-nar/target"
+if [ ! -d "${NAR_TARGET_DIR}" ]; then
   echo "Creating NiFi NAR extensions directory..."
-  mkdir -p ../../../nifi-cuioss-nar/target
+  mkdir -p "${NAR_TARGET_DIR}"
 fi
 
 # Start the Docker containers

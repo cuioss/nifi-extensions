@@ -5,30 +5,33 @@
 # Exit on error
 set -e
 
-# Navigate to the project root
-cd "$(dirname "$0")/../../../.."
+# Define paths
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
+NAR_TARGET_DIR="${PROJECT_ROOT}/nifi-cuioss-nar/target"
+DEPLOY_DIR="${PROJECT_ROOT}/integration-testing/target/nifi-deploy"
+
+# Navigate to the project root to run Maven
+cd "${PROJECT_ROOT}"
 
 # Build the NAR file
 echo "Building NAR file..."
 ./mvnw package -DskipTests
 
-# Navigate to the Docker directory
-cd integration-testing/src/main/docker
-
 # Ensure the NiFi NAR extensions directory exists in the parent project
-if [ ! -d "../../../../nifi-cuioss-nar/target" ]; then
+if [ ! -d "${NAR_TARGET_DIR}" ]; then
   echo "Creating NiFi NAR extensions directory..."
-  mkdir -p ../../../../nifi-cuioss-nar/target
+  mkdir -p "${NAR_TARGET_DIR}"
 fi
 
 # Ensure the target directory for the NAR file exists
-if [ ! -d "../../../target/nifi-deploy" ]; then
+if [ ! -d "${DEPLOY_DIR}" ]; then
   echo "Creating target directory for NAR file..."
-  mkdir -p ../../../target/nifi-deploy
+  mkdir -p "${DEPLOY_DIR}"
 fi
 
 # Copy the NAR file to the target directory
 echo "Copying NAR file to target directory..."
-cp ../../../../nifi-cuioss-nar/target/nifi-cuioss-nar-1.0-SNAPSHOT.nar ../../../target/nifi-deploy/
+cp "${NAR_TARGET_DIR}/nifi-cuioss-nar-1.0-SNAPSHOT.nar" "${DEPLOY_DIR}/"
 
 echo "NAR file has been built and copied to the deployment location."
