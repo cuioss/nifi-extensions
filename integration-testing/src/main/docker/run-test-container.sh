@@ -13,9 +13,13 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 echo "Calling copy-deployment.sh to build and copy the NAR file..."
 "${SCRIPT_DIR}/copy-deployment.sh"
 
-# Generate certificates for NiFi and Keycloak
-echo "Generating certificates for NiFi and Keycloak..."
-"${SCRIPT_DIR}/generate-certificates.sh"
+# Check if certificates exist
+if [ ! -f "${SCRIPT_DIR}/nifi/conf/keystore.p12" ] || [ ! -f "${SCRIPT_DIR}/nifi/conf/truststore.p12" ] || \
+   [ ! -f "${SCRIPT_DIR}/keycloak/certificates/localhost.crt" ] || [ ! -f "${SCRIPT_DIR}/keycloak/certificates/localhost.key" ]; then
+  echo "Error: Required certificates are missing. Please run generate-certificates.sh manually before starting the containers."
+  echo "Command: ${SCRIPT_DIR}/generate-certificates.sh"
+  exit 1
+fi
 
 # Change to the Docker directory
 cd "${SCRIPT_DIR}"
@@ -58,7 +62,7 @@ echo ""
 echo ""
 echo "NiFi and Keycloak test containers are running!"
 echo "Access the NiFi UI at: https://localhost:9095/nifi/"
-echo "Login with username: admin, password: ctsBtRBKHRAx69EqUghvvgEvjnaLjFEB"
+echo "Login with username: admin, password: adminadminadmin"
 echo ""
 echo "Access the Keycloak Admin Console at: http://localhost:9080/admin/"
 echo "Login with username: admin, password: admin"

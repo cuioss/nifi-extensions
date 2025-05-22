@@ -2,8 +2,6 @@ FROM apache/nifi:2.4.0
 
 # Set environment variables for NiFi configuration
 ENV NIFI_WEB_HTTPS_PORT=9095
-ENV SINGLE_USER_CREDENTIALS_USERNAME=admin
-ENV SINGLE_USER_CREDENTIALS_PASSWORD=ctsBtRBKHRAx69EqUghvvgEvjnaLjFEB
 
 # Create directory for custom NARs
 RUN mkdir -p /opt/nifi/nifi-current/extensions

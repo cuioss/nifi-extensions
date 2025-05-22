@@ -7,8 +7,6 @@ services:
       - "9095:9095"
     environment:
       - NIFI_WEB_HTTPS_PORT=9095
-      - SINGLE_USER_CREDENTIALS_USERNAME=admin
-      - SINGLE_USER_CREDENTIALS_PASSWORD=ctsBtRBKHRAx69EqUghvvgEvjnaLjFEB
       - NIFI_HOME=/opt/nifi/nifi-current
       - NIFI_LOG_DIR=/opt/nifi/nifi-current/logs
       - NIFI_BOOTSTRAP_CONF=/opt/nifi/nifi-current/conf/bootstrap.conf

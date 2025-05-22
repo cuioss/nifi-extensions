@@ -18,6 +18,6 @@
         <identifier>single-user-provider</identifier>
         <class>org.apache.nifi.authentication.single.user.SingleUserLoginIdentityProvider</class>
         <property name="Username">admin</property>
-        <property name="Password">ctsBtRBKHRAx69EqUghvvgEvjnaLjFEB</property>
+        <property name="Password">adminadminadmin</property>
     </provider>
 </loginIdentityProviders>
