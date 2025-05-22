@@ -36,11 +36,15 @@ services:
       - KEYCLOAK_ADMIN_PASSWORD=admin
       - KC_HEALTH_ENABLED=true
       - KC_DB=dev-mem
+      - KC_HTTPS_CERTIFICATE_FILE=/opt/keycloak/data/import/certificates/localhost.crt
+      - KC_HTTPS_CERTIFICATE_KEY_FILE=/opt/keycloak/data/import/certificates/localhost.key
     volumes:
       - ./keycloak:/opt/keycloak/data/import
     command: 
       - start-dev
       - --import-realm
+      - --https-certificate-file=/opt/keycloak/data/import/certificates/localhost.crt
+      - --https-certificate-key-file=/opt/keycloak/data/import/certificates/localhost.key
     healthcheck:
       test: ["CMD", "curl", "-k", "--fail", "http://localhost:9086/health/live"]
       interval: 30s

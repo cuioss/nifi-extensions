@@ -13,6 +13,10 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 echo "Calling copy-deployment.sh to build and copy the NAR file..."
 "${SCRIPT_DIR}/copy-deployment.sh"
 
+# Generate certificates for NiFi and Keycloak
+echo "Generating certificates for NiFi and Keycloak..."
+"${SCRIPT_DIR}/generate-certificates.sh"
+
 # Change to the Docker directory
 cd "${SCRIPT_DIR}"
 
