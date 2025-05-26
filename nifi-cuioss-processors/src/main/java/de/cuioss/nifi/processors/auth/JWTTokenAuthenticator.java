@@ -58,9 +58,9 @@ import de.cuioss.tools.logging.CuiLogger;
         @ReadsAttribute(attribute = "http.headers.authorization", description = "HTTP Authorization header containing the JWT token")
 })
 @WritesAttributes({
-        @WritesAttribute(attribute = JWTAttributes.TOKEN.VALUE, description = "The extracted JWT token"),
-        @WritesAttribute(attribute = JWTAttributes.TOKEN.EXTRACTED_AT, description = "Timestamp when the token was extracted"),
-        @WritesAttribute(attribute = JWTAttributes.ERROR.REASON, description = "Error reason if token extraction failed")
+        @WritesAttribute(attribute = JWTAttributes.Token.VALUE, description = "The extracted JWT token"),
+        @WritesAttribute(attribute = JWTAttributes.Token.EXTRACTED_AT, description = "Timestamp when the token was extracted"),
+        @WritesAttribute(attribute = JWTAttributes.Error.REASON, description = "Error reason if token extraction failed")
 })
 public class JWTTokenAuthenticator extends AbstractProcessor {
 
@@ -79,7 +79,7 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
 
     // Property Descriptors
     public static final PropertyDescriptor TOKEN_LOCATION = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.PROPERTIES.TOKEN.LOCATION)
+            .name(JWTAttributes.Properties.Token.LOCATION)
             .displayName("Token Location")
             .description("Defines where to extract the token from")
             .required(true)
@@ -88,7 +88,7 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
             .build();
 
     public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.PROPERTIES.TOKEN.HEADER)
+            .name(JWTAttributes.Properties.Token.HEADER)
             .displayName("Token Header")
             .description("The header name containing the token when using AUTHORIZATION_HEADER")
             .required(false)
@@ -97,7 +97,7 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
             .build();
 
     public static final PropertyDescriptor CUSTOM_HEADER_NAME = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.PROPERTIES.TOKEN.CUSTOM_HEADER_NAME)
+            .name(JWTAttributes.Properties.Token.CUSTOM_HEADER_NAME)
             .displayName("Custom Header Name")
             .description("The custom header name when using CUSTOM_HEADER")
             .required(false)
@@ -106,7 +106,7 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
             .build();
 
     public static final PropertyDescriptor BEARER_TOKEN_PREFIX = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.PROPERTIES.TOKEN.BEARER_PREFIX)
+            .name(JWTAttributes.Properties.Token.BEARER_PREFIX)
             .displayName("Bearer Token Prefix")
             .description("The prefix to strip from the token (e.g., \"Bearer \")")
             .required(false)
@@ -169,7 +169,7 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
 
                 // Add error attributes
                 Map<String, String> attributes = new HashMap<>();
-                attributes.put(JWTAttributes.ERROR.REASON, "No token found in the specified location: " + tokenLocation);
+                attributes.put(JWTAttributes.Error.REASON, "No token found in the specified location: " + tokenLocation);
                 flowFile = session.putAllAttributes(flowFile, attributes);
 
                 session.transfer(flowFile, FAILURE);
@@ -178,8 +178,8 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
 
             // Add token and extraction timestamp to flow file attributes
             Map<String, String> attributes = new HashMap<>();
-            attributes.put(JWTAttributes.TOKEN.VALUE, token);
-            attributes.put(JWTAttributes.TOKEN.EXTRACTED_AT, Instant.now().toString());
+            attributes.put(JWTAttributes.Token.VALUE, token);
+            attributes.put(JWTAttributes.Token.EXTRACTED_AT, Instant.now().toString());
             flowFile = session.putAllAttributes(flowFile, attributes);
 
             // Transfer to success relationship
@@ -190,7 +190,7 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
 
             // Add error attributes
             Map<String, String> attributes = new HashMap<>();
-            attributes.put(JWTAttributes.ERROR.REASON, "Error processing flow file: " + e.getMessage());
+            attributes.put(JWTAttributes.Error.REASON, "Error processing flow file: " + e.getMessage());
             flowFile = session.putAllAttributes(flowFile, attributes);
 
             session.transfer(flowFile, FAILURE);

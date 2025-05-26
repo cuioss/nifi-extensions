@@ -30,7 +30,7 @@ public final class JWTAttributes {
      * Basic JWT token attributes.
      */
     @UtilityClass
-    public static final class TOKEN {
+    public static final class Token {
         /**
          * The extracted JWT token.
          */
@@ -71,7 +71,7 @@ public final class JWTAttributes {
      * JWT token content attributes.
      */
     @UtilityClass
-    public static final class CONTENT {
+    public static final class Content {
         /**
          * Prefix for all token claims.
          */
@@ -82,7 +82,7 @@ public final class JWTAttributes {
      * JWT error attributes.
      */
     @UtilityClass
-    public static final class ERROR {
+    public static final class Error {
         /**
          * Error code if token validation failed.
          */
@@ -103,18 +103,18 @@ public final class JWTAttributes {
      * JWT configuration attributes.
      */
     @UtilityClass
-    public static final class CONFIG {
+    public static final class Config {
         /**
          * Whether the configuration was refreshed.
          */
-        public static final String REFRESHED = "jwt.config.refreshed";
+        public static final String REFRESHED = "jwt.Config.refreshed";
     }
 
     /**
      * JWT roles and groups attributes.
      */
     @UtilityClass
-    public static final class ROLES_AND_GROUPS {
+    public static final class Authorization {
         /**
          * Comma-separated list of roles.
          */
@@ -150,12 +150,12 @@ public final class JWTAttributes {
      * JWT property descriptors for configuration.
      */
     @UtilityClass
-    public static final class PROPERTIES {
+    public static final class Properties {
         /**
          * Basic JWT token properties.
          */
         @UtilityClass
-        public static final class TOKEN {
+        public static final class Token {
             /**
              * Defines where to extract the token from.
              */
@@ -181,7 +181,7 @@ public final class JWTAttributes {
          * JWT validation properties.
          */
         @UtilityClass
-        public static final class VALIDATION {
+        public static final class Validation {
             /**
              * Defines where to extract the token from.
              */

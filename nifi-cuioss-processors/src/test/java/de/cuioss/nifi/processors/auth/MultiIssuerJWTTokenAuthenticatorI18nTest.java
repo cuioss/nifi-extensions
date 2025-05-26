@@ -73,7 +73,7 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
                 MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED).get(0);
 
         // Verify error attributes
-        String errorReason = flowFile.getAttribute(JWTAttributes.ERROR.REASON);
+        String errorReason = flowFile.getAttribute(JWTAttributes.Error.REASON);
         assertNotNull(errorReason, "Error reason should not be null");
         assertTrue(errorReason.contains("AUTHORIZATION_HEADER"),
                 "Error message should contain the token location");
@@ -117,8 +117,8 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
                 MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED).get(0);
 
         // Verify error attributes
-        String errorReason = flowFile.getAttribute(JWTAttributes.ERROR.REASON);
-        String errorCode = flowFile.getAttribute(JWTAttributes.ERROR.CODE);
+        String errorReason = flowFile.getAttribute(JWTAttributes.Error.REASON);
+        String errorCode = flowFile.getAttribute(JWTAttributes.Error.CODE);
 
         // Add debug information
         LOGGER.debug("Error reason: %s", errorReason);
@@ -157,8 +157,8 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
                 MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED).get(0);
 
         // Verify error attributes
-        String errorReason = flowFile.getAttribute(JWTAttributes.ERROR.REASON);
-        String errorCode = flowFile.getAttribute(JWTAttributes.ERROR.CODE);
+        String errorReason = flowFile.getAttribute(JWTAttributes.Error.REASON);
+        String errorCode = flowFile.getAttribute(JWTAttributes.Error.CODE);
 
         assertNotNull(errorReason, "Error reason should not be null");
         assertEquals("AUTH-004", errorCode, "Error code should be AUTH-004");
@@ -190,7 +190,7 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
                     MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED).get(0);
 
             // The processor should still run but validation will fail
-            String errorReason = flowFile.getAttribute(JWTAttributes.ERROR.REASON);
+            String errorReason = flowFile.getAttribute(JWTAttributes.Error.REASON);
             assertNotNull(errorReason, "Error reason should not be null");
 
             // We can't directly test the validation error message here, but we can verify

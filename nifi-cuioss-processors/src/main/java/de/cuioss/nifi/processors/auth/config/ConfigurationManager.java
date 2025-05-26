@@ -38,7 +38,7 @@ public class ConfigurationManager {
     private static final CuiLogger LOGGER = new CuiLogger(ConfigurationManager.class);
 
     // System property and environment variable names
-    private static final String CONFIG_PATH_PROPERTY = "jwt.config.path";
+    private static final String CONFIG_PATH_PROPERTY = "jwt.Config.path";
     private static final String CONFIG_PATH_ENV = "JWT_CONFIG_PATH";
 
     // Default configuration file paths

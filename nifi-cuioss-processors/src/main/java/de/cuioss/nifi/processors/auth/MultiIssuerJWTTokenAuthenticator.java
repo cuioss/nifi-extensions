@@ -70,12 +70,12 @@ import de.cuioss.tools.logging.CuiLogger;
         @ReadsAttribute(attribute = "http.headers.authorization", description = "HTTP Authorization header containing the JWT token")
 })
 @WritesAttributes({
-        @WritesAttribute(attribute = JWTAttributes.CONTENT.PREFIX + "*", description = "JWT token claims"),
-        @WritesAttribute(attribute = JWTAttributes.TOKEN.VALIDATED_AT, description = "Timestamp when the token was validated"),
-        @WritesAttribute(attribute = JWTAttributes.TOKEN.AUTHORIZATION_PASSED, description = "Whether the token passed authorization checks"),
-        @WritesAttribute(attribute = JWTAttributes.ERROR.CODE, description = "Error code if token validation failed"),
-        @WritesAttribute(attribute = JWTAttributes.ERROR.REASON, description = "Error reason if token validation failed"),
-        @WritesAttribute(attribute = JWTAttributes.ERROR.CATEGORY, description = "Error category if token validation failed")
+        @WritesAttribute(attribute = JWTAttributes.Content.PREFIX + "*", description = "JWT token claims"),
+        @WritesAttribute(attribute = JWTAttributes.Token.VALIDATED_AT, description = "Timestamp when the token was validated"),
+        @WritesAttribute(attribute = JWTAttributes.Token.AUTHORIZATION_PASSED, description = "Whether the token passed authorization checks"),
+        @WritesAttribute(attribute = JWTAttributes.Error.CODE, description = "Error code if token validation failed"),
+        @WritesAttribute(attribute = JWTAttributes.Error.REASON, description = "Error reason if token validation failed"),
+        @WritesAttribute(attribute = JWTAttributes.Error.CATEGORY, description = "Error category if token validation failed")
 })
 public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
@@ -125,7 +125,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     // Property Descriptors
     public static final PropertyDescriptor TOKEN_LOCATION = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.PROPERTIES.VALIDATION.TOKEN_LOCATION)
+            .name(JWTAttributes.Properties.Validation.TOKEN_LOCATION)
             .displayName("Token Location") // Will be set dynamically in init method
             .description("Defines where to extract the token from") // Will be set dynamically in init method
             .required(true)
@@ -134,7 +134,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             .build();
 
     public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.PROPERTIES.VALIDATION.TOKEN_HEADER)
+            .name(JWTAttributes.Properties.Validation.TOKEN_HEADER)
             .displayName("Token Header")
             .description("The header name containing the token when using AUTHORIZATION_HEADER")
             .required(false)
@@ -143,7 +143,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             .build();
 
     public static final PropertyDescriptor CUSTOM_HEADER_NAME = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.PROPERTIES.VALIDATION.CUSTOM_HEADER_NAME)
+            .name(JWTAttributes.Properties.Validation.CUSTOM_HEADER_NAME)
             .displayName("Custom Header Name")
             .description("The custom header name when using CUSTOM_HEADER")
             .required(false)
@@ -152,7 +152,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             .build();
 
     public static final PropertyDescriptor BEARER_TOKEN_PREFIX = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.PROPERTIES.VALIDATION.BEARER_TOKEN_PREFIX)
+            .name(JWTAttributes.Properties.Validation.BEARER_TOKEN_PREFIX)
             .displayName("Bearer Token Prefix")
             .description("The prefix to strip from the token (e.g., \"Bearer \")")
             .required(false)
@@ -161,7 +161,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             .build();
 
     public static final PropertyDescriptor REQUIRE_VALID_TOKEN = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.PROPERTIES.VALIDATION.REQUIRE_VALID_TOKEN)
+            .name(JWTAttributes.Properties.Validation.REQUIRE_VALID_TOKEN)
             .displayName("Require Valid Token")
             .description("Whether to require a valid token for processing")
             .required(true)
@@ -170,7 +170,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             .build();
 
     public static final PropertyDescriptor JWKS_REFRESH_INTERVAL = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.PROPERTIES.VALIDATION.JWKS_REFRESH_INTERVAL)
+            .name(JWTAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL)
             .displayName("JWKS Refresh Interval")
             .description("Interval in seconds for refreshing JWKS keys")
             .required(true)
@@ -179,7 +179,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             .build();
 
     public static final PropertyDescriptor MAXIMUM_TOKEN_SIZE = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.PROPERTIES.VALIDATION.MAXIMUM_TOKEN_SIZE)
+            .name(JWTAttributes.Properties.Validation.MAXIMUM_TOKEN_SIZE)
             .displayName("Maximum Token Size")
             .description("Maximum token size in bytes")
             .required(true)
@@ -188,7 +188,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             .build();
 
     public static final PropertyDescriptor ALLOWED_ALGORITHMS = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.PROPERTIES.VALIDATION.ALLOWED_ALGORITHMS)
+            .name(JWTAttributes.Properties.Validation.ALLOWED_ALGORITHMS)
             .displayName("Allowed Algorithms")
             .description("Comma-separated list of allowed JWT signing algorithms. " +
                     "Recommended secure algorithms: RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512. " +
@@ -199,7 +199,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             .build();
 
     public static final PropertyDescriptor REQUIRE_HTTPS_FOR_JWKS = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.PROPERTIES.VALIDATION.REQUIRE_HTTPS_FOR_JWKS)
+            .name(JWTAttributes.Properties.Validation.REQUIRE_HTTPS_FOR_JWKS)
             .displayName("Require HTTPS for JWKS URLs")
             .description("Whether to require HTTPS for JWKS URLs. Strongly recommended for production environments.")
             .required(true)
@@ -208,7 +208,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             .build();
 
     public static final PropertyDescriptor JWKS_CONNECTION_TIMEOUT = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.PROPERTIES.VALIDATION.JWKS_CONNECTION_TIMEOUT)
+            .name(JWTAttributes.Properties.Validation.JWKS_CONNECTION_TIMEOUT)
             .displayName("JWKS Connection Timeout")
             .description("Timeout in seconds for JWKS endpoint connections")
             .required(true)
@@ -404,7 +404,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
                     LOGGER.info(AuthLogMessages.INFO.TOKEN_VALIDATOR_INITIALIZED.format(issuerConfigs.size()));
 
-                    // Clear the issuer config cache to ensure we don't use stale configurations
+                    // Clear the issuer Config cache to ensure we don't use stale configurations
                     issuerConfigCache.clear();
                 }
             }
@@ -434,7 +434,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             }
         }
 
-        // Clear the issuer config cache to ensure we don't use stale configurations
+        // Clear the issuer Config cache to ensure we don't use stale configurations
         // during the transition period
         issuerConfigCache.clear();
     }
@@ -539,7 +539,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     currentIssuerNames.add(issuerName);
 
                     // Only add UI property if it doesn't exist in external configuration
-                    // This implements the precedence order: external config > UI config
+                    // This implements the precedence order: external Config > UI Config
                     Map<String, String> issuerProps = issuerPropertiesMap.computeIfAbsent(issuerName, k -> new HashMap<>());
                     if (!issuerProps.containsKey(propertyKey)) {
                         issuerProps.put(propertyKey, context.getProperty(propertyDescriptor).getValue());
@@ -567,7 +567,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             // Generate a hash for this issuer's properties to detect changes
             String issuerPropertiesHash = generateIssuerPropertiesHash(properties);
 
-            // Check if we can reuse the cached issuer config
+            // Check if we can reuse the cached issuer Config
             IssuerConfig cachedConfig = issuerConfigCache.get(issuerName);
             if (cachedConfig != null && issuerPropertiesHash.equals(cachedConfig.toString())) {
                 LOGGER.info(AuthLogMessages.INFO.REUSING_CACHED_CONFIG.format(issuerName));
@@ -590,7 +590,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 IssuerConfig issuerConfig = createIssuerConfig(issuerName, properties, context);
                 if (issuerConfig != null) {
                     issuerConfigs.add(issuerConfig);
-                    // Cache the issuer config for future use
+                    // Cache the issuer Config for future use
                     issuerConfigCache.put(issuerName, issuerConfig);
                     LOGGER.info(AuthLogMessages.INFO.CREATED_CACHED_CONFIG.format(issuerName));
                 }
@@ -737,8 +737,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         // Add configuration refreshed attribute if configuration was reloaded
         if (configurationRefreshed) {
-            flowFile = session.putAttribute(flowFile, JWTAttributes.CONFIG.REFRESHED, "true");
-            LOGGER.info("Added " + JWTAttributes.CONFIG.REFRESHED + " attribute to flow file");
+            flowFile = session.putAttribute(flowFile, JWTAttributes.Config.REFRESHED, "true");
+            LOGGER.info("Added " + JWTAttributes.Config.REFRESHED + " attribute to flow file");
             configurationRefreshed = false;
         }
 
@@ -769,9 +769,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
                 // Add error attributes
                 Map<String, String> attributes = new HashMap<>();
-                attributes.put(JWTAttributes.ERROR.CODE, "AUTH-001");
-                attributes.put(JWTAttributes.ERROR.REASON, i18nResolver.getTranslatedString("error.no.token.found", tokenLocation));
-                attributes.put(JWTAttributes.ERROR.CATEGORY, "EXTRACTION_ERROR");
+                attributes.put(JWTAttributes.Error.CODE, "AUTH-001");
+                attributes.put(JWTAttributes.Error.REASON, i18nResolver.getTranslatedString("error.no.token.found", tokenLocation));
+                attributes.put(JWTAttributes.Error.CATEGORY, "EXTRACTION_ERROR");
                 flowFile = session.putAllAttributes(flowFile, attributes);
 
                 session.transfer(flowFile, AUTHENTICATION_FAILED);
@@ -785,9 +785,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
                 // Add error attributes
                 Map<String, String> attributes = new HashMap<>();
-                attributes.put(JWTAttributes.ERROR.CODE, "AUTH-003");
-                attributes.put(JWTAttributes.ERROR.REASON, i18nResolver.getTranslatedString("error.token.size.limit", maxTokenSize));
-                attributes.put(JWTAttributes.ERROR.CATEGORY, "TOKEN_SIZE_VIOLATION");
+                attributes.put(JWTAttributes.Error.CODE, "AUTH-003");
+                attributes.put(JWTAttributes.Error.REASON, i18nResolver.getTranslatedString("error.token.size.limit", maxTokenSize));
+                attributes.put(JWTAttributes.Error.CATEGORY, "TOKEN_SIZE_VIOLATION");
                 flowFile = session.putAllAttributes(flowFile, attributes);
 
                 session.transfer(flowFile, AUTHENTICATION_FAILED);
@@ -800,9 +800,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
                 // Add error attributes
                 Map<String, String> attributes = new HashMap<>();
-                attributes.put(JWTAttributes.ERROR.CODE, "AUTH-004");
-                attributes.put(JWTAttributes.ERROR.REASON, i18nResolver.getTranslatedString("error.token.malformed"));
-                attributes.put(JWTAttributes.ERROR.CATEGORY, "MALFORMED_TOKEN");
+                attributes.put(JWTAttributes.Error.CODE, "AUTH-004");
+                attributes.put(JWTAttributes.Error.REASON, i18nResolver.getTranslatedString("error.token.malformed"));
+                attributes.put(JWTAttributes.Error.CATEGORY, "MALFORMED_TOKEN");
                 flowFile = session.putAllAttributes(flowFile, attributes);
 
                 session.transfer(flowFile, AUTHENTICATION_FAILED);
@@ -844,9 +844,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     errorCode = "AUTH-008";
                 }
 
-                attributes.put(JWTAttributes.ERROR.CODE, errorCode);
-                attributes.put(JWTAttributes.ERROR.REASON, errorMessage);
-                attributes.put(JWTAttributes.ERROR.CATEGORY, category);
+                attributes.put(JWTAttributes.Error.CODE, errorCode);
+                attributes.put(JWTAttributes.Error.REASON, errorMessage);
+                attributes.put(JWTAttributes.Error.CATEGORY, category);
                 flowFile = session.putAllAttributes(flowFile, attributes);
 
                 session.transfer(flowFile, AUTHENTICATION_FAILED);
@@ -857,9 +857,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
             // Add error attributes
             Map<String, String> attributes = new HashMap<>();
-            attributes.put(JWTAttributes.ERROR.CODE, "AUTH-999");
-            attributes.put(JWTAttributes.ERROR.REASON, i18nResolver.getTranslatedString("error.unknown", e.getMessage()));
-            attributes.put(JWTAttributes.ERROR.CATEGORY, "PROCESSING_ERROR");
+            attributes.put(JWTAttributes.Error.CODE, "AUTH-999");
+            attributes.put(JWTAttributes.Error.REASON, i18nResolver.getTranslatedString("error.unknown", e.getMessage()));
+            attributes.put(JWTAttributes.Error.CATEGORY, "PROCESSING_ERROR");
             flowFile = session.putAllAttributes(flowFile, attributes);
 
             session.transfer(flowFile, AUTHENTICATION_FAILED);
@@ -936,37 +936,37 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         Map<String, String> claims = new HashMap<>();
 
         // Add validation metadata
-        claims.put(JWTAttributes.TOKEN.VALIDATED_AT, Instant.now().toString());
-        claims.put(JWTAttributes.TOKEN.AUTHORIZATION_PASSED, "true");
+        claims.put(JWTAttributes.Token.VALIDATED_AT, Instant.now().toString());
+        claims.put(JWTAttributes.Token.AUTHORIZATION_PASSED, "true");
 
         // Add token identity information
-        claims.put(JWTAttributes.TOKEN.SUBJECT, token.getSubject());
-        claims.put(JWTAttributes.TOKEN.ISSUER, token.getIssuer());
+        claims.put(JWTAttributes.Token.SUBJECT, token.getSubject());
+        claims.put(JWTAttributes.Token.ISSUER, token.getIssuer());
 
         // Add expiration information if available
         if (token.getExpirationTime() != null) {
-            claims.put(JWTAttributes.TOKEN.EXPIRATION, token.getExpirationTime().toString());
+            claims.put(JWTAttributes.Token.EXPIRATION, token.getExpirationTime().toString());
         }
 
         // Add roles as a comma-separated list if available
         List<String> roles = token.getRoles();
         if (roles != null && !roles.isEmpty()) {
-            claims.put(JWTAttributes.ROLES_AND_GROUPS.ROLES, String.join(",", roles));
+            claims.put(JWTAttributes.Authorization.ROLES, String.join(",", roles));
 
             // Add individual roles with index for easier processing
             for (int i = 0; i < roles.size(); i++) {
-                claims.put(JWTAttributes.ROLES_AND_GROUPS.ROLES_PREFIX + i, roles.get(i));
+                claims.put(JWTAttributes.Authorization.ROLES_PREFIX + i, roles.get(i));
             }
         }
 
         // Add groups as a comma-separated list if available
         List<String> groups = token.getGroups();
         if (groups != null && !groups.isEmpty()) {
-            claims.put(JWTAttributes.ROLES_AND_GROUPS.GROUPS, String.join(",", groups));
+            claims.put(JWTAttributes.Authorization.GROUPS, String.join(",", groups));
 
             // Add individual groups with index for easier processing
             for (int i = 0; i < groups.size(); i++) {
-                claims.put(JWTAttributes.ROLES_AND_GROUPS.GROUPS_PREFIX + i, groups.get(i));
+                claims.put(JWTAttributes.Authorization.GROUPS_PREFIX + i, groups.get(i));
             }
         }
 
@@ -974,13 +974,13 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         if (token.getClaims().containsKey("scope")) {
             String scopeValue = token.getClaims().get("scope").getOriginalString();
             if (scopeValue != null && !scopeValue.isEmpty()) {
-                claims.put(JWTAttributes.ROLES_AND_GROUPS.SCOPES, scopeValue);
+                claims.put(JWTAttributes.Authorization.SCOPES, scopeValue);
 
                 // Split scopes by space and add individual scopes with index
                 String[] scopes = scopeValue.split(" ");
                 for (int i = 0; i < scopes.length; i++) {
                     if (!scopes[i].isEmpty()) {
-                        claims.put(JWTAttributes.ROLES_AND_GROUPS.SCOPES_PREFIX + i, scopes[i]);
+                        claims.put(JWTAttributes.Authorization.SCOPES_PREFIX + i, scopes[i]);
                     }
                 }
             }
@@ -988,7 +988,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         // Add all token claims with consistent "jwt.content." prefix
         token.getClaims().forEach((key, claimValue) -> {
-            claims.put(JWTAttributes.CONTENT.PREFIX + key, claimValue.getOriginalString());
+            claims.put(JWTAttributes.Content.PREFIX + key, claimValue.getOriginalString());
         });
 
         return claims;
