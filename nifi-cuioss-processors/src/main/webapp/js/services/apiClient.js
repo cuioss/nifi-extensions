@@ -138,6 +138,54 @@ define(['jquery', 'nf.Common'], function ($, _nfCommon) {
             }).fail(function (xhr) {
                 handleApiError(xhr, errorCallback);
             });
+        },
+
+        /**
+         * Gets processor properties.
+         *
+         * @param {string} processorId - The ID of the processor
+         * @return {jQuery.Deferred} A jQuery Deferred object for the request
+         */
+        getProcessorProperties: function (processorId) {
+            return $.ajax({
+                type: 'GET',
+                url: '../nifi-api/processors/' + processorId,
+                dataType: 'json'
+            });
+        },
+
+        /**
+         * Updates processor properties.
+         *
+         * @param {string} processorId - The ID of the processor
+         * @param {Object} properties - The properties to update
+         * @return {jQuery.Deferred} A jQuery Deferred object for the request
+         */
+        updateProcessorProperties: function (processorId, properties) {
+            // First, get the current processor configuration
+            return $.ajax({
+                type: 'GET',
+                url: '../nifi-api/processors/' + processorId,
+                dataType: 'json'
+            }).then(function(processor) {
+                // Create the update request
+                const updateRequest = {
+                    revision: processor.revision,
+                    component: {
+                        id: processorId,
+                        properties: properties
+                    }
+                };
+
+                // Send the update request
+                return $.ajax({
+                    type: 'PUT',
+                    url: '../nifi-api/processors/' + processorId,
+                    data: JSON.stringify(updateRequest),
+                    contentType: 'application/json',
+                    dataType: 'json'
+                });
+            });
         }
     };
 });

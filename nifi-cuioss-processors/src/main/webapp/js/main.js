@@ -1,21 +1,17 @@
 /**
- * Main entry point for MultiIssuerJWTTokenAuthenticator UI components.
- * Registers custom UI components with NiFi.
+ * Main module for MultiIssuerJWTTokenAuthenticator UI components.
+ * Provides functionality for custom UI components in NiFi.
  */
 define([
     'jquery',
     'nf.Common',
     'components/jwksValidator',
     'components/tokenVerifier',
+    'components/issuerConfigEditor',
     'services/apiClient',
     'utils/formatters'
-], function ($, nfCommon, jwksValidator, tokenVerifier, _apiClient, _formatters) {
+], function ($, nfCommon, jwksValidator, tokenVerifier, issuerConfigEditor, _apiClient, _formatters) {
     'use strict';
-
-    // Load CSS
-    const nfStyleSheetRef = $('link[href*="nf-processor-ui.css"]').attr('href');
-    const cssPath = nfStyleSheetRef.replace('nf-processor-ui.css', 'jwt-validator-ui.css');
-    $('head').append('<link rel="stylesheet" href="' + cssPath + '" type="text/css" />');
 
     /**
      * Detects the browser language preference and logs it.
@@ -43,7 +39,14 @@ define([
         // eslint-disable-next-line no-unused-vars
         const userLanguage = detectBrowserLanguage();
 
+        // Debug: Log component registration start
+        console.log('[DEBUG_LOG] Starting custom UI component registration');
+        console.log('[DEBUG_LOG] JWKS Validator available:', typeof jwksValidator === 'object');
+        console.log('[DEBUG_LOG] Token Verifier available:', typeof tokenVerifier === 'object');
+        console.log('[DEBUG_LOG] Issuer Config Editor available:', typeof issuerConfigEditor === 'object');
+
         // Register JWKS Validator component
+        console.log('[DEBUG_LOG] Registering JWKS Validator components');
         nfCommon.registerCustomUiComponent('jwt.validation.jwks.url', jwksValidator, {
             jwks_type: 'server'
         });
@@ -57,12 +60,19 @@ define([
         });
 
         // Register Token Verifier component for the verification tab
+        console.log('[DEBUG_LOG] Registering Token Verifier tab');
         nfCommon.registerCustomUiTab('jwt.validation.token.verification', tokenVerifier);
+
+        // Register Issuer Config Editor component for the issuer configuration tab
+        console.log('[DEBUG_LOG] Registering Issuer Config Editor tab');
+        nfCommon.registerCustomUiTab('jwt.validation.issuer.configuration', issuerConfigEditor);
+        console.log('[DEBUG_LOG] Issuer Config Editor registration complete');
 
         // Register help tooltips
         registerHelpTooltips();
 
         // Registration complete
+        console.log('[DEBUG_LOG] All custom UI components registered successfully');
     };
 
     /**
@@ -124,10 +134,20 @@ define([
          * Initializes the custom UI components.
          */
         init: function () {
+            console.log('[DEBUG_LOG] main.js init function called');
+
             // Register custom UI components when the document is ready
             $(document).ready(function () {
+                console.log('[DEBUG_LOG] Document ready, registering custom UI components');
                 registerCustomUiComponents();
             });
+
+            // Add a delayed check to verify if components were registered
+            setTimeout(function() {
+                console.log('[DEBUG_LOG] Delayed check: verifying if custom tabs are visible');
+                console.log('[DEBUG_LOG] Custom tabs count:', $('.tab.custom-tab').length);
+                console.log('[DEBUG_LOG] Tab with issuer config:', $('.tab.custom-tab[data-tab-id="jwt.validation.issuer.configuration"]').length);
+            }, 3000);
         }
     };
 });

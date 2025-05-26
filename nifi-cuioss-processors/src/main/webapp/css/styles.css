@@ -218,3 +218,123 @@
     font-style: italic;
     color: #666;
 }
+
+/* Issuer Configuration Editor */
+
+.issuer-config-editor {
+    margin: 15px 0;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.issuer-config-editor h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.issuer-config-editor p {
+    margin-bottom: 15px;
+    color: #666;
+}
+
+.issuers-container {
+    margin: 15px 0;
+}
+
+.issuer-form {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.form-header label {
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+}
+
+.issuer-name {
+    margin-left: 10px;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    width: 200px;
+}
+
+.remove-issuer-button {
+    padding: 5px 10px;
+    background-color: #ff4136;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.remove-issuer-button:hover {
+    background-color: #e60000;
+}
+
+.form-fields {
+    margin-bottom: 15px;
+}
+
+.form-field {
+    margin-bottom: 10px;
+}
+
+.form-field label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-field input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+.field-description {
+    margin-top: 5px;
+    font-size: 12px;
+    color: #666;
+}
+
+.add-issuer-button {
+    padding: 8px 15px;
+    background-color: #0074d9;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.add-issuer-button:hover {
+    background-color: #0063b1;
+}
+
+.save-issuer-button {
+    padding: 8px 15px;
+    background-color: #2ecc40;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.save-issuer-button:hover {
+    background-color: #29b739;
+}

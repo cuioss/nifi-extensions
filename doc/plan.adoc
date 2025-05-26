@@ -111,6 +111,56 @@ _Postconditions for each step:_
 * Verify with a Maven build: `./mvnw -Prewrite rewrite:run clean install javadoc:javadoc` (fix all Javadoc errors/warnings, all tests must pass)
 * GIT commit each verified step
 
+==== C3. REST API Implementation
+[ ] _Priority:_ High
+
+_Description:_ Implement the backend REST API endpoints required by the custom UI components for JWKS validation, token verification, and issuer configuration management.
+
+_Rationale:_ The custom UI components rely on backend REST API endpoints to perform their functions. Without these endpoints, the UI components cannot communicate with the processor to validate JWKS URLs, verify tokens, or manage issuer configurations.
+
+_Current Status:_ The custom UI components (JWKS validator, token verifier, issuer config editor) have been implemented, but the backend REST API endpoints they need to communicate with are missing. This is causing the custom UI tabs to not appear or function correctly.
+
+_Sub-tasks:_
+
+* [ ] Implement REST API infrastructure
+** [ ] Create REST API controller class
+** [ ] Configure REST API endpoints
+** [ ] Implement error handling and response formatting
+* [ ] Implement JWKS validation endpoints
+** [ ] Create endpoint for validating JWKS URLs
+** [ ] Create endpoint for validating JWKS files
+** [ ] Create endpoint for validating JWKS content
+* [ ] Implement token verification endpoint
+** [ ] Create endpoint for verifying JWT tokens
+** [ ] Integrate with TokenValidator
+** [ ] Return detailed validation results
+* [ ] Implement issuer configuration endpoints
+** [ ] Create endpoint for retrieving issuer configurations
+** [ ] Create endpoint for creating/updating issuer configurations
+** [ ] Create endpoint for deleting issuer configurations
+* [ ] Implement security metrics endpoint
+** [ ] Create endpoint for retrieving security metrics
+** [ ] Integrate with SecurityEventCounter
+* [ ] Secure REST API endpoints
+** [ ] Implement authentication for API endpoints
+** [ ] Add CSRF protection
+** [ ] Validate input parameters
+* [ ] Document REST API
+** [ ] Create OpenAPI/Swagger documentation
+** [ ] Document request/response formats
+** [ ] Document error responses
+
+_Specification Reference:_
+- link:specification/configuration-ui.adoc#_backend_integration_rest_call[UI Configuration: Backend Integration]
+- link:specification/security.adoc[Security]
+
+_Postconditions for each step:_
+
+* Verify with a Maven build: `./mvnw -Prewrite rewrite:run clean install javadoc:javadoc` (fix all Javadoc errors/warnings, all tests must pass)
+* Test REST API endpoints with Postman or similar tool
+* Verify that custom UI components can communicate with the REST API endpoints
+* GIT commit each verified step
+
 ==== S1. Security &amp; Performance
 
 INFO: Implement tasks from this section only when explicitly asked
@@ -335,6 +385,11 @@ _Sub-tasks:_
 ** [ ] Test complete configuration workflow
 ** [ ] Test token verification workflow
 ** [ ] Test error scenarios
+* [ ] Implement REST API integration tests
+** [ ] Test JWKS validation endpoints
+** [ ] Test token verification endpoint
+** [ ] Test issuer configuration endpoints
+** [ ] Test error handling and response formats
 * [ ] Implement accessibility tests
 ** [ ] Test keyboard navigation
 ** [ ] Test screen reader compatibility
@@ -416,6 +471,9 @@ _Sub-tasks:_
 * [~] Update technical specifications
 ** [~] Update component specifications
 ** [ ] Update API documentation
+*** [ ] Document REST API endpoints
+*** [ ] Document request/response formats
+*** [ ] Document error responses
 ** [~] Update configuration documentation
 * [~] Create user documentation
 ** [ ] Write installation guide
