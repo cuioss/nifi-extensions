@@ -1,28 +1,52 @@
-= nifi-extensions
+= NiFi Extensions
+:toc:
+:toclevels: 2
+
+== Overview
+
+Custom extensions for https://nifi.apache.org/[Apache NiFi] developed by CUI-OSS.
 
 == Status
 
 image:https://github.com/cuioss/nifi-extensions/actions/workflows/maven.yml/badge.svg[Java CI with Maven,link=https://github.com/cuioss/nifi-extensions/actions/workflows/maven.yml]
 image:http://img.shields.io/:license-apache-blue.svg[License,link=http://www.apache.org/licenses/LICENSE-2.0.html]
 image:https://img.shields.io/maven-central/v/de.cuioss.nifi/nifi-extensions.svg?label=Maven%20Central["Maven Central", link="https://search.maven.org/artifact/de.cuioss.nifi/nifi-extensions"]
-
-https://sonarcloud.io/summary/new_code?id=cuioss_nifi-extensions[image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-extensions&metric=alert_status[Quality
-Gate Status]]
+https://sonarcloud.io/summary/new_code?id=cuioss_nifi-extensions[image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-extensions&metric=alert_status[Quality Gate Status]]
 image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-extensions&metric=ncloc[Lines of Code,link=https://sonarcloud.io/summary/new_code?id=cuioss_nifi-extensions]
 image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-extensions&metric=coverage[Coverage,link=https://sonarcloud.io/summary/new_code?id=cuioss_nifi-extensions]
 
-https://cuioss.github.io/nifi-extensions/about.html[Generated Documentation on github-pages]
+== Documentation
 
-== What is it?
+* https://cuioss.github.io/nifi-extensions/about.html[Generated Documentation on github-pages]
+* link:doc/Requirements.adoc[Requirements]
+* link:doc/Specification.adoc[Specification]
+* link:nifi-cuioss-processors/README.md[NiFi CUI-OSS Processors]
+* link:integration-testing/README.adoc[Integration Testing Environment]
 
-Some extensions to https://nifi.apache.org/[Apache Nifi]
+== Components
+
+=== MultiIssuerJWTTokenAuthenticator
+
+A NiFi processor that authenticates JWT tokens from multiple issuers.
 
 === Maven Coordinates
 
 [source,xml]
 ----
-    <dependency>
-        <groupId>de.cuioss.nifi</groupId>
-        <artifactId>nifi-extensions</artifactId>
-    </dependency>
+<dependency>
+    <groupId>de.cuioss.nifi</groupId>
+    <artifactId>nifi-extensions</artifactId>
+</dependency>
 ----
+
+== Building
+
+```bash
+./mvnw clean install
+```
+
+To skip tests:
+
+```bash
+./mvnw clean install -DskipTests
+```
