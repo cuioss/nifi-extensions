@@ -11,8 +11,6 @@ services:
       - NIFI_LOG_DIR=/opt/nifi/nifi-current/logs
       - NIFI_BOOTSTRAP_CONF=/opt/nifi/nifi-current/conf/bootstrap.conf
       - NIFI_CONF_DIR=/opt/nifi/nifi-current/conf
-      - SINGLE_USER_CREDENTIALS_USERNAME=admin
-      - SINGLE_USER_CREDENTIALS_PASSWORD=adminadminadmin
     volumes:
       - ../../../target/nifi-deploy:/opt/nifi/nifi-current/nar_extensions
       - ./nifi/conf:/opt/nifi/nifi-current/conf
