@@ -2,5 +2,7 @@
     <provider>
         <identifier>single-user-provider</identifier>
         <class>org.apache.nifi.authentication.single.user.SingleUserLoginIdentityProvider</class>
+        <property name="Username">admin</property>
+        <property name="Password">$2b$12$.IeSUaSqoNcl1JLxZrwz0u8D0mAhZdu6JG88l6yIj2qyBNRzLdz8C</property>
     </provider>
 </loginIdentityProviders>

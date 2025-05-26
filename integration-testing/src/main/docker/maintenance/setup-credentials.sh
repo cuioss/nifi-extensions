@@ -3,6 +3,9 @@
 # Exit on error
 set -e
 
+# Set NIFI_HOME if not already set
+NIFI_HOME=${NIFI_HOME:-/opt/nifi/nifi-current}
+
 # Function to configure Single User credentials
 setup_single_user_credentials() {
     echo "Setting up predefined NiFi credentials..."
@@ -20,8 +23,11 @@ setup_single_user_credentials() {
     echo "NiFi credentials configured successfully!"
 }
 
-# Execute the function to set up credentials
+# Main execution
 setup_single_user_credentials
 
-# Continue with the regular entrypoint command
-exec "$@"
+# Execute the original command if provided as arguments
+if [ $# -gt 0 ]; then
+    echo "Executing original command: $@"
+    exec "$@"
+fi

@@ -16,9 +16,8 @@ echo "Calling copy-deployment.sh to build and copy the NAR file..."
 # Check if certificates exist
 if [ ! -f "${SCRIPT_DIR}/nifi/conf/keystore.p12" ] || [ ! -f "${SCRIPT_DIR}/nifi/conf/truststore.p12" ] || \
    [ ! -f "${SCRIPT_DIR}/keycloak/certificates/localhost.crt" ] || [ ! -f "${SCRIPT_DIR}/keycloak/certificates/localhost.key" ]; then
-  echo "Error: Required certificates are missing. Please run generate-certificates.sh manually before starting the containers."
-  echo "Command: ${SCRIPT_DIR}/maintenance/generate-certificates.sh"
-  exit 1
+  echo "Warning: Some certificates are missing. Generating certificates..."
+  "${SCRIPT_DIR}/maintenance/generate-certificates.sh"
 fi
 
 # Change to the Docker directory
@@ -43,6 +42,13 @@ NAR_TARGET_DIR="${PROJECT_ROOT}/nifi-cuioss-nar/target"
 if [ ! -d "${NAR_TARGET_DIR}" ]; then
   echo "Creating NiFi NAR extensions directory..."
   mkdir -p "${NAR_TARGET_DIR}"
+fi
+
+# Ensure the deployment directory exists for NiFi
+DEPLOY_DIR="${PROJECT_ROOT}/integration-testing/target/nifi-deploy"
+if [ ! -d "${DEPLOY_DIR}" ]; then
+  echo "Creating deployment directory for NiFi..."
+  mkdir -p "${DEPLOY_DIR}"
 fi
 
 # Start the Docker containers
