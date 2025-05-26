@@ -76,7 +76,7 @@ This section outlines the concrete requirements that need to be implemented, wit
 
 === Certificate Verification
 * [x] Verify that both NiFi and Keycloak are using the generated certificates
-* [x] Verification must be performed using the `verify-certificates.sh` script
+* [x] Verification must be performed using the `maintenance/verify-certificates.sh` script
 
 == Non-Functional Requirements
 

@@ -17,7 +17,7 @@ echo "Calling copy-deployment.sh to build and copy the NAR file..."
 if [ ! -f "${SCRIPT_DIR}/nifi/conf/keystore.p12" ] || [ ! -f "${SCRIPT_DIR}/nifi/conf/truststore.p12" ] || \
    [ ! -f "${SCRIPT_DIR}/keycloak/certificates/localhost.crt" ] || [ ! -f "${SCRIPT_DIR}/keycloak/certificates/localhost.key" ]; then
   echo "Error: Required certificates are missing. Please run generate-certificates.sh manually before starting the containers."
-  echo "Command: ${SCRIPT_DIR}/generate-certificates.sh"
+  echo "Command: ${SCRIPT_DIR}/maintenance/generate-certificates.sh"
   exit 1
 fi
 
@@ -49,12 +49,13 @@ fi
 echo "Starting NiFi and Keycloak test containers..."
 docker compose up --build -d
 echo ""
-# Give containers a moment to initialize
-echo "Waiting for containers to initialize..."
-sleep 10
 echo ""
-echo "Assuming containers are up and running"
+echo "Containers are now running."
 echo ""
+echo "To set up NiFi credentials, run the set-nifi-credentials.sh script:"
+echo "${SCRIPT_DIR}/set-nifi-credentials.sh"
+echo ""
+
 echo "Access the logs if necessary"
 echo "docker compose logs nifi"
 echo "docker compose logs keycloak"
@@ -62,7 +63,7 @@ echo ""
 echo ""
 echo "NiFi and Keycloak test containers are running!"
 echo "Access the NiFi UI at: https://localhost:9095/nifi/"
-echo "Login with username: admin, password: adminadminadmin"
+echo "NiFi credentials: username: admin, password: adminadminadmin"
 echo ""
 echo "Access the Keycloak Admin Console at: http://localhost:9080/admin/"
 echo "Login with username: admin, password: admin"

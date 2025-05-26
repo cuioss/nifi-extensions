@@ -11,10 +11,18 @@ services:
       - NIFI_LOG_DIR=/opt/nifi/nifi-current/logs
       - NIFI_BOOTSTRAP_CONF=/opt/nifi/nifi-current/conf/bootstrap.conf
       - NIFI_CONF_DIR=/opt/nifi/nifi-current/conf
-      - NIFI_SECURITY_USER_LOGIN_IDENTITY_PROVIDER=single-user-provider
+      - SINGLE_USER_CREDENTIALS_USERNAME=admin
+      - SINGLE_USER_CREDENTIALS_PASSWORD=adminadminadmin
     volumes:
       - ../../../target/nifi-deploy:/opt/nifi/nifi-current/nar_extensions
       - ./nifi/conf:/opt/nifi/nifi-current/conf
+      - ./maintenance/setup-credentials.sh:/opt/nifi/scripts/setup-credentials.sh
+    entrypoint: 
+      - /bin/bash
+      - -c
+      - |
+        chmod +x /opt/nifi/scripts/setup-credentials.sh
+        /opt/nifi/scripts/setup-credentials.sh /opt/nifi/nifi-current/scripts/start.sh
     healthcheck:
       test: ["CMD", "curl", "-k", "--fail", "--insecure", "--retry", "5", "--retry-delay", "10", "--max-time", "15", "https://localhost:9095/nifi/"]
       interval: 60s
