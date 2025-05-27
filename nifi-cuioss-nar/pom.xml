@@ -38,6 +38,11 @@
             <artifactId>nifi-cuioss-processors</artifactId>
         </dependency>
         <dependency>
+            <groupId>de.cuioss.nifi</groupId>
+            <artifactId>nifi-cuioss-ui</artifactId>
+            <type>war</type>
+        </dependency>
+        <dependency>
             <groupId>org.apache.nifi</groupId>
             <artifactId>nifi-standard-services-api-nar</artifactId>
             <type>nar</type>

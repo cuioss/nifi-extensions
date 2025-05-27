@@ -1,0 +1,18 @@
+# Node modules
+node_modules/
+
+# Build artifacts
+target/
+dist/
+build/
+
+# Coverage reports
+coverage/
+
+# Temporary files
+*.log
+*.tmp
+*.temp
+
+# Generated files
+*.min.js

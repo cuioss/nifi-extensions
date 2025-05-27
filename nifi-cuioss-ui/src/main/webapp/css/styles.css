@@ -5,20 +5,31 @@
 /* JWKS Validation Button */
 
 .jwks-verification-container {
-    margin: 10px 0;
+    margin: 0;
+    padding: 0;
+    position: relative;
+    top: -10px; /* Move up to be closer to the input field */
+}
+
+.jwks-button-wrapper {
+    margin-top: 5px;
+    margin-bottom: 10px;
+    display: inline-block;
 }
 
 .verify-jwks-button {
     margin-right: 10px;
     padding: 5px 10px;
-    background-color: #f5f5f5;
-    border: 1px solid #ddd;
+    background-color: #0074d9;
+    color: white;
+    border: 1px solid #0063b1;
     border-radius: 3px;
     cursor: pointer;
+    font-weight: bold;
 }
 
 .verify-jwks-button:hover {
-    background-color: #e5e5e5;
+    background-color: #0063b1;
 }
 
 .verification-result {
@@ -337,4 +348,149 @@
 
 .save-issuer-button:hover {
     background-color: #29b739;
+}
+
+/* Styles for the JWT Validator UI */
+
+/* Base styles */
+body {
+    font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f5f5;
+    color: #333;
+    line-height: 1.5;
+}
+
+/* Container styles */
+#jwt-validator-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: #fff;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+    padding: 20px;
+}
+
+/* Loading indicator */
+#loading-indicator {
+    text-align: center;
+    padding: 20px;
+    font-size: 18px;
+    color: #666;
+}
+
+/* Custom tabs */
+.custom-tabs {
+    margin-top: 20px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.custom-tabs-navigation {
+    display: flex;
+    background-color: #f8f8f8;
+    border-bottom: 1px solid #ddd;
+}
+
+.tab-nav-item {
+    padding: 10px 15px;
+    font-weight: bold;
+    cursor: pointer;
+    text-transform: capitalize;
+    border-right: 1px solid #ddd;
+}
+
+.tab-nav-item:hover {
+    background-color: #e8e8e8;
+}
+
+.tab-nav-item.active {
+    background-color: #fff;
+    border-bottom: 2px solid #0074d9;
+}
+
+.custom-tab {
+    display: none;
+    margin-bottom: 0;
+}
+
+.custom-tab.active {
+    display: block;
+}
+
+.tab-header {
+    display: none; /* Hide individual tab headers */
+}
+
+.tab-content {
+    padding: 15px;
+}
+
+/* Custom components */
+.custom-component {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* Form elements */
+input, select, textarea {
+    width: 100%;
+    padding: 8px 12px;
+    margin: 8px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 15px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+/* Help tooltip */
+.help-tooltip {
+    margin-left: 5px;
+    color: #666;
+    cursor: help;
+}
+
+/* Property labels */
+.property-label {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+/* Error messages */
+.error-message {
+    color: #d32f2f;
+    background-color: #ffebee;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+/* Success messages */
+.success-message {
+    color: #388e3c;
+    background-color: #e8f5e9;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
 }

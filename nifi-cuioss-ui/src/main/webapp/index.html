@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MultiIssuerJWTTokenAuthenticator UI</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/styles.css">
+
+    <!-- Load jQuery first -->
+    <script type="text/javascript" src="webjars/META-INF/resources/webjars/jquery/3.6.0/jquery.min.js"></script>
+
+    <!-- Load jQuery UI for tooltips -->
+    <script type="text/javascript" src="webjars/META-INF/resources/webjars/jquery-ui/1.13.2/jquery-ui.min.js"></script>
+    <link rel="stylesheet" href="webjars/META-INF/resources/webjars/jquery-ui/1.13.2/jquery-ui.css">
+
+    <!-- Load RequireJS -->
+    <script type="text/javascript" src="webjars/META-INF/resources/webjars/requirejs/2.3.6/require.min.js"></script>
+
+    <!-- Configure RequireJS -->
+    <script type="text/javascript">
+        // Configure RequireJS
+        require.config({
+            paths: {
+                'jquery': ['webjars/META-INF/resources/webjars/jquery/3.6.0/jquery.min'],
+                'jquery-ui': ['webjars/META-INF/resources/webjars/jquery-ui/1.13.2/jquery-ui'],
+                'nf.Common': ['js/nf-common-mock'], // Mock for nf.Common
+                'components/jwksValidator': ['js/components/jwksValidator'],
+                'components/tokenVerifier': ['js/components/tokenVerifier'],
+                'components/issuerConfigEditor': ['js/components/issuerConfigEditor'],
+                'services/apiClient': ['js/services/apiClient'],
+                'utils/formatters': ['js/utils/formatters']
+            },
+            shim: {
+                'jquery-ui': {
+                    deps: ['jquery'],
+                    exports: 'jQuery'
+                }
+            },
+            // Use the already loaded jQuery instance
+            map: {
+                '*': {
+                    'jquery': 'jquery-global'
+                },
+                'jquery-global': {
+                    'jquery': 'jquery'
+                }
+            },
+            waitSeconds: 120 // Increase timeout for module loading
+        });
+
+        // Define a module that returns the global jQuery
+        define('jquery-global', ['jquery'], function($) {
+            console.log('[DEBUG_LOG] jQuery global module loaded');
+            // Use the already loaded jQuery UI
+            return window.jQuery;
+        });
+
+        // Define jquery-ui-tooltip as a module that returns jQuery UI
+        define('jquery-ui-tooltip', [], function() {
+            console.log('[DEBUG_LOG] jQuery UI tooltip module loaded');
+            return window.jQuery;
+        });
+    </script>
+</head>
+<body>
+    <div id="jwt-validator-container">
+        <!-- This container will be populated by the JavaScript UI components -->
+        <div id="loading-indicator">Loading JWT Validator UI...</div>
+    </div>
+
+    <!-- Create a mock for nf.Common -->
+    <script type="text/javascript">
+        // Create a mock file for nf.Common
+        window.nf = window.nf || {};
+        window.nf.Common = {
+            registerCustomUiComponent: function(id, component, options) {
+                console.log('Registered custom UI component:', id, options);
+            },
+            registerCustomUiTab: function(id, component) {
+                console.log('Registered custom UI tab:', id);
+            },
+            getI18n: function() {
+                return {};
+            }
+        };
+
+        // Create a global jQuery variable
+        window.jQuery = window.$ = jQuery;
+    </script>
+
+    <!-- Load our scripts using RequireJS -->
+    <script type="text/javascript">
+        // Create a global flag to track component registration
+        window.jwtComponentsRegistered = window.jwtComponentsRegistered || false;
+
+        require(['js/main', 'js/bundle', 'js/nf-jwt-validator'], function(main, bundle) {
+            console.log('All modules loaded successfully');
+
+            // Initialize main module only if components haven't been registered yet
+            if (!window.jwtComponentsRegistered && main && typeof main.init === 'function') {
+                console.log('Initializing main module from index.html');
+                main.init();
+            } else if (window.jwtComponentsRegistered) {
+                console.log('Components already registered, skipping main module initialization');
+            }
+
+            // Initialize bundle module only if components haven't been registered yet
+            if (!window.jwtComponentsRegistered && bundle && typeof bundle.init === 'function') {
+                console.log('Initializing bundle module from index.html');
+                bundle.init();
+            } else if (window.jwtComponentsRegistered) {
+                console.log('Components already registered, skipping bundle module initialization');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -56,6 +56,7 @@ Located in `src/main/docker`:
 ** `run-test-container.sh`: Builds NAR, checks certificates, starts containers
 ** `stop-test-container.sh`: Stops and removes containers
 ** `copy-deployment.sh`: Builds NAR and copies to deployment location
+** `redeploy-nifi.sh`: Builds NAR, copies to deployment location, and restarts NiFi
 * Maintenance scripts (in `maintenance/`):
 ** `generate-certificates.sh`: Creates certificates for NiFi and Keycloak
 ** `verify-certificates.sh`: Validates certificate usage

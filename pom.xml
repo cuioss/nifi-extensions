@@ -116,6 +116,22 @@
                 <version>${version.lombok}</version>
                 <scope>provided</scope>
             </dependency>
+            <!-- WebJars dependencies -->
+            <dependency>
+                <groupId>org.webjars</groupId>
+                <artifactId>jquery</artifactId>
+                <version>3.6.0</version>
+            </dependency>
+            <dependency>
+                <groupId>org.webjars</groupId>
+                <artifactId>jquery-ui</artifactId>
+                <version>1.13.2</version>
+            </dependency>
+            <dependency>
+                <groupId>org.webjars</groupId>
+                <artifactId>requirejs</artifactId>
+                <version>2.3.6</version>
+            </dependency>
             <!-- Incoming-->
             <dependency>
                 <groupId>org.junit</groupId>
@@ -213,6 +229,12 @@
                 <version>${project.version}</version>
             </dependency>
             <dependency>
+                <groupId>de.cuioss.nifi</groupId>
+                <artifactId>nifi-cuioss-ui</artifactId>
+                <version>${project.version}</version>
+                <type>war</type>
+            </dependency>
+            <dependency>
                 <groupId>org.apache.nifi</groupId>
                 <artifactId>nifi-standard-services-api-nar</artifactId>
                 <version>${version.nifi}</version>
@@ -223,6 +245,7 @@
 
     <modules>
         <module>nifi-cuioss-processors</module>
+        <module>nifi-cuioss-ui</module>
         <module>nifi-cuioss-nar</module>
         <module>integration-testing</module>
     </modules>

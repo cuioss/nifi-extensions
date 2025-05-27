@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
 import org.apache.nifi.annotation.behavior.ReadsAttribute;
 import org.apache.nifi.annotation.behavior.ReadsAttributes;
+import org.apache.nifi.annotation.behavior.RequiresInstanceClassLoading;
 import org.apache.nifi.annotation.behavior.WritesAttribute;
 import org.apache.nifi.annotation.behavior.WritesAttributes;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
@@ -77,6 +78,7 @@ import de.cuioss.tools.logging.CuiLogger;
         @WritesAttribute(attribute = JWTAttributes.Error.REASON, description = "Error reason if token validation failed"),
         @WritesAttribute(attribute = JWTAttributes.Error.CATEGORY, description = "Error category if token validation failed")
 })
+@RequiresInstanceClassLoading
 public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     private static final CuiLogger LOGGER = new CuiLogger(MultiIssuerJWTTokenAuthenticator.class);
@@ -227,6 +229,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     protected void init(final ProcessorInitializationContext context) {
         // Initialize i18n resolver
         i18nResolver = NiFiI18nResolver.createDefault(context.getLogger());
+        
+        LOGGER.info("Initializing MultiIssuerJWTTokenAuthenticator processor");
 
         final List<PropertyDescriptor> descriptors = new ArrayList<>();
         descriptors.add(TOKEN_LOCATION);
@@ -245,6 +249,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         relationships.add(SUCCESS);
         relationships.add(AUTHENTICATION_FAILED);
         this.relationships = relationships;
+        
+        LOGGER.info("MultiIssuerJWTTokenAuthenticator processor initialized with {} property descriptors", 
+                descriptors.size());
     }
 
     @Override
@@ -328,6 +335,12 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         configurationManager = new ConfigurationManager();
         LOGGER.info("Configuration manager initialized, external configuration loaded: %s",
                 configurationManager.isConfigurationLoaded());
+
+        // Log all available property descriptors to help with debugging
+        LOGGER.info("Available property descriptors:");
+        for (PropertyDescriptor descriptor : getSupportedPropertyDescriptors()) {
+            LOGGER.info(" - Property: %s (Display: %s)", descriptor.getName(), descriptor.getDisplayName());
+        }
 
         // Initialize the TokenValidator
         getTokenValidator(context);
