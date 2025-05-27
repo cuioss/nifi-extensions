@@ -53,6 +53,11 @@
             <groupId>org.webjars</groupId>
             <artifactId>requirejs</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.webjars</groupId>
+            <artifactId>font-awesome</artifactId>
+            <version>4.7.0</version>
+        </dependency>
     </dependencies>
 
     <repositories>
@@ -93,6 +98,15 @@
                         <overlay>
                             <groupId>org.webjars</groupId>
                             <artifactId>requirejs</artifactId>
+                            <type>jar</type>
+                            <includes>
+                                <include>META-INF/resources/webjars/**</include>
+                            </includes>
+                            <targetPath>webjars</targetPath>
+                        </overlay>
+                        <overlay>
+                            <groupId>org.webjars</groupId>
+                            <artifactId>font-awesome</artifactId>
                             <type>jar</type>
                             <includes>
                                 <include>META-INF/resources/webjars/**</include>
@@ -144,6 +158,39 @@
                         <phase>verify</phase>
                         <configuration>
                             <arguments>run lint</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-fontawesome-fonts</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>unpack</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.webjars</groupId>
+                                    <artifactId>font-awesome</artifactId>
+                                    <version>4.7.0</version>
+                                    <type>jar</type>
+                                    <overWrite>true</overWrite>
+                                    <outputDirectory>${project.build.directory}/${project.build.finalName}/media</outputDirectory>
+                                    <includes>META-INF/resources/webjars/font-awesome/4.7.0/fonts/fontawesome-webfont.*</includes>
+                                    <fileMappers>
+                                        <org.codehaus.plexus.components.io.filemappers.RegExpFileMapper>
+                                            <pattern>^.*/([^/]+)$</pattern>
+                                            <replacement>$1</replacement>
+                                        </org.codehaus.plexus.components.io.filemappers.RegExpFileMapper>
+                                    </fileMappers>
+                                </artifactItem>
+                            </artifactItems>
                         </configuration>
                     </execution>
                 </executions>

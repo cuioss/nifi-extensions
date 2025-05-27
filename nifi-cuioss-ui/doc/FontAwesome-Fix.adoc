@@ -1,0 +1,133 @@
+= FontAwesome Font Loading Fix
+
+This document describes the changes made to fix the FontAwesome font loading issue.
+
+== Issue Description
+
+Clicking on the Test Connection button resulted in a font-loading error:
+
+[source,text]
+----
+downloadable font: download failed (font-family: "FontAwesome" style:normal weight:400 stretch:100 src index:1): status=2147746065 source: https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/media/fontawesome-webfont-5GKVPAEF.woff2?v=4.7.0
+GET
+https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/media/fontawesome-webfont-Z4ARLA73.woff?v=4.7.0
+----
+
+The issue was that the application was trying to load FontAwesome font files from a "media" directory that didn't exist, and the FontAwesome WebJar dependency was missing from the project.
+
+== Changes Made
+
+. Added FontAwesome WebJar dependency to pom.xml:
++
+[source,xml]
+----
+<dependency>
+    <groupId>org.webjars</groupId>
+    <artifactId>font-awesome</artifactId>
+    <version>4.7.0</version>
+</dependency>
+----
+
+. Updated maven-war-plugin configuration to include the FontAwesome WebJar in the WAR file:
++
+[source,xml]
+----
+<overlay>
+    <groupId>org.webjars</groupId>
+    <artifactId>font-awesome</artifactId>
+    <type>jar</type>
+    <includes>
+        <include>META-INF/resources/webjars/**</include>
+    </includes>
+    <targetPath>webjars</targetPath>
+</overlay>
+----
+
+. Added FontAwesome CSS link to index.html:
++
+[source,html]
+----
+<!-- Load Font Awesome -->
+<link rel="stylesheet" href="webjars/META-INF/resources/webjars/font-awesome/4.7.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="css/font-awesome-fix.css">
+----
+
+. Created a CSS file (font-awesome-fix.css) to override the FontAwesome font paths:
++
+[source,css]
+----
+/* 
+ * Fix for FontAwesome font paths
+ * These paths are relative to the deployed application structure,
+ * where the 'media' directory is created by maven-dependency-plugin
+ * during the build process.
+ */
+@font-face {
+  font-family: 'FontAwesome';
+  src: url('../media/fontawesome-webfont.eot?v=4.7.0');
+  src: url('../media/fontawesome-webfont.eot?#iefix&v=4.7.0') format('embedded-opentype'),
+       url('../media/fontawesome-webfont.woff2?v=4.7.0') format('woff2'),
+       url('../media/fontawesome-webfont.woff?v=4.7.0') format('woff'),
+       url('../media/fontawesome-webfont.ttf?v=4.7.0') format('truetype'),
+       url('../media/fontawesome-webfont.svg?v=4.7.0#fontawesomeregular') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+----
+
+. Created a "media" directory in the webapp directory:
++
+[source,bash]
+----
+mkdir -p nifi-cuioss-ui/src/main/webapp/media
+----
+
+. Added maven-dependency-plugin configuration to extract FontAwesome font files to the media directory:
++
+[source,xml]
+----
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-dependency-plugin</artifactId>
+    <version>3.6.1</version>
+    <executions>
+        <execution>
+            <id>copy-fontawesome-fonts</id>
+            <phase>prepare-package</phase>
+            <goals>
+                <goal>unpack</goal>
+            </goals>
+            <configuration>
+                <artifactItems>
+                    <artifactItem>
+                        <groupId>org.webjars</groupId>
+                        <artifactId>font-awesome</artifactId>
+                        <version>4.7.0</version>
+                        <type>jar</type>
+                        <overWrite>true</overWrite>
+                        <outputDirectory>${project.build.directory}/${project.build.finalName}/media</outputDirectory>
+                        <includes>META-INF/resources/webjars/font-awesome/4.7.0/fonts/fontawesome-webfont.*</includes>
+                        <fileMappers>
+                            <org.codehaus.plexus.components.io.filemappers.RegExpFileMapper>
+                                <pattern>^.*/([^/]+)$</pattern>
+                                <replacement>$1</replacement>
+                            </org.codehaus.plexus.components.io.filemappers.RegExpFileMapper>
+                        </fileMappers>
+                    </artifactItem>
+                </artifactItems>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>
+----
+
+== Result
+
+These changes ensure that:
+
+1. The FontAwesome CSS is properly loaded from the WebJar
+2. The FontAwesome font files are extracted to the "media" directory during the build process using maven-dependency-plugin
+3. The RegExpFileMapper strips the path information, keeping only the font filenames
+4. The CSS override ensures that the font files are loaded from the correct location
+
+After these changes, clicking on the Test Connection button should no longer result in a font-loading error.
