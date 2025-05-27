@@ -2,6 +2,119 @@
  * Styles for MultiIssuerJWTTokenAuthenticator custom UI components.
  */
 
+/* Color variables */
+:root {
+    /* Primary colors */
+    --primary-color: #0074d9;
+    --primary-color-dark: #0063b1;
+
+    /* Success colors */
+    --success-color: #2ecc40;
+    --success-color-dark: #29b739;
+
+    /* Error colors */
+    --error-color: #ff4136;
+    --error-color-dark: #e60000;
+
+    /* Neutral colors */
+    --background-color: #f5f5f5;
+    --container-background: #fff;
+    --border-color: #ddd;
+    --text-color: #333;
+    --text-color-light: #666;
+
+    /* Button colors */
+    --button-color: #4CAF50;
+    --button-color-hover: #45a049;
+}
+
+/* Base styles */
+body {
+    font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.5;
+}
+
+/* Container styles */
+#jwt-validator-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: var(--container-background);
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+    padding: 20px;
+}
+
+/* Loading indicator */
+#loading-indicator {
+    text-align: center;
+    padding: 20px;
+    font-size: 18px;
+    color: var(--text-color-light);
+}
+
+/* Form elements */
+input, select, textarea {
+    width: 100%;
+    padding: 8px 12px;
+    margin: 8px 0;
+    display: inline-block;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+button {
+    background-color: var(--button-color);
+    color: white;
+    padding: 10px 15px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+button:hover {
+    background-color: var(--button-color-hover);
+}
+
+/* Help tooltip */
+.help-tooltip {
+    margin-left: 5px;
+    color: var(--text-color-light);
+    cursor: help;
+}
+
+/* Property labels */
+.property-label {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+/* Error messages */
+.error-message {
+    color: var(--error-color);
+    background-color: #ffebee;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+/* Success messages */
+.success-message {
+    color: var(--success-color);
+    background-color: #e8f5e9;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+/* Component-specific styles */
+
 /* JWKS Validation Button */
 
 .jwks-verification-container {
@@ -20,16 +133,16 @@
 .verify-jwks-button {
     margin-right: 10px;
     padding: 5px 10px;
-    background-color: #0074d9;
+    background-color: var(--primary-color);
     color: white;
-    border: 1px solid #0063b1;
+    border: 1px solid var(--primary-color-dark);
     border-radius: 3px;
     cursor: pointer;
     font-weight: bold;
 }
 
 .verify-jwks-button:hover {
-    background-color: #0063b1;
+    background-color: var(--primary-color-dark);
 }
 
 .verification-result {
@@ -43,9 +156,9 @@
 .token-verification-container {
     margin: 15px 0;
     padding: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 5px;
-    background-color: #f9f9f9;
+    background-color: var(--background-color);
 }
 
 .token-input-section {
@@ -56,22 +169,22 @@
     width: 100%;
     margin: 5px 0;
     padding: 8px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border-color);
     border-radius: 3px;
     font-family: monospace;
 }
 
 .verify-token-button {
     padding: 8px 15px;
-    background-color: #0074d9;
-    color: #fff;
+    background-color: var(--primary-color);
+    color: white;
     border: none;
     border-radius: 3px;
     cursor: pointer;
 }
 
 .verify-token-button:hover {
-    background-color: #0063b1;
+    background-color: var(--primary-color-dark);
 }
 
 .token-results-section {
@@ -81,33 +194,33 @@
 .token-results-content {
     margin-top: 10px;
     padding: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 3px;
-    background-color: #fff;
+    background-color: var(--container-background);
     min-height: 50px;
 }
 
 .token-valid {
-    color: #2ecc40;
+    color: var(--success-color);
     font-weight: bold;
     padding: 5px;
     margin-bottom: 10px;
 }
 
 .token-invalid {
-    color: #ff4136;
+    color: var(--error-color);
     font-weight: bold;
     padding: 5px;
     margin-bottom: 10px;
 }
 
 .token-error {
-    color: #ff4136;
+    color: var(--error-color);
     padding: 5px;
 }
 
 .token-loading {
-    color: #0074d9;
+    color: var(--primary-color);
     padding: 5px;
 }
 
@@ -212,13 +325,6 @@
 }
 
 /* Help text and tooltips */
-
-.help-tooltip {
-    display: inline-block;
-    margin-left: 5px;
-    color: #0074d9;
-    cursor: help;
-}
 
 .help-text {
     margin: 10px 0;
@@ -383,7 +489,7 @@ body {
 /* Custom tabs */
 .custom-tabs {
     margin-top: 20px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     overflow: hidden;
     display: flex;
@@ -392,8 +498,8 @@ body {
 
 .custom-tabs-navigation {
     display: flex;
-    background-color: #f8f8f8;
-    border-bottom: 1px solid #ddd;
+    background-color: var(--background-color);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .tab-nav-item {
@@ -401,7 +507,7 @@ body {
     font-weight: bold;
     cursor: pointer;
     text-transform: capitalize;
-    border-right: 1px solid #ddd;
+    border-right: 1px solid var(--border-color);
 }
 
 .tab-nav-item:hover {
@@ -409,8 +515,8 @@ body {
 }
 
 .tab-nav-item.active {
-    background-color: #fff;
-    border-bottom: 2px solid #0074d9;
+    background-color: var(--container-background);
+    border-bottom: 2px solid var(--primary-color);
 }
 
 .custom-tab {
@@ -434,7 +540,7 @@ body {
 .custom-component {
     margin-bottom: 20px;
     padding: 15px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
 }
 

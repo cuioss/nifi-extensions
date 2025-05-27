@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MultiIssuerJWTTokenAuthenticator UI</title>
-    <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/styles.css">
 
     <!-- Load jQuery first -->
@@ -69,22 +68,8 @@
         <div id="loading-indicator">Loading JWT Validator UI...</div>
     </div>
 
-    <!-- Create a mock for nf.Common -->
+    <!-- Use the nf.Common mock from js/nf-common-mock.js -->
     <script type="text/javascript">
-        // Create a mock file for nf.Common
-        window.nf = window.nf || {};
-        window.nf.Common = {
-            registerCustomUiComponent: function(id, component, options) {
-                console.log('Registered custom UI component:', id, options);
-            },
-            registerCustomUiTab: function(id, component) {
-                console.log('Registered custom UI tab:', id);
-            },
-            getI18n: function() {
-                return {};
-            }
-        };
-
         // Create a global jQuery variable
         window.jQuery = window.$ = jQuery;
     </script>
