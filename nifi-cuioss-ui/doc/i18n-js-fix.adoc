@@ -1,0 +1,41 @@
+= i18n.js MIME Type Fix
+
+This document describes the changes made to fix the MIME type mismatch issue with the i18n.js file.
+
+== Issue Description
+
+The resource from "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/utils/i18n.js" was blocked due to MIME type ("text/html") mismatch (X-Content-Type-Options: nosniff).
+
+The issue was that the browser was trying to load the i18n.js file from a different path than what was configured in RequireJS. The browser was looking for the file at "utils/i18n.js", but the file was actually located at "js/utils/i18n.js".
+
+== Changes Made
+
+1. Added a path mapping for 'utils/i18n' in the RequireJS configuration in index.html:
++
+[source,javascript]
+----
+require.config({
+    paths: {
+        // ... other paths
+        'utils/i18n': ['js/utils/i18n']
+    }
+});
+----
+
+2. Created a copy of the i18n.js file in the utils directory:
++
+[source,bash]
+----
+mkdir -p nifi-cuioss-ui/src/main/webapp/utils
+cp nifi-cuioss-ui/src/main/webapp/js/utils/i18n.js nifi-cuioss-ui/src/main/webapp/utils/
+----
+
+== Result
+
+These changes ensure that:
+
+1. The i18n.js file is properly loaded from the correct path
+2. The browser can find the i18n.js file at the path it's looking for
+3. The MIME type mismatch issue is resolved
+
+After these changes, the browser should no longer block the i18n.js file due to MIME type mismatch.

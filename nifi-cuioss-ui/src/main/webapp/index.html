@@ -32,7 +32,8 @@
                 'components/tokenVerifier': ['js/components/tokenVerifier'],
                 'components/issuerConfigEditor': ['js/components/issuerConfigEditor'],
                 'services/apiClient': ['js/services/apiClient'],
-                'utils/formatters': ['js/utils/formatters']
+                'utils/formatters': ['js/utils/formatters'],
+                'utils/i18n': ['js/utils/i18n']
             },
             shim: {
                 'jquery-ui': {
@@ -85,6 +86,9 @@
 
         require(['js/main', 'js/bundle', 'js/nf-jwt-validator'], function(main, bundle) {
             console.log('All modules loaded successfully');
+
+            // Expose main module globally for language selector
+            window.nfJwtValidator = main;
 
             // Initialize main module only if components haven't been registered yet
             if (!window.jwtComponentsRegistered && main && typeof main.init === 'function') {

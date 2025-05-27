@@ -1,0 +1,38 @@
+/**
+ * Styles for JWKS Validation component.
+ */
+
+/* JWKS Validation Button */
+.jwks-verification-container {
+    margin: 0;
+    padding: 0;
+    position: relative;
+    top: -10px; /* Move up to be closer to the input field */
+}
+
+.jwks-button-wrapper {
+    margin-top: 5px;
+    margin-bottom: 10px;
+    display: inline-block;
+}
+
+.verify-jwks-button {
+    margin-right: 10px;
+    padding: 5px 10px;
+    background-color: var(--primary-color);
+    color: white;
+    border: 1px solid var(--primary-color-dark);
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.verify-jwks-button:hover {
+    background-color: var(--primary-color-dark);
+}
+
+.verification-result {
+    margin-top: 10px;
+    padding: 5px;
+    min-height: 20px;
+}
