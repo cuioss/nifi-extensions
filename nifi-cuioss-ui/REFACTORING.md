@@ -36,6 +36,13 @@ This document describes the refactoring changes made to the nifi-cuioss-ui modul
 - This eliminates code duplication and simplifies the codebase
 - No backward compatibility is maintained as per requirements
 
+### Removed Duplicate formatters.js File
+- Removed path mapping for 'utils/formatters' in RequireJS configuration
+- Updated imports in js/components/issuerConfigEditor.js and js/main.js to use 'js/utils/formatters' directly
+- Created a placeholder file in utils/formatters.js with a comment indicating it's been removed
+- This eliminates code duplication and simplifies the codebase
+- No backward compatibility is maintained as per requirements
+
 ### Improved Localization
 - Removed the language switch UI component
 - Now using the browser's language setting automatically

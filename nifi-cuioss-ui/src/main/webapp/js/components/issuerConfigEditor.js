@@ -7,7 +7,7 @@ define([
     'jquery',
     'nf.Common',
     'services/apiClient',
-    'utils/formatters'
+    'js/utils/formatters'
 ], function ($, nfCommon, apiClient, formatters) {
     'use strict';
 

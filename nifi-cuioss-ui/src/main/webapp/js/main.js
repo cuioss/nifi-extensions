@@ -8,7 +8,7 @@ define([
     'components/tokenVerifier',
     'components/issuerConfigEditor',
     'services/apiClient',
-    'utils/formatters',
+    'js/utils/formatters',
     'js/utils/i18n'
 ], function ($, nfCommon, tokenVerifier, issuerConfigEditor, _apiClient, _formatters, i18n) {
     // jQuery UI is already loaded via script tag
