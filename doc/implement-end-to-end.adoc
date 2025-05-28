@@ -135,7 +135,7 @@ Refer to the link:specification/end-to-end-testing.adoc#_cypress_ui_tests[Cypres
 
 |3.2
 |Create processor configuration tests
-|□ Open
+|✅ Complete
 
 |3.3
 |Implement token verification tests
@@ -158,7 +158,7 @@ Refer to the link:specification/end-to-end-testing.adoc#_end_to_end_test_scenari
 ==== Implementation Steps
 
 1. Implemented Cypress custom commands for login (`cy.login`) and navigation (`cy.navigateToControllerServices`, `cy.navigateToProcessGroup`, `cy.navigateToProcessorConfiguration`) in `nifi-cuioss-ui/cypress/support/commands.js`. The `cy.login` command uses JWTs obtained via `cy.getAccessToken` and stored in `localStorage`. Leveraged `NifiCanvasPage` page object for some operations. Added `nifiUrl` to `cypress.config.js`.
-2. Create basic processor configuration tests
+2. Created basic processor configuration tests in `nifi-cuioss-ui/cypress/integration/configuration/basic-configuration.spec.js`. These tests cover adding the processor, configuring basic (Token Location, Header Name) and advanced (Max Token Size, Refresh Interval) properties, saving, and verifying persistence. Enhanced `NifiCanvasPage` and `ProcessorConfigurationPage` page objects and included test cleanup via `afterEach`.
 3. Implement token verification tests for valid and invalid tokens
 4. Create JWKS validation tests for server, file, and in-memory types
 5. Implement error scenario tests for configuration and validation
