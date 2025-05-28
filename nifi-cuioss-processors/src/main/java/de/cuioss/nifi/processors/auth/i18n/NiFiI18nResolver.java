@@ -46,14 +46,14 @@ public class NiFiI18nResolver implements I18nResolver {
             bundle = ResourceBundle.getBundle(BUNDLE_NAME, locale);
         } catch (MissingResourceException e) {
             if (logger != null) {
-                logger.warn("Could not load resource bundle for locale {}: {}", new Object[]{locale, e.getMessage()});
+                logger.warn("Could not load resource bundle for locale {}: {}", locale, e.getMessage());
             }
             try {
                 // Fall back to default locale
                 bundle = ResourceBundle.getBundle(BUNDLE_NAME);
             } catch (MissingResourceException e2) {
                 if (logger != null) {
-                    logger.error("Could not load default resource bundle: {}", new Object[]{e2.getMessage()});
+                    logger.error("Could not load default resource bundle: {}", e2.getMessage());
                 }
             }
         }
@@ -90,7 +90,7 @@ public class NiFiI18nResolver implements I18nResolver {
             return resourceBundle.getString(key);
         } catch (MissingResourceException e) {
             if (logger != null) {
-                logger.debug("No translation found for key: {}", new Object[]{key});
+                logger.debug("No translation found for key: {}", key);
             }
             return key;
         }
@@ -116,10 +116,13 @@ public class NiFiI18nResolver implements I18nResolver {
         }
 
         try {
-            return MessageFormat.format(pattern, args);
+            // Ensure args are properly passed as an Object array to MessageFormat
+            Object[] formattingArgs = new Object[args.length];
+            System.arraycopy(args, 0, formattingArgs, 0, args.length);
+            return MessageFormat.format(pattern, formattingArgs);
         } catch (IllegalArgumentException e) {
             if (logger != null) {
-                logger.warn("Error formatting message for key {}: {}", new Object[]{key, e.getMessage()});
+                logger.warn("Error formatting message for key {}: {}", key, e.getMessage());
             }
             return pattern;
         }
