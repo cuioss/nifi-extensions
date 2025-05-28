@@ -51,6 +51,8 @@ define([], function() {
             'jwks.validation.button': 'Verify JWKS URL',
             'jwks.validation.success': 'JWKS URL is valid',
             'jwks.validation.error': 'JWKS URL is invalid',
+            'processor.jwt.failed': 'Failed',
+            'processor.jwt.ok': 'OK',
 
             // Issuer Configuration
             'issuer.config.title': 'Issuer Configuration',
@@ -112,6 +114,8 @@ define([], function() {
             'jwks.validation.button': 'JWKS-URL überprüfen',
             'jwks.validation.success': 'JWKS-URL ist gültig',
             'jwks.validation.error': 'JWKS-URL ist ungültig',
+            'processor.jwt.failed': 'Fehler',
+            'processor.jwt.ok': 'OK',
 
             // Issuer Configuration
             'issuer.config.title': 'Aussteller-Konfiguration',

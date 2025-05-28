@@ -104,15 +104,6 @@
                             </includes>
                             <targetPath>webjars</targetPath>
                         </overlay>
-                        <overlay>
-                            <groupId>org.webjars</groupId>
-                            <artifactId>font-awesome</artifactId>
-                            <type>jar</type>
-                            <includes>
-                                <include>META-INF/resources/webjars/**</include>
-                            </includes>
-                            <targetPath>webjars</targetPath>
-                        </overlay>
                     </overlays>
                 </configuration>
             </plugin>

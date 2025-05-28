@@ -160,7 +160,9 @@ define([], function() {
                 'processor.jwt.invalidJwks': 'Invalid JWKS',
                 'processor.jwt.keysFound': 'keys found',
                 'processor.jwt.validationError': 'Validation error',
-                'processor.jwt.verificationError': 'Verification error'
+                'processor.jwt.verificationError': 'Verification error',
+                'processor.jwt.failed': 'Failed',
+                'processor.jwt.ok': 'OK'
             };
         },
 

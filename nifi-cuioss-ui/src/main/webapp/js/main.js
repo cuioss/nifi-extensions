@@ -27,11 +27,11 @@ define([
         // Initialize i18n with browser language
         const userLanguage = i18n.getLanguage();
 
-        // Register Token Verifier component for the verification tab
-        nfCommon.registerCustomUiTab('jwt.validation.token.verification', tokenVerifier);
-
         // Register Issuer Config Editor component for the issuer configuration tab
         nfCommon.registerCustomUiTab('jwt.validation.issuer.configuration', issuerConfigEditor);
+
+        // Register Token Verifier component for the verification tab
+        nfCommon.registerCustomUiTab('jwt.validation.token.verification', tokenVerifier);
 
         // Register help tooltips
         registerHelpTooltips();
