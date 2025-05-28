@@ -105,7 +105,7 @@ For details, see the link:../integration-testing/README.adoc[Integration Testing
 
 |2.5
 |Implement token generation utilities
-|□ Open
+|✅ Complete
 |===
 
 [NOTE]
@@ -121,7 +121,7 @@ Refer to the link:specification/end-to-end-testing.adoc#_cypress_ui_tests[Cypres
 4. Create base page objects for NiFi canvas and processor configuration
 5. Implement console error verification system with allowed warnings list
 6. Set up test fixtures directory structure
-7. Create token generation utilities using Keycloak API
+7. Created token generation utilities using Keycloak API as a Cypress custom command `cy.getAccessToken` in `nifi-cuioss-ui/cypress/support/commands.js`. Keycloak connection details were added to `cypress.config.js`.
 
 === Phase 3: Basic Test Implementation
 
@@ -131,7 +131,7 @@ Refer to the link:specification/end-to-end-testing.adoc#_cypress_ui_tests[Cypres
 
 |3.1
 |Implement login and navigation helpers
-|□ Open
+|✅ Complete
 
 |3.2
 |Create processor configuration tests
@@ -157,7 +157,7 @@ Refer to the link:specification/end-to-end-testing.adoc#_end_to_end_test_scenari
 
 ==== Implementation Steps
 
-1. Implement Cypress custom commands for login and navigation
+1. Implemented Cypress custom commands for login (`cy.login`) and navigation (`cy.navigateToControllerServices`, `cy.navigateToProcessGroup`, `cy.navigateToProcessorConfiguration`) in `nifi-cuioss-ui/cypress/support/commands.js`. The `cy.login` command uses JWTs obtained via `cy.getAccessToken` and stored in `localStorage`. Leveraged `NifiCanvasPage` page object for some operations. Added `nifiUrl` to `cypress.config.js`.
 2. Create basic processor configuration tests
 3. Implement token verification tests for valid and invalid tokens
 4. Create JWKS validation tests for server, file, and in-memory types
@@ -324,3 +324,5 @@ Refer to the link:specification/end-to-end-testing.adoc#_test_maintenance[Test M
 * link:Requirements.adoc#NIFI-AUTH-16[Testing Requirements]
 * link:library/cui-test-keycloak-integration/README.adoc[Keycloak Integration Testing]
 * link:integration-testing/README.adoc[Integration Testing Environment]
+
+[end of doc/implement-end-to-end.adoc]

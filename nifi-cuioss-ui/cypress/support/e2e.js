@@ -7,4 +7,4 @@ import './console-error-tracking';
 
 // You can add other global support file configurations here if needed.
 // For example, importing custom commands:
-// import './commands';
+import './commands';
