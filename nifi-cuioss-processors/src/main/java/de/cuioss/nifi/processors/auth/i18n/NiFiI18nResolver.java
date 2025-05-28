@@ -15,13 +15,12 @@
  */
 package de.cuioss.nifi.processors.auth.i18n;
 
-import java.text.MessageFormat;
+import de.cuioss.tools.string.MoreStrings;
+import org.apache.nifi.logging.ComponentLog;
+
 import java.util.Locale;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
-
-
-import org.apache.nifi.logging.ComponentLog;
 
 /**
  * Implementation of I18nResolver for NiFi processors.
@@ -35,7 +34,7 @@ public class NiFiI18nResolver implements I18nResolver {
 
     /**
      * Creates a new NiFiI18nResolver with the specified locale.
-     * 
+     *
      * @param locale The locale to use for translations
      * @param logger The logger to use for logging errors
      */
@@ -62,7 +61,7 @@ public class NiFiI18nResolver implements I18nResolver {
 
     /**
      * Creates a default I18nResolver using the system default locale.
-     * 
+     *
      * @param logger The logger to use for logging errors
      * @return A new I18nResolver
      */
@@ -72,7 +71,7 @@ public class NiFiI18nResolver implements I18nResolver {
 
     /**
      * Creates an I18nResolver for the specified locale.
-     * 
+     *
      * @param locale The locale to use for translations
      * @return A new I18nResolver
      */
@@ -99,32 +98,6 @@ public class NiFiI18nResolver implements I18nResolver {
     @Override
     public String getTranslatedString(String key, Object... args) {
         String pattern = getTranslatedString(key);
-        if (pattern.equals(key)) {
-            // No translation found, return key with args appended
-            StringBuilder sb = new StringBuilder(key);
-            if (args.length > 0) {
-                sb.append(" [");
-                for (int i = 0; i < args.length; i++) {
-                    if (i > 0) {
-                        sb.append(", ");
-                    }
-                    sb.append(args[i]);
-                }
-                sb.append("]");
-            }
-            return sb.toString();
-        }
-
-        try {
-            // Ensure args are properly passed as an Object array to MessageFormat
-            Object[] formattingArgs = new Object[args.length];
-            System.arraycopy(args, 0, formattingArgs, 0, args.length);
-            return MessageFormat.format(pattern, formattingArgs);
-        } catch (IllegalArgumentException e) {
-            if (logger != null) {
-                logger.warn("Error formatting message for key {}: {}", key, e.getMessage());
-            }
-            return pattern;
-        }
+        return MoreStrings.lenientFormat(pattern, args);
     }
 }
