@@ -9,7 +9,7 @@ link:../Specification.adoc[Back to Main Specification]
 == End-to-End Testing Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-16[NIFI-AUTH-16: Testing]_
 
-This document outlines the end-to-end testing strategy for the MultiIssuerJWTTokenAuthenticator, focusing on automated testing of complete user flows through the UI. End-to-end testing verifies that the entire application works as expected from a user's perspective, testing all components working together in a real environment.
+This document outlines the end-to-end testing strategy for the MultiIssuerJWTTokenAuthenticator, focusing on automated UI testing with Cypress. The tests verify user flows through the application's user interface, ensuring that the entire application works as expected from a user's perspective with all UI components working together in a real environment.
 
 [NOTE]
 ====
@@ -40,8 +40,7 @@ End-to-end testing typically takes 15-30 minutes for a complete test suite run, 
 
 The end-to-end testing infrastructure uses modern, industry-standard tools:
 
-* **Cypress** (v12.x or higher): Primary end-to-end testing framework
-* **Playwright** (v1.32.x or higher): Alternative framework for cross-browser testing
+* **Cypress** (v12.x or higher): Framework for end-to-end testing and cross-browser testing
 * **Docker** (v24.x or higher): For containerized testing environment
 * **Integration Testing Module**: For controlling runtime instances including NiFi and Keycloak
 * **cui-test-keycloak-integration** (v1.0.x): For integration testing with Keycloak
@@ -160,7 +159,7 @@ End-to-end tests run in a containerized environment provided by the `integration
    * NiFi: PKCS12 format (keystore.p12, truststore.p12)
    * Keycloak: PEM format (localhost.crt, localhost.key)
 
-4. **Browser Environment**: Cross-browser testing with:
+4. **Browser Environment**: Cross-browser testing with Cypress supports:
    * Chrome (latest and latest-1 versions)
    * Firefox (latest and latest-1 versions)
    * Edge (latest version)
@@ -364,160 +363,59 @@ Accessibility testing uses automated tools like axe-core integrated with Cypress
 
 === Integration Test Structure
 
-The end-to-end tests are implemented using a combination of:
-
-1. **JUnit Integration Tests**: For testing backend functionality with real services
-2. **Cypress Tests**: For testing UI interactions and user flows
-3. **cui-test-keycloak-integration**: For Keycloak integration testing
-
-The test structure follows this organization:
+The end-to-end tests are implemented using Cypress for UI testing:
 
 ```
-src/test/java/
+cypress/
+├── fixtures/
+│   └── tokens/
+│       ├── valid-tokens.json
+│       └── invalid-tokens.json
 ├── integration/
-│   ├── KeycloakIntegrationTest.java
-│   ├── NifiProcessorTest.java
-│   └── EndToEndFlowTest.java
-└── cypress/
-    ├── fixtures/
-    │   └── tokens/
-    │       ├── valid-tokens.json
-    │       └── invalid-tokens.json
-    ├── integration/
-    │   ├── configuration/
-    │   │   ├── basic-configuration.spec.js
-    │   │   └── issuer-configuration.spec.js
-    │   ├── verification/
-    │   │   ├── token-verification.spec.js
-    │   │   └── jwks-validation.spec.js
-    │   └── metrics/
-    │       └── metrics-display.spec.js
-    └── support/
-        ├── commands.js
-        └── index.js
+│   ├── configuration/
+│   │   ├── basic-configuration.spec.js
+│   │   └── issuer-configuration.spec.js
+│   ├── verification/
+│   │   ├── token-verification.spec.js
+│   │   └── jwks-validation.spec.js
+│   └── metrics/
+│       └── metrics-display.spec.js
+└── support/
+    ├── commands.js
+    └── index.js
 ```
 
-=== JUnit Integration Tests with Keycloak
-
-Integration tests use the `cui-test-keycloak-integration` library to interact with the Keycloak instance:
-
-[source,java]
-----
-@ExtendWith(KeycloakExtension.class)
-public class KeycloakIntegrationTest {
-
-    @Test
-    void shouldObtainValidToken(KeycloakContainer keycloak) {
-        // Get token from Keycloak
-        String token = obtainToken(keycloak.getAuthServerUrl());
-
-        // Verify token is valid
-        assertNotNull(token);
-
-        // Use token to test processor
-        testProcessorWithToken(token);
-    }
-
-    private String obtainToken(String authServerUrl) {
-        // Create Keycloak client
-        Keycloak keycloak = KeycloakBuilder.builder()
-            .serverUrl(authServerUrl)
-            .realm(TestRealm.REALM_NAME)
-            .clientId(TestRealm.CLIENT_ID)
-            .clientSecret(TestRealm.CLIENT_SECRET)
-            .username(TestRealm.TEST_USER)
-            .password(TestRealm.TEST_PASSWORD)
-            .build();
-
-        // Get token
-        AccessTokenResponse response = keycloak.tokenManager().getAccessToken();
-        return response.getToken();
-    }
-
-    private void testProcessorWithToken(String token) {
-        // Test processor with token
-        // ...
-    }
-}
-----
-
-=== Integration Testing with NiFi API
-
-For testing the processor in a running NiFi instance:
-
-[source,java]
-----
-public class NifiProcessorTest {
-
-    private static final String NIFI_URL = "https://localhost:9095/nifi/";
-    private static final String ADMIN_USER = "admin";
-    private static final String ADMIN_PASSWORD = "adminadminadmin";
-
-    @Test
-    void shouldProcessTokenSuccessfully() throws Exception {
-        // Create NiFi client
-        NiFiClient client = createNiFiClient();
-
-        // Deploy test flow with processor
-        String processGroupId = deployTestFlow(client);
-
-        // Get token from Keycloak
-        String token = obtainKeycloakToken();
-
-        // Create test data with token
-        byte[] testData = "Test data".getBytes();
-        Map<String, String> attributes = Map.of(
-            "Authorization", "Bearer " + token
-        );
-
-        // Submit test data to input port
-        submitToInputPort(client, processGroupId, "input", testData, attributes);
-
-        // Wait for processing to complete
-        Thread.sleep(2000);
-
-        // Verify output from output port
-        List<FlowFileEntity> outputFlowFiles = getOutputFlowFiles(client, processGroupId, "output");
-
-        // Verify results
-        assertFalse(outputFlowFiles.isEmpty());
-        FlowFileEntity flowFile = outputFlowFiles.get(0);
-        assertTrue(flowFile.getAttributes().containsKey("jwt.content.sub"));
-        assertEquals("testUser", flowFile.getAttributes().get("jwt.content.sub"));
-    }
-
-    private NiFiClient createNiFiClient() {
-        // Create NiFi client with SSL context
-        // ...
-    }
-
-    private String deployTestFlow(NiFiClient client) {
-        // Deploy test flow with processor
-        // ...
-    }
-
-    private String obtainKeycloakToken() {
-        // Get token from Keycloak
-        // ...
-    }
-
-    private void submitToInputPort(NiFiClient client, String processGroupId, 
-                                  String portName, byte[] data, Map<String, String> attributes) {
-        // Submit data to input port
-        // ...
-    }
-
-    private List<FlowFileEntity> getOutputFlowFiles(NiFiClient client, 
-                                                  String processGroupId, String portName) {
-        // Get output flow files
-        // ...
-    }
-}
-----
+These tests are organized by feature area and test specific user interactions with the UI.
 
 === Cypress UI Tests
 
-Cypress tests focus on UI interactions and user flows. We use data-testid attributes for more reliable selectors where possible:
+Cypress tests form the foundation of our end-to-end testing strategy, focusing on UI interactions and user flows. We use data-testid attributes for more reliable selectors and implement page object patterns for better test maintainability.
+
+==== Test Structure and Organization
+
+Tests are organized by feature area in the following structure:
+
+[source,javascript]
+----
+// Page Objects - Reusable UI interaction patterns
+cypress/support/page-objects/
+  ├── processor-configuration.js  // Methods for configuring processors
+  ├── token-verification.js       // Methods for token verification workflows
+  └── nifi-canvas.js              // Methods for NiFi canvas navigation
+
+// Custom Commands - Shared functionality across tests
+cypress/support/commands.js       // Includes login, navigation helpers
+
+// Tests organized by feature
+cypress/integration/
+  ├── configuration/              // Processor configuration tests
+  ├── verification/               // Token verification tests
+  └── metrics/                    // Metrics display tests
+----
+
+==== Test Implementation
+
+A typical Cypress test follows this pattern:
 
 [source,javascript]
 ----
@@ -559,247 +457,468 @@ describe('Basic Processor Configuration', () => {
 });
 ----
 
-=== Combined End-to-End Test
+==== Page Object Pattern Implementation
 
-For a complete end-to-end test that combines all components:
+To improve maintainability, we implement the Page Object pattern:
 
-[source,java]
+[source,javascript]
 ----
-@ExtendWith(KeycloakExtension.class)
-public class EndToEndFlowTest {
-
-    @Test
-    void shouldProcessTokenEndToEnd(KeycloakContainer keycloak) throws Exception {
-        // 1. Get token from Keycloak
-        String token = obtainToken(keycloak);
-
-        // 2. Deploy test flow with processor in NiFi
-        NiFiClient client = createNiFiClient();
-        String processGroupId = deployTestFlow(client);
-
-        // 3. Configure processor with Keycloak JWKS endpoint
-        configureProcessor(client, processGroupId, keycloak.getAuthServerUrl());
-
-        // 4. Submit test data with token
-        byte[] testData = "Test data".getBytes();
-        Map<String, String> attributes = Map.of(
-            "Authorization", "Bearer " + token
-        );
-        submitToInputPort(client, processGroupId, "input", testData, attributes);
-
-        // 5. Wait for processing to complete
-        Thread.sleep(2000);
-
-        // 6. Verify output
-        List<FlowFileEntity> outputFlowFiles = getOutputFlowFiles(client, processGroupId, "output");
-
-        // 7. Verify results
-        assertFalse(outputFlowFiles.isEmpty());
-        FlowFileEntity flowFile = outputFlowFiles.get(0);
-        assertTrue(flowFile.getAttributes().containsKey("jwt.content.sub"));
-        assertEquals("testUser", flowFile.getAttributes().get("jwt.content.sub"));
-    }
-
-    // Helper methods...
+// cypress/support/page-objects/processor-configuration.js
+class ProcessorConfigurationPage {
+  // Selectors
+  getPropertyInput(name) {
+    return cy.get(`[data-testid="property-input"][name="${name}"]`);
+  }
+  
+  getDynamicPropertyAddButton() {
+    return cy.get('[data-testid="dynamic-property-add-button"]');
+  }
+  
+  getDynamicPropertyNameInput() {
+    return cy.get('[data-testid="dynamic-property-name"]');
+  }
+  
+  getDynamicPropertyValueInput() {
+    return cy.get('[data-testid="dynamic-property-value"]');
+  }
+  
+  getVerifyJwksButton() {
+    return cy.get('[data-testid="verify-jwks-button"]');
+  }
+  
+  getVerificationResult() {
+    return cy.get('[data-testid="verification-result"]');
+  }
+  
+  getOkButton() {
+    return cy.get('[data-testid="processor-config-ok-button"]');
+  }
+  
+  // Actions
+  setBasicProperties() {
+    this.getPropertyInput('jwt.validation.token.location').select('AUTHORIZATION_HEADER');
+    this.getPropertyInput('jwt.validation.token.header').clear().type('Authorization');
+    return this;
+  }
+  
+  addIssuer(name, url) {
+    this.getDynamicPropertyAddButton().click();
+    this.getDynamicPropertyNameInput().type(name);
+    this.getDynamicPropertyValueInput().type(url);
+    return this;
+  }
+  
+  validateJwksEndpoint() {
+    this.getVerifyJwksButton().click();
+    this.getVerificationResult().should('contain', 'Connection successful');
+    return this;
+  }
+  
+  saveConfiguration() {
+    this.getOkButton().click();
+  }
 }
+
+export default new ProcessorConfigurationPage();
 ----
+
+==== Using Page Objects in Tests
+
+With page objects, the tests become more readable and maintainable:
+
+[source,javascript]
+----
+// cypress/integration/configuration/basic-configuration.spec.js
+import ProcessorConfigurationPage from '../../support/page-objects/processor-configuration';
+import NifiCanvasPage from '../../support/page-objects/nifi-canvas';
+
+describe('Basic Processor Configuration', () => {
+  beforeEach(() => {
+    cy.login('admin', 'adminadminadmin');
+    cy.visit('https://localhost:9095/nifi/');
+    NifiCanvasPage.waitForCanvasToLoad();
+  });
+
+  it('should configure processor with Keycloak JWKS endpoint', () => {
+    // Add processor to canvas
+    NifiCanvasPage.addProcessor('MultiIssuerJWTTokenAuthenticator');
+    
+    // Open processor configuration
+    NifiCanvasPage.openProcessorConfiguration();
+    
+    // Configure processor
+    ProcessorConfigurationPage
+      .setBasicProperties()
+      .addIssuer('keycloak', 'http://keycloak:9080/realms/oauth_integration_tests/protocol/openid-connect/certs')
+      .validateJwksEndpoint()
+      .saveConfiguration();
+    
+    // Verify processor is properly configured
+    NifiCanvasPage.assertProcessorIsValid();
+  });
+});
+----
+
+==== Custom Commands
+
+We extend Cypress with custom commands for common operations:
+
+[source,javascript]
+----
+// cypress/support/commands.js
+Cypress.Commands.add('login', (username, password) => {
+  cy.session([username, password], () => {
+    cy.visit('https://localhost:9095/nifi/');
+    cy.get('[data-testid="username-input"]').type(username);
+    cy.get('[data-testid="password-input"]').type(password);
+    cy.get('[data-testid="login-button"]').click();
+    cy.get('[data-testid="flow-status-container"]', { timeout: 15000 }).should('be.visible');
+  });
+});
+
+Cypress.Commands.add('navigateToProcessorVerification', () => {
+  cy.get('[data-testid="processor-component"]').rightclick();
+  cy.get('[data-testid="context-menu-item"]:contains("Verification")').click();
+});
+----
+
+==== Handling Asynchronous Operations
+
+NiFi operations can be asynchronous. We implement robust waiting strategies:
+
+[source,javascript]
+----
+// Handling asynchronous operations
+it('should verify token processing results', () => {
+  // Submit token for processing
+  cy.get('[data-testid="process-token-button"]').click();
+  
+  // Wait for processing to complete with configurable timeout
+  cy.get('[data-testid="processing-status"]', { timeout: 30000 })
+    .should('have.text', 'Completed');
+  
+  // Use retry-ability for potentially unstable assertions
+  cy.get('[data-testid="token-attributes"]')
+    .should('contain', 'jwt.content.sub')
+    .should('contain', 'testUser');
+});
+----
+
+==== Cross-Browser Testing
+
+Our tests are designed to run across multiple browsers with appropriate handling for browser-specific behaviors:
+
+[source,javascript]
+----
+// Browser-specific handling
+it('should handle file uploads across browsers', () => {
+  // Different browsers have different file upload mechanisms
+  if (Cypress.isBrowser('firefox')) {
+    cy.get('[data-testid="file-input"]').selectFile('cypress/fixtures/jwks/keycloak-jwks.json', { force: true });
+  } else {
+    cy.get('[data-testid="file-input"]').selectFile('cypress/fixtures/jwks/keycloak-jwks.json');
+  }
+  
+  // Common validation
+  cy.get('[data-testid="file-name"]').should('contain', 'keycloak-jwks.json');
+});
+----
+
+==== Visual Testing
+
+For UI components, we implement visual testing:
+
+[source,javascript]
+----
+// Visual validation of UI components
+it('should display token claims correctly', () => {
+  // Load token and navigate to verification screen
+  cy.fixture('tokens/valid-tokens.json').then(({ validToken }) => {
+    cy.navigateToProcessorVerification();
+    cy.get('[data-testid="token-input"]').type(validToken);
+    cy.get('[data-testid="verify-token-button"]').click();
+    
+    // Check that claims table is displayed correctly
+    cy.get('[data-testid="claims-table"]').should('be.visible');
+    
+    // Take screenshot for visual comparison
+    cy.get('[data-testid="claims-container"]').screenshot('token-claims-display');
+  });
+});
+----
+
+This comprehensive approach to Cypress testing enables us to thoroughly test the MultiIssuerJWTTokenAuthenticator processor's UI in a real environment, ensuring all user flows work correctly.
+
+=== End-to-End Test Workflow
+
+A complete end-to-end test with Cypress typically follows this workflow:
+
+1. **Setup**: Login to NiFi and navigate to the canvas
+2. **Processor Creation**: Add the MultiIssuerJWTTokenAuthenticator processor to the canvas
+3. **Basic Configuration**: Configure token location, header name, etc.
+4. **Issuer Configuration**: Add and configure issuers with different types (JWKS server, local file, in-memory)
+5. **Validation**: Verify JWKS connections and validate configuration
+6. **Test Operation**: Test token verification with different token types
+7. **Verification**: Assert that the UI displays expected results
+
+This workflow tests the entire user experience from processor setup to token verification, ensuring all UI components work together correctly.
 
 == Test Data Generation
 
-=== Real JWT Token Generation
+=== Cypress Test Fixtures
 
-For end-to-end testing, real JWT tokens are obtained from the Keycloak instance in the integration-testing environment:
+Cypress tests use fixtures to provide test data. These fixtures are stored in the `cypress/fixtures` directory and include token examples and configuration data:
 
-[source,java]
+[source,javascript]
 ----
+// cypress/fixtures/tokens/valid-tokens.json
+{
+  "validToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "adminToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expectedSubject": "testUser",
+  "expectedIssuer": "http://localhost:9080/realms/oauth_integration_tests"
+}
+
+// cypress/fixtures/tokens/invalid-tokens.json
+{
+  "expiredToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "invalidSignatureToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+
+// cypress/fixtures/jwks/keycloak-jwks.json
+{
+  "keys": [
+    {
+      "kid": "YvGl1VhRlUe-Cf_9k3X6K2MI8JyFo5V0mGCK5U1QlXA",
+      "kty": "RSA",
+      "alg": "RS256",
+      "use": "sig",
+      "n": "pPr5h-b9VBQDI...",
+      "e": "AQAB"
+    }
+  ]
+}
+----
+
+These fixtures can be loaded in Cypress tests:
+
+[source,javascript]
+----
+describe('Token Verification', () => {
+  let validTokens, invalidTokens;
+  
+  before(() => {
+    // Load test data
+    cy.fixture('tokens/valid-tokens.json').then(data => {
+      validTokens = data;
+    });
+    cy.fixture('tokens/invalid-tokens.json').then(data => {
+      invalidTokens = data;
+    });
+  });
+
+  it('should verify a valid token', () => {
+    // Navigate to verification UI
+    cy.visit('https://localhost:9095/nifi/');
+    cy.navigateToProcessorVerification();
+    
+    // Paste token and verify
+    cy.get('[data-testid="token-input"]').type(validTokens.validToken);
+    cy.get('[data-testid="verify-token-button"]').click();
+    
+    // Check results
+    cy.get('[data-testid="token-subject"]').should('contain', validTokens.expectedSubject);
+    cy.get('[data-testid="token-issuer"]').should('contain', validTokens.expectedIssuer);
+  });
+});
+----
+
+=== Token Generation Helper
+
+To generate real tokens for testing, we use a utility script that obtains tokens from the Keycloak instance:
+
+[source,javascript]
+----
+// cypress/support/token-generator.js
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+
 /**
  * Utility for obtaining real tokens from Keycloak for testing
  */
-public class KeycloakTokenGenerator {
+class TokenGenerator {
+  constructor() {
+    this.keycloakUrl = 'http://localhost:9080';
+    this.realm = 'oauth_integration_tests';
+    this.clientId = 'test_client';
+    this.clientSecret = 'yTKslWLtf4giJcWCaoVJ20H8sy6STexM';
+    this.username = 'testUser';
+    this.password = 'drowssap';
+  }
 
-    private static final String KEYCLOAK_URL = "http://localhost:9080";
-    private static final String REALM = "oauth_integration_tests";
-    private static final String CLIENT_ID = "test_client";
-    private static final String CLIENT_SECRET = "yTKslWLtf4giJcWCaoVJ20H8sy6STexM";
-    private static final String USERNAME = "testUser";
-    private static final String PASSWORD = "drowssap";
+  /**
+   * Get a valid token from Keycloak
+   */
+  async getValidToken() {
+    return this.getToken(this.username, this.password);
+  }
 
-    /**
-     * Get a valid token from Keycloak
-     */
-    public static String getValidToken() {
-        return getToken(USERNAME, PASSWORD);
-    }
+  /**
+   * Get a token with custom scopes
+   */
+  async getTokenWithScopes(scopes) {
+    return this.getToken(this.username, this.password, scopes.join(' '));
+  }
 
-    /**
-     * Get a token with custom scopes
-     */
-    public static String getTokenWithScopes(String... scopes) {
-        // Create token request with specific scopes
-        return getToken(USERNAME, PASSWORD, String.join(" ", scopes));
-    }
+  /**
+   * Get a token for a specific user
+   */
+  async getToken(username, password, scope = null) {
+    try {
+      // Build the token request
+      const params = new URLSearchParams();
+      params.append('grant_type', 'password');
+      params.append('client_id', this.clientId);
+      params.append('client_secret', this.clientSecret);
+      params.append('username', username);
+      params.append('password', password);
 
-    /**
-     * Get a token for a specific user
-     */
-    public static String getToken(String username, String password) {
-        return getToken(username, password, null);
-    }
+      if (scope) {
+        params.append('scope', scope);
+      }
 
-    /**
-     * Get a token with custom parameters
-     */
-    private static String getToken(String username, String password, String scope) {
-        try {
-            // Build the token request
-            StringBuilder requestBody = new StringBuilder();
-            requestBody.append("grant_type=password");
-            requestBody.append("&client_id=").append(URLEncoder.encode(CLIENT_ID, StandardCharsets.UTF_8));
-            requestBody.append("&client_secret=").append(URLEncoder.encode(CLIENT_SECRET, StandardCharsets.UTF_8));
-            requestBody.append("&username=").append(URLEncoder.encode(username, StandardCharsets.UTF_8));
-            requestBody.append("&password=").append(URLEncoder.encode(password, StandardCharsets.UTF_8));
-
-            if (scope != null && !scope.isEmpty()) {
-                requestBody.append("&scope=").append(URLEncoder.encode(scope, StandardCharsets.UTF_8));
-            }
-
-            // Create HTTP client
-            HttpClient client = HttpClient.newBuilder().build();
-
-            // Create request
-            HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(KEYCLOAK_URL + "/realms/" + REALM + "/protocol/openid-connect/token"))
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody.toString()))
-                .build();
-
-            // Send request and get response
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-            // Parse JSON response
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode root = mapper.readTree(response.body());
-
-            // Return access token
-            return root.get("access_token").asText();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to get token from Keycloak", e);
+      // Send request
+      const response = await axios.post(
+        `${this.keycloakUrl}/realms/${this.realm}/protocol/openid-connect/token`,
+        params,
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
         }
+      );
+
+      // Return access token
+      return response.data.access_token;
+    } catch (error) {
+      console.error('Failed to get token from Keycloak', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Save tokens to fixture files for Cypress tests
+   */
+  async saveTokensToFixtures() {
+    // Get tokens
+    const validToken = await this.getValidToken();
+    const adminToken = await this.getTokenWithScopes(['admin']);
+
+    // Create fixtures directory if it doesn't exist
+    const fixturesDir = path.join(__dirname, '..', 'fixtures', 'tokens');
+    if (!fs.existsSync(fixturesDir)) {
+      fs.mkdirSync(fixturesDir, { recursive: true });
     }
 
-    /**
-     * Save tokens to fixture files for Cypress tests
-     */
-    public static void saveTokensToFixtures() throws IOException {
-        // Create directory for tokens
-        Files.createDirectories(Paths.get("cypress/fixtures/tokens"));
+    // Save valid token fixture
+    fs.writeFileSync(
+      path.join(fixturesDir, 'valid-tokens.json'),
+      JSON.stringify({
+        validToken,
+        adminToken,
+        expectedSubject: this.username,
+        expectedIssuer: `${this.keycloakUrl}/realms/${this.realm}`
+      }, null, 2)
+    );
 
-        // Get tokens
-        String validToken = getValidToken();
-        String adminToken = getTokenWithScopes("admin");
+    // For invalid tokens, we can tamper with valid tokens
+    // In a real implementation, you'd need to implement token tampering
+    const expiredToken = validToken; // Replace with actual expired token
+    const invalidSignatureToken = validToken.slice(0, -5) + 'XXXXX'; // Simple tampering
 
-        // Create token info
-        ObjectMapper mapper = new ObjectMapper();
+    // Save invalid token fixture
+    fs.writeFileSync(
+      path.join(fixturesDir, 'invalid-tokens.json'),
+      JSON.stringify({
+        expiredToken,
+        invalidSignatureToken
+      }, null, 2)
+    );
 
-        // Save valid token
-        mapper.writeValue(
-            Paths.get("cypress/fixtures/tokens/valid-tokens.json").toFile(),
-            Map.of(
-                "validToken", validToken,
-                "adminToken", adminToken,
-                "expectedSubject", USERNAME,
-                "expectedIssuer", KEYCLOAK_URL + "/realms/" + REALM
-            )
-        );
-
-        // For invalid tokens, we can use the cui-jwt-validation utilities
-        // to tamper with valid tokens
-        String expiredToken = JwtTokenTamperingUtil.tamperWithClaim(
-            validToken, 
-            "exp", 
-            Instant.now().minus(1, ChronoUnit.HOURS).getEpochSecond()
-        );
-
-        String invalidSignatureToken = JwtTokenTamperingUtil.invalidateSignature(validToken);
-
-        mapper.writeValue(
-            Paths.get("cypress/fixtures/tokens/invalid-tokens.json").toFile(),
-            Map.of(
-                "expiredToken", expiredToken,
-                "invalidSignatureToken", invalidSignatureToken
-            )
-        );
-    }
+    console.log('Token fixtures saved successfully');
+  }
 }
+
+module.exports = new TokenGenerator();
 ----
 
-=== Real JWKS Endpoints
+This generator can be run as a pre-test script to generate fresh tokens:
 
-The integration-testing environment provides real JWKS endpoints from the Keycloak instance:
-
-[source,java]
+[source,javascript]
 ----
+// scripts/generate-test-tokens.js
+const tokenGenerator = require('../cypress/support/token-generator');
+
+(async () => {
+  try {
+    await tokenGenerator.saveTokensToFixtures();
+    console.log('Test tokens generated successfully');
+  } catch (error) {
+    console.error('Error generating test tokens:', error);
+    process.exit(1);
+  }
+})();
+----
+
+=== JWKS Endpoints for Cypress
+
+The Keycloak instance provides real JWKS endpoints that can be used in Cypress tests:
+
+[source,javascript]
+----
+// cypress/support/jwks-endpoints.js
 /**
  * Utility for working with real JWKS endpoints from Keycloak
  */
-public class KeycloakJwksEndpoints {
+class JwksEndpoints {
+  /**
+   * Get the HTTP JWKS endpoint URL for local access
+   */
+  getLocalHttpJwksUrl() {
+    return 'http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/certs';
+  }
 
-    /**
-     * Get the HTTP JWKS endpoint URL for the Keycloak container
-     */
-    public static String getHttpJwksUrl() {
-        return "http://keycloak:9080/realms/oauth_integration_tests/protocol/openid-connect/certs";
-    }
+  /**
+   * Get the HTTPS JWKS endpoint URL for local access
+   */
+  getLocalHttpsJwksUrl() {
+    return 'https://localhost:9085/realms/oauth_integration_tests/protocol/openid-connect/certs';
+  }
 
-    /**
-     * Get the HTTPS JWKS endpoint URL for the Keycloak container
-     */
-    public static String getHttpsJwksUrl() {
-        return "https://keycloak:9085/realms/oauth_integration_tests/protocol/openid-connect/certs";
-    }
+  /**
+   * Get the HTTP JWKS endpoint URL for Docker container access
+   */
+  getContainerHttpJwksUrl() {
+    return 'http://keycloak:9080/realms/oauth_integration_tests/protocol/openid-connect/certs';
+  }
 
-    /**
-     * Get the HTTP JWKS endpoint URL for local access
-     */
-    public static String getLocalHttpJwksUrl() {
-        return "http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/certs";
-    }
-
-    /**
-     * Get the HTTPS JWKS endpoint URL for local access
-     */
-    public static String getLocalHttpsJwksUrl() {
-        return "https://localhost:9085/realms/oauth_integration_tests/protocol/openid-connect/certs";
-    }
-
-    /**
-     * Fetch and save the JWKS content to a file for offline testing
-     */
-    public static void saveJwksToFile(String outputPath) throws IOException {
-        // Create HTTP client
-        HttpClient client = HttpClient.newBuilder()
-            .build();
-
-        // Create request
-        HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(getLocalHttpJwksUrl()))
-            .GET()
-            .build();
-
-        // Send request and get response
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-        // Save response to file
-        Files.writeString(Paths.get(outputPath), response.body());
-    }
+  /**
+   * Get the HTTPS JWKS endpoint URL for Docker container access
+   */
+  getContainerHttpsJwksUrl() {
+    return 'https://keycloak:9085/realms/oauth_integration_tests/protocol/openid-connect/certs';
+  }
 }
+
+module.exports = new JwksEndpoints();
 ----
 
 == Test Execution
 
 === Local Execution
 
-To run end-to-end tests locally:
+To run Cypress end-to-end tests locally:
 
 1. Start the integration-testing environment:
 +
@@ -809,22 +928,20 @@ To run end-to-end tests locally:
 ./integration-testing/src/main/docker/run-test-container.sh
 ----
 
-2. Run the integration tests:
+2. Generate fresh test tokens (optional):
 +
 [source,bash]
 ----
-# Run all integration tests
-mvn verify -Pintegration-tests
-
-# Run a specific integration test
-mvn verify -Pintegration-tests -Dit.test=KeycloakIntegrationTest
+# Generate fresh test tokens
+cd nifi-cuioss-ui
+npm run generate-tokens
 ----
 
-3. Run the UI tests:
+3. Run the Cypress tests:
 +
 [source,bash]
 ----
-# Run Cypress tests
+# Run Cypress tests in headless mode
 cd nifi-cuioss-ui
 npm run e2e:test
 
@@ -836,9 +953,6 @@ npm run e2e:open
 +
 [source,bash]
 ----
-# Integration test results
-open target/failsafe-reports/index.html
-
 # Cypress test results
 open nifi-cuioss-ui/cypress/reports/index.html
 ----
@@ -850,31 +964,42 @@ open nifi-cuioss-ui/cypress/reports/index.html
 ./integration-testing/src/main/docker/stop-test-container.sh
 ----
 
-=== Debugging Tests
+=== Debugging Cypress Tests
 
-For debugging integration tests:
+For debugging Cypress tests:
 
-1. Add debug logging to your tests:
+1. Run tests in interactive mode:
 +
-[source,java]
+[source,bash]
+----
+cd nifi-cuioss-ui
+npm run e2e:open
+----
+
+2. Use Cypress debugging features:
+   * Use the Cypress Test Runner to inspect elements
+   * Add `.debug()` to pause test execution
+   * Use the browser's developer tools during test execution
+   * View screenshots and videos of test runs in the `cypress/screenshots` and `cypress/videos` directories
+
+3. Add debug logging in tests:
++
+[source,javascript]
 ----
 // Add debug logging
-private static final Logger LOGGER = LoggerFactory.getLogger(KeycloakIntegrationTest.class);
-
-@Test
-void shouldObtainValidToken(KeycloakContainer keycloak) {
-    // Get token from Keycloak
-    String token = obtainToken(keycloak.getAuthServerUrl());
-
-    // Add debug logging
-    LOGGER.info("Token received: {}", token.substring(0, 10) + "...");
-    LOGGER.info("JWKS URL: {}", keycloak.getAuthServerUrl());
-
+it('should verify a token', () => {
+  cy.log('Starting token verification test');
+  
+  // Get token from fixture
+  cy.fixture('tokens/valid-tokens.json').then(fixtures => {
+    cy.log(`Using token with subject: ${fixtures.expectedSubject}`);
+    
     // Test continues...
-}
+  });
+});
 ----
 
-2. View logs from the NiFi container:
+4. View logs from the NiFi container:
 +
 [source,bash]
 ----
@@ -885,7 +1010,7 @@ docker compose -f integration-testing/src/main/docker/docker-compose.yml logs ni
 docker compose -f integration-testing/src/main/docker/docker-compose.yml exec nifi tail -f /opt/nifi/nifi-current/logs/nifi-app.log
 ----
 
-3. View logs from the Keycloak container:
+5. View logs from the Keycloak container:
 +
 [source,bash]
 ----
@@ -894,105 +1019,118 @@ docker compose -f integration-testing/src/main/docker/docker-compose.yml logs ke
 
 === CI/CD Integration
 
-End-to-end tests are integrated into the CI/CD pipeline:
+Cypress tests are integrated into the CI/CD pipeline:
 
 1. The integration-testing environment is started automatically in CI
-2. Integration tests run as part of the `verify` phase
-3. UI tests run using Cypress in headless mode
-4. Test results are published as GitHub artifacts
-5. Test failures block merges to protected branches
+2. Cypress tests run in headless mode with video recording enabled
+3. Test results are published as GitHub artifacts
+4. Test failures block merges to protected branches
 
 The CI workflow includes these steps:
 
 [source,yaml]
 ----
 jobs:
-  integration-tests:
+  cypress-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          node-version: '16'
+          cache: 'npm'
+          cache-dependency-path: nifi-cuioss-ui/package-lock.json
 
       - name: Start integration testing environment
         run: ./integration-testing/src/main/docker/run-test-container.sh
 
-      - name: Run integration tests
-        run: ./mvnw verify -Pintegration-tests
-
-      - name: Run UI tests
+      - name: Install dependencies
         run: |
           cd nifi-cuioss-ui
           npm ci
+
+      - name: Generate test tokens
+        run: |
+          cd nifi-cuioss-ui
+          npm run generate-tokens
+
+      - name: Run Cypress tests
+        run: |
+          cd nifi-cuioss-ui
           npm run e2e:test
 
       - name: Upload test results
         uses: actions/upload-artifact@v3
         with:
-          name: test-results
+          name: cypress-results
           path: |
-            target/failsafe-reports/
             nifi-cuioss-ui/cypress/reports/
+            nifi-cuioss-ui/cypress/videos/
+            nifi-cuioss-ui/cypress/screenshots/
 ----
 
 == Test Results Analysis
 
-After running end-to-end tests, it's important to analyze the results effectively:
+After running Cypress end-to-end tests, it's important to analyze the results effectively:
 
-=== Test Report Structure
+=== Cypress Test Report Structure
 
-Test reports are generated in the following locations:
-1. **JUnit Reports**: `target/failsafe-reports/`
-2. **Cypress Reports**: `nifi-cuioss-ui/cypress/reports/`
+Cypress test reports are generated in the following location:
+* **Cypress Reports**: `nifi-cuioss-ui/cypress/reports/`
 
 The reports include the following key information:
 * Test execution times
 * Failure details with stack traces
-* Screenshots for UI test failures (Cypress only)
-* Video recordings of failed tests (Cypress only)
+* Screenshots for UI test failures
+* Video recordings of test runs
 
-=== Common Failure Patterns
+Cypress generates detailed HTML reports that can be viewed in a browser, with features like:
+* Test run statistics and summaries
+* Failure details with contextual information
+* Timeline view of test execution
+* Environment details
 
-When analyzing test failures, look for these common patterns:
+=== Common Cypress Test Failure Patterns
 
-1. **Network Connectivity Issues**:
-   * Connection refused errors
-   * Timeout errors
-   * SSL/TLS certificate issues
+When analyzing Cypress test failures, look for these common patterns:
 
-2. **Authentication Problems**:
-   * Invalid tokens
-   * Expired tokens
-   * Misconfigured JWKS endpoints
+1. **Element Interaction Issues**:
+   * Element not found errors (`cy.get() failed because the element could not be found`)
+   * Element not visible or not clickable errors
+   * Element state issues (e.g., disabled elements, elements in the wrong state)
 
-3. **UI Interaction Failures**:
-   * Element not found errors
-   * Element not clickable errors
-   * Timing issues (actions performed before page is ready)
+2. **Timing Issues**:
+   * Actions performed before page is ready
+   * Assertions running before UI has updated
+   * Network requests not completing in time
 
-4. **Data Validation Failures**:
-   * Missing claims in tokens
-   * Unexpected values in token claims
-   * Processor configuration not applied correctly
+3. **Authentication Problems**:
+   * Login failures
+   * Session expiration
+   * Token issues
 
-=== Interpreting Test Results
+4. **UI Validation Failures**:
+   * Expected text or values not appearing
+   * Incorrect form validation behavior
+   * UI not updating as expected after actions
 
-When evaluating test results, consider the following:
+=== Interpreting Cypress Test Results
+
+When evaluating Cypress test results, consider the following:
 
 1. **Test Stability**: Are failures consistent or intermittent?
-2. **Environment Factors**: Are failures environment-specific?
-3. **Code Changes**: Do failures correlate with recent code changes?
-4. **Coverage Gaps**: Are there untested scenarios revealed by failures?
+2. **Visual Evidence**: Review screenshots and videos to understand the UI state
+3. **Error Messages**: Analyze error messages and stack traces for clues
+4. **Test Environment**: Check if failures are environment-specific
+5. **Browser Compatibility**: Determine if failures are browser-specific
 
 To determine if a failure is a flaky test or a real issue:
-1. Rerun the failing test in isolation
-2. Check if the failure is reproducible on different environments
-3. Examine logs for timing or resource issues
-4. Review recent code changes that might affect the failing test
+1. Rerun the failing test in isolation using `npm run e2e:test -- --spec "cypress/integration/path/to/spec.js"`
+2. Check if the failure is reproducible in different browsers
+3. Examine network logs and response times
+4. Review application logs for related errors
 
 == Test Maintenance
 
@@ -1072,7 +1210,7 @@ For automated cleanup in CI environments, use the provided cleanup script:
 
 1. Implement metrics and statistics tests
 2. Implement internationalization tests
-3. Add cross-browser testing with Playwright
+3. Enhance cross-browser testing with Cypress
 4. Implement performance and load testing
 
 === Phase 4: Maintenance and Expansion

@@ -8,7 +8,7 @@ skinparam {
 }
 
 node "Test Environment" as TE {
-    component "Cypress/Playwright" as CP
+    component "Cypress" as CP
     
     node "Docker" as D {
         component "NiFi Instance\nHTTPS 9095" as N
