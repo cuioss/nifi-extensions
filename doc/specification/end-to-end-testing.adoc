@@ -164,7 +164,7 @@ End-to-end tests run in a containerized environment provided by the `integration
    * Firefox (latest and latest-1 versions)
    * Edge (latest version)
    * Safari (latest version, for MacOS test environments only)
-   
+
    The primary development and testing browser is Chrome, with automated cross-browser testing implemented in CI/CD pipelines.
 
 === Starting the Test Environment
@@ -361,29 +361,32 @@ Accessibility testing uses automated tools like axe-core integrated with Cypress
 
 == Test Implementation
 
-=== Integration Test Structure
+=== Test Code Structure
 
-The end-to-end tests are implemented using Cypress for UI testing:
+The end-to-end tests are implemented using Cypress for UI testing with the following directory structure:
 
-```
-cypress/
-├── fixtures/
-│   └── tokens/
-│       ├── valid-tokens.json
-│       └── invalid-tokens.json
-├── integration/
-│   ├── configuration/
-│   │   ├── basic-configuration.spec.js
-│   │   └── issuer-configuration.spec.js
-│   ├── verification/
-│   │   ├── token-verification.spec.js
-│   │   └── jwks-validation.spec.js
-│   └── metrics/
-│       └── metrics-display.spec.js
-└── support/
-    ├── commands.js
-    └── index.js
-```
+[source]
+----
+nifi-cuioss-ui/
+├── cypress/
+│   ├── fixtures/              # Test data
+│   │   ├── tokens/            # JWT tokens for testing
+│   │   └── jwks/              # JWKS files for testing
+│   ├── integration/           # Test specifications
+│   │   ├── configuration/     # Processor configuration tests
+│   │   ├── verification/      # Token verification tests
+│   │   └── metrics/           # Metrics display tests
+│   ├── plugins/               # Cypress plugins
+│   ├── support/               # Support code
+│   │   ├── page-objects/      # Page object classes
+│   │   ├── commands.js        # Custom Cypress commands
+│   │   └── console-warnings-allowlist.js  # Allowed console warnings
+│   └── screenshots/           # Test failure screenshots
+├── scripts/                   # Utility scripts
+│   ├── generate-test-tokens.js  # Token generation utility
+│   └── analyze-console-errors.js  # Console error analysis
+└── package.json               # NPM configuration
+----
 
 These tests are organized by feature area and test specific user interactions with the UI.
 
@@ -469,51 +472,51 @@ class ProcessorConfigurationPage {
   getPropertyInput(name) {
     return cy.get(`[data-testid="property-input"][name="${name}"]`);
   }
-  
+
   getDynamicPropertyAddButton() {
     return cy.get('[data-testid="dynamic-property-add-button"]');
   }
-  
+
   getDynamicPropertyNameInput() {
     return cy.get('[data-testid="dynamic-property-name"]');
   }
-  
+
   getDynamicPropertyValueInput() {
     return cy.get('[data-testid="dynamic-property-value"]');
   }
-  
+
   getVerifyJwksButton() {
     return cy.get('[data-testid="verify-jwks-button"]');
   }
-  
+
   getVerificationResult() {
     return cy.get('[data-testid="verification-result"]');
   }
-  
+
   getOkButton() {
     return cy.get('[data-testid="processor-config-ok-button"]');
   }
-  
+
   // Actions
   setBasicProperties() {
     this.getPropertyInput('jwt.validation.token.location').select('AUTHORIZATION_HEADER');
     this.getPropertyInput('jwt.validation.token.header').clear().type('Authorization');
     return this;
   }
-  
+
   addIssuer(name, url) {
     this.getDynamicPropertyAddButton().click();
     this.getDynamicPropertyNameInput().type(name);
     this.getDynamicPropertyValueInput().type(url);
     return this;
   }
-  
+
   validateJwksEndpoint() {
     this.getVerifyJwksButton().click();
     this.getVerificationResult().should('contain', 'Connection successful');
     return this;
   }
-  
+
   saveConfiguration() {
     this.getOkButton().click();
   }
@@ -542,17 +545,17 @@ describe('Basic Processor Configuration', () => {
   it('should configure processor with Keycloak JWKS endpoint', () => {
     // Add processor to canvas
     NifiCanvasPage.addProcessor('MultiIssuerJWTTokenAuthenticator');
-    
+
     // Open processor configuration
     NifiCanvasPage.openProcessorConfiguration();
-    
+
     // Configure processor
     ProcessorConfigurationPage
       .setBasicProperties()
       .addIssuer('keycloak', 'http://keycloak:9080/realms/oauth_integration_tests/protocol/openid-connect/certs')
       .validateJwksEndpoint()
       .saveConfiguration();
-    
+
     // Verify processor is properly configured
     NifiCanvasPage.assertProcessorIsValid();
   });
@@ -592,11 +595,11 @@ NiFi operations can be asynchronous. We implement robust waiting strategies:
 it('should verify token processing results', () => {
   // Submit token for processing
   cy.get('[data-testid="process-token-button"]').click();
-  
+
   // Wait for processing to complete with configurable timeout
   cy.get('[data-testid="processing-status"]', { timeout: 30000 })
     .should('have.text', 'Completed');
-  
+
   // Use retry-ability for potentially unstable assertions
   cy.get('[data-testid="token-attributes"]')
     .should('contain', 'jwt.content.sub')
@@ -618,7 +621,7 @@ it('should handle file uploads across browsers', () => {
   } else {
     cy.get('[data-testid="file-input"]').selectFile('cypress/fixtures/jwks/keycloak-jwks.json');
   }
-  
+
   // Common validation
   cy.get('[data-testid="file-name"]').should('contain', 'keycloak-jwks.json');
 });
@@ -637,10 +640,10 @@ it('should display token claims correctly', () => {
     cy.navigateToProcessorVerification();
     cy.get('[data-testid="token-input"]').type(validToken);
     cy.get('[data-testid="verify-token-button"]').click();
-    
+
     // Check that claims table is displayed correctly
     cy.get('[data-testid="claims-table"]').should('be.visible');
-    
+
     // Take screenshot for visual comparison
     cy.get('[data-testid="claims-container"]').screenshot('token-claims-display');
   });
@@ -669,13 +672,13 @@ describe('Console Error Checking', () => {
     // Clear previous errors/warnings
     consoleErrors.length = 0;
     consoleWarnings.length = 0;
-    
+
     // Intercept console.error
     cy.window().then((win) => {
       cy.stub(win.console, 'error').callsFake((msg) => {
         consoleErrors.push(msg);
       });
-      
+
       // Intercept console.warn
       cy.stub(win.console, 'warn').callsFake((msg) => {
         // Only track warnings that are not in the allowed list
@@ -690,7 +693,7 @@ describe('Console Error Checking', () => {
     // Verify no unexpected console errors
     expect(consoleErrors.length).to.equal(0, 
       `Found ${consoleErrors.length} console errors: ${consoleErrors.join(', ')}`);
-    
+
     // Verify no unexpected console warnings
     expect(consoleWarnings.length).to.equal(0, 
       `Found ${consoleWarnings.length} console warnings: ${consoleWarnings.join(', ')}`);
@@ -774,7 +777,7 @@ These fixtures can be loaded in Cypress tests:
 ----
 describe('Token Verification', () => {
   let validTokens, invalidTokens;
-  
+
   before(() => {
     // Load test data
     cy.fixture('tokens/valid-tokens.json').then(data => {
@@ -789,11 +792,11 @@ describe('Token Verification', () => {
     // Navigate to verification UI
     cy.visit('https://localhost:9095/nifi/');
     cy.navigateToProcessorVerification();
-    
+
     // Paste token and verify
     cy.get('[data-testid="token-input"]').type(validTokens.validToken);
     cy.get('[data-testid="verify-token-button"]').click();
-    
+
     // Check results
     cy.get('[data-testid="token-subject"]').should('contain', validTokens.expectedSubject);
     cy.get('[data-testid="token-issuer"]').should('contain', validTokens.expectedIssuer);
@@ -1057,11 +1060,11 @@ npm run e2e:open
 // Add debug logging
 it('should verify a token', () => {
   cy.log('Starting token verification test');
-  
+
   // Get token from fixture
   cy.fixture('tokens/valid-tokens.json').then(fixtures => {
     cy.log(`Using token with subject: ${fixtures.expectedSubject}`);
-    
+
     // Test continues...
   });
 });
@@ -1261,11 +1264,11 @@ const allowedWarnings = require('../cypress/support/console-warnings-allowlist')
 function analyzeConsoleErrors(runId) {
   const logPath = path.join(__dirname, '..', 'cypress', 'logs', `run-${runId}.json`);
   const logs = JSON.parse(fs.readFileSync(logPath, 'utf8'));
-  
+
   const errors = [];
   const unexpectedWarnings = [];
   const allowedWarningInstances = [];
-  
+
   logs.forEach(log => {
     if (log.type === 'error') {
       errors.push({
@@ -1279,7 +1282,7 @@ function analyzeConsoleErrors(runId) {
       const isAllowed = allowedWarnings.some(pattern => 
         log.message.includes(pattern)
       );
-      
+
       if (isAllowed) {
         allowedWarningInstances.push({
           message: log.message,
@@ -1298,7 +1301,7 @@ function analyzeConsoleErrors(runId) {
       }
     }
   });
-  
+
   // Generate report
   const report = {
     summary: {
@@ -1310,12 +1313,12 @@ function analyzeConsoleErrors(runId) {
     unexpectedWarnings,
     allowedWarningInstancesByPattern: groupByPattern(allowedWarningInstances)
   };
-  
+
   // Write report
   const reportPath = path.join(__dirname, '..', 'cypress', 'reports', 'console-analysis', `run-${runId}.json`);
   fs.mkdirSync(path.dirname(reportPath), { recursive: true });
   fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
-  
+
   console.log(`Console error analysis complete. Report saved to ${reportPath}`);
   return report;
 }
@@ -1323,14 +1326,14 @@ function analyzeConsoleErrors(runId) {
 // Group allowed warnings by pattern for easier analysis
 function groupByPattern(allowedWarnings) {
   const grouped = {};
-  
+
   allowedWarnings.forEach(warning => {
     if (!grouped[warning.pattern]) {
       grouped[warning.pattern] = [];
     }
     grouped[warning.pattern].push(warning);
   });
-  
+
   return grouped;
 }
 
@@ -1341,7 +1344,7 @@ if (require.main === module) {
     console.error('Please provide a run ID');
     process.exit(1);
   }
-  
+
   const report = analyzeConsoleErrors(runId);
   console.log(`Found ${report.summary.totalErrors} errors and ${report.summary.totalUnexpectedWarnings} unexpected warnings`);
 }
@@ -1380,10 +1383,10 @@ module.exports = [
   'Warning: validateDOMNesting(...): <div> cannot appear as a descendant of <p>.',
   'DevTools failed to load source map',
   'Content Security Policy violation for inline script',
-  
+
   // Deprecated API usage warnings from third-party libraries
   'Synchronous XMLHttpRequest on the main thread is deprecated',
-  
+
   // Browser-specific warnings
   '[Firefox] Unable to preventdefault inside passive event listener',
   '[Chrome] Provider for: vscode-resource'
