@@ -1,6 +1,6 @@
 /**
  * Internationalization (i18n) module for MultiIssuerJWTTokenAuthenticator UI.
- * Provides localization support for multiple languages.
+ * Provides localization support using the browser's language setting.
  */
 define([], function() {
     'use strict';
@@ -29,11 +29,11 @@ define([], function() {
             'common.value': 'Value',
             'common.yes': 'Yes',
             'common.no': 'No',
-            
+
             // JWT Validator
             'jwt.validator.title': 'JWT Token Validator',
             'jwt.validator.loading': 'Loading JWT Validator UI...',
-            
+
             // Token Verification
             'token.verification.title': 'Token Verification',
             'token.verification.input.label': 'Enter JWT Token',
@@ -45,13 +45,13 @@ define([], function() {
             'token.verification.details': 'Token Details',
             'token.verification.claims': 'Claims',
             'token.verification.raw': 'Raw Token',
-            
+
             // JWKS Validation
             'jwks.validation.title': 'JWKS Validation',
             'jwks.validation.button': 'Verify JWKS URL',
             'jwks.validation.success': 'JWKS URL is valid',
             'jwks.validation.error': 'JWKS URL is invalid',
-            
+
             // Issuer Configuration
             'issuer.config.title': 'Issuer Configuration',
             'issuer.config.add': 'Add Issuer',
@@ -62,7 +62,7 @@ define([], function() {
             'issuer.config.jwks.url': 'JWKS URL',
             'issuer.config.audience': 'Audience',
             'issuer.config.claim.mappings': 'Claim Mappings',
-            
+
             // Property Help Text
             'property.token.location.help': 'Specifies where to look for the JWT token (Header, Query Parameter, or Cookie)',
             'property.token.header.help': 'The name of the header containing the JWT token',
@@ -90,11 +90,11 @@ define([], function() {
             'common.value': 'Wert',
             'common.yes': 'Ja',
             'common.no': 'Nein',
-            
+
             // JWT Validator
             'jwt.validator.title': 'JWT Token Validator',
             'jwt.validator.loading': 'JWT Validator UI wird geladen...',
-            
+
             // Token Verification
             'token.verification.title': 'Token-Überprüfung',
             'token.verification.input.label': 'JWT Token eingeben',
@@ -106,13 +106,13 @@ define([], function() {
             'token.verification.details': 'Token-Details',
             'token.verification.claims': 'Claims',
             'token.verification.raw': 'Rohtoken',
-            
+
             // JWKS Validation
             'jwks.validation.title': 'JWKS-Validierung',
             'jwks.validation.button': 'JWKS-URL überprüfen',
             'jwks.validation.success': 'JWKS-URL ist gültig',
             'jwks.validation.error': 'JWKS-URL ist ungültig',
-            
+
             // Issuer Configuration
             'issuer.config.title': 'Aussteller-Konfiguration',
             'issuer.config.add': 'Aussteller hinzufügen',
@@ -123,7 +123,7 @@ define([], function() {
             'issuer.config.jwks.url': 'JWKS-URL',
             'issuer.config.audience': 'Zielgruppe',
             'issuer.config.claim.mappings': 'Claim-Zuordnungen',
-            
+
             // Property Help Text
             'property.token.location.help': 'Gibt an, wo nach dem JWT-Token gesucht werden soll (Header, Query-Parameter oder Cookie)',
             'property.token.header.help': 'Der Name des Headers, der das JWT-Token enthält',
@@ -145,10 +145,10 @@ define([], function() {
     const detectBrowserLanguage = function() {
         // Get browser language
         const browserLanguage = navigator.language || navigator.userLanguage || 'en';
-        
+
         // Extract the language code (e.g., 'en' from 'en-US')
         const languageCode = browserLanguage.split('-')[0];
-        
+
         // Return the language code if it's supported, otherwise return the default language
         return availableLanguages.includes(languageCode) ? languageCode : 'en';
     };
@@ -195,20 +195,20 @@ define([], function() {
     const translate = function(key, params) {
         // Get the translation for the current language
         const translation = translations[currentLanguage] && translations[currentLanguage][key];
-        
+
         // If the translation doesn't exist, try to get it from the default language
         const defaultTranslation = translations.en && translations.en[key];
-        
+
         // Use the translation, the default translation, or the key itself
         let result = translation || defaultTranslation || key;
-        
+
         // Substitute parameters if provided
         if (params) {
             Object.keys(params).forEach(function(param) {
                 result = result.replace(new RegExp(`{${param}}`, 'g'), params[param]);
             });
         }
-        
+
         return result;
     };
 
@@ -217,7 +217,6 @@ define([], function() {
 
     // Return the public API
     return {
-        setLanguage: setLanguage,
         getLanguage: getLanguage,
         getAvailableLanguages: getAvailableLanguages,
         translate: translate,

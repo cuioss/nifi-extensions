@@ -29,10 +29,18 @@ This document describes the refactoring changes made to the nifi-cuioss-ui modul
 - Kept essential error logging
 - This improves performance and readability
 
-### Fixed i18n.js MIME Type Issue
-- Added path mapping for 'utils/i18n' in RequireJS configuration
-- Created a copy of i18n.js in the utils directory
-- This resolves the MIME type mismatch error when loading i18n.js
+### Removed Duplicate i18n.js File
+- Removed duplicate i18n.js file in utils directory
+- Removed path mapping for 'utils/i18n' in RequireJS configuration
+- Updated all imports to reference js/utils/i18n.js directly
+- This eliminates code duplication and simplifies the codebase
+- No backward compatibility is maintained as per requirements
+
+### Improved Localization
+- Removed the language switch UI component
+- Now using the browser's language setting automatically
+- Simplified the i18n module to only use browser language detection
+- This improves user experience and reduces UI clutter
 
 ## Benefits of These Changes
 
@@ -41,11 +49,13 @@ This document describes the refactoring changes made to the nifi-cuioss-ui modul
 3. **Better Performance**: Fewer HTTP requests and less console logging.
 4. **Consistent Styling**: Using CSS variables ensures consistent colors throughout the UI.
 5. **Simplified Architecture**: Clearer initialization flow and component structure.
-6. **Enhanced Localization**: Improved language support with a more robust i18n module.
+6. **Enhanced Localization**: Improved language support with automatic browser language detection.
 7. **Fixed Resource Loading**: Resolved MIME type mismatch issues with proper path configuration.
+8. **Improved User Experience**: Simplified UI by removing manual language selection in favor of browser settings.
 
 ## Future Improvements
 
 1. **Modularize CSS**: Further split `styles.css` into component-specific files. ✓
 2. **Add Unit Tests**: Create automated tests for the UI components.
-3. **Enhance Localization**: Add more languages and improve translation coverage.
+3. **Enhance Localization**: Add more languages and improve translation coverage. ✓
+4. **Improve Browser Language Detection**: Add fallback mechanisms for unsupported languages.

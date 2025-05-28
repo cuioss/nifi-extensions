@@ -15,7 +15,6 @@
 
     <!-- Load Font Awesome -->
     <link rel="stylesheet" href="webjars/META-INF/resources/webjars/font-awesome/4.7.0/css/font-awesome.min.css">
-    <link rel="stylesheet" href="css/font-awesome-fix.css">
 
     <!-- Load RequireJS -->
     <script type="text/javascript" src="webjars/META-INF/resources/webjars/requirejs/2.3.6/require.min.js"></script>
@@ -32,8 +31,7 @@
                 'components/tokenVerifier': ['js/components/tokenVerifier'],
                 'components/issuerConfigEditor': ['js/components/issuerConfigEditor'],
                 'services/apiClient': ['js/services/apiClient'],
-                'utils/formatters': ['js/utils/formatters'],
-                'utils/i18n': ['js/utils/i18n']
+                'utils/formatters': ['js/utils/formatters']
             },
             shim: {
                 'jquery-ui': {
@@ -87,8 +85,7 @@
         require(['js/main', 'js/bundle', 'js/nf-jwt-validator'], function(main, bundle) {
             console.log('All modules loaded successfully');
 
-            // Expose main module globally for language selector
-            window.nfJwtValidator = main;
+            // Initialize the main module
 
             // Initialize main module only if components haven't been registered yet
             if (!window.jwtComponentsRegistered && main && typeof main.init === 'function') {

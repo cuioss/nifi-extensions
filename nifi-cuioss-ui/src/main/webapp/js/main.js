@@ -9,7 +9,7 @@ define([
     'components/issuerConfigEditor',
     'services/apiClient',
     'utils/formatters',
-    'utils/i18n'
+    'js/utils/i18n'
 ], function ($, nfCommon, tokenVerifier, issuerConfigEditor, _apiClient, _formatters, i18n) {
     // jQuery UI is already loaded via script tag
     'use strict';
@@ -123,65 +123,6 @@ define([
 
         // Update other static UI elements
         $('.jwt-validator-title').text(i18n.translate('jwt.validator.title'));
-
-        // Update language selector
-        updateLanguageSelector();
-    };
-
-    /**
-     * Adds a language selector to the UI.
-     */
-    const addLanguageSelector = function() {
-        // Create language selector container if it doesn't exist
-        if ($('#language-selector').length === 0) {
-            const container = $('#jwt-validator-container');
-
-            // Create language selector
-            const languageSelector = $('<div id="language-selector" class="language-selector"></div>');
-
-            // Add language selector to the container
-            container.prepend(languageSelector);
-
-            // Update language selector with available languages
-            updateLanguageSelector();
-        }
-    };
-
-    /**
-     * Updates the language selector with available languages.
-     */
-    const updateLanguageSelector = function() {
-        const languageSelector = $('#language-selector');
-        if (languageSelector.length === 0) {
-            return;
-        }
-
-        // Clear existing content
-        languageSelector.empty();
-
-        // Add label
-        languageSelector.append('<span class="language-label">Language: </span>');
-
-        // Get available languages
-        const availableLanguages = i18n.getAvailableLanguages();
-        const currentLanguage = i18n.getLanguage();
-
-        // Create language buttons
-        availableLanguages.forEach(function(langCode) {
-            const button = $('<button class="language-button"></button>')
-                .text(langCode.toUpperCase())
-                .attr('data-lang', langCode)
-                .toggleClass('active', langCode === currentLanguage)
-                .on('click', function() {
-                    const lang = $(this).attr('data-lang');
-                    // Change language
-                    if (window.nfJwtValidator && typeof window.nfJwtValidator.changeLanguage === 'function') {
-                        window.nfJwtValidator.changeLanguage(lang);
-                    }
-                });
-
-            languageSelector.append(button);
-        });
     };
 
     // Return the public API
@@ -233,8 +174,6 @@ define([
                     }
                 });
 
-                // Add language selector
-                addLanguageSelector();
             });
 
             // Add a delayed check to ensure loading indicator is hidden
@@ -244,21 +183,6 @@ define([
                 // Ensure translations are applied
                 updateUITranslations();
             }, 3000);
-        },
-
-        /**
-         * Changes the UI language.
-         * 
-         * @param {string} langCode - The language code to set
-         */
-        changeLanguage: function(langCode) {
-            if (i18n.setLanguage(langCode)) {
-                // Update UI with new translations
-                updateUITranslations();
-                console.log('[DEBUG_LOG] Language changed to: ' + langCode);
-                return true;
-            }
-            return false;
         }
     };
 });
