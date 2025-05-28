@@ -334,11 +334,62 @@ global.formatters = {
     })
 };
 
+// Create i18n mock
+global.i18n = {
+    getLanguage: jest.fn().mockReturnValue('en'),
+    getAvailableLanguages: jest.fn().mockReturnValue(['en', 'de']),
+    translate: jest.fn().mockImplementation((key, params) => {
+        // Simple translation dictionary for testing
+        const translations = {
+            en: {
+                'common.loading': 'Loading...',
+                'common.error': 'Error',
+                'common.success': 'Success'
+            },
+            de: {
+                'common.loading': 'Wird geladen...',
+                'common.error': 'Fehler',
+                'common.success': 'Erfolg'
+            }
+        };
+
+        // Get current language
+        const currentLanguage = global.i18n.getLanguage();
+
+        // Get translation for current language or fall back to English
+        const translation = translations[currentLanguage] && translations[currentLanguage][key];
+        const defaultTranslation = translations.en && translations.en[key];
+
+        // Use translation, default translation, or key itself
+        let result = translation || defaultTranslation || key;
+
+        // Substitute parameters if provided
+        if (params) {
+            Object.keys(params).forEach(function(param) {
+                result = result.replace(new RegExp(`{${param}}`, 'g'), params[param]);
+            });
+        }
+
+        return result;
+    }),
+    detectBrowserLanguage: jest.fn().mockImplementation(() => {
+        // Get browser language
+        const browserLanguage = navigator.language || navigator.userLanguage || 'en';
+
+        // Extract language code
+        const languageCode = browserLanguage.split('-')[0];
+
+        // Return language code if supported, otherwise return default
+        return ['en', 'de'].includes(languageCode) ? languageCode : 'en';
+    })
+};
+
 // Mock the modules
 jest.mock('components/jwksValidator', () => global.jwksValidator, { virtual: true });
 jest.mock('components/tokenVerifier', () => global.tokenVerifier, { virtual: true });
 jest.mock('services/apiClient', () => global.apiClient, { virtual: true });
 jest.mock('utils/formatters', () => global.formatters, { virtual: true });
+jest.mock('utils/i18n', () => global.i18n, { virtual: true });
 
 // Mock the console to prevent noise during tests
 // We already have originalConsoleError defined above
