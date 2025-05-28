@@ -1,0 +1,334 @@
+= MultiIssuerJWTTokenAuthenticator: End-to-End Testing Implementation Guide
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+link:Specification.adoc[Back to Main Specification]
+
+== Overview
+
+This document provides a step-by-step implementation guide for setting up end-to-end testing for the MultiIssuerJWTTokenAuthenticator processor. It serves as an actionable plan to implement the testing approach described in the link:specification/end-to-end-testing.adoc[End-to-End Testing Specification].
+
+The implementation follows a phased approach, allowing incremental deployment and verification of the testing infrastructure and test cases.
+
+== Prerequisites
+
+Before beginning implementation, ensure the following prerequisites are met:
+
+* Java Development Kit (JDK) 11 or higher
+* Apache Maven 3.8.0 or higher
+* Node.js 16.x or higher
+* Docker 24.x or higher with docker-compose
+* Git for source control
+* IDE with JavaScript/TypeScript support (VSCode recommended)
+
+== Implementation Plan
+
+=== Phase 1: Environment Setup (Week 1)
+
+[cols="1,3,1", options="header"]
+|===
+|Task |Description |Estimated Effort
+
+|1.1
+|Set up Docker-based test environment with NiFi and Keycloak
+|2 days
+
+|1.2
+|Configure self-signed certificates for HTTPS
+|0.5 day
+
+|1.3
+|Set up Keycloak realm with test users and clients
+|1 day
+
+|1.4
+|Verify connectivity between containers
+|0.5 day
+
+|1.5
+|Create helper scripts for starting/stopping environment
+|1 day
+|===
+
+[NOTE]
+====
+Refer to the link:specification/end-to-end-testing.adoc#_containerized_testing_environment[Containerized Testing Environment] section in the specification for detailed requirements.
+====
+
+==== Implementation Steps
+
+1. Create a Docker Compose file in `integration-testing/src/main/docker/docker-compose.yml`
+2. Create start and stop scripts for the test environment
+3. Set up a `SingleUserLoginIdentityProvider` for NiFi authentication
+4. Configure the Keycloak OAuth realm with required test users and clients
+5. Generate and configure self-signed certificates
+6. Verify that all components can communicate with each other
+
+=== Phase 2: Cypress Setup (Week 2)
+
+[cols="1,3,1", options="header"]
+|===
+|Task |Description |Estimated Effort
+
+|2.1
+|Initialize Cypress project structure
+|1 day
+
+|2.2
+|Configure Cypress for cross-browser testing
+|0.5 day
+
+|2.3
+|Set up console error monitoring system
+|1 day
+
+|2.4
+|Create basic page objects and utilities
+|2 days
+
+|2.5
+|Implement token generation utilities
+|0.5 day
+|===
+
+[NOTE]
+====
+Refer to the link:specification/end-to-end-testing.adoc#_cypress_ui_tests[Cypress UI Tests] section for detailed implementation patterns.
+====
+
+==== Implementation Steps
+
+1. Initialize Cypress in the `nifi-cuioss-ui` directory
+2. Set up project structure according to the specification
+3. Configure linting and formatting rules
+4. Create base page objects for NiFi canvas and processor configuration
+5. Implement console error verification system with allowed warnings list
+6. Set up test fixtures directory structure
+7. Create token generation utilities using Keycloak API
+
+=== Phase 3: Basic Test Implementation (Week 3)
+
+[cols="1,3,1", options="header"]
+|===
+|Task |Description |Estimated Effort
+
+|3.1
+|Implement login and navigation helpers
+|0.5 day
+
+|3.2
+|Create processor configuration tests
+|2 days
+
+|3.3
+|Implement token verification tests
+|1 day
+
+|3.4
+|Create JWKS validation tests
+|1 day
+
+|3.5
+|Implement error handling tests
+|0.5 day
+|===
+
+[NOTE]
+====
+Refer to the link:specification/end-to-end-testing.adoc#_end_to_end_test_scenarios[End-to-End Test Scenarios] section for the required test cases.
+====
+
+==== Implementation Steps
+
+1. Implement Cypress custom commands for login and navigation
+2. Create basic processor configuration tests
+3. Implement token verification tests for valid and invalid tokens
+4. Create JWKS validation tests for server, file, and in-memory types
+5. Implement error scenario tests for configuration and validation
+
+=== Phase 4: Advanced Test Implementation (Week 4)
+
+[cols="1,3,1", options="header"]
+|===
+|Task |Description |Estimated Effort
+
+|4.1
+|Implement metrics and statistics tests
+|1 day
+
+|4.2
+|Create internationalization tests
+|1 day
+
+|4.3
+|Implement cross-browser tests
+|1 day
+
+|4.4
+|Create accessibility tests
+|1 day
+
+|4.5
+|Implement visual testing
+|1 day
+|===
+
+[NOTE]
+====
+Refer to the link:specification/end-to-end-testing.adoc#_accessibility_testing_flow[Accessibility Testing Flow] and link:specification/end-to-end-testing.adoc#_visual_testing[Visual Testing] sections for implementation details.
+====
+
+==== Implementation Steps
+
+1. Create metrics display and verification tests
+2. Implement internationalization tests with language switching
+3. Extend tests with browser-specific handling
+4. Add accessibility testing with axe-core
+5. Implement visual comparison tests with screenshots
+
+=== Phase 5: CI/CD Integration (Week 5)
+
+[cols="1,3,1", options="header"]
+|===
+|Task |Description |Estimated Effort
+
+|5.1
+|Configure Maven integration
+|1 day
+
+|5.2
+|Set up GitHub Actions workflow
+|1 day
+
+|5.3
+|Configure test reporting
+|1 day
+
+|5.4
+|Implement console error analysis in CI
+|1 day
+
+|5.5
+|Create documentation for CI process
+|1 day
+|===
+
+[NOTE]
+====
+Refer to the link:specification/end-to-end-testing.adoc#_ci_cd_integration[CI/CD Integration] section for implementation details.
+====
+
+==== Implementation Steps
+
+1. Configure Maven plugins for test execution
+2. Create GitHub Actions workflow file
+3. Set up test reporting and artifact collection
+4. Implement console error analysis in the CI pipeline
+5. Document the CI/CD process for team reference
+
+== Test Code Structure
+
+The test code will be organized as follows:
+
+[source]
+----
+nifi-cuioss-ui/
+├── cypress/
+│   ├── fixtures/              # Test data
+│   │   ├── tokens/            # JWT tokens for testing
+│   │   └── jwks/              # JWKS files for testing
+│   ├── integration/           # Test specifications
+│   │   ├── configuration/     # Processor configuration tests
+│   │   ├── verification/      # Token verification tests
+│   │   └── metrics/           # Metrics display tests
+│   ├── plugins/               # Cypress plugins
+│   ├── support/               # Support code
+│   │   ├── page-objects/      # Page object classes
+│   │   ├── commands.js        # Custom Cypress commands
+│   │   └── console-warnings-allowlist.js  # Allowed console warnings
+│   └── screenshots/           # Test failure screenshots
+├── scripts/                   # Utility scripts
+│   ├── generate-test-tokens.js  # Token generation utility
+│   └── analyze-console-errors.js  # Console error analysis
+└── package.json               # NPM configuration
+----
+
+== Console Error Verification Implementation
+
+Follow these steps to implement the console error verification system:
+
+1. Create the allowlist file:
+
+[source,bash]
+----
+mkdir -p nifi-cuioss-ui/cypress/support
+touch nifi-cuioss-ui/cypress/support/console-warnings-allowlist.js
+----
+
+2. Implement the allowlist with initial known warnings:
+
+[source,javascript]
+----
+// Add only warnings that cannot be fixed
+module.exports = [
+  'Warning: validateDOMNesting(...): <div> cannot appear as a descendant of <p>.',
+  'DevTools failed to load source map',
+  'Content Security Policy violation for inline script'
+];
+----
+
+3. Implement console error tracking in Cypress:
+
+[source,bash]
+----
+touch nifi-cuioss-ui/cypress/support/console-error-tracking.js
+----
+
+4. Add the console error tracking implementation as specified in the link:specification/end-to-end-testing.adoc#_console_error_verification[Console Error Verification] section.
+
+== Maven Integration
+
+To integrate with Maven, follow these steps:
+
+1. Configure the `frontend-maven-plugin` in the `nifi-cuioss-ui/pom.xml` file
+2. Add the necessary NPM scripts to `package.json`
+3. Configure the Maven Failsafe plugin for integration testing
+4. Set up system properties for test environment URLs
+
+Refer to the link:specification/end-to-end-testing.adoc#_maven_integration[Maven Integration] section for detailed configuration examples.
+
+== CI/CD Integration
+
+For CI/CD integration with GitHub Actions:
+
+1. Create a workflow file at `.github/workflows/e2e-tests.yml`
+2. Configure the workflow to set up Node.js and Java
+3. Add steps to start the test environment
+4. Configure Cypress test execution
+5. Add steps for console error analysis
+6. Configure artifact upload for test results
+
+Refer to the link:specification/end-to-end-testing.adoc#_ci_cd_integration[CI/CD Integration] section for workflow configuration examples.
+
+== Monitoring and Maintenance
+
+After implementation, establish a maintenance process:
+
+1. Schedule quarterly reviews of the allowed warnings list
+2. Monitor test stability and flakiness
+3. Update tests when the UI changes
+4. Regularly update test data and fixtures
+5. Review console error analysis reports for trends
+
+Refer to the link:specification/end-to-end-testing.adoc#_test_maintenance[Test Maintenance] section for best practices.
+
+== References
+
+* link:specification/end-to-end-testing.adoc[End-to-End Testing Specification]
+* link:specification/configuration-ui.adoc[UI Configuration Specification]
+* link:specification/token-validation.adoc[Token Validation Specification]
+* link:Requirements.adoc#NIFI-AUTH-16[Testing Requirements]
+* link:library/cui-test-keycloak-integration/README.adoc[Keycloak Integration Testing]
+* link:integration-testing/README.adoc[Integration Testing Environment]
