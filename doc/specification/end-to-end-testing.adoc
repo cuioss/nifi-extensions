@@ -647,7 +647,75 @@ it('should display token claims correctly', () => {
 });
 ----
 
-This comprehensive approach to Cypress testing enables us to thoroughly test the MultiIssuerJWTTokenAuthenticator processor's UI in a real environment, ensuring all user flows work correctly.
+==== Console Error Verification
+
+We consistently verify that no unexpected console errors or warnings occur during test execution. This is crucial for ensuring a clean implementation and identifying potential issues that might be hidden from the UI:
+
+[source,javascript]
+----
+// Console error verification implementation
+describe('Console Error Checking', () => {
+  // Track console errors and warnings
+  const consoleErrors = [];
+  const consoleWarnings = [];
+  const allowedWarnings = [
+    // Define a positive list of allowed warnings
+    'Warning: validateDOMNesting(...): <div> cannot appear as a descendant of <p>.',
+    'DevTools failed to load source map',
+    'Content Security Policy violation for inline script'
+  ];
+
+  beforeEach(() => {
+    // Clear previous errors/warnings
+    consoleErrors.length = 0;
+    consoleWarnings.length = 0;
+    
+    // Intercept console.error
+    cy.window().then((win) => {
+      cy.stub(win.console, 'error').callsFake((msg) => {
+        consoleErrors.push(msg);
+      });
+      
+      // Intercept console.warn
+      cy.stub(win.console, 'warn').callsFake((msg) => {
+        // Only track warnings that are not in the allowed list
+        if (!allowedWarnings.some(allowed => msg.includes(allowed))) {
+          consoleWarnings.push(msg);
+        }
+      });
+    });
+  });
+
+  afterEach(() => {
+    // Verify no unexpected console errors
+    expect(consoleErrors.length).to.equal(0, 
+      `Found ${consoleErrors.length} console errors: ${consoleErrors.join(', ')}`);
+    
+    // Verify no unexpected console warnings
+    expect(consoleWarnings.length).to.equal(0, 
+      `Found ${consoleWarnings.length} console warnings: ${consoleWarnings.join(', ')}`);
+  });
+
+  it('processor configuration should not produce console errors', () => {
+    // Test configuration flow
+    cy.login('admin', 'adminadminadmin');
+    cy.visit('https://localhost:9095/nifi/');
+    // ...test implementation...
+  });
+});
+----
+
+The allowed warnings list is maintained as a centralized, documented exception list to:
+
+1. **Prevent Test Noise**: Ignore known third-party library warnings that cannot be fixed
+2. **Focus on Real Issues**: Ensure actual application errors are caught and addressed
+3. **Document Technical Debt**: Clearly document known issues that are accepted
+
+The list of allowed warnings should be reviewed periodically, and items should be removed when the underlying issues are fixed.
+
+For a complete implementation example with centralized allowlist and reusable commands, see the link:examples/console-error-checking.js[Console Error Checking Example].
+
+This comprehensive approach to Cypress testing enables us to thoroughly test the MultiIssuerJWTTokenAuthenticator processor's UI in a real environment, ensuring all user flows work correctly and that the browser console remains free of unexpected errors.
 
 === End-to-End Test Workflow
 
@@ -1061,6 +1129,11 @@ jobs:
           cd nifi-cuioss-ui
           npm run e2e:test
 
+      - name: Analyze console errors
+        run: |
+          cd nifi-cuioss-ui
+          node scripts/analyze-console-errors.js $(date +%Y%m%d%H%M%S)
+
       - name: Upload test results
         uses: actions/upload-artifact@v3
         with:
@@ -1069,6 +1142,7 @@ jobs:
             nifi-cuioss-ui/cypress/reports/
             nifi-cuioss-ui/cypress/videos/
             nifi-cuioss-ui/cypress/screenshots/
+            nifi-cuioss-ui/cypress/reports/console-analysis/
 ----
 
 == Test Results Analysis
@@ -1116,6 +1190,11 @@ When analyzing Cypress test failures, look for these common patterns:
    * Incorrect form validation behavior
    * UI not updating as expected after actions
 
+5. **Console Error Failures**:
+   * Unexpected console errors appearing during test execution
+   * Console warnings not in the allowed warnings list
+   * Transient console errors that appear only under specific conditions
+
 === Interpreting Cypress Test Results
 
 When evaluating Cypress test results, consider the following:
@@ -1132,6 +1211,148 @@ To determine if a failure is a flaky test or a real issue:
 3. Examine network logs and response times
 4. Review application logs for related errors
 
+=== Console Error Analysis
+
+When tests fail due to console errors or warnings, follow this analysis process:
+
+1. **Categorize the Errors**:
+   * **Application Errors**: Issues in your application code
+   * **Framework Errors**: Issues related to React, Angular, or other frameworks
+   * **Third-Party Library Errors**: Issues from external dependencies
+   * **Network Errors**: Failed API calls or resource loading issues
+
+2. **Determine Severity**:
+   * **Critical**: Affects core functionality or security (always fix)
+   * **Major**: Affects important features (prioritize fixing)
+   * **Minor**: Affects non-critical features (schedule for later)
+   * **Cosmetic**: Does not affect functionality (consider for allowed list)
+
+3. **Analyze Root Cause**:
+   * Examine the error stack trace to identify source location
+   * Check the test step that triggered the error
+   * Verify if the error is reproducible outside of tests
+   * Determine if it's browser-specific
+
+4. **Decision Process for Allowed Warnings**:
+   * Can the issue be fixed in our code? → Fix immediately
+   * Is it from a third-party library we maintain? → Update the library
+   * Is it from an external dependency we can't modify? → Consider for allowed list
+   * Is it a known framework limitation? → Document and add to allowed list
+
+5. **Documentation Requirements**:
+   * For each allowed warning, document:
+     * Exact warning pattern
+     * Source of the warning
+     * Reason it can't be fixed
+     * Impact assessment
+     * Future mitigation plan
+     * Review date
+
+The following tool helps generate console error reports from test runs:
+
+[source,javascript]
+----
+// scripts/analyze-console-errors.js
+const fs = require('fs');
+const path = require('path');
+const allowedWarnings = require('../cypress/support/console-warnings-allowlist');
+
+// Parse Cypress console logs from test runs
+function analyzeConsoleErrors(runId) {
+  const logPath = path.join(__dirname, '..', 'cypress', 'logs', `run-${runId}.json`);
+  const logs = JSON.parse(fs.readFileSync(logPath, 'utf8'));
+  
+  const errors = [];
+  const unexpectedWarnings = [];
+  const allowedWarningInstances = [];
+  
+  logs.forEach(log => {
+    if (log.type === 'error') {
+      errors.push({
+        message: log.message,
+        source: log.source,
+        timestamp: log.timestamp,
+        testFile: log.testFile,
+        testName: log.testName
+      });
+    } else if (log.type === 'warning') {
+      const isAllowed = allowedWarnings.some(pattern => 
+        log.message.includes(pattern)
+      );
+      
+      if (isAllowed) {
+        allowedWarningInstances.push({
+          message: log.message,
+          pattern: allowedWarnings.find(pattern => log.message.includes(pattern)),
+          source: log.source,
+          testFile: log.testFile
+        });
+      } else {
+        unexpectedWarnings.push({
+          message: log.message,
+          source: log.source,
+          timestamp: log.timestamp,
+          testFile: log.testFile,
+          testName: log.testName
+        });
+      }
+    }
+  });
+  
+  // Generate report
+  const report = {
+    summary: {
+      totalErrors: errors.length,
+      totalUnexpectedWarnings: unexpectedWarnings.length,
+      totalAllowedWarnings: allowedWarningInstances.length
+    },
+    errors,
+    unexpectedWarnings,
+    allowedWarningInstancesByPattern: groupByPattern(allowedWarningInstances)
+  };
+  
+  // Write report
+  const reportPath = path.join(__dirname, '..', 'cypress', 'reports', 'console-analysis', `run-${runId}.json`);
+  fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+  
+  console.log(`Console error analysis complete. Report saved to ${reportPath}`);
+  return report;
+}
+
+// Group allowed warnings by pattern for easier analysis
+function groupByPattern(allowedWarnings) {
+  const grouped = {};
+  
+  allowedWarnings.forEach(warning => {
+    if (!grouped[warning.pattern]) {
+      grouped[warning.pattern] = [];
+    }
+    grouped[warning.pattern].push(warning);
+  });
+  
+  return grouped;
+}
+
+// Example usage
+if (require.main === module) {
+  const runId = process.argv[2];
+  if (!runId) {
+    console.error('Please provide a run ID');
+    process.exit(1);
+  }
+  
+  const report = analyzeConsoleErrors(runId);
+  console.log(`Found ${report.summary.totalErrors} errors and ${report.summary.totalUnexpectedWarnings} unexpected warnings`);
+}
+
+module.exports = { analyzeConsoleErrors };
+----
+
+This analysis provides insights into console errors and helps maintain the allowed warnings list over time.
+
+For a comprehensive implementation of the console error analysis tool, see the link:examples/analyze-console-errors.js[Console Error Analysis Script].
+
 == Test Maintenance
 
 === Best Practices
@@ -1141,6 +1362,56 @@ To determine if a failure is a flaky test or a real issue:
 3. **Minimize Flakiness**: Use proper waiting and assertions
 4. **Maintain Test Data**: Keep test data up-to-date with application changes
 5. **Document Test Scenarios**: Each test should have clear documentation
+6. **Verify Console Output**: Ensure no unexpected errors or warnings appear in the browser console
+
+=== Console Error Management
+
+The browser console is an important indicator of application quality. Our tests actively monitor and verify console output:
+
+==== Allowed Warnings Policy
+
+We maintain a centralized "allowed warnings" list in the `console-warnings-allowlist.js` file:
+
+[source,javascript]
+----
+// cypress/support/console-warnings-allowlist.js
+module.exports = [
+  // Third-party library warnings that cannot be fixed
+  'Warning: validateDOMNesting(...): <div> cannot appear as a descendant of <p>.',
+  'DevTools failed to load source map',
+  'Content Security Policy violation for inline script',
+  
+  // Deprecated API usage warnings from third-party libraries
+  'Synchronous XMLHttpRequest on the main thread is deprecated',
+  
+  // Browser-specific warnings
+  '[Firefox] Unable to preventdefault inside passive event listener',
+  '[Chrome] Provider for: vscode-resource'
+];
+----
+
+==== Management Process
+
+1. **All Console Errors Fail Tests**: By default, any console error causes test failure
+2. **Limited Warning Allowlist**: Only documented, unavoidable warnings are allowed
+3. **Regular Reviews**: The allowed warnings list is reviewed quarterly
+4. **Clear Documentation**: Each allowed warning must have a documented justification
+5. **Root Cause Resolution**: Where possible, address warnings rather than allowing them
+
+==== Adding to the Allowlist
+
+To add a warning to the allowed list:
+
+1. Create a ticket documenting the warning
+2. Investigate the root cause
+3. Determine if it can be fixed in our code
+4. If unfixable, document justification
+5. Add to the allowlist with a comment explaining why it cannot be fixed
+6. Schedule periodic review date
+
+This process ensures we maintain high-quality code with minimal technical debt.
+
+For an example of package.json scripts that support console error validation, see the link:examples/package-with-console-checks.json[Package with Console Checks].
 
 === Troubleshooting
 
@@ -1205,6 +1476,7 @@ For automated cleanup in CI environments, use the provided cleanup script:
 2. Implement token verification tests
 3. Implement JWKS validation tests
 4. Add CI/CD integration
+5. Implement console error/warning verification with allowed warnings list
 
 === Phase 3: Advanced Test Implementation
 
