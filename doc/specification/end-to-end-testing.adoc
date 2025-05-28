@@ -1,0 +1,953 @@
+= MultiIssuerJWTTokenAuthenticator End-to-End Testing
+:toc:
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+
+link:../Specification.adoc[Back to Main Specification]
+
+== End-to-End Testing Overview
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-16[NIFI-AUTH-16: Testing]_
+
+This document outlines the end-to-end testing strategy for the MultiIssuerJWTTokenAuthenticator, focusing on automated testing of complete user flows through the UI. End-to-end testing verifies that the entire application works as expected from a user's perspective, testing all components working together in a real environment.
+
+== Testing Goals and Objectives
+
+=== Primary Goals
+
+1. **Verify Complete User Flows**: Test entire user journeys from start to finish
+2. **Validate UI Functionality**: Ensure all UI components work correctly
+3. **Test Integration Points**: Verify proper integration between UI and backend services
+4. **Ensure Data Integrity**: Validate that data flows correctly through the system
+5. **Detect Regression Issues**: Identify when changes break existing functionality
+
+=== Success Criteria
+
+1. All critical user flows pass automated end-to-end tests
+2. Tests run reliably with minimal flakiness
+3. Test coverage includes all major UI components and interactions
+4. Tests are maintainable and can be extended as new features are added
+5. Tests are integrated into the CI/CD pipeline
+
+== Testing Tools and Framework
+
+=== Core Technologies
+
+The end-to-end testing infrastructure uses modern, industry-standard tools:
+
+* **Cypress**: Primary end-to-end testing framework
+* **Playwright**: Alternative framework for cross-browser testing
+* **Docker**: For containerized testing environment
+* **Integration Testing Module**: For controlling runtime instances including NiFi and Keycloak
+* **cui-test-keycloak-integration**: For integration testing with Keycloak
+* **CI/CD Integration**: GitHub Actions for automated test execution
+
+=== Integration Testing Module
+
+The project includes a dedicated `integration-testing` module that provides a Docker-based test environment with:
+
+* **NiFi Instance**: Running the latest version with the MultiIssuerJWTTokenAuthenticator processor
+* **Keycloak Server**: For generating valid JWT tokens and simulating different identity providers
+* **Pre-configured Certificates**: For secure communication between components
+* **Helper Scripts**: For starting, stopping, and managing the environment
+
+This module simplifies end-to-end testing by providing a consistent, reproducible environment that closely mirrors production deployments.
+
+=== Maven Integration
+
+End-to-end tests are integrated into the Maven build process using the `frontend-maven-plugin` for UI tests and the `maven-failsafe-plugin` for integration tests:
+
+[source,xml]
+----
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-failsafe-plugin</artifactId>
+    <executions>
+        <execution>
+            <goals>
+                <goal>integration-test</goal>
+                <goal>verify</goal>
+            </goals>
+            <configuration>
+                <systemPropertyVariables>
+                    <nifi.url>https://localhost:9095/nifi/</nifi.url>
+                    <keycloak.url>http://localhost:9080/</keycloak.url>
+                    <keycloak.secure.url>https://localhost:9085/</keycloak.secure.url>
+                </systemPropertyVariables>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>
+----
+
+For UI testing, the `frontend-maven-plugin` is used:
+
+[source,xml]
+----
+<plugin>
+    <groupId>com.github.eirslett</groupId>
+    <artifactId>frontend-maven-plugin</artifactId>
+    <version>${version.frontend-maven-plugin}</version>
+    <configuration>
+        <nodeVersion>${version.nodejs}</nodeVersion>
+        <installDirectory>target</installDirectory>
+    </configuration>
+    <executions>
+        <execution>
+            <id>cypress-run</id>
+            <goals>
+                <goal>npm</goal>
+            </goals>
+            <phase>integration-test</phase>
+            <configuration>
+                <arguments>run e2e:test</arguments>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>
+----
+
+== Test Environment Setup
+
+=== Containerized Testing Environment
+
+End-to-end tests run in a containerized environment provided by the `integration-testing` module:
+
+1. **NiFi Instance**: Running on HTTPS port 9095 with the MultiIssuerJWTTokenAuthenticator processor
+   * Authentication with SingleUserLoginIdentityProvider
+   * Credentials: admin/adminadminadmin
+   * Processor mounted via volume for easy updates during development
+
+2. **Keycloak Server**: Running on HTTP port 9080 and HTTPS port 9085
+   * Admin credentials: admin/admin
+   * Pre-configured realm (`oauth_integration_tests`) with:
+     * Test user: testUser/drowssap
+     * Test client: test_client/yTKslWLtf4giJcWCaoVJ20H8sy6STexM
+
+3. **Certificate Configuration**:
+   * Self-signed certificate for localhost (1 year validity)
+   * NiFi: PKCS12 format (keystore.p12, truststore.p12)
+   * Keycloak: PEM format (localhost.crt, localhost.key)
+
+4. **Browser Environment**: Chrome, Firefox, and Edge for cross-browser testing
+
+=== Starting the Test Environment
+
+To start the test environment:
+
+[source,bash]
+----
+# From the project root
+./integration-testing/src/main/docker/run-test-container.sh
+----
+
+This script:
+1. Builds the processor NAR file
+2. Checks certificates
+3. Starts the NiFi and Keycloak containers
+4. Waits for the services to be healthy
+
+To stop the environment:
+
+[source,bash]
+----
+./integration-testing/src/main/docker/stop-test-container.sh
+----
+
+=== Test Data Management
+
+Test data is managed through:
+
+1. **Predefined Configurations**: Standard processor configurations for different test scenarios
+2. **Token Generation**: Real JWT tokens from the Keycloak instance
+3. **JWKS Endpoints**: Real JWKS endpoints from the Keycloak instance
+4. **Test Users and Roles**: Predefined users with different permissions in the Keycloak realm
+
+=== Obtaining Test Tokens
+
+To obtain a test token from Keycloak:
+
+[source,bash]
+----
+curl -X POST \
+  http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=password&client_id=test_client&client_secret=yTKslWLtf4giJcWCaoVJ20H8sy6STexM&username=testUser&password=drowssap'
+----
+
+This returns a JSON response containing an `access_token` that can be used for testing.
+
+=== JWKS Endpoints
+
+The Keycloak instance provides real JWKS endpoints:
+
+* HTTP: `http://keycloak:9080/realms/oauth_integration_tests/protocol/openid-connect/certs`
+* HTTPS: `https://keycloak:9085/realms/oauth_integration_tests/protocol/openid-connect/certs`
+
+These endpoints can be used to configure the processor for testing.
+
+== End-to-End Test Scenarios
+
+=== Processor Configuration Flow
+
+==== Basic Configuration Test
+
+Tests the basic configuration flow:
+
+1. Navigate to NiFi canvas
+2. Add MultiIssuerJWTTokenAuthenticator processor
+3. Configure basic properties (token location, header name)
+4. Configure advanced properties (token size, refresh interval)
+5. Save configuration
+6. Verify configuration is persisted correctly
+
+==== Issuer Configuration Test
+
+Tests the issuer configuration flow:
+
+1. Navigate to processor configuration
+2. Add a new issuer with JWKS-Server type
+3. Enter JWKS URL and validate connection
+4. Configure audience, scopes, and roles
+5. Save issuer configuration
+6. Verify issuer is added to the processor configuration
+7. Repeat for Local File and In Memory issuer types
+
+==== Configuration Validation Test
+
+Tests configuration validation:
+
+1. Enter invalid values for properties
+2. Verify appropriate validation errors are displayed
+3. Enter valid values
+4. Verify validation passes
+5. Test required vs. optional fields
+
+=== Token Verification Flow
+
+==== Valid Token Verification Test
+
+Tests the token verification flow with valid tokens:
+
+1. Navigate to the Verification tab
+2. Paste a valid JWT token
+3. Click Verify Token
+4. Verify token details are displayed correctly
+5. Verify claims are parsed and displayed
+6. Test tokens from different issuers
+
+==== Invalid Token Verification Test
+
+Tests the token verification flow with invalid tokens:
+
+1. Test with expired token
+2. Test with token from unknown issuer
+3. Test with token having invalid signature
+4. Test with token missing required claims
+5. Test with malformed token
+6. Verify appropriate error messages are displayed
+
+=== JWKS Validation Flow
+
+==== JWKS Server Validation Test
+
+Tests the JWKS server validation flow:
+
+1. Enter valid JWKS server URL
+2. Click Validate button
+3. Verify successful validation message
+4. Test with invalid URL
+5. Test with URL returning invalid JWKS
+6. Test with URL returning error status
+7. Verify appropriate error messages are displayed
+
+==== Local File Validation Test
+
+Tests the local file validation flow:
+
+1. Enter valid file path
+2. Click Validate button
+3. Verify successful validation message
+4. Test with non-existent file
+5. Test with file containing invalid JWKS
+6. Verify appropriate error messages are displayed
+
+==== In Memory Validation Test
+
+Tests the in-memory JWKS validation flow:
+
+1. Paste valid JWKS content
+2. Click Validate button
+3. Verify successful validation message
+4. Test with invalid JWKS content
+5. Verify appropriate error messages are displayed
+
+=== Metrics and Statistics Flow
+
+Tests the metrics and statistics display:
+
+1. Process flow files with valid and invalid tokens
+2. Navigate to Metrics tab
+3. Verify metrics are updated correctly
+4. Verify statistics reflect actual processing results
+5. Test metrics reset functionality
+
+=== Internationalization Flow
+
+Tests the internationalization support:
+
+1. Change browser language setting
+2. Verify UI elements are displayed in the correct language
+3. Test with different languages (English, German, etc.)
+4. Verify error messages are translated correctly
+
+== Test Implementation
+
+=== Integration Test Structure
+
+The end-to-end tests are implemented using a combination of:
+
+1. **JUnit Integration Tests**: For testing backend functionality with real services
+2. **Cypress Tests**: For testing UI interactions and user flows
+3. **cui-test-keycloak-integration**: For Keycloak integration testing
+
+The test structure follows this organization:
+
+```
+src/test/java/
+├── integration/
+│   ├── KeycloakIntegrationTest.java
+│   ├── NifiProcessorTest.java
+│   └── EndToEndFlowTest.java
+└── cypress/
+    ├── fixtures/
+    │   └── tokens/
+    │       ├── valid-tokens.json
+    │       └── invalid-tokens.json
+    ├── integration/
+    │   ├── configuration/
+    │   │   ├── basic-configuration.spec.js
+    │   │   └── issuer-configuration.spec.js
+    │   ├── verification/
+    │   │   ├── token-verification.spec.js
+    │   │   └── jwks-validation.spec.js
+    │   └── metrics/
+    │       └── metrics-display.spec.js
+    └── support/
+        ├── commands.js
+        └── index.js
+```
+
+=== JUnit Integration Tests with Keycloak
+
+Integration tests use the `cui-test-keycloak-integration` library to interact with the Keycloak instance:
+
+[source,java]
+----
+@ExtendWith(KeycloakExtension.class)
+public class KeycloakIntegrationTest {
+
+    @Test
+    void shouldObtainValidToken(KeycloakContainer keycloak) {
+        // Get token from Keycloak
+        String token = obtainToken(keycloak.getAuthServerUrl());
+
+        // Verify token is valid
+        assertNotNull(token);
+
+        // Use token to test processor
+        testProcessorWithToken(token);
+    }
+
+    private String obtainToken(String authServerUrl) {
+        // Create Keycloak client
+        Keycloak keycloak = KeycloakBuilder.builder()
+            .serverUrl(authServerUrl)
+            .realm(TestRealm.REALM_NAME)
+            .clientId(TestRealm.CLIENT_ID)
+            .clientSecret(TestRealm.CLIENT_SECRET)
+            .username(TestRealm.TEST_USER)
+            .password(TestRealm.TEST_PASSWORD)
+            .build();
+
+        // Get token
+        AccessTokenResponse response = keycloak.tokenManager().getAccessToken();
+        return response.getToken();
+    }
+
+    private void testProcessorWithToken(String token) {
+        // Test processor with token
+        // ...
+    }
+}
+----
+
+=== Integration Testing with NiFi API
+
+For testing the processor in a running NiFi instance:
+
+[source,java]
+----
+public class NifiProcessorTest {
+
+    private static final String NIFI_URL = "https://localhost:9095/nifi/";
+    private static final String ADMIN_USER = "admin";
+    private static final String ADMIN_PASSWORD = "adminadminadmin";
+
+    @Test
+    void shouldProcessTokenSuccessfully() throws Exception {
+        // Create NiFi client
+        NiFiClient client = createNiFiClient();
+
+        // Deploy test flow with processor
+        String processGroupId = deployTestFlow(client);
+
+        // Get token from Keycloak
+        String token = obtainKeycloakToken();
+
+        // Create test data with token
+        byte[] testData = "Test data".getBytes();
+        Map<String, String> attributes = Map.of(
+            "Authorization", "Bearer " + token
+        );
+
+        // Submit test data to input port
+        submitToInputPort(client, processGroupId, "input", testData, attributes);
+
+        // Wait for processing to complete
+        Thread.sleep(2000);
+
+        // Verify output from output port
+        List<FlowFileEntity> outputFlowFiles = getOutputFlowFiles(client, processGroupId, "output");
+
+        // Verify results
+        assertFalse(outputFlowFiles.isEmpty());
+        FlowFileEntity flowFile = outputFlowFiles.get(0);
+        assertTrue(flowFile.getAttributes().containsKey("jwt.content.sub"));
+        assertEquals("testUser", flowFile.getAttributes().get("jwt.content.sub"));
+    }
+
+    private NiFiClient createNiFiClient() {
+        // Create NiFi client with SSL context
+        // ...
+    }
+
+    private String deployTestFlow(NiFiClient client) {
+        // Deploy test flow with processor
+        // ...
+    }
+
+    private String obtainKeycloakToken() {
+        // Get token from Keycloak
+        // ...
+    }
+
+    private void submitToInputPort(NiFiClient client, String processGroupId, 
+                                  String portName, byte[] data, Map<String, String> attributes) {
+        // Submit data to input port
+        // ...
+    }
+
+    private List<FlowFileEntity> getOutputFlowFiles(NiFiClient client, 
+                                                  String processGroupId, String portName) {
+        // Get output flow files
+        // ...
+    }
+}
+----
+
+=== Cypress UI Tests
+
+Cypress tests focus on UI interactions and user flows:
+
+[source,javascript]
+----
+describe('Basic Processor Configuration', () => {
+  beforeEach(() => {
+    // Login to NiFi and navigate to canvas
+    cy.login('admin', 'adminadminadmin');
+    cy.visit('https://localhost:9095/nifi/');
+    cy.get('#flow-status-container').should('be.visible');
+  });
+
+  it('should configure processor with Keycloak JWKS endpoint', () => {
+    // Add processor to canvas
+    cy.get('.component-button-panel .fa-processor-icon').click();
+    cy.get('.processor-type-filter').type('MultiIssuerJWTTokenAuthenticator');
+    cy.get('.processor-type-list .selected-processor-type').click();
+    cy.get('.processor-config-ok-button').click();
+
+    // Open processor configuration
+    cy.get('.processor-icon').rightclick();
+    cy.get('.context-menu-item:contains("Configure")').click();
+
+    // Configure basic properties
+    cy.get('input[name="jwt.validation.token.location"]').select('AUTHORIZATION_HEADER');
+    cy.get('input[name="jwt.validation.token.header"]').clear().type('Authorization');
+
+    // Add Keycloak issuer
+    cy.get('.dynamic-property-add-button').click();
+    cy.get('.dynamic-property-name').type('keycloak');
+    cy.get('.dynamic-property-value').type('http://keycloak:9080/realms/oauth_integration_tests/protocol/openid-connect/certs');
+
+    // Validate JWKS endpoint
+    cy.get('.verify-jwks-button').click();
+    cy.get('.verification-result').should('contain', 'Connection successful');
+
+    // Save configuration
+    cy.get('.processor-config-ok-button').click();
+  });
+});
+----
+
+=== Combined End-to-End Test
+
+For a complete end-to-end test that combines all components:
+
+[source,java]
+----
+@ExtendWith(KeycloakExtension.class)
+public class EndToEndFlowTest {
+
+    @Test
+    void shouldProcessTokenEndToEnd(KeycloakContainer keycloak) throws Exception {
+        // 1. Get token from Keycloak
+        String token = obtainToken(keycloak);
+
+        // 2. Deploy test flow with processor in NiFi
+        NiFiClient client = createNiFiClient();
+        String processGroupId = deployTestFlow(client);
+
+        // 3. Configure processor with Keycloak JWKS endpoint
+        configureProcessor(client, processGroupId, keycloak.getAuthServerUrl());
+
+        // 4. Submit test data with token
+        byte[] testData = "Test data".getBytes();
+        Map<String, String> attributes = Map.of(
+            "Authorization", "Bearer " + token
+        );
+        submitToInputPort(client, processGroupId, "input", testData, attributes);
+
+        // 5. Wait for processing to complete
+        Thread.sleep(2000);
+
+        // 6. Verify output
+        List<FlowFileEntity> outputFlowFiles = getOutputFlowFiles(client, processGroupId, "output");
+
+        // 7. Verify results
+        assertFalse(outputFlowFiles.isEmpty());
+        FlowFileEntity flowFile = outputFlowFiles.get(0);
+        assertTrue(flowFile.getAttributes().containsKey("jwt.content.sub"));
+        assertEquals("testUser", flowFile.getAttributes().get("jwt.content.sub"));
+    }
+
+    // Helper methods...
+}
+----
+
+== Test Data Generation
+
+=== Real JWT Token Generation
+
+For end-to-end testing, real JWT tokens are obtained from the Keycloak instance in the integration-testing environment:
+
+[source,java]
+----
+/**
+ * Utility for obtaining real tokens from Keycloak for testing
+ */
+public class KeycloakTokenGenerator {
+
+    private static final String KEYCLOAK_URL = "http://localhost:9080";
+    private static final String REALM = "oauth_integration_tests";
+    private static final String CLIENT_ID = "test_client";
+    private static final String CLIENT_SECRET = "yTKslWLtf4giJcWCaoVJ20H8sy6STexM";
+    private static final String USERNAME = "testUser";
+    private static final String PASSWORD = "drowssap";
+
+    /**
+     * Get a valid token from Keycloak
+     */
+    public static String getValidToken() {
+        return getToken(USERNAME, PASSWORD);
+    }
+
+    /**
+     * Get a token with custom scopes
+     */
+    public static String getTokenWithScopes(String... scopes) {
+        // Create token request with specific scopes
+        return getToken(USERNAME, PASSWORD, String.join(" ", scopes));
+    }
+
+    /**
+     * Get a token for a specific user
+     */
+    public static String getToken(String username, String password) {
+        return getToken(username, password, null);
+    }
+
+    /**
+     * Get a token with custom parameters
+     */
+    private static String getToken(String username, String password, String scope) {
+        try {
+            // Build the token request
+            StringBuilder requestBody = new StringBuilder();
+            requestBody.append("grant_type=password");
+            requestBody.append("&client_id=").append(URLEncoder.encode(CLIENT_ID, StandardCharsets.UTF_8));
+            requestBody.append("&client_secret=").append(URLEncoder.encode(CLIENT_SECRET, StandardCharsets.UTF_8));
+            requestBody.append("&username=").append(URLEncoder.encode(username, StandardCharsets.UTF_8));
+            requestBody.append("&password=").append(URLEncoder.encode(password, StandardCharsets.UTF_8));
+
+            if (scope != null && !scope.isEmpty()) {
+                requestBody.append("&scope=").append(URLEncoder.encode(scope, StandardCharsets.UTF_8));
+            }
+
+            // Create HTTP client
+            HttpClient client = HttpClient.newBuilder().build();
+
+            // Create request
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(KEYCLOAK_URL + "/realms/" + REALM + "/protocol/openid-connect/token"))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody.toString()))
+                .build();
+
+            // Send request and get response
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            // Parse JSON response
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(response.body());
+
+            // Return access token
+            return root.get("access_token").asText();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get token from Keycloak", e);
+        }
+    }
+
+    /**
+     * Save tokens to fixture files for Cypress tests
+     */
+    public static void saveTokensToFixtures() throws IOException {
+        // Create directory for tokens
+        Files.createDirectories(Paths.get("cypress/fixtures/tokens"));
+
+        // Get tokens
+        String validToken = getValidToken();
+        String adminToken = getTokenWithScopes("admin");
+
+        // Create token info
+        ObjectMapper mapper = new ObjectMapper();
+
+        // Save valid token
+        mapper.writeValue(
+            Paths.get("cypress/fixtures/tokens/valid-tokens.json").toFile(),
+            Map.of(
+                "validToken", validToken,
+                "adminToken", adminToken,
+                "expectedSubject", USERNAME,
+                "expectedIssuer", KEYCLOAK_URL + "/realms/" + REALM
+            )
+        );
+
+        // For invalid tokens, we can use the cui-jwt-validation utilities
+        // to tamper with valid tokens
+        String expiredToken = JwtTokenTamperingUtil.tamperWithClaim(
+            validToken, 
+            "exp", 
+            Instant.now().minus(1, ChronoUnit.HOURS).getEpochSecond()
+        );
+
+        String invalidSignatureToken = JwtTokenTamperingUtil.invalidateSignature(validToken);
+
+        mapper.writeValue(
+            Paths.get("cypress/fixtures/tokens/invalid-tokens.json").toFile(),
+            Map.of(
+                "expiredToken", expiredToken,
+                "invalidSignatureToken", invalidSignatureToken
+            )
+        );
+    }
+}
+----
+
+=== Real JWKS Endpoints
+
+The integration-testing environment provides real JWKS endpoints from the Keycloak instance:
+
+[source,java]
+----
+/**
+ * Utility for working with real JWKS endpoints from Keycloak
+ */
+public class KeycloakJwksEndpoints {
+
+    /**
+     * Get the HTTP JWKS endpoint URL for the Keycloak container
+     */
+    public static String getHttpJwksUrl() {
+        return "http://keycloak:9080/realms/oauth_integration_tests/protocol/openid-connect/certs";
+    }
+
+    /**
+     * Get the HTTPS JWKS endpoint URL for the Keycloak container
+     */
+    public static String getHttpsJwksUrl() {
+        return "https://keycloak:9085/realms/oauth_integration_tests/protocol/openid-connect/certs";
+    }
+
+    /**
+     * Get the HTTP JWKS endpoint URL for local access
+     */
+    public static String getLocalHttpJwksUrl() {
+        return "http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/certs";
+    }
+
+    /**
+     * Get the HTTPS JWKS endpoint URL for local access
+     */
+    public static String getLocalHttpsJwksUrl() {
+        return "https://localhost:9085/realms/oauth_integration_tests/protocol/openid-connect/certs";
+    }
+
+    /**
+     * Fetch and save the JWKS content to a file for offline testing
+     */
+    public static void saveJwksToFile(String outputPath) throws IOException {
+        // Create HTTP client
+        HttpClient client = HttpClient.newBuilder()
+            .build();
+
+        // Create request
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(getLocalHttpJwksUrl()))
+            .GET()
+            .build();
+
+        // Send request and get response
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        // Save response to file
+        Files.writeString(Paths.get(outputPath), response.body());
+    }
+}
+----
+
+== Test Execution
+
+=== Local Execution
+
+To run end-to-end tests locally:
+
+1. Start the integration-testing environment:
++
+[source,bash]
+----
+# From the project root
+./integration-testing/src/main/docker/run-test-container.sh
+----
+
+2. Run the integration tests:
++
+[source,bash]
+----
+# Run all integration tests
+mvn verify -Pintegration-tests
+
+# Run a specific integration test
+mvn verify -Pintegration-tests -Dit.test=KeycloakIntegrationTest
+----
+
+3. Run the UI tests:
++
+[source,bash]
+----
+# Run Cypress tests
+cd nifi-cuioss-ui
+npm run e2e:test
+
+# Run Cypress tests in interactive mode
+npm run e2e:open
+----
+
+4. View test results:
++
+[source,bash]
+----
+# Integration test results
+open target/failsafe-reports/index.html
+
+# Cypress test results
+open nifi-cuioss-ui/cypress/reports/index.html
+----
+
+5. Stop the test environment:
++
+[source,bash]
+----
+./integration-testing/src/main/docker/stop-test-container.sh
+----
+
+=== Debugging Tests
+
+For debugging integration tests:
+
+1. Add debug logging to your tests:
++
+[source,java]
+----
+// Add debug logging
+private static final Logger LOGGER = LoggerFactory.getLogger(KeycloakIntegrationTest.class);
+
+@Test
+void shouldObtainValidToken(KeycloakContainer keycloak) {
+    // Get token from Keycloak
+    String token = obtainToken(keycloak.getAuthServerUrl());
+
+    // Add debug logging
+    LOGGER.info("Token received: {}", token.substring(0, 10) + "...");
+    LOGGER.info("JWKS URL: {}", keycloak.getAuthServerUrl());
+
+    // Test continues...
+}
+----
+
+2. View logs from the NiFi container:
++
+[source,bash]
+----
+# View application log
+docker compose -f integration-testing/src/main/docker/docker-compose.yml logs nifi
+
+# Follow logs
+docker compose -f integration-testing/src/main/docker/docker-compose.yml exec nifi tail -f /opt/nifi/nifi-current/logs/nifi-app.log
+----
+
+3. View logs from the Keycloak container:
++
+[source,bash]
+----
+docker compose -f integration-testing/src/main/docker/docker-compose.yml logs keycloak
+----
+
+=== CI/CD Integration
+
+End-to-end tests are integrated into the CI/CD pipeline:
+
+1. The integration-testing environment is started automatically in CI
+2. Integration tests run as part of the `verify` phase
+3. UI tests run using Cypress in headless mode
+4. Test results are published as GitHub artifacts
+5. Test failures block merges to protected branches
+
+The CI workflow includes these steps:
+
+[source,yaml]
+----
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Start integration testing environment
+        run: ./integration-testing/src/main/docker/run-test-container.sh
+
+      - name: Run integration tests
+        run: ./mvnw verify -Pintegration-tests
+
+      - name: Run UI tests
+        run: |
+          cd nifi-cuioss-ui
+          npm ci
+          npm run e2e:test
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: |
+            target/failsafe-reports/
+            nifi-cuioss-ui/cypress/reports/
+----
+
+== Test Maintenance
+
+=== Best Practices
+
+1. **Keep Tests Independent**: Each test should be self-contained
+2. **Use Page Objects**: Abstract UI interactions into reusable components
+3. **Minimize Flakiness**: Use proper waiting and assertions
+4. **Maintain Test Data**: Keep test data up-to-date with application changes
+5. **Document Test Scenarios**: Each test should have clear documentation
+
+=== Troubleshooting
+
+Common issues and solutions:
+
+1. **Flaky Tests**: If tests are inconsistent, add more explicit waits and retry logic
+2. **Selector Changes**: If UI selectors change, update page objects in a single place
+3. **Test Data Issues**: If test data becomes invalid, regenerate using the provided utilities
+4. **Environment Problems**: If the test environment fails to start, check Docker logs
+5. **Authentication Issues**: If login fails, verify Keycloak configuration and credentials
+
+== Implementation Roadmap
+
+=== Phase 1: Setup and Infrastructure
+
+1. Set up Cypress and required dependencies
+2. Create Docker-based test environment
+3. Implement basic test utilities and helpers
+4. Create test data generation scripts
+
+=== Phase 2: Basic Test Implementation
+
+1. Implement processor configuration tests
+2. Implement token verification tests
+3. Implement JWKS validation tests
+4. Add CI/CD integration
+
+=== Phase 3: Advanced Test Implementation
+
+1. Implement metrics and statistics tests
+2. Implement internationalization tests
+3. Add cross-browser testing with Playwright
+4. Implement performance and load testing
+
+=== Phase 4: Maintenance and Expansion
+
+1. Create documentation and training materials
+2. Implement monitoring for test reliability
+3. Expand test coverage to edge cases
+4. Integrate with overall quality metrics
+
+== Conclusion
+
+End-to-end testing is a critical component of ensuring the MultiIssuerJWTTokenAuthenticator processor functions correctly from a user perspective. By implementing the testing strategy outlined in this document, we can:
+
+1. Verify that all UI components work correctly together
+2. Ensure that user flows function as expected
+3. Detect regression issues early in the development process
+4. Provide confidence in the quality of the processor
+
+The implementation of this end-to-end testing plan will significantly improve the reliability and user experience of the MultiIssuerJWTTokenAuthenticator processor.
+
+== See Also
+
+* link:testing.adoc[Testing]
+* link:javascript-testing.adoc[JavaScript Testing]
+* link:configuration-ui.adoc[UI Configuration]
+* link:token-validation.adoc[Token Validation]
+* link:../Requirements.adoc#NIFI-AUTH-16[Testing Requirements]
+* link:../library/cui-test-keycloak-integration/README.adoc[Keycloak Integration Testing]
+* link:../integration-testing/README.adoc[Integration Testing Environment]
+* link:../Specification.adoc[Back to Main Specification]
