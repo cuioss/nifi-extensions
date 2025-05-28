@@ -3,6 +3,7 @@
 :toclevels: 3
 :toc-title: Table of Contents
 :sectnums:
+:imagesdir: ..
 
 link:../Specification.adoc[Back to Main Specification]
 
@@ -10,6 +11,11 @@ link:../Specification.adoc[Back to Main Specification]
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-16[NIFI-AUTH-16: Testing]_
 
 This document outlines the end-to-end testing strategy for the MultiIssuerJWTTokenAuthenticator, focusing on automated testing of complete user flows through the UI. End-to-end testing verifies that the entire application works as expected from a user's perspective, testing all components working together in a real environment.
+
+[NOTE]
+====
+End-to-end testing typically takes 15-30 minutes for a complete test suite run, depending on the environment specifications and test coverage.
+====
 
 == Testing Goals and Objectives
 
@@ -35,19 +41,32 @@ This document outlines the end-to-end testing strategy for the MultiIssuerJWTTok
 
 The end-to-end testing infrastructure uses modern, industry-standard tools:
 
-* **Cypress**: Primary end-to-end testing framework
-* **Playwright**: Alternative framework for cross-browser testing
-* **Docker**: For containerized testing environment
+* **Cypress** (v12.x or higher): Primary end-to-end testing framework
+* **Playwright** (v1.32.x or higher): Alternative framework for cross-browser testing
+* **Docker** (v24.x or higher): For containerized testing environment
 * **Integration Testing Module**: For controlling runtime instances including NiFi and Keycloak
-* **cui-test-keycloak-integration**: For integration testing with Keycloak
+* **cui-test-keycloak-integration** (v1.0.x): For integration testing with Keycloak
 * **CI/CD Integration**: GitHub Actions for automated test execution
+
+[TIP]
+====
+For definitions of specialized testing terms used in this document:
+
+* **Flakiness**: Tests that pass or fail inconsistently when no changes are made to the code
+* **NAR file**: NiFi Archive file, a package format for NiFi processors
+* **JWKS**: JSON Web Key Set, a standard format for publishing public keys used to verify JWT signatures
+====
 
 === Integration Testing Module
 
 The project includes a dedicated `integration-testing` module that provides a Docker-based test environment with:
 
 * **NiFi Instance**: Running the latest version with the MultiIssuerJWTTokenAuthenticator processor
+  * Resource requirements: 2 CPU cores, 2GB RAM minimum
+  * Exposed on HTTPS port 9095
 * **Keycloak Server**: For generating valid JWT tokens and simulating different identity providers
+  * Resource requirements: 1 CPU core, 1GB RAM minimum
+  * Exposed on HTTP port 9080 and HTTPS port 9085
 * **Pre-configured Certificates**: For secure communication between components
 * **Helper Scripts**: For starting, stopping, and managing the environment
 
@@ -59,6 +78,10 @@ End-to-end tests are integrated into the Maven build process using the `frontend
 
 [source,xml]
 ----
+<!-- In parent pom.xml, these properties are defined: -->
+<!-- <version.frontend-maven-plugin>1.12.1</version.frontend-maven-plugin> -->
+<!-- <version.nodejs>16.17.0</version.nodejs> -->
+
 <plugin>
     <groupId>org.apache.maven.plugins</groupId>
     <artifactId>maven-failsafe-plugin</artifactId>
@@ -109,6 +132,15 @@ For UI testing, the `frontend-maven-plugin` is used:
 
 == Test Environment Setup
 
+The following diagram illustrates the architecture of the end-to-end testing environment. This visual representation helps understand the relationships between components and how they interact during testing:
+
+image::../plantuml/test-environment-architecture.png[Test Environment Architecture, align="center"]
+
+[NOTE]
+====
+The environment requires network connectivity between all components. The host machine needs outbound access to pull Docker images and dependencies during setup.
+====
+
 === Containerized Testing Environment
 
 End-to-end tests run in a containerized environment provided by the `integration-testing` module:
@@ -129,7 +161,13 @@ End-to-end tests run in a containerized environment provided by the `integration
    * NiFi: PKCS12 format (keystore.p12, truststore.p12)
    * Keycloak: PEM format (localhost.crt, localhost.key)
 
-4. **Browser Environment**: Chrome, Firefox, and Edge for cross-browser testing
+4. **Browser Environment**: Cross-browser testing with:
+   * Chrome (latest and latest-1 versions)
+   * Firefox (latest and latest-1 versions)
+   * Edge (latest version)
+   * Safari (latest version, for MacOS test environments only)
+   
+   The primary development and testing browser is Chrome, with automated cross-browser testing implemented in CI/CD pipelines.
 
 === Starting the Test Environment
 
@@ -153,6 +191,11 @@ To stop the environment:
 ----
 ./integration-testing/src/main/docker/stop-test-container.sh
 ----
+
+[WARNING]
+====
+The test environment uses self-signed certificates and predefined credentials that are intended for testing purposes only. Never use these credentials or certificates in production environments.
+====
 
 === Test Data Management
 
@@ -300,6 +343,22 @@ Tests the internationalization support:
 2. Verify UI elements are displayed in the correct language
 3. Test with different languages (English, German, etc.)
 4. Verify error messages are translated correctly
+
+=== Accessibility Testing Flow
+
+Tests the accessibility compliance of the UI:
+
+1. **Keyboard Navigation**: Verify all UI components can be navigated using only the keyboard
+2. **Screen Reader Compatibility**: Test with screen readers to ensure content is properly announced
+3. **Color Contrast**: Verify UI meets WCAG 2.1 AA contrast requirements
+4. **Form Labels**: Ensure all form elements have proper labels and ARIA attributes
+5. **Focus Management**: Verify focus handling in modals and dynamic content
+6. **Responsive Design**: Test UI functionality at different zoom levels
+
+[NOTE]
+====
+Accessibility testing uses automated tools like axe-core integrated with Cypress, plus manual verification with screen readers such as NVDA or VoiceOver.
+====
 
 == Test Implementation
 
@@ -458,7 +517,7 @@ public class NifiProcessorTest {
 
 === Cypress UI Tests
 
-Cypress tests focus on UI interactions and user flows:
+Cypress tests focus on UI interactions and user flows. We use data-testid attributes for more reliable selectors where possible:
 
 [source,javascript]
 ----
@@ -467,35 +526,35 @@ describe('Basic Processor Configuration', () => {
     // Login to NiFi and navigate to canvas
     cy.login('admin', 'adminadminadmin');
     cy.visit('https://localhost:9095/nifi/');
-    cy.get('#flow-status-container').should('be.visible');
+    cy.get('[data-testid="flow-status-container"]', { timeout: 10000 }).should('be.visible');
   });
 
   it('should configure processor with Keycloak JWKS endpoint', () => {
     // Add processor to canvas
-    cy.get('.component-button-panel .fa-processor-icon').click();
-    cy.get('.processor-type-filter').type('MultiIssuerJWTTokenAuthenticator');
-    cy.get('.processor-type-list .selected-processor-type').click();
-    cy.get('.processor-config-ok-button').click();
+    cy.get('[data-testid="component-toolbar"] [data-testid="add-processor-button"]').click();
+    cy.get('[data-testid="processor-type-filter"]').type('MultiIssuerJWTTokenAuthenticator');
+    cy.get('[data-testid="processor-type-item"]:contains("MultiIssuerJWTTokenAuthenticator")').click();
+    cy.get('[data-testid="processor-config-ok-button"]').click();
 
     // Open processor configuration
-    cy.get('.processor-icon').rightclick();
-    cy.get('.context-menu-item:contains("Configure")').click();
+    cy.get('[data-testid="processor-component"]').rightclick();
+    cy.get('[data-testid="context-menu-item"]:contains("Configure")').click();
 
     // Configure basic properties
-    cy.get('input[name="jwt.validation.token.location"]').select('AUTHORIZATION_HEADER');
-    cy.get('input[name="jwt.validation.token.header"]').clear().type('Authorization');
+    cy.get('[data-testid="property-input"][name="jwt.validation.token.location"]').select('AUTHORIZATION_HEADER');
+    cy.get('[data-testid="property-input"][name="jwt.validation.token.header"]').clear().type('Authorization');
 
     // Add Keycloak issuer
-    cy.get('.dynamic-property-add-button').click();
-    cy.get('.dynamic-property-name').type('keycloak');
-    cy.get('.dynamic-property-value').type('http://keycloak:9080/realms/oauth_integration_tests/protocol/openid-connect/certs');
+    cy.get('[data-testid="dynamic-property-add-button"]').click();
+    cy.get('[data-testid="dynamic-property-name"]').type('keycloak');
+    cy.get('[data-testid="dynamic-property-value"]').type('http://keycloak:9080/realms/oauth_integration_tests/protocol/openid-connect/certs');
 
     // Validate JWKS endpoint
-    cy.get('.verify-jwks-button').click();
-    cy.get('.verification-result').should('contain', 'Connection successful');
+    cy.get('[data-testid="verify-jwks-button"]').click();
+    cy.get('[data-testid="verification-result"]', { timeout: 5000 }).should('contain', 'Connection successful');
 
     // Save configuration
-    cy.get('.processor-config-ok-button').click();
+    cy.get('[data-testid="processor-config-ok-button"]').click();
   });
 });
 ----
@@ -880,6 +939,61 @@ jobs:
             nifi-cuioss-ui/cypress/reports/
 ----
 
+== Test Results Analysis
+
+After running end-to-end tests, it's important to analyze the results effectively:
+
+=== Test Report Structure
+
+Test reports are generated in the following locations:
+1. **JUnit Reports**: `target/failsafe-reports/`
+2. **Cypress Reports**: `nifi-cuioss-ui/cypress/reports/`
+
+The reports include the following key information:
+* Test execution times
+* Failure details with stack traces
+* Screenshots for UI test failures (Cypress only)
+* Video recordings of failed tests (Cypress only)
+
+=== Common Failure Patterns
+
+When analyzing test failures, look for these common patterns:
+
+1. **Network Connectivity Issues**:
+   * Connection refused errors
+   * Timeout errors
+   * SSL/TLS certificate issues
+
+2. **Authentication Problems**:
+   * Invalid tokens
+   * Expired tokens
+   * Misconfigured JWKS endpoints
+
+3. **UI Interaction Failures**:
+   * Element not found errors
+   * Element not clickable errors
+   * Timing issues (actions performed before page is ready)
+
+4. **Data Validation Failures**:
+   * Missing claims in tokens
+   * Unexpected values in token claims
+   * Processor configuration not applied correctly
+
+=== Interpreting Test Results
+
+When evaluating test results, consider the following:
+
+1. **Test Stability**: Are failures consistent or intermittent?
+2. **Environment Factors**: Are failures environment-specific?
+3. **Code Changes**: Do failures correlate with recent code changes?
+4. **Coverage Gaps**: Are there untested scenarios revealed by failures?
+
+To determine if a failure is a flaky test or a real issue:
+1. Rerun the failing test in isolation
+2. Check if the failure is reproducible on different environments
+3. Examine logs for timing or resource issues
+4. Review recent code changes that might affect the failing test
+
 == Test Maintenance
 
 === Best Practices
@@ -894,11 +1008,49 @@ jobs:
 
 Common issues and solutions:
 
-1. **Flaky Tests**: If tests are inconsistent, add more explicit waits and retry logic
-2. **Selector Changes**: If UI selectors change, update page objects in a single place
-3. **Test Data Issues**: If test data becomes invalid, regenerate using the provided utilities
-4. **Environment Problems**: If the test environment fails to start, check Docker logs
-5. **Authentication Issues**: If login fails, verify Keycloak configuration and credentials
+1. **Flaky Tests**: 
+   * If tests are inconsistent, add more explicit waits and retry logic
+   * Use Cypress's built-in retry capabilities for assertions
+   * Consider using `cy.waitUntil()` for complex conditions
+   * Add logging to identify timing issues
+
+2. **Selector Changes**: 
+   * If UI selectors change, update page objects in a single place
+   * Use data-testid attributes in the UI for more stable selectors
+   * Consider using more specific selectors to avoid accidental matches
+
+3. **Test Data Issues**: 
+   * If test data becomes invalid, regenerate using the provided utilities
+   * Create test data immediately before use to ensure freshness
+   * Use unique identifiers for test entities to prevent collision
+
+4. **Environment Problems**: 
+   * If the test environment fails to start, check Docker logs
+   * Verify network connectivity between containers
+   * Ensure sufficient system resources are available
+   * Check certificate validity and trust issues
+
+5. **Authentication Issues**: 
+   * If login fails, verify Keycloak configuration and credentials
+   * Check token expiration settings
+   * Validate that JWKS endpoints are accessible
+   * Monitor HTTP response codes for auth-related failures
+
+=== Test Data Cleanup
+
+After test execution, it's important to clean up test data to maintain a consistent environment:
+
+1. Reset Keycloak realm to initial state using the provided scripts
+2. Clean up any test data created in NiFi
+3. Remove generated test tokens and JWKS files
+4. Reset metrics and counters in the processor
+
+For automated cleanup in CI environments, use the provided cleanup script:
+
+[source,bash]
+----
+./integration-testing/src/main/docker/cleanup-test-environment.sh
+----
 
 == Implementation Roadmap
 
