@@ -3,7 +3,6 @@
 :toclevels: 3
 :toc-title: Table of Contents
 :sectnums:
-:imagesdir: ..
 
 link:../Specification.adoc[Back to Main Specification]
 
@@ -238,7 +237,7 @@ These endpoints can be used to configure the processor for testing.
 Tests the basic configuration flow:
 
 1. Navigate to NiFi canvas
-2. Add MultiIssuerJWTTokenAuthenticator processor
+2. Add MultiIssuerJWTTokenAuthenticator processor if not present
 3. Configure basic properties (token location, header name)
 4. Configure advanced properties (token size, refresh interval)
 5. Save configuration
@@ -249,12 +248,13 @@ Tests the basic configuration flow:
 Tests the issuer configuration flow:
 
 1. Navigate to processor configuration
-2. Add a new issuer with JWKS-Server type
-3. Enter JWKS URL and validate connection
-4. Configure audience, scopes, and roles
-5. Save issuer configuration
-6. Verify issuer is added to the processor configuration
-7. Repeat for Local File and In Memory issuer types
+2. Right-click on the processor and select "Advanced"
+3. Add a new issuer with JWKS-Server type
+4. Enter JWKS URL and validate connection
+5. Configure audience, scopes, and roles
+6. Save issuer configuration
+7. Verify issuer is added to the processor configuration
+8. Repeat for Local File and In Memory issuer types
 
 ==== Configuration Validation Test
 
