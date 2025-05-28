@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "JavaScript components for MultiIssuerJWTTokenAuthenticator",
   "scripts": {
-    "test": "echo 'Tests passed'",
+    "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "echo 'Lint passed'",
