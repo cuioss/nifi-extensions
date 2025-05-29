@@ -27,6 +27,7 @@
 
     <properties>
         <enforcer.skip>true</enforcer.skip>
+        <sonar.javascript.lcov.reportPaths>target/coverage-js/lcov.info</sonar.javascript.lcov.reportPaths>
     </properties>
 
     <dependencies>
@@ -138,7 +139,7 @@
                         </goals>
                         <phase>test</phase>
                         <configuration>
-                            <arguments>test</arguments>
+                            <arguments>run test:coverage</arguments>
                         </configuration>
                     </execution>
                     <execution>
