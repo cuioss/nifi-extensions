@@ -3,8 +3,9 @@
  */
 
 /* Base styles */
+
 body {
-    font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif;
     margin: 0;
     padding: 20px;
     background-color: var(--background-color);
@@ -13,16 +14,18 @@ body {
 }
 
 /* Container styles */
+
 #jwt-validator-container {
     max-width: 1200px;
     margin: 0 auto;
     background-color: var(--container-background);
     border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 12%), 0 1px 2px rgb(0 0 0 / 24%);
     padding: 20px;
 }
 
 /* Loading indicator */
+
 #loading-indicator {
     text-align: center;
     padding: 20px;
@@ -31,6 +34,7 @@ body {
 }
 
 /* Form elements */
+
 input, select, textarea {
     width: 100%;
     padding: 8px 12px;
@@ -43,7 +47,7 @@ input, select, textarea {
 
 button {
     background-color: var(--button-color);
-    color: white;
+    color: #fff;
     padding: 10px 15px;
     margin: 8px 0;
     border: none;
@@ -57,6 +61,7 @@ button:hover {
 }
 
 /* Help tooltip */
+
 .help-tooltip {
     margin-left: 5px;
     color: var(--text-color-light);
@@ -64,12 +69,14 @@ button:hover {
 }
 
 /* Property labels */
+
 .property-label {
     font-weight: bold;
     margin-bottom: 5px;
 }
 
 /* Error messages */
+
 .error-message {
     color: var(--error-color);
     background-color: #ffebee;
@@ -79,6 +86,7 @@ button:hover {
 }
 
 /* Success messages */
+
 .success-message {
     color: var(--success-color);
     background-color: #e8f5e9;
@@ -88,6 +96,7 @@ button:hover {
 }
 
 /* Help text and tooltips */
+
 .help-text {
     margin: 10px 0;
     padding: 10px;
@@ -99,6 +108,7 @@ button:hover {
 }
 
 /* Custom tabs */
+
 .custom-tabs {
     margin-top: 20px;
     border: 1px solid var(--border-color);
@@ -149,6 +159,7 @@ button:hover {
 }
 
 /* Custom components */
+
 .custom-component {
     margin-bottom: 20px;
     padding: 15px;

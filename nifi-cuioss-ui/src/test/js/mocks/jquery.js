@@ -193,16 +193,16 @@ function createJQueryObject(elements) {
 }
 
 // Add Deferred functionality
-$.Deferred = function() {
-    let _doneCallbacks = [];
-    let _failCallbacks = [];
+$.Deferred = function () {
+    const _doneCallbacks = [];
+    const _failCallbacks = [];
     let _isResolved = false;
     let _isRejected = false;
     let _resolvedArgs;
     let _rejectedArgs;
 
     const deferred = {
-        resolve: function(...args) {
+        resolve: function (...args) {
             if (!_isResolved && !_isRejected) {
                 _isResolved = true;
                 _resolvedArgs = args;
@@ -210,7 +210,7 @@ $.Deferred = function() {
             }
             return this;
         },
-        reject: function(...args) {
+        reject: function (...args) {
             if (!_isResolved && !_isRejected) {
                 _isRejected = true;
                 _rejectedArgs = args;
@@ -218,9 +218,9 @@ $.Deferred = function() {
             }
             return this;
         },
-        promise: function() {
+        promise: function () {
             const promiseObj = {
-                done: function(cb) {
+                done: function (cb) {
                     if (_isResolved) {
                         // Execute immediately if already resolved
                         cb(..._resolvedArgs);
@@ -229,7 +229,7 @@ $.Deferred = function() {
                     }
                     return promiseObj; // Return the promise itself for chaining
                 },
-                fail: function(cb) {
+                fail: function (cb) {
                     if (_isRejected) {
                         // Execute immediately if already rejected
                         cb(..._rejectedArgs);
@@ -238,12 +238,12 @@ $.Deferred = function() {
                     }
                     return promiseObj; // Return the promise itself for chaining
                 },
-                then: function(doneCb, failCb) { // Basic then
+                then: function (doneCb, failCb) { // Basic then
                     if (doneCb) this.done(doneCb);
                     if (failCb) this.fail(failCb);
                     return promiseObj; // Return the promise itself for chaining
                 },
-                always: function(cb) {
+                always: function (cb) {
                     this.done(cb);
                     this.fail(cb);
                     return promiseObj; // Return the promise itself for chaining

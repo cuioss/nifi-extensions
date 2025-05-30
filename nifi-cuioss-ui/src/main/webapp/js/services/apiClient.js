@@ -167,7 +167,7 @@ define(['jquery', 'nf.Common'], function ($, _nfCommon) {
                 type: 'GET',
                 url: '../nifi-api/processors/' + processorId,
                 dataType: 'json'
-            }).then(function(processor) {
+            }).then(function (processor) {
                 // Create the update request
                 const updateRequest = {
                     revision: processor.revision,

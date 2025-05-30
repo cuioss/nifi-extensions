@@ -15,13 +15,13 @@ define([
     const i18n = nfCommon.getI18n() || {};
 
     // Component state
-    let issuers = [];
+    const issuers = [];
     let componentConfig = {};
     let processorId = '';
 
     /**
      * Initializes the component.
-     * 
+     *
      * @param {object} element - The DOM element
      * @param {object} config - The component configuration
      */
@@ -43,7 +43,7 @@ define([
 
         // Add "Add Issuer" button
         const addButton = $('<button class="add-issuer-button">Add Issuer</button>').appendTo(container);
-        addButton.on('click', function() {
+        addButton.on('click', function () {
             addIssuerForm(issuersContainer);
         });
 
@@ -56,10 +56,10 @@ define([
 
     /**
      * Gets the processor ID from the URL.
-     * 
+     *
      * @return {string} The processor ID
      */
-    const getProcessorIdFromUrl = function() {
+    const getProcessorIdFromUrl = function () {
         // Extract processor ID from URL
         const url = window.location.href;
         const match = url.match(/\/processors\/([a-f0-9-]+)/);
@@ -68,10 +68,10 @@ define([
 
     /**
      * Loads existing issuer configurations.
-     * 
+     *
      * @param {object} container - The container element
      */
-    const loadExistingIssuers = function(container) {
+    const loadExistingIssuers = function (container) {
         if (!processorId) {
             console.log('[DEBUG_LOG] No processor ID found, using sample data for demonstration');
             // Add a sample issuer for demonstration purposes
@@ -87,13 +87,13 @@ define([
         try {
             // Get processor properties
             apiClient.getProcessorProperties(processorId)
-                .done(function(response) {
+                .done(function (response) {
                     // Extract issuer properties
                     const properties = response.properties || {};
                     const issuerProperties = {};
 
                     // Group properties by issuer
-                    Object.keys(properties).forEach(function(key) {
+                    Object.keys(properties).forEach(function (key) {
                         if (key.startsWith('issuer.')) {
                             const parts = key.substring(7).split('.');
                             if (parts.length === 2) {
@@ -110,11 +110,11 @@ define([
                     });
 
                     // Create issuer forms for each issuer
-                    Object.keys(issuerProperties).forEach(function(issuerName) {
+                    Object.keys(issuerProperties).forEach(function (issuerName) {
                         addIssuerForm(container, issuerName, issuerProperties[issuerName]);
                     });
                 })
-                .fail(function(xhr, status, error) {
+                .fail(function (xhr, status, error) {
                     console.error('[DEBUG_LOG] Error loading processor properties:', status, error);
                     // Add a sample issuer for demonstration purposes
                     addIssuerForm(container, 'sample-issuer', {
@@ -138,12 +138,12 @@ define([
 
     /**
      * Adds a new issuer form.
-     * 
+     *
      * @param {object} container - The container element
      * @param {string} [issuerName] - The issuer name (for existing issuers)
      * @param {object} [properties] - The issuer properties (for existing issuers)
      */
-    const addIssuerForm = function(container, issuerName, properties) {
+    const addIssuerForm = function (container, issuerName, properties) {
         // Create issuer form
         const issuerForm = $('<div class="issuer-form"></div>').appendTo(container);
 
@@ -161,7 +161,7 @@ define([
 
         // Add remove button
         const removeButton = $('<button class="remove-issuer-button">Remove</button>').appendTo(formHeader);
-        removeButton.on('click', function() {
+        removeButton.on('click', function () {
             removeIssuer(issuerForm, issuerName);
         });
 
@@ -184,7 +184,7 @@ define([
         jwksUrlField.after(testButtonWrapper);
 
         // Handle test button click
-        testButton.on('click', function() {
+        testButton.on('click', function () {
             // Show loading state
             resultContainer.html('Testing...');
 
@@ -202,13 +202,13 @@ define([
                     timeout: 5000 // Add timeout to prevent long waits
                 }).done(function (response) {
                     if (response.valid) {
-                        resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' + 
+                        resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
                                            (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
                                            (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
                                            ' (' + response.keyCount + ' ' +
                                            (i18n['processor.jwt.keysFound'] || 'keys found') + ')');
                     } else {
-                        resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' + 
+                        resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' +
                                            (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
                                            (i18n['processor.jwt.invalidJwks'] || 'Invalid JWKS') + ': ' +
                                            response.message);
@@ -219,13 +219,13 @@ define([
                     // In standalone testing mode, show a simulated success response
                     if (window.location.href.indexOf('localhost') !== -1 || window.location.href.indexOf('127.0.0.1') !== -1) {
                         console.log('[DEBUG_LOG] Using simulated response for standalone testing');
-                        resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' + 
+                        resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
                                            (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
                                            (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
-                                           ' (3 ' + (i18n['processor.jwt.keysFound'] || 'keys found') + 
+                                           ' (3 ' + (i18n['processor.jwt.keysFound'] || 'keys found') +
                                            ') <em>(Simulated response)</em>');
                     } else {
-                        resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' + 
+                        resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' +
                                            (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
                                            (i18n['processor.jwt.validationError'] || 'Validation error') + ': ' +
                                            (xhr.responseText || error || 'Unknown error'));
@@ -235,10 +235,10 @@ define([
                 console.error('[DEBUG_LOG] Exception in JWKS validation:', e);
 
                 // In standalone testing mode, show a simulated success response
-                resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' + 
+                resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
                                    (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
                                    (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
-                                   ' (3 ' + (i18n['processor.jwt.keysFound'] || 'keys found') + 
+                                   ' (3 ' + (i18n['processor.jwt.keysFound'] || 'keys found') +
                                    ') <em>(Simulated response)</em>');
             }
         });
@@ -251,21 +251,21 @@ define([
 
         // Add save button
         const saveButton = $('<button class="save-issuer-button">Save Issuer</button>').appendTo(issuerForm);
-        saveButton.on('click', function() {
+        saveButton.on('click', function () {
             saveIssuer(issuerForm);
         });
     };
 
     /**
      * Adds a form field.
-     * 
+     *
      * @param {object} container - The container element
      * @param {string} name - The field name
      * @param {string} label - The field label
      * @param {string} description - The field description
      * @param {string} [value] - The field value
      */
-    const addFormField = function(container, name, label, description, value) {
+    const addFormField = function (container, name, label, description, value) {
         const fieldContainer = $('<div class="form-field"></div>').appendTo(container);
 
         // Add label
@@ -286,10 +286,10 @@ define([
 
     /**
      * Saves an issuer configuration.
-     * 
+     *
      * @param {object} form - The issuer form
      */
-    const saveIssuer = function(form) {
+    const saveIssuer = function (form) {
         // Get issuer name
         const issuerName = form.find('.issuer-name').val();
 
@@ -319,7 +319,7 @@ define([
         const updates = {};
 
         // Add properties to updates
-        Object.keys(properties).forEach(function(key) {
+        Object.keys(properties).forEach(function (key) {
             if (properties[key]) {
                 updates['issuer.' + issuerName + '.' + key] = properties[key];
             }
@@ -329,11 +329,11 @@ define([
         if (processorId) {
             try {
                 apiClient.updateProcessorProperties(processorId, updates)
-                    .done(function() {
+                    .done(function () {
                         // Use alert instead of nfCommon.showMessage for standalone testing
                         alert('Success: Issuer configuration saved successfully.');
                     })
-                    .fail(function(xhr, status, error) {
+                    .fail(function (xhr, status, error) {
                         console.error('[DEBUG_LOG] Error updating processor properties:', status, error);
                         alert('Error: Failed to save issuer configuration. See console for details.');
                     });
@@ -350,11 +350,11 @@ define([
 
     /**
      * Removes an issuer configuration.
-     * 
+     *
      * @param {object} form - The issuer form
      * @param {string} issuerName - The issuer name
      */
-    const removeIssuer = function(form, issuerName) {
+    const removeIssuer = function (form, issuerName) {
         // Confirm removal
         if (confirm('Are you sure you want to remove this issuer configuration?')) {
             // Remove form
@@ -365,13 +365,13 @@ define([
                 try {
                     // Get processor properties
                     apiClient.getProcessorProperties(processorId)
-                        .done(function(response) {
+                        .done(function (response) {
                             // Extract issuer properties
                             const properties = response.properties || {};
                             const updates = {};
 
                             // Find properties to remove
-                            Object.keys(properties).forEach(function(key) {
+                            Object.keys(properties).forEach(function (key) {
                                 if (key.startsWith('issuer.' + issuerName + '.')) {
                                     updates[key] = null; // Set to null to remove
                                 }
@@ -379,16 +379,16 @@ define([
 
                             // Update processor properties
                             apiClient.updateProcessorProperties(processorId, updates)
-                                .done(function() {
+                                .done(function () {
                                     // Use alert instead of nfCommon.showMessage for standalone testing
                                     alert('Success: Issuer configuration removed successfully.');
                                 })
-                                .fail(function(xhr, status, error) {
+                                .fail(function (xhr, status, error) {
                                     console.error('[DEBUG_LOG] Error updating processor properties:', status, error);
                                     alert('Error: Failed to remove issuer configuration. See console for details.');
                                 });
                         })
-                        .fail(function(xhr, status, error) {
+                        .fail(function (xhr, status, error) {
                             console.error('[DEBUG_LOG] Error getting processor properties:', status, error);
                             alert('Error: Failed to get processor properties. See console for details.');
                         });
@@ -408,7 +408,7 @@ define([
     return {
         /**
          * Initializes the component.
-         * 
+         *
          * @param {object} element - The DOM element
          * @param {object} config - The component configuration
          * @param {string} type - The component type (not used)

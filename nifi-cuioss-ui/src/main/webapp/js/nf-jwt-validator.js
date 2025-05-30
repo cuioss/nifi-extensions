@@ -3,15 +3,15 @@
  * This file is responsible for loading and initializing the custom UI components.
  * It delegates to main.js for the actual component registration to avoid duplication.
  */
-(function($) {
+(function ($) {
     'use strict';
 
     // Initialize when the document is ready
-    $(document).ready(function() {
+    $(document).ready(function () {
         console.log('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
 
         // Load main.js to handle component registration
-        require(['js/main'], function(main) {
+        require(['js/main'], function (main) {
             console.log('[DEBUG_LOG] nf-jwt-validator.js: Main module loaded');
 
             // Initialize the main module if it's available and components haven't been registered yet

@@ -6,7 +6,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "NODE_ENV=test jest --coverage",
-    "lint": "echo 'Lint passed'",
+    "lint": "eslint src/main/webapp/js src/test/js && stylelint \"src/main/webapp/css/**/*.css\"",
     "lint:fix": "eslint --fix src/main/webapp/js src/test/js && stylelint --fix \"src/main/webapp/css/**/*.css\"",
     "lint:watch": "eslint --watch src/main/webapp/js src/test/js",
     "lint:css": "stylelint \"src/main/webapp/css/**/*.css\"",
@@ -55,10 +55,10 @@
     ],
     "coverageThreshold": {
       "global": {
-        "statements": 0,
-        "branches": 0,
-        "functions": 0,
-        "lines": 0
+        "statements": 40,
+        "branches": 30,
+        "functions": 50,
+        "lines": 40
       }
     },
     "transform": {

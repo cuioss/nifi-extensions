@@ -17,7 +17,7 @@ define([
         /**
          * Initialize the UI bundle
          */
-        init: function() {
+        init: function () {
             console.log('[DEBUG_LOG] Bundle init method called');
 
             // Initialize the main module if it's available and components haven't been registered yet

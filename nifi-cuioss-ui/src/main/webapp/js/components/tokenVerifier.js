@@ -5,7 +5,7 @@ define(['jquery', 'nf.Common'], function ($, nfCommon) {
     return {
         /**
          * Initialize the custom UI.
-         * 
+         *
          * @param {object} element - The DOM element
          * @param {object} config - The component configuration
          * @param {string} type - The component type (not used)

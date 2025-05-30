@@ -2,7 +2,7 @@
  * Internationalization (i18n) module for MultiIssuerJWTTokenAuthenticator UI.
  * Provides localization support using the browser's language setting.
  */
-define([], function() {
+define([], function () {
     'use strict';
 
     // Default language
@@ -143,10 +143,10 @@ define([], function() {
 
     /**
      * Detects the browser language preference.
-     * 
+     *
      * @returns {string} The detected language code (e.g., 'en' from 'en-US')
      */
-    const detectBrowserLanguage = function() {
+    const detectBrowserLanguage = function () {
         // Get browser language
         const browserLanguage = navigator.language || navigator.userLanguage || 'en';
 
@@ -159,11 +159,11 @@ define([], function() {
 
     /**
      * Sets the current language.
-     * 
+     *
      * @param {string} langCode - The language code to set
      * @returns {boolean} True if the language was set successfully, false otherwise
      */
-    const setLanguage = function(langCode) {
+    const setLanguage = function (langCode) {
         if (availableLanguages.includes(langCode)) {
             currentLanguage = langCode;
             return true;
@@ -173,30 +173,30 @@ define([], function() {
 
     /**
      * Gets the current language.
-     * 
+     *
      * @returns {string} The current language code
      */
-    const getLanguage = function() {
+    const getLanguage = function () {
         return currentLanguage;
     };
 
     /**
      * Gets the list of available languages.
-     * 
+     *
      * @returns {Array} The list of available language codes
      */
-    const getAvailableLanguages = function() {
+    const getAvailableLanguages = function () {
         return availableLanguages;
     };
 
     /**
      * Translates a key to the current language.
-     * 
+     *
      * @param {string} key - The translation key
      * @param {Object} [params] - Optional parameters to substitute in the translation
      * @returns {string} The translated text
      */
-    const translate = function(key, params) {
+    const translate = function (key, params) {
         // Get the translation for the current language
         const translation = translations[currentLanguage] && translations[currentLanguage][key];
 
@@ -208,7 +208,7 @@ define([], function() {
 
         // Substitute parameters if provided
         if (params) {
-            Object.keys(params).forEach(function(param) {
+            Object.keys(params).forEach(function (param) {
                 result = result.replace(new RegExp(`{${param}}`, 'g'), params[param]);
             });
         }

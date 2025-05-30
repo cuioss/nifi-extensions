@@ -2,7 +2,7 @@
  * Mock implementation of nf.Common for standalone testing.
  * This provides the minimum functionality needed by the JWT Validator UI components.
  */
-define([], function() {
+define([], function () {
     'use strict';
 
     console.log('[DEBUG_LOG] nf.Common mock loaded');
@@ -11,23 +11,23 @@ define([], function() {
     return {
         /**
          * Registers a custom UI component.
-         * 
+         *
          * @param {string} id - The ID of the component
          * @param {object} component - The component object
          * @param {object} options - Options for the component
          */
-        registerCustomUiComponent: function(id, component, options) {
+        registerCustomUiComponent: function (id, component, options) {
             console.log('[DEBUG_LOG] Registered custom UI component:', id, options);
 
             // Try to initialize the component if it has an init method
             if (component && typeof component.init === 'function') {
                 try {
                     console.log('[DEBUG_LOG] Attempting to initialize component:', id);
-                    var container = document.createElement('div');
+                    const container = document.createElement('div');
                     container.id = 'component-' + id.replace(/\./g, '-');
                     container.className = 'custom-component';
                     document.getElementById('jwt-validator-container').appendChild(container);
-                    component.init(container, null, options && options.jwks_type, function() {
+                    component.init(container, null, options && options.jwks_type, function () {
                         console.log('[DEBUG_LOG] Component initialized:', id);
                     });
                 } catch (e) {
@@ -38,15 +38,17 @@ define([], function() {
 
         /**
          * Registers a custom UI tab.
-         * 
+         *
          * @param {string} id - The ID of the tab
          * @param {object} component - The tab component
          */
-        registerCustomUiTab: function(id, component) {
+        registerCustomUiTab: function (id, component) {
             console.log('[DEBUG_LOG] Registered custom UI tab:', id);
 
             // Create a tab container
-            var tabContainer = document.getElementById('jwt-validator-tabs');
+            let tabContainer = document.getElementById('jwt-validator-tabs');
+            let tabNavigation;
+
             if (!tabContainer) {
                 tabContainer = document.createElement('div');
                 tabContainer.id = 'jwt-validator-tabs';
@@ -54,36 +56,36 @@ define([], function() {
                 document.getElementById('jwt-validator-container').appendChild(tabContainer);
 
                 // Create tab navigation container
-                var tabNavigation = document.createElement('div');
+                tabNavigation = document.createElement('div');
                 tabNavigation.className = 'custom-tabs-navigation';
                 tabNavigation.id = 'custom-tabs-navigation';
                 tabContainer.appendChild(tabNavigation);
+            } else {
+                // Get tab navigation container
+                tabNavigation = document.getElementById('custom-tabs-navigation');
             }
 
-            // Get tab navigation container
-            var tabNavigation = document.getElementById('custom-tabs-navigation');
-
             // Create tab navigation item
-            var tabNavItem = document.createElement('div');
+            const tabNavItem = document.createElement('div');
             tabNavItem.className = 'tab-nav-item';
             tabNavItem.setAttribute('data-tab-target', id.replace(/\./g, '-'));
             tabNavItem.textContent = id.split('.').pop().replace(/-/g, ' ');
             tabNavigation.appendChild(tabNavItem);
 
             // Create the tab
-            var tab = document.createElement('div');
+            const tab = document.createElement('div');
             tab.id = 'tab-' + id.replace(/\./g, '-');
             tab.className = 'custom-tab';
             tab.setAttribute('data-tab-id', id);
 
             // Create tab header (hidden but kept for compatibility)
-            var tabHeader = document.createElement('div');
+            const tabHeader = document.createElement('div');
             tabHeader.className = 'tab-header';
             tabHeader.textContent = id.split('.').pop().replace(/-/g, ' ');
             tab.appendChild(tabHeader);
 
             // Create tab content
-            var tabContent = document.createElement('div');
+            const tabContent = document.createElement('div');
             tabContent.className = 'tab-content';
             tab.appendChild(tabContent);
 
@@ -94,7 +96,7 @@ define([], function() {
             if (component && typeof component.init === 'function') {
                 try {
                     console.log('[DEBUG_LOG] Attempting to initialize tab:', id);
-                    component.init(tabContent, {}, function() {
+                    component.init(tabContent, {}, function () {
                         console.log('[DEBUG_LOG] Tab initialized:', id);
                     });
                 } catch (e) {
@@ -103,16 +105,16 @@ define([], function() {
             }
 
             // Add click handler for tab navigation
-            tabNavItem.addEventListener('click', function() {
+            tabNavItem.addEventListener('click', function () {
                 // Remove active class from all tabs and nav items
-                var allTabs = document.querySelectorAll('.custom-tab');
-                var allNavItems = document.querySelectorAll('.tab-nav-item');
+                const allTabs = document.querySelectorAll('.custom-tab');
+                const allNavItems = document.querySelectorAll('.tab-nav-item');
 
-                allTabs.forEach(function(t) {
+                allTabs.forEach(function (t) {
                     t.classList.remove('active');
                 });
 
-                allNavItems.forEach(function(ni) {
+                allNavItems.forEach(function (ni) {
                     ni.classList.remove('active');
                 });
 
@@ -130,10 +132,10 @@ define([], function() {
 
         /**
          * Gets the i18n resources.
-         * 
+         *
          * @return {object} The i18n resources
          */
-        getI18n: function() {
+        getI18n: function () {
             return {
                 // Property help texts
                 'property.token.location.help': 'Defines where to extract the token from.',
@@ -168,11 +170,11 @@ define([], function() {
 
         /**
          * Escapes HTML special characters.
-         * 
+         *
          * @param {string} text - The text to escape
          * @return {string} The escaped text
          */
-        escapeHtml: function(text) {
+        escapeHtml: function (text) {
             return text
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
@@ -183,11 +185,11 @@ define([], function() {
 
         /**
          * Formats a date.
-         * 
+         *
          * @param {Date} date - The date to format
          * @return {string} The formatted date
          */
-        formatDateTime: function(date) {
+        formatDateTime: function (date) {
             if (!date) {
                 return '';
             }

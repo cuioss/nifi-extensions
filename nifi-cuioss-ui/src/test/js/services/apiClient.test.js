@@ -213,7 +213,7 @@ describe('apiClient', () => {
             const promise = apiClient.getProcessorProperties(processorId);
             expect(promise).toBeDefined();
             expect(typeof promise.then).toBe('function'); // Check if it's a thenable
-             // Verify $.ajax was called (basic check)
+            // Verify $.ajax was called (basic check)
             expect($.ajax).toHaveBeenCalledWith(expect.objectContaining({
                 type: 'GET',
                 url: '../nifi-api/processors/' + processorId,
@@ -229,7 +229,7 @@ describe('apiClient', () => {
             const processorId = 'test-processor-id';
             const properties = { someProp: 'someValue' };
             expect(apiClient.updateProcessorProperties).toBeDefined();
-             // For now, just check it can be called.
+            // For now, just check it can be called.
             // A full test requires more intricate $.ajax mocking for the chain.
             // We can at least verify the first AJAX call (the GET).
             $.ajax.mockReturnValue($.Deferred().resolve({ revision: { version: 1 } }).promise()); // Mock the GET

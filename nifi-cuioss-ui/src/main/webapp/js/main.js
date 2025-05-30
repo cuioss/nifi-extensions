@@ -66,7 +66,7 @@ define([
                 });
             } else {
                 // Fallback to title attribute if tooltip function is not available
-                $('.help-tooltip').each(function() {
+                $('.help-tooltip').each(function () {
                     const title = $(this).attr('title');
                     if (title) {
                         $(this).attr('data-original-title', title);
@@ -108,7 +108,7 @@ define([
     /**
      * Hides the loading indicator and shows the UI components.
      */
-    const hideLoadingIndicator = function() {
+    const hideLoadingIndicator = function () {
         console.log('[DEBUG_LOG] Hiding loading indicator');
         $('#loading-indicator').hide();
         $('#jwt-validator-tabs').show();
@@ -117,7 +117,7 @@ define([
     /**
      * Updates UI text with translations from the current language.
      */
-    const updateUITranslations = function() {
+    const updateUITranslations = function () {
         // Update loading indicator text
         $('#loading-indicator').text(i18n.translate('jwt.validator.loading'));
 
@@ -141,7 +141,7 @@ define([
                 hideLoadingIndicator();
             } else {
                 // Wait for NiFi to be fully initialized
-                $(document).on('nfCanvasInitialized', function() {
+                $(document).on('nfCanvasInitialized', function () {
                     registerCustomUiComponents();
                     // Hide loading indicator and show UI components
                     hideLoadingIndicator();
@@ -159,10 +159,10 @@ define([
                 hideLoadingIndicator();
 
                 // Add event listener to track when the processor dialog opens
-                $(document).on('dialogOpen', function(event, dialogContent) {
+                $(document).on('dialogOpen', function (event, dialogContent) {
                     if ($(dialogContent).hasClass('processor-dialog')) {
                         // Use setTimeout to allow the dialog to fully render
-                        setTimeout(function() {
+                        setTimeout(function () {
                             const processorType = $('.processor-type', dialogContent).text();
 
                             if (processorType.includes('MultiIssuerJWTTokenAuthenticator')) {
@@ -173,11 +173,10 @@ define([
                         }, 500);
                     }
                 });
-
             });
 
             // Add a delayed check to ensure loading indicator is hidden
-            setTimeout(function() {
+            setTimeout(function () {
                 // Ensure loading indicator is hidden
                 hideLoadingIndicator();
                 // Ensure translations are applied

@@ -113,9 +113,9 @@ describe('formatters', () => {
         });
 
         it('should handle JWT with invalid JSON in parts and warn', () => {
-            const header = btoa("not-json");
-            const payload = btoa("also-not-json");
-            const signature = "signature";
+            const header = btoa('not-json');
+            const payload = btoa('also-not-json');
+            const signature = 'signature';
             const token = `${header}.${payload}.${signature}`;
 
             const result = formatters.formatJwtToken(token);
@@ -127,7 +127,7 @@ describe('formatters', () => {
         });
 
         it('should handle JWT with non-base64 parts and warn', () => {
-            const token = `not.base64.atall`;
+            const token = 'not.base64.atall';
             const result = formatters.formatJwtToken(token);
 
             expect(result.header).toContain('Unable to decode header');
