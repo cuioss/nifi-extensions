@@ -34,11 +34,10 @@ describe('jwksValidator', () => {
             // Execute
             jwksValidator.init(element, propertyValue, 'server', callback);
 
-            // Verify that the init function was called with the expected arguments
-            expect(jwksValidator.init).toHaveBeenCalledWith(element, propertyValue, 'server', callback);
-
             // Verify that the callback was called
             expect(callback).toHaveBeenCalled();
+            // No longer expecting jwksValidator.init to be a spy, so removed that check.
+            // We are testing the effects of init, not that init itself (as a spy) was called.
         });
 
         it('should initialize the component with file type', () => {
@@ -49,11 +48,9 @@ describe('jwksValidator', () => {
             const filePath = '/path/to/jwks.json';
             jwksValidator.init(element, filePath, 'file', callback);
 
-            // Verify that the init function was called with the expected arguments
-            expect(jwksValidator.init).toHaveBeenCalledWith(element, filePath, 'file', callback);
-
             // Verify that the callback was called
             expect(callback).toHaveBeenCalled();
+            // No longer expecting jwksValidator.init to be a spy
         });
 
         it('should initialize the component with memory type', () => {
@@ -64,11 +61,9 @@ describe('jwksValidator', () => {
             const jwksContent = '{"keys":[]}';
             jwksValidator.init(element, jwksContent, 'memory', callback);
 
-            // Verify that the init function was called with the expected arguments
-            expect(jwksValidator.init).toHaveBeenCalledWith(element, jwksContent, 'memory', callback);
-
             // Verify that the callback was called
             expect(callback).toHaveBeenCalled();
+            // No longer expecting jwksValidator.init to be a spy
         });
 
         it('should use i18n for initialization', () => {
@@ -81,8 +76,9 @@ describe('jwksValidator', () => {
             // Verify that the i18n function was called
             expect(nfCommon.getI18n).toHaveBeenCalled();
 
-            // Verify that the init function was called with the expected arguments
-            expect(jwksValidator.init).toHaveBeenCalledWith(element, propertyValue, 'server', callback);
+            // The init function was called above, this test now primarily verifies getI18n was used.
+            // We can also verify the callback was called as an effect of init.
+            expect(callback).toHaveBeenCalled();
         });
 
         it('should return an object with validate, getValue, and setValue methods', () => {
@@ -112,11 +108,9 @@ describe('jwksValidator', () => {
             // Initialize the component
             jwksValidator.init(element, propertyValue, 'server', callback);
 
-            // Verify that the init function was called with the expected arguments
-            expect(jwksValidator.init).toHaveBeenCalledWith(element, propertyValue, 'server', callback);
-
             // Verify that the callback was called with an object that has the expected properties
             expect(callback).toHaveBeenCalled();
+            // No longer expecting jwksValidator.init to be a spy
             expect(callback.mock.calls[0][0]).toHaveProperty('validate');
             expect(callback.mock.calls[0][0]).toHaveProperty('getValue');
             expect(callback.mock.calls[0][0]).toHaveProperty('setValue');
@@ -134,11 +128,9 @@ describe('jwksValidator', () => {
             const filePath = '/path/to/jwks.json';
             jwksValidator.init(element, filePath, 'file', callback);
 
-            // Verify that the init function was called with the expected arguments
-            expect(jwksValidator.init).toHaveBeenCalledWith(element, filePath, 'file', callback);
-
             // Verify that the callback was called with an object that has the expected properties
             expect(callback).toHaveBeenCalled();
+            // No longer expecting jwksValidator.init to be a spy
             expect(callback.mock.calls[0][0]).toHaveProperty('validate');
             expect(callback.mock.calls[0][0]).toHaveProperty('getValue');
             expect(callback.mock.calls[0][0]).toHaveProperty('setValue');
@@ -156,11 +148,9 @@ describe('jwksValidator', () => {
             const jwksContent = '{"keys":[]}';
             jwksValidator.init(element, jwksContent, 'memory', callback);
 
-            // Verify that the init function was called with the expected arguments
-            expect(jwksValidator.init).toHaveBeenCalledWith(element, jwksContent, 'memory', callback);
-
             // Verify that the callback was called with an object that has the expected properties
             expect(callback).toHaveBeenCalled();
+            // No longer expecting jwksValidator.init to be a spy
             expect(callback.mock.calls[0][0]).toHaveProperty('validate');
             expect(callback.mock.calls[0][0]).toHaveProperty('getValue');
             expect(callback.mock.calls[0][0]).toHaveProperty('setValue');
@@ -177,11 +167,9 @@ describe('jwksValidator', () => {
             // Initialize the component
             jwksValidator.init(element, propertyValue, 'invalid', callback);
 
-            // Verify that the init function was called with the expected arguments
-            expect(jwksValidator.init).toHaveBeenCalledWith(element, propertyValue, 'invalid', callback);
-
             // Verify that the callback was called with an object that has the expected properties
             expect(callback).toHaveBeenCalled();
+            // No longer expecting jwksValidator.init to be a spy
             expect(callback.mock.calls[0][0]).toHaveProperty('validate');
             expect(callback.mock.calls[0][0]).toHaveProperty('getValue');
             expect(callback.mock.calls[0][0]).toHaveProperty('setValue');
@@ -195,11 +183,9 @@ describe('jwksValidator', () => {
             // Initialize the component
             jwksValidator.init(element, propertyValue, 'server', callback);
 
-            // Verify that the init function was called with the expected arguments
-            expect(jwksValidator.init).toHaveBeenCalledWith(element, propertyValue, 'server', callback);
-
             // Verify that the callback was called with an object that has the expected properties
             expect(callback).toHaveBeenCalled();
+            // No longer expecting jwksValidator.init to be a spy
             expect(callback.mock.calls[0][0]).toHaveProperty('validate');
             expect(callback.mock.calls[0][0]).toHaveProperty('getValue');
             expect(callback.mock.calls[0][0]).toHaveProperty('setValue');
@@ -213,11 +199,9 @@ describe('jwksValidator', () => {
             // Initialize the component
             jwksValidator.init(element, propertyValue, 'server', callback);
 
-            // Verify that the init function was called with the expected arguments
-            expect(jwksValidator.init).toHaveBeenCalledWith(element, propertyValue, 'server', callback);
-
             // Verify that the callback was called with an object that has the expected properties
             expect(callback).toHaveBeenCalled();
+            // No longer expecting jwksValidator.init to be a spy
             expect(callback.mock.calls[0][0]).toHaveProperty('validate');
             expect(callback.mock.calls[0][0]).toHaveProperty('getValue');
             expect(callback.mock.calls[0][0]).toHaveProperty('setValue');
@@ -231,11 +215,9 @@ describe('jwksValidator', () => {
             // Initialize the component
             jwksValidator.init(element, propertyValue, 'server', callback);
 
-            // Verify that the init function was called with the expected arguments
-            expect(jwksValidator.init).toHaveBeenCalledWith(element, propertyValue, 'server', callback);
-
             // Verify that the callback was called with an object that has the expected properties
             expect(callback).toHaveBeenCalled();
+            // No longer expecting jwksValidator.init to be a spy
             expect(callback.mock.calls[0][0]).toHaveProperty('validate');
             expect(callback.mock.calls[0][0]).toHaveProperty('getValue');
             expect(callback.mock.calls[0][0]).toHaveProperty('setValue');
@@ -249,11 +231,9 @@ describe('jwksValidator', () => {
             // Initialize the component
             jwksValidator.init(element, propertyValue, 'server', callback);
 
-            // Verify that the init function was called with the expected arguments
-            expect(jwksValidator.init).toHaveBeenCalledWith(element, propertyValue, 'server', callback);
-
             // Verify that the callback was called with an object that has the expected properties
             expect(callback).toHaveBeenCalled();
+            // No longer expecting jwksValidator.init to be a spy
             expect(callback.mock.calls[0][0]).toHaveProperty('validate');
             expect(callback.mock.calls[0][0]).toHaveProperty('getValue');
             expect(callback.mock.calls[0][0]).toHaveProperty('setValue');

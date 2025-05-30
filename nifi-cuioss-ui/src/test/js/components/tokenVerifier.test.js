@@ -27,7 +27,7 @@ describe('tokenVerifier', () => {
     describe('init', () => {
         it('should initialize the component', () => {
             // Execute
-            tokenVerifier.init(element, callback);
+            tokenVerifier.init(element, null, null, callback); // Corrected signature
 
             // Verify
             expect(callback).toHaveBeenCalled();
@@ -40,7 +40,7 @@ describe('tokenVerifier', () => {
 
         it('should use i18n for labels and button text', () => {
             // Execute
-            tokenVerifier.init(element, callback);
+            tokenVerifier.init(element, null, null, callback); // Corrected signature
 
             // Verify
             expect(nfCommon.getI18n).toHaveBeenCalled();
@@ -58,7 +58,7 @@ describe('tokenVerifier', () => {
 
         it('should return an object with validate method', () => {
             // Execute
-            tokenVerifier.init(element, callback);
+            tokenVerifier.init(element, null, null, callback); // Corrected signature
 
             // Get the callback argument
             const callbackArg = callback.mock.calls[0][0];
@@ -79,13 +79,11 @@ describe('tokenVerifier', () => {
             expect(tokenVerifier.init).toBeDefined();
 
             // Initialize the component
-            tokenVerifier.init(element, callback);
-
-            // Verify that the init function was called with the expected arguments
-            expect(tokenVerifier.init).toHaveBeenCalledWith(element, callback);
+            tokenVerifier.init(element, null, null, callback); // Corrected signature
 
             // Verify that the callback was called with an object that has a validate method
             expect(callback).toHaveBeenCalled();
+            // Removed assertion on tokenVerifier.init as it's the actual function now
             expect(callback.mock.calls[0][0]).toHaveProperty('validate');
             expect(typeof callback.mock.calls[0][0].validate).toBe('function');
 
@@ -98,13 +96,11 @@ describe('tokenVerifier', () => {
             // let's simplify this test to just verify the basic functionality
 
             // Initialize the component
-            tokenVerifier.init(element, callback);
-
-            // Verify that the init function was called with the expected arguments
-            expect(tokenVerifier.init).toHaveBeenCalledWith(element, callback);
+            tokenVerifier.init(element, null, null, callback); // Corrected signature
 
             // Verify that the callback was called with an object that has a validate method
             expect(callback).toHaveBeenCalled();
+            // Removed assertion on tokenVerifier.init
             expect(callback.mock.calls[0][0]).toHaveProperty('validate');
 
             // Verify that the ajax method is defined
@@ -116,13 +112,11 @@ describe('tokenVerifier', () => {
             // let's simplify this test to just verify the basic functionality
 
             // Initialize the component
-            tokenVerifier.init(element, callback);
-
-            // Verify that the init function was called with the expected arguments
-            expect(tokenVerifier.init).toHaveBeenCalledWith(element, callback);
+            tokenVerifier.init(element, null, null, callback); // Corrected signature
 
             // Verify that the callback was called with an object that has a validate method
             expect(callback).toHaveBeenCalled();
+            // Removed assertion on tokenVerifier.init
             expect(callback.mock.calls[0][0]).toHaveProperty('validate');
         });
 
@@ -131,13 +125,11 @@ describe('tokenVerifier', () => {
             // let's simplify this test to just verify the basic functionality
 
             // Initialize the component
-            tokenVerifier.init(element, callback);
-
-            // Verify that the init function was called with the expected arguments
-            expect(tokenVerifier.init).toHaveBeenCalledWith(element, callback);
+            tokenVerifier.init(element, null, null, callback); // Corrected signature
 
             // Verify that the callback was called with an object that has a validate method
             expect(callback).toHaveBeenCalled();
+            // Removed assertion on tokenVerifier.init
             expect(callback.mock.calls[0][0]).toHaveProperty('validate');
 
             // Verify that the ajax method is defined
@@ -149,13 +141,11 @@ describe('tokenVerifier', () => {
             // let's simplify this test to just verify the basic functionality
 
             // Initialize the component
-            tokenVerifier.init(element, callback);
-
-            // Verify that the init function was called with the expected arguments
-            expect(tokenVerifier.init).toHaveBeenCalledWith(element, callback);
+            tokenVerifier.init(element, null, null, callback); // Corrected signature
 
             // Verify that the callback was called with an object that has a validate method
             expect(callback).toHaveBeenCalled();
+            // Removed assertion on tokenVerifier.init
             expect(callback.mock.calls[0][0]).toHaveProperty('validate');
 
             // Verify that the ajax method is defined
@@ -167,13 +157,11 @@ describe('tokenVerifier', () => {
             // let's simplify this test to just verify the basic functionality
 
             // Initialize the component
-            tokenVerifier.init(element, callback);
-
-            // Verify that the init function was called with the expected arguments
-            expect(tokenVerifier.init).toHaveBeenCalledWith(element, callback);
+            tokenVerifier.init(element, null, null, callback); // Corrected signature
 
             // Verify that the callback was called with an object that has a validate method
             expect(callback).toHaveBeenCalled();
+            // Removed assertion on tokenVerifier.init
             expect(callback.mock.calls[0][0]).toHaveProperty('validate');
 
             // Verify that the ajax method is defined

@@ -18,6 +18,7 @@
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "babel-jest": "^29.7.0",
+    "babel-plugin-transform-amd-to-commonjs": "^1.6.0",
     "eslint": "^8.56.0",
     "eslint-plugin-jest": "^27.6.0",
     "eslint-plugin-jquery": "^1.5.1",
@@ -38,11 +39,7 @@
     ],
     "moduleNameMapper": {
       "^jquery$": "<rootDir>/src/test/js/mocks/jquery.js",
-      "^nf.Common$": "<rootDir>/src/test/js/mocks/nf-common.js",
-      "^components/jwksValidator$": "<rootDir>/src/test/js/mocks/jwksValidator.js",
-      "^components/tokenVerifier$": "<rootDir>/src/test/js/mocks/tokenVerifier.js",
-      "^services/apiClient$": "<rootDir>/src/test/js/mocks/apiClient.js",
-      "^utils/formatters$": "<rootDir>/src/test/js/mocks/formatters.js"
+      "^nf.Common$": "<rootDir>/src/test/js/mocks/nf-common.js"
     },
     "setupFilesAfterEnv": [
       "<rootDir>/src/test/js/setup.js"

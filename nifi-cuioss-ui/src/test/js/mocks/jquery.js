@@ -192,25 +192,81 @@ function createJQueryObject(elements) {
     return obj;
 }
 
-// Mock AJAX functionality
-$.ajax = jest.fn().mockImplementation(options => {
-    const mockPromise = {
-        done: function (callback) {
-            this.doneCallback = callback;
+// Add Deferred functionality
+$.Deferred = function() {
+    let _doneCallbacks = [];
+    let _failCallbacks = [];
+    let _isResolved = false;
+    let _isRejected = false;
+    let _resolvedArgs;
+    let _rejectedArgs;
+
+    const deferred = {
+        resolve: function(...args) {
+            if (!_isResolved && !_isRejected) {
+                _isResolved = true;
+                _resolvedArgs = args;
+                _doneCallbacks.forEach(cb => cb(...args));
+            }
             return this;
         },
-        fail: function (callback) {
-            this.failCallback = callback;
+        reject: function(...args) {
+            if (!_isResolved && !_isRejected) {
+                _isRejected = true;
+                _rejectedArgs = args;
+                _failCallbacks.forEach(cb => cb(...args));
+            }
             return this;
+        },
+        promise: function() {
+            const promiseObj = {
+                done: function(cb) {
+                    if (_isResolved) {
+                        // Execute immediately if already resolved
+                        cb(..._resolvedArgs);
+                    } else if (!_isRejected) {
+                        _doneCallbacks.push(cb);
+                    }
+                    return promiseObj; // Return the promise itself for chaining
+                },
+                fail: function(cb) {
+                    if (_isRejected) {
+                        // Execute immediately if already rejected
+                        cb(..._rejectedArgs);
+                    } else if (!_isResolved) {
+                        _failCallbacks.push(cb);
+                    }
+                    return promiseObj; // Return the promise itself for chaining
+                },
+                then: function(doneCb, failCb) { // Basic then
+                    if (doneCb) this.done(doneCb);
+                    if (failCb) this.fail(failCb);
+                    return promiseObj; // Return the promise itself for chaining
+                },
+                always: function(cb) {
+                    this.done(cb);
+                    this.fail(cb);
+                    return promiseObj; // Return the promise itself for chaining
+                }
+            };
+            return promiseObj;
         }
     };
+    return deferred;
+};
 
-    // Store the options for later inspection in tests
-    mockPromise.options = options;
-
-    // Return the mock promise
-    return mockPromise;
+// Mock AJAX functionality
+// This default implementation can be simple, as tests will override behavior
+// using mockReturnValue or mockImplementationOnce.
+// It should return a basic promise-like structure if not overridden.
+$.ajax = jest.fn().mockImplementation(options => {
+    const dfd = $.Deferred();
+    // In a real test environment, you might want to simulate async behavior
+    // or allow tests to explicitly resolve/reject this default promise.
+    // For now, returning a pending promise is fine as tests should mock specific responses.
+    return dfd.promise();
 });
+
 
 // Add ready function
 $.ready = jest.fn();
