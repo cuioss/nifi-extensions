@@ -28,6 +28,7 @@
     <properties>
         <enforcer.skip>true</enforcer.skip>
         <sonar.javascript.lcov.reportPaths>target/coverage/lcov.info</sonar.javascript.lcov.reportPaths>
+        <sonar.coverage.exclusions>**/nf-common-mock.js</sonar.coverage.exclusions>
     </properties>
 
     <dependencies>

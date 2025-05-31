@@ -79,7 +79,8 @@
       "lcov"
     ],
     "coveragePathIgnorePatterns": [
-      "<rootDir>/src/test/js/mocks/"
+      "<rootDir>/src/test/js/mocks/",
+      "<rootDir>/src/main/webapp/js/nf-common-mock.js"
     ],
     "coverageThreshold": {
       "global": {
