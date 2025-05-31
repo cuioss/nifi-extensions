@@ -2,6 +2,16 @@
  * JWKS Validation Button UI component.
  */
 define(['jquery', 'nf.Common'], function ($, nfCommon) {
+    let isLocalhostOverride = null; // Allows tests to control localhost behavior
+
+    // Helper function to determine if running in a localhost-like environment
+    const getIsLocalhost = () => {
+        if (isLocalhostOverride !== null) {
+            return isLocalhostOverride;
+        }
+        return window.location.href.indexOf('localhost') !== -1 || window.location.href.indexOf('127.0.0.1') !== -1;
+    };
+
     return {
         /**
          * Initialize the custom UI.
@@ -77,7 +87,7 @@ define(['jquery', 'nf.Common'], function ($, nfCommon) {
                             console.error('[DEBUG_LOG] JWKS validation error:', status, error);
 
                             // In standalone testing mode, show a simulated success response
-                            if (window.location.href.indexOf('localhost') !== -1 || window.location.href.indexOf('127.0.0.1') !== -1) {
+                            if (getIsLocalhost()) {
                                 console.log('[DEBUG_LOG] Using simulated response for standalone testing');
                                 resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
                                                    (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
@@ -95,11 +105,32 @@ define(['jquery', 'nf.Common'], function ($, nfCommon) {
                         console.error('[DEBUG_LOG] Exception in JWKS validation:', e);
 
                         // In standalone testing mode, show a simulated success response
-                        resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
-                                           (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
-                                           (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
-                                           ' (3 ' + (i18n['processor.jwt.keysFound'] || 'keys found') +
-                                           ') <em>(Simulated response)</em>');
+                        // For exceptions, always show simulated success if getIsLocalhost() is true,
+                        // otherwise, it will fall through to the generic error message for non-localhost.
+                        // The original code didn't have a specific 'else' for non-localhost exceptions for DOM.
+                        // It would show the loading message and then the console would show the error.
+                        // For consistency with .fail(), we can add an 'else' here if desired,
+                        // but for now, matching original logic where non-localhost exception shows what was last in DOM.
+                        // To ensure non-localhost exceptions also get a clear error message in UI:
+                        if (getIsLocalhost()) {
+                            resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
+                                               (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
+                                               (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
+                                               ' (3 ' + (i18n['processor.jwt.keysFound'] || 'keys found') +
+                                               ') <em>(Simulated response)</em>');
+                        } else {
+                            // Display a generic error message for non-localhost exceptions in the UI
+                            resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' +
+                                               (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
+                                               (i18n['processor.jwt.validationError'] || 'Validation error') + ': ' +
+                                               (e.message || 'Exception occurred'));
+                        }
+                        // Original simpler logic for catch, which mostly relied on console for non-localhost:
+                        // resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
+                        //                   (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
+                        //                   (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
+                        //                   ' (3 ' + (i18n['processor.jwt.keysFound'] || 'keys found') +
+                        //                   ') <em>(Simulated response)</em>');
                     }
                 });
 
@@ -119,6 +150,10 @@ define(['jquery', 'nf.Common'], function ($, nfCommon) {
                     jwks_type: jwks_type
                 });
             }
+        },
+        // Function for testing purposes only to control the isLocalhost behavior
+        __setIsLocalhostForTesting: function (value) {
+            isLocalhostOverride = (value === null) ? null : !!value;
         }
     };
 });
