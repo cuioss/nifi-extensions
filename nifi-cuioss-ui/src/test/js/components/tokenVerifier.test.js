@@ -6,6 +6,7 @@ const $ = require('jquery');
 const nfCommon = require('nf.Common');
 
 describe('tokenVerifier', () => {
+    jest.useFakeTimers();
     let $element;
     let callback;
     let consoleErrorSpy, consoleLogSpy;
@@ -54,6 +55,11 @@ describe('tokenVerifier', () => {
         consoleErrorSpy.mockRestore();
         consoleLogSpy.mockRestore();
         // No need to restore nfCommon.getI18n if its behavior is reset in beforeEach.
+        // jest.clearAllTimers(); // Might be useful if timers leak between tests
+    });
+
+    afterAll(() => {
+        jest.useRealTimers();
     });
 
     describe('Initialization', () => {
