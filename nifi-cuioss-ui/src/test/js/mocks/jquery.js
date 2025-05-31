@@ -58,22 +58,92 @@ $.fn = $.prototype = {
         return this;
     },
 
+    eq: function (index) {
+        if (index < 0) {
+            index = this.elements.length + index; // Handle negative indices
+        }
+        if (index >= 0 && index < this.elements.length) {
+            return createJQueryObject([this.elements[index]]);
+        }
+        return createJQueryObject([]); // Return empty jQuery object if index is out of bounds
+    },
+
+    empty: function () {
+        this.elements.forEach(element => {
+            while (element.firstChild) {
+                element.removeChild(element.firstChild);
+            }
+        });
+        return this;
+    },
+
+    first: function () {
+        if (this.elements.length === 0) {
+            return createJQueryObject([]);
+        }
+        return createJQueryObject([this.elements[0]]);
+    },
+
+    last: function () {
+        if (this.elements.length === 0) {
+            return createJQueryObject([]);
+        }
+        return createJQueryObject([this.elements[this.elements.length - 1]]);
+    },
+
+    after: function (content) {
+        this.elements.forEach(element => {
+            if (element.parentNode) {
+                // Create a temporary container for the new content
+                const tempContainer = document.createElement('div');
+                if (typeof content === 'string') {
+                    // Create elements from HTML string and insert them
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = content;
+                    // Insert each new node after the current element, in order
+                    Array.from(tempDiv.childNodes).reverse().forEach(newNode => {
+                        element.parentNode.insertBefore(newNode, element.nextSibling);
+                    });
+                } else if (content.jquery) { // content is a jQuery object
+                    // Insert elements in reverse order to maintain overall order when using insertBefore with nextSibling
+                    content.elements.slice().reverse().forEach(contentEl => {
+                        element.parentNode.insertBefore(contentEl, element.nextSibling); // Insert actual element
+                    });
+                } else if (content instanceof Element) { // content is a raw DOM element
+                    element.parentNode.insertBefore(content, element.nextSibling); // Insert actual element
+                }
+            }
+        });
+        return this;
+    },
+
     append: function (content) {
+        // Logic for append is already corrected to not clone DOM elements/jQuery objects.
         if (typeof content === 'string') {
             this.elements.forEach(element => {
-                element.innerHTML += content;
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = content;
+                Array.from(tempDiv.childNodes).forEach(childNode => { // Renamed to avoid confusion
+                    element.appendChild(childNode);
+                });
             });
         } else if (content.jquery) {
-            this.elements.forEach(element => {
+            this.elements.forEach(parentElement => {
                 content.elements.forEach(contentElement => {
-                    element.appendChild(contentElement.cloneNode(true));
+                    parentElement.appendChild(contentElement);
                 });
             });
         } else if (content instanceof Element) {
-            this.elements.forEach(element => {
-                element.appendChild(content.cloneNode(true));
+            this.elements.forEach(parentElement => {
+                parentElement.appendChild(content);
             });
         }
+        return this;
+    },
+
+    appendTo: function (target) {
+        const targetElements = $(target); // Use the same $ function to get target elements
+        targetElements.append(this); // 'this' is the jQuery object being appended
         return this;
     },
 
@@ -99,10 +169,18 @@ $.fn = $.prototype = {
 
     val: function (value) {
         if (value === undefined) {
-            return this.elements.length > 0 ? this.elements[0].value : '';
+            // For input elements, prefer property .value, otherwise fall back to attribute
+            if (this.elements.length > 0 && (this.elements[0].nodeName === 'INPUT' || this.elements[0].nodeName === 'TEXTAREA' || this.elements[0].nodeName === 'SELECT')) {
+                return this.elements[0].value;
+            }
+            return this.elements.length > 0 ? this.elements[0].getAttribute('value') : '';
         }
         this.elements.forEach(element => {
-            element.value = value;
+            // For input elements, prefer property .value
+            if (element.nodeName === 'INPUT' || element.nodeName === 'TEXTAREA' || element.nodeName === 'SELECT') {
+                element.value = value;
+            }
+            element.setAttribute('value', value); // Also set the attribute for querySelectorAll
         });
         return this;
     },
@@ -119,16 +197,36 @@ $.fn = $.prototype = {
 
     on: function (event, handler) {
         this.elements.forEach(element => {
-            element.addEventListener(event, handler);
+            if (!element._eventHandlers) {
+                element._eventHandlers = {};
+            }
+            if (!element._eventHandlers[event]) {
+                element._eventHandlers[event] = [];
+            }
+            element._eventHandlers[event].push(handler);
         });
         return this;
     },
 
     off: function (event, handler) {
         this.elements.forEach(element => {
-            element.removeEventListener(event, handler);
+            if (element._eventHandlers && element._eventHandlers[event]) {
+                if (handler) {
+                    element._eventHandlers[event] = element._eventHandlers[event].filter(h => h !== handler);
+                } else {
+                    delete element._eventHandlers[event]; // Remove all handlers for this event if no specific handler given
+                }
+            }
         });
         return this;
+    },
+
+    hasClass: function (className) {
+        if (!this.elements.length) {
+            return false;
+        }
+        // Check the first element, similar to jQuery's behavior
+        return this.elements[0].classList.contains(className);
     },
 
     addClass: function (className) {
@@ -160,6 +258,42 @@ $.fn = $.prototype = {
         return this;
     },
 
+    closest: function (selector) {
+        const closestElements = new Set(); // Use a Set to avoid duplicates
+        this.elements.forEach(element => {
+            let current = element;
+            while (current && current !== document) {
+                if (current.matches && current.matches(selector)) {
+                    closestElements.add(current);
+                    break; // Found the closest for this element
+                }
+                current = current.parentNode;
+            }
+        });
+        return createJQueryObject(Array.from(closestElements));
+    },
+
+    next: function () {
+        const nextElements = new Set();
+        this.elements.forEach(element => {
+            if (element.nextElementSibling) {
+                nextElements.add(element.nextElementSibling);
+            }
+        });
+        return createJQueryObject(Array.from(nextElements));
+    },
+
+    remove: function () {
+        this.elements.forEach(element => {
+            if (element.parentNode) {
+                element.parentNode.removeChild(element);
+            }
+        });
+        return this; // Return empty set or this? jQuery typically returns the removed elements.
+        // For mock simplicity, returning 'this' (which is now empty) is okay.
+        // Or createJQueryObject([])
+    },
+
     find: function (selector) {
         const foundElements = [];
         this.elements.forEach(element => {
@@ -171,8 +305,20 @@ $.fn = $.prototype = {
 
     trigger: function (eventType) {
         this.elements.forEach(element => {
-            const event = new Event(eventType);
-            element.dispatchEvent(event);
+            if (element._eventHandlers && element._eventHandlers[eventType]) {
+                // Create a basic mock event object (jQuery event objects are more complex)
+                const mockEvent = {
+                    type: eventType,
+                    target: element,
+                    currentTarget: element,
+                    preventDefault: jest.fn(),
+                    stopPropagation: jest.fn()
+                };
+                element._eventHandlers[eventType].forEach(handler => {
+                    // In jQuery, 'this' inside the handler is the element
+                    handler.call(element); // Simplified: removed mockEvent for now
+                });
+            }
         });
         return this;
     }
@@ -270,8 +416,19 @@ $.ajax = jest.fn().mockImplementation(options => {
 
 // Add ready function
 $.ready = jest.fn();
-$(document).ready = function (callback) {
-    $.ready(callback);
+$(document).ready = jest.fn(function (callback) { // Make this a jest.fn for tracking
+    if (typeof callback === 'function') {
+        callback(); // Simple immediate execution for tests
+    }
+    return $(document); // Return a jQuery object wrapping document
+});
+
+// Ensure $.fn.ready is also available for chaining on jQuery objects if needed,
+// though $(document).ready is the most common pattern.
+$.fn.ready = function (callback) {
+    if (typeof callback === 'function') {
+        callback();
+    }
     return this;
 };
 

@@ -25,6 +25,24 @@ describe('formatters', () => {
     });
 
     describe('formatDate', () => {
+        it('should return the original string and warn if toLocaleString throws an error', () => {
+            const validDateString = '2023-03-10T10:00:00Z';
+            const originalToLocaleString = Date.prototype.toLocaleString;
+            const mockError = new Error('toLocaleString failed!');
+
+            Date.prototype.toLocaleString = jest.fn().mockImplementation(() => {
+                throw mockError;
+            });
+
+            const result = formatters.formatDate(validDateString);
+
+            expect(result).toBe(validDateString);
+            expect(consoleWarnSpy).toHaveBeenCalledWith(`Error formatting date: ${validDateString}`, mockError);
+
+            // Restore original method
+            Date.prototype.toLocaleString = originalToLocaleString;
+        });
+
         it('should format a valid date string', () => {
             const date = '2023-01-15T12:30:45Z';
             const result = formatters.formatDate(date);
@@ -92,6 +110,39 @@ describe('formatters', () => {
     });
 
     describe('formatJwtToken', () => {
+        it('should handle non-string token input (outer catch) and warn', () => {
+            const token = 12345; // Not a string, will cause token.split(".") to fail
+            const result = formatters.formatJwtToken(token);
+
+            expect(result.header).toBe('Error: Invalid token format');
+            expect(result.payload).toBe('Error: Could not parse token');
+            expect(result.signature).toBe('');
+            expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Error parsing JWT token: token.split is not a function'));
+        });
+
+        it('should handle JWT with only two parts (e.g., header.payload)', () => {
+            const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+            const payload = btoa(JSON.stringify({ sub: 'user123', name: 'Test User' }));
+            const token = `${header}.${payload}`; // Missing signature part
+
+            const result = formatters.formatJwtToken(token);
+
+            // Expecting successful decode of header and payload, empty signature
+            const parsedHeader = JSON.parse(result.header);
+            const parsedPayload = JSON.parse(result.payload);
+
+            expect(parsedHeader).toEqual({ alg: 'HS256', typ: 'JWT' });
+            expect(parsedPayload).toEqual({ sub: 'user123', name: 'Test User' });
+            expect(result.signature).toBe(''); // parts[2] will be undefined, then ""
+
+            // This scenario should NOT trigger the "Error decoding JWT token parts"
+            // because atob("") and JSON.parse("") on an empty signature part might not be an issue,
+            // or the logic handles it gracefully.
+            // The original code has `const signature = parts[2] || '';`
+            // The inner try...catch only decodes header and payload.
+            expect(consoleWarnSpy).not.toHaveBeenCalledWith(expect.stringContaining('Error decoding JWT token parts'));
+        });
+
         it('should format a valid JWT token', () => {
             const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
             const payload = btoa(JSON.stringify({ sub: 'user123', name: 'Test User' }));

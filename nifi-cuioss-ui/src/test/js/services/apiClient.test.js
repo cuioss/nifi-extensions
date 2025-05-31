@@ -15,13 +15,8 @@ describe('apiClient', () => {
         // Reset mocks for each test
         successCallback = jest.fn();
         errorCallback = jest.fn();
-        if ($.ajax && $.ajax.mockClear) { // Ensure $.ajax is a mock and has mockClear
-            $.ajax.mockClear();
-        } else {
-            // If $.ajax is not a Jest mock function from our setup, this indicates a potential issue
-            // with how jQuery is being mocked. For now, we'll proceed assuming it is.
-            // console.warn("$.ajax is not a Jest mock function or does not have mockClear.");
-        }
+        // Ensure $.ajax is a Jest mock function for each test and returns a mock promise
+        $.ajax = jest.fn().mockReturnValue($.Deferred().resolve({}).promise());
     });
 
     describe('validateJwksUrl', () => {
@@ -239,6 +234,91 @@ describe('apiClient', () => {
                 url: '../nifi-api/processors/' + processorId
             }));
             // The second call (PUT) would ideally be checked too, but requires more setup.
+        });
+    });
+
+    describe('handleApiError specific scenarios (via validateJwksUrl)', () => {
+        const jwksUrl = 'https://example.com/.well-known/jwks.json';
+
+        it('should use response.message when present in JSON response', () => {
+            const mockXhr = { responseText: '{"message":"Error from message field"}', statusText: 'Error' };
+            $.ajax.mockReturnValue($.Deferred().reject(mockXhr).promise());
+            apiClient.validateJwksUrl(jwksUrl, successCallback, errorCallback);
+            expect(errorCallback).toHaveBeenCalledWith('Error from message field', mockXhr);
+        });
+
+        it('should use response.error when message is not present but error is, in JSON response', () => {
+            // This test ensures the 'else if (response.error)' path is taken.
+            const mockXhr = { responseText: '{"error":"Error from error field"}', statusText: 'Error' };
+            $.ajax.mockReturnValue($.Deferred().reject(mockXhr).promise());
+            apiClient.validateJwksUrl(jwksUrl, successCallback, errorCallback);
+            expect(errorCallback).toHaveBeenCalledWith('Error from error field', mockXhr);
+        });
+
+        it('should use responseText when response is not JSON', () => {
+            const mockXhr = { responseText: 'Plain text error', statusText: 'Server Error' };
+            $.ajax.mockReturnValue($.Deferred().reject(mockXhr).promise());
+            apiClient.validateJwksUrl(jwksUrl, successCallback, errorCallback);
+            // Expectation: JSON.parse fails, errorMessage becomes 'Plain text error'
+            expect(errorCallback).toHaveBeenCalledWith('Plain text error', mockXhr);
+        });
+
+        it('should use statusText when responseText is empty and not JSON', () => {
+            const mockXhr = { responseText: '', statusText: 'Custom Server Error Status' };
+            $.ajax.mockReturnValue($.Deferred().reject(mockXhr).promise());
+            apiClient.validateJwksUrl(jwksUrl, successCallback, errorCallback);
+            // Expectation: JSON.parse fails (on empty string), errorMessage becomes 'Custom Server Error Status'
+            expect(errorCallback).toHaveBeenCalledWith('Custom Server Error Status', mockXhr);
+        });
+
+        it('should use statusText when responseText is undefined and not JSON', () => {
+            const mockXhr = { responseText: undefined, statusText: 'Undefined Response Test' };
+            $.ajax.mockReturnValue($.Deferred().reject(mockXhr).promise());
+            apiClient.validateJwksUrl(jwksUrl, successCallback, errorCallback);
+            // Expectation: JSON.parse(undefined) fails, errorMessage becomes 'Undefined Response Test'
+            expect(errorCallback).toHaveBeenCalledWith('Undefined Response Test', mockXhr);
+        });
+
+        it('should use statusText when responseText is an empty string', () => {
+            // This specifically targets the case where responseText is "" (empty string)
+            // and statusText should be used.
+            const mockXhr = { responseText: '', statusText: 'Empty Response Error' };
+            $.ajax.mockReturnValue($.Deferred().reject(mockXhr).promise());
+            apiClient.validateJwksUrl(jwksUrl, successCallback, errorCallback);
+            // Expectation: JSON.parse on empty string likely fails or returns null,
+            // leading to the fallback to statusText.
+            expect(errorCallback).toHaveBeenCalledWith('Empty Response Error', mockXhr);
+        });
+
+        it('should use xhr.statusText if JSON parsing is successful but no message/error fields in response', () => {
+            // responseText is valid JSON, but doesn't contain .message or .error
+            const mockXhr = { responseText: '{"details":"no specific error field"}', statusText: 'Fallback Status' };
+            $.ajax.mockReturnValue($.Deferred().reject(mockXhr).promise());
+            apiClient.validateJwksUrl(jwksUrl, successCallback, errorCallback);
+            // Expectation: JSON.parse succeeds, but no .message or .error, so it uses xhr.statusText
+            expect(errorCallback).toHaveBeenCalledWith('Fallback Status', mockXhr);
+        });
+
+        it('should not throw if errorCallback is not a function when JSON parse fails', () => {
+            const mockXhr = { responseText: 'Another plain text error', statusText: 'Server Error' };
+            $.ajax.mockReturnValue($.Deferred().reject(mockXhr).promise());
+            // Call with errorCallback as null
+            expect(() => {
+                apiClient.validateJwksUrl(jwksUrl, successCallback, null);
+            }).not.toThrow();
+            // Also ensure successCallback wasn't called
+            expect(successCallback).not.toHaveBeenCalled();
+        });
+
+        it('should not throw if errorCallback is not a function when JSON parse succeeds', () => {
+            const mockXhr = { responseText: '{"error":"valid json error"}', statusText: 'Server Error' };
+            $.ajax.mockReturnValue($.Deferred().reject(mockXhr).promise());
+            // Call with errorCallback as undefined
+            expect(() => {
+                apiClient.validateJwksUrl(jwksUrl, successCallback, undefined);
+            }).not.toThrow();
+            // Also ensure successCallback wasn't called
+            expect(successCallback).not.toHaveBeenCalled();
         });
     });
 });

@@ -3,6 +3,7 @@
  */
 
 /* Token Verification Interface */
+
 .token-verification-container {
     margin: 15px 0;
     padding: 10px;
@@ -27,7 +28,7 @@
 .verify-token-button {
     padding: 8px 15px;
     background-color: var(--primary-color);
-    color: white;
+    color: #fff;
     border: none;
     border-radius: 3px;
     cursor: pointer;

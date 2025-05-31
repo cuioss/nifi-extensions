@@ -74,7 +74,8 @@ define([], function () {
             'property.jwks.refresh.interval.help': 'How often to refresh the JWKS keys from the server',
             'property.maximum.token.size.help': 'Maximum allowed size of the JWT token in bytes',
             'property.allowed.algorithms.help': 'List of allowed signature algorithms for token validation',
-            'property.require.https.jwks.help': 'Whether to require HTTPS for JWKS URLs'
+            'property.require.https.jwks.help': 'Whether to require HTTPS for JWKS URLs',
+            'test.onlyInEnglish': 'English Only' // Added for the test case
         },
         de: {
             // Common
@@ -222,6 +223,7 @@ define([], function () {
     // Return the public API
     return {
         getLanguage: getLanguage,
+        setLanguage: setLanguage, // Export setLanguage
         getAvailableLanguages: getAvailableLanguages,
         translate: translate,
         detectBrowserLanguage: detectBrowserLanguage

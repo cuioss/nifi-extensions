@@ -22,14 +22,29 @@ define(['jquery', 'nf.Common'], function ($, _nfCommon) {
         try {
             // Try to parse error response as JSON
             const response = JSON.parse(xhr.responseText);
-            errorMessage = response.message || response.error || xhr.statusText;
+            if (response.message) {
+                errorMessage = response.message;
+            } else if (response.error) {
+                errorMessage = response.error;
+            } else {
+                errorMessage = xhr.statusText;
+            }
         } catch (e) {
             // If parsing fails, use the raw response text or status text
-            errorMessage = xhr.responseText || xhr.statusText;
+            if (xhr.responseText) {
+                errorMessage = xhr.responseText;
+            } else {
+                errorMessage = xhr.statusText;
+            }
         }
 
         // Error would be logged here in development mode
         // console.error('API Error:', errorMessage, xhr);
+
+        // Replace generic "Internal Server Error" with a more user-friendly message
+        if (errorMessage === 'Internal Server Error') {
+            errorMessage = 'An unexpected error has occurred. Please try again later or contact support if the issue persists.';
+        }
 
         // Call the error callback with the error message
         if (typeof errorCallback === 'function') {

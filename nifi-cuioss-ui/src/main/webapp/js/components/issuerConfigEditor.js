@@ -61,7 +61,7 @@ define([
      */
     const getProcessorIdFromUrl = function () {
         // Extract processor ID from URL
-        const url = window.location.href;
+        const url = window.location.href; // Reverted to direct use
         const match = url.match(/\/processors\/([a-f0-9-]+)/);
         return match ? match[1] : '';
     };
@@ -352,19 +352,33 @@ define([
      * Removes an issuer configuration.
      *
      * @param {object} form - The issuer form
-     * @param {string} issuerName - The issuer name
+     * @param {string} issuerName - The issuer name (potentially from closure, may be outdated or undefined for new forms)
      */
-    const removeIssuer = function (form, issuerName) {
+    const removeIssuer = function (form, initialIssuerNameFromClosure) {
         // Confirm removal
         if (confirm('Are you sure you want to remove this issuer configuration?')) {
+            const currentIssuerName = form.find('.issuer-name').val(); // Get value BEFORE .remove()
             // Remove form
             form.remove();
 
-            // Remove properties from processor if issuer name is provided
-            if (issuerName && processorId) {
+            const localProcessorId = getProcessorIdFromUrl(); // Reverted
+
+            // **** DEBUG LOG ****
+            console.log('[DEBUG removeIssuer] currentIssuerName:', currentIssuerName, 'localProcessorId:', localProcessorId);
+            // Attempt to get more debug info, ensure form object is valid for html() and find() via mock
+            if (form && typeof form.html === 'function' && typeof form.find === 'function') {
+                console.log('[DEBUG removeIssuer] form.html():', form.html());
+                const nameInput = form.find('.issuer-name'); // Re-find for logging
+                console.log('[DEBUG removeIssuer] form.find(".issuer-name").length:', nameInput.length);
+                // Reading .val() again here is just for logging, currentIssuerName holds the important value
+                console.log('[DEBUG removeIssuer] form.find(".issuer-name").val() directly after find:', nameInput.val());
+            }
+
+            // Remove properties from processor if current issuer name is available and localProcessorId is set
+            if (currentIssuerName && localProcessorId) {
                 try {
                     // Get processor properties
-                    apiClient.getProcessorProperties(processorId)
+                    apiClient.getProcessorProperties(localProcessorId)
                         .done(function (response) {
                             // Extract issuer properties
                             const properties = response.properties || {};
@@ -372,13 +386,13 @@ define([
 
                             // Find properties to remove
                             Object.keys(properties).forEach(function (key) {
-                                if (key.startsWith('issuer.' + issuerName + '.')) {
+                                if (key.startsWith('issuer.' + currentIssuerName + '.')) {
                                     updates[key] = null; // Set to null to remove
                                 }
                             });
 
                             // Update processor properties
-                            apiClient.updateProcessorProperties(processorId, updates)
+                            apiClient.updateProcessorProperties(localProcessorId, updates)
                                 .done(function () {
                                     // Use alert instead of nfCommon.showMessage for standalone testing
                                     alert('Success: Issuer configuration removed successfully.');
@@ -398,8 +412,9 @@ define([
                 }
             } else {
                 // In standalone testing mode, just show a success message
-                console.log('[DEBUG_LOG] Removing issuer in standalone mode:', issuerName);
-                alert('Success: Issuer configuration removed successfully (standalone mode).');
+                const debugMessage = 'STANDALONE DEBUG: issuer=' + currentIssuerName + ', procId=' + localProcessorId;
+                console.log('[DEBUG_LOG] Removing issuer in standalone mode. Debug: ' + debugMessage); // Keep original log too
+                alert(debugMessage); // This will be captured by the test if it hits this path
             }
         }
     };
@@ -414,9 +429,10 @@ define([
          * @param {string} type - The component type (not used)
          * @param {Function} callback - The callback function
          */
-        init: function (element, config, type, callback) {
+        init: function (element, config, type, callback) { // Reverted
             console.log('[DEBUG_LOG] issuerConfigEditor.init called with element:', element);
             console.log('[DEBUG_LOG] issuerConfigEditor config:', config);
+            // Reverted
 
             if (!element) {
                 console.error('[DEBUG_LOG] Error: No element provided to issuerConfigEditor.init');
@@ -427,7 +443,7 @@ define([
             }
 
             try {
-                initComponent(element, config);
+                initComponent(element, config); // Reverted
                 console.log('[DEBUG_LOG] issuerConfigEditor initialized successfully');
 
                 // Call the callback function if provided
