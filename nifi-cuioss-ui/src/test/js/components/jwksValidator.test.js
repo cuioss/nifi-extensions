@@ -3,8 +3,6 @@
  */
 import $ from 'jquery'; // This top-level $ is fine for general jQuery functions if not re-mocked per test.
 // For consistency and clarity, especially with $.ajax mocks, tests will use local$ from beforeEach.
-import * as jwksValidatorModule from 'components/jwksValidator'; // Actual module (transformed from AMD)
-import nfCommonModule from 'nf.Common'; // Actual module or its mock (transformed from AMD)
 
 const mockI18n = {
     'processor.jwt.testConnection': 'Test Connection',

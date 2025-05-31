@@ -2,8 +2,6 @@
  * Tests for the Token Verifier component.
  */
 import $ from 'jquery'; // Top-level import for jQuery
-import * as tokenVerifierModule from 'components/tokenVerifier'; // Alias for the module under test
-import nfCommonModule from 'nf.Common'; // Alias for nfCommon
 
 const mockI18n = {
     'processor.jwt.tokenInput': 'JWT Token Input Label',

@@ -1,8 +1,8 @@
 /**
  * Tests for the formatters utility functions.
  */
-const formatters = require('utils/formatters');
-const $ = require('jquery'); // Required for sanitizeHtml if it uses $
+import * as formatters from 'utils/formatters';
+import $ from 'jquery'; // Required for sanitizeHtml if it uses $
 
 // btoa and atob are needed for formatJwtToken tests
 global.btoa = (str) => Buffer.from(str, 'binary').toString('base64');
