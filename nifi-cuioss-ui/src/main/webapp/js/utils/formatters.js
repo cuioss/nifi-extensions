@@ -1,17 +1,18 @@
 /**
  * Utility functions for formatting data in the UI.
  */
-define(['jquery', 'nf.Common'], function ($, _nfCommon) {
-    'use strict';
+import $ from 'jquery';
+import _nfCommon from 'nf.Common'; // Path might need adjustment based on how nf.Common is provided/mocked
 
-    return {
-        /**
-         * Formats a date string in a human-readable format.
-         *
-         * @param {string} dateString - The date string to format
-         * @return {string} The formatted date string
-         */
-        formatDate: function (dateString) {
+'use strict';
+
+/**
+ * Formats a date string in a human-readable format.
+ *
+ * @param {string} dateString - The date string to format
+ * @return {string} The formatted date string
+ */
+export const formatDate = function (dateString) {
             if (!dateString) {
                 return '';
             }
@@ -35,15 +36,15 @@ define(['jquery', 'nf.Common'], function ($, _nfCommon) {
                 console.warn(`Error formatting date: ${dateString}`, e);
                 return dateString;
             }
-        },
+        };
 
-        /**
-         * Formats a duration in seconds to a human-readable format.
-         *
-         * @param {number} seconds - The duration in seconds
-         * @return {string} The formatted duration string
-         */
-        formatDuration: function (seconds) {
+/**
+ * Formats a duration in seconds to a human-readable format.
+ *
+ * @param {number} seconds - The duration in seconds
+ * @return {string} The formatted duration string
+ */
+export const formatDuration = function (seconds) {
             if (seconds === undefined || seconds === null) {
                 return '';
             }
@@ -75,15 +76,15 @@ define(['jquery', 'nf.Common'], function ($, _nfCommon) {
             }
 
             return parts.join(', ');
-        },
+        };
 
-        /**
-         * Formats a JWT token for display by splitting it into header, payload, and signature parts.
-         *
-         * @param {string} token - The JWT token to format
-         * @return {Object} An object with header, payload, and signature properties
-         */
-        formatJwtToken: function (token) {
+/**
+ * Formats a JWT token for display by splitting it into header, payload, and signature parts.
+ *
+ * @param {string} token - The JWT token to format
+ * @return {Object} An object with header, payload, and signature properties
+ */
+export const formatJwtToken = function (token) {
             if (!token) {
                 return { header: '', payload: '', signature: '' };
             }
@@ -125,35 +126,33 @@ define(['jquery', 'nf.Common'], function ($, _nfCommon) {
                     signature: ''
                 };
             }
-        },
+        };
 
-        /**
-         * Formats a number with commas as thousands separators.
-         *
-         * @param {number} number - The number to format
-         * @return {string} The formatted number string
-         */
-        formatNumber: function (number) {
+/**
+ * Formats a number with commas as thousands separators.
+ *
+ * @param {number} number - The number to format
+ * @return {string} The formatted number string
+ */
+export const formatNumber = function (number) {
             if (number === undefined || number === null) {
                 return '';
             }
 
             // Use Intl.NumberFormat instead of regex for better performance and localization
             return new Intl.NumberFormat('en-US').format(number);
-        },
+        };
 
-        /**
-         * Sanitizes HTML to prevent XSS attacks.
-         *
-         * @param {string} html - The HTML string to sanitize
-         * @return {string} The sanitized HTML string
-         */
-        sanitizeHtml: function (html) {
+/**
+ * Sanitizes HTML to prevent XSS attacks.
+ *
+ * @param {string} html - The HTML string to sanitize
+ * @return {string} The sanitized HTML string
+ */
+export const sanitizeHtml = function (html) {
             if (!html) {
                 return '';
             }
 
             return $('<div>').text(html).html();
-        }
-    };
-});
+        };

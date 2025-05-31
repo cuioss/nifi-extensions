@@ -2,10 +2,9 @@
  * Internationalization (i18n) module for MultiIssuerJWTTokenAuthenticator UI.
  * Provides localization support using the browser's language setting.
  */
-define([], function () {
-    'use strict';
+'use strict';
 
-    // Default language
+// Default language
     let currentLanguage = 'en';
 
     // Available languages
@@ -147,7 +146,7 @@ define([], function () {
      *
      * @returns {string} The detected language code (e.g., 'en' from 'en-US')
      */
-    const detectBrowserLanguage = function () {
+export const detectBrowserLanguage = function () {
         // Get browser language
         const browserLanguage = navigator.language || navigator.userLanguage || 'en';
 
@@ -164,7 +163,7 @@ define([], function () {
      * @param {string} langCode - The language code to set
      * @returns {boolean} True if the language was set successfully, false otherwise
      */
-    const setLanguage = function (langCode) {
+export const setLanguage = function (langCode) {
         if (availableLanguages.includes(langCode)) {
             currentLanguage = langCode;
             return true;
@@ -177,7 +176,7 @@ define([], function () {
      *
      * @returns {string} The current language code
      */
-    const getLanguage = function () {
+export const getLanguage = function () {
         return currentLanguage;
     };
 
@@ -186,7 +185,7 @@ define([], function () {
      *
      * @returns {Array} The list of available language codes
      */
-    const getAvailableLanguages = function () {
+export const getAvailableLanguages = function () {
         return availableLanguages;
     };
 
@@ -197,7 +196,7 @@ define([], function () {
      * @param {Object} [params] - Optional parameters to substitute in the translation
      * @returns {string} The translated text
      */
-    const translate = function (key, params) {
+export const translate = function (key, params) {
         // Get the translation for the current language
         const translation = translations[currentLanguage] && translations[currentLanguage][key];
 
@@ -220,12 +219,4 @@ define([], function () {
     // Initialize the language based on browser preference
     setLanguage(detectBrowserLanguage());
 
-    // Return the public API
-    return {
-        getLanguage: getLanguage,
-        setLanguage: setLanguage, // Export setLanguage
-        getAvailableLanguages: getAvailableLanguages,
-        translate: translate,
-        detectBrowserLanguage: detectBrowserLanguage
-    };
-});
+// No explicit default export, only named exports.

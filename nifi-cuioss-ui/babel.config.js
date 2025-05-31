@@ -3,6 +3,6 @@ module.exports = {
         ['@babel/preset-env', { modules: false }] // Important: modules: false
     ],
     plugins: [
-        'babel-plugin-transform-amd-to-commonjs' // Add this plugin
+        // 'babel-plugin-transform-amd-to-commonjs' // Removed this plugin
     ]
 };

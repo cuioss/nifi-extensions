@@ -2,10 +2,12 @@
  * API Client for JWT Token Validation.
  * Provides methods for interacting with the backend REST API.
  */
-define(['jquery', 'nf.Common'], function ($, _nfCommon) {
-    'use strict';
+import $ from 'jquery';
+import _nfCommon from 'nf.Common'; // Path might need adjustment
 
-    /**
+'use strict';
+
+/**
      * Base URL for API endpoints.
      */
     const BASE_URL = '../nifi-api/processors/jwt';
@@ -52,15 +54,14 @@ define(['jquery', 'nf.Common'], function ($, _nfCommon) {
         }
     };
 
-    return {
-        /**
-         * Validates a JWKS URL.
-         *
-         * @param {string} jwksUrl - The JWKS URL to validate
-         * @param {Function} successCallback - The callback to invoke on success
-         * @param {Function} errorCallback - The callback to invoke on error
-         */
-        validateJwksUrl: function (jwksUrl, successCallback, errorCallback) {
+/**
+ * Validates a JWKS URL.
+ *
+ * @param {string} jwksUrl - The JWKS URL to validate
+ * @param {Function} successCallback - The callback to invoke on success
+ * @param {Function} errorCallback - The callback to invoke on error
+ */
+export const validateJwksUrl = function (jwksUrl, successCallback, errorCallback) {
             $.ajax({
                 type: 'POST',
                 url: BASE_URL + '/validate-jwks-url',
@@ -72,16 +73,16 @@ define(['jquery', 'nf.Common'], function ($, _nfCommon) {
             }).fail(function (xhr) {
                 handleApiError(xhr, errorCallback);
             });
-        },
+        };
 
-        /**
-         * Validates a JWKS file.
-         *
-         * @param {string} filePath - The path to the JWKS file
-         * @param {Function} successCallback - The callback to invoke on success
-         * @param {Function} errorCallback - The callback to invoke on error
-         */
-        validateJwksFile: function (filePath, successCallback, errorCallback) {
+/**
+ * Validates a JWKS file.
+ *
+ * @param {string} filePath - The path to the JWKS file
+ * @param {Function} successCallback - The callback to invoke on success
+ * @param {Function} errorCallback - The callback to invoke on error
+ */
+export const validateJwksFile = function (filePath, successCallback, errorCallback) {
             $.ajax({
                 type: 'POST',
                 url: BASE_URL + '/validate-jwks-file',
@@ -93,16 +94,16 @@ define(['jquery', 'nf.Common'], function ($, _nfCommon) {
             }).fail(function (xhr) {
                 handleApiError(xhr, errorCallback);
             });
-        },
+        };
 
-        /**
-         * Validates JWKS content.
-         *
-         * @param {string} jwksContent - The JWKS content to validate
-         * @param {Function} successCallback - The callback to invoke on success
-         * @param {Function} errorCallback - The callback to invoke on error
-         */
-        validateJwksContent: function (jwksContent, successCallback, errorCallback) {
+/**
+ * Validates JWKS content.
+ *
+ * @param {string} jwksContent - The JWKS content to validate
+ * @param {Function} successCallback - The callback to invoke on success
+ * @param {Function} errorCallback - The callback to invoke on error
+ */
+export const validateJwksContent = function (jwksContent, successCallback, errorCallback) {
             $.ajax({
                 type: 'POST',
                 url: BASE_URL + '/validate-jwks-content',
@@ -114,16 +115,16 @@ define(['jquery', 'nf.Common'], function ($, _nfCommon) {
             }).fail(function (xhr) {
                 handleApiError(xhr, errorCallback);
             });
-        },
+        };
 
-        /**
-         * Verifies a JWT token.
-         *
-         * @param {string} token - The JWT token to verify
-         * @param {Function} successCallback - The callback to invoke on success
-         * @param {Function} errorCallback - The callback to invoke on error
-         */
-        verifyToken: function (token, successCallback, errorCallback) {
+/**
+ * Verifies a JWT token.
+ *
+ * @param {string} token - The JWT token to verify
+ * @param {Function} successCallback - The callback to invoke on success
+ * @param {Function} errorCallback - The callback to invoke on error
+ */
+export const verifyToken = function (token, successCallback, errorCallback) {
             $.ajax({
                 type: 'POST',
                 url: BASE_URL + '/verify-token',
@@ -135,15 +136,15 @@ define(['jquery', 'nf.Common'], function ($, _nfCommon) {
             }).fail(function (xhr) {
                 handleApiError(xhr, errorCallback);
             });
-        },
+        };
 
-        /**
-         * Gets security metrics.
-         *
-         * @param {Function} successCallback - The callback to invoke on success
-         * @param {Function} errorCallback - The callback to invoke on error
-         */
-        getSecurityMetrics: function (successCallback, errorCallback) {
+/**
+ * Gets security metrics.
+ *
+ * @param {Function} successCallback - The callback to invoke on success
+ * @param {Function} errorCallback - The callback to invoke on error
+ */
+export const getSecurityMetrics = function (successCallback, errorCallback) {
             $.ajax({
                 type: 'GET',
                 url: BASE_URL + '/metrics',
@@ -153,30 +154,30 @@ define(['jquery', 'nf.Common'], function ($, _nfCommon) {
             }).fail(function (xhr) {
                 handleApiError(xhr, errorCallback);
             });
-        },
+        };
 
-        /**
-         * Gets processor properties.
-         *
-         * @param {string} processorId - The ID of the processor
-         * @return {jQuery.Deferred} A jQuery Deferred object for the request
-         */
-        getProcessorProperties: function (processorId) {
+/**
+ * Gets processor properties.
+ *
+ * @param {string} processorId - The ID of the processor
+ * @return {jQuery.Deferred} A jQuery Deferred object for the request
+ */
+export const getProcessorProperties = function (processorId) {
             return $.ajax({
                 type: 'GET',
                 url: '../nifi-api/processors/' + processorId,
                 dataType: 'json'
             });
-        },
+        };
 
-        /**
-         * Updates processor properties.
-         *
-         * @param {string} processorId - The ID of the processor
-         * @param {Object} properties - The properties to update
-         * @return {jQuery.Deferred} A jQuery Deferred object for the request
-         */
-        updateProcessorProperties: function (processorId, properties) {
+/**
+ * Updates processor properties.
+ *
+ * @param {string} processorId - The ID of the processor
+ * @param {Object} properties - The properties to update
+ * @return {jQuery.Deferred} A jQuery Deferred object for the request
+ */
+export const updateProcessorProperties = function (processorId, properties) {
             // First, get the current processor configuration
             return $.ajax({
                 type: 'GET',
@@ -201,6 +202,4 @@ define(['jquery', 'nf.Common'], function ($, _nfCommon) {
                     dataType: 'json'
                 });
             });
-        }
-    };
-});
+        };

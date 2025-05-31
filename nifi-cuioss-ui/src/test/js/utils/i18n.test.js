@@ -1,6 +1,7 @@
 /**
  * Tests for the i18n (internationalization) utility functions.
  */
+import * as i18n from '../../../main/webapp/js/utils/i18n.js';
 
 describe('i18n', () => {
     let originalNavigatorLanguage;
@@ -38,8 +39,8 @@ describe('i18n', () => {
                 get: jest.fn().mockReturnValue('de-DE'), // userLanguage is German
                 configurable: true
             });
-            jest.resetModules();
-            const i18n = require('utils/i18n');
+            // jest.resetModules(); // Reset before require - Now import is at top
+            // const i18n = require('utils/i18n'); // Replaced by import
             expect(i18n.detectBrowserLanguage()).toBe('de');
             // Clean up userLanguage property
             delete navigator.userLanguage;
@@ -66,8 +67,8 @@ describe('i18n', () => {
                 });
             }
 
-            jest.resetModules();
-            const i18n = require('utils/i18n');
+            // jest.resetModules(); // Reset before require
+            // const i18n = require('utils/i18n'); // Replaced by import
             expect(i18n.detectBrowserLanguage()).toBe('en');
             // Clean up userLanguage property if we added it
             if (!userLanguageDescriptor) delete navigator.userLanguage;
@@ -78,9 +79,9 @@ describe('i18n', () => {
                 get: jest.fn().mockReturnValue('en-US'),
                 configurable: true
             });
-            jest.resetModules(); // Reset before require
-            const freshI18n = require('utils/i18n');
-            expect(freshI18n.detectBrowserLanguage()).toBe('en');
+            // jest.resetModules(); // Reset before require
+            // const freshI18n = require('utils/i18n'); // Replaced by import
+            expect(i18n.detectBrowserLanguage()).toBe('en');
         });
 
         it('should detect German language', () => {
@@ -88,9 +89,9 @@ describe('i18n', () => {
                 get: jest.fn().mockReturnValue('de-DE'),
                 configurable: true
             });
-            jest.resetModules(); // Reset before require
-            const freshI18n = require('utils/i18n');
-            expect(freshI18n.detectBrowserLanguage()).toBe('de');
+            // jest.resetModules(); // Reset before require
+            // const freshI18n = require('utils/i18n'); // Replaced by import
+            expect(i18n.detectBrowserLanguage()).toBe('de');
         });
 
         it('should default to English for unsupported languages', () => {
@@ -98,33 +99,38 @@ describe('i18n', () => {
                 get: jest.fn().mockReturnValue('fr-FR'),
                 configurable: true
             });
-            jest.resetModules(); // Reset before require
-            const freshI18n = require('utils/i18n');
-            expect(freshI18n.detectBrowserLanguage()).toBe('en');
+            // jest.resetModules(); // Reset before require
+            // const freshI18n = require('utils/i18n'); // Replaced by import
+            expect(i18n.detectBrowserLanguage()).toBe('en');
         });
     });
 
     describe('setLanguage', () => {
         it('should allow setting a supported language', () => {
-            jest.resetModules(); // Start fresh
-            const i18n = require('utils/i18n'); // Initial language will be based on navigator
+            // jest.resetModules(); // Start fresh
+            // const i18n = require('utils/i18n'); // Initial language will be based on navigator // Replaced by import
 
             // Ensure initial state is English for predictability in this test part
             Object.defineProperty(navigator, 'language', { get: jest.fn().mockReturnValue('en-US'), configurable: true });
-            jest.resetModules();
-            const i18nForSet = require('utils/i18n');
-            expect(i18nForSet.getLanguage()).toBe('en'); // Pre-condition
+            // jest.resetModules(); // Replaced by import
+            // const i18nForSet = require('utils/i18n'); // Replaced by import
+            // For ES modules, the module is imported once. We need to manually call setLanguage
+            // if the test relies on the module's auto-detection running again.
+            // Or, ensure tests explicitly set the language state they need.
+            i18n.setLanguage(i18n.detectBrowserLanguage()); // Re-initialize based on current navigator mock
+            expect(i18n.getLanguage()).toBe('en'); // Pre-condition
 
-            const result = i18nForSet.setLanguage('de');
+            const result = i18n.setLanguage('de');
             expect(result).toBe(true);
-            expect(i18nForSet.getLanguage()).toBe('de');
+            expect(i18n.getLanguage()).toBe('de');
         });
 
         it('should not set an unsupported language and return false', () => {
-            jest.resetModules(); // Start fresh
+            // jest.resetModules(); // Start fresh
             Object.defineProperty(navigator, 'language', { get: jest.fn().mockReturnValue('en-US'), configurable: true });
-            jest.resetModules();
-            const i18n = require('utils/i18n');
+            // jest.resetModules(); // Replaced by import
+            // const i18n = require('utils/i18n'); // Replaced by import
+            i18n.setLanguage(i18n.detectBrowserLanguage()); // Re-initialize
             expect(i18n.getLanguage()).toBe('en'); // Pre-condition
 
             const result = i18n.setLanguage('fr'); // French is not supported
@@ -135,7 +141,8 @@ describe('i18n', () => {
 
     describe('getLanguage and getAvailableLanguages', () => {
         it('should return English as current language by default setup', () => {
-            const i18n = require('utils/i18n'); // Uses 'en-US' from beforeEach
+            // const i18n = require('utils/i18n'); // Uses 'en-US' from beforeEach // Replaced by import
+            i18n.setLanguage(i18n.detectBrowserLanguage()); // Re-initialize based on beforeEach navigator mock
             expect(i18n.getLanguage()).toBe('en');
         });
 
@@ -144,13 +151,14 @@ describe('i18n', () => {
                 get: jest.fn().mockReturnValue('de-DE'),
                 configurable: true
             });
-            jest.resetModules(); // Reset before require
-            const germanI18n = require('utils/i18n');
-            expect(germanI18n.getLanguage()).toBe('de');
+            // jest.resetModules(); // Reset before require // Replaced by import
+            // const germanI18n = require('utils/i18n'); // Replaced by import
+            i18n.setLanguage(i18n.detectBrowserLanguage()); // Re-initialize
+            expect(i18n.getLanguage()).toBe('de');
         });
 
         it('should return the list of available languages', () => {
-            const i18n = require('utils/i18n');
+            // const i18n = require('utils/i18n'); // Replaced by import
             const languages = i18n.getAvailableLanguages();
             expect(languages).toEqual(['en', 'de']);
         });
@@ -163,8 +171,9 @@ describe('i18n', () => {
                 get: jest.fn().mockReturnValue('de-DE'),
                 configurable: true
             });
-            jest.resetModules(); // Important to pick up the modified i18n.js and set German language
-            const i18n = require('utils/i18n');
+            // jest.resetModules(); // Important to pick up the modified i18n.js and set German language // Replaced by import
+            // const i18n = require('utils/i18n'); // Replaced by import
+            i18n.setLanguage(i18n.detectBrowserLanguage()); // Re-initialize
 
             expect(i18n.getLanguage()).toBe('de'); // Pre-condition: language is German
 
@@ -174,15 +183,16 @@ describe('i18n', () => {
 
         it('should translate keys to English when English is detected', () => {
             // Default beforeEach sets navigator to 'en-US'
-            jest.resetModules(); // Ensure it's reset if a previous test changed navigator
+            // jest.resetModules(); // Ensure it's reset if a previous test changed navigator // Replaced by import
             Object.defineProperty(navigator, 'language', { // Re-assert for clarity/safety
                 get: jest.fn().mockReturnValue('en-US'),
                 configurable: true
             });
-            const englishI18n = require('utils/i18n');
-            expect(englishI18n.translate('common.loading')).toBe('Loading...');
-            expect(englishI18n.translate('common.error')).toBe('Error');
-            expect(englishI18n.translate('common.success')).toBe('Success');
+            // const englishI18n = require('utils/i18n'); // Replaced by import
+            i18n.setLanguage(i18n.detectBrowserLanguage()); // Re-initialize
+            expect(i18n.translate('common.loading')).toBe('Loading...');
+            expect(i18n.translate('common.error')).toBe('Error');
+            expect(i18n.translate('common.success')).toBe('Success');
         });
 
         it('should translate keys to German when German is detected', () => {
@@ -190,23 +200,26 @@ describe('i18n', () => {
                 get: jest.fn().mockReturnValue('de-DE'),
                 configurable: true
             });
-            jest.resetModules(); // Reset before require
-            const germanI18n = require('utils/i18n');
-            expect(germanI18n.getLanguage()).toBe('de'); // Verify language was set
-            expect(germanI18n.translate('common.loading')).toBe('Wird geladen...');
-            expect(germanI18n.translate('common.error')).toBe('Fehler');
-            expect(germanI18n.translate('common.success')).toBe('Erfolg');
+            // jest.resetModules(); // Reset before require // Replaced by import
+            // const germanI18n = require('utils/i18n'); // Replaced by import
+            i18n.setLanguage(i18n.detectBrowserLanguage()); // Re-initialize
+            expect(i18n.getLanguage()).toBe('de'); // Verify language was set
+            expect(i18n.translate('common.loading')).toBe('Wird geladen...');
+            expect(i18n.translate('common.error')).toBe('Fehler');
+            expect(i18n.translate('common.success')).toBe('Erfolg');
         });
 
         it('should substitute parameters in translations', () => {
-            const i18n = require('utils/i18n'); // Default to English for this test
+            // const i18n = require('utils/i18n'); // Default to English for this test // Replaced by import
+            i18n.setLanguage('en'); // Ensure English for this test
             const params = { name: 'John', count: 5 };
             expect(i18n.translate('test.with.params.{name}.has.{count}', params))
                 .toBe('test.with.params.John.has.5');
         });
 
         it('should return the key if translation is not found in current or default language', () => {
-            const i18n = require('utils/i18n'); // Default to English
+            // const i18n = require('utils/i18n'); // Default to English // Replaced by import
+            i18n.setLanguage('en'); // Ensure English for this test
             const nonExistentKey = 'this.key.does.not.exist';
             expect(i18n.translate(nonExistentKey)).toBe(nonExistentKey);
         });
@@ -221,12 +234,13 @@ describe('i18n', () => {
                 get: jest.fn().mockReturnValue('de-DE'), // Set current lang to German
                 configurable: true
             });
-            jest.resetModules(); // Reset before require
-            const germanI18n = require('utils/i18n');
+            // jest.resetModules(); // Reset before require // Replaced by import
+            // const germanI18n = require('utils/i18n'); // Replaced by import
+            i18n.setLanguage(i18n.detectBrowserLanguage()); // Re-initialize
 
             // 'common.save' is 'Speichern' in German, 'Save' in English.
             // If German is correctly detected, it should be 'Speichern'.
-            expect(germanI18n.translate('common.save')).toBe('Speichern');
+            expect(i18n.translate('common.save')).toBe('Speichern');
         });
     });
 });

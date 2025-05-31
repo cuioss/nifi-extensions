@@ -3,15 +3,14 @@
  * This component provides a user-friendly interface for creating and managing
  * issuer configurations for the MultiIssuerJWTTokenAuthenticator processor.
  */
-define([
-    'jquery',
-    'nf.Common',
-    'services/apiClient',
-    'js/utils/formatters'
-], function ($, nfCommon, apiClient, formatters) {
-    'use strict';
+import $ from 'jquery';
+import nfCommon from 'nf.Common';
+import * as apiClient from '../services/apiClient.js';
+import * as formatters from '../utils/formatters.js';
 
-    // Get i18n resources from NiFi Common
+'use strict';
+
+// Get i18n resources from NiFi Common
     const i18n = nfCommon.getI18n() || {};
 
     // Component state
@@ -418,17 +417,15 @@ define([
         }
     };
 
-    // Return the component
-    return {
-        /**
-         * Initializes the component.
-         *
-         * @param {object} element - The DOM element
-         * @param {object} config - The component configuration
-         * @param {string} type - The component type (not used)
-         * @param {Function} callback - The callback function
-         */
-        init: function (element, config, type, callback, currentTestUrlFromArg) {
+/**
+ * Initializes the component.
+ *
+ * @param {object} element - The DOM element
+ * @param {object} config - The component configuration
+ * @param {string} type - The component type (not used)
+ * @param {Function} callback - The callback function
+ */
+export const init = function (element, config, type, callback, currentTestUrlFromArg) {
             processorId = ''; // Explicitly reset processorId at the start of every init call.
 
             console.log('[DEBUG_LOG] issuerConfigEditor.init called with element:', element);
@@ -457,6 +454,4 @@ define([
                     callback();
                 }
             }
-        }
-    };
-});
+        };

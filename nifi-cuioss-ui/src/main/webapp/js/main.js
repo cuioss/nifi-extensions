@@ -2,19 +2,18 @@
  * Main module for MultiIssuerJWTTokenAuthenticator UI components.
  * Provides functionality for custom UI components in NiFi.
  */
-define([
-    'jquery',
-    'nf.Common',
-    'components/tokenVerifier',
-    'components/issuerConfigEditor',
-    'services/apiClient',
-    'js/utils/formatters',
-    'js/utils/i18n'
-], function ($, nfCommon, tokenVerifier, issuerConfigEditor, _apiClient, _formatters, i18n) {
-    // jQuery UI is already loaded via script tag
-    'use strict';
+import $ from 'jquery';
+import nfCommon from 'nf.Common';
+import * as tokenVerifier from './components/tokenVerifier.js';
+import * as issuerConfigEditor from './components/issuerConfigEditor.js';
+import * as _apiClient from './services/apiClient.js'; // apiClient is not directly used in main.js
+import * as _formatters from './utils/formatters.js'; // formatters is not directly used in main.js
+import * as i18n from './utils/i18n.js';
 
-    // Global flag to track if components have been registered
+// jQuery UI is already loaded via script tag
+'use strict';
+
+// Global flag to track if components have been registered
     window.jwtComponentsRegistered = window.jwtComponentsRegistered || false;
 
     // Register custom UI components
@@ -130,12 +129,10 @@ define([
         $('.jwt-validator-title').text(i18n.translate('jwt.validator.title'));
     };
 
-    // Return the public API
-    return {
-        /**
-         * Initializes the custom UI components.
-         */
-        init: function () {
+/**
+ * Initializes the custom UI components.
+ */
+export const init = function () {
             // Update UI translations immediately
             updateUITranslations();
 
@@ -187,6 +184,4 @@ define([
                 // Ensure translations are applied
                 updateUITranslations();
             }, 3000);
-        }
-    };
-});
+        };

@@ -1,28 +1,31 @@
 /**
  * Token Verification Interface UI component.
  */
-define(['jquery', 'nf.Common'], function ($, nfCommon) {
-    let isLocalhostOverride = null; // Allows tests to control localhost behavior
+import $ from 'jquery';
+import nfCommon from 'nf.Common';
 
-    // Helper function to determine if running in a localhost-like environment
-    const getIsLocalhost = () => {
-        if (isLocalhostOverride !== null) {
-            return isLocalhostOverride;
-        }
-        // Default behavior: check window.location.href
-        return window.location.href.indexOf('localhost') !== -1 || window.location.href.indexOf('127.0.0.1') !== -1;
-    };
+'use strict';
 
-    return {
-        /**
-         * Initialize the custom UI.
-         *
-         * @param {object} element - The DOM element
-         * @param {object} config - The component configuration
-         * @param {string} type - The component type (not used)
-         * @param {Function} callback - The callback function
-         */
-        init: function (element, config, type, callback) {
+let isLocalhostOverride = null; // Allows tests to control localhost behavior
+
+// Helper function to determine if running in a localhost-like environment
+const getIsLocalhost = () => { // Stays module-scoped
+    if (isLocalhostOverride !== null) {
+        return isLocalhostOverride;
+    }
+    // Default behavior: check window.location.href
+    return window.location.href.indexOf('localhost') !== -1 || window.location.href.indexOf('127.0.0.1') !== -1;
+};
+
+/**
+ * Initialize the custom UI.
+ *
+ * @param {object} element - The DOM element
+ * @param {object} config - The component configuration
+ * @param {string} type - The component type (not used)
+ * @param {Function} callback - The callback function
+ */
+export const init = function (element, config, type, callback) {
             // Get i18n resources from NiFi Common
             const i18n = nfCommon.getI18n() || {};
 
@@ -182,9 +185,8 @@ define(['jquery', 'nf.Common'], function ($, nfCommon) {
                     validate: function () { return true; }
                 });
             }
-        },
-        __setIsLocalhostForTesting: function (value) {
-            isLocalhostOverride = (value === null) ? null : !!value;
-        }
-    };
-});
+        };
+
+export const __setIsLocalhostForTesting = function (value) {
+    isLocalhostOverride = (value === null) ? null : !!value;
+};
