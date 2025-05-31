@@ -42,23 +42,28 @@ define([
 
     /**
      * Registers help tooltips for properties.
+     * @param {jQuery} [contextElement] - Optional context within which to find elements.
      */
-    const registerHelpTooltips = function () {
-        // Add help tooltips to property labels
-        $('.property-label').each(function () {
-            const propertyName = $(this).text().trim();
+    const registerHelpTooltips = function (contextElement) {
+        const propertyLabels = contextElement ? $('.property-label', contextElement) : $('.property-label');
+        propertyLabels.each(function (idx, el) {
+            const $label = $(this); // or $(el)
+            const propertyName = $label.text().trim();
             const helpText = getHelpTextForProperty(propertyName);
 
             if (helpText) {
-                $(this).append('<span class="help-tooltip fa fa-question-circle" title="' + helpText + '"></span>');
+                // Restore the check for existing tooltips
+                if ($label.find('span.help-tooltip').length === 0) {
+                    $label.append('<span class="help-tooltip fa fa-question-circle" title="' + helpText + '"></span>');
+                }
             }
         });
 
         // Initialize tooltips
         try {
-            // Check if tooltip function exists
+            const tooltips = contextElement ? $('.help-tooltip', contextElement) : $('.help-tooltip');
             if ($.fn.tooltip) {
-                $('.help-tooltip').tooltip({
+                tooltips.tooltip({
                     position: {
                         my: 'left top+5',
                         at: 'left bottom'
@@ -66,7 +71,7 @@ define([
                 });
             } else {
                 // Fallback to title attribute if tooltip function is not available
-                $('.help-tooltip').each(function () {
+                tooltips.each(function () {
                     const title = $(this).attr('title');
                     if (title) {
                         $(this).attr('data-original-title', title);
@@ -166,9 +171,9 @@ define([
                             const processorType = $('.processor-type', dialogContent).text();
 
                             if (processorType.includes('MultiIssuerJWTTokenAuthenticator')) {
-                                registerHelpTooltips();
+                                registerHelpTooltips(dialogContent); // Pass context
                                 // Update translations in the dialog
-                                updateUITranslations();
+                                updateUITranslations(); // This is global, might need context too if dialog has elements it targets
                             }
                         }, 500);
                     }

@@ -210,7 +210,7 @@ describe('jwksValidator - Common Initialization and Callback', () => {
             $.ajax.mockReturnValue(deferred.promise());
             $element.find('.verify-jwks-button').trigger('click');
             expect($.ajax).toHaveBeenCalledWith(expect.objectContaining({
-                data: JSON.stringify({ jwksValue: 'https://example.com/.well-known/jwks.json' }),
+                data: JSON.stringify({ jwksValue: 'https://example.com/.well-known/jwks.json' })
             }));
         });
 
@@ -220,7 +220,7 @@ describe('jwksValidator - Common Initialization and Callback', () => {
             $.ajax.mockReturnValue(deferred.promise());
             $element.find('.verify-jwks-button').trigger('click');
             expect($.ajax).toHaveBeenCalledWith(expect.objectContaining({
-                data: JSON.stringify({ jwksValue: 'https://example.com/.well-known/jwks.json' }),
+                data: JSON.stringify({ jwksValue: 'https://example.com/.well-known/jwks.json' })
             }));
         });
 
@@ -236,7 +236,7 @@ describe('jwksValidator - Common Initialization and Callback', () => {
             // No need to call __setIsLocalhostForTesting if it hasn't been set yet in this block.
             // Forcing it to null here to be absolutely sure, though afterEach should handle it.
             if (jwksValidator && typeof jwksValidator.__setIsLocalhostForTesting === 'function') {
-                 jwksValidator.__setIsLocalhostForTesting(null);
+                jwksValidator.__setIsLocalhostForTesting(null);
             }
 
 
@@ -334,7 +334,7 @@ describe('jwksValidator (non-localhost)', () => {
             $element.find('.verify-jwks-button').trigger('click');
             expect($element.find('.verification-result').html()).toBe(mockI18n['processor.jwt.testing']);
             expect($.ajax).toHaveBeenCalledWith(expect.objectContaining({
-                data: JSON.stringify({ jwksValue: testValue }),
+                data: JSON.stringify({ jwksValue: testValue })
             }));
         });
 

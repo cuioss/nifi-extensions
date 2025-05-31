@@ -9,14 +9,18 @@ const mainModule = {
      * Mock implementation of the init function.
      * This function is called by the tests to initialize the module.
      */
-    init: jest.fn().mockImplementation(() => {
+    init: () => { // Not a jest.fn() itself, so clearAllMocks won't remove its implementation
         // Log the browser language detection (this is what the test expects)
+        // console.log is globally mocked in main.test.js
         console.log('Detected browser language: de-DE');
 
         // Mock the registerCustomUiComponent calls
-        const nfCommon = require('./nf-common.js');
-        const jwksValidator = require('./jwksValidator.js');
-        const tokenVerifier = require('./tokenVerifier.js');
+        // nfCommon, jwksValidator, tokenVerifier are mocked via jest.mock in main.test.js
+        // or are plain mocks in the ./mocks directory.
+        // The require calls here will get the (potentially mocked) modules.
+        const nfCommon = require('./nf-common.js'); // This is test/js/mocks/nf-common.js
+        const jwksValidator = require('./jwksValidator.js'); // test/js/mocks/jwksValidator.js
+        const tokenVerifier = require('./tokenVerifier.js'); // test/js/mocks/tokenVerifier.js
 
         // Register JWKS Validator components
         nfCommon.registerCustomUiComponent('jwt.validation.jwks.url', jwksValidator, {
@@ -33,7 +37,7 @@ const mainModule = {
 
         // Register Token Verifier component
         nfCommon.registerCustomUiTab('jwt.validation.token.verification', tokenVerifier);
-    }),
+    },
 
     /**
      * Mock implementation of the detectBrowserLanguage function.

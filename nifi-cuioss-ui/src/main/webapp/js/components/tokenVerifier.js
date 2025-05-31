@@ -93,8 +93,8 @@ define(['jquery', 'nf.Common'], function ($, nfCommon) {
                                 audience: 'sample-audience', expiration: new Date(Date.now() + 3600000).toISOString(),
                                 roles: ['admin', 'user'], scopes: ['read', 'write'],
                                 claims: { sub: 'user123', iss: 'https://sample-issuer.example.com', aud: 'sample-audience',
-                                          exp: Math.floor(Date.now() / 1000) + 3600, iat: Math.floor(Date.now() / 1000),
-                                          roles: ['admin', 'user'], scope: 'read write', name: 'John Doe', email: 'john.doe@example.com' }
+                                    exp: Math.floor(Date.now() / 1000) + 3600, iat: Math.floor(Date.now() / 1000),
+                                    roles: ['admin', 'user'], scope: 'read write', name: 'John Doe', email: 'john.doe@example.com' }
                             };
                             displayValidToken(sampleResponse, true);
                         } else {
@@ -114,8 +114,8 @@ define(['jquery', 'nf.Common'], function ($, nfCommon) {
                             audience: 'sample-audience', expiration: new Date(Date.now() + 3600000).toISOString(),
                             roles: ['admin', 'user'], scopes: ['read', 'write'],
                             claims: { sub: 'user123', iss: 'https://sample-issuer.example.com', aud: 'sample-audience',
-                                      exp: Math.floor(Date.now() / 1000) + 3600, iat: Math.floor(Date.now() / 1000),
-                                      roles: ['admin', 'user'], scope: 'read write', name: 'John Doe', email: 'john.doe@example.com' }
+                                exp: Math.floor(Date.now() / 1000) + 3600, iat: Math.floor(Date.now() / 1000),
+                                roles: ['admin', 'user'], scope: 'read write', name: 'John Doe', email: 'john.doe@example.com' }
                         };
                         displayValidToken(sampleResponse, true);
                     } else {

@@ -53,7 +53,7 @@ describe('tokenVerifier - Common Initialization', () => {
         consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
         // Ensure __setIsLocalhostForTesting is reset if a previous suite (incorrectly) left it set
-         if (tokenVerifier && typeof tokenVerifier.__setIsLocalhostForTesting === 'function') {
+        if (tokenVerifier && typeof tokenVerifier.__setIsLocalhostForTesting === 'function') {
             tokenVerifier.__setIsLocalhostForTesting(null);
         }
     });
@@ -332,7 +332,7 @@ describe('tokenVerifier (localhost)', () => {
     it('should call $.ajax and show loading on token submit', () => {
         const tokenValue = 'test.token';
         $element.find('textarea#token-input').val(tokenValue);
-         const deferred = $.Deferred(); // $.ajax must return a promise
+        const deferred = $.Deferred(); // $.ajax must return a promise
         $.ajax.mockReturnValue(deferred.promise());
         $element.find('.verify-token-button').trigger('click');
         expect($element.find('.token-results-content').html()).toContain(mockI18n['processor.jwt.verifying']);

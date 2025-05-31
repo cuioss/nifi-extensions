@@ -7,22 +7,22 @@ const $ = jest.requireActual('jquery');
 let mockAjaxDeferred;
 
 $.ajax = jest.fn(() => {
-  mockAjaxDeferred = $.Deferred();
-  return mockAjaxDeferred.promise();
+    mockAjaxDeferred = $.Deferred();
+    return mockAjaxDeferred.promise();
 });
 
 // Helper function to resolve the mock AJAX request
 $.ajax.resolve = (response) => {
-  if (mockAjaxDeferred) {
-    mockAjaxDeferred.resolve(response);
-  }
+    if (mockAjaxDeferred) {
+        mockAjaxDeferred.resolve(response);
+    }
 };
 
 // Helper function to reject the mock AJAX request
 $.ajax.reject = (error) => {
-  if (mockAjaxDeferred) {
-    mockAjaxDeferred.reject(error);
-  }
+    if (mockAjaxDeferred) {
+        mockAjaxDeferred.reject(error);
+    }
 };
 
 module.exports = $;
