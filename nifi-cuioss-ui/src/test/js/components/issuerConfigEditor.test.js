@@ -1,10 +1,10 @@
-define([
-    'jquery',
-    'components/issuerConfigEditor', // The module under test
-    'nf.Common',
-    'services/apiClient',
-    'js/utils/formatters'
-], function ($, issuerConfigEditor, nfCommon, apiClient, formatters) {
+import $ from 'jquery';
+import * as issuerConfigEditor from 'components/issuerConfigEditor'; // The module under test
+import nfCommon from 'nf.Common';
+import * as apiClient from 'services/apiClient'; // Changed this line
+import * as formatters from 'js/utils/formatters';
+
+describe('issuerConfigEditor', function () {
     'use strict';
 
     describe('issuerConfigEditor', function () {

@@ -1,10 +1,11 @@
 /**
  * Tests for main.js
  */
-const $ = require('jquery');
-const nfCommon = require('./mocks/nf-common.js');
-const jwksValidator = require('./mocks/jwksValidator.js');
-const tokenVerifier = require('./mocks/tokenVerifier.js');
+import $ from 'jquery';
+import nfCommon from './mocks/nf-common.js';
+import jwksValidator from './mocks/jwksValidator.js';
+import tokenVerifier from './mocks/tokenVerifier.js';
+import * as mainModule from './mocks/main.js'; // Testing the mock version of main.js
 
 // Mock navigator.language
 Object.defineProperty(global.navigator, 'language', {
@@ -13,9 +14,6 @@ Object.defineProperty(global.navigator, 'language', {
 
 // Mock console.log
 console.log = jest.fn();
-
-// Import the mock module for testing
-const mainModule = require('./mocks/main.js');
 
 describe('main.js', () => {
     beforeEach(() => {

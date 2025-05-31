@@ -3,7 +3,7 @@
  */
 
 // Import required dependencies
-const $ = require('jquery');
+import $ from 'jquery';
 
 // Mock jQuery's ready function
 // $.fn.ready = jest.fn().mockImplementation(callback => { // This is the original mock
