@@ -2,7 +2,7 @@
  * JWKS Validation Button UI component.
  */
 import $ from 'jquery';
-import nfCommon from 'nf.Common'; // Assuming nfCommon provides a default export or nf.Common.js is adjusted
+import * as nfCommon from 'nf.Common'; // Assuming nfCommon provides a default export or nf.Common.js is adjusted
 
 let isLocalhostOverride = null; // Allows tests to control localhost behavior
 

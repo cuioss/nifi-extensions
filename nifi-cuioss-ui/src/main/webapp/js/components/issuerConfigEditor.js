@@ -4,14 +4,14 @@
  * issuer configurations for the MultiIssuerJWTTokenAuthenticator processor.
  */
 import $ from 'jquery';
-import nfCommon from 'nf.Common';
+import * as _nfCommon from 'nf.Common';
 import * as apiClient from '../services/apiClient.js';
 import * as formatters from '../utils/formatters.js';
 
 'use strict';
 
 // Get i18n resources from NiFi Common
-const i18n = nfCommon.getI18n() || {};
+const i18n = _nfCommon.getI18n() || {};
 
 // Component state
 const issuers = [];

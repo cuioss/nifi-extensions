@@ -31,7 +31,8 @@ jest.useFakeTimers();
 describe('tokenVerifier - Common Initialization', () => {
     let localTokenVerifier;
     let local$;
-    let localNfCommon;
+    let localNfCommon; // Will hold the actual module
+    let getI18nSpy;   // Spy for the getI18n export
     let $element;
     let callback;
     let consoleErrorSpy, consoleLogSpy;
@@ -40,7 +41,7 @@ describe('tokenVerifier - Common Initialization', () => {
         jest.resetModules();
         localTokenVerifier = require('components/tokenVerifier');
         local$ = require('jquery');
-        localNfCommon = require('nf.Common');
+        localNfCommon = require('nf.Common'); // nf.Common is mapped to our mock
 
         const rawElement = document.createElement('div');
         document.body.appendChild(rawElement);
@@ -48,7 +49,8 @@ describe('tokenVerifier - Common Initialization', () => {
         callback = jest.fn();
         local$.ajax = jest.fn(); // Mock $.ajax
 
-        localNfCommon.getI18n = jest.fn().mockReturnValue(mockI18n);
+        // Spy on the getI18n export from the actual module
+        getI18nSpy = jest.spyOn(localNfCommon, 'getI18n').mockReturnValue(mockI18n);
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -61,6 +63,7 @@ describe('tokenVerifier - Common Initialization', () => {
         $element.remove();
         consoleErrorSpy.mockRestore();
         consoleLogSpy.mockRestore();
+        if (getI18nSpy) getI18nSpy.mockRestore(); // Restore the spy
         if (localTokenVerifier && typeof localTokenVerifier.__setIsLocalhostForTesting === 'function') {
             localTokenVerifier.__setIsLocalhostForTesting(null);
         }
@@ -90,7 +93,7 @@ describe('tokenVerifier - Common Initialization', () => {
 
     it('should call nfCommon.getI18n during init', () => {
         localTokenVerifier.init($element[0], {}, null, callback);
-        expect(localNfCommon.getI18n).toHaveBeenCalled();
+        expect(getI18nSpy).toHaveBeenCalled();
     });
 
     it('should call the callback with a validate method', () => {
@@ -103,7 +106,7 @@ describe('tokenVerifier - Common Initialization', () => {
     });
 
     it('should use empty object for i18n if nfCommon.getI18n returns null', () => {
-        localNfCommon.getI18n.mockReturnValueOnce(null);
+        getI18nSpy.mockReturnValueOnce(null); // Use the spy to change mock behavior
         localTokenVerifier.init($element[0], {}, null, callback);
 
         const inputSection = $element.find('.token-input-section');
@@ -183,7 +186,8 @@ describe('tokenVerifier - Common Initialization', () => {
 describe('tokenVerifier (non-localhost)', () => {
     let localTokenVerifier;
     let local$;
-    let localNfCommon;
+    let localNfCommon; // Will hold the actual module
+    let getI18nSpy;   // Spy for the getI18n export
     let $element;
     let callback;
     let consoleErrorSpy, consoleLogSpy;
@@ -202,7 +206,7 @@ describe('tokenVerifier (non-localhost)', () => {
         callback = jest.fn();
         local$.ajax = jest.fn();
 
-        localNfCommon.getI18n = jest.fn().mockReturnValue(mockI18n);
+        getI18nSpy = jest.spyOn(localNfCommon, 'getI18n').mockReturnValue(mockI18n);
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -214,6 +218,7 @@ describe('tokenVerifier (non-localhost)', () => {
         $element.remove();
         consoleErrorSpy.mockRestore();
         consoleLogSpy.mockRestore();
+        if (getI18nSpy) getI18nSpy.mockRestore(); // Restore the spy
     });
 
     it('should display AJAX error from xhr.responseText on .fail()', () => {
@@ -267,7 +272,8 @@ describe('tokenVerifier (non-localhost)', () => {
 describe('tokenVerifier (localhost)', () => {
     let localTokenVerifier;
     let local$;
-    let localNfCommon;
+    let localNfCommon; // Will hold the actual module
+    let getI18nSpy;   // Spy for the getI18n export
     let $element;
     let callback;
     let consoleErrorSpy, consoleLogSpy;
@@ -286,7 +292,7 @@ describe('tokenVerifier (localhost)', () => {
         callback = jest.fn();
         local$.ajax = jest.fn();
 
-        localNfCommon.getI18n = jest.fn().mockReturnValue(mockI18n);
+        getI18nSpy = jest.spyOn(localNfCommon, 'getI18n').mockReturnValue(mockI18n);
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -298,6 +304,7 @@ describe('tokenVerifier (localhost)', () => {
         $element.remove();
         consoleErrorSpy.mockRestore();
         consoleLogSpy.mockRestore();
+        if (getI18nSpy) getI18nSpy.mockRestore(); // Restore the spy
     });
 
     it('should show error if no token provided', () => {

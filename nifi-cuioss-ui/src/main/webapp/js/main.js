@@ -3,7 +3,7 @@
  * Provides functionality for custom UI components in NiFi.
  */
 import $ from 'jquery';
-import nfCommon from 'nf.Common';
+import * as nfCommon from 'nf.Common';
 import * as tokenVerifier from './components/tokenVerifier.js';
 import * as issuerConfigEditor from './components/issuerConfigEditor.js';
 import * as _apiClient from './services/apiClient.js'; // apiClient is not directly used in main.js

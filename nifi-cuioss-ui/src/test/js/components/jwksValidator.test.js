@@ -20,7 +20,8 @@ jest.useFakeTimers();
 describe('jwksValidator - Common Initialization and Callback', () => {
     let localJwksValidator;
     let local$;
-    let localNfCommon;
+    let localNfCommon; // Will hold the actual module
+    let getI18nSpy;   // Spy for the getI18n export
     let $element;
     let callback;
     const initialPropertyValue = 'https://example.com/.well-known/jwks.json';
@@ -40,7 +41,7 @@ describe('jwksValidator - Common Initialization and Callback', () => {
         callback = jest.fn();
         local$.ajax = jest.fn();
 
-        localNfCommon.getI18n = jest.fn().mockReturnValue(mockI18n);
+        getI18nSpy = jest.spyOn(localNfCommon, 'getI18n').mockReturnValue(mockI18n);
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
     });
@@ -49,6 +50,7 @@ describe('jwksValidator - Common Initialization and Callback', () => {
         $element.remove();
         consoleErrorSpy.mockRestore();
         consoleLogSpy.mockRestore();
+        if (getI18nSpy) getI18nSpy.mockRestore(); // Restore the spy
         if (localJwksValidator && typeof localJwksValidator.__setIsLocalhostForTesting === 'function') {
             localJwksValidator.__setIsLocalhostForTesting(null);
         }
@@ -89,11 +91,11 @@ describe('jwksValidator - Common Initialization and Callback', () => {
 
         it('should call i18n during init', () => {
             localJwksValidator.init($element[0], initialPropertyValue, 'server', callback);
-            expect(localNfCommon.getI18n).toHaveBeenCalled();
+            expect(getI18nSpy).toHaveBeenCalled();
         });
 
         it('should use empty object for i18n if nfCommon.getI18n returns null', () => {
-            localNfCommon.getI18n = jest.fn().mockReturnValue(null);
+            getI18nSpy.mockReturnValueOnce(null);
             $element.append('<input type="text">');
             localJwksValidator.init($element[0], initialPropertyValue, 'server', callback);
 
@@ -253,6 +255,7 @@ describe('jwksValidator (non-localhost)', () => {
     let localJwksValidator;
     let local$;
     let localNfCommon;
+    let getI18nSpy; // Declare spy
     let $element;
     let callback;
     const initialPropertyValue = 'https://example.com/.well-known/jwks.json';
@@ -273,7 +276,7 @@ describe('jwksValidator (non-localhost)', () => {
         callback = jest.fn();
         local$.ajax = jest.fn();
 
-        localNfCommon.getI18n = jest.fn().mockReturnValue(mockI18n);
+        getI18nSpy = jest.spyOn(localNfCommon, 'getI18n').mockReturnValue(mockI18n); // Use spy
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -286,6 +289,7 @@ describe('jwksValidator (non-localhost)', () => {
         $element.remove();
         consoleErrorSpy.mockRestore();
         consoleLogSpy.mockRestore();
+        if (getI18nSpy) getI18nSpy.mockRestore(); // Restore spy
     });
 
     describe('Button Click Handler (jwks_type="server")', () => {
@@ -362,6 +366,7 @@ describe('jwksValidator (localhost)', () => {
     let localJwksValidator;
     let local$;
     let localNfCommon;
+    let getI18nSpy; // Declare spy
     let $element;
     let callback;
     const initialPropertyValue = 'https://example.com/.well-known/jwks.json';
@@ -382,7 +387,7 @@ describe('jwksValidator (localhost)', () => {
         callback = jest.fn();
         local$.ajax = jest.fn();
 
-        localNfCommon.getI18n = jest.fn().mockReturnValue(mockI18n);
+        getI18nSpy = jest.spyOn(localNfCommon, 'getI18n').mockReturnValue(mockI18n); // Use spy
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -395,6 +400,7 @@ describe('jwksValidator (localhost)', () => {
         $element.remove();
         consoleErrorSpy.mockRestore();
         consoleLogSpy.mockRestore();
+        if (getI18nSpy) getI18nSpy.mockRestore(); // Restore spy
     });
 
     describe('Button Click Handler (jwks_type="server")', () => {

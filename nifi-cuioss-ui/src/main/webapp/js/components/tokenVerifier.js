@@ -2,7 +2,7 @@
  * Token Verification Interface UI component.
  */
 import $ from 'jquery';
-import nfCommon from 'nf.Common';
+import * as nfCommon from 'nf.Common';
 
 'use strict';
 

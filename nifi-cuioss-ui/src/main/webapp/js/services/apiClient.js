@@ -3,7 +3,7 @@
  * Provides methods for interacting with the backend REST API.
  */
 import $ from 'jquery';
-import _nfCommon from 'nf.Common'; // Path might need adjustment
+import * as _nfCommon from 'nf.Common'; // Path might need adjustment
 
 'use strict';
 
