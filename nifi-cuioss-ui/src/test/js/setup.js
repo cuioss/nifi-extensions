@@ -16,43 +16,6 @@ const originalConsoleError = console.error;
 global.window = window;
 global.document = window.document;
 
-// Mock the AMD define function
-// global.define = function (dependencies, factory) {
-//     try {
-//         // If factory is a function, call it with mocked dependencies
-//         if (typeof factory === 'function') {
-//             const deps = dependencies.map(dep => {
-//                 if (dep === 'jquery') {
-//                     return require('./mocks/jquery.js');
-//                 } else if (dep === 'nf.Common') {
-//                     return require('./mocks/nf-common.js');
-//                 } else {
-//                     return {};
-//                 }
-//             });
-//
-//             // Call the factory with dependencies
-//             const result = factory(...deps);
-//
-//             // Make the result compatible with ES modules imports
-//             if (result && typeof result === 'object') {
-//                 result.default = result;
-//             }
-//
-//             return result;
-//         }
-//         // If factory is not a function, return it directly
-//         return factory;
-//     } catch (e) {
-//         // Log the error and return an empty object to prevent test failures
-//         console.warn(`Error in AMD define function: ${e.message}`);
-//         return {};
-//     }
-// };
-
-// Make define available to modules
-// global.window.define = global.define;
-
 // Create mock modules for testing
 global.jwksValidator = {
     init: jest.fn().mockImplementation((element, propertyValue, jwks_type, callback) => {
