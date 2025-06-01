@@ -2,150 +2,125 @@
  * Tests for nf-jwt-validator.js
  */
 
-// Import required dependencies
-const $ = require('jquery');
+// Define jQuery mock structure first
+const mockReady = jest.fn(callback => callback()); // This will be $(document).ready()
+const mockJqueryInstance = {
+    ready: mockReady
+    // Add other jQuery instance methods if needed by the SUT here
+};
 
-// Mock jQuery's ready function
-// $.fn.ready = jest.fn().mockImplementation(callback => { // This is the original mock
-//     callback();
-//     return $;
-// });
-// Let's make it more robust by ensuring it's globally available if nf-jwt-validator.js needs it.
-global.jQuery = global.$ = $;
-global.jQuery.fn.ready = jest.fn(callback => {
-    callback();
-    return global.jQuery;
+// This is the mock for the jQuery module itself (e.g., the function you get from `import $ from 'jquery'`)
+const mockJqueryStatic = jest.fn(selector => {
+    // This function is what gets called when you do $()
+    // It should return an object that has methods like .ready()
+    return mockJqueryInstance;
 });
 
+// Mock the 'jquery' module. All 'import $' will get 'mockJqueryStatic'.
+jest.mock('jquery', () => mockJqueryStatic);
 
-// Mock console
+// Set up global jQuery and $ to use our static mock.
+// This is for any code that might still rely on global jQuery.
+global.jQuery = global.$ = mockJqueryStatic;
+
+// Mock console (remains the same)
 global.console = {
     log: jest.fn(),
     error: jest.fn(),
-    warn: jest.fn(), // Add warn just in case
-    info: jest.fn(), // Add info just in case
-    debug: jest.fn() // Add debug just in case
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn()
 };
 
-// Mock the main module that nf-jwt-validator.js will require
-const mockMain = {
+// Default mock for 'js/main'. (remains the same)
+const mockMainDefault = {
     init: jest.fn()
 };
-jest.mock('js/main', () => mockMain, { virtual: true }); // virtual: true might not be needed if moduleDirectories works
-
-// Mock window
-global.window = {
-    jwtComponentsRegistered: false
-};
+jest.mock('js/main', () => mockMainDefault, { virtual: true });
 
 
 describe('nf-jwt-validator.js', () => {
     beforeEach(() => {
-        // Reset mocks
+        // Clear all mocks before each test
         jest.clearAllMocks();
 
-        // Reset window.jwtComponentsRegistered
-        window.jwtComponentsRegistered = false;
+        // Reset our specific jQuery related mocks
+        mockReady.mockClear().mockImplementation(callback => callback());
+        mockJqueryStatic.mockClear().mockImplementation(selector => mockJqueryInstance); // Ensure it returns the instance
 
-        // Reset $.fn.ready mock calls for each test if nf-jwt-validator is re-evaluated
-        // However, nf-jwt-validator.js is an IIFE, it only runs once when imported.
-        // To re-run it, we would need to use jest.resetModules() and re-require.
+        // Reset window state
+        global.window = { jwtComponentsRegistered: false }; // Default state
     });
 
-    function loadValidator() {
-        // Reset modules to ensure the IIFE in nf-jwt-validator.js runs for the test
-        jest.resetModules();
-        // Make jQuery globally available before loading the validator
-        global.jQuery = global.$ = $;
-        global.jQuery.fn.ready = jest.fn(callback => {
-            callback();
-            return global.jQuery;
+    describe('Default behavior (components not registered, main module valid)', () => {
+        beforeEach(() => {
+            jest.doMock('js/main', () => mockMainDefault, { virtual: true });
+            jest.resetModules();
+            require('../../main/webapp/js/nf-jwt-validator.js');
         });
-        // Mock window for each load, as it might be modified
-        global.window = { jwtComponentsRegistered: false };
 
-        // Mock main module again due to jest.resetModules()
-        jest.mock('js/main', () => mockMain, { virtual: true });
-
-        require('../../main/webapp/js/nf-jwt-validator.js');
-    }
-
-    it('should initialize main module when document is ready and components are not registered', () => {
-        loadValidator();
-
-        expect(global.jQuery.fn.ready).toHaveBeenCalled();
-        expect(mockMain.init).toHaveBeenCalled();
-        expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
-        expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module loaded');
-        expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initializing main module');
-        expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete');
-        expect(console.error).not.toHaveBeenCalled();
+        it('should initialize main module', () => {
+            expect(mockJqueryStatic).toHaveBeenCalledWith(document); // Check that $(document) was called
+            expect(mockReady).toHaveBeenCalledTimes(1); // Check that .ready() was called on the instance
+            expect(mockMainDefault.init).toHaveBeenCalledTimes(1);
+            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
+            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module imported');
+            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initializing main module');
+            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete');
+            expect(console.error).not.toHaveBeenCalled();
+        });
     });
 
-    it('should not initialize main module if components are already registered', () => {
-        // Set the flag to indicate components are already registered *before* loading the script
-        global.window.jwtComponentsRegistered = true;
-        // mockMain.init needs to be defined for the check `typeof main.init === 'function'`
-        mockMain.init = jest.fn();
+    describe('When components are already registered', () => {
+        const mockMainWhenRegistered = { init: jest.fn() };
+        beforeEach(() => {
+            global.window.jwtComponentsRegistered = true;
+            jest.resetModules();
+            jest.doMock('js/main', () => mockMainWhenRegistered, { virtual: true });
+            require('../../main/webapp/js/nf-jwt-validator.js');
+        });
 
-        loadValidator();
-        // Need to set it again here because loadValidator resets global.window
-        global.window.jwtComponentsRegistered = true;
-        // Re-trigger ready (simulating a scenario where ready might be called again or state checked after initial load)
-        // This part is tricky with an IIFE. The IIFE runs once.
-        // The test logic should reflect the state *at the time the IIFE runs*.
-        // So, we set jwtComponentsRegistered = true *before* loadValidator for this test.
-
-        // To test this specific branch, global.window.jwtComponentsRegistered must be true
-        // *before* nf-jwt-validator.js is loaded and its $(document).ready callback executes.
-        jest.resetModules();
-        global.jQuery = global.$ = $;
-        global.jQuery.fn.ready = jest.fn(callback => callback());
-        global.window = { jwtComponentsRegistered: true }; // Set before require
-        jest.mock('js/main', () => mockMain, { virtual: true });
-        require('../../main/webapp/js/nf-jwt-validator.js');
-
-
-        expect(global.jQuery.fn.ready).toHaveBeenCalled();
-        expect(mockMain.init).not.toHaveBeenCalled(); // This is the key assertion for this case
-        expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
-        expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module loaded');
-        expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Components already registered, skipping initialization');
-        expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete');
-        expect(console.error).not.toHaveBeenCalled();
+        it('should not initialize main module', () => {
+            expect(mockJqueryStatic).toHaveBeenCalledWith(document);
+            expect(mockReady).toHaveBeenCalledTimes(1);
+            expect(mockMainWhenRegistered.init).not.toHaveBeenCalled();
+            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
+            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module imported');
+            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Components already registered, skipping initialization');
+            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete');
+            expect(console.error).not.toHaveBeenCalled();
+        });
     });
 
-    it('should handle case where main module is not available (main is null)', () => {
-        jest.resetModules();
-        global.jQuery = global.$ = $;
-        global.jQuery.fn.ready = jest.fn(callback => callback());
-        global.window = { jwtComponentsRegistered: false };
-        // Simulate main module not being available (resolves to null or undefined)
-        jest.mock('js/main', () => null, { virtual: true });
-        require('../../main/webapp/js/nf-jwt-validator.js');
+    describe('When main module is problematic', () => {
+        it('should handle case where main module is not available (main is null)', () => {
+            global.window.jwtComponentsRegistered = false;
+            jest.resetModules();
+            jest.doMock('js/main', () => null, { virtual: true });
+            require('../../main/webapp/js/nf-jwt-validator.js');
 
-        expect(global.jQuery.fn.ready).toHaveBeenCalled();
-        expect(mockMain.init).not.toHaveBeenCalled(); // main.init shouldn't be called
-        expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module not available or missing init function');
-        expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
-        expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module loaded');
-        expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete');
-    });
+            expect(mockJqueryStatic).toHaveBeenCalledWith(document);
+            expect(mockReady).toHaveBeenCalledTimes(1);
+            expect(mockMainDefault.init).not.toHaveBeenCalled();
+            expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module not available or missing init function');
+            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
+            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module imported');
+            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete');
+        });
 
-    it('should handle case where main module is available but init is not a function', () => {
-        jest.resetModules();
-        global.jQuery = global.$ = $;
-        global.jQuery.fn.ready = jest.fn(callback => callback());
-        global.window = { jwtComponentsRegistered: false };
-        // Simulate main module is an object but doesn't have init function
-        jest.mock('js/main', () => ({}), { virtual: true });
-        require('../../main/webapp/js/nf-jwt-validator.js');
+        it('should handle case where main module is available but init is not a function', () => {
+            global.window.jwtComponentsRegistered = false;
+            jest.resetModules();
+            jest.doMock('js/main', () => ({}), { virtual: true });
+            require('../../main/webapp/js/nf-jwt-validator.js');
 
-        expect(global.jQuery.fn.ready).toHaveBeenCalled();
-        expect(mockMain.init).not.toHaveBeenCalled(); // main.init shouldn't be called
-        expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module not available or missing init function');
-        expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
-        expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module loaded');
-        expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete');
+            expect(mockJqueryStatic).toHaveBeenCalledWith(document);
+            expect(mockReady).toHaveBeenCalledTimes(1);
+            expect(mockMainDefault.init).not.toHaveBeenCalled();
+            expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module not available or missing init function');
+            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
+            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module imported');
+            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete');
+        });
     });
 });

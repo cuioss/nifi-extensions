@@ -1,4 +1,4 @@
-const nfCommon = require('./nf-common');
+import nfCommon from './nf-common.js'; // Changed from require to import
 
 // Define the original implementations so we can restore them
 const originalImplementations = {
@@ -28,10 +28,10 @@ const originalImplementations = {
         'tokenInvalid': 'Token is invalid',
         'errorDetails': 'Error Details',
         'errorCategory': 'Error Category',
-        'processor.jwt.testConnection': 'Test Connection', // Keep direct keys for existing tests
+        'processor.jwt.testConnection': 'Test Connection',
         'processor.jwt.verificationError': 'Verification error',
         processor: {
-            jwt: { // Keep nested structure for other tests
+            jwt: {
                 'testConnection': 'Test Connection',
                 'testing': 'Testing...',
                 'invalidType': 'Invalid JWKS type',
@@ -89,15 +89,27 @@ const originalImplementations = {
 
 describe('nfCommon mock', () => {
     beforeEach(() => {
-        // Restore implementations before each test due to resetMocks:true
-        nfCommon.getI18n.mockImplementation(originalImplementations.getI18n);
-        nfCommon.escapeHtml.mockImplementation(originalImplementations.escapeHtml);
-        nfCommon.formatValue.mockImplementation(originalImplementations.formatValue);
-        nfCommon.formatDateTime.mockImplementation(originalImplementations.formatDateTime);
-        nfCommon.ajax.mockImplementation(originalImplementations.ajax);
-        // For functions that are just jest.fn() without custom impl in the mock file,
-        // resetMocks already handles them (they become jest.fn() again).
-        // If they had default mockImplementations in the source mock file, add them here too.
+        // Restore implementations before each test due to resetMocks:true in Jest config
+        // or if the mock functions themselves are jest.fn() and get cleared.
+        if (nfCommon.getI18n && nfCommon.getI18n.mockImplementation) {
+            nfCommon.getI18n.mockImplementation(originalImplementations.getI18n);
+        }
+        if (nfCommon.escapeHtml && nfCommon.escapeHtml.mockImplementation) {
+            nfCommon.escapeHtml.mockImplementation(originalImplementations.escapeHtml);
+        }
+        if (nfCommon.formatValue && nfCommon.formatValue.mockImplementation) {
+            nfCommon.formatValue.mockImplementation(originalImplementations.formatValue);
+        }
+        if (nfCommon.formatDateTime && nfCommon.formatDateTime.mockImplementation) {
+            nfCommon.formatDateTime.mockImplementation(originalImplementations.formatDateTime);
+        }
+        if (nfCommon.ajax && nfCommon.ajax.mockImplementation) {
+            nfCommon.ajax.mockImplementation(originalImplementations.ajax);
+        }
+        // For functions that are just jest.fn() (like registerCustomUiComponent, showMessage etc. in the mock)
+        // jest.clearAllMocks() (called by Jest if resetMocks:true) or explicit .mockClear() is enough.
+        // If they had default mockImplementations in the source mock file, they would need to be restored here.
+        // Assuming they are plain jest.fn() in the mock file.
     });
 
     describe('getI18n', () => {
@@ -105,7 +117,6 @@ describe('nfCommon mock', () => {
             const i18n = nfCommon.getI18n();
             expect(i18n['processor.jwt.testConnection']).toBe('Test Connection');
             expect(i18n.processor.jwt.testConnection).toBe('Test Connection');
-            // Add more assertions for other translations if needed
         });
 
         test('should be a jest mock function', () => {
@@ -184,8 +195,6 @@ describe('nfCommon mock', () => {
 
         test('should format a valid ISO date string', () => {
             const date = new Date('2024-01-01T12:00:00.000Z');
-            // The output of toLocaleString can vary based on the environment's locale.
-            // This assertion might need adjustment if the test environment has a different locale.
             expect(nfCommon.formatDateTime('2024-01-01T12:00:00.000Z')).toBe(date.toLocaleString());
         });
 
@@ -194,7 +203,6 @@ describe('nfCommon mock', () => {
             expect(nfCommon.formatDateTime(undefined)).toBe('');
         });
         test('should return original string for invalid date string', () => {
-            //toLocaleString of an invalid Date object returns "Invalid Date"
             expect(nfCommon.formatDateTime('invalid-date')).toBe('Invalid Date');
         });
     });

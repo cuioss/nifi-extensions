@@ -1,8 +1,8 @@
 /**
  * Tests for the API Client service.
  */
-const apiClient = require('services/apiClient');
-const $ = require('jquery'); // This will be the Jest mock from setup or node_modules
+import * as apiClient from 'services/apiClient';
+import $ from 'jquery'; // This will be the Jest mock from setup or node_modules
 
 // $.ajax is automatically mocked by Jest if jquery is in __mocks__ or if jest.mock('jquery') is used.
 // Assuming $.ajax is jest.fn() due to global jQuery mock possibly in setup.js or Jest's automocking.
