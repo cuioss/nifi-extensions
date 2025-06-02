@@ -96,6 +96,7 @@ The current testing approach has several issues:
 ### High Priority
 
 1. **Migrate from AMD to ES Modules**:
+   **Status:** COMPLETE.
    - Convert all `define()` calls to ES `import`/`export` statements
    - Update build configuration to handle ES modules
    - Remove AMD transformer from testing setup
@@ -119,11 +120,42 @@ The current testing approach has several issues:
    - Reduce reliance on complex mocking
    - Consider using a testing library like Testing Library for DOM testing
    - Remove the AMD transformer and use Jest's built-in module system
+   
+   **Testing Analysis Summary:**
+   
+   We have analyzed the testing challenges related to jQuery and jQuery UI dependencies, especially around tooltip functionality and AJAX testing. The full analysis and implementation plan is now documented in `/doc/TODO-testing.adoc`.
+   
+   Key findings:
+   
+   - The codebase uses a custom jQuery mock (`src/test/js/mocks/jquery.js`) with 400+ lines of code
+   - jQuery UI features like tooltips require specialized mocking
+   - Jest-jquery-mock library needs extensions to support our specific use cases
+   
+   **Recommended Testing Approach:**
+   
+   See `/doc/TODO-testing.adoc` for the complete testing strategy including implementation examples and migration plan.
 
 3. **Reduce jQuery Dependency**:
    - Gradually replace jQuery DOM manipulation with vanilla JavaScript
    - Create a thin wrapper around remaining jQuery functionality to ease migration
    - Update tests to reflect these changes
+   
+   **jQuery Dependency Analysis Summary:**
+   
+   We have analyzed the jQuery and jQuery UI dependencies in our codebase, especially the tooltip functionality, and devised a comprehensive migration strategy. The full analysis and implementation plan is now documented in:
+   
+   - `/doc/TODO-tooltip.adoc` - For replacing jQuery UI's tooltip with Tippy.js
+   - `/doc/TODO-jquery-replacement.adoc` - For the overall jQuery replacement strategy
+   
+   Key findings:
+   
+   - jQuery adds ~30KB (minified and gzipped) to our application bundle
+   - jQuery UI's tooltip implementation requires a lightweight alternative
+   - A hybrid migration approach is recommended to minimize risk
+   
+   **Recommended jQuery Replacement Strategy:**
+   
+   See `/doc/TODO-jquery-replacement.adoc` for the complete replacement strategy including implementation examples and migration plan.
 
 ### Medium Priority
 

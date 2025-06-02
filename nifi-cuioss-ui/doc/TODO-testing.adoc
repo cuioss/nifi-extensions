@@ -1,0 +1,138 @@
+= T1. Improve jQuery Testing with jest-jquery-mock
+:toc:
+:toclevels: 4
+
+[ ] *Priority:* Medium
+
+*Description:* Implement jest-jquery-mock with custom extensions to improve jQuery testing, particularly for jQuery UI features. This will simplify our testing approach while maintaining test coverage during the jQuery migration process.
+
+*Rationale:* Our current jQuery testing approach is complex and requires extensive custom mocking code. A more standardized approach will reduce maintenance burden and improve test reliability.
+
+== Task Details
+
+=== Context and Problem Statement
+
+Our codebase relies on jQuery for DOM manipulation and AJAX, with jQuery UI for tooltips. Testing jQuery-based code is complex due to the need for custom mocking, especially for jQuery UI features. We need a streamlined approach to test our jQuery code.
+
+=== Chosen Solution: jest-jquery-mock with Custom Extensions
+
+jest-jquery-mock is a lightweight package specifically designed for mocking jQuery in Jest. We will extend it with custom functionality to support jQuery UI features, especially tooltips.
+
+* Lightweight and simple API
+* Specifically designed for Jest
+* Provides mocks for common jQuery methods
+* Can be extended to support our specific needs
+
+=== Implementation Plan
+
+1. [ ] Install jest-jquery-mock:
+
+[source,bash]
+----
+npm install --save-dev jest-jquery-mock
+----
+
+2. [ ] Create a custom extension for jest-jquery-mock:
+
+[source,javascript]
+----
+// test/js/mocks/jquery-extended.js
+import 'jest-jquery-mock';
+import $ from 'jquery';
+
+// Add jQuery UI methods that jest-jquery-mock doesn't provide
+$.fn.tooltip = jest.fn().mockImplementation(function(options) {
+  // Mock implementation - record that tooltip was called
+  this.each(function() {
+    this._tooltipOptions = options;
+    // Add data attribute to simulate tooltip initialization
+    this.setAttribute('data-tooltip-initialized', 'true');
+  });
+  return this;
+});
+
+// Add AJAX support if needed beyond what jest-jquery-mock provides
+$.ajax = jest.fn().mockImplementation((options) => {
+  const deferred = {
+    then: jest.fn().mockReturnThis(),
+    catch: jest.fn().mockReturnThis(),
+    finally: jest.fn().mockReturnThis(),
+    done: jest.fn().mockReturnThis(),
+    fail: jest.fn().mockReturnThis(),
+    always: jest.fn().mockReturnThis(),
+    promise: () => deferred
+  };
+  
+  // Execute success callback if provided
+  if (options.success) {
+    setTimeout(() => options.success({}), 0);
+  }
+  
+  return deferred;
+});
+
+// Export enhanced jQuery
+export default $;
+----
+
+3. [ ] Configure Jest to use the mock in setupFiles:
+
+[source,javascript]
+----
+// jest.config.js or in package.json
+{
+  "jest": {
+    // ...other settings
+    "setupFiles": [
+      "<rootDir>/test/js/mocks/jquery-extended.js"
+    ]
+  }
+}
+----
+
+4. [ ] Update tests to work with the new mock:
+
+[source,javascript]
+----
+// Example test
+import $ from 'jquery';
+
+describe('Tooltip functionality', () => {
+  it('should initialize tooltips on help elements', () => {
+    // Setup
+    document.body.innerHTML = '<div><span class="help-tooltip" title="Help text"></span></div>';
+    
+    // Call the function that initializes tooltips
+    initializeTooltips();
+    
+    // Assert
+    const $tooltip = $('.help-tooltip');
+    expect($.fn.tooltip).toHaveBeenCalled();
+    expect($tooltip[0].getAttribute('data-tooltip-initialized')).toBe('true');
+  });
+});
+----
+
+5. [ ] Add a specialized test helper for tooltip testing:
+
+[source,javascript]
+----
+// test/js/helpers/tooltip-test-helper.js
+export function expectTooltipInitialized(selector, expectedOptions = {}) {
+  const elements = document.querySelectorAll(selector);
+  expect(elements.length).toBeGreaterThan(0);
+  
+  elements.forEach(element => {
+    expect(element.getAttribute('data-tooltip-initialized')).toBe('true');
+    
+    if (Object.keys(expectedOptions).length > 0) {
+      expect(element._tooltipOptions).toMatchObject(expectedOptions);
+    }
+  });
+}
+----
+
+== References
+
+* https://www.npmjs.com/package/jest-jquery-mock[jest-jquery-mock on npm]
+* https://jestjs.io/docs/mock-functions[Jest Mock Functions]

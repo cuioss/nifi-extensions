@@ -1,0 +1,283 @@
+= D2. Implement Hybrid Approach for jQuery Replacement
+:toc:
+:toclevels: 4
+
+[ ] *Priority:* High
+
+*Description:* Implement a hybrid approach for gradually replacing jQuery with lighter alternatives and native JavaScript. This phased migration will reduce bundle size while maintaining application stability.
+
+*Rationale:* jQuery adds significant weight to our bundle (~30KB minified and gzipped) and ties us to an older paradigm of web development. A gradual migration approach minimizes risk and allows selective optimization.
+
+== Task Details
+
+=== Context and Problem Statement
+
+Our application currently depends on jQuery for DOM manipulation, event handling, and AJAX requests. This dependency adds significant weight to our bundle and ties us to an older paradigm of web development. We need a strategy to gradually reduce and eventually eliminate this dependency.
+
+=== Chosen Solution: Hybrid Approach for Phased Migration
+
+A phased migration approach will gradually reduce jQuery dependency while maintaining application stability.
+
+* Reduces migration risk through incremental changes
+* Allows focusing on highest-impact areas first
+* Maintains application stability during transition
+* Enables selective optimization where most beneficial
+
+=== Implementation Plan
+
+==== Phase 1: Replace jQuery AJAX with Fetch API
+
+1. [ ] Create a fetch-based API client wrapper:
+
+[source,javascript]
+----
+// utils/ajax.js
+export const ajax = ({url, method = 'GET', data, contentType, headers = {}, ...options}) => {
+  const fetchOptions = {
+    method,
+    headers: {
+      'Content-Type': contentType || 'application/json',
+      ...headers
+    },
+    ...options
+  };
+  
+  if (data) {
+    fetchOptions.body = contentType === 'application/json' 
+      ? JSON.stringify(data) 
+      : data;
+  }
+  
+  return fetch(url, fetchOptions)
+    .then(response => {
+      if (!response.ok) {
+        const error = new Error(response.statusText);
+        error.response = response;
+        throw error;
+      }
+      return response.json();
+    })
+    .then(data => ({
+      data,
+      status: 200,
+      statusText: 'OK'
+    }))
+    .catch(error => {
+      console.error('Fetch error:', error);
+      throw error;
+    });
+};
+
+// Compatibility with jQuery's $.ajax API
+export const compatAjax = (options) => {
+  return ajax(options)
+    .then(response => {
+      if (options.success) {
+        options.success(response.data, response.statusText, { status: response.status });
+      }
+      return response;
+    })
+    .catch(error => {
+      if (options.error) {
+        options.error({ status: error.response?.status || 0 }, error.message);
+      }
+      throw error;
+    })
+    .finally(() => {
+      if (options.complete) {
+        options.complete();
+      }
+    });
+};
+----
+
+2. [ ] Update imports and replace $.ajax calls:
+
+[source,javascript]
+----
+// Before:
+import $ from 'jquery';
+$.ajax({
+  url: '/api/endpoint',
+  success: function(data) {
+    // Handle success
+  },
+  error: function(xhr) {
+    // Handle error
+  }
+});
+
+// After:
+import { compatAjax } from './utils/ajax';
+compatAjax({
+  url: '/api/endpoint',
+  success: function(data) {
+    // Handle success
+  },
+  error: function(xhr) {
+    // Handle error
+  }
+});
+
+// Or using modern Promise API:
+import { ajax } from './utils/ajax';
+ajax({
+  url: '/api/endpoint'
+})
+  .then(response => {
+    // Handle success
+  })
+  .catch(error => {
+    // Handle error
+  });
+----
+
+==== Phase 2: Replace jQuery UI Dependencies
+
+This phase will replace jQuery UI tooltips with Tippy.js as detailed in Task D1.
+
+1. [ ] Install Tippy.js and its dependencies:
+
+[source,bash]
+----
+npm install tippy.js @popperjs/core
+----
+
+2. [ ] Create and use the tooltip utility module as described in the tooltip replacement document (Task D1).
+
+==== Phase 3: Create DOM Utility Module
+
+1. [ ] Create utility functions that mirror jQuery's API for DOM manipulation:
+
+[source,javascript]
+----
+// utils/dom.js
+export const $ = (selector, context = document) => {
+  if (!selector) return [];
+  
+  // Handle HTML strings
+  if (typeof selector === 'string' && selector.trim().startsWith('<')) {
+    return [createElement(selector)];
+  }
+  
+  // Handle DOM elements or document
+  if (selector.nodeType || selector === document) {
+    return [selector];
+  }
+  
+  // Handle selectors
+  return Array.from(
+    typeof selector === 'string'
+      ? context.querySelectorAll(selector)
+      : selector
+  );
+};
+
+export const createElement = (html) => {
+  const template = document.createElement('template');
+  template.innerHTML = html.trim();
+  return template.content.firstChild;
+};
+
+// DOM manipulation utilities
+export const dom = {
+  find: (selector, element) => $(selector, element),
+  
+  addClass: (element, className) => {
+    if (!element) return;
+    element.classList.add(...className.split(' '));
+    return element;
+  },
+  
+  removeClass: (element, className) => {
+    if (!element) return;
+    element.classList.remove(...className.split(' '));
+    return element;
+  },
+  
+  toggleClass: (element, className, force) => {
+    if (!element) return;
+    element.classList.toggle(className, force);
+    return element;
+  },
+  
+  attr: (element, name, value) => {
+    if (!element) return;
+    if (value === undefined) {
+      return element.getAttribute(name);
+    }
+    element.setAttribute(name, value);
+    return element;
+  },
+  
+  removeAttr: (element, name) => {
+    if (!element) return;
+    element.removeAttribute(name);
+    return element;
+  },
+  
+  html: (element, content) => {
+    if (!element) return;
+    if (content === undefined) {
+      return element.innerHTML;
+    }
+    element.innerHTML = content;
+    return element;
+  },
+  
+  text: (element, content) => {
+    if (!element) return;
+    if (content === undefined) {
+      return element.textContent;
+    }
+    element.textContent = content;
+    return element;
+  }
+};
+----
+
+==== Phase 4: Migrate to Cash (jQuery Alternative)
+
+1. [ ] Install Cash:
+
+[source,bash]
+----
+npm install cash-dom
+----
+
+2. [ ] Create a compatibility wrapper:
+
+[source,javascript]
+----
+// utils/jquery-compat.js
+import cash from 'cash-dom';
+import { initTooltips } from './tooltip';
+
+// Add missing jQuery functionality to Cash
+cash.fn.tooltip = function(options) {
+  return initTooltips(this, options);
+};
+
+// Export enhanced Cash as a jQuery replacement
+export default cash;
+----
+
+3. [ ] Replace jQuery imports:
+
+[source,javascript]
+----
+// Before:
+import $ from 'jquery';
+
+// After:
+import $ from './utils/jquery-compat';
+----
+
+==== Phase 5: Gradual Migration to Vanilla JS
+
+1. [ ] As components are updated or created, migrate them to use vanilla JavaScript and the utility functions created in earlier phases.
+
+== References
+
+* https://github.com/fabiospampinato/cash[Cash - A tiny jQuery alternative]
+* https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API[Fetch API - MDN Web Docs]

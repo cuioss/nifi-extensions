@@ -1,0 +1,227 @@
+= D3. Unify JavaScript Dependency Management Approach
+:toc:
+:toclevels: 4
+
+[ ] *Priority:* Medium
+
+*Description:* Unify the JavaScript dependency management approach between npm (package.json) and WebJars (pom.xml) to ensure consistency, simplify maintenance, and streamline the development workflow.
+
+*Rationale:* Currently, the project uses both npm and WebJars for managing JavaScript dependencies, creating potential inconsistencies and maintenance challenges. A unified approach will ensure version alignment, simplify dependency management, and improve build reproducibility.
+
+== Task Details
+
+=== Context and Problem Statement
+
+The nifi-cuioss-ui module currently manages JavaScript dependencies through two separate mechanisms:
+
+1. *npm (package.json)*: Used for development dependencies and some runtime dependencies (jquery)
+2. *WebJars (pom.xml)*: Used for runtime dependencies (jquery, jquery-ui, requirejs, font-awesome)
+
+This dual approach creates several challenges:
+- Version mismatches between npm and WebJars dependencies
+- Duplicated dependency declarations
+- Complex build configuration
+- Unclear source of truth for dependency versions
+- Potential deployment inconsistencies
+
+=== Chosen Solution: Maven-first Approach with npm for Development Tools
+
+Implement a Maven-first approach where WebJars are the primary source for runtime dependencies, with npm used exclusively for development tools and build processes.
+
+* Simplifies runtime dependency management
+* Ensures consistency in deployed artifacts
+* Maintains Java/Maven ecosystem compatibility
+* Leverages npm for developer experience and build tools
+
+=== Implementation Plan
+
+==== Phase 1: Audit and Align Versions
+
+1. [ ] Audit current dependencies in both package.json and pom.xml:
+   * [ ] Create a comprehensive list of all dependencies and their versions
+   * [ ] Identify version mismatches between npm and WebJars
+   * [ ] Determine which dependencies are truly needed at runtime vs. development time
+
+2. [ ] Align versions between package.json and pom.xml:
+   * [ ] Update WebJars versions in pom.xml to match npm versions where appropriate
+   * [ ] Document version alignment decisions for future reference
+
+==== Phase 2: Refactor Dependency Management
+
+3. [ ] Move runtime dependencies to WebJars exclusively:
+   * [ ] Ensure all runtime dependencies are properly declared as WebJars in pom.xml
+   * [ ] Configure overlays in maven-war-plugin for all WebJar dependencies
+
+4. [ ] Update package.json to focus on development tools:
+   * [ ] Keep development dependencies (webpack, babel, eslint, jest, etc.)
+   * [ ] Move runtime dependencies to devDependencies or peerDependencies as appropriate
+   * [ ] Add explicit notes in package.json about the dependency management strategy
+
+5. [ ] Create a dependency alignment script:
+   * [ ] Create a tool to verify/enforce alignment between npm and WebJars versions
+   * [ ] Integrate this check into the build process
+
+==== Phase 3: Update Build Configuration
+
+6. [ ] Update webpack configuration:
+   * [ ] Configure webpack to use WebJars paths for runtime dependencies
+   * [ ] Ensure proper resolution of dependencies during development and build
+
+7. [ ] Update Jest configuration:
+   * [ ] Configure moduleNameMapper to handle WebJars paths correctly
+   * [ ] Update test mocks if needed
+
+8. [ ] Update frontend-maven-plugin configuration:
+   * [ ] Ensure proper execution order in Maven lifecycle
+   * [ ] Configure plugin to handle the new dependency strategy
+
+==== Phase 4: Documentation and Guidelines
+
+9. [ ] Update documentation:
+   * [ ] Document the unified dependency management approach
+   * [ ] Create clear guidelines for adding new dependencies
+   * [ ] Update READMEs and development documentation
+
+10. [ ] Create developer guidance:
+    * [ ] Provide clear instructions for development setup
+    * [ ] Document procedures for updating dependencies
+    * [ ] Create examples for common dependency management tasks
+
+== Implementation Details
+
+=== Maven Configuration
+
+Update the pom.xml to explicitly declare versions in properties for better management:
+
+[source,xml]
+----
+<properties>
+    <!-- JavaScript dependencies versions -->
+    <jquery.version>3.7.1</jquery.version>
+    <jquery-ui.version>1.13.2</jquery-ui.version>
+    <requirejs.version>2.3.6</requirejs.version>
+    <font-awesome.version>4.7.0</font-awesome.version>
+    <!-- Add other dependency versions as needed -->
+</properties>
+
+<dependencies>
+    <!-- WebJars dependencies with versions from properties -->
+    <dependency>
+        <groupId>org.webjars</groupId>
+        <artifactId>jquery</artifactId>
+        <version>${jquery.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>org.webjars</groupId>
+        <artifactId>jquery-ui</artifactId>
+        <version>${jquery-ui.version}</version>
+    </dependency>
+    <!-- Other WebJars dependencies -->
+</dependencies>
+----
+
+=== NPM Configuration
+
+Update package.json to clearly separate development and runtime dependencies:
+
+[source,json]
+----
+{
+  "name": "nifi-cuioss-ui",
+  "version": "1.0.0",
+  "description": "Provides custom UI components for NiFi CU Boulder CUIOSS extensions.",
+  "main": "src/main/webapp/js/main.js",
+  "scripts": {
+    "build": "webpack --mode production",
+    "dev": "webpack --mode development --watch",
+    "lint": "eslint . --ext .js",
+    "test": "NODE_ENV=test jest",
+    "validate-deps": "node scripts/validate-dependencies.js"
+  },
+  "devDependencies": {
+    /* Development tools only */
+    "@babel/core": "^7.24.7",
+    "webpack": "^5.92.1",
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    /* Runtime dependencies needed for development (match WebJars versions) */
+    "jquery": "3.7.1"
+  },
+  "peerDependencies": {
+    /* Runtime dependencies managed by WebJars in production */
+    "jquery": "3.7.1",
+    "jquery-ui": "1.13.2"
+  }
+}
+----
+
+=== Webpack Configuration
+
+Update webpack.config.js to handle the WebJars path structure:
+
+[source,javascript]
+----
+module.exports = {
+  // ... other config
+  resolve: {
+    alias: {
+      // Map jQuery to WebJars path for consistency
+      'jquery': path.resolve(__dirname, 'node_modules/jquery/dist/jquery.js'),
+      // Add aliases for other WebJars dependencies
+    },
+    // Allow importing from WebJars paths during development
+    modules: [
+      'node_modules',
+      path.resolve(__dirname, 'src/main/webapp/webjars')
+    ]
+  },
+  externals: {
+    // Prevent bundling of certain imported packages and instead retrieve these
+    // external dependencies at runtime (from WebJars)
+    'jquery': 'jQuery'
+  }
+}
+----
+
+=== Dependency Validation Script
+
+Create a validation script to ensure versions match between pom.xml and package.json:
+
+[source,javascript]
+----
+// scripts/validate-dependencies.js
+const fs = require('fs');
+const { execSync } = require('child_process');
+
+// Parse package.json
+const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
+
+// Extract versions from Maven properties
+const pomVersions = {};
+const pomXml = fs.readFileSync('./pom.xml', 'utf8');
+const versionRegex = /<([^.]+)\.version>([^<]+)<\/\1\.version>/g;
+let match;
+
+while ((match = versionRegex.exec(pomXml)) !== null) {
+  pomVersions[match[1]] = match[2];
+}
+
+// Check for mismatches
+let mismatchFound = false;
+['jquery', 'jquery-ui'].forEach(dep => {
+  const npmVersion = packageJson.devDependencies[dep] || 
+                     packageJson.dependencies[dep] || 
+                     packageJson.peerDependencies[dep];
+  
+  if (npmVersion && pomVersions[dep] && npmVersion !== pomVersions[dep]) {
+    console.error(`Version mismatch for ${dep}: npm=${npmVersion}, pom=${pomVersions[dep]}`);
+    mismatchFound = true;
+  }
+});
+
+if (mismatchFound) {
+  process.exit(1);
+}
+
+console.log('All dependency versions are aligned!');
+----
