@@ -64,8 +64,7 @@ describe('main.js (real implementation with JSDOM)', () => {
 
         const jq = require('jquery');
         global.jQuery = global.$ = jq;
-        // originalTooltipFn = jq.fn.tooltip; // Backup original - no longer needed for jQuery UI tooltip
-        // global.currentTooltipMock = jq.fn.tooltip = jest.fn().mockReturnThis(); // Remove old jQuery UI tooltip mock
+        // The global mock from jquery-extended.js should handle $.fn.tooltip
 
         nfCommon = require('nf.Common');
         nfCommon.registerCustomUiTab.mockClear();
@@ -102,7 +101,7 @@ describe('main.js (real implementation with JSDOM)', () => {
         consoleErrorSpy.mockRestore();
         consoleLogSpy.mockRestore();
         document.body.innerHTML = '';
-        global.jQuery.fn.tooltip = originalTooltipFn; // Restore original/previous tooltip
+        // global.jQuery.fn.tooltip = originalTooltipFn; // No longer needed, relying on global mock
         // jest.clearAllMocks(); // Not strictly needed if mocks are cleared in beforeEach
     });
 
@@ -225,11 +224,10 @@ describe('main.js (real implementation with JSDOM)', () => {
                 mockInitTooltips.mockClear(); // Use the imported initTooltips mock
             });
 
-            it.skip('should register help tooltips and update translations when a MultiIssuerJWTTokenAuthenticator dialog opens', () => {
-                // This test remains skipped.
-                // Adding a dummy assertion to satisfy eslint rule jest/expect-expect for skipped tests.
-                expect(true).toBe(true);
-            });
+            // TODO: This test is skipped due to its complexity and potential flakiness.
+            // It needs further investigation to be made reliable.
+            // The test block for 'should register help tooltips and update translations when a MultiIssuerJWTTokenAuthenticator dialog opens'
+            // has been removed to satisfy the jest/no-commented-out-tests linting rule.
 
             it('should NOT act if processorType does not include MultiIssuerJWTTokenAuthenticator', () => {
                 const $dialogContent = $('#other-processor-dialog-mock').show();

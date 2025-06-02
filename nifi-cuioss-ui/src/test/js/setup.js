@@ -20,7 +20,7 @@ global.document = window.document;
 global.jwksValidator = {
     init: jest.fn().mockImplementation((element, propertyValue, jwks_type, callback) => {
     // Create UI elements
-        const $ = require('./mocks/jquery.js');
+        const $ = require('jquery'); // Use global jQuery mock
         const nfCommon = require('./mocks/nf-common.js');
         const i18n = nfCommon.getI18n();
 

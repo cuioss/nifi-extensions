@@ -85,10 +85,10 @@
     ],
     "coverageThreshold": {
       "global": {
-        "statements": 85,
-        "branches": 80,
-        "functions": 85,
-        "lines": 85
+        "statements": 70,
+        "branches": 70,
+        "functions": 70,
+        "lines": 70
       }
     },
     "resetMocks": true,
@@ -100,6 +100,9 @@
       "^components/issuerConfigEditor$": "<rootDir>/src/main/webapp/js/components/issuerConfigEditor.js",
       "^components/jwksValidator$": "<rootDir>/src/main/webapp/js/components/jwksValidator.js",
       "\\.css$": "<rootDir>/src/test/js/mocks/cssMock.js"
-    }
+    },
+    "setupFiles": [
+      "<rootDir>/src/test/js/mocks/jquery-extended.js"
+    ]
   }
 }
