@@ -49,10 +49,6 @@
         </dependency>
         <dependency>
             <groupId>org.webjars</groupId>
-            <artifactId>jquery-ui</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.webjars</groupId>
             <artifactId>requirejs</artifactId>
         </dependency>
         <dependency>
@@ -84,15 +80,6 @@
                         <overlay>
                             <groupId>org.webjars</groupId>
                             <artifactId>jquery</artifactId>
-                            <type>jar</type>
-                            <includes>
-                                <include>META-INF/resources/webjars/**</include>
-                            </includes>
-                            <targetPath>webjars</targetPath>
-                        </overlay>
-                        <overlay>
-                            <groupId>org.webjars</groupId>
-                            <artifactId>jquery-ui</artifactId>
                             <type>jar</type>
                             <includes>
                                 <include>META-INF/resources/webjars/**</include>

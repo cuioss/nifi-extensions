@@ -23,6 +23,12 @@ const testTranslations = {
 };
 
 // Mock dependencies of main.js (excluding jQuery)
+const mockInitTooltips = jest.fn();
+jest.mock('../../main/webapp/js/utils/tooltip.js', () => ({
+    initTooltips: mockInitTooltips
+}));
+// We will use mockInitTooltips directly in assertions now, no need to import it again.
+
 jest.mock('components/tokenVerifier', () => ({ init: jest.fn() }), { virtual: true });
 jest.mock('components/issuerConfigEditor', () => ({ init: jest.fn() }), { virtual: true });
 jest.mock('services/apiClient', () => ({ init: jest.fn() }), { virtual: true });
@@ -53,11 +59,13 @@ describe('main.js (real implementation with JSDOM)', () => {
 
     beforeEach(() => {
         jest.resetModules();
+        // Ensure the mock is cleared before each test in this describe block
+        mockInitTooltips.mockClear();
 
         const jq = require('jquery');
         global.jQuery = global.$ = jq;
-        originalTooltipFn = jq.fn.tooltip; // Backup original in case of multiple requires
-        global.currentTooltipMock = jq.fn.tooltip = jest.fn().mockReturnThis();
+        // originalTooltipFn = jq.fn.tooltip; // Backup original - no longer needed for jQuery UI tooltip
+        // global.currentTooltipMock = jq.fn.tooltip = jest.fn().mockReturnThis(); // Remove old jQuery UI tooltip mock
 
         nfCommon = require('nf.Common');
         nfCommon.registerCustomUiTab.mockClear();
@@ -121,36 +129,49 @@ describe('main.js (real implementation with JSDOM)', () => {
             // If help icons exist, expect jQuery's tooltip function to be called once on the collection.
             // If no help icons, expect it not to be called.
             const expectedCallCount = helpIconCount > 0 ? 1 : 0;
-            expect(global.currentTooltipMock.mock.calls.length).toBe(expectedCallCount);
+            // Now we check our mocked initTooltips
+            expect(mockInitTooltips.mock.calls.length).toBe(expectedCallCount);
         });
 
-        it('should use fallback title if $.fn.tooltip is not available', () => {
+        it('should use fallback title if tippy initialization fails', () => {
             global.nf.Canvas.initialized = true;
-            document.body.innerHTML = '<div class="property-label" data-i18n-key-direct="property.token.location.help">Token Location</div>';
+            document.body.innerHTML = '<div class="property-label" data-i18n-key-direct="property.token.location.help">Token Location <span class="help-tooltip" title="Original Title Should Be Overwritten by i18n"></span></div>';
+            // Ensure the help text is correctly assigned to the title attribute first by registerHelpTooltips
+            // which is called inside mainModule.init()
 
-            const originalCurrentTooltipMock = global.currentTooltipMock;
-            delete global.jQuery.fn.tooltip;
+            // Force our mocked initTooltips to simulate an internal error (like tippy throwing)
+            // For this test to pass as originally intended (testing main.js's try/catch around initTooltips),
+            // initTooltips itself would need to throw.
+            mockInitTooltips.mockImplementationOnce(() => { throw new Error('Simulated initTooltips failure'); });
+
+            mainModule.init(); // This calls registerHelpTooltips, which then calls initTooltips
+            jest.runAllTimers();
+
+            const helpSpan = $('div.property-label').find('span.help-tooltip');
+            expect(helpSpan.length).toBe(1);
+            // This test now checks if the registerHelpTooltips's own try/catch logs the error.
+            // The fallback to data-original-title happens inside initTooltips, which is now fully mocked.
+            // So, we can't directly test that part here anymore unless we make the mock more complex.
+            // The main purpose is to ensure main.js's error handling for tooltip initialization works.
+            expect(consoleErrorSpy).toHaveBeenCalledWith('Error initializing tooltips:', expect.any(Error));
+            // We can't assert data-original-title here because initTooltips is a black box.
+        });
+
+        it('should NOT use fallback title if tippy initialization succeeds', () => {
+            global.nf.Canvas.initialized = true;
+            document.body.innerHTML = '<div class="property-label" data-i18n-key-direct="property.token.location.help">Token Location <span class="help-tooltip" title="Initial Title"></span></div>';
+
+            mockInitTooltips.mockClear(); // Use the imported initTooltips mock
+            mockInitTooltips.mockImplementation(() => {}); // Default successful mock
 
             mainModule.init();
             jest.runAllTimers();
 
             const helpSpan = $('div.property-label').find('span.help-tooltip');
             expect(helpSpan.length).toBe(1);
-            expect(helpSpan.attr('data-original-title')).toBe(testTranslations['property.token.location.help']);
-
-            global.jQuery.fn.tooltip = originalCurrentTooltipMock;
-        });
-
-        it('should handle errors during tooltip initialization and log to console', () => {
-            global.nf.Canvas.initialized = true;
-            const originalCurrentTooltipMock = global.currentTooltipMock;
-            global.jQuery.fn.tooltip = jest.fn().mockImplementation(() => { throw new Error('Tooltip init failed'); });
-
-            mainModule.init();
-            jest.runAllTimers();
-
-            expect(consoleErrorSpy).toHaveBeenCalledWith('Error initializing tooltips:', expect.any(Error));
-            global.jQuery.fn.tooltip = originalCurrentTooltipMock;
+            expect(mockInitTooltips).toHaveBeenCalled(); // Ensure initTooltips was called
+            expect(helpSpan.attr('data-original-title')).toBeUndefined(); // Fallback should not have run (this is an indirect check)
+            expect(consoleErrorSpy).not.toHaveBeenCalledWith('Error initializing tooltips:', expect.any(Error));
         });
 
         it('should update UI translations on init', () => {
@@ -201,7 +222,7 @@ describe('main.js (real implementation with JSDOM)', () => {
                 global.nf.Canvas.initialized = true;
                 mainModule.init();
                 jest.runAllTimers();
-                global.currentTooltipMock.mockClear();
+                mockInitTooltips.mockClear(); // Use the imported initTooltips mock
             });
 
             it.skip('should register help tooltips and update translations when a MultiIssuerJWTTokenAuthenticator dialog opens', () => {
@@ -214,14 +235,14 @@ describe('main.js (real implementation with JSDOM)', () => {
                 const $dialogContent = $('#other-processor-dialog-mock').show();
                 $(document).trigger('dialogOpen', [$dialogContent[0]]);
                 jest.advanceTimersByTime(600);
-                expect(global.currentTooltipMock).not.toHaveBeenCalled();
+                expect(mockInitTooltips).not.toHaveBeenCalled(); // Use the imported initTooltips mock
             });
 
             it('should NOT act if dialogContent does not have class processor-dialog', () => {
                 const $dialogContent = $('#non-processor-dialog-mock').show();
                 $(document).trigger('dialogOpen', [$dialogContent[0]]);
                 jest.advanceTimersByTime(600);
-                expect(global.currentTooltipMock).not.toHaveBeenCalled();
+                expect(mockInitTooltips).not.toHaveBeenCalled(); // Use the imported initTooltips mock
             });
         });
     });

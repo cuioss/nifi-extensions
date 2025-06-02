@@ -51,7 +51,9 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
-    "jquery": "^3.7.1"
+    "@popperjs/core": "^2.11.8",
+    "jquery": "^3.7.1",
+    "tippy.js": "^6.3.7"
   },
   "jest": {
     "verbose": true,
@@ -96,7 +98,8 @@
       "^services/apiClient$": "<rootDir>/src/main/webapp/js/services/apiClient.js",
       "^components/tokenVerifier$": "<rootDir>/src/main/webapp/js/components/tokenVerifier.js",
       "^components/issuerConfigEditor$": "<rootDir>/src/main/webapp/js/components/issuerConfigEditor.js",
-      "^components/jwksValidator$": "<rootDir>/src/main/webapp/js/components/jwksValidator.js"
+      "^components/jwksValidator$": "<rootDir>/src/main/webapp/js/components/jwksValidator.js",
+      "\\.css$": "<rootDir>/src/test/js/mocks/cssMock.js"
     }
   }
 }

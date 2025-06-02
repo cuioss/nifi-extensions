@@ -2,7 +2,7 @@
 :toc:
 :toclevels: 4
 
-[ ] *Priority:* High
+[x] *Priority:* High
 
 *Description:* Replace jQuery UI's tooltip functionality with Tippy.js, a lightweight and flexible tooltip library powered by Popper.js. This will reduce bundle size while maintaining essential tooltip features.
 
@@ -26,14 +26,14 @@ Our application currently uses jQuery UI's tooltip functionality, which adds unn
 
 === Implementation Plan
 
-1. [ ] Install Tippy.js and its dependencies:
+1. [x] Install Tippy.js and its dependencies:
 +
 [source,bash]
 ----
 npm install tippy.js @popperjs/core
 ----
 
-2. [ ] Create a Tooltip Utility Module:
+2. [x] Create a Tooltip Utility Module:
 +
 [source,javascript]
 ----
@@ -76,7 +76,7 @@ export function initTooltips(selector, options = {}, context = document) {
 }
 ----
 
-3. [ ] Update main.js to use the new tooltip utility:
+3. [x] Update main.js to use the new tooltip utility:
 +
 [source,javascript]
 ----
@@ -94,7 +94,7 @@ try {
 }
 ----
 
-4. [ ] Create test mock for Tippy.js:
+4. [x] Create test mock for Tippy.js:
 +
 [source,javascript]
 ----
@@ -125,10 +125,10 @@ mockTippy.isSupported = true;
 export default mockTippy;
 ----
 
-5. [ ] Remove jQuery UI tooltip code and related artifacts:
-   * [ ] Remove all usages of jQuery UI tooltip initialization from the codebase
-   * [ ] Remove jQuery UI tooltip-related CSS and assets
-   * [ ] Remove obsolete test mocks for jQuery UI tooltip
+5. [x] Remove jQuery UI tooltip code and related artifacts:
+   * [x] Remove all usages of jQuery UI tooltip initialization from the codebase
+   * [x] Remove jQuery UI tooltip-related CSS and assets (WebJar dependency removed from pom.xml)
+   * [x] Remove obsolete test mocks for jQuery UI tooltip (none were found)
 
 == References
 

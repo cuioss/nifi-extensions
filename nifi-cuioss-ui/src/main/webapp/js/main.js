@@ -9,6 +9,7 @@ import * as issuerConfigEditor from './components/issuerConfigEditor.js';
 import * as _apiClient from './services/apiClient.js'; // apiClient is not directly used in main.js
 import * as _formatters from './utils/formatters.js'; // formatters is not directly used in main.js
 import * as i18n from './utils/i18n.js';
+import { initTooltips } from './utils/tooltip.js';
 
 // jQuery UI is already loaded via script tag
 'use strict';
@@ -60,23 +61,13 @@ const registerHelpTooltips = function (contextElement) {
 
     // Initialize tooltips
     try {
-        const tooltips = contextElement ? $('.help-tooltip', contextElement) : $('.help-tooltip');
-        if ($.fn.tooltip) {
-            tooltips.tooltip({
-                position: {
-                    my: 'left top+5',
-                    at: 'left bottom'
-                }
-            });
-        } else {
-            // Fallback to title attribute if tooltip function is not available
-            tooltips.each(function () {
-                const title = $(this).attr('title');
-                if (title) {
-                    $(this).attr('data-original-title', title);
-                }
-            });
-        }
+        const tooltipSelector = '.help-tooltip';
+        // contextElement could be a jQuery object or a DOM element.
+        // initTooltips expects a DOM element or a selector string for its context.
+        const context = contextElement && contextElement.length ? contextElement[0] : document;
+        initTooltips(tooltipSelector, {
+            // placement: 'bottom-start' // This is the default in initTooltips
+        }, context);
     } catch (e) {
         console.error('Error initializing tooltips:', e);
     }
@@ -113,7 +104,6 @@ const getHelpTextForProperty = function (propertyName) {
      * Hides the loading indicator and shows the UI components.
      */
 const hideLoadingIndicator = function () {
-    console.log('[DEBUG_LOG] Hiding loading indicator');
     $('#loading-indicator').hide();
     $('#jwt-validator-tabs').show();
 };
