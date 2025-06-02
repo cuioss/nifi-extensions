@@ -50,7 +50,7 @@
         <!-- Sonatype -->
 
         <!-- OpenRewrite -->
-        <open.rewrite.maven.plugin.version>6.7.0</open.rewrite.maven.plugin.version>
+        <open.rewrite.maven.plugin.version>6.10.0</open.rewrite.maven.plugin.version>
         <rewrite-testing-frameworks.version>3.7.0</rewrite-testing-frameworks.version>
         <rewrite-migrate-java.version>3.8.0</rewrite-migrate-java.version>
         <project.build.outputTimestamp>2025-04-30T06:58:46Z</project.build.outputTimestamp>
