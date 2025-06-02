@@ -125,6 +125,11 @@ mockTippy.isSupported = true;
 export default mockTippy;
 ----
 
+5. [ ] Remove jQuery UI tooltip code and related artifacts:
+   * [ ] Remove all usages of jQuery UI tooltip initialization from the codebase
+   * [ ] Remove jQuery UI tooltip-related CSS and assets
+   * [ ] Remove obsolete test mocks for jQuery UI tooltip
+
 == References
 
 * https://atomiks.github.io/tippyjs/[Tippy.js Documentation]

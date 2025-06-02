@@ -56,36 +56,43 @@ Implement a Maven-first approach where WebJars are the primary source for runtim
    * [ ] Keep development dependencies (webpack, babel, eslint, jest, etc.)
    * [ ] Move runtime dependencies to devDependencies or peerDependencies as appropriate
    * [ ] Add explicit notes in package.json about the dependency management strategy
+   * [ ] Remove any obsolete or duplicate runtime dependencies from dependencies/devDependencies
+   * [ ] Remove any npm scripts or configuration related to now-removed runtime dependencies
 
-5. [ ] Create a dependency alignment script:
+5. [ ] Remove obsolete or duplicate dependency declarations from pom.xml:
+   * [ ] Remove any WebJars or overlays that are no longer needed after migration
+   * [ ] Remove any Maven plugin configuration that is no longer relevant
+
+6. [ ] Create a dependency alignment script:
    * [ ] Create a tool to verify/enforce alignment between npm and WebJars versions
    * [ ] Integrate this check into the build process
 
 ==== Phase 3: Update Build Configuration
 
-6. [ ] Update webpack configuration:
+1. [ ] Update webpack configuration:
    * [ ] Configure webpack to use WebJars paths for runtime dependencies
    * [ ] Ensure proper resolution of dependencies during development and build
 
-7. [ ] Update Jest configuration:
+2. [ ] Update Jest configuration:
    * [ ] Configure moduleNameMapper to handle WebJars paths correctly
    * [ ] Update test mocks if needed
 
-8. [ ] Update frontend-maven-plugin configuration:
+3. [ ] Update frontend-maven-plugin configuration:
    * [ ] Ensure proper execution order in Maven lifecycle
    * [ ] Configure plugin to handle the new dependency strategy
 
 ==== Phase 4: Documentation and Guidelines
 
-9. [ ] Update documentation:
+1. [ ] Update documentation:
    * [ ] Document the unified dependency management approach
    * [ ] Create clear guidelines for adding new dependencies
    * [ ] Update READMEs and development documentation
+   * [ ] Remove outdated documentation about the old dual dependency management approach
 
-10. [ ] Create developer guidance:
-    * [ ] Provide clear instructions for development setup
-    * [ ] Document procedures for updating dependencies
-    * [ ] Create examples for common dependency management tasks
+2. [ ] Create developer guidance:
+   * [ ] Provide clear instructions for development setup
+   * [ ] Document procedures for updating dependencies
+   * [ ] Create examples for common dependency management tasks
 
 == Implementation Details
 

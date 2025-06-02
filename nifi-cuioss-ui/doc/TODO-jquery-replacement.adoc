@@ -277,6 +277,14 @@ import $ from './utils/jquery-compat';
 
 1. [ ] As components are updated or created, migrate them to use vanilla JavaScript and the utility functions created in earlier phases.
 
+==== Phase 6: Remove jQuery and Related Artifacts
+
+1. [ ] Remove jQuery from the codebase:
+   * [ ] Remove all jQuery imports from source files
+   * [ ] Remove jQuery-based utility functions and wrappers
+   * [ ] Remove obsolete jQuery plugins and extensions
+   * [ ] Remove jQuery from package.json and WebJars dependencies in pom.xml if no longer needed
+
 == References
 
 * https://github.com/fabiospampinato/cash[Cash - A tiny jQuery alternative]

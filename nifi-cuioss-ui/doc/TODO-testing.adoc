@@ -132,6 +132,10 @@ export function expectTooltipInitialized(selector, expectedOptions = {}) {
 }
 ----
 
+6. [ ] Remove obsolete test artifacts:
+   * [ ] Remove custom jQuery mocks that are replaced by jest-jquery-mock
+   * [ ] Remove test helpers for jQuery UI tooltip if no longer needed
+
 == References
 
 * https://www.npmjs.com/package/jest-jquery-mock[jest-jquery-mock on npm]
