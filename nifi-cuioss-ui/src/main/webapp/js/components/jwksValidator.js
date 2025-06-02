@@ -2,6 +2,7 @@
  * JWKS Validation Button UI component.
  */
 import $ from 'jquery';
+import { compatAjax } from '../utils/ajax';
 import * as nfCommon from 'nf.Common'; // Assuming nfCommon provides a default export or nf.Common.js is adjusted
 
 let isLocalhostOverride = null; // Allows tests to control localhost behavior
@@ -64,7 +65,7 @@ export const init = function (element, propertyValue, jwks_type, callback) {
 
             try {
                 // Make the AJAX request to validate
-                $.ajax({
+                compatAjax({
                     type: 'POST',
                     url: '../nifi-api/processors/jwks/validate-url',
                     data: JSON.stringify({ jwksValue: jwksValue }),

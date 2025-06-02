@@ -4,6 +4,7 @@
  * issuer configurations for the MultiIssuerJWTTokenAuthenticator processor.
  */
 import $ from 'jquery';
+import { compatAjax } from '../utils/ajax';
 import * as _nfCommon from 'nf.Common';
 import * as apiClient from '../services/apiClient.js';
 import * as formatters from '../utils/formatters.js';
@@ -196,7 +197,7 @@ const addIssuerForm = function (container, issuerName, properties) {
 
         try {
             // Make the AJAX request to validate
-            $.ajax({
+            compatAjax({
                 type: 'POST',
                 url: '../nifi-api/processors/jwks/validate-url',
                 data: JSON.stringify({ jwksValue: jwksValue }),

@@ -2,7 +2,7 @@
  * API Client for JWT Token Validation.
  * Provides methods for interacting with the backend REST API.
  */
-import $ from 'jquery';
+import { compatAjax } from '../utils/ajax';
 import * as _nfCommon from 'nf.Common'; // Path might need adjustment
 
 'use strict';
@@ -62,7 +62,7 @@ const handleApiError = function (xhr, errorCallback) {
  * @param {Function} errorCallback - The callback to invoke on error
  */
 export const validateJwksUrl = function (jwksUrl, successCallback, errorCallback) {
-    $.ajax({
+    compatAjax({
         type: 'POST',
         url: BASE_URL + '/validate-jwks-url',
         data: JSON.stringify({ jwksUrl: jwksUrl }),
@@ -83,7 +83,7 @@ export const validateJwksUrl = function (jwksUrl, successCallback, errorCallback
  * @param {Function} errorCallback - The callback to invoke on error
  */
 export const validateJwksFile = function (filePath, successCallback, errorCallback) {
-    $.ajax({
+    compatAjax({
         type: 'POST',
         url: BASE_URL + '/validate-jwks-file',
         data: JSON.stringify({ filePath: filePath }),
@@ -104,7 +104,7 @@ export const validateJwksFile = function (filePath, successCallback, errorCallba
  * @param {Function} errorCallback - The callback to invoke on error
  */
 export const validateJwksContent = function (jwksContent, successCallback, errorCallback) {
-    $.ajax({
+    compatAjax({
         type: 'POST',
         url: BASE_URL + '/validate-jwks-content',
         data: JSON.stringify({ jwksContent: jwksContent }),
@@ -125,7 +125,7 @@ export const validateJwksContent = function (jwksContent, successCallback, error
  * @param {Function} errorCallback - The callback to invoke on error
  */
 export const verifyToken = function (token, successCallback, errorCallback) {
-    $.ajax({
+    compatAjax({
         type: 'POST',
         url: BASE_URL + '/verify-token',
         data: JSON.stringify({ token: token }),
@@ -145,7 +145,7 @@ export const verifyToken = function (token, successCallback, errorCallback) {
  * @param {Function} errorCallback - The callback to invoke on error
  */
 export const getSecurityMetrics = function (successCallback, errorCallback) {
-    $.ajax({
+    compatAjax({
         type: 'GET',
         url: BASE_URL + '/metrics',
         dataType: 'json'
@@ -163,7 +163,7 @@ export const getSecurityMetrics = function (successCallback, errorCallback) {
  * @return {jQuery.Deferred} A jQuery Deferred object for the request
  */
 export const getProcessorProperties = function (processorId) {
-    return $.ajax({
+    return compatAjax({
         type: 'GET',
         url: '../nifi-api/processors/' + processorId,
         dataType: 'json'
@@ -179,7 +179,7 @@ export const getProcessorProperties = function (processorId) {
  */
 export const updateProcessorProperties = function (processorId, properties) {
     // First, get the current processor configuration
-    return $.ajax({
+    return compatAjax({
         type: 'GET',
         url: '../nifi-api/processors/' + processorId,
         dataType: 'json'
@@ -194,7 +194,7 @@ export const updateProcessorProperties = function (processorId, properties) {
         };
 
         // Send the update request
-        return $.ajax({
+        return compatAjax({
             type: 'PUT',
             url: '../nifi-api/processors/' + processorId,
             data: JSON.stringify(updateRequest),

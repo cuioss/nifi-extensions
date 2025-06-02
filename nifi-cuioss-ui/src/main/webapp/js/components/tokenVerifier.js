@@ -2,6 +2,7 @@
  * Token Verification Interface UI component.
  */
 import $ from 'jquery';
+import { compatAjax } from '../utils/ajax';
 import * as nfCommon from 'nf.Common';
 
 'use strict';
@@ -73,7 +74,7 @@ export const init = function (element, config, type, callback) {
 
         try {
             // Make the AJAX request to verify the token
-            $.ajax({
+            compatAjax({
                 type: 'POST',
                 url: '../nifi-api/processors/jwt/verify-token',
                 data: JSON.stringify({ token: token }),

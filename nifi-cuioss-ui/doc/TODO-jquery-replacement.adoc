@@ -2,7 +2,7 @@
 :toc:
 :toclevels: 4
 
-[ ] *Priority:* High
+[WIP] *Priority:* High - Phase 1 & 2 done.
 
 *Description:* Implement a hybrid approach for gradually replacing jQuery with lighter alternatives and native JavaScript. This phased migration will reduce bundle size while maintaining application stability.
 
@@ -27,7 +27,7 @@ A phased migration approach will gradually reduce jQuery dependency while mainta
 
 ==== Phase 1: Replace jQuery AJAX with Fetch API
 
-1. [ ] Create a fetch-based API client wrapper:
+1. [x] Create a fetch-based API client wrapper:
 
 [source,javascript]
 ----
@@ -91,7 +91,7 @@ export const compatAjax = (options) => {
 };
 ----
 
-2. [ ] Update imports and replace $.ajax calls:
+2. [x] Update imports and replace $.ajax calls:
 
 [source,javascript]
 ----
@@ -136,18 +136,18 @@ ajax({
 
 This phase will replace jQuery UI tooltips with Tippy.js as detailed in Task D1.
 
-1. [ ] Install Tippy.js and its dependencies:
+1. [x] Install Tippy.js and its dependencies:
 
 [source,bash]
 ----
 npm install tippy.js @popperjs/core
 ----
 
-2. [ ] Create and use the tooltip utility module as described in the tooltip replacement document (Task D1).
+2. [x] Create and use the tooltip utility module as described in the tooltip replacement document (Task D1).
 
 ==== Phase 3: Create DOM Utility Module
 
-1. [ ] Create utility functions that mirror jQuery's API for DOM manipulation:
+1. [x] Create utility functions that mirror jQuery's API for DOM manipulation:
 
 [source,javascript]
 ----
