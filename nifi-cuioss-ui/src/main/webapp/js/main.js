@@ -62,9 +62,9 @@ const registerHelpTooltips = function (contextElement) {
     // Initialize tooltips
     try {
         const tooltipSelector = '.help-tooltip';
-        // contextElement could be a jQuery object or a DOM element.
+        // contextElement is expected to be a raw DOM element if provided.
         // initTooltips expects a DOM element or a selector string for its context.
-        const context = contextElement && contextElement.length ? contextElement[0] : document;
+        const context = contextElement ? contextElement : document;
         initTooltips(tooltipSelector, {
             // placement: 'bottom-start' // This is the default in initTooltips
         }, context);
@@ -151,14 +151,16 @@ export const init = function () {
         hideLoadingIndicator();
 
         // Add event listener to track when the processor dialog opens
-        $(document).on('dialogOpen', function (event, dialogContent) {
-            if ($(dialogContent).hasClass('processor-dialog')) {
+        $(document).on('dialogOpen', function (event, dialogContentElement) { // dialogContentElement is a raw DOM element
+            const $dialog = $(dialogContentElement); // Wrap the raw DOM element once
+            if ($dialog.hasClass('processor-dialog')) {
                 // Use setTimeout to allow the dialog to fully render
                 setTimeout(function () {
-                    const processorType = $('.processor-type', dialogContent).text();
+                    const processorTypeElement = $dialog.find('.processor-type');
+                    const processorType = processorTypeElement.length ? processorTypeElement.text().trim() : '';
 
                     if (processorType.includes('MultiIssuerJWTTokenAuthenticator')) {
-                        registerHelpTooltips(dialogContent); // Pass context
+                        registerHelpTooltips(dialogContentElement); // Pass raw DOM element as context
                         // Update translations in the dialog
                         updateUITranslations(); // This is global, might need context too if dialog has elements it targets
                     }

@@ -5,7 +5,7 @@ import nfCommon from 'nf.Common';
 // assuming default Jest resolution or a moduleNameMapper might be inconsistent.
 // The key is for Jest to mock the exact module instance the SUT uses.
 import * as apiClient from '../../../main/webapp/js/services/apiClient.js';
-import * as formatters from 'js/utils/formatters'; // Assuming this is correctly mapped or relative
+// import * as formatters from 'js/utils/formatters'; // Unused: Removed
 
 // Mock the apiClient module using the exact path resolved by the SUT
 // SUT is src/main/webapp/js/components/issuerConfigEditor.js
@@ -59,20 +59,19 @@ describe('issuerConfigEditor', function () {
 
         // Mock window methods and console
         let originalAlert, originalConfirm;
-        let consoleErrorSpy, consoleLogSpy, originalConsoleError, originalConsoleLog;
+        let consoleErrorSpy, consoleLogSpy, _originalConsoleError, _originalConsoleLog;
         let tempTestPathHit = false; // Flag for the TEMP TEST
 
         beforeEach(function () {
             originalAlert = window.alert;
             originalConfirm = window.confirm;
-            originalConsoleError = console.error; // Store original console.error
-            originalConsoleLog = console.log;   // Store original console.log
+            _originalConsoleError = console.error; // Store original console.error, prefixed as unused
+            _originalConsoleLog = console.log;   // Store original console.log, prefixed as unused
 
             window.alert = jest.fn();
             window.confirm = jest.fn();
 
             // Spy on console methods
-            // Using mockImplementation to still see output if needed: jest.fn( (...args) => originalConsoleError.apply(console, args) )
             consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {}); // Keep it silent for now
             consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {}); // Keep it silent
 
@@ -148,7 +147,7 @@ describe('issuerConfigEditor', function () {
                 expect(mockElement.find('.issuers-container').length).toBe(1);
                 expect(mockElement.find('.add-issuer-button').length).toBe(1);
                 expect(mockCallback).toHaveBeenCalled();
-                expect(console.error).not.toHaveBeenCalled(); // Check for unexpected errors using the spy
+                expect(consoleErrorSpy).not.toHaveBeenCalled(); // Check for unexpected errors using the spy
             });
 
             it('should call loadExistingIssuers which calls getProcessorProperties if processorId is found', function () {
@@ -158,7 +157,7 @@ describe('issuerConfigEditor', function () {
 
             it('should handle null element gracefully', function () {
                 issuerConfigEditor.init(null, mockConfig, null, mockCallback, currentTestUrl);
-                expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] Error: No element provided to issuerConfigEditor.init'); // Use spied console.error
+                expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Error: No element provided to issuerConfigEditor.init'); // Use spied console.error
                 expect(mockCallback).toHaveBeenCalled();
             });
 
@@ -166,7 +165,7 @@ describe('issuerConfigEditor', function () {
                 issuerConfigEditor.init(mockElement[0], null, null, mockCallback, currentTestUrl);
                 expect(mockCallback).toHaveBeenCalled();
                 // Check that no TypeError or similar is logged due to null config
-                expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining('TypeError'));
+                expect(consoleErrorSpy).not.toHaveBeenCalledWith(expect.stringContaining('TypeError'));
                 // Basic structure should still be there
                 expect(mockElement.find('.issuer-config-editor').length).toBe(1);
             });
@@ -188,7 +187,7 @@ describe('issuerConfigEditor', function () {
 
                 issuerConfigEditor.init(mockElement[0], mockConfig, null, mockCallback, currentTestUrl);
 
-                expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] Error initializing issuerConfigEditor:', testError);
+                expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Error initializing issuerConfigEditor:', testError);
                 expect(mockCallback).toHaveBeenCalled(); // Callback should still be called from catch block
 
                 $.fn.appendTo = originalAppendTo; // Restore
@@ -274,12 +273,12 @@ describe('issuerConfigEditor', function () {
                 issuerConfigEditor.init(mockElement[0], mockConfig, null, mockCallback, currentTestUrl);
 
                 expect(mockElement.find('.issuer-form').length).toBe(2);
-                const formOne = mockElement.find('.issuer-form').filter((i, el) => $(el).find('.issuer-name').val() === 'issuerOne');
+                const formOne = mockElement.find('.issuer-form').filter((_i, el) => $(el).find('.issuer-name').val() === 'issuerOne');
                 expect(formOne.length).toBe(1);
                 expect(formOne.find('.field-issuer').val()).toBe('uri1');
                 expect(formOne.find('.field-jwks-url').val()).toBe('url1');
 
-                const formTwo = mockElement.find('.issuer-form').filter((i, el) => $(el).find('.issuer-name').val() === 'issuerTwo');
+                const formTwo = mockElement.find('.issuer-form').filter((_i, el) => $(el).find('.issuer-name').val() === 'issuerTwo');
                 expect(formTwo.length).toBe(1);
                 expect(formTwo.find('.field-issuer').val()).toBe('uri2');
                 expect(formTwo.find('.field-jwks-url').val()).toBe('url2');
@@ -293,7 +292,7 @@ describe('issuerConfigEditor', function () {
                 issuerConfigEditor.init(mockElement[0], mockConfig, null, mockCallback, currentTestUrl);
 
                 // If deferred is rejected with a single string 'API Error', then xhr='API Error', status=undefined, error=undefined
-                expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] Error loading processor properties:', undefined, undefined);
+                expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Error loading processor properties:', undefined, undefined);
                 expect(mockElement.find('.issuer-form').length).toBe(1);
                 expect(mockElement.find('.issuer-name').val()).toBe('sample-issuer');
             });
@@ -308,7 +307,7 @@ describe('issuerConfigEditor', function () {
 
                 issuerConfigEditor.init(mockElement[0], mockConfig, null, mockCallback, currentTestUrl);
 
-                expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] Exception in loadExistingIssuers:', specificError);
+                expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in loadExistingIssuers:', specificError);
                 expect(mockElement.find('.issuer-form').length).toBe(1);
                 expect(mockElement.find('.issuer-name').val()).toBe('sample-issuer');
             });
@@ -327,29 +326,28 @@ describe('issuerConfigEditor', function () {
                 issuerConfigEditor.init(mockElement[0], mockConfig, null, mockCallback, currentTestUrl);
 
                 expect(mockElement.find('.issuer-form').length).toBe(2);
-                expect(mockElement.find('.issuer-form').filter((i, el) => $(el).find('.issuer-name').val() === 'validone').length).toBe(1);
-                expect(mockElement.find('.issuer-form').filter((i, el) => $(el).find('.issuer-name').val() === 'another').length).toBe(1);
+                expect(mockElement.find('.issuer-form').filter((_i, el) => $(el).find('.issuer-name').val() === 'validone').length).toBe(1);
+                expect(mockElement.find('.issuer-form').filter((_i, el) => $(el).find('.issuer-name').val() === 'another').length).toBe(1);
                 // Ensure no errors were logged for malformed properties specifically (other logs might exist)
-                expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining('Malformed property key'));
+                expect(consoleErrorSpy).not.toHaveBeenCalledWith(expect.stringContaining('Malformed property key'));
             });
 
-            it('TEMP TEST: should call console.error directly if apiClient is forced, and also from .fail()', () => {
+            it('TEMP TEST: should demonstrate .fail() handler logging via spy', () => { // Renamed for clarity
                 mockLocation.href = 'http://localhost/nifi/processors/abcde-temp-id/edit'; // Valid ID
                 currentTestUrl = mockLocation.href;
                 // Use .mockImplementation() on the existing mock function
                 apiClient.getProcessorProperties.mockImplementation(() => {
                     tempTestPathHit = true;
-                    console.error('Direct call test from apiClient mock');
-                    // This rejection will cause the .fail() handler in the component to be called
+                    // Removed direct console.error: console.error('Direct call test from apiClient mock');
+                    // The component's .fail() handler is what we're testing the spy against.
                     return $.Deferred().reject('Forced reject after direct console call').promise();
                 });
 
                 issuerConfigEditor.init(mockElement[0], mockConfig, null, mockCallback, currentTestUrl);
 
                 expect(tempTestPathHit).toBe(true);
-                expect(console.error).toHaveBeenCalledWith('Direct call test from apiClient mock');
-                // Check that the .fail() handler's console.error was also called
-                expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] Error loading processor properties:', undefined, undefined);
+                // Check that the .fail() handler's console.error was also called (via the spy)
+                expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Error loading processor properties:', undefined, undefined);
             });
         });
 
@@ -405,7 +403,7 @@ describe('issuerConfigEditor', function () {
                 mockElement.find('.add-issuer-button').trigger('click');
                 form = mockElement.find('.issuer-form').first();
                 // expect(form.length).toBe(1); // Ensure form is found - Removed for jest/no-standalone-expect
-                const button = form.find('.verify-jwks-button');
+                // const button = form.find('.verify-jwks-button'); // Unused: Removed
                 // expect(button.length).toBe(1); // Ensure button is found within the form - Removed for jest/no-standalone-expect
             });
 
@@ -520,7 +518,7 @@ describe('issuerConfigEditor', function () {
                 form.find('.field-jwks-url').val('https://any.jwks.url/keys');
                 form.find('.verify-jwks-button').trigger('click');
                 expect(form.find('.verification-result').html()).toContain('OK</span> Valid JWKS (3 keys found) <em>(Simulated response)</em>');
-                expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] Exception in JWKS validation:', expect.any(Error));
+                expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in JWKS validation:', expect.any(Error));
             });
 
             it('should use simulated response for 127.0.0.1 if AJAX fails', function () {
@@ -539,7 +537,7 @@ describe('issuerConfigEditor', function () {
                 form.find('.field-jwks-url').val('https://any.jwks.url/keys');
                 form.find('.verify-jwks-button').trigger('click');
                 expect(form.find('.verification-result').html()).toContain('OK</span> Valid JWKS (3 keys found) <em>(Simulated response)</em>');
-                expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] Using simulated response for standalone testing');
+                expect(consoleLogSpy).toHaveBeenCalledWith('[DEBUG_LOG] Using simulated response for standalone testing');
             });
         });
 
@@ -628,22 +626,22 @@ describe('issuerConfigEditor', function () {
                 apiClient.updateProcessorProperties.mockReturnValueOnce($.Deferred().reject(null, 'API Error Status', 'Save Failed Message').promise());
                 form.find('.save-issuer-button').trigger('click');
                 expect(window.alert).toHaveBeenCalledWith('Error: Failed to save issuer configuration. See console for details.');
-                expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] Error updating processor properties:', 'API Error Status', 'Save Failed Message');
-                window.alert.mockClear(); console.error.mockClear(); apiClient.updateProcessorProperties.mockClear(); // Clear for next scenario
+                expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Error updating processor properties:', 'API Error Status', 'Save Failed Message');
+                window.alert.mockClear(); consoleErrorSpy.mockClear(); apiClient.updateProcessorProperties.mockClear(); // Clear for next scenario
 
                 // Scenario 2: xhr.responseText is JSON with a message
                 const jsonErrorResponse = { message: 'JSON error from server' };
                 apiClient.updateProcessorProperties.mockReturnValueOnce($.Deferred().reject({ responseText: JSON.stringify(jsonErrorResponse) }, 'API Error Status JSON', 'Ignored Error Arg').promise());
                 form.find('.save-issuer-button').trigger('click');
                 expect(window.alert).toHaveBeenCalledWith('Error: Failed to save issuer configuration. See console for details.');
-                expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Error updating processor properties'), 'API Error Status JSON', expect.anything());
-                window.alert.mockClear(); console.error.mockClear(); apiClient.updateProcessorProperties.mockClear(); // Clear for next scenario
+                expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Error updating processor properties'), 'API Error Status JSON', expect.anything());
+                window.alert.mockClear(); consoleErrorSpy.mockClear(); apiClient.updateProcessorProperties.mockClear(); // Clear for next scenario
 
                 // Scenario 3: xhr.responseText is non-JSON text
                 apiClient.updateProcessorProperties.mockReturnValueOnce($.Deferred().reject({ responseText: 'Plain text error from server' }, 'API Error Status Text', 'Ignored Error Arg').promise());
                 form.find('.save-issuer-button').trigger('click');
                 expect(window.alert).toHaveBeenCalledWith('Error: Failed to save issuer configuration. See console for details.');
-                expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Error updating processor properties'), 'API Error Status Text', expect.anything());
+                expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Error updating processor properties'), 'API Error Status Text', expect.anything());
             });
 
             // Using processorId '12345-abcde'
@@ -657,7 +655,7 @@ describe('issuerConfigEditor', function () {
                 form.find('.save-issuer-button').trigger('click');
 
                 expect(window.alert).toHaveBeenCalledWith('Error: Failed to save issuer configuration due to an exception. See console for details.');
-                expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] Exception in saveIssuer:', exception);
+                expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in saveIssuer:', exception);
             });
 
             it('should save in standalone mode if no processorId', function () {
@@ -686,7 +684,7 @@ describe('issuerConfigEditor', function () {
 
                 expect(apiClient.updateProcessorProperties).not.toHaveBeenCalled();
                 expect(window.alert).toHaveBeenCalledWith('Success: Issuer configuration saved successfully (standalone mode).');
-                expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] Saving issuer in standalone mode:', form.find('.issuer-name').val(), {
+                expect(consoleLogSpy).toHaveBeenCalledWith('[DEBUG_LOG] Saving issuer in standalone mode:', form.find('.issuer-name').val(), {
                     issuer: 'https://standalone.com/issuer',
                     'jwks-url': 'https://standalone.com/jwks.json',
                     audience: '',
@@ -705,5 +703,199 @@ describe('issuerConfigEditor', function () {
         // The entire 'Remove Issuer functionality' describe block has been removed to prevent parsing errors
         // and to satisfy linting rules regarding commented-out/skipped tests.
         // No TODO needed, init's catch block test was added above.
+
+        describe('Remove Issuer functionality', function () {
+            let form;
+            const issuerName = 'test-issuer-to-remove';
+
+            beforeEach(() => {
+                // Initialize with one existing issuer matching `issuerName`
+                const mockProperties = {
+                    properties: {
+                        ['issuer.' + issuerName + '.issuer']: 'uri-to-remove',
+                        ['issuer.' + issuerName + '.jwks-url']: 'url-to-remove'
+                    }
+                };
+                apiClient.getProcessorProperties.mockReturnValue($.Deferred().resolve(mockProperties).promise());
+                // currentTestUrl (e.g., 'http://localhost/nifi/processors/12345-abcde/edit') is set in the main beforeEach
+                issuerConfigEditor.init(mockElement[0], mockConfig, null, mockCallback, currentTestUrl);
+
+                // Find the specific form for 'test-issuer-to-remove'
+                form = mockElement.find('.issuer-form').filter((_i, el) => $(el).find('.issuer-name').val() === issuerName);
+                expect(form.length).toBe(1); // Ensure the form is loaded
+            });
+
+            it('should call window.confirm before removing', function () {
+                window.confirm.mockReturnValue(false); // Simulate user clicking "Cancel"
+
+                form.find('.remove-issuer-button').trigger('click');
+
+                expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to remove this issuer configuration?');
+                expect(apiClient.updateProcessorProperties).not.toHaveBeenCalled();
+                expect(mockElement.find('.issuer-form').filter((_i, el) => $(el).find('.issuer-name').val() === issuerName).length).toBe(1); // Form should still exist
+            });
+
+            it('should remove issuer and call updateProcessorProperties with null values on successful removal', function () {
+                window.confirm.mockReturnValue(true); // Simulate user clicking "OK"
+                // Mock getProcessorProperties for the call inside removeIssuer
+                const initialProps = {
+                    properties: {
+                        ['issuer.' + issuerName + '.issuer']: 'uri-to-remove',
+                        ['issuer.' + issuerName + '.jwks-url']: 'url-to-remove',
+                        ['issuer.' + issuerName + '.audience']: 'aud-remove',
+                        'other.property': 'value'
+                    }
+                };
+                apiClient.getProcessorProperties.mockReturnValueOnce($.Deferred().resolve(initialProps).promise());
+                apiClient.updateProcessorProperties.mockReturnValueOnce($.Deferred().resolve().promise());
+
+                form.find('.remove-issuer-button').trigger('click');
+
+                expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to remove this issuer configuration?');
+                // Check getProcessorProperties call inside removeIssuer (processorId from currentTestUrl is '12345-abcde')
+                expect(apiClient.getProcessorProperties).toHaveBeenCalledWith('12345-abcde');
+
+                const expectedUpdates = {
+                    ['issuer.' + issuerName + '.issuer']: null,
+                    ['issuer.' + issuerName + '.jwks-url']: null,
+                    ['issuer.' + issuerName + '.audience']: null
+                };
+                expect(apiClient.updateProcessorProperties).toHaveBeenCalledWith('12345-abcde', expectedUpdates);
+                expect(window.alert).toHaveBeenCalledWith('Success: Issuer configuration removed successfully.');
+                expect(mockElement.find('.issuer-form').filter((_i, el) => $(el).find('.issuer-name').val() === issuerName).length).toBe(0); // Form should be removed
+            });
+
+            it('should remove the form from UI even if no properties were found to unset (e.g. new unsaved form)', function () {
+                window.confirm.mockReturnValue(true);
+                // Simulate a new form that hasn't been saved, so getProcessorProperties returns no specific props for it.
+                // Or an existing one for which properties were already cleared.
+                apiClient.getProcessorProperties.mockReturnValueOnce($.Deferred().resolve({ properties: {} }).promise());
+                // updateProcessorProperties should NOT be called if no properties are found for the issuer.
+                // However, the component's current logic might call it with an empty updates object if the issuer name is not 'sample-issuer'.
+                // The component shows a warning for this case if it's not 'sample-issuer' but proceeds.
+                // For tests, we expect the success alert as per current component behavior.
+
+                form.find('.remove-issuer-button').trigger('click');
+
+                expect(window.confirm).toHaveBeenCalledTimes(1);
+                expect(apiClient.getProcessorProperties).toHaveBeenCalledWith('12345-abcde');
+                // Depending on the exact logic for "no properties found", update might be called with {} or not at all.
+                // Current SUT: if (Object.keys(updates).length === 0 && currentIssuerName !== 'sample-issuer') { console.warn; window.alert('Success...'); return; }
+                // So, updateProcessorProperties won't be called in this specific path.
+                expect(apiClient.updateProcessorProperties).not.toHaveBeenCalled();
+                expect(window.alert).toHaveBeenCalledWith('Success: Issuer configuration removed successfully.'); // This alert is shown by the component
+                expect(mockElement.find('.issuer-form').filter((_i, el) => $(el).find('.issuer-name').val() === issuerName).length).toBe(0); // Form should be removed
+            });
+
+
+            it('should handle API error during getProcessorProperties for removal and show alert', function () {
+                window.confirm.mockReturnValue(true);
+                apiClient.getProcessorProperties.mockReturnValueOnce($.Deferred().reject('API Get Error').promise());
+
+                form.find('.remove-issuer-button').trigger('click');
+
+                expect(apiClient.getProcessorProperties).toHaveBeenCalledWith('12345-abcde');
+                expect(apiClient.updateProcessorProperties).not.toHaveBeenCalled();
+                expect(window.alert).toHaveBeenCalledWith('Error: Failed to get processor properties. See console for details.');
+                expect(mockElement.find('.issuer-form').filter((_i, el) => $(el).find('.issuer-name').val() === issuerName).length).toBe(0); // Form is removed from DOM regardless of API error
+            });
+
+            it('should handle API error during updateProcessorProperties for removal and show alert', function () {
+                window.confirm.mockReturnValue(true);
+                const initialProps = {
+                    properties: { ['issuer.' + issuerName + '.issuer']: 'uri-to-remove' }
+                };
+                apiClient.getProcessorProperties.mockReturnValueOnce($.Deferred().resolve(initialProps).promise());
+                apiClient.updateProcessorProperties.mockReturnValueOnce($.Deferred().reject(null, 'API Update Error Status', 'Update Failed Message').promise());
+
+                form.find('.remove-issuer-button').trigger('click');
+
+                expect(apiClient.updateProcessorProperties).toHaveBeenCalled();
+                expect(window.alert).toHaveBeenCalledWith('Error: Failed to remove issuer configuration. See console for details.');
+                expect(mockElement.find('.issuer-form').filter((_i, el) => $(el).find('.issuer-name').val() === issuerName).length).toBe(0); // Form is removed
+            });
+
+            it('should handle exception during getProcessorProperties for removal and show alert', function () {
+                window.confirm.mockReturnValue(true);
+                const exception = new Error('Get Props Exception');
+                apiClient.getProcessorProperties.mockImplementationOnce(() => { throw exception; });
+
+                form.find('.remove-issuer-button').trigger('click');
+
+                expect(window.alert).toHaveBeenCalledWith('Error: Failed to remove issuer configuration due to an exception. See console for details.');
+                expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in removeIssuer:', exception);
+                expect(mockElement.find('.issuer-form').filter((_i, el) => $(el).find('.issuer-name').val() === issuerName).length).toBe(0); // Form removed
+            });
+
+            it('should handle exception during updateProcessorProperties for removal and show alert', function () {
+                window.confirm.mockReturnValue(true);
+                const initialProps = {
+                    properties: { ['issuer.' + issuerName + '.issuer']: 'uri-to-remove' }
+                };
+                apiClient.getProcessorProperties.mockReturnValueOnce($.Deferred().resolve(initialProps).promise());
+                const exception = new Error('Update Props Exception');
+                apiClient.updateProcessorProperties.mockImplementationOnce(() => { throw exception; });
+
+                form.find('.remove-issuer-button').trigger('click');
+
+                expect(window.alert).toHaveBeenCalledWith('Error: Failed to remove issuer configuration due to an exception. See console for details.');
+                expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in removeIssuer:', exception);
+                expect(mockElement.find('.issuer-form').filter((_i, el) => $(el).find('.issuer-name').val() === issuerName).length).toBe(0); // Form removed
+            });
+
+            describe('Standalone mode (no processorId)', function () {
+                let originalTestWindowLocationForStandalone; // Specific for this describe's beforeEach/afterEach pair
+                beforeEach(() => {
+                    // Set URL to one without a processorId for these specific tests
+                    originalTestWindowLocationForStandalone = window.location; // Store current window.location
+                    window.location = { href: 'http://localhost/nifi/' }; // No processorId
+                    currentTestUrl = window.location.href; // Update for init
+
+                    // Re-initialize with no processorId, this should load a sample issuer or be empty
+                    mockElement.empty(); // Clear previous content
+                    apiClient.getProcessorProperties.mockClear(); // Ensure it's not called
+                    // Init for standalone: it will add a sample issuer if no processorId
+                    issuerConfigEditor.init(mockElement[0], mockConfig, null, mockCallback, currentTestUrl);
+
+                    // Add a specific issuer form for removal in standalone
+                    mockElement.find('.add-issuer-button').trigger('click');
+                    form = mockElement.find('.issuer-form').last(); // Get the newly added form
+                    form.find('.issuer-name').val(issuerName); // Set its name
+                });
+
+                afterEach(() => {
+                    // Restore window.location specific to this describe block's changes
+                    if (originalTestWindowLocationForStandalone) {
+                        window.location = originalTestWindowLocationForStandalone;
+                    }
+                    // Reset currentTestUrl to the main one from the outer beforeEach,
+                    // so that subsequent tests in other describe blocks are not affected.
+                    currentTestUrl = 'http://localhost/nifi/processors/12345-abcde/edit';
+                });
+
+                it('should remove form from UI and not call apiClient in standalone mode', function () {
+                    window.confirm.mockReturnValue(true);
+                    // Ensure no processorId context for this test
+                    // eslint-disable-next-line jest/no-standalone-expect
+                    expect(currentTestUrl).toBe('http://localhost/nifi/');
+
+                    // The form to remove is the one we just added and named 'test-issuer-to-remove'
+                    const formsBeforeRemoval = mockElement.find('.issuer-form').filter((_i, el) => $(el).find('.issuer-name').val() === issuerName);
+                    expect(formsBeforeRemoval.length).toBe(1);
+
+
+                    formsBeforeRemoval.find('.remove-issuer-button').trigger('click');
+
+                    expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to remove this issuer configuration?');
+                    expect(apiClient.getProcessorProperties).not.toHaveBeenCalled(); // Should not be called if no processorId
+                    expect(apiClient.updateProcessorProperties).not.toHaveBeenCalled();
+                    // Check console log for standalone removal
+                    expect(consoleLogSpy).toHaveBeenCalledWith('[DEBUG_LOG] Removing issuer in standalone mode. Issuer:', issuerName);
+                    // No alert should be shown for success in standalone, as per component code
+                    expect(window.alert).not.toHaveBeenCalledWith(expect.stringContaining('Success'));
+                    expect(mockElement.find('.issuer-form').filter((_i, el) => $(el).find('.issuer-name').val() === issuerName).length).toBe(0);
+                });
+            });
+        });
     });
 });
