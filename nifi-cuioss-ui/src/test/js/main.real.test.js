@@ -261,8 +261,15 @@ describe('main.js (real implementation with JSDOM)', () => {
 
 
                 // Act
+                mainModule.init(); // Listener is now registered synchronously within init
+
                 $(document).trigger('dialogOpen', [$dialogContent[0]]);
-                jest.advanceTimersByTime(600); // As per setTimeout in main.js
+
+                // Run all timers to process things like nfCanvasInitialized listeners (if any),
+                // the 3000ms setTimeout in main.js, and any jQuery internal timers.
+                jest.runAllTimers();
+                // Specifically advance for the 500ms timer inside the dialogOpen handler
+                jest.advanceTimersByTime(600); // As per setTimeout in main.js (restored from 1000)
 
                 // Assert
                 expect(mockInitTooltips).toHaveBeenCalled(); // This is the failing assertion
