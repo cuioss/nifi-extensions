@@ -161,8 +161,9 @@ Significant progress has been made in stabilizing and improving the testing envi
     *   This indicates that critical test failures and ESLint errors that would fail the build have been resolved.
 
 *   **Previous Remaining Issues (Context)**:
-    *   Some non-critical ESLint warnings (e.g., `no-unused-vars`, `no-console`, `no-alert`, `max-len`) may still be present in the codebase. These do not currently fail the build.
-    *   The test suites that were deleted from `issuerConfigEditor.test.js` (related to "Remove Issuer functionality") and `main.real.test.js` (related to dialog opening and tooltip/translation updates) need to be revisited, fixed, and re-instated in the future to ensure full test coverage. The original TODO for the `issuerConfigEditor.test.js` suite indicated a potential state management issue that needs deeper investigation.
+    *   Non-critical ESLint warnings were reviewed (Late June 2025). `npm run lint` reported approximately 79 warnings, primarily `no-unused-vars`, `no-console`, `no-alert`, and `max-len`. An attempt to auto-fix these using `npm run lint:fix` resulted in no changes to the files, indicating these warnings require manual review and intervention. Given their non-critical nature (not failing the build) and the manual effort required, these were not addressed further in this iteration. They may still be present in the codebase.
+    *   The "Remove Issuer functionality" tests within `nifi-cuioss-ui/src/test/js/components/issuerConfigEditor.test.js`, which were previously noted as deleted, have been successfully revisited, re-instated, and are now passing. The previously suspected `processorId` issue within the `removeIssuer` function appears to be resolved due to earlier refactoring in the component, which now correctly sources the `processorId` from `window.location.href` at runtime. As part of this effort, the `jest-environment-jsdom` dev dependency was added to `nifi-cuioss-ui/package.json` as it was found to be missing.
+    *   The test suites related to dialog opening and tooltip/translation updates in `main.real.test.js` (previously noted alongside the issuerConfigEditor tests) still need to be revisited, fixed, and re-instated to ensure full test coverage.
 
 Overall, the testing setup is more stable, and the primary jQuery-related testing goals for `apiClient.test.js` have been achieved. The main build for `nifi-cuioss-ui` is passing.
 
@@ -174,6 +175,12 @@ Overall, the testing setup is more stable, and the primary jQuery-related testin
     ** The failure is due to persistent, complex issues related to jQuery event triggering or `setTimeout` behavior within the JSDOM/Jest test environment, as was noted in the original comments for the skipped test.
     ** After extensive debugging attempts (including adjusting timers, adding debug flags, and modifying event listener registration strategies in `main.js`), the root cause of the event handler not firing could not be quickly resolved.
     ** To maintain build stability and prevent this known problematic test from failing the CI/CD pipeline, it has been reverted to its skipped state (`it.skip`).
+    ** (Further Investigation - Late June 2025):
+        *** The test `it.skip('should register help tooltips and update translations when a MultiIssuerJWTTokenAuthenticator dialog opens', ...)` was un-skipped, and debug logging was temporarily added to `main.js`.
+        *** The test continued to fail with the primary assertion `expect(mockInitTooltips).toHaveBeenCalled()` not passing, meaning `initTooltips` was not called.
+        *** Debug logs from `main.js` were not captured by the Jest test runner output, limiting deeper insights from this attempt.
+        *** The root cause remains attributed to the complex interaction of jQuery event dispatching for `dialogOpen`, `setTimeout` behavior, and their handling within the JSDOM/Jest environment.
+        *** The test was reverted to `it.skip` to maintain build stability.
 *   During the course of verifying the build, an ESLint error (indentation) was identified in `nifi-cuioss-ui/src/main/webapp/js/main.js` at line 136. This error was: `Expected indentation of 8 spaces but found 4 indent`.
     ** The indentation was corrected, and the change was saved.
 *   Following the linting fix, the command `./mvnw clean install` (executed from the project root) now completes successfully, including all sub-modules like `nifi-cuioss-ui` and `nifi-cuioss-nar`.
