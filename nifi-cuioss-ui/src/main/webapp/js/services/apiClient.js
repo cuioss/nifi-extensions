@@ -2,7 +2,7 @@
  * API Client for JWT Token Validation.
  * Provides methods for interacting with the backend REST API.
  */
-import { ajax } from '../utils/ajax';
+import $ from 'cash-dom';
 
 'use strict';
 
@@ -19,41 +19,31 @@ const BASE_URL = '../nifi-api/processors/jwt';
  * @param {Function} errorCallback - The callback to invoke on error
  */
 export const validateJwksUrl = function (jwksUrl, successCallback, errorCallback) {
-    ajax({
+    $.ajax({
         method: 'POST',
         url: BASE_URL + '/validate-jwks-url',
         data: JSON.stringify({ jwksUrl: jwksUrl }),
-        contentType: 'application/json'
-        // dataType: 'json' // Not needed with fetch API, response.json() handles it
+        contentType: 'application/json',
+        dataType: 'json',
+        timeout: 5000
     })
-        .then(response => {
+        .then(data => { // $.ajax().then() provides data directly
             if (successCallback) {
-            // Original compatAjax success: successCallback(data) which was response directly
-            // ajax resolves with: { data, status, statusText }
-                successCallback(response.data);
+                successCallback(data);
             }
         })
-        .catch(error => {
+        .catch(error => { // cash-dom's ajax().catch() provides the jqXHR object
             if (errorCallback) {
-                let xhrLike;
-                if (error.response) {
-                    xhrLike = {
-                        status: error.response.status,
-                        statusText: error.response.statusText,
-                        responseText: error.message
-                    }; // Simplification
-                    errorCallback(error.message, xhrLike); // errorCallback(errorMessage, xhr)
-                } else {
-                    xhrLike = { status: 0, statusText: error.message, responseText: error.message };
-                    errorCallback(error.message, xhrLike);
-                }
+                const xhrLike = {
+                    status: error.status,
+                    statusText: error.statusText,
+                    responseText: error.responseText
+                };
+                // errorThrown is not directly available in cash's catch, derive from statusText or responseText
+                const errorMessage = error.statusText || error.responseText || 'Unknown error';
+                errorCallback(errorMessage, xhrLike);
             }
-            // If no errorCallback is provided, the error is already logged by the ajax utility
         });
-    // Note: jQuery's .done().fail() structure implies separate handling.
-    // The original handleApiError was designed for jQuery's xhr.
-    // We've simplified error handling here. If more complex xhr-like object is needed for handleApiError,
-    // it would need to be constructed more carefully from the fetch error.
 };
 
 /**
@@ -64,33 +54,29 @@ export const validateJwksUrl = function (jwksUrl, successCallback, errorCallback
  * @param {Function} errorCallback - The callback to invoke on error
  */
 export const validateJwksFile = function (filePath, successCallback, errorCallback) {
-    ajax({
+    $.ajax({
         method: 'POST',
         url: BASE_URL + '/validate-jwks-file',
         data: JSON.stringify({ filePath: filePath }),
-        contentType: 'application/json'
+        contentType: 'application/json',
+        dataType: 'json',
+        timeout: 5000
     })
-        .then(response => {
+        .then(data => {
             if (successCallback) {
-                successCallback(response.data);
+                successCallback(data);
             }
         })
         .catch(error => {
             if (errorCallback) {
-                let xhrLike;
-                if (error.response) {
-                    xhrLike = {
-                        status: error.response.status,
-                        statusText: error.response.statusText,
-                        responseText: error.message
-                    };
-                    errorCallback(error.message, xhrLike);
-                } else {
-                    xhrLike = { status: 0, statusText: error.message, responseText: error.message };
-                    errorCallback(error.message, xhrLike);
-                }
+                const xhrLike = {
+                    status: error.status,
+                    statusText: error.statusText,
+                    responseText: error.responseText
+                };
+                const errorMessage = error.statusText || error.responseText || 'Unknown error';
+                errorCallback(errorMessage, xhrLike);
             }
-            // If no errorCallback, error is logged by ajax utility
         });
 };
 
@@ -102,33 +88,29 @@ export const validateJwksFile = function (filePath, successCallback, errorCallba
  * @param {Function} errorCallback - The callback to invoke on error
  */
 export const validateJwksContent = function (jwksContent, successCallback, errorCallback) {
-    ajax({
+    $.ajax({
         method: 'POST',
         url: BASE_URL + '/validate-jwks-content',
         data: JSON.stringify({ jwksContent: jwksContent }),
-        contentType: 'application/json'
+        contentType: 'application/json',
+        dataType: 'json',
+        timeout: 5000
     })
-        .then(response => {
+        .then(data => {
             if (successCallback) {
-                successCallback(response.data);
+                successCallback(data);
             }
         })
         .catch(error => {
             if (errorCallback) {
-                let xhrLike;
-                if (error.response) {
-                    xhrLike = {
-                        status: error.response.status,
-                        statusText: error.response.statusText,
-                        responseText: error.message
-                    };
-                    errorCallback(error.message, xhrLike);
-                } else {
-                    xhrLike = { status: 0, statusText: error.message, responseText: error.message };
-                    errorCallback(error.message, xhrLike);
-                }
+                const xhrLike = {
+                    status: error.status,
+                    statusText: error.statusText,
+                    responseText: error.responseText
+                };
+                const errorMessage = error.statusText || error.responseText || 'Unknown error';
+                errorCallback(errorMessage, xhrLike);
             }
-            // If no errorCallback, error is logged by ajax utility
         });
 };
 
@@ -140,33 +122,29 @@ export const validateJwksContent = function (jwksContent, successCallback, error
  * @param {Function} errorCallback - The callback to invoke on error
  */
 export const verifyToken = function (token, successCallback, errorCallback) {
-    ajax({
+    $.ajax({
         method: 'POST',
         url: BASE_URL + '/verify-token',
         data: JSON.stringify({ token: token }),
-        contentType: 'application/json'
+        contentType: 'application/json',
+        dataType: 'json',
+        timeout: 5000
     })
-        .then(response => {
+        .then(data => {
             if (successCallback) {
-                successCallback(response.data);
+                successCallback(data);
             }
         })
         .catch(error => {
             if (errorCallback) {
-                let xhrLike;
-                if (error.response) {
-                    xhrLike = {
-                        status: error.response.status,
-                        statusText: error.response.statusText,
-                        responseText: error.message
-                    };
-                    errorCallback(error.message, xhrLike);
-                } else {
-                    xhrLike = { status: 0, statusText: error.message, responseText: error.message };
-                    errorCallback(error.message, xhrLike);
-                }
+                const xhrLike = {
+                    status: error.status,
+                    statusText: error.statusText,
+                    responseText: error.responseText
+                };
+                const errorMessage = error.statusText || error.responseText || 'Unknown error';
+                errorCallback(errorMessage, xhrLike);
             }
-            // If no errorCallback, error is logged by ajax utility
         });
 };
 
@@ -177,32 +155,27 @@ export const verifyToken = function (token, successCallback, errorCallback) {
  * @param {Function} errorCallback - The callback to invoke on error
  */
 export const getSecurityMetrics = function (successCallback, errorCallback) {
-    ajax({
+    $.ajax({
         method: 'GET',
-        url: BASE_URL + '/metrics'
-        // dataType: 'json' // Not needed
+        url: BASE_URL + '/metrics',
+        dataType: 'json',
+        timeout: 5000
     })
-        .then(response => {
+        .then(data => {
             if (successCallback) {
-                successCallback(response.data);
+                successCallback(data);
             }
         })
         .catch(error => {
             if (errorCallback) {
-                let xhrLike;
-                if (error.response) {
-                    xhrLike = {
-                        status: error.response.status,
-                        statusText: error.response.statusText,
-                        responseText: error.message
-                    };
-                    errorCallback(error.message, xhrLike);
-                } else {
-                    xhrLike = { status: 0, statusText: error.message, responseText: error.message };
-                    errorCallback(error.message, xhrLike);
-                }
+                const xhrLike = {
+                    status: error.status,
+                    statusText: error.statusText,
+                    responseText: error.responseText
+                };
+                const errorMessage = error.statusText || error.responseText || 'Unknown error';
+                errorCallback(errorMessage, xhrLike);
             }
-            // If no errorCallback, error is logged by ajax utility
         });
 };
 
@@ -213,18 +186,15 @@ export const getSecurityMetrics = function (successCallback, errorCallback) {
  * @return {Promise} A Promise object for the request
  */
 export const getProcessorProperties = function (processorId) {
-    // This function originally returned a jQuery Deferred object.
-    // Now it returns a standard Promise from the ajax utility.
-    // Callers will need to be updated if they relied on jQuery-specific Deferred methods beyond .then/.catch.
-    return ajax({
+    return $.ajax({
         method: 'GET',
-        url: '../nifi-api/processors/' + processorId
-        // dataType: 'json' // Not needed
+        url: '../nifi-api/processors/' + processorId,
+        dataType: 'json',
+        timeout: 5000
     });
-    // The original function did not have explicit success/error handlers here,
-    // it returned the deferred object for the caller to handle.
-    // The new `ajax` function already returns a promise that resolves with { data, status, statusText }
-    // or rejects with an error object.
+    // $.ajax returns a promise-like object.
+    // The .then callback will receive the parsed JSON data directly.
+    // The .catch callback will receive the jqXHR object.
 };
 
 /**
@@ -236,12 +206,12 @@ export const getProcessorProperties = function (processorId) {
  */
 export const updateProcessorProperties = function (processorId, properties) {
     // First, get the current processor configuration
-    return ajax({ // Changed from compatAjax
+    return $.ajax({
         method: 'GET',
-        url: '../nifi-api/processors/' + processorId
-        // dataType: 'json' // Not needed
-    }).then(response => { // jQuery's .then callback received data directly
-        const processor = response.data; // ajax resolves with { data, ... }
+        url: '../nifi-api/processors/' + processorId,
+        dataType: 'json',
+        timeout: 5000
+    }).then(processor => { // data from GET is the processor object
         // Create the update request
         const updateRequest = {
             revision: processor.revision,
@@ -252,14 +222,13 @@ export const updateProcessorProperties = function (processorId, properties) {
         };
 
         // Send the update request
-        return ajax({ // Changed from compatAjax
+        return $.ajax({
             method: 'PUT',
             url: '../nifi-api/processors/' + processorId,
             data: JSON.stringify(updateRequest),
-            contentType: 'application/json'
-            // dataType: 'json' // Not needed
+            contentType: 'application/json',
+            dataType: 'json',
+            timeout: 5000
         });
     });
-    // Note: The promise chain naturally handles errors. If the first GET fails,
-    // the .catch of the caller will be invoked. If the PUT fails, its error will propagate.
 };

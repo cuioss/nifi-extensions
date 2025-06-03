@@ -2,7 +2,6 @@
  * JWKS Validation Button UI component.
  */
 import $ from 'cash-dom';
-import { ajax } from '../utils/ajax';
 import * as nfCommon from 'nf.Common'; // Assuming nfCommon provides a default export or nf.Common.js is adjusted
 
 let isLocalhostOverride = null; // Allows tests to control localhost behavior
@@ -61,15 +60,15 @@ export const init = function (element, propertyValue, jwks_type, callback) {
 
             try {
                 // Make the AJAX request to validate
-                ajax({
+                $.ajax({
                     method: 'POST',
                     url: '../nifi-api/processors/jwks/validate-url', // Ensure this URL is correct
                     data: JSON.stringify({ jwksValue: jwksValue }),
                     contentType: 'application/json',
+                    dataType: 'json',
                     timeout: 5000
                 })
-                    .then(response => { // response here is { data, status, statusText }
-                        const responseData = response.data;
+                    .then(responseData => { // responseData is the parsed JSON
                         if (responseData.valid) {
                             $resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
                                                    (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
@@ -83,22 +82,23 @@ export const init = function (element, propertyValue, jwks_type, callback) {
                                                    responseData.message);
                         }
                     })
-                    .catch(error => {
-                        let errorMessage = error.message;
+                    .catch(jqXHR => { // jqXHR object for cash-dom
+                        let errorMessage = jqXHR.statusText || jqXHR.responseText;
+
                         // Attempt to get a more detailed error message if available
-                        if (error.response && typeof error.response.text === 'function') {
-                            error.response.text().then(text => {
-                                errorMessage = text || error.message; // Use text if available, else fallback
-                                displayError(errorMessage);
-                            }).catch(() => {
-                                displayError(errorMessage); // Fallback if .text() fails
-                            });
-                        } else if (error.response && error.response.statusText) {
-                            errorMessage = error.response.statusText;
-                            displayError(errorMessage);
-                        } else {
-                            displayError(errorMessage);
+                        if (jqXHR.responseText) {
+                            try {
+                                const errorJson = JSON.parse(jqXHR.responseText);
+                                if (errorJson && errorJson.message) {
+                                    errorMessage = errorJson.message;
+                                }
+                            } catch (e) {
+                                // responseText was not JSON, use as is or fallback
+                                errorMessage = jqXHR.responseText || errorMessage;
+                            }
                         }
+                        displayError(errorMessage);
+
 
                         function displayError(msg) {
                             const displayMsg = (msg === null || typeof msg === 'undefined' || String(msg).trim() === '' || String(msg).toLowerCase() === 'null' || String(msg).toLowerCase() === 'undefined')

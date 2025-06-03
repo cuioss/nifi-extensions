@@ -2,7 +2,6 @@
  * Token Verification Interface UI component.
  */
 import $ from 'cash-dom';
-import { ajax } from '../utils/ajax';
 import * as nfCommon from 'nf.Common';
 
 'use strict';
@@ -74,50 +73,35 @@ export const init = function (element, config, type, callback) {
 
         try {
             // Make the AJAX request to verify the token
-            ajax({
+            $.ajax({
                 method: 'POST',
                 url: '../nifi-api/processors/jwt/verify-token',
                 data: JSON.stringify({ token: token }),
                 contentType: 'application/json',
+                dataType: 'json',
                 timeout: 5000
             })
-                .then(response => { // response here is { data, status, statusText }
-                    const responseData = response.data;
+                .then(responseData => { // responseData is the parsed JSON
                     if (responseData.valid) {
                         displayValidToken(responseData);
                     } else {
                         displayInvalidToken(responseData);
                     }
                 })
-                .catch(error => {
-                    // const errorMessage = error.message; // Unused
-
-                    // Attempt to get a more detailed error message if available from response.text()
-                    const tryGetTextAndDisplay = (fallbackMessage) => {
-                        if (error.response && typeof error.response.text === 'function') {
-                            error.response.text().then(text => {
-                                displayError(text || fallbackMessage); // Use text if available, else fallback
-                            }).catch(() => {
-                                displayError(fallbackMessage); // Fallback if .text() fails
-                            });
-                        } else {
-                            displayError(fallbackMessage);
+                .catch(jqXHR => { // jqXHR object for cash-dom
+                    let errorMessage = jqXHR.statusText || jqXHR.responseText;
+                     if (jqXHR.responseText) {
+                        try {
+                            const errorJson = JSON.parse(jqXHR.responseText);
+                            if (errorJson && errorJson.message) {
+                                errorMessage = errorJson.message;
+                            }
+                        } catch (e) {
+                            // responseText was not JSON, use as is or fallback
+                            errorMessage = jqXHR.responseText || errorMessage;
                         }
-                    };
-
-                    if (error.response) {
-                    // If responseText might be available (even if not directly on error.message)
-                    // and we want to prioritize it.
-                    // However, fetch API puts error messages in error.message from response.statusText
-                    // if the response body can't be parsed or if it's a network error.
-                    // For specific text body:
-                        // Prioritize error.message if text() is null, then statusText
-                        const fallbackForText = error.message || error.response.statusText;
-                        tryGetTextAndDisplay(fallbackForText);
-                    } else {
-                    // No response object, just use error.message
-                        displayError(error.message);
                     }
+                    displayError(errorMessage);
 
                     function displayError(msg) {
                         let messageToDisplay;
@@ -144,9 +128,10 @@ export const init = function (element, config, type, callback) {
                                 audience: 'sample-audience', expiration: new Date(Date.now() + 3600000).toISOString(),
                                 roles: ['admin', 'user'], scopes: ['read', 'write'],
                                 claims: {
-                                    sub: 'user123', iss: 'https://sample-issuer.example.com', aud: 'sample-audience',
-                                    exp: Math.floor(Date.now() / 1000) + 3600, iat: Math.floor(Date.now() / 1000),
-                                    roles: ['admin', 'user'], scope: 'read write', name: 'John Doe', email: 'john.doe@example.com'
+                                    sub: 'user123', iss: 'https://sample-issuer.example.com',
+                                    aud: 'sample-audience', exp: Math.floor(Date.now() / 1000) + 3600,
+                                    iat: Math.floor(Date.now() / 1000), roles: ['admin', 'user'],
+                                    scope: 'read write', name: 'John Doe', email: 'john.doe@example.com'
                                 }
                             };
                             displayValidToken(sampleResponse, true);
@@ -188,9 +173,10 @@ export const init = function (element, config, type, callback) {
                     audience: 'sample-audience', expiration: new Date(Date.now() + 3600000).toISOString(),
                     roles: ['admin', 'user'], scopes: ['read', 'write'],
                     claims: {
-                        sub: 'user123', iss: 'https://sample-issuer.example.com', aud: 'sample-audience',
-                        exp: Math.floor(Date.now() / 1000) + 3600, iat: Math.floor(Date.now() / 1000),
-                        roles: ['admin', 'user'], scope: 'read write', name: 'John Doe', email: 'john.doe@example.com'
+                        sub: 'user123', iss: 'https://sample-issuer.example.com',
+                        aud: 'sample-audience', exp: Math.floor(Date.now() / 1000) + 3600,
+                        iat: Math.floor(Date.now() / 1000), roles: ['admin', 'user'],
+                        scope: 'read write', name: 'John Doe', email: 'john.doe@example.com'
                     }
                 };
                 displayValidToken(sampleResponse, true);

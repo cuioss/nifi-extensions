@@ -9,9 +9,14 @@ import nfCommon from 'nf.Common'; // Will be re-required
 // nfCommon is used by the SUT, so mock it.
 // apiClient.js is the SUT, so we DO NOT mock it. We import the actual.
 
-const mockAjax = jest.fn(); // Changed from mockCompatAjax
-jest.mock('../../../main/webapp/js/utils/ajax.js', () => ({
-    ajax: mockAjax // Mock the 'ajax' export
+const mockAjax = jest.fn();
+// Mock cash-dom to provide our mockAjax function for $.ajax
+jest.mock('cash-dom', () => ({
+    __esModule: true, // if cash-dom is an ES module
+    default: { // if cash-dom exports $ as default
+        ajax: mockAjax
+    },
+    ajax: mockAjax // if cash-dom also has a named export (less likely for $)
 }));
 
 const mockI18n = {
@@ -77,7 +82,7 @@ describe('apiClient', () => {
         it('should make a POST request and call successCallback on success', async () => {
             const mockResponseData = { valid: true, details: 'JWKS URL is valid' };
             // Configure the mockAjax to resolve successfully for this test
-            mockAjax.mockResolvedValue({ data: mockResponseData, status: 200, statusText: 'OK' });
+            mockAjax.mockResolvedValue(mockResponseData); // cash-dom's $.ajax().then() callback receives data directly
 
             // Call the actual apiClient.validateJwksUrl
             apiClient.validateJwksUrl(jwksUrl, successCallback, errorCallback);
@@ -91,40 +96,39 @@ describe('apiClient', () => {
         });
 
         it('should call errorCallback on failure (with error.response)', async () => {
-            const mockError = new Error('Network Error');
-            mockError.response = { status: 500, statusText: 'Server Error', message: 'Server Message' };
-            mockAjax.mockRejectedValue(mockError);
+            const mockJqXHR = { status: 500, statusText: 'Server Error', responseText: 'Server Message' };
+            mockAjax.mockRejectedValue(mockJqXHR);
 
             apiClient.validateJwksUrl(jwksUrl, successCallback, errorCallback);
             await Promise.resolve().then().then(); // Wait for microtasks
 
-            expect(errorCallback).toHaveBeenCalledWith(mockError.message, expect.objectContaining({
+            expect(errorCallback).toHaveBeenCalledWith('Server Error', expect.objectContaining({
                 status: 500,
                 statusText: 'Server Error',
-                responseText: mockError.message // error.message is used by SUT for responseText
+                responseText: 'Server Message'
             }));
             expect(successCallback).not.toHaveBeenCalled();
         });
 
         it('should call errorCallback on failure (without error.response)', async () => {
-            const mockError = new Error('Network Failure');
-            // No error.response for this case
-            mockAjax.mockRejectedValue(mockError);
+            const mockJqXHR = { status: 0, statusText: 'Network Failure', responseText: 'Network Failure' };
+            // No error.response for this case, cash-dom might pass jqXHR directly to catch
+            mockAjax.mockRejectedValue(mockJqXHR);
 
             apiClient.validateJwksUrl(jwksUrl, successCallback, errorCallback);
             await Promise.resolve().then().then(); // Wait for microtasks
 
-            expect(errorCallback).toHaveBeenCalledWith(mockError.message, expect.objectContaining({
-                status: 0, // Defaulted in SUT
-                statusText: mockError.message,
-                responseText: mockError.message
+            expect(errorCallback).toHaveBeenCalledWith('Network Failure', expect.objectContaining({
+                status: 0,
+                statusText: 'Network Failure',
+                responseText: 'Network Failure'
             }));
             expect(successCallback).not.toHaveBeenCalled();
         });
 
         it('should not call successCallback if it is not provided', async () => {
             const mockResponseData = { valid: true };
-            mockAjax.mockResolvedValue({ data: mockResponseData, status: 200, statusText: 'OK' });
+            mockAjax.mockResolvedValue(mockResponseData);
             // Call without successCallback
             apiClient.validateJwksUrl(jwksUrl, null, errorCallback);
             await Promise.resolve().then().then();
@@ -134,8 +138,8 @@ describe('apiClient', () => {
         });
 
         it('should not call errorCallback if it is not provided and ajax rejects', async () => {
-            const mockError = new Error('Network Failure');
-            mockAjax.mockRejectedValue(mockError);
+            const mockJqXHR = { status: 0, statusText: 'Network Failure', responseText: 'Network Failure' };
+            mockAjax.mockRejectedValue(mockJqXHR);
             // Call without errorCallback
             apiClient.validateJwksUrl(jwksUrl, successCallback, null);
             await Promise.resolve().then().then();
@@ -150,18 +154,17 @@ describe('apiClient', () => {
         const mockSuccessData = { component: { properties: { 'prop1': 'val1' } }, revision: { version: 1 } };
 
         it('should resolve with properties on successful GET', async () => {
-            mockAjax.mockResolvedValue({ data: mockSuccessData, status: 200, statusText: 'OK' });
+            mockAjax.mockResolvedValue(mockSuccessData); // $.ajax().then() provides data directly
             const response = await apiClient.getProcessorProperties(processorId);
             expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({ method: 'GET', url: `../nifi-api/processors/${processorId}` }));
-            expect(response.data).toEqual(mockSuccessData);
+            expect(response).toEqual(mockSuccessData); // response is data itself
         });
 
         it('should reject with error on failed GET', async () => {
-            const mockError = new Error('Not Found');
-            mockError.response = { status: 404, statusText: 'Not Found Error' };
-            mockAjax.mockRejectedValue(mockError);
+            const mockJqXHR = { status: 404, statusText: 'Not Found Error', responseText: 'Not Found' };
+            mockAjax.mockRejectedValue(mockJqXHR);
 
-            await expect(apiClient.getProcessorProperties(processorId)).rejects.toEqual(mockError);
+            await expect(apiClient.getProcessorProperties(processorId)).rejects.toEqual(mockJqXHR);
             expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({ method: 'GET', url: `../nifi-api/processors/${processorId}` }));
         });
     });
@@ -172,14 +175,14 @@ describe('apiClient', () => {
 
         const mockInitialRevision = { version: 1 };
         const mockInitialComponent = { id: processorId, properties: { 'prop1': 'initialVal' } };
-        const mockGetResponse = { data: { component: mockInitialComponent, revision: mockInitialRevision } };
+        const mockGetResponse = { component: mockInitialComponent, revision: mockInitialRevision }; // Data for GET
 
         const mockPutResponseData = { component: { id: processorId, properties: propertiesToUpdate }, revision: { version: 2 } };
 
         it('should GET then PUT and resolve with updated properties on success', async () => {
             mockAjax
-                .mockResolvedValueOnce(mockGetResponse) // For the initial GET
-                .mockResolvedValueOnce({ data: mockPutResponseData, status: 200, statusText: 'OK' }); // For the PUT
+                .mockResolvedValueOnce(mockGetResponse) // For the initial GET (data directly)
+                .mockResolvedValueOnce(mockPutResponseData); // For the PUT (data directly)
 
             const response = await apiClient.updateProcessorProperties(processorId, propertiesToUpdate);
 
@@ -194,25 +197,25 @@ describe('apiClient', () => {
                 }),
                 contentType: 'application/json'
             }));
-            expect(response.data).toEqual(mockPutResponseData);
+            expect(response).toEqual(mockPutResponseData); // Response is data itself
         });
 
         it('should reject if initial GET fails', async () => {
-            const mockError = new Error('GET Failed');
-            mockAjax.mockRejectedValueOnce(mockError); // Fail the GET
+            const mockJqXHR = { status: 500, statusText: 'GET Failed', responseText: 'GET Failed' };
+            mockAjax.mockRejectedValueOnce(mockJqXHR); // Fail the GET
 
-            await expect(apiClient.updateProcessorProperties(processorId, propertiesToUpdate)).rejects.toEqual(mockError);
+            await expect(apiClient.updateProcessorProperties(processorId, propertiesToUpdate)).rejects.toEqual(mockJqXHR);
             expect(mockAjax).toHaveBeenCalledTimes(1); // Only GET should be called
             expect(mockAjax.mock.calls[0][0]).toEqual(expect.objectContaining({ method: 'GET', url: `../nifi-api/processors/${processorId}` }));
         });
 
         it('should reject if PUT fails', async () => {
-            const mockError = new Error('PUT Failed');
+            const mockJqXHR = { status: 500, statusText: 'PUT Failed', responseText: 'PUT Failed' };
             mockAjax
                 .mockResolvedValueOnce(mockGetResponse) // GET succeeds
-                .mockRejectedValueOnce(mockError);      // PUT fails
+                .mockRejectedValueOnce(mockJqXHR);      // PUT fails
 
-            await expect(apiClient.updateProcessorProperties(processorId, propertiesToUpdate)).rejects.toEqual(mockError);
+            await expect(apiClient.updateProcessorProperties(processorId, propertiesToUpdate)).rejects.toEqual(mockJqXHR);
             expect(mockAjax).toHaveBeenCalledTimes(2);
         });
     });
@@ -232,7 +235,7 @@ describe('apiClient', () => {
         const mockResponseData = { valid: true, keys: 1 };
 
         it('should call successCallback on success', async () => {
-            mockAjax.mockResolvedValue({ data: mockResponseData });
+            mockAjax.mockResolvedValue(mockResponseData);
             apiClient.validateJwksFile(filePath, successCallback, errorCallback);
             await Promise.resolve().then().then();
             expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({ url: expect.stringContaining('/validate-jwks-file') }));
@@ -241,29 +244,28 @@ describe('apiClient', () => {
         });
 
         it('should call errorCallback on failure (with error.response)', async () => {
-            const mockError = new Error('File Read Error');
-            mockError.response = { status: 500, statusText: 'Read Error', message: 'File not accessible' };
-            mockAjax.mockRejectedValue(mockError);
+            const mockJqXHR = { status: 500, statusText: 'Read Error', responseText: 'File not accessible' };
+            mockAjax.mockRejectedValue(mockJqXHR);
             apiClient.validateJwksFile(filePath, successCallback, errorCallback);
             await Promise.resolve().then().then();
-            expect(errorCallback).toHaveBeenCalledWith(mockError.message, expect.objectContaining({ status: 500, responseText: mockError.message }));
+            expect(errorCallback).toHaveBeenCalledWith('Read Error', expect.objectContaining({ status: 500, responseText: 'File not accessible' }));
         });
 
         it('should call errorCallback on failure (without error.response)', async () => {
-            const mockError = new Error('Network Error');
-            mockAjax.mockRejectedValue(mockError);
+            const mockJqXHR = { status: 0, statusText: 'Network Error', responseText: 'Network Error' };
+            mockAjax.mockRejectedValue(mockJqXHR);
             apiClient.validateJwksFile(filePath, successCallback, errorCallback);
             await Promise.resolve().then().then();
-            expect(errorCallback).toHaveBeenCalledWith(mockError.message, expect.objectContaining({ status: 0, responseText: mockError.message }));
+            expect(errorCallback).toHaveBeenCalledWith('Network Error', expect.objectContaining({ status: 0, responseText: 'Network Error' }));
         });
 
         it('should not call callbacks if not provided', async () => {
-            mockAjax.mockResolvedValue({ data: mockResponseData });
+            mockAjax.mockResolvedValue(mockResponseData);
             apiClient.validateJwksFile(filePath, null, null);
             await Promise.resolve().then().then();
             // No error expected
 
-            mockAjax.mockRejectedValue(new Error('Some error'));
+            mockAjax.mockRejectedValue({ status: 500, statusText: 'Error', responseText: 'Error' });
             apiClient.validateJwksFile(filePath, null, null);
             await Promise.resolve().then().then().catch(() => {}); // Catch expected rejection
             expect(successCallback).not.toHaveBeenCalled();
@@ -274,50 +276,50 @@ describe('apiClient', () => {
     describe('validateJwksContent', () => {
         const jwksContent = '{"keys":[]}';
         it('should call successCallback on success', async () => {
-            mockAjax.mockResolvedValue({ data: { valid: true } });
+            mockAjax.mockResolvedValue({ valid: true });
             apiClient.validateJwksContent(jwksContent, successCallback, errorCallback);
             await Promise.resolve().then().then();
             expect(successCallback).toHaveBeenCalledWith({ valid: true });
         });
         it('should call errorCallback on failure', async () => {
-            const mockError = new Error('Content Error');
-            mockAjax.mockRejectedValue(mockError);
+            const mockJqXHR = { status: 500, statusText: 'Content Error', responseText: 'Content Error' };
+            mockAjax.mockRejectedValue(mockJqXHR);
             apiClient.validateJwksContent(jwksContent, successCallback, errorCallback);
             await Promise.resolve().then().then();
-            expect(errorCallback).toHaveBeenCalled();
+            expect(errorCallback).toHaveBeenCalledWith('Content Error', expect.anything());
         });
     });
 
     describe('verifyToken', () => {
         const token = 'a.b.c';
         it('should call successCallback on success', async () => {
-            mockAjax.mockResolvedValue({ data: { valid: true } });
+            mockAjax.mockResolvedValue({ valid: true });
             apiClient.verifyToken(token, successCallback, errorCallback);
             await Promise.resolve().then().then();
             expect(successCallback).toHaveBeenCalledWith({ valid: true });
         });
         it('should call errorCallback on failure', async () => {
-            const mockError = new Error('Token Error');
-            mockAjax.mockRejectedValue(mockError);
+            const mockJqXHR = { status: 500, statusText: 'Token Error', responseText: 'Token Error' };
+            mockAjax.mockRejectedValue(mockJqXHR);
             apiClient.verifyToken(token, successCallback, errorCallback);
             await Promise.resolve().then().then();
-            expect(errorCallback).toHaveBeenCalled();
+            expect(errorCallback).toHaveBeenCalledWith('Token Error', expect.anything());
         });
     });
 
     describe('getSecurityMetrics', () => {
         it('should call successCallback on success', async () => {
-            mockAjax.mockResolvedValue({ data: { metrics: 'data' } });
+            mockAjax.mockResolvedValue({ metrics: 'data' });
             apiClient.getSecurityMetrics(successCallback, errorCallback);
             await Promise.resolve().then().then();
             expect(successCallback).toHaveBeenCalledWith({ metrics: 'data' });
         });
         it('should call errorCallback on failure', async () => {
-            const mockError = new Error('Metrics Error');
-            mockAjax.mockRejectedValue(mockError);
+            const mockJqXHR = { status: 500, statusText: 'Metrics Error', responseText: 'Metrics Error' };
+            mockAjax.mockRejectedValue(mockJqXHR);
             apiClient.getSecurityMetrics(successCallback, errorCallback);
             await Promise.resolve().then().then();
-            expect(errorCallback).toHaveBeenCalled();
+            expect(errorCallback).toHaveBeenCalledWith('Metrics Error', expect.anything());
         });
     });
 });

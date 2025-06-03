@@ -4,7 +4,6 @@
  * issuer configurations for the MultiIssuerJWTTokenAuthenticator processor.
  */
 import $ from 'cash-dom';
-import { ajax } from '../utils/ajax';
 import * as _nfCommon from 'nf.Common';
 import * as apiClient from '../services/apiClient.js';
 
@@ -90,8 +89,7 @@ const loadExistingIssuers = function (container) {
     try {
         // Get processor properties
         apiClient.getProcessorProperties(processorId)
-            .then(function (responseWrapper) { // apiClient.getProcessorProperties now returns a standard Promise
-                const response = responseWrapper.data; // Extract data from the wrapper
+            .then(function (response) { // apiClient.getProcessorProperties now returns a standard Promise with data directly
                 // Extract issuer properties
                 const properties = response.properties || {};
                 const issuerProperties = {};
@@ -218,15 +216,15 @@ const addIssuerForm = function (container, issuerName, properties) {
 
         try {
             // Make the AJAX request to validate
-            ajax({
+            $.ajax({
                 method: 'POST',
                 url: '../nifi-api/processors/jwks/validate-url', // Ensure this URL is correct for the new ajax function
                 data: JSON.stringify({ jwksValue: jwksValue }),
                 contentType: 'application/json',
+                dataType: 'json',
                 timeout: 5000
             })
-                .then(response => { // response here is { data, status, statusText }
-                    const responseData = response.data; // Actual data from the server
+                .then(responseData => { // responseData is the parsed JSON
                     if (responseData.valid) {
                         resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
                                            (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
@@ -240,17 +238,22 @@ const addIssuerForm = function (container, issuerName, properties) {
                                            responseData.message);
                     }
                 })
-                .catch(error => {
-                    let errorMessage = error.message;
-                    if (error.response && error.response.responseText) {
-                        errorMessage = error.response.responseText;
-                    } else if (error.response && error.response.statusText) {
-                        errorMessage = error.response.statusText;
+                .catch(jqXHR => { // jqXHR object for cash-dom
+                    let errorMessage = jqXHR.statusText || jqXHR.responseText;
+                     if (jqXHR.responseText) {
+                        try {
+                            const errorJson = JSON.parse(jqXHR.responseText);
+                            if (errorJson && errorJson.message) {
+                                errorMessage = errorJson.message;
+                            }
+                        } catch (e) {
+                            // responseText was not JSON, use as is or fallback
+                            errorMessage = jqXHR.responseText || errorMessage;
+                        }
                     }
 
-
                     // In standalone testing mode, show a simulated success response
-                    if (window.location.href.indexOf('localhost') !== -1 || window.location.href.indexOf('127.0.0.1') !== -1) {
+                    if (getIsLocalhost()) {
                         resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
                                            (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
                                            (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
@@ -420,8 +423,7 @@ const removeIssuer = function (form, issuerNameFromClick) { // form is expected 
     if (currentIssuerName && currentProcessorId) { // Standard case with a processor ID
         try {
             apiClient.getProcessorProperties(currentProcessorId)
-                .then(function (responseWrapper) { // Standard Promise .then
-                    const response = responseWrapper.data; // Extract data
+                .then(function (response) { // Standard Promise .then, response is data
                     const properties = response.properties || {};
                     const updates = {};
                     Object.keys(properties).forEach(function (key) {
