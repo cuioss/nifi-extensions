@@ -1,240 +1,43 @@
-= D2. Implement Hybrid Approach for jQuery Replacement
+= D2. Implement `cash-dom` as jQuery Replacement
 :toc:
 :toclevels: 4
 
-[WIP] *Priority:* High - Phase 1 & 2 done.
+*Priority:* High
 
-*Description:* Implement a hybrid approach for gradually replacing jQuery with lighter alternatives and native JavaScript. This phased migration will reduce bundle size while maintaining application stability.
+*Description:* Replace jQuery with `cash-dom` (a lightweight jQuery alternative) across the application. This migration aims to reduce bundle size, modernize event handling and DOM manipulation, and improve overall maintainability.
 
-*Rationale:* jQuery adds significant weight to our bundle (~30KB minified and gzipped) and ties us to an older paradigm of web development. A gradual migration approach minimizes risk and allows selective optimization.
+*Rationale:* jQuery adds significant weight to our bundle (~30KB minified and gzipped) and ties us to an older paradigm of web development.
 
 == Task Details
 
 === Context and Problem Statement
 
-Our application currently depends on jQuery for DOM manipulation, event handling, and AJAX requests. This dependency adds significant weight to our bundle and ties us to an older paradigm of web development. We need a strategy to gradually reduce and eventually eliminate this dependency.
+Our application currently depends on jQuery for DOM manipulation, event handling, and AJAX requests. This dependency adds significant weight to our bundle and ties us to an older paradigm of web development. The strategy is to replace jQuery entirely with `cash-dom` to streamline our frontend dependencies.
 
-=== Chosen Solution: Hybrid Approach for Phased Migration
+=== Chosen Solution: `cash-dom` as the Primary jQuery Replacement
 
-A phased migration approach will gradually reduce jQuery dependency while maintaining application stability.
+The chosen solution is to utilize `cash-dom` (hereafter referred to as `cash`) as the direct replacement for jQuery. This approach offers a balance of modernizing our codebase while retaining a familiar API for DOM manipulation and event handling where needed.
 
-* Reduces migration risk through incremental changes
-* Allows focusing on highest-impact areas first
-* Maintains application stability during transition
-* Enables selective optimization where most beneficial
+*Benefits of using `cash`:*
+* Lightweight alternative to jQuery (~8KB vs ~30KB minified and gzipped).
+* jQuery-compatible API simplifies migration for many use cases.
+* Actively maintained and modern.
+
+*Previous Approach Note:* While some parts of the application were previously refactored to use Vanilla JS (custom DOM utilities or direct browser APIs), the current strategy is to prioritize `cash` for consistency and to leverage its optimized functionalities. Vanilla JS will only be used for tasks where `cash` does not offer a clear advantage or is not applicable (e.g., highly specific performance-critical operations not covered by `cash`'s API). Custom Vanilla JS DOM utility libraries (like the previous `utils/dom.js`) will be phased out in favor of `cash` equivalents.
 
 === Implementation Plan
 
 ==== Phase 1: Replace jQuery AJAX with Fetch API
 
-1. [x] Create a fetch-based API client wrapper:
-
-[source,javascript]
-----
-// utils/ajax.js
-export const ajax = ({url, method = 'GET', data, contentType, headers = {}, ...options}) => {
-  const fetchOptions = {
-    method,
-    headers: {
-      'Content-Type': contentType || 'application/json',
-      ...headers
-    },
-    ...options
-  };
-  
-  if (data) {
-    fetchOptions.body = contentType === 'application/json' 
-      ? JSON.stringify(data) 
-      : data;
-  }
-  
-  return fetch(url, fetchOptions)
-    .then(response => {
-      if (!response.ok) {
-        const error = new Error(response.statusText);
-        error.response = response;
-        throw error;
-      }
-      return response.json();
-    })
-    .then(data => ({
-      data,
-      status: 200,
-      statusText: 'OK'
-    }))
-    .catch(error => {
-      console.error('Fetch error:', error);
-      throw error;
-    });
-};
-
-// Compatibility with jQuery's $.ajax API
-export const compatAjax = (options) => {
-  return ajax(options)
-    .then(response => {
-      if (options.success) {
-        options.success(response.data, response.statusText, { status: response.status });
-      }
-      return response;
-    })
-    .catch(error => {
-      if (options.error) {
-        options.error({ status: error.response?.status || 0 }, error.message);
-      }
-      throw error;
-    })
-    .finally(() => {
-      if (options.complete) {
-        options.complete();
-      }
-    });
-};
-----
-
-2. [x] Update imports and replace $.ajax calls:
-
-[source,javascript]
-----
-// Before:
-import $ from 'jquery';
-$.ajax({
-  url: '/api/endpoint',
-  success: function(data) {
-    // Handle success
-  },
-  error: function(xhr) {
-    // Handle error
-  }
-});
-
-// After:
-import { compatAjax } from './utils/ajax';
-compatAjax({
-  url: '/api/endpoint',
-  success: function(data) {
-    // Handle success
-  },
-  error: function(xhr) {
-    // Handle error
-  }
-});
-
-// Or using modern Promise API:
-import { ajax } from './utils/ajax';
-ajax({
-  url: '/api/endpoint'
-})
-  .then(response => {
-    // Handle success
-  })
-  .catch(error => {
-    // Handle error
-  });
-----
+[x] *Completed:* jQuery AJAX calls (`$.ajax`) were replaced with a Fetch API-based solution (`utils/ajax.js`). A compatibility wrapper (`compatAjax`) was provided to ease the transition for existing code structure. This phase is considered complete.
 
 ==== Phase 2: Replace jQuery UI Dependencies
 
-This phase will replace jQuery UI tooltips with Tippy.js as detailed in Task D1.
-
-1. [x] Install Tippy.js and its dependencies:
-
-[source,bash]
-----
-npm install tippy.js @popperjs/core
-----
-
-2. [x] Create and use the tooltip utility module as described in the tooltip replacement document (Task D1).
+[x] *Completed:* jQuery UI dependencies, specifically tooltips, were addressed by introducing Tippy.js. Utility modules for Tippy.js integration were created as per Task D1. This phase is considered complete. Further integration of Tippy.js with `cash` may be required (see Actionable Tasks).
 
 ==== Phase 3: Create DOM Utility Module
 
-1. [x] Create utility functions that mirror jQuery's API for DOM manipulation:
-
-[source,javascript]
-----
-// utils/dom.js
-export const $ = (selector, context = document) => {
-  if (!selector) return [];
-  
-  // Handle HTML strings
-  if (typeof selector === 'string' && selector.trim().startsWith('<')) {
-    return [createElement(selector)];
-  }
-  
-  // Handle DOM elements or document
-  if (selector.nodeType || selector === document) {
-    return [selector];
-  }
-  
-  // Handle selectors
-  return Array.from(
-    typeof selector === 'string'
-      ? context.querySelectorAll(selector)
-      : selector
-  );
-};
-
-export const createElement = (html) => {
-  const template = document.createElement('template');
-  template.innerHTML = html.trim();
-  return template.content.firstChild;
-};
-
-// DOM manipulation utilities
-export const dom = {
-  find: (selector, element) => $(selector, element),
-  
-  addClass: (element, className) => {
-    if (!element) return;
-    element.classList.add(...className.split(' '));
-    return element;
-  },
-  
-  removeClass: (element, className) => {
-    if (!element) return;
-    element.classList.remove(...className.split(' '));
-    return element;
-  },
-  
-  toggleClass: (element, className, force) => {
-    if (!element) return;
-    element.classList.toggle(className, force);
-    return element;
-  },
-  
-  attr: (element, name, value) => {
-    if (!element) return;
-    if (value === undefined) {
-      return element.getAttribute(name);
-    }
-    element.setAttribute(name, value);
-    return element;
-  },
-  
-  removeAttr: (element, name) => {
-    if (!element) return;
-    element.removeAttribute(name);
-    return element;
-  },
-  
-  html: (element, content) => {
-    if (!element) return;
-    if (content === undefined) {
-      return element.innerHTML;
-    }
-    element.innerHTML = content;
-    return element;
-  },
-  
-  text: (element, content) => {
-    if (!element) return;
-    if (content === undefined) {
-      return element.textContent;
-    }
-    element.textContent = content;
-    return element;
-  }
-};
-----
+*Superseded by `cash`-first strategy:* This phase initially involved creating a custom DOM utility module (`utils/dom.js`) with Vanilla JS functions mirroring some jQuery APIs. With the decision to use `cash` as the primary jQuery replacement, this custom module is largely redundant. The functionalities provided by `dom.js` should be replaced by `cash` equivalents. The `utils/dom.js` file will be reviewed for deprecation or a significantly reduced scope.
 
 ==== Phase 4: Migrate to Cash (jQuery Alternative)
 
@@ -245,65 +48,58 @@ export const dom = {
 npm install cash-dom
 ----
 
-2. [x] Create a compatibility wrapper:
+2. [-] Create a compatibility wrapper:
+(See `utils/jquery-compat.js`). This wrapper's role may be re-evaluated as part of using `cash` directly (see Actionable Tasks).
 
-[source,javascript]
-----
-// utils/jquery-compat.js
-import cash from 'cash-dom';
-import { initTooltips } from './tooltip';
+3. [-] Replace jQuery imports:
+This was done as an initial step. Further work will involve ensuring `cash` is used optimally.
 
-// Add missing jQuery functionality to Cash
-cash.fn.tooltip = function(options) {
-  return initTooltips(this, options);
-};
+==== Phase 5: Previous Vanilla JS Refactoring (Now Superseded by `cash`-first Strategy)
 
-// Export enhanced Cash as a jQuery replacement
-export default cash;
-----
-
-3. [x] Replace jQuery imports:
-
-[source,javascript]
-----
-// Before:
-import $ from 'jquery';
-
-// After:
-import $ from './utils/jquery-compat';
-----
-
-==== Phase 5: Strategic Use of Vanilla JS and `cash-dom`
-
-This phase focuses on employing Vanilla JS for straightforward DOM manipulations and event handling, while leveraging `cash-dom` where its jQuery-compatible API offers benefits, particularly for complex event management or when a more concise syntax is advantageous.
-
-1. [x] JavaScript files (`main.js`, `nf-jwt-validator.js`, `utils/formatters.js`, `components/issuerConfigEditor.js`, `components/jwksValidator.js`, `components/tokenVerifier.js`) have been reviewed. `cash-dom` (via `jquery-compat.js`) has been replaced with Vanilla JS or custom DOM utilities where appropriate.
-   * `main.js`: Successfully refactored to replace most direct DOM manipulations with Vanilla JS.
-     * The `$(document).on('dialogOpen', ...)` event handler continues to use `cash-dom`. This aligns with the strategy of using `cash-dom` for its robust event handling capabilities, which are particularly beneficial here. Additionally, this usage maintains compatibility with NiFi's custom event dispatch mechanism for `dialogOpen`, which allows passing additional data like `dialogContentElement`.
-     * Its corresponding test file, `main.real.test.js`, has been refactored to use Vanilla JS for DOM manipulations and assertions. Event triggering for `main.js`'s `cash-dom` listeners is still performed using `$(document).trigger(...)` (which is `cash-dom` itself via an import in the test file) to ensure compatibility, particularly for events passing data.
-   * `components/issuerConfigEditor.js`: All `cash-dom` usages replaced with Vanilla JS, as direct DOM manipulation and event handling were straightforward. The import of `jquery-compat.js` was removed.
-     * Its corresponding test file, `issuerConfigEditor.test.js`, has been refactored. Test logic uses Vanilla JS for DOM manipulation. Mocks for `apiClient.js` now return standard Promises. Mocks for `compatAjax` (used by the `jwksValidator` sub-component) return a jQuery Deferred-like object. Asynchronous test patterns (`async/await`) are used. The fix in `jwksValidator.js` (using `.innerHTML` instead of `.html()`) resolved test failures in `issuerConfigEditor.test.js` that were directly related to the JWKS URL validation functionality. Other test failures in this file persist due to ongoing refactoring of its direct dependencies and internal logic.
-   * `components/jwksValidator.js`: Confirmed that all `cash-dom` usages were previously replaced with Vanilla JS (e.g., using `resultContainer.innerHTML = message` instead of `resultContainer.html(message)`), as its requirements were met efficiently with Vanilla JS. The import of `jquery-compat.js` was removed.
-     * Its corresponding test file, `jwksValidator.test.js`, has been refactored. Test logic now uses Vanilla JS for DOM manipulation. The SUT's AJAX calls (via `compatAjax`) are mocked to return a jQuery Deferred-like object (with `.done()` and `.fail()`) to match the SUT's expectations. Asynchronous test patterns (`async/await`) manage these mock AJAX calls. All tests in `jwksValidator.test.js` are passing.
-   * `components/tokenVerifier.js`: All `cash-dom` usages replaced with Vanilla JS, suitable for its DOM and event needs. The import of `jquery-compat.js` was removed.
-     * Its corresponding test file, `tokenVerifier.test.js`, has been refactored. Test logic now uses Vanilla JS for DOM manipulation. The SUT's AJAX calls (via `compatAjax`) are mocked, and the mock returns a jQuery Deferred-like object (with `.done()` and `.fail()`) to match the SUT's expectations. Asynchronous test patterns (`async/await`) are used to manage these mock AJAX calls.
-   * `nf-jwt-validator.js`: Removed unused import of `jquery-compat.js`.
-     * Its corresponding test file, `nf-jwt-validator.test.js`, has also been refactored to remove jQuery/cash-dom mocking dependencies, now using direct `document.addEventListener` mocking.
-   * `utils/formatters.js`: Removed unused import of `jquery-compat.js`.
-   * `services/apiClient.js`: This service already used `compatAjax` (fetch-based).
-     * Its corresponding test file, `apiClient.test.js`, has been refactored to remove its direct jQuery/cash-dom dependencies (which were used for mocking AJAX calls). It now correctly mocks `compatAjax` and uses standard Promises with `async/await` for its test logic.
+*Superseded by `cash`-first strategy:* This phase documented the refactoring of several JavaScript files to use Vanilla JS or custom DOM utilities. Given the updated strategy to prioritize `cash` as the jQuery replacement, these Vanilla JS implementations will be reviewed and refactored to use `cash` where `cash` provides equivalent or better functionality. The goal is to maintain consistency and leverage `cash`'s capabilities. See 'Actionable Tasks for `cash` Migration' for next steps.
 
 ==== Phase 6: Remove jQuery and Related Artifacts
 
-1. [x] jQuery has been fully removed and replaced where necessary with its lightweight alternative `cash-dom` (via `jquery-compat.js`). `cash-dom` is the designated library for jQuery-like functionality.
-   * [x] Remove all jQuery imports from source files (replaced with jquery-compat or Vanilla JS):
-       Original jQuery imports are removed. `jquery-compat.js` (which exports `cash-dom`) is still imported in `main.js`.
-   * [x] Remove jQuery-based utility functions and wrappers (`jquery-compat.js` now uses cash-dom, `utils/dom.js` provides Vanilla alternatives):
-       `jquery-compat.js` (which provides `cash-dom`) is used in `main.js` for its event handling capabilities, aligning with the strategy of using `cash-dom` for jQuery-like APIs. The `utils/dom.js` module provides Vanilla JS alternatives for other DOM manipulations.
-   * [x] Remove obsolete jQuery plugins and extensions (verified no standalone jQuery plugins remain in `webapp/js`).
-   * [x] Remove jQuery from `package.json` and WebJars dependencies in `pom.xml`:
-       `jquery` has been removed from `package.json` (and assumed from `pom.xml` if it was a WebJar).
-       `cash-dom` remains as a dependency in `package.json` as it is the project's chosen lightweight jQuery alternative.
+[x] *Completed:* jQuery has been removed from the project's direct dependencies (`package.json` and `pom.xml` WebJars). `cash-dom` is now the established jQuery alternative. Any remaining jQuery-related artifacts or utility functions not aligned with the `cash`-first strategy will be addressed in the 'Actionable Tasks'.
+
+== Actionable Tasks for `cash` Migration
+
+This section outlines the remaining tasks to fully migrate from jQuery to `cash-dom` (`cash`) and ensure the application is stable and tests are passing.
+
+=== Core Migration and Refactoring
+* [ ] *Review and Refactor Existing Vanilla JS to `cash`*:
+      Identify areas where `utils/dom.js` or direct Vanilla JS (from previous Phase 5) was used for DOM manipulation or event handling.
+      Refactor these implementations to use `cash` where `cash` provides equivalent or more concise functionality.
+      *Sub-tasks (example, expand as needed during review):*
+      * [ ] Review `main.js` for Vanilla JS that can be converted to `cash`.
+      * [ ] Review `components/issuerConfigEditor.js` for Vanilla JS that can be converted to `cash`.
+      * [ ] Review `components/jwksValidator.js` for Vanilla JS that can be converted to `cash`.
+      * [ ] Review `components/tokenVerifier.js` for Vanilla JS that can be converted to `cash`.
+      * [ ] Evaluate `utils/dom.js`: Determine if it can be fully deprecated or if any specific utilities not covered by `cash` are still essential.
+* [ ] *Remove Indirection (Use `cash` Directly)*:
+      Once the primary refactoring to `cash` is done and the test bed is stable, review components that use `jquery-compat.js`.
+      Update them to import `cash` directly from `'cash-dom'` where possible.
+      Evaluate if `utils/jquery-compat.js` is still needed or if its specific additions (like the placeholder tooltip) should be integrated elsewhere (e.g., specific Tippy.js initialization module) or handled differently.
+
+=== Testing and Stability
+* [ ] *Ensure all Tests Pass*:
+      After any refactoring to `cash`, run all tests using `./mvnw clean install` from the project root.
+      Fix any test failures, which may involve updating test setups, mocks, or assertions to align with `cash` behavior.
+* [ ] *Enable Disabled/Pending Tests*:
+      Systematically review and re-enable any tests that were disabled or marked as pending during previous refactoring phases.
+      *Sub-tasks (expand as tests are identified):*
+      * [ ] Address test failures in `issuerConfigEditor.test.js` (currently noted as having failures related to dependencies/internal logic).
+      * [ ] Review `main.real.test.js` for any `cash`-related adjustments needed, especially for event triggering.
+      * [ ] Identify and list other skipped/disabled tests and create actionable items for each.
+
+=== Integration and Cleanup
+* [ ] *Integrate Tippy.js properly with `cash` (if necessary)*:
+      The `jquery-compat.js` file contains a placeholder for `cash.fn.tooltip`.
+      Ensure that Tippy.js (introduced in Phase 2) is correctly invoked if any components rely on a `$.fn.tooltip`-like interface via `cash`. This might involve creating a specific `cash` plugin for Tippy.js or ensuring components call Tippy.js initialization directly.
+* [ ] *Final Verification*:
+      Perform a full `./mvnw clean install` to ensure the build is stable and all tests pass.
+* [ ] *Documentation Update*:
+      Ensure this document (`TODO-jquery-replacement.adoc`) is fully updated to reflect the completion of all tasks.
 
 == References
 
