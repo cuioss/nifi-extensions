@@ -3,7 +3,7 @@
  * This file is loaded by NiFi through the JsBundle mechanism.
  * It delegates to main.js for the actual component registration to avoid duplication.
  */
-import $ from 'jquery'; // Assuming $ might be used by nf.Common or main indirectly, or for consistency
+import $ from './utils/jquery-compat.js'; // Assuming $ might be used by nf.Common or main indirectly, or for consistency
 import nfCommon from 'nf.Common'; // Assuming nfCommon might be used, or for consistency
 import * as main from 'js/main';
 

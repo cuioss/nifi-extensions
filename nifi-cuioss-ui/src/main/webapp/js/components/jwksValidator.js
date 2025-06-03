@@ -1,7 +1,6 @@
 /**
  * JWKS Validation Button UI component.
  */
-import $ from 'jquery';
 import { compatAjax } from '../utils/ajax';
 import * as nfCommon from 'nf.Common'; // Assuming nfCommon provides a default export or nf.Common.js is adjusted
 
@@ -30,35 +29,48 @@ export const init = function (element, propertyValue, jwks_type, callback) {
     console.log('[DEBUG_LOG] jwksValidator.init called with type:', jwks_type);
 
     // Create UI elements
-    const container = $('<div class="jwks-verification-container"></div>');
+    const container = document.createElement('div');
+    container.className = 'jwks-verification-container';
 
     // Only show the Test Connection button for the 'server' type (URL input)
     if (jwks_type === 'server') {
         // Create the button and result container
-        const verifyButton = $('<button type="button" class="verify-jwks-button">' +
-                                   i18n['processor.jwt.testConnection'] + '</button>');
-        const resultContainer = $('<div class="verification-result"></div>');
+        const verifyButton = document.createElement('button');
+        verifyButton.type = 'button';
+        verifyButton.className = 'verify-jwks-button';
+        verifyButton.textContent = i18n['processor.jwt.testConnection'] || 'Test Connection';
 
-        // Find the input field
-        const inputField = $(element).find('input');
+        const resultContainer = document.createElement('div');
+        resultContainer.className = 'verification-result';
+
+        // Find the input field (element is the parent div containing the input)
+        const inputField = element.querySelector('input');
 
         // If we can find the input field, insert the button directly after it
-        if (inputField.length > 0) {
+        if (inputField) {
             // Create a wrapper div for the button and result container
-            const buttonWrapper = $('<div class="jwks-button-wrapper"></div>');
-            buttonWrapper.append(verifyButton).append(resultContainer);
+            const buttonWrapper = document.createElement('div');
+            buttonWrapper.className = 'jwks-button-wrapper';
+            buttonWrapper.appendChild(verifyButton);
+            buttonWrapper.appendChild(resultContainer);
 
             // Insert the button wrapper directly after the input field
-            inputField.after(buttonWrapper);
+            if (inputField.parentNode) {
+                inputField.parentNode.insertBefore(buttonWrapper, inputField.nextSibling);
+            } else {
+                // Fallback if inputField has no parent (should not happen in typical DOM structures)
+                element.appendChild(buttonWrapper);
+            }
         } else {
-            // Fallback: Add elements to the container
-            container.append(verifyButton).append(resultContainer);
+            // Fallback: Add elements to the container (which is then appended to element)
+            container.appendChild(verifyButton);
+            container.appendChild(resultContainer);
         }
 
         // Handle button click
-        verifyButton.on('click', function () {
+        verifyButton.addEventListener('click', function () {
             // Show loading state
-            resultContainer.html((i18n['processor.jwt.testing'] || 'Testing...'));
+            resultContainer.innerHTML = (i18n['processor.jwt.testing'] || 'Testing...');
 
             // Get the current value
             const jwksValue = propertyValue || 'https://example.com/.well-known/jwks.json';
@@ -74,13 +86,13 @@ export const init = function (element, propertyValue, jwks_type, callback) {
                     timeout: 5000 // Add timeout to prevent long waits
                 }).done(function (response) {
                     if (response.valid) {
-                        resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
+                        resultContainer.innerHTML = ('<span style="color: var(--success-color); font-weight: bold;">' +
                                                    (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
                                                    (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
                                                    ' (' + response.keyCount + ' ' +
                                                    (i18n['processor.jwt.keysFound'] || 'keys found') + ')');
                     } else {
-                        resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' +
+                        resultContainer.innerHTML = ('<span style="color: var(--error-color); font-weight: bold;">' +
                                                    (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
                                                    (i18n['processor.jwt.invalidJwks'] || 'Invalid JWKS') + ': ' +
                                                    response.message);
@@ -91,13 +103,13 @@ export const init = function (element, propertyValue, jwks_type, callback) {
                     // In standalone testing mode, show a simulated success response
                     if (getIsLocalhost()) {
                         console.log('[DEBUG_LOG] Using simulated response for standalone testing');
-                        resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
+                        resultContainer.innerHTML = ('<span style="color: var(--success-color); font-weight: bold;">' +
                                                    (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
                                                    (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
                                                    ' (3 ' + (i18n['processor.jwt.keysFound'] || 'keys found') +
                                                    ') <em>(Simulated response)</em>');
                     } else {
-                        resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' +
+                        resultContainer.innerHTML = ('<span style="color: var(--error-color); font-weight: bold;">' +
                                                    (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
                                                    (i18n['processor.jwt.validationError'] || 'Validation error') + ': ' +
                                                    (xhr.responseText || error || 'Unknown error'));
@@ -115,32 +127,26 @@ export const init = function (element, propertyValue, jwks_type, callback) {
                 // but for now, matching original logic where non-localhost exception shows what was last in DOM.
                 // To ensure non-localhost exceptions also get a clear error message in UI:
                 if (getIsLocalhost()) {
-                    resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
+                resultContainer.innerHTML = ('<span style="color: var(--success-color); font-weight: bold;">' +
                                                (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
                                                (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
                                                ' (3 ' + (i18n['processor.jwt.keysFound'] || 'keys found') +
                                                ') <em>(Simulated response)</em>');
                 } else {
                     // Display a generic error message for non-localhost exceptions in the UI
-                    resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' +
+                resultContainer.innerHTML = ('<span style="color: var(--error-color); font-weight: bold;">' +
                                                (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
                                                (i18n['processor.jwt.validationError'] || 'Validation error') + ': ' +
-                                               (e.message || 'Exception occurred'));
+                                               (e.message || (i18n['processor.jwt.unknownError'] || 'Exception occurred')));
                 }
-                // Original simpler logic for catch, which mostly relied on console for non-localhost:
-                // resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
-                //                   (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
-                //                   (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
-                //                   ' (3 ' + (i18n['processor.jwt.keysFound'] || 'keys found') +
-                //                   ') <em>(Simulated response)</em>');
             }
         });
 
         // Add a default text to the result container for better UX
-        resultContainer.html('<em>Click the button to validate JWKS</em>');
+    resultContainer.innerHTML = ('<em>' + (i18n['jwksValidator.initialInstructions'] || 'Click the button to validate JWKS') + '</em>');
     }
 
-    $(element).append(container);
+element.appendChild(container); // element is the parent div provided by NiFi
 
 
     // Initialize callback if provided

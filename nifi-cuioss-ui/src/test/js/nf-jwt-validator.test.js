@@ -2,26 +2,12 @@
  * Tests for nf-jwt-validator.js
  */
 
-// Define jQuery mock structure first
-const mockReady = jest.fn(callback => callback()); // This will be $(document).ready()
-const mockJqueryInstance = {
-    ready: mockReady
-    // Add other jQuery instance methods if needed by the SUT here
-};
+// Store original addEventListener
+const originalAddEventListener = document.addEventListener;
+const originalRemoveEventListener = document.removeEventListener;
 
-// This is the mock for the jQuery module itself (e.g., the function you get from `import $ from 'jquery'`)
-const mockJqueryStatic = jest.fn(selector => {
-    // This function is what gets called when you do $()
-    // It should return an object that has methods like .ready()
-    return mockJqueryInstance;
-});
-
-// Mock the 'jquery' module. All 'import $' will get 'mockJqueryStatic'.
-jest.mock('jquery', () => mockJqueryStatic);
-
-// Set up global jQuery and $ to use our static mock.
-// This is for any code that might still rely on global jQuery.
-global.jQuery = global.$ = mockJqueryStatic;
+// Mock for DOMContentLoaded event callback execution
+const mockDOMContentLoadedCallbackExecutor = jest.fn(callback => callback());
 
 // Mock console (remains the same)
 global.console = {
@@ -44,24 +30,39 @@ describe('nf-jwt-validator.js', () => {
         // Clear all mocks before each test
         jest.clearAllMocks();
 
-        // Reset our specific jQuery related mocks
-        mockReady.mockClear().mockImplementation(callback => callback());
-        mockJqueryStatic.mockClear().mockImplementation(selector => mockJqueryInstance); // Ensure it returns the instance
+        // Reset our specific DOMContentLoaded related mock
+        mockDOMContentLoadedCallbackExecutor.mockClear().mockImplementation(callback => callback());
 
         // Reset window state
         global.window = { jwtComponentsRegistered: false }; // Default state
+
+        // Spy on document.addEventListener
+        document.addEventListener = jest.fn((event, handler) => {
+            if (event === 'DOMContentLoaded') {
+                // Simulate the DOMContentLoaded event by calling our executor
+                mockDOMContentLoadedCallbackExecutor(handler);
+            }
+        });
+    });
+
+    afterAll(() => {
+        // Restore original event listener
+        document.addEventListener = originalAddEventListener;
+        document.removeEventListener = originalRemoveEventListener;
     });
 
     describe('Default behavior (components not registered, main module valid)', () => {
         beforeEach(() => {
             jest.doMock('js/main', () => mockMainDefault, { virtual: true });
             jest.resetModules();
+            // At this point, nf-jwt-validator.js will be re-evaluated.
+            // Its top-level code (including addEventListener) will run.
             require('../../main/webapp/js/nf-jwt-validator.js');
         });
 
         it('should initialize main module', () => {
-            expect(mockJqueryStatic).toHaveBeenCalledWith(document); // Check that $(document) was called
-            expect(mockReady).toHaveBeenCalledTimes(1); // Check that .ready() was called on the instance
+            expect(document.addEventListener).toHaveBeenCalledWith('DOMContentLoaded', expect.any(Function));
+            expect(mockDOMContentLoadedCallbackExecutor).toHaveBeenCalledTimes(1);
             expect(mockMainDefault.init).toHaveBeenCalledTimes(1);
             expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
             expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module imported');
@@ -81,8 +82,8 @@ describe('nf-jwt-validator.js', () => {
         });
 
         it('should not initialize main module', () => {
-            expect(mockJqueryStatic).toHaveBeenCalledWith(document);
-            expect(mockReady).toHaveBeenCalledTimes(1);
+            expect(document.addEventListener).toHaveBeenCalledWith('DOMContentLoaded', expect.any(Function));
+            expect(mockDOMContentLoadedCallbackExecutor).toHaveBeenCalledTimes(1);
             expect(mockMainWhenRegistered.init).not.toHaveBeenCalled();
             expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
             expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module imported');
@@ -99,8 +100,10 @@ describe('nf-jwt-validator.js', () => {
             jest.doMock('js/main', () => null, { virtual: true });
             require('../../main/webapp/js/nf-jwt-validator.js');
 
-            expect(mockJqueryStatic).toHaveBeenCalledWith(document);
-            expect(mockReady).toHaveBeenCalledTimes(1);
+            // expect(mockJqueryStatic).toHaveBeenCalledWith(document);
+            // expect(mockReady).toHaveBeenCalledTimes(1);
+            expect(document.addEventListener).toHaveBeenCalledWith('DOMContentLoaded', expect.any(Function));
+            expect(mockDOMContentLoadedCallbackExecutor).toHaveBeenCalledTimes(1);
             expect(mockMainDefault.init).not.toHaveBeenCalled();
             expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module not available or missing init function');
             expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
@@ -114,8 +117,8 @@ describe('nf-jwt-validator.js', () => {
             jest.doMock('js/main', () => ({}), { virtual: true });
             require('../../main/webapp/js/nf-jwt-validator.js');
 
-            expect(mockJqueryStatic).toHaveBeenCalledWith(document);
-            expect(mockReady).toHaveBeenCalledTimes(1);
+            expect(document.addEventListener).toHaveBeenCalledWith('DOMContentLoaded', expect.any(Function));
+            expect(mockDOMContentLoadedCallbackExecutor).toHaveBeenCalledTimes(1);
             expect(mockMainDefault.init).not.toHaveBeenCalled();
             expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module not available or missing init function');
             expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');

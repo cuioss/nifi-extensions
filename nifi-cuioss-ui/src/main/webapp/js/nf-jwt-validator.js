@@ -3,13 +3,13 @@
  * This file is responsible for loading and initializing the custom UI components.
  * It delegates to main.js for the actual component registration to avoid duplication.
  */
-import $ from 'jquery';
+// import $ from './utils/jquery-compat.js'; // Removed as it's unused in this file
 import * as main from 'js/main'; // Assuming 'js/main' resolves correctly
 
 'use strict'; // Keep 'use strict'
 
 // Initialize when the document is ready
-$(document).ready(function () {
+document.addEventListener('DOMContentLoaded', function () {
     console.log('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
 
     // Main module is now imported directly

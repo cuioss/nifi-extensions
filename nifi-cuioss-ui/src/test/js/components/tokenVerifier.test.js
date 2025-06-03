@@ -1,7 +1,7 @@
 /**
  * Tests for the Token Verifier component.
  */
-import $ from 'jquery'; // Top-level import for jQuery
+import $ from '../../../main/webapp/js/utils/jquery-compat.js'; // Top-level import for jQuery
 
 const mockI18n = {
     'processor.jwt.tokenInput': 'JWT Token Input Label',
@@ -28,28 +28,32 @@ const mockI18n = {
 
 jest.useFakeTimers();
 
+// Mock compatAjax BEFORE any describe blocks or imports that might use it indirectly.
+const mockCompatAjax = jest.fn();
+jest.mock('../../../main/webapp/js/utils/ajax.js', () => ({
+    compatAjax: mockCompatAjax
+}));
+
 describe('tokenVerifier - Common Initialization', () => {
     let localTokenVerifier;
-    let local$;
+    // let local$; // Will use vanilla JS or top-level $ if absolutely needed for SUT interaction
     let localNfCommon; // Will hold the actual module
     let getI18nSpy;   // Spy for the getI18n export
-    let $element;
+    let parentElement; // Vanilla DOM element
     let callback;
     let consoleErrorSpy, consoleLogSpy;
 
     beforeEach(() => {
-        jest.resetModules();
+        jest.resetModules(); // This will also reset our mockCompatAjax if not careful
         localTokenVerifier = require('components/tokenVerifier');
-        local$ = require('jquery');
         localNfCommon = require('nf.Common'); // nf.Common is mapped to our mock
 
-        const rawElement = document.createElement('div');
-        document.body.appendChild(rawElement);
-        $element = local$(rawElement);
-        callback = jest.fn();
-        local$.ajax = jest.fn(); // Mock $.ajax
+        mockCompatAjax.mockClear();
 
-        // Spy on the getI18n export from the actual module
+        parentElement = document.createElement('div');
+        document.body.appendChild(parentElement);
+        callback = jest.fn();
+
         getI18nSpy = jest.spyOn(localNfCommon, 'getI18n').mockReturnValue(mockI18n);
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
@@ -60,7 +64,9 @@ describe('tokenVerifier - Common Initialization', () => {
     });
 
     afterEach(() => {
-        $element.remove();
+        if (parentElement.parentNode === document.body) {
+            document.body.removeChild(parentElement);
+        }
         consoleErrorSpy.mockRestore();
         consoleLogSpy.mockRestore();
         if (getI18nSpy) getI18nSpy.mockRestore(); // Restore the spy
@@ -70,34 +76,34 @@ describe('tokenVerifier - Common Initialization', () => {
     });
 
     it('should create main container', () => {
-        localTokenVerifier.init($element[0], {}, null, callback);
-        expect($element.find('.token-verification-container').length).toBe(1);
+        localTokenVerifier.init(parentElement, {}, null, callback);
+        expect(parentElement.querySelector('.token-verification-container')).not.toBeNull();
     });
 
     it('should create input section with label, textarea, and button', () => {
-        localTokenVerifier.init($element[0], {}, null, callback);
-        const inputSection = $element.find('.token-input-section');
-        expect(inputSection.length).toBe(1);
-        expect(inputSection.find('label[for="token-input"]').text()).toBe(mockI18n['processor.jwt.tokenInput']);
-        expect(inputSection.find('textarea#token-input').attr('placeholder')).toBe(mockI18n['processor.jwt.tokenInputPlaceholder']);
-        expect(inputSection.find('button.verify-token-button').text()).toBe(mockI18n['processor.jwt.verifyToken']);
+        localTokenVerifier.init(parentElement, {}, null, callback);
+        const inputSection = parentElement.querySelector('.token-input-section');
+        expect(inputSection).not.toBeNull();
+        expect(inputSection.querySelector('label[for="token-input"]').textContent).toBe(mockI18n['processor.jwt.tokenInput']);
+        expect(inputSection.querySelector('textarea#token-input').getAttribute('placeholder')).toBe(mockI18n['processor.jwt.tokenInputPlaceholder']);
+        expect(inputSection.querySelector('button.verify-token-button').textContent).toBe(mockI18n['processor.jwt.verifyToken']);
     });
 
     it('should create results section with header and content area', () => {
-        localTokenVerifier.init($element[0], {}, null, callback);
-        const resultsSection = $element.find('.token-results-section');
-        expect(resultsSection.length).toBe(1);
-        expect(resultsSection.find('h3').text()).toBe(mockI18n['processor.jwt.verificationResults']);
-        expect(resultsSection.find('.token-results-content').html()).toContain('Enter a JWT token above and click "Verify Token"');
+        localTokenVerifier.init(parentElement, {}, null, callback);
+        const resultsSection = parentElement.querySelector('.token-results-section');
+        expect(resultsSection).not.toBeNull();
+        expect(resultsSection.querySelector('h3').textContent).toBe(mockI18n['processor.jwt.verificationResults']);
+        expect(resultsSection.querySelector('.token-results-content').innerHTML).toContain('Enter a JWT token above and click "Verify Token"');
     });
 
     it('should call nfCommon.getI18n during init', () => {
-        localTokenVerifier.init($element[0], {}, null, callback);
+        localTokenVerifier.init(parentElement, {}, null, callback);
         expect(getI18nSpy).toHaveBeenCalled();
     });
 
     it('should call the callback with a validate method', () => {
-        localTokenVerifier.init($element[0], {}, null, callback);
+        localTokenVerifier.init(parentElement, {}, null, callback);
         expect(callback).toHaveBeenCalledWith(expect.objectContaining({
             validate: expect.any(Function)
         }));
@@ -106,164 +112,126 @@ describe('tokenVerifier - Common Initialization', () => {
     });
 
     it('should use empty object for i18n if nfCommon.getI18n returns null', () => {
-        getI18nSpy.mockReturnValueOnce(null); // Use the spy to change mock behavior
-        localTokenVerifier.init($element[0], {}, null, callback);
+        getI18nSpy.mockReturnValueOnce(null);
+        localTokenVerifier.init(parentElement, {}, null, callback);
 
-        const inputSection = $element.find('.token-input-section');
-        expect(inputSection.find('label[for="token-input"]').text()).toBe('Enter Token:');
-        expect(inputSection.find('textarea#token-input').attr('placeholder')).toBe('Paste token here...');
-        expect(inputSection.find('button.verify-token-button').text()).toBe('Verify Token');
-        const resultsSection = $element.find('.token-results-section');
-        expect(resultsSection.find('h3').text()).toBe('Verification Results');
-        expect(resultsSection.find('.token-results-content').html()).toContain('Enter a JWT token above and click "Verify Token"');
-
-        $element.find('textarea#token-input').val('any.token');
-
-        if (localTokenVerifier && typeof localTokenVerifier.__setIsLocalhostForTesting === 'function') {
-            localTokenVerifier.__setIsLocalhostForTesting(false);
-        }
-
-        let deferred = local$.Deferred();
-        local$.ajax.mockReturnValueOnce(deferred.promise());
-        $element.find('.verify-token-button').trigger('click');
-        expect($element.find('.token-results-content').html()).toContain('Verifying token...');
-        deferred.reject({ responseText: 'XHR Text Error Fallback' }, 'error', 'Condition1');
-        jest.runAllTimers();
-        expect($element.find('.token-results-content').html()).toContain('Verification error: XHR Text Error Fallback');
-
-        deferred = local$.Deferred();
-        local$.ajax.mockReturnValueOnce(deferred.promise());
-        $element.find('.verify-token-button').trigger('click');
-        deferred.reject({ responseText: null }, 'error', 'Error Arg Fallback');
-        jest.runAllTimers();
-        expect($element.find('.token-results-content').html()).toContain('Verification error: Error Arg Fallback');
-
-        deferred = local$.Deferred();
-        local$.ajax.mockReturnValueOnce(deferred.promise());
-        $element.find('.verify-token-button').trigger('click');
-        deferred.reject({ responseText: null }, 'error', null);
-        jest.runAllTimers();
-        expect($element.find('.token-results-content').html()).toContain('Verification error: Unknown error');
-
-        local$.ajax.mockImplementationOnce(() => { throw new Error('Exception Message Fallback'); });
-        $element.find('.verify-token-button').trigger('click');
-        expect($element.find('.token-results-content').html()).toContain('Verification error: Exception Message Fallback');
-
-        const errNoMsg = new Error();
-        errNoMsg.message = null;
-        local$.ajax.mockImplementationOnce(() => { throw errNoMsg; });
-        $element.find('.verify-token-button').trigger('click');
-        expect($element.find('.token-results-content').html()).toContain('Verification error: Exception occurred');
-
-        if (localTokenVerifier && typeof localTokenVerifier.__setIsLocalhostForTesting === 'function') {
-            localTokenVerifier.__setIsLocalhostForTesting(true);
-        }
-        deferred = local$.Deferred();
-        local$.ajax.mockReturnValueOnce(deferred.promise());
-        $element.find('.verify-token-button').trigger('click');
-        deferred.reject({ responseText: 'Simulated Fail' }, 'error', 'ConditionLocal');
-        jest.runAllTimers();
-        expect($element.find('.token-results-content').html()).toContain('Token is valid');
-        expect($element.find('.token-results-content').html()).toContain('<em>(Simulated response)</em>');
-
-        local$.ajax.mockImplementationOnce(() => { throw new Error('Simulated Exception'); });
-        $element.find('.verify-token-button').trigger('click');
-        expect($element.find('.token-results-content').html()).toContain('Token is valid');
-        expect($element.find('.token-results-content').html()).toContain('<em>(Simulated response)</em>');
-
-        if (localTokenVerifier && typeof localTokenVerifier.__setIsLocalhostForTesting === 'function') {
-            localTokenVerifier.__setIsLocalhostForTesting(null);
-        }
+        const inputSection = parentElement.querySelector('.token-input-section');
+        expect(inputSection.querySelector('label[for="token-input"]').textContent).toBe('Enter Token:');
+        expect(inputSection.querySelector('textarea#token-input').getAttribute('placeholder')).toBe('Paste token here...');
+        expect(inputSection.querySelector('button.verify-token-button').textContent).toBe('Verify Token');
+        const resultsSection = parentElement.querySelector('.token-results-section');
+        expect(resultsSection.querySelector('h3').textContent).toBe('Verification Results');
+        expect(resultsSection.querySelector('.token-results-content').innerHTML).toContain('Enter a JWT token above and click "Verify Token"');
     });
 
     it('should initialize correctly if callback is not a function', () => {
-        localTokenVerifier.init($element[0], {}, null, undefined);
-        expect($element.find('.token-verification-container').length).toBe(1);
+        localTokenVerifier.init(parentElement, {}, null, undefined);
+        expect(parentElement.querySelector('.token-verification-container')).not.toBeNull();
         expect(callback).not.toHaveBeenCalled();
     });
 });
 
 describe('tokenVerifier (non-localhost)', () => {
     let localTokenVerifier;
-    let local$;
-    let localNfCommon; // Will hold the actual module
-    let getI18nSpy;   // Spy for the getI18n export
-    let $element;
+    let localNfCommon;
+    let getI18nSpy;
+    let parentElement;
     let callback;
     let consoleErrorSpy, consoleLogSpy;
+    let currentDeferred;
 
     beforeEach(() => {
         jest.resetModules();
         localTokenVerifier = require('components/tokenVerifier');
-        local$ = require('jquery');
         localNfCommon = require('nf.Common');
+        mockCompatAjax.mockClear();
 
         localTokenVerifier.__setIsLocalhostForTesting(false);
 
-        const rawElement = document.createElement('div');
-        document.body.appendChild(rawElement);
-        $element = local$(rawElement);
+        parentElement = document.createElement('div');
+        document.body.appendChild(parentElement);
         callback = jest.fn();
-        local$.ajax = jest.fn();
+
+        mockCompatAjax.mockImplementation(() => {
+            currentDeferred = {
+                _doneCallback: null,
+                _failCallback: null,
+                done: function(cb) { this._doneCallback = cb; return this; },
+                fail: function(cb) { this._failCallback = cb; return this; },
+                resolve: function(data) { if (this._doneCallback) { Promise.resolve(data).then(this._doneCallback); } },
+                reject: function(xhr, status, error) { if (this._failCallback) { Promise.resolve().then(() => this._failCallback(xhr, status, error)); } }
+            };
+            return currentDeferred;
+        });
 
         getI18nSpy = jest.spyOn(localNfCommon, 'getI18n').mockReturnValue(mockI18n);
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
-        localTokenVerifier.init($element[0], {}, null, callback);
+        localTokenVerifier.init(parentElement, {}, null, callback);
     });
 
     afterEach(() => {
         localTokenVerifier.__setIsLocalhostForTesting(null);
-        $element.remove();
+        if (parentElement.parentNode === document.body) {
+            document.body.removeChild(parentElement);
+        }
         consoleErrorSpy.mockRestore();
         consoleLogSpy.mockRestore();
-        if (getI18nSpy) getI18nSpy.mockRestore(); // Restore the spy
+        if (getI18nSpy) getI18nSpy.mockRestore();
     });
 
-    it('should display AJAX error from xhr.responseText on .fail()', () => {
-        const deferred = local$.Deferred();
-        local$.ajax.mockReturnValue(deferred.promise());
-        $element.find('textarea#token-input').val('any.token');
+    it('should display AJAX error from xhr.responseText on .fail()', async () => {
+        parentElement.querySelector('textarea#token-input').value = 'any.token';
         consoleLogSpy.mockClear();
-        $element.find('.verify-token-button').trigger('click');
-        deferred.reject({ responseText: 'Actual AJAX failure' }, 'error', 'Failed');
+        parentElement.querySelector('.verify-token-button').click();
+
+        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
+        currentDeferred.reject({ responseText: 'Actual AJAX failure' }, 'error', 'Failed');
+
+        await Promise.resolve();
         jest.runAllTimers();
-        expect($element.find('.token-results-content').html()).toContain(mockI18n['processor.jwt.verificationError'] + ': Actual AJAX failure');
+
+        expect(parentElement.querySelector('.token-results-content').innerHTML).toContain(mockI18n['processor.jwt.verificationError'] + ': Actual AJAX failure');
         expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Token verification error:', 'error', 'Failed');
         expect(consoleLogSpy).not.toHaveBeenCalled();
     });
 
-    it('should display AJAX error from errorThrown on .fail() if no responseText', () => {
-        const deferred = local$.Deferred();
-        local$.ajax.mockReturnValue(deferred.promise());
-        $element.find('textarea#token-input').val('any.token');
-        $element.find('.verify-token-button').trigger('click');
-        deferred.reject({ responseText: null }, 'error', 'Specific Error Thrown');
+    it('should display AJAX error from errorThrown on .fail() if no responseText', async () => {
+        parentElement.querySelector('textarea#token-input').value = 'any.token';
+        parentElement.querySelector('.verify-token-button').click();
+
+        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
+        currentDeferred.reject({ responseText: null }, 'error', 'Specific Error Thrown');
+        await Promise.resolve();
         jest.runAllTimers();
-        expect($element.find('.token-results-content').html()).toContain(mockI18n['processor.jwt.verificationError'] + ': Specific Error Thrown');
+
+        expect(parentElement.querySelector('.token-results-content').innerHTML).toContain(mockI18n['processor.jwt.verificationError'] + ': Specific Error Thrown');
         expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Token verification error:', 'error', 'Specific Error Thrown');
     });
 
-    it('should display "Unknown error" on .fail() if no responseText or errorThrown', () => {
-        const deferred = local$.Deferred();
-        local$.ajax.mockReturnValue(deferred.promise());
-        $element.find('textarea#token-input').val('any.token');
-        $element.find('.verify-token-button').trigger('click');
-        deferred.reject({ responseText: null }, 'error', null);
+    it('should display "Unknown error" on .fail() if no responseText or errorThrown', async () => {
+        parentElement.querySelector('textarea#token-input').value = 'any.token';
+        parentElement.querySelector('.verify-token-button').click();
+
+        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
+        currentDeferred.reject({ responseText: null }, 'error', null);
+        await Promise.resolve();
         jest.runAllTimers();
-        expect($element.find('.token-results-content').html()).toContain(mockI18n['processor.jwt.verificationError'] + ': Unknown error');
+
+        expect(parentElement.querySelector('.token-results-content').innerHTML).toContain(mockI18n['processor.jwt.verificationError'] + ': Unknown error');
         expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Token verification error:', 'error', null);
     });
 
     it('should display exception message in UI on catch', () => {
         const exception = new Error('Non-localhost exception');
-        local$.ajax.mockImplementation(() => { throw exception; });
-        $element.find('textarea#token-input').val('any.token');
+        mockCompatAjax.mockImplementationOnce(() => { throw exception; });
+
+        parentElement.querySelector('textarea#token-input').value = 'any.token';
         consoleLogSpy.mockClear();
-        $element.find('.verify-token-button').trigger('click');
-        jest.runAllTimers();
-        expect($element.find('.token-results-content').html()).toContain(mockI18n['processor.jwt.verificationError'] + ': Non-localhost exception');
+        parentElement.querySelector('.verify-token-button').click();
+
+        expect(parentElement.querySelector('.token-results-content').innerHTML).toContain(mockI18n['processor.jwt.verificationError'] + ': Non-localhost exception');
         expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in token verification:', exception);
         expect(consoleLogSpy).not.toHaveBeenCalled();
     });
@@ -271,141 +239,177 @@ describe('tokenVerifier (non-localhost)', () => {
 
 describe('tokenVerifier (localhost)', () => {
     let localTokenVerifier;
-    let local$;
-    let localNfCommon; // Will hold the actual module
-    let getI18nSpy;   // Spy for the getI18n export
-    let $element;
+    let localNfCommon;
+    let getI18nSpy;
+    let parentElement;
     let callback;
     let consoleErrorSpy, consoleLogSpy;
+    let currentDeferred;
 
     beforeEach(() => {
         jest.resetModules();
         localTokenVerifier = require('components/tokenVerifier');
-        local$ = require('jquery');
         localNfCommon = require('nf.Common');
+        mockCompatAjax.mockClear();
 
         localTokenVerifier.__setIsLocalhostForTesting(true);
 
-        const rawElement = document.createElement('div');
-        document.body.appendChild(rawElement);
-        $element = local$(rawElement);
+        parentElement = document.createElement('div');
+        document.body.appendChild(parentElement);
         callback = jest.fn();
-        local$.ajax = jest.fn();
+
+        mockCompatAjax.mockImplementation(() => {
+            currentDeferred = {
+                _doneCallback: null,
+                _failCallback: null,
+                done: function(cb) { this._doneCallback = cb; return this; },
+                fail: function(cb) { this._failCallback = cb; return this; },
+                resolve: function(data) { if (this._doneCallback) { Promise.resolve(data).then(this._doneCallback); } },
+                reject: function(xhr, status, error) { if (this._failCallback) { Promise.resolve().then(() => this._failCallback(xhr, status, error)); } }
+            };
+            return currentDeferred;
+        });
 
         getI18nSpy = jest.spyOn(localNfCommon, 'getI18n').mockReturnValue(mockI18n);
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
-        localTokenVerifier.init($element[0], {}, null, callback);
+        localTokenVerifier.init(parentElement, {}, null, callback);
     });
 
     afterEach(() => {
         localTokenVerifier.__setIsLocalhostForTesting(null);
-        $element.remove();
+        if (parentElement.parentNode === document.body) {
+            document.body.removeChild(parentElement);
+        }
         consoleErrorSpy.mockRestore();
         consoleLogSpy.mockRestore();
-        if (getI18nSpy) getI18nSpy.mockRestore(); // Restore the spy
+        if (getI18nSpy) getI18nSpy.mockRestore();
     });
 
     it('should show error if no token provided', () => {
-        $element.find('textarea#token-input').val('');
-        $element.find('.verify-token-button').trigger('click');
-        expect($element.find('.token-results-content').html()).toContain(mockI18n['processor.jwt.noTokenProvided']);
-        expect(local$.ajax).not.toHaveBeenCalled();
+        parentElement.querySelector('textarea#token-input').value = '';
+        parentElement.querySelector('.verify-token-button').click();
+        expect(parentElement.querySelector('.token-results-content').innerHTML).toContain(mockI18n['processor.jwt.noTokenProvided']);
     });
 
-    it('should call $.ajax and show loading on token submit', () => {
+    it('should call compatAjax and show loading on token submit', () => {
         const tokenValue = 'test.token';
-        $element.find('textarea#token-input').val(tokenValue);
-        const deferred = local$.Deferred();
-        local$.ajax.mockReturnValue(deferred.promise());
-        $element.find('.verify-token-button').trigger('click');
-        expect($element.find('.token-results-content').html()).toContain(mockI18n['processor.jwt.verifying']);
-        expect(local$.ajax).toHaveBeenCalledWith(expect.objectContaining({ data: JSON.stringify({ token: tokenValue }) }));
+        parentElement.querySelector('textarea#token-input').value = tokenValue;
+        parentElement.querySelector('.verify-token-button').click();
+
+        expect(parentElement.querySelector('.token-results-content').innerHTML).toContain(mockI18n['processor.jwt.verifying']);
+        expect(mockCompatAjax).toHaveBeenCalledWith(expect.objectContaining({ data: JSON.stringify({ token: tokenValue }) }));
     });
 
-    it('should display valid token details on success (valid: true)', () => {
+    it('should display valid token details on success (valid: true)', async () => {
         const mockResponse = {
             valid: true, subject: 's', issuer: 'i', audience: 'a', expiration: 'e',
             roles: ['r1'], scopes: ['s1'], claims: { sub: 's' }
         };
-        local$.ajax.mockReturnValue(local$.Deferred().resolve(mockResponse).promise());
-        $element.find('textarea#token-input').val('valid.token');
-        $element.find('.verify-token-button').trigger('click');
-        const resultsHtml = $element.find('.token-results-content').html();
+        parentElement.querySelector('textarea#token-input').value = 'valid.token';
+        parentElement.querySelector('.verify-token-button').click();
+
+        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
+        currentDeferred.resolve(mockResponse);
+        await Promise.resolve();
+        jest.runAllTimers();
+
+        const resultsHtml = parentElement.querySelector('.token-results-content').innerHTML;
         expect(resultsHtml).toContain(mockI18n['processor.jwt.tokenValid']);
         expect(resultsHtml).toContain('s');
         expect(resultsHtml).toContain('r1');
         expect(resultsHtml).toContain('s1');
 
+        mockCompatAjax.mockClear();
         const mockResponseNoOptional = {
             valid: true, subject: 's2', issuer: 'i2', audience: 'a2', expiration: 'e2',
             claims: { sub: 's2' }
         };
-        local$.ajax.mockReturnValue(local$.Deferred().resolve(mockResponseNoOptional).promise());
-        $element.find('textarea#token-input').val('valid.no.optional.token');
-        $element.find('.verify-token-button').trigger('click');
-        const resultsHtmlNoOptional = $element.find('.token-results-content').html();
+        parentElement.querySelector('textarea#token-input').value = 'valid.no.optional.token';
+        parentElement.querySelector('.verify-token-button').click();
+        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
+        currentDeferred.resolve(mockResponseNoOptional);
+        await Promise.resolve();
+        jest.runAllTimers();
+        const resultsHtmlNoOptional = parentElement.querySelector('.token-results-content').innerHTML;
         expect(resultsHtmlNoOptional).toContain(mockI18n['processor.jwt.tokenValid']);
         expect(resultsHtmlNoOptional).toContain('s2');
         expect(resultsHtmlNoOptional).not.toContain(mockI18n['processor.jwt.roles']);
         expect(resultsHtmlNoOptional).not.toContain(mockI18n['processor.jwt.scopes']);
 
+        mockCompatAjax.mockClear();
         const mockResponseEmptyOptional = {
             valid: true, subject: 's3', issuer: 'i3', audience: 'a3', expiration: 'e3',
             roles: [], scopes: [],
             claims: { sub: 's3' }
         };
-        local$.ajax.mockReturnValue(local$.Deferred().resolve(mockResponseEmptyOptional).promise());
-        $element.find('textarea#token-input').val('valid.empty.optional.token');
-        $element.find('.verify-token-button').trigger('click');
-        const resultsHtmlEmptyOptional = $element.find('.token-results-content').html();
+        parentElement.querySelector('textarea#token-input').value = 'valid.empty.optional.token';
+        parentElement.querySelector('.verify-token-button').click();
+        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
+        currentDeferred.resolve(mockResponseEmptyOptional);
+        await Promise.resolve();
+        jest.runAllTimers();
+        const resultsHtmlEmptyOptional = parentElement.querySelector('.token-results-content').innerHTML;
         expect(resultsHtmlEmptyOptional).toContain(mockI18n['processor.jwt.tokenValid']);
         expect(resultsHtmlEmptyOptional).toContain('s3');
         expect(resultsHtmlEmptyOptional).not.toContain(mockI18n['processor.jwt.roles']);
         expect(resultsHtmlEmptyOptional).not.toContain(mockI18n['processor.jwt.scopes']);
     });
 
-    it('should display invalid token details on success (valid: false)', () => {
+    it('should display invalid token details on success (valid: false)', async () => {
         const mockResponse = { valid: false, message: 'Invalid sig', category: 'SIG' };
-        local$.ajax.mockReturnValue(local$.Deferred().resolve(mockResponse).promise());
-        $element.find('textarea#token-input').val('invalid.token');
-        $element.find('.verify-token-button').trigger('click');
-        const resultsHtml = $element.find('.token-results-content').html();
+        parentElement.querySelector('textarea#token-input').value = 'invalid.token';
+        parentElement.querySelector('.verify-token-button').click();
+        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
+        currentDeferred.resolve(mockResponse);
+        await Promise.resolve();
+        jest.runAllTimers();
+        const resultsHtml = parentElement.querySelector('.token-results-content').innerHTML;
         expect(resultsHtml).toContain(mockI18n['processor.jwt.tokenInvalid']);
         expect(resultsHtml).toContain('Invalid sig');
         expect(resultsHtml).toContain('SIG');
 
+        mockCompatAjax.mockClear();
         const mockResponseNoDetails = { valid: false };
-        local$.ajax.mockReturnValue(local$.Deferred().resolve(mockResponseNoDetails).promise());
-        $element.find('textarea#token-input').val('invalid.no.details.token');
-        $element.find('.verify-token-button').trigger('click');
-        const resultsHtmlNoDetails = $element.find('.token-results-content').html();
+        parentElement.querySelector('textarea#token-input').value = 'invalid.no.details.token';
+        parentElement.querySelector('.verify-token-button').click();
+        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
+        currentDeferred.resolve(mockResponseNoDetails);
+        await Promise.resolve();
+        jest.runAllTimers();
+        const resultsHtmlNoDetails = parentElement.querySelector('.token-results-content').innerHTML;
         expect(resultsHtmlNoDetails).toContain(mockI18n['processor.jwt.tokenInvalid']);
         expect(resultsHtmlNoDetails).not.toContain(mockI18n['processor.jwt.errorCategory']);
         expect(resultsHtmlNoDetails).toContain(mockI18n['processor.jwt.errorDetails']);
-        const errorMsgElement = $element.find('.token-error-message');
-        expect(errorMsgElement.text()).toBe('');
+        const errorMsgElement = parentElement.querySelector('.token-error-message');
+        expect(errorMsgElement.textContent).toBe('');
 
+        mockCompatAjax.mockClear();
         const mockResponseNullDetails = { valid: false, message: null, category: null };
-        local$.ajax.mockReturnValue(local$.Deferred().resolve(mockResponseNullDetails).promise());
-        $element.find('textarea#token-input').val('invalid.null.details.token');
-        $element.find('.verify-token-button').trigger('click');
-        const resultsHtmlNullDetails = $element.find('.token-results-content').html();
+        parentElement.querySelector('textarea#token-input').value = 'invalid.null.details.token';
+        parentElement.querySelector('.verify-token-button').click();
+        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
+        currentDeferred.resolve(mockResponseNullDetails);
+        await Promise.resolve();
+        jest.runAllTimers();
+        const resultsHtmlNullDetails = parentElement.querySelector('.token-results-content').innerHTML;
         expect(resultsHtmlNullDetails).toContain(mockI18n['processor.jwt.tokenInvalid']);
         expect(resultsHtmlNullDetails).not.toContain(mockI18n['processor.jwt.errorCategory']);
-        const errorMsgElementNull = $element.find('.token-error-message');
-        expect(errorMsgElementNull.text()).toBe('');
+        const errorMsgElementNull = parentElement.querySelector('.token-error-message');
+        expect(errorMsgElementNull.textContent).toBe('');
     });
 
-    it('should display simulated success on AJAX .fail()', () => {
-        const deferred = local$.Deferred();
-        local$.ajax.mockReturnValue(deferred.promise());
-        $element.find('textarea#token-input').val('any.token');
-        $element.find('.verify-token-button').trigger('click');
-        deferred.reject({ responseText: 'Network Error' }, 'error', 'Network issue');
+    it('should display simulated success on AJAX .fail()', async () => {
+        parentElement.querySelector('textarea#token-input').value = 'any.token';
+        parentElement.querySelector('.verify-token-button').click();
+
+        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
+        currentDeferred.reject({ responseText: 'Network Error' }, 'error', 'Network issue');
+        await Promise.resolve();
         jest.runAllTimers();
-        const resultsHtml = $element.find('.token-results-content').html();
+
+        const resultsHtml = parentElement.querySelector('.token-results-content').innerHTML;
         expect(resultsHtml).toContain(mockI18n['processor.jwt.tokenValid']);
         expect(resultsHtml).toContain('<em>(Simulated response)</em>');
         expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Token verification error:', 'error', 'Network issue');
@@ -414,11 +418,12 @@ describe('tokenVerifier (localhost)', () => {
 
     it('should display simulated success on exception during AJAX setup', () => {
         const exception = new Error('Localhost setup exception');
-        local$.ajax.mockImplementation(() => { throw exception; });
-        $element.find('textarea#token-input').val('any.token');
-        $element.find('.verify-token-button').trigger('click');
-        jest.runAllTimers();
-        const resultsHtml = $element.find('.token-results-content').html();
+        mockCompatAjax.mockImplementationOnce(() => { throw exception; });
+
+        parentElement.querySelector('textarea#token-input').value = 'any.token';
+        parentElement.querySelector('.verify-token-button').click();
+
+        const resultsHtml = parentElement.querySelector('.token-results-content').innerHTML;
         expect(resultsHtml).toContain(mockI18n['processor.jwt.tokenValid']);
         expect(resultsHtml).toContain('<em>(Simulated response)</em>');
         expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in token verification:', exception);

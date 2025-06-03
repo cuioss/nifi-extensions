@@ -2,10 +2,9 @@
  * Tests for the actual main.js implementation using real jQuery and JSDOM.
  */
 
-import $ from 'jquery'; // Import REAL jQuery
-
-// Set up global jQuery from the real import
-global.jQuery = global.$ = $;
+// Import $ from jquery-compat for use by main.js, but tests should use vanilla JS.
+// The global $ should be set up by jest's setupFiles (jquery-extended.js)
+import $ from '../../main/webapp/js/utils/jquery-compat.js';
 
 // Define a clear translation map for all i18n needs in this test file
 const testTranslations = {
@@ -58,13 +57,22 @@ describe('main.js (real implementation with JSDOM)', () => {
     });
 
     beforeEach(() => {
-        jest.resetModules();
+        jest.resetModules(); // Important to reset modules before each test
+
+        // Simulate DOM ready state before loading main.js or calling init()
+        // This might help ensure $(document).ready() in main.js fires reliably.
+        Object.defineProperty(document, 'readyState', {
+            configurable: true,
+            get() { return 'interactive'; } // or 'complete'
+        });
+        document.dispatchEvent(new Event('DOMContentLoaded'));
+
         // Ensure the mock is cleared before each test in this describe block
         mockInitTooltips.mockClear();
 
-        const jq = require('jquery');
-        global.jQuery = global.$ = jq;
-        // The global mock from jquery-extended.js should handle $.fn.tooltip
+        // global.jQuery and global.$ should be set by the jest setupFile (jquery-extended.js)
+        // const jq = require('jquery'); // This would be cash-dom via jquery-compat due to setup
+        // global.jQuery = global.$ = jq;
 
         nfCommon = require('nf.Common');
         nfCommon.registerCustomUiTab.mockClear();
@@ -115,8 +123,8 @@ describe('main.js (real implementation with JSDOM)', () => {
             expect(nfCommon.registerCustomUiTab).toHaveBeenCalledTimes(2);
             expect(nfCommon.registerCustomUiTab).toHaveBeenCalledWith('jwt.validation.issuer.configuration', expect.anything());
             expect(nfCommon.registerCustomUiTab).toHaveBeenCalledWith('jwt.validation.token.verification', expect.anything());
-            expect($('#loading-indicator').is(':visible')).toBe(false);
-            // expect($('#jwt-validator-tabs').is(':visible')).toBe(true); // Temporarily comment out for stability
+            expect(document.getElementById('loading-indicator').style.display).toBe('none'); // Direct check for display: none
+            // expect(document.getElementById('jwt-validator-tabs').style.display !== 'none').toBe(true); // Temporarily comment out for stability
         });
 
         it('should register help tooltips', () => {
@@ -124,7 +132,7 @@ describe('main.js (real implementation with JSDOM)', () => {
             mainModule.init();
             jest.runAllTimers();
 
-            const helpIconCount = $('body').find('span.help-tooltip').length;
+            const helpIconCount = document.body.querySelectorAll('span.help-tooltip').length;
             // If help icons exist, expect jQuery's tooltip function to be called once on the collection.
             // If no help icons, expect it not to be called.
             const expectedCallCount = helpIconCount > 0 ? 1 : 0;
@@ -146,8 +154,8 @@ describe('main.js (real implementation with JSDOM)', () => {
             mainModule.init(); // This calls registerHelpTooltips, which then calls initTooltips
             jest.runAllTimers();
 
-            const helpSpan = $('div.property-label').find('span.help-tooltip');
-            expect(helpSpan.length).toBe(1);
+            const helpSpan = document.querySelector('div.property-label span.help-tooltip');
+            expect(helpSpan).not.toBeNull();
             // This test now checks if the registerHelpTooltips's own try/catch logs the error.
             // The fallback to data-original-title happens inside initTooltips, which is now fully mocked.
             // So, we can't directly test that part here anymore unless we make the mock more complex.
@@ -166,10 +174,10 @@ describe('main.js (real implementation with JSDOM)', () => {
             mainModule.init();
             jest.runAllTimers();
 
-            const helpSpan = $('div.property-label').find('span.help-tooltip');
-            expect(helpSpan.length).toBe(1);
+            const helpSpan = document.querySelector('div.property-label span.help-tooltip');
+            expect(helpSpan).not.toBeNull();
             expect(mockInitTooltips).toHaveBeenCalled(); // Ensure initTooltips was called
-            expect(helpSpan.attr('data-original-title')).toBeUndefined(); // Fallback should not have run (this is an indirect check)
+            expect(helpSpan.getAttribute('data-original-title')).toBeNull(); // Or toBeUndefined() if cash-dom returns that for missing attr
             expect(consoleErrorSpy).not.toHaveBeenCalledWith('Error initializing tooltips:', expect.any(Error));
         });
 
@@ -178,39 +186,52 @@ describe('main.js (real implementation with JSDOM)', () => {
             mainModule.init();
             jest.runAllTimers();
 
-            expect($('#loading-indicator').text()).toBe(testTranslations['jwt.validator.loading']);
-            expect($('.jwt-validator-title').text()).toBe(testTranslations['jwt.validator.title']);
+            expect(document.getElementById('loading-indicator').textContent).toBe(testTranslations['jwt.validator.loading']);
+            expect(document.querySelector('.jwt-validator-title').textContent).toBe(testTranslations['jwt.validator.title']);
         });
 
         it('should register components when nfCanvasInitialized event is triggered', () => {
             global.nf.Canvas.initialized = false;
 
-            mainModule.init();
-            jest.runAllTimers(); // This will run the $(document).ready() in init()
+            // DOMContentLoaded is fired above. Now, when mainModule is required, its .ready() should fire.
+            // DOMContentLoaded is fired in beforeEach.
+            mainModule = require('../../main/webapp/js/main'); // Re-require main module
+            mainModule.init(); // Initialize it
 
-            expect(window.jwtComponentsRegistered).toBe(true); // Should be true due to .ready()
-            expect(nfCommon.registerCustomUiTab).toHaveBeenCalledTimes(2);
+            // At this point, if nf.Canvas.initialized is false,
+            // the ready() handler in main.js should have set up a listener for 'nfCanvasInitialized',
+            // but not yet called registerComponents().
+            expect(window.jwtComponentsRegistered).toBe(false); // Flag should not be set yet
+            expect(nfCommon.registerCustomUiTab).not.toHaveBeenCalled(); // Components should not be registered yet
 
-            nfCommon.registerCustomUiTab.mockClear();
+            nfCommon.registerCustomUiTab.mockClear(); // Clear for the next assertion
 
-            $(document).trigger('nfCanvasInitialized');
-            jest.runAllTimers();
+            // Trigger the event that main.js is listening for
+            // $(document).trigger('nfCanvasInitialized'); // Using cash-dom trigger
+            document.dispatchEvent(new CustomEvent('nfCanvasInitialized')); // Using vanilla dispatch
+            jest.runAllTimers(); // Ensure event handler and any subsequent async operations complete
 
-            expect(nfCommon.registerCustomUiTab).not.toHaveBeenCalled();
-            expect($('#loading-indicator').is(':visible')).toBe(false);
+            // Now, the event handler in main.js should have executed registerComponents()
+            expect(window.jwtComponentsRegistered).toBe(true); // Flag should be set
+            expect(nfCommon.registerCustomUiTab).toHaveBeenCalledTimes(2); // Components registered
+            expect(document.getElementById('loading-indicator').style.display).toBe('none');
         });
 
         it('should execute final setTimeout for hideLoadingIndicator and updateUITranslations', () => {
             global.nf.Canvas.initialized = true;
+            // DOMContentLoaded is fired above.
+            mainModule = require('../../main/webapp/js/main'); // Re-require
             mainModule.init();
-            jest.runAllTimers();
+            // jest.runAllTimers(); // For ready handler
 
-            $('#loading-indicator').show().text('Initial Loading Text');
-            $('.jwt-validator-title').text('Initial Title Text');
+            const loadingIndicator = document.getElementById('loading-indicator');
+            loadingIndicator.style.display = 'block'; // or ''
+            loadingIndicator.textContent = 'Initial Loading Text';
+            document.querySelector('.jwt-validator-title').textContent = 'Initial Title Text';
 
-            jest.advanceTimersByTime(3000);
+            jest.advanceTimersByTime(3000); // For the setTimeout in main.js
 
-            expect($('#loading-indicator').is(':visible')).toBe(false);
+            expect(loadingIndicator.style.display).toBe('none');
             // Text assertions are removed as i18n.translate within setTimeout is problematic to test reliably here.
             // The core functionality of hideLoadingIndicator (tested by visibility) and
             // updateUITranslations (tested in a synchronous context elsewhere) are covered.
@@ -236,26 +257,28 @@ describe('main.js (real implementation with JSDOM)', () => {
             // This test was previously noted for its complexity and potential flakiness.
             // eslint-disable-next-line jest/no-disabled-tests
             it.skip('should register help tooltips and update translations when a MultiIssuerJWTTokenAuthenticator dialog opens', () => {
-                const $dialogContent = $('#processor-dialog-mock');
+                const dialogContent = document.getElementById('processor-dialog-mock');
                 // Ensure dialog has the correct class (already set in beforeEach)
                 // Ensure processor type is correct and explicitly set for this test run
-                $('.processor-type', $dialogContent).empty().text('NiFi Flow - MultiIssuerJWTTokenAuthenticator');
+                const processorTypeEl = dialogContent.querySelector('.processor-type');
+                processorTypeEl.innerHTML = ''; // .empty()
+                processorTypeEl.textContent = 'NiFi Flow - MultiIssuerJWTTokenAuthenticator'; // .text()
 
 
                 // Add elements for tooltips (property-label is what registerHelpTooltips looks for)
                 // and translations to the dialog
-                $dialogContent.append(`
+                dialogContent.insertAdjacentHTML('beforeend', `
                     <div class="property-label">Token Location</div>
                     <div data-i18n-key="jwt.validator.title">Initial Dialog Title</div>
                     <span data-i18n-key-direct="property.token.location.help">Initial Dialog Help Text</span>
                 `);
 
                 // Ensure the dialog is visible for jQuery operations if needed, though event triggering doesn't depend on visibility.
-                $dialogContent.show();
+                dialogContent.style.display = 'block'; // .show()
 
                 // Pre-assertions to ensure test setup is as expected by main.js conditions
-                expect($dialogContent.hasClass('processor-dialog')).toBe(true);
-                const processorTypeText = $('.processor-type', $dialogContent).text();
+                expect(dialogContent.classList.contains('processor-dialog')).toBe(true);
+                const processorTypeText = processorTypeEl.textContent;
                 expect(processorTypeText).toBe('NiFi Flow - MultiIssuerJWTTokenAuthenticator'); // Exact match
                 expect(processorTypeText.includes('MultiIssuerJWTTokenAuthenticator')).toBe(true);
 
@@ -263,7 +286,8 @@ describe('main.js (real implementation with JSDOM)', () => {
                 // Act
                 mainModule.init(); // Listener is now registered synchronously within init
 
-                $(document).trigger('dialogOpen', [$dialogContent[0]]);
+                // Revert to using $(document).trigger to ensure compatibility with cash-dom's event data passing
+                $(document).trigger('dialogOpen', [dialogContent]);
 
                 // Run all timers to process things like nfCanvasInitialized listeners (if any),
                 // the 3000ms setTimeout in main.js, and any jQuery internal timers.
@@ -274,8 +298,8 @@ describe('main.js (real implementation with JSDOM)', () => {
                 // Assert
                 expect(mockInitTooltips).toHaveBeenCalled(); // This is the failing assertion
                 // Check that a tooltip span was added to the .property-label
-                expect($dialogContent.find('.property-label > span.help-tooltip').length).toBe(1);
-                expect($dialogContent.find('.property-label > span.help-tooltip').attr('title'))
+                expect(dialogContent.querySelectorAll('.property-label > span.help-tooltip').length).toBe(1);
+                expect(dialogContent.querySelector('.property-label > span.help-tooltip').getAttribute('title'))
                     .toBe(testTranslations['property.token.location.help']);
 
                 // Assert translations - these might fail based on current main.js logic for updateUITranslations
@@ -292,26 +316,30 @@ describe('main.js (real implementation with JSDOM)', () => {
                 // Test the global title update (if such an element was in the dialog, which it's not by default)
                 // This will test if the global $('.jwt-validator-title') was updated, which it should be.
                 // This doesn't test the dialog specific translation for 'jwt.validator.title' using data-i18n-key.
-                expect($('body').find('.jwt-validator-title').first().text()).toBe(testTranslations['jwt.validator.title']);
+                expect(document.body.querySelector('.jwt-validator-title').textContent).toBe(testTranslations['jwt.validator.title']);
 
                 // The following assertions for elements inside the dialog with data-i18n-* attributes
                 // are expected to FAIL because main.js's updateUITranslations() does not target them by context.
                 // These are included to match the subtask request, but highlight a discrepancy.
-                // To make these pass, main.js would need to call something like i18n.translateUI($dialogContent).
-                expect($dialogContent.find('[data-i18n-key="jwt.validator.title"]').text()).toBe('Initial Dialog Title'); // Expected to remain initial value
-                expect($dialogContent.find('[data-i18n-key-direct="property.token.location.help"]').text()).toBe('Initial Dialog Help Text'); // Expected to remain initial value
+                // To make these pass, main.js would need to call something like i18n.translateUI(dialogContent).
+                expect(dialogContent.querySelector('[data-i18n-key="jwt.validator.title"]').textContent).toBe('Initial Dialog Title'); // Expected to remain initial value
+                expect(dialogContent.querySelector('[data-i18n-key-direct="property.token.location.help"]').textContent).toBe('Initial Dialog Help Text'); // Expected to remain initial value
             });
 
             it('should NOT act if processorType does not include MultiIssuerJWTTokenAuthenticator', () => {
-                const $dialogContent = $('#other-processor-dialog-mock').show();
-                $(document).trigger('dialogOpen', [$dialogContent[0]]);
+                const dialogContent = document.getElementById('other-processor-dialog-mock');
+                dialogContent.style.display = 'block'; // .show()
+                // Use $ (cash-dom from jquery-compat) to trigger. Pass dialogContent directly.
+                $(document).trigger('dialogOpen', dialogContent);
                 jest.advanceTimersByTime(600);
                 expect(mockInitTooltips).not.toHaveBeenCalled(); // Use the imported initTooltips mock
             });
 
             it('should NOT act if dialogContent does not have class processor-dialog', () => {
-                const $dialogContent = $('#non-processor-dialog-mock').show();
-                $(document).trigger('dialogOpen', [$dialogContent[0]]);
+                const dialogContent = document.getElementById('non-processor-dialog-mock');
+                dialogContent.style.display = 'block'; // .show()
+                // Use $ (cash-dom from jquery-compat) to trigger. Pass dialogContent directly.
+                $(document).trigger('dialogOpen', dialogContent);
                 jest.advanceTimersByTime(600);
                 expect(mockInitTooltips).not.toHaveBeenCalled(); // Use the imported initTooltips mock
             });

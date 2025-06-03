@@ -1,4 +1,4 @@
-import $ from 'jquery'; // This will be the actual jQuery
+import $ from '../../../main/webapp/js/utils/jquery-compat.js'; // Use the compatibility wrapper
 
 // Mock jQuery UI methods
 $.fn.tooltip = jest.fn().mockImplementation(function (options) {

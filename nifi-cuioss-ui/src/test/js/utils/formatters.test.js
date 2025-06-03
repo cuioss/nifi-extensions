@@ -2,7 +2,7 @@
  * Tests for the formatters utility functions.
  */
 import * as formatters from 'utils/formatters';
-import $ from 'jquery'; // Required for sanitizeHtml if it uses $
+import $ from '../../../main/webapp/js/utils/jquery-compat.js'; // Required for sanitizeHtml if it uses $
 
 // btoa and atob are needed for formatJwtToken tests
 global.btoa = (str) => Buffer.from(str, 'binary').toString('base64');

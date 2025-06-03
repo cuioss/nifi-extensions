@@ -2,7 +2,7 @@
  * Main module for MultiIssuerJWTTokenAuthenticator UI components.
  * Provides functionality for custom UI components in NiFi.
  */
-import $ from 'jquery';
+import $ from './utils/jquery-compat.js';
 import * as nfCommon from 'nf.Common';
 import * as tokenVerifier from './components/tokenVerifier.js';
 import * as issuerConfigEditor from './components/issuerConfigEditor.js';
@@ -42,19 +42,22 @@ const registerCustomUiComponents = function () {
 
 /**
      * Registers help tooltips for properties.
-     * @param {jQuery} [contextElement] - Optional context within which to find elements.
+     * @param {Element} [contextElement] - Optional context within which to find elements.
      */
 const registerHelpTooltips = function (contextElement) {
-    const propertyLabels = contextElement ? $('.property-label', contextElement) : $('.property-label');
-    propertyLabels.each(function (idx, el) {
-        const $label = $(this); // or $(el)
-        const propertyName = $label.text().trim();
+    const baseElement = contextElement ? contextElement : document;
+    const propertyLabels = baseElement.querySelectorAll('.property-label');
+    propertyLabels.forEach(function (label) { // Changed $label to label, and $(this) to label
+        const propertyName = label.textContent.trim();
         const helpText = getHelpTextForProperty(propertyName);
 
         if (helpText) {
             // Restore the check for existing tooltips
-            if ($label.find('span.help-tooltip').length === 0) {
-                $label.append('<span class="help-tooltip fa fa-question-circle" title="' + helpText + '"></span>');
+            if (!label.querySelector('span.help-tooltip')) {
+                const span = document.createElement('span');
+                span.className = 'help-tooltip fa fa-question-circle';
+                span.title = helpText;
+                label.appendChild(span);
             }
         }
     });
@@ -104,8 +107,14 @@ const getHelpTextForProperty = function (propertyName) {
      * Hides the loading indicator and shows the UI components.
      */
 const hideLoadingIndicator = function () {
-    $('#loading-indicator').hide();
-    $('#jwt-validator-tabs').show();
+    const loadingIndicator = document.getElementById('loading-indicator');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'none';
+    }
+    const tabs = document.getElementById('jwt-validator-tabs');
+    if (tabs) {
+        tabs.style.display = ''; // Or 'block', depending on original display style
+    }
 };
 
 /**
@@ -113,10 +122,16 @@ const hideLoadingIndicator = function () {
      */
 const updateUITranslations = function () {
     // Update loading indicator text
-    $('#loading-indicator').text(i18n.translate('jwt.validator.loading'));
+    const loadingIndicator = document.getElementById('loading-indicator');
+    if (loadingIndicator) {
+        loadingIndicator.textContent = i18n.translate('jwt.validator.loading');
+    }
 
     // Update other static UI elements
-    $('.jwt-validator-title').text(i18n.translate('jwt.validator.title'));
+    const titleElement = document.querySelector('.jwt-validator-title');
+    if (titleElement) {
+        titleElement.textContent = i18n.translate('jwt.validator.title');
+    }
 };
 
 /**
@@ -133,7 +148,7 @@ export const init = function () {
         hideLoadingIndicator();
     } else {
         // Wait for NiFi to be fully initialized
-        $(document).on('nfCanvasInitialized', function () {
+        document.addEventListener('nfCanvasInitialized', function () {
             registerCustomUiComponents();
             // Hide loading indicator and show UI components
             hideLoadingIndicator();
@@ -141,7 +156,7 @@ export const init = function () {
     }
 
     // Register custom UI components when the document is ready
-    $(document).ready(function () {
+    document.addEventListener('DOMContentLoaded', function () {
         registerCustomUiComponents();
 
         // Update UI translations
@@ -151,13 +166,25 @@ export const init = function () {
         hideLoadingIndicator();
 
         // Add event listener to track when the processor dialog opens
+        // Note: The conversion of $(document).on('dialogOpen', function (event, dialogContentElement)
+        // is complex due to how jQuery handles custom events and additional parameters.
+        // If 'dialogOpen' is a standard browser event, this is fine.
+        // If it's a jQuery custom event triggered with extra parameters,
+        // those parameters (dialogContentElement) won't be passed the same way.
+        // Assuming 'dialogOpen' might be a custom event and for simplicity,
+        // this specific handler will be left using cash-dom for now as per worker decision.
+        // If it must be Vanilla JS, the event dispatch and listening mechanism needs careful review.
+        // NiFi likely triggers 'dialogOpen' using jQuery's `trigger` method, passing `dialogContentElement` as an extra parameter.
+        // Vanilla JS's `addEventListener` does not support this directly. Re-triggering would involve
+        // finding all `trigger('dialogOpen')` calls and modifying them to use `CustomEvent` with a `detail` property,
+        // which is a broader change than the current scope.
         $(document).on('dialogOpen', function (event, dialogContentElement) { // dialogContentElement is a raw DOM element
-            const $dialog = $(dialogContentElement); // Wrap the raw DOM element once
-            if ($dialog.hasClass('processor-dialog')) {
+            // $dialog is no longer needed as we will use dialogContentElement directly for classList and querySelector
+            if (dialogContentElement.classList.contains('processor-dialog')) {
                 // Use setTimeout to allow the dialog to fully render
                 setTimeout(function () {
-                    const processorTypeElement = $dialog.find('.processor-type');
-                    const processorType = processorTypeElement.length ? processorTypeElement.text().trim() : '';
+                    const processorTypeElement = dialogContentElement.querySelector('.processor-type');
+                    const processorType = processorTypeElement ? processorTypeElement.textContent.trim() : '';
 
                     if (processorType.includes('MultiIssuerJWTTokenAuthenticator')) {
                         registerHelpTooltips(dialogContentElement); // Pass raw DOM element as context

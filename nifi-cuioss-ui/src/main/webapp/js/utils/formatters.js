@@ -1,7 +1,7 @@
 /**
  * Utility functions for formatting data in the UI.
  */
-import $ from 'jquery';
+// import $ from './jquery-compat.js'; // Removed as it's unused in this file
 import _nfCommon from 'nf.Common'; // Path might need adjustment based on how nf.Common is provided/mocked
 
 'use strict';
@@ -154,5 +154,7 @@ export const sanitizeHtml = function (html) {
         return '';
     }
 
-    return $('<div>').text(html).html();
+    const tempDiv = document.createElement('div');
+    tempDiv.textContent = html;
+    return tempDiv.innerHTML;
 };

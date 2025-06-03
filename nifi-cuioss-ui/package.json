@@ -48,11 +48,12 @@
     "stylelint": "^16.6.1",
     "stylelint-config-standard": "^36.0.1",
     "webpack": "^5.92.1",
-    "webpack-cli": "^5.1.4"
+    "webpack-cli": "^5.1.4",
+    "whatwg-fetch": "^3.6.20"
   },
   "dependencies": {
     "@popperjs/core": "^2.11.8",
-    "jquery": "^3.7.1",
+    "cash-dom": "^8.1.5",
     "tippy.js": "^6.3.7"
   },
   "jest": {
@@ -102,7 +103,8 @@
       "\\.css$": "<rootDir>/src/test/js/mocks/cssMock.js"
     },
     "setupFiles": [
-      "<rootDir>/src/test/js/mocks/jquery-extended.js"
+      "<rootDir>/src/test/js/mocks/jquery-extended.js",
+      "<rootDir>/src/test/js/jest.setup-fetch.js"
     ]
   }
 }
