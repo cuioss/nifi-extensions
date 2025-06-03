@@ -10,7 +10,7 @@ jest.mock('services/apiClient', () => ({
     ...jest.requireActual('services/apiClient'), // Keep original functions but allow spying/mocking them
     validateJwksUrl: jest.fn(),
     getProcessorProperties: jest.fn(),
-    updateProcessorProperties: jest.fn(),
+    updateProcessorProperties: jest.fn()
     // handleApiError is not typically called directly by tests, but by other SUT functions.
     // If we want to assert its specific behavior, it might need more specific mocking or to be left unmocked.
     // For now, let it be part of the actual module if requireActual is used, or mock it if needed.
@@ -67,8 +67,8 @@ describe('apiClient', () => {
             const deferred = {
                 _doneCallback: () => {},
                 _failCallback: () => {},
-                done: function(cb) { this._doneCallback = cb; return this; },
-                fail: function(cb) { this._failCallback = cb; return this; },
+                done: function (cb) { this._doneCallback = cb; return this; },
+                fail: function (cb) { this._failCallback = cb; return this; }
             };
             // Simulate async behavior for done/fail
             Promise.resolve().then(() => {
@@ -77,7 +77,7 @@ describe('apiClient', () => {
             });
             // Add resolve/reject helpers for tests to trigger
             deferred.resolve = (data) => { deferred.dataForDone = data; };
-            deferred.reject = (xhr, status, error) => { deferred.dataForFail = {xhr, status, error}; };
+            deferred.reject = (xhr, status, error) => { deferred.dataForFail = { xhr, status, error }; };
             return deferred;
         });
     });
@@ -109,7 +109,7 @@ describe('apiClient', () => {
 
         it('should call errorCallback on failure', async () => {
             const mockErrorXhr = { responseText: '{"error":"Invalid URL"}', status: 400, statusText: 'Bad Request' };
-            const expectedErrorMessage = "Invalid URL";
+            const expectedErrorMessage = 'Invalid URL';
 
             apiClient.validateJwksUrl.mockImplementation((url, scb, ecb) => {
                 ecb(expectedErrorMessage, mockErrorXhr); // Call error callback directly
@@ -141,14 +141,10 @@ describe('apiClient', () => {
             const errorToThrow = { message: ajaxFailureDetails.responseText, xhr: ajaxFailureDetails };
             apiClient.getProcessorProperties.mockRejectedValue(errorToThrow);
 
-            try {
-                await apiClient.getProcessorProperties(processorId);
-                throw new Error('Promise should have rejected');
-            } catch (error) {
-                expect(apiClient.getProcessorProperties).toHaveBeenCalledWith(processorId);
-                expect(error.message).toBe(ajaxFailureDetails.responseText);
-                expect(error.xhr).toEqual(ajaxFailureDetails);
-            }
+            // Ensures the promise rejects and allows asserting the error object
+            await expect(apiClient.getProcessorProperties(processorId)).rejects.toEqual(errorToThrow);
+            // We can also assert that the mocked function was called
+            expect(apiClient.getProcessorProperties).toHaveBeenCalledWith(processorId);
         });
     });
 
@@ -183,13 +179,8 @@ describe('apiClient', () => {
             const errorToThrow = { message: ajaxFailureDetails.responseText, xhr: ajaxFailureDetails };
             apiClient.updateProcessorProperties.mockRejectedValue(errorToThrow);
 
-            try {
-                await apiClient.updateProcessorProperties(processorId, propertiesToUpdate);
-                throw new Error('Promise should have rejected');
-            } catch (error) {
-                expect(apiClient.updateProcessorProperties).toHaveBeenCalledWith(processorId, propertiesToUpdate);
-                expect(error.message).toBe(ajaxFailureDetails.responseText);
-            }
+            await expect(apiClient.updateProcessorProperties(processorId, propertiesToUpdate)).rejects.toEqual(errorToThrow);
+            expect(apiClient.updateProcessorProperties).toHaveBeenCalledWith(processorId, propertiesToUpdate);
         });
 
         // This test becomes similar to the one above if we mock updateProcessorProperties directly
@@ -197,13 +188,8 @@ describe('apiClient', () => {
             const errorToThrow = { message: ajaxFailureDetails.responseText, xhr: ajaxFailureDetails };
             apiClient.updateProcessorProperties.mockRejectedValue(errorToThrow);
 
-            try {
-                await apiClient.updateProcessorProperties(processorId, propertiesToUpdate);
-                throw new Error('Promise should have rejected');
-            } catch (error) {
-                expect(apiClient.updateProcessorProperties).toHaveBeenCalledWith(processorId, propertiesToUpdate);
-                expect(error.message).toBe(ajaxFailureDetails.responseText);
-            }
+            await expect(apiClient.updateProcessorProperties(processorId, propertiesToUpdate)).rejects.toEqual(errorToThrow);
+            expect(apiClient.updateProcessorProperties).toHaveBeenCalledWith(processorId, propertiesToUpdate);
         });
     });
 
@@ -236,7 +222,7 @@ describe('apiClient', () => {
 
         it('should use parsed response.message if available', async () => {
             const mockXhr = { responseText: '{"message":"Error from message field"}', status: 400, statusText: 'Bad Request' };
-             apiClient.validateJwksUrl.mockImplementation((u, sCb, eCb) => eCb('Error from message field', mockXhr));
+            apiClient.validateJwksUrl.mockImplementation((u, sCb, eCb) => eCb('Error from message field', mockXhr));
             await apiClient.validateJwksUrl(url, successCallback, errorCallback);
             expect(errorCallback).toHaveBeenCalledWith('Error from message field', mockXhr);
         });

@@ -48,10 +48,10 @@ describe('jwksValidator - Common Initialization and Callback', () => {
             currentDeferred = {
                 _doneCallback: null,
                 _failCallback: null,
-                done: function(cb) { this._doneCallback = cb; return this; },
-                fail: function(cb) { this._failCallback = cb; return this; },
-                resolve: function(data) { if (this._doneCallback) { Promise.resolve(data).then(this._doneCallback); } },
-                reject: function(xhr, status, error) { if (this._failCallback) { Promise.resolve().then(() => this._failCallback(xhr, status, error)); } }
+                done: function (cb) { this._doneCallback = cb; return this; },
+                fail: function (cb) { this._failCallback = cb; return this; },
+                resolve: function (data) { if (this._doneCallback) { Promise.resolve(data).then(this._doneCallback); } },
+                reject: function (xhr, status, error) { if (this._failCallback) { Promise.resolve().then(() => this._failCallback(xhr, status, error)); } }
             };
             return currentDeferred;
         });
@@ -293,10 +293,10 @@ describe('jwksValidator (non-localhost)', () => {
             currentDeferred = {
                 _doneCallback: null,
                 _failCallback: null,
-                done: function(cb) { this._doneCallback = cb; return this; },
-                fail: function(cb) { this._failCallback = cb; return this; },
-                resolve: function(data) { if (this._doneCallback) { Promise.resolve(data).then(this._doneCallback); } },
-                reject: function(xhr, status, error) { if (this._failCallback) { Promise.resolve().then(() => this._failCallback(xhr, status, error)); } }
+                done: function (cb) { this._doneCallback = cb; return this; },
+                fail: function (cb) { this._failCallback = cb; return this; },
+                resolve: function (data) { if (this._doneCallback) { Promise.resolve(data).then(this._doneCallback); } },
+                reject: function (xhr, status, error) { if (this._failCallback) { Promise.resolve().then(() => this._failCallback(xhr, status, error)); } }
             };
             return currentDeferred;
         });
@@ -310,7 +310,7 @@ describe('jwksValidator (non-localhost)', () => {
 
     afterEach(() => {
         localJwksValidator.__setIsLocalhostForTesting(null);
-         if (parentElement.parentNode === document.body) {
+        if (parentElement.parentNode === document.body) {
             document.body.removeChild(parentElement);
         }
         consoleErrorSpy.mockRestore();
@@ -410,10 +410,10 @@ describe('jwksValidator (localhost)', () => {
             currentDeferred = {
                 _doneCallback: null,
                 _failCallback: null,
-                done: function(cb) { this._doneCallback = cb; return this; },
-                fail: function(cb) { this._failCallback = cb; return this; },
-                resolve: function(data) { if (this._doneCallback) { Promise.resolve(data).then(this._doneCallback); } },
-                reject: function(xhr, status, error) { if (this._failCallback) { Promise.resolve().then(() => this._failCallback(xhr, status, error)); } }
+                done: function (cb) { this._doneCallback = cb; return this; },
+                fail: function (cb) { this._failCallback = cb; return this; },
+                resolve: function (data) { if (this._doneCallback) { Promise.resolve(data).then(this._doneCallback); } },
+                reject: function (xhr, status, error) { if (this._failCallback) { Promise.resolve().then(() => this._failCallback(xhr, status, error)); } }
             };
             return currentDeferred;
         });

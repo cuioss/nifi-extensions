@@ -71,25 +71,39 @@ This section outlines the remaining tasks to fully migrate from jQuery to `cash-
       Identify areas where `utils/dom.js` or direct Vanilla JS (from previous Phase 5) was used for DOM manipulation or event handling.
       Refactor these implementations to use `cash` where `cash` provides equivalent or more concise functionality.
       *Sub-tasks (example, expand as needed during review):*
-      * [ ] Review `main.js` for Vanilla JS that can be converted to `cash`.
-      * [ ] Review `components/issuerConfigEditor.js` for Vanilla JS that can be converted to `cash`.
-      * [ ] Review `components/jwksValidator.js` for Vanilla JS that can be converted to `cash`.
-      * [ ] Review `components/tokenVerifier.js` for Vanilla JS that can be converted to `cash`.
-      * [ ] Evaluate `utils/dom.js`: Determine if it can be fully deprecated or if any specific utilities not covered by `cash` are still essential.
-* [ ] *Remove Indirection (Use `cash` Directly)*:
+      * [~] Review `main.js` for Vanilla JS that can be converted to `cash`. (Partially complete; `main.js` now imports `cash-dom` directly, replacing `jquery-compat.js`. Further review for Vanilla JS to `cash` conversion can be done as needed.)
+      * [x] Review `components/issuerConfigEditor.js` for Vanilla JS that can be converted to `cash`. (Imports `cash-dom`; selectively refactored to use `cash` where advantageous, retaining efficient Vanilla JS.)
+      * [x] Review `components/jwksValidator.js` for Vanilla JS that can be converted to `cash`. (Imports `cash-dom`; selectively refactored to use `cash` where advantageous, retaining efficient Vanilla JS.)
+      * [x] Review `components/tokenVerifier.js` for Vanilla JS that can be converted to `cash`. (Imports `cash-dom`; selectively refactored to use `cash` where advantageous, retaining efficient Vanilla JS.)
+      * [x] Evaluate `utils/dom.js`: Determine if it can be fully deprecated or if any specific utilities not covered by `cash` are still essential. (Completed; `utils/dom.js` was found to be unused and has been deleted.)
+* [x] *Remove Indirection (Use `cash` Directly)*:
+      (Completed; `main.js` and relevant component files now import `cash-dom` directly. `utils/jquery-compat.js` has been deleted.)
       Once the primary refactoring to `cash` is done and the test bed is stable, review components that use `jquery-compat.js`.
       Update them to import `cash` directly from `'cash-dom'` where possible.
       Evaluate if `utils/jquery-compat.js` is still needed or if its specific additions (like the placeholder tooltip) should be integrated elsewhere (e.g., specific Tippy.js initialization module) or handled differently.
 
 === Testing and Stability
-* [ ] *Ensure all Tests Pass*:
+* [ ] *Ensure all Tests Pass*: (IN PROGRESS) // Keep IN PROGRESS until all other tests are checked
       After any refactoring to `cash`, run all tests using `./mvnw clean install` from the project root.
       Fix any test failures, which may involve updating test setups, mocks, or assertions to align with `cash` behavior.
+      *Current Status:* Progressing. Some test suites like `issuerConfigEditor.test.js` are now passing. Overall build status needs verification with `./mvnw clean install`.
+        * `issuerConfigEditor.test.js`: All tests are PASSING. Failures were resolved by:
+            1. Refining Jest mock strategy: Ensured `apiClient.js` was `require`d within `beforeEach` after `jest.resetModules()` to guarantee the component and test used the same mock instance.
+            2. Aligning mock promises with component expectations: Ensured mocks for API calls returned jQuery-style promises (`.done()`, `.fail()`) where the component relied on this interface, rather than standard ES6 Promises.
+* [DONE] *Research Jest Mocks for cash-dom/jQuery/NiFi*:
+      Investigation into Jest mocking strategies for `cash-dom`, jQuery, and NiFi-specific objects was conducted.
+      The existing approach of using `jest.mock()` for module dependencies (e.g., `apiClient`, `nf.Common`, `i18n.js`, `tooltip.js`)
+      and utilizing `cash-dom` directly for DOM interactions within the JSDOM environment (provided by Jest) is considered standard and sound.
+      No specialized third-party mocking libraries for `cash-dom` were found to be necessary.
+      Key learning: For global-like NiFi objects (e.g., `nf.Common`), it's crucial to use top-level `jest.mock('moduleName', () => ({...}), { virtual: true });`
+      in test files. This ensures that the mocked version is consistently available to the code under test, especially across asynchronous
+      operations (like `setTimeout`) and different module scopes. This was critical for resolving issues with `i18n` translations in async callbacks.
 * [ ] *Enable Disabled/Pending Tests*:
       Systematically review and re-enable any tests that were disabled or marked as pending during previous refactoring phases.
       *Sub-tasks (expand as tests are identified):*
-      * [ ] Address test failures in `issuerConfigEditor.test.js` (currently noted as having failures related to dependencies/internal logic).
-      * [ ] Review `main.real.test.js` for any `cash`-related adjustments needed, especially for event triggering.
+      * [DONE] Address test failures in `issuerConfigEditor.test.js`. All tests now pass.
+      * [DONE] Review `main.real.test.js` for any `cash`-related adjustments needed, especially for event triggering.
+        (The `dialogOpen` test failure was resolved by ensuring consistent `nf.Common` mocking for `i18n` functionality in async contexts. All tests in this file now pass.)
       * [ ] Identify and list other skipped/disabled tests and create actionable items for each.
 
 === Integration and Cleanup

@@ -2,7 +2,7 @@
  * Main module for MultiIssuerJWTTokenAuthenticator UI components.
  * Provides functionality for custom UI components in NiFi.
  */
-import $ from './utils/jquery-compat.js';
+import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
 import * as tokenVerifier from './components/tokenVerifier.js';
 import * as issuerConfigEditor from './components/issuerConfigEditor.js';
@@ -45,19 +45,27 @@ const registerCustomUiComponents = function () {
      * @param {Element} [contextElement] - Optional context within which to find elements.
      */
 const registerHelpTooltips = function (contextElement) {
-    const baseElement = contextElement ? contextElement : document;
-    const propertyLabels = baseElement.querySelectorAll('.property-label');
-    propertyLabels.forEach(function (label) { // Changed $label to label, and $(this) to label
-        const propertyName = label.textContent.trim();
+    const baseElement = contextElement || document; // baseElement is a raw DOM node
+    baseElement.querySelectorAll('.property-label').forEach(function (labelNode) { // Use raw DOM querySelectorAll and forEach
+        const propertyName = labelNode.textContent.trim(); // Use raw textContent
         const helpText = getHelpTextForProperty(propertyName);
 
         if (helpText) {
-            // Restore the check for existing tooltips
-            if (!label.querySelector('span.help-tooltip')) {
-                const span = document.createElement('span');
+            // Check if span already exists using raw DOM querySelector
+            // if (!labelNode.querySelector('span.help-tooltip')) {
+            // New, more specific check:
+            let foundTooltip = false;
+            for (let i = 0; i < labelNode.children.length; i++) {
+                if (labelNode.children[i].classList.contains('help-tooltip')) {
+                    foundTooltip = true;
+                    break;
+                }
+            }
+            if (!foundTooltip) {
+                const span = document.createElement('span'); // Raw DOM element creation
                 span.className = 'help-tooltip fa fa-question-circle';
-                span.title = helpText;
-                label.appendChild(span);
+                span.setAttribute('title', helpText); // Use setAttribute
+                labelNode.appendChild(span); // Raw DOM appendChild
             }
         }
     });
@@ -65,12 +73,12 @@ const registerHelpTooltips = function (contextElement) {
     // Initialize tooltips
     try {
         const tooltipSelector = '.help-tooltip';
-        // contextElement is expected to be a raw DOM element if provided.
+        // contextElement is expected to be a raw DOM element if provided for initTooltips.
         // initTooltips expects a DOM element or a selector string for its context.
-        const context = contextElement ? contextElement : document;
+        const contextForInit = contextElement ? contextElement : document;
         initTooltips(tooltipSelector, {
             // placement: 'bottom-start' // This is the default in initTooltips
-        }, context);
+        }, contextForInit);
     } catch (e) {
         console.error('Error initializing tooltips:', e);
     }
@@ -99,8 +107,8 @@ const getHelpTextForProperty = function (propertyName) {
     // Get the i18n key for the property
     const key = helpTextKeys[propertyName];
 
-    // Return the translated text using the i18n module or empty string if not found
-    return key ? i18n.translate(key) : '';
+    // Return the translated text using nfCommon.getI18n().getProperty()
+    return key ? nfCommon.getI18n().getProperty(key) : '';
 };
 
 /**
@@ -124,13 +132,13 @@ const updateUITranslations = function () {
     // Update loading indicator text
     const loadingIndicator = document.getElementById('loading-indicator');
     if (loadingIndicator) {
-        loadingIndicator.textContent = i18n.translate('jwt.validator.loading');
+        loadingIndicator.textContent = nfCommon.getI18n().getProperty('jwt.validator.loading');
     }
 
     // Update other static UI elements
     const titleElement = document.querySelector('.jwt-validator-title');
     if (titleElement) {
-        titleElement.textContent = i18n.translate('jwt.validator.title');
+        titleElement.textContent = nfCommon.getI18n().getProperty('jwt.validator.title');
     }
 };
 
@@ -178,9 +186,11 @@ export const init = function () {
         // Vanilla JS's `addEventListener` does not support this directly. Re-triggering would involve
         // finding all `trigger('dialogOpen')` calls and modifying them to use `CustomEvent` with a `detail` property,
         // which is a broader change than the current scope.
-        $(document).on('dialogOpen', function (event, dialogContentElement) { // dialogContentElement is a raw DOM element
+        $(document).on('dialogOpen', function (event, data) {
+            const dialogContentElement = Array.isArray(data) ? data[0] : data;
+
             // $dialog is no longer needed as we will use dialogContentElement directly for classList and querySelector
-            if (dialogContentElement.classList.contains('processor-dialog')) {
+            if (dialogContentElement && dialogContentElement.classList && dialogContentElement.classList.contains('processor-dialog')) {
                 // Use setTimeout to allow the dialog to fully render
                 setTimeout(function () {
                     const processorTypeElement = dialogContentElement.querySelector('.processor-type');

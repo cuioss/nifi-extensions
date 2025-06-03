@@ -1,6 +1,7 @@
 /**
  * Token Verification Interface UI component.
  */
+import $ from 'cash-dom';
 import { compatAjax } from '../utils/ajax';
 import * as nfCommon from 'nf.Common';
 
@@ -32,64 +33,45 @@ export const init = function (element, config, type, callback) {
     console.log('[DEBUG_LOG] tokenVerifier.init called');
 
     // Create UI elements
-    const container = document.createElement('div');
-    container.className = 'token-verification-container';
+    const $container = $('<div class="token-verification-container"></div>');
 
     // Create token input area
-    const inputSection = document.createElement('div');
-    inputSection.className = 'token-input-section';
+    const $inputSection = $('<div class="token-input-section"></div>');
+    const $inputLabel = $('<label for="token-input"></label>')
+        .text(i18n['processor.jwt.tokenInput'] || 'Enter Token:');
+    const $tokenInput = $('<textarea id="token-input" class="token-input" rows="5"></textarea>')
+        .attr('placeholder', i18n['processor.jwt.tokenInputPlaceholder'] || 'Paste token here...');
+    const $verifyButton = $('<button type="button" class="verify-token-button"></button>')
+        .text(i18n['processor.jwt.verifyToken'] || 'Verify Token');
 
-    const inputLabel = document.createElement('label');
-    inputLabel.htmlFor = 'token-input';
-    inputLabel.textContent = i18n['processor.jwt.tokenInput'] || 'Enter Token:';
-
-    const tokenInput = document.createElement('textarea');
-    tokenInput.id = 'token-input';
-    tokenInput.className = 'token-input';
-    tokenInput.rows = 5;
-    tokenInput.placeholder = i18n['processor.jwt.tokenInputPlaceholder'] || 'Paste token here...';
-
-    const verifyButton = document.createElement('button');
-    verifyButton.type = 'button';
-    verifyButton.className = 'verify-token-button';
-    verifyButton.textContent = i18n['processor.jwt.verifyToken'] || 'Verify Token';
-
-    inputSection.appendChild(inputLabel);
-    inputSection.appendChild(tokenInput);
-    inputSection.appendChild(verifyButton);
+    $inputSection.append($inputLabel).append($tokenInput).append($verifyButton);
 
     // Create results area
-    const resultsSection = document.createElement('div');
-    resultsSection.className = 'token-results-section';
+    const $resultsSection = $('<div class="token-results-section"></div>');
+    const $resultsHeader = $('<h3></h3>')
+        .text(i18n['processor.jwt.verificationResults'] || 'Verification Results');
+    const $resultsContent = $('<div class="token-results-content"></div>');
 
-    const resultsHeader = document.createElement('h3');
-    resultsHeader.textContent = i18n['processor.jwt.verificationResults'] || 'Verification Results';
-
-    const resultsContent = document.createElement('div');
-    resultsContent.className = 'token-results-content';
-
-    resultsSection.appendChild(resultsHeader);
-    resultsSection.appendChild(resultsContent);
+    $resultsSection.append($resultsHeader).append($resultsContent);
 
     // Add sections to container
-    container.appendChild(inputSection);
-    container.appendChild(resultsSection);
+    $container.append($inputSection).append($resultsSection);
 
     // Add container to element
-    element.appendChild(container); // element is the parent div provided by NiFi
+    $(element).append($container); // element is the parent div provided by NiFi
 
     // Handle verify button click
-    verifyButton.addEventListener('click', function () {
-        const token = tokenInput.value.trim();
+    $verifyButton.on('click', function () {
+        const token = $tokenInput.val().trim();
 
         if (!token) {
-            resultsContent.innerHTML = ('<div class="token-error">' +
+            $resultsContent.html('<div class="token-error">' +
                                       (i18n['processor.jwt.noTokenProvided'] || 'No token provided') + '</div>');
             return;
         }
 
         // Show loading state
-        resultsContent.innerHTML = ('<div class="token-loading"><span class="fa fa-spinner fa-spin"></span> ' +
+        $resultsContent.html('<div class="token-loading"><span class="fa fa-spinner fa-spin"></span> ' +
                                   (i18n['processor.jwt.verifying'] || 'Verifying token...') + '</div>');
 
         try {
@@ -124,7 +106,7 @@ export const init = function (element, config, type, callback) {
                     };
                     displayValidToken(sampleResponse, true);
                 } else {
-                    resultsContent.innerHTML = ('<div class="token-error">' +
+                    $resultsContent.html('<div class="token-error">' +
                                               '<span class="fa fa-exclamation-triangle"></span> ' +
                                               (i18n['processor.jwt.verificationError'] || 'Verification error') + ': ' +
                                               (xhr.responseText || error || i18n['processor.jwt.unknownError'] || 'Unknown error') +
@@ -147,7 +129,7 @@ export const init = function (element, config, type, callback) {
                 };
                 displayValidToken(sampleResponse, true);
             } else {
-                resultsContent.innerHTML = ('<div class="token-error">' +
+                $resultsContent.html('<div class="token-error">' +
                                           '<span class="fa fa-exclamation-triangle"></span> ' +
                                           (i18n['processor.jwt.verificationError'] || 'Verification error') + ': ' +
                                           (e.message || i18n['processor.jwt.unknownError'] || 'Exception occurred') +
@@ -182,7 +164,7 @@ export const init = function (element, config, type, callback) {
         html += '<h4>' + (i18n['processor.jwt.allClaims'] || 'All Claims') + '</h4>';
         html += '<pre class="token-raw-claims">' + JSON.stringify(response.claims, null, 2) + '</pre>';
         html += '</div>';
-        resultsContent.innerHTML = html;
+        $resultsContent.html(html);
     }
 
     // Function to display invalid token details
@@ -200,10 +182,10 @@ export const init = function (element, config, type, callback) {
                            response.category + '</p>';
         }
         invalidHtml += '</div>';
-        resultsContent.innerHTML = invalidHtml;
+        $resultsContent.html(invalidHtml);
     }
 
-    resultsContent.innerHTML = ('<div class="token-instructions">' + (i18n['processor.jwt.initialInstructions'] || 'Enter a JWT token above and click "Verify Token" to validate it.') + '</div>');
+    $resultsContent.html('<div class="token-instructions">' + (i18n['processor.jwt.initialInstructions'] || 'Enter a JWT token above and click "Verify Token" to validate it.') + '</div>');
 
     if (typeof callback === 'function') {
         callback({

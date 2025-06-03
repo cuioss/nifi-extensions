@@ -2,9 +2,9 @@
  * Tests for the actual main.js implementation using real jQuery and JSDOM.
  */
 
-// Import $ from jquery-compat for use by main.js, but tests should use vanilla JS.
+// Import $ from cash-dom for use by main.js, mirroring the change in main.js
 // The global $ should be set up by jest's setupFiles (jquery-extended.js)
-import $ from '../../main/webapp/js/utils/jquery-compat.js';
+import $ from 'cash-dom';
 
 // Define a clear translation map for all i18n needs in this test file
 const testTranslations = {
@@ -39,10 +39,38 @@ jest.mock('../../main/webapp/js/utils/i18n.js', () => ({
     translate: jest.fn(key => testTranslations[key] || key)
 }));
 
+// Top-level mock for nf.Common
+const mockGetProperty = jest.fn(key => testTranslations[key] || `[${key}]_getProperty_TOP_MOCK`);
+const mockGetI18n = jest.fn().mockReturnValue({
+    getProperty: mockGetProperty
+});
+const mockRegisterCustomUiTab = jest.fn();
+const mockRegisterCustomUiComponent = jest.fn();
+const mockFormatValue = jest.fn(value => String(value)); // Basic mock for formatValue
+const mockEscapeHtml = jest.fn(value => String(value)); // Basic mock for escapeHtml
+const mockFormatDateTime = jest.fn(value => String(value)); // Basic mock for formatDateTime
+const mockShowMessage = jest.fn();
+const mockShowConfirmationDialog = jest.fn();
+const mockAjax = jest.fn().mockReturnValue({ done: jest.fn().mockReturnThis(), fail: jest.fn().mockReturnThis() });
+
+
+jest.mock('nf.Common', () => ({
+    getI18n: mockGetI18n,
+    registerCustomUiTab: mockRegisterCustomUiTab,
+    registerCustomUiComponent: mockRegisterCustomUiComponent,
+    formatValue: mockFormatValue,
+    escapeHtml: mockEscapeHtml,
+    formatDateTime: mockFormatDateTime,
+    showMessage: mockShowMessage,
+    showConfirmationDialog: mockShowConfirmationDialog,
+    ajax: mockAjax
+    // Add any other nf.Common functions that might be called by main.js
+}), { virtual: true }); // virtual: true if nf.Common is not a real file path
+
 
 describe('main.js (real implementation with JSDOM)', () => {
     let mainModule;
-    let nfCommon;
+    let nfCommon; // Will be assigned the mocked nf.Common
     let consoleErrorSpy;
     let consoleLogSpy;
     let originalTooltipFn;
@@ -58,6 +86,7 @@ describe('main.js (real implementation with JSDOM)', () => {
 
     beforeEach(() => {
         jest.resetModules(); // Important to reset modules before each test
+        // global.debugMessages = []; // Initialize global debug array - REMOVED
 
         // Simulate DOM ready state before loading main.js or calling init()
         // This might help ensure $(document).ready() in main.js fires reliably.
@@ -71,15 +100,27 @@ describe('main.js (real implementation with JSDOM)', () => {
         mockInitTooltips.mockClear();
 
         // global.jQuery and global.$ should be set by the jest setupFile (jquery-extended.js)
-        // const jq = require('jquery'); // This would be cash-dom via jquery-compat due to setup
-        // global.jQuery = global.$ = jq;
 
+        // Clear top-level mocks
+        mockGetI18n.mockClear();
+        mockGetProperty.mockClear();
+        mockRegisterCustomUiTab.mockClear();
+        mockRegisterCustomUiComponent.mockClear();
+        mockFormatValue.mockClear();
+        mockEscapeHtml.mockClear();
+        mockFormatDateTime.mockClear();
+        mockShowMessage.mockClear();
+        mockShowConfirmationDialog.mockClear();
+        mockAjax.mockClear();
+
+        // Re-assign mock implementations if they need to be reset per test or use test-specific values
+        mockGetI18n.mockReturnValue({ getProperty: mockGetProperty });
+        mockGetProperty.mockImplementation(key => testTranslations[key] || `[${key}]_getProperty_TOP_MOCK`);
+        mockAjax.mockReturnValue({ done: jest.fn().mockReturnThis(), fail: jest.fn().mockReturnThis() });
+
+
+        // Assign nfCommon to the imported mock for use in assertions if needed
         nfCommon = require('nf.Common');
-        nfCommon.registerCustomUiTab.mockClear();
-        nfCommon.registerCustomUiComponent.mockClear();
-        nfCommon.getI18n.mockClear().mockReturnValue({
-            getProperty: jest.fn(key => testTranslations[key] || `[${key}]_getProperty`)
-        });
 
         document.body.innerHTML = `
             <div id="loading-indicator">Loading...</div>
@@ -95,6 +136,7 @@ describe('main.js (real implementation with JSDOM)', () => {
             </div>
             <div id="non-processor-dialog-mock" class="not-processor-dialog" style="display:none;"></div>
         `;
+        // document.body.innerHTML += '<div id="debug-log-output" style="display:none;"></div>'; // No longer writing to DOM
 
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
@@ -132,12 +174,10 @@ describe('main.js (real implementation with JSDOM)', () => {
             mainModule.init();
             jest.runAllTimers();
 
-            const helpIconCount = document.body.querySelectorAll('span.help-tooltip').length;
-            // If help icons exist, expect jQuery's tooltip function to be called once on the collection.
-            // If no help icons, expect it not to be called.
-            const expectedCallCount = helpIconCount > 0 ? 1 : 0;
-            // Now we check our mocked initTooltips
-            expect(mockInitTooltips.mock.calls.length).toBe(expectedCallCount);
+            // Since beforeEach adds .property-label elements that should receive tooltips,
+            // and init() calls registerHelpTooltips which calls initTooltips (our mock),
+            // we expect it to have been called once for the global context.
+            expect(mockInitTooltips).toHaveBeenCalledTimes(1);
         });
 
         it('should use fallback title if tippy initialization fails', () => {
@@ -256,7 +296,7 @@ describe('main.js (real implementation with JSDOM)', () => {
             // preventing the mockInitTooltips from being called as expected.
             // This test was previously noted for its complexity and potential flakiness.
             // eslint-disable-next-line jest/no-disabled-tests
-            it.skip('should register help tooltips and update translations when a MultiIssuerJWTTokenAuthenticator dialog opens', () => {
+            it('should register help tooltips and update translations when a MultiIssuerJWTTokenAuthenticator dialog opens', async () => {
                 const dialogContent = document.getElementById('processor-dialog-mock');
                 // Ensure dialog has the correct class (already set in beforeEach)
                 // Ensure processor type is correct and explicitly set for this test run
@@ -284,22 +324,23 @@ describe('main.js (real implementation with JSDOM)', () => {
 
 
                 // Act
-                mainModule.init(); // Listener is now registered synchronously within init
+                // mainModule.init(); // Listener is now registered synchronously within init - init is already called in beforeEach
 
                 // Revert to using $(document).trigger to ensure compatibility with cash-dom's event data passing
                 $(document).trigger('dialogOpen', [dialogContent]);
 
                 // Run all timers to process things like nfCanvasInitialized listeners (if any),
                 // the 3000ms setTimeout in main.js, and any jQuery internal timers.
-                jest.runAllTimers();
+                // jest.runAllTimers(); // Using runAllTimers might prematurely fire things or cause issues with the 500ms specific timeout.
                 // Specifically advance for the 500ms timer inside the dialogOpen handler
-                jest.advanceTimersByTime(600); // As per setTimeout in main.js (restored from 1000)
+                jest.advanceTimersByTime(600); // As per setTimeout in main.js
 
                 // Assert
-                expect(mockInitTooltips).toHaveBeenCalled(); // This is the failing assertion
-                // Check that a tooltip span was added to the .property-label
-                expect(dialogContent.querySelectorAll('.property-label > span.help-tooltip').length).toBe(1);
-                expect(dialogContent.querySelector('.property-label > span.help-tooltip').getAttribute('title'))
+                const freshDialogContent = document.getElementById('processor-dialog-mock'); // Re-fetch
+
+                expect(mockInitTooltips).toHaveBeenCalled();
+                expect(freshDialogContent.querySelectorAll('.property-label > span.help-tooltip').length).toBe(1);
+                expect(freshDialogContent.querySelector('.property-label > span.help-tooltip').getAttribute('title'))
                     .toBe(testTranslations['property.token.location.help']);
 
                 // Assert translations - these might fail based on current main.js logic for updateUITranslations
@@ -322,26 +363,31 @@ describe('main.js (real implementation with JSDOM)', () => {
                 // are expected to FAIL because main.js's updateUITranslations() does not target them by context.
                 // These are included to match the subtask request, but highlight a discrepancy.
                 // To make these pass, main.js would need to call something like i18n.translateUI(dialogContent).
-                expect(dialogContent.querySelector('[data-i18n-key="jwt.validator.title"]').textContent).toBe('Initial Dialog Title'); // Expected to remain initial value
-                expect(dialogContent.querySelector('[data-i18n-key-direct="property.token.location.help"]').textContent).toBe('Initial Dialog Help Text'); // Expected to remain initial value
+                expect(freshDialogContent.querySelector('[data-i18n-key="jwt.validator.title"]').textContent).toBe('Initial Dialog Title'); // Expected to remain initial value
+                expect(freshDialogContent.querySelector('[data-i18n-key-direct="property.token.location.help"]').textContent).toBe('Initial Dialog Help Text'); // Expected to remain initial value
+                // done(); // Removed
             });
 
-            it('should NOT act if processorType does not include MultiIssuerJWTTokenAuthenticator', () => {
+            it('should NOT act if processorType does not include MultiIssuerJWTTokenAuthenticator', async () => {
                 const dialogContent = document.getElementById('other-processor-dialog-mock');
                 dialogContent.style.display = 'block'; // .show()
                 // Use $ (cash-dom from jquery-compat) to trigger. Pass dialogContent directly.
-                $(document).trigger('dialogOpen', dialogContent);
+                $(document).trigger('dialogOpen', [dialogContent]); // Pass as array
                 jest.advanceTimersByTime(600);
+                await Promise.resolve(); // Ensure microtasks flush
                 expect(mockInitTooltips).not.toHaveBeenCalled(); // Use the imported initTooltips mock
+                // done(); // Removed
             });
 
-            it('should NOT act if dialogContent does not have class processor-dialog', () => {
+            it('should NOT act if dialogContent does not have class processor-dialog', async () => {
                 const dialogContent = document.getElementById('non-processor-dialog-mock');
                 dialogContent.style.display = 'block'; // .show()
                 // Use $ (cash-dom from jquery-compat) to trigger. Pass dialogContent directly.
-                $(document).trigger('dialogOpen', dialogContent);
+                $(document).trigger('dialogOpen', [dialogContent]); // Pass as array
                 jest.advanceTimersByTime(600);
+                await Promise.resolve(); // Ensure microtasks flush
                 expect(mockInitTooltips).not.toHaveBeenCalled(); // Use the imported initTooltips mock
+                // done(); // Removed
             });
         });
     });

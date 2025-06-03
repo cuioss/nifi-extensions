@@ -1,4 +1,4 @@
-import $ from '../../../main/webapp/js/utils/jquery-compat.js'; // Use the compatibility wrapper
+import $ from 'cash-dom'; // Use cash-dom as the base
 
 // Mock jQuery UI methods
 $.fn.tooltip = jest.fn().mockImplementation(function (options) {

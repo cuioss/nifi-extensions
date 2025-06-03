@@ -1,7 +1,7 @@
 /**
  * Tests for the Token Verifier component.
  */
-import $ from '../../../main/webapp/js/utils/jquery-compat.js'; // Top-level import for jQuery
+import $ from 'cash-dom'; // Top-level import, changed from jquery-compat
 
 const mockI18n = {
     'processor.jwt.tokenInput': 'JWT Token Input Label',
@@ -156,10 +156,10 @@ describe('tokenVerifier (non-localhost)', () => {
             currentDeferred = {
                 _doneCallback: null,
                 _failCallback: null,
-                done: function(cb) { this._doneCallback = cb; return this; },
-                fail: function(cb) { this._failCallback = cb; return this; },
-                resolve: function(data) { if (this._doneCallback) { Promise.resolve(data).then(this._doneCallback); } },
-                reject: function(xhr, status, error) { if (this._failCallback) { Promise.resolve().then(() => this._failCallback(xhr, status, error)); } }
+                done: function (cb) { this._doneCallback = cb; return this; },
+                fail: function (cb) { this._failCallback = cb; return this; },
+                resolve: function (data) { if (this._doneCallback) { Promise.resolve(data).then(this._doneCallback); } },
+                reject: function (xhr, status, error) { if (this._failCallback) { Promise.resolve().then(() => this._failCallback(xhr, status, error)); } }
             };
             return currentDeferred;
         });
@@ -262,10 +262,10 @@ describe('tokenVerifier (localhost)', () => {
             currentDeferred = {
                 _doneCallback: null,
                 _failCallback: null,
-                done: function(cb) { this._doneCallback = cb; return this; },
-                fail: function(cb) { this._failCallback = cb; return this; },
-                resolve: function(data) { if (this._doneCallback) { Promise.resolve(data).then(this._doneCallback); } },
-                reject: function(xhr, status, error) { if (this._failCallback) { Promise.resolve().then(() => this._failCallback(xhr, status, error)); } }
+                done: function (cb) { this._doneCallback = cb; return this; },
+                fail: function (cb) { this._failCallback = cb; return this; },
+                resolve: function (data) { if (this._doneCallback) { Promise.resolve(data).then(this._doneCallback); } },
+                reject: function (xhr, status, error) { if (this._failCallback) { Promise.resolve().then(() => this._failCallback(xhr, status, error)); } }
             };
             return currentDeferred;
         });

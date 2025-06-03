@@ -1,7 +1,7 @@
 /**
  * Tests for main.js
  */
-import $ from '../../main/webapp/js/utils/jquery-compat.js';
+import $ from 'cash-dom'; // Changed from jquery-compat
 import nfCommon from './mocks/nf-common.js';
 import jwksValidator from './mocks/jwksValidator.js';
 import tokenVerifier from './mocks/tokenVerifier.js';
