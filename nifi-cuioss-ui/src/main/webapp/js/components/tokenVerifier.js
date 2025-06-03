@@ -30,8 +30,6 @@ export const init = function (element, config, type, callback) {
     // Get i18n resources from NiFi Common
     const i18n = nfCommon.getI18n() || {};
 
-    console.log('[DEBUG_LOG] tokenVerifier.init called');
-
     // Create UI elements
     const $container = $('<div class="token-verification-container"></div>');
 
@@ -83,85 +81,108 @@ export const init = function (element, config, type, callback) {
                 contentType: 'application/json',
                 timeout: 5000
             })
-            .then(response => { // response here is { data, status, statusText }
-                const responseData = response.data;
-                if (responseData.valid) {
-                    displayValidToken(responseData);
-                } else {
-                    displayInvalidToken(responseData);
-                }
-            })
-            .catch(error => {
-                console.error('[DEBUG_LOG] Token verification error:', error.message, error.response);
-                let errorMessage = error.message; // Initial error message
-
-                // Attempt to get a more detailed error message if available from response.text()
-                const tryGetTextAndDisplay = (fallbackMessage) => {
-                    if (error.response && typeof error.response.text === 'function') {
-                        error.response.text().then(text => {
-                            displayError(text || fallbackMessage); // Use text if available, else fallback
-                        }).catch(() => {
-                            displayError(fallbackMessage); // Fallback if .text() fails
-                        });
+                .then(response => { // response here is { data, status, statusText }
+                    const responseData = response.data;
+                    if (responseData.valid) {
+                        displayValidToken(responseData);
                     } else {
-                        displayError(fallbackMessage);
+                        displayInvalidToken(responseData);
                     }
-                };
+                })
+                .catch(error => {
+                    // const errorMessage = error.message; // Unused
 
-                if (error.response) {
+                    // Attempt to get a more detailed error message if available from response.text()
+                    const tryGetTextAndDisplay = (fallbackMessage) => {
+                        if (error.response && typeof error.response.text === 'function') {
+                            error.response.text().then(text => {
+                                displayError(text || fallbackMessage); // Use text if available, else fallback
+                            }).catch(() => {
+                                displayError(fallbackMessage); // Fallback if .text() fails
+                            });
+                        } else {
+                            displayError(fallbackMessage);
+                        }
+                    };
+
+                    if (error.response) {
                     // If responseText might be available (even if not directly on error.message)
                     // and we want to prioritize it.
                     // However, fetch API puts error messages in error.message from response.statusText
                     // if the response body can't be parsed or if it's a network error.
                     // For specific text body:
-                // Prioritize error.message if text() is null, then statusText
-                const fallbackForText = error.message || error.response.statusText;
-                tryGetTextAndDisplay(fallbackForText);
-                } else {
+                        // Prioritize error.message if text() is null, then statusText
+                        const fallbackForText = error.message || error.response.statusText;
+                        tryGetTextAndDisplay(fallbackForText);
+                    } else {
                     // No response object, just use error.message
-                    displayError(error.message);
-                }
-
-                function displayError(msg) {
-                    let messageToDisplay;
-                    if (msg === null || typeof msg === 'undefined' || String(msg).trim() === '' || String(msg).toLowerCase() === 'null' || String(msg).toLowerCase() === 'undefined') {
-                        messageToDisplay = i18n['processor.jwt.unknownError'] || 'Unknown error';
-                    } else {
-                        messageToDisplay = msg;
+                        displayError(error.message);
                     }
-                    // Ensure messageToDisplay is never null/undefined before concatenation
-                    messageToDisplay = messageToDisplay || (i18n['processor.jwt.unknownError'] || 'Unknown error');
 
-                    if (getIsLocalhost()) {
-                        console.log('[DEBUG_LOG] Using simulated response for standalone testing after error');
-                        const sampleResponse = {
-                            valid: true, subject: 'user123', issuer: 'https://sample-issuer.example.com',
-                            audience: 'sample-audience', expiration: new Date(Date.now() + 3600000).toISOString(),
-                            roles: ['admin', 'user'], scopes: ['read', 'write'],
-                            claims: {
-                                sub: 'user123', iss: 'https://sample-issuer.example.com', aud: 'sample-audience',
-                                exp: Math.floor(Date.now() / 1000) + 3600, iat: Math.floor(Date.now() / 1000),
-                                roles: ['admin', 'user'], scope: 'read write', name: 'John Doe', email: 'john.doe@example.com'
-                            }
-                        };
-                        displayValidToken(sampleResponse, true);
-                    } else {
-                        $resultsContent.html('<div class="token-error">' +
-                                                  '<span class="fa fa-exclamation-triangle"></span> ' +
-                                                  (i18n['processor.jwt.verificationError'] || 'Verification error') + ': ' +
-                                                  messageToDisplay + // Use the processed message
-                                                  '</div>');
+                    function displayError(msg) {
+                        let messageToDisplay;
+                        const isNullOrUndefined = msg == null;
+                        const trimmedMsg = isNullOrUndefined ? '' : String(msg).trim();
+                        const lowerCaseMsg = isNullOrUndefined ? '' : String(msg).toLowerCase();
+
+                        if (
+                            isNullOrUndefined ||
+                            trimmedMsg === '' ||
+                            lowerCaseMsg === 'null' ||
+                            lowerCaseMsg === 'undefined'
+                        ) {
+                            messageToDisplay = i18n['processor.jwt.unknownError'] || 'Unknown error';
+                        } else {
+                            messageToDisplay = msg;
+                        }
+                        // Ensure messageToDisplay is never null/undefined before concatenation
+                        messageToDisplay = messageToDisplay || (i18n['processor.jwt.unknownError'] || 'Unknown error');
+
+                        if (getIsLocalhost()) {
+                            const sampleResponse = {
+                                valid: true, subject: 'user123', issuer: 'https://sample-issuer.example.com',
+                                audience: 'sample-audience', expiration: new Date(Date.now() + 3600000).toISOString(),
+                                roles: ['admin', 'user'], scopes: ['read', 'write'],
+                                claims: {
+                                    sub: 'user123', iss: 'https://sample-issuer.example.com', aud: 'sample-audience',
+                                    exp: Math.floor(Date.now() / 1000) + 3600, iat: Math.floor(Date.now() / 1000),
+                                    roles: ['admin', 'user'], scope: 'read write', name: 'John Doe', email: 'john.doe@example.com'
+                                }
+                            };
+                            displayValidToken(sampleResponse, true);
+                        } else {
+                            // eslint-disable-next-line max-len
+                            const verificationErrorText = i18n['processor.jwt.verificationError'] || 'Verification error';
+                            const errorHtml =
+                                '<div class="token-error">' +
+                                '<span class="fa fa-exclamation-triangle"></span> ' +
+                                verificationErrorText +
+                                ': ' +
+                                messageToDisplay +
+                                '</div>';
+                            $resultsContent.html(errorHtml);
+                        }
                     }
-                }
-            });
+                });
         } catch (e) {
-            console.error('[DEBUG_LOG] Exception in token verification setup:', e);
-            const exceptionMessage = (e.message === null || typeof e.message === 'undefined' || String(e.message).trim() === '' || String(e.message).toLowerCase() === 'null' || String(e.message).toLowerCase() === 'undefined')
-                ? (i18n['processor.jwt.unknownError'] || 'Exception occurred') // Fallback for exceptions
-                : e.message;
+            const messageIsNullOrUndefined = e.message == null;
+            const trimmedMessage = messageIsNullOrUndefined ? '' : String(e.message).trim();
+            const lowerCaseMessage = messageIsNullOrUndefined ? '' : String(e.message).toLowerCase();
+
+            const messageIsEmptyString = trimmedMessage === '';
+            const messageIsStringNull = lowerCaseMessage === 'null';
+            const messageIsStringUndefined = lowerCaseMessage === 'undefined';
+
+            const isProblematicMessage = messageIsNullOrUndefined ||
+                messageIsEmptyString ||
+                messageIsStringNull ||
+                messageIsStringUndefined;
+
+            const exceptionMessage = isProblematicMessage ?
+                (i18n['processor.jwt.unknownError'] || 'Exception occurred') : // Fallback
+                e.message;
 
             if (getIsLocalhost()) {
-                console.log('[DEBUG_LOG] Using simulated response for standalone testing (exception setup path)');
                 const sampleResponse = {
                     valid: true, subject: 'user123', issuer: 'https://sample-issuer.example.com',
                     audience: 'sample-audience', expiration: new Date(Date.now() + 3600000).toISOString(),
@@ -174,20 +195,26 @@ export const init = function (element, config, type, callback) {
                 };
                 displayValidToken(sampleResponse, true);
             } else {
-                $resultsContent.html('<div class="token-error">' +
-                                          '<span class="fa fa-exclamation-triangle"></span> ' +
-                                          (i18n['processor.jwt.verificationError'] || 'Verification error') + ': ' +
-                                          exceptionMessage + // Use the derived message
-                                          '</div>');
+                // eslint-disable-next-line max-len
+                const verificationErrorText = i18n['processor.jwt.verificationError'] || 'Verification error';
+                const errorHtml =
+                    '<div class="token-error">' +
+                    '<span class="fa fa-exclamation-triangle"></span> ' +
+                    verificationErrorText +
+                    ': ' +
+                    exceptionMessage +
+                    '</div>';
+                $resultsContent.html(errorHtml);
             }
         }
     });
 
     // Function to display valid token details
     function displayValidToken(response, isSimulated) {
-        let html = '<div class="token-valid">' +
-                           '<span class="fa fa-check-circle"></span> ' +
-                           (i18n['processor.jwt.tokenValid'] || 'Token is valid');
+        let html =
+            '<div class="token-valid">' +
+                '<span class="fa fa-check-circle"></span> ' +
+                (i18n['processor.jwt.tokenValid'] || 'Token is valid');
         if (isSimulated) {
             html += ' <em>(Simulated response)</em>';
         }
@@ -214,10 +241,11 @@ export const init = function (element, config, type, callback) {
 
     // Function to display invalid token details
     function displayInvalidToken(response) {
-        let invalidHtml = '<div class="token-invalid">' +
-                           '<span class="fa fa-times-circle"></span> ' +
-                           (i18n['processor.jwt.tokenInvalid'] || 'Token is invalid') +
-                           '</div>';
+        let invalidHtml =
+            '<div class="token-invalid">' +
+                '<span class="fa fa-times-circle"></span> ' +
+                (i18n['processor.jwt.tokenInvalid'] || 'Token is invalid') +
+            '</div>';
         invalidHtml += '<div class="token-error-details">';
         invalidHtml += '<h4>' + (i18n['processor.jwt.errorDetails'] || 'Error Details') + '</h4>';
         invalidHtml += '<p class="token-error-message">' + (response.message || '') + '</p>';
@@ -230,7 +258,13 @@ export const init = function (element, config, type, callback) {
         $resultsContent.html(invalidHtml);
     }
 
-    $resultsContent.html('<div class="token-instructions">' + (i18n['processor.jwt.initialInstructions'] || 'Enter a JWT token above and click "Verify Token" to validate it.') + '</div>');
+    $resultsContent.html(
+        '<div class="token-instructions">' +
+            (i18n['processor.jwt.initialInstructions'] ||
+                'Enter a JWT token above and click "Verify Token" ' +
+                'to validate it.') +
+            '</div>'
+    );
 
     if (typeof callback === 'function') {
         callback({

@@ -24,7 +24,6 @@ export function initTooltips(selector, options = {}, context = document) {
     try {
         return tippy(Array.from(elements), tippyOptions);
     } catch (error) {
-        console.error('Error initializing tooltips:', error);
         // Fallback to title attribute if tooltip function fails
         Array.from(elements).forEach(element => {
             const title = element.getAttribute('title');

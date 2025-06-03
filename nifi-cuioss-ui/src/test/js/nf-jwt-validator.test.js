@@ -64,10 +64,10 @@ describe('nf-jwt-validator.js', () => {
             expect(document.addEventListener).toHaveBeenCalledWith('DOMContentLoaded', expect.any(Function));
             expect(mockDOMContentLoadedCallbackExecutor).toHaveBeenCalledTimes(1);
             expect(mockMainDefault.init).toHaveBeenCalledTimes(1);
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module imported');
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initializing main module');
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete');
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready'); // Logs removed from source
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module imported');
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initializing main module');
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete');
             expect(console.error).not.toHaveBeenCalled();
         });
     });
@@ -85,10 +85,10 @@ describe('nf-jwt-validator.js', () => {
             expect(document.addEventListener).toHaveBeenCalledWith('DOMContentLoaded', expect.any(Function));
             expect(mockDOMContentLoadedCallbackExecutor).toHaveBeenCalledTimes(1);
             expect(mockMainWhenRegistered.init).not.toHaveBeenCalled();
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module imported');
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Components already registered, skipping initialization');
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete');
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready'); // Logs removed from source
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module imported');
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Components already registered, skipping initialization');
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete');
             expect(console.error).not.toHaveBeenCalled();
         });
     });
@@ -105,10 +105,10 @@ describe('nf-jwt-validator.js', () => {
             expect(document.addEventListener).toHaveBeenCalledWith('DOMContentLoaded', expect.any(Function));
             expect(mockDOMContentLoadedCallbackExecutor).toHaveBeenCalledTimes(1);
             expect(mockMainDefault.init).not.toHaveBeenCalled();
-            expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module not available or missing init function');
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module imported');
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete');
+            // expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module not available or missing init function'); // Logs removed from source
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module imported');
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete');
         });
 
         it('should handle case where main module is available but init is not a function', () => {
@@ -120,10 +120,10 @@ describe('nf-jwt-validator.js', () => {
             expect(document.addEventListener).toHaveBeenCalledWith('DOMContentLoaded', expect.any(Function));
             expect(mockDOMContentLoadedCallbackExecutor).toHaveBeenCalledTimes(1);
             expect(mockMainDefault.init).not.toHaveBeenCalled();
-            expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module not available or missing init function');
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module imported');
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete');
+            // expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module not available or missing init function'); // Logs removed from source
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module imported');
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete');
         });
     });
 });

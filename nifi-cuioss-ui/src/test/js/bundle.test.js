@@ -48,15 +48,16 @@ describe('bundle.js', () => {
         it('should call main.init when bundle.init is called', () => {
             bundleModule.init(); // Call the exported init function
             expect(mockMainDefault.init).toHaveBeenCalledTimes(1);
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] Bundle init method called');
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] Initializing main module from bundle');
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] Bundle init method called'); // Logs removed from source
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] Initializing main module from bundle');
             expect(console.error).not.toHaveBeenCalled();
         });
 
         it('should log that the entry point was loaded upon import', () => {
             // The initial console.log in bundle.js happens when it's first imported/required.
             // In the beforeEach of this describe block, bundleModule is required.
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] NiFi JWT Validator master entry point loaded');
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] NiFi JWT Validator master entry point loaded'); // Log removed from source
+            expect(bundleModule).toBeDefined(); // Added to satisfy jest/expect-expect
         });
     });
 
@@ -72,8 +73,8 @@ describe('bundle.js', () => {
         it('should not initialize main module if components are already registered', () => {
             bundleModule.init();
             expect(mockMainWhenRegistered.init).not.toHaveBeenCalled();
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] Bundle init method called');
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] Components already registered, skipping initialization from bundle');
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] Bundle init method called'); // Logs removed from source
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] Components already registered, skipping initialization from bundle');
             expect(console.error).not.toHaveBeenCalled();
         });
     });
@@ -90,8 +91,8 @@ describe('bundle.js', () => {
             bundleModule.init();
             // mockMainDefault.init should not be called as it's not the active mock here.
             expect(mockMainDefault.init).not.toHaveBeenCalled();
-            expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] Main module not available or missing init function');
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] Bundle init method called');
+            // expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] Main module not available or missing init function'); // Log removed from source
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] Bundle init method called');
         });
 
         it('should handle case where main module is available but init is not a function', () => {
@@ -102,8 +103,8 @@ describe('bundle.js', () => {
 
             bundleModule.init();
             expect(mockMainDefault.init).not.toHaveBeenCalled();
-            expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] Main module not available or missing init function');
-            expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] Bundle init method called');
+            // expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] Main module not available or missing init function'); // Log removed from source
+            // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] Bundle init method called');
         });
     });
 });

@@ -3,7 +3,6 @@
  * Provides methods for interacting with the backend REST API.
  */
 import { ajax } from '../utils/ajax';
-import * as _nfCommon from 'nf.Common'; // Path might need adjustment
 
 'use strict';
 
@@ -11,48 +10,6 @@ import * as _nfCommon from 'nf.Common'; // Path might need adjustment
      * Base URL for API endpoints.
      */
 const BASE_URL = '../nifi-api/processors/jwt';
-
-/**
-     * Handles API errors consistently.
-     *
-     * @param {Object} xhr - The XHR object from the failed request
-     * @param {Function} errorCallback - The callback to invoke with error information
-     */
-const handleApiError = function (xhr, errorCallback) {
-    let errorMessage;
-
-    try {
-        // Try to parse error response as JSON
-        const response = JSON.parse(xhr.responseText);
-        if (response.message) {
-            errorMessage = response.message;
-        } else if (response.error) {
-            errorMessage = response.error;
-        } else {
-            errorMessage = xhr.statusText;
-        }
-    } catch (e) {
-        // If parsing fails, use the raw response text or status text
-        if (xhr.responseText) {
-            errorMessage = xhr.responseText;
-        } else {
-            errorMessage = xhr.statusText;
-        }
-    }
-
-    // Error would be logged here in development mode
-    // console.error('API Error:', errorMessage, xhr);
-
-    // Replace generic "Internal Server Error" with a more user-friendly message
-    if (errorMessage === 'Internal Server Error') {
-        errorMessage = 'An unexpected error has occurred. Please try again later or contact support if the issue persists.';
-    }
-
-    // Call the error callback with the error message
-    if (typeof errorCallback === 'function') {
-        errorCallback(errorMessage, xhr);
-    }
-};
 
 /**
  * Validates a JWKS URL.
@@ -69,28 +26,30 @@ export const validateJwksUrl = function (jwksUrl, successCallback, errorCallback
         contentType: 'application/json'
         // dataType: 'json' // Not needed with fetch API, response.json() handles it
     })
-    .then(response => {
-        if (successCallback) {
+        .then(response => {
+            if (successCallback) {
             // Original compatAjax success: successCallback(data) which was response directly
             // ajax resolves with: { data, status, statusText }
-            successCallback(response.data);
-        }
-    })
-    .catch(error => {
-        if (errorCallback) {
-            let xhrLike;
-            if (error.response) {
-                xhrLike = { status: error.response.status, statusText: error.response.statusText, responseText: error.message }; // Simplification
-                errorCallback(error.message, xhrLike); // errorCallback(errorMessage, xhr)
-            } else {
-                xhrLike = { status: 0, statusText: error.message, responseText: error.message };
-                errorCallback(error.message, xhrLike);
+                successCallback(response.data);
             }
-        } else {
-            console.error('AJAX call failed:', error);
-            // throw error; // Decide if rethrowing is appropriate or if nfCommon.handleAjaxError handles it
-        }
-    });
+        })
+        .catch(error => {
+            if (errorCallback) {
+                let xhrLike;
+                if (error.response) {
+                    xhrLike = {
+                        status: error.response.status,
+                        statusText: error.response.statusText,
+                        responseText: error.message
+                    }; // Simplification
+                    errorCallback(error.message, xhrLike); // errorCallback(errorMessage, xhr)
+                } else {
+                    xhrLike = { status: 0, statusText: error.message, responseText: error.message };
+                    errorCallback(error.message, xhrLike);
+                }
+            }
+            // If no errorCallback is provided, the error is already logged by the ajax utility
+        });
     // Note: jQuery's .done().fail() structure implies separate handling.
     // The original handleApiError was designed for jQuery's xhr.
     // We've simplified error handling here. If more complex xhr-like object is needed for handleApiError,
@@ -111,25 +70,28 @@ export const validateJwksFile = function (filePath, successCallback, errorCallba
         data: JSON.stringify({ filePath: filePath }),
         contentType: 'application/json'
     })
-    .then(response => {
-        if (successCallback) {
-            successCallback(response.data);
-        }
-    })
-    .catch(error => {
-        if (errorCallback) {
-            let xhrLike;
-            if (error.response) {
-                xhrLike = { status: error.response.status, statusText: error.response.statusText, responseText: error.message };
-                errorCallback(error.message, xhrLike);
-            } else {
-                xhrLike = { status: 0, statusText: error.message, responseText: error.message };
-                errorCallback(error.message, xhrLike);
+        .then(response => {
+            if (successCallback) {
+                successCallback(response.data);
             }
-        } else {
-            console.error('AJAX call failed:', error);
-        }
-    });
+        })
+        .catch(error => {
+            if (errorCallback) {
+                let xhrLike;
+                if (error.response) {
+                    xhrLike = {
+                        status: error.response.status,
+                        statusText: error.response.statusText,
+                        responseText: error.message
+                    };
+                    errorCallback(error.message, xhrLike);
+                } else {
+                    xhrLike = { status: 0, statusText: error.message, responseText: error.message };
+                    errorCallback(error.message, xhrLike);
+                }
+            }
+            // If no errorCallback, error is logged by ajax utility
+        });
 };
 
 /**
@@ -146,25 +108,28 @@ export const validateJwksContent = function (jwksContent, successCallback, error
         data: JSON.stringify({ jwksContent: jwksContent }),
         contentType: 'application/json'
     })
-    .then(response => {
-        if (successCallback) {
-            successCallback(response.data);
-        }
-    })
-    .catch(error => {
-        if (errorCallback) {
-            let xhrLike;
-            if (error.response) {
-                xhrLike = { status: error.response.status, statusText: error.response.statusText, responseText: error.message };
-                errorCallback(error.message, xhrLike);
-            } else {
-                xhrLike = { status: 0, statusText: error.message, responseText: error.message };
-                errorCallback(error.message, xhrLike);
+        .then(response => {
+            if (successCallback) {
+                successCallback(response.data);
             }
-        } else {
-            console.error('AJAX call failed:', error);
-        }
-    });
+        })
+        .catch(error => {
+            if (errorCallback) {
+                let xhrLike;
+                if (error.response) {
+                    xhrLike = {
+                        status: error.response.status,
+                        statusText: error.response.statusText,
+                        responseText: error.message
+                    };
+                    errorCallback(error.message, xhrLike);
+                } else {
+                    xhrLike = { status: 0, statusText: error.message, responseText: error.message };
+                    errorCallback(error.message, xhrLike);
+                }
+            }
+            // If no errorCallback, error is logged by ajax utility
+        });
 };
 
 /**
@@ -181,25 +146,28 @@ export const verifyToken = function (token, successCallback, errorCallback) {
         data: JSON.stringify({ token: token }),
         contentType: 'application/json'
     })
-    .then(response => {
-        if (successCallback) {
-            successCallback(response.data);
-        }
-    })
-    .catch(error => {
-        if (errorCallback) {
-            let xhrLike;
-            if (error.response) {
-                xhrLike = { status: error.response.status, statusText: error.response.statusText, responseText: error.message };
-                errorCallback(error.message, xhrLike);
-            } else {
-                xhrLike = { status: 0, statusText: error.message, responseText: error.message };
-                errorCallback(error.message, xhrLike);
+        .then(response => {
+            if (successCallback) {
+                successCallback(response.data);
             }
-        } else {
-            console.error('AJAX call failed:', error);
-        }
-    });
+        })
+        .catch(error => {
+            if (errorCallback) {
+                let xhrLike;
+                if (error.response) {
+                    xhrLike = {
+                        status: error.response.status,
+                        statusText: error.response.statusText,
+                        responseText: error.message
+                    };
+                    errorCallback(error.message, xhrLike);
+                } else {
+                    xhrLike = { status: 0, statusText: error.message, responseText: error.message };
+                    errorCallback(error.message, xhrLike);
+                }
+            }
+            // If no errorCallback, error is logged by ajax utility
+        });
 };
 
 /**
@@ -214,25 +182,28 @@ export const getSecurityMetrics = function (successCallback, errorCallback) {
         url: BASE_URL + '/metrics'
         // dataType: 'json' // Not needed
     })
-    .then(response => {
-        if (successCallback) {
-            successCallback(response.data);
-        }
-    })
-    .catch(error => {
-        if (errorCallback) {
-            let xhrLike;
-            if (error.response) {
-                xhrLike = { status: error.response.status, statusText: error.response.statusText, responseText: error.message };
-                errorCallback(error.message, xhrLike);
-            } else {
-                xhrLike = { status: 0, statusText: error.message, responseText: error.message };
-                errorCallback(error.message, xhrLike);
+        .then(response => {
+            if (successCallback) {
+                successCallback(response.data);
             }
-        } else {
-            console.error('AJAX call failed:', error);
-        }
-    });
+        })
+        .catch(error => {
+            if (errorCallback) {
+                let xhrLike;
+                if (error.response) {
+                    xhrLike = {
+                        status: error.response.status,
+                        statusText: error.response.statusText,
+                        responseText: error.message
+                    };
+                    errorCallback(error.message, xhrLike);
+                } else {
+                    xhrLike = { status: 0, statusText: error.message, responseText: error.message };
+                    errorCallback(error.message, xhrLike);
+                }
+            }
+            // If no errorCallback, error is logged by ajax utility
+        });
 };
 
 /**

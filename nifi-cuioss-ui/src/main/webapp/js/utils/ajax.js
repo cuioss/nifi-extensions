@@ -30,7 +30,7 @@ export const ajax = ({ url, method = 'GET', data, contentType, headers = {}, ...
             statusText: 'OK'
         }))
         .catch(error => {
-            console.error('Fetch error:', error);
+            // The error is re-thrown, allowing the caller to handle/log it as needed.
             throw error;
         });
 };

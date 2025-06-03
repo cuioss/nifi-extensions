@@ -4,8 +4,6 @@
  */
 'use strict';
 
-console.log('[DEBUG_LOG] nf.Common mock loaded');
-
 /**
  * Registers a custom UI component.
  *
@@ -14,21 +12,18 @@ console.log('[DEBUG_LOG] nf.Common mock loaded');
  * @param {object} options - Options for the component
  */
 export const registerCustomUiComponent = function (id, component, options) {
-    console.log('[DEBUG_LOG] Registered custom UI component:', id, options);
-
     // Try to initialize the component if it has an init method
     if (component && typeof component.init === 'function') {
         try {
-            console.log('[DEBUG_LOG] Attempting to initialize component:', id);
             const container = document.createElement('div');
             container.id = 'component-' + id.replace(/\./g, '-');
             container.className = 'custom-component';
             document.getElementById('jwt-validator-container').appendChild(container);
             component.init(container, null, options && options.jwks_type, function () {
-                console.log('[DEBUG_LOG] Component initialized:', id);
+                // Component initialized callback
             });
         } catch (e) {
-            console.error('[DEBUG_LOG] Error initializing component:', id, e);
+            // Error initializing component
         }
     }
 };
@@ -40,8 +35,6 @@ export const registerCustomUiComponent = function (id, component, options) {
  * @param {object} component - The tab component
  */
 export const registerCustomUiTab = function (id, component) {
-    console.log('[DEBUG_LOG] Registered custom UI tab:', id);
-
     // Create a tab container
     let tabContainer = document.getElementById('jwt-validator-tabs');
     let tabNavigation;
@@ -92,12 +85,11 @@ export const registerCustomUiTab = function (id, component) {
     // Try to initialize the tab if it has an init method
     if (component && typeof component.init === 'function') {
         try {
-            console.log('[DEBUG_LOG] Attempting to initialize tab:', id);
             component.init(tabContent, {}, function () {
-                console.log('[DEBUG_LOG] Tab initialized:', id);
+                // Tab initialized callback
             });
         } catch (e) {
-            console.error('[DEBUG_LOG] Error initializing tab:', id, e);
+            // Error initializing tab
         }
     }
 

@@ -6,8 +6,8 @@ import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
 import * as tokenVerifier from './components/tokenVerifier.js';
 import * as issuerConfigEditor from './components/issuerConfigEditor.js';
-import * as _apiClient from './services/apiClient.js'; // apiClient is not directly used in main.js
-import * as _formatters from './utils/formatters.js'; // formatters is not directly used in main.js
+// import * as _apiClient from './services/apiClient.js'; // Unused
+// import * as _formatters from './utils/formatters.js'; // Unused
 import * as i18n from './utils/i18n.js';
 import { initTooltips } from './utils/tooltip.js';
 
@@ -25,7 +25,7 @@ const registerCustomUiComponents = function () {
     }
 
     // Initialize i18n with browser language
-    const userLanguage = i18n.getLanguage();
+    i18n.getLanguage(); // Result was unused, called for potential side effects.
 
     // Register Issuer Config Editor component for the issuer configuration tab
     nfCommon.registerCustomUiTab('jwt.validation.issuer.configuration', issuerConfigEditor);
@@ -71,6 +71,8 @@ const registerHelpTooltips = function (contextElement) {
             // placement: 'bottom-start' // This is the default in initTooltips
         }, contextForInit);
     } catch (e) {
+        // Error initializing tooltips
+        // eslint-disable-next-line no-console
         console.error('Error initializing tooltips:', e);
     }
 };
