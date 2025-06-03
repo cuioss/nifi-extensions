@@ -28,10 +28,10 @@ const mockI18n = {
 
 jest.useFakeTimers();
 
-// Mock compatAjax BEFORE any describe blocks or imports that might use it indirectly.
-const mockCompatAjax = jest.fn();
+// Mock ajax BEFORE any describe blocks or imports that might use it indirectly.
+const mockAjax = jest.fn(); // Renamed from mockCompatAjax
 jest.mock('../../../main/webapp/js/utils/ajax.js', () => ({
-    compatAjax: mockCompatAjax
+    ajax: mockAjax // Mock the 'ajax' export
 }));
 
 describe('tokenVerifier - Common Initialization', () => {
@@ -42,13 +42,15 @@ describe('tokenVerifier - Common Initialization', () => {
     let parentElement; // Vanilla DOM element
     let callback;
     let consoleErrorSpy, consoleLogSpy;
+    let mockPromiseResolve; // For mock AJAX control
+    let mockPromiseReject;  // For mock AJAX control
 
     beforeEach(() => {
-        jest.resetModules(); // This will also reset our mockCompatAjax if not careful
+        jest.resetModules();
         localTokenVerifier = require('components/tokenVerifier');
-        localNfCommon = require('nf.Common'); // nf.Common is mapped to our mock
+        localNfCommon = require('nf.Common');
 
-        mockCompatAjax.mockClear();
+        mockAjax.mockClear(); // Use new mock name
 
         parentElement = document.createElement('div');
         document.body.appendChild(parentElement);
@@ -138,13 +140,14 @@ describe('tokenVerifier (non-localhost)', () => {
     let parentElement;
     let callback;
     let consoleErrorSpy, consoleLogSpy;
-    let currentDeferred;
+    let mockPromiseResolve;
+    let mockPromiseReject;
 
     beforeEach(() => {
         jest.resetModules();
         localTokenVerifier = require('components/tokenVerifier');
         localNfCommon = require('nf.Common');
-        mockCompatAjax.mockClear();
+        mockAjax.mockClear(); // Use new mock name
 
         localTokenVerifier.__setIsLocalhostForTesting(false);
 
@@ -152,16 +155,11 @@ describe('tokenVerifier (non-localhost)', () => {
         document.body.appendChild(parentElement);
         callback = jest.fn();
 
-        mockCompatAjax.mockImplementation(() => {
-            currentDeferred = {
-                _doneCallback: null,
-                _failCallback: null,
-                done: function (cb) { this._doneCallback = cb; return this; },
-                fail: function (cb) { this._failCallback = cb; return this; },
-                resolve: function (data) { if (this._doneCallback) { Promise.resolve(data).then(this._doneCallback); } },
-                reject: function (xhr, status, error) { if (this._failCallback) { Promise.resolve().then(() => this._failCallback(xhr, status, error)); } }
-            };
-            return currentDeferred;
+        mockAjax.mockImplementation(() => { // Use new mock name
+            return new Promise((resolve, reject) => {
+                mockPromiseResolve = resolve;
+                mockPromiseReject = reject;
+            });
         });
 
         getI18nSpy = jest.spyOn(localNfCommon, 'getI18n').mockReturnValue(mockI18n);
@@ -186,14 +184,17 @@ describe('tokenVerifier (non-localhost)', () => {
         consoleLogSpy.mockClear();
         parentElement.querySelector('.verify-token-button').click();
 
-        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
-        currentDeferred.reject({ responseText: 'Actual AJAX failure' }, 'error', 'Failed');
+        expect(mockAjax).toHaveBeenCalledTimes(1); // Changed to mockAjax
+        const errorObj = new Error('Failed');
+        errorObj.response = { status: 500, statusText: 'error', text: () => Promise.resolve('Actual AJAX failure')};
+        if(mockPromiseReject) mockPromiseReject(errorObj);
 
-        await Promise.resolve();
+
+        await Promise.resolve().then().then(); // Ensure all microtasks run
         jest.runAllTimers();
 
         expect(parentElement.querySelector('.token-results-content').innerHTML).toContain(mockI18n['processor.jwt.verificationError'] + ': Actual AJAX failure');
-        expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Token verification error:', 'error', 'Failed');
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Token verification error:', 'Failed', errorObj.response);
         expect(consoleLogSpy).not.toHaveBeenCalled();
     });
 
@@ -201,38 +202,42 @@ describe('tokenVerifier (non-localhost)', () => {
         parentElement.querySelector('textarea#token-input').value = 'any.token';
         parentElement.querySelector('.verify-token-button').click();
 
-        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
-        currentDeferred.reject({ responseText: null }, 'error', 'Specific Error Thrown');
-        await Promise.resolve();
+        expect(mockAjax).toHaveBeenCalledTimes(1); // Changed to mockAjax
+        const errorObj = new Error('Specific Error Thrown');
+        errorObj.response = { status: 500, statusText: 'error', text: () => Promise.resolve(null) };
+        if(mockPromiseReject) mockPromiseReject(errorObj);
+        await Promise.resolve().then().then();
         jest.runAllTimers();
 
         expect(parentElement.querySelector('.token-results-content').innerHTML).toContain(mockI18n['processor.jwt.verificationError'] + ': Specific Error Thrown');
-        expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Token verification error:', 'error', 'Specific Error Thrown');
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Token verification error:', 'Specific Error Thrown', errorObj.response);
     });
 
     it('should display "Unknown error" on .fail() if no responseText or errorThrown', async () => {
         parentElement.querySelector('textarea#token-input').value = 'any.token';
         parentElement.querySelector('.verify-token-button').click();
 
-        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
-        currentDeferred.reject({ responseText: null }, 'error', null);
-        await Promise.resolve();
+        expect(mockAjax).toHaveBeenCalledTimes(1); // Changed to mockAjax
+        const errorObj = new Error(null);
+        errorObj.response = { status: 500, statusText: null, text: () => Promise.resolve(null) };
+        if(mockPromiseReject) mockPromiseReject(errorObj);
+        await Promise.resolve().then().then();
         jest.runAllTimers();
 
-        expect(parentElement.querySelector('.token-results-content').innerHTML).toContain(mockI18n['processor.jwt.verificationError'] + ': Unknown error');
-        expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Token verification error:', 'error', null);
+        expect(parentElement.querySelector('.token-results-content').innerHTML).toContain(mockI18n['processor.jwt.verificationError'] + ': ' + (mockI18n['processor.jwt.unknownError'] || 'Unknown error'));
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Token verification error:', "null", errorObj.response); // Match observed behavior
     });
 
     it('should display exception message in UI on catch', () => {
         const exception = new Error('Non-localhost exception');
-        mockCompatAjax.mockImplementationOnce(() => { throw exception; });
+        mockAjax.mockImplementationOnce(() => { throw exception; }); // Changed to mockAjax
 
         parentElement.querySelector('textarea#token-input').value = 'any.token';
         consoleLogSpy.mockClear();
         parentElement.querySelector('.verify-token-button').click();
 
         expect(parentElement.querySelector('.token-results-content').innerHTML).toContain(mockI18n['processor.jwt.verificationError'] + ': Non-localhost exception');
-        expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in token verification:', exception);
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in token verification setup:', exception); // Corrected log message
         expect(consoleLogSpy).not.toHaveBeenCalled();
     });
 });
@@ -244,13 +249,14 @@ describe('tokenVerifier (localhost)', () => {
     let parentElement;
     let callback;
     let consoleErrorSpy, consoleLogSpy;
-    let currentDeferred;
+    let mockPromiseResolve;
+    let mockPromiseReject;
 
     beforeEach(() => {
         jest.resetModules();
         localTokenVerifier = require('components/tokenVerifier');
         localNfCommon = require('nf.Common');
-        mockCompatAjax.mockClear();
+        mockAjax.mockClear(); // Use new mock name
 
         localTokenVerifier.__setIsLocalhostForTesting(true);
 
@@ -258,16 +264,11 @@ describe('tokenVerifier (localhost)', () => {
         document.body.appendChild(parentElement);
         callback = jest.fn();
 
-        mockCompatAjax.mockImplementation(() => {
-            currentDeferred = {
-                _doneCallback: null,
-                _failCallback: null,
-                done: function (cb) { this._doneCallback = cb; return this; },
-                fail: function (cb) { this._failCallback = cb; return this; },
-                resolve: function (data) { if (this._doneCallback) { Promise.resolve(data).then(this._doneCallback); } },
-                reject: function (xhr, status, error) { if (this._failCallback) { Promise.resolve().then(() => this._failCallback(xhr, status, error)); } }
-            };
-            return currentDeferred;
+        mockAjax.mockImplementation(() => { // Use new mock name
+            return new Promise((resolve, reject) => {
+                mockPromiseResolve = resolve;
+                mockPromiseReject = reject;
+            });
         });
 
         getI18nSpy = jest.spyOn(localNfCommon, 'getI18n').mockReturnValue(mockI18n);
@@ -299,20 +300,20 @@ describe('tokenVerifier (localhost)', () => {
         parentElement.querySelector('.verify-token-button').click();
 
         expect(parentElement.querySelector('.token-results-content').innerHTML).toContain(mockI18n['processor.jwt.verifying']);
-        expect(mockCompatAjax).toHaveBeenCalledWith(expect.objectContaining({ data: JSON.stringify({ token: tokenValue }) }));
+        expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({ data: JSON.stringify({ token: tokenValue }) })); // Changed to mockAjax
     });
 
     it('should display valid token details on success (valid: true)', async () => {
-        const mockResponse = {
+        const mockResponseData = { // This is what the ajax call's 'data' field would contain
             valid: true, subject: 's', issuer: 'i', audience: 'a', expiration: 'e',
             roles: ['r1'], scopes: ['s1'], claims: { sub: 's' }
         };
         parentElement.querySelector('textarea#token-input').value = 'valid.token';
         parentElement.querySelector('.verify-token-button').click();
 
-        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
-        currentDeferred.resolve(mockResponse);
-        await Promise.resolve();
+        expect(mockAjax).toHaveBeenCalledTimes(1); // Changed to mockAjax
+        if (mockPromiseResolve) mockPromiseResolve({ data: mockResponseData, status: 200, statusText: 'OK' }); // Corrected
+        await Promise.resolve().then().then();
         jest.runAllTimers();
 
         const resultsHtml = parentElement.querySelector('.token-results-content').innerHTML;
@@ -321,16 +322,16 @@ describe('tokenVerifier (localhost)', () => {
         expect(resultsHtml).toContain('r1');
         expect(resultsHtml).toContain('s1');
 
-        mockCompatAjax.mockClear();
-        const mockResponseNoOptional = {
+        mockAjax.mockClear(); // Changed to mockAjax
+        const mockResponseNoOptionalData = {
             valid: true, subject: 's2', issuer: 'i2', audience: 'a2', expiration: 'e2',
             claims: { sub: 's2' }
         };
         parentElement.querySelector('textarea#token-input').value = 'valid.no.optional.token';
         parentElement.querySelector('.verify-token-button').click();
-        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
-        currentDeferred.resolve(mockResponseNoOptional);
-        await Promise.resolve();
+        expect(mockAjax).toHaveBeenCalledTimes(1); // Changed to mockAjax
+        if (mockPromiseResolve) mockPromiseResolve({ data: mockResponseNoOptionalData, status: 200, statusText: 'OK' }); // Corrected
+        await Promise.resolve().then().then();
         jest.runAllTimers();
         const resultsHtmlNoOptional = parentElement.querySelector('.token-results-content').innerHTML;
         expect(resultsHtmlNoOptional).toContain(mockI18n['processor.jwt.tokenValid']);
@@ -338,17 +339,17 @@ describe('tokenVerifier (localhost)', () => {
         expect(resultsHtmlNoOptional).not.toContain(mockI18n['processor.jwt.roles']);
         expect(resultsHtmlNoOptional).not.toContain(mockI18n['processor.jwt.scopes']);
 
-        mockCompatAjax.mockClear();
-        const mockResponseEmptyOptional = {
+        mockAjax.mockClear(); // Changed to mockAjax
+        const mockResponseEmptyOptionalData = {
             valid: true, subject: 's3', issuer: 'i3', audience: 'a3', expiration: 'e3',
             roles: [], scopes: [],
             claims: { sub: 's3' }
         };
         parentElement.querySelector('textarea#token-input').value = 'valid.empty.optional.token';
         parentElement.querySelector('.verify-token-button').click();
-        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
-        currentDeferred.resolve(mockResponseEmptyOptional);
-        await Promise.resolve();
+        expect(mockAjax).toHaveBeenCalledTimes(1); // Changed to mockAjax
+        if (mockPromiseResolve) mockPromiseResolve({ data: mockResponseEmptyOptionalData, status: 200, statusText: 'OK' }); // Corrected
+        await Promise.resolve().then().then();
         jest.runAllTimers();
         const resultsHtmlEmptyOptional = parentElement.querySelector('.token-results-content').innerHTML;
         expect(resultsHtmlEmptyOptional).toContain(mockI18n['processor.jwt.tokenValid']);
@@ -358,25 +359,25 @@ describe('tokenVerifier (localhost)', () => {
     });
 
     it('should display invalid token details on success (valid: false)', async () => {
-        const mockResponse = { valid: false, message: 'Invalid sig', category: 'SIG' };
+        const mockResponseData = { valid: false, message: 'Invalid sig', category: 'SIG' };
         parentElement.querySelector('textarea#token-input').value = 'invalid.token';
         parentElement.querySelector('.verify-token-button').click();
-        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
-        currentDeferred.resolve(mockResponse);
-        await Promise.resolve();
+        expect(mockAjax).toHaveBeenCalledTimes(1); // Changed to mockAjax
+        if (mockPromiseResolve) mockPromiseResolve({ data: mockResponseData, status: 200, statusText: 'OK' }); // Corrected
+        await Promise.resolve().then().then();
         jest.runAllTimers();
         const resultsHtml = parentElement.querySelector('.token-results-content').innerHTML;
         expect(resultsHtml).toContain(mockI18n['processor.jwt.tokenInvalid']);
         expect(resultsHtml).toContain('Invalid sig');
         expect(resultsHtml).toContain('SIG');
 
-        mockCompatAjax.mockClear();
-        const mockResponseNoDetails = { valid: false };
+        mockAjax.mockClear(); // Changed to mockAjax
+        const mockResponseNoDetailsData = { valid: false };
         parentElement.querySelector('textarea#token-input').value = 'invalid.no.details.token';
         parentElement.querySelector('.verify-token-button').click();
-        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
-        currentDeferred.resolve(mockResponseNoDetails);
-        await Promise.resolve();
+        expect(mockAjax).toHaveBeenCalledTimes(1); // Changed to mockAjax
+        if (mockPromiseResolve) mockPromiseResolve({ data: mockResponseNoDetailsData, status: 200, statusText: 'OK' }); // Corrected
+        await Promise.resolve().then().then();
         jest.runAllTimers();
         const resultsHtmlNoDetails = parentElement.querySelector('.token-results-content').innerHTML;
         expect(resultsHtmlNoDetails).toContain(mockI18n['processor.jwt.tokenInvalid']);
@@ -385,13 +386,13 @@ describe('tokenVerifier (localhost)', () => {
         const errorMsgElement = parentElement.querySelector('.token-error-message');
         expect(errorMsgElement.textContent).toBe('');
 
-        mockCompatAjax.mockClear();
-        const mockResponseNullDetails = { valid: false, message: null, category: null };
+        mockAjax.mockClear(); // Changed to mockAjax
+        const mockResponseNullDetailsData = { valid: false, message: null, category: null };
         parentElement.querySelector('textarea#token-input').value = 'invalid.null.details.token';
         parentElement.querySelector('.verify-token-button').click();
-        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
-        currentDeferred.resolve(mockResponseNullDetails);
-        await Promise.resolve();
+        expect(mockAjax).toHaveBeenCalledTimes(1); // Changed to mockAjax
+        if (mockPromiseResolve) mockPromiseResolve({ data: mockResponseNullDetailsData, status: 200, statusText: 'OK' }); // Corrected
+        await Promise.resolve().then().then();
         jest.runAllTimers();
         const resultsHtmlNullDetails = parentElement.querySelector('.token-results-content').innerHTML;
         expect(resultsHtmlNullDetails).toContain(mockI18n['processor.jwt.tokenInvalid']);
@@ -404,21 +405,23 @@ describe('tokenVerifier (localhost)', () => {
         parentElement.querySelector('textarea#token-input').value = 'any.token';
         parentElement.querySelector('.verify-token-button').click();
 
-        expect(mockCompatAjax).toHaveBeenCalledTimes(1);
-        currentDeferred.reject({ responseText: 'Network Error' }, 'error', 'Network issue');
-        await Promise.resolve();
+        expect(mockAjax).toHaveBeenCalledTimes(1); // Changed to mockAjax
+        const errorObj = new Error('Network issue');
+        errorObj.response = { status: 500, statusText: 'error', text: () => Promise.resolve('Network Error') };
+        if(mockPromiseReject) mockPromiseReject(errorObj);
+        await Promise.resolve().then().then();
         jest.runAllTimers();
 
         const resultsHtml = parentElement.querySelector('.token-results-content').innerHTML;
         expect(resultsHtml).toContain(mockI18n['processor.jwt.tokenValid']);
         expect(resultsHtml).toContain('<em>(Simulated response)</em>');
-        expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Token verification error:', 'error', 'Network issue');
-        expect(consoleLogSpy).toHaveBeenCalledWith('[DEBUG_LOG] Using simulated response for standalone testing');
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Token verification error:', 'Network issue', errorObj.response);
+        expect(consoleLogSpy).toHaveBeenCalledWith('[DEBUG_LOG] Using simulated response for standalone testing after error');
     });
 
     it('should display simulated success on exception during AJAX setup', () => {
         const exception = new Error('Localhost setup exception');
-        mockCompatAjax.mockImplementationOnce(() => { throw exception; });
+        mockAjax.mockImplementationOnce(() => { throw exception; }); // Changed to mockAjax
 
         parentElement.querySelector('textarea#token-input').value = 'any.token';
         parentElement.querySelector('.verify-token-button').click();
@@ -426,8 +429,8 @@ describe('tokenVerifier (localhost)', () => {
         const resultsHtml = parentElement.querySelector('.token-results-content').innerHTML;
         expect(resultsHtml).toContain(mockI18n['processor.jwt.tokenValid']);
         expect(resultsHtml).toContain('<em>(Simulated response)</em>');
-        expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in token verification:', exception);
-        expect(consoleLogSpy).toHaveBeenCalledWith('[DEBUG_LOG] Using simulated response for standalone testing (exception path)');
+        expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in token verification setup:', exception); // Changed message
+        expect(consoleLogSpy).toHaveBeenCalledWith('[DEBUG_LOG] Using simulated response for standalone testing (exception setup path)');
     });
 });
 

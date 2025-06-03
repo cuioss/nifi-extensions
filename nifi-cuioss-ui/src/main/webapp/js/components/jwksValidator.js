@@ -2,7 +2,7 @@
  * JWKS Validation Button UI component.
  */
 import $ from 'cash-dom';
-import { compatAjax } from '../utils/ajax';
+import { ajax } from '../utils/ajax';
 import * as nfCommon from 'nf.Common'; // Assuming nfCommon provides a default export or nf.Common.js is adjusted
 
 let isLocalhostOverride = null; // Allows tests to control localhost behavior
@@ -63,55 +63,75 @@ export const init = function (element, propertyValue, jwks_type, callback) {
 
             try {
                 // Make the AJAX request to validate
-                compatAjax({
-                    type: 'POST',
-                    url: '../nifi-api/processors/jwks/validate-url',
+                ajax({
+                    method: 'POST',
+                    url: '../nifi-api/processors/jwks/validate-url', // Ensure this URL is correct
                     data: JSON.stringify({ jwksValue: jwksValue }),
                     contentType: 'application/json',
-                    dataType: 'json',
-                    timeout: 5000 // Add timeout to prevent long waits
-                }).done(function (response) {
-                    if (response.valid) {
+                    timeout: 5000
+                })
+                .then(response => { // response here is { data, status, statusText }
+                    const responseData = response.data;
+                    if (responseData.valid) {
                         $resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
                                                    (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
                                                    (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
-                                                   ' (' + response.keyCount + ' ' +
+                                                   ' (' + responseData.keyCount + ' ' +
                                                    (i18n['processor.jwt.keysFound'] || 'keys found') + ')');
                     } else {
                         $resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' +
                                                    (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
                                                    (i18n['processor.jwt.invalidJwks'] || 'Invalid JWKS') + ': ' +
-                                                   response.message);
+                                                   responseData.message);
                     }
-                }).fail(function (xhr, status, error) {
-                    console.error('[DEBUG_LOG] JWKS validation error:', status, error);
-
-                    // In standalone testing mode, show a simulated success response
-                    if (getIsLocalhost()) {
-                        console.log('[DEBUG_LOG] Using simulated response for standalone testing');
-                        $resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
-                                                   (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
-                                                   (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
-                                                   ' (3 ' + (i18n['processor.jwt.keysFound'] || 'keys found') +
-                                                   ') <em>(Simulated response)</em>');
+                })
+                .catch(error => {
+                    console.error('[DEBUG_LOG] JWKS validation error:', error.message, error.response);
+                    let errorMessage = error.message;
+                    // Attempt to get a more detailed error message if available
+                    if (error.response && typeof error.response.text === 'function') {
+                        error.response.text().then(text => {
+                            errorMessage = text || error.message; // Use text if available, else fallback
+                            displayError(errorMessage);
+                        }).catch(() => {
+                            displayError(errorMessage); // Fallback if .text() fails
+                        });
+                    } else if (error.response && error.response.statusText) {
+                         errorMessage = error.response.statusText;
+                         displayError(errorMessage);
                     } else {
-                        $resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' +
-                                                   (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
-                                                   (i18n['processor.jwt.validationError'] || 'Validation error') + ': ' +
-                                                   (xhr.responseText || error || 'Unknown error'));
+                        displayError(errorMessage);
+                    }
+
+                    function displayError(msg) {
+                        const displayMsg = (msg === null || typeof msg === 'undefined' || String(msg).trim() === '' || String(msg).toLowerCase() === 'null' || String(msg).toLowerCase() === 'undefined')
+                            ? (i18n['processor.jwt.unknownError'] || 'Unknown error') // Fallback to i18n key
+                            : msg;
+                        // In standalone testing mode, show a simulated success response
+                        if (getIsLocalhost()) {
+                            console.log('[DEBUG_LOG] Using simulated response for standalone testing after error');
+                            $resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
+                                                       (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
+                                                       (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
+                                                       ' (3 ' + (i18n['processor.jwt.keysFound'] || 'keys found') +
+                                                       ') <em>(Simulated response)</em>');
+                        } else {
+                            $resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' +
+                                                       (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
+                                                       (i18n['processor.jwt.validationError'] || 'Validation error') + ': ' +
+                                                       displayMsg);
+                        }
                     }
                 });
             } catch (e) {
-                console.error('[DEBUG_LOG] Exception in JWKS validation:', e);
+                console.error('[DEBUG_LOG] Exception in JWKS validation setup:', e);
+                const exceptionMessage = (e.message === null || typeof e.message === 'undefined' || String(e.message).trim() === '' || String(e.message).toLowerCase() === 'null' || String(e.message).toLowerCase() === 'undefined')
+                    ? (i18n['processor.jwt.unknownError'] || 'Exception occurred') // Fallback to i18n key for exceptions
+                    : e.message;
 
                 // In standalone testing mode, show a simulated success response
                 // For exceptions, always show simulated success if getIsLocalhost() is true,
                 // otherwise, it will fall through to the generic error message for non-localhost.
-                // The original code didn't have a specific 'else' for non-localhost exceptions for DOM.
-                // It would show the loading message and then the console would show the error.
-                // For consistency with .fail(), we can add an 'else' here if desired,
-                // but for now, matching original logic where non-localhost exception shows what was last in DOM.
-                // To ensure non-localhost exceptions also get a clear error message in UI:
                 if (getIsLocalhost()) {
                     $resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
                                                (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
@@ -123,7 +143,7 @@ export const init = function (element, propertyValue, jwks_type, callback) {
                     $resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' +
                                                (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
                                                (i18n['processor.jwt.validationError'] || 'Validation error') + ': ' +
-                                               (e.message || (i18n['processor.jwt.unknownError'] || 'Exception occurred')));
+                                               exceptionMessage);
                 }
             }
         });

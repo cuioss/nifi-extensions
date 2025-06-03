@@ -4,7 +4,7 @@
  * issuer configurations for the MultiIssuerJWTTokenAuthenticator processor.
  */
 import $ from 'cash-dom';
-import { compatAjax } from '../utils/ajax';
+import { ajax } from '../utils/ajax';
 import * as _nfCommon from 'nf.Common';
 import * as apiClient from '../services/apiClient.js';
 import * as formatters from '../utils/formatters.js';
@@ -98,7 +98,8 @@ const loadExistingIssuers = function (container) {
     try {
         // Get processor properties
         apiClient.getProcessorProperties(processorId)
-            .done(function (response) {
+            .then(function (responseWrapper) { // apiClient.getProcessorProperties now returns a standard Promise
+                const response = responseWrapper.data; // Extract data from the wrapper
                 // Extract issuer properties
                 const properties = response.properties || {};
                 const issuerProperties = {};
@@ -125,8 +126,11 @@ const loadExistingIssuers = function (container) {
                     addIssuerForm(container, issuerName, issuerProperties[issuerName]);
                 });
             })
-            .fail(function (xhr, status, error) {
-                console.error('[DEBUG_LOG] Error loading processor properties:', status, error);
+            .catch(function (error) { // Standard Promise .catch
+                // error object might have error.response, error.message
+                const status = error.response ? error.response.statusText : 'unknown status';
+                const errorThrown = error.message || 'unknown error';
+                console.error('[DEBUG_LOG] Error loading processor properties:', status, errorThrown);
                 // Add a sample issuer for demonstration purposes
                 addIssuerForm(container, 'sample-issuer', {
                     'issuer': 'https://sample-issuer.example.com',
@@ -227,28 +231,37 @@ const addIssuerForm = function (container, issuerName, properties) {
 
         try {
             // Make the AJAX request to validate
-            compatAjax({
-                type: 'POST',
-                url: '../nifi-api/processors/jwks/validate-url',
+            ajax({
+                method: 'POST',
+                url: '../nifi-api/processors/jwks/validate-url', // Ensure this URL is correct for the new ajax function
                 data: JSON.stringify({ jwksValue: jwksValue }),
                 contentType: 'application/json',
-                dataType: 'json',
-                timeout: 5000 // Add timeout to prevent long waits
-            }).done(function (response) {
-                if (response.valid) {
+                timeout: 5000
+            })
+            .then(response => { // response here is { data, status, statusText }
+                const responseData = response.data; // Actual data from the server
+                if (responseData.valid) {
                     resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
                                            (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
                                            (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
-                                           ' (' + response.keyCount + ' ' +
+                                           ' (' + responseData.keyCount + ' ' +
                                            (i18n['processor.jwt.keysFound'] || 'keys found') + ')');
                 } else {
                     resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' +
                                            (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
                                            (i18n['processor.jwt.invalidJwks'] || 'Invalid JWKS') + ': ' +
-                                           response.message);
+                                           responseData.message);
                 }
-            }).fail(function (xhr, status, error) {
-                console.error('[DEBUG_LOG] JWKS validation error:', status, error);
+            })
+            .catch(error => {
+                console.error('[DEBUG_LOG] JWKS validation error:', error.message, error.response);
+                let errorMessage = error.message;
+                if (error.response && error.response.responseText) {
+                    errorMessage = error.response.responseText;
+                } else if (error.response && error.response.statusText) {
+                    errorMessage = error.response.statusText;
+                }
+
 
                 // In standalone testing mode, show a simulated success response
                 if (window.location.href.indexOf('localhost') !== -1 || window.location.href.indexOf('127.0.0.1') !== -1) {
@@ -262,11 +275,13 @@ const addIssuerForm = function (container, issuerName, properties) {
                     resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' +
                                            (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
                                            (i18n['processor.jwt.validationError'] || 'Validation error') + ': ' +
-                                           (xhr.responseText || error || 'Unknown error'));
+                                           (errorMessage || 'Unknown error'));
                 }
             });
         } catch (e) {
-            console.error('[DEBUG_LOG] Exception in JWKS validation:', e);
+            // This catch block is for synchronous errors during the setup of the ajax call.
+            // The .catch above handles errors from the ajax call itself (network errors, HTTP errors).
+            console.error('[DEBUG_LOG] Exception in JWKS validation setup:', e);
 
             // In standalone testing mode, show a simulated success response
             resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
@@ -379,16 +394,18 @@ const saveIssuer = function (form) { // form is expected to be a DOM element
     if (processorId) {
         try {
             apiClient.updateProcessorProperties(processorId, updates)
-                .done(function () {
+                .then(function () { // Standard Promise .then
                     // Use alert instead of nfCommon.showMessage for standalone testing
                     alert('Success: Issuer configuration saved successfully.');
                 })
-                .fail(function (xhr, status, error) {
-                    console.error('[DEBUG_LOG] Error updating processor properties:', status, error);
+                .catch(function (error) { // Standard Promise .catch
+                    const status = error.response ? error.response.statusText : 'unknown status';
+                    const errorThrown = error.message || 'unknown error';
+                    console.error('[DEBUG_LOG] Error updating processor properties:', status, errorThrown);
                     alert('Error: Failed to save issuer configuration. See console for details.');
                 });
         } catch (e) {
-            console.error('[DEBUG_LOG] Exception in saveIssuer:', e);
+            console.error('[DEBUG_LOG] Exception in saveIssuer setup:', e); // Clarified error source
             alert('Error: Failed to save issuer configuration due to an exception. See console for details.');
         }
     } else {
@@ -418,7 +435,8 @@ const removeIssuer = function (form, issuerNameFromClick) { // form is expected 
         if (currentIssuerName && currentProcessorId) { // Standard case with a processor ID
             try {
                 apiClient.getProcessorProperties(currentProcessorId)
-                    .done(function (response) {
+                    .then(function (responseWrapper) { // Standard Promise .then
+                        const response = responseWrapper.data; // Extract data
                         const properties = response.properties || {};
                         const updates = {};
                         Object.keys(properties).forEach(function (key) {
@@ -429,27 +447,29 @@ const removeIssuer = function (form, issuerNameFromClick) { // form is expected 
 
                         if (Object.keys(updates).length === 0 && currentIssuerName !== 'sample-issuer') { // Avoid warning for the sample
                             console.warn('[DEBUG_LOG] No properties found to remove for issuer:', currentIssuerName, 'on processor:', currentProcessorId);
-                            // For test consistency, we might need the success alert if tests expect it even if no properties are technically removed.
-                            // Let's assume tests expect success if the path is taken.
                             window.alert('Success: Issuer configuration removed successfully.');
                             return;
                         }
 
-                        apiClient.updateProcessorProperties(currentProcessorId, updates)
-                            .done(function () {
+                        return apiClient.updateProcessorProperties(currentProcessorId, updates) // Return the promise
+                            .then(function () {
                                 window.alert('Success: Issuer configuration removed successfully.');
                             })
-                            .fail(function (xhr, status, error) {
-                                console.error('[DEBUG_LOG] Error updating processor properties:', status, error);
+                            .catch(function (error) { // Catch for updateProcessorProperties
+                                const status = error.response ? error.response.statusText : 'unknown status';
+                                const errorThrown = error.message || 'unknown error';
+                                console.error('[DEBUG_LOG] Error updating processor properties:', status, errorThrown);
                                 window.alert('Error: Failed to remove issuer configuration. See console for details.');
                             });
                     })
-                    .fail(function (xhr, status, error) {
-                        console.error('[DEBUG_LOG] Error getting processor properties:', status, error);
+                    .catch(function (error) { // Catch for getProcessorProperties
+                        const status = error.response ? error.response.statusText : 'unknown status';
+                        const errorThrown = error.message || 'unknown error';
+                        console.error('[DEBUG_LOG] Error getting processor properties:', status, errorThrown);
                         window.alert('Error: Failed to get processor properties. See console for details.');
                     });
             } catch (e) {
-                console.error('[DEBUG_LOG] Exception in removeIssuer:', e);
+                console.error('[DEBUG_LOG] Exception in removeIssuer setup:', e); // Clarified error source
                 window.alert('Error: Failed to remove issuer configuration due to an exception. See console for details.');
             }
         } else if (currentIssuerName && !currentProcessorId) { // Standalone mode (has name, no processor ID)

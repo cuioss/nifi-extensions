@@ -46,26 +46,17 @@ const registerCustomUiComponents = function () {
      */
 const registerHelpTooltips = function (contextElement) {
     const baseElement = contextElement || document; // baseElement is a raw DOM node
-    baseElement.querySelectorAll('.property-label').forEach(function (labelNode) { // Use raw DOM querySelectorAll and forEach
-        const propertyName = labelNode.textContent.trim(); // Use raw textContent
+    $(baseElement).find('.property-label').each(function (index, labelNode) {
+        const propertyName = $(labelNode).text().trim();
         const helpText = getHelpTextForProperty(propertyName);
 
         if (helpText) {
-            // Check if span already exists using raw DOM querySelector
-            // if (!labelNode.querySelector('span.help-tooltip')) {
-            // New, more specific check:
-            let foundTooltip = false;
-            for (let i = 0; i < labelNode.children.length; i++) {
-                if (labelNode.children[i].classList.contains('help-tooltip')) {
-                    foundTooltip = true;
-                    break;
-                }
-            }
-            if (!foundTooltip) {
-                const span = document.createElement('span'); // Raw DOM element creation
-                span.className = 'help-tooltip fa fa-question-circle';
-                span.setAttribute('title', helpText); // Use setAttribute
-                labelNode.appendChild(span); // Raw DOM appendChild
+            // Check if span already exists
+            if ($(labelNode).find('span.help-tooltip').length === 0) {
+                const span = $('<span>');
+                $(span).addClass('help-tooltip fa fa-question-circle');
+                $(span).attr('title', helpText);
+                $(labelNode).append(span);
             }
         }
     });
@@ -115,13 +106,13 @@ const getHelpTextForProperty = function (propertyName) {
      * Hides the loading indicator and shows the UI components.
      */
 const hideLoadingIndicator = function () {
-    const loadingIndicator = document.getElementById('loading-indicator');
-    if (loadingIndicator) {
-        loadingIndicator.style.display = 'none';
+    const loadingIndicator = $('#loading-indicator');
+    if (loadingIndicator.length) {
+        $(loadingIndicator).hide();
     }
-    const tabs = document.getElementById('jwt-validator-tabs');
-    if (tabs) {
-        tabs.style.display = ''; // Or 'block', depending on original display style
+    const tabs = $('#jwt-validator-tabs');
+    if (tabs.length) {
+        $(tabs).show();
     }
 };
 
@@ -130,15 +121,15 @@ const hideLoadingIndicator = function () {
      */
 const updateUITranslations = function () {
     // Update loading indicator text
-    const loadingIndicator = document.getElementById('loading-indicator');
-    if (loadingIndicator) {
-        loadingIndicator.textContent = nfCommon.getI18n().getProperty('jwt.validator.loading');
+    const loadingIndicator = $('#loading-indicator');
+    if (loadingIndicator.length) {
+        $(loadingIndicator).text(nfCommon.getI18n().getProperty('jwt.validator.loading'));
     }
 
     // Update other static UI elements
-    const titleElement = document.querySelector('.jwt-validator-title');
-    if (titleElement) {
-        titleElement.textContent = nfCommon.getI18n().getProperty('jwt.validator.title');
+    const titleElement = $('.jwt-validator-title');
+    if (titleElement.length) {
+        $(titleElement).text(nfCommon.getI18n().getProperty('jwt.validator.title'));
     }
 };
 

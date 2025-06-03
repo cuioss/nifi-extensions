@@ -37,9 +37,10 @@ jest.mock('../../../main/webapp/js/services/apiClient.js', () => ({
     })
 }));
 
-const mockCompatAjax = jest.fn();
+// Mock ajax (formerly compatAjax)
+const mockAjax = jest.fn(); // Renamed from mockCompatAjax
 jest.mock('../../../main/webapp/js/utils/ajax.js', () => ({
-    compatAjax: mockCompatAjax
+    ajax: mockAjax // Mock the 'ajax' export
 }));
 
 const mockI18n = {
@@ -73,43 +74,18 @@ let localNfCommon; // This will be set in beforeEach
 
 // This is the helper function that tests will use to create specific promise instances
 // for their mock implementations.
-const createApiMockPromise = () => {
-    let doneCb = () => {};
-    let failCb = () => {};
-
-    const promiseObj = {
-        done: jest.fn(function (cb) { doneCb = cb; return this; }),
-        fail: jest.fn(function (cb) { failCb = cb; return this; }),
-        _resolve: function (data) {
-            if (typeof doneCb === 'function') {
-                doneCb(data);
-            }
-        },
-        _reject: function (xhr, status, error) {
-            if (typeof failCb === 'function') {
-                failCb(xhr, status, error);
-            }
-        }
-    };
-    return promiseObj;
+// This helper now returns a structure that allows controlling a standard Promise
+const createControllablePromise = () => {
+    let resolvePromise;
+    let rejectPromise;
+    const promise = new Promise((resolve, reject) => {
+        resolvePromise = resolve;
+        rejectPromise = reject;
+    });
+    promise.resolve = resolvePromise; // Attach resolve to the promise object for test control
+    promise.reject = rejectPromise;   // Attach reject
+    return promise;
 };
-
-// const createMockDeferred = () => { // No longer needed
-//     let doneCb = () => {};
-//     let failCb = () => {};
-//     const promise = {
-//         done: (cb) => { doneCb = cb; return promise; },
-//         fail: (cb) => { failCb = cb; return promise; },
-//         always: () => promise,
-//         _resolve: (data) => {
-//             Promise.resolve(data).then(val => { if(doneCb) doneCb(val); });
-//         },
-//         _reject: (xhr, status, error) => {
-//             Promise.resolve().then(() => { if(failCb) failCb(xhr, status, error); });
-//         }
-//     };
-//     return promise;
-// };
 
 describe('issuerConfigEditor', function () {
     'use strict';
@@ -137,10 +113,9 @@ describe('issuerConfigEditor', function () {
             localNfCommon = require('nf.Common'); // nf.Common is a global utility, usually safe
 
             // Clear mock history before each test for the specific apiClient instance
-            // The functions on apiClientForMocks are already jest.fn() from the top-level factory mock
             apiClientForMocks.getProcessorProperties.mockClear();
             apiClientForMocks.updateProcessorProperties.mockClear();
-            mockCompatAjax.mockReset();
+            mockAjax.mockReset(); // Use the new mock name
 
             originalAlert = window.alert;
             originalConfirm = window.confirm;
@@ -167,9 +142,8 @@ describe('issuerConfigEditor', function () {
                 configurable: true
             });
 
-            // mockCompatAjax is now mocked directly in tests that use it.
-            // No default implementation needed here anymore.
-            // If a test needs a default, it can be added: mockCompatAjax.mockResolvedValue({});
+            // Default mock for ajax calls if not overridden in a specific test
+            mockAjax.mockImplementation(() => createControllablePromise());
         });
 
         afterEach(function () {
@@ -190,14 +164,15 @@ describe('issuerConfigEditor', function () {
 
         describe('init', function () {
             it('should initialize the component structure', async () => {
-                const mockGetPropsPromise = createApiMockPromise();
+                const mockGetPropsPromise = createControllablePromise(); // Use new helper
                 apiClientForMocks.getProcessorProperties.mockImplementation((...args) => {
                     console.log('Per-test MOCK getProcessorProperties (init structure) CALLED WITH:', args);
                     return mockGetPropsPromise;
                 });
 
                 issuerConfigEditor.init(parentElement, mockConfig, null, mockCallback, currentTestUrl);
-                mockGetPropsPromise._resolve({ properties: {} });
+                mockGetPropsPromise.resolve({ data: { properties: {} } });
+                await mockGetPropsPromise; // Await the promise itself
                 jest.runAllTimers();
 
                 expect(parentElement.querySelector('.issuer-config-editor')).not.toBeNull();
@@ -205,14 +180,15 @@ describe('issuerConfigEditor', function () {
             });
 
             it('should call loadExistingIssuers which calls getProcessorProperties if processorId is found', async () => {
-                const mockGetPropsPromise = createApiMockPromise();
+                const mockGetPropsPromise = createControllablePromise(); // Use new helper
                 apiClientForMocks.getProcessorProperties.mockImplementation((...args) => {
                     console.log('Per-test MOCK getProcessorProperties (init loadExisting) CALLED WITH:', args);
                     return mockGetPropsPromise;
                 });
 
                 issuerConfigEditor.init(parentElement, mockConfig, null, mockCallback, currentTestUrl);
-                mockGetPropsPromise._resolve({ properties: {} }); // Resolve it to allow component to proceed
+                mockGetPropsPromise.resolve({ data: { properties: {} } });
+                await mockGetPropsPromise;
                 jest.runAllTimers();
 
                 expect(apiClientForMocks.getProcessorProperties).toHaveBeenCalledWith('12345-abcde');
@@ -221,13 +197,14 @@ describe('issuerConfigEditor', function () {
 
         describe('getProcessorIdFromUrl behavior (tested via init)', function () {
             it('should extract processor ID from URL and use it for API call', async () => {
-                const mockGetPropsPromise = createApiMockPromise();
+                const mockGetPropsPromise = createControllablePromise(); // Use new helper
                 apiClientForMocks.getProcessorProperties.mockImplementation((...args) => {
                     console.log('Per-test MOCK getProcessorProperties (getProcessorIdFromUrl) CALLED WITH:', args);
                     return mockGetPropsPromise;
                 });
                 issuerConfigEditor.init(parentElement, mockConfig, null, mockCallback, currentTestUrl);
-                mockGetPropsPromise._resolve({ properties: {} });
+                mockGetPropsPromise.resolve({ data: { properties: {} } });
+                await mockGetPropsPromise;
                 jest.runAllTimers();
                 expect(apiClientForMocks.getProcessorProperties).toHaveBeenCalledWith('12345-abcde');
             });
@@ -253,14 +230,15 @@ describe('issuerConfigEditor', function () {
                     'issuer.issuerOne.issuer': 'uri1', 'issuer.issuerOne.jwks-url': 'url1',
                     'issuer.issuerTwo.issuer': 'uri2', 'issuer.issuerTwo.jwks-url': 'url2'
                 };
-                const mockGetPropsPromise = createApiMockPromise();
+                const mockGetPropsPromise = createControllablePromise(); // Use new helper
                 apiClientForMocks.getProcessorProperties.mockImplementation((...args) => {
                     console.log('Per-test MOCK getProcessorProperties (loadExisting populate) CALLED WITH:', args);
                     return mockGetPropsPromise;
                 });
 
                 issuerConfigEditor.init(parentElement, mockConfig, null, mockCallback, currentTestUrl);
-                mockGetPropsPromise._resolve({ properties: mockProperties });
+                mockGetPropsPromise.resolve({ data: { properties: mockProperties } });
+                await mockGetPropsPromise;
                 jest.runAllTimers();
 
                 const forms = parentElement.querySelectorAll('.issuer-form');
@@ -268,7 +246,7 @@ describe('issuerConfigEditor', function () {
             });
 
             it('should add a sample issuer if getProcessorProperties fails', async function () {
-                const mockGetPropsPromise = createApiMockPromise();
+                const mockGetPropsPromise = createControllablePromise(); // Use new helper
                 apiClientForMocks.getProcessorProperties.mockImplementation((...args) => {
                     console.log('Per-test MOCK getProcessorProperties (loadExisting fails) CALLED WITH:', args);
                     return mockGetPropsPromise;
@@ -278,26 +256,32 @@ describe('issuerConfigEditor', function () {
                 currentTestUrl = window.location.href;
 
                 issuerConfigEditor.init(parentElement, mockConfig, null, mockCallback, currentTestUrl);
-                mockGetPropsPromise._reject({}, 'error', 'API Error'); // jQuery style args
+                const errorToReject = new Error('API Error');
+                errorToReject.response = { status: 500, statusText: 'API Error', text: () => Promise.resolve('API Error details') };
+                mockGetPropsPromise.reject(errorToReject);
+                // Allow the promise rejection to propagate and be handled by the SUT's catch block
+                await Promise.resolve().then(() => {}).catch(() => {}); // Ensure microtasks queue is processed for the rejection
+                await Promise.resolve().then(() => {}).catch(() => {}); // Add another cycle for safety in tests
                 jest.runAllTimers();
 
-                expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Error loading processor properties:', 'error', 'API Error');
+                expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Error loading processor properties:', 'API Error', 'API Error');
                 expect(parentElement.querySelectorAll('.issuer-form').length).toBe(1);
             });
         });
 
         describe('addIssuerForm interaction (via Add Issuer button)', function () {
             it('should add a new blank issuer form when "Add Issuer" is clicked', async () => {
-                const mockGetPropsPromise = createApiMockPromise();
+                const mockGetPropsPromise = createControllablePromise(); // Use new helper
                 apiClientForMocks.getProcessorProperties.mockImplementation((...args) => {
                     console.log('Per-test MOCK getProcessorProperties (addIssuerForm) CALLED WITH:', args);
                     return mockGetPropsPromise;
                 });
                 issuerConfigEditor.init(parentElement, mockConfig, null, mockCallback, currentTestUrl);
-                mockGetPropsPromise._resolve({ properties: {} }); // Initial load
+                mockGetPropsPromise.resolve({ data: { properties: {} } });
+                await mockGetPropsPromise;
                 jest.runAllTimers();
 
-                expect(parentElement.querySelectorAll('.issuer-form').length).toBe(0); // Should be 0 if properties are empty
+                expect(parentElement.querySelectorAll('.issuer-form').length).toBe(0);
                 parentElement.querySelector('.add-issuer-button').click();
                 expect(parentElement.querySelectorAll('.issuer-form').length).toBe(1);
             });
@@ -306,13 +290,14 @@ describe('issuerConfigEditor', function () {
         describe('JWKS URL Validation (Test Connection)', function () {
             let form;
             beforeEach(async () => {
-                const mockGetPropsPromise = createApiMockPromise();
+                const mockGetPropsPromise = createControllablePromise(); // Use new helper
                 apiClientForMocks.getProcessorProperties.mockImplementation((...args) => {
                     console.log('Per-test MOCK getProcessorProperties (JWKS beforeEach) CALLED WITH:', args);
                     return mockGetPropsPromise;
                 });
                 issuerConfigEditor.init(parentElement, mockConfig, null, mockCallback, currentTestUrl);
-                mockGetPropsPromise._resolve({ properties: {} }); // Initial load for init
+                mockGetPropsPromise.resolve({ data: { properties: {} } });
+                await mockGetPropsPromise;
                 jest.runAllTimers();
 
                 parentElement.querySelector('.add-issuer-button').click();
@@ -321,30 +306,27 @@ describe('issuerConfigEditor', function () {
 
             it('should show success for valid JWKS URL', async () => {
                 form.querySelector('.field-jwks-url').value = 'https://valid.jwks.url/keys';
-                // mockCompatAjax is setup in the main beforeEach to return jwksValidationDeferred
-                // We need to change that setup first.
-                mockCompatAjax.mockResolvedValueOnce({ valid: true, keyCount: 3 });
+                const mockJwksPromise = createControllablePromise();
+                mockAjax.mockImplementationOnce(() => mockJwksPromise); // Mock ajax directly
                 form.querySelector('.verify-jwks-button').click();
 
-                // expect(mockCompatAjax).toHaveBeenCalled(); // This will be called by the click
-                await Promise.resolve(); jest.runAllTimers(); // Allow promise from mockCompatAjax and subsequent UI updates
+                mockJwksPromise.resolve({ data: { valid: true, keyCount: 3 }, status: 200, statusText: 'OK' });
+                await mockJwksPromise;
+                jest.runAllTimers();
 
                 expect(form.querySelector('.verification-result').innerHTML).toContain('OK</span> Valid JWKS (3 keys found)');
             });
 
             it('should show failure for invalid JWKS URL', async () => {
                 form.querySelector('.field-jwks-url').value = 'https://invalid.jwks.url/keys';
-
-                const mockAjaxPromise = createApiMockPromise();
-                mockCompatAjax.mockImplementationOnce(() => {
-                    // console.log('Per-test MOCK compatAjax (JWKS failure) CALLED'); // Optional debug log
-                    return mockAjaxPromise;
-                });
+                const mockJwksPromise = createControllablePromise();
+                mockAjax.mockImplementationOnce(() => mockJwksPromise);
 
                 form.querySelector('.verify-jwks-button').click();
 
-                mockAjaxPromise._resolve({ valid: false, message: 'Keys not found' });
-                jest.runAllTimers(); // Allow UI updates
+                mockJwksPromise.resolve({ data: { valid: false, message: 'Keys not found' }, status: 200, statusText: 'OK' });
+                await mockJwksPromise;
+                jest.runAllTimers();
 
                 expect(form.querySelector('.verification-result').innerHTML).toContain('Failed</span> Invalid JWKS: Keys not found');
             });
@@ -353,13 +335,14 @@ describe('issuerConfigEditor', function () {
         describe('Save Issuer functionality', function () {
             let form;
             beforeEach(async () => {
-                const mockGetPropsPromise = createApiMockPromise();
+                const mockGetPropsPromise = createControllablePromise();
                 apiClientForMocks.getProcessorProperties.mockImplementation((...args) => {
                     console.log('Per-test MOCK getProcessorProperties (Save Issuer beforeEach) CALLED WITH:', args);
                     return mockGetPropsPromise;
                 });
                 issuerConfigEditor.init(parentElement, mockConfig, null, mockCallback, currentTestUrl);
-                mockGetPropsPromise._resolve({ properties: {} });
+                mockGetPropsPromise.resolve({ data: { properties: {} } });
+                await mockGetPropsPromise;
                 jest.runAllTimers();
 
                 parentElement.querySelector('.add-issuer-button').click();
@@ -377,13 +360,14 @@ describe('issuerConfigEditor', function () {
                 form.querySelector('.field-issuer').value = 'https://test.com/issuer';
                 form.querySelector('.field-jwks-url').value = 'https://test.com/jwks.json';
 
-                const mockUpdatePromise = createApiMockPromise();
+                const mockUpdatePromise = createControllablePromise(); // Use new helper
                 apiClientForMocks.updateProcessorProperties.mockImplementation((...args) => {
                     console.log('Per-test MOCK updateProcessorProperties (save success) CALLED WITH:', args);
                     return mockUpdatePromise;
                 });
                 form.querySelector('.save-issuer-button').click();
-                mockUpdatePromise._resolve({}); // Simulate successful update
+                mockUpdatePromise.resolve({ data: {} });
+                await mockUpdatePromise;
                 jest.runAllTimers();
 
                 expect(apiClientForMocks.updateProcessorProperties).toHaveBeenCalledWith('12345-abcde', expect.any(Object));
@@ -397,15 +381,15 @@ describe('issuerConfigEditor', function () {
 
             beforeEach(async () => {
                 const mockInitProps = { properties: { ['issuer.' + issuerName + '.issuer']: 'uri' } };
-                const mockGetPropsPromiseInit = createApiMockPromise();
-                // Use mockImplementationOnce for calls specific to this beforeEach's init
+                const mockGetPropsPromiseInit = createControllablePromise(); // Use new helper
                 apiClientForMocks.getProcessorProperties.mockImplementationOnce((...args) => {
                     console.log('Per-test MOCK getProcessorProperties (Remove Issuer beforeEach Init) CALLED WITH:', args);
                     return mockGetPropsPromiseInit;
                 });
 
                 issuerConfigEditor.init(parentElement, mockConfig, null, mockCallback, currentTestUrl);
-                mockGetPropsPromiseInit._resolve(mockInitProps);
+                mockGetPropsPromiseInit.resolve({ data: mockInitProps });
+                await mockGetPropsPromiseInit;
                 jest.runAllTimers();
 
                 form = Array.from(parentElement.querySelectorAll('.issuer-form')).find(f => f.querySelector('.issuer-name').value === issuerName);
@@ -421,13 +405,13 @@ describe('issuerConfigEditor', function () {
             it('should remove issuer and call updateProcessorProperties with null values on successful removal', async () => {
                 window.confirm.mockReturnValue(true);
 
-                const mockGetPropsPromiseRemove = createApiMockPromise();
+                const mockGetPropsPromiseRemove = createControllablePromise(); // Use new helper
                 apiClientForMocks.getProcessorProperties.mockImplementationOnce((...args) => {
                     console.log('Per-test MOCK getProcessorProperties (Remove Issuer - remove action) CALLED WITH:', args);
                     return mockGetPropsPromiseRemove;
                 });
 
-                const mockUpdatePromise = createApiMockPromise();
+                const mockUpdatePromise = createControllablePromise();
                 apiClientForMocks.updateProcessorProperties.mockImplementationOnce((...args) => {
                     console.log('Per-test MOCK updateProcessorProperties (Remove Issuer - save action) CALLED WITH:', args);
                     return mockUpdatePromise;
@@ -436,10 +420,12 @@ describe('issuerConfigEditor', function () {
                 form.querySelector('.remove-issuer-button').click();
 
                 const initialPropsForRemove = { properties: { ['issuer.' + issuerName + '.issuer']: 'uri' } };
-                mockGetPropsPromiseRemove._resolve(initialPropsForRemove);
+                mockGetPropsPromiseRemove.resolve({ data: initialPropsForRemove });
+                await mockGetPropsPromiseRemove;
                 jest.runAllTimers();
 
-                mockUpdatePromise._resolve({});
+                mockUpdatePromise.resolve({ data: {} });
+                await mockUpdatePromise;
                 jest.runAllTimers();
 
                 expect(window.alert).toHaveBeenCalledWith(mockI18n['issuerConfigEditor.removeSuccess']);

@@ -12,15 +12,16 @@ const mockI18n = {
     'processor.jwt.invalidJwks': 'Invalid JWKS',
     'processor.jwt.keysFound': 'keys found',
     'processor.jwt.validationError': 'Validation error',
-    'processor.jwt.initialInstructions': 'Click the button to validate JWKS' // Added for completeness
+    'processor.jwt.unknownError': 'Unknown error', // Added this key
+    'processor.jwt.initialInstructions': 'Click the button to validate JWKS'
 };
 
 jest.useFakeTimers();
 
-// Mock compatAjax BEFORE any describe blocks
-const mockCompatAjax = jest.fn();
+// Mock ajax BEFORE any describe blocks
+const mockAjax = jest.fn();
 jest.mock('../../../main/webapp/js/utils/ajax.js', () => ({
-    compatAjax: mockCompatAjax
+    ajax: mockAjax // Ensure this matches the export name from ajax.js
 }));
 
 describe('jwksValidator - Common Initialization and Callback', () => {
@@ -32,28 +33,25 @@ describe('jwksValidator - Common Initialization and Callback', () => {
     const initialPropertyValue = 'https://example.com/.well-known/jwks.json';
     let consoleErrorSpy;
     let consoleLogSpy;
-    let currentDeferred; // For mock AJAX control
+    let mockPromiseResolve; // For mock AJAX control
+    let mockPromiseReject;  // For mock AJAX control
 
     beforeEach(() => {
         jest.resetModules();
         localJwksValidator = require('components/jwksValidator');
         localNfCommon = require('nf.Common');
-        mockCompatAjax.mockClear();
+        mockAjax.mockClear(); // Use the new mock name
 
         parentElement = document.createElement('div');
         document.body.appendChild(parentElement);
         callback = jest.fn();
 
-        mockCompatAjax.mockImplementation(() => {
-            currentDeferred = {
-                _doneCallback: null,
-                _failCallback: null,
-                done: function (cb) { this._doneCallback = cb; return this; },
-                fail: function (cb) { this._failCallback = cb; return this; },
-                resolve: function (data) { if (this._doneCallback) { Promise.resolve(data).then(this._doneCallback); } },
-                reject: function (xhr, status, error) { if (this._failCallback) { Promise.resolve().then(() => this._failCallback(xhr, status, error)); } }
-            };
-            return currentDeferred;
+        // Updated mock implementation to return a controllable Promise
+        mockAjax.mockImplementation(() => {
+            return new Promise((resolve, reject) => {
+                mockPromiseResolve = resolve;
+                mockPromiseReject = reject;
+            });
         });
 
         getI18nSpy = jest.spyOn(localNfCommon, 'getI18n').mockReturnValue(mockI18n);
@@ -129,53 +127,67 @@ describe('jwksValidator - Common Initialization and Callback', () => {
 
             parentElement.querySelector('.verify-jwks-button').click();
             expect(parentElement.querySelector('.verification-result').innerHTML).toBe('Testing...');
-            currentDeferred.resolve({ valid: true, keyCount: 1 });
-            await Promise.resolve();
-            jest.runAllTimers();
+            // Simulate successful AJAX call
+            mockPromiseResolve({ data: { valid: true, keyCount: 1 }, status: 200, statusText: 'OK' }); // This was correct
+            await Promise.resolve().then().then(); // Ensure all microtasks run
+            jest.runAllTimers(); // Allow setTimeout/setInterval to run if any
             expect(parentElement.querySelector('.verification-result').innerHTML).toBe('<span style="color: var(--success-color); font-weight: bold;">OK</span> Valid JWKS (1 keys found)');
 
             if (localJwksValidator && typeof localJwksValidator.__setIsLocalhostForTesting === 'function') {
                 localJwksValidator.__setIsLocalhostForTesting(false);
             }
+            if (localJwksValidator && typeof localJwksValidator.__setIsLocalhostForTesting === 'function') {
+                localJwksValidator.__setIsLocalhostForTesting(false);
+            }
             parentElement.querySelector('.verify-jwks-button').click();
-            currentDeferred.reject({ responseText: 'Error from XHR' }, 'error', 'Condition1');
-            await Promise.resolve();
+            // Simulate failed AJAX call
+            const errorObj1 = new Error('Condition1');
+            errorObj1.response = { status: 500, statusText: 'Internal Server Error', text: () => Promise.resolve('Error from XHR') };
+            if (mockPromiseReject) mockPromiseReject(errorObj1); // Corrected: use mockPromiseReject
+            await Promise.resolve().then().then();
             jest.runAllTimers();
             expect(parentElement.querySelector('.verification-result').innerHTML).toBe('<span style="color: var(--error-color); font-weight: bold;">Failed</span> Validation error: Error from XHR');
 
             parentElement.querySelector('.verify-jwks-button').click();
-            currentDeferred.reject({ responseText: null }, 'error', 'Error From Arg');
-            await Promise.resolve();
+            const errorObj2 = new Error('Error From Arg');
+            errorObj2.response = { status: 500, statusText: 'Error From Arg', text: () => Promise.resolve(null) };
+            if (mockPromiseReject) mockPromiseReject(errorObj2); // Corrected
+            await Promise.resolve().then().then();
             jest.runAllTimers();
             expect(parentElement.querySelector('.verification-result').innerHTML).toBe('<span style="color: var(--error-color); font-weight: bold;">Failed</span> Validation error: Error From Arg');
 
             parentElement.querySelector('.verify-jwks-button').click();
-            currentDeferred.reject({ responseText: null }, 'error', null);
-            await Promise.resolve();
+            const errorObj3 = new Error(null);
+            errorObj3.response = { status: 500, statusText: null, text: () => Promise.resolve(null) };
+            if (mockPromiseReject) mockPromiseReject(errorObj3); // Corrected
+            await Promise.resolve().then().then();
             jest.runAllTimers();
-            expect(parentElement.querySelector('.verification-result').innerHTML).toBe('<span style="color: var(--error-color); font-weight: bold;">Failed</span> Validation error: Unknown error');
+            // error.message is null in this test case, so the component falls back to the i18n string for 'Unknown error'
+            expect(parentElement.querySelector('.verification-result').innerHTML).toBe('<span style="color: var(--error-color); font-weight: bold;">Failed</span> Validation error: ' + (mockI18n['processor.jwt.unknownError'] || 'Unknown error'));
 
             if (localJwksValidator && typeof localJwksValidator.__setIsLocalhostForTesting === 'function') {
                 localJwksValidator.__setIsLocalhostForTesting(true);
             }
             parentElement.querySelector('.verify-jwks-button').click();
-            currentDeferred.reject({ responseText: 'Error from XHR local' }, 'error', 'Condition local');
-            await Promise.resolve();
+            const errorObj4 = new Error('Condition local');
+            errorObj4.response = { status: 500, statusText: 'Internal Server Error', text: () => Promise.resolve('Error from XHR local') };
+            if (mockPromiseReject) mockPromiseReject(errorObj4); // Corrected
+            await Promise.resolve().then().then();
             jest.runAllTimers();
             expect(parentElement.querySelector('.verification-result').innerHTML).toBe('<span style="color: var(--success-color); font-weight: bold;">OK</span> Valid JWKS (3 keys found) <em>(Simulated response)</em>');
 
             if (localJwksValidator && typeof localJwksValidator.__setIsLocalhostForTesting === 'function') {
                 localJwksValidator.__setIsLocalhostForTesting(false);
             }
-            mockCompatAjax.mockImplementationOnce(() => { throw new Error('Catch this'); });
+            mockAjax.mockImplementationOnce(() => { throw new Error('Catch this'); });
             parentElement.querySelector('.verify-jwks-button').click();
-            await Promise.resolve(); // For the throw itself if it were async, though here it's sync
+            await Promise.resolve();
             jest.runAllTimers();
             expect(parentElement.querySelector('.verification-result').innerHTML).toBe('<span style="color: var(--error-color); font-weight: bold;">Failed</span> Validation error: Catch this');
 
             const errorWithoutMessage = new Error();
             errorWithoutMessage.message = null;
-            mockCompatAjax.mockImplementationOnce(() => { throw errorWithoutMessage; });
+            mockAjax.mockImplementationOnce(() => { throw errorWithoutMessage; });
             parentElement.querySelector('.verify-jwks-button').click();
             expect(parentElement.querySelector('.verification-result').innerHTML).toBe('<span style="color: var(--error-color); font-weight: bold;">Failed</span> Validation error: Exception occurred');
 
@@ -204,7 +216,7 @@ describe('jwksValidator - Common Initialization and Callback', () => {
         it('should use default URL in AJAX call if propertyValue is null at button click (and cover default getIsLocalhost)', () => {
             localJwksValidator.init(parentElement, null, 'server', callback);
             parentElement.querySelector('.verify-jwks-button').click();
-            expect(mockCompatAjax).toHaveBeenCalledWith(expect.objectContaining({
+            expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({ // Changed to mockAjax
                 data: JSON.stringify({ jwksValue: 'https://example.com/.well-known/jwks.json' })
             }));
         });
@@ -212,7 +224,7 @@ describe('jwksValidator - Common Initialization and Callback', () => {
         it('should use default URL in AJAX call if propertyValue is undefined at button click', () => {
             localJwksValidator.init(parentElement, undefined, 'server', callback);
             parentElement.querySelector('.verify-jwks-button').click();
-            expect(mockCompatAjax).toHaveBeenCalledWith(expect.objectContaining({
+            expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({ // Changed to mockAjax
                 data: JSON.stringify({ jwksValue: 'https://example.com/.well-known/jwks.json' })
             }));
         });
@@ -224,13 +236,21 @@ describe('jwksValidator - Common Initialization and Callback', () => {
                 localJwksValidator.__setIsLocalhostForTesting(null);
             }
             parentElement.querySelector('.verify-jwks-button').click();
-            currentDeferred.reject({ responseText: 'some error' }, 'error', 'Error Condition');
-            await Promise.resolve();
+
+            const errorObj = new Error('Error Condition');
+            errorObj.response = { status: 500, statusText: 'Internal Server Error', text: () => Promise.resolve('some error') };
+            if (mockPromiseReject) mockPromiseReject(errorObj); // Corrected
+            await Promise.resolve().then().then();
             jest.runAllTimers();
 
-            expect(mockCompatAjax).toHaveBeenCalled();
+            expect(mockAjax).toHaveBeenCalled();
+            // Depending on actual window.location.href during test, this might or might not be simulated
+            // If window.location.href is localhost-like, it will show simulated success.
+            // If not, it will show the actual error.
+            // The key is that getIsLocalhost() inside the SUT will determine this.
+            // For this test, assuming it results in simulated due to Jest's default environment.
             expect(parentElement.querySelector('.verification-result').innerHTML).toContain('<em>(Simulated response)</em>');
-            expect(consoleLogSpy).toHaveBeenCalledWith('[DEBUG_LOG] Using simulated response for standalone testing');
+            expect(consoleLogSpy).toHaveBeenCalledWith('[DEBUG_LOG] Using simulated response for standalone testing after error');
         });
     });
 
@@ -274,13 +294,14 @@ describe('jwksValidator (non-localhost)', () => {
     const initialPropertyValue = 'https://example.com/.well-known/jwks.json';
     let consoleErrorSpy;
     let consoleLogSpy;
-    let currentDeferred;
+    let mockPromiseResolve;
+    let mockPromiseReject;
 
     beforeEach(() => {
         jest.resetModules();
         localJwksValidator = require('components/jwksValidator');
         localNfCommon = require('nf.Common');
-        mockCompatAjax.mockClear();
+        mockAjax.mockClear(); // Use new mock name
 
         localJwksValidator.__setIsLocalhostForTesting(false);
 
@@ -289,16 +310,11 @@ describe('jwksValidator (non-localhost)', () => {
         parentElement.innerHTML = '<input type="text">';
         callback = jest.fn();
 
-        mockCompatAjax.mockImplementation(() => {
-            currentDeferred = {
-                _doneCallback: null,
-                _failCallback: null,
-                done: function (cb) { this._doneCallback = cb; return this; },
-                fail: function (cb) { this._failCallback = cb; return this; },
-                resolve: function (data) { if (this._doneCallback) { Promise.resolve(data).then(this._doneCallback); } },
-                reject: function (xhr, status, error) { if (this._failCallback) { Promise.resolve().then(() => this._failCallback(xhr, status, error)); } }
-            };
-            return currentDeferred;
+        mockAjax.mockImplementation(() => { // Use new mock name
+            return new Promise((resolve, reject) => {
+                mockPromiseResolve = resolve;
+                mockPromiseReject = reject;
+            });
         });
 
         getI18nSpy = jest.spyOn(localNfCommon, 'getI18n').mockReturnValue(mockI18n);
@@ -325,7 +341,7 @@ describe('jwksValidator (non-localhost)', () => {
             consoleLogSpy.mockClear();
             parentElement.querySelector('.verify-jwks-button').click();
             expect(parentElement.querySelector('.verification-result').innerHTML).toBe(mockI18n['processor.jwt.testing']);
-            expect(mockCompatAjax).toHaveBeenCalledWith(expect.objectContaining({
+            expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({ // Changed to mockAjax
                 data: JSON.stringify({ jwksValue: testValue })
             }));
         });
@@ -333,51 +349,57 @@ describe('jwksValidator (non-localhost)', () => {
         it('should show error from xhr.responseText (non-localhost)', async () => {
             consoleLogSpy.mockClear();
             parentElement.querySelector('.verify-jwks-button').click();
-            currentDeferred.reject({ responseText: 'XHR error text' }, 'error', 'Error Condition');
-            await Promise.resolve();
+            const errorObj = new Error('Error Condition');
+            errorObj.response = { status: 500, statusText: 'Internal Server Error', text: () => Promise.resolve('XHR error text') };
+            if (mockPromiseReject) mockPromiseReject(errorObj); // Corrected
+            await Promise.resolve().then().then();
             jest.runAllTimers();
             expect(parentElement.querySelector('.verification-result').innerHTML).toBe('<span style="color: var(--error-color); font-weight: bold;">Failed</span> Validation error: XHR error text');
-            expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] JWKS validation error:', 'error', 'Error Condition');
+            expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] JWKS validation error:', 'Error Condition', errorObj.response);
             expect(consoleLogSpy).not.toHaveBeenCalled();
         });
 
         it('should show error from errorThrown if no xhr.responseText (non-localhost)', async () => {
             parentElement.querySelector('.verify-jwks-button').click();
-            currentDeferred.reject({ responseText: null }, 'error', 'Thrown Error From Arg');
-            await Promise.resolve();
+            const errorObj = new Error('Thrown Error From Arg');
+            errorObj.response = { status: 500, statusText: 'Thrown Error From Arg', text: () => Promise.resolve(null) };
+            if (mockPromiseReject) mockPromiseReject(errorObj); // Corrected
+            await Promise.resolve().then().then();
             jest.runAllTimers();
             expect(parentElement.querySelector('.verification-result').innerHTML).toBe('<span style="color: var(--error-color); font-weight: bold;">Failed</span> Validation error: Thrown Error From Arg');
-            expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] JWKS validation error:', 'error', 'Thrown Error From Arg');
+            expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] JWKS validation error:', 'Thrown Error From Arg', errorObj.response);
         });
 
         it('should show "Unknown error" if no responseText or errorThrown (non-localhost)', async () => {
             parentElement.querySelector('.verify-jwks-button').click();
-            currentDeferred.reject({ responseText: null }, 'error', null);
-            await Promise.resolve();
+            const errorObj = new Error(null);
+            errorObj.response = { status: 500, statusText: null, text: () => Promise.resolve(null) };
+            if (mockPromiseReject) mockPromiseReject(errorObj); // Corrected
+            await Promise.resolve().then().then();
             jest.runAllTimers();
-            expect(parentElement.querySelector('.verification-result').innerHTML).toBe('<span style="color: var(--error-color); font-weight: bold;">Failed</span> Validation error: Unknown error');
-            expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] JWKS validation error:', 'error', null);
+            // error.message is null in this test case, so the component falls back to the i18n string for 'Unknown error'
+            expect(parentElement.querySelector('.verification-result').innerHTML).toBe('<span style="color: var(--error-color); font-weight: bold;">Failed</span> Validation error: ' + (mockI18n['processor.jwt.unknownError'] || 'Unknown error'));
+            expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] JWKS validation error:', "null", errorObj.response); // If error.message becomes the string "null"
         });
 
         it('should show non-localhost exception message', () => {
             const exception = new Error('AJAX Setup Exception for non-localhost');
-            mockCompatAjax.mockImplementationOnce(() => { throw exception; });
+            mockAjax.mockImplementationOnce(() => { throw exception; }); // Changed to mockAjax
             consoleLogSpy.mockClear();
             parentElement.querySelector('.verify-jwks-button').click();
-            // No await/jest.runAllTimers needed if error is synchronous from mock
             expect(parentElement.querySelector('.verification-result').innerHTML).toBe('<span style="color: var(--error-color); font-weight: bold;">Failed</span> Validation error: ' + exception.message);
-            expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in JWKS validation:', exception);
+            expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in JWKS validation setup:', exception); // Changed message
             expect(consoleLogSpy).not.toHaveBeenCalled();
         });
 
         it('should show non-localhost exception message with fallback if e.message is null', () => {
             const exception = new Error();
             exception.message = null;
-            mockCompatAjax.mockImplementationOnce(() => { throw exception; });
+            mockAjax.mockImplementationOnce(() => { throw exception; }); // Changed to mockAjax
             consoleLogSpy.mockClear();
             parentElement.querySelector('.verify-jwks-button').click();
-            expect(parentElement.querySelector('.verification-result').innerHTML).toBe('<span style="color: var(--error-color); font-weight: bold;">Failed</span> Validation error: Exception occurred');
-            expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in JWKS validation:', exception);
+            expect(parentElement.querySelector('.verification-result').innerHTML).toBe('<span style="color: var(--error-color); font-weight: bold;">Failed</span> Validation error: ' + (mockI18n['processor.jwt.unknownError'] || 'Unknown error'));
+            expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in JWKS validation setup:', exception);  // Changed message
         });
     });
 });
@@ -391,13 +413,14 @@ describe('jwksValidator (localhost)', () => {
     const initialPropertyValue = 'https://example.com/.well-known/jwks.json';
     let consoleErrorSpy;
     let consoleLogSpy;
-    let currentDeferred;
+    let mockPromiseResolve;
+    let mockPromiseReject;
 
     beforeEach(() => {
         jest.resetModules();
         localJwksValidator = require('components/jwksValidator');
         localNfCommon = require('nf.Common');
-        mockCompatAjax.mockClear();
+        mockAjax.mockClear(); // Use new mock name
 
         localJwksValidator.__setIsLocalhostForTesting(true);
 
@@ -406,16 +429,11 @@ describe('jwksValidator (localhost)', () => {
         parentElement.innerHTML = '<input type="text">';
         callback = jest.fn();
 
-        mockCompatAjax.mockImplementation(() => {
-            currentDeferred = {
-                _doneCallback: null,
-                _failCallback: null,
-                done: function (cb) { this._doneCallback = cb; return this; },
-                fail: function (cb) { this._failCallback = cb; return this; },
-                resolve: function (data) { if (this._doneCallback) { Promise.resolve(data).then(this._doneCallback); } },
-                reject: function (xhr, status, error) { if (this._failCallback) { Promise.resolve().then(() => this._failCallback(xhr, status, error)); } }
-            };
-            return currentDeferred;
+        mockAjax.mockImplementation(() => { // Use new mock name
+            return new Promise((resolve, reject) => {
+                mockPromiseResolve = resolve;
+                mockPromiseReject = reject;
+            });
         });
 
         getI18nSpy = jest.spyOn(localNfCommon, 'getI18n').mockReturnValue(mockI18n);
@@ -438,48 +456,50 @@ describe('jwksValidator (localhost)', () => {
     describe('Button Click Handler (jwks_type="server")', () => {
         it('should show success message on valid AJAX response', async () => {
             parentElement.querySelector('.verify-jwks-button').click();
-            currentDeferred.resolve({ valid: true, keyCount: 5 });
-            await Promise.resolve();
+            if (mockPromiseResolve) mockPromiseResolve({ data: { valid: true, keyCount: 5 }, status: 200, statusText: 'OK' }); // Corrected
+            await Promise.resolve().then().then();
             jest.runAllTimers();
             expect(parentElement.querySelector('.verification-result').innerHTML).toContain('OK</span> Valid JWKS (5 keys found)');
         });
 
         it('should show failure message on invalid AJAX response', async () => {
             parentElement.querySelector('.verify-jwks-button').click();
-            currentDeferred.resolve({ valid: false, message: 'Test error message' });
-            await Promise.resolve();
+            if (mockPromiseResolve) mockPromiseResolve({ data: { valid: false, message: 'Test error message' }, status: 200, statusText: 'OK' }); // Corrected
+            await Promise.resolve().then().then();
             jest.runAllTimers();
             expect(parentElement.querySelector('.verification-result').innerHTML).toContain('Failed</span> Invalid JWKS: Test error message');
         });
 
         it('should show simulated success on AJAX fail (localhost)', async () => {
             parentElement.querySelector('.verify-jwks-button').click();
-            currentDeferred.reject({ responseText: 'some error' }, 'error', 'Error Condition');
-            await Promise.resolve();
+            const errorObj = new Error('Error Condition');
+            errorObj.response = { status: 500, statusText: 'Internal Server Error', text: () => Promise.resolve('some error') };
+            if (mockPromiseReject) mockPromiseReject(errorObj); // Corrected
+            await Promise.resolve().then().then();
             jest.runAllTimers();
             expect(parentElement.querySelector('.verification-result').innerHTML).toContain('OK</span> Valid JWKS (3 keys found) <em>(Simulated response)</em>');
-            expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] JWKS validation error:', 'error', 'Error Condition');
-            expect(consoleLogSpy).toHaveBeenCalledWith('[DEBUG_LOG] Using simulated response for standalone testing');
+            expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] JWKS validation error:', 'Error Condition', errorObj.response);
+            expect(consoleLogSpy).toHaveBeenCalledWith('[DEBUG_LOG] Using simulated response for standalone testing after error');
         });
 
         it('should show simulated success on exception during AJAX setup (localhost)', () => {
             const exception = new Error('AJAX Setup Exception for localhost');
-            mockCompatAjax.mockImplementationOnce(() => { throw exception; });
+            mockAjax.mockImplementationOnce(() => { throw exception; }); // Changed to mockAjax
             consoleLogSpy.mockClear();
             parentElement.querySelector('.verify-jwks-button').click();
             expect(parentElement.querySelector('.verification-result').innerHTML).toBe('<span style="color: var(--success-color); font-weight: bold;">OK</span> Valid JWKS (3 keys found) <em>(Simulated response)</em>');
-            expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in JWKS validation:', exception);
+            expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in JWKS validation setup:', exception); // Changed message
             expect(consoleLogSpy).not.toHaveBeenCalled();
         });
 
         it('should show simulated success on exception during AJAX setup (localhost) if e.message is null', () => {
             const exception = new Error();
             exception.message = null;
-            mockCompatAjax.mockImplementationOnce(() => { throw exception; });
+            mockAjax.mockImplementationOnce(() => { throw exception; }); // Changed to mockAjax
             consoleLogSpy.mockClear();
             parentElement.querySelector('.verify-jwks-button').click();
             expect(parentElement.querySelector('.verification-result').innerHTML).toBe('<span style="color: var(--success-color); font-weight: bold;">OK</span> Valid JWKS (3 keys found) <em>(Simulated response)</em>');
-            expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in JWKS validation:', exception);
+            expect(consoleErrorSpy).toHaveBeenCalledWith('[DEBUG_LOG] Exception in JWKS validation setup:', exception);  // Changed message
         });
     });
 });

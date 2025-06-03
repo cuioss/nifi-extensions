@@ -35,24 +35,3 @@ export const ajax = ({ url, method = 'GET', data, contentType, headers = {}, ...
         });
 };
 
-// Compatibility with jQuery's $.ajax API
-export const compatAjax = (options) => {
-    return ajax(options)
-        .then(response => {
-            if (options.success) {
-                options.success(response.data, response.statusText, { status: response.status });
-            }
-            return response;
-        })
-        .catch(error => {
-            if (options.error) {
-                options.error({ status: error.response?.status || 0 }, error.message);
-            }
-            throw error;
-        })
-        .finally(() => {
-            if (options.complete) {
-                options.complete();
-            }
-        });
-};
