@@ -45,7 +45,7 @@ const initComponent = function (element, config, effectiveUrl) { // New signatur
     // Add "Add Issuer" button
     const addButton = $('<button class="add-issuer-button">Add Issuer</button>');
     $(container).append(addButton);
-    addButton.on('click', function () {
+    addButton.on('click', () => {
         addIssuerForm(issuersContainer);
     });
 
@@ -89,13 +89,13 @@ const loadExistingIssuers = function (container) {
     try {
         // Get processor properties
         apiClient.getProcessorProperties(processorId)
-            .then(function (response) { // apiClient.getProcessorProperties now returns a standard Promise with data directly
+            .then(response => { // apiClient.getProcessorProperties now returns a standard Promise with data directly
                 // Extract issuer properties
                 const properties = response.properties || {};
                 const issuerProperties = {};
 
                 // Group properties by issuer
-                Object.keys(properties).forEach(function (key) {
+                Object.keys(properties).forEach(key => {
                     if (key.startsWith('issuer.')) {
                         const parts = key.substring(7).split('.');
                         if (parts.length === 2) {
@@ -112,11 +112,11 @@ const loadExistingIssuers = function (container) {
                 });
 
                 // Create issuer forms for each issuer
-                Object.keys(issuerProperties).forEach(function (issuerName) {
+                Object.keys(issuerProperties).forEach(issuerName => {
                     addIssuerForm(container, issuerName, issuerProperties[issuerName]);
                 });
             })
-            .catch(function (_error) { // Standard Promise .catch
+            .catch(_error => { // Standard Promise .catch
                 // Add a sample issuer for demonstration purposes
                 addIssuerForm(container, 'sample-issuer', {
                     'issuer': 'https://sample-issuer.example.com',
@@ -174,7 +174,7 @@ const addIssuerForm = function (container, issuerName, properties) {
     const removeButton = $('<button class="remove-issuer-button">Remove</button>');
     $(formHeader).append(removeButton);
 
-    removeButton.on('click', function () {
+    removeButton.on('click', () => {
         const clickedIssuerName = nameInput.value; // Get name from the input field AT CLICK TIME
         removeIssuer(issuerForm, clickedIssuerName); // Pass only form and name
     });
@@ -207,7 +207,7 @@ const addIssuerForm = function (container, issuerName, properties) {
     }
 
     // Handle test button click
-    testButton.on('click', function () {
+    testButton.on('click', () => {
         // Show loading state
         resultContainer.html('Testing...');
 
@@ -289,7 +289,7 @@ const addIssuerForm = function (container, issuerName, properties) {
     // Add save button
     const saveButton = $('<button class="save-issuer-button">Save Issuer</button>');
     $(issuerForm).append(saveButton);
-    saveButton.on('click', function () {
+    saveButton.on('click', () => {
         saveIssuer(issuerForm);
     });
 };
@@ -372,7 +372,7 @@ const saveIssuer = function (form) { // form is expected to be a DOM element
     const updates = {};
 
     // Add properties to updates
-    Object.keys(properties).forEach(function (key) {
+    Object.keys(properties).forEach(key => {
         if (properties[key]) {
             updates['issuer.' + issuerName + '.' + key] = properties[key];
         }
@@ -382,11 +382,11 @@ const saveIssuer = function (form) { // form is expected to be a DOM element
     if (processorId) {
         try {
             apiClient.updateProcessorProperties(processorId, updates)
-                .then(function () { // Standard Promise .then
+                .then(() => { // Standard Promise .then
                     // TODO: Replace alert with a more appropriate UI notification
                     // alert('Success: Issuer configuration saved successfully.');
                 })
-                .catch(function (_error) { // Standard Promise .catch
+                .catch(_error => { // Standard Promise .catch
                     // const status = _error.response ? _error.response.statusText : 'unknown status';
                     // const errorThrown = _error.message || 'unknown error';
                     // console.error('[DEBUG_LOG] Error updating processor properties:', status, errorThrown);
@@ -424,10 +424,10 @@ const removeIssuer = function (form, issuerNameFromClick) { // form is expected 
     if (currentIssuerName && currentProcessorId) { // Standard case with a processor ID
         try {
             apiClient.getProcessorProperties(currentProcessorId)
-                .then(function (response) { // Standard Promise .then, response is data
+                .then(response => { // Standard Promise .then, response is data
                     const properties = response.properties || {};
                     const updates = {};
-                    Object.keys(properties).forEach(function (key) {
+                    Object.keys(properties).forEach(key => {
                         if (key.startsWith('issuer.' + currentIssuerName + '.')) {
                             updates[key] = null;
                         }
@@ -440,17 +440,17 @@ const removeIssuer = function (form, issuerNameFromClick) { // form is expected 
                     }
 
                     return apiClient.updateProcessorProperties(currentProcessorId, updates) // Return the promise
-                        .then(function () {
+                        .then(() => {
                             // window.alert('Success: Issuer configuration removed successfully.');
                         })
-                        .catch(function (_error) { // Catch for updateProcessorProperties
+                        .catch(_error => { // Catch for updateProcessorProperties
                             // const status = _error.response ? _error.response.statusText : 'unknown status';
                             // const errorThrown = _error.message || 'unknown error';
                             // console.error('[DEBUG_LOG] Error updating processor properties:', status, errorThrown);
                             // window.alert('Error: Failed to remove issuer configuration. See console for details.');
                         });
                 })
-                .catch(function (_error) { // Catch for getProcessorProperties
+                .catch(_error => { // Catch for getProcessorProperties
                     // const status = _error.response ? _error.response.statusText : 'unknown status';
                     // const errorThrown = _error.message || 'unknown error';
                     // console.error('[DEBUG_LOG] Error getting processor properties:', status, errorThrown);

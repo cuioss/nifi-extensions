@@ -46,7 +46,7 @@ const registerCustomUiComponents = function () {
      */
 const registerHelpTooltips = function (contextElement) {
     const baseElement = contextElement || document; // baseElement is a raw DOM node
-    $(baseElement).find('.property-label').each(function (index, labelNode) {
+    $(baseElement).find('.property-label').each((index, labelNode) => {
         const propertyName = $(labelNode).text().trim();
         const helpText = getHelpTextForProperty(propertyName);
 
@@ -149,7 +149,7 @@ export const init = function () {
         hideLoadingIndicator();
     } else {
         // Wait for NiFi to be fully initialized
-        document.addEventListener('nfCanvasInitialized', function () {
+        document.addEventListener('nfCanvasInitialized', () => {
             registerCustomUiComponents();
             // Hide loading indicator and show UI components
             hideLoadingIndicator();
@@ -157,7 +157,7 @@ export const init = function () {
     }
 
     // Register custom UI components when the document is ready
-    document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', () => {
         registerCustomUiComponents();
 
         // Update UI translations
@@ -179,13 +179,13 @@ export const init = function () {
         // Vanilla JS's `addEventListener` does not support this directly. Re-triggering would involve
         // finding all `trigger('dialogOpen')` calls and modifying them to use `CustomEvent` with a `detail` property,
         // which is a broader change than the current scope.
-        $(document).on('dialogOpen', function (event, data) {
+        $(document).on('dialogOpen', (event, data) => {
             const dialogContentElement = Array.isArray(data) ? data[0] : data;
 
             // $dialog is no longer needed as we will use dialogContentElement directly for classList and querySelector
             if (dialogContentElement && dialogContentElement.classList && dialogContentElement.classList.contains('processor-dialog')) {
                 // Use setTimeout to allow the dialog to fully render
-                setTimeout(function () {
+                setTimeout(() => {
                     const processorTypeElement = dialogContentElement.querySelector('.processor-type');
                     const processorType = processorTypeElement ? processorTypeElement.textContent.trim() : '';
 
@@ -200,7 +200,7 @@ export const init = function () {
     });
 
     // Add a delayed check to ensure loading indicator is hidden
-    setTimeout(function () {
+    setTimeout(() => {
         // Ensure loading indicator is hidden
         hideLoadingIndicator();
         // Ensure translations are applied

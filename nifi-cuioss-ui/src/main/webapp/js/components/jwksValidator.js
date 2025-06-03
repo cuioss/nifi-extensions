@@ -51,7 +51,7 @@ export const init = function (element, propertyValue, jwks_type, callback) {
         }
 
         // Handle button click
-        $verifyButton.on('click', function () {
+        $verifyButton.on('click', () => {
             // Show loading state
             $resultContainer.html(i18n['processor.jwt.testing'] || 'Testing...');
 
@@ -153,9 +153,9 @@ export const init = function (element, propertyValue, jwks_type, callback) {
     // Initialize callback if provided
     if (typeof callback === 'function') {
         callback({
-            validate: function () { return true; },
-            getValue: function () { return propertyValue; },
-            setValue: function (newValue) { propertyValue = newValue; },
+            validate: () => true,
+            getValue: () => propertyValue,
+            setValue: newValue => { propertyValue = newValue; },
             jwks_type: jwks_type
         });
     }

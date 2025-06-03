@@ -9,7 +9,7 @@ import * as main from 'js/main'; // Assuming 'js/main' resolves correctly
 'use strict'; // Keep 'use strict'
 
 // Initialize when the document is ready
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', () => {
     // Initialize the main module if it's available and components haven't been registered yet
     if (main && typeof main.init === 'function' && !window.jwtComponentsRegistered) {
         main.init();

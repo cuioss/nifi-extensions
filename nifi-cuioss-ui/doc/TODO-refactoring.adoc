@@ -5,8 +5,8 @@ A list of suggested refactoring tasks based on code analysis.
 == Main Code Refactoring
 
 === General
-- [ ] **Remove `utils/ajax.js` and refactor clients**: Eliminate the custom `utils/ajax.js` module. All its clients (e.g., `apiClient.js`, UI components) should be refactored to use `cash-dom`'s AJAX capabilities (`$.ajax`) or the native `fetch()` API directly for making HTTP requests.
-- [ ] **ES6+ Modernization**: Consistently use arrow functions where `this` context permits (e.g., simple callbacks).
+- [x] **Remove `utils/ajax.js` and refactor clients**: Eliminated the custom `utils/ajax.js` module. Verified that clients (e.g., `apiClient.js`, UI components) are using `cash-dom`'s AJAX capabilities (`$.ajax`). (File was already removed prior to this refactoring pass).
+- [ ] **ES6+ Modernization**: Consistently use arrow functions where `this` context permits (e.g., simple callbacks). (Partially addressed in `main.js`. `apiClient.js` already compliant. Other files like `issuerConfigEditor.js` may still need review).
 - [ ] **ES6+ Modernization**: Utilize template literals for multi-line string building, especially for HTML structures in components.
 - [ ] **UI Feedback**: Replace all commented-out `alert()` calls with a consistent UI notification strategy (e.g., using a dedicated notification service or updating DOM elements).
 - [ ] **Global Scope**: Review and minimize global scope pollution (e.g., `window.jwtComponentsRegistered` in `main.js`). Explore module states or other scoping mechanisms.
@@ -21,6 +21,7 @@ A list of suggested refactoring tasks based on code analysis.
   - `eslint` kept at `^8.57.0` (latest `9.28.0` has peer dependency conflict with `eslint-config-airbnb-base`).
   - Other devDependencies checked and kept at current stable versions.
   - Adjusted branch coverage threshold to 69% in `package.json` and confirmed successful build with `./mvnw clean install`.
+- [ ] **SonarQube Default Coverage**: Set coverage target in `package.json` and incrementally improve code coverage to meet SonarQube default thresholds.
 
 === Components (`issuerConfigEditor.js`, `jwksValidator.js`, `tokenVerifier.js`)
 - [ ] **Clarity & Complexity**: Break down long functions (e.g., `initComponent`, `addIssuerForm` in `issuerConfigEditor.js`; AJAX result display logic in `jwksValidator.js`, `tokenVerifier.js`) into smaller, more focused functions.
@@ -38,7 +39,7 @@ A list of suggested refactoring tasks based on code analysis.
 - [ ] **Error Handling**: Correct the comment in `apiClient.js` regarding `ajax.js` error logging; `ajax.js` re-throws errors, it doesn't log them itself.
 
 === Utilities
-- [ ] **`utils/ajax.js`**: Modify the `ajax` utility to pass through the actual `response.status` and `response.statusText` from the Fetch API response instead of hardcoding `status: 200` and `statusText: 'OK'` for all `response.ok` cases.
+- [x] **`utils/ajax.js`**: Modify the `ajax` utility to pass through the actual `response.status` and `response.statusText` from the Fetch API response instead of hardcoding `status: 200` and `statusText: 'OK'` for all `response.ok` cases. (Marked as N/A as `utils/ajax.js` has been removed; `cash-dom`'s `$.ajax` is now used, which handles response status correctly.)
 - [ ] **`utils/tooltip.js`**: Investigate if the fallback logic in the `catch` block (setting `data-original-title`) is necessary or if `tippy.js` is reliable enough to remove it.
 
 === Main Entry Points (`main.js`, `nf-jwt-validator.js`)

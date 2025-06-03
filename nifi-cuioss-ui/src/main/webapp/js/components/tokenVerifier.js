@@ -58,7 +58,7 @@ export const init = function (element, config, type, callback) {
     $(element).append($container); // element is the parent div provided by NiFi
 
     // Handle verify button click
-    $verifyButton.on('click', function () {
+    $verifyButton.on('click', () => {
         const token = $tokenInput.val().trim();
 
         if (!token) {
@@ -196,7 +196,7 @@ export const init = function (element, config, type, callback) {
     });
 
     // Function to display valid token details
-    function displayValidToken(response, isSimulated) {
+    const displayValidToken = (response, isSimulated) => {
         let html =
             '<div class="token-valid">' +
                 '<span class="fa fa-check-circle"></span> ' +
@@ -223,10 +223,10 @@ export const init = function (element, config, type, callback) {
         html += '<pre class="token-raw-claims">' + JSON.stringify(response.claims, null, 2) + '</pre>';
         html += '</div>';
         $resultsContent.html(html);
-    }
+    };
 
     // Function to display invalid token details
-    function displayInvalidToken(response) {
+    const displayInvalidToken = response => {
         let invalidHtml =
             '<div class="token-invalid">' +
                 '<span class="fa fa-times-circle"></span> ' +
@@ -242,7 +242,7 @@ export const init = function (element, config, type, callback) {
         }
         invalidHtml += '</div>';
         $resultsContent.html(invalidHtml);
-    }
+    };
 
     $resultsContent.html(
         '<div class="token-instructions">' +
@@ -254,7 +254,7 @@ export const init = function (element, config, type, callback) {
 
     if (typeof callback === 'function') {
         callback({
-            validate: function () { return true; }
+            validate: () => true
         });
     }
 };
