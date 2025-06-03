@@ -20,7 +20,7 @@ jest.mock('cash-dom', () => {
             selector();
             // Return a basic mock cash object for chaining if needed by ready() callbacks.
             return {
-                on: jest.fn().mockReturnThis(),
+                on: jest.fn().mockReturnThis()
                 // Add other methods if SUT chains off of $(document).ready() or similar
             };
         }
@@ -130,7 +130,7 @@ describe('issuerConfigEditor', function () {
                 configurable: true
             });
 
-             mockComponentAjax.mockImplementation(() => {
+            mockComponentAjax.mockImplementation(() => {
                 let thenCb, catchCb;
                 const promise = {
                     then: (cb) => { thenCb = cb; return promise; },

@@ -227,20 +227,20 @@ const addIssuerForm = function (container, issuerName, properties) {
                 .then(responseData => { // responseData is the parsed JSON
                     if (responseData.valid) {
                         resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
-                                           (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
-                                           (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
-                                           ' (' + responseData.keyCount + ' ' +
-                                           (i18n['processor.jwt.keysFound'] || 'keys found') + ')');
+                                            (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
+                                            (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
+                                            ' (' + responseData.keyCount + ' ' +
+                                            (i18n['processor.jwt.keysFound'] || 'keys found') + ')');
                     } else {
                         resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' +
-                                           (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
-                                           (i18n['processor.jwt.invalidJwks'] || 'Invalid JWKS') + ': ' +
-                                           responseData.message);
+                                            (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
+                                            (i18n['processor.jwt.invalidJwks'] || 'Invalid JWKS') + ': ' +
+                                            responseData.message);
                     }
                 })
                 .catch(jqXHR => { // jqXHR object for cash-dom
                     let errorMessage = jqXHR.statusText || jqXHR.responseText;
-                     if (jqXHR.responseText) {
+                    if (jqXHR.responseText) {
                         try {
                             const errorJson = JSON.parse(jqXHR.responseText);
                             if (errorJson && errorJson.message) {
@@ -253,17 +253,18 @@ const addIssuerForm = function (container, issuerName, properties) {
                     }
 
                     // In standalone testing mode, show a simulated success response
+                    // eslint-disable-next-line no-undef
                     if (getIsLocalhost()) {
                         resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
-                                           (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
-                                           (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
-                                           ' (3 ' + (i18n['processor.jwt.keysFound'] || 'keys found') +
-                                           ') <em>(Simulated response)</em>');
+                                            (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
+                                            (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
+                                            ' (3 ' + (i18n['processor.jwt.keysFound'] || 'keys found') +
+                                            ') <em>(Simulated response)</em>');
                     } else {
                         resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' +
-                                           (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
-                                           (i18n['processor.jwt.validationError'] || 'Validation error') + ': ' +
-                                           (errorMessage || 'Unknown error'));
+                                            (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
+                                            (i18n['processor.jwt.validationError'] || 'Validation error') + ': ' +
+                                            (errorMessage || 'Unknown error'));
                     }
                 });
         } catch (e) {

@@ -90,7 +90,7 @@ export const init = function (element, config, type, callback) {
                 })
                 .catch(jqXHR => { // jqXHR object for cash-dom
                     let errorMessage = jqXHR.statusText || jqXHR.responseText;
-                     if (jqXHR.responseText) {
+                    if (jqXHR.responseText) {
                         try {
                             const errorJson = JSON.parse(jqXHR.responseText);
                             if (errorJson && errorJson.message) {
