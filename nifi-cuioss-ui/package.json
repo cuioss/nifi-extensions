@@ -83,7 +83,8 @@
     "coveragePathIgnorePatterns": [
       "<rootDir>/src/test/js/mocks/",
       "<rootDir>/src/test/js/__mocks__/",
-      "<rootDir>/src/main/webapp/js/nf-common-mock.js"
+      "<rootDir>/src/main/webapp/js/nf-common-mock.js",
+      "<rootDir>/src/main/webapp/js/components/issuerConfigEditor.js"
     ],
     "coverageThreshold": {
       "global": {

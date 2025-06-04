@@ -65,6 +65,10 @@ describe('apiClient', () => {
             promise.resolve = resolvePromise;
             // @ts-ignore
             promise.reject = rejectPromise;
+            // Add done/fail/always for compatibility with SUT if it uses them (though cash-dom might not)
+            promise.done = (fn) => { promise.then(fn); return promise; };
+            promise.fail = (fn) => { promise.catch(fn); return promise; };
+            promise.always = (fn) => { promise.finally(fn); return promise; };
             return promise;
         });
     });
@@ -107,24 +111,15 @@ describe('apiClient', () => {
         });
 
         it('should correctly use statusText from errorThrown or textStatus if jqXHR.statusText is missing', async () => {
-            // This test is more about _createXhrErrorObject's behavior, which is used by validateJwksUrl
             const mockJqXHRNoStatusText = { status: 404, responseText: 'Not Found Detail' };
-            // Simulate cash-dom providing textStatus or errorThrown in the catch block
-            // For this test, we assume _createXhrErrorObject is called with (jqXHR, textStatus, errorThrown)
-            // However, the actual call in apiClient.js is reject(_createXhrErrorObject(error)),
-            // where 'error' IS the jqXHR object from cash-dom's catch.
-            // So, we can't directly test the textStatus/errorThrown parameters of _createXhrErrorObject here
-            // without changing how it's called or making this an integration test of _createXhrErrorObject.
-            // Instead, we'll rely on the fact that statusText will be 'Unknown error' if not provided by jqXHR.
             mockAjax.mockRejectedValue(mockJqXHRNoStatusText);
             const promise = apiClient.validateJwksUrl(jwksUrl);
             await expect(promise).rejects.toEqual({
                 status: 404,
-                statusText: 'Unknown error', // As per _createXhrErrorObject logic when jqXHR.statusText is undefined
+                statusText: 'Unknown error',
                 responseText: 'Not Found Detail'
             });
 
-            // Test with statusText present in jqXHR
             const mockJqXHRWithStatusText = { status: 403, statusText: 'Forbidden', responseText: 'Access Denied' };
             mockAjax.mockRejectedValue(mockJqXHRWithStatusText);
             const promise2 = apiClient.validateJwksUrl(jwksUrl);
@@ -133,6 +128,17 @@ describe('apiClient', () => {
                 statusText: 'Forbidden',
                 responseText: 'Access Denied'
             });
+        });
+
+        it('should use "Unknown error" from _createXhrErrorObject if statusText is missing (Promise)', async () => {
+            const mockError = { status: 0, responseText: 'Network failed' }; // No statusText
+            mockAjax.mockRejectedValue(mockError);
+            try {
+                await apiClient.validateJwksUrl(jwksUrl);
+            } catch (e) {
+                expect(e.statusText).toBe('Unknown error');
+                expect(e.responseText).toBe('Network failed');
+            }
         });
     });
 
@@ -252,7 +258,7 @@ describe('apiClient', () => {
     const callbackApiTestTable = [
         {
             methodName: 'validateJwksContent',
-            apiMethodName: 'validateJwksContent', // Changed from apiMethod
+            apiMethodName: 'validateJwksContent',
             methodArgs: ['{"keys":[]}'], // jwksContent
             mockSuccessData: { valid: true, keyCount: 0 },
             expectedSuccessArgs: [{ valid: true, keyCount: 0 }],
@@ -304,8 +310,8 @@ describe('apiClient', () => {
         it('should call successCallback with expected data on successful AJAX request', async () => {
             mockAjax.mockResolvedValue(mockSuccessData);
 
-            apiClient[apiMethodName](...methodArgs, successCallback, errorCallback); // Changed from apiMethod
-            await Promise.resolve().then().then(); // Wait for microtasks (Promise chain in SUT)
+            apiClient[apiMethodName](...methodArgs, successCallback, errorCallback);
+            await Promise.resolve().then().then();
 
             expect(successCallback).toHaveBeenCalledWith(...expectedSuccessArgs);
             expect(errorCallback).not.toHaveBeenCalled();
@@ -314,11 +320,120 @@ describe('apiClient', () => {
         it('should call errorCallback with standardized error object on failed AJAX request', async () => {
             mockAjax.mockRejectedValue(mockErrorData);
 
-            apiClient[apiMethodName](...methodArgs, successCallback, errorCallback); // Changed from apiMethod
-            await Promise.resolve().then().then(); // Wait for microtasks
+            apiClient[apiMethodName](...methodArgs, successCallback, errorCallback);
+            await Promise.resolve().then().then();
 
             expect(errorCallback).toHaveBeenCalledWith(...expectedErrorArgs);
             expect(successCallback).not.toHaveBeenCalled();
+        });
+
+        // Test cases for when callbacks are null/undefined
+        it('should not throw if successCallback is null/undefined on success', async () => {
+            mockAjax.mockResolvedValue(mockSuccessData);
+            expect(() => {
+                apiClient[apiMethodName](...methodArgs, null, errorCallback);
+            }).not.toThrow();
+            await Promise.resolve().then().then();
+            expect(errorCallback).not.toHaveBeenCalled();
+        });
+
+        it('should not throw if errorCallback is null/undefined on error', async () => {
+            mockAjax.mockRejectedValue(mockErrorData);
+            expect(() => {
+                apiClient[apiMethodName](...methodArgs, successCallback, null);
+            }).not.toThrow();
+            await Promise.resolve().then().then();
+            expect(successCallback).not.toHaveBeenCalled();
+        });
+
+        it('should use "Unknown error" from _createXhrErrorObject if statusText is missing (Callback)', async () => {
+            const mockErrorNoStatus = { status: 500, responseText: 'Server Internal Error Detail' };
+            mockAjax.mockRejectedValue(mockErrorNoStatus);
+
+            apiClient[apiMethodName](...methodArgs, successCallback, errorCallback);
+            await Promise.resolve().then().then();
+
+            expect(errorCallback).toHaveBeenCalledWith(
+                'Unknown error', // Defaulted by _createXhrErrorObject
+                expect.objectContaining({
+                    status: 500,
+                    responseText: 'Server Internal Error Detail',
+                    statusText: 'Unknown error'
+                })
+            );
+            expect(successCallback).not.toHaveBeenCalled();
+        });
+
+        // Test cases for when callbacks are null/undefined
+        it('should not throw if successCallback is null/undefined on success', async () => {
+            mockAjax.mockResolvedValue(mockSuccessData);
+            expect(() => {
+                apiClient[apiMethodName](...methodArgs, null, errorCallback);
+            }).not.toThrow();
+            await Promise.resolve().then().then();
+            expect(errorCallback).not.toHaveBeenCalled();
+        });
+
+        it('should not throw if errorCallback is null/undefined on error', async () => {
+            mockAjax.mockRejectedValue(mockErrorData);
+            expect(() => {
+                apiClient[apiMethodName](...methodArgs, successCallback, null);
+            }).not.toThrow();
+            await Promise.resolve().then().then();
+            expect(successCallback).not.toHaveBeenCalled();
+        });
+
+        it('should use "Unknown error" from _createXhrErrorObject if statusText is missing (Callback)', async () => {
+            const mockErrorNoStatus = { status: 500, responseText: 'Server Internal Error Detail' };
+            mockAjax.mockRejectedValue(mockErrorNoStatus);
+
+            apiClient[apiMethodName](...methodArgs, successCallback, errorCallback);
+            await Promise.resolve().then().then();
+
+            expect(errorCallback).toHaveBeenCalledWith(
+                'Unknown error', // Defaulted by _createXhrErrorObject
+                expect.objectContaining({
+                    status: 500,
+                    responseText: 'Server Internal Error Detail',
+                    statusText: 'Unknown error'
+                })
+            );
+            expect(successCallback).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('_createXhrErrorObject specific scenarios (tested via public methods)', () => {
+        const testUrl = 'any-url';
+        // Define testCallbackApi and testCallbackArgs inside beforeEach or tests where apiClient is defined
+        let testCallbackApi;
+        const testCallbackArgs = ['test-content'];
+
+        beforeEach(() => {
+            // apiClient is initialized in the higher-level beforeEach
+            testCallbackApi = apiClient.validateJwksContent;
+        });
+
+        it('Promise: should use "Unknown error" if statusText, errorThrown, and textStatus are all falsy', async () => {
+            const mockError = { status: 0, responseText: '' };
+            mockAjax.mockRejectedValue(mockError);
+            try {
+                await apiClient.validateJwksUrl(testUrl);
+            } catch (e) {
+                expect(e.statusText).toBe('Unknown error');
+            }
+        });
+
+        it('Callback: should use "Unknown error" if statusText, errorThrown, and textStatus are all falsy', async () => {
+            const mockError = { status: 0, responseText: '' };
+            mockAjax.mockRejectedValue(mockError);
+
+            testCallbackApi(...testCallbackArgs, successCallback, errorCallback);
+            await Promise.resolve().then().then();
+
+            expect(errorCallback).toHaveBeenCalledWith(
+                'Unknown error',
+                expect.objectContaining({ status: 0, statusText: 'Unknown error'})
+            );
         });
     });
 });
