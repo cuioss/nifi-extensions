@@ -11,7 +11,7 @@ A list of suggested refactoring tasks based on code analysis.
 - [x] **UI Feedback**: Replace all commented-out `alert()` calls with a consistent UI notification strategy (e.g., using a dedicated notification service or updating DOM elements). (`issuerConfigEditor.js` updated to use `console.warn()` as an interim step).
 - [x] **Global Scope**: Review and minimize global scope pollution (e.g., `window.jwtComponentsRegistered` in `main.js`). Explore module states or other scoping mechanisms. (`window.jwtComponentsRegistered` in `main.js` refactored to a module-level variable).
 - [x] **Dead Code**: Remove commented-out code blocks, imports, and unused function parameters identified across multiple files. (`main.js` and `issuerConfigEditor.js` reviewed and updated).
-- [ ] **Consistency**: Standardize DOM manipulation to prefer vanilla JS or `cash-dom` consistently within each file or across the project.
+- [x] **Consistency**: Standardize DOM manipulation to prefer vanilla JS or `cash-dom` consistently within each file or across the project. (`issuerConfigEditor.js` updated to use `cash-dom` consistently).
 - [x] **Refactor `package.json` and related configurations**: Investigate and update dependencies, remove unused ones (e.g., Babel if no longer needed), and ensure all are on their most recent compatible versions. Streamline build/tooling configuration files accordingly.
   - Investigated dependencies. Babel is still required for Jest and Webpack builds. `whatwg-fetch` is required for Jest tests. `eslint-plugin-jquery` is still in use.
   - Updated `eslint-config-prettier` to `^10.1.5`.
@@ -24,13 +24,13 @@ A list of suggested refactoring tasks based on code analysis.
 - [ ] **SonarQube Default Coverage**: Set coverage target in `package.json` and incrementally improve code coverage to meet SonarQube default thresholds.
 
 === Components (`issuerConfigEditor.js`, `jwksValidator.js`, `tokenVerifier.js`)
-- [x] **Clarity & Complexity**: Break down long functions (e.g., `initComponent`, `addIssuerForm` in `issuerConfigEditor.js`; AJAX result display logic in `jwksValidator.js`, `tokenVerifier.js`) into smaller, more focused functions. (`initComponent` in `issuerConfigEditor.js` completed; `addIssuerForm` and other components still pending).
+- [x] **Clarity & Complexity**: Break down long functions (e.g., `initComponent`, `addIssuerForm` in `issuerConfigEditor.js`; AJAX result display logic in `jwksValidator.js`, `tokenVerifier.js`) into smaller, more focused functions. (`initComponent` and `addIssuerForm` in `issuerConfigEditor.js` refactored; other components still pending).
 - [ ] **Code Duplication**: Create shared utility functions for common patterns:
     - [ ] Localhost AJAX response simulation logic (currently in `jwksValidator.js`, `tokenVerifier.js`, and `issuerConfigEditor.js`).
     - [ ] Complex error message display logic for AJAX calls.
-    - [ ] "Sample issuer" object in `issuerConfigEditor.js`.
+    - [x] "Sample issuer" object in `issuerConfigEditor.js` (created `_getSampleIssuerConfig` utility).
 - [ ] **Error Handling**: Standardize error handling for AJAX calls. Ensure errors are appropriately caught and propagated or displayed to the user.
-- [ ] **Parameters**: Remove unused `config` and `type` parameters from `init` functions in `issuerConfigEditor.js` and `tokenVerifier.js`.
+- [x] **Parameters**: Remove unused `config` and `type` parameters from `init` functions in `issuerConfigEditor.js` and `tokenVerifier.js`. (Internal `initComponent` in `issuerConfigEditor.js` had `_config` removed; `tokenVerifier.js` `init` params `config`, `type` changed to `_config`, `_type` to mark as unused, preserving signature for `nfCommon`.)
 - [ ] **Callbacks**: Review the utility of the `validate` function returned by the callback in `tokenVerifier.js`'s `init` function (always returns `true`).
 
 === Services (`apiClient.js`)

@@ -21,11 +21,11 @@ const getIsLocalhost = () => { // Stays module-scoped
  * Initialize the custom UI.
  *
  * @param {object} element - The DOM element
- * @param {object} config - The component configuration
- * @param {string} type - The component type (not used)
+ * @param {object} _config - The component configuration (unused)
+ * @param {string} _type - The component type (not used)
  * @param {Function} callback - The callback function
  */
-export const init = function (element, config, type, callback) {
+export const init = function (element, _config, _type, callback) {
     // Get i18n resources from NiFi Common
     const i18n = nfCommon.getI18n() || {};
 

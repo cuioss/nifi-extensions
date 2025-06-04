@@ -16,28 +16,41 @@ const i18n = _nfCommon.getI18n() || {};
 let processorId = '';
 
 /**
+ * Returns a predefined sample issuer configuration object.
+ * This is used for demonstration or as a default when loading fails.
+ * @returns {{name: string, properties: object}}
+ */
+const _getSampleIssuerConfig = () => {
+    return {
+        name: 'sample-issuer',
+        properties: {
+            'issuer': 'https://sample-issuer.example.com',
+            'jwks-url': 'https://sample-issuer.example.com/.well-known/jwks.json',
+            'audience': 'sample-audience',
+            'client-id': 'sample-client'
+        }
+    };
+};
+
+/**
  * Creates the basic DOM structure for the issuer config editor.
  * @param {HTMLElement} parentElement The parent element to append the editor to.
  * @returns {{container: HTMLElement, issuersContainer: HTMLElement}} An object containing the main container and the issuers container.
  */
 const _createEditorStructure = (parentElement) => {
-    const container = document.createElement('div');
-    container.className = 'issuer-config-editor';
-    parentElement.appendChild(container);
+    const $container = $('<div class="issuer-config-editor"></div>');
+    $(parentElement).append($container);
 
-    const title = document.createElement('h3');
-    title.textContent = 'Issuer Configurations';
-    container.appendChild(title);
+    const $title = $('<h3>Issuer Configurations</h3>');
+    $container.append($title);
 
-    const description = document.createElement('p');
-    description.textContent = 'Configure JWT issuers for token validation. Each issuer requires a name and properties like jwks-url and issuer URI.';
-    container.appendChild(description);
+    const $description = $('<p>Configure JWT issuers for token validation. Each issuer requires a name and properties like jwks-url and issuer URI.</p>');
+    $container.append($description);
 
-    const issuersContainer = document.createElement('div');
-    issuersContainer.className = 'issuers-container';
-    container.appendChild(issuersContainer);
+    const $issuersContainer = $('<div class="issuers-container"></div>');
+    $container.append($issuersContainer);
 
-    return { container, issuersContainer };
+    return { container: $container[0], issuersContainer: $issuersContainer[0] };
 };
 
 /**
@@ -46,10 +59,15 @@ const _createEditorStructure = (parentElement) => {
  * @param {HTMLElement} issuersContainer The container where issuer forms will be added.
  */
 const _setupAddIssuerButton = (container, issuersContainer) => {
-    const addButton = $('<button class="add-issuer-button">Add Issuer</button>');
-    $(container).append(addButton);
-    addButton.on('click', () => {
-        addIssuerForm(issuersContainer);
+    const $addButton = $('<button class="add-issuer-button">Add Issuer</button>');
+    $(container).append($addButton);
+    $addButton.on('click', () => {
+        const sampleConfig = _getSampleIssuerConfig();
+        // When adding a new issuer, we might want a unique name or an empty form.
+        // For now, adhering to the subtask to use _getSampleIssuerObject.
+        // This will create a new form populated with "sample-issuer" data.
+        // A truly "new" blank form would be addIssuerForm(issuersContainer);
+        addIssuerForm(issuersContainer, sampleConfig.name + '-' + Date.now(), sampleConfig.properties);
     });
 };
 
@@ -67,13 +85,12 @@ const _initializeEditorData = (effectiveUrl, issuersContainer) => {
      * Initializes the component.
      *
      * @param {object} element - The DOM element
-     * @param {object} _config - The component configuration (unused)
      * @param {string} effectiveUrl - The URL to derive processorId from
      */
-const initComponent = (element, _config, effectiveUrl) => {
-    const { container, issuersContainer } = _createEditorStructure(element);
-    _setupAddIssuerButton(container, issuersContainer);
-    _initializeEditorData(effectiveUrl, issuersContainer);
+const initComponent = (element, effectiveUrl) => {
+    const { container, issuersContainer } = _createEditorStructure(element); // container and issuersContainer are DOM elements
+    _setupAddIssuerButton($(container), $(issuersContainer)); // Pass cash-dom objects
+    _initializeEditorData(effectiveUrl, $(issuersContainer)); // Pass cash-dom object
 };
 
 /**
@@ -96,13 +113,8 @@ const getProcessorIdFromUrl = (urlToParse) => {
      */
 const loadExistingIssuers = (container) => {
     if (!processorId) {
-        // Add a sample issuer for demonstration purposes
-        addIssuerForm(container, 'sample-issuer', {
-            'issuer': 'https://sample-issuer.example.com',
-            'jwks-url': 'https://sample-issuer.example.com/.well-known/jwks.json',
-            'audience': 'sample-audience',
-            'client-id': 'sample-client'
-        });
+        const sampleConfig = _getSampleIssuerConfig();
+        addIssuerForm(container, sampleConfig.name, sampleConfig.properties);
         return;
     }
 
@@ -137,22 +149,12 @@ const loadExistingIssuers = (container) => {
                 });
             })
             .catch(_error => { // Standard Promise .catch
-                // Add a sample issuer for demonstration purposes
-                addIssuerForm(container, 'sample-issuer', {
-                    'issuer': 'https://sample-issuer.example.com',
-                    'jwks-url': 'https://sample-issuer.example.com/.well-known/jwks.json',
-                    'audience': 'sample-audience',
-                    'client-id': 'sample-client'
-                });
+                const sampleConfig = _getSampleIssuerConfig();
+                addIssuerForm(container, sampleConfig.name, sampleConfig.properties);
             });
     } catch (e) {
-        // Add a sample issuer for demonstration purposes
-        addIssuerForm(container, 'sample-issuer', {
-            'issuer': 'https://sample-issuer.example.com',
-            'jwks-url': 'https://sample-issuer.example.com/.well-known/jwks.json',
-            'audience': 'sample-audience',
-            'client-id': 'sample-client'
-        });
+        const sampleConfig = _getSampleIssuerConfig();
+        addIssuerForm(container, sampleConfig.name, sampleConfig.properties);
     }
 };
 
@@ -163,95 +165,80 @@ const loadExistingIssuers = (container) => {
      * @param {string} [issuerName] - The issuer name (for existing issuers)
      * @param {object} [properties] - The issuer properties (for existing issuers)
      */
-const addIssuerForm = (container, issuerName, properties) => {
-    // Create issuer form
-    const issuerForm = document.createElement('div');
-    issuerForm.className = 'issuer-form';
-    container.appendChild(issuerForm);
+/**
+ * Creates the header section for an issuer form, including name input and remove button.
+ * @param {string} [issuerName] - The initial name of the issuer, if any.
+ * @param {function} onRemove - Callback function when the remove button is clicked.
+ * @returns {cash} The header element.
+ */
+const _createFormHeader = (issuerName, onRemove) => {
+    const $formHeader = $('<div class="form-header"></div>');
 
-    // Add form header
-    const formHeader = document.createElement('div');
-    formHeader.className = 'form-header';
-    issuerForm.appendChild(formHeader);
+    const $nameLabel = $('<label>Issuer Name:</label>');
+    $formHeader.append($nameLabel);
 
-    // Add issuer name field
-    const nameLabel = document.createElement('label');
-    nameLabel.textContent = 'Issuer Name:';
-    formHeader.appendChild(nameLabel);
+    const $nameInput = $('<input type="text" class="issuer-name" placeholder="e.g., keycloak">');
+    $nameLabel.append($nameInput);
 
-    const nameInput = document.createElement('input');
-    nameInput.type = 'text';
-    nameInput.className = 'issuer-name';
-    nameInput.placeholder = 'e.g., keycloak';
-    nameLabel.appendChild(nameInput);
-
-    // Set issuer name if provided
     if (issuerName) {
-        nameInput.value = issuerName;
+        $nameInput.val(issuerName);
     }
 
-    // Add remove button
-    const removeButton = $('<button class="remove-issuer-button">Remove</button>');
-    $(formHeader).append(removeButton);
-
-    removeButton.on('click', () => {
-        const clickedIssuerName = nameInput.value; // Get name from the input field AT CLICK TIME
-        removeIssuer(issuerForm, clickedIssuerName); // Pass only form and name
+    const $removeButton = $('<button class="remove-issuer-button">Remove</button>');
+    $formHeader.append($removeButton);
+    $removeButton.on('click', () => {
+        // Pass $nameInput.val() at the time of click
+        onRemove($nameInput.val());
     });
 
-    // Add form fields
-    const formFields = document.createElement('div');
-    formFields.className = 'form-fields';
-    issuerForm.appendChild(formFields);
+    return $formHeader;
+};
 
-    // Add issuer URI field
-    addFormField(formFields, 'issuer', 'Issuer URI', 'The URI of the token issuer (must match the iss claim)', properties ? properties.issuer : '');
+/**
+ * Creates and configures the "Test Connection" button for JWKS URL validation.
+ * @param {cash} $formFieldsContainer - The jQuery-wrapped container for form fields where the button will be appended or inserted after.
+ * @param {function} getJwksUrlValue - A function that returns the current value of the JWKS URL input field.
+ */
+const _createJwksTestConnectionButton = ($formFieldsContainer, getJwksUrlValue) => {
+    const $testButtonWrapper = $('<div class="jwks-button-wrapper"></div>');
+    const $testButton = $('<button type="button" class="verify-jwks-button">Test Connection</button>');
+    const $resultContainer = $('<div class="verification-result"><em>Click the button to validate JWKS</em></div>');
 
-    // Add JWKS URL field
-    addFormField(formFields, 'jwks-url', 'JWKS URL', 'The URL of the JWKS endpoint', properties ? properties['jwks-url'] : '');
+    $testButtonWrapper.append($testButton).append($resultContainer);
 
-    // Add Test Connection button for JWKS URL
-    const jwksUrlFieldContainer = $(formFields).children().find('.field-jwks-url').parent();
-    const jwksUrlInput = jwksUrlFieldContainer.length ? jwksUrlFieldContainer.find('.field-jwks-url')[0] : null;
+    // Attempt to find the JWKS URL field to place the button after it.
+    // The field is added by addFormField, so we search within $formFieldsContainer.
+    const $jwksUrlFieldContainer = $formFieldsContainer.find('.field-jwks-url').closest('.form-field');
 
-    const testButtonWrapper = $('<div class="jwks-button-wrapper"></div>');
-    const testButton = $('<button type="button" class="verify-jwks-button">Test Connection</button>');
-    const resultContainer = $('<div class="verification-result"><em>Click the button to validate JWKS</em></div>');
-
-    testButtonWrapper.append(testButton).append(resultContainer);
-
-    if (jwksUrlFieldContainer.length) {
-        jwksUrlFieldContainer.after(testButtonWrapper);
+    if ($jwksUrlFieldContainer.length) {
+        $jwksUrlFieldContainer.after($testButtonWrapper);
     } else {
-        $(formFields).append(testButtonWrapper);
+        // Fallback: if the specific field isn't found, append to the container.
+        // This might happen if addFormField structure changes or if called before field is added.
+        $formFieldsContainer.append($testButtonWrapper);
     }
 
-    // Handle test button click
-    testButton.on('click', () => {
-        // Show loading state
-        resultContainer.html('Testing...');
-
-        // Get the current value
-        const jwksValue = jwksUrlInput ? jwksUrlInput.value : 'https://example.com/.well-known/jwks.json';
+    $testButton.on('click', () => {
+        $resultContainer.html('Testing...');
+        const jwksValue = getJwksUrlValue();
 
         try {
-            // Make the AJAX request to validate
             $.ajax({
                 method: 'POST',
-                url: '../nifi-api/processors/jwks/validate-url', // Ensure this URL is correct for the new ajax function
+                url: '../nifi-api/processors/jwks/validate-url',
                 data: JSON.stringify({ jwksValue: jwksValue }),
                 contentType: 'application/json',
                 dataType: 'json',
                 timeout: 5000
             })
-                .then(responseData => { // responseData is the parsed JSON
+                .then(responseData => {
                     if (responseData.valid) {
-                        resultContainer.html(`<span style="color: var(--success-color); font-weight: bold;">${i18n['processor.jwt.ok'] || 'OK'}</span> ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} (${responseData.keyCount} ${i18n['processor.jwt.keysFound'] || 'keys found'})`);
+                        $resultContainer.html(`<span style="color: var(--success-color); font-weight: bold;">${i18n['processor.jwt.ok'] || 'OK'}</span> ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} (${responseData.keyCount} ${i18n['processor.jwt.keysFound'] || 'keys found'})`);
                     } else {
-                        resultContainer.html(`<span style="color: var(--error-color); font-weight: bold;">${i18n['processor.jwt.failed'] || 'Failed'}</span> ${i18n['processor.jwt.invalidJwks'] || 'Invalid JWKS'}: ${responseData.message}`);
+                        $resultContainer.html(`<span style="color: var(--error-color); font-weight: bold;">${i18n['processor.jwt.failed'] || 'Failed'}</span> ${i18n['processor.jwt.invalidJwks'] || 'Invalid JWKS'}: ${responseData.message}`);
                     }
                 })
-                .catch(jqXHR => { // jqXHR object for cash-dom
+                .catch(jqXHR => {
                     let errorMessage = jqXHR.statusText || jqXHR.responseText;
                     if (jqXHR.responseText) {
                         try {
@@ -260,40 +247,76 @@ const addIssuerForm = (container, issuerName, properties) => {
                                 errorMessage = errorJson.message;
                             }
                         } catch (e) {
-                            // responseText was not JSON, use as is or fallback
                             errorMessage = jqXHR.responseText || errorMessage;
                         }
                     }
-
-                    // In standalone testing mode, show a simulated success response
                     // eslint-disable-next-line no-undef
                     if (getIsLocalhost()) {
-                        resultContainer.html(`<span style="color: var(--success-color); font-weight: bold;">${i18n['processor.jwt.ok'] || 'OK'}</span> ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} (3 ${i18n['processor.jwt.keysFound'] || 'keys found'}) <em>(Simulated response)</em>`);
+                        $resultContainer.html(`<span style="color: var(--success-color); font-weight: bold;">${i18n['processor.jwt.ok'] || 'OK'}</span> ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} (3 ${i18n['processor.jwt.keysFound'] || 'keys found'}) <em>(Simulated response)</em>`);
                     } else {
-                        resultContainer.html(`<span style="color: var(--error-color); font-weight: bold;">${i18n['processor.jwt.failed'] || 'Failed'}</span> ${i18n['processor.jwt.validationError'] || 'Validation error'}: ${errorMessage || 'Unknown error'}`);
+                        $resultContainer.html(`<span style="color: var(--error-color); font-weight: bold;">${i18n['processor.jwt.failed'] || 'Failed'}</span> ${i18n['processor.jwt.validationError'] || 'Validation error'}: ${errorMessage || 'Unknown error'}`);
                     }
                 });
         } catch (e) {
-            // This catch block is for synchronous errors during the setup of the ajax call.
-            // The .catch above handles errors from the ajax call itself (network errors, HTTP errors).
-
-            // In standalone testing mode, show a simulated success response
-            resultContainer.html(`<span style="color: var(--success-color); font-weight: bold;">${i18n['processor.jwt.ok'] || 'OK'}</span> ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} (3 ${i18n['processor.jwt.keysFound'] || 'keys found'}) <em>(Simulated response)</em>`);
+            $resultContainer.html(`<span style="color: var(--success-color); font-weight: bold;">${i18n['processor.jwt.ok'] || 'OK'}</span> ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} (3 ${i18n['processor.jwt.keysFound'] || 'keys found'}) <em>(Simulated error path response)</em>`);
         }
     });
+};
 
-    // Add audience field
-    addFormField(formFields, 'audience', 'Audience', 'The expected audience claim value', properties ? properties.audience : '');
-
-    // Add client ID field
-    addFormField(formFields, 'client-id', 'Client ID', 'The client ID for token validation', properties ? properties['client-id'] : '');
-
-    // Add save button
-    const saveButton = $('<button class="save-issuer-button">Save Issuer</button>');
-    $(issuerForm).append(saveButton);
-    saveButton.on('click', () => {
-        saveIssuer(issuerForm);
+/**
+ * Creates the save button for an issuer form.
+ * @param {cash} $issuerForm - The jQuery-wrapped issuer form element.
+ */
+const _createSaveButton = ($issuerForm) => {
+    const $saveButton = $('<button class="save-issuer-button">Save Issuer</button>');
+    $saveButton.on('click', () => {
+        saveIssuer($issuerForm[0]); // Pass DOM element
     });
+    return $saveButton;
+};
+
+/**
+     * Adds a new issuer form.
+     *
+     * @param {object} container - The container element (cash-dom object or HTMLElement)
+     * @param {string} [issuerName] - The issuer name (for existing issuers)
+     * @param {object} [properties] - The issuer properties (for existing issuers)
+     */
+const addIssuerForm = (container, issuerName, properties) => {
+    const $container = $(container);
+    const $issuerForm = $('<div class="issuer-form"></div>');
+
+    // Create and append form header (includes name input and remove button)
+    const $formHeader = _createFormHeader(issuerName, (clickedIssuerNameVal) => {
+        removeIssuer($issuerForm[0], clickedIssuerNameVal);
+    });
+    $issuerForm.append($formHeader);
+
+    // Create and append form fields container
+    const $formFields = $('<div class="form-fields"></div>');
+    $issuerForm.append($formFields);
+
+    // Add standard form fields
+    addFormField($formFields[0], 'issuer', 'Issuer URI', 'The URI of the token issuer (must match the iss claim)', properties ? properties.issuer : '');
+    addFormField($formFields[0], 'jwks-url', 'JWKS URL', 'The URL of the JWKS endpoint', properties ? properties['jwks-url'] : '');
+
+    // Add JWKS Test Connection button and its logic
+    // It needs a way to get the jwks-url input's value.
+    // The input is created by addFormField and is a child of $formFields.
+    _createJwksTestConnectionButton($formFields, () => {
+        const $jwksInput = $formFields.find('.field-jwks-url');
+        return $jwksInput.length ? $jwksInput.val() : '';
+    });
+
+    addFormField($formFields[0], 'audience', 'Audience', 'The expected audience claim value', properties ? properties.audience : '');
+    addFormField($formFields[0], 'client-id', 'Client ID', 'The client ID for token validation', properties ? properties['client-id'] : '');
+
+    // Create and append save button
+    const $saveButton = _createSaveButton($issuerForm);
+    $issuerForm.append($saveButton);
+
+    // Append the fully constructed issuer form to the main container
+    $container.append($issuerForm);
 };
 
 /**
@@ -305,36 +328,32 @@ const addIssuerForm = (container, issuerName, properties) => {
      * @param {string} description - The field description
      * @param {string} [value] - The field value
      */
-const addFormField = (container, name, label, description, value) => {
-    const fieldContainer = document.createElement('div');
-    fieldContainer.className = 'form-field';
-    container.appendChild(fieldContainer);
+const addFormField = (container, name, label, description, value) => { // container is expected to be an HTMLElement
+    const $container = $(container);
+    const $fieldContainer = $('<div class="form-field"></div>');
+    $container.append($fieldContainer);
 
     // Add label
-    const fieldLabel = document.createElement('label');
-    fieldLabel.textContent = label + ':';
-    fieldContainer.appendChild(fieldLabel);
+    const $fieldLabel = $('<label></label>').text(label + ':');
+    $fieldContainer.append($fieldLabel);
 
     // Add input
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'field-' + name;
-    input.placeholder = description;
+    const $input = $('<input type="text" class="field-' + name + '" placeholder="' + description + '">');
     // Appending input to label is not standard for forms, usually input is sibling to label or inside a container with label.
     // For this refactor, I will keep the structure as implied by original code: input inside label.
-    // However, a better structure would be fieldLabel.appendChild(document.createTextNode(label + ':')); fieldContainer.appendChild(input);
-    fieldContainer.appendChild(input); // Changed from fieldLabel.appendChild(input) to make input a direct child of fieldContainer for easier querySelector access later.
+    // However, a better structure would be $fieldLabel.text(label + ':'); $fieldContainer.append($input);
+    // To maintain current structure where input is not a child of label, but of fieldContainer:
+    $fieldContainer.append($input);
+
 
     // Set value if provided
     if (value) {
-        input.value = value;
+        $input.val(value);
     }
 
     // Add description
-    const descElement = document.createElement('div');
-    descElement.className = 'field-description';
-    descElement.textContent = description;
-    fieldContainer.appendChild(descElement);
+    const $descElement = $('<div class="field-description"></div>').text(description);
+    $fieldContainer.append($descElement);
 };
 
 /**
@@ -478,7 +497,9 @@ export const init = (element, _config, _type, callback, currentTestUrlFromArg) =
 
     try {
         const effectiveUrlForInit = currentTestUrlFromArg || window.location.href;
-        initComponent(element, _config, effectiveUrlForInit);
+        // Pass undefined for the removed _config argument if necessary, but it's better to change the call signature.
+        // initComponent now only takes 2 arguments.
+        initComponent(element, effectiveUrlForInit);
 
         // Call the callback function if provided
         if (typeof callback === 'function') {
