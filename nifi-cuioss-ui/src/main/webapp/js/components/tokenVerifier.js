@@ -3,6 +3,7 @@
  */
 import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
+import { displayUiError } from '../utils/uiErrorDisplay.js';
 
 'use strict';
 
@@ -131,22 +132,12 @@ export const init = function (element, _config, _type, callback) {
     };
 
     // Function to display invalid token details (now private)
-    const _displayInvalidToken = response => {
-        let invalidHtml =
-            '<div class="token-invalid">' +
-                '<span class="fa fa-times-circle"></span> ' +
-                (i18n['processor.jwt.tokenInvalid'] || 'Token is invalid') +
-            '</div>';
-        invalidHtml += '<div class="token-error-details">';
-        invalidHtml += '<h4>' + (i18n['processor.jwt.errorDetails'] || 'Error Details') + '</h4>';
-        invalidHtml += '<p class="token-error-message">' + (response.message || '') + '</p>';
-        if (response.category) {
-            invalidHtml += '<p class="token-error-category"><strong>' +
-                           (i18n['processor.jwt.errorCategory'] || 'Error Category') + ':</strong> ' +
-                           response.category + '</p>';
-        }
-        invalidHtml += '</div>';
-        $resultsContent.html(invalidHtml);
+    const _displayInvalidToken = (response, $resultsContentFromCaller, i18nFromCaller) => {
+        // Ensure we're using the passed $resultsContent and i18n if available,
+        // otherwise fallback to the ones in the broader scope (though less ideal)
+        const $targetContent = $resultsContentFromCaller || $resultsContent;
+        const i18nToUse = i18nFromCaller || i18n;
+        displayUiError($targetContent, { responseJSON: response }, i18nToUse, 'processor.jwt.tokenInvalid');
     };
 
     $resultsContent.html(
@@ -178,7 +169,8 @@ const _handleTokenVerificationResponse = (responseData, $resultsContent, i18n, d
     if (responseData.valid) {
         displayValidTokenFunc(responseData, false); // isSimulated is false for actual responses
     } else {
-        displayInvalidTokenFunc(responseData);
+        // Pass $resultsContent and i18n to _displayInvalidToken
+        displayInvalidTokenFunc(responseData, $resultsContent, i18n);
     }
 };
 
@@ -224,15 +216,7 @@ const _handleTokenVerificationAjaxError = (jqXHR, $resultsContent, i18n, display
         };
         displayValidTokenFunc(sampleResponse, true); // isSimulated is true
     } else {
-        const verificationErrorText = i18n['processor.jwt.verificationError'] || 'Verification error';
-        const errorHtml =
-            '<div class="token-error">' +
-            '<span class="fa fa-exclamation-triangle"></span> ' +
-            verificationErrorText +
-            ': ' +
-            messageToDisplay +
-            '</div>';
-        $resultsContent.html(errorHtml);
+        displayUiError($resultsContent, jqXHR, i18n, 'processor.jwt.verificationError');
     }
 };
 
@@ -268,15 +252,7 @@ const _handleTokenVerificationSyncException = (exception, $resultsContent, i18n,
         };
         displayValidTokenFunc(sampleResponse, true); // isSimulated is true
     } else {
-        const verificationErrorText = i18n['processor.jwt.verificationError'] || 'Verification error';
-        const errorHtml =
-            '<div class="token-error">' +
-            '<span class="fa fa-exclamation-triangle"></span> ' +
-            verificationErrorText +
-            ': ' +
-            exceptionMessage +
-            '</div>';
-        $resultsContent.html(errorHtml);
+        displayUiError($resultsContent, exception, i18n, 'processor.jwt.verificationError');
     }
 };
 

@@ -32,6 +32,15 @@ jest.mock('cash-dom', () => {
     return cashSpy;
 });
 
+// Mock nf.Common globally to ensure we can control its behavior for specific suites
+jest.mock('nf.Common', () => ({
+    getI18n: jest.fn().mockReturnValue({ // Default mock for getI18n
+        getProperty: jest.fn((key) => mockI18n[key] || key) // Default behavior: return from mockI18n or key
+    }),
+    escapeHtml: jest.fn((str) => str), // Mock other functions if used by SUT
+    stringToHex: jest.fn((str) => str)
+}));
+
 const mockAjax = mockComponentAjax;
 
 const getVerificationResultHTML = (parentElement) => {
@@ -399,7 +408,7 @@ describe('jwksValidator (localhost)', () => {
 // preventing these tests from correctly verifying fallback behavior.
 // This requires further investigation into either the component's i18n handling
 // or a more advanced Jest mocking technique for this specific scenario.
-describe.skip('jwksValidator - i18n Robustness (nfCommon.getI18n returns null or missing keys)', () => {
+describe('jwksValidator - i18n Robustness (nfCommon.getI18n returns null or missing keys)', () => {
     let localJwksValidator;
     let parentElement;
     let callback;
@@ -410,9 +419,10 @@ describe.skip('jwksValidator - i18n Robustness (nfCommon.getI18n returns null or
 
         // Get the nf.Common mock (which is already set up by top-level jest.mock)
         // and configure its getI18n method for this specific suite *before* SUT is required.
-        nfCommonMock = require('nf.Common');
+        nfCommonMock = require('nf.Common'); // This will now get our global mock
+        // Configure getI18n for this suite to simulate missing keys by returning undefined from getProperty
         nfCommonMock.getI18n.mockReturnValue({
-            getProperty: jest.fn(() => undefined) // Ensures SUT's getProperty calls return undefined
+            getProperty: jest.fn(() => undefined)
         });
 
         localJwksValidator = require('components/jwksValidator'); // SUT is required *after* nf.Common mock is configured
@@ -433,11 +443,17 @@ describe.skip('jwksValidator - i18n Robustness (nfCommon.getI18n returns null or
             document.body.removeChild(parentElement);
         }
         // Important: Clear the mock behavior for nfCommon.getI18n so it doesn't affect other suites.
-        // Other suites might rely on the default mockI18n via spyOn.
-        if (nfCommonMock && nfCommonMock.getI18n && nfCommonMock.getI18n.mockClear) {
-             nfCommonMock.getI18n.mockClear(); // Clears mockReturnValue configuration
+        // Reset to default global mock behavior or clear specific configurations for this suite
+        if (nfCommonMock && nfCommonMock.getI18n && nfCommonMock.getI18n.mockImplementation) {
+            // Reset getI18n to a default implementation if necessary, or clear specific settings.
+            // For instance, revert to the global default mock implementation:
+            nfCommonMock.getI18n.mockImplementation(jest.fn().mockReturnValue({
+                getProperty: jest.fn((key) => mockI18n[key] || key)
+            }));
+        } else if (nfCommonMock && nfCommonMock.getI18n && nfCommonMock.getI18n.mockClear) {
+            nfCommonMock.getI18n.mockClear(); // Fallback if mockImplementation is not what we want to reset
         }
-        // Spies set up by other suites (getI18nSpy) will be restored by their own afterEach.
+        // Spies (getI18nSpy) used in other suites are managed by their own afterEach.
 
         if (localJwksValidator && typeof localJwksValidator.__setIsLocalhostForTesting === 'function') {
             localJwksValidator.__setIsLocalhostForTesting(null);

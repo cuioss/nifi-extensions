@@ -243,7 +243,7 @@ const _createJwksTestConnectionButton = ($formFieldsContainer, getJwksUrlValue) 
                     if (responseData.valid) {
                         $resultContainer.html(`<span style="color: var(--success-color); font-weight: bold;">${i18n['processor.jwt.ok'] || 'OK'}</span> ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} (${responseData.keyCount} ${i18n['processor.jwt.keysFound'] || 'keys found'})`);
                     } else {
-                        $resultContainer.html(`<span style="color: var(--error-color); font-weight: bold;">${i18n['processor.jwt.failed'] || 'Failed'}</span> ${i18n['processor.jwt.invalidJwks'] || 'Invalid JWKS'}: ${responseData.message}`);
+                        displayUiError($resultContainer, { responseJSON: responseData }, i18n, 'processor.jwt.invalidJwks');
                     }
                 })
                 .catch(jqXHR => {

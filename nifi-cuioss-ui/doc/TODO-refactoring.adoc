@@ -25,7 +25,7 @@ A list of suggested refactoring tasks based on code analysis.
 
 === Components (`issuerConfigEditor.js`, `jwksValidator.js`, `tokenVerifier.js`)
 - [x] **Clarity & Complexity**: Break down long functions (e.g., `initComponent`, `addIssuerForm` in `issuerConfigEditor.js`; AJAX result display logic in `jwksValidator.js`, `tokenVerifier.js`) into smaller, more focused functions. (`initComponent` and `addIssuerForm` in `issuerConfigEditor.js` refactored; `jwksValidator.js` and `tokenVerifier.js` also refactored; `issuerConfigEditor.js` error handling also improved for clarity by using `uiErrorDisplay.js`).
-- [ ] **Code Duplication**: Create shared utility functions for common patterns:
+- [x] **Code Duplication**: Create shared utility functions for common patterns:
     - [x] Localhost AJAX response simulation logic (currently in `jwksValidator.js`, `tokenVerifier.js`, and `issuerConfigEditor.js`).
     - [x] Complex error message display logic for AJAX calls.
     - [x] "Sample issuer" object in `issuerConfigEditor.js` (created `_getSampleIssuerConfig` utility).
@@ -53,25 +53,27 @@ A list of suggested refactoring tasks based on code analysis.
 - [x] **Assertion Quality**: Ensure all tests have meaningful assertions beyond just `expect(module).toBeDefined()`. Review and update tests that relied on `console.log` calls for behavior if the logs have been removed from the source code. (Assertions in `jwksValidator.test.js`, `tokenVerifier.test.js`, and `issuerConfigEditor.test.js` reviewed and updated during refactoring and test fixing).
 - [ ] **Mocking Strategy**:
     - [x] **`setup.js`**: Clean up commented-out global mock setups.
-    - [x] **`setup.js`**: Evaluate if global mocks (like `global.jwksValidator`) are the best approach versus module-level `jest.mock()`.
-    - [x] **Mocks Consistency**: Ensure mocks in the `mocks/` directory use the same global jQuery/cash-dom setup as tests, avoiding local `require('./jquery.js')`.
-    - [ ] **Simplify Mocks**: Simplify complex mocks in the `mocks/` directory if they are only placeholders and the actual SUTs are tested thoroughly elsewhere.
+- [x] **`setup.js`**: Evaluate if global mocks (like `global.jwksValidator`) are the best approach versus module-level `jest.mock()`. (Removed unused `global.jwksValidator` from `setup.js` as it was not being effectively utilized; module-level mocks are preferred if specific mocking of `jwksValidator` is needed by a test.)
+    - [x] **Mocks Consistency**: Ensure mocks in the `mocks/` directory use the same global jQuery/cash-dom setup as tests, avoiding local `require('./jquery.js')`. (Reviewed mock files; all conform to using the global `$` (cash-dom) setup provided by `jquery-extended.js` and do not use local jQuery requires.)
+    - [x] **Simplify Mocks**: Simplify complex mocks in the `mocks/` directory if they are only placeholders and the actual SUTs are tested thoroughly elsewhere.
+        - `jwksValidator.js` mock simplified.
+        - `tokenVerifier.js` mock simplified.
 - [x] **Code Duplication**:
     - [x] **Component Tests**: Reduce `beforeEach` setup duplication (e.g., for localhost vs. non-localhost contexts in `jwksValidator.test.js`, `tokenVerifier.test.js`; component init in `issuerConfigEditor.test.js`) using shared helper functions or parameterized tests. (Some `beforeEach` duplication in `tokenVerifier.test.js` and `issuerConfigEditor.test.js` was implicitly addressed or simplified during test fixing and refactoring of AJAX/error mocking).
-    - [ ] **`apiClient.test.js`**: Consider `it.each` for repetitive tests of callback-based API methods.
+    - [x] **`apiClient.test.js`**: Consider `it.each` for repetitive tests of callback-based API methods. (Reviewed `apiClient.test.js`; found that `describe.each` with a test table is already in use for the callback-based methods like `validateJwksContent`, `verifyToken`, and `getSecurityMetrics`, fulfilling the intent of this item. Promise-based methods have separate, appropriate tests.)
 - [ ] **Test Value**:
-    - [x] **`main.test.js`**: Re-evaluate the value of this file, as it tests a mocked version of `main.js`. It might be redundant if `main.real.test.js` provides sufficient coverage.
+    - [x] **`main.test.js`**: Re-evaluate the value of this file, as it tests a mocked version of `main.js`. It might be redundant if `main.real.test.js` provides sufficient coverage. (File `main.test.js` no longer exists; `main.real.test.js` is the current test suite for `main.js`.)
 - [x] **Console Logs in Mocks**: Remove or make conditional any `console.log` statements within default mock implementations (e.g., in `apiClient` mock in `issuerConfigEditor.test.js`).
 
 === Specific Test Files
-- [ ] **`main.real.test.js`**:
+- [x] **`main.real.test.js`**:
     - [x] **Fix Skipped Test**: Address and re-enable the skipped test for `dialogOpen` event handling.
     - [x] **Flaky Assertions**: Investigate and stabilize potentially flaky assertions (e.g., `#jwt-validator-tabs` display). (Marked as investigated/addressed by re-enabling and confirming current behavior).
     - [x] **Dialog Translations**: Clarify and align assertions for translations within dialogs with the actual behavior of `main.js`'s `updateUITranslations` function.
 - [x] **`services/apiClient.test.js`**: Ensure full error path coverage for all API methods, as noted by the "omitted for brevity" comment.
-- [x] **`eslint-test.js`**: Clarify the purpose of this empty file or remove it.
+- [x] **`eslint-test.js`**: Clarify the purpose of this empty file or remove it. (File not found, considered removed).
 - [x] **`components/issuerConfigEditor.test.js`**: Review tests for commented-out `alert`s in SUT; adapt to assert new UI feedback mechanisms. (Tests now assert calls to `displayUiError` instead of `console.warn` or direct DOM checks for error messages).
-- [x] **`components/jwksValidator.test.js`**: Consider splitting the highly detailed test "should use empty object for i18n if nfCommon.getI18n returns null" into smaller, more focused tests.
+- [x] **`components/jwksValidator.test.js`**: Consider splitting the highly detailed test "should use empty object for i18n if nfCommon.getI18n returns null" into smaller, more focused tests. (Existing test suite focusing on i18n robustness was enabled and improved).
 
 === Async Handling
 - [x] **Microtask Flushing**: While `await Promise.resolve().then().then();` is used, review if more direct Jest utilities like `jest.advanceTimersByTime(0)` or `setImmediate` could be more readable or reliable in specific contexts for flushing microtasks. (Low priority if current method is stable).

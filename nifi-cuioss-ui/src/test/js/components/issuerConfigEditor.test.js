@@ -197,7 +197,13 @@ describe('issuerConfigEditor', function () {
                 }));
                 form.querySelector('.verify-jwks-button').click();
                 await jest.runAllTimersAsync();
-                expect(getVerificationResultHTMLFromForm(form)).toContain('Failed</span> Invalid JWKS: Keys not found');
+                // Check that displayUiError was called correctly, instead of checking innerHTML
+                expect(displayUiError).toHaveBeenCalledWith(
+                    expect.anything(), // $resultContainer (or its cash-dom equivalent)
+                    { responseJSON: { valid: false, message: 'Keys not found' } },
+                    mockI18n,
+                    'processor.jwt.invalidJwks'
+                );
             });
 
             it('should show SUTs synchronous error path response when ajax mock throws synchronously (non-localhost)', async () => {

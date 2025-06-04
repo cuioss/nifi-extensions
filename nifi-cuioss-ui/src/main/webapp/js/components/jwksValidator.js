@@ -103,10 +103,7 @@ const _handleAjaxSuccess = (responseData, $resultContainer, i18n) => {
                                ' (' + responseData.keyCount + ' ' +
                                (i18n['processor.jwt.keysFound'] || 'keys found') + ')');
     } else {
-        $resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' +
-                               (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
-                               (i18n['processor.jwt.invalidJwks'] || 'Invalid JWKS') + ': ' +
-                               responseData.message);
+        displayUiError($resultContainer, { responseJSON: responseData }, i18n, 'processor.jwt.invalidJwks');
     }
 };
 

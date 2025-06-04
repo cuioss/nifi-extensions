@@ -248,65 +248,77 @@ describe('apiClient', () => {
         });
     });
 
-    describe('validateJwksContent', () => {
-        const jwksContent = '{"keys":[]}';
-        it('should call successCallback on success', async () => {
-            mockAjax.mockResolvedValue({ valid: true });
-            apiClient.validateJwksContent(jwksContent, successCallback, errorCallback);
-            await Promise.resolve().then().then();
-            expect(successCallback).toHaveBeenCalledWith({ valid: true });
-        });
-        it('should call errorCallback on failure with standardized error object', async () => {
-            const mockJqXHR = { status: 500, statusText: 'Content Error', responseText: 'Content Error Detail' };
-            mockAjax.mockRejectedValue(mockJqXHR);
-            apiClient.validateJwksContent(jwksContent, successCallback, errorCallback);
-            await Promise.resolve().then().then(); // Wait for microtasks
-            expect(errorCallback).toHaveBeenCalledWith('Content Error', {
-                status: 500,
-                statusText: 'Content Error',
-                responseText: 'Content Error Detail'
-            });
-        });
-    });
+    // Test table for callback-based API methods
+    const callbackApiTestTable = [
+        {
+            methodName: 'validateJwksContent',
+            apiMethodName: 'validateJwksContent', // Changed from apiMethod
+            methodArgs: ['{"keys":[]}'], // jwksContent
+            mockSuccessData: { valid: true, keyCount: 0 },
+            expectedSuccessArgs: [{ valid: true, keyCount: 0 }],
+            mockErrorData: { status: 400, statusText: 'Bad Request', responseText: 'Invalid JWKS content' },
+            expectedErrorArgs: [
+                'Bad Request', // statusText
+                { status: 400, statusText: 'Bad Request', responseText: 'Invalid JWKS content' } // standardized error object
+            ]
+        },
+        {
+            methodName: 'validateJwksContent (no statusText in error)',
+            apiMethodName: 'validateJwksContent', // Changed from apiMethod
+            methodArgs: ['invalid-json'],
+            mockSuccessData: { valid: false }, // Should not be used in error test
+            expectedSuccessArgs: [{ valid: false }], // Should not be used in error test
+            mockErrorData: { status: 500, responseText: 'Server Processing Error' }, // statusText is missing
+            expectedErrorArgs: [
+                'Unknown error', // Default statusText from _createXhrErrorObject
+                { status: 500, statusText: 'Unknown error', responseText: 'Server Processing Error' }
+            ]
+        },
+        {
+            methodName: 'verifyToken',
+            apiMethodName: 'verifyToken', // Changed from apiMethod
+            methodArgs: ['a.b.c'], // token
+            mockSuccessData: { valid: true, claims: { sub: 'user1' } },
+            expectedSuccessArgs: [{ valid: true, claims: { sub: 'user1' } }],
+            mockErrorData: { status: 401, statusText: 'Unauthorized', responseText: 'Token expired' },
+            expectedErrorArgs: [
+                'Unauthorized',
+                { status: 401, statusText: 'Unauthorized', responseText: 'Token expired' }
+            ]
+        },
+        {
+            methodName: 'getSecurityMetrics',
+            apiMethodName: 'getSecurityMetrics', // Changed from apiMethod
+            methodArgs: [], // No specific args other than callbacks
+            mockSuccessData: { activeSessions: 10, jwksValidations: 100 },
+            expectedSuccessArgs: [{ activeSessions: 10, jwksValidations: 100 }],
+            mockErrorData: { status: 503, statusText: 'Service Unavailable', responseText: 'Metrics service down' },
+            expectedErrorArgs: [
+                'Service Unavailable',
+                { status: 503, statusText: 'Service Unavailable', responseText: 'Metrics service down' }
+            ]
+        }
+    ];
 
-    describe('verifyToken', () => {
-        const token = 'a.b.c';
-        it('should call successCallback on success', async () => {
-            mockAjax.mockResolvedValue({ valid: true });
-            apiClient.verifyToken(token, successCallback, errorCallback);
-            await Promise.resolve().then().then();
-            expect(successCallback).toHaveBeenCalledWith({ valid: true });
-        });
-        it('should call errorCallback on failure with standardized error object', async () => {
-            const mockJqXHR = { status: 500, statusText: 'Token Error', responseText: 'Token Error Detail' };
-            mockAjax.mockRejectedValue(mockJqXHR);
-            apiClient.verifyToken(token, successCallback, errorCallback);
-            await Promise.resolve().then().then(); // Wait for microtasks
-            expect(errorCallback).toHaveBeenCalledWith('Token Error', {
-                status: 500,
-                statusText: 'Token Error',
-                responseText: 'Token Error Detail'
-            });
-        });
-    });
+    describe.each(callbackApiTestTable)('Callback API: $methodName', ({ apiMethodName, methodArgs, mockSuccessData, expectedSuccessArgs, mockErrorData, expectedErrorArgs }) => {
+        it('should call successCallback with expected data on successful AJAX request', async () => {
+            mockAjax.mockResolvedValue(mockSuccessData);
 
-    describe('getSecurityMetrics', () => {
-        it('should call successCallback on success', async () => {
-            mockAjax.mockResolvedValue({ metrics: 'data' });
-            apiClient.getSecurityMetrics(successCallback, errorCallback);
-            await Promise.resolve().then().then();
-            expect(successCallback).toHaveBeenCalledWith({ metrics: 'data' });
+            apiClient[apiMethodName](...methodArgs, successCallback, errorCallback); // Changed from apiMethod
+            await Promise.resolve().then().then(); // Wait for microtasks (Promise chain in SUT)
+
+            expect(successCallback).toHaveBeenCalledWith(...expectedSuccessArgs);
+            expect(errorCallback).not.toHaveBeenCalled();
         });
-        it('should call errorCallback on failure with standardized error object', async () => {
-            const mockJqXHR = { status: 500, statusText: 'Metrics Error', responseText: 'Metrics Error Detail' };
-            mockAjax.mockRejectedValue(mockJqXHR);
-            apiClient.getSecurityMetrics(successCallback, errorCallback);
+
+        it('should call errorCallback with standardized error object on failed AJAX request', async () => {
+            mockAjax.mockRejectedValue(mockErrorData);
+
+            apiClient[apiMethodName](...methodArgs, successCallback, errorCallback); // Changed from apiMethod
             await Promise.resolve().then().then(); // Wait for microtasks
-            expect(errorCallback).toHaveBeenCalledWith('Metrics Error', {
-                status: 500,
-                statusText: 'Metrics Error',
-                responseText: 'Metrics Error Detail'
-            });
+
+            expect(errorCallback).toHaveBeenCalledWith(...expectedErrorArgs);
+            expect(successCallback).not.toHaveBeenCalled();
         });
     });
 });
