@@ -5,79 +5,24 @@ A list of suggested refactoring tasks based on code analysis.
 == Main Code Refactoring
 
 === General
-- [x] **Remove `utils/ajax.js` and refactor clients**: Eliminated the custom `utils/ajax.js` module. Verified that clients (e.g., `apiClient.js`, UI components) are using `cash-dom`'s AJAX capabilities (`$.ajax`). (File was already removed prior to this refactoring pass).
-- [x] **ES6+ Modernization**: Consistently use arrow functions where `this` context permits (e.g., simple callbacks). (Partially addressed; `main.js` and `issuerConfigEditor.js` reviewed and updated).
-- [x] **ES6+ Modernization**: Utilize template literals for multi-line string building, especially for HTML structures in components. (`main.js` and `issuerConfigEditor.js` reviewed and updated).
-- [x] **UI Feedback**: Replace all commented-out `alert()` calls with a consistent UI notification strategy (e.g., using a dedicated notification service or updating DOM elements). (`issuerConfigEditor.js` updated to use `console.warn()` as an interim step).
-- [x] **Global Scope**: Review and minimize global scope pollution (e.g., `window.jwtComponentsRegistered` in `main.js`). Explore module states or other scoping mechanisms. (`window.jwtComponentsRegistered` in `main.js` refactored to a module-level variable).
-- [x] **Dead Code**: Remove commented-out code blocks, imports, and unused function parameters identified across multiple files. (`main.js` and `issuerConfigEditor.js` reviewed and updated).
-- [x] **Consistency**: Standardize DOM manipulation to prefer vanilla JS or `cash-dom` consistently within each file or across the project. (`issuerConfigEditor.js` updated to use `cash-dom` consistently).
-- [x] **Refactor `package.json` and related configurations**: Investigate and update dependencies, remove unused ones (e.g., Babel if no longer needed), and ensure all are on their most recent compatible versions. Streamline build/tooling configuration files accordingly.
-  - Investigated dependencies. Babel is still required for Jest and Webpack builds. `whatwg-fetch` is required for Jest tests. `eslint-plugin-jquery` is still in use.
-  - Updated `eslint-config-prettier` to `^10.1.5`.
-  - Updated `stylelint-config-standard` to `^38.0.0`.
-  - Updated `webpack-cli` to `^6.0.1`.
-  - `babel-loader` kept at `^9.1.3` (latest `10.0.0` requires newer Node).
-  - `eslint` kept at `^8.57.0` (latest `9.28.0` has peer dependency conflict with `eslint-config-airbnb-base`).
-  - Other devDependencies checked and kept at current stable versions.
-  - Adjusted branch coverage threshold to 69% in `package.json` and confirmed successful build with `./mvnw clean install`.
-- [x] **SonarQube Default Coverage**: Set coverage target in `package.json` and incrementally improve code coverage to meet SonarQube default thresholds.
+- [ ] **SonarQube Default Coverage**: Set coverage target in `package.json` and incrementally improve code coverage to meet SonarQube default thresholds.
 
 === Components (`issuerConfigEditor.js`, `jwksValidator.js`, `tokenVerifier.js`)
-- [x] **Clarity & Complexity**: Break down long functions (e.g., `initComponent`, `addIssuerForm` in `issuerConfigEditor.js`; AJAX result display logic in `jwksValidator.js`, `tokenVerifier.js`) into smaller, more focused functions. (`initComponent` and `addIssuerForm` in `issuerConfigEditor.js` refactored; `jwksValidator.js` and `tokenVerifier.js` also refactored; `issuerConfigEditor.js` error handling also improved for clarity by using `uiErrorDisplay.js`).
-- [x] **Code Duplication**: Create shared utility functions for common patterns:
-    - [x] Localhost AJAX response simulation logic (currently in `jwksValidator.js`, `tokenVerifier.js`, and `issuerConfigEditor.js`).
-    - [x] Complex error message display logic for AJAX calls.
-    - [x] "Sample issuer" object in `issuerConfigEditor.js` (created `_getSampleIssuerConfig` utility).
-- [x] **Error Handling**: Standardize error handling for AJAX calls. (`jwksValidator.js`, `tokenVerifier.js`, and `issuerConfigEditor.js` now use `uiErrorDisplay.js` or have refined internal error display logic for AJAX calls, ensuring errors are appropriately caught and displayed to the user).
-- [x] **Parameters**: Remove unused `config` and `type` parameters from `init` functions in `issuerConfigEditor.js` and `tokenVerifier.js`. (Internal `initComponent` in `issuerConfigEditor.js` had `_config` removed; `tokenVerifier.js` `init` params `config`, `type` changed to `_config`, `_type` to mark as unused, preserving signature for `nfCommon`.)
-- [x] **Callbacks**: Review the utility of the `validate` function returned by the callback in `tokenVerifier.js`'s `init` function (always returns `true`).
 
 === Services (`apiClient.js`)
-- [x] **Code Duplication**: Create a helper function to standardize the creation of the `xhrLike` error object in `.catch` blocks for multiple API methods.
-- [x] **Modernization**: Convert callback-based API client functions (e.g., `validateJwksUrl`, `validateJwksFile`) to return Promises, similar to `getProcessorProperties`, to simplify async operations (unless callbacks are strictly required by the calling framework).
-- [x] **Error Handling**: Correct the comment in `apiClient.js` regarding `ajax.js` error logging; `ajax.js` re-throws errors, it doesn't log them itself.
 
 === Utilities
-- [x] **`utils/ajax.js`**: Modify the `ajax` utility to pass through the actual `response.status` and `response.statusText` from the Fetch API response instead of hardcoding `status: 200` and `statusText: 'OK'` for all `response.ok` cases. (Marked as N/A as `utils/ajax.js` has been removed; `cash-dom`'s `$.ajax` is now used, which handles response status correctly.)
-- [x] **`utils/tooltip.js`**: Investigate if the fallback logic in the `catch` block (setting `data-original-title`) is necessary or if `tippy.js` is reliable enough to remove it.
 
 === Main Entry Points (`main.js`, `nf-jwt-validator.js`)
-- [x] **Clarity & Complexity (`main.js`)**: Simplify the initialization lifecycle in `main.js` (multiple event listeners, `setTimeout` calls for `hideLoadingIndicator` and `updateUITranslations`).
-- [x] **Event Handling (`main.js`)**: Further investigate the `dialogOpen` event listener. If it's a jQuery custom event, decide on a strategy for handling it with `cash-dom` or vanilla JS long-term.
-- [x] **Dead Code (`nf-jwt-validator.js`)**: Remove empty `else if` / `else` blocks or add comments if they are placeholders.
 
 == Unit Test Refactoring
 
 === General
-- [x] **Assertion Quality**: Ensure all tests have meaningful assertions beyond just `expect(module).toBeDefined()`. Review and update tests that relied on `console.log` calls for behavior if the logs have been removed from the source code. (Assertions in `jwksValidator.test.js`, `tokenVerifier.test.js`, and `issuerConfigEditor.test.js` reviewed and updated during refactoring and test fixing).
 - [ ] **Mocking Strategy**:
-    - [x] **`setup.js`**: Clean up commented-out global mock setups.
-- [x] **`setup.js`**: Evaluate if global mocks (like `global.jwksValidator`) are the best approach versus module-level `jest.mock()`. (Removed unused `global.jwksValidator` from `setup.js` as it was not being effectively utilized; module-level mocks are preferred if specific mocking of `jwksValidator` is needed by a test.)
-    - [x] **Mocks Consistency**: Ensure mocks in the `mocks/` directory use the same global jQuery/cash-dom setup as tests, avoiding local `require('./jquery.js')`. (Reviewed mock files; all conform to using the global `$` (cash-dom) setup provided by `jquery-extended.js` and do not use local jQuery requires.)
-    - [x] **Simplify Mocks**: Simplify complex mocks in the `mocks/` directory if they are only placeholders and the actual SUTs are tested thoroughly elsewhere.
-        - `jwksValidator.js` mock simplified.
-        - `tokenVerifier.js` mock simplified.
-- [x] **Code Duplication**:
-    - [x] **Component Tests**: Reduce `beforeEach` setup duplication (e.g., for localhost vs. non-localhost contexts in `jwksValidator.test.js`, `tokenVerifier.test.js`; component init in `issuerConfigEditor.test.js`) using shared helper functions or parameterized tests. (Some `beforeEach` duplication in `tokenVerifier.test.js` and `issuerConfigEditor.test.js` was implicitly addressed or simplified during test fixing and refactoring of AJAX/error mocking).
-    - [x] **`apiClient.test.js`**: Consider `it.each` for repetitive tests of callback-based API methods. (Reviewed `apiClient.test.js`; found that `describe.each` with a test table is already in use for the callback-based methods like `validateJwksContent`, `verifyToken`, and `getSecurityMetrics`, fulfilling the intent of this item. Promise-based methods have separate, appropriate tests.)
 - [ ] **Test Value**:
-    - [x] **`main.test.js`**: Re-evaluate the value of this file, as it tests a mocked version of `main.js`. It might be redundant if `main.real.test.js` provides sufficient coverage. (File `main.test.js` no longer exists; `main.real.test.js` is the current test suite for `main.js`.)
-- [x] **Console Logs in Mocks**: Remove or make conditional any `console.log` statements within default mock implementations (e.g., in `apiClient` mock in `issuerConfigEditor.test.js`).
 
 === Specific Test Files
-- [x] **`main.real.test.js`**:
-    - [x] **Fix Skipped Test**: Address and re-enable the skipped test for `dialogOpen` event handling.
-    - [x] **Flaky Assertions**: Investigate and stabilize potentially flaky assertions (e.g., `#jwt-validator-tabs` display). (Marked as investigated/addressed by re-enabling and confirming current behavior).
-    - [x] **Dialog Translations**: Clarify and align assertions for translations within dialogs with the actual behavior of `main.js`'s `updateUITranslations` function.
-- [x] **`services/apiClient.test.js`**: Ensure full error path coverage for all API methods, as noted by the "omitted for brevity" comment.
-- [x] **`eslint-test.js`**: Clarify the purpose of this empty file or remove it. (File not found, considered removed).
-- [x] **`components/issuerConfigEditor.test.js`**: Review tests for commented-out `alert`s in SUT; adapt to assert new UI feedback mechanisms. (Tests now assert calls to `displayUiError` instead of `console.warn` or direct DOM checks for error messages).
-- [x] **`components/jwksValidator.test.js`**: Consider splitting the highly detailed test "should use empty object for i18n if nfCommon.getI18n returns null" into smaller, more focused tests. (Existing test suite focusing on i18n robustness was enabled and improved).
 
 === Async Handling
-- [x] **Microtask Flushing**: While `await Promise.resolve().then().then();` is used, review if more direct Jest utilities like `jest.advanceTimersByTime(0)` or `setImmediate` could be more readable or reliable in specific contexts for flushing microtasks. (Low priority if current method is stable).
 
 === Mock Implementations
-- [x] **`mocks/nf-common.test.js`**: The `beforeEach` restoring original mock implementations is good but could be slightly simplified if mocks are stateless `jest.fn()`. (Marked as reviewed; current approach deemed acceptable).
-- [x] **Controllable Promises**: Ensure consistent use of helpers like `createControllablePromise` from `issuerConfigEditor.test.js` when tests need to manually resolve/reject promises mocked for AJAX calls, rather than attaching `_resolve`/`_reject` to default mock structures. (Marked as reviewed; current variations deemed acceptable).

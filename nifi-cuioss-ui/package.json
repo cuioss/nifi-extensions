@@ -82,11 +82,12 @@
     ],
     "coveragePathIgnorePatterns": [
       "<rootDir>/src/test/js/mocks/",
+      "<rootDir>/src/test/js/__mocks__/",
       "<rootDir>/src/main/webapp/js/nf-common-mock.js"
     ],
     "coverageThreshold": {
       "global": {
-        "branches": 67,
+        "branches": 80,
         "functions": 80,
         "lines": 80,
         "statements": 80
