@@ -16,44 +16,64 @@ const i18n = _nfCommon.getI18n() || {};
 let processorId = '';
 
 /**
-     * Initializes the component.
-     *
-     * @param {object} element - The DOM element
-     * @param {object} config - The component configuration
-     */
-const initComponent = function (element, config, effectiveUrl) { // New signature
-    // Create component container
+ * Creates the basic DOM structure for the issuer config editor.
+ * @param {HTMLElement} parentElement The parent element to append the editor to.
+ * @returns {{container: HTMLElement, issuersContainer: HTMLElement}} An object containing the main container and the issuers container.
+ */
+const _createEditorStructure = (parentElement) => {
     const container = document.createElement('div');
     container.className = 'issuer-config-editor';
-    element.appendChild(container);
+    parentElement.appendChild(container);
 
-    // Add title
     const title = document.createElement('h3');
     title.textContent = 'Issuer Configurations';
     container.appendChild(title);
 
-    // Add description
     const description = document.createElement('p');
     description.textContent = 'Configure JWT issuers for token validation. Each issuer requires a name and properties like jwks-url and issuer URI.';
     container.appendChild(description);
 
-    // Add issuers container
     const issuersContainer = document.createElement('div');
     issuersContainer.className = 'issuers-container';
     container.appendChild(issuersContainer);
 
-    // Add "Add Issuer" button
+    return { container, issuersContainer };
+};
+
+/**
+ * Sets up the "Add Issuer" button and its event listener.
+ * @param {HTMLElement} container The main container element for the editor.
+ * @param {HTMLElement} issuersContainer The container where issuer forms will be added.
+ */
+const _setupAddIssuerButton = (container, issuersContainer) => {
     const addButton = $('<button class="add-issuer-button">Add Issuer</button>');
     $(container).append(addButton);
     addButton.on('click', () => {
         addIssuerForm(issuersContainer);
     });
+};
 
-    // Get processor ID from URL
-    processorId = getProcessorIdFromUrl(effectiveUrl); // Use the passed effectiveUrl
+/**
+ * Initializes editor data, including setting the processor ID and loading existing issuers.
+ * @param {string} effectiveUrl The URL used to determine the processor ID.
+ * @param {HTMLElement} issuersContainer The container where issuer forms are managed.
+ */
+const _initializeEditorData = (effectiveUrl, issuersContainer) => {
+    processorId = getProcessorIdFromUrl(effectiveUrl);
+    loadExistingIssuers(issuersContainer);
+};
 
-    // Load existing issuers
-    loadExistingIssuers(issuersContainer); // loadExistingIssuers will use module processorId
+/**
+     * Initializes the component.
+     *
+     * @param {object} element - The DOM element
+     * @param {object} _config - The component configuration (unused)
+     * @param {string} effectiveUrl - The URL to derive processorId from
+     */
+const initComponent = (element, _config, effectiveUrl) => {
+    const { container, issuersContainer } = _createEditorStructure(element);
+    _setupAddIssuerButton(container, issuersContainer);
+    _initializeEditorData(effectiveUrl, issuersContainer);
 };
 
 /**
@@ -61,7 +81,7 @@ const initComponent = function (element, config, effectiveUrl) { // New signatur
      *
      * @return {string} The processor ID
      */
-const getProcessorIdFromUrl = function (urlToParse) {
+const getProcessorIdFromUrl = (urlToParse) => {
     if (typeof urlToParse !== 'string') {
         return '';
     }
@@ -74,7 +94,7 @@ const getProcessorIdFromUrl = function (urlToParse) {
      *
      * @param {object} container - The container element
      */
-const loadExistingIssuers = function (container) {
+const loadExistingIssuers = (container) => {
     if (!processorId) {
         // Add a sample issuer for demonstration purposes
         addIssuerForm(container, 'sample-issuer', {
@@ -143,7 +163,7 @@ const loadExistingIssuers = function (container) {
      * @param {string} [issuerName] - The issuer name (for existing issuers)
      * @param {object} [properties] - The issuer properties (for existing issuers)
      */
-const addIssuerForm = function (container, issuerName, properties) {
+const addIssuerForm = (container, issuerName, properties) => {
     // Create issuer form
     const issuerForm = document.createElement('div');
     issuerForm.className = 'issuer-form';
@@ -226,16 +246,9 @@ const addIssuerForm = function (container, issuerName, properties) {
             })
                 .then(responseData => { // responseData is the parsed JSON
                     if (responseData.valid) {
-                        resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
-                                            (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
-                                            (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
-                                            ' (' + responseData.keyCount + ' ' +
-                                            (i18n['processor.jwt.keysFound'] || 'keys found') + ')');
+                        resultContainer.html(`<span style="color: var(--success-color); font-weight: bold;">${i18n['processor.jwt.ok'] || 'OK'}</span> ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} (${responseData.keyCount} ${i18n['processor.jwt.keysFound'] || 'keys found'})`);
                     } else {
-                        resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' +
-                                            (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
-                                            (i18n['processor.jwt.invalidJwks'] || 'Invalid JWKS') + ': ' +
-                                            responseData.message);
+                        resultContainer.html(`<span style="color: var(--error-color); font-weight: bold;">${i18n['processor.jwt.failed'] || 'Failed'}</span> ${i18n['processor.jwt.invalidJwks'] || 'Invalid JWKS'}: ${responseData.message}`);
                     }
                 })
                 .catch(jqXHR => { // jqXHR object for cash-dom
@@ -255,16 +268,9 @@ const addIssuerForm = function (container, issuerName, properties) {
                     // In standalone testing mode, show a simulated success response
                     // eslint-disable-next-line no-undef
                     if (getIsLocalhost()) {
-                        resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
-                                            (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
-                                            (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
-                                            ' (3 ' + (i18n['processor.jwt.keysFound'] || 'keys found') +
-                                            ') <em>(Simulated response)</em>');
+                        resultContainer.html(`<span style="color: var(--success-color); font-weight: bold;">${i18n['processor.jwt.ok'] || 'OK'}</span> ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} (3 ${i18n['processor.jwt.keysFound'] || 'keys found'}) <em>(Simulated response)</em>`);
                     } else {
-                        resultContainer.html('<span style="color: var(--error-color); font-weight: bold;">' +
-                                            (i18n['processor.jwt.failed'] || 'Failed') + '</span> ' +
-                                            (i18n['processor.jwt.validationError'] || 'Validation error') + ': ' +
-                                            (errorMessage || 'Unknown error'));
+                        resultContainer.html(`<span style="color: var(--error-color); font-weight: bold;">${i18n['processor.jwt.failed'] || 'Failed'}</span> ${i18n['processor.jwt.validationError'] || 'Validation error'}: ${errorMessage || 'Unknown error'}`);
                     }
                 });
         } catch (e) {
@@ -272,11 +278,7 @@ const addIssuerForm = function (container, issuerName, properties) {
             // The .catch above handles errors from the ajax call itself (network errors, HTTP errors).
 
             // In standalone testing mode, show a simulated success response
-            resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
-                                   (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
-                                   (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
-                                   ' (3 ' + (i18n['processor.jwt.keysFound'] || 'keys found') +
-                                   ') <em>(Simulated response)</em>');
+            resultContainer.html(`<span style="color: var(--success-color); font-weight: bold;">${i18n['processor.jwt.ok'] || 'OK'}</span> ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} (3 ${i18n['processor.jwt.keysFound'] || 'keys found'}) <em>(Simulated response)</em>`);
         }
     });
 
@@ -303,7 +305,7 @@ const addIssuerForm = function (container, issuerName, properties) {
      * @param {string} description - The field description
      * @param {string} [value] - The field value
      */
-const addFormField = function (container, name, label, description, value) {
+const addFormField = (container, name, label, description, value) => {
     const fieldContainer = document.createElement('div');
     fieldContainer.className = 'form-field';
     container.appendChild(fieldContainer);
@@ -340,7 +342,7 @@ const addFormField = function (container, name, label, description, value) {
      *
      * @param {object} form - The issuer form
      */
-const saveIssuer = function (form) { // form is expected to be a DOM element
+const saveIssuer = (form) => { // form is expected to be a DOM element
     // Get issuer name
     const $form = $(form);
     const issuerNameInput = $form.find('.issuer-name')[0];
@@ -349,7 +351,7 @@ const saveIssuer = function (form) { // form is expected to be a DOM element
     // Validate issuer name
     if (!issuerName) {
         // TODO: Replace alert with a more appropriate UI notification
-        // alert('Error: Issuer name is required.');
+        console.warn('Error: Issuer name is required.');
         return;
     }
 
@@ -364,7 +366,7 @@ const saveIssuer = function (form) { // form is expected to be a DOM element
     // Validate required properties
     if (!properties.issuer || !properties['jwks-url']) {
         // TODO: Replace alert with a more appropriate UI notification
-        // alert('Error: Issuer URI and JWKS URL are required.');
+        console.warn('Error: Issuer URI and JWKS URL are required.');
         return;
     }
 
@@ -374,7 +376,7 @@ const saveIssuer = function (form) { // form is expected to be a DOM element
     // Add properties to updates
     Object.keys(properties).forEach(key => {
         if (properties[key]) {
-            updates['issuer.' + issuerName + '.' + key] = properties[key];
+            updates[`issuer.${issuerName}.${key}`] = properties[key];
         }
     });
 
@@ -384,25 +386,20 @@ const saveIssuer = function (form) { // form is expected to be a DOM element
             apiClient.updateProcessorProperties(processorId, updates)
                 .then(() => { // Standard Promise .then
                     // TODO: Replace alert with a more appropriate UI notification
-                    // alert('Success: Issuer configuration saved successfully.');
+                    console.warn('Success: Issuer configuration saved successfully.');
                 })
                 .catch(_error => { // Standard Promise .catch
-                    // const status = _error.response ? _error.response.statusText : 'unknown status';
-                    // const errorThrown = _error.message || 'unknown error';
-                    // console.error('[DEBUG_LOG] Error updating processor properties:', status, errorThrown);
                     // TODO: Replace alert with a more appropriate UI notification
-                    // alert('Error: Failed to save issuer configuration. See console for details.');
+                    console.warn('Error: Failed to save issuer configuration. See console for details.');
                 });
         } catch (e) {
-            // console.error('[DEBUG_LOG] Exception in saveIssuer setup:', e); // Clarified error source
             // TODO: Replace alert with a more appropriate UI notification
-            // alert('Error: Failed to save issuer configuration due to an exception. See console for details.');
+            console.warn('Error: Failed to save issuer configuration due to an exception. See console for details.');
         }
     } else {
         // In standalone testing mode, just show a success message
-        // console.log('[DEBUG_LOG] Saving issuer in standalone mode:', issuerName, properties);
         // TODO: Replace alert with a more appropriate UI notification
-        // alert('Success: Issuer configuration saved successfully (standalone mode).');
+        console.warn('Success: Issuer configuration saved successfully (standalone mode).');
     }
 };
 
@@ -412,7 +409,7 @@ const saveIssuer = function (form) { // form is expected to be a DOM element
      * @param {object} form - The jQuery object for the issuer form.
      * @param {string} issuerNameFromClick - The issuer name obtained from the input field at click time.
      */
-const removeIssuer = function (form, issuerNameFromClick) { // form is expected to be a DOM element
+const removeIssuer = (form, issuerNameFromClick) => { // form is expected to be a DOM element
     // The original code had a confirm() here. For linting, we remove it.
     // In a real application, this would be replaced by a proper UI confirmation.
     $(form).remove(); // Use cash-dom remove
@@ -428,46 +425,36 @@ const removeIssuer = function (form, issuerNameFromClick) { // form is expected 
                     const properties = response.properties || {};
                     const updates = {};
                     Object.keys(properties).forEach(key => {
-                        if (key.startsWith('issuer.' + currentIssuerName + '.')) {
+                        if (key.startsWith(`issuer.${currentIssuerName}.`)) {
                             updates[key] = null;
                         }
                     });
 
                     if (Object.keys(updates).length === 0 && currentIssuerName !== 'sample-issuer') { // Avoid warning for the sample
-                        // console.warn('[DEBUG_LOG] No properties found to remove for issuer:', currentIssuerName, 'on processor:', currentProcessorId);
-                        // window.alert('Success: Issuer configuration removed successfully.');
+                        console.warn('Success: Issuer configuration removed successfully.');
                         return;
                     }
 
                     return apiClient.updateProcessorProperties(currentProcessorId, updates) // Return the promise
                         .then(() => {
-                            // window.alert('Success: Issuer configuration removed successfully.');
+                            console.warn('Success: Issuer configuration removed successfully.');
                         })
                         .catch(_error => { // Catch for updateProcessorProperties
-                            // const status = _error.response ? _error.response.statusText : 'unknown status';
-                            // const errorThrown = _error.message || 'unknown error';
-                            // console.error('[DEBUG_LOG] Error updating processor properties:', status, errorThrown);
-                            // window.alert('Error: Failed to remove issuer configuration. See console for details.');
+                            console.warn('Error: Failed to remove issuer configuration. See console for details.');
                         });
                 })
                 .catch(_error => { // Catch for getProcessorProperties
-                    // const status = _error.response ? _error.response.statusText : 'unknown status';
-                    // const errorThrown = _error.message || 'unknown error';
-                    // console.error('[DEBUG_LOG] Error getting processor properties:', status, errorThrown);
-                    // window.alert('Error: Failed to get processor properties. See console for details.');
+                    console.warn('Error: Failed to get processor properties. See console for details.');
                 });
         } catch (e) {
-            // console.error('[DEBUG_LOG] Exception in removeIssuer setup:', e); // Clarified error source
-            // window.alert('Error: Failed to remove issuer configuration due to an exception. See console for details.');
+            console.warn('Error: Failed to remove issuer configuration due to an exception. See console for details.');
         }
     } else if (currentIssuerName && !currentProcessorId) { // Standalone mode (has name, no processor ID)
-        // console.log('[DEBUG_LOG] Removing issuer in standalone mode. Issuer:', currentIssuerName);
         // No alert for standalone removal success, matching previous test fixes.
     } else { // Other problematic cases (e.g., no name)
         if (currentProcessorId) { // Only alert if not in standalone (where procId is legitimately empty)
-            // window.alert('Error: Issuer name is missing. Cannot remove.');
+            console.warn('Error: Issuer name is missing. Cannot remove.');
         }
-        // console.warn('[DEBUG_LOG] Remove failed due to missing name or unexpected state. Name:', currentIssuerName, 'ProcID:', currentProcessorId);
     }
 };
 
@@ -479,7 +466,7 @@ const removeIssuer = function (form, issuerNameFromClick) { // form is expected 
  * @param {string} type - The component type (not used)
  * @param {Function} callback - The callback function
  */
-export const init = function (element, config, type, callback, currentTestUrlFromArg) {
+export const init = (element, _config, _type, callback, currentTestUrlFromArg) => {
     processorId = ''; // Explicitly reset processorId at the start of every init call.
 
     if (!element) {
@@ -491,7 +478,7 @@ export const init = function (element, config, type, callback, currentTestUrlFro
 
     try {
         const effectiveUrlForInit = currentTestUrlFromArg || window.location.href;
-        initComponent(element, config, effectiveUrlForInit);
+        initComponent(element, _config, effectiveUrlForInit);
 
         // Call the callback function if provided
         if (typeof callback === 'function') {

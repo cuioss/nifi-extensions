@@ -6,21 +6,18 @@ import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
 import * as tokenVerifier from './components/tokenVerifier.js';
 import * as issuerConfigEditor from './components/issuerConfigEditor.js';
-// import * as _apiClient from './services/apiClient.js'; // Unused
-// import * as _formatters from './utils/formatters.js'; // Unused
 import * as i18n from './utils/i18n.js';
 import { initTooltips } from './utils/tooltip.js';
 
 // jQuery UI is already loaded via script tag
 'use strict';
 
-// Global flag to track if components have been registered
-window.jwtComponentsRegistered = window.jwtComponentsRegistered || false;
+let jwtComponentsRegistered = false;
 
 // Register custom UI components
-const registerCustomUiComponents = function () {
+const registerCustomUiComponents = () => {
     // Check if components have already been registered
-    if (window.jwtComponentsRegistered) {
+    if (jwtComponentsRegistered) {
         return;
     }
 
@@ -37,16 +34,16 @@ const registerCustomUiComponents = function () {
     registerHelpTooltips();
 
     // Set the flag to indicate components have been registered
-    window.jwtComponentsRegistered = true;
+    jwtComponentsRegistered = true;
 };
 
 /**
      * Registers help tooltips for properties.
      * @param {Element} [contextElement] - Optional context within which to find elements.
      */
-const registerHelpTooltips = function (contextElement) {
+const registerHelpTooltips = (contextElement) => {
     const baseElement = contextElement || document; // baseElement is a raw DOM node
-    $(baseElement).find('.property-label').each((index, labelNode) => {
+    $(baseElement).find('.property-label').each((_index, labelNode) => {
         const propertyName = $(labelNode).text().trim();
         const helpText = getHelpTextForProperty(propertyName);
 
@@ -83,7 +80,7 @@ const registerHelpTooltips = function (contextElement) {
      * @param {string} propertyName - The name of the property
      * @return {string} The help text for the property
      */
-const getHelpTextForProperty = function (propertyName) {
+const getHelpTextForProperty = (propertyName) => {
     // Map property names to i18n keys
     const helpTextKeys = {
         'Token Location': 'property.token.location.help',
@@ -107,7 +104,7 @@ const getHelpTextForProperty = function (propertyName) {
 /**
      * Hides the loading indicator and shows the UI components.
      */
-const hideLoadingIndicator = function () {
+const hideLoadingIndicator = () => {
     const loadingIndicator = $('#loading-indicator');
     if (loadingIndicator.length) {
         $(loadingIndicator).hide();
@@ -121,7 +118,7 @@ const hideLoadingIndicator = function () {
 /**
      * Updates UI text with translations from the current language.
      */
-const updateUITranslations = function () {
+const updateUITranslations = () => {
     // Update loading indicator text
     const loadingIndicator = $('#loading-indicator');
     if (loadingIndicator.length) {
@@ -138,7 +135,7 @@ const updateUITranslations = function () {
 /**
  * Initializes the custom UI components.
  */
-export const init = function () {
+export const init = () => {
     // Update UI translations immediately
     updateUITranslations();
 
@@ -179,7 +176,7 @@ export const init = function () {
         // Vanilla JS's `addEventListener` does not support this directly. Re-triggering would involve
         // finding all `trigger('dialogOpen')` calls and modifying them to use `CustomEvent` with a `detail` property,
         // which is a broader change than the current scope.
-        $(document).on('dialogOpen', (event, data) => {
+        $(document).on('dialogOpen', (_event, data) => {
             const dialogContentElement = Array.isArray(data) ? data[0] : data;
 
             // $dialog is no longer needed as we will use dialogContentElement directly for classList and querySelector

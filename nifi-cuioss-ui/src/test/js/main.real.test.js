@@ -161,7 +161,7 @@ describe('main.js (real implementation with JSDOM)', () => {
             mainModule.init();
             jest.runAllTimers();
 
-            expect(window.jwtComponentsRegistered).toBe(true);
+            // window.jwtComponentsRegistered is no longer accessible, check effects instead
             expect(nfCommon.registerCustomUiTab).toHaveBeenCalledTimes(2);
             expect(nfCommon.registerCustomUiTab).toHaveBeenCalledWith('jwt.validation.issuer.configuration', expect.anything());
             expect(nfCommon.registerCustomUiTab).toHaveBeenCalledWith('jwt.validation.token.verification', expect.anything());
@@ -252,7 +252,7 @@ describe('main.js (real implementation with JSDOM)', () => {
             jest.runAllTimers(); // Ensure event handler and any subsequent async operations complete
 
             // Now, the event handler in main.js should have executed registerComponents()
-            expect(window.jwtComponentsRegistered).toBe(true); // Flag should be set
+            // window.jwtComponentsRegistered is no longer accessible, check effects instead
             expect(nfCommon.registerCustomUiTab).toHaveBeenCalledTimes(2); // Components registered
             expect(document.getElementById('loading-indicator').style.display).toBe('none');
         });
