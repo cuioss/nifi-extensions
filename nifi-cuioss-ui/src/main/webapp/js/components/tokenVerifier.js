@@ -63,16 +63,13 @@ export const init = function (element, _config, _type, callback) {
 
         if (!token) {
             $resultsContent.html('<div class="token-error">' +
-                                      (i18n['processor.jwt.noTokenProvided'] || 'No token provided') + '</div>');
+                                  (i18n['processor.jwt.noTokenProvided'] || 'No token provided') + '</div>');
             return;
         }
 
-        // Show loading state
-        $resultsContent.html('<div class="token-loading"><span class="fa fa-spinner fa-spin"></span> ' +
-                                  (i18n['processor.jwt.verifying'] || 'Verifying token...') + '</div>');
+        _resetUIAndShowLoading($resultsContent, i18n);
 
         try {
-            // Make the AJAX request to verify the token
             $.ajax({
                 method: 'POST',
                 url: '../nifi-api/processors/jwt/verify-token',
@@ -81,122 +78,15 @@ export const init = function (element, _config, _type, callback) {
                 dataType: 'json',
                 timeout: 5000
             })
-                .then(responseData => { // responseData is the parsed JSON
-                    if (responseData.valid) {
-                        displayValidToken(responseData);
-                    } else {
-                        displayInvalidToken(responseData);
-                    }
-                })
-                .catch(jqXHR => { // jqXHR object for cash-dom
-                    let errorMessage = jqXHR.statusText || jqXHR.responseText;
-                    if (jqXHR.responseText) {
-                        try {
-                            const errorJson = JSON.parse(jqXHR.responseText);
-                            if (errorJson && errorJson.message) {
-                                errorMessage = errorJson.message;
-                            }
-                        } catch (e) {
-                            // responseText was not JSON, use as is or fallback
-                            errorMessage = jqXHR.responseText || errorMessage;
-                        }
-                    }
-                    displayError(errorMessage);
-
-                    function displayError(msg) {
-                        let messageToDisplay;
-                        const isNullOrUndefined = msg == null;
-                        const trimmedMsg = isNullOrUndefined ? '' : String(msg).trim();
-                        const lowerCaseMsg = isNullOrUndefined ? '' : String(msg).toLowerCase();
-
-                        if (
-                            isNullOrUndefined ||
-                            trimmedMsg === '' ||
-                            lowerCaseMsg === 'null' ||
-                            lowerCaseMsg === 'undefined'
-                        ) {
-                            messageToDisplay = i18n['processor.jwt.unknownError'] || 'Unknown error';
-                        } else {
-                            messageToDisplay = msg;
-                        }
-                        // Ensure messageToDisplay is never null/undefined before concatenation
-                        messageToDisplay = messageToDisplay || (i18n['processor.jwt.unknownError'] || 'Unknown error');
-
-                        if (getIsLocalhost()) {
-                            const sampleResponse = {
-                                valid: true, subject: 'user123', issuer: 'https://sample-issuer.example.com',
-                                audience: 'sample-audience', expiration: new Date(Date.now() + 3600000).toISOString(),
-                                roles: ['admin', 'user'], scopes: ['read', 'write'],
-                                claims: {
-                                    sub: 'user123', iss: 'https://sample-issuer.example.com',
-                                    aud: 'sample-audience', exp: Math.floor(Date.now() / 1000) + 3600,
-                                    iat: Math.floor(Date.now() / 1000), roles: ['admin', 'user'],
-                                    scope: 'read write', name: 'John Doe', email: 'john.doe@example.com'
-                                }
-                            };
-                            displayValidToken(sampleResponse, true);
-                        } else {
-                            // eslint-disable-next-line max-len
-                            const verificationErrorText = i18n['processor.jwt.verificationError'] || 'Verification error';
-                            const errorHtml =
-                                '<div class="token-error">' +
-                                '<span class="fa fa-exclamation-triangle"></span> ' +
-                                verificationErrorText +
-                                ': ' +
-                                messageToDisplay +
-                                '</div>';
-                            $resultsContent.html(errorHtml);
-                        }
-                    }
-                });
+                .then(responseData => _handleTokenVerificationResponse(responseData, $resultsContent, i18n, _displayValidToken, _displayInvalidToken))
+                .catch(jqXHR => _handleTokenVerificationAjaxError(jqXHR, $resultsContent, i18n, _displayValidToken));
         } catch (e) {
-            const messageIsNullOrUndefined = e.message == null;
-            const trimmedMessage = messageIsNullOrUndefined ? '' : String(e.message).trim();
-            const lowerCaseMessage = messageIsNullOrUndefined ? '' : String(e.message).toLowerCase();
-
-            const messageIsEmptyString = trimmedMessage === '';
-            const messageIsStringNull = lowerCaseMessage === 'null';
-            const messageIsStringUndefined = lowerCaseMessage === 'undefined';
-
-            const isProblematicMessage = messageIsNullOrUndefined ||
-                messageIsEmptyString ||
-                messageIsStringNull ||
-                messageIsStringUndefined;
-
-            const exceptionMessage = isProblematicMessage ?
-                (i18n['processor.jwt.unknownError'] || 'Exception occurred') : // Fallback
-                e.message;
-
-            if (getIsLocalhost()) {
-                const sampleResponse = {
-                    valid: true, subject: 'user123', issuer: 'https://sample-issuer.example.com',
-                    audience: 'sample-audience', expiration: new Date(Date.now() + 3600000).toISOString(),
-                    roles: ['admin', 'user'], scopes: ['read', 'write'],
-                    claims: {
-                        sub: 'user123', iss: 'https://sample-issuer.example.com',
-                        aud: 'sample-audience', exp: Math.floor(Date.now() / 1000) + 3600,
-                        iat: Math.floor(Date.now() / 1000), roles: ['admin', 'user'],
-                        scope: 'read write', name: 'John Doe', email: 'john.doe@example.com'
-                    }
-                };
-                displayValidToken(sampleResponse, true);
-            } else {
-                // eslint-disable-next-line max-len
-                const verificationErrorText = i18n['processor.jwt.verificationError'] || 'Verification error';
-                const errorHtml =
-                    '<div class="token-error">' +
-                    '<span class="fa fa-exclamation-triangle"></span> ' +
-                    verificationErrorText +
-                    ': ' +
-                    exceptionMessage +
-                    '</div>';
-                $resultsContent.html(errorHtml);
-            }
+            _handleTokenVerificationSyncException(e, $resultsContent, i18n, _displayValidToken);
         }
     });
 
-    // Function to display valid token details
-    const displayValidToken = (response, isSimulated) => {
+    // Function to display valid token details (now private)
+    const _displayValidToken = (response, isSimulated) => {
         let html =
             '<div class="token-valid">' +
                 '<span class="fa fa-check-circle"></span> ' +
@@ -225,8 +115,8 @@ export const init = function (element, _config, _type, callback) {
         $resultsContent.html(html);
     };
 
-    // Function to display invalid token details
-    const displayInvalidToken = response => {
+    // Function to display invalid token details (now private)
+    const _displayInvalidToken = response => {
         let invalidHtml =
             '<div class="token-invalid">' +
                 '<span class="fa fa-times-circle"></span> ' +
@@ -258,6 +148,114 @@ export const init = function (element, _config, _type, callback) {
         });
     }
 };
+
+// --- Refactored Private Helper Functions ---
+
+const _resetUIAndShowLoading = ($resultsContent, i18n) => {
+    $resultsContent.html('<div class="token-loading"><span class="fa fa-spinner fa-spin"></span> ' +
+                              (i18n['processor.jwt.verifying'] || 'Verifying token...') + '</div>');
+};
+
+const _handleTokenVerificationResponse = (responseData, $resultsContent, i18n, displayValidTokenFunc, displayInvalidTokenFunc) => {
+    if (responseData.valid) {
+        displayValidTokenFunc(responseData, false); // isSimulated is false for actual responses
+    } else {
+        displayInvalidTokenFunc(responseData);
+    }
+};
+
+const _handleTokenVerificationAjaxError = (jqXHR, $resultsContent, i18n, displayValidTokenFunc) => {
+    let errorMessage = jqXHR.statusText || jqXHR.responseText;
+    if (jqXHR.responseText) {
+        try {
+            const errorJson = JSON.parse(jqXHR.responseText);
+            if (errorJson && errorJson.message) {
+                errorMessage = errorJson.message;
+            }
+        } catch (e) {
+            errorMessage = jqXHR.responseText || errorMessage;
+        }
+    }
+
+    let messageToDisplay;
+    const isNullOrUndefined = errorMessage == null;
+    const trimmedMsg = isNullOrUndefined ? '' : String(errorMessage).trim();
+    const lowerCaseMsg = isNullOrUndefined ? '' : String(errorMessage).toLowerCase();
+
+    if (isNullOrUndefined || trimmedMsg === '' || lowerCaseMsg === 'null' || lowerCaseMsg === 'undefined') {
+        messageToDisplay = i18n['processor.jwt.unknownError'] || 'Unknown error';
+    } else {
+        messageToDisplay = errorMessage;
+    }
+    messageToDisplay = messageToDisplay || (i18n['processor.jwt.unknownError'] || 'Unknown error');
+
+    if (getIsLocalhost()) {
+        const sampleResponse = {
+            valid: true, subject: 'user123', issuer: 'https://sample-issuer.example.com',
+            audience: 'sample-audience', expiration: new Date(Date.now() + 3600000).toISOString(),
+            roles: ['admin', 'user'], scopes: ['read', 'write'],
+            claims: {
+                sub: 'user123', iss: 'https://sample-issuer.example.com',
+                aud: 'sample-audience', exp: Math.floor(Date.now() / 1000) + 3600,
+                iat: Math.floor(Date.now() / 1000), roles: ['admin', 'user'],
+                scope: 'read write', name: 'John Doe', email: 'john.doe@example.com'
+            }
+        };
+        displayValidTokenFunc(sampleResponse, true); // isSimulated is true
+    } else {
+        const verificationErrorText = i18n['processor.jwt.verificationError'] || 'Verification error';
+        const errorHtml =
+            '<div class="token-error">' +
+            '<span class="fa fa-exclamation-triangle"></span> ' +
+            verificationErrorText +
+            ': ' +
+            messageToDisplay +
+            '</div>';
+        $resultsContent.html(errorHtml);
+    }
+};
+
+const _handleTokenVerificationSyncException = (exception, $resultsContent, i18n, displayValidTokenFunc) => {
+    const messageIsNullOrUndefined = exception.message == null;
+    const trimmedMessage = messageIsNullOrUndefined ? '' : String(exception.message).trim();
+    const lowerCaseMessage = messageIsNullOrUndefined ? '' : String(exception.message).toLowerCase();
+
+    const messageIsEmptyString = trimmedMessage === '';
+    const messageIsStringNull = lowerCaseMessage === 'null';
+    const messageIsStringUndefined = lowerCaseMessage === 'undefined';
+
+    const isProblematicMessage = messageIsNullOrUndefined || messageIsEmptyString || messageIsStringNull || messageIsStringUndefined;
+
+    const exceptionMessage = isProblematicMessage ?
+        (i18n['processor.jwt.unknownError'] || 'Exception occurred') :
+        exception.message;
+
+    if (getIsLocalhost()) {
+        const sampleResponse = {
+            valid: true, subject: 'user123', issuer: 'https://sample-issuer.example.com',
+            audience: 'sample-audience', expiration: new Date(Date.now() + 3600000).toISOString(),
+            roles: ['admin', 'user'], scopes: ['read', 'write'],
+            claims: {
+                sub: 'user123', iss: 'https://sample-issuer.example.com',
+                aud: 'sample-audience', exp: Math.floor(Date.now() / 1000) + 3600,
+                iat: Math.floor(Date.now() / 1000), roles: ['admin', 'user'],
+                scope: 'read write', name: 'John Doe', email: 'john.doe@example.com'
+            }
+        };
+        displayValidTokenFunc(sampleResponse, true); // isSimulated is true
+    } else {
+        const verificationErrorText = i18n['processor.jwt.verificationError'] || 'Verification error';
+        const errorHtml =
+            '<div class="token-error">' +
+            '<span class="fa fa-exclamation-triangle"></span> ' +
+            verificationErrorText +
+            ': ' +
+            exceptionMessage +
+            '</div>';
+        $resultsContent.html(errorHtml);
+    }
+};
+
 
 export const __setIsLocalhostForTesting = function (value) {
     isLocalhostOverride = (value === null) ? null : !!value;
