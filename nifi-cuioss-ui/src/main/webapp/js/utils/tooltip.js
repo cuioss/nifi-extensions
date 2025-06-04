@@ -1,5 +1,6 @@
 // utils/tooltip.js
 import tippy from 'tippy.js';
+import * as nfCommon from 'nf.Common'; // Import nfCommon
 import 'tippy.js/dist/tippy.css';
 import 'tippy.js/themes/light-border.css'; // Optional for jQuery UI-like styling
 
@@ -24,13 +25,12 @@ export function initTooltips(selector, options = {}, context = document) {
     try {
         return tippy(Array.from(elements), tippyOptions);
     } catch (error) {
-        // Fallback to title attribute if tooltip function fails
-        Array.from(elements).forEach(element => {
-            const title = element.getAttribute('title');
-            if (title) {
-                element.setAttribute('data-original-title', title);
-            }
-        });
+        // Log error if Tippy.js initialization fails.
+        if (nfCommon && nfCommon.logError) {
+            nfCommon.logError('Error initializing tooltip: ' + error.message);
+        }
+        // It's important to return null or an empty instance array if tippy fails,
+        // consistent with tippy's behavior on empty selectors.
         return null;
     }
 }

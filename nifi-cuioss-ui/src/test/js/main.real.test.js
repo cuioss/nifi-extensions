@@ -166,7 +166,7 @@ describe('main.js (real implementation with JSDOM)', () => {
             expect(nfCommon.registerCustomUiTab).toHaveBeenCalledWith('jwt.validation.issuer.configuration', expect.anything());
             expect(nfCommon.registerCustomUiTab).toHaveBeenCalledWith('jwt.validation.token.verification', expect.anything());
             expect(document.getElementById('loading-indicator').style.display).toBe('none'); // Direct check for display: none
-            // expect(document.getElementById('jwt-validator-tabs').style.display !== 'none').toBe(true); // Temporarily comment out for stability
+            expect(document.getElementById('jwt-validator-tabs').style.display).not.toBe('none'); // Check that display is not 'none'
         });
 
         it('should register help tooltips', () => {
@@ -295,7 +295,7 @@ describe('main.js (real implementation with JSDOM)', () => {
             // jQuery event triggering or setTimeout behavior in the JSDOM/Jest environment,
             // preventing the mockInitTooltips from being called as expected.
             // This test was previously noted for its complexity and potential flakiness.
-            // eslint-disable-next-line jest/no-disabled-tests
+            // Re-enabling the test.
             it('should register help tooltips and update translations when a MultiIssuerJWTTokenAuthenticator dialog opens', async () => {
                 const dialogContent = document.getElementById('processor-dialog-mock');
                 // Ensure dialog has the correct class (already set in beforeEach)
@@ -363,9 +363,10 @@ describe('main.js (real implementation with JSDOM)', () => {
                 // are expected to FAIL because main.js's updateUITranslations() does not target them by context.
                 // These are included to match the subtask request, but highlight a discrepancy.
                 // To make these pass, main.js would need to call something like i18n.translateUI(dialogContent).
+                // The following assertions confirm that main.js's updateUITranslations does NOT affect these specific elements by their data-i18n-key within the dialog,
+                // as it operates on global selectors or specific hardcoded IDs/classes not necessarily present or unique within the dialog for these keys.
                 expect(freshDialogContent.querySelector('[data-i18n-key="jwt.validator.title"]').textContent).toBe('Initial Dialog Title'); // Expected to remain initial value
                 expect(freshDialogContent.querySelector('[data-i18n-key-direct="property.token.location.help"]').textContent).toBe('Initial Dialog Help Text'); // Expected to remain initial value
-                // done(); // Removed
             });
 
             it('should NOT act if processorType does not include MultiIssuerJWTTokenAuthenticator', async () => {

@@ -7,6 +7,26 @@ import $ from 'cash-dom';
 'use strict';
 
 /**
+ * Creates a simplified error object from a jqXHR object.
+ * @param {object} jqXHR - The jQuery XHR object from an AJAX error.
+ * @param {string} [textStatus] - The status text (e.g., "timeout", "error"). (Optional, as cash-dom might not always provide it directly in catch)
+ * @param {string} [errorThrown] - The error thrown. (Optional, as cash-dom might not always provide it directly in catch)
+ * @returns {{responseText: *, status: *, statusText: *}}
+ * @private
+ */
+const _createXhrErrorObject = function (jqXHR, textStatus, errorThrown) {
+    // Note: cash-dom's jqXHR object in .catch() might be simpler than jQuery's.
+    // It directly provides status, statusText, and responseText.
+    // textStatus and errorThrown might not be consistently provided by cash-dom's AJAX fail handler,
+    // so we primarily rely on properties of the jqXHR object itself.
+    return {
+        status: jqXHR.status,
+        statusText: jqXHR.statusText || errorThrown || textStatus || 'Unknown error', // Prioritize jqXHR.statusText
+        responseText: jqXHR.responseText
+    };
+};
+
+/**
      * Base URL for API endpoints.
      */
 const BASE_URL = '../nifi-api/processors/jwt';
@@ -15,69 +35,52 @@ const BASE_URL = '../nifi-api/processors/jwt';
  * Validates a JWKS URL.
  *
  * @param {string} jwksUrl - The JWKS URL to validate
- * @param {Function} successCallback - The callback to invoke on success
- * @param {Function} errorCallback - The callback to invoke on error
+ * @return {Promise} A Promise object for the request
  */
-export const validateJwksUrl = function (jwksUrl, successCallback, errorCallback) {
-    $.ajax({
-        method: 'POST',
-        url: BASE_URL + '/validate-jwks-url',
-        data: JSON.stringify({ jwksUrl: jwksUrl }),
-        contentType: 'application/json',
-        dataType: 'json',
-        timeout: 5000
-    })
-        .then(data => { // $.ajax().then() provides data directly
-            if (successCallback) {
-                successCallback(data);
-            }
+export const validateJwksUrl = function (jwksUrl) {
+    return new Promise((resolve, reject) => {
+        $.ajax({
+            method: 'POST',
+            url: BASE_URL + '/validate-jwks-url',
+            data: JSON.stringify({ jwksUrl: jwksUrl }),
+            contentType: 'application/json',
+            dataType: 'json',
+            timeout: 5000
         })
-        .catch(error => { // cash-dom's ajax().catch() provides the jqXHR object
-            if (errorCallback) {
-                const xhrLike = {
-                    status: error.status,
-                    statusText: error.statusText,
-                    responseText: error.responseText
-                };
-                // errorThrown is not directly available in cash's catch, derive from statusText or responseText
-                const errorMessage = error.statusText || error.responseText || 'Unknown error';
-                errorCallback(errorMessage, xhrLike);
-            }
-        });
+            .then(data => { // $.ajax().then() provides data directly
+                resolve(data);
+            })
+            .catch(error => { // cash-dom's ajax().catch() provides the jqXHR object
+                // Create a simplified error object from jqXHR for consistent error handling upstream.
+                reject(_createXhrErrorObject(error));
+            });
+    });
 };
 
 /**
  * Validates a JWKS file.
  *
  * @param {string} filePath - The path to the JWKS file
- * @param {Function} successCallback - The callback to invoke on success
- * @param {Function} errorCallback - The callback to invoke on error
+ * @return {Promise} A Promise object for the request
  */
-export const validateJwksFile = function (filePath, successCallback, errorCallback) {
-    $.ajax({
-        method: 'POST',
-        url: BASE_URL + '/validate-jwks-file',
-        data: JSON.stringify({ filePath: filePath }),
-        contentType: 'application/json',
-        dataType: 'json',
-        timeout: 5000
-    })
-        .then(data => {
-            if (successCallback) {
-                successCallback(data);
-            }
+export const validateJwksFile = function (filePath) {
+    return new Promise((resolve, reject) => {
+        $.ajax({
+            method: 'POST',
+            url: BASE_URL + '/validate-jwks-file',
+            data: JSON.stringify({ filePath: filePath }),
+            contentType: 'application/json',
+            dataType: 'json',
+            timeout: 5000
         })
-        .catch(error => {
-            if (errorCallback) {
-                const xhrLike = {
-                    status: error.status,
-                    statusText: error.statusText,
-                    responseText: error.responseText
-                };
-                const errorMessage = error.statusText || error.responseText || 'Unknown error';
-                errorCallback(errorMessage, xhrLike);
-            }
-        });
+            .then(data => {
+                resolve(data);
+            })
+            .catch(error => { // cash-dom's ajax().catch() provides the jqXHR object
+                // Create a simplified error object from jqXHR for consistent error handling upstream.
+                reject(_createXhrErrorObject(error));
+            });
+    });
 };
 
 /**
@@ -101,15 +104,12 @@ export const validateJwksContent = function (jwksContent, successCallback, error
                 successCallback(data);
             }
         })
-        .catch(error => {
+        .catch(error => { // cash-dom's ajax().catch() provides the jqXHR object
             if (errorCallback) {
-                const xhrLike = {
-                    status: error.status,
-                    statusText: error.statusText,
-                    responseText: error.responseText
-                };
-                const errorMessage = error.statusText || error.responseText || 'Unknown error';
-                errorCallback(errorMessage, xhrLike);
+                // Create a simplified error object from jqXHR for consistent error handling upstream.
+                const errorObj = _createXhrErrorObject(error);
+                const errorMessage = errorObj.statusText || errorObj.responseText || 'Unknown error';
+                errorCallback(errorMessage, errorObj);
             }
         });
 };
@@ -135,15 +135,12 @@ export const verifyToken = function (token, successCallback, errorCallback) {
                 successCallback(data);
             }
         })
-        .catch(error => {
+        .catch(error => { // cash-dom's ajax().catch() provides the jqXHR object
             if (errorCallback) {
-                const xhrLike = {
-                    status: error.status,
-                    statusText: error.statusText,
-                    responseText: error.responseText
-                };
-                const errorMessage = error.statusText || error.responseText || 'Unknown error';
-                errorCallback(errorMessage, xhrLike);
+                // Create a simplified error object from jqXHR for consistent error handling upstream.
+                const errorObj = _createXhrErrorObject(error);
+                const errorMessage = errorObj.statusText || errorObj.responseText || 'Unknown error';
+                errorCallback(errorMessage, errorObj);
             }
         });
 };
@@ -166,15 +163,12 @@ export const getSecurityMetrics = function (successCallback, errorCallback) {
                 successCallback(data);
             }
         })
-        .catch(error => {
+        .catch(error => { // cash-dom's ajax().catch() provides the jqXHR object
             if (errorCallback) {
-                const xhrLike = {
-                    status: error.status,
-                    statusText: error.statusText,
-                    responseText: error.responseText
-                };
-                const errorMessage = error.statusText || error.responseText || 'Unknown error';
-                errorCallback(errorMessage, xhrLike);
+                // Create a simplified error object from jqXHR for consistent error handling upstream.
+                const errorObj = _createXhrErrorObject(error);
+                const errorMessage = errorObj.statusText || errorObj.responseText || 'Unknown error';
+                errorCallback(errorMessage, errorObj);
             }
         });
 };

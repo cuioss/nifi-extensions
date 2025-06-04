@@ -5,8 +5,8 @@
 module.exports = {
     init: jest.fn().mockImplementation((element, propertyValue, jwks_type, callback) => {
     // Create UI elements
-        const $ = require('./jquery.js');
-        const nfCommon = require('./nf-common.js');
+        const $ = global.$; // Use global cash-dom instance
+        const nfCommon = global.nfCommon; // Use global nfCommon mock
         const i18n = nfCommon.getI18n();
 
         // Create container

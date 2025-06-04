@@ -78,8 +78,23 @@ export const init = function (element, _config, _type, callback) {
                 dataType: 'json',
                 timeout: 5000
             })
-                .then(responseData => _handleTokenVerificationResponse(responseData, $resultsContent, i18n, _displayValidToken, _displayInvalidToken))
-                .catch(jqXHR => _handleTokenVerificationAjaxError(jqXHR, $resultsContent, i18n, _displayValidToken));
+                .then(responseData => {
+                    _handleTokenVerificationResponse(
+                        responseData,
+                        $resultsContent,
+                        i18n,
+                        _displayValidToken,
+                        _displayInvalidToken
+                    );
+                })
+                .catch(jqXHR => {
+                    _handleTokenVerificationAjaxError(
+                        jqXHR,
+                        $resultsContent,
+                        i18n,
+                        _displayValidToken
+                    );
+                });
         } catch (e) {
             _handleTokenVerificationSyncException(e, $resultsContent, i18n, _displayValidToken);
         }
@@ -137,12 +152,15 @@ export const init = function (element, _config, _type, callback) {
     $resultsContent.html(
         '<div class="token-instructions">' +
             (i18n['processor.jwt.initialInstructions'] ||
-                'Enter a JWT token above and click "Verify Token" ' +
+                'Enter a JWT token above and click "Verify Token" ' + // Break string
                 'to validate it.') +
             '</div>'
     );
 
     if (typeof callback === 'function') {
+        // The 'validate' function is part of the contract expected by nfCommon.registerComponentValidation (or similar mechanisms).
+        // Currently, this component does not implement specific validation logic via this callback,
+        // so it defaults to true. Validation might be handled internally or not be required for this component's lifecycle.
         callback({
             validate: () => true
         });
@@ -190,9 +208,12 @@ const _handleTokenVerificationAjaxError = (jqXHR, $resultsContent, i18n, display
     messageToDisplay = messageToDisplay || (i18n['processor.jwt.unknownError'] || 'Unknown error');
 
     if (getIsLocalhost()) {
+        const expirationDate = new Date(Date.now() + 3600000).toISOString();
         const sampleResponse = {
             valid: true, subject: 'user123', issuer: 'https://sample-issuer.example.com',
-            audience: 'sample-audience', expiration: new Date(Date.now() + 3600000).toISOString(),
+            audience: 'sample-audience',
+            expiration: // Break before value
+                expirationDate,
             roles: ['admin', 'user'], scopes: ['read', 'write'],
             claims: {
                 sub: 'user123', iss: 'https://sample-issuer.example.com',
@@ -231,9 +252,12 @@ const _handleTokenVerificationSyncException = (exception, $resultsContent, i18n,
         exception.message;
 
     if (getIsLocalhost()) {
+        const expirationDateSync = new Date(Date.now() + 3600000).toISOString();
         const sampleResponse = {
             valid: true, subject: 'user123', issuer: 'https://sample-issuer.example.com',
-            audience: 'sample-audience', expiration: new Date(Date.now() + 3600000).toISOString(),
+            audience: 'sample-audience',
+            expiration: // Break before value
+                expirationDateSync,
             roles: ['admin', 'user'], scopes: ['read', 'write'],
             claims: {
                 sub: 'user123', iss: 'https://sample-issuer.example.com',

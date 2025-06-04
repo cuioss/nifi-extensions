@@ -176,6 +176,8 @@ export const init = () => {
         // Vanilla JS's `addEventListener` does not support this directly. Re-triggering would involve
         // finding all `trigger('dialogOpen')` calls and modifying them to use `CustomEvent` with a `detail` property,
         // which is a broader change than the current scope.
+        // Handles re-initialization of tooltips and translations when a NiFi dialog opens,
+        // specifically targeting dialogs for the MultiIssuerJWTTokenAuthenticator.
         $(document).on('dialogOpen', (_event, data) => {
             const dialogContentElement = Array.isArray(data) ? data[0] : data;
 
@@ -202,5 +204,7 @@ export const init = () => {
         hideLoadingIndicator();
         // Ensure translations are applied
         updateUITranslations();
+        // This timeout acts as a final safeguard to ensure UI elements are correctly shown
+        // and translated, especially if earlier event-driven initializations were missed or delayed.
     }, 3000);
 };

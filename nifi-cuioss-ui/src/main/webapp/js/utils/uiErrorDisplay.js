@@ -8,9 +8,12 @@ const extractErrorMessage = (error, i18n) => {
     // Prefer responseJSON if it exists (more structured error from an API)
     if (error && error.responseJSON && error.responseJSON.message) {
         message = error.responseJSON.message;
-    } else if (error && error.responseJSON && Array.isArray(error.responseJSON.errors) && error.responseJSON.errors.length > 0) {
+    } else if (error && error.responseJSON && Array.isArray(error.responseJSON.errors) &&
+               error.responseJSON.errors.length > 0) { // Removed trailing space here
         // Handle cases where errors might be an array of messages
-        message = error.responseJSON.errors.map(err => (typeof err === 'string' ? err : err.msg || 'Error detail missing')).join(', ');
+        message = error.responseJSON.errors
+            .map(err => (typeof err === 'string' ? err : err.msg || 'Error detail missing'))
+            .join(', ');
     }
 
     // Fallback to responseText if responseJSON didn't yield a message
@@ -20,7 +23,9 @@ const extractErrorMessage = (error, i18n) => {
             if (errorJson && errorJson.message) {
                 message = errorJson.message;
             } else if (Array.isArray(errorJson.errors) && errorJson.errors.length > 0) {
-                message = errorJson.errors.map(err => (typeof err === 'string' ? err : err.msg || 'Error detail missing')).join(', ');
+                message = errorJson.errors
+                    .map(err => (typeof err === 'string' ? err : err.msg || 'Error detail missing'))
+                    .join(', '); // This line might also be long depending on err.msg
             } else {
                 message = error.responseText; // Raw responseText if not structured
             }

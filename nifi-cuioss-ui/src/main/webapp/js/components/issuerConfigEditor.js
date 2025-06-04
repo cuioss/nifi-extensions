@@ -476,33 +476,30 @@ const removeIssuer = (form, issuerNameFromClick) => { // form is expected to be 
                     });
 
                     if (Object.keys(updates).length === 0 && currentIssuerName !== 'sample-issuer') {
-                        // console.warn('Success: Issuer configuration removed (no properties found to remove).'); // Or a UI message
+                        // UI message for "no properties to remove" could be added here if needed.
                         return;
                     }
 
                     return apiClient.updateProcessorProperties(currentProcessorId, updates)
                         .then(() => {
-                            // console.warn('Success: Issuer configuration removed successfully.'); // Or a UI message
+                            // UI message for "successfully removed" could be added here.
                         })
-                        .catch(error => { // Catch for updateProcessorProperties
-                            // TODO: Show this error in a global error display area
-                            console.warn('Error: Failed to remove issuer configuration from server.', error);
+                        .catch(_error => { // Catch for updateProcessorProperties, prefixed error with _
+                            // TODO: Show this error in a global error display area (e.g., using displayUiError)
+                            // For now, error is silently ignored from UI perspective or handled by generic error handlers.
                         });
                 })
-                .catch(error => { // Catch for getProcessorProperties
+                .catch(_error => { // Catch for getProcessorProperties, prefixed error with _
                     // TODO: Show this error in a global error display area
-                    console.warn('Error: Failed to get processor properties for removal.', error);
                 });
-        } catch (e) {
+        } catch (_e) { // Prefixed e with _
             // TODO: Show this error in a global error display area
-            console.warn('Error: Exception during issuer removal process.', e);
         }
     } else if (currentIssuerName && !currentProcessorId) {
         // Standalone mode: No server interaction, form is already removed.
     } else {
         if (currentProcessorId) {
-            // TODO: Show this error in a global error display area
-            console.warn('Error: Issuer name is missing. Cannot remove.');
+            // TODO: Show this error in a global error display area (e.g., "Issuer name missing for removal")
         }
     }
 };

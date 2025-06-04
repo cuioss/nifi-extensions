@@ -79,73 +79,60 @@ describe('apiClient', () => {
     describe('validateJwksUrl', () => {
         const jwksUrl = 'https://example.com/.well-known/jwks.json';
 
-        it('should make a POST request and call successCallback on success', async () => {
+        it('should make a POST request and resolve on success', async () => {
             const mockResponseData = { valid: true, details: 'JWKS URL is valid' };
-            // Configure the mockAjax to resolve successfully for this test
-            mockAjax.mockResolvedValue(mockResponseData); // cash-dom's $.ajax().then() callback receives data directly
+            mockAjax.mockResolvedValue(mockResponseData);
 
-            // Call the actual apiClient.validateJwksUrl
-            apiClient.validateJwksUrl(jwksUrl, successCallback, errorCallback);
+            const promise = apiClient.validateJwksUrl(jwksUrl);
 
-            // Allow promise in SUT to resolve
-            await Promise.resolve().then().then(); // Wait for microtasks
-
-            expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({ url: expect.stringContaining('/validate-jwks-url') }));
-            expect(successCallback).toHaveBeenCalledWith(mockResponseData);
-            expect(errorCallback).not.toHaveBeenCalled();
+            await expect(promise).resolves.toEqual(mockResponseData);
+            expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({
+                method: 'POST',
+                url: expect.stringContaining('/validate-jwks-url'),
+                data: JSON.stringify({ jwksUrl: jwksUrl })
+            }));
         });
 
-        it('should call errorCallback on failure (with error.response)', async () => {
+        it('should reject with a standardized error object on AJAX failure', async () => {
             const mockJqXHR = { status: 500, statusText: 'Server Error', responseText: 'Server Message' };
             mockAjax.mockRejectedValue(mockJqXHR);
 
-            apiClient.validateJwksUrl(jwksUrl, successCallback, errorCallback);
-            await Promise.resolve().then().then(); // Wait for microtasks
+            const promise = apiClient.validateJwksUrl(jwksUrl);
 
-            expect(errorCallback).toHaveBeenCalledWith('Server Error', expect.objectContaining({
+            await expect(promise).rejects.toEqual({
                 status: 500,
                 statusText: 'Server Error',
                 responseText: 'Server Message'
-            }));
-            expect(successCallback).not.toHaveBeenCalled();
+            });
         });
 
-        it('should call errorCallback on failure (without error.response)', async () => {
-            const mockJqXHR = { status: 0, statusText: 'Network Failure', responseText: 'Network Failure' };
-            // No error.response for this case, cash-dom might pass jqXHR directly to catch
-            mockAjax.mockRejectedValue(mockJqXHR);
+        it('should correctly use statusText from errorThrown or textStatus if jqXHR.statusText is missing', async () => {
+            // This test is more about _createXhrErrorObject's behavior, which is used by validateJwksUrl
+            const mockJqXHRNoStatusText = { status: 404, responseText: 'Not Found Detail' };
+            // Simulate cash-dom providing textStatus or errorThrown in the catch block
+            // For this test, we assume _createXhrErrorObject is called with (jqXHR, textStatus, errorThrown)
+            // However, the actual call in apiClient.js is reject(_createXhrErrorObject(error)),
+            // where 'error' IS the jqXHR object from cash-dom's catch.
+            // So, we can't directly test the textStatus/errorThrown parameters of _createXhrErrorObject here
+            // without changing how it's called or making this an integration test of _createXhrErrorObject.
+            // Instead, we'll rely on the fact that statusText will be 'Unknown error' if not provided by jqXHR.
+            mockAjax.mockRejectedValue(mockJqXHRNoStatusText);
+            const promise = apiClient.validateJwksUrl(jwksUrl);
+            await expect(promise).rejects.toEqual({
+                status: 404,
+                statusText: 'Unknown error', // As per _createXhrErrorObject logic when jqXHR.statusText is undefined
+                responseText: 'Not Found Detail'
+            });
 
-            apiClient.validateJwksUrl(jwksUrl, successCallback, errorCallback);
-            await Promise.resolve().then().then(); // Wait for microtasks
-
-            expect(errorCallback).toHaveBeenCalledWith('Network Failure', expect.objectContaining({
-                status: 0,
-                statusText: 'Network Failure',
-                responseText: 'Network Failure'
-            }));
-            expect(successCallback).not.toHaveBeenCalled();
-        });
-
-        it('should not call successCallback if it is not provided', async () => {
-            const mockResponseData = { valid: true };
-            mockAjax.mockResolvedValue(mockResponseData);
-            // Call without successCallback
-            apiClient.validateJwksUrl(jwksUrl, null, errorCallback);
-            await Promise.resolve().then().then();
-            // No explicit assertion for successCallback not being called,
-            // but we ensure no error if it's null. errorCallback should not be called either.
-            expect(errorCallback).not.toHaveBeenCalled();
-        });
-
-        it('should not call errorCallback if it is not provided and ajax rejects', async () => {
-            const mockJqXHR = { status: 0, statusText: 'Network Failure', responseText: 'Network Failure' };
-            mockAjax.mockRejectedValue(mockJqXHR);
-            // Call without errorCallback
-            apiClient.validateJwksUrl(jwksUrl, successCallback, null);
-            await Promise.resolve().then().then();
-            // No explicit assertion for errorCallback not being called,
-            // but we ensure no error if it's null. successCallback should not be called either.
-            expect(successCallback).not.toHaveBeenCalled();
+            // Test with statusText present in jqXHR
+            const mockJqXHRWithStatusText = { status: 403, statusText: 'Forbidden', responseText: 'Access Denied' };
+            mockAjax.mockRejectedValue(mockJqXHRWithStatusText);
+            const promise2 = apiClient.validateJwksUrl(jwksUrl);
+            await expect(promise2).rejects.toEqual({
+                status: 403,
+                statusText: 'Forbidden',
+                responseText: 'Access Denied'
+            });
         });
     });
 
@@ -232,44 +219,32 @@ describe('apiClient', () => {
 
     describe('validateJwksFile', () => {
         const filePath = '/path/to/jwks.json';
-        const mockResponseData = { valid: true, keys: 1 };
 
-        it('should call successCallback on success', async () => {
+        it('should make a POST request and resolve on success', async () => {
+            const mockResponseData = { valid: true, keys: 1 };
             mockAjax.mockResolvedValue(mockResponseData);
-            apiClient.validateJwksFile(filePath, successCallback, errorCallback);
-            await Promise.resolve().then().then();
-            expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({ url: expect.stringContaining('/validate-jwks-file') }));
-            expect(successCallback).toHaveBeenCalledWith(mockResponseData);
-            expect(errorCallback).not.toHaveBeenCalled();
+
+            const promise = apiClient.validateJwksFile(filePath);
+
+            await expect(promise).resolves.toEqual(mockResponseData);
+            expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({
+                method: 'POST',
+                url: expect.stringContaining('/validate-jwks-file'),
+                data: JSON.stringify({ filePath: filePath })
+            }));
         });
 
-        it('should call errorCallback on failure (with error.response)', async () => {
+        it('should reject with a standardized error object on AJAX failure', async () => {
             const mockJqXHR = { status: 500, statusText: 'Read Error', responseText: 'File not accessible' };
             mockAjax.mockRejectedValue(mockJqXHR);
-            apiClient.validateJwksFile(filePath, successCallback, errorCallback);
-            await Promise.resolve().then().then();
-            expect(errorCallback).toHaveBeenCalledWith('Read Error', expect.objectContaining({ status: 500, responseText: 'File not accessible' }));
-        });
 
-        it('should call errorCallback on failure (without error.response)', async () => {
-            const mockJqXHR = { status: 0, statusText: 'Network Error', responseText: 'Network Error' };
-            mockAjax.mockRejectedValue(mockJqXHR);
-            apiClient.validateJwksFile(filePath, successCallback, errorCallback);
-            await Promise.resolve().then().then();
-            expect(errorCallback).toHaveBeenCalledWith('Network Error', expect.objectContaining({ status: 0, responseText: 'Network Error' }));
-        });
+            const promise = apiClient.validateJwksFile(filePath);
 
-        it('should not call callbacks if not provided', async () => {
-            mockAjax.mockResolvedValue(mockResponseData);
-            apiClient.validateJwksFile(filePath, null, null);
-            await Promise.resolve().then().then();
-            // No error expected
-
-            mockAjax.mockRejectedValue({ status: 500, statusText: 'Error', responseText: 'Error' });
-            apiClient.validateJwksFile(filePath, null, null);
-            await Promise.resolve().then().then().catch(() => {}); // Catch expected rejection
-            expect(successCallback).not.toHaveBeenCalled();
-            expect(errorCallback).not.toHaveBeenCalled();
+            await expect(promise).rejects.toEqual({
+                status: 500,
+                statusText: 'Read Error',
+                responseText: 'File not accessible'
+            });
         });
     });
 
@@ -281,12 +256,16 @@ describe('apiClient', () => {
             await Promise.resolve().then().then();
             expect(successCallback).toHaveBeenCalledWith({ valid: true });
         });
-        it('should call errorCallback on failure', async () => {
-            const mockJqXHR = { status: 500, statusText: 'Content Error', responseText: 'Content Error' };
+        it('should call errorCallback on failure with standardized error object', async () => {
+            const mockJqXHR = { status: 500, statusText: 'Content Error', responseText: 'Content Error Detail' };
             mockAjax.mockRejectedValue(mockJqXHR);
             apiClient.validateJwksContent(jwksContent, successCallback, errorCallback);
-            await Promise.resolve().then().then();
-            expect(errorCallback).toHaveBeenCalledWith('Content Error', expect.anything());
+            await Promise.resolve().then().then(); // Wait for microtasks
+            expect(errorCallback).toHaveBeenCalledWith('Content Error', {
+                status: 500,
+                statusText: 'Content Error',
+                responseText: 'Content Error Detail'
+            });
         });
     });
 
@@ -298,12 +277,16 @@ describe('apiClient', () => {
             await Promise.resolve().then().then();
             expect(successCallback).toHaveBeenCalledWith({ valid: true });
         });
-        it('should call errorCallback on failure', async () => {
-            const mockJqXHR = { status: 500, statusText: 'Token Error', responseText: 'Token Error' };
+        it('should call errorCallback on failure with standardized error object', async () => {
+            const mockJqXHR = { status: 500, statusText: 'Token Error', responseText: 'Token Error Detail' };
             mockAjax.mockRejectedValue(mockJqXHR);
             apiClient.verifyToken(token, successCallback, errorCallback);
-            await Promise.resolve().then().then();
-            expect(errorCallback).toHaveBeenCalledWith('Token Error', expect.anything());
+            await Promise.resolve().then().then(); // Wait for microtasks
+            expect(errorCallback).toHaveBeenCalledWith('Token Error', {
+                status: 500,
+                statusText: 'Token Error',
+                responseText: 'Token Error Detail'
+            });
         });
     });
 
@@ -314,12 +297,16 @@ describe('apiClient', () => {
             await Promise.resolve().then().then();
             expect(successCallback).toHaveBeenCalledWith({ metrics: 'data' });
         });
-        it('should call errorCallback on failure', async () => {
-            const mockJqXHR = { status: 500, statusText: 'Metrics Error', responseText: 'Metrics Error' };
+        it('should call errorCallback on failure with standardized error object', async () => {
+            const mockJqXHR = { status: 500, statusText: 'Metrics Error', responseText: 'Metrics Error Detail' };
             mockAjax.mockRejectedValue(mockJqXHR);
             apiClient.getSecurityMetrics(successCallback, errorCallback);
-            await Promise.resolve().then().then();
-            expect(errorCallback).toHaveBeenCalledWith('Metrics Error', expect.anything());
+            await Promise.resolve().then().then(); // Wait for microtasks
+            expect(errorCallback).toHaveBeenCalledWith('Metrics Error', {
+                status: 500,
+                statusText: 'Metrics Error',
+                responseText: 'Metrics Error Detail'
+            });
         });
     });
 });
