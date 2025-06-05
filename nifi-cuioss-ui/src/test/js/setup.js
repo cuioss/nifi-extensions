@@ -3,9 +3,6 @@
  * This file is run before each test file.
  */
 
-// Import jest-dom extensions for DOM element assertions
-require('@testing-library/jest-dom');
-
 // Store original console functions but don't override them to fail tests
 // This allows tests to pass even if there are console.error calls
 const originalConsoleError = console.error;
@@ -51,9 +48,4 @@ console.log = (...args) => {
     }
 };
 
-// Clean up after all tests
-afterAll(() => {
-    console.error = originalConsoleError;
-    console.warn = originalConsoleWarn;
-    console.log = originalConsoleLog;
-});
+// Clean up is handled in jest.setup-dom.js

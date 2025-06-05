@@ -63,7 +63,7 @@ const registerHelpTooltips = (contextElement) => {
         const tooltipSelector = '.help-tooltip';
         // contextElement is expected to be a raw DOM element if provided for initTooltips.
         // initTooltips expects a DOM element or a selector string for its context.
-        const contextForInit = contextElement ? contextElement : document;
+        const contextForInit = contextElement || document;
         initTooltips(tooltipSelector, {
             // placement: 'bottom-start' // This is the default in initTooltips
         }, contextForInit);

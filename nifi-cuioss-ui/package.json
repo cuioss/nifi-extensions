@@ -33,6 +33,7 @@
   "devDependencies": {
     "@babel/core": "^7.24.7",
     "@babel/preset-env": "^7.24.7",
+    "@testing-library/jest-dom": "^6.4.0",
     "babel-jest": "^29.7.0",
     "babel-loader": "^9.1.3",
     "eslint": "^8.57.0",
@@ -83,8 +84,7 @@
     "coveragePathIgnorePatterns": [
       "<rootDir>/src/test/js/mocks/",
       "<rootDir>/src/test/js/__mocks__/",
-      "<rootDir>/src/main/webapp/js/nf-common-mock.js",
-      "<rootDir>/src/main/webapp/js/components/issuerConfigEditor.js"
+      "<rootDir>/src/main/webapp/js/nf-common-mock.js"
     ],
     "coverageThreshold": {
       "global": {
@@ -106,7 +106,11 @@
     },
     "setupFiles": [
       "<rootDir>/src/test/js/mocks/jquery-extended.js",
-      "<rootDir>/src/test/js/jest.setup-fetch.js"
+      "<rootDir>/src/test/js/jest.setup-fetch.js",
+      "<rootDir>/src/test/js/setup.js"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/src/test/js/jest.setup-dom.js"
     ]
   }
 }

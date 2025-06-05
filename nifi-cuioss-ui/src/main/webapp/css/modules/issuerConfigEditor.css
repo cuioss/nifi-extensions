@@ -121,3 +121,19 @@
 .save-issuer-button:hover {
     background-color: #29b739;
 }
+
+/* Message styles */
+.success-message {
+    color: var(--success-color);
+    font-weight: bold;
+}
+
+.error-message {
+    color: var(--error-color);
+    font-weight: bold;
+}
+
+.issuer-form-error-messages {
+    color: var(--error-color);
+    margin-top: 10px;
+}

@@ -160,7 +160,7 @@ describe('displayUiError', () => {
         expect(getErrorMessageText()).toBe(mockI18n['processor.jwt.unknownError']);
     });
 
-    it('P6: should display "Unknown error" if responseText (valid JSON, message is empty) ', () => {
+    it('P6: should display "Unknown error" if responseText (valid JSON, message is empty)', () => {
         const error = { responseText: JSON.stringify({ message: '' }) };
         displayUiError($targetElement, error, mockI18n);
         expect(getErrorMessageText()).toBe(mockI18n['processor.jwt.unknownError']);

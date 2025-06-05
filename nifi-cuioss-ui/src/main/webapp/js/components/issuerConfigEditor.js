@@ -13,8 +13,7 @@ import { displayUiError } from '../utils/uiErrorDisplay.js';
 // Get i18n resources from NiFi Common
 const i18n = _nfCommon.getI18n() || {};
 
-// Component state
-let processorId = '';
+// No global state - processorId is passed as parameter where needed
 
 /**
  * Returns a predefined sample issuer configuration object.
@@ -34,13 +33,103 @@ const _getSampleIssuerConfig = () => {
 };
 
 /**
- * Creates the basic DOM structure for the issuer config editor.
- * @param {HTMLElement} parentElement The parent element to append the editor to.
- * @returns {{container: HTMLElement, issuersContainer: HTMLElement}} An object containing the main container and the issuers container.
+ * Creates a success message span with consistent styling.
+ * @param {string} message - The success message text
+ * @returns {string} HTML string with success message styling
  */
-const _createEditorStructure = (parentElement) => {
+const _createSuccessMessage = (message) => {
+    return `<span class="success-message">${message}</span>`;
+};
+
+/**
+ * Creates a JWKS validation success message.
+ * @param {number} keyCount - Number of keys found
+ * @param {boolean} isSimulated - Whether this is a simulated response
+ * @returns {string} HTML string for JWKS validation success
+ */
+const _createJwksSuccessMessage = (keyCount, isSimulated = false) => {
+    const okText = i18n['processor.jwt.ok'] || 'OK';
+    const validJwksText = i18n['processor.jwt.validJwks'] || 'Valid JWKS';
+    const keysFoundText = i18n['processor.jwt.keysFound'] || 'keys found';
+    const simulatedText = isSimulated ? ' <em>(Simulated response)</em>' : '';
+
+    return `${_createSuccessMessage(okText)} ${validJwksText} (${keyCount} ${keysFoundText})${simulatedText}`;
+};
+
+/**
+ * Parses processor properties and groups them by issuer name.
+ * Extracts properties that start with 'issuer.' and groups them by issuer name.
+ *
+ * @param {object} properties - Raw processor properties object
+ * @returns {object} Object with issuer names as keys and their properties as values
+ */
+const _parseIssuerProperties = (properties) => {
+    const issuerProperties = {};
+
+    Object.keys(properties).forEach(key => {
+        if (key.startsWith('issuer.')) {
+            const parts = key.substring(7).split('.');
+            if (parts.length === 2) {
+                const issuerName = parts[0];
+                const propertyName = parts[1];
+
+                if (!issuerProperties[issuerName]) {
+                    issuerProperties[issuerName] = {};
+                }
+
+                issuerProperties[issuerName][propertyName] = properties[key];
+            }
+        }
+    });
+
+    return issuerProperties;
+};
+
+/**
+ * Extracts and trims the value from a DOM element array (cash-dom result).
+ * Safely handles cases where the element array is empty or undefined.
+ *
+ * @param {Array} elementArray - Array-like object from cash-dom find() result
+ * @returns {string} Trimmed value or empty string if element not found
+ */
+const _extractFieldValue = (elementArray) => {
+    return elementArray && elementArray[0] && elementArray[0].value ? elementArray[0].value.trim() : '';
+};
+
+/**
+ * Extracts form field values from a cash-dom form object.
+ * Uses consistent field extraction pattern for all issuer configuration fields.
+ *
+ * @param {object} $form - Cash-dom wrapped form element
+ * @returns {object} Object containing all form field values
+ */
+const _extractFormFields = ($form) => {
+    return {
+        issuerName: _extractFieldValue($form.find('.issuer-name')),
+        issuer: _extractFieldValue($form.find('.field-issuer')),
+        'jwks-url': _extractFieldValue($form.find('.field-jwks-url')),
+        audience: _extractFieldValue($form.find('.field-audience')),
+        'client-id': _extractFieldValue($form.find('.field-client-id'))
+    };
+};
+
+/**
+ * Finds the global error container for displaying removal errors.
+ * @returns {cash|null} The global error container or null if not found
+ */
+const _findGlobalErrorContainer = () => {
+    const $globalError = $('.global-error-messages');
+    return $globalError.length > 0 ? $globalError : null;
+};
+
+/**
+ * Creates the basic DOM structure for the issuer config editor.
+ * @param {object} $parentElement The cash-dom wrapped parent element to append the editor to.
+ * @returns {{$container: object, $issuersContainer: object, $globalErrorContainer: object}} Cash-dom wrapped elements.
+ */
+const _createEditorStructure = ($parentElement) => {
     const $container = $('<div class="issuer-config-editor"></div>');
-    $(parentElement).append($container);
+    $parentElement.append($container);
 
     const $title = $('<h3>Issuer Configurations</h3>');
     $container.append($title);
@@ -48,50 +137,53 @@ const _createEditorStructure = (parentElement) => {
     const $description = $('<p>Configure JWT issuers for token validation. Each issuer requires a name and properties like jwks-url and issuer URI.</p>');
     $container.append($description);
 
+    // Add a global error display area
+    const $globalErrorContainer = $('<div class="global-error-messages issuer-form-error-messages" style="display: none;"></div>');
+    $container.append($globalErrorContainer);
+
     const $issuersContainer = $('<div class="issuers-container"></div>');
     $container.append($issuersContainer);
 
-    return { container: $container[0], issuersContainer: $issuersContainer[0] };
+    return { $container, $issuersContainer, $globalErrorContainer };
 };
 
 /**
  * Sets up the "Add Issuer" button and its event listener.
- * @param {HTMLElement} container The main container element for the editor.
- * @param {HTMLElement} issuersContainer The container where issuer forms will be added.
+ * @param {object} $container The cash-dom wrapped main container element for the editor.
+ * @param {object} $issuersContainer The cash-dom wrapped container where issuer forms will be added.
+ * @param {string} [processorId] The processor ID for server mode operations.
  */
-const _setupAddIssuerButton = (container, issuersContainer) => {
+const _setupAddIssuerButton = ($container, $issuersContainer, processorId = null) => {
     const $addButton = $('<button class="add-issuer-button">Add Issuer</button>');
-    $(container).append($addButton);
+    $container.append($addButton);
     $addButton.on('click', () => {
         const sampleConfig = _getSampleIssuerConfig();
-        // When adding a new issuer, we might want a unique name or an empty form.
-        // For now, adhering to the subtask to use _getSampleIssuerObject.
-        // This will create a new form populated with "sample-issuer" data.
-        // A truly "new" blank form would be addIssuerForm(issuersContainer);
-        addIssuerForm(issuersContainer, sampleConfig.name + '-' + Date.now(), sampleConfig.properties);
+        addIssuerForm($issuersContainer, sampleConfig.name + '-' + Date.now(), sampleConfig.properties, processorId);
     });
 };
 
 /**
- * Initializes editor data, including setting the processor ID and loading existing issuers.
+ * Initializes editor data, including loading existing issuers for the given processor.
  * @param {string} effectiveUrl The URL used to determine the processor ID.
- * @param {HTMLElement} issuersContainer The container where issuer forms are managed.
+ * @param {object} $issuersContainer The cash-dom wrapped container where issuer forms are managed.
  */
-const _initializeEditorData = (effectiveUrl, issuersContainer) => {
-    processorId = getProcessorIdFromUrl(effectiveUrl);
-    loadExistingIssuers(issuersContainer);
+const _initializeEditorData = async (effectiveUrl, $issuersContainer) => {
+    const processorId = getProcessorIdFromUrl(effectiveUrl);
+    await loadExistingIssuers($issuersContainer, processorId);
 };
 
 /**
      * Initializes the component.
      *
-     * @param {object} element - The DOM element
+     * @param {object} element - The DOM element to initialize in
      * @param {string} effectiveUrl - The URL to derive processorId from
      */
-const initComponent = (element, effectiveUrl) => {
-    const { container, issuersContainer } = _createEditorStructure(element); // container and issuersContainer are DOM elements
-    _setupAddIssuerButton($(container), $(issuersContainer)); // Pass cash-dom objects
-    _initializeEditorData(effectiveUrl, $(issuersContainer)); // Pass cash-dom object
+const initComponent = async (element, effectiveUrl) => {
+    const $element = $(element);
+    const processorId = getProcessorIdFromUrl(effectiveUrl);
+    const { $container, $issuersContainer, $globalErrorContainer } = _createEditorStructure($element);
+    _setupAddIssuerButton($container, $issuersContainer, processorId);
+    await _initializeEditorData(effectiveUrl, $issuersContainer);
 };
 
 /**
@@ -110,52 +202,32 @@ const getProcessorIdFromUrl = (urlToParse) => {
 /**
      * Loads existing issuer configurations.
      *
-     * @param {object} container - The container element
+     * @param {object} $container - The cash-dom wrapped container element
+     * @param {string} processorId - The processor ID to load configurations for
      */
-const loadExistingIssuers = (container) => {
+const loadExistingIssuers = async ($container, processorId) => {
     if (!processorId) {
         const sampleConfig = _getSampleIssuerConfig();
-        addIssuerForm(container, sampleConfig.name, sampleConfig.properties);
+        addIssuerForm($container, sampleConfig.name, sampleConfig.properties, processorId);
         return;
     }
 
     try {
-        // Get processor properties
-        apiClient.getProcessorProperties(processorId)
-            .then(response => { // apiClient.getProcessorProperties now returns a standard Promise with data directly
-                // Extract issuer properties
-                const properties = response.properties || {};
-                const issuerProperties = {};
+        // Get processor properties using async/await
+        const response = await apiClient.getProcessorProperties(processorId);
 
-                // Group properties by issuer
-                Object.keys(properties).forEach(key => {
-                    if (key.startsWith('issuer.')) {
-                        const parts = key.substring(7).split('.');
-                        if (parts.length === 2) {
-                            const issuerName = parts[0];
-                            const propertyName = parts[1];
+        // Extract and parse issuer properties using utility function
+        const properties = response.properties || {};
+        const issuerProperties = _parseIssuerProperties(properties);
 
-                            if (!issuerProperties[issuerName]) {
-                                issuerProperties[issuerName] = {};
-                            }
-
-                            issuerProperties[issuerName][propertyName] = properties[key];
-                        }
-                    }
-                });
-
-                // Create issuer forms for each issuer
-                Object.keys(issuerProperties).forEach(issuerName => {
-                    addIssuerForm(container, issuerName, issuerProperties[issuerName]);
-                });
-            })
-            .catch(_error => { // Standard Promise .catch
-                const sampleConfig = _getSampleIssuerConfig();
-                addIssuerForm(container, sampleConfig.name, sampleConfig.properties);
-            });
-    } catch (e) {
+        // Create issuer forms for each issuer
+        Object.keys(issuerProperties).forEach(issuerName => {
+            addIssuerForm($container, issuerName, issuerProperties[issuerName], processorId);
+        });
+    } catch (error) {
+        // Fallback to sample configuration on any error
         const sampleConfig = _getSampleIssuerConfig();
-        addIssuerForm(container, sampleConfig.name, sampleConfig.properties);
+        addIssuerForm($container, sampleConfig.name, sampleConfig.properties, processorId);
     }
 };
 
@@ -196,153 +268,197 @@ const _createFormHeader = (issuerName, onRemove) => {
 };
 
 /**
- * Creates and configures the "Test Connection" button for JWKS URL validation.
- * @param {cash} $formFieldsContainer - The jQuery-wrapped container for form fields where the button will be appended or inserted after.
- * @param {function} getJwksUrlValue - A function that returns the current value of the JWKS URL input field.
+ * Creates the button wrapper and result container for JWKS validation.
+ * @returns {{$testButtonWrapper: object, $testButton: object, $resultContainer: object}}
  */
-const _createJwksTestConnectionButton = ($formFieldsContainer, getJwksUrlValue) => {
+const _createJwksButtonElements = () => {
     const $testButtonWrapper = $('<div class="jwks-button-wrapper"></div>');
     const $testButton = $('<button type="button" class="verify-jwks-button">Test Connection</button>');
     const initialResultText = `<em>${i18n['jwksValidator.initialInstructions'] || 'Click the button to validate JWKS'}</em>`;
     const $resultContainer = $('<div class="verification-result"></div>');
-    $resultContainer.html(initialResultText); // Set initial text
+    $resultContainer.html(initialResultText);
 
     $testButtonWrapper.append($testButton).append($resultContainer);
 
-    // Attempt to find the JWKS URL field to place the button after it.
-    // The field is added by addFormField, so we search within $formFieldsContainer.
+    return { $testButtonWrapper, $testButton, $resultContainer };
+};
+
+/**
+ * Positions the JWKS test button relative to the JWKS URL field.
+ * @param {object} $formFieldsContainer - The form fields container
+ * @param {object} $testButtonWrapper - The button wrapper element
+ */
+const _positionJwksTestButton = ($formFieldsContainer, $testButtonWrapper) => {
     const $jwksUrlFieldContainer = $formFieldsContainer.find('.field-jwks-url').closest('.form-field');
 
     if ($jwksUrlFieldContainer.length) {
         $jwksUrlFieldContainer.after($testButtonWrapper);
     } else {
-        // Fallback: if the specific field isn't found, append to the container.
-        // This might happen if addFormField structure changes or if called before field is added.
+        // Fallback: append to container if specific field not found
         $formFieldsContainer.append($testButtonWrapper);
     }
+};
+
+/**
+ * Handles JWKS validation response based on environment and response data.
+ * @param {object} $resultContainer - The result display container
+ * @param {object} responseData - The AJAX response data
+ */
+const _handleJwksValidationResponse = ($resultContainer, responseData) => {
+    if (responseData.valid) {
+        $resultContainer.html(_createJwksSuccessMessage(responseData.keyCount));
+    } else {
+        displayUiError($resultContainer, { responseJSON: responseData }, i18n, 'processor.jwt.invalidJwks');
+    }
+};
+
+/**
+ * Handles JWKS validation errors based on environment.
+ * @param {object} $resultContainer - The result display container
+ * @param {object} error - The error object
+ * @param {boolean} isAjaxError - Whether this is an AJAX error vs synchronous error
+ */
+const _handleJwksValidationError = ($resultContainer, error, isAjaxError = true) => {
+    // eslint-disable-next-line no-undef
+    if (getIsLocalhost()) {
+        const simulatedMessage = isAjaxError
+            ? _createJwksSuccessMessage(3, true)
+            : _createJwksSuccessMessage(3, true) + ' <em>(Simulated error path response)</em>';
+        $resultContainer.html(simulatedMessage);
+    } else {
+        displayUiError($resultContainer, error, i18n, 'processor.jwt.validationError');
+    }
+};
+
+/**
+ * Performs the JWKS URL validation via AJAX.
+ * @param {string} jwksValue - The JWKS URL to validate
+ * @param {object} $resultContainer - The result display container
+ */
+const _performJwksValidation = (jwksValue, $resultContainer) => {
+    try {
+        $.ajax({
+            method: 'POST',
+            url: '../nifi-api/processors/jwks/validate-url',
+            data: JSON.stringify({ jwksValue: jwksValue }),
+            contentType: 'application/json',
+            dataType: 'json',
+            timeout: 5000
+        })
+            .then(responseData => _handleJwksValidationResponse($resultContainer, responseData))
+            .catch(jqXHR => _handleJwksValidationError($resultContainer, jqXHR, true));
+    } catch (e) {
+        _handleJwksValidationError($resultContainer, e, false);
+    }
+};
+
+/**
+ * Creates and configures the "Test Connection" button for JWKS URL validation.
+ * @param {cash} $formFieldsContainer - The jQuery-wrapped container for form fields where the button will be appended or inserted after.
+ * @param {function} getJwksUrlValue - A function that returns the current value of the JWKS URL input field.
+ */
+const _createJwksTestConnectionButton = ($formFieldsContainer, getJwksUrlValue) => {
+    const { $testButtonWrapper, $testButton, $resultContainer } = _createJwksButtonElements();
+
+    _positionJwksTestButton($formFieldsContainer, $testButtonWrapper);
 
     $testButton.on('click', () => {
-        $resultContainer.html(i18n['processor.jwt.testing'] || 'Testing...'); // Use i18n for "Testing..."
+        $resultContainer.html(i18n['processor.jwt.testing'] || 'Testing...');
         const jwksValue = getJwksUrlValue();
-
-        // It's good practice to clear previous specific error messages here if not using a dedicated clearError
-        // However, setting to "Testing..." effectively does this.
-        // If displayUiError wraps or has specific classes, more robust clearing might be needed.
-        // For now, the "Testing..." message replaces previous content.
-
-        try {
-            $.ajax({
-                method: 'POST',
-                url: '../nifi-api/processors/jwks/validate-url',
-                data: JSON.stringify({ jwksValue: jwksValue }),
-                contentType: 'application/json',
-                dataType: 'json',
-                timeout: 5000
-            })
-                .then(responseData => {
-                    if (responseData.valid) {
-                        $resultContainer.html(`<span style="color: var(--success-color); font-weight: bold;">${i18n['processor.jwt.ok'] || 'OK'}</span> ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} (${responseData.keyCount} ${i18n['processor.jwt.keysFound'] || 'keys found'})`);
-                    } else {
-                        displayUiError($resultContainer, { responseJSON: responseData }, i18n, 'processor.jwt.invalidJwks');
-                    }
-                })
-                .catch(jqXHR => {
-                    // eslint-disable-next-line no-undef
-                    if (getIsLocalhost()) {
-                        // Existing localhost simulation: shows success even on actual error
-                        $resultContainer.html(`<span style="color: var(--success-color); font-weight: bold;">${i18n['processor.jwt.ok'] || 'OK'}</span> ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} (3 ${i18n['processor.jwt.keysFound'] || 'keys found'}) <em>(Simulated response)</em>`);
-                    } else {
-                        // Use displayUiError for non-localhost actual errors
-                        displayUiError($resultContainer, jqXHR, i18n, 'processor.jwt.validationError');
-                    }
-                });
-        } catch (e) {
-            // eslint-disable-next-line no-undef
-            if (getIsLocalhost()) {
-                // Existing localhost simulation for synchronous errors
-                $resultContainer.html(`<span style="color: var(--success-color); font-weight: bold;">${i18n['processor.jwt.ok'] || 'OK'}</span> ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} (3 ${i18n['processor.jwt.keysFound'] || 'keys found'}) <em>(Simulated error path response)</em>`);
-            } else {
-                // Use displayUiError for non-localhost synchronous errors
-                displayUiError($resultContainer, e, i18n, 'processor.jwt.validationError');
-            }
-        }
+        _performJwksValidation(jwksValue, $resultContainer);
     });
 };
 
 /**
  * Creates the save button for an issuer form.
- * @param {cash} $issuerForm - The jQuery-wrapped issuer form element.
+ * @param {object} $issuerForm - The cash-dom wrapped issuer form element.
+ * @param {string} [processorId] - The processor ID for server mode saves
  */
-const _createSaveButton = ($issuerForm) => {
+const _createSaveButton = ($issuerForm, processorId = null) => {
     const $saveButton = $('<button class="save-issuer-button">Save Issuer</button>');
-    // Create an error display area for this form, initially empty and hidden or just empty.
-    const $formErrorContainer = $('<div class="issuer-form-error-messages" style="color: var(--error-color); margin-top: 10px;"></div>');
+    const $formErrorContainer = $('<div class="issuer-form-error-messages"></div>');
 
     $saveButton.on('click', () => {
-        // Clear previous errors in this specific form's error display before attempting to save
         $formErrorContainer.empty();
-        saveIssuer($issuerForm[0], $formErrorContainer); // Pass DOM element and its error container
+        saveIssuer($issuerForm[0], $formErrorContainer, processorId);
     });
-    // Append error container before the save button, or in a designated spot
-    $issuerForm.append($formErrorContainer); // Appending here for now
-    return $saveButton; // The save button itself is returned to be appended by caller
+    $issuerForm.append($formErrorContainer);
+    return $saveButton;
 };
 
 /**
-     * Adds a new issuer form.
-     *
-     * @param {object} container - The container element (cash-dom object or HTMLElement)
-     * @param {string} [issuerName] - The issuer name (for existing issuers)
-     * @param {object} [properties] - The issuer properties (for existing issuers)
-     */
-const addIssuerForm = (container, issuerName, properties) => {
-    const $container = $(container);
-    const $issuerForm = $('<div class="issuer-form"></div>');
-
-    // Create and append form header (includes name input and remove button)
-    const $formHeader = _createFormHeader(issuerName, (clickedIssuerNameVal) => {
-        removeIssuer($issuerForm[0], clickedIssuerNameVal);
-    });
-    $issuerForm.append($formHeader);
-
-    // Create and append form fields container
-    const $formFields = $('<div class="form-fields"></div>');
-    $issuerForm.append($formFields);
-
+ * Creates and populates the form fields for an issuer form.
+ * @param {object} $formFields - The cash-dom wrapped form fields container
+ * @param {object} [properties] - The issuer properties for pre-population
+ */
+const _populateIssuerFormFields = ($formFields, properties) => {
     // Add standard form fields
-    addFormField($formFields[0], 'issuer', 'Issuer URI', 'The URI of the token issuer (must match the iss claim)', properties ? properties.issuer : '');
-    addFormField($formFields[0], 'jwks-url', 'JWKS URL', 'The URL of the JWKS endpoint', properties ? properties['jwks-url'] : '');
+    addFormField($formFields, 'issuer', 'Issuer URI', 'The URI of the token issuer (must match the iss claim)', properties ? properties.issuer : '');
+    addFormField($formFields, 'jwks-url', 'JWKS URL', 'The URL of the JWKS endpoint', properties ? properties['jwks-url'] : '');
 
-    // Add JWKS Test Connection button and its logic
-    // It needs a way to get the jwks-url input's value.
-    // The input is created by addFormField and is a child of $formFields.
+    // Add JWKS Test Connection button
     _createJwksTestConnectionButton($formFields, () => {
         const $jwksInput = $formFields.find('.field-jwks-url');
         return $jwksInput.length ? $jwksInput.val() : '';
     });
 
-    addFormField($formFields[0], 'audience', 'Audience', 'The expected audience claim value', properties ? properties.audience : '');
-    addFormField($formFields[0], 'client-id', 'Client ID', 'The client ID for token validation', properties ? properties['client-id'] : '');
+    addFormField($formFields, 'audience', 'Audience', 'The expected audience claim value', properties ? properties.audience : '');
+    addFormField($formFields, 'client-id', 'Client ID', 'The client ID for token validation', properties ? properties['client-id'] : '');
+};
+
+/**
+ * Creates the complete issuer form structure with header, fields, and save button.
+ * @param {string} [issuerName] - The issuer name for pre-population
+ * @param {object} [properties] - The issuer properties for pre-population
+ * @param {string} [processorId] - The processor ID for server mode operations
+ * @returns {object} The constructed cash-dom wrapped issuer form element
+ */
+const _createCompleteIssuerForm = (issuerName, properties, processorId = null) => {
+    const $issuerForm = $('<div class="issuer-form"></div>');
+
+    // Create and append form header
+    const $formHeader = _createFormHeader(issuerName, (clickedIssuerNameVal) => {
+        removeIssuer($issuerForm[0], clickedIssuerNameVal);
+    });
+    $issuerForm.append($formHeader);
+
+    // Create form fields container
+    const $formFields = $('<div class="form-fields"></div>');
+    $issuerForm.append($formFields);
+
+    // Populate form fields
+    _populateIssuerFormFields($formFields, properties);
 
     // Create and append save button
-    const $saveButton = _createSaveButton($issuerForm);
+    const $saveButton = _createSaveButton($issuerForm, processorId);
     $issuerForm.append($saveButton);
 
-    // Append the fully constructed issuer form to the main container
+    return $issuerForm;
+};
+
+/**
+     * Adds a new issuer form.
+     *
+     * @param {object} $container - The cash-dom wrapped container element
+     * @param {string} [issuerName] - The issuer name (for existing issuers)
+     * @param {object} [properties] - The issuer properties (for existing issuers)
+     * @param {string} [processorId] - The processor ID for server mode operations
+     */
+const addIssuerForm = ($container, issuerName, properties, processorId = null) => {
+    const $issuerForm = _createCompleteIssuerForm(issuerName, properties, processorId);
     $container.append($issuerForm);
 };
 
 /**
      * Adds a form field.
      *
-     * @param {object} container - The container element
+     * @param {object} $container - The cash-dom wrapped container element
      * @param {string} name - The field name
      * @param {string} label - The field label
      * @param {string} description - The field description
      * @param {string} [value] - The field value
      */
-const addFormField = (container, name, label, description, value) => { // container is expected to be an HTMLElement
-    const $container = $(container);
+const addFormField = ($container, name, label, description, value) => {
     const $fieldContainer = $('<div class="form-field"></div>');
     $container.append($fieldContainer);
 
@@ -370,71 +486,194 @@ const addFormField = (container, name, label, description, value) => { // contai
 };
 
 /**
-     * Saves an issuer configuration.
-     *
-     * @param {object} form - The issuer form
-     */
-const saveIssuer = (form, $errorContainer) => { // form is expected to be a DOM element, $errorContainer is cash-dom
-    // Clear previous errors in this specific form's error display
-    $errorContainer.empty();
-
-    // Get issuer name
-    const $form = $(form);
-    const issuerNameInput = $form.find('.issuer-name')[0];
-    const issuerName = issuerNameInput ? issuerNameInput.value.trim() : '';
+ * Validates issuer form data and returns validation results.
+ * @param {object} formFields - The extracted form field values
+ * @returns {{isValid: boolean, error?: Error}} Validation result
+ */
+const _validateIssuerFormData = (formFields) => {
+    const issuerName = formFields.issuerName;
 
     // Validate issuer name
     if (!issuerName) {
-        const nameRequiredError = new Error(i18n['issuerConfigEditor.error.issuerNameRequired'] || 'Issuer name is required.');
-        displayUiError($errorContainer, nameRequiredError, i18n, 'issuerConfigEditor.error.title'); // Using a generic title key
-        return;
+        return {
+            isValid: false,
+            error: new Error(i18n['issuerConfigEditor.error.issuerNameRequired'] || 'Issuer name is required.')
+        };
     }
 
-    // Get issuer properties
     const properties = {
-        issuer: $form.find('.field-issuer')[0] ? $form.find('.field-issuer')[0].value.trim() : '',
-        'jwks-url': $form.find('.field-jwks-url')[0] ? $form.find('.field-jwks-url')[0].value.trim() : '',
-        audience: $form.find('.field-audience')[0] ? $form.find('.field-audience')[0].value.trim() : '',
-        'client-id': $form.find('.field-client-id')[0] ? $form.find('.field-client-id')[0].value.trim() : ''
+        issuer: formFields.issuer,
+        'jwks-url': formFields['jwks-url'],
+        audience: formFields.audience,
+        'client-id': formFields['client-id']
     };
 
     // Validate required properties
     if (!properties.issuer || !properties['jwks-url']) {
-        const requiredFieldsError = new Error(i18n['issuerConfigEditor.error.requiredFields'] || 'Issuer URI and JWKS URL are required.');
-        displayUiError($errorContainer, requiredFieldsError, i18n, 'issuerConfigEditor.error.title');
-        return;
+        return {
+            isValid: false,
+            error: new Error(i18n['issuerConfigEditor.error.requiredFields'] || 'Issuer URI and JWKS URL are required.')
+        };
     }
 
-    // Create property updates
-    const updates = {};
+    return { isValid: true };
+};
 
-    // Add properties to updates
+/**
+ * Creates processor property updates from issuer form data.
+ * @param {string} issuerName - The issuer name
+ * @param {object} formFields - The extracted form field values
+ * @returns {object} The property updates object
+ */
+const _createPropertyUpdates = (issuerName, formFields) => {
+    const properties = {
+        issuer: formFields.issuer,
+        'jwks-url': formFields['jwks-url'],
+        audience: formFields.audience,
+        'client-id': formFields['client-id']
+    };
+
+    const updates = {};
     Object.keys(properties).forEach(key => {
         if (properties[key]) {
             updates[`issuer.${issuerName}.${key}`] = properties[key];
         }
     });
 
-    // Update processor properties
-    if (processorId) {
-        try {
-            apiClient.updateProcessorProperties(processorId, updates)
-                .then(() => {
-                    // TODO: Display success message in UI, perhaps in $errorContainer with a success style
-                    $errorContainer.html(`<span style="color: var(--success-color);">${i18n['issuerConfigEditor.success.saved'] || 'Issuer configuration saved successfully.'}</span>`);
-                    // Auto-clear success message after a few seconds
-                    setTimeout(() => $errorContainer.empty(), 5000);
-                })
-                .catch(error => {
-                    displayUiError($errorContainer, error, i18n, 'issuerConfigEditor.error.saveFailedTitle');
-                });
-        } catch (e) {
-            displayUiError($errorContainer, e, i18n, 'issuerConfigEditor.error.saveFailedTitle');
-        }
-    } else {
-        // In standalone testing mode, show success message
-        $errorContainer.html(`<span style="color: var(--success-color);">${i18n['issuerConfigEditor.success.savedStandalone'] || 'Issuer configuration saved successfully (standalone mode).'}</span>`);
+    return updates;
+};
+
+/**
+ * Handles the server-side save operation for issuer configuration.
+ * @param {string} processorId - The processor ID to save to
+ * @param {string} issuerName - The issuer name
+ * @param {object} updates - The property updates
+ * @param {object} $errorContainer - The error display container
+ */
+const _saveIssuerToServer = async (processorId, issuerName, updates, $errorContainer) => {
+    try {
+        await apiClient.updateProcessorProperties(processorId, updates);
+        $errorContainer.html(_createSuccessMessage(i18n['issuerConfigEditor.success.saved'] || 'Issuer configuration saved successfully.'));
         setTimeout(() => $errorContainer.empty(), 5000);
+    } catch (error) {
+        displayUiError($errorContainer, error, i18n, 'issuerConfigEditor.error.saveFailedTitle');
+    }
+};
+
+/**
+ * Handles the standalone mode save operation for issuer configuration.
+ * @param {object} $errorContainer - The error display container
+ */
+const _saveIssuerStandalone = ($errorContainer) => {
+    $errorContainer.html(_createSuccessMessage(i18n['issuerConfigEditor.success.savedStandalone'] || 'Issuer configuration saved successfully (standalone mode).'));
+    setTimeout(() => $errorContainer.empty(), 5000);
+};
+
+/**
+     * Saves an issuer configuration.
+     *
+     * @param {object} form - The issuer form
+     * @param {object} $errorContainer - The error display container
+     * @param {string} [processorId] - The processor ID (optional, for server mode)
+     */
+const saveIssuer = async (form, $errorContainer, processorId = null) => {
+    $errorContainer.empty();
+
+    // Extract and validate form data
+    const $form = $(form);
+    const formFields = _extractFormFields($form);
+    const validation = _validateIssuerFormData(formFields);
+
+    if (!validation.isValid) {
+        displayUiError($errorContainer, validation.error, i18n, 'issuerConfigEditor.error.title');
+        return;
+    }
+
+    const issuerName = formFields.issuerName;
+    const updates = _createPropertyUpdates(issuerName, formFields);
+
+    // Save based on mode (server vs standalone)
+    if (processorId) {
+        await _saveIssuerToServer(processorId, issuerName, updates, $errorContainer);
+    } else {
+        _saveIssuerStandalone($errorContainer);
+    }
+};
+
+/**
+ * Creates property updates to remove all properties for a specific issuer.
+ * @param {object} properties - The current processor properties
+ * @param {string} issuerName - The issuer name to remove
+ * @returns {object} Updates object with null values for issuer properties
+ */
+const _createRemovalUpdates = (properties, issuerName) => {
+    const updates = {};
+    Object.keys(properties).forEach(key => {
+        if (key.startsWith(`issuer.${issuerName}.`)) {
+            updates[key] = null;
+        }
+    });
+    return updates;
+};
+
+/**
+ * Displays removal success message in the global error container.
+ * @param {object} $globalErrorContainer - The global error display container
+ * @param {string} issuerName - The name of the removed issuer
+ * @param {boolean} isStandalone - Whether this is standalone mode
+ */
+const _displayRemovalSuccess = ($globalErrorContainer, issuerName, isStandalone = false) => {
+    if (!$globalErrorContainer) return;
+
+    const message = isStandalone
+        ? `Issuer "${issuerName}" removed (standalone mode).`
+        : `Issuer "${issuerName}" removed successfully.`;
+
+    $globalErrorContainer.html(_createSuccessMessage(message));
+    $globalErrorContainer.show();
+    setTimeout(() => {
+        $globalErrorContainer.empty();
+        $globalErrorContainer.hide();
+    }, 3000);
+};
+
+/**
+ * Displays removal error message in the global error container.
+ * @param {object} $globalErrorContainer - The global error display container
+ * @param {Error|string} error - The error to display
+ */
+const _displayRemovalError = ($globalErrorContainer, error) => {
+    if ($globalErrorContainer) {
+        const errorObj = typeof error === 'string' ? new Error(error) : error;
+        displayUiError($globalErrorContainer, errorObj, i18n, 'issuerConfigEditor.error.removeFailedTitle');
+        $globalErrorContainer.show();
+    } else {
+        const message = typeof error === 'string' ? error : error.message;
+        console.error('Failed to remove issuer:', message);
+    }
+};
+
+/**
+ * Removes issuer properties from the server.
+ * @param {string} processorId - The processor ID
+ * @param {string} issuerName - The issuer name to remove
+ * @param {object} $globalErrorContainer - The global error display container
+ */
+const _removeIssuerFromServer = async (processorId, issuerName, $globalErrorContainer) => {
+    try {
+        const response = await apiClient.getProcessorProperties(processorId);
+        const properties = response.properties || {};
+        const updates = _createRemovalUpdates(properties, issuerName);
+
+        if (Object.keys(updates).length === 0 && issuerName !== 'sample-issuer') {
+            console.info(`No properties found to remove for issuer: ${issuerName}`);
+            return;
+        }
+
+        await apiClient.updateProcessorProperties(processorId, updates);
+        _displayRemovalSuccess($globalErrorContainer, issuerName, false);
+    } catch (error) {
+        _displayRemovalError($globalErrorContainer, error);
     }
 };
 
@@ -444,77 +683,36 @@ const saveIssuer = (form, $errorContainer) => { // form is expected to be a DOM 
      * @param {object} form - The jQuery object for the issuer form.
      * @param {string} issuerNameFromClick - The issuer name obtained from the input field at click time.
      */
-const removeIssuer = (form, issuerNameFromClick) => { // form is expected to be a DOM element
-    // The original code had a confirm() here. For linting, we remove it.
-    // In a real application, this would be replaced by a proper UI confirmation.
-    $(form).remove(); // Use cash-dom remove
+const removeIssuer = async (form, issuerNameFromClick) => {
+    $(form).remove();
 
-    // Derive processorId directly from window.location.href at the moment of the click.
     const currentProcessorId = getProcessorIdFromUrl(window.location.href);
     const currentIssuerName = issuerNameFromClick;
-
-    // Find a global error display area or use one associated with the form if available
-    // For simplicity, let's assume there's a global error area for remove operations,
-    // or we could prepend/append to the main issuersContainer.
-    // For now, error messages from remove will be logged if no obvious UI place is defined by this refactor.
-    // A proper implementation would define a shared error display area at the top of the editor.
-    // Let's assume for now that errors during removal are critical and might be harder to tie to a specific form
-    // if the form is already removed. We'll use console.warn for failed removals for now,
-    // as the primary focus is on save and JWKS validation errors for UI display.
-    // This part can be a follow-up refinement.
+    const $globalErrorContainer = _findGlobalErrorContainer();
 
     if (currentIssuerName && currentProcessorId) {
-        try {
-            apiClient.getProcessorProperties(currentProcessorId)
-                .then(response => {
-                    const properties = response.properties || {};
-                    const updates = {};
-                    Object.keys(properties).forEach(key => {
-                        if (key.startsWith(`issuer.${currentIssuerName}.`)) {
-                            updates[key] = null;
-                        }
-                    });
-
-                    if (Object.keys(updates).length === 0 && currentIssuerName !== 'sample-issuer') {
-                        // UI message for "no properties to remove" could be added here if needed.
-                        return;
-                    }
-
-                    return apiClient.updateProcessorProperties(currentProcessorId, updates)
-                        .then(() => {
-                            // UI message for "successfully removed" could be added here.
-                        })
-                        .catch(_error => { // Catch for updateProcessorProperties, prefixed error with _
-                            // TODO: Show this error in a global error display area (e.g., using displayUiError)
-                            // For now, error is silently ignored from UI perspective or handled by generic error handlers.
-                        });
-                })
-                .catch(_error => { // Catch for getProcessorProperties, prefixed error with _
-                    // TODO: Show this error in a global error display area
-                });
-        } catch (_e) { // Prefixed e with _
-            // TODO: Show this error in a global error display area
-        }
+        // Server mode: remove from processor properties
+        await _removeIssuerFromServer(currentProcessorId, currentIssuerName, $globalErrorContainer);
     } else if (currentIssuerName && !currentProcessorId) {
-        // Standalone mode: No server interaction, form is already removed.
+        // Standalone mode: just show success message
+        _displayRemovalSuccess($globalErrorContainer, currentIssuerName, true);
     } else {
-        if (currentProcessorId) {
-            // TODO: Show this error in a global error display area (e.g., "Issuer name missing for removal")
-        }
+        // Handle missing issuer name or processor ID
+        const errorMessage = !currentIssuerName
+            ? 'Issuer name missing for removal'
+            : 'Cannot remove issuer: no processor context found';
+        _displayRemovalError($globalErrorContainer, errorMessage);
     }
 };
 
 /**
  * Initializes the component.
  *
- * @param {object} element - The DOM element
- * @param {object} config - The component configuration
- * @param {string} type - The component type (not used)
+ * @param {HTMLElement} element - The DOM element to initialize in
  * @param {Function} callback - The callback function
+ * @param {string} currentTestUrlFromArg - URL for testing purposes (optional)
  */
-export const init = (element, _config, _type, callback, currentTestUrlFromArg) => {
-    processorId = ''; // Explicitly reset processorId at the start of every init call.
-
+export const init = async (element, callback, currentTestUrlFromArg) => {
     if (!element) {
         if (typeof callback === 'function') {
             callback();
@@ -524,9 +722,7 @@ export const init = (element, _config, _type, callback, currentTestUrlFromArg) =
 
     try {
         const effectiveUrlForInit = currentTestUrlFromArg || window.location.href;
-        // Pass undefined for the removed _config argument if necessary, but it's better to change the call signature.
-        // initComponent now only takes 2 arguments.
-        initComponent(element, effectiveUrlForInit);
+        await initComponent(element, effectiveUrlForInit);
 
         // Call the callback function if provided
         if (typeof callback === 'function') {
@@ -537,4 +733,24 @@ export const init = (element, _config, _type, callback, currentTestUrlFromArg) =
             callback();
         }
     }
+};
+
+// Export functions for testing purposes
+/* eslint-disable-next-line camelcase */
+export const __test_exports = {
+    saveIssuer,
+    removeIssuer,
+    addIssuerForm,
+    addFormField,
+    getProcessorIdFromUrl,
+    _parseIssuerProperties,
+    _extractFieldValue,
+    _extractFormFields,
+    _validateIssuerFormData,
+    _createPropertyUpdates,
+    _saveIssuerToServer,
+    _saveIssuerStandalone,
+    _handleJwksValidationResponse,
+    _handleJwksValidationError,
+    _performJwksValidation
 };

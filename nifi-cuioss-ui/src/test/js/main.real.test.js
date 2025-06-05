@@ -169,6 +169,52 @@ describe('main.js (real implementation with JSDOM)', () => {
             expect(document.getElementById('jwt-validator-tabs').style.display).not.toBe('none'); // Check that display is not 'none'
         });
 
+        it('should skip help tooltip creation when helpText is falsy (line 50 coverage)', () => {
+            global.nf.Canvas.initialized = true;
+
+            // Clear existing DOM and add only a property label that won't have help text
+            document.body.innerHTML = `
+                <div id="loading-indicator">Loading...</div>
+                <div id="jwt-validator-tabs" style="display: none;"></div>
+                <div class="jwt-validator-title">JWT Validator</div>
+                <div class="property-label">Unknown Property Name</div>
+            `;
+
+            // Mock getProperty to return empty string for unknown properties
+            mockGetProperty.mockImplementation(key => {
+                if (key && testTranslations[key]) {
+                    return testTranslations[key];
+                }
+                return ''; // Return empty string for unknown properties - this tests line 50
+            });
+
+            mainModule.init();
+            jest.runAllTimers();
+
+            // The unknown property should not have a help tooltip span added
+            const unknownPropertyLabel = document.querySelector('.property-label');
+            expect(unknownPropertyLabel.querySelector('span.help-tooltip')).toBeNull();
+        });
+
+        it('should return empty string when translation key is falsy (line 101 coverage)', () => {
+            global.nf.Canvas.initialized = true;
+
+            // Clear existing DOM and add a property with a name that has no mapping in helpTextKeys
+            document.body.innerHTML = `
+                <div id="loading-indicator">Loading...</div>
+                <div id="jwt-validator-tabs" style="display: none;"></div>
+                <div class="jwt-validator-title">JWT Validator</div>
+                <div class="property-label">Unmapped Property Name</div>
+            `;
+
+            mainModule.init();
+            jest.runAllTimers();
+
+            // Verify that no help tooltip was added since the key lookup would return falsy (line 101)
+            const propertyLabel = document.querySelector('.property-label');
+            expect(propertyLabel.querySelector('span.help-tooltip')).toBeNull();
+        });
+
         it('should register help tooltips', () => {
             global.nf.Canvas.initialized = true;
             mainModule.init();
@@ -367,6 +413,44 @@ describe('main.js (real implementation with JSDOM)', () => {
                 // as it operates on global selectors or specific hardcoded IDs/classes not necessarily present or unique within the dialog for these keys.
                 expect(freshDialogContent.querySelector('[data-i18n-key="jwt.validator.title"]').textContent).toBe('Initial Dialog Title'); // Expected to remain initial value
                 expect(freshDialogContent.querySelector('[data-i18n-key-direct="property.token.location.help"]').textContent).toBe('Initial Dialog Help Text'); // Expected to remain initial value
+            });
+
+            it('should handle dialogOpen with non-array data (line 182 coverage)', async () => {
+                const dialogContent = document.getElementById('processor-dialog-mock');
+
+                // Add processor type for this test
+                const processorTypeEl = dialogContent.querySelector('.processor-type');
+                processorTypeEl.textContent = 'NiFi Flow - MultiIssuerJWTTokenAuthenticator';
+
+                dialogContent.style.display = 'block';
+
+                // Trigger with non-array data (covers line 182: data is not an array)
+                $(document).trigger('dialogOpen', dialogContent); // Pass dialogContent directly, not as array
+
+                jest.advanceTimersByTime(600);
+
+                expect(mockInitTooltips).toHaveBeenCalled();
+            });
+
+            it('should handle dialogOpen when processorTypeElement is null (line 189 coverage)', async () => {
+                const dialogContent = document.getElementById('processor-dialog-mock');
+
+                // Remove the processor type element to make processorTypeElement null
+                const processorTypeEl = dialogContent.querySelector('.processor-type');
+                if (processorTypeEl) {
+                    processorTypeEl.remove();
+                }
+
+                dialogContent.style.display = 'block';
+
+                // Trigger dialogOpen - this will hit line 189 where processorTypeElement is null
+                $(document).trigger('dialogOpen', [dialogContent]);
+
+                jest.advanceTimersByTime(600);
+
+                // Since processorType will be empty string, MultiIssuerJWTTokenAuthenticator check will fail
+                // and mockInitTooltips should not be called
+                expect(mockInitTooltips).not.toHaveBeenCalled();
             });
 
             it('should NOT act if processorType does not include MultiIssuerJWTTokenAuthenticator', async () => {

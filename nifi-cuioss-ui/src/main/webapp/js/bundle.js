@@ -3,8 +3,7 @@
  * This file is loaded by NiFi through the JsBundle mechanism.
  * It delegates to main.js for the actual component registration to avoid duplication.
  */
-// import $ from 'cash-dom'; // Unused
-// import nfCommon from 'nf.Common'; // Unused
+
 import * as main from 'js/main';
 
 'use strict';

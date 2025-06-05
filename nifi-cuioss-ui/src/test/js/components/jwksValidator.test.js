@@ -38,25 +38,25 @@ jest.mock('cash-dom', () => {
 
         const self = {
             on: jest.fn().mockReturnThis(), // Simplistic, doesn't actually attach listeners
-            text: jest.fn(function(value) {
+            text: jest.fn(function (value) {
                 if (currentElements.length > 0 && typeof value !== 'undefined') {
-                    currentElements.forEach(el => { if(el) el.textContent = value; });
+                    currentElements.forEach(el => { if (el) el.textContent = value; });
                     return this;
                 }
                 return currentElements.length > 0 && currentElements[0] ? currentElements[0].textContent || '' : '';
             }),
-            html: jest.fn(function(value) {
+            html: jest.fn(function (value) {
                 if (currentElements.length > 0 && typeof value !== 'undefined') {
-                    currentElements.forEach(el => { if(el) el.innerHTML = value; });
+                    currentElements.forEach(el => { if (el) el.innerHTML = value; });
                     return this;
                 }
                 return currentElements.length > 0 && currentElements[0] ? currentElements[0].innerHTML || '' : '';
             }),
-            empty: jest.fn(function() {
-                currentElements.forEach(el => { if(el) while (el.firstChild) el.removeChild(el.firstChild); });
+            empty: jest.fn(function () {
+                currentElements.forEach(el => { if (el) while (el.firstChild) el.removeChild(el.firstChild); });
                 return this;
             }),
-            append: jest.fn(function(content) {
+            append: jest.fn(function (content) {
                 if (currentElements.length > 0) {
                     const parent = currentElements[0]; // Append to the first element in the set
                     if (content && content._isMockCashInstance) {
@@ -74,47 +74,47 @@ jest.mock('cash-dom', () => {
                 }
                 return this;
             }),
-            find: jest.fn(function(selector) {
+            find: jest.fn(function (selector) {
                 if (currentElements.length > 0) {
                     const foundElements = [];
                     currentElements.forEach(el => {
-                        if(el) foundElements.push(...el.querySelectorAll(selector));
+                        if (el) foundElements.push(...el.querySelectorAll(selector));
                     });
                     return createMockCashInstance(foundElements);
                 }
                 return createMockCashInstance([]);
             }),
-            val: jest.fn(function(value) {
-                 if (currentElements.length > 0 && typeof value !== 'undefined') {
-                    currentElements.forEach(el => { if(el) el.value = value; });
-                    return this;
-                 }
-                 return currentElements.length > 0 && currentElements[0] ? currentElements[0].value || '' : '';
-            }),
-            attr: jest.fn(function(attrName, value) {
+            val: jest.fn(function (value) {
                 if (currentElements.length > 0 && typeof value !== 'undefined') {
-                    currentElements.forEach(el => { if(el) el.setAttribute(attrName, value); });
+                    currentElements.forEach(el => { if (el) el.value = value; });
+                    return this;
+                }
+                return currentElements.length > 0 && currentElements[0] ? currentElements[0].value || '' : '';
+            }),
+            attr: jest.fn(function (attrName, value) {
+                if (currentElements.length > 0 && typeof value !== 'undefined') {
+                    currentElements.forEach(el => { if (el) el.setAttribute(attrName, value); });
                     return this;
                 }
                 return currentElements.length > 0 && currentElements[0] ? currentElements[0].getAttribute(attrName) : 'mocked-attr';
             }),
-            removeAttr: jest.fn(function(attrName) {
-                currentElements.forEach(el => { if(el) el.removeAttribute(attrName); });
+            removeAttr: jest.fn(function (attrName) {
+                currentElements.forEach(el => { if (el) el.removeAttribute(attrName); });
                 return this;
             }),
             css: jest.fn().mockReturnThis(), // Simplified
             show: jest.fn().mockReturnThis(),
             hide: jest.fn().mockReturnThis(),
-            addClass: jest.fn(function(cls) {
-                currentElements.forEach(el => { if(el && el.classList) el.classList.add(cls); });
+            addClass: jest.fn(function (cls) {
+                currentElements.forEach(el => { if (el && el.classList) el.classList.add(cls); });
                 return this;
             }),
-            removeClass: jest.fn(function(cls) {
-                currentElements.forEach(el => { if(el && el.classList) el.classList.remove(cls); });
+            removeClass: jest.fn(function (cls) {
+                currentElements.forEach(el => { if (el && el.classList) el.classList.remove(cls); });
                 return this;
             }),
-            click: jest.fn(function() { // Basic click mock
-                currentElements.forEach(el => { if(el && typeof el.click === 'function') el.click(); });
+            click: jest.fn(function () { // Basic click mock
+                currentElements.forEach(el => { if (el && typeof el.click === 'function') el.click(); });
                 return this;
             }),
             _isMockCashInstance: true,
@@ -140,7 +140,7 @@ jest.mock('cash-dom', () => {
             return createMockCashInstance([selector]);
         }
         if (selector && selector._isMockCashInstance) { // Is already a cash instance
-             return selector;
+            return selector;
         }
         return createMockCashInstance([]); // Default empty cash object
     });
