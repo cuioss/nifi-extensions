@@ -12,7 +12,8 @@
     "stylelint:fix": "stylelint \"src/main/webapp/css/**/*.css\" --fix",
     "test": "NODE_ENV=test jest",
     "test:watch": "NODE_ENV=test jest --watch",
-    "test:coverage": "NODE_ENV=test jest --coverage"
+    "test:coverage": "NODE_ENV=test jest --coverage",
+    "test:ci": "NODE_ENV=test jest --coverage --watchAll=false --passWithNoTests"
   },
   "repository": {
     "type": "git",
@@ -58,7 +59,7 @@
     "tippy.js": "^6.3.7"
   },
   "jest": {
-    "verbose": true,
+    "verbose": false,
     "testEnvironment": "jest-environment-jsdom",
     "moduleDirectories": [
       "node_modules",
@@ -74,7 +75,7 @@
     "testMatch": [
       "**/test/js/**/*.test.js"
     ],
-    "collectCoverage": true,
+    "collectCoverage": false,
     "coverageDirectory": "target/coverage",
     "coverageReporters": [
       "text",
@@ -95,6 +96,8 @@
       }
     },
     "resetMocks": true,
+    "clearMocks": true,
+    "restoreMocks": true,
     "moduleNameMapper": {
       "^nf.Common$": "<rootDir>/src/test/js/mocks/nf-common.js",
       "^js/utils/formatters$": "<rootDir>/src/main/webapp/js/utils/formatters.js",
