@@ -24,7 +24,7 @@ const registerCustomUiComponents = async () => {
 
         // For test environments, use simpler synchronous registration to maintain test compatibility
         // eslint-disable-next-line no-undef
-        if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test') {
+        if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
             // Simplified registration for tests
             nfCommon.registerCustomUiTab('jwt.validation.issuer.configuration', issuerConfigEditor);
             nfCommon.registerCustomUiTab('jwt.validation.token.verification', tokenVerifier);
@@ -260,7 +260,7 @@ const _setupDialogEventListeners = () => {
             // Use setTimeout to allow the dialog to fully render
             setTimeout(() => {
                 const processorTypeElement = dialogContentElement.querySelector('.processor-type');
-                const processorType = processorTypeElement ? processorTypeElement.textContent.trim() : '';
+                const processorType = processorTypeElement?.textContent?.trim() || '';
 
                 if (processorType.includes('MultiIssuerJWTTokenAuthenticator')) {
                     // Only re-register tooltips if the tooltip component is ready

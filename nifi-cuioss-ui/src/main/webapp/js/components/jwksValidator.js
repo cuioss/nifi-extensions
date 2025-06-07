@@ -12,7 +12,7 @@ const getIsLocalhost = () => { // Stays module-scoped
     if (isLocalhostOverride !== null) {
         return isLocalhostOverride;
     }
-    return window.location.href.indexOf('localhost') !== -1 || window.location.href.indexOf('127.0.0.1') !== -1;
+    return window.location.href.includes('localhost') || window.location.href.includes('127.0.0.1');
 };
 
 /**
@@ -24,18 +24,16 @@ const getIsLocalhost = () => { // Stays module-scoped
  * @param {Function} callback - The callback function
  * @returns {Promise<void>}
  */
-export const init = async function (element, propertyValue, jwks_type, callback) {
+export const init = async (element, propertyValue, jwks_type, callback) => {
     try {
         await _initializeJwksValidator(element, propertyValue, jwks_type, callback);
     } catch (error) {
         console.error('Error initializing JWKS validator:', error);
         // Still call callback to maintain contract, even on error
-        if (typeof callback === 'function') {
-            callback({
-                validate: () => false,
-                error: error.message
-            });
-        }
+        callback?.({
+            validate: () => false,
+            error: error.message
+        });
         throw error; // Re-throw for ComponentManager to handle
     }
 };
@@ -104,21 +102,24 @@ const _initializeJwksValidator = async (element, propertyValue, jwks_type, callb
         });
 
         // Add a default text to the result container for better UX
-        $resultContainer.html('<em>' + (i18n['jwksValidator.initialInstructions'] || 'Click the button to validate JWKS') + '</em>');
+        $resultContainer.html(`<em>${i18n['jwksValidator.initialInstructions'] || 'Click the button to validate JWKS'}</em>`);
     }
 
     $(element).append($container); // element is the parent div provided by NiFi
 
 
     // Initialize callback if provided
-    if (typeof callback === 'function') {
-        // Ensure propertyValue is updated if setValue is called via the callback
+    // Use optional chaining for callback
+    if (callback) {
         let currentPropertyValue = propertyValue;
         callback({
             validate: () => true,
             getValue: () => currentPropertyValue,
-            setValue: newValue => { currentPropertyValue = newValue; propertyValue = newValue; }, // Update both for safety
-            jwks_type: jwks_type
+            setValue: newValue => {
+                currentPropertyValue = newValue;
+                propertyValue = newValue;
+            },
+            jwks_type
         });
     }
 };
@@ -126,11 +127,13 @@ const _initializeJwksValidator = async (element, propertyValue, jwks_type, callb
 // Private function to handle AJAX success response
 const _handleAjaxSuccess = (responseData, $resultContainer, i18n) => {
     if (responseData.valid) {
-        $resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
-                               (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
-                               (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
-                               ' (' + responseData.keyCount + ' ' +
-                               (i18n['processor.jwt.keysFound'] || 'keys found') + ')');
+        $resultContainer.html(`
+            <span style="color: var(--success-color); font-weight: bold;">
+                ${i18n['processor.jwt.ok'] || 'OK'}
+            </span> 
+            ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} 
+            (${responseData.keyCount} ${i18n['processor.jwt.keysFound'] || 'keys found'})
+        `);
     } else {
         displayUiError($resultContainer, { responseJSON: responseData }, i18n, 'processor.jwt.invalidJwks');
     }
@@ -139,11 +142,14 @@ const _handleAjaxSuccess = (responseData, $resultContainer, i18n) => {
 // Private function to handle AJAX error response
 const _handleAjaxError = (jqXHR, $resultContainer, i18n) => {
     if (getIsLocalhost()) {
-        $resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
-                               (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
-                               (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
-                               ' (3 ' + (i18n['processor.jwt.keysFound'] || 'keys found') +
-                               ') <em>(Simulated response)</em>');
+        $resultContainer.html(`
+            <span style="color: var(--success-color); font-weight: bold;">
+                ${i18n['processor.jwt.ok'] || 'OK'}
+            </span> 
+            ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} 
+            (3 ${i18n['processor.jwt.keysFound'] || 'keys found'}) 
+            <em>(Simulated response)</em>
+        `);
     } else {
         displayUiError($resultContainer, jqXHR, i18n);
     }
@@ -152,11 +158,14 @@ const _handleAjaxError = (jqXHR, $resultContainer, i18n) => {
 // Private function to handle synchronous errors during AJAX setup or other issues
 const _handleSynchronousError = (exception, $resultContainer, i18n) => {
     if (getIsLocalhost()) {
-        $resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">' +
-                               (i18n['processor.jwt.ok'] || 'OK') + '</span> ' +
-                               (i18n['processor.jwt.validJwks'] || 'Valid JWKS') +
-                               ' (3 ' + (i18n['processor.jwt.keysFound'] || 'keys found') +
-                               ') <em>(Simulated response)</em>');
+        $resultContainer.html(`
+            <span style="color: var(--success-color); font-weight: bold;">
+                ${i18n['processor.jwt.ok'] || 'OK'}
+            </span> 
+            ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} 
+            (3 ${i18n['processor.jwt.keysFound'] || 'keys found'}) 
+            <em>(Simulated response)</em>
+        `);
     } else {
         displayUiError($resultContainer, exception, i18n);
     }

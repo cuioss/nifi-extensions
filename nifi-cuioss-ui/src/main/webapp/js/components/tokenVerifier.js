@@ -15,7 +15,7 @@ const getIsLocalhost = () => { // Stays module-scoped
         return isLocalhostOverride;
     }
     // Default behavior: check window.location.href
-    return window.location.href.indexOf('localhost') !== -1 || window.location.href.indexOf('127.0.0.1') !== -1;
+    return window.location.href.includes('localhost') || window.location.href.includes('127.0.0.1');
 };
 
 /**
@@ -27,7 +27,7 @@ const getIsLocalhost = () => { // Stays module-scoped
  * @param {Function} callback - The callback function
  * @returns {Promise<void>}
  */
-export const init = async function (element, _config, _type, callback) {
+export const init = async (element, _config, _type, callback) => {
     try {
         await _initializeTokenVerifier(element, callback);
     } catch (error) {
@@ -91,8 +91,7 @@ const _initializeTokenVerifier = async (element, callback) => {
         const token = $tokenInput.val().trim();
 
         if (!token) {
-            $resultsContent.html('<div class="token-error">' +
-                                  (i18n['processor.jwt.noTokenProvided'] || 'No token provided') + '</div>');
+            $resultsContent.html(`<div class="token-error">${i18n['processor.jwt.noTokenProvided'] || 'No token provided'}</div>`);
             return;
         }
 
@@ -131,31 +130,33 @@ const _initializeTokenVerifier = async (element, callback) => {
 
     // Function to display valid token details (now private)
     const _displayValidToken = (response, isSimulated) => {
-        let html =
-            '<div class="token-valid">' +
-                '<span class="fa fa-check-circle"></span> ' +
-                (i18n['processor.jwt.tokenValid'] || 'Token is valid');
-        if (isSimulated) {
-            html += ' <em>(Simulated response)</em>';
-        }
-        html += '</div>';
-        html += '<div class="token-details">';
-        html += '<h4>' + (i18n['processor.jwt.tokenDetails'] || 'Token Details') + '</h4>';
-        html += '<table class="token-claims-table">';
-        html += '<tr><th>' + (i18n['processor.jwt.subject'] || 'Subject') + '</th><td>' + (response.subject || '') + '</td></tr>';
-        html += '<tr><th>' + (i18n['processor.jwt.issuer'] || 'Issuer') + '</th><td>' + (response.issuer || '') + '</td></tr>';
-        html += '<tr><th>' + (i18n['processor.jwt.audience'] || 'Audience') + '</th><td>' + (response.audience || '') + '</td></tr>';
-        html += '<tr><th>' + (i18n['processor.jwt.expiration'] || 'Expiration') + '</th><td>' + (response.expiration || '') + '</td></tr>';
-        if (response.roles && response.roles.length > 0) {
-            html += '<tr><th>' + (i18n['processor.jwt.roles'] || 'Roles') + '</th><td>' + response.roles.join(', ') + '</td></tr>';
-        }
-        if (response.scopes && response.scopes.length > 0) {
-            html += '<tr><th>' + (i18n['processor.jwt.scopes'] || 'Scopes') + '</th><td>' + response.scopes.join(' ') + '</td></tr>';
-        }
-        html += '</table>';
-        html += '<h4>' + (i18n['processor.jwt.allClaims'] || 'All Claims') + '</h4>';
-        html += '<pre class="token-raw-claims">' + JSON.stringify(response.claims, null, 2) + '</pre>';
-        html += '</div>';
+        const simulatedText = isSimulated ? ' <em>(Simulated response)</em>' : '';
+        const { roles = [], scopes = [] } = response;
+
+        const rolesRow = roles.length > 0 ?
+            `<tr><th>${i18n['processor.jwt.roles'] || 'Roles'}</th><td>${roles.join(', ')}</td></tr>` : '';
+        const scopesRow = scopes.length > 0 ?
+            `<tr><th>${i18n['processor.jwt.scopes'] || 'Scopes'}</th><td>${scopes.join(' ')}</td></tr>` : '';
+
+        const html = `
+            <div class="token-valid">
+                <span class="fa fa-check-circle"></span> 
+                ${i18n['processor.jwt.tokenValid'] || 'Token is valid'}${simulatedText}
+            </div>
+            <div class="token-details">
+                <h4>${i18n['processor.jwt.tokenDetails'] || 'Token Details'}</h4>
+                <table class="token-claims-table">
+                    <tr><th>${i18n['processor.jwt.subject'] || 'Subject'}</th><td>${response.subject || ''}</td></tr>
+                    <tr><th>${i18n['processor.jwt.issuer'] || 'Issuer'}</th><td>${response.issuer || ''}</td></tr>
+                    <tr><th>${i18n['processor.jwt.audience'] || 'Audience'}</th><td>${response.audience || ''}</td></tr>
+                    <tr><th>${i18n['processor.jwt.expiration'] || 'Expiration'}</th><td>${response.expiration || ''}</td></tr>
+                    ${rolesRow}
+                    ${scopesRow}
+                </table>
+                <h4>${i18n['processor.jwt.allClaims'] || 'All Claims'}</h4>
+                <pre class="token-raw-claims">${JSON.stringify(response.claims, null, 2)}</pre>
+            </div>
+        `;
         $resultsContent.html(html);
     };
 
@@ -168,29 +169,26 @@ const _initializeTokenVerifier = async (element, callback) => {
         displayUiError($targetContent, { responseJSON: response }, i18nToUse, 'processor.jwt.tokenInvalid');
     };
 
-    $resultsContent.html(
-        '<div class="token-instructions">' +
-            (i18n['processor.jwt.initialInstructions'] ||
-                'Enter a JWT token above and click "Verify Token" ' + // Break string
-                'to validate it.') +
-            '</div>'
-    );
+    $resultsContent.html(`
+        <div class="token-instructions">
+            ${i18n['processor.jwt.initialInstructions'] ||
+                'Enter a JWT token above and click "Verify Token" to validate it.'}
+        </div>
+    `);
 
-    if (typeof callback === 'function') {
-        // The 'validate' function is part of the contract expected by nfCommon.registerComponentValidation (or similar mechanisms).
-        // Currently, this component does not implement specific validation logic via this callback,
-        // so it defaults to true. Validation might be handled internally or not be required for this component's lifecycle.
-        callback({
-            validate: () => true
-        });
-    }
+    // Use optional chaining and logical AND for callback
+    callback?.({ validate: () => true });
 };
 
 // --- Refactored Private Helper Functions ---
 
 const _resetUIAndShowLoading = ($resultsContent, i18n) => {
-    $resultsContent.html('<div class="token-loading"><span class="fa fa-spinner fa-spin"></span> ' +
-                              (i18n['processor.jwt.verifying'] || 'Verifying token...') + '</div>');
+    $resultsContent.html(`
+        <div class="token-loading">
+            <span class="fa fa-spinner fa-spin"></span> 
+            ${i18n['processor.jwt.verifying'] || 'Verifying token...'}
+        </div>
+    `);
 };
 
 const _handleTokenVerificationResponse = (responseData, $resultsContent, i18n, displayValidTokenFunc, displayInvalidTokenFunc) => {
@@ -213,9 +211,7 @@ const _extractErrorMessageFromXHR = (jqXHR) => {
     if (jqXHR.responseText) {
         try {
             const errorJson = JSON.parse(jqXHR.responseText);
-            if (errorJson && errorJson.message) {
-                errorMessage = errorJson.message;
-            }
+            errorMessage = errorJson?.message || errorMessage;
         } catch (e) {
             errorMessage = jqXHR.responseText || errorMessage;
         }

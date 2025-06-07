@@ -74,21 +74,20 @@ const _createJwksSuccessMessage = (keyCount, isSimulated = false) => {
 const _parseIssuerProperties = (properties) => {
     const issuerProperties = {};
 
-    Object.keys(properties).forEach(key => {
-        if (key.startsWith('issuer.')) {
-            const parts = key.substring(7).split('.');
+    Object.entries(properties)
+        .filter(([key]) => key.startsWith('issuer.'))
+        .forEach(([key, value]) => {
+            const parts = key.slice(7).split('.'); // Use slice instead of substring
             if (parts.length === 2) {
-                const issuerName = parts[0];
-                const propertyName = parts[1];
+                const [issuerName, propertyName] = parts; // Destructuring
 
                 if (!issuerProperties[issuerName]) {
                     issuerProperties[issuerName] = {};
                 }
 
-                issuerProperties[issuerName][propertyName] = properties[key];
+                issuerProperties[issuerName][propertyName] = value;
             }
-        }
-    });
+        });
 
     return issuerProperties;
 };

@@ -4,7 +4,7 @@
  */
 import $ from 'cash-dom';
 import { API } from '../utils/constants.js';
-import { createApiClientErrorHandler, createApiClientCallbackErrorHandler } from '../utils/errorHandler.js';
+import { createXhrErrorObject, createApiClientCallbackErrorHandler } from '../utils/errorHandler.js';
 
 'use strict';
 
@@ -20,20 +20,16 @@ const BASE_URL = API.BASE_URL;
  * @param {string} jwksUrl - The JWKS URL to validate
  * @return {Promise} A Promise object for the request
  */
-export const validateJwksUrl = function (jwksUrl) {
-    return new Promise((resolve, reject) => {
-        $.ajax({
-            method: 'POST',
-            url: BASE_URL + '/validate-jwks-url',
-            data: JSON.stringify({ jwksUrl: jwksUrl }),
-            contentType: 'application/json',
-            dataType: 'json',
-            timeout: API.TIMEOUTS.DEFAULT
-        })
-            .then(data => { // $.ajax().then() provides data directly
-                resolve(data);
-            })
-            .catch(createApiClientErrorHandler(reject));
+export const validateJwksUrl = (jwksUrl) => {
+    return $.ajax({
+        method: 'POST',
+        url: `${BASE_URL}/validate-jwks-url`,
+        data: JSON.stringify({ jwksUrl }),
+        contentType: 'application/json',
+        dataType: 'json',
+        timeout: API.TIMEOUTS.DEFAULT
+    }).catch(error => {
+        throw createXhrErrorObject(error);
     });
 };
 
@@ -43,20 +39,16 @@ export const validateJwksUrl = function (jwksUrl) {
  * @param {string} filePath - The path to the JWKS file
  * @return {Promise} A Promise object for the request
  */
-export const validateJwksFile = function (filePath) {
-    return new Promise((resolve, reject) => {
-        $.ajax({
-            method: 'POST',
-            url: BASE_URL + '/validate-jwks-file',
-            data: JSON.stringify({ filePath: filePath }),
-            contentType: 'application/json',
-            dataType: 'json',
-            timeout: API.TIMEOUTS.DEFAULT
-        })
-            .then(data => {
-                resolve(data);
-            })
-            .catch(createApiClientErrorHandler(reject));
+export const validateJwksFile = (filePath) => {
+    return $.ajax({
+        method: 'POST',
+        url: `${BASE_URL}/validate-jwks-file`,
+        data: JSON.stringify({ filePath }),
+        contentType: 'application/json',
+        dataType: 'json',
+        timeout: API.TIMEOUTS.DEFAULT
+    }).catch(error => {
+        throw createXhrErrorObject(error);
     });
 };
 
@@ -67,20 +59,16 @@ export const validateJwksFile = function (filePath) {
  * @param {Function} successCallback - The callback to invoke on success
  * @param {Function} errorCallback - The callback to invoke on error
  */
-export const validateJwksContent = function (jwksContent, successCallback, errorCallback) {
+export const validateJwksContent = (jwksContent, successCallback, errorCallback) => {
     $.ajax({
         method: 'POST',
-        url: BASE_URL + '/validate-jwks-content',
-        data: JSON.stringify({ jwksContent: jwksContent }),
+        url: `${BASE_URL}/validate-jwks-content`,
+        data: JSON.stringify({ jwksContent }),
         contentType: 'application/json',
         dataType: 'json',
         timeout: API.TIMEOUTS.DEFAULT
     })
-        .then(data => {
-            if (successCallback) {
-                successCallback(data);
-            }
-        })
+        .then(data => successCallback?.(data))
         .catch(createApiClientCallbackErrorHandler(errorCallback));
 };
 
@@ -91,20 +79,16 @@ export const validateJwksContent = function (jwksContent, successCallback, error
  * @param {Function} successCallback - The callback to invoke on success
  * @param {Function} errorCallback - The callback to invoke on error
  */
-export const verifyToken = function (token, successCallback, errorCallback) {
+export const verifyToken = (token, successCallback, errorCallback) => {
     $.ajax({
         method: 'POST',
-        url: BASE_URL + '/verify-token',
-        data: JSON.stringify({ token: token }),
+        url: `${BASE_URL}/verify-token`,
+        data: JSON.stringify({ token }),
         contentType: 'application/json',
         dataType: 'json',
         timeout: API.TIMEOUTS.DEFAULT
     })
-        .then(data => {
-            if (successCallback) {
-                successCallback(data);
-            }
-        })
+        .then(data => successCallback?.(data))
         .catch(createApiClientCallbackErrorHandler(errorCallback));
 };
 
@@ -114,18 +98,14 @@ export const verifyToken = function (token, successCallback, errorCallback) {
  * @param {Function} successCallback - The callback to invoke on success
  * @param {Function} errorCallback - The callback to invoke on error
  */
-export const getSecurityMetrics = function (successCallback, errorCallback) {
+export const getSecurityMetrics = (successCallback, errorCallback) => {
     $.ajax({
         method: 'GET',
-        url: BASE_URL + '/metrics',
+        url: `${BASE_URL}/metrics`,
         dataType: 'json',
         timeout: API.TIMEOUTS.DEFAULT
     })
-        .then(data => {
-            if (successCallback) {
-                successCallback(data);
-            }
-        })
+        .then(data => successCallback?.(data))
         .catch(createApiClientCallbackErrorHandler(errorCallback));
 };
 
@@ -135,10 +115,10 @@ export const getSecurityMetrics = function (successCallback, errorCallback) {
  * @param {string} processorId - The ID of the processor
  * @return {Promise} A Promise object for the request
  */
-export const getProcessorProperties = function (processorId) {
+export const getProcessorProperties = (processorId) => {
     return $.ajax({
         method: 'GET',
-        url: '../nifi-api/processors/' + processorId,
+        url: `../nifi-api/processors/${processorId}`,
         dataType: 'json',
         timeout: API.TIMEOUTS.DEFAULT
     });
@@ -154,27 +134,28 @@ export const getProcessorProperties = function (processorId) {
  * @param {Object} properties - The properties to update
  * @return {Promise} A Promise object for the request
  */
-export const updateProcessorProperties = function (processorId, properties) {
+export const updateProcessorProperties = (processorId, properties) => {
     // First, get the current processor configuration
     return $.ajax({
         method: 'GET',
-        url: '../nifi-api/processors/' + processorId,
+        url: `../nifi-api/processors/${processorId}`,
         dataType: 'json',
         timeout: API.TIMEOUTS.DEFAULT
     }).then(processor => { // data from GET is the processor object
-        // Create the update request
+        // Create the update request using destructuring
+        const { revision } = processor;
         const updateRequest = {
-            revision: processor.revision,
+            revision,
             component: {
                 id: processorId,
-                properties: properties
+                properties
             }
         };
 
         // Send the update request
         return $.ajax({
             method: 'PUT',
-            url: '../nifi-api/processors/' + processorId,
+            url: `../nifi-api/processors/${processorId}`,
             data: JSON.stringify(updateRequest),
             contentType: 'application/json',
             dataType: 'json',
