@@ -4,28 +4,10 @@
  */
 import $ from 'cash-dom';
 import { API } from '../utils/constants.js';
+import { createApiClientErrorHandler, createApiClientCallbackErrorHandler } from '../utils/errorHandler.js';
 
 'use strict';
 
-/**
- * Creates a simplified error object from a jqXHR object.
- * @param {object} jqXHR - The jQuery XHR object from an AJAX error.
- * @param {string} [textStatus] - The status text (e.g., "timeout", "error"). (Optional, as cash-dom might not always provide it directly in catch)
- * @param {string} [errorThrown] - The error thrown. (Optional, as cash-dom might not always provide it directly in catch)
- * @returns {{responseText: *, status: *, statusText: *}}
- * @private
- */
-const _createXhrErrorObject = function (jqXHR, textStatus, errorThrown) {
-    // Note: cash-dom's jqXHR object in .catch() might be simpler than jQuery's.
-    // It directly provides status, statusText, and responseText.
-    // textStatus and errorThrown might not be consistently provided by cash-dom's AJAX fail handler,
-    // so we primarily rely on properties of the jqXHR object itself.
-    return {
-        status: jqXHR.status,
-        statusText: jqXHR.statusText || errorThrown || textStatus || 'Unknown error', // Prioritize jqXHR.statusText
-        responseText: jqXHR.responseText
-    };
-};
 
 /**
      * Base URL for API endpoints.
@@ -51,10 +33,7 @@ export const validateJwksUrl = function (jwksUrl) {
             .then(data => { // $.ajax().then() provides data directly
                 resolve(data);
             })
-            .catch(error => { // cash-dom's ajax().catch() provides the jqXHR object
-                // Create a simplified error object from jqXHR for consistent error handling upstream.
-                reject(_createXhrErrorObject(error));
-            });
+            .catch(createApiClientErrorHandler(reject));
     });
 };
 
@@ -77,10 +56,7 @@ export const validateJwksFile = function (filePath) {
             .then(data => {
                 resolve(data);
             })
-            .catch(error => { // cash-dom's ajax().catch() provides the jqXHR object
-                // Create a simplified error object from jqXHR for consistent error handling upstream.
-                reject(_createXhrErrorObject(error));
-            });
+            .catch(createApiClientErrorHandler(reject));
     });
 };
 
@@ -105,14 +81,7 @@ export const validateJwksContent = function (jwksContent, successCallback, error
                 successCallback(data);
             }
         })
-        .catch(error => { // cash-dom's ajax().catch() provides the jqXHR object
-            if (errorCallback) {
-                // Create a simplified error object from jqXHR for consistent error handling upstream.
-                const errorObj = _createXhrErrorObject(error);
-                const errorMessage = errorObj.statusText || errorObj.responseText || 'Unknown error';
-                errorCallback(errorMessage, errorObj);
-            }
-        });
+        .catch(createApiClientCallbackErrorHandler(errorCallback));
 };
 
 /**
@@ -136,14 +105,7 @@ export const verifyToken = function (token, successCallback, errorCallback) {
                 successCallback(data);
             }
         })
-        .catch(error => { // cash-dom's ajax().catch() provides the jqXHR object
-            if (errorCallback) {
-                // Create a simplified error object from jqXHR for consistent error handling upstream.
-                const errorObj = _createXhrErrorObject(error);
-                const errorMessage = errorObj.statusText || errorObj.responseText || 'Unknown error';
-                errorCallback(errorMessage, errorObj);
-            }
-        });
+        .catch(createApiClientCallbackErrorHandler(errorCallback));
 };
 
 /**
@@ -164,14 +126,7 @@ export const getSecurityMetrics = function (successCallback, errorCallback) {
                 successCallback(data);
             }
         })
-        .catch(error => { // cash-dom's ajax().catch() provides the jqXHR object
-            if (errorCallback) {
-                // Create a simplified error object from jqXHR for consistent error handling upstream.
-                const errorObj = _createXhrErrorObject(error);
-                const errorMessage = errorObj.statusText || errorObj.responseText || 'Unknown error';
-                errorCallback(errorMessage, errorObj);
-            }
-        });
+        .catch(createApiClientCallbackErrorHandler(errorCallback));
 };
 
 /**
