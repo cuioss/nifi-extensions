@@ -1,29 +1,370 @@
-= JavaScript Refactoring - Remaining Tasks
+= JavaScript Refactoring Tasks
+:toc:
+:toclevels: 3
 
-== Current Status
-* ✅ 81.34% branch coverage achieved (exceeding 80% target)
-* ✅ All major refactoring completed
-* ✅ 234 tests passing, 23 skipped
+== Overview
 
-== Remaining Open Tasks
+This document outlines refactoring tasks for the NiFi cuioss UI JavaScript codebase to improve code quality, maintainability, and performance. Tasks are organized by priority and logical dependency order.
 
-=== High Priority
+== Task Completion Workflow
 
-* [x] **Re-enable disabled tests**: Addressed TODO comment in `main.real.test.js:334` - test skipped due to Jest/JSDOM event system limitations, documented for future resolution ✅
-* [x] **Verify package.json optimization**: Added test:ci script, optimized Jest config (verbose=false, coverage=false by default), enhanced mock cleanup ✅
+=== Before Starting Any Task
 
-=== Optional Enhancements (Low Priority)
+* [ ] Ensure on correct branch: `git checkout feature/js-coverage-report-path`
+* [ ] Ensure clean working directory: `git status`
+* [ ] Run baseline tests: `npm test` (all must pass)
+* [ ] Run baseline lint: `npm run lint` (no issues)
+* [ ] Run baseline build: `npm run build` (successful)
 
-* [ ] **Test form field edge cases**: Empty values, missing elements, validation failures in issuerConfigEditor
-* [ ] **Test removal operations**: Additional server mode removal edge cases
-* [ ] **Test initialization edge cases**: Component setup with different URL patterns
-* [ ] **Conditional Simulation Logic**: Consider abstracting `getIsLocalhost()` branching for simpler testing
-* [ ] **Mocking Strategy**: Standardize jQuery AJAX mocking across test files
-* [ ] **Promise Testing**: Ensure consistent patterns for async code testing
-* [ ] **Test Isolation**: Verify tests run properly both in isolation and as part of full suite
+=== During Implementation
 
-== Notes
+* [ ] Make incremental changes with frequent testing
+* [ ] Run tests after each significant change: `npm test`
+* [ ] Check lint status regularly: `npm run lint`
+* [ ] Verify build remains functional: `npm run build`
 
-**Project Status**: All primary objectives achieved. The remaining tasks are enhancements and optimizations that can be completed as time permits.
+=== Before Committing
 
-**Coverage Target**: Already configured at 80% in package.json Jest configuration. Current coverage exceeds this target.
+* [ ] **CRITICAL**: Run full test suite: `npm test` (zero failures)
+* [ ] **CRITICAL**: Run lint check: `npm run lint` (zero issues)
+* [ ] **CRITICAL**: Run full build: `npm run build` (successful)
+* [ ] **CRITICAL**: Verify no test degradation (maintain test count)
+* [ ] **CRITICAL**: Check coverage report (maintain >80% branch coverage)
+* [ ] Review changes: `git diff` (only intended changes)
+* [ ] Stage changes: `git add [specific-files]` (atomic scope)
+* [ ] **Update TODO document**: Mark completed task as done (✅) in this document
+* [ ] Commit with message: `git commit -m "type: description"`
+
+=== Commit Message Format
+
+* The actual task name, e.g.: "1.1 Magic Numbers and Strings Elimination"
+
+== Foundation Tasks (Phase 1)
+
+=== 1. Constants and Configuration
+
+==== 1.1 Magic Numbers and Strings Elimination
+**Priority**: High
+
+**Objective**: Replace hardcoded values with centralized constants
+
+**Tasks**:
+
+* [ ] Create `js/utils/constants.js` with configuration object
+* [ ] Extract timeout values (e.g., `issuerConfigEditor.js:346`)
+* [ ] Extract CSS class strings from DOM manipulation
+* [ ] Extract API endpoint strings from `apiClient.js:32`
+* [ ] Replace hardcoded strings throughout codebase
+
+**Files Affected**:
+
+* `issuerConfigEditor.js`
+* `apiClient.js`
+* `tokenVerifier.js`
+* `jwksValidator.js`
+
+=== 2. Utility Functions and Error Handling
+
+==== 2.1 AJAX Error Handling Standardization
+**Priority**: High
+
+**Objective**: Create unified error handling system
+
+**Tasks**:
+
+* [ ] Create `js/utils/errorHandler.js` module
+* [ ] Extract duplicate error patterns from `apiClient.js:53-56, 79-82, 107-114`
+* [ ] Standardize error patterns in `tokenVerifier.js:86-94`
+* [ ] Standardize error patterns in `jwksValidator.js:69-72`
+* [ ] Create unified `createAjaxHandler()` utility
+* [ ] Implement consistent error message formatting
+
+**Files Affected**:
+
+* `apiClient.js`
+* `tokenVerifier.js`
+* `jwksValidator.js`
+* `uiErrorDisplay.js`
+
+==== 2.2 Input Validation Enhancement
+**Priority**: High
+
+**Objective**: Add comprehensive validation layer
+
+**Tasks**:
+
+* [ ] Create `js/utils/validation.js` module
+* [ ] Add validation for `getProcessorIdFromUrl` (`issuerConfigEditor.js:194-200`)
+* [ ] Enhance form submission validation across components
+* [ ] Create reusable validator functions with regex patterns
+* [ ] Add URL and input sanitization
+
+**Files Affected**:
+
+* `issuerConfigEditor.js`
+* `tokenVerifier.js`
+* `jwksValidator.js`
+
+=== 3. Performance and Memory Management
+
+==== 3.1 DOM Manipulation Optimization
+**Priority**: High
+
+**Objective**: Implement efficient DOM operations
+
+**Tasks**:
+
+* [ ] Create `js/utils/domCache.js` for element caching
+* [ ] Create `js/utils/domBuilder.js` for efficient element creation
+* [ ] Optimize frequent DOM queries in `issuerConfigEditor.js:121-122`
+* [ ] Implement DocumentFragment batching for bulk operations
+* [ ] Cache commonly accessed elements
+
+**Files Affected**:
+
+* `issuerConfigEditor.js`
+* `tokenVerifier.js`
+* `jwksValidator.js`
+
+==== 3.2 Memory Leak Prevention
+**Priority**: High
+
+**Objective**: Add proper cleanup for resources
+
+**Tasks**:
+
+* [ ] Create `js/utils/componentCleanup.js` manager
+* [ ] Add event listener cleanup (`issuerConfigEditor.js:159`)
+* [ ] Add timeout cleanup (`issuerConfigEditor.js:557`)
+* [ ] Implement component lifecycle hooks
+* [ ] Add cleanup for AJAX requests
+
+**Files Affected**:
+
+* `issuerConfigEditor.js`
+* `tokenVerifier.js`
+* `jwksValidator.js`
+* `main.js`
+
+== Architecture Tasks (Phase 2)
+
+=== 4. Function Decomposition
+
+==== 4.1 Long Function Breakdown
+**Priority**: High
+
+**Objective**: Break down oversized functions
+
+**Tasks**:
+
+* [ ] Decompose `loadExistingIssuers` (`issuerConfigEditor.js:170-232`, 62 lines)
+* [ ] Refactor `_handleTokenVerificationAjaxError` (`tokenVerifier.js:173-217`, 44 lines)
+* [ ] Simplify `registerHelpTooltips` (`main.js:44-75`, 31 lines)
+* [ ] Extract helper functions for complex operations
+* [ ] Improve function naming and documentation
+
+**Files Affected**:
+
+* `issuerConfigEditor.js`
+* `tokenVerifier.js`
+* `main.js`
+
+=== 5. Component Architecture
+
+==== 5.1 DOM-Business Logic Separation
+**Priority**: Medium
+
+**Objective**: Implement Model-View-Controller pattern
+
+**Tasks**:
+
+* [ ] Separate event handlers from DOM creation (`issuerConfigEditor.js:379-386`)
+* [ ] Create controller classes for each component
+* [ ] Extract business logic from UI rendering
+* [ ] Implement data models for component state
+* [ ] Create view classes for DOM manipulation
+
+**Files Affected**:
+
+* `issuerConfigEditor.js`
+* `tokenVerifier.js`
+* `jwksValidator.js`
+
+==== 5.2 Component Initialization Standardization
+**Priority**: Medium
+
+**Objective**: Standardize component lifecycle
+
+**Tasks**:
+
+* [ ] Remove global state flag (`main.js:15`: `jwtComponentsRegistered`)
+* [ ] Create ComponentManager class for initialization
+* [ ] Standardize async initialization patterns
+* [ ] Implement consistent component lifecycle
+* [ ] Add proper initialization error handling
+
+**Files Affected**:
+
+* `main.js`
+* `issuerConfigEditor.js`
+* `tokenVerifier.js`
+* `jwksValidator.js`
+
+=== 6. Code Modernization
+
+==== 6.1 ES6+ Feature Adoption
+**Priority**: Medium
+
+**Objective**: Update to modern JavaScript patterns
+
+**Tasks**:
+
+* [ ] Replace property access chains with optional chaining (`issuerConfigEditor.js:95-96`)
+* [ ] Convert callback patterns to async/await (`apiClient.js:93-115`)
+* [ ] Use template literals for string building (`jwksValidator.js:98-102`)
+* [ ] Implement destructuring for object properties (`issuerConfigEditor.js:106-113`)
+* [ ] Use const/let instead of var declarations
+
+**Files Affected**:
+
+* `issuerConfigEditor.js`
+* `apiClient.js`
+* `jwksValidator.js`
+* `tokenVerifier.js`
+
+==== 6.2 Complex Logic Simplification
+**Priority**: Medium
+
+**Objective**: Reduce cognitive complexity
+
+**Tasks**:
+
+* [ ] Simplify error message extraction (`uiErrorDisplay.js:49-57`)
+* [ ] Extract complex conditional logic into strategy functions
+* [ ] Reduce nested if-else chains
+* [ ] Implement guard clauses for early returns
+* [ ] Extract utility functions for common operations
+
+**Files Affected**:
+
+* `uiErrorDisplay.js`
+* `issuerConfigEditor.js`
+* `tokenVerifier.js`
+
+== Enhancement Tasks (Phase 3)
+
+=== 7. Reusable Components
+
+==== 7.1 Form Field Factory Pattern
+**Priority**: Low
+
+**Objective**: Extract duplicate form creation logic
+
+**Tasks**:
+
+* [ ] Create `js/utils/formBuilder.js` module
+* [ ] Extract form creation patterns (`issuerConfigEditor.js:461-486`)
+* [ ] Create reusable `createFormField()` factory
+* [ ] Standardize form validation patterns
+* [ ] Create form field type definitions
+
+**Files Affected**:
+
+* `issuerConfigEditor.js`
+* `tokenVerifier.js`
+
+=== 8. Dependency Management
+
+==== 8.1 Hardcoded Dependencies Extraction
+**Priority**: Low
+
+**Objective**: Remove hardcoded service dependencies
+
+**Tasks**:
+
+* [ ] Extract API endpoint configuration
+* [ ] Remove hardcoded CSS selectors
+* [ ] Create dependency registry system
+* [ ] Implement configuration injection
+* [ ] Add environment-specific configurations
+
+**Files Affected**:
+
+* `apiClient.js`
+* All component files
+
+=== 9. Documentation and Development Experience
+
+==== 9.1 JSDoc Enhancement
+**Priority**: Low
+
+**Objective**: Complete API documentation
+
+**Tasks**:
+
+* [ ] Add JSDoc comments to all public functions
+* [ ] Document parameter types and return values
+* [ ] Add usage examples for complex functions
+* [ ] Document component interfaces
+* [ ] Add @throws documentation for error cases
+
+**Files Affected**:
+
+* All JavaScript files
+
+== Quality Standards
+
+**Code Quality Requirements**:
+
+* All functions under 30 lines
+* Zero magic numbers or hardcoded strings
+* Consistent error handling patterns
+* Clean separation of concerns
+
+**Performance Requirements**:
+
+* Zero memory leaks
+* Efficient DOM operations
+* Maintain current build performance
+* Optimal bundle size
+
+**Testing Requirements**:
+
+* Maintain >80% branch coverage
+* Zero test degradation
+* All tests run independently
+* Complete test suite under 30 seconds
+
+== Implementation Guidelines
+
+=== Coding Standards
+
+* Follow existing code style and conventions
+* Use meaningful variable and function names
+* Keep functions focused on single responsibilities
+* Implement proper error handling for all edge cases
+* Add JSDoc comments for all public interfaces
+
+=== Testing Requirements
+
+* Write unit tests for all new utility functions
+* Update existing tests when modifying functions
+* Ensure all edge cases are covered
+* Maintain test isolation and independence
+* Use descriptive test names that explain the scenario
+
+=== Performance Considerations
+
+* Minimize DOM manipulations and queries
+* Use efficient algorithms and data structures
+* Implement proper caching strategies
+* Avoid memory leaks and resource cleanup
+* Consider bundle size impact of new dependencies
+
+=== Security Guidelines
+
+* Validate and sanitize all user inputs
+* Use secure coding practices for DOM manipulation
+* Implement proper error handling without exposing internals
+* Follow OWASP guidelines for web application security
+* Regularly update dependencies for security patches
