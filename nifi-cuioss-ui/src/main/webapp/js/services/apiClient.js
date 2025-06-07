@@ -3,6 +3,7 @@
  * Provides methods for interacting with the backend REST API.
  */
 import $ from 'cash-dom';
+import { API } from '../utils/constants.js';
 
 'use strict';
 
@@ -29,7 +30,7 @@ const _createXhrErrorObject = function (jqXHR, textStatus, errorThrown) {
 /**
      * Base URL for API endpoints.
      */
-const BASE_URL = '../nifi-api/processors/jwt';
+const BASE_URL = API.BASE_URL;
 
 /**
  * Validates a JWKS URL.
@@ -45,7 +46,7 @@ export const validateJwksUrl = function (jwksUrl) {
             data: JSON.stringify({ jwksUrl: jwksUrl }),
             contentType: 'application/json',
             dataType: 'json',
-            timeout: 5000
+            timeout: API.TIMEOUTS.DEFAULT
         })
             .then(data => { // $.ajax().then() provides data directly
                 resolve(data);
@@ -71,7 +72,7 @@ export const validateJwksFile = function (filePath) {
             data: JSON.stringify({ filePath: filePath }),
             contentType: 'application/json',
             dataType: 'json',
-            timeout: 5000
+            timeout: API.TIMEOUTS.DEFAULT
         })
             .then(data => {
                 resolve(data);
@@ -97,7 +98,7 @@ export const validateJwksContent = function (jwksContent, successCallback, error
         data: JSON.stringify({ jwksContent: jwksContent }),
         contentType: 'application/json',
         dataType: 'json',
-        timeout: 5000
+        timeout: API.TIMEOUTS.DEFAULT
     })
         .then(data => {
             if (successCallback) {
@@ -128,7 +129,7 @@ export const verifyToken = function (token, successCallback, errorCallback) {
         data: JSON.stringify({ token: token }),
         contentType: 'application/json',
         dataType: 'json',
-        timeout: 5000
+        timeout: API.TIMEOUTS.DEFAULT
     })
         .then(data => {
             if (successCallback) {
@@ -156,7 +157,7 @@ export const getSecurityMetrics = function (successCallback, errorCallback) {
         method: 'GET',
         url: BASE_URL + '/metrics',
         dataType: 'json',
-        timeout: 5000
+        timeout: API.TIMEOUTS.DEFAULT
     })
         .then(data => {
             if (successCallback) {
@@ -184,7 +185,7 @@ export const getProcessorProperties = function (processorId) {
         method: 'GET',
         url: '../nifi-api/processors/' + processorId,
         dataType: 'json',
-        timeout: 5000
+        timeout: API.TIMEOUTS.DEFAULT
     });
     // $.ajax returns a promise-like object.
     // The .then callback will receive the parsed JSON data directly.
@@ -204,7 +205,7 @@ export const updateProcessorProperties = function (processorId, properties) {
         method: 'GET',
         url: '../nifi-api/processors/' + processorId,
         dataType: 'json',
-        timeout: 5000
+        timeout: API.TIMEOUTS.DEFAULT
     }).then(processor => { // data from GET is the processor object
         // Create the update request
         const updateRequest = {
@@ -222,7 +223,7 @@ export const updateProcessorProperties = function (processorId, properties) {
             data: JSON.stringify(updateRequest),
             contentType: 'application/json',
             dataType: 'json',
-            timeout: 5000
+            timeout: API.TIMEOUTS.DEFAULT
         });
     });
 };

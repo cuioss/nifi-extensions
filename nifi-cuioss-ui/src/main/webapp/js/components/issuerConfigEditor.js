@@ -7,6 +7,7 @@ import $ from 'cash-dom';
 import * as _nfCommon from 'nf.Common';
 import * as apiClient from '../services/apiClient.js';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
+import { API, COMPONENTS } from '../utils/constants.js';
 
 'use strict';
 
@@ -22,12 +23,12 @@ const i18n = _nfCommon.getI18n() || {};
  */
 const _getSampleIssuerConfig = () => {
     return {
-        name: 'sample-issuer',
+        name: COMPONENTS.ISSUER_CONFIG_EDITOR.DEFAULT_ISSUER_NAME,
         properties: {
-            'issuer': 'https://sample-issuer.example.com',
-            'jwks-url': 'https://sample-issuer.example.com/.well-known/jwks.json',
-            'audience': 'sample-audience',
-            'client-id': 'sample-client'
+            'issuer': COMPONENTS.ISSUER_CONFIG_EDITOR.SAMPLE_ISSUER_URL,
+            'jwks-url': COMPONENTS.ISSUER_CONFIG_EDITOR.SAMPLE_JWKS_URL,
+            'audience': COMPONENTS.ISSUER_CONFIG_EDITOR.SAMPLE_AUDIENCE,
+            'client-id': COMPONENTS.ISSUER_CONFIG_EDITOR.SAMPLE_CLIENT_ID
         }
     };
 };
@@ -343,7 +344,7 @@ const _performJwksValidation = (jwksValue, $resultContainer) => {
             data: JSON.stringify({ jwksValue: jwksValue }),
             contentType: 'application/json',
             dataType: 'json',
-            timeout: 5000
+            timeout: API.TIMEOUTS.DEFAULT
         })
             .then(responseData => _handleJwksValidationResponse($resultContainer, responseData))
             .catch(jqXHR => _handleJwksValidationError($resultContainer, jqXHR, true));
