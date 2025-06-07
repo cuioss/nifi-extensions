@@ -65,6 +65,20 @@ const _createJwksSuccessMessage = (keyCount, isSimulated = false) => {
 };
 
 /**
+ * Helper function to determine if running in a localhost-like environment.
+ * @returns {boolean} True if running on localhost
+ */
+const _getIsLocalhost = () => {
+    // If there's a global mock for testing, use it instead
+    // eslint-disable-next-line no-undef
+    if (typeof global !== 'undefined' && global.getIsLocalhost) {
+        // eslint-disable-next-line no-undef
+        return global.getIsLocalhost();
+    }
+    return window.location.href.includes('localhost') || window.location.href.includes('127.0.0.1');
+};
+
+/**
  * Parses processor properties and groups them by issuer name.
  * Extracts properties that start with 'issuer.' and groups them by issuer name.
  *
@@ -326,8 +340,7 @@ const _handleJwksValidationResponse = ($resultContainer, responseData) => {
  * @param {boolean} isAjaxError - Whether this is an AJAX error vs synchronous error
  */
 const _handleJwksValidationError = ($resultContainer, error, isAjaxError = true) => {
-    // eslint-disable-next-line no-undef
-    if (getIsLocalhost()) {
+    if (_getIsLocalhost()) {
         const simulatedMessage = isAjaxError
             ? _createJwksSuccessMessage(3, true)
             : _createJwksSuccessMessage(3, true) + ' <em>(Simulated error path response)</em>';
