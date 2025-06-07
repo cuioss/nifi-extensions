@@ -54,7 +54,9 @@ const _createJwksSuccessMessage = (keyCount, isSimulated = false) => {
     const keysFoundText = i18n['processor.jwt.keysFound'] || 'keys found';
     const simulatedText = isSimulated ? ' <em>(Simulated response)</em>' : '';
 
-    return `${_createSuccessMessage(okText)} ${validJwksText} (${keyCount} ${keysFoundText})${simulatedText}`;
+    const message = `${_createSuccessMessage(okText)} ${validJwksText} ` +
+        `(${keyCount} ${keysFoundText})${simulatedText}`;
+    return message;
 };
 
 /**
@@ -182,7 +184,7 @@ const _initializeEditorData = async (effectiveUrl, $issuersContainer) => {
 const initComponent = async (element, effectiveUrl) => {
     const $element = $(element);
     const processorId = getProcessorIdFromUrl(effectiveUrl);
-    const { $container, $issuersContainer, $globalErrorContainer } = _createEditorStructure($element);
+    const { $container, $issuersContainer } = _createEditorStructure($element);
     _setupAddIssuerButton($container, $issuersContainer, processorId);
     await _initializeEditorData(effectiveUrl, $issuersContainer);
 };
@@ -650,6 +652,7 @@ const _displayRemovalError = ($globalErrorContainer, error) => {
         $globalErrorContainer.show();
     } else {
         const message = typeof error === 'string' ? error : error.message;
+        // eslint-disable-next-line no-console
         console.error('Failed to remove issuer:', message);
     }
 };
@@ -667,6 +670,7 @@ const _removeIssuerFromServer = async (processorId, issuerName, $globalErrorCont
         const updates = _createRemovalUpdates(properties, issuerName);
 
         if (Object.keys(updates).length === 0 && issuerName !== 'sample-issuer') {
+            // eslint-disable-next-line no-console
             console.info(`No properties found to remove for issuer: ${issuerName}`);
             return;
         }

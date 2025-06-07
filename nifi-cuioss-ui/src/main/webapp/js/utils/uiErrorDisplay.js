@@ -23,7 +23,8 @@ const extractErrorMessage = (error, i18n) => {
             // Check if message property exists (even if it's an empty string), otherwise check for errors array
             if (errorJson && typeof errorJson.message === 'string') {
                 message = errorJson.message;
-            } else if (errorJson && Array.isArray(errorJson.errors) && errorJson.errors.length > 0) {
+            } else if (errorJson && Array.isArray(errorJson.errors) &&
+                       errorJson.errors.length > 0) {
                 message = errorJson.errors
                     .map(err => (typeof err === 'string' ? err : err.msg || 'Error detail missing'))
                     .join(', '); // This line might also be long depending on err.msg
