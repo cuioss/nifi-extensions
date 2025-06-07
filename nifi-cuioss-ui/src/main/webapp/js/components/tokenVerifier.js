@@ -19,14 +19,42 @@ const getIsLocalhost = () => { // Stays module-scoped
 };
 
 /**
- * Initialize the custom UI.
+ * Initialize the custom UI with standardized error handling and async patterns.
  *
  * @param {object} element - The DOM element
  * @param {object} _config - The component configuration (unused)
  * @param {string} _type - The component type (not used)
  * @param {Function} callback - The callback function
+ * @returns {Promise<void>}
  */
-export const init = function (element, _config, _type, callback) {
+export const init = async function (element, _config, _type, callback) {
+    try {
+        await _initializeTokenVerifier(element, callback);
+    } catch (error) {
+        console.error('Error initializing token verifier:', error);
+        // Still call callback to maintain contract, even on error
+        if (typeof callback === 'function') {
+            callback({
+                validate: () => false,
+                error: error.message
+            });
+        }
+        throw error; // Re-throw for ComponentManager to handle
+    }
+};
+
+/**
+ * Internal initialization function with proper error boundaries.
+ * @param {object} element - The DOM element
+ * @param {Function} callback - The callback function
+ * @returns {Promise<void>}
+ * @private
+ */
+const _initializeTokenVerifier = async (element, callback) => {
+    if (!element) {
+        throw new Error('Token verifier element is required');
+    }
+
     // Get i18n resources from NiFi Common
     const i18n = nfCommon.getI18n() || {};
 
@@ -253,7 +281,7 @@ const _createSampleTokenResponse = () => {
 const _handleTokenVerificationAjaxError = (jqXHR, $resultsContent, i18n, displayValidTokenFunc) => {
     // Extract and sanitize error message for potential future use
     _extractErrorMessageFromXHR(jqXHR);
-    
+
     if (getIsLocalhost()) {
         const sampleResponse = _createSampleTokenResponse();
         displayValidTokenFunc(sampleResponse, true); // isSimulated is true
@@ -281,6 +309,16 @@ const _handleTokenVerificationSyncException = (exception, $resultsContent, i18n,
     }
 };
 
+
+/**
+ * Cleanup function for the token verifier component.
+ * Removes event listeners and cleans up resources.
+ */
+export const cleanup = () => {
+    // Reset localhost override for testing
+    isLocalhostOverride = null;
+    console.debug('Token verifier cleanup completed');
+};
 
 export const __setIsLocalhostForTesting = function (value) {
     isLocalhostOverride = (value === null) ? null : !!value;

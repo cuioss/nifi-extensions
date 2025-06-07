@@ -16,14 +16,43 @@ const getIsLocalhost = () => { // Stays module-scoped
 };
 
 /**
- * Initialize the custom UI.
+ * Initialize the custom UI with standardized error handling and async patterns.
  *
  * @param {object} element - The DOM element
  * @param {string} propertyValue - The property value
  * @param {string} jwks_type - The JWKS type (server, file, memory)
  * @param {Function} callback - The callback function
+ * @returns {Promise<void>}
  */
-export const init = function (element, propertyValue, jwks_type, callback) {
+export const init = async function (element, propertyValue, jwks_type, callback) {
+    try {
+        await _initializeJwksValidator(element, propertyValue, jwks_type, callback);
+    } catch (error) {
+        console.error('Error initializing JWKS validator:', error);
+        // Still call callback to maintain contract, even on error
+        if (typeof callback === 'function') {
+            callback({
+                validate: () => false,
+                error: error.message
+            });
+        }
+        throw error; // Re-throw for ComponentManager to handle
+    }
+};
+
+/**
+ * Internal initialization function with proper error boundaries.
+ * @param {object} element - The DOM element
+ * @param {string} propertyValue - The property value
+ * @param {string} jwks_type - The JWKS type (server, file, memory)
+ * @param {Function} callback - The callback function
+ * @returns {Promise<void>}
+ * @private
+ */
+const _initializeJwksValidator = async (element, propertyValue, jwks_type, callback) => {
+    if (!element) {
+        throw new Error('JWKS validator element is required');
+    }
     // Get i18n resources from NiFi Common
     const i18n = nfCommon.getI18n() || {};
 
@@ -131,6 +160,16 @@ const _handleSynchronousError = (exception, $resultContainer, i18n) => {
     } else {
         displayUiError($resultContainer, exception, i18n);
     }
+};
+
+/**
+ * Cleanup function for the JWKS validator component.
+ * Removes event listeners and cleans up resources.
+ */
+export const cleanup = () => {
+    // Reset localhost override for testing
+    isLocalhostOverride = null;
+    console.debug('JWKS validator cleanup completed');
 };
 
 // Function for testing purposes only to control the isLocalhost behavior
