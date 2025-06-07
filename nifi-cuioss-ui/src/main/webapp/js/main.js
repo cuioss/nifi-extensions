@@ -38,40 +38,62 @@ const registerCustomUiComponents = () => {
 };
 
 /**
-     * Registers help tooltips for properties.
-     * @param {Element} [contextElement] - Optional context within which to find elements.
-     */
-const registerHelpTooltips = (contextElement) => {
-    const baseElement = contextElement || document; // baseElement is a raw DOM node
-    $(baseElement).find('.property-label').each((_index, labelNode) => {
-        const propertyName = $(labelNode).text().trim();
-        const helpText = getHelpTextForProperty(propertyName);
+ * Creates a help tooltip span element for a property label.
+ * @param {string} helpText - The help text to display in the tooltip
+ * @returns {Object} Cash-dom wrapped span element
+ */
+const _createHelpTooltipSpan = (helpText) => {
+    const span = $('<span>');
+    $(span).addClass('help-tooltip fa fa-question-circle');
+    $(span).attr('title', helpText);
+    return span;
+};
 
-        if (helpText) {
-            // Check if span already exists
-            if ($(labelNode).find('span.help-tooltip').length === 0) {
-                const span = $('<span>');
-                $(span).addClass('help-tooltip fa fa-question-circle');
-                $(span).attr('title', helpText);
-                $(labelNode).append(span);
-            }
-        }
-    });
+/**
+ * Adds help tooltip to a property label if help text exists and tooltip doesn't already exist.
+ * @param {Element} labelNode - The property label DOM element
+ */
+const _addTooltipToLabel = (labelNode) => {
+    const propertyName = $(labelNode).text().trim();
+    const helpText = getHelpTextForProperty(propertyName);
 
-    // Initialize tooltips
+    if (helpText && $(labelNode).find('span.help-tooltip').length === 0) {
+        const tooltipSpan = _createHelpTooltipSpan(helpText);
+        $(labelNode).append(tooltipSpan);
+    }
+};
+
+/**
+ * Initializes tooltips within the specified context, with error handling.
+ * @param {Element} contextElement - The context element for tooltip initialization
+ */
+const _initializeTooltipsInContext = (contextElement) => {
     try {
         const tooltipSelector = '.help-tooltip';
-        // contextElement is expected to be a raw DOM element if provided for initTooltips.
-        // initTooltips expects a DOM element or a selector string for its context.
         const contextForInit = contextElement || document;
         initTooltips(tooltipSelector, {
             // placement: 'bottom-start' // This is the default in initTooltips
         }, contextForInit);
     } catch (e) {
-        // Error initializing tooltips
         // eslint-disable-next-line no-console
         console.error('Error initializing tooltips:', e);
     }
+};
+
+/**
+ * Registers help tooltips for properties within the specified context.
+ * @param {Element} [contextElement] - Optional context within which to find elements.
+ */
+const registerHelpTooltips = (contextElement) => {
+    const baseElement = contextElement || document;
+
+    // Add tooltip spans to all property labels
+    $(baseElement).find('.property-label').each((_index, labelNode) => {
+        _addTooltipToLabel(labelNode);
+    });
+
+    // Initialize all tooltips in the context
+    _initializeTooltipsInContext(contextElement);
 };
 
 /**

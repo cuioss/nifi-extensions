@@ -174,8 +174,14 @@ const _handleTokenVerificationResponse = (responseData, $resultsContent, i18n, d
     }
 };
 
-const _handleTokenVerificationAjaxError = (jqXHR, $resultsContent, i18n, displayValidTokenFunc) => {
+/**
+ * Extracts error message from jqXHR response, attempting JSON parsing first.
+ * @param {object} jqXHR - The jQuery XHR error object
+ * @returns {string} Extracted error message
+ */
+const _extractErrorMessageFromXHR = (jqXHR) => {
     let errorMessage = jqXHR.statusText || jqXHR.responseText;
+
     if (jqXHR.responseText) {
         try {
             const errorJson = JSON.parse(jqXHR.responseText);
@@ -187,69 +193,88 @@ const _handleTokenVerificationAjaxError = (jqXHR, $resultsContent, i18n, display
         }
     }
 
-    let messageToDisplay;
+    return errorMessage;
+};
+
+/**
+ * Sanitizes error message, ensuring it's not null, undefined, or problematic values.
+ * @param {string} errorMessage - Raw error message
+ * @param {object} i18n - Internationalization object
+ * @returns {string} Sanitized error message
+ */
+const _sanitizeErrorMessage = (errorMessage, i18n) => {
     const isNullOrUndefined = errorMessage == null;
     const trimmedMsg = isNullOrUndefined ? '' : String(errorMessage).trim();
     const lowerCaseMsg = isNullOrUndefined ? '' : String(errorMessage).toLowerCase();
 
     if (isNullOrUndefined || trimmedMsg === '' || lowerCaseMsg === 'null' || lowerCaseMsg === 'undefined') {
-        messageToDisplay = i18n['processor.jwt.unknownError'] || 'Unknown error';
-    } else {
-        messageToDisplay = errorMessage;
+        return i18n['processor.jwt.unknownError'] || 'Unknown error';
     }
-    messageToDisplay = messageToDisplay || (i18n['processor.jwt.unknownError'] || 'Unknown error');
 
+    return errorMessage || (i18n['processor.jwt.unknownError'] || 'Unknown error');
+};
+
+/**
+ * Creates a sample token response for localhost simulation.
+ * @returns {object} Sample token verification response
+ */
+const _createSampleTokenResponse = () => {
+    const expirationDate = new Date(Date.now() + 3600000).toISOString();
+
+    return {
+        valid: true,
+        subject: 'user123',
+        issuer: 'https://sample-issuer.example.com',
+        audience: 'sample-audience',
+        expiration: expirationDate,
+        roles: ['admin', 'user'],
+        scopes: ['read', 'write'],
+        claims: {
+            sub: 'user123',
+            iss: 'https://sample-issuer.example.com',
+            aud: 'sample-audience',
+            exp: Math.floor(Date.now() / 1000) + 3600,
+            iat: Math.floor(Date.now() / 1000),
+            roles: ['admin', 'user'],
+            scope: 'read write',
+            name: 'John Doe',
+            email: 'john.doe@example.com'
+        }
+    };
+};
+
+/**
+ * Handles AJAX errors during token verification, with localhost simulation support.
+ * @param {object} jqXHR - The jQuery XHR error object
+ * @param {object} $resultsContent - Results display container
+ * @param {object} i18n - Internationalization object
+ * @param {Function} displayValidTokenFunc - Function to display valid token
+ */
+const _handleTokenVerificationAjaxError = (jqXHR, $resultsContent, i18n, displayValidTokenFunc) => {
+    // Extract and sanitize error message for potential future use
+    _extractErrorMessageFromXHR(jqXHR);
+    
     if (getIsLocalhost()) {
-        const expirationDate = new Date(Date.now() + 3600000).toISOString();
-        const sampleResponse = {
-            valid: true, subject: 'user123', issuer: 'https://sample-issuer.example.com',
-            audience: 'sample-audience',
-            expiration: // Break before value
-                expirationDate,
-            roles: ['admin', 'user'], scopes: ['read', 'write'],
-            claims: {
-                sub: 'user123', iss: 'https://sample-issuer.example.com',
-                aud: 'sample-audience', exp: Math.floor(Date.now() / 1000) + 3600,
-                iat: Math.floor(Date.now() / 1000), roles: ['admin', 'user'],
-                scope: 'read write', name: 'John Doe', email: 'john.doe@example.com'
-            }
-        };
+        const sampleResponse = _createSampleTokenResponse();
         displayValidTokenFunc(sampleResponse, true); // isSimulated is true
     } else {
         displayUiError($resultsContent, jqXHR, i18n, 'processor.jwt.verificationError');
     }
 };
 
+/**
+ * Handles synchronous exceptions during token verification, with localhost simulation support.
+ * @param {Error} exception - The exception object
+ * @param {object} $resultsContent - Results display container
+ * @param {object} i18n - Internationalization object
+ * @param {Function} displayValidTokenFunc - Function to display valid token
+ */
 const _handleTokenVerificationSyncException = (exception, $resultsContent, i18n, displayValidTokenFunc) => {
-    const messageIsNullOrUndefined = exception.message == null;
-    const trimmedMessage = messageIsNullOrUndefined ? '' : String(exception.message).trim();
-    const lowerCaseMessage = messageIsNullOrUndefined ? '' : String(exception.message).toLowerCase();
-
-    const messageIsEmptyString = trimmedMessage === '';
-    const messageIsStringNull = lowerCaseMessage === 'null';
-    const messageIsStringUndefined = lowerCaseMessage === 'undefined';
-
-    const isProblematicMessage = messageIsNullOrUndefined || messageIsEmptyString || messageIsStringNull || messageIsStringUndefined;
-
-    const exceptionMessage = isProblematicMessage ?
-        (i18n['processor.jwt.unknownError'] || 'Exception occurred') :
-        exception.message;
+    // Sanitize exception message for potential future use
+    _sanitizeErrorMessage(exception.message, i18n);
 
     if (getIsLocalhost()) {
-        const expirationDateSync = new Date(Date.now() + 3600000).toISOString();
-        const sampleResponse = {
-            valid: true, subject: 'user123', issuer: 'https://sample-issuer.example.com',
-            audience: 'sample-audience',
-            expiration: // Break before value
-                expirationDateSync,
-            roles: ['admin', 'user'], scopes: ['read', 'write'],
-            claims: {
-                sub: 'user123', iss: 'https://sample-issuer.example.com',
-                aud: 'sample-audience', exp: Math.floor(Date.now() / 1000) + 3600,
-                iat: Math.floor(Date.now() / 1000), roles: ['admin', 'user'],
-                scope: 'read write', name: 'John Doe', email: 'john.doe@example.com'
-            }
-        };
+        const sampleResponse = _createSampleTokenResponse();
         displayValidTokenFunc(sampleResponse, true); // isSimulated is true
     } else {
         displayUiError($resultsContent, exception, i18n, 'processor.jwt.verificationError');

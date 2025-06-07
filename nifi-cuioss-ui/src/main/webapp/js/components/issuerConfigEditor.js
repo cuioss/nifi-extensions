@@ -749,41 +749,85 @@ const removeIssuer = async (form, issuerNameFromClick) => {
  * @param {Function} callback - The callback function
  * @param {string} currentTestUrlFromArg - URL for testing purposes (optional)
  */
-export const init = async (element, callback, currentTestUrlFromArg) => {
+/**
+ * Validates initialization parameters and handles early returns.
+ * @param {HTMLElement} element - The DOM element to initialize in
+ * @param {Function} callback - The callback function
+ * @returns {boolean} True if validation passed, false if early return needed
+ */
+const _validateInitializationParams = (element, callback) => {
     if (!element) {
         if (typeof callback === 'function') {
             callback();
         }
+        return false;
+    }
+    return true;
+};
+
+/**
+ * Determines the effective URL for initialization.
+ * @param {string} [currentTestUrlFromArg] - URL for testing purposes (optional)
+ * @returns {string} The effective URL to use for initialization
+ */
+const _getEffectiveInitUrl = (currentTestUrlFromArg) => {
+    return currentTestUrlFromArg || window.location.href;
+};
+
+/**
+ * Sets up component lifecycle manager for cleanup tracking.
+ * @param {string} effectiveUrl - The URL to derive processor ID from
+ */
+const _setupLifecycleManager = (effectiveUrl) => {
+    const processorId = getProcessorIdFromUrl(effectiveUrl);
+    const componentId = `issuer-config-editor-${processorId || 'standalone'}`;
+
+    // Initialize lifecycle manager in the background for cleanup tracking
+    setTimeout(() => {
+        componentLifecycle = new ComponentLifecycle(componentId);
+        componentLifecycle.initialize(async () => {
+            // Lifecycle manager is ready for tracking cleanup resources
+        });
+    }, 0);
+};
+
+/**
+ * Handles callback execution with error safety.
+ * @param {Function} callback - The callback function to execute
+ */
+const _executeCallback = (callback) => {
+    if (typeof callback === 'function') {
+        callback();
+    }
+};
+
+/**
+ * Initializes the component.
+ * @param {HTMLElement} element - The DOM element to initialize in
+ * @param {Function} callback - The callback function
+ * @param {string} currentTestUrlFromArg - URL for testing purposes (optional)
+ */
+export const init = async (element, callback, currentTestUrlFromArg) => {
+    // Validate parameters and handle early returns
+    if (!_validateInitializationParams(element, callback)) {
         return;
     }
 
     try {
-        const effectiveUrlForInit = currentTestUrlFromArg || window.location.href;
+        // Determine initialization URL
+        const effectiveUrlForInit = _getEffectiveInitUrl(currentTestUrlFromArg);
 
-        // Initialize component lifecycle manager (for cleanup tracking) asynchronously
-        // This doesn't block the main initialization to maintain backward compatibility
-        const processorId = getProcessorIdFromUrl(effectiveUrlForInit);
-        const componentId = `issuer-config-editor-${processorId || 'standalone'}`;
-
-        // Initialize lifecycle manager in the background for cleanup tracking
-        setTimeout(() => {
-            componentLifecycle = new ComponentLifecycle(componentId);
-            componentLifecycle.initialize(async () => {
-                // Lifecycle manager is ready for tracking cleanup resources
-            });
-        }, 0);
+        // Setup lifecycle manager for cleanup tracking
+        _setupLifecycleManager(effectiveUrlForInit);
 
         // Initialize component normally - maintain backward compatibility
         await initComponent(element, effectiveUrlForInit);
 
-        // Call the callback function if provided
-        if (typeof callback === 'function') {
-            callback();
-        }
+        // Execute callback on success
+        _executeCallback(callback);
     } catch (e) {
-        if (typeof callback === 'function') {
-            callback();
-        }
+        // Execute callback on error to maintain contract
+        _executeCallback(callback);
     }
 };
 
