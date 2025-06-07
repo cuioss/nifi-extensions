@@ -1,8 +1,7 @@
 // utils/tooltip.js
 import tippy from 'tippy.js';
 import * as nfCommon from 'nf.Common'; // Import nfCommon
-import 'tippy.js/dist/tippy.css';
-import 'tippy.js/themes/light-border.css'; // Optional for jQuery UI-like styling
+// Note: CSS files for tippy.js should be included in the main HTML or via separate CSS build process
 
 export function initTooltips(selector, options = {}, context = document) {
     const elements = typeof selector === 'string'

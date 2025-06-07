@@ -368,3 +368,95 @@ This document outlines refactoring tasks for the NiFi cuioss UI JavaScript codeb
 * Implement proper error handling without exposing internals
 * Follow OWASP guidelines for web application security
 * Regularly update dependencies for security patches
+
+== Implementation Findings and Lessons Learned
+
+=== Critical Issues Discovered (2025-06-07)
+
+==== 1. Missing webpack.config.js
+**Issue**: The project's npm build script expects webpack but no webpack.config.js exists
+**Impact**: `npm run build` fails completely, violating baseline requirement
+**Solution**: Created webpack.config.js with appropriate configuration for NiFi integration
+**Root Cause**: Build system was incomplete
+
+==== 2. CSS Import Issues in JavaScript
+**Issue**: JavaScript files import CSS files but no CSS loader configured
+**Impact**: Webpack build fails on CSS imports
+**Files Affected**: `src/main/webapp/js/utils/tooltip.js`
+**Solution**: Remove CSS imports from JS files (CSS should be handled separately in NiFi)
+
+==== 3. API Contract Breaking Changes
+**Issue**: Implementing standardized error handling changes the return objects
+**Impact**: All existing tests fail because they expect old error format
+**Critical Lesson**: **MUST maintain backward compatibility during refactoring**
+**Required Approach**: 
+- Either update tests simultaneously with implementation
+- Or implement changes without breaking existing API contracts
+- Or use feature flags/gradual migration
+
+==== 4. Lint Configuration Issues
+**Issue**: Generated bundle.js file gets linted and fails with 300+ errors
+**Impact**: Cannot pass lint baseline check
+**Solution**: Update .eslintignore to exclude generated files
+
+=== Workflow Violations
+
+==== Failed Baseline Requirements
+According to Task Completion Workflow, before starting ANY task:
+- ✅ Correct branch: `feature/js-coverage-report-path`
+- ❌ **FAILED**: `npm test` must pass with zero failures (54 failures due to API changes)
+- ❌ **FAILED**: `npm run lint` must have zero issues (382 problems including bundle.js)
+- ❌ **FAILED**: `npm run build` must succeed (initially failed, fixed with webpack.config.js)
+
+==== Correct Implementation Order
+1. **FIRST**: Fix all baseline issues (build, lint exclusions)
+2. **THEN**: Implement changes incrementally while maintaining backward compatibility
+3. **EACH TASK**: Must maintain passing tests/lint/build before moving to next
+4. **ONLY THEN**: Mark tasks as complete and commit
+
+=== Required Corrections Before Resuming
+
+==== Immediate Actions Needed
+1. **Create proper .eslintignore** to exclude generated files
+2. **Fix webpack configuration** for proper NiFi integration
+3. **Establish backward compatibility strategy** for API changes
+4. **Update test approach** - either:
+   - Maintain old API contracts during refactoring
+   - Update tests incrementally with each change
+   - Use adapter pattern to support both old and new APIs
+
+==== Implementation Strategy Revision
+Instead of wholesale replacement, use incremental approach:
+
+1. **Phase 1**: Add new utilities alongside existing code
+2. **Phase 2**: Create adapter/wrapper functions that use new utilities but maintain old APIs
+3. **Phase 3**: Gradually migrate callers to new APIs while maintaining tests
+4. **Phase 4**: Deprecate and remove old implementations
+
+This ensures tests always pass during refactoring process.
+
+=== Technical Debt Observations
+
+==== Bundle Size Issues
+- Generated bundle.js is 575 KiB (exceeds webpack recommended 244 KiB)
+- Need code splitting or lazy loading for production optimization
+- Consider externalizing more dependencies
+
+==== Test Infrastructure
+- Tests expect specific error object formats
+- Need better test isolation and mocking
+- API client tests tightly coupled to implementation details
+
+==== Build System Maturity
+- Missing essential webpack configuration
+- No CSS processing pipeline
+- Inconsistent file exclusion patterns
+
+=== Next Steps (Post-Revert)
+
+1. **Fix baseline issues** without changing existing functionality
+2. **Implement refactoring incrementally** with backward compatibility
+3. **Follow Task Completion Workflow strictly** - no task marked complete until all quality gates pass
+4. **Update TODO document** to mark actual completion status
+
+**LESSON**: Premature optimization and wholesale changes violate the workflow. Incremental, test-preserving changes are required.
