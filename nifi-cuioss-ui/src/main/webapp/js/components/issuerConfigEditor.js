@@ -9,13 +9,17 @@ import * as apiClient from '../services/apiClient.js';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
 import { API, COMPONENTS } from '../utils/constants.js';
 import { validateProcessorIdFromUrl, validateIssuerConfig } from '../utils/validation.js';
+import { GlobalElementCache, FormFieldCache } from '../utils/domCache.js';
+import { FormFieldBuilder } from '../utils/domBuilder.js';
+import { ComponentLifecycle, managedSetTimeout } from '../utils/componentCleanup.js';
 
 'use strict';
 
 // Get i18n resources from NiFi Common
 const i18n = _nfCommon.getI18n() || {};
 
-// No global state - processorId is passed as parameter where needed
+// Component lifecycle manager for cleanup
+let componentLifecycle = null;
 
 /**
  * Returns a predefined sample issuer configuration object.
@@ -101,29 +105,23 @@ const _extractFieldValue = (elementArray) => {
 };
 
 /**
- * Extracts form field values from a cash-dom form object.
- * Uses consistent field extraction pattern for all issuer configuration fields.
+ * Extracts form field values from a cash-dom form object using optimized caching.
+ * Uses FormFieldCache for efficient field access.
  *
  * @param {object} $form - Cash-dom wrapped form element
  * @returns {object} Object containing all form field values
  */
 const _extractFormFields = ($form) => {
-    return {
-        issuerName: _extractFieldValue($form.find('.issuer-name')),
-        issuer: _extractFieldValue($form.find('.field-issuer')),
-        'jwks-url': _extractFieldValue($form.find('.field-jwks-url')),
-        audience: _extractFieldValue($form.find('.field-audience')),
-        'client-id': _extractFieldValue($form.find('.field-client-id'))
-    };
+    const fieldCache = new FormFieldCache($form);
+    return fieldCache.extractValues();
 };
 
 /**
- * Finds the global error container for displaying removal errors.
+ * Finds the global error container for displaying removal errors using caching.
  * @returns {cash|null} The global error container or null if not found
  */
 const _findGlobalErrorContainer = () => {
-    const $globalError = $('.global-error-messages');
-    return $globalError.length > 0 ? $globalError : null;
+    return GlobalElementCache.getGlobalErrorContainer();
 };
 
 /**
@@ -160,10 +158,14 @@ const _createEditorStructure = ($parentElement) => {
 const _setupAddIssuerButton = ($container, $issuersContainer, processorId = null) => {
     const $addButton = $('<button class="add-issuer-button">Add Issuer</button>');
     $container.append($addButton);
-    $addButton.on('click', () => {
+    const addButtonHandler = () => {
         const sampleConfig = _getSampleIssuerConfig();
         addIssuerForm($issuersContainer, sampleConfig.name + '-' + Date.now(), sampleConfig.properties, processorId);
-    });
+    };
+
+    $addButton.on('click', addButtonHandler);
+
+    // Note: Event listeners registered via cash-dom's .on() are automatically cleaned up when elements are removed
 };
 
 /**
@@ -261,10 +263,14 @@ const _createFormHeader = (issuerName, onRemove) => {
 
     const $removeButton = $('<button class="remove-issuer-button">Remove</button>');
     $formHeader.append($removeButton);
-    $removeButton.on('click', () => {
+    const removeButtonHandler = () => {
         // Pass $nameInput.val() at the time of click
         onRemove($nameInput.val());
-    });
+    };
+
+    $removeButton.on('click', removeButtonHandler);
+
+    // Note: Event listeners registered via cash-dom's .on() are automatically cleaned up when elements are removed
 
     return $formHeader;
 };
@@ -364,11 +370,15 @@ const _createJwksTestConnectionButton = ($formFieldsContainer, getJwksUrlValue) 
 
     _positionJwksTestButton($formFieldsContainer, $testButtonWrapper);
 
-    $testButton.on('click', () => {
+    const testButtonHandler = () => {
         $resultContainer.html(i18n['processor.jwt.testing'] || 'Testing...');
         const jwksValue = getJwksUrlValue();
         _performJwksValidation(jwksValue, $resultContainer);
-    });
+    };
+
+    $testButton.on('click', testButtonHandler);
+
+    // Note: Event listeners registered via cash-dom's .on() are automatically cleaned up when elements are removed
 };
 
 /**
@@ -380,10 +390,14 @@ const _createSaveButton = ($issuerForm, processorId = null) => {
     const $saveButton = $('<button class="save-issuer-button">Save Issuer</button>');
     const $formErrorContainer = $('<div class="issuer-form-error-messages"></div>');
 
-    $saveButton.on('click', () => {
+    const saveButtonHandler = () => {
         $formErrorContainer.empty();
         saveIssuer($issuerForm[0], $formErrorContainer, processorId);
-    });
+    };
+
+    $saveButton.on('click', saveButtonHandler);
+
+    // Note: Event listeners registered via cash-dom's .on() are automatically cleaned up when elements are removed
     $issuerForm.append($formErrorContainer);
     return $saveButton;
 };
@@ -452,7 +466,7 @@ const addIssuerForm = ($container, issuerName, properties, processorId = null) =
 };
 
 /**
-     * Adds a form field.
+     * Adds a form field using optimized DOM construction.
      *
      * @param {object} $container - The cash-dom wrapped container element
      * @param {string} name - The field name
@@ -461,30 +475,19 @@ const addIssuerForm = ($container, issuerName, properties, processorId = null) =
      * @param {string} [value] - The field value
      */
 const addFormField = ($container, name, label, description, value) => {
-    const $fieldContainer = $('<div class="form-field"></div>');
-    $container.append($fieldContainer);
+    const fieldFragment = FormFieldBuilder.createField({
+        name,
+        label,
+        description,
+        value: value || '',
+        placeholder: description
+    });
 
-    // Add label
-    const $fieldLabel = $('<label></label>').text(label + ':');
-    $fieldContainer.append($fieldLabel);
-
-    // Add input
-    const $input = $('<input type="text" class="field-' + name + '" placeholder="' + description + '">');
-    // Appending input to label is not standard for forms, usually input is sibling to label or inside a container with label.
-    // For this refactor, I will keep the structure as implied by original code: input inside label.
-    // However, a better structure would be $fieldLabel.text(label + ':'); $fieldContainer.append($input);
-    // To maintain current structure where input is not a child of label, but of fieldContainer:
-    $fieldContainer.append($input);
-
-
-    // Set value if provided
-    if (value) {
-        $input.val(value);
+    // Handle cash-dom wrapped elements safely - cash-dom uses array-like access
+    const containerElement = $container instanceof Element ? $container : $container[0];
+    if (containerElement) {
+        containerElement.appendChild(fieldFragment);
     }
-
-    // Add description
-    const $descElement = $('<div class="field-description"></div>').text(description);
-    $fieldContainer.append($descElement);
 };
 
 /**
@@ -565,7 +568,13 @@ const _saveIssuerToServer = async (processorId, issuerName, updates, $errorConta
     try {
         await apiClient.updateProcessorProperties(processorId, updates);
         $errorContainer.html(_createSuccessMessage(i18n['issuerConfigEditor.success.saved'] || 'Issuer configuration saved successfully.'));
-        setTimeout(() => $errorContainer.empty(), 5000);
+
+        // Use managed timeout for automatic cleanup
+        if (componentLifecycle && componentLifecycle.isComponentInitialized()) {
+            componentLifecycle.setTimeout(() => $errorContainer.empty(), 5000);
+        } else {
+            managedSetTimeout('issuer-config-editor', () => $errorContainer.empty(), 5000);
+        }
     } catch (error) {
         displayUiError($errorContainer, error, i18n, 'issuerConfigEditor.error.saveFailedTitle');
     }
@@ -577,7 +586,13 @@ const _saveIssuerToServer = async (processorId, issuerName, updates, $errorConta
  */
 const _saveIssuerStandalone = ($errorContainer) => {
     $errorContainer.html(_createSuccessMessage(i18n['issuerConfigEditor.success.savedStandalone'] || 'Issuer configuration saved successfully (standalone mode).'));
-    setTimeout(() => $errorContainer.empty(), 5000);
+
+    // Use managed timeout for automatic cleanup
+    if (componentLifecycle && componentLifecycle.isComponentInitialized()) {
+        componentLifecycle.setTimeout(() => $errorContainer.empty(), 5000);
+    } else {
+        managedSetTimeout('issuer-config-editor', () => $errorContainer.empty(), 5000);
+    }
 };
 
 /**
@@ -642,10 +657,19 @@ const _displayRemovalSuccess = ($globalErrorContainer, issuerName, isStandalone 
 
     $globalErrorContainer.html(_createSuccessMessage(message));
     $globalErrorContainer.show();
-    setTimeout(() => {
-        $globalErrorContainer.empty();
-        $globalErrorContainer.hide();
-    }, 3000);
+
+    // Use managed timeout for automatic cleanup
+    if (componentLifecycle && componentLifecycle.isComponentInitialized()) {
+        componentLifecycle.setTimeout(() => {
+            $globalErrorContainer.empty();
+            $globalErrorContainer.hide();
+        }, 3000);
+    } else {
+        managedSetTimeout('issuer-config-editor', () => {
+            $globalErrorContainer.empty();
+            $globalErrorContainer.hide();
+        }, 3000);
+    }
 };
 
 /**
@@ -735,6 +759,21 @@ export const init = async (element, callback, currentTestUrlFromArg) => {
 
     try {
         const effectiveUrlForInit = currentTestUrlFromArg || window.location.href;
+
+        // Initialize component lifecycle manager (for cleanup tracking) asynchronously
+        // This doesn't block the main initialization to maintain backward compatibility
+        const processorId = getProcessorIdFromUrl(effectiveUrlForInit);
+        const componentId = `issuer-config-editor-${processorId || 'standalone'}`;
+
+        // Initialize lifecycle manager in the background for cleanup tracking
+        setTimeout(() => {
+            componentLifecycle = new ComponentLifecycle(componentId);
+            componentLifecycle.initialize(async () => {
+                // Lifecycle manager is ready for tracking cleanup resources
+            });
+        }, 0);
+
+        // Initialize component normally - maintain backward compatibility
         await initComponent(element, effectiveUrlForInit);
 
         // Call the callback function if provided
@@ -745,6 +784,17 @@ export const init = async (element, callback, currentTestUrlFromArg) => {
         if (typeof callback === 'function') {
             callback();
         }
+    }
+};
+
+/**
+ * Cleanup function to be called when component is being destroyed.
+ * This can be called manually or will be called automatically on page unload.
+ */
+export const cleanup = () => {
+    if (componentLifecycle) {
+        componentLifecycle.destroy();
+        componentLifecycle = null;
     }
 };
 
