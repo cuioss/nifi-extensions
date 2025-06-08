@@ -20,7 +20,7 @@ export const managedSetTimeout = (componentId, callback, delay) => {
         activeTimeouts.delete(timeoutId);
         callback();
     }, delay);
-    
+
     activeTimeouts.add(timeoutId);
     return timeoutId;
 };
@@ -82,7 +82,7 @@ export class ComponentLifecycle {
             this.timeouts.delete(timeoutId);
             callback();
         }, delay);
-        
+
         this.timeouts.add(timeoutId);
         return timeoutId;
     }

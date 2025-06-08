@@ -12,7 +12,7 @@ const BASE_URL = API.BASE_URL;
 /**
  * Generic API call helper - eliminates duplicate AJAX setup.
  * @param {string} method - HTTP method
- * @param {string} endpoint - API endpoint 
+ * @param {string} endpoint - API endpoint
  * @param {Object} data - Request data
  * @returns {Promise} AJAX promise
  */
@@ -23,12 +23,12 @@ const apiCall = (method, endpoint, data = null) => {
         dataType: 'json',
         timeout: API.TIMEOUTS.DEFAULT
     };
-    
+
     if (data) {
         config.data = JSON.stringify(data);
         config.contentType = 'application/json';
     }
-    
+
     return $.ajax(config);
 };
 
@@ -100,7 +100,7 @@ export const updateProcessorProperties = (processorId, properties) => {
                 properties
             }
         };
-        
+
         return apiCall('PUT', `../nifi-api/processors/${processorId}`, updateRequest);
     });
 };

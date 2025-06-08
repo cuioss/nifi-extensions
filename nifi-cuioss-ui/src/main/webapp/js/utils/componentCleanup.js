@@ -20,7 +20,7 @@ export const managedSetTimeout = (componentId, callback, delay) => {
         activeTimeouts.delete(timeoutId);
         callback();
     }, delay);
-    
+
     activeTimeouts.add(timeoutId);
     return timeoutId;
 };
@@ -82,7 +82,7 @@ export class ComponentLifecycle {
             this.timeouts.delete(timeoutId);
             callback();
         }, delay);
-        
+
         this.timeouts.add(timeoutId);
         return timeoutId;
     }
@@ -141,7 +141,7 @@ export const cleanupComponent = (componentId) => {
 export const cleanupAll = () => {
     // Clean up timers
     cleanupAllResources();
-    
+
     // Clean up legacy component cleanup functions
     componentCleanupFunctions.forEach((cleanupFns) => {
         cleanupFns.forEach(fn => {

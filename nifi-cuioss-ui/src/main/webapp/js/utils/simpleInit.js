@@ -33,7 +33,7 @@ export const initializeHelpTooltips = (getHelpTextForProperty, initTooltips) => 
         document.querySelectorAll('.property-label').forEach(label => {
             const propertyName = label.textContent.trim();
             const helpText = getHelpTextForProperty(propertyName);
-            
+
             if (helpText && !label.querySelector('.help-tooltip')) {
                 const tooltipSpan = document.createElement('span');
                 tooltipSpan.className = 'help-tooltip fa fa-question-circle';
@@ -41,7 +41,7 @@ export const initializeHelpTooltips = (getHelpTextForProperty, initTooltips) => 
                 label.appendChild(tooltipSpan);
             }
         });
-        
+
         // Initialize tooltips
         initTooltips('.help-tooltip');
     } catch (error) {

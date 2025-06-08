@@ -12,7 +12,7 @@
  */
 export const createElement = (tag, options = {}) => {
     const element = document.createElement(tag);
-    
+
     if (options.className) element.className = options.className;
     if (options.text) element.textContent = options.text;
     if (options.html) element.innerHTML = options.html;
@@ -21,7 +21,7 @@ export const createElement = (tag, options = {}) => {
             element.setAttribute(key, value);
         });
     }
-    
+
     return element;
 };
 
@@ -42,35 +42,35 @@ export const createFormField = (config) => {
 
     // Create field container
     const fieldContainer = createElement('div', { className: 'form-field' });
-    
+
     // Create label
     const labelElement = createElement('label', { text: label + ':' });
-    
+
     // Create input
     const inputElement = createElement('input', {
         className: `field-${name}`,
         attributes: { type, placeholder }
     });
-    
+
     if (value) {
         inputElement.value = value;
     }
-    
+
     // Create description
     const descElement = createElement('div', {
         className: 'field-description',
         text: description
     });
-    
+
     // Assemble field
     fieldContainer.appendChild(labelElement);
     fieldContainer.appendChild(inputElement);
     fieldContainer.appendChild(descElement);
-    
+
     // Return as DocumentFragment for compatibility
     const fragment = document.createDocumentFragment();
     fragment.appendChild(fieldContainer);
-    
+
     return fragment;
 };
 
@@ -90,14 +90,14 @@ export class DOMBuilder {
         this.fragment = createFragment();
         this.elements = [];
     }
-    
+
     addElement(tag, options = {}) {
         const element = createElement(tag, options);
         this.fragment.appendChild(element);
         this.elements.push(element);
         return this;
     }
-    
+
     build() {
         return this.fragment;
     }

@@ -23,10 +23,10 @@ describe('Component Cleanup - Simple Coverage Tests', () => {
 
     it('should register component and add cleanup function', () => {
         const cleanupFn = jest.fn();
-        
+
         registerComponent('test-component');
         addCleanupFunction('test-component', cleanupFn);
-        
+
         cleanupComponent('test-component');
         expect(cleanupFn).toHaveBeenCalled();
     });
@@ -34,12 +34,12 @@ describe('Component Cleanup - Simple Coverage Tests', () => {
     it('should cleanup all components', () => {
         const cleanupFn1 = jest.fn();
         const cleanupFn2 = jest.fn();
-        
+
         addCleanupFunction('component1', cleanupFn1);
         addCleanupFunction('component2', cleanupFn2);
-        
+
         cleanupAll();
-        
+
         expect(cleanupFn1).toHaveBeenCalled();
         expect(cleanupFn2).toHaveBeenCalled();
     });
@@ -47,9 +47,9 @@ describe('Component Cleanup - Simple Coverage Tests', () => {
     it('should create managed timeout', () => {
         const callback = jest.fn();
         const timeoutId = managedSetTimeout('test-component', callback, 1000);
-        
+
         expect(timeoutId).toBeTruthy();
-        
+
         jest.advanceTimersByTime(1000);
         expect(callback).toHaveBeenCalled();
     });
@@ -57,9 +57,9 @@ describe('Component Cleanup - Simple Coverage Tests', () => {
     it('should create managed interval', () => {
         const callback = jest.fn();
         const intervalId = managedSetInterval('test-component', callback, 100);
-        
+
         expect(intervalId).toBeTruthy();
-        
+
         jest.advanceTimersByTime(300);
         expect(callback).toHaveBeenCalledTimes(3);
     });
@@ -68,14 +68,14 @@ describe('Component Cleanup - Simple Coverage Tests', () => {
         const faultyCleanup = jest.fn().mockImplementation(() => {
             throw new Error('Cleanup error');
         });
-        
+
         const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-        
+
         addCleanupFunction('test-component', faultyCleanup);
-        
+
         // Should not throw
         expect(() => cleanupComponent('test-component')).not.toThrow();
-        
+
         consoleWarnSpy.mockRestore();
     });
 

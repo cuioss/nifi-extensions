@@ -11,7 +11,6 @@ import {
 } from '../../../main/webapp/js/utils/domBuilder.js';
 
 describe('DOMBuilder Coverage Tests', () => {
-    
     describe('createElement', () => {
         it('should create basic element', () => {
             const element = createElement('div');
@@ -89,7 +88,7 @@ describe('DOMBuilder Coverage Tests', () => {
                 .addElement('div', { text: 'Test' })
                 .addText('Some text')
                 .all();
-            
+
             expect(elements.length).toBe(1);
             expect(elements[0].textContent).toBe('Test');
         });
@@ -97,20 +96,20 @@ describe('DOMBuilder Coverage Tests', () => {
         it('should add existing element', () => {
             const builder = new DOMBuilder();
             const existingElement = createElement('span', { text: 'Existing' });
-            
+
             builder.addExisting(existingElement);
             const fragment = builder.build();
-            
+
             expect(fragment.childNodes.length).toBe(1);
         });
 
         it('should append to parent element', () => {
             const parent = createElement('div');
             const builder = new DOMBuilder();
-            
+
             builder.addElement('span', { text: 'Child' });
             const elements = builder.appendTo(parent);
-            
+
             expect(parent.children.length).toBe(1);
             expect(elements.length).toBe(1);
         });
@@ -120,7 +119,7 @@ describe('DOMBuilder Coverage Tests', () => {
             builder
                 .addElement('div', { text: 'First' })
                 .addElement('span', { text: 'Last' });
-            
+
             expect(builder.first().textContent).toBe('First');
             expect(builder.last().textContent).toBe('Last');
         });
@@ -140,10 +139,10 @@ describe('DOMBuilder Coverage Tests', () => {
                 description: 'Test description',
                 value: 'initial value'
             });
-            
+
             const container = fragment.firstElementChild;
             expect(container.classList.contains('form-field')).toBe(true);
-            
+
             const input = container.querySelector('input');
             expect(input.value).toBe('initial value');
             expect(input.classList.contains('field-test')).toBe(true);
@@ -156,7 +155,7 @@ describe('DOMBuilder Coverage Tests', () => {
                 description: 'Enter email',
                 type: 'email'
             });
-            
+
             const input = fragment.querySelector('input');
             expect(input.type).toBe('email');
         });
@@ -166,7 +165,7 @@ describe('DOMBuilder Coverage Tests', () => {
                 { name: 'field1', label: 'Field 1', description: 'Desc 1' },
                 { name: 'field2', label: 'Field 2', description: 'Desc 2' }
             ];
-            
+
             const fragment = FormFieldBuilder.createFields(configs);
             expect(fragment.childNodes.length).toBe(2);
         });
@@ -177,7 +176,7 @@ describe('DOMBuilder Coverage Tests', () => {
             const parent = createElement('div');
             parent.appendChild(createElement('span'));
             parent.appendChild(createElement('div'));
-            
+
             expect(parent.children.length).toBe(2);
             DOMUtils.clearChildren(parent);
             expect(parent.children.length).toBe(0);
@@ -186,10 +185,10 @@ describe('DOMBuilder Coverage Tests', () => {
         it('should replace content with fragment', () => {
             const parent = createElement('div');
             parent.appendChild(createElement('span', { text: 'Old' }));
-            
+
             const newFragment = createFragment();
             newFragment.appendChild(createElement('div', { text: 'New' }));
-            
+
             DOMUtils.replaceContent(parent, newFragment);
             expect(parent.textContent).toBe('New');
         });
@@ -197,7 +196,7 @@ describe('DOMBuilder Coverage Tests', () => {
         it('should replace content with element', () => {
             const parent = createElement('div');
             const newElement = createElement('span', { text: 'Replaced' });
-            
+
             DOMUtils.replaceContent(parent, newElement);
             expect(parent.textContent).toBe('Replaced');
         });
@@ -208,7 +207,7 @@ describe('DOMBuilder Coverage Tests', () => {
                 createElement('span', { text: 'Item 1' }),
                 'Text item'
             ];
-            
+
             DOMUtils.replaceContent(parent, newContent);
             expect(parent.textContent).toContain('Item 1');
             expect(parent.textContent).toContain('Text item');
@@ -220,7 +219,7 @@ describe('DOMBuilder Coverage Tests', () => {
                 'Simple text',
                 { tag: 'span', options: { text: 'Span element' } }
             ];
-            
+
             const elements = DOMUtils.appendMultiple(parent, configs);
             expect(parent.children.length).toBe(2);
             expect(elements.length).toBe(2);
