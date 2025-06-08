@@ -2,60 +2,99 @@
  * Utility for displaying standardized error messages in the UI.
  */
 
-const extractErrorMessage = (error, i18n) => {
-    let message;
+/**
+ * Extracts error messages from an errors array and joins them.
+ * @param {Array} errors - Array of error objects or strings
+ * @returns {string} Joined error messages
+ */
+const extractErrorsArray = (errors) => {
+    return errors
+        .map(err => (typeof err === 'string' ? err : err.msg || 'Error detail missing'))
+        .join(', ');
+};
 
-    // Prefer responseJSON if it exists (more structured error from an API)
-    if (error && error.responseJSON && error.responseJSON.message) {
-        message = error.responseJSON.message;
-    } else if (error && error.responseJSON && Array.isArray(error.responseJSON.errors) &&
-               error.responseJSON.errors.length > 0) { // Removed trailing space here
-        // Handle cases where errors might be an array of messages
-        message = error.responseJSON.errors
-            .map(err => (typeof err === 'string' ? err : err.msg || 'Error detail missing'))
-            .join(', ');
+/**
+ * Attempts to extract message from responseJSON structure.
+ * @param {Object} responseJSON - The response JSON object
+ * @returns {string|null} Extracted message or null if not found
+ */
+const extractFromResponseJSON = (responseJSON) => {
+    if (!responseJSON) return null;
+
+    // Check if message property exists (even if it's an empty string)
+    if (typeof responseJSON.message === 'string') {
+        return responseJSON.message;
     }
 
-    // Fallback to responseText if responseJSON didn't yield a message
-    if (!message && error && error.responseText) {
-        try {
-            const errorJson = JSON.parse(error.responseText);
-            // Check if message property exists (even if it's an empty string), otherwise check for errors array
-            if (errorJson && typeof errorJson.message === 'string') {
-                message = errorJson.message;
-            } else if (errorJson && Array.isArray(errorJson.errors) &&
-                       errorJson.errors.length > 0) {
-                message = errorJson.errors
-                    .map(err => (typeof err === 'string' ? err : err.msg || 'Error detail missing'))
-                    .join(', '); // This line might also be long depending on err.msg
-            } else {
-                message = error.responseText; // Raw responseText if not structured
-            }
-        } catch (e) {
-            // responseText was not JSON, use as is or fallback further
-            message = error.responseText;
-        }
+    if (Array.isArray(responseJSON.errors) && responseJSON.errors.length > 0) {
+        return extractErrorsArray(responseJSON.errors);
     }
 
-    // Fallback to statusText for jqXHR objects if still no message
-    if (!message && error && error.statusText) {
-        message = error.statusText;
+    return null;
+};
+
+/**
+ * Attempts to parse responseText as JSON and extract error message.
+ * @param {string} responseText - The response text to parse
+ * @returns {string|null} Extracted message or responseText if parsing fails
+ */
+const extractFromResponseText = (responseText) => {
+    if (!responseText) return null;
+
+    try {
+        const errorJson = JSON.parse(responseText);
+        const extractedMessage = extractFromResponseJSON(errorJson);
+
+        // If we extracted a message from JSON, return it (could be null)
+        // If no message was extracted, fall back to raw responseText
+        return extractedMessage !== null ? extractedMessage : responseText;
+    } catch (e) {
+        return responseText;
+    }
+};
+
+/**
+ * Validates and cleans the extracted message, returning fallback if invalid.
+ * @param {any} message - The message to validate
+ * @param {Object} i18n - Internationalization object for fallback
+ * @returns {string} Valid message or fallback
+ */
+const validateAndCleanMessage = (message, i18n) => {
+    if (message == null) {
+        return i18n['processor.jwt.unknownError'] || 'Unknown error';
     }
 
-    // Fallback for standard Error objects
-    if (!message && error && error.message) {
-        message = error.message;
+    const stringMessage = String(message);
+    const trimmedMsg = stringMessage.trim();
+    const lowerCaseMsg = stringMessage.toLowerCase();
+
+    if (trimmedMsg === '' || lowerCaseMsg === 'null' || lowerCaseMsg === 'undefined') {
+        return i18n['processor.jwt.unknownError'] || 'Unknown error';
     }
 
-    // Final check for problematic messages (null, undefined, empty, "null", "undefined")
-    const isNullOrUndefined = message == null;
-    const trimmedMsg = isNullOrUndefined ? '' : String(message).trim();
-    const lowerCaseMsg = isNullOrUndefined ? '' : String(message).toLowerCase();
-
-    if (isNullOrUndefined || trimmedMsg === '' || lowerCaseMsg === 'null' || lowerCaseMsg === 'undefined') {
-        return i18n['processor.jwt.unknownError'] || 'Unknown error'; // Default unknown error
-    }
     return message;
+};
+
+const extractErrorMessage = (error, i18n) => {
+    if (!error) {
+        return i18n['processor.jwt.unknownError'] || 'Unknown error';
+    }
+
+    // Try extracting from responseJSON first
+    const responseJSONMessage = extractFromResponseJSON(error.responseJSON);
+    if (responseJSONMessage) {
+        return validateAndCleanMessage(responseJSONMessage, i18n);
+    }
+
+    // Try extracting from responseText
+    const responseTextMessage = extractFromResponseText(error.responseText);
+    if (responseTextMessage) {
+        return validateAndCleanMessage(responseTextMessage, i18n);
+    }
+
+    // Fallback to other error properties
+    const fallbackMessage = error.statusText || error.message;
+    return validateAndCleanMessage(fallbackMessage, i18n);
 };
 
 /**
