@@ -79,7 +79,7 @@ export class ComponentManager {
      * @private
      */
     async _initializeComponent(componentInfo) {
-        const { id, component, options } = componentInfo;
+        const { id, options } = componentInfo;
 
         // Check prerequisites
         if (options.requiresNifi && !this.globalState.nifiReady) {

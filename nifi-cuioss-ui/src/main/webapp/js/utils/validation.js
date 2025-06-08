@@ -59,7 +59,8 @@ export const validateProcessorIdFromUrl = (url) => {
     const sanitizedUrl = requiredCheck.sanitizedValue;
 
     // Processor ID extraction - flexible format to maintain backward compatibility
-    const match = sanitizedUrl.match(/\/processors\/([a-f0-9-]+)/i);
+    const processorRegex = /\/processors\/([a-f0-9-]+)/i;
+    const match = processorRegex.exec(sanitizedUrl);
 
     if (!match) {
         return {

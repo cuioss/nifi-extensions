@@ -1,8 +1,9 @@
+'use strict';
+
 /**
  * Mock implementation of nf.Common for standalone testing.
  * This provides the minimum functionality needed by the JWT Validator UI components.
  */
-'use strict';
 
 /**
  * Registers a custom UI component.
@@ -23,7 +24,7 @@ export const registerCustomUiComponent = function (id, component, options) {
                 // Component initialized callback
             });
         } catch (e) {
-            // Error initializing component
+            console.warn('Failed to initialize component:', id, e.message);
         }
     }
 };
@@ -89,7 +90,7 @@ export const registerCustomUiTab = function (id, component) {
                 // Tab initialized callback
             });
         } catch (e) {
-            // Error initializing tab
+            console.warn('Failed to initialize tab:', id, e.message);
         }
     }
 
