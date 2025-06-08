@@ -47,9 +47,18 @@ describe('DOMBuilder Coverage Tests', () => {
             expect(element.textContent).toBe('Hello World');
         });
 
-        it('should create element with HTML content', () => {
+        it('should create element with HTML content (secure default)', () => {
             const element = createElement('div', {
                 html: '<strong>Bold</strong>'
+            });
+            // Security: HTML is treated as text by default unless explicitly sanitized
+            expect(element.innerHTML).toBe('&lt;strong&gt;Bold&lt;/strong&gt;');
+        });
+
+        it('should create element with sanitized HTML content', () => {
+            const element = createElement('div', {
+                html: '<strong>Bold</strong>',
+                sanitized: true
             });
             expect(element.innerHTML).toBe('<strong>Bold</strong>');
         });

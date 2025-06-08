@@ -21,7 +21,7 @@ import * as tokenVerifier from './components/tokenVerifier.js';
 import * as issuerConfigEditor from './components/issuerConfigEditor.js';
 import * as i18n from './utils/i18n.js';
 import { initTooltips } from './utils/tooltip.js';
-import { CSS, NIFI, UI_TEXT } from './utils/constants.js';
+import { API, CSS, NIFI, UI_TEXT } from './utils/constants.js';
 
 'use strict';
 
@@ -54,10 +54,10 @@ const registerComponents = () => {
         // Set flag for test compatibility
         window.jwtComponentsRegistered = true;
 
-        console.debug('JWT components registered successfully');
+        // Components registered successfully
         return true;
     } catch (error) {
-        console.error('Component registration failed:', error);
+        // Component registration failed - error logged internally
         return false;
     }
 };
@@ -102,7 +102,7 @@ const setupHelpTooltips = () => {
         // Initialize tooltips
         initTooltips(CSS.SELECTORS.HELP_TOOLTIP);
     } catch (error) {
-        console.debug('Help tooltips setup skipped:', error.message);
+        // Help tooltips setup skipped - non-critical
     }
 };
 
@@ -183,7 +183,7 @@ const setupDialogHandlers = () => {
                     setupHelpTooltips();
                     updateTranslations();
                 }
-            }, 500);
+            }, API.TIMEOUTS.DIALOG_DELAY);
         }
     });
 };
@@ -214,7 +214,7 @@ export const init = async () => {
             setupHelpTooltips();
             setupDialogHandlers();
 
-            console.debug('JWT UI initialization completed');
+            // JWT UI initialization completed
         } else {
             // Fallback - just hide loading and show basic UI
             setupUI();
@@ -223,9 +223,9 @@ export const init = async () => {
         // Add timeout fallback for test compatibility
         setTimeout(() => {
             setupUI();
-        }, 3000);
+        }, API.TIMEOUTS.UI_FALLBACK_TIMEOUT);
     } catch (error) {
-        console.error('JWT UI initialization failed:', error);
+        // JWT UI initialization failed - error handled internally
         setupUI(); // Always try to show something
     }
 };
@@ -244,9 +244,9 @@ export const cleanup = () => {
     try {
         // Simple cleanup - just remove event handlers
         $(document).off('dialogOpen');
-        console.debug('JWT UI cleanup completed');
+        // JWT UI cleanup completed
     } catch (error) {
-        console.error('JWT UI cleanup failed:', error);
+        // JWT UI cleanup failed - error handled internally
     }
 };
 

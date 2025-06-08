@@ -25,7 +25,14 @@ export const createElement = (tag, options = {}) => {
 
     // Handle content
     if (options.text) element.textContent = options.text;
-    if (options.html) element.innerHTML = options.html;
+    if (options.html) {
+        // Security: Only allow pre-sanitized HTML or use textContent for user input
+        if (options.sanitized === true) {
+            element.innerHTML = options.html;
+        } else {
+            element.textContent = options.html; // Safer default: treat as text
+        }
+    }
 
     // Handle attributes
     if (options.attributes) {

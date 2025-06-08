@@ -68,7 +68,19 @@ export const API = {
         LONG_OPERATION: 10000,
 
         /** @type {number} Short timeout for quick operations (2 seconds) */
-        SHORT_OPERATION: 2000
+        SHORT_OPERATION: 2000,
+
+        /** @type {number} Dialog delay for NiFi processor initialization (500ms) */
+        DIALOG_DELAY: 500,
+
+        /** @type {number} UI fallback timeout for initialization (3 seconds) */
+        UI_FALLBACK_TIMEOUT: 3000,
+
+        /** @type {number} Token cache duration (1 hour in milliseconds) */
+        TOKEN_CACHE_DURATION: 3600000,
+
+        /** @type {number} Error display timeout (5 seconds) */
+        ERROR_DISPLAY_TIMEOUT: 5000
     }
 };
 
