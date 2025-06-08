@@ -19,6 +19,16 @@ export const createXhrErrorObject = function (jqXHR, textStatus, errorThrown) {
     // It directly provides status, statusText, and responseText.
     // textStatus and errorThrown might not be consistently provided by cash-dom's AJAX fail handler,
     // so we primarily rely on properties of the jqXHR object itself.
+    
+    // Handle null/undefined jqXHR objects
+    if (!jqXHR) {
+        return {
+            status: 0,
+            statusText: errorThrown || textStatus || 'Unknown error',
+            responseText: ''
+        };
+    }
+    
     return {
         status: jqXHR.status,
         statusText: jqXHR.statusText || errorThrown || textStatus || 'Unknown error', // Prioritize jqXHR.statusText
@@ -52,7 +62,8 @@ export const createApiClientCallbackErrorHandler = (errorCallback) => {
         if (errorCallback) {
             // Create a simplified error object from jqXHR for consistent error handling upstream
             const errorObj = createXhrErrorObject(error);
-            const errorMessage = errorObj.statusText || errorObj.responseText || 'Unknown error';
+            // For callback handlers, prioritize responseText for error messages as it typically contains more detail
+            const errorMessage = errorObj.responseText || errorObj.statusText || 'Unknown error';
             errorCallback(errorMessage, errorObj);
         }
     };

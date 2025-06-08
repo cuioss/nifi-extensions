@@ -2,18 +2,9 @@
  * JWKS Validation Button UI component.
  */
 import $ from 'cash-dom';
-import * as nfCommon from 'nf.Common'; // Assuming nfCommon provides a default export or nf.Common.js is adjusted
+import * as nfCommon from 'nf.Common';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
-
-let isLocalhostOverride = null; // Allows tests to control localhost behavior
-
-// Helper function to determine if running in a localhost-like environment
-const getIsLocalhost = () => { // Stays module-scoped
-    if (isLocalhostOverride !== null) {
-        return isLocalhostOverride;
-    }
-    return window.location.href.includes('localhost') || window.location.href.includes('127.0.0.1');
-};
+import { getIsLocalhost, setIsLocalhostForTesting } from '../utils/constants.js';
 
 /**
  * Initialize the custom UI with standardized error handling and async patterns.
@@ -177,11 +168,11 @@ const _handleSynchronousError = (exception, $resultContainer, i18n) => {
  */
 export const cleanup = () => {
     // Reset localhost override for testing
-    isLocalhostOverride = null;
+    setIsLocalhostForTesting(null);
     console.debug('JWKS validator cleanup completed');
 };
 
 // Function for testing purposes only to control the isLocalhost behavior
 export const __setIsLocalhostForTesting = function (value) {
-    isLocalhostOverride = (value === null) ? null : !!value;
+    setIsLocalhostForTesting(value);
 };

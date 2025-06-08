@@ -7,7 +7,7 @@ import $ from 'cash-dom';
 import * as _nfCommon from 'nf.Common';
 import * as apiClient from '../services/apiClient.js';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
-import { API, COMPONENTS } from '../utils/constants.js';
+import { API, COMPONENTS, getIsLocalhost } from '../utils/constants.js';
 import { validateProcessorIdFromUrl, validateIssuerConfig } from '../utils/validation.js';
 // Removed domCache.js dependency - using direct DOM queries for better performance and simplicity
 import { FormFieldBuilder } from '../utils/domBuilder.js';
@@ -64,19 +64,7 @@ const _createJwksSuccessMessage = (keyCount, isSimulated = false) => {
     return message;
 };
 
-/**
- * Helper function to determine if running in a localhost-like environment.
- * @returns {boolean} True if running on localhost
- */
-const _getIsLocalhost = () => {
-    // If there's a global mock for testing, use it instead
-    // eslint-disable-next-line no-undef
-    if (typeof global !== 'undefined' && global.getIsLocalhost) {
-        // eslint-disable-next-line no-undef
-        return global.getIsLocalhost();
-    }
-    return window.location.href.includes('localhost') || window.location.href.includes('127.0.0.1');
-};
+// Localhost detection now handled by centralized utility in constants.js
 
 /**
  * Parses processor properties and groups them by issuer name.
@@ -356,7 +344,7 @@ const _handleJwksValidationResponse = ($resultContainer, responseData) => {
  * @param {boolean} isAjaxError - Whether this is an AJAX error vs synchronous error
  */
 const _handleJwksValidationError = ($resultContainer, error, isAjaxError = true) => {
-    if (_getIsLocalhost()) {
+    if (getIsLocalhost()) {
         const simulatedMessage = isAjaxError
             ? _createJwksSuccessMessage(3, true)
             : _createJwksSuccessMessage(3, true) + ' <em>(Simulated error path response)</em>';

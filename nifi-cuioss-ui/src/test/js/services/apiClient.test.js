@@ -252,127 +252,11 @@ describe('apiClient', () => {
         });
     });
 
-    // Test table for callback-based API methods
-    const callbackApiTestTable = [
-        {
-            methodName: 'validateJwksContent',
-            apiMethodName: 'validateJwksContent',
-            methodArgs: ['{"keys":[]}'], // jwksContent
-            mockSuccessData: { valid: true, keyCount: 0 },
-            expectedSuccessArgs: [{ valid: true, keyCount: 0 }],
-            mockErrorData: { status: 400, statusText: 'Bad Request', responseText: 'Invalid JWKS content' },
-            expectedErrorArgs: [
-                'Bad Request', // statusText
-                { status: 400, statusText: 'Bad Request', responseText: 'Invalid JWKS content' } // standardized error object
-            ]
-        },
-        {
-            methodName: 'validateJwksContent (no statusText in error)',
-            apiMethodName: 'validateJwksContent', // Changed from apiMethod
-            methodArgs: ['invalid-json'],
-            mockSuccessData: { valid: false }, // Should not be used in error test
-            expectedSuccessArgs: [{ valid: false }], // Should not be used in error test
-            mockErrorData: { status: 500, responseText: 'Server Processing Error' }, // statusText is missing
-            expectedErrorArgs: [
-                'Unknown error', // Default statusText from _createXhrErrorObject
-                { status: 500, statusText: 'Unknown error', responseText: 'Server Processing Error' }
-            ]
-        },
-        {
-            methodName: 'verifyToken',
-            apiMethodName: 'verifyToken', // Changed from apiMethod
-            methodArgs: ['a.b.c'], // token
-            mockSuccessData: { valid: true, claims: { sub: 'user1' } },
-            expectedSuccessArgs: [{ valid: true, claims: { sub: 'user1' } }],
-            mockErrorData: { status: 401, statusText: 'Unauthorized', responseText: 'Token expired' },
-            expectedErrorArgs: [
-                'Unauthorized',
-                { status: 401, statusText: 'Unauthorized', responseText: 'Token expired' }
-            ]
-        },
-        {
-            methodName: 'getSecurityMetrics',
-            apiMethodName: 'getSecurityMetrics', // Changed from apiMethod
-            methodArgs: [], // No specific args other than callbacks
-            mockSuccessData: { activeSessions: 10, jwksValidations: 100 },
-            expectedSuccessArgs: [{ activeSessions: 10, jwksValidations: 100 }],
-            mockErrorData: { status: 503, statusText: 'Service Unavailable', responseText: 'Metrics service down' },
-            expectedErrorArgs: [
-                'Service Unavailable',
-                { status: 503, statusText: 'Service Unavailable', responseText: 'Metrics service down' }
-            ]
-        }
-    ];
+    // Legacy callback API tests removed - only Promise-based APIs are now supported
 
-    describe.each(callbackApiTestTable)('Callback API: $methodName', ({ apiMethodName, methodArgs, mockSuccessData, expectedSuccessArgs, mockErrorData, expectedErrorArgs }) => {
-        it('should call successCallback with expected data on successful AJAX request', async () => {
-            mockAjax.mockResolvedValue(mockSuccessData);
-
-            apiClient[apiMethodName](...methodArgs, successCallback, errorCallback);
-            await Promise.resolve().then().then();
-
-            expect(successCallback).toHaveBeenCalledWith(...expectedSuccessArgs);
-            expect(errorCallback).not.toHaveBeenCalled();
-        });
-
-        it('should call errorCallback with standardized error object on failed AJAX request', async () => {
-            mockAjax.mockRejectedValue(mockErrorData);
-
-            apiClient[apiMethodName](...methodArgs, successCallback, errorCallback);
-            await Promise.resolve().then().then();
-
-            expect(errorCallback).toHaveBeenCalledWith(...expectedErrorArgs);
-            expect(successCallback).not.toHaveBeenCalled();
-        });
-
-        // Test cases for when callbacks are null/undefined
-        it('should not throw if successCallback is null/undefined on success', async () => {
-            mockAjax.mockResolvedValue(mockSuccessData);
-            expect(() => {
-                apiClient[apiMethodName](...methodArgs, null, errorCallback);
-            }).not.toThrow();
-            await Promise.resolve().then().then();
-            expect(errorCallback).not.toHaveBeenCalled();
-        });
-
-        it('should not throw if errorCallback is null/undefined on error', async () => {
-            mockAjax.mockRejectedValue(mockErrorData);
-            expect(() => {
-                apiClient[apiMethodName](...methodArgs, successCallback, null);
-            }).not.toThrow();
-            await Promise.resolve().then().then();
-            expect(successCallback).not.toHaveBeenCalled();
-        });
-
-        it('should use "Unknown error" from _createXhrErrorObject if statusText is missing (Callback)', async () => {
-            const mockErrorNoStatus = { status: 500, responseText: 'Server Internal Error Detail' };
-            mockAjax.mockRejectedValue(mockErrorNoStatus);
-
-            apiClient[apiMethodName](...methodArgs, successCallback, errorCallback);
-            await Promise.resolve().then().then();
-
-            expect(errorCallback).toHaveBeenCalledWith(
-                'Unknown error', // Defaulted by _createXhrErrorObject
-                expect.objectContaining({
-                    status: 500,
-                    responseText: 'Server Internal Error Detail',
-                    statusText: 'Unknown error'
-                })
-            );
-            expect(successCallback).not.toHaveBeenCalled();
-        });
-    });
 
     describe('_createXhrErrorObject specific scenarios (tested via public methods)', () => {
         const testUrl = 'any-url';
-        // Define testCallbackApi and testCallbackArgs inside beforeEach or tests where apiClient is defined
-        let testCallbackApi;
-        const testCallbackArgs = ['test-content'];
-
-        beforeEach(() => {
-            // apiClient is initialized in the higher-level beforeEach
-            testCallbackApi = apiClient.validateJwksContent;
-        });
 
         it('Promise: should use "Unknown error" if statusText, errorThrown, and textStatus are all falsy', async () => {
             const mockError = { status: 0, responseText: '' };
@@ -382,17 +266,5 @@ describe('apiClient', () => {
             });
         });
 
-        it('Callback: should use "Unknown error" if statusText, errorThrown, and textStatus are all falsy', async () => {
-            const mockError = { status: 0, responseText: '' };
-            mockAjax.mockRejectedValue(mockError);
-
-            testCallbackApi(...testCallbackArgs, successCallback, errorCallback);
-            await Promise.resolve().then().then();
-
-            expect(errorCallback).toHaveBeenCalledWith(
-                'Unknown error',
-                expect.objectContaining({ status: 0, statusText: 'Unknown error' })
-            );
-        });
     });
 });

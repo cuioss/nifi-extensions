@@ -68,3 +68,51 @@ export const COMPONENTS = {
         VALIDATION_TIMEOUT: 10000
     }
 };
+
+/**
+ * Environment Detection
+ */
+
+// Test override for localhost detection
+let isLocalhostOverride = null;
+
+/**
+ * Unified localhost detection utility.
+ * Consolidates multiple localhost detection implementations across components.
+ * @returns {boolean} True if running in localhost/development environment
+ */
+export const getIsLocalhost = () => {
+    // Test override takes precedence
+    if (isLocalhostOverride !== null) {
+        return isLocalhostOverride;
+    }
+
+    // Global test mock support (for issuerConfigEditor compatibility)
+    if (typeof global !== 'undefined' && global.getIsLocalhost) {
+        return global.getIsLocalhost();
+    }
+
+    // Environment check
+    if (typeof window === 'undefined' || !window.location) {
+        return false;
+    }
+
+    const hostname = window.location.hostname || '';
+    const href = window.location.href || '';
+
+    // Comprehensive localhost detection
+    return hostname === 'localhost' ||
+           hostname === '127.0.0.1' ||
+           hostname.startsWith('192.168.') ||
+           hostname.endsWith('.local') ||
+           href.includes('localhost') ||
+           href.includes('127.0.0.1');
+};
+
+/**
+ * Set localhost override for testing.
+ * @param {boolean|null} value - Override value (null to reset)
+ */
+export const setIsLocalhostForTesting = (value) => {
+    isLocalhostOverride = (value === null) ? null : !!value;
+};

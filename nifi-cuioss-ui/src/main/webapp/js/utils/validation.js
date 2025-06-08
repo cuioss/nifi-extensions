@@ -384,18 +384,5 @@ export const validateIssuerConfig = (formData) => {
     };
 };
 
-/**
- * Environment detection utility for determining if running in localhost/development.
- * @returns {boolean} True if running in localhost environment
- */
-export const isLocalhostEnvironment = () => {
-    if (typeof window === 'undefined' || !window.location) {
-        return false;
-    }
-
-    const hostname = window.location.hostname;
-    return hostname === 'localhost' ||
-           hostname === '127.0.0.1' ||
-           hostname.startsWith('192.168.') ||
-           hostname.endsWith('.local');
-};
+// Environment detection moved to centralized utility in constants.js
+// Use getIsLocalhost() from '../utils/constants.js' instead

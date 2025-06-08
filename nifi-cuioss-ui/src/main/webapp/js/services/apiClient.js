@@ -1,10 +1,10 @@
 /**
- * Simple API Client - replaces 165 lines of mixed Promise/callback patterns.
- * Standardizes on Promise-based API for consistency.
+ * Simple API Client - Promise-based API for consistency.
+ * Removed legacy callback patterns that were only used in tests.
  */
 import $ from 'cash-dom';
 import { API } from '../utils/constants.js';
-import { createXhrErrorObject, createApiClientCallbackErrorHandler } from '../utils/errorHandler.js';
+import { createXhrErrorObject } from '../utils/errorHandler.js';
 
 'use strict';
 
@@ -13,7 +13,7 @@ const BASE_URL = API.BASE_URL;
 /**
  * Generic API call helper - eliminates duplicate AJAX setup.
  * @param {string} method - HTTP method
- * @param {string} endpoint - API endpoint 
+ * @param {string} endpoint - API endpoint
  * @param {Object} data - Request data
  * @returns {Promise} AJAX promise
  */
@@ -24,12 +24,12 @@ const apiCall = (method, endpoint, data = null) => {
         dataType: 'json',
         timeout: API.TIMEOUTS.DEFAULT
     };
-    
+
     if (data) {
         config.data = JSON.stringify(data);
         config.contentType = 'application/json';
     }
-    
+
     return $.ajax(config);
 };
 
@@ -54,62 +54,32 @@ export const validateJwksFile = (filePath) => {
 };
 
 /**
- * Validates JWKS content - supports both Promise and callback patterns.
+ * Validates JWKS content.
  * @param {string} jwksContent - The JWKS content to validate
- * @param {Function} [successCallback] - Success callback (optional)
- * @param {Function} [errorCallback] - Error callback (optional)
- * @returns {Promise} Promise for the request (if no callbacks provided)
+ * @returns {Promise} Promise for the request
  */
-export const validateJwksContent = (jwksContent, successCallback, errorCallback) => {
-    const promise = apiCall('POST', `${BASE_URL}/validate-jwks-content`, { jwksContent });
-    
-    if (successCallback || errorCallback) {
-        promise
-            .then(data => successCallback?.(data))
-            .catch(createApiClientCallbackErrorHandler(errorCallback));
-        return;
-    }
-    
-    return promise;
+export const validateJwksContent = (jwksContent) => {
+    return apiCall('POST', `${BASE_URL}/validate-jwks-content`, { jwksContent })
+        .catch(error => { throw createXhrErrorObject(error); });
 };
 
 /**
- * Verifies a JWT token - supports both Promise and callback patterns.
+ * Verifies a JWT token.
  * @param {string} token - The JWT token to verify
- * @param {Function} [successCallback] - Success callback (optional)
- * @param {Function} [errorCallback] - Error callback (optional)
- * @returns {Promise} Promise for the request (if no callbacks provided)
+ * @returns {Promise} Promise for the request
  */
-export const verifyToken = (token, successCallback, errorCallback) => {
-    const promise = apiCall('POST', `${BASE_URL}/verify-token`, { token });
-    
-    if (successCallback || errorCallback) {
-        promise
-            .then(data => successCallback?.(data))
-            .catch(createApiClientCallbackErrorHandler(errorCallback));
-        return;
-    }
-    
-    return promise;
+export const verifyToken = (token) => {
+    return apiCall('POST', `${BASE_URL}/verify-token`, { token })
+        .catch(error => { throw createXhrErrorObject(error); });
 };
 
 /**
- * Gets security metrics - supports both Promise and callback patterns.
- * @param {Function} [successCallback] - Success callback (optional)
- * @param {Function} [errorCallback] - Error callback (optional)
- * @returns {Promise} Promise for the request (if no callbacks provided)
+ * Gets security metrics.
+ * @returns {Promise} Promise for the request
  */
-export const getSecurityMetrics = (successCallback, errorCallback) => {
-    const promise = apiCall('GET', `${BASE_URL}/metrics`);
-    
-    if (successCallback || errorCallback) {
-        promise
-            .then(data => successCallback?.(data))
-            .catch(createApiClientCallbackErrorHandler(errorCallback));
-        return;
-    }
-    
-    return promise;
+export const getSecurityMetrics = () => {
+    return apiCall('GET', `${BASE_URL}/metrics`)
+        .catch(error => { throw createXhrErrorObject(error); });
 };
 
 /**
@@ -136,7 +106,7 @@ export const updateProcessorProperties = (processorId, properties) => {
                 properties
             }
         };
-        
+
         return apiCall('PUT', `../nifi-api/processors/${processorId}`, updateRequest);
     });
 };

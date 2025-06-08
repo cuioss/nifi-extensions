@@ -4,19 +4,9 @@
 import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
+import { getIsLocalhost, setIsLocalhostForTesting } from '../utils/constants.js';
 
 'use strict';
-
-let isLocalhostOverride = null; // Allows tests to control localhost behavior
-
-// Helper function to determine if running in a localhost-like environment
-const getIsLocalhost = () => { // Stays module-scoped
-    if (isLocalhostOverride !== null) {
-        return isLocalhostOverride;
-    }
-    // Default behavior: check window.location.href
-    return window.location.href.includes('localhost') || window.location.href.includes('127.0.0.1');
-};
 
 /**
  * Initialize the custom UI with standardized error handling and async patterns.
@@ -312,10 +302,10 @@ const _handleTokenVerificationSyncException = (exception, $resultsContent, i18n,
  */
 export const cleanup = () => {
     // Reset localhost override for testing
-    isLocalhostOverride = null;
+    setIsLocalhostForTesting(null);
     console.debug('Token verifier cleanup completed');
 };
 
 export const __setIsLocalhostForTesting = function (value) {
-    isLocalhostOverride = (value === null) ? null : !!value;
+    setIsLocalhostForTesting(value);
 };

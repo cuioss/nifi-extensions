@@ -10,12 +10,11 @@ import {
     validateIssuerName,
     validateClientId,
     validateAudience,
-    validateIssuerConfig,
-    isLocalhostEnvironment
+    validateIssuerConfig
 } from '../../../main/webapp/js/utils/validation.js';
+import { getIsLocalhost } from '../../../main/webapp/js/utils/constants.js';
 
 describe('Validation Edge Cases', () => {
-    
     describe('validateRequired edge cases', () => {
         it('should handle null values', () => {
             const result = validateRequired(null);
@@ -216,10 +215,10 @@ describe('Validation Edge Cases', () => {
         });
     });
 
-    describe('isLocalhostEnvironment edge cases', () => {
+    describe('getIsLocalhost edge cases', () => {
         const originalWindow = global.window;
         const originalLocation = window.location;
-        
+
         afterEach(() => {
             global.window = originalWindow;
             Object.defineProperty(window, 'location', {
@@ -233,7 +232,7 @@ describe('Validation Edge Cases', () => {
                 value: null,
                 writable: true
             });
-            const result = isLocalhostEnvironment();
+            const result = getIsLocalhost();
             expect(result).toBe(false);
         });
 
@@ -242,7 +241,7 @@ describe('Validation Edge Cases', () => {
                 value: { hostname: 'localhost' },
                 writable: true
             });
-            const result = isLocalhostEnvironment();
+            const result = getIsLocalhost();
             expect(result).toBe(true);
         });
 
@@ -251,7 +250,7 @@ describe('Validation Edge Cases', () => {
                 value: { hostname: '127.0.0.1' },
                 writable: true
             });
-            const result = isLocalhostEnvironment();
+            const result = getIsLocalhost();
             expect(result).toBe(true);
         });
 
@@ -260,7 +259,7 @@ describe('Validation Edge Cases', () => {
                 value: { hostname: '192.168.1.100' },
                 writable: true
             });
-            const result = isLocalhostEnvironment();
+            const result = getIsLocalhost();
             expect(result).toBe(true);
         });
 
@@ -269,7 +268,7 @@ describe('Validation Edge Cases', () => {
                 value: { hostname: 'mydev.local' },
                 writable: true
             });
-            const result = isLocalhostEnvironment();
+            const result = getIsLocalhost();
             expect(result).toBe(true);
         });
 
@@ -278,7 +277,7 @@ describe('Validation Edge Cases', () => {
                 value: { hostname: 'production.example.com' },
                 writable: true
             });
-            const result = isLocalhostEnvironment();
+            const result = getIsLocalhost();
             expect(result).toBe(false);
         });
     });

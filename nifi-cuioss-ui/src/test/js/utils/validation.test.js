@@ -9,12 +9,11 @@ import {
     validateIssuerName,
     validateClientId,
     validateAudience,
-    validateIssuerConfig,
-    isLocalhostEnvironment
+    validateIssuerConfig
 } from '../../../main/webapp/js/utils/validation.js';
+import { getIsLocalhost } from '../../../main/webapp/js/utils/constants.js';
 
 describe('Validation utilities (simplified)', () => {
-    
     describe('validateRequired', () => {
         it('should validate non-empty values', () => {
             const result = validateRequired('valid value');
@@ -99,9 +98,9 @@ describe('Validation utilities (simplified)', () => {
         });
     });
 
-    describe('isLocalhostEnvironment', () => {
+    describe('getIsLocalhost (from constants)', () => {
         it('should return boolean value', () => {
-            const result = isLocalhostEnvironment();
+            const result = getIsLocalhost();
             expect(typeof result).toBe('boolean');
         });
     });
