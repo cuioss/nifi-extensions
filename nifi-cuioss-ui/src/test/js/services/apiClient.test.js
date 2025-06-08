@@ -265,6 +265,5 @@ describe('apiClient', () => {
                 statusText: 'Unknown error'
             });
         });
-
     });
 });

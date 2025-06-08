@@ -19,7 +19,6 @@ export const createXhrErrorObject = function (jqXHR, textStatus, errorThrown) {
     // It directly provides status, statusText, and responseText.
     // textStatus and errorThrown might not be consistently provided by cash-dom's AJAX fail handler,
     // so we primarily rely on properties of the jqXHR object itself.
-    
     // Handle null/undefined jqXHR objects
     if (!jqXHR) {
         return {
@@ -28,7 +27,7 @@ export const createXhrErrorObject = function (jqXHR, textStatus, errorThrown) {
             responseText: ''
         };
     }
-    
+
     return {
         status: jqXHR.status,
         statusText: jqXHR.statusText || errorThrown || textStatus || 'Unknown error', // Prioritize jqXHR.statusText

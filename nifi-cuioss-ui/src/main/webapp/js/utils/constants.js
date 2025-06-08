@@ -88,9 +88,11 @@ export const getIsLocalhost = () => {
     }
 
     // Global test mock support (for issuerConfigEditor compatibility)
-    if (typeof global !== 'undefined' && global.getIsLocalhost) {
+    /* eslint-disable no-undef */
+    if (typeof global !== 'undefined' && typeof global.getIsLocalhost === 'function') {
         return global.getIsLocalhost();
     }
+    /* eslint-enable no-undef */
 
     // Environment check
     if (typeof window === 'undefined' || !window.location) {

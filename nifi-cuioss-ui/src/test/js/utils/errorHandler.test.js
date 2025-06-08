@@ -272,16 +272,11 @@ describe('Error Handler utilities', () => {
                 });
             };
 
-            try {
-                await mockApiCall();
-                throw new Error('Promise should have been rejected');
-            } catch (error) {
-                expect(error).toEqual({
-                    status: 404,
-                    statusText: 'Not Found',
-                    responseText: 'User not found'
-                });
-            }
+            await expect(mockApiCall()).rejects.toEqual({
+                status: 404,
+                statusText: 'Not Found',
+                responseText: 'User not found'
+            });
         });
 
         it('should work with callback-based API client pattern', async () => {
