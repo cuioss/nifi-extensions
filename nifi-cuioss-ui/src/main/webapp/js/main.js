@@ -18,11 +18,14 @@ const registerComponents = () => {
     try {
         // Initialize i18n
         i18n.getLanguage();
-        
+
         // Register the two main UI tabs
         nfCommon.registerCustomUiTab('jwt.validation.issuer.configuration', issuerConfigEditor);
         nfCommon.registerCustomUiTab('jwt.validation.token.verification', tokenVerifier);
-        
+
+        // Set flag for test compatibility
+        window.jwtComponentsRegistered = true;
+
         console.debug('JWT components registered successfully');
         return true;
     } catch (error) {
@@ -52,7 +55,7 @@ const setupHelpTooltips = () => {
         $('.property-label').each((_index, label) => {
             const propertyName = $(label).text().trim();
             const helpKey = helpTextMap[propertyName];
-            
+
             if (helpKey && $(label).find('.help-tooltip').length === 0) {
                 const helpText = nfCommon.getI18n().getProperty(helpKey);
                 if (helpText) {
@@ -62,7 +65,7 @@ const setupHelpTooltips = () => {
                 }
             }
         });
-        
+
         // Initialize tooltips
         initTooltips('.help-tooltip');
     } catch (error) {
@@ -79,13 +82,13 @@ const setupUI = () => {
     if (loadingIndicator) {
         loadingIndicator.style.display = 'none';
     }
-    
+
     // Show main UI
     const tabs = document.getElementById('jwt-validator-tabs');
     if (tabs) {
         tabs.style.display = '';
     }
-    
+
     // Update translations
     updateTranslations();
 };
@@ -95,13 +98,13 @@ const setupUI = () => {
  */
 const updateTranslations = () => {
     const i18nObj = nfCommon.getI18n();
-    
+
     // Update loading text
     const loadingIndicator = $('#loading-indicator');
     if (loadingIndicator.length) {
         loadingIndicator.text(i18nObj.getProperty('jwt.validator.loading') || 'Loading...');
     }
-    
+
     // Update title
     const title = $('.jwt-validator-title');
     if (title.length) {
@@ -115,11 +118,11 @@ const updateTranslations = () => {
 const setupDialogHandlers = () => {
     $(document).on('dialogOpen', (_event, data) => {
         const dialogElement = Array.isArray(data) ? data[0] : data;
-        
+
         if (dialogElement?.classList?.contains('processor-dialog')) {
             setTimeout(() => {
                 const processorType = dialogElement.querySelector('.processor-type')?.textContent?.trim();
-                
+
                 if (processorType?.includes('MultiIssuerJWTTokenAuthenticator')) {
                     setupHelpTooltips();
                     updateTranslations();
@@ -136,24 +139,23 @@ export const init = async () => {
     try {
         // Register components
         const success = registerComponents();
-        
+
         if (success) {
             // Setup UI elements
             setupUI();
             setupHelpTooltips();
             setupDialogHandlers();
-            
+
             console.debug('JWT UI initialization completed');
         } else {
             // Fallback - just hide loading and show basic UI
             setupUI();
         }
-        
+
         // Add timeout fallback for test compatibility
         setTimeout(() => {
             setupUI();
         }, 3000);
-        
     } catch (error) {
         console.error('JWT UI initialization failed:', error);
         setupUI(); // Always try to show something

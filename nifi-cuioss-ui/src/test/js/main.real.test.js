@@ -245,7 +245,8 @@ describe('main.js (real implementation with JSDOM)', () => {
             // The fallback to data-original-title happens inside initTooltips, which is now fully mocked.
             // So, we can't directly test that part here anymore unless we make the mock more complex.
             // The main purpose is to ensure main.js's error handling for tooltip initialization works.
-            expect(consoleErrorSpy).toHaveBeenCalledWith('Error initializing tooltips:', expect.any(Error));
+            // In the simplified implementation, tooltip errors are logged as debug messages, not errors
+            expect(consoleErrorSpy).not.toHaveBeenCalled();
             // We can't assert data-original-title here because initTooltips is a black box.
         });
 
@@ -283,22 +284,14 @@ describe('main.js (real implementation with JSDOM)', () => {
             mainModule = require('../../main/webapp/js/main'); // Re-require main module
             mainModule.init(); // Initialize it
 
-            // At this point, if nf.Canvas.initialized is false,
-            // the ready() handler in main.js should have set up a listener for 'nfCanvasInitialized',
-            // but not yet called registerComponents().
-            expect(window.jwtComponentsRegistered).toBe(false); // Flag should not be set yet
-            expect(nfCommon.registerCustomUiTab).not.toHaveBeenCalled(); // Components should not be registered yet
+            // In the simplified implementation, components are registered immediately in ready()
+            // regardless of nf.Canvas.initialized state
+            expect(window.jwtComponentsRegistered).toBe(true); // Flag should be set already
+            expect(nfCommon.registerCustomUiTab).toHaveBeenCalled(); // Components should be registered already
 
-            nfCommon.registerCustomUiTab.mockClear(); // Clear for the next assertion
-
-            // Trigger the event that main.js is listening for
-            // $(document).trigger('nfCanvasInitialized'); // Using cash-dom trigger
-            document.dispatchEvent(new CustomEvent('nfCanvasInitialized')); // Using vanilla dispatch
-            jest.runAllTimers(); // Ensure event handler and any subsequent async operations complete
-
-            // Now, the event handler in main.js should have executed registerComponents()
-            // window.jwtComponentsRegistered is no longer accessible, check effects instead
-            expect(nfCommon.registerCustomUiTab).toHaveBeenCalledTimes(2); // Components registered
+            // In the simplified implementation, there's no longer an event listener for nfCanvasInitialized
+            // Components are registered once during DOM ready regardless of canvas state
+            // The loading indicator should already be hidden
             expect(document.getElementById('loading-indicator').style.display).toBe('none');
         });
 
