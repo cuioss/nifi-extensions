@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Main initialization module for NiFi CUIOSS JWT validation UI components.
  *
@@ -22,8 +24,6 @@ import * as issuerConfigEditor from './components/issuerConfigEditor.js';
 import * as i18n from './utils/i18n.js';
 import { initTooltips } from './utils/tooltip.js';
 import { API, CSS, NIFI, UI_TEXT } from './utils/constants.js';
-
-'use strict';
 
 /**
  * Registers JWT validation components with the NiFi UI framework.
@@ -58,6 +58,7 @@ const registerComponents = () => {
         return true;
     } catch (error) {
         // Component registration failed - error logged internally
+        console.debug('JWT UI component registration failed:', error);
         return false;
     }
 };
@@ -91,8 +92,10 @@ const setupHelpTooltips = () => {
             if (helpKey && $(label).find(CSS.SELECTORS.HELP_TOOLTIP).length === 0) {
                 const helpText = nfCommon.getI18n().getProperty(helpKey);
                 if (helpText) {
-                    const tooltip = $(`<span class="${CSS.CLASSES.HELP_TOOLTIP} ` +
-                                        `${CSS.CLASSES.FA} ${CSS.CLASSES.FA_QUESTION_CIRCLE}"></span>`);
+                    const tooltip = $(
+                        `<span class="${CSS.CLASSES.HELP_TOOLTIP} ` +
+                        `${CSS.CLASSES.FA} ${CSS.CLASSES.FA_QUESTION_CIRCLE}"></span>`
+                    );
                     tooltip.attr('title', helpText);
                     $(label).append(tooltip);
                 }
@@ -103,6 +106,7 @@ const setupHelpTooltips = () => {
         initTooltips(CSS.SELECTORS.HELP_TOOLTIP);
     } catch (error) {
         // Help tooltips setup skipped - non-critical
+        console.debug('JWT UI help tooltips setup failed:', error);
     }
 };
 
@@ -174,7 +178,11 @@ const setupDialogHandlers = () => {
     $(document).on('dialogOpen', (_event, data) => {
         const dialogElement = Array.isArray(data) ? data[0] : data;
 
-        if (dialogElement?.classList?.contains(CSS.CLASSES.PROCESSOR_DIALOG)) {
+        const isProcessorDialog = dialogElement?.classList?.contains(
+            CSS.CLASSES.PROCESSOR_DIALOG
+        );
+
+        if (isProcessorDialog) {
             setTimeout(() => {
                 const processorType = dialogElement.querySelector(CSS.SELECTORS.PROCESSOR_TYPE)?.textContent?.trim();
 
@@ -226,6 +234,7 @@ export const init = async () => {
         }, API.TIMEOUTS.UI_FALLBACK_TIMEOUT);
     } catch (error) {
         // JWT UI initialization failed - error handled internally
+        console.debug(error);
         setupUI(); // Always try to show something
     }
 };
@@ -247,6 +256,7 @@ export const cleanup = () => {
         // JWT UI cleanup completed
     } catch (error) {
         // JWT UI cleanup failed - error handled internally
+        console.debug(error);
     }
 };
 

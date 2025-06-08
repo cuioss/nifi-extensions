@@ -51,97 +51,112 @@ This document outlines optional enhancement tasks for the NiFi cuioss UI JavaScr
 == Optional Enhancement Tasks (All Low Priority)
 
 === 1. Complex Logic Simplification
-**Priority**: Low
-**Status**: Optional
 
-**Objective**: Reduce cognitive complexity in remaining complex functions
+*Priority*: Low  
+*Status*: Optional
 
-**Tasks**:
+*Objective*: Reduce cognitive complexity in remaining complex functions
+
+*Tasks:*
+
 * [ ] Simplify error message extraction (`uiErrorDisplay.js:49-57`)
 * [ ] Extract complex conditional logic into strategy functions
 * [ ] Reduce nested if-else chains in remaining files
 * [ ] Implement guard clauses for early returns
 * [ ] Extract utility functions for common operations
 
-**Files Affected**:
+*Files Affected:*
+
 * `uiErrorDisplay.js`
 * `issuerConfigEditor.js`
 * `tokenVerifier.js`
 
-**Note**: This is cosmetic improvement - the current code functions well.
+*Note*: This is cosmetic improvement - the current code functions well.
 
 === 2. Form Field Factory Pattern
-**Priority**: Low
-**Status**: Optional
 
-**Objective**: Extract duplicate form creation logic
+*Priority*: Low  
+*Status*: Optional
 
-**Tasks**:
+*Objective*: Extract duplicate form creation logic
+
+*Tasks:*
+
 * [ ] Create `js/utils/formBuilder.js` module
 * [ ] Extract form creation patterns (`issuerConfigEditor.js:461-486`)
 * [ ] Create reusable `createFormField()` factory
 * [ ] Standardize form validation patterns
 * [ ] Create form field type definitions
 
-**Files Affected**:
+*Files Affected:*
+
 * `issuerConfigEditor.js`
 * `tokenVerifier.js`
 
-**Note**: May be unnecessary after Task 3 simplification already completed.
+*Note*: May be unnecessary after Task 3 simplification already completed.
 
 === 3. Hardcoded Dependencies Extraction
-**Priority**: Low
-**Status**: Optional
 
-**Objective**: Remove hardcoded service dependencies
+*Priority*: Low  
+*Status*: Optional
 
-**Tasks**:
+*Objective*: Remove hardcoded service dependencies
+
+*Tasks:*
+
 * [ ] Extract API endpoint configuration (some already in `constants.js`)
 * [ ] Remove hardcoded CSS selectors
 * [ ] Create dependency registry system
 * [ ] Implement configuration injection
 * [ ] Add environment-specific configurations
 
-**Files Affected**:
+*Files Affected:*
+
 * `apiClient.js`
 * All component files
 
-**Note**: Current hardcoded values are appropriate for this specific NiFi integration.
+*Note*: Current hardcoded values are appropriate for this specific NiFi integration.
 
 === 4. JSDoc Enhancement
-**Priority**: Low
-**Status**: Optional
 
-**Objective**: Complete API documentation
+*Priority*: Low  
+*Status*: Optional
 
-**Tasks**:
+*Objective*: Complete API documentation
+
+*Tasks:*
+
 * [ ] Add JSDoc comments to all public functions
 * [ ] Document parameter types and return values
 * [ ] Add usage examples for complex functions
 * [ ] Document component interfaces
 * [ ] Add @throws documentation for error cases
 
-**Files Affected**:
+*Files Affected:*
+
 * All JavaScript files
 
-**Note**: Current inline comments are sufficient for maintenance.
+*Note*: Current inline comments are sufficient for maintenance.
 
 === 5. Test Coverage Configuration Cleanup
-**Priority**: Low
-**Status**: Optional (from Task 2 Phase 3)
 
-**Objective**: Fine-tune coverage configuration
+*Priority*: Low  
+*Status*: Optional (from Task 2 Phase 3)
 
-**Tasks**:
+*Objective*: Fine-tune coverage configuration
+
+*Tasks:*
+
 * [ ] Exclude `formatters.js` from coverage requirements (testing-only code)
 * [ ] Update coverage thresholds to realistic targets based on production code
 * [ ] Configure coverage to ignore test-only utility files
 
-**Files Affected**:
+*Files Affected:*
+
 * `package.json` jest configuration
 * Coverage reporting configuration
 
-**Note**: Current 90%+ coverage already exceeds all targets.
+*Note*: Current 90%+ coverage already exceeds all targets.
 
 == Quality Standards Maintained
 

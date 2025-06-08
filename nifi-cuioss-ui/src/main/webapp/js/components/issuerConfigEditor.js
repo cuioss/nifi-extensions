@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Custom UI component for configuring IssuerConfig properties.
  * This component provides a user-friendly interface for creating and managing
@@ -12,8 +14,6 @@ import { validateProcessorIdFromUrl, validateIssuerConfig } from '../utils/valid
 // Removed domCache.js dependency - using direct DOM queries for better performance and simplicity
 import { FormFieldBuilder } from '../utils/domBuilder.js';
 import { ComponentLifecycle, managedSetTimeout } from '../utils/componentCleanup.js';
-
-'use strict';
 
 // Get i18n resources from NiFi Common
 const i18n = _nfCommon.getI18n() || {};
@@ -102,7 +102,7 @@ const _parseIssuerProperties = (properties) => {
  * @returns {string} Trimmed value or empty string if element not found
  */
 const _extractFieldValue = (elementArray) => {
-    return elementArray && elementArray[0] && elementArray[0].value ? elementArray[0].value.trim() : '';
+    return elementArray?.[0]?.value?.trim() || '';
 };
 
 /**
@@ -246,7 +246,7 @@ const loadExistingIssuers = async ($container, processorId) => {
             addIssuerForm($container, issuerName, issuerProperties[issuerName], processorId);
         });
     } catch (error) {
-        // Fallback to sample configuration on any error
+        console.debug(error);
         const sampleConfig = _getSampleIssuerConfig();
         addIssuerForm($container, sampleConfig.name, sampleConfig.properties, processorId);
     }
@@ -586,7 +586,7 @@ const _saveIssuerToServer = async (processorId, issuerName, updates, $errorConta
         $errorContainer.html(_createSuccessMessage(i18n['issuerConfigEditor.success.saved'] || 'Issuer configuration saved successfully.'));
 
         // Use managed timeout for automatic cleanup
-        if (componentLifecycle && componentLifecycle.isComponentInitialized()) {
+        if (componentLifecycle?.isComponentInitialized()) {
             componentLifecycle.setTimeout(() => $errorContainer.empty(), 5000);
         } else {
             managedSetTimeout('issuer-config-editor', () => $errorContainer.empty(), 5000);
@@ -604,7 +604,7 @@ const _saveIssuerStandalone = ($errorContainer) => {
     $errorContainer.html(_createSuccessMessage(i18n['issuerConfigEditor.success.savedStandalone'] || 'Issuer configuration saved successfully (standalone mode).'));
 
     // Use managed timeout for automatic cleanup
-    if (componentLifecycle && componentLifecycle.isComponentInitialized()) {
+    if (componentLifecycle?.isComponentInitialized()) {
         componentLifecycle.setTimeout(() => $errorContainer.empty(), 5000);
     } else {
         managedSetTimeout('issuer-config-editor', () => $errorContainer.empty(), 5000);
@@ -675,7 +675,7 @@ const _displayRemovalSuccess = ($globalErrorContainer, issuerName, isStandalone 
     $globalErrorContainer.show();
 
     // Use managed timeout for automatic cleanup
-    if (componentLifecycle && componentLifecycle.isComponentInitialized()) {
+    if (componentLifecycle?.isComponentInitialized()) {
         componentLifecycle.setTimeout(() => {
             $globalErrorContainer.empty();
             $globalErrorContainer.hide();
@@ -842,6 +842,7 @@ export const init = async (element, callback, currentTestUrlFromArg) => {
         // Execute callback on success
         _executeCallback(callback);
     } catch (e) {
+        console.debug(e);
         // Execute callback on error to maintain contract
         _executeCallback(callback);
     }

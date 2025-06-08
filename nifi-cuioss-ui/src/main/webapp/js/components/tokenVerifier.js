@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Token Verification Interface UI component.
  */
@@ -5,8 +7,6 @@ import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
 import { getIsLocalhost, setIsLocalhostForTesting, API, CSS } from '../utils/constants.js';
-
-'use strict';
 
 /**
  * Initialize the custom UI with standardized error handling and async patterns.
@@ -21,7 +21,6 @@ export const init = async (element, _config, _type, callback) => {
     try {
         await _initializeTokenVerifier(element, callback);
     } catch (error) {
-        console.error('Error initializing token verifier:', error);
         // Still call callback to maintain contract, even on error
         if (typeof callback === 'function') {
             callback({
@@ -55,8 +54,9 @@ const _initializeTokenVerifier = async (element, callback) => {
     const $inputSection = $(`<div class="${CSS.TOKEN_VERIFIER.INPUT_SECTION}"></div>`);
     const $inputLabel = $('<label for="token-input"></label>')
         .text(i18n['processor.jwt.tokenInput'] || 'Enter Token:');
-    const $tokenInput = $(`<textarea id="token-input" class="${CSS.TOKEN_VERIFIER.TOKEN_INPUT}" rows="5"></textarea>`)
-        .attr('placeholder', i18n['processor.jwt.tokenInputPlaceholder'] || 'Paste token here...');
+    const $tokenInput = $(
+        `<textarea id="token-input" class="${CSS.TOKEN_VERIFIER.TOKEN_INPUT}" rows="5"></textarea>`
+    ).attr('placeholder', i18n['processor.jwt.tokenInputPlaceholder'] || 'Paste token here...');
     const $verifyButton = $(`<button type="button" class="${CSS.TOKEN_VERIFIER.VERIFY_BUTTON}"></button>`)
         .text(i18n['processor.jwt.verifyToken'] || 'Verify Token');
 
@@ -130,7 +130,7 @@ const _initializeTokenVerifier = async (element, callback) => {
 
         const html = `
             <div class="${CSS.TOKEN_VERIFIER.TOKEN_VALID}">
-                <span class="fa fa-check-circle"></span> 
+                <span class="fa fa-check-circle"></span>
                 ${i18n['processor.jwt.tokenValid'] || 'Token is valid'}${simulatedText}
             </div>
             <div class="${CSS.TOKEN_VERIFIER.TOKEN_DETAILS}">
@@ -175,13 +175,19 @@ const _initializeTokenVerifier = async (element, callback) => {
 const _resetUIAndShowLoading = ($resultsContent, i18n) => {
     $resultsContent.html(`
         <div class="${CSS.TOKEN_VERIFIER.TOKEN_LOADING}">
-            <span class="fa fa-spinner fa-spin"></span> 
+            <span class="fa fa-spinner fa-spin"></span>
             ${i18n['processor.jwt.verifying'] || 'Verifying token...'}
         </div>
     `);
 };
 
-const _handleTokenVerificationResponse = (responseData, $resultsContent, i18n, displayValidTokenFunc, displayInvalidTokenFunc) => {
+const _handleTokenVerificationResponse = (
+    responseData,
+    $resultsContent,
+    i18n,
+    displayValidTokenFunc,
+    displayInvalidTokenFunc
+) => {
     if (responseData.valid) {
         displayValidTokenFunc(responseData, false); // isSimulated is false for actual responses
     } else {
@@ -203,6 +209,7 @@ const _extractErrorMessageFromXHR = (jqXHR) => {
             const errorJson = JSON.parse(jqXHR.responseText);
             errorMessage = errorJson?.message || errorMessage;
         } catch (e) {
+            console.debug(e);
             errorMessage = jqXHR.responseText || errorMessage;
         }
     }
@@ -283,7 +290,12 @@ const _handleTokenVerificationAjaxError = (jqXHR, $resultsContent, i18n, display
  * @param {object} i18n - Internationalization object
  * @param {Function} displayValidTokenFunc - Function to display valid token
  */
-const _handleTokenVerificationSyncException = (exception, $resultsContent, i18n, displayValidTokenFunc) => {
+const _handleTokenVerificationSyncException = (
+    exception,
+    $resultsContent,
+    i18n,
+    displayValidTokenFunc
+) => {
     // Sanitize exception message for potential future use
     _sanitizeErrorMessage(exception.message, i18n);
 
@@ -303,7 +315,6 @@ const _handleTokenVerificationSyncException = (exception, $resultsContent, i18n,
 export const cleanup = () => {
     // Reset localhost override for testing
     setIsLocalhostForTesting(null);
-    console.debug('Token verifier cleanup completed');
 };
 
 export const __setIsLocalhostForTesting = function (value) {

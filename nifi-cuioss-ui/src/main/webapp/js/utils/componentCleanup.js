@@ -59,7 +59,7 @@ export class ComponentLifecycle {
             }
             this.initialized = true;
         } catch (error) {
-            console.error(`Component ${this.componentId} initialization failed:`, error);
+            console.debug(error);
         }
     }
 
@@ -131,7 +131,7 @@ export const cleanupComponent = (componentId) => {
             try {
                 fn();
             } catch (error) {
-                console.debug('Cleanup function failed:', error);
+                console.debug(error);
             }
         });
         cleanupFns.clear();
@@ -148,7 +148,7 @@ export const cleanupAll = () => {
             try {
                 fn();
             } catch (error) {
-                console.debug('Cleanup function failed:', error);
+                console.debug(error);
             }
         });
         cleanupFns.clear();

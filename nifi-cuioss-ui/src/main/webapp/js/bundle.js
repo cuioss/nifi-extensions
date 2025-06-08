@@ -4,9 +4,9 @@
  * It delegates to main.js for the actual component registration to avoid duplication.
  */
 
-import * as main from 'js/main';
-
 'use strict';
+
+import * as main from 'js/main';
 
 export const init = function () {
     // Initialize the main module if it's available and components haven't been registered yet

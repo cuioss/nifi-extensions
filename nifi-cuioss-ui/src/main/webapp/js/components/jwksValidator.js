@@ -19,7 +19,6 @@ export const init = async (element, propertyValue, jwks_type, callback) => {
     try {
         await _initializeJwksValidator(element, propertyValue, jwks_type, callback);
     } catch (error) {
-        console.error('Error initializing JWKS validator:', error);
         // Still call callback to maintain contract, even on error
         callback?.({
             validate: () => false,
@@ -121,8 +120,8 @@ const _handleAjaxSuccess = (responseData, $resultContainer, i18n) => {
         $resultContainer.html(`
             <span style="color: var(--success-color); font-weight: bold;">
                 ${i18n['processor.jwt.ok'] || 'OK'}
-            </span> 
-            ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} 
+            </span>
+            ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'}
             (${responseData.keyCount} ${i18n['processor.jwt.keysFound'] || 'keys found'})
         `);
     } else {
@@ -136,9 +135,9 @@ const _handleAjaxError = (jqXHR, $resultContainer, i18n) => {
         $resultContainer.html(`
             <span style="color: var(--success-color); font-weight: bold;">
                 ${i18n['processor.jwt.ok'] || 'OK'}
-            </span> 
-            ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} 
-            (3 ${i18n['processor.jwt.keysFound'] || 'keys found'}) 
+            </span>
+            ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'}
+            (3 ${i18n['processor.jwt.keysFound'] || 'keys found'})
             <em>(Simulated response)</em>
         `);
     } else {
@@ -152,9 +151,9 @@ const _handleSynchronousError = (exception, $resultContainer, i18n) => {
         $resultContainer.html(`
             <span style="color: var(--success-color); font-weight: bold;">
                 ${i18n['processor.jwt.ok'] || 'OK'}
-            </span> 
-            ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'} 
-            (3 ${i18n['processor.jwt.keysFound'] || 'keys found'}) 
+            </span>
+            ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'}
+            (3 ${i18n['processor.jwt.keysFound'] || 'keys found'})
             <em>(Simulated response)</em>
         `);
     } else {
@@ -169,7 +168,6 @@ const _handleSynchronousError = (exception, $resultContainer, i18n) => {
 export const cleanup = () => {
     // Reset localhost override for testing
     setIsLocalhostForTesting(null);
-    console.debug('JWKS validator cleanup completed');
 };
 
 // Function for testing purposes only to control the isLocalhost behavior
