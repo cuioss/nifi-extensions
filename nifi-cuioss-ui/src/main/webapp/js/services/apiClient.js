@@ -9,11 +9,10 @@
  * @author CUIOSS Team
  * @since 1.0.0
  */
+'use strict';
 import $ from 'cash-dom';
 import { API } from '../utils/constants.js';
 import { createXhrErrorObject } from '../utils/errorHandler.js';
-
-'use strict';
 
 const BASE_URL = API.BASE_URL;
 
