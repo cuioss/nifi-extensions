@@ -3,10 +3,9 @@
  * This file is responsible for loading and initializing the custom UI components.
  * It delegates to main.js for the actual component registration to avoid duplication.
  */
-// import $ from './utils/jquery-compat.js'; // Removed as it's unused in this file
-import * as main from 'js/main'; // Assuming 'js/main' resolves correctly
 
-'use strict'; // Keep 'use strict'
+'use strict';
+import * as main from 'js/main'; // Assuming 'js/main' resolves correctly
 
 // Initialize when the document is ready
 document.addEventListener('DOMContentLoaded', () => {

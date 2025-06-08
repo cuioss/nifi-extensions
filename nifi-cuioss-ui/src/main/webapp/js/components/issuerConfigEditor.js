@@ -10,8 +10,7 @@ import * as _nfCommon from 'nf.Common';
 import * as apiClient from '../services/apiClient.js';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
 import { API, COMPONENTS, getIsLocalhost } from '../utils/constants.js';
-import { validateProcessorIdFromUrl, validateIssuerConfig } from '../utils/validation.js';
-// Removed domCache.js dependency - using direct DOM queries for better performance and simplicity
+import { validateIssuerConfig, validateProcessorIdFromUrl } from '../utils/validation.js';
 import { FormFieldBuilder } from '../utils/domBuilder.js';
 import { ComponentLifecycle, managedSetTimeout } from '../utils/componentCleanup.js';
 
@@ -59,9 +58,8 @@ const _createJwksSuccessMessage = (keyCount, isSimulated = false) => {
     const keysFoundText = i18n['processor.jwt.keysFound'] || 'keys found';
     const simulatedText = isSimulated ? ' <em>(Simulated response)</em>' : '';
 
-    const message = `${_createSuccessMessage(okText)} ${validJwksText} ` +
+    return `${_createSuccessMessage(okText)} ${validJwksText} ` +
         `(${keyCount} ${keysFoundText})${simulatedText}`;
-    return message;
 };
 
 // Localhost detection now handled by centralized utility in constants.js

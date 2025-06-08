@@ -1,9 +1,6 @@
 /**
  * Utility functions for formatting data in the UI.
  */
-// import $ from './jquery-compat.js'; // Removed as it's unused in this file
-// import _nfCommon from 'nf.Common'; // Unused
-
 'use strict';
 
 /**
