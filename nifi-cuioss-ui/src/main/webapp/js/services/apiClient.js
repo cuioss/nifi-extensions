@@ -1,6 +1,6 @@
 /**
- * API Client for JWT Token Validation.
- * Provides methods for interacting with the backend REST API.
+ * Simple API Client - replaces 165 lines of mixed Promise/callback patterns.
+ * Standardizes on Promise-based API for consistency.
  */
 import $ from 'cash-dom';
 import { API } from '../utils/constants.js';
@@ -8,158 +8,135 @@ import { createXhrErrorObject, createApiClientCallbackErrorHandler } from '../ut
 
 'use strict';
 
-
-/**
-     * Base URL for API endpoints.
-     */
 const BASE_URL = API.BASE_URL;
 
 /**
- * Validates a JWKS URL.
- *
- * @param {string} jwksUrl - The JWKS URL to validate
- * @return {Promise} A Promise object for the request
+ * Generic API call helper - eliminates duplicate AJAX setup.
+ * @param {string} method - HTTP method
+ * @param {string} endpoint - API endpoint 
+ * @param {Object} data - Request data
+ * @returns {Promise} AJAX promise
  */
-export const validateJwksUrl = (jwksUrl) => {
-    return $.ajax({
-        method: 'POST',
-        url: `${BASE_URL}/validate-jwks-url`,
-        data: JSON.stringify({ jwksUrl }),
-        contentType: 'application/json',
+const apiCall = (method, endpoint, data = null) => {
+    const config = {
+        method,
+        url: endpoint,
         dataType: 'json',
         timeout: API.TIMEOUTS.DEFAULT
-    }).catch(error => {
-        throw createXhrErrorObject(error);
-    });
+    };
+    
+    if (data) {
+        config.data = JSON.stringify(data);
+        config.contentType = 'application/json';
+    }
+    
+    return $.ajax(config);
+};
+
+/**
+ * Validates a JWKS URL.
+ * @param {string} jwksUrl - The JWKS URL to validate
+ * @returns {Promise} Promise for the request
+ */
+export const validateJwksUrl = (jwksUrl) => {
+    return apiCall('POST', `${BASE_URL}/validate-jwks-url`, { jwksUrl })
+        .catch(error => { throw createXhrErrorObject(error); });
 };
 
 /**
  * Validates a JWKS file.
- *
  * @param {string} filePath - The path to the JWKS file
- * @return {Promise} A Promise object for the request
+ * @returns {Promise} Promise for the request
  */
 export const validateJwksFile = (filePath) => {
-    return $.ajax({
-        method: 'POST',
-        url: `${BASE_URL}/validate-jwks-file`,
-        data: JSON.stringify({ filePath }),
-        contentType: 'application/json',
-        dataType: 'json',
-        timeout: API.TIMEOUTS.DEFAULT
-    }).catch(error => {
-        throw createXhrErrorObject(error);
-    });
+    return apiCall('POST', `${BASE_URL}/validate-jwks-file`, { filePath })
+        .catch(error => { throw createXhrErrorObject(error); });
 };
 
 /**
- * Validates JWKS content.
- *
+ * Validates JWKS content - supports both Promise and callback patterns.
  * @param {string} jwksContent - The JWKS content to validate
- * @param {Function} successCallback - The callback to invoke on success
- * @param {Function} errorCallback - The callback to invoke on error
+ * @param {Function} [successCallback] - Success callback (optional)
+ * @param {Function} [errorCallback] - Error callback (optional)
+ * @returns {Promise} Promise for the request (if no callbacks provided)
  */
 export const validateJwksContent = (jwksContent, successCallback, errorCallback) => {
-    $.ajax({
-        method: 'POST',
-        url: `${BASE_URL}/validate-jwks-content`,
-        data: JSON.stringify({ jwksContent }),
-        contentType: 'application/json',
-        dataType: 'json',
-        timeout: API.TIMEOUTS.DEFAULT
-    })
-        .then(data => successCallback?.(data))
-        .catch(createApiClientCallbackErrorHandler(errorCallback));
+    const promise = apiCall('POST', `${BASE_URL}/validate-jwks-content`, { jwksContent });
+    
+    if (successCallback || errorCallback) {
+        promise
+            .then(data => successCallback?.(data))
+            .catch(createApiClientCallbackErrorHandler(errorCallback));
+        return;
+    }
+    
+    return promise;
 };
 
 /**
- * Verifies a JWT token.
- *
+ * Verifies a JWT token - supports both Promise and callback patterns.
  * @param {string} token - The JWT token to verify
- * @param {Function} successCallback - The callback to invoke on success
- * @param {Function} errorCallback - The callback to invoke on error
+ * @param {Function} [successCallback] - Success callback (optional)
+ * @param {Function} [errorCallback] - Error callback (optional)
+ * @returns {Promise} Promise for the request (if no callbacks provided)
  */
 export const verifyToken = (token, successCallback, errorCallback) => {
-    $.ajax({
-        method: 'POST',
-        url: `${BASE_URL}/verify-token`,
-        data: JSON.stringify({ token }),
-        contentType: 'application/json',
-        dataType: 'json',
-        timeout: API.TIMEOUTS.DEFAULT
-    })
-        .then(data => successCallback?.(data))
-        .catch(createApiClientCallbackErrorHandler(errorCallback));
+    const promise = apiCall('POST', `${BASE_URL}/verify-token`, { token });
+    
+    if (successCallback || errorCallback) {
+        promise
+            .then(data => successCallback?.(data))
+            .catch(createApiClientCallbackErrorHandler(errorCallback));
+        return;
+    }
+    
+    return promise;
 };
 
 /**
- * Gets security metrics.
- *
- * @param {Function} successCallback - The callback to invoke on success
- * @param {Function} errorCallback - The callback to invoke on error
+ * Gets security metrics - supports both Promise and callback patterns.
+ * @param {Function} [successCallback] - Success callback (optional)
+ * @param {Function} [errorCallback] - Error callback (optional)
+ * @returns {Promise} Promise for the request (if no callbacks provided)
  */
 export const getSecurityMetrics = (successCallback, errorCallback) => {
-    $.ajax({
-        method: 'GET',
-        url: `${BASE_URL}/metrics`,
-        dataType: 'json',
-        timeout: API.TIMEOUTS.DEFAULT
-    })
-        .then(data => successCallback?.(data))
-        .catch(createApiClientCallbackErrorHandler(errorCallback));
+    const promise = apiCall('GET', `${BASE_URL}/metrics`);
+    
+    if (successCallback || errorCallback) {
+        promise
+            .then(data => successCallback?.(data))
+            .catch(createApiClientCallbackErrorHandler(errorCallback));
+        return;
+    }
+    
+    return promise;
 };
 
 /**
  * Gets processor properties.
- *
  * @param {string} processorId - The ID of the processor
- * @return {Promise} A Promise object for the request
+ * @returns {Promise} Promise for the request
  */
 export const getProcessorProperties = (processorId) => {
-    return $.ajax({
-        method: 'GET',
-        url: `../nifi-api/processors/${processorId}`,
-        dataType: 'json',
-        timeout: API.TIMEOUTS.DEFAULT
-    });
-    // $.ajax returns a promise-like object.
-    // The .then callback will receive the parsed JSON data directly.
-    // The .catch callback will receive the jqXHR object.
+    return apiCall('GET', `../nifi-api/processors/${processorId}`);
 };
 
 /**
- * Updates processor properties.
- *
+ * Updates processor properties - simplified error handling.
  * @param {string} processorId - The ID of the processor
  * @param {Object} properties - The properties to update
- * @return {Promise} A Promise object for the request
+ * @returns {Promise} Promise for the request
  */
 export const updateProcessorProperties = (processorId, properties) => {
-    // First, get the current processor configuration
-    return $.ajax({
-        method: 'GET',
-        url: `../nifi-api/processors/${processorId}`,
-        dataType: 'json',
-        timeout: API.TIMEOUTS.DEFAULT
-    }).then(processor => { // data from GET is the processor object
-        // Create the update request using destructuring
-        const { revision } = processor;
+    return getProcessorProperties(processorId).then(processor => {
         const updateRequest = {
-            revision,
+            revision: processor.revision,
             component: {
                 id: processorId,
                 properties
             }
         };
-
-        // Send the update request
-        return $.ajax({
-            method: 'PUT',
-            url: `../nifi-api/processors/${processorId}`,
-            data: JSON.stringify(updateRequest),
-            contentType: 'application/json',
-            dataType: 'json',
-            timeout: API.TIMEOUTS.DEFAULT
-        });
+        
+        return apiCall('PUT', `../nifi-api/processors/${processorId}`, updateRequest);
     });
 };
