@@ -9,7 +9,7 @@ import * as apiClient from '../services/apiClient.js';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
 import { API, COMPONENTS } from '../utils/constants.js';
 import { validateProcessorIdFromUrl, validateIssuerConfig } from '../utils/validation.js';
-import { GlobalElementCache, FormFieldCache } from '../utils/domCache.js';
+// Removed domCache.js dependency - using direct DOM queries for better performance and simplicity
 import { FormFieldBuilder } from '../utils/domBuilder.js';
 import { ComponentLifecycle, managedSetTimeout } from '../utils/componentCleanup.js';
 
@@ -118,23 +118,39 @@ const _extractFieldValue = (elementArray) => {
 };
 
 /**
- * Extracts form field values from a cash-dom form object using optimized caching.
- * Uses FormFieldCache for efficient field access.
+ * Extracts form field values from a cash-dom form object using direct DOM queries.
+ * Simplified from domCache approach for better performance and maintainability.
  *
  * @param {object} $form - Cash-dom wrapped form element
  * @returns {object} Object containing all form field values
  */
 const _extractFormFields = ($form) => {
-    const fieldCache = new FormFieldCache($form);
-    return fieldCache.extractValues();
+    // Helper function to safely extract field value from cash-dom element
+    const _extractSingleFieldValue = ($field) => {
+        if (!$field || $field.length === 0) return '';
+        if (typeof $field.val === 'function') {
+            return $field.val()?.trim() || '';
+        }
+        // Fallback for direct DOM element access
+        return $field[0]?.value?.trim() || '';
+    };
+
+    return {
+        issuerName: _extractSingleFieldValue($form.find('.issuer-name')),
+        issuer: _extractSingleFieldValue($form.find('.field-issuer')),
+        'jwks-url': _extractSingleFieldValue($form.find('.field-jwks-url')),
+        audience: _extractSingleFieldValue($form.find('.field-audience')),
+        'client-id': _extractSingleFieldValue($form.find('.field-client-id'))
+    };
 };
 
 /**
- * Finds the global error container for displaying removal errors using caching.
+ * Finds the global error container for displaying removal errors.
+ * Simplified from domCache approach for better performance and maintainability.
  * @returns {cash|null} The global error container or null if not found
  */
 const _findGlobalErrorContainer = () => {
-    return GlobalElementCache.getGlobalErrorContainer();
+    return $('.global-error-messages');
 };
 
 /**
