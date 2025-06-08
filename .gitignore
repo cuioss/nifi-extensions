@@ -16,3 +16,4 @@
 # Jest log files
 jest_stderr.log
 jest_stdout.log
+/CLAUDE.md
