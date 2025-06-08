@@ -79,7 +79,66 @@ This document outlines the remaining refactoring tasks for the NiFi cuioss UI Ja
 * **Tests**: ✅ All existing tests maintain compatibility (improved from 227 to 230 passing)
 * **Risk**: ✅ No production functionality affected
 
-=== 2. Complex Logic Simplification
+=== 2. Test Coverage Strategy for 80% Goal
+**Priority**: High
+
+**Objective**: Achieve 80% test coverage across all metrics through strategic targeting
+
+**Current Status**: 
+- Statements: 66.63% → Target: 80%
+- Branches: 57.36% → Target: 80%
+- Functions: 61.42% → Target: 80%
+- Lines: 66.85% → Target: 80%
+
+**Strategic Analysis**:
+
+**High-Impact, Low-Effort Targets** (Used in production, poor coverage):
+* `componentManager.js` - 13.84% coverage, critical component lifecycle code
+* `componentCleanup.js` - 36.71% coverage, memory management utilities
+* `domBuilder.js` - 26.05% coverage, form building utilities
+* `domCache.js` - 44.73% coverage, performance optimization utilities
+
+**Medium-Impact Targets** (Used in production, moderate coverage):
+* `main.js` - 75.7% coverage, missing error paths and edge cases
+* `issuerConfigEditor.js` - 88.05% coverage, missing validation edge cases
+* `validation.js` - 78.7% coverage, missing error conditions
+
+**Legacy/Testing-Only Code** (Can be excluded from coverage targets):
+* `formatters.js` - Testing-only utility functions, not imported by production code
+
+**Tasks**:
+
+* [ ] **Phase 1 - Critical Infrastructure** (Priority: Highest)
+  - [ ] Create targeted tests for `componentManager.js` core lifecycle methods
+  - [ ] Add tests for `componentCleanup.js` cleanup and memory management
+  - [ ] Test `domBuilder.js` form creation and validation integration
+  - [ ] Cover `domCache.js` caching and performance optimizations
+
+* [ ] **Phase 2 - Edge Cases** (Priority: High)
+  - [ ] Add error path tests for `main.js` initialization failures
+  - [ ] Test validation edge cases in `validation.js` (malformed inputs, edge lengths)
+  - [ ] Cover remaining error scenarios in `issuerConfigEditor.js`
+
+* [ ] **Phase 3 - Configuration** (Priority: Medium)
+  - [ ] Exclude `formatters.js` from coverage requirements (testing-only code)
+  - [ ] Update coverage thresholds to realistic targets based on production code
+
+**Implementation Strategy**:
+1. Focus on simple, high-coverage utility functions first
+2. Mock complex dependencies (DOM, timers, network) for isolated testing
+3. Use jest.spyOn for testing cleanup and lifecycle methods
+4. Target specific uncovered line numbers identified in coverage report
+
+**Files Affected**:
+* `src/test/js/utils/componentManager.test.js` (new)
+* `src/test/js/utils/componentCleanup.test.js` (new)
+* `src/test/js/utils/domBuilder.test.js` (new)
+* `src/test/js/utils/domCache.test.js` (new)
+* `src/test/js/main.test.js` (enhance existing)
+* `src/test/js/utils/validation.test.js` (enhance existing)
+* Coverage configuration to exclude testing-only code
+
+=== 3. Complex Logic Simplification
 **Priority**: Medium
 
 **Objective**: Reduce cognitive complexity
@@ -98,7 +157,7 @@ This document outlines the remaining refactoring tasks for the NiFi cuioss UI Ja
 * `issuerConfigEditor.js`
 * `tokenVerifier.js`
 
-=== 3. Form Field Factory Pattern
+=== 4. Form Field Factory Pattern
 **Priority**: Low
 
 **Objective**: Extract duplicate form creation logic
@@ -116,7 +175,7 @@ This document outlines the remaining refactoring tasks for the NiFi cuioss UI Ja
 * `issuerConfigEditor.js`
 * `tokenVerifier.js`
 
-=== 4. Hardcoded Dependencies Extraction
+=== 5. Hardcoded Dependencies Extraction
 **Priority**: Low
 
 **Objective**: Remove hardcoded service dependencies
@@ -134,7 +193,7 @@ This document outlines the remaining refactoring tasks for the NiFi cuioss UI Ja
 * `apiClient.js`
 * All component files
 
-=== 5. JSDoc Enhancement
+=== 6. JSDoc Enhancement
 **Priority**: Low
 
 **Objective**: Complete API documentation
