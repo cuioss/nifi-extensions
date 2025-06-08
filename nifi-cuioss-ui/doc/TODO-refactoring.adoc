@@ -149,7 +149,59 @@ This document outlines the remaining refactoring tasks for the NiFi cuioss UI Ja
 - **Code Reduction**: 272 lines eliminated by removing unnecessary domCache.js complexity
 - **🎯 SUCCESS**: Statements 84.09% (Target: 80%), Lines 84.38% (Target: 80%)
 
-=== 3. Complex Logic Simplification
+=== 3. Over-Engineering Simplification ⚠️
+**Priority**: High
+
+**Objective**: Eliminate unnecessary complexity for simple 3-tab form UI
+
+**Analysis**: Research identified significant over-engineering patterns that add ~60% unnecessary code complexity for what is essentially a simple form-based UI with 3 tabs.
+
+**Tasks**:
+
+* [ ] **Replace ComponentManager.js** (420 lines → ~20 lines)
+  - Complex registration system with retry logic overkill for 3 simple UI tabs
+  - Sophisticated error handling and exponential backoff unnecessary
+  - Global state tracking with Promise chains can be direct function calls
+  - Replace with simple `nfCommon.registerCustomUiTab()` calls
+
+* [ ] **Simplify ComponentCleanup.js** (413 lines → ~30 lines)
+  - Multiple registries (Map objects) for resource tracking excessive
+  - `ManagedEventListener` and `ComponentLifecycle` classes overkill
+  - Replace with simple Set-based timeout/interval tracking
+  - Most cleanup unnecessary for session-lifetime components
+
+* [ ] **Replace DOMBuilder.js** (417 lines → ~50 lines)
+  - Builder patterns with method chaining overkill for simple forms
+  - Specialized builders (`FormFieldBuilder`, `TokenTableBuilder`) unnecessary
+  - DocumentFragment optimization not needed for small DOM updates
+  - Replace with simple `createElement()` helper functions
+
+* [ ] **Streamline Main.js** (345 lines → ~50 lines)
+  - Complex async initialization with fallback strategies overkill
+  - Sophisticated error boundaries and timeout management excessive
+  - Replace with simple component registration and error logging
+
+* [ ] **Simplify ApiClient.js** (166 lines → ~60 lines)
+  - Mixed Promise/callback patterns create inconsistency
+  - Complex error handling wrappers can be simplified
+  - Standardize on Promise-based API calls
+
+**Expected Benefits**:
+- **Reduce codebase by ~60%** (~1,400 lines → ~600 lines)
+- **Improve maintainability** - less complexity to understand and debug
+- **Better performance** - eliminate unnecessary abstractions
+- **Easier testing** - simpler functions are easier to unit test
+
+**Files Affected**:
+* `componentManager.js` - Replace with simple initialization
+* `componentCleanup.js` - Replace with basic resource tracking
+* `domBuilder.js` - Replace with simple DOM helpers
+* `main.js` - Streamline initialization logic
+* `apiClient.js` - Standardize Promise patterns
+
+**Note**: Keep `constants.js`, `validation.js`, `i18n.js`, and `errorHandler.js` as-is (appropriately designed).
+
+=== 4. Complex Logic Simplification
 **Priority**: Medium
 
 **Objective**: Reduce cognitive complexity
@@ -168,10 +220,10 @@ This document outlines the remaining refactoring tasks for the NiFi cuioss UI Ja
 * `issuerConfigEditor.js`
 * `tokenVerifier.js`
 
-=== 4. Form Field Factory Pattern
+=== 5. Form Field Factory Pattern
 **Priority**: Low
 
-**Objective**: Extract duplicate form creation logic
+**Objective**: Extract duplicate form creation logic (Note: May be unnecessary after Task 3 simplification)
 
 **Tasks**:
 
@@ -186,7 +238,7 @@ This document outlines the remaining refactoring tasks for the NiFi cuioss UI Ja
 * `issuerConfigEditor.js`
 * `tokenVerifier.js`
 
-=== 5. Hardcoded Dependencies Extraction
+=== 6. Hardcoded Dependencies Extraction
 **Priority**: Low
 
 **Objective**: Remove hardcoded service dependencies
@@ -204,7 +256,7 @@ This document outlines the remaining refactoring tasks for the NiFi cuioss UI Ja
 * `apiClient.js`
 * All component files
 
-=== 6. JSDoc Enhancement
+=== 7. JSDoc Enhancement
 **Priority**: Low
 
 **Objective**: Complete API documentation
@@ -310,7 +362,13 @@ This document outlines the remaining refactoring tasks for the NiFi cuioss UI Ja
 2. **✅ Task 2 Complete** (Test Coverage Strategy) - **80% COVERAGE GOAL ACHIEVED** ✅
    - ✅ Phase 1 Complete (Critical Infrastructure)
    - ✅ Phase 2 Complete (Edge Cases & domCache analysis)
-3. **Optional: Task 2 Phase 3** (Configuration cleanup) - for further optimization
-4. **Enhancement tasks 3-5** can be done as needed or time permits
+3. **🚨 Task 3 HIGH PRIORITY** (Over-Engineering Simplification) - **NEWLY IDENTIFIED**
+   - Reduce codebase by ~60% (1,400+ lines → ~600 lines)
+   - Eliminate unnecessary complexity for simple 3-tab form UI
+   - Replace complex patterns with simple, maintainable code
+4. **Optional: Task 2 Phase 3** (Configuration cleanup) - for further optimization
+5. **Enhancement tasks 4-7** can be done as needed or time permits
 
 **🎯 MAJOR SUCCESS: The codebase now has excellent test coverage (84.09% statements, 84.38% lines) exceeding the 80% target. The strategic coverage plan was highly successful, adding 75+ tests while eliminating 272 lines of unnecessary complexity.**
+
+**🚨 NEW PRIORITY: Research identified significant over-engineering in ComponentManager, ComponentCleanup, DOMBuilder, and Main.js - implementing enterprise patterns for a simple 3-tab form UI. Task 3 offers potential 60% code reduction opportunity.**
