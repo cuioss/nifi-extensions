@@ -1,18 +1,48 @@
 /**
  * Unified AJAX error handling utilities for the NiFi CUIOSS UI components.
+ *
  * This module provides standardized error handling patterns and eliminates
- * duplicate error handling code across different components.
+ * duplicate error handling code across different components. It offers
+ * consistent error object creation and Promise/callback error handlers.
+ *
+ * @fileoverview AJAX error handling utilities for consistent error management
+ * @author CUIOSS Team
+ * @since 1.0.0
  */
 'use strict';
 
 /**
- * Creates a simplified error object from a jqXHR object.
- * This standardizes the error transformation pattern used across API client methods.
+ * Standardized error object structure for consistent error handling.
  *
- * @param {object} jqXHR - The jQuery XHR object from an AJAX error
- * @param {string} [textStatus] - The status text (optional, cash-dom might not always provide it)
- * @param {string} [errorThrown] - The error thrown (optional, cash-dom might not always provide it)
- * @returns {{responseText: *, status: *, statusText: *}} Standardized error object
+ * @typedef {Object} StandardizedError
+ * @property {number} status - HTTP status code (0 for network errors)
+ * @property {string} statusText - Human-readable status description
+ * @property {string} responseText - Response body content (may be empty)
+ */
+
+/**
+ * Creates a simplified, standardized error object from a jqXHR/XHR object.
+ *
+ * This function standardizes error object creation across the application,
+ * handling inconsistencies between jQuery, cash-dom, and native XHR objects.
+ * It ensures all error handlers receive a consistent error object structure.
+ *
+ * @param {Object|null} jqXHR - The XHR object from an AJAX error (jQuery/cash-dom)
+ * @param {string} [textStatus] - The status text (optional, may not be provided by cash-dom)
+ * @param {string} [errorThrown] - The error thrown (optional, may not be provided by cash-dom)
+ * @returns {StandardizedError} Standardized error object with consistent structure
+ *
+ * @example
+ * // In AJAX error handler
+ * $.ajax(url).catch((jqXHR, textStatus, errorThrown) => {
+ *   const error = createXhrErrorObject(jqXHR, textStatus, errorThrown);
+ *   console.error(`Error ${error.status}: ${error.statusText}`);
+ * });
+ *
+ * @example
+ * // Handling null/undefined jqXHR
+ * const error = createXhrErrorObject(null);
+ * // Returns: {status: 0, statusText: 'Unknown error', responseText: ''}
  */
 export const createXhrErrorObject = function (jqXHR, textStatus, errorThrown) {
     // Note: cash-dom's jqXHR object in .catch() might be simpler than jQuery's.

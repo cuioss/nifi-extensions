@@ -2,52 +2,141 @@
  * Centralized constants and configuration for the NiFi CUIOSS UI components.
  * This module provides a single source of truth for all hardcoded values
  * used throughout the application.
+ *
+ * @fileoverview Configuration constants for NiFi CUIOSS JWT validation UI components
+ * @author CUIOSS Team
+ * @since 1.0.0
  */
 'use strict';
 
 /**
- * API Configuration
+ * API Configuration object containing all endpoint URLs, base paths, and timeout values.
+ *
+ * @typedef {Object} APIConfig
+ * @property {string} BASE_URL - Base URL for JWT-specific API endpoints
+ * @property {string} NIFI_BASE_URL - Base URL for general NiFi processor endpoints
+ * @property {Object} ENDPOINTS - Specific API endpoint paths
+ * @property {Object} TIMEOUTS - Timeout values in milliseconds for different operation types
+ *
+ * @example
+ * // Using API endpoints
+ * $.ajax({
+ *   url: API.ENDPOINTS.JWT_VERIFY_TOKEN,
+ *   timeout: API.TIMEOUTS.DEFAULT
+ * });
  */
 export const API = {
+    /** @type {string} Base URL for JWT-specific API endpoints */
     BASE_URL: '../nifi-api/processors/jwt',
+
+    /** @type {string} Base URL for general NiFi processor endpoints */
     NIFI_BASE_URL: '../nifi-api/processors',
+
+    /**
+     * API endpoint paths for various operations
+     * @type {Object<string, string>}
+     */
     ENDPOINTS: {
+        /** @type {string} Endpoint for validating JWKS URL format */
         VALIDATE_JWKS_URL: '/validate-jwks-url',
+
+        /** @type {string} Endpoint for verifying JWT tokens */
         VERIFY_TOKEN: '/verify-token',
+
+        /** @type {string} Endpoint for retrieving issuer configuration */
         GET_ISSUER_CONFIG: '/issuer-config',
+
+        /** @type {string} Endpoint for setting issuer configuration */
         SET_ISSUER_CONFIG: '/issuer-config',
-        // Additional endpoints found in components
+
+        /** @type {string} Full URL for JWKS validation endpoint */
         JWKS_VALIDATE_URL: '../nifi-api/processors/jwks/validate-url',
+
+        /** @type {string} Full URL for JWT token verification endpoint */
         JWT_VERIFY_TOKEN: '../nifi-api/processors/jwt/verify-token'
     },
+
+    /**
+     * Timeout values in milliseconds for different operation types
+     * @type {Object<string, number>}
+     */
     TIMEOUTS: {
+        /** @type {number} Default timeout for standard operations (5 seconds) */
         DEFAULT: 5000,
+
+        /** @type {number} Extended timeout for long-running operations (10 seconds) */
         LONG_OPERATION: 10000,
+
+        /** @type {number} Short timeout for quick operations (2 seconds) */
         SHORT_OPERATION: 2000
     }
 };
 
 /**
- * CSS Classes and Selectors
+ * CSS Classes and Selectors for UI component styling and DOM manipulation.
+ * Centralizes all CSS class names and selectors used throughout the application.
+ *
+ * @typedef {Object} CSSConfig
+ * @property {Object} CLASSES - CSS class names without dots
+ * @property {Object} SELECTORS - CSS selectors with dots for jQuery/DOM queries
+ * @property {Object} IDS - Element ID names without hashes
+ * @property {Object} ISSUER_CONFIG - Component-specific CSS classes for issuer configuration
+ * @property {Object} TOKEN_VERIFIER - Component-specific CSS classes for token verification
+ *
+ * @example
+ * // Using CSS classes
+ * const $element = $(`<div class="${CSS.CLASSES.LOADING}"></div>`);
+ * $(CSS.SELECTORS.PROPERTY_LABEL).addClass(CSS.CLASSES.VALID);
  */
 export const CSS = {
+    /**
+     * CSS class names for styling (without dot selectors)
+     * @type {Object<string, string>}
+     */
     CLASSES: {
+        /** @type {string} Class for success message styling */
         SUCCESS_MESSAGE: 'success-message',
+
+        /** @type {string} Class for error message styling */
         ERROR_MESSAGE: 'error-message',
+
+        /** @type {string} Class for warning message styling */
         WARNING_MESSAGE: 'warning-message',
+
+        /** @type {string} Class for loading state indication */
         LOADING: 'loading',
+
+        /** @type {string} Class to hide elements */
         HIDDEN: 'hidden',
+
+        /** @type {string} Class for disabled state */
         DISABLED: 'disabled',
+
+        /** @type {string} Class for invalid input state */
         INVALID: 'invalid',
+
+        /** @type {string} Class for valid input state */
         VALID: 'valid',
-        // Main component classes
+
+        /** @type {string} Class for property label elements */
         PROPERTY_LABEL: 'property-label',
+
+        /** @type {string} Class for help tooltip icons */
         HELP_TOOLTIP: 'help-tooltip',
+
+        /** @type {string} Class for processor dialog containers */
         PROCESSOR_DIALOG: 'processor-dialog',
+
+        /** @type {string} Class for processor type display elements */
         PROCESSOR_TYPE: 'processor-type',
+
+        /** @type {string} Class for JWT validator title elements */
         JWT_VALIDATOR_TITLE: 'jwt-validator-title',
-        // FontAwesome classes
+
+        /** @type {string} FontAwesome base class */
         FA: 'fa',
+
+        /** @type {string} FontAwesome question circle icon class */
         FA_QUESTION_CIRCLE: 'fa-question-circle'
     },
     SELECTORS: {
@@ -167,8 +256,10 @@ export const UI_TEXT = {
 export const VALIDATION = {
     PATTERNS: {
         PROCESSOR_ID: /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i,
-        URL: /^https?:\/\/[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*([/?#].*)?$/,
-        HTTPS_URL: /^https:\/\/[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*([/?#].*)?$/,
+        URL: new RegExp('^https?:\\/\\/[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?' +
+                        '(\\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*([/?#].*)?$'),
+        HTTPS_URL: new RegExp('^https:\\/\\/[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?' +
+                               '(\\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*([/?#].*)?$'),
         JWT_TOKEN: /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/,
         EMAIL: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
         SAFE_STRING: /^[a-zA-Z0-9._-]+$/
@@ -185,16 +276,35 @@ export const VALIDATION = {
 };
 
 /**
- * Environment Detection
+ * Environment Detection utilities for determining runtime context.
  */
 
-// Test override for localhost detection
+/** @type {boolean|null} Test override for localhost detection (null = use auto-detection) */
 let isLocalhostOverride = null;
 
 /**
- * Unified localhost detection utility.
- * Consolidates multiple localhost detection implementations across components.
+ * Unified localhost detection utility that consolidates multiple detection methods.
+ *
+ * This function provides a centralized way to determine if the application is running
+ * in a localhost/development environment. It supports test overrides and multiple
+ * detection strategies for maximum compatibility.
+ *
+ * Detection priority:
+ * 1. Test override (if set via setIsLocalhostForTesting)
+ * 2. Global test mock (for unit test compatibility)
+ * 3. Automatic hostname/URL analysis
+ *
  * @returns {boolean} True if running in localhost/development environment
+ *
+ * @example
+ * // Check if in development environment
+ * if (getIsLocalhost()) {
+ *   console.log('Running in development mode');
+ * }
+ *
+ * @example
+ * // Use in conditional API calls
+ * const apiUrl = getIsLocalhost() ? 'http://localhost:8080' : 'https://api.prod.com';
  */
 export const getIsLocalhost = () => {
     // Test override takes precedence
@@ -227,8 +337,24 @@ export const getIsLocalhost = () => {
 };
 
 /**
- * Set localhost override for testing.
- * @param {boolean|null} value - Override value (null to reset)
+ * Sets a test override for localhost detection to enable predictable testing.
+ *
+ * This function allows tests to override the automatic localhost detection
+ * with a fixed value, ensuring consistent test behavior regardless of the
+ * actual runtime environment.
+ *
+ * @param {boolean|null} value - Override value: true (force localhost),
+ *                               false (force non-localhost), null (reset to auto-detection)
+ *
+ * @example
+ * // Force localhost detection in tests
+ * setIsLocalhostForTesting(true);
+ * console.log(getIsLocalhost()); // Always returns true
+ *
+ * @example
+ * // Reset to automatic detection
+ * setIsLocalhostForTesting(null);
+ * console.log(getIsLocalhost()); // Returns actual environment detection
  */
 export const setIsLocalhostForTesting = (value) => {
     isLocalhostOverride = (value === null) ? null : !!value;

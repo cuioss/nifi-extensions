@@ -5,7 +5,7 @@
  */
 'use strict';
 
-import { COMPONENTS, VALIDATION } from './constants.js';
+import { VALIDATION } from './constants.js';
 
 /**
  * Validation result object structure.
@@ -196,7 +196,8 @@ export const validateIssuerName = (issuerName) => {
     if (sanitizedName.length < VALIDATION.LIMITS.ISSUER_NAME_MIN) {
         return {
             isValid: false,
-            error: `Issuer name must be at least ${VALIDATION.LIMITS.ISSUER_NAME_MIN} characters long.`,
+            error: 'Issuer name must be at least ' +
+               `${VALIDATION.LIMITS.ISSUER_NAME_MIN} characters long.`,
             sanitizedValue: sanitizedName
         };
     }
@@ -204,7 +205,8 @@ export const validateIssuerName = (issuerName) => {
     if (sanitizedName.length > VALIDATION.LIMITS.ISSUER_NAME_MAX) {
         return {
             isValid: false,
-            error: `Issuer name is too long (maximum ${VALIDATION.LIMITS.ISSUER_NAME_MAX} characters).`,
+            error: 'Issuer name is too long ' +
+               `(maximum ${VALIDATION.LIMITS.ISSUER_NAME_MAX} characters).`,
             sanitizedValue: sanitizedName
         };
     }

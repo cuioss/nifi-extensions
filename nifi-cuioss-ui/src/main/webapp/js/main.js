@@ -1,6 +1,19 @@
 /**
- * Simple main module - replaces 344 lines of over-engineered initialization.
- * For a simple 3-tab form UI, we don't need complex component management.
+ * Main initialization module for NiFi CUIOSS JWT validation UI components.
+ *
+ * This module provides simplified, streamlined initialization for the JWT validation
+ * UI components. It replaces the previous over-engineered 344-line initialization
+ * system with a clean, maintainable approach suitable for a 3-tab form interface.
+ *
+ * Key responsibilities:
+ * - Register JWT validation UI tabs with NiFi
+ * - Initialize help tooltips for form fields
+ * - Manage UI translations and loading states
+ * - Handle processor dialog events
+ *
+ * @fileoverview Main initialization for NiFi JWT validation UI
+ * @author CUIOSS Team
+ * @since 1.0.0
  */
 import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
@@ -13,7 +26,21 @@ import { CSS, NIFI, UI_TEXT } from './utils/constants.js';
 'use strict';
 
 /**
- * Simple component registration - replaces complex ComponentManager patterns.
+ * Registers JWT validation components with the NiFi UI framework.
+ *
+ * This function handles the core component registration process, including:
+ * - Initializing the i18n translation system
+ * - Registering issuer configuration and token verification tabs
+ * - Setting up test compatibility flags
+ *
+ * @returns {boolean} True if registration succeeded, false if it failed
+ *
+ * @example
+ * // Register components during initialization
+ * const success = registerComponents();
+ * if (!success) {
+ *   console.error('Component registration failed');
+ * }
  */
 const registerComponents = () => {
     try {
@@ -36,7 +63,23 @@ const registerComponents = () => {
 };
 
 /**
- * Simple help tooltip setup - replaces complex tooltip management.
+ * Sets up help tooltips for property labels in NiFi processor configuration dialogs.
+ *
+ * This function automatically detects property labels and adds contextual help tooltips
+ * using the centralized property label mapping. It provides a streamlined approach
+ * to tooltip management without complex state tracking.
+ *
+ * Process:
+ * 1. Searches for elements with the property-label class
+ * 2. Maps label text to i18n help text keys
+ * 3. Creates FontAwesome question-circle tooltips
+ * 4. Initializes tooltip behavior
+ *
+ * @throws {Error} Logs debug message if tooltip setup fails (non-critical)
+ *
+ * @example
+ * // Automatically called during initialization
+ * setupHelpTooltips(); // Adds tooltips to all property labels
  */
 const setupHelpTooltips = () => {
     try {
@@ -48,7 +91,8 @@ const setupHelpTooltips = () => {
             if (helpKey && $(label).find(CSS.SELECTORS.HELP_TOOLTIP).length === 0) {
                 const helpText = nfCommon.getI18n().getProperty(helpKey);
                 if (helpText) {
-                    const tooltip = $(`<span class="${CSS.CLASSES.HELP_TOOLTIP} ${CSS.CLASSES.FA} ${CSS.CLASSES.FA_QUESTION_CIRCLE}"></span>`);
+                    const tooltip = $(`<span class="${CSS.CLASSES.HELP_TOOLTIP} ` +
+                                        `${CSS.CLASSES.FA} ${CSS.CLASSES.FA_QUESTION_CIRCLE}"></span>`);
                     tooltip.attr('title', helpText);
                     $(label).append(tooltip);
                 }
@@ -63,7 +107,14 @@ const setupHelpTooltips = () => {
 };
 
 /**
- * Simple UI state management - replaces complex state tracking.
+ * Sets up the basic UI state by hiding the loading indicator and showing main tabs.
+ *
+ * This function provides simple UI state management without complex state tracking.
+ * It ensures proper visibility of UI elements during the initialization process.
+ *
+ * @example
+ * // Called during initialization
+ * setupUI(); // Hides loading, shows main UI
  */
 const setupUI = () => {
     // Hide loading indicator (set display: none for test compatibility)
@@ -83,7 +134,14 @@ const setupUI = () => {
 };
 
 /**
- * Simple translation updates - replaces complex translation management.
+ * Updates UI text elements with localized translations.
+ *
+ * This function provides simple translation updates without complex translation
+ * management. It updates key UI text elements using the NiFi i18n system.
+ *
+ * @example
+ * // Update all translatable text
+ * updateTranslations(); // Updates loading text and title
  */
 const updateTranslations = () => {
     const i18nObj = nfCommon.getI18n();
@@ -102,7 +160,15 @@ const updateTranslations = () => {
 };
 
 /**
- * Simple dialog handling - replaces complex event management.
+ * Sets up event handlers for NiFi processor dialog open events.
+ *
+ * This function provides simple dialog handling without complex event management.
+ * It listens for processor dialog events and initializes tooltips and translations
+ * when the JWT authenticator processor dialog is opened.
+ *
+ * @example
+ * // Setup dialog event handlers
+ * setupDialogHandlers(); // Registers dialog open event listener
  */
 const setupDialogHandlers = () => {
     $(document).on('dialogOpen', (_event, data) => {
@@ -112,7 +178,8 @@ const setupDialogHandlers = () => {
             setTimeout(() => {
                 const processorType = dialogElement.querySelector(CSS.SELECTORS.PROCESSOR_TYPE)?.textContent?.trim();
 
-                if (processorType?.includes(NIFI.PROCESSOR_TYPES.MULTI_ISSUER_JWT_AUTHENTICATOR)) {
+                if (processorType?.includes(
+                    NIFI.PROCESSOR_TYPES.MULTI_ISSUER_JWT_AUTHENTICATOR)) {
                     setupHelpTooltips();
                     updateTranslations();
                 }
@@ -122,7 +189,19 @@ const setupDialogHandlers = () => {
 };
 
 /**
- * Main initialization - replaces 344 lines with ~20 lines of actual logic.
+ * Main initialization function for the JWT validation UI components.
+ *
+ * This function replaces the previous 344-line over-engineered initialization
+ * system with a clean, maintainable approach. It handles component registration,
+ * UI setup, and error recovery with proper fallback mechanisms.
+ *
+ * @async
+ * @returns {Promise<void>} Promise that resolves when initialization is complete
+ *
+ * @example
+ * // Initialize the JWT UI components
+ * await init();
+ * console.log('JWT UI ready');
  */
 export const init = async () => {
     try {
@@ -152,7 +231,14 @@ export const init = async () => {
 };
 
 /**
- * Simple cleanup - replaces complex resource management.
+ * Cleans up event handlers and resources used by the JWT UI components.
+ *
+ * This function provides simple cleanup without complex resource management.
+ * It removes event handlers to prevent memory leaks when the component is disposed.
+ *
+ * @example
+ * // Cleanup when component is destroyed
+ * cleanup(); // Removes all event handlers
  */
 export const cleanup = () => {
     try {
@@ -165,7 +251,19 @@ export const cleanup = () => {
 };
 
 /**
- * Simple status check - replaces complex component tracking.
+ * Returns the current status of registered JWT validation components.
+ *
+ * This function provides simple status checking without complex component tracking.
+ * It returns a static list of component statuses for debugging and monitoring.
+ *
+ * @returns {Array<Object>} Array of component status objects
+ * @returns {string} returns[].id - Component identifier
+ * @returns {string} returns[].status - Component status (always 'registered')
+ *
+ * @example
+ * // Check component registration status
+ * const statuses = getComponentStatus();
+ * console.log(statuses); // [{id: 'issuer-config-editor', status: 'registered'}, ...]
  */
 export const getComponentStatus = () => {
     return [
