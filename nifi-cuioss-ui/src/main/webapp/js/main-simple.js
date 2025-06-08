@@ -74,16 +74,16 @@ const setupHelpTooltips = () => {
  * Simple UI state management - replaces complex state tracking.
  */
 const setupUI = () => {
-    // Hide loading indicator (set display: none for test compatibility)
-    const loadingIndicator = document.getElementById('loading-indicator');
-    if (loadingIndicator) {
-        loadingIndicator.style.display = 'none';
+    // Hide loading indicator
+    const loadingIndicator = $('#loading-indicator');
+    if (loadingIndicator.length) {
+        loadingIndicator.hide();
     }
     
     // Show main UI
-    const tabs = document.getElementById('jwt-validator-tabs');
-    if (tabs) {
-        tabs.style.display = '';
+    const tabs = $('#jwt-validator-tabs');
+    if (tabs.length) {
+        tabs.show();
     }
     
     // Update translations
@@ -148,12 +148,6 @@ export const init = async () => {
             // Fallback - just hide loading and show basic UI
             setupUI();
         }
-        
-        // Add timeout fallback for test compatibility
-        setTimeout(() => {
-            setupUI();
-        }, 3000);
-        
     } catch (error) {
         console.error('JWT UI initialization failed:', error);
         setupUI(); // Always try to show something

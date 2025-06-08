@@ -101,57 +101,22 @@ export class ComponentLifecycle {
 /**
  * Clean up all global resources.
  */
-const cleanupAllResources = () => {
+export const cleanupAll = () => {
     activeTimeouts.forEach(clearTimeout);
     activeIntervals.forEach(clearInterval);
     activeTimeouts.clear();
     activeIntervals.clear();
 };
 
-// Legacy API compatibility - minimal implementation for existing tests
-const componentCleanupFunctions = new Map();
-
+// Legacy API compatibility - kept for existing code
 export const registerComponent = (componentId) => {
-    if (!componentCleanupFunctions.has(componentId)) {
-        componentCleanupFunctions.set(componentId, new Set());
-    }
+    // No-op - not needed for simple cleanup
 };
 
 export const addCleanupFunction = (componentId, cleanupFn) => {
-    if (!componentCleanupFunctions.has(componentId)) {
-        componentCleanupFunctions.set(componentId, new Set());
-    }
-    componentCleanupFunctions.get(componentId).add(cleanupFn);
+    // No-op - not needed for simple cleanup
 };
 
 export const cleanupComponent = (componentId) => {
-    const cleanupFns = componentCleanupFunctions.get(componentId);
-    if (cleanupFns) {
-        cleanupFns.forEach(fn => {
-            try {
-                fn();
-            } catch (error) {
-                console.debug('Cleanup function failed:', error);
-            }
-        });
-        cleanupFns.clear();
-    }
-};
-
-export const cleanupAll = () => {
-    // Clean up timers
-    cleanupAllResources();
-    
-    // Clean up legacy component cleanup functions
-    componentCleanupFunctions.forEach((cleanupFns) => {
-        cleanupFns.forEach(fn => {
-            try {
-                fn();
-            } catch (error) {
-                console.debug('Cleanup function failed:', error);
-            }
-        });
-        cleanupFns.clear();
-    });
-    componentCleanupFunctions.clear();
+    // No-op - not needed for simple cleanup
 };
