@@ -363,7 +363,7 @@ const _performJwksValidation = (jwksValue, $resultContainer) => {
     try {
         $.ajax({
             method: 'POST',
-            url: '../nifi-api/processors/jwks/validate-url',
+            url: API.ENDPOINTS.JWKS_VALIDATE_URL,
             data: JSON.stringify({ jwksValue: jwksValue }),
             contentType: 'application/json',
             dataType: 'json',

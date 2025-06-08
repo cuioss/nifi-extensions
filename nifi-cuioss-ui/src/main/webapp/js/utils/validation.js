@@ -5,30 +5,7 @@
  */
 'use strict';
 
-import { COMPONENTS } from './constants.js';
-
-/**
- * Regular expression patterns for common validation scenarios.
- */
-const PATTERNS = {
-    // Processor ID: UUID format with hyphens (e.g., 12345678-1234-1234-1234-123456789abc)
-    PROCESSOR_ID: /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i,
-
-    // URL validation: HTTPS/HTTP protocols with domain validation
-    URL: /^https?:\/\/[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*([/?#].*)?$/,
-
-    // HTTPS URL validation (more strict for production)
-    HTTPS_URL: /^https:\/\/[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*([/?#].*)?$/,
-
-    // JWT token format: 3 base64url parts separated by dots
-    JWT_TOKEN: /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/,
-
-    // Email format (for client IDs that might be emails)
-    EMAIL: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-
-    // Safe string: alphanumeric, hyphens, underscores, dots (for issuer names)
-    SAFE_STRING: /^[a-zA-Z0-9._-]+$/
-};
+import { COMPONENTS, VALIDATION } from './constants.js';
 
 /**
  * Validation result object structure.
@@ -109,7 +86,7 @@ export const validateProcessorIdFromUrl = (url) => {
  * @returns {ValidationResult} Validation result
  */
 export const validateUrl = (url, options = {}) => {
-    const { httpsOnly = false, maxLength = COMPONENTS.JWKS_VALIDATOR.MAX_URL_LENGTH } = options;
+    const { httpsOnly = false, maxLength = VALIDATION.LIMITS.URL_MAX } = options;
 
     const requiredCheck = validateRequired(url);
     if (!requiredCheck.isValid) {
@@ -132,7 +109,7 @@ export const validateUrl = (url, options = {}) => {
     }
 
     // Format validation
-    const pattern = httpsOnly ? PATTERNS.HTTPS_URL : PATTERNS.URL;
+    const pattern = httpsOnly ? VALIDATION.PATTERNS.HTTPS_URL : VALIDATION.PATTERNS.URL;
     if (!pattern.test(sanitizedUrl)) {
         const protocol = httpsOnly ? 'HTTPS' : 'HTTP/HTTPS';
         return {
@@ -166,18 +143,18 @@ export const validateJwtToken = (token) => {
     const sanitizedToken = requiredCheck.sanitizedValue;
 
     // Length validation
-    if (sanitizedToken.length < COMPONENTS.TOKEN_VERIFIER.MIN_TOKEN_LENGTH) {
+    if (sanitizedToken.length < VALIDATION.LIMITS.TOKEN_MIN) {
         return {
             isValid: false,
-            error: `Token is too short (minimum ${COMPONENTS.TOKEN_VERIFIER.MIN_TOKEN_LENGTH} characters).`,
+            error: `Token is too short (minimum ${VALIDATION.LIMITS.TOKEN_MIN} characters).`,
             sanitizedValue: sanitizedToken
         };
     }
 
-    if (sanitizedToken.length > COMPONENTS.TOKEN_VERIFIER.MAX_TOKEN_LENGTH) {
+    if (sanitizedToken.length > VALIDATION.LIMITS.TOKEN_MAX) {
         return {
             isValid: false,
-            error: `Token is too long (maximum ${COMPONENTS.TOKEN_VERIFIER.MAX_TOKEN_LENGTH} characters).`,
+            error: `Token is too long (maximum ${VALIDATION.LIMITS.TOKEN_MAX} characters).`,
             sanitizedValue: sanitizedToken
         };
     }
@@ -216,24 +193,24 @@ export const validateIssuerName = (issuerName) => {
     const sanitizedName = requiredCheck.sanitizedValue;
 
     // Length validation (reasonable limits)
-    if (sanitizedName.length < 2) {
+    if (sanitizedName.length < VALIDATION.LIMITS.ISSUER_NAME_MIN) {
         return {
             isValid: false,
-            error: 'Issuer name must be at least 2 characters long.',
+            error: `Issuer name must be at least ${VALIDATION.LIMITS.ISSUER_NAME_MIN} characters long.`,
             sanitizedValue: sanitizedName
         };
     }
 
-    if (sanitizedName.length > 100) {
+    if (sanitizedName.length > VALIDATION.LIMITS.ISSUER_NAME_MAX) {
         return {
             isValid: false,
-            error: 'Issuer name is too long (maximum 100 characters).',
+            error: `Issuer name is too long (maximum ${VALIDATION.LIMITS.ISSUER_NAME_MAX} characters).`,
             sanitizedValue: sanitizedName
         };
     }
 
     // Character validation (safe characters only)
-    if (!PATTERNS.SAFE_STRING.test(sanitizedName)) {
+    if (!VALIDATION.PATTERNS.SAFE_STRING.test(sanitizedName)) {
         return {
             isValid: false,
             error: 'Issuer name can only contain letters, numbers, hyphens, underscores, and dots.',
@@ -270,10 +247,10 @@ export const validateAudience = (audience, required = false) => {
     const sanitizedAudience = requiredCheck.sanitizedValue;
 
     // Length validation
-    if (sanitizedAudience.length > 500) {
+    if (sanitizedAudience.length > VALIDATION.LIMITS.AUDIENCE_MAX) {
         return {
             isValid: false,
-            error: 'Audience is too long (maximum 500 characters).',
+            error: `Audience is too long (maximum ${VALIDATION.LIMITS.AUDIENCE_MAX} characters).`,
             sanitizedValue: sanitizedAudience
         };
     }
@@ -307,10 +284,10 @@ export const validateClientId = (clientId, required = false) => {
     const sanitizedClientId = requiredCheck.sanitizedValue;
 
     // Length validation
-    if (sanitizedClientId.length > 200) {
+    if (sanitizedClientId.length > VALIDATION.LIMITS.CLIENT_ID_MAX) {
         return {
             isValid: false,
-            error: 'Client ID is too long (maximum 200 characters).',
+            error: `Client ID is too long (maximum ${VALIDATION.LIMITS.CLIENT_ID_MAX} characters).`,
             sanitizedValue: sanitizedClientId
         };
     }

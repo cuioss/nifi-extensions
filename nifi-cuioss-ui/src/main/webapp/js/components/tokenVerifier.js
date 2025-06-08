@@ -4,7 +4,7 @@
 import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
-import { getIsLocalhost, setIsLocalhostForTesting } from '../utils/constants.js';
+import { getIsLocalhost, setIsLocalhostForTesting, API, CSS } from '../utils/constants.js';
 
 'use strict';
 
@@ -49,24 +49,24 @@ const _initializeTokenVerifier = async (element, callback) => {
     const i18n = nfCommon.getI18n() || {};
 
     // Create UI elements
-    const $container = $('<div class="token-verification-container"></div>');
+    const $container = $(`<div class="${CSS.TOKEN_VERIFIER.CONTAINER}"></div>`);
 
     // Create token input area
-    const $inputSection = $('<div class="token-input-section"></div>');
+    const $inputSection = $(`<div class="${CSS.TOKEN_VERIFIER.INPUT_SECTION}"></div>`);
     const $inputLabel = $('<label for="token-input"></label>')
         .text(i18n['processor.jwt.tokenInput'] || 'Enter Token:');
-    const $tokenInput = $('<textarea id="token-input" class="token-input" rows="5"></textarea>')
+    const $tokenInput = $(`<textarea id="token-input" class="${CSS.TOKEN_VERIFIER.TOKEN_INPUT}" rows="5"></textarea>`)
         .attr('placeholder', i18n['processor.jwt.tokenInputPlaceholder'] || 'Paste token here...');
-    const $verifyButton = $('<button type="button" class="verify-token-button"></button>')
+    const $verifyButton = $(`<button type="button" class="${CSS.TOKEN_VERIFIER.VERIFY_BUTTON}"></button>`)
         .text(i18n['processor.jwt.verifyToken'] || 'Verify Token');
 
     $inputSection.append($inputLabel).append($tokenInput).append($verifyButton);
 
     // Create results area
-    const $resultsSection = $('<div class="token-results-section"></div>');
+    const $resultsSection = $(`<div class="${CSS.TOKEN_VERIFIER.RESULTS_SECTION}"></div>`);
     const $resultsHeader = $('<h3></h3>')
         .text(i18n['processor.jwt.verificationResults'] || 'Verification Results');
-    const $resultsContent = $('<div class="token-results-content"></div>');
+    const $resultsContent = $(`<div class="${CSS.TOKEN_VERIFIER.RESULTS_CONTENT}"></div>`);
 
     $resultsSection.append($resultsHeader).append($resultsContent);
 
@@ -81,7 +81,7 @@ const _initializeTokenVerifier = async (element, callback) => {
         const token = $tokenInput.val().trim();
 
         if (!token) {
-            $resultsContent.html(`<div class="token-error">${i18n['processor.jwt.noTokenProvided'] || 'No token provided'}</div>`);
+            $resultsContent.html(`<div class="${CSS.TOKEN_VERIFIER.TOKEN_ERROR}">${i18n['processor.jwt.noTokenProvided'] || 'No token provided'}</div>`);
             return;
         }
 
@@ -90,11 +90,11 @@ const _initializeTokenVerifier = async (element, callback) => {
         try {
             $.ajax({
                 method: 'POST',
-                url: '../nifi-api/processors/jwt/verify-token',
+                url: API.ENDPOINTS.JWT_VERIFY_TOKEN,
                 data: JSON.stringify({ token: token }),
                 contentType: 'application/json',
                 dataType: 'json',
-                timeout: 5000
+                timeout: API.TIMEOUTS.DEFAULT
             })
                 .then(responseData => {
                     _handleTokenVerificationResponse(
@@ -129,11 +129,11 @@ const _initializeTokenVerifier = async (element, callback) => {
             `<tr><th>${i18n['processor.jwt.scopes'] || 'Scopes'}</th><td>${scopes.join(' ')}</td></tr>` : '';
 
         const html = `
-            <div class="token-valid">
+            <div class="${CSS.TOKEN_VERIFIER.TOKEN_VALID}">
                 <span class="fa fa-check-circle"></span> 
                 ${i18n['processor.jwt.tokenValid'] || 'Token is valid'}${simulatedText}
             </div>
-            <div class="token-details">
+            <div class="${CSS.TOKEN_VERIFIER.TOKEN_DETAILS}">
                 <h4>${i18n['processor.jwt.tokenDetails'] || 'Token Details'}</h4>
                 <table class="token-claims-table">
                     <tr><th>${i18n['processor.jwt.subject'] || 'Subject'}</th><td>${response.subject || ''}</td></tr>
@@ -174,7 +174,7 @@ const _initializeTokenVerifier = async (element, callback) => {
 
 const _resetUIAndShowLoading = ($resultsContent, i18n) => {
     $resultsContent.html(`
-        <div class="token-loading">
+        <div class="${CSS.TOKEN_VERIFIER.TOKEN_LOADING}">
             <span class="fa fa-spinner fa-spin"></span> 
             ${i18n['processor.jwt.verifying'] || 'Verifying token...'}
         </div>

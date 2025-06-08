@@ -8,6 +8,7 @@ import * as tokenVerifier from './components/tokenVerifier.js';
 import * as issuerConfigEditor from './components/issuerConfigEditor.js';
 import * as i18n from './utils/i18n.js';
 import { initTooltips } from './utils/tooltip.js';
+import { CSS, NIFI, UI_TEXT } from './utils/constants.js';
 
 'use strict';
 
@@ -20,8 +21,8 @@ const registerComponents = () => {
         i18n.getLanguage();
 
         // Register the two main UI tabs
-        nfCommon.registerCustomUiTab('jwt.validation.issuer.configuration', issuerConfigEditor);
-        nfCommon.registerCustomUiTab('jwt.validation.token.verification', tokenVerifier);
+        nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.ISSUER_CONFIG, issuerConfigEditor);
+        nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.TOKEN_VERIFICATION, tokenVerifier);
 
         // Set flag for test compatibility
         window.jwtComponentsRegistered = true;
@@ -39,27 +40,15 @@ const registerComponents = () => {
  */
 const setupHelpTooltips = () => {
     try {
-        const helpTextMap = {
-            'Token Location': 'property.token.location.help',
-            'Token Header': 'property.token.header.help',
-            'Custom Header Name': 'property.custom.header.name.help',
-            'Bearer Token Prefix': 'property.bearer.token.prefix.help',
-            'Require Valid Token': 'property.require.valid.token.help',
-            'JWKS Refresh Interval': 'property.jwks.refresh.interval.help',
-            'Maximum Token Size': 'property.maximum.token.size.help',
-            'Allowed Algorithms': 'property.allowed.algorithms.help',
-            'Require HTTPS for JWKS URLs': 'property.require.https.jwks.help'
-        };
-
         // Find property labels and add tooltips
-        $('.property-label').each((_index, label) => {
+        $(CSS.SELECTORS.PROPERTY_LABEL).each((_index, label) => {
             const propertyName = $(label).text().trim();
-            const helpKey = helpTextMap[propertyName];
+            const helpKey = UI_TEXT.PROPERTY_LABELS[propertyName];
 
-            if (helpKey && $(label).find('.help-tooltip').length === 0) {
+            if (helpKey && $(label).find(CSS.SELECTORS.HELP_TOOLTIP).length === 0) {
                 const helpText = nfCommon.getI18n().getProperty(helpKey);
                 if (helpText) {
-                    const tooltip = $('<span class="help-tooltip fa fa-question-circle"></span>');
+                    const tooltip = $(`<span class="${CSS.CLASSES.HELP_TOOLTIP} ${CSS.CLASSES.FA} ${CSS.CLASSES.FA_QUESTION_CIRCLE}"></span>`);
                     tooltip.attr('title', helpText);
                     $(label).append(tooltip);
                 }
@@ -67,7 +56,7 @@ const setupHelpTooltips = () => {
         });
 
         // Initialize tooltips
-        initTooltips('.help-tooltip');
+        initTooltips(CSS.SELECTORS.HELP_TOOLTIP);
     } catch (error) {
         console.debug('Help tooltips setup skipped:', error.message);
     }
@@ -78,13 +67,13 @@ const setupHelpTooltips = () => {
  */
 const setupUI = () => {
     // Hide loading indicator (set display: none for test compatibility)
-    const loadingIndicator = document.getElementById('loading-indicator');
+    const loadingIndicator = document.getElementById(CSS.IDS.LOADING_INDICATOR);
     if (loadingIndicator) {
         loadingIndicator.style.display = 'none';
     }
 
     // Show main UI
-    const tabs = document.getElementById('jwt-validator-tabs');
+    const tabs = document.getElementById(CSS.IDS.JWT_VALIDATOR_TABS);
     if (tabs) {
         tabs.style.display = '';
     }
@@ -100,15 +89,15 @@ const updateTranslations = () => {
     const i18nObj = nfCommon.getI18n();
 
     // Update loading text
-    const loadingIndicator = $('#loading-indicator');
+    const loadingIndicator = $(`#${CSS.IDS.LOADING_INDICATOR}`);
     if (loadingIndicator.length) {
-        loadingIndicator.text(i18nObj.getProperty('jwt.validator.loading') || 'Loading...');
+        loadingIndicator.text(i18nObj.getProperty(UI_TEXT.I18N_KEYS.JWT_VALIDATOR_LOADING) || 'Loading...');
     }
 
     // Update title
-    const title = $('.jwt-validator-title');
+    const title = $(CSS.SELECTORS.JWT_VALIDATOR_TITLE);
     if (title.length) {
-        title.text(i18nObj.getProperty('jwt.validator.title') || 'JWT Validator');
+        title.text(i18nObj.getProperty(UI_TEXT.I18N_KEYS.JWT_VALIDATOR_TITLE) || 'JWT Validator');
     }
 };
 
@@ -119,11 +108,11 @@ const setupDialogHandlers = () => {
     $(document).on('dialogOpen', (_event, data) => {
         const dialogElement = Array.isArray(data) ? data[0] : data;
 
-        if (dialogElement?.classList?.contains('processor-dialog')) {
+        if (dialogElement?.classList?.contains(CSS.CLASSES.PROCESSOR_DIALOG)) {
             setTimeout(() => {
-                const processorType = dialogElement.querySelector('.processor-type')?.textContent?.trim();
+                const processorType = dialogElement.querySelector(CSS.SELECTORS.PROCESSOR_TYPE)?.textContent?.trim();
 
-                if (processorType?.includes('MultiIssuerJWTTokenAuthenticator')) {
+                if (processorType?.includes(NIFI.PROCESSOR_TYPES.MULTI_ISSUER_JWT_AUTHENTICATOR)) {
                     setupHelpTooltips();
                     updateTranslations();
                 }

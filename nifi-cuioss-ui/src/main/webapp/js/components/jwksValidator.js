@@ -4,7 +4,7 @@
 import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
-import { getIsLocalhost, setIsLocalhostForTesting } from '../utils/constants.js';
+import { getIsLocalhost, setIsLocalhostForTesting, API } from '../utils/constants.js';
 
 /**
  * Initialize the custom UI with standardized error handling and async patterns.
@@ -79,11 +79,11 @@ const _initializeJwksValidator = async (element, propertyValue, jwks_type, callb
             try {
                 $.ajax({
                     method: 'POST',
-                    url: '../nifi-api/processors/jwks/validate-url',
+                    url: API.ENDPOINTS.JWKS_VALIDATE_URL,
                     data: JSON.stringify({ jwksValue: jwksValue }),
                     contentType: 'application/json',
                     dataType: 'json',
-                    timeout: 5000
+                    timeout: API.TIMEOUTS.DEFAULT
                 })
                     .then(responseData => _handleAjaxSuccess(responseData, $resultContainer, i18n))
                     .catch(jqXHR => _handleAjaxError(jqXHR, $resultContainer, i18n));
