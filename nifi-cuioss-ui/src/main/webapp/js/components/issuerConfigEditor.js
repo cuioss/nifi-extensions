@@ -11,7 +11,7 @@ import * as apiClient from '../services/apiClient.js';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
 import { API, COMPONENTS, getIsLocalhost } from '../utils/constants.js';
 import { validateIssuerConfig, validateProcessorIdFromUrl } from '../utils/validation.js';
-import { FormFieldBuilder } from '../utils/domBuilder.js';
+import { FormFieldBuilder } from '../utils/formBuilder.js';
 import { ComponentLifecycle, managedSetTimeout } from '../utils/componentCleanup.js';
 
 // Get i18n resources from NiFi Common
@@ -480,7 +480,7 @@ const addIssuerForm = ($container, issuerName, properties, processorId = null) =
 };
 
 /**
-     * Adds a form field using optimized DOM construction.
+     * Adds a form field using the new factory pattern with enhanced validation and styling.
      *
      * @param {object} $container - The cash-dom wrapped container element
      * @param {string} name - The field name
@@ -489,18 +489,26 @@ const addIssuerForm = ($container, issuerName, properties, processorId = null) =
      * @param {string} [value] - The field value
      */
 const addFormField = ($container, name, label, description, value) => {
-    const fieldFragment = FormFieldBuilder.createField({
+    const fieldConfig = {
         name,
         label,
         description,
         value: value || '',
-        placeholder: description
-    });
+        placeholder: description,
+        type: 'text',
+        required: false,
+        cssClass: 'issuer-config-field',
+        validation: name === 'jwks-url' || name === 'issuer' ?
+            (val) => val && val.trim() ? { isValid: true } : { isValid: false, error: 'This field is required' } :
+            null
+    };
+
+    const fieldElement = FormFieldBuilder.createField(fieldConfig);
 
     // Handle cash-dom wrapped elements safely - cash-dom uses array-like access
     const containerElement = $container instanceof Element ? $container : $container[0];
     if (containerElement) {
-        containerElement.appendChild(fieldFragment);
+        containerElement.appendChild(fieldElement);
     }
 };
 

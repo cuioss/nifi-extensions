@@ -92,9 +92,9 @@ describe('tokenVerifier - Common Initialization', () => {
         localTokenVerifier.init(parentElement, {}, null, callback);
         const inputSection = parentElement.querySelector('.token-input-section');
         expect(inputSection).not.toBeNull();
-        expect(inputSection.querySelector('label[for="token-input"]').textContent).toBe(mockI18n['processor.jwt.tokenInput']);
-        expect(inputSection.querySelector('textarea#token-input').getAttribute('placeholder')).toBe(mockI18n['processor.jwt.tokenInputPlaceholder']);
-        expect(inputSection.querySelector('button.verify-token-button').textContent).toBe(mockI18n['processor.jwt.verifyToken']);
+        expect(inputSection.querySelector('label[for="field-token-input"]').textContent).toContain(mockI18n['processor.jwt.tokenInput']);
+        expect(inputSection.querySelector('textarea#field-token-input').getAttribute('placeholder')).toBe(mockI18n['processor.jwt.tokenInputPlaceholder']);
+        expect(inputSection.querySelector('button.verify-token-button').textContent).toContain(mockI18n['processor.jwt.verifyToken']);
     });
 
     it('should create results section with header and content area', () => {
@@ -125,7 +125,7 @@ describe('tokenVerifier - Common Initialization', () => {
         localTokenVerifier.__setIsLocalhostForTesting(null); // SUT will use its internal getIsLocalhost
         const expectedIsLocalhost = window.location.href.includes('localhost') || window.location.href.includes('127.0.0.1');
 
-        const tokenInput = parentElement.querySelector('textarea#token-input'); // Define tokenInput here
+        const tokenInput = parentElement.querySelector('textarea#field-token-input'); // Define tokenInput here
         const verifyButton = parentElement.querySelector('button.verify-token-button'); // Define verifyButton here
         tokenInput.value = 'any.token';
 
@@ -185,7 +185,7 @@ describe('tokenVerifier (non-localhost)', () => {
         callback = jest.fn(); // Initialize callback here
         localTokenVerifier.init(parentElement, {}, null, callback);
 
-        tokenInput = parentElement.querySelector('textarea#token-input');
+        tokenInput = parentElement.querySelector('textarea#field-token-input');
         verifyButton = parentElement.querySelector('button.verify-token-button');
     });
 
@@ -427,7 +427,7 @@ describe('tokenVerifier (localhost)', () => {
         callback = jest.fn(); // Initialize callback
         localTokenVerifier.init(parentElement, {}, null, callback);
 
-        tokenInput = parentElement.querySelector('textarea#token-input');
+        tokenInput = parentElement.querySelector('textarea#field-token-input');
         verifyButton = parentElement.querySelector('button.verify-token-button');
     });
 

@@ -7,6 +7,7 @@ import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
 import { getIsLocalhost, setIsLocalhostForTesting, API, CSS } from '../utils/constants.js';
+import { FormFieldFactory } from '../utils/formBuilder.js';
 
 /**
  * Initialize the custom UI with standardized error handling and async patterns.
@@ -47,20 +48,37 @@ const _initializeTokenVerifier = async (element, callback) => {
     // Get i18n resources from NiFi Common
     const i18n = nfCommon.getI18n() || {};
 
+    // Create form factory instance with i18n support
+    const formFactory = new FormFieldFactory({ i18n });
+
     // Create UI elements
     const $container = $(`<div class="${CSS.TOKEN_VERIFIER.CONTAINER}"></div>`);
 
-    // Create token input area
+    // Create token input area using factory pattern
     const $inputSection = $(`<div class="${CSS.TOKEN_VERIFIER.INPUT_SECTION}"></div>`);
-    const $inputLabel = $('<label for="token-input"></label>')
-        .text(i18n['processor.jwt.tokenInput'] || 'Enter Token:');
-    const $tokenInput = $(
-        `<textarea id="token-input" class="${CSS.TOKEN_VERIFIER.TOKEN_INPUT}" rows="5"></textarea>`
-    ).attr('placeholder', i18n['processor.jwt.tokenInputPlaceholder'] || 'Paste token here...');
-    const $verifyButton = $(`<button type="button" class="${CSS.TOKEN_VERIFIER.VERIFY_BUTTON}"></button>`)
-        .text(i18n['processor.jwt.verifyToken'] || 'Verify Token');
 
-    $inputSection.append($inputLabel).append($tokenInput).append($verifyButton);
+    // Create token input field using the factory
+    const tokenField = formFactory.createField({
+        name: 'token-input',
+        label: i18n['processor.jwt.tokenInput'] || 'Enter Token',
+        description: i18n['processor.jwt.tokenInputDescription'] || 'Paste your JWT token for verification',
+        placeholder: i18n['processor.jwt.tokenInputPlaceholder'] || 'Paste token here...',
+        type: 'textarea',
+        required: true,
+        cssClass: 'token-verifier-field',
+        attributes: { rows: 5 }
+    });
+
+    // Create verify button using factory
+    const $verifyButton = $(formFactory.createButton({
+        text: i18n['processor.jwt.verifyToken'] || 'Verify Token',
+        variant: 'primary',
+        cssClass: CSS.TOKEN_VERIFIER.VERIFY_BUTTON,
+        icon: 'fa-check'
+        // No onClick handler - will be attached separately for compatibility
+    }));
+
+    $inputSection.append(tokenField).append($verifyButton[0]);
 
     // Create results area
     const $resultsSection = $(`<div class="${CSS.TOKEN_VERIFIER.RESULTS_SECTION}"></div>`);
@@ -78,6 +96,8 @@ const _initializeTokenVerifier = async (element, callback) => {
 
     // Handle verify button click
     $verifyButton.on('click', () => {
+        // Get token value from the factory-created field
+        const $tokenInput = $(tokenField).find('#field-token-input');
         const token = $tokenInput.val().trim();
 
         if (!token) {
