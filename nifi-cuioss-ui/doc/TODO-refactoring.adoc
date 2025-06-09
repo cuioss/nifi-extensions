@@ -66,72 +66,60 @@ NOTE: This library implements a minimal three-tab UI and does not require enterp
 * Completely revamped error display with structured HTML, type classification, and animations
 * Created modal confirmation dialogs with accessibility features and focus trapping
 
-=== 2. Unit Test Coverage Gaps
+=== 2. Unit Test File Organization
 
-**Objective**: Ensure each JavaScript source file has dedicated unit tests
+**Objective**: Ensure proper test file organization where each JavaScript source file has a corresponding test file
 
-**Current Coverage**: 15/19 files tested (78.9% coverage)
+**Current Status**: 15/19 source files have corresponding test files
 
-**Missing Tests (HIGH PRIORITY)**:
+**Missing Test Files (HIGH PRIORITY)**:
 
-* `src/main/webapp/js/components/jwksValidator.js` - Component missing dedicated test file
-* `src/main/webapp/js/utils/confirmationDialog.js` - New utility needs comprehensive testing
-* `src/main/webapp/js/utils/keyboardShortcuts.js` - New utility needs event handling tests
+* `src/main/webapp/js/components/jwksValidator.js` → needs `src/test/js/components/jwksValidator.test.js`
+* `src/main/webapp/js/utils/confirmationDialog.js` → needs `src/test/js/utils/confirmationDialog.test.js`
+* `src/main/webapp/js/utils/keyboardShortcuts.js` → needs `src/test/js/utils/keyboardShortcuts.test.js`
 
-**Missing Tests (MEDIUM PRIORITY)**:
+**Missing Test Files (MEDIUM PRIORITY)**:
 
-* `src/main/webapp/js/utils/tooltip.js` - UI utility testing (may have indirect coverage)
+* `src/main/webapp/js/utils/tooltip.js` → needs `src/test/js/utils/tooltip.test.js`
 
-**Missing Tests (LOW PRIORITY)**:
+**Missing Test Files (LOW PRIORITY)**:
 
-* `src/main/webapp/js/utils/constants.js` - Simple constants file (low testing value)
+* `src/main/webapp/js/utils/constants.js` → needs `src/test/js/utils/constants.test.js`
+
+**Objective**: Create missing test files to maintain proper 1:1 correspondence between source files and test files
 
 **Files Affected**:
 
 * New test files in `src/test/js/components/` and `src/test/js/utils/`
-* Potential test helper additions
 
 **Specific Tasks**:
 
-==== 2.1 jwksValidator Component Test
-* Create `src/test/js/components/jwksValidator.test.js`
-* Test initialization and component lifecycle
-* Test JWKS URL validation functionality
-* Test error handling and user feedback
-* Mock API calls and cash-dom interactions
+==== 2.1 Create jwksValidator.test.js
+* File: `src/test/js/components/jwksValidator.test.js`
+* Purpose: Establish 1:1 correspondence with `jwksValidator.js` component
+* Follow existing component test patterns
 
-==== 2.2 confirmationDialog Utility Test
-* Create `src/test/js/utils/confirmationDialog.test.js`
-* Test `showConfirmationDialog()` with all option combinations
-* Test `confirmRemoveIssuer()`, `confirmClearForm()`, `confirmResetConfiguration()`
-* Test dialog creation, event handling, and cleanup
-* Test keyboard navigation and accessibility features
-* Mock DOM manipulation and event listeners
+==== 2.2 Create confirmationDialog.test.js
+* File: `src/test/js/utils/confirmationDialog.test.js`
+* Purpose: Establish 1:1 correspondence with `confirmationDialog.js` utility
+* Follow existing utility test patterns
 
-==== 2.3 keyboardShortcuts Utility Test
-* Create `src/test/js/utils/keyboardShortcuts.test.js`
-* Test `initKeyboardShortcuts()` and `cleanup()`
-* Test all keyboard shortcut mappings (35+ shortcuts)
-* Test context validation (input fields vs other elements)
-* Test action execution for each shortcut type
-* Test help dialog display and interaction
-* Mock keyboard events and DOM interactions
+==== 2.3 Create keyboardShortcuts.test.js
+* File: `src/test/js/utils/keyboardShortcuts.test.js`
+* Purpose: Establish 1:1 correspondence with `keyboardShortcuts.js` utility
+* Follow existing utility test patterns
 
-==== 2.4 tooltip Utility Test (Optional)
-* Create `src/test/js/utils/tooltip.test.js`
-* Test tooltip initialization and configuration
-* Test dynamic tooltip creation and positioning
-* Mock Tippy.js library interactions
+==== 2.4 Create tooltip.test.js (Optional)
+* File: `src/test/js/utils/tooltip.test.js`
+* Purpose: Establish 1:1 correspondence with `tooltip.js` utility
 
-==== 2.5 constants Utility Test (Optional)
-* Create `src/test/js/utils/constants.test.js`
-* Test constant values and structure
-* Test utility functions like `getIsLocalhost()`
+==== 2.5 Create constants.test.js (Optional)
+* File: `src/test/js/utils/constants.test.js`
+* Purpose: Establish 1:1 correspondence with `constants.js` utility
 
-**Test Requirements**:
+**Organizational Requirements**:
 
-* Each test file should cover all exported functions
-* Include edge cases and error conditions
-* Mock external dependencies appropriately
-* Maintain 80%+ coverage threshold
-* Follow existing test patterns and naming conventions
+* Maintain mirror directory structure between `src/main/webapp/js/` and `src/test/js/`
+* Use consistent naming convention: `[filename].test.js`
+* Follow existing test file patterns and structure
+* Ensure each source file has exactly one corresponding test file
