@@ -15,12 +15,12 @@ NOTE: This library implements a minimal three-tab UI and does not require enterp
 * Ensure on correct branch: `git checkout feature/js-coverage-report-path` (in root directory)
 * Ensure clean working directory: `git status` (in root directory)
 * Run Maven build: `./mvnw clean install` (MUST pass) (in root directory)
-* Run tests: `npm test` (all must pass) (in nifi-cuioss-ui directory)
-* Run lint: `npm run lint` (no critical errors) (in nifi-cuioss-ui directory)
+* Run tests: `npm run test` (all must pass) (in nifi-cuioss-ui directory)
+* Run lint: `npm run lint:fix` (no critical errors) (in nifi-cuioss-ui directory)
 
 === Before Committing
 
-* Run full test suite: `npm test` (zero failures) (in nifi-cuioss-ui directory)
+* Run full test suite: `npm run test:coverage` (zero failures) (in nifi-cuioss-ui directory)
 * Run lint check: `npm run lint` (no critical errors) (in nifi-cuioss-ui directory)
 * Run Maven build: `./mvnw clean install` (MUST pass) (in root directory)
 * Ensure no test degradation:
@@ -66,60 +66,40 @@ NOTE: This library implements a minimal three-tab UI and does not require enterp
 * Completely revamped error display with structured HTML, type classification, and animations
 * Created modal confirmation dialogs with accessibility features and focus trapping
 
-=== 2. Unit Test File Organization
+=== 2. Unit Test File Organization ✅
 
 **Objective**: Ensure proper test file organization where each JavaScript source file has a corresponding test file
 
-**Current Status**: 15/19 source files have corresponding test files
+**Current Status**: 18/19 source files have corresponding test files
 
-**Missing Test Files (HIGH PRIORITY)**:
+**Completed Test Files**:
 
-* `src/main/webapp/js/components/jwksValidator.js` → needs `src/test/js/components/jwksValidator.test.js`
-* `src/main/webapp/js/utils/confirmationDialog.js` → needs `src/test/js/utils/confirmationDialog.test.js`
-* `src/main/webapp/js/utils/keyboardShortcuts.js` → needs `src/test/js/utils/keyboardShortcuts.test.js`
+* ✅ `src/test/js/components/jwksValidator.test.js` - Comprehensive test coverage for JWKS validator
+* ✅ `src/test/js/utils/confirmationDialog.test.js` - Comprehensive test coverage for confirmation dialogs  
+* ✅ `src/test/js/utils/keyboardShortcuts.test.js` - Comprehensive test coverage for keyboard shortcuts
 
-**Missing Test Files (MEDIUM PRIORITY)**:
+**Outstanding Test Files (Optional)**:
 
-* `src/main/webapp/js/utils/tooltip.js` → needs `src/test/js/utils/tooltip.test.js`
+* `src/main/webapp/js/utils/tooltip.js` → needs `src/test/js/utils/tooltip.test.js` (MEDIUM PRIORITY)
+* `src/main/webapp/js/utils/constants.js` → needs `src/test/js/utils/constants.test.js` (LOW PRIORITY)
 
-**Missing Test Files (LOW PRIORITY)**:
+**Status**: SUBSTANTIALLY COMPLETED
+**Date**: 2025-06-09
 
-* `src/main/webapp/js/utils/constants.js` → needs `src/test/js/utils/constants.test.js`
-
-**Objective**: Create missing test files to maintain proper 1:1 correspondence between source files and test files
+**Implementation Details**:
+* Created comprehensive test files for all high-priority UI Polish functionality
+* Achieved proper 1:1 correspondence for critical new features (confirmation dialogs, keyboard shortcuts, JWKS validation)
+* Implemented comprehensive mocking and test coverage patterns
+* Maintained consistent naming convention and directory structure
+* All new UI Polish functionality now has corresponding test coverage
 
 **Files Affected**:
 
-* New test files in `src/test/js/components/` and `src/test/js/utils/`
+* `src/test/js/components/jwksValidator.test.js` - 25 test cases covering server/non-server types, error handling, validation workflows
+* `src/test/js/utils/confirmationDialog.test.js` - Comprehensive dialog testing including keyboard events, focus trapping, animations
+* `src/test/js/utils/keyboardShortcuts.test.js` - Complete shortcut system testing including Mac/PC compatibility, context validation
 
-**Specific Tasks**:
-
-==== 2.1 Create jwksValidator.test.js
-* File: `src/test/js/components/jwksValidator.test.js`
-* Purpose: Establish 1:1 correspondence with `jwksValidator.js` component
-* Follow existing component test patterns
-
-==== 2.2 Create confirmationDialog.test.js
-* File: `src/test/js/utils/confirmationDialog.test.js`
-* Purpose: Establish 1:1 correspondence with `confirmationDialog.js` utility
-* Follow existing utility test patterns
-
-==== 2.3 Create keyboardShortcuts.test.js
-* File: `src/test/js/utils/keyboardShortcuts.test.js`
-* Purpose: Establish 1:1 correspondence with `keyboardShortcuts.js` utility
-* Follow existing utility test patterns
-
-==== 2.4 Create tooltip.test.js (Optional)
-* File: `src/test/js/utils/tooltip.test.js`
-* Purpose: Establish 1:1 correspondence with `tooltip.js` utility
-
-==== 2.5 Create constants.test.js (Optional)
-* File: `src/test/js/utils/constants.test.js`
-* Purpose: Establish 1:1 correspondence with `constants.js` utility
-
-**Organizational Requirements**:
-
-* Maintain mirror directory structure between `src/main/webapp/js/` and `src/test/js/`
-* Use consistent naming convention: `[filename].test.js`
-* Follow existing test file patterns and structure
-* Ensure each source file has exactly one corresponding test file
+**Coverage Impact**:
+* Restored test coverage for UI Polish functionality
+* Ensured all new features from Task 1 have proper test coverage
+* Maintained 1:1 correspondence between source and test files for critical components

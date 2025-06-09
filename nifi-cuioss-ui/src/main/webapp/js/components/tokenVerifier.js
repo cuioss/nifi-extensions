@@ -273,15 +273,25 @@ const _handleTokenVerificationResponse = (
  * @returns {string} Extracted error message
  */
 const _extractErrorMessageFromXHR = (jqXHR) => {
-    let errorMessage = jqXHR.statusText || jqXHR.responseText;
+    // Default to statusText if available, otherwise use a generic message
+    let errorMessage = jqXHR.statusText || 'Error processing request';
 
+    // Only try to parse responseText if it looks like JSON (starts with { or [)
     if (jqXHR.responseText) {
-        try {
-            const errorJson = JSON.parse(jqXHR.responseText);
-            errorMessage = errorJson?.message || errorMessage;
-        } catch (e) {
-            console.debug(e);
-            errorMessage = jqXHR.responseText || errorMessage;
+        if (typeof jqXHR.responseText === 'string' &&
+            (jqXHR.responseText.trim().startsWith('{') || jqXHR.responseText.trim().startsWith('['))) {
+            try {
+                const errorJson = JSON.parse(jqXHR.responseText);
+                errorMessage = errorJson?.message || errorMessage;
+            } catch (e) {
+                console.debug('Failed to parse responseText as JSON:', e);
+                // Keep the original error message if JSON parsing fails
+            }
+        } else {
+            // If responseText doesn't look like JSON, use it directly if it's a string
+            if (typeof jqXHR.responseText === 'string') {
+                errorMessage = jqXHR.responseText;
+            }
         }
     }
 
@@ -390,4 +400,16 @@ export const cleanup = () => {
 
 export const __setIsLocalhostForTesting = function (value) {
     setIsLocalhostForTesting(value);
+};
+
+// Export internal functions for testing
+export const __test = {
+    showInitialInstructions: _showInitialInstructions,
+    resetUIAndShowLoading: _resetUIAndShowLoading,
+    handleTokenVerificationResponse: _handleTokenVerificationResponse,
+    extractErrorMessageFromXHR: _extractErrorMessageFromXHR,
+    sanitizeErrorMessage: _sanitizeErrorMessage,
+    createSampleTokenResponse: _createSampleTokenResponse,
+    handleTokenVerificationAjaxError: _handleTokenVerificationAjaxError,
+    handleTokenVerificationSyncException: _handleTokenVerificationSyncException
 };
