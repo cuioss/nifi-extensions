@@ -27,7 +27,9 @@ module.exports = {
     resolve: {
         extensions: ['.js'],
         alias: {
-            'nf.Common': path.resolve(__dirname, 'src/test/js/mocks/nf-common.js')
+            'nf.Common': process.env.NODE_ENV === 'production' 
+                ? path.resolve(__dirname, 'src/main/webapp/js/nf-common.js') 
+                : path.resolve(__dirname, 'src/test/js/mocks/nf-common.js')
         }
     },
     externals: {

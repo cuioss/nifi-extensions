@@ -2,6 +2,8 @@
  * Mock implementation of jwksValidator for testing.
  */
 module.exports = {
+    // This mock implementation checks for a callback function before invoking it.
+    // Note: No DOM manipulation or AJAX calls are included in this mock, as it is intended for simplified testing purposes.
     init: jest.fn().mockImplementation((element, propertyValue, jwks_type, callback) => {
         if (typeof callback === 'function') {
             callback({
