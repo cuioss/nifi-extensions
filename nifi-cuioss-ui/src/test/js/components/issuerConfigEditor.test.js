@@ -256,11 +256,6 @@ describe('issuerConfigEditor', function () { // Re-enabled tests
                 await jest.runAllTimersAsync();
                 expect(apiClientForMocks.getProcessorProperties).toHaveBeenCalledWith('12345-abcde');
             });
-
-            // TEST TEMPORARILY REMOVED DUE TO jest.doMock COMPLEXITIES
-            // it('should handle error during initComponent by calling callback', async () => {
-            //     // ...
-            // });
         });
 
         describe('loadExistingIssuers', () => {
@@ -2020,11 +2015,6 @@ describe('issuerConfigEditor', function () { // Re-enabled tests
                 issuerConfigEditor.init(null, mockCallback, currentTestUrl);
                 expect(mockCallback).toHaveBeenCalled();
             });
-
-            // TEST TEMPORARILY REMOVED DUE TO jest.doMock COMPLEXITIES
-            // it('should call callback if an exception occurs during initComponent setup', async () => {
-            //      // ...
-            // });
         });
     });
 });

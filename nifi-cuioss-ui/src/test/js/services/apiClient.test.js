@@ -287,8 +287,8 @@ describe('apiClient', () => {
         const token = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...';
 
         it('should make a POST request and resolve on success', async () => {
-            const mockResponseData = { 
-                valid: true, 
+            const mockResponseData = {
+                valid: true,
                 claims: { sub: 'user123', iss: 'https://auth.example.com' },
                 issuer: 'https://auth.example.com',
                 exp: 1234567890,

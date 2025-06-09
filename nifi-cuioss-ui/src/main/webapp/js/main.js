@@ -184,7 +184,8 @@ const setupDialogHandlers = () => {
 
         if (isProcessorDialog) {
             setTimeout(() => {
-                const processorType = dialogElement.querySelector(CSS.SELECTORS.PROCESSOR_TYPE)?.textContent?.trim();
+                const processorType = dialogElement
+                    .querySelector(CSS.SELECTORS.PROCESSOR_TYPE)?.textContent?.trim();
 
                 if (processorType?.includes(
                     NIFI.PROCESSOR_TYPES.MULTI_ISSUER_JWT_AUTHENTICATOR)) {

@@ -134,7 +134,10 @@ export class ComponentManager {
             } catch (error) {
                 lastError = error;
                 // eslint-disable-next-line no-console
-                console.warn(`Component ${id} initialization attempt ${attempt + 1} failed:`, error);
+                console.warn(
+                    `Component ${id} initialization attempt ${attempt + 1} failed:`,
+                    error
+                );
 
                 if (attempt < options.retryCount) {
                     await this._delay(options.retryDelay * (attempt + 1)); // Exponential backoff
@@ -184,7 +187,7 @@ export class ComponentManager {
                     return;
                 }
 
-                if (typeof nf !== 'undefined' && nf.Canvas && nf.Canvas.initialized) {
+                if (typeof nf !== 'undefined' && nf?.Canvas?.initialized) {
                     this.globalState.nifiReady = true;
                     resolve();
                 } else {

@@ -323,19 +323,6 @@ describe('main.js (real implementation with JSDOM)', () => {
                 mockInitTooltips.mockClear(); // Use the imported initTooltips mock
             });
 
-            // This test remains problematic due to event system complexity in Jest/JSDOM
-            // The dialogOpen event listener may not be properly registered or triggered in test environment
-            it.skip('should register help tooltips and update translations when a MultiIssuerJWTTokenAuthenticator dialog opens', async () => {
-                // Test skipped due to Jest/JSDOM event system limitations
-                // The main.js dialogOpen event handler functionality is tested indirectly through other tests
-                // This specific test case has persistent issues with jQuery event triggering in test environment
-                // These are included to match the subtask request, but highlight a discrepancy.
-                // To make these pass, main.js would need to call something like i18n.translateUI(dialogContent).
-                // The following assertions confirm that main.js's updateUITranslations does NOT affect these specific elements by their data-i18n-key within the dialog,
-                // as it operates on global selectors or specific hardcoded IDs/classes not necessarily present or unique within the dialog for these keys.
-                expect(freshDialogContent.querySelector('[data-i18n-key="jwt.validator.title"]').textContent).toBe('Initial Dialog Title'); // Expected to remain initial value
-                expect(freshDialogContent.querySelector('[data-i18n-key-direct="property.token.location.help"]').textContent).toBe('Initial Dialog Help Text'); // Expected to remain initial value
-            });
 
             it('should handle dialogOpen with non-array data (line 182 coverage)', async () => {
                 const dialogContent = document.getElementById('processor-dialog-mock');
