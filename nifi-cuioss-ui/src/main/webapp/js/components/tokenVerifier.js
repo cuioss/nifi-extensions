@@ -163,7 +163,9 @@ const _initializeTokenVerifier = async (element, callback) => {
     // Handle clear button click
     $clearButton.on('click', async () => {
         const $tokenInput = $(tokenField).find('#field-token-input');
-        const hasContent = $tokenInput.val().trim() || $resultsContent.children().length > 0;
+        const tokenValue = $tokenInput.val() ? $tokenInput.val().trim() : '';
+        const resultsHtml = $resultsContent.html() || '';
+        const hasContent = tokenValue || (typeof resultsHtml === 'string' && resultsHtml.trim().length > 0);
 
         if (hasContent) {
             // Show confirmation for clearing form data

@@ -44,6 +44,13 @@ jest.mock('../../../main/webapp/js/utils/uiErrorDisplay.js', () => ({
     displayUiError: jest.fn()
 }));
 
+jest.mock('../../../main/webapp/js/utils/confirmationDialog.js', () => ({
+    confirmClearForm: jest.fn().mockResolvedValue(true),
+    showConfirmationDialog: jest.fn().mockResolvedValue(true),
+    confirmRemoveIssuer: jest.fn().mockResolvedValue(true),
+    confirmResetConfiguration: jest.fn().mockResolvedValue(true)
+}));
+
 jest.mock('../../../main/webapp/js/utils/constants.js', () => ({
     getIsLocalhost: jest.fn().mockReturnValue(false),
     setIsLocalhostForTesting: jest.fn(),
