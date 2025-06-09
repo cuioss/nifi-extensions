@@ -252,6 +252,110 @@ describe('apiClient', () => {
         });
     });
 
+    describe('validateJwksContent', () => {
+        const jwksContent = '{"keys": [{"kty": "RSA", "kid": "key1"}]}';
+
+        it('should make a POST request and resolve on success', async () => {
+            const mockResponseData = { valid: true, keyCount: 1, jwks: {} };
+            mockAjax.mockResolvedValue(mockResponseData);
+
+            const promise = apiClient.validateJwksContent(jwksContent);
+
+            await expect(promise).resolves.toEqual(mockResponseData);
+            expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({
+                method: 'POST',
+                url: expect.stringContaining('/validate-jwks-content'),
+                data: JSON.stringify({ jwksContent: jwksContent })
+            }));
+        });
+
+        it('should reject with a standardized error object on AJAX failure', async () => {
+            const mockJqXHR = { status: 400, statusText: 'Invalid Content', responseText: 'Invalid JWKS format' };
+            mockAjax.mockRejectedValue(mockJqXHR);
+
+            const promise = apiClient.validateJwksContent(jwksContent);
+
+            await expect(promise).rejects.toEqual({
+                status: 400,
+                statusText: 'Invalid Content',
+                responseText: 'Invalid JWKS format'
+            });
+        });
+    });
+
+    describe('verifyToken', () => {
+        const token = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...';
+
+        it('should make a POST request and resolve on success', async () => {
+            const mockResponseData = { 
+                valid: true, 
+                claims: { sub: 'user123', iss: 'https://auth.example.com' },
+                issuer: 'https://auth.example.com',
+                exp: 1234567890,
+                sub: 'user123',
+                aud: ['api-audience']
+            };
+            mockAjax.mockResolvedValue(mockResponseData);
+
+            const promise = apiClient.verifyToken(token);
+
+            await expect(promise).resolves.toEqual(mockResponseData);
+            expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({
+                method: 'POST',
+                url: expect.stringContaining('/verify-token'),
+                data: JSON.stringify({ token: token })
+            }));
+        });
+
+        it('should reject with a standardized error object on AJAX failure', async () => {
+            const mockJqXHR = { status: 401, statusText: 'Unauthorized', responseText: 'Invalid token signature' };
+            mockAjax.mockRejectedValue(mockJqXHR);
+
+            const promise = apiClient.verifyToken(token);
+
+            await expect(promise).rejects.toEqual({
+                status: 401,
+                statusText: 'Unauthorized',
+                responseText: 'Invalid token signature'
+            });
+        });
+    });
+
+    describe('getSecurityMetrics', () => {
+        it('should make a GET request and resolve on success', async () => {
+            const mockResponseData = {
+                totalValidations: 1000,
+                successfulValidations: 950,
+                failedValidations: 50,
+                issuerMetrics: { 'issuer1': { validations: 500, errors: 25 } },
+                recentErrors: [],
+                averageResponseTime: 150
+            };
+            mockAjax.mockResolvedValue(mockResponseData);
+
+            const promise = apiClient.getSecurityMetrics();
+
+            await expect(promise).resolves.toEqual(mockResponseData);
+            expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({
+                method: 'GET',
+                url: expect.stringContaining('/metrics')
+            }));
+        });
+
+        it('should reject with a standardized error object on AJAX failure', async () => {
+            const mockJqXHR = { status: 503, statusText: 'Service Unavailable', responseText: 'Metrics service down' };
+            mockAjax.mockRejectedValue(mockJqXHR);
+
+            const promise = apiClient.getSecurityMetrics();
+
+            await expect(promise).rejects.toEqual({
+                status: 503,
+                statusText: 'Service Unavailable',
+                responseText: 'Metrics service down'
+            });
+        });
+    });
+
     // Legacy callback API tests removed - only Promise-based APIs are now supported
 
 
