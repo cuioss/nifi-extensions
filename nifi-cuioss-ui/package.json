@@ -2,6 +2,7 @@
   "name": "nifi-cuioss-ui",
   "version": "1.0.0",
   "description": "Provides custom UI components for NiFi CU Boulder CUIOSS extensions.",
+  "dependencyManagement": "Runtime dependencies (cash-dom, tippy.js, @popperjs/core) are managed via WebJars in pom.xml. NPM dependencies are for development only.",
   "main": "src/main/webapp/js/main.js",
   "scripts": {
     "build": "webpack --mode production",
@@ -13,7 +14,8 @@
     "test": "NODE_ENV=test jest",
     "test:watch": "NODE_ENV=test jest --watch",
     "test:coverage": "NODE_ENV=test jest --coverage",
-    "test:ci": "NODE_ENV=test jest --coverage --watchAll=false --passWithNoTests"
+    "test:ci": "NODE_ENV=test jest --coverage --watchAll=false --passWithNoTests",
+    "validate-deps": "node scripts/validate-dependencies.js"
   },
   "repository": {
     "type": "git",
@@ -34,9 +36,11 @@
   "devDependencies": {
     "@babel/core": "^7.24.7",
     "@babel/preset-env": "^7.24.7",
+    "@popperjs/core": "^2.11.8",
     "@testing-library/jest-dom": "^6.4.0",
     "babel-jest": "^29.7.0",
     "babel-loader": "^9.1.3",
+    "cash-dom": "^8.1.5",
     "eslint": "^8.57.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-prettier": "^10.1.5",
@@ -49,14 +53,12 @@
     "prettier": "^3.3.2",
     "stylelint": "^16.6.1",
     "stylelint-config-standard": "^38.0.0",
+    "tippy.js": "^6.3.7",
     "webpack": "^5.92.1",
     "webpack-cli": "^6.0.1",
     "whatwg-fetch": "^3.6.20"
   },
   "dependencies": {
-    "@popperjs/core": "^2.11.8",
-    "cash-dom": "^8.1.5",
-    "tippy.js": "^6.3.7"
   },
   "jest": {
     "verbose": false,
