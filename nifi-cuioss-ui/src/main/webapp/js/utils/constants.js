@@ -192,7 +192,20 @@ export const CSS = {
         TOKEN_ERROR: 'token-error',
         TOKEN_LOADING: 'token-loading',
         TOKEN_VALID: 'token-valid',
-        TOKEN_DETAILS: 'token-details'
+        TOKEN_INVALID: 'token-invalid',
+        TOKEN_DETAILS: 'token-details',
+        TOKEN_ERROR_DETAILS: 'token-error-details',
+        TOKEN_ERROR_MESSAGE: 'token-error-message',
+        TOKEN_ERROR_CATEGORY: 'token-error-category',
+        TOKEN_RAW_CLAIMS: 'token-raw-claims',
+        TOKEN_CLAIMS_TABLE: 'token-claims-table',
+        TOKEN_INSTRUCTIONS: 'token-instructions'
+    },
+    JWKS_VALIDATOR: {
+        CONTAINER: 'jwks-verification-container',
+        BUTTON_WRAPPER: 'jwks-button-wrapper',
+        VERIFY_BUTTON: 'verify-jwks-button',
+        VERIFICATION_RESULT: 'verification-result'
     }
 };
 

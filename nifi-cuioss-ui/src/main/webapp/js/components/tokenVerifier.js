@@ -155,7 +155,7 @@ const _initializeTokenVerifier = async (element, callback) => {
             </div>
             <div class="${CSS.TOKEN_VERIFIER.TOKEN_DETAILS}">
                 <h4>${i18n['processor.jwt.tokenDetails'] || 'Token Details'}</h4>
-                <table class="token-claims-table">
+                <table class="${CSS.TOKEN_VERIFIER.TOKEN_CLAIMS_TABLE}">
                     <tr><th>${i18n['processor.jwt.subject'] || 'Subject'}</th><td>${response.subject || ''}</td></tr>
                     <tr><th>${i18n['processor.jwt.issuer'] || 'Issuer'}</th><td>${response.issuer || ''}</td></tr>
                     <tr><th>${i18n['processor.jwt.audience'] || 'Audience'}</th><td>${response.audience || ''}</td></tr>
@@ -164,7 +164,7 @@ const _initializeTokenVerifier = async (element, callback) => {
                     ${scopesRow}
                 </table>
                 <h4>${i18n['processor.jwt.allClaims'] || 'All Claims'}</h4>
-                <pre class="token-raw-claims">${JSON.stringify(response.claims, null, 2)}</pre>
+                <pre class="${CSS.TOKEN_VERIFIER.TOKEN_RAW_CLAIMS}">${JSON.stringify(response.claims, null, 2)}</pre>
             </div>
         `;
         $resultsContent.html(html);
@@ -180,7 +180,7 @@ const _initializeTokenVerifier = async (element, callback) => {
     };
 
     $resultsContent.html(`
-        <div class="token-instructions">
+        <div class="${CSS.TOKEN_VERIFIER.TOKEN_INSTRUCTIONS}">
             ${i18n['processor.jwt.initialInstructions'] ||
                 'Enter a JWT token above and click "Verify Token" to validate it.'}
         </div>

@@ -5,14 +5,17 @@
     /* Primary colors */
     --primary-color: #0074d9;
     --primary-color-dark: #0063b1;
+    --primary-color-rgb: 0, 116, 217;
 
     /* Success colors */
     --success-color: #2ecc40;
     --success-color-dark: #29b739;
+    --success-color-rgb: 46, 204, 64;
 
     /* Error colors */
     --error-color: #ff4136;
     --error-color-dark: #e60000;
+    --error-color-rgb: 255, 65, 54;
 
     /* Neutral colors */
     --background-color: #f5f5f5;
