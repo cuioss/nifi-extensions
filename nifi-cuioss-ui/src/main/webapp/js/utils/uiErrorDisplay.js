@@ -49,6 +49,7 @@ const extractFromResponseText = (responseText) => {
         // If no message was extracted, fall back to raw responseText
         return extractedMessage !== null ? extractedMessage : responseText;
     } catch (e) {
+        console.debug('Failed to parse responseText as JSON:', e);
         return responseText;
     }
 };
