@@ -65,3 +65,73 @@ NOTE: This library implements a minimal three-tab UI and does not require enterp
 * Enhanced tooltip system with dynamic initialization via MutationObserver
 * Completely revamped error display with structured HTML, type classification, and animations
 * Created modal confirmation dialogs with accessibility features and focus trapping
+
+=== 2. Unit Test Coverage Gaps
+
+**Objective**: Ensure each JavaScript source file has dedicated unit tests
+
+**Current Coverage**: 15/19 files tested (78.9% coverage)
+
+**Missing Tests (HIGH PRIORITY)**:
+
+* `src/main/webapp/js/components/jwksValidator.js` - Component missing dedicated test file
+* `src/main/webapp/js/utils/confirmationDialog.js` - New utility needs comprehensive testing
+* `src/main/webapp/js/utils/keyboardShortcuts.js` - New utility needs event handling tests
+
+**Missing Tests (MEDIUM PRIORITY)**:
+
+* `src/main/webapp/js/utils/tooltip.js` - UI utility testing (may have indirect coverage)
+
+**Missing Tests (LOW PRIORITY)**:
+
+* `src/main/webapp/js/utils/constants.js` - Simple constants file (low testing value)
+
+**Files Affected**:
+
+* New test files in `src/test/js/components/` and `src/test/js/utils/`
+* Potential test helper additions
+
+**Specific Tasks**:
+
+==== 2.1 jwksValidator Component Test
+* Create `src/test/js/components/jwksValidator.test.js`
+* Test initialization and component lifecycle
+* Test JWKS URL validation functionality
+* Test error handling and user feedback
+* Mock API calls and cash-dom interactions
+
+==== 2.2 confirmationDialog Utility Test
+* Create `src/test/js/utils/confirmationDialog.test.js`
+* Test `showConfirmationDialog()` with all option combinations
+* Test `confirmRemoveIssuer()`, `confirmClearForm()`, `confirmResetConfiguration()`
+* Test dialog creation, event handling, and cleanup
+* Test keyboard navigation and accessibility features
+* Mock DOM manipulation and event listeners
+
+==== 2.3 keyboardShortcuts Utility Test
+* Create `src/test/js/utils/keyboardShortcuts.test.js`
+* Test `initKeyboardShortcuts()` and `cleanup()`
+* Test all keyboard shortcut mappings (35+ shortcuts)
+* Test context validation (input fields vs other elements)
+* Test action execution for each shortcut type
+* Test help dialog display and interaction
+* Mock keyboard events and DOM interactions
+
+==== 2.4 tooltip Utility Test (Optional)
+* Create `src/test/js/utils/tooltip.test.js`
+* Test tooltip initialization and configuration
+* Test dynamic tooltip creation and positioning
+* Mock Tippy.js library interactions
+
+==== 2.5 constants Utility Test (Optional)
+* Create `src/test/js/utils/constants.test.js`
+* Test constant values and structure
+* Test utility functions like `getIsLocalhost()`
+
+**Test Requirements**:
+
+* Each test file should cover all exported functions
+* Include edge cases and error conditions
+* Mock external dependencies appropriately
+* Maintain 80%+ coverage threshold
+* Follow existing test patterns and naming conventions
