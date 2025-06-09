@@ -22,44 +22,48 @@ describe('displayUiError', () => {
         $targetElement.remove();
     });
 
-    // Helper to get the text content, excluding the "Failed" prefix for easier message checking
+    // Helper to get the text content from the new enhanced error format
     const getErrorMessageText = () => {
-        const fullHtml = $targetElement.html();
-        const prefixToRemove = `<span style="color: var(--error-color); font-weight: bold;">${mockI18n['processor.jwt.failed']}</span> `;
-        const typeAndMessage = fullHtml.replace(prefixToRemove, '');
-        // Further remove the type prefix to isolate the core message
-        const validationErrorType = `${mockI18n['processor.jwt.validationError']}: `;
-        const customErrorType = `${mockI18n['custom.error.type']}: `; // If testing custom types
+        const $errorContent = $targetElement.find('.error-content');
+        if ($errorContent.length > 0) {
+            const fullText = $errorContent.text().trim();
+            // Remove the error type prefix to get just the message
+            const validationErrorType = `${mockI18n['processor.jwt.validationError']}: `;
+            const customErrorType = `${mockI18n['custom.error.type']}: `;
 
-        if (typeAndMessage.startsWith(validationErrorType)) {
-            return typeAndMessage.replace(validationErrorType, '');
+            if (fullText.startsWith(validationErrorType)) {
+                return fullText.replace(validationErrorType, '');
+            }
+            if (fullText.startsWith(customErrorType)) {
+                return fullText.replace(customErrorType, '');
+            }
+            if (fullText.startsWith('Error: ')) {
+                return fullText.replace('Error: ', '');
+            }
+            return fullText.replace(/^[^:]+:\s*/, ''); // Remove any prefix ending with ': '
         }
-        if (typeAndMessage.startsWith(customErrorType)) {
-            return typeAndMessage.replace(customErrorType, '');
-        }
-        // Fallback if prefixes are not as expected (should not happen in these tests)
-        return typeAndMessage;
+        return '';
     };
 
 
     it('should display error with default error type key', () => {
         const error = { message: 'Test error message' };
         displayUiError($targetElement, error, mockI18n);
-        expect($targetElement.html()).toContain(`<span style="color: var(--error-color); font-weight: bold;">${mockI18n['processor.jwt.failed']}</span>`);
-        expect($targetElement.html()).toContain(`${mockI18n['processor.jwt.validationError']}: Test error message`);
+        expect($targetElement.find('.error-message').length).toBe(1);
+        expect($targetElement.find('.error-content').text()).toContain(`${mockI18n['processor.jwt.validationError']}: Test error message`);
     });
 
     it('should display error with custom error type key', () => {
         const error = { message: 'Test error message for custom type' };
         displayUiError($targetElement, error, mockI18n, 'custom.error.type');
-        expect($targetElement.html()).toContain(`<span style="color: var(--error-color); font-weight: bold;">${mockI18n['processor.jwt.failed']}</span>`);
-        expect($targetElement.html()).toContain(`${mockI18n['custom.error.type']}: Test error message for custom type`);
+        expect($targetElement.find('.error-message').length).toBe(1);
+        expect($targetElement.find('.error-content').text()).toContain(`${mockI18n['custom.error.type']}: Test error message for custom type`);
     });
 
     it('should use default "Error" if custom errorTypeKey is not in i18n', () => {
         const error = { message: 'Test message' };
         displayUiError($targetElement, error, mockI18n, 'nonexistent.key');
-        expect($targetElement.html()).toContain('Error: Test message'); // Default 'Error'
+        expect($targetElement.find('.error-content').text()).toContain('Error: Test message'); // Default 'Error'
     });
 
 

@@ -23,6 +23,7 @@ import * as tokenVerifier from './components/tokenVerifier.js';
 import * as issuerConfigEditor from './components/issuerConfigEditor.js';
 import * as i18n from './utils/i18n.js';
 import { initTooltips } from './utils/tooltip.js';
+import { initKeyboardShortcuts, cleanup as cleanupKeyboardShortcuts } from './utils/keyboardShortcuts.js';
 import { API, CSS, NIFI, UI_TEXT } from './utils/constants.js';
 
 /**
@@ -102,11 +103,63 @@ const setupHelpTooltips = () => {
             }
         });
 
-        // Initialize tooltips
+        // Initialize tooltips for help elements
         initTooltips(CSS.SELECTORS.HELP_TOOLTIP);
+
+        // Initialize tooltips for elements with title attributes
+        initTooltips('[title]', { placement: 'bottom' });
+
+        // Initialize tooltips for help text elements created by FormFieldFactory
+        initTooltips('.help-tooltip', { placement: 'right' });
+
+        // Setup observer for dynamically added tooltips
+        setupTooltipObserver();
     } catch (error) {
         // Help tooltips setup skipped - non-critical
         console.debug('JWT UI help tooltips setup failed:', error);
+    }
+};
+
+/**
+ * Sets up mutation observer to initialize tooltips on dynamically added elements.
+ * This ensures tooltips work on form fields created after initial page load.
+ */
+const setupTooltipObserver = () => {
+    try {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            // Initialize tooltips for newly added elements
+                            const $node = $(node);
+                            const elementsWithTitle = $node.find('[title]');
+                            const helpTooltips = $node.find('.help-tooltip');
+
+                            if (elementsWithTitle.length > 0) {
+                                initTooltips(elementsWithTitle.get(), { placement: 'bottom' });
+                            }
+
+                            if (helpTooltips.length > 0) {
+                                initTooltips(helpTooltips.get(), { placement: 'right' });
+                            }
+                        }
+                    });
+                }
+            });
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+
+        // Store observer for cleanup
+        if (!window.nifiJwtTooltipObserver) {
+            window.nifiJwtTooltipObserver = observer;
+        }
+    } catch (error) {
+        console.debug('Failed to setup tooltip observer:', error);
     }
 };
 
@@ -222,11 +275,13 @@ export const init = async () => {
             setupUI();
             setupHelpTooltips();
             setupDialogHandlers();
+            initKeyboardShortcuts();
 
             // JWT UI initialization completed
         } else {
             // Fallback - just hide loading and show basic UI
             setupUI();
+            initKeyboardShortcuts();
         }
 
         // Add timeout fallback for test compatibility
@@ -254,6 +309,14 @@ export const cleanup = () => {
     try {
         // Simple cleanup - just remove event handlers
         $(document).off('dialogOpen');
+        cleanupKeyboardShortcuts();
+
+        // Cleanup tooltip observer
+        if (window.nifiJwtTooltipObserver) {
+            window.nifiJwtTooltipObserver.disconnect();
+            window.nifiJwtTooltipObserver = null;
+        }
+
         // JWT UI cleanup completed
     } catch (error) {
         // JWT UI cleanup failed - error handled internally

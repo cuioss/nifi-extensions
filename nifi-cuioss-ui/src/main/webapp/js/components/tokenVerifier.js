@@ -6,6 +6,7 @@
 import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
+import { confirmClearForm } from '../utils/confirmationDialog.js';
 import { getIsLocalhost, setIsLocalhostForTesting, API, CSS } from '../utils/constants.js';
 import { FormFieldFactory } from '../utils/formBuilder.js';
 
@@ -78,7 +79,19 @@ const _initializeTokenVerifier = async (element, callback) => {
         // No onClick handler - will be attached separately for compatibility
     }));
 
-    $inputSection.append(tokenField).append($verifyButton[0]);
+    // Create clear button
+    const $clearButton = $(formFactory.createButton({
+        text: 'Clear',
+        variant: 'secondary',
+        cssClass: 'clear-token-button',
+        icon: 'fa-trash'
+    }));
+
+    // Create button container
+    const $buttonContainer = $('<div class="button-container"></div>');
+    $buttonContainer.append($verifyButton[0]).append($clearButton[0]);
+
+    $inputSection.append(tokenField).append($buttonContainer[0]);
 
     // Create results area
     const $resultsSection = $(`<div class="${CSS.TOKEN_VERIFIER.RESULTS_SECTION}"></div>`);
@@ -105,7 +118,13 @@ const _initializeTokenVerifier = async (element, callback) => {
             return;
         }
 
+        // Add loading state to button
+        $verifyButton.addClass('loading').prop('disabled', true);
         _resetUIAndShowLoading($resultsContent, i18n);
+
+        const resetButton = () => {
+            $verifyButton.removeClass('loading').prop('disabled', false);
+        };
 
         try {
             $.ajax({
@@ -117,6 +136,7 @@ const _initializeTokenVerifier = async (element, callback) => {
                 timeout: API.TIMEOUTS.DEFAULT
             })
                 .then(responseData => {
+                    resetButton();
                     _handleTokenVerificationResponse(
                         responseData,
                         $resultsContent,
@@ -126,6 +146,7 @@ const _initializeTokenVerifier = async (element, callback) => {
                     );
                 })
                 .catch(jqXHR => {
+                    resetButton();
                     _handleTokenVerificationAjaxError(
                         jqXHR,
                         $resultsContent,
@@ -134,7 +155,31 @@ const _initializeTokenVerifier = async (element, callback) => {
                     );
                 });
         } catch (e) {
+            resetButton();
             _handleTokenVerificationSyncException(e, $resultsContent, i18n, _displayValidToken);
+        }
+    });
+
+    // Handle clear button click
+    $clearButton.on('click', async () => {
+        const $tokenInput = $(tokenField).find('#field-token-input');
+        const hasContent = $tokenInput.val().trim() || $resultsContent.children().length > 0;
+
+        if (hasContent) {
+            // Show confirmation for clearing form data
+            const confirmed = await confirmClearForm(() => {
+                // Clear the token input
+                $tokenInput.val('');
+
+                // Clear results and show initial instructions
+                _showInitialInstructions($resultsContent, i18n);
+            });
+        } else {
+            // Nothing to clear, just show a brief message
+            $resultsContent.html('<div class="info-message">Form is already empty.</div>');
+            setTimeout(() => {
+                _showInitialInstructions($resultsContent, i18n);
+            }, 2000);
         }
     });
 
@@ -179,12 +224,7 @@ const _initializeTokenVerifier = async (element, callback) => {
         displayUiError($targetContent, { responseJSON: response }, i18nToUse, 'processor.jwt.tokenInvalid');
     };
 
-    $resultsContent.html(`
-        <div class="${CSS.TOKEN_VERIFIER.TOKEN_INSTRUCTIONS}">
-            ${i18n['processor.jwt.initialInstructions'] ||
-                'Enter a JWT token above and click "Verify Token" to validate it.'}
-        </div>
-    `);
+    _showInitialInstructions($resultsContent, i18n);
 
     // Use optional chaining and logical AND for callback
     callback?.({ validate: () => true });
@@ -192,11 +232,20 @@ const _initializeTokenVerifier = async (element, callback) => {
 
 // --- Refactored Private Helper Functions ---
 
+const _showInitialInstructions = ($resultsContent, i18n) => {
+    $resultsContent.html(`
+        <div class="${CSS.TOKEN_VERIFIER.TOKEN_INSTRUCTIONS}">
+            ${i18n['processor.jwt.initialInstructions'] ||
+                'Enter a JWT token above and click "Verify Token" to validate it.'}
+        </div>
+    `);
+};
+
 const _resetUIAndShowLoading = ($resultsContent, i18n) => {
     $resultsContent.html(`
         <div class="${CSS.TOKEN_VERIFIER.TOKEN_LOADING}">
-            <span class="fa fa-spinner fa-spin"></span>
-            ${i18n['processor.jwt.verifying'] || 'Verifying token...'}
+            <div class="loading-spinner"></div>
+            <span class="loading-text">${i18n['processor.jwt.verifying'] || 'Verifying token...'}</span>
         </div>
     `);
 };

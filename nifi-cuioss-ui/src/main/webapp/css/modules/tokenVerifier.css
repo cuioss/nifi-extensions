@@ -38,6 +38,27 @@
     background-color: var(--primary-color-dark);
 }
 
+.button-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.clear-token-button {
+    padding: 8px 15px;
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.clear-token-button:hover {
+    background-color: #5a6268;
+}
+
 .token-results-section {
     margin-top: 20px;
 }
@@ -73,6 +94,9 @@
 .token-loading {
     color: var(--primary-color);
     padding: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .token-details {

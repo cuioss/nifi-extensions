@@ -108,14 +108,144 @@ const extractErrorMessage = (error, i18n) => {
  * @param {object} i18n - The i18n map for localized strings.
  * @param {string} [errorTypeKey='processor.jwt.validationError'] - Optional i18n key for the "error type" prefix.
  */
-export const displayUiError = ($targetElement, error, i18n, errorTypeKey = 'processor.jwt.validationError') => {
-    const messageToDisplay = extractErrorMessage(error, i18n);
-    const failPrefix = i18n['processor.jwt.failed'] || 'Failed';
-    const errorTypePrefix = i18n[errorTypeKey] || 'Error'; // Default to "Error" if key not found
+export const displayUiError = ($targetElement, error, i18n, errorTypeKey = 'processor.jwt.validationError', options = {}) => {
+    const { type = 'error', closable = false, autoHide = false } = options;
 
-    const errorHtml =
-        `<span style="color: var(--error-color); font-weight: bold;">${failPrefix}</span> ` +
-        `${errorTypePrefix}: ${messageToDisplay}`;
+    const messageToDisplay = extractErrorMessage(error, i18n);
+    const errorTypePrefix = i18n[errorTypeKey] || 'Error';
+
+    // Determine error type class
+    const errorTypeClass = getErrorTypeClass(type);
+    const closableClass = closable ? 'closable' : '';
+
+    // Create close button if needed
+    const closeButton = closable ? '<button class="close-error" aria-label="Close error">&times;</button>' : '';
+
+    const errorHtml = `
+        <div class="error-message ${errorTypeClass} ${closableClass}">
+            <div class="error-content">
+                <strong>${errorTypePrefix}:</strong> ${messageToDisplay}
+            </div>
+            ${closeButton}
+        </div>
+    `;
 
     $targetElement.html(errorHtml);
+
+    // Add close button functionality
+    if (closable) {
+        $targetElement.find('.close-error').on('click', () => {
+            $targetElement.find('.error-message').fadeOut(300, function () {
+                $(this).remove();
+            });
+        });
+    }
+
+    // Auto-hide functionality
+    if (autoHide) {
+        setTimeout(() => {
+            $targetElement.find('.error-message').fadeOut(300, function () {
+                $(this).remove();
+            });
+        }, 5000);
+    }
+};
+
+/**
+ * Displays a success message in the UI.
+ * @param {object} $targetElement - A cash-dom wrapped element where the success HTML should be set.
+ * @param {string} message - The success message to display.
+ * @param {Object} [options={}] - Additional options
+ * @param {boolean} [options.autoHide=true] - Whether to auto-hide after 5 seconds
+ */
+export const displayUiSuccess = ($targetElement, message, options = {}) => {
+    const { autoHide = true } = options;
+    const autoHideClass = autoHide ? 'auto-dismiss' : '';
+
+    const successHtml = `
+        <div class="success-message ${autoHideClass}">
+            <div class="success-content">${message}</div>
+        </div>
+    `;
+
+    $targetElement.html(successHtml);
+
+    // Auto-hide functionality
+    if (autoHide) {
+        setTimeout(() => {
+            $targetElement.find('.success-message').remove();
+        }, 5000);
+    }
+};
+
+/**
+ * Displays an info message in the UI.
+ * @param {object} $targetElement - A cash-dom wrapped element where the info HTML should be set.
+ * @param {string} message - The info message to display.
+ * @param {Object} [options={}] - Additional options
+ * @param {boolean} [options.autoHide=false] - Whether to auto-hide after 5 seconds
+ */
+export const displayUiInfo = ($targetElement, message, options = {}) => {
+    const { autoHide = false } = options;
+
+    const infoHtml = `
+        <div class="info-message">
+            <div class="info-content">${message}</div>
+        </div>
+    `;
+
+    $targetElement.html(infoHtml);
+
+    if (autoHide) {
+        setTimeout(() => {
+            $targetElement.find('.info-message').fadeOut(300, function () {
+                $(this).remove();
+            });
+        }, 5000);
+    }
+};
+
+/**
+ * Displays a warning message in the UI.
+ * @param {object} $targetElement - A cash-dom wrapped element where the warning HTML should be set.
+ * @param {string} message - The warning message to display.
+ * @param {Object} [options={}] - Additional options
+ * @param {boolean} [options.autoHide=false] - Whether to auto-hide after 5 seconds
+ */
+export const displayUiWarning = ($targetElement, message, options = {}) => {
+    const { autoHide = false } = options;
+
+    const warningHtml = `
+        <div class="warning-message">
+            <div class="warning-content">${message}</div>
+        </div>
+    `;
+
+    $targetElement.html(warningHtml);
+
+    if (autoHide) {
+        setTimeout(() => {
+            $targetElement.find('.warning-message').fadeOut(300, function () {
+                $(this).remove();
+            });
+        }, 5000);
+    }
+};
+
+/**
+ * Gets the appropriate CSS class for the error type.
+ * @param {string} type - The error type
+ * @returns {string} The CSS class name
+ */
+const getErrorTypeClass = (type) => {
+    switch (type) {
+        case 'validation':
+            return 'validation-error';
+        case 'network':
+            return 'network-error';
+        case 'server':
+            return 'server-error';
+        default:
+            return '';
+    }
 };

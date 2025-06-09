@@ -8,7 +8,8 @@
 import $ from 'cash-dom';
 import * as _nfCommon from 'nf.Common';
 import * as apiClient from '../services/apiClient.js';
-import { displayUiError } from '../utils/uiErrorDisplay.js';
+import { displayUiError, displayUiSuccess } from '../utils/uiErrorDisplay.js';
+import { confirmRemoveIssuer } from '../utils/confirmationDialog.js';
 import { API, COMPONENTS, getIsLocalhost } from '../utils/constants.js';
 import { validateIssuerConfig, validateProcessorIdFromUrl } from '../utils/validation.js';
 import { FormFieldBuilder } from '../utils/formBuilder.js';
@@ -269,18 +270,26 @@ const _createFormHeader = (issuerName, onRemove) => {
     const $nameLabel = $('<label>Issuer Name:</label>');
     $formHeader.append($nameLabel);
 
-    const $nameInput = $('<input type="text" class="issuer-name" placeholder="e.g., keycloak">');
+    const $nameInput = $('<input type="text" class="issuer-name" placeholder="e.g., keycloak" title="Unique identifier for this issuer configuration. Use alphanumeric characters and hyphens only.">');
     $nameLabel.append($nameInput);
 
     if (issuerName) {
         $nameInput.val(issuerName);
     }
 
-    const $removeButton = $('<button class="remove-issuer-button">Remove</button>');
+    const $removeButton = $('<button class="remove-issuer-button" title="Delete this issuer configuration">Remove</button>');
     $formHeader.append($removeButton);
-    const removeButtonHandler = () => {
-        // Pass $nameInput.val() at the time of click
-        onRemove($nameInput.val());
+    const removeButtonHandler = async () => {
+        const issuerName = $nameInput.val() || 'Unnamed Issuer';
+
+        // Show confirmation dialog
+        const confirmed = await confirmRemoveIssuer(issuerName, () => {
+            // This callback is called when the user confirms
+            onRemove(issuerName);
+        });
+
+        // If the user clicked confirm in the dialog, the onConfirm callback
+        // has already been executed. No additional action needed here.
     };
 
     $removeButton.on('click', removeButtonHandler);
@@ -296,7 +305,7 @@ const _createFormHeader = (issuerName, onRemove) => {
  */
 const _createJwksButtonElements = () => {
     const $testButtonWrapper = $('<div class="jwks-button-wrapper"></div>');
-    const $testButton = $('<button type="button" class="verify-jwks-button">Test Connection</button>');
+    const $testButton = $('<button type="button" class="verify-jwks-button" title="Test connectivity to the JWKS endpoint and verify it returns valid keys">Test Connection</button>');
     const initialResultText = `<em>${i18n['jwksValidator.initialInstructions'] || 'Click the button to validate JWKS'}</em>`;
     const $resultContainer = $('<div class="verification-result"></div>');
     $resultContainer.html(initialResultText);
@@ -401,7 +410,10 @@ const _createJwksTestConnectionButton = ($formFieldsContainer, getJwksUrlValue) 
  * @param {string} [processorId] - The processor ID for server mode saves
  */
 const _createSaveButton = ($issuerForm, processorId = null) => {
-    const $saveButton = $('<button class="save-issuer-button">Save Issuer</button>');
+    const tooltipText = processorId
+        ? 'Save this issuer configuration to the NiFi processor'
+        : 'Validate and save this issuer configuration (standalone mode)';
+    const $saveButton = $(`<button class="save-issuer-button" title="${tooltipText}">Save Issuer</button>`);
     const $formErrorContainer = $('<div class="issuer-form-error-messages"></div>');
 
     const saveButtonHandler = () => {
@@ -422,9 +434,9 @@ const _createSaveButton = ($issuerForm, processorId = null) => {
  * @param {object} [properties] - The issuer properties for pre-population
  */
 const _populateIssuerFormFields = ($formFields, properties) => {
-    // Add standard form fields
-    addFormField($formFields, 'issuer', 'Issuer URI', 'The URI of the token issuer (must match the iss claim)', properties ? properties.issuer : '');
-    addFormField($formFields, 'jwks-url', 'JWKS URL', 'The URL of the JWKS endpoint', properties ? properties['jwks-url'] : '');
+    // Add standard form fields with enhanced tooltips
+    addFormField($formFields, 'issuer', 'Issuer URI', 'The URI of the token issuer (must match the iss claim)', properties ? properties.issuer : '', 'This value must exactly match the "iss" claim in JWT tokens. Example: https://auth.example.com/auth/realms/myrealm');
+    addFormField($formFields, 'jwks-url', 'JWKS URL', 'The URL of the JWKS endpoint', properties ? properties['jwks-url'] : '', 'URL providing public keys for JWT signature verification. Usually ends with /.well-known/jwks.json');
 
     // Add JWKS Test Connection button
     _createJwksTestConnectionButton($formFields, () => {
@@ -432,8 +444,8 @@ const _populateIssuerFormFields = ($formFields, properties) => {
         return $jwksInput.length ? $jwksInput.val() : '';
     });
 
-    addFormField($formFields, 'audience', 'Audience', 'The expected audience claim value', properties ? properties.audience : '');
-    addFormField($formFields, 'client-id', 'Client ID', 'The client ID for token validation', properties ? properties['client-id'] : '');
+    addFormField($formFields, 'audience', 'Audience', 'The expected audience claim value', properties ? properties.audience : '', 'Optional: Expected "aud" claim value in JWT tokens. Leave blank to accept any audience.');
+    addFormField($formFields, 'client-id', 'Client ID', 'The client ID for token validation', properties ? properties['client-id'] : '', 'Optional: Expected "azp" or "client_id" claim value. Used for additional token validation.');
 };
 
 /**
@@ -487,8 +499,9 @@ const addIssuerForm = ($container, issuerName, properties, processorId = null) =
      * @param {string} label - The field label
      * @param {string} description - The field description
      * @param {string} [value] - The field value
+     * @param {string} [helpText] - Tooltip help text for advanced configuration guidance
      */
-const addFormField = ($container, name, label, description, value) => {
+const addFormField = ($container, name, label, description, value, helpText) => {
     const fieldConfig = {
         name,
         label,
@@ -498,6 +511,7 @@ const addFormField = ($container, name, label, description, value) => {
         type: 'text',
         required: false,
         cssClass: 'issuer-config-field',
+        helpText: helpText || null,
         validation: name === 'jwks-url' || name === 'issuer' ?
             (val) => val && val.trim() ? { isValid: true } : { isValid: false, error: 'This field is required' } :
             null
@@ -589,14 +603,7 @@ const _createPropertyUpdates = (issuerName, formFields) => {
 const _saveIssuerToServer = async (processorId, issuerName, updates, $errorContainer) => {
     try {
         await apiClient.updateProcessorProperties(processorId, updates);
-        $errorContainer.html(_createSuccessMessage(i18n['issuerConfigEditor.success.saved'] || 'Issuer configuration saved successfully.'));
-
-        // Use managed timeout for automatic cleanup
-        if (componentLifecycle?.isComponentInitialized()) {
-            componentLifecycle.setTimeout(() => $errorContainer.empty(), 5000);
-        } else {
-            managedSetTimeout('issuer-config-editor', () => $errorContainer.empty(), 5000);
-        }
+        displayUiSuccess($errorContainer, i18n['issuerConfigEditor.success.saved'] || 'Issuer configuration saved successfully.');
     } catch (error) {
         displayUiError($errorContainer, error, i18n, 'issuerConfigEditor.error.saveFailedTitle');
     }
@@ -607,14 +614,7 @@ const _saveIssuerToServer = async (processorId, issuerName, updates, $errorConta
  * @param {object} $errorContainer - The error display container
  */
 const _saveIssuerStandalone = ($errorContainer) => {
-    $errorContainer.html(_createSuccessMessage(i18n['issuerConfigEditor.success.savedStandalone'] || 'Issuer configuration saved successfully (standalone mode).'));
-
-    // Use managed timeout for automatic cleanup
-    if (componentLifecycle?.isComponentInitialized()) {
-        componentLifecycle.setTimeout(() => $errorContainer.empty(), 5000);
-    } else {
-        managedSetTimeout('issuer-config-editor', () => $errorContainer.empty(), 5000);
-    }
+    displayUiSuccess($errorContainer, i18n['issuerConfigEditor.success.savedStandalone'] || 'Issuer configuration saved successfully (standalone mode).');
 };
 
 /**
@@ -677,21 +677,8 @@ const _displayRemovalSuccess = ($globalErrorContainer, issuerName, isStandalone 
         ? `Issuer "${issuerName}" removed (standalone mode).`
         : `Issuer "${issuerName}" removed successfully.`;
 
-    $globalErrorContainer.html(_createSuccessMessage(message));
+    displayUiSuccess($globalErrorContainer, message);
     $globalErrorContainer.show();
-
-    // Use managed timeout for automatic cleanup
-    if (componentLifecycle?.isComponentInitialized()) {
-        componentLifecycle.setTimeout(() => {
-            $globalErrorContainer.empty();
-            $globalErrorContainer.hide();
-        }, 3000);
-    } else {
-        managedSetTimeout('issuer-config-editor', () => {
-            $globalErrorContainer.empty();
-            $globalErrorContainer.hide();
-        }, 3000);
-    }
 };
 
 /**

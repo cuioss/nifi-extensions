@@ -190,6 +190,7 @@ describe('issuerConfigEditor', function () { // Re-enabled tests
         let apiClientForMocks;
         let originalGlobalGetIsLocalhost;
         let displayUiError;
+        let displayUiSuccess;
 
         beforeEach(function () {
             jest.useFakeTimers(); // Use fake timers for tests in this describe block
@@ -202,9 +203,13 @@ describe('issuerConfigEditor', function () { // Re-enabled tests
 
             // Mock uiErrorDisplay
             jest.doMock('../../../main/webapp/js/utils/uiErrorDisplay.js', () => ({
-                displayUiError: jest.fn()
+                displayUiError: jest.fn(),
+                displayUiSuccess: jest.fn(),
+                displayUiInfo: jest.fn(),
+                displayUiWarning: jest.fn()
             }));
             displayUiError = require('../../../main/webapp/js/utils/uiErrorDisplay.js').displayUiError;
+            displayUiSuccess = require('../../../main/webapp/js/utils/uiErrorDisplay.js').displayUiSuccess;
 
             // Re-require cash-dom to get the fresh mock for this scope
             $ = require('cash-dom');
@@ -246,6 +251,7 @@ describe('issuerConfigEditor', function () { // Re-enabled tests
                 writable: true, value: { href: currentTestUrl }, configurable: true
             });
             if (displayUiError) displayUiError.mockClear();
+            if (displayUiSuccess) displayUiSuccess.mockClear();
         });
 
         afterEach(function () {
@@ -1611,8 +1617,9 @@ describe('issuerConfigEditor', function () { // Re-enabled tests
                 // Verify server mode was used (updateProcessorProperties called)
                 expect(apiClientForMocks.updateProcessorProperties).toHaveBeenCalledWith(processorId, updates);
 
-                // Verify success message was displayed
-                expect(mockErrorContainerCash.html).toHaveBeenCalledWith(
+                // Verify success message was displayed via displayUiSuccess
+                expect(displayUiSuccess).toHaveBeenCalledWith(
+                    mockErrorContainerCash,
                     expect.stringContaining('Issuer configuration saved successfully.')
                 );
             });
@@ -1696,8 +1703,9 @@ describe('issuerConfigEditor', function () { // Re-enabled tests
 
                 issuerConfigEditor.__test_exports._saveIssuerStandalone(mockErrorContainer);
 
-                // Verify standalone success message was displayed
-                expect(mockErrorContainer.html).toHaveBeenCalledWith(
+                // Verify standalone success message was displayed via displayUiSuccess
+                expect(displayUiSuccess).toHaveBeenCalledWith(
+                    mockErrorContainer,
                     expect.stringContaining('standalone mode')
                 );
             });
