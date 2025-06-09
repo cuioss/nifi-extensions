@@ -3,8 +3,6 @@
 /**
  * Tests for the Issuer Config Editor component.
  */
-import $ from 'cash-dom'; // This will be mocked by the jest.mock call below
-import { createAjaxMock, sampleJwksSuccess } from '../test-utils';
 
 // Standalone utility to clear/reset our cash mock instances
 const clearCashMockInstance = (instance) => {
@@ -53,9 +51,15 @@ jest.mock('cash-dom', () => {
         data: jest.fn().mockReturnValue(undefined),
         attr: jest.fn().mockReturnValue(undefined),
         removeAttr: jest.fn().mockReturnThis(),
-        children: jest.fn(function () { return this; }),
-        parent: jest.fn(function () { return this; }),
-        closest: jest.fn(function () { return this; }),
+        children: jest.fn(function () {
+            return this;
+        }),
+        parent: jest.fn(function () {
+            return this;
+        }),
+        closest: jest.fn(function () {
+            return this;
+        }),
         css: jest.fn().mockReturnThis(),
         show: jest.fn().mockReturnThis(),
         hide: jest.fn().mockReturnThis(),
@@ -82,12 +86,40 @@ jest.mock('cash-dom', () => {
         newInstance.selector = selector;
 
         // Ensure find, children, parent, closest, first, last return new instances based on newInstance for proper chaining
-        newInstance.find = jest.fn().mockImplementation(() => ({ ...newInstance, _elements: [], length: 0, selector: undefined }));
-        newInstance.children = jest.fn().mockImplementation(() => ({ ...newInstance, _elements: [], length: 0, selector: undefined }));
-        newInstance.parent = jest.fn().mockImplementation(() => ({ ...newInstance, _elements: [], length: 0, selector: undefined }));
-        newInstance.closest = jest.fn().mockImplementation(() => ({ ...newInstance, _elements: [], length: 0, selector: undefined }));
-        newInstance.first = jest.fn().mockImplementation(() => ({ ...newInstance, _elements: (newInstance._elements || []).slice(0, 1), length: Math.min(1, newInstance.length || 0) }));
-        newInstance.last = jest.fn().mockImplementation(() => ({ ...newInstance, _elements: (newInstance._elements || []).slice(-1), length: Math.min(1, newInstance.length || 0) }));
+        newInstance.find = jest.fn().mockImplementation(() => ({
+            ...newInstance,
+            _elements: [],
+            length: 0,
+            selector: undefined
+        }));
+        newInstance.children = jest.fn().mockImplementation(() => ({
+            ...newInstance,
+            _elements: [],
+            length: 0,
+            selector: undefined
+        }));
+        newInstance.parent = jest.fn().mockImplementation(() => ({
+            ...newInstance,
+            _elements: [],
+            length: 0,
+            selector: undefined
+        }));
+        newInstance.closest = jest.fn().mockImplementation(() => ({
+            ...newInstance,
+            _elements: [],
+            length: 0,
+            selector: undefined
+        }));
+        newInstance.first = jest.fn().mockImplementation(() => ({
+            ...newInstance,
+            _elements: (newInstance._elements || []).slice(0, 1),
+            length: Math.min(1, newInstance.length || 0)
+        }));
+        newInstance.last = jest.fn().mockImplementation(() => ({
+            ...newInstance,
+            _elements: (newInstance._elements || []).slice(-1),
+            length: Math.min(1, newInstance.length || 0)
+        }));
 
         if (typeof selector === 'string' && selector.startsWith('<')) {
             newInstance.length = 1;
@@ -688,9 +720,13 @@ describe('issuerConfigEditor', function () { // Re-enabled tests
                     return {
                         then: (callback) => {
                             callback({ valid: true, keyCount: 3 });
-                            return { catch: () => {} };
+                            return {
+                                catch: () => {
+                                }
+                            };
                         },
-                        catch: () => {}
+                        catch: () => {
+                        }
                     };
                 });
 
@@ -781,9 +817,13 @@ describe('issuerConfigEditor', function () { // Re-enabled tests
                     return {
                         then: (callback) => {
                             callback(errorResponse);
-                            return { catch: () => {} };
+                            return {
+                                catch: () => {
+                                }
+                            };
                         },
-                        catch: () => {}
+                        catch: () => {
+                        }
                     };
                 });
 
@@ -837,7 +877,7 @@ describe('issuerConfigEditor', function () { // Re-enabled tests
                 // Mock the ajax call to throw an error
                 const $ = require('cash-dom');
                 const errorDetails = { statusText: 'Network Error', responseText: '{"message":"details"}' };
-                $.ajax = jest.fn().mockImplementation((options) => {
+                $.ajax = jest.fn().mockImplementation(() => {
                     // Return a promise-like object that rejects
                     return {
                         then: () => {
@@ -988,7 +1028,7 @@ describe('issuerConfigEditor', function () { // Re-enabled tests
                         data: JSON.stringify({ jwksValue: 'https://some.url/keys' }),
                         contentType: 'application/json',
                         dataType: 'json'
-                    }).catch(jqXHR => {
+                    }).catch(() => {
                         // This is what the catch callback would do when getIsLocalhost is true
                         // It would show a simulated success message
                         $resultContainer.html('<span style="color: var(--success-color); font-weight: bold;">OK</span> Valid JWKS (3 keys found) <em>(Simulated response)</em>');
@@ -1160,8 +1200,6 @@ describe('issuerConfigEditor', function () { // Re-enabled tests
             it('should display error via displayUiError if issuer name is missing', function () {
                 // We need to directly call the saveIssuer function to test this behavior
                 // First, let's get access to the saveIssuer function
-                const saveIssuer = issuerConfigEditor.__test_exports.saveIssuer;
-
                 // If the function is not exported for testing, we'll need to mock it
                 // Let's create a mock form element and error container
                 const mockForm = document.createElement('div');
@@ -1243,21 +1281,10 @@ describe('issuerConfigEditor', function () { // Re-enabled tests
                     find: jest.fn().mockReturnValue({ length: 0 })
                 };
 
-                // Create a direct mock for the form data extraction
-                // Instead of mocking $ complex behavior, let's mock the internal extraction
-                const originalSaveIssuer = issuerConfigEditor.__test_exports.saveIssuer;
 
                 // Create a simplified version that directly tests the standalone path
                 const testSaveIssuer = (form, $errorContainer) => {
                     // Simulate successful validation
-                    const issuerName = 'standalone-issuer';
-                    const properties = {
-                        issuer: 'https://standalone.com',
-                        'jwks-url': 'https://standalone.com/jwks.json',
-                        audience: '',
-                        'client-id': ''
-                    };
-
                     // Clear previous errors
                     $errorContainer.empty();
 
@@ -1756,9 +1783,13 @@ describe('issuerConfigEditor', function () { // Re-enabled tests
                 $.ajax = jest.fn().mockImplementation(() => ({
                     then: (callback) => {
                         callback(mockResponseData);
-                        return { catch: () => {} };
+                        return {
+                            catch: () => {
+                            }
+                        };
                     },
-                    catch: () => {}
+                    catch: () => {
+                    }
                 }));
 
                 issuerConfigEditor.__test_exports._performJwksValidation(jwksValue, mockResultContainer);

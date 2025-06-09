@@ -2,7 +2,6 @@
  * Tests for the API Client service.
  */
 let apiClient; // To be required in beforeEach
-import nfCommon from 'nf.Common'; // Will be re-required
 
 // Mock SUT (apiClient.js) and its dependencies
 

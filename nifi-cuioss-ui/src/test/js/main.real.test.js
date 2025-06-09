@@ -72,8 +72,6 @@ describe('main.js (real implementation with JSDOM)', () => {
     let nfCommon; // Will be assigned the mocked nf.Common
     let consoleErrorSpy;
     let consoleLogSpy;
-    let originalTooltipFn;
-
     // Use fake timers for all tests in this describe block
     beforeAll(() => {
         jest.useFakeTimers();
