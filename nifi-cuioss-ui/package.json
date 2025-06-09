@@ -84,7 +84,6 @@
     ],
     "coveragePathIgnorePatterns": [
       "<rootDir>/src/test/js/mocks/",
-      "<rootDir>/src/test/js/__mocks__/",
       "<rootDir>/src/main/webapp/js/nf-common-mock.js"
     ],
     "coverageThreshold": {
@@ -106,7 +105,7 @@
       "^components/issuerConfigEditor$": "<rootDir>/src/main/webapp/js/components/issuerConfigEditor.js",
       "^components/jwksValidator$": "<rootDir>/src/main/webapp/js/components/jwksValidator.js",
       "^cash$": "cash-dom",
-      "^tippy$": "<rootDir>/src/test/js/__mocks__/tippy.js",
+      "^tippy$": "<rootDir>/src/test/js/mocks/tippy.js",
       "\\.css$": "<rootDir>/src/test/js/mocks/cssMock.js"
     },
     "setupFiles": [

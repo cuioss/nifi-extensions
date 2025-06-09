@@ -60,22 +60,7 @@ NOTE: This library implements a minimal three-tab UI and does not require enterp
 Done
 
 === 3. Unify Test Mocks
-
-**Objective**: Consolidate duplicate mock directories in test structure
-
-**Tasks**:
-
-* Investigate why there are two mock directories in `nifi-cuioss-ui/src/test/js`: `__mocks__` and `mocks`
-* Determine the purpose and content differences between both mock directories
-* Create a unified structure for test mocks
-* Update test files to reference the consolidated mock location
-* Ensure all tests pass after the consolidation
-
-**Files Affected**:
-
-* Test mock files in `nifi-cuioss-ui/src/test/js/__mocks__` and `nifi-cuioss-ui/src/test/js/mocks`
-* Test files that import from the mock directories
-* Jest configuration if it contains mock paths
+Done
 
 === 4. Unify JavaScript Dependency Management Approach
 
