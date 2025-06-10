@@ -15,17 +15,17 @@
  * @requires services/apiClient
  */
 import $ from 'cash-dom';
-import * as _nfCommon from 'nf.Common';
+import { getI18n } from 'nf.Common';
 import * as apiClient from '../services/apiClient.js';
 import { displayUiError, displayUiSuccess } from '../utils/uiErrorDisplay.js';
 import { confirmRemoveIssuer } from '../utils/confirmationDialog.js';
 import { API, COMPONENTS, getIsLocalhost } from '../utils/constants.js';
 import { validateIssuerConfig, validateProcessorIdFromUrl } from '../utils/validation.js';
 import { FormFieldBuilder } from '../utils/formBuilder.js';
-import { ComponentLifecycle, managedSetTimeout } from '../utils/componentCleanup.js';
+import { ComponentLifecycle } from '../utils/componentCleanup.js';
 
 // Get i18n resources from NiFi Common
-const i18n = _nfCommon.getI18n() || {};
+const i18n = getI18n() || {};
 
 // Component lifecycle manager for cleanup
 let componentLifecycle = null;
@@ -291,7 +291,7 @@ const _createFormHeader = (issuerName, onRemove) => {
         const issuerName = $nameInput.val() || 'Unnamed Issuer';
 
         // Show confirmation dialog
-        const confirmed = await confirmRemoveIssuer(issuerName, () => {
+        await confirmRemoveIssuer(issuerName, () => {
             // This callback is called when the user confirms
             onRemove(issuerName);
         });
@@ -740,19 +740,19 @@ const _removeIssuerFromServer = async (processorId, issuerName, $globalErrorCont
 const removeIssuer = async (form, issuerNameFromClick) => {
     $(form).remove();
 
-    const currentProcessorId = getProcessorIdFromUrl(window.location.href);
-    const currentIssuerName = issuerNameFromClick;
+    const processorId = getProcessorIdFromUrl(window.location.href);
+    const issuerName = issuerNameFromClick;
     const $globalErrorContainer = _findGlobalErrorContainer();
 
-    if (currentIssuerName && currentProcessorId) {
+    if (issuerName && processorId) {
         // Server mode: remove from processor properties
-        await _removeIssuerFromServer(currentProcessorId, currentIssuerName, $globalErrorContainer);
-    } else if (currentIssuerName && !currentProcessorId) {
+        await _removeIssuerFromServer(processorId, issuerName, $globalErrorContainer);
+    } else if (issuerName && !processorId) {
         // Standalone mode: just show success message
-        _displayRemovalSuccess($globalErrorContainer, currentIssuerName, true);
+        _displayRemovalSuccess($globalErrorContainer, issuerName, true);
     } else {
         // Handle missing issuer name or processor ID
-        const errorMessage = !currentIssuerName
+        const errorMessage = !issuerName
             ? 'Issuer name missing for removal'
             : 'Cannot remove issuer: no processor context found';
         _displayRemovalError($globalErrorContainer, errorMessage);

@@ -136,7 +136,8 @@ export const displayUiError = ($targetElement, error, i18n, errorTypeKey = 'proc
     if (closable) {
         $targetElement.find('.close-error').on('click', () => {
             $targetElement.find('.error-message').fadeOut(300, function () {
-                $(this).remove();
+                // Use the element directly instead of $(this)
+                this.remove();
             });
         });
     }
@@ -145,7 +146,8 @@ export const displayUiError = ($targetElement, error, i18n, errorTypeKey = 'proc
     if (autoHide) {
         setTimeout(() => {
             $targetElement.find('.error-message').fadeOut(300, function () {
-                $(this).remove();
+                // Use the element directly instead of $(this)
+                this.remove();
             });
         }, 5000);
     }
@@ -199,7 +201,8 @@ export const displayUiInfo = ($targetElement, message, options = {}) => {
     if (autoHide) {
         setTimeout(() => {
             $targetElement.find('.info-message').fadeOut(300, function () {
-                $(this).remove();
+                // Use the element directly instead of $(this)
+                this.remove();
             });
         }, 5000);
     }
@@ -226,7 +229,8 @@ export const displayUiWarning = ($targetElement, message, options = {}) => {
     if (autoHide) {
         setTimeout(() => {
             $targetElement.find('.warning-message').fadeOut(300, function () {
-                $(this).remove();
+                // Use the element directly instead of $(this)
+                this.remove();
             });
         }, 5000);
     }

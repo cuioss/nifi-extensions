@@ -31,6 +31,18 @@ export const formatDate = function (dateString) {
         // Log the error but return the original string to maintain compatibility
         // eslint-disable-next-line no-console
         console.warn(`Error formatting date: ${dateString}`, e);
+
+        // Add error handling metadata to help with debugging
+        if (window._formattersErrors === undefined) {
+            window._formattersErrors = [];
+        }
+        window._formattersErrors.push({
+            function: 'formatDate',
+            input: dateString,
+            error: e.message,
+            timestamp: new Date().toISOString()
+        });
+
         return dateString;
     }
 };
@@ -104,6 +116,18 @@ export const formatJwtToken = function (token) {
             // Log the error and keep the original values if decoding fails
             // eslint-disable-next-line no-console
             console.warn(`Error decoding JWT token parts: ${e.message}`);
+
+            // Add error handling metadata to help with debugging
+            if (window._formattersErrors === undefined) {
+                window._formattersErrors = [];
+            }
+            window._formattersErrors.push({
+                function: 'formatJwtToken.decode',
+                input: { header, payload },
+                error: e.message,
+                timestamp: new Date().toISOString()
+            });
+
             header = `Unable to decode header: ${header}`;
             payload = `Unable to decode payload: ${payload}`;
         }
@@ -117,6 +141,18 @@ export const formatJwtToken = function (token) {
         // Log the warning and return an error object if token parsing fails
         // eslint-disable-next-line no-console
         console.warn(`Error parsing JWT token: ${e.message}`);
+
+        // Add error handling metadata to help with debugging
+        if (window._formattersErrors === undefined) {
+            window._formattersErrors = [];
+        }
+        window._formattersErrors.push({
+            function: 'formatJwtToken',
+            input: token,
+            error: e.message,
+            timestamp: new Date().toISOString()
+        });
+
         return {
             header: 'Error: Invalid token format',
             payload: 'Error: Could not parse token',

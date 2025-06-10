@@ -18,15 +18,15 @@ $.ajax = jest.fn((options) => {
         then: jest.fn((callback) => {
             // If a success callback is provided in options, simulate its execution
             if (options.success && typeof options.success === 'function') {
-                try {
-                    // Simulate async behavior
-                    Promise.resolve().then(() => options.success({}));
-                } catch (e) {
-                    // If error callback is provided, call it
-                    if (options.error && typeof options.error === 'function') {
-                        options.error(e);
-                    }
-                }
+                // Simulate async behavior with proper promise error handling
+                Promise.resolve()
+                    .then(() => options.success({}))
+                    .catch(e => {
+                        // If error callback is provided, call it
+                        if (options.error && typeof options.error === 'function') {
+                            options.error(e);
+                        }
+                    });
             }
             // Allow further chaining if then's callback returns a promise or value
             return deferred;

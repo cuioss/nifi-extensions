@@ -395,7 +395,7 @@ export const getAvailableShortcuts = () => {
                 break;
             default:
                 if (activeHandlers.has(action)) {
-                    shortcuts[key] = activeHandlers.get(action).description;
+                    shortcuts[key] = activeHandlers.get(action)?.description || 'Custom shortcut';
                 }
         }
     });

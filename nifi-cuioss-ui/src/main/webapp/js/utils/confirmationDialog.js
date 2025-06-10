@@ -168,8 +168,9 @@ const trapFocus = ($dialog) => {
                     lastElement.focus();
                 }
             } else {
-                // Tab
-                if (document.activeElement === lastElement[0]) {
+                // Tab - handle focus for last element or let default behavior work
+                const isLastElementActive = document.activeElement === lastElement[0];
+                if (isLastElementActive) {
                     e.preventDefault();
                     firstElement.focus();
                 }
@@ -301,12 +302,15 @@ const _handleFocusTrapping = (e, firstElement, lastElement) => {
                 return true;
             }
         } else {
-            // Tab
-            if (document.activeElement === lastElement) {
+            // Tab - handle focus for last element or let default behavior work
+            const isLastElementActive = document.activeElement === lastElement;
+            if (isLastElementActive) {
                 e.preventDefault();
                 firstElement.focus();
                 return true;
             }
+            // Return false to indicate focus was not trapped in this case
+            return false;
         }
     }
     return false;

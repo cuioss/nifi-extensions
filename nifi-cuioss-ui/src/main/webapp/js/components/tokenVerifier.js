@@ -169,7 +169,7 @@ const _initializeTokenVerifier = async (element, callback) => {
 
         if (hasContent) {
             // Show confirmation for clearing form data
-            const confirmed = await confirmClearForm(() => {
+            await confirmClearForm(() => {
                 // Clear the token input
                 $tokenInput.val('');
 
@@ -177,11 +177,17 @@ const _initializeTokenVerifier = async (element, callback) => {
                 _showInitialInstructions($resultsContent, i18n);
             });
         } else {
-            // Nothing to clear, just show a brief message
+            // Nothing to clear, just show a brief message and then instructions
             $resultsContent.html('<div class="info-message">Form is already empty.</div>');
-            setTimeout(() => {
+            const showInstructionsTimeout = setTimeout(() => {
                 _showInitialInstructions($resultsContent, i18n);
             }, 2000);
+
+            // Store timeout reference for potential cleanup
+            if (typeof window._tokenVerifierTimeouts === 'undefined') {
+                window._tokenVerifierTimeouts = [];
+            }
+            window._tokenVerifierTimeouts.push(showInstructionsTimeout);
         }
     });
 
@@ -366,7 +372,8 @@ const _createSampleTokenResponse = () => {
  */
 const _handleTokenVerificationAjaxError = (jqXHR, $resultsContent, i18n, displayValidTokenFunc) => {
     // Extract and sanitize error message for potential future use
-    _extractErrorMessageFromXHR(jqXHR);
+    const errorMessage = _extractErrorMessageFromXHR(jqXHR);
+    console.debug('Extracted error message:', errorMessage);
 
     if (getIsLocalhost()) {
         const sampleResponse = _createSampleTokenResponse();
@@ -390,7 +397,8 @@ const _handleTokenVerificationSyncException = (
     displayValidTokenFunc
 ) => {
     // Sanitize exception message for potential future use
-    _sanitizeErrorMessage(exception.message, i18n);
+    const sanitizedMessage = _sanitizeErrorMessage(exception.message, i18n);
+    console.debug('Sanitized error message:', sanitizedMessage);
 
     if (getIsLocalhost()) {
         const sampleResponse = _createSampleTokenResponse();
@@ -446,8 +454,17 @@ const _handleVerifyButtonClick = (token, $resultsContent, i18n, resetButton) => 
                     responseData,
                     $resultsContent,
                     i18n,
-                    (response, isSimulated) => _displayValidToken(response, isSimulated),
-                    (response, $resultsContent, i18n) => _displayInvalidToken(response, $resultsContent, i18n)
+                    (response, isSimulated) => {
+                        // Create HTML and display it
+                        const html = _createValidTokenHtml(response, isSimulated, i18n, CSS);
+                        $resultsContent.html(html);
+                    },
+                    (response, $resultsContentParam, i18nParam) => {
+                        // Use provided params or fallback to closure variables
+                        const $targetContent = $resultsContentParam || $resultsContent;
+                        const i18nToUse = i18nParam || i18n;
+                        displayUiError($targetContent, { responseJSON: response }, i18nToUse, 'processor.jwt.tokenInvalid');
+                    }
                 );
             })
             .catch(jqXHR => {
@@ -456,12 +473,20 @@ const _handleVerifyButtonClick = (token, $resultsContent, i18n, resetButton) => 
                     jqXHR,
                     $resultsContent,
                     i18n,
-                    (response, isSimulated) => _displayValidToken(response, isSimulated)
+                    (response, isSimulated) => {
+                        // Create HTML and display it
+                        const html = _createValidTokenHtml(response, isSimulated, i18n, CSS);
+                        $resultsContent.html(html);
+                    }
                 );
             });
     } catch (e) {
         resetButton();
-        _handleTokenVerificationSyncException(e, $resultsContent, i18n, (response, isSimulated) => _displayValidToken(response, isSimulated));
+        _handleTokenVerificationSyncException(e, $resultsContent, i18n, (response, isSimulated) => {
+            // Create HTML and display it
+            const html = _createValidTokenHtml(response, isSimulated, i18n, CSS);
+            $resultsContent.html(html);
+        });
     }
 
     return true;

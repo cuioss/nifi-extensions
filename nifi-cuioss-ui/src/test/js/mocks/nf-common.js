@@ -124,6 +124,20 @@ const nfCommon = {
             const date = new Date(datetime);
             return date.toLocaleString();
         } catch (e) {
+            // Log the error for debugging purposes
+            console.warn(`Error formatting datetime: ${datetime}`, e);
+
+            // Track errors for testing and debugging
+            if (!global._nfCommonErrors) {
+                global._nfCommonErrors = [];
+            }
+            global._nfCommonErrors.push({
+                function: 'formatDateTime',
+                input: datetime,
+                error: e.message,
+                timestamp: new Date().toISOString()
+            });
+
             return datetime;
         }
     }),

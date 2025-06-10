@@ -377,6 +377,7 @@ describe('tokenVerifier', () => {
             const mockResultsContent = { html: jest.fn() };
             const mockI18n = { 'processor.jwt.verificationError': 'Verification error' };
             const mockDisplayValid = jest.fn();
+            const consoleSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
 
             // Test localhost mode with AJAX error
             require('../../../main/webapp/js/utils/constants.js').getIsLocalhost.mockReturnValue(true);
@@ -388,6 +389,9 @@ describe('tokenVerifier', () => {
                 mockDisplayValid
             );
 
+            // Should log extracted error message
+            expect(consoleSpy).toHaveBeenCalledWith('Extracted error message:', 'Network Error');
+
             // Should show simulated response in localhost
             expect(mockDisplayValid).toHaveBeenCalledWith(expect.objectContaining({
                 valid: true,
@@ -396,12 +400,17 @@ describe('tokenVerifier', () => {
 
             // Reset localhost mode
             require('../../../main/webapp/js/utils/constants.js').getIsLocalhost.mockReturnValue(false);
+            consoleSpy.mockRestore();
         });
 
         it('should handle synchronous exceptions correctly', () => {
             const mockResultsContent = { html: jest.fn() };
-            const mockI18n = { 'processor.jwt.verificationError': 'Verification error' };
+            const mockI18n = {
+                'processor.jwt.verificationError': 'Verification error',
+                'processor.jwt.unknownError': 'Unknown error'
+            };
             const mockDisplayValid = jest.fn();
+            const consoleSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
 
             // Test localhost mode with sync exception
             require('../../../main/webapp/js/utils/constants.js').getIsLocalhost.mockReturnValue(true);
@@ -413,6 +422,9 @@ describe('tokenVerifier', () => {
                 mockDisplayValid
             );
 
+            // Should log sanitized error message
+            expect(consoleSpy).toHaveBeenCalledWith('Sanitized error message:', 'AJAX setup failed');
+
             // Should show simulated response in localhost
             expect(mockDisplayValid).toHaveBeenCalledWith(expect.objectContaining({
                 valid: true,
@@ -421,6 +433,7 @@ describe('tokenVerifier', () => {
 
             // Reset localhost mode
             require('../../../main/webapp/js/utils/constants.js').getIsLocalhost.mockReturnValue(false);
+            consoleSpy.mockRestore();
         });
 
         it('should show initial instructions correctly', () => {
@@ -514,6 +527,35 @@ describe('tokenVerifier', () => {
             expect(result).toBe(true);
         });
 
+        it('should handle timeout management for clear button when form is empty', () => {
+            // Mock setTimeout to capture timeout behavior
+            const originalSetTimeout = global.setTimeout;
+            const mockSetTimeout = jest.fn((fn, delay) => {
+                fn(); // Execute immediately for testing
+                return 123; // Mock timeout ID
+            });
+            global.setTimeout = mockSetTimeout;
+
+            // Mock window._tokenVerifierTimeouts to simulate the timeout tracking
+            const originalTimeouts = global.window._tokenVerifierTimeouts;
+            global.window._tokenVerifierTimeouts = [];
+
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { };
+
+            const result = tokenVerifier.__test.handleClearButtonClick('', '', mockResultsContent, mockI18n);
+
+            expect(result).toBe(false);
+            expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), 2000);
+            expect(mockResultsContent.html).toHaveBeenCalledWith(
+                '<div class="info-message">Form is already empty.</div>'
+            );
+
+            // Restore original functions
+            global.setTimeout = originalSetTimeout;
+            global.window._tokenVerifierTimeouts = originalTimeouts;
+        });
+
         it('should handle clear button click with whitespace results', () => {
             const mockResultsContent = { html: jest.fn() };
             const mockI18n = { };
@@ -545,6 +587,38 @@ describe('tokenVerifier', () => {
             expect(callback).toHaveBeenCalled();
         });
 
+        it('should handle init function error path with null element', async () => {
+            const mockCallback = jest.fn();
+
+            await expect(tokenVerifier.init(null, {}, null, mockCallback)).rejects.toThrow('Token verifier element is required');
+
+            // Should still call callback with error info
+            expect(mockCallback).toHaveBeenCalledWith({
+                validate: expect.any(Function),
+                error: 'Token verifier element is required'
+            });
+
+            // Validate function should return false
+            const callbackArg = mockCallback.mock.calls[0][0];
+            expect(callbackArg.validate()).toBe(false);
+        });
+
+        it('should handle init function error path with undefined element', async () => {
+            const mockCallback = jest.fn();
+
+            await expect(tokenVerifier.init(undefined, {}, null, mockCallback)).rejects.toThrow('Token verifier element is required');
+
+            expect(mockCallback).toHaveBeenCalledWith({
+                validate: expect.any(Function),
+                error: 'Token verifier element is required'
+            });
+        });
+
+        it('should handle init function without callback', async () => {
+            // Should not throw even without callback
+            await expect(tokenVerifier.init(null, {}, null, null)).rejects.toThrow('Token verifier element is required');
+        });
+
         it('should validate with complex error response structures', () => {
             // Test with nested JSON error
             const complexError = {
@@ -555,6 +629,82 @@ describe('tokenVerifier', () => {
             const result = tokenVerifier.__test.extractErrorMessageFromXHR(complexError);
             // Should fallback to statusText when nested message isn't found
             expect(result).toBe('Server Error');
+        });
+
+        it('should handle timeout management in actual UI flow', async () => {
+            // Mock window._tokenVerifierTimeouts if not exists
+            const originalTimeouts = global.window._tokenVerifierTimeouts;
+            delete global.window._tokenVerifierTimeouts;
+
+            await tokenVerifier.init(parentElement, {}, null, callback);
+
+            // Simulate clear button click on empty form to test timeout tracking
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = {};
+
+            // Mock setTimeout to capture the call
+            const originalSetTimeout = global.setTimeout;
+            const mockSetTimeout = jest.fn(() => 123); // Mock timeout ID
+            global.setTimeout = mockSetTimeout;
+
+            tokenVerifier.__test.handleClearButtonClick('', '', mockResultsContent, mockI18n);
+
+            // Should have called setTimeout
+            expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), 2000);
+
+            // Restore
+            global.setTimeout = originalSetTimeout;
+            global.window._tokenVerifierTimeouts = originalTimeouts;
+        });
+
+        it('should handle non-localhost AJAX error path', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { 'processor.jwt.verificationError': 'Verification error' };
+            const mockDisplayValid = jest.fn();
+
+            // Test non-localhost mode with AJAX error
+            require('../../../main/webapp/js/utils/constants.js').getIsLocalhost.mockReturnValue(false);
+
+            // Mock displayUiError to capture the call
+            const mockDisplayUiError = jest.fn();
+            jest.doMock('../../../main/webapp/js/utils/uiErrorDisplay.js', () => ({
+                displayUiError: mockDisplayUiError
+            }));
+
+            tokenVerifier.__test.handleTokenVerificationAjaxError(
+                { statusText: 'Network Error', status: 500 },
+                mockResultsContent,
+                mockI18n,
+                mockDisplayValid
+            );
+
+            // Should NOT show simulated response in non-localhost
+            expect(mockDisplayValid).not.toHaveBeenCalled();
+
+            // Reset localhost mode
+            require('../../../main/webapp/js/utils/constants.js').getIsLocalhost.mockReturnValue(false);
+        });
+
+        it('should handle non-localhost sync exception path', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { 'processor.jwt.verificationError': 'Verification error' };
+            const mockDisplayValid = jest.fn();
+
+            // Test non-localhost mode with sync exception
+            require('../../../main/webapp/js/utils/constants.js').getIsLocalhost.mockReturnValue(false);
+
+            tokenVerifier.__test.handleTokenVerificationSyncException(
+                new Error('Sync error'),
+                mockResultsContent,
+                mockI18n,
+                mockDisplayValid
+            );
+
+            // Should NOT show simulated response in non-localhost
+            expect(mockDisplayValid).not.toHaveBeenCalled();
+
+            // Reset localhost mode
+            require('../../../main/webapp/js/utils/constants.js').getIsLocalhost.mockReturnValue(false);
         });
 
         it('should handle empty responseText scenarios', () => {

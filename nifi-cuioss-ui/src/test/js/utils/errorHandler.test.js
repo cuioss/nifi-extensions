@@ -98,6 +98,87 @@ describe('Error Handler utilities', () => {
             });
         });
 
+        it('should handle null jqXHR object', () => {
+            const result = createXhrErrorObject(null);
+            expect(result).toEqual({
+                status: 0,
+                statusText: 'Unknown error',
+                responseText: ''
+            });
+        });
+
+        it('should handle null jqXHR with textStatus', () => {
+            const result = createXhrErrorObject(null, 'timeout');
+            expect(result).toEqual({
+                status: 0,
+                statusText: 'timeout',
+                responseText: ''
+            });
+        });
+
+        it('should handle null jqXHR with errorThrown', () => {
+            const result = createXhrErrorObject(null, null, 'Network Error');
+            expect(result).toEqual({
+                status: 0,
+                statusText: 'Network Error',
+                responseText: ''
+            });
+        });
+
+        it('should handle undefined jqXHR object', () => {
+            const result = createXhrErrorObject(undefined);
+            expect(result).toEqual({
+                status: 0,
+                statusText: 'Unknown error',
+                responseText: ''
+            });
+        });
+
+        it('should prioritize jqXHR.statusText over textStatus and errorThrown', () => {
+            const mockError = {
+                status: 400,
+                statusText: 'Bad Request',
+                responseText: 'Invalid data'
+            };
+
+            const result = createXhrErrorObject(mockError, 'error', 'HTTP Error');
+            expect(result).toEqual({
+                status: 400,
+                statusText: 'Bad Request', // Should use jqXHR.statusText
+                responseText: 'Invalid data'
+            });
+        });
+
+        it('should fallback to errorThrown when statusText is missing', () => {
+            const mockError = {
+                status: 500,
+                responseText: 'Server error'
+                // statusText is missing
+            };
+
+            const result = createXhrErrorObject(mockError, 'error', 'Internal Server Error');
+            expect(result).toEqual({
+                status: 500,
+                statusText: 'Internal Server Error', // Should use errorThrown
+                responseText: 'Server error'
+            });
+        });
+
+        it('should fallback to textStatus when both statusText and errorThrown are missing', () => {
+            const mockError = {
+                status: 404,
+                responseText: 'Not found'
+                // statusText and errorThrown are missing
+            };
+
+            const result = createXhrErrorObject(mockError, 'timeout', null);
+            expect(result).toEqual({
+                status: 404,
+                statusText: 'timeout', // Should use textStatus
+                responseText: 'Not found'
+            });
+        });
+
         it('should handle errors with missing properties', () => {
             const mockReject = jest.fn();
             const errorHandler = createApiClientErrorHandler(mockReject);

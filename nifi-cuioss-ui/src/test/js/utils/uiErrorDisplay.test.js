@@ -264,6 +264,165 @@ describe('displayUiError', () => {
     });
 });
 
+describe('displayUiSuccess', () => {
+    let $targetElement;
+
+    beforeEach(() => {
+        // Create a div and append it to the body to serve as the target
+        $targetElement = $('<div id="success-target"></div>');
+        $(document.body).append($targetElement);
+    });
+
+    afterEach(() => {
+        // Clean up the target element
+        $targetElement.remove();
+    });
+
+    it('should display success message with auto-hide by default', () => {
+        const message = 'Operation completed successfully';
+
+        // Mock setTimeout to test auto-hide functionality
+        const originalSetTimeout = global.setTimeout;
+        const mockSetTimeout = jest.fn();
+        global.setTimeout = mockSetTimeout;
+
+        const { displayUiSuccess } = require('utils/uiErrorDisplay');
+        displayUiSuccess($targetElement, message);
+
+        // Should display the success message
+        expect($targetElement.find('.success-message').length).toBe(1);
+        expect($targetElement.find('.success-content').text()).toBe(message);
+        expect($targetElement.find('.success-message').hasClass('auto-dismiss')).toBe(true);
+
+        // Should set timeout for auto-hide
+        expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), 5000);
+
+        // Restore original setTimeout
+        global.setTimeout = originalSetTimeout;
+    });
+
+    it('should display success message without auto-hide when disabled', () => {
+        const message = 'Operation completed';
+
+        // Mock setTimeout to verify it's not called
+        const originalSetTimeout = global.setTimeout;
+        const mockSetTimeout = jest.fn();
+        global.setTimeout = mockSetTimeout;
+
+        const { displayUiSuccess } = require('utils/uiErrorDisplay');
+        displayUiSuccess($targetElement, message, { autoHide: false });
+
+        // Should display the success message
+        expect($targetElement.find('.success-message').length).toBe(1);
+        expect($targetElement.find('.success-content').text()).toBe(message);
+        expect($targetElement.find('.success-message').hasClass('auto-dismiss')).toBe(false);
+
+        // Should NOT set timeout for auto-hide
+        expect(mockSetTimeout).not.toHaveBeenCalled();
+
+        // Restore original setTimeout
+        global.setTimeout = originalSetTimeout;
+    });
+
+    it('should handle empty message gracefully', () => {
+        const { displayUiSuccess } = require('utils/uiErrorDisplay');
+        displayUiSuccess($targetElement, '');
+
+        expect($targetElement.find('.success-message').length).toBe(1);
+        expect($targetElement.find('.success-content').text()).toBe('');
+    });
+});
+
+describe('fadeOut functionality', () => {
+    let $targetElement;
+
+    beforeEach(() => {
+        $targetElement = $('<div id="fade-target"></div>');
+        $(document.body).append($targetElement);
+    });
+
+    afterEach(() => {
+        $targetElement.remove();
+    });
+
+    it('should handle fadeOut animation for closable errors', () => {
+        const mockError = { message: 'Closable error' };
+        const mockI18n = { 'processor.jwt.validationError': 'Validation Error' };
+
+        // Mock fadeOut function
+        const mockFadeOut = jest.fn((duration, callback) => {
+            // Simulate immediate fadeOut completion
+            if (callback) callback.call({ remove: jest.fn() });
+        });
+
+        // Mock the find method to return an element with fadeOut
+        const originalFind = $targetElement.find;
+        $targetElement.find = jest.fn().mockReturnValue({
+            fadeOut: mockFadeOut,
+            on: jest.fn()
+        });
+
+        displayUiError($targetElement, mockError, mockI18n, 'processor.jwt.validationError', {
+            closable: true
+        });
+
+        // Get the click handler that was registered
+        const onClickCall = $targetElement.find.mock.results.find(result =>
+            result.value && result.value.on
+        );
+
+        // Only proceed with testing if we have a valid click handler
+        expect(onClickCall).toBeTruthy();
+        expect(onClickCall.value.on.mock.calls.length).toBeGreaterThan(0);
+
+        const clickHandler = onClickCall.value.on.mock.calls[0][1];
+
+        // Simulate clicking the close button
+        clickHandler();
+
+        // Should call fadeOut with correct parameters
+        expect(mockFadeOut).toHaveBeenCalledWith(300, expect.any(Function));
+
+        // Restore original find method
+        $targetElement.find = originalFind;
+    });
+
+    it('should handle fadeOut animation for auto-hide errors', () => {
+        const mockError = { message: 'Auto-hide error' };
+        const mockI18n = { 'processor.jwt.validationError': 'Validation Error' };
+
+        // Mock setTimeout and fadeOut
+        const originalSetTimeout = global.setTimeout;
+        const mockSetTimeout = jest.fn((callback, delay) => {
+            // Execute callback immediately for testing
+            callback();
+        });
+        global.setTimeout = mockSetTimeout;
+
+        const mockFadeOut = jest.fn((duration, callback) => {
+            if (callback) callback.call({ remove: jest.fn() });
+        });
+
+        // Mock find method
+        const originalFind = $targetElement.find;
+        $targetElement.find = jest.fn().mockReturnValue({
+            fadeOut: mockFadeOut
+        });
+
+        displayUiError($targetElement, mockError, mockI18n, 'processor.jwt.validationError', {
+            autoHide: true
+        });
+
+        // Should set timeout and call fadeOut
+        expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), 5000);
+        expect(mockFadeOut).toHaveBeenCalledWith(300, expect.any(Function));
+
+        // Restore original functions
+        global.setTimeout = originalSetTimeout;
+        $targetElement.find = originalFind;
+    });
+});
+
 describe('extractErrorMessage (direct test for edge cases not easily triggered via displayUiError inputs)', () => {
     // Note: extractErrorMessage is not exported, so this is more of a conceptual test.
     // If it were exported, tests would go here.

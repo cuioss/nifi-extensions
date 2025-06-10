@@ -51,13 +51,22 @@ export const createAjaxMock = ({
                 promise._reject(errorData || { statusText: 'Generic Test Error', responseText: 'Error from test-utils' });
             }
         } else { // Success scenario
-            if (isLocalhostValue) {
-                // console.log('test-utils: Simulating localhost success for a success scenario');
-                promise._resolve(simulatedLocalhostSuccessData); // Often localhost success is also simulated
-            } else {
-                // console.log('test-utils: Simulating actual success for non-localhost');
-                promise._resolve(successData || {});
-            }
+            const responseData = isLocalhostValue
+                ? simulatedLocalhostSuccessData // Use simulated data for localhost
+                : (successData || {}); // Use provided success data or empty object for non-localhost
+
+            // Add metadata about the environment for debugging
+            const environmentInfo = {
+                isLocalhost: isLocalhostValue,
+                timestamp: new Date().toISOString(),
+                scenario: 'success'
+            };
+
+            // Resolve with the appropriate data
+            promise._resolve({
+                ...responseData,
+                __testMetadata: environmentInfo
+            });
         }
         return promise;
     });

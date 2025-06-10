@@ -48,14 +48,14 @@ describe('constants utility', () => {
             // Test a few key classes to ensure selectors match their class counterparts
             const classKeys = Object.keys(constants.CSS.CLASSES);
 
-            classKeys.forEach(key => {
+            // Filter to only keys that have matching selectors
+            const keysWithSelectors = classKeys.filter(key => constants.CSS.SELECTORS[key]);
+
+            // Test each key with a selector
+            keysWithSelectors.forEach(key => {
                 const className = constants.CSS.CLASSES[key];
                 const selector = constants.CSS.SELECTORS[key];
-
-                // If there's a matching selector, it should be the class with a dot prefix
-                if (selector) {
-                    expect(selector).toBe(`.${className}`);
-                }
+                expect(selector).toBe(`.${className}`);
             });
 
             // Ensure we have at least some classes to test

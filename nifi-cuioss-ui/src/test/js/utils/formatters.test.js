@@ -169,12 +169,25 @@ describe('formatters', () => {
             const signature = 'signature';
             const token = `${header}.${payload}.${signature}`;
 
+            // Clear any existing errors
+            delete window._formattersErrors;
+
             const result = formatters.formatJwtToken(token);
 
             expect(result.header).toContain('Unable to decode header');
             expect(result.payload).toContain('Unable to decode payload');
             expect(result.signature).toBe(signature);
             expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Error decoding JWT token parts'));
+
+            // Check error tracking functionality
+            expect(window._formattersErrors).toBeDefined();
+            expect(window._formattersErrors.length).toBe(1);
+            expect(window._formattersErrors[0]).toEqual(expect.objectContaining({
+                function: 'formatJwtToken.decode',
+                input: { header: header, payload: payload },
+                error: expect.any(String),
+                timestamp: expect.any(String)
+            }));
         });
 
         it('should handle JWT with non-base64 parts and warn', () => {
@@ -195,6 +208,32 @@ describe('formatters', () => {
             expect(result.payload).toBe('Unable to decode payload: '); // payload was initialized to ''
             expect(result.signature).toBe(''); // signature was initialized to ''
             expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Error decoding JWT token parts'));
+        });
+
+        it('should handle outer error path and track error metadata', () => {
+            // Clear any existing errors
+            delete window._formattersErrors;
+
+            // Use an object that's truthy but will fail on .split() to trigger the outer catch
+            const token = { toString: () => { throw new Error('toString failed'); } };
+            const result = formatters.formatJwtToken(token);
+
+            expect(result).toEqual({
+                header: 'Error: Invalid token format',
+                payload: 'Error: Could not parse token',
+                signature: ''
+            });
+            expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Error parsing JWT token: token.split is not a function'));
+
+            // Check error tracking functionality for outer catch
+            expect(window._formattersErrors).toBeDefined();
+            expect(window._formattersErrors.length).toBe(1);
+            expect(window._formattersErrors[0]).toEqual(expect.objectContaining({
+                function: 'formatJwtToken',
+                input: token,
+                error: 'token.split is not a function',
+                timestamp: expect.any(String)
+            }));
         });
 
 
