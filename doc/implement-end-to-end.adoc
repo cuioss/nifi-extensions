@@ -531,7 +531,7 @@ const { defineConfig } = require('cypress');
 module.exports = defineConfig({
   e2e: {
     specPattern: 'cypress/selftests/**/*.cy.js',
-    supportFile: 'cypress/support/selftests.js',
+    supportFile: 'cypress/support/e2e.js',
     // Set shorter timeouts for self-tests as they should be fast
     defaultCommandTimeout: 5000,
     video: false,
@@ -580,76 +580,3 @@ Refer to the link:specification/end-to-end-testing.adoc#_test_maintenance[Test M
 * link:Requirements.adoc#NIFI-AUTH-16[Testing Requirements]
 * link:library/cui-test-keycloak-integration/README.adoc[Keycloak Integration Testing]
 * link:integration-testing/README.adoc[Integration Testing Environment]
-
-==== JavaScript Code Standards and Structure
-
-The `e-2-e-cypress` module must maintain the same JavaScript code standards and structure as the existing `nifi-cuioss-ui` module to ensure consistency across the codebase. This includes:
-
-1. *Code Style and Linting*
-   * Use ESLint with the same configuration as `nifi-cuioss-ui`
-   * Follow the same code formatting rules using Prettier
-   * Maintain consistent naming conventions for variables, functions, and files
-
-2. *Testing Framework Configuration*
-   * Configure Jest for unit testing custom utilities
-   * Set up Cypress with the same reporting structure
-   * Maintain the same test directory organization
-
-3. *Code Coverage Requirements*
-   * Configure Istanbul/nyc for code coverage reporting
-   * Maintain minimum 80% test coverage for all custom JavaScript utilities
-   * Generate coverage reports in the same format as `nifi-cuioss-ui`
-
-4. *JavaScript Features and Compatibility*
-   * Use the same Babel configuration to ensure consistent transpilation
-   * Target the same browser compatibility as defined in `nifi-cuioss-ui`
-   * Use ES6+ features consistent with the existing codebase
-
-The module should include the following configuration files that mirror those in `nifi-cuioss-ui`:
-
-[source]
-----
-e-2-e-cypress/
-├── .eslintrc.js                # ESLint configuration matching nifi-cuioss-ui
-├── .prettierrc                 # Prettier configuration
-├── babel.config.js             # Babel configuration
-├── jest.config.js              # Jest configuration for unit tests
-├── cypress.config.js           # Cypress configuration
-└── package.json                # NPM dependencies and scripts
-----
-
-===== Integration with Existing Code Standards
-
-To ensure integration with existing code standards:
-
-1. Copy the relevant configuration files from `nifi-cuioss-ui` as a starting point
-2. Update paths and module-specific settings as needed
-3. Include the same NPM scripts for linting, testing, and coverage reporting
-4. Configure the same pre-commit hooks for code quality checks
-
-===== Code Coverage Configuration
-
-The coverage configuration should include:
-
-[source,javascript]
-----
-// Example jest.config.js for unit tests
-module.exports = {
-  collectCoverage: true,
-  coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov', 'html'],
-  coverageThreshold: {
-    global: {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80
-    }
-  },
-  // Additional configuration matching nifi-cuioss-ui
-};
-----
-
-The Cypress tests should also be configured to generate coverage reports using the same tools and thresholds as the existing UI code.
-
-This approach ensures that all JavaScript code, including the end-to-end tests and custom utilities, maintains the same quality standards and consistency across the project.
