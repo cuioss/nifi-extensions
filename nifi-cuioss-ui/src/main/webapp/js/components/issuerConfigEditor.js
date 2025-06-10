@@ -2,8 +2,17 @@
 
 /**
  * Custom UI component for configuring IssuerConfig properties.
+ *
  * This component provides a user-friendly interface for creating and managing
  * issuer configurations for the MultiIssuerJWTTokenAuthenticator processor.
+ * It handles the complete lifecycle of issuer configurations including creation,
+ * validation, editing, and deletion.
+ *
+ * @fileoverview Issuer configuration editor component for JWT validation
+ * @module components/issuerConfigEditor
+ * @requires cash-dom
+ * @requires nf.Common
+ * @requires services/apiClient
  */
 import $ from 'cash-dom';
 import * as _nfCommon from 'nf.Common';
@@ -63,7 +72,6 @@ const _createJwksSuccessMessage = (keyCount, isSimulated = false) => {
         `(${keyCount} ${keysFoundText})${simulatedText}`;
 };
 
-// Localhost detection now handled by centralized utility in constants.js
 
 /**
  * Parses processor properties and groups them by issuer name.

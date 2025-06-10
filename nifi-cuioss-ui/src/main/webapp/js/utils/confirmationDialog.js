@@ -2,7 +2,20 @@
 
 /**
  * Confirmation dialog utility for destructive actions.
- * Provides consistent confirmation dialogs across the application.
+ *
+ * This module provides consistent, accessible confirmation dialogs for potentially
+ * destructive actions throughout the application. It creates modal dialogs with
+ * customizable messages, buttons, and styling based on the action type.
+ *
+ * Features:
+ * - Promise-based API for async/await usage
+ * - Customizable button text and styling
+ * - Keyboard navigation and accessibility support
+ * - Different visual styles based on action type (danger, warning, info)
+ *
+ * @fileoverview Confirmation dialog utilities for destructive actions
+ * @module utils/confirmationDialog
+ * @requires cash-dom
  */
 import $ from 'cash-dom';
 
@@ -210,7 +223,8 @@ const getDialogIcon = (type) => {
 export const confirmRemoveIssuer = (issuerName, onConfirm) => {
     return showConfirmationDialog({
         title: 'Remove Issuer Configuration',
-        message: `Are you sure you want to remove the issuer "${issuerName}"? This action cannot be undone.`,
+        message: `Are you sure you want to remove the issuer "${issuerName}"? ` +
+            'This action cannot be undone.',
         confirmText: 'Remove',
         cancelText: 'Cancel',
         type: 'danger',

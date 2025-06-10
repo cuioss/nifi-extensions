@@ -47,7 +47,7 @@ describe('constants utility', () => {
         it('should have consistent class and selector naming', () => {
             // Test a few key classes to ensure selectors match their class counterparts
             const classKeys = Object.keys(constants.CSS.CLASSES);
-            
+
             classKeys.forEach(key => {
                 const className = constants.CSS.CLASSES[key];
                 const selector = constants.CSS.SELECTORS[key];
@@ -57,7 +57,7 @@ describe('constants utility', () => {
                     expect(selector).toBe(`.${className}`);
                 }
             });
-            
+
             // Ensure we have at least some classes to test
             expect(classKeys.length).toBeGreaterThan(0);
         });
