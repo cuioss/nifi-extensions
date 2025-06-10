@@ -16,7 +16,7 @@ jest.mock('cash-dom', () => {
         return {
             addClass: jest.fn().mockReturnThis(),
             removeClass: jest.fn().mockReturnThis(),
-            find: jest.fn(function(selector) {
+            find: jest.fn(function (selector) {
                 if (selector.includes('confirm-button')) {
                     return {
                         on: jest.fn((event, handler) => {
@@ -63,11 +63,11 @@ jest.mock('cash-dom', () => {
                 }
                 return { on: jest.fn().mockReturnThis() };
             }),
-            on: jest.fn(function(event, handler) {
+            on: jest.fn(function (event, handler) {
                 dialogHandlers['dialog_' + event] = handler;
                 return this;
             }),
-            remove: jest.fn(function() {
+            remove: jest.fn(function () {
                 dialogElements = [];
                 return this;
             }),
@@ -83,7 +83,7 @@ jest.mock('cash-dom', () => {
     const mockElement = {
         addClass: jest.fn().mockReturnThis(),
         removeClass: jest.fn().mockReturnThis(),
-        append: jest.fn(function(element) {
+        append: jest.fn(function (element) {
             if (typeof element === 'object' && element.addClass) {
                 dialogInstance = element;
                 dialogElements.push(element);
@@ -472,7 +472,190 @@ describe('confirmationDialog', () => {
 
             expect(mockRequestAnimationFrame).toHaveBeenCalled();
         });
+    });
 
+    describe('Keyboard Event Handling', () => {
+        it('should handle Escape key', () => {
+            const mockEvent = {
+                key: 'Escape',
+                preventDefault: jest.fn()
+            };
+            const mockCancel = jest.fn();
+            const mockConfirm = jest.fn();
+
+            const result = confirmationDialog.__test.handleKeyboardEvent(mockEvent, mockCancel, mockConfirm);
+
+            expect(result).toBe(true);
+            expect(mockEvent.preventDefault).toHaveBeenCalled();
+            expect(mockCancel).toHaveBeenCalled();
+            expect(mockConfirm).not.toHaveBeenCalled();
+        });
+
+        it('should handle Enter key on confirm button', () => {
+            const mockEvent = {
+                key: 'Enter',
+                target: { classList: { contains: jest.fn().mockReturnValue(true) } },
+                preventDefault: jest.fn()
+            };
+            const mockCancel = jest.fn();
+            const mockConfirm = jest.fn();
+
+            const result = confirmationDialog.__test.handleKeyboardEvent(mockEvent, mockCancel, mockConfirm);
+
+            expect(result).toBe(true);
+            expect(mockEvent.preventDefault).toHaveBeenCalled();
+            expect(mockConfirm).toHaveBeenCalled();
+            expect(mockCancel).not.toHaveBeenCalled();
+        });
+
+        it('should not handle Enter key on non-confirm button', () => {
+            const mockEvent = {
+                key: 'Enter',
+                target: { classList: { contains: jest.fn().mockReturnValue(false) } },
+                preventDefault: jest.fn()
+            };
+            const mockCancel = jest.fn();
+            const mockConfirm = jest.fn();
+
+            const result = confirmationDialog.__test.handleKeyboardEvent(mockEvent, mockCancel, mockConfirm);
+
+            expect(result).toBe(false);
+            expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+            expect(mockConfirm).not.toHaveBeenCalled();
+            expect(mockCancel).not.toHaveBeenCalled();
+        });
+
+        it('should not handle other keys', () => {
+            const mockEvent = {
+                key: 'Tab',
+                preventDefault: jest.fn()
+            };
+            const mockCancel = jest.fn();
+            const mockConfirm = jest.fn();
+
+            const result = confirmationDialog.__test.handleKeyboardEvent(mockEvent, mockCancel, mockConfirm);
+
+            expect(result).toBe(false);
+            expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+            expect(mockCancel).not.toHaveBeenCalled();
+            expect(mockConfirm).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('Focus Trapping', () => {
+        let mockFirstElement, mockLastElement;
+
+        beforeEach(() => {
+            mockFirstElement = { focus: jest.fn() };
+            mockLastElement = { focus: jest.fn() };
+        });
+
+        it('should trap focus on Shift+Tab from first element', () => {
+            // Mock document.activeElement
+            Object.defineProperty(document, 'activeElement', {
+                value: mockFirstElement,
+                writable: true
+            });
+
+            const mockEvent = {
+                key: 'Tab',
+                shiftKey: true,
+                preventDefault: jest.fn()
+            };
+
+            const result = confirmationDialog.__test.handleFocusTrapping(mockEvent, mockFirstElement, mockLastElement);
+
+            expect(result).toBe(true);
+            expect(mockEvent.preventDefault).toHaveBeenCalled();
+            expect(mockLastElement.focus).toHaveBeenCalled();
+        });
+
+        it('should trap focus on Tab from last element', () => {
+            // Mock document.activeElement
+            Object.defineProperty(document, 'activeElement', {
+                value: mockLastElement,
+                writable: true
+            });
+
+            const mockEvent = {
+                key: 'Tab',
+                shiftKey: false,
+                preventDefault: jest.fn()
+            };
+
+            const result = confirmationDialog.__test.handleFocusTrapping(mockEvent, mockFirstElement, mockLastElement);
+
+            expect(result).toBe(true);
+            expect(mockEvent.preventDefault).toHaveBeenCalled();
+            expect(mockFirstElement.focus).toHaveBeenCalled();
+        });
+
+        it('should not trap focus on Shift+Tab from non-first element', () => {
+            // Mock document.activeElement
+            Object.defineProperty(document, 'activeElement', {
+                value: mockLastElement,
+                writable: true
+            });
+
+            const mockEvent = {
+                key: 'Tab',
+                shiftKey: true,
+                preventDefault: jest.fn()
+            };
+
+            const result = confirmationDialog.__test.handleFocusTrapping(mockEvent, mockFirstElement, mockLastElement);
+
+            expect(result).toBe(false);
+            expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+            expect(mockLastElement.focus).not.toHaveBeenCalled();
+            expect(mockFirstElement.focus).not.toHaveBeenCalled();
+        });
+
+        it('should not trap focus on Tab from non-last element', () => {
+            // Mock document.activeElement
+            Object.defineProperty(document, 'activeElement', {
+                value: mockFirstElement,
+                writable: true
+            });
+
+            const mockEvent = {
+                key: 'Tab',
+                shiftKey: false,
+                preventDefault: jest.fn()
+            };
+
+            const result = confirmationDialog.__test.handleFocusTrapping(mockEvent, mockFirstElement, mockLastElement);
+
+            expect(result).toBe(false);
+            expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+            expect(mockFirstElement.focus).not.toHaveBeenCalled();
+            expect(mockLastElement.focus).not.toHaveBeenCalled();
+        });
+
+        it('should not handle non-Tab keys', () => {
+            const mockEvent = {
+                key: 'Enter',
+                preventDefault: jest.fn()
+            };
+
+            const result = confirmationDialog.__test.handleFocusTrapping(mockEvent, mockFirstElement, mockLastElement);
+
+            expect(result).toBe(false);
+            expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+            expect(mockFirstElement.focus).not.toHaveBeenCalled();
+            expect(mockLastElement.focus).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('Test exports', () => {
+        it('should export test functions', () => {
+            expect(confirmationDialog.__test).toBeDefined();
+            expect(confirmationDialog.__test.handleKeyboardEvent).toBeInstanceOf(Function);
+            expect(confirmationDialog.__test.handleFocusTrapping).toBeInstanceOf(Function);
+        });
+    });
+
+    describe('Legacy tests', () => {
         it('should use setTimeout for closing dialog', async () => {
             const options = {
                 title: 'Test Title',

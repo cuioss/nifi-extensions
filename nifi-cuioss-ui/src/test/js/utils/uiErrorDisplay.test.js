@@ -169,6 +169,99 @@ describe('displayUiError', () => {
         displayUiError($targetElement, error, mockI18n);
         expect(getErrorMessageText()).toBe(mockI18n['processor.jwt.unknownError']);
     });
+
+    it('should support closable error messages', () => {
+        const errorMessage = 'Test closable error';
+        const mockError = { message: errorMessage };
+
+        displayUiError($targetElement, mockError, mockI18n, 'custom.error.type', {
+            closable: true
+        });
+
+        // Check that close button exists and error message is displayed
+        const $closeButton = $targetElement.find('.close-error');
+        expect($closeButton.length).toBe(1);
+        expect($targetElement.find('.error-message').length).toBe(1);
+
+        // Verify the closable option triggered the creation of close button functionality
+        const errorContent = $targetElement.html();
+        expect(errorContent).toContain('close-error');
+    });
+
+    it('should support auto-hide error messages', () => {
+        const errorMessage = 'Test auto-hide error';
+        const mockError = { message: errorMessage };
+
+        // Mock setTimeout to test auto-hide functionality
+        const originalSetTimeout = global.setTimeout;
+        const mockSetTimeout = jest.fn();
+        global.setTimeout = mockSetTimeout;
+
+        displayUiError($targetElement, mockError, mockI18n, 'custom.error.type', {
+            autoHide: true
+        });
+
+        // Check that setTimeout was called for auto-hide (5000ms delay)
+        expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), 5000);
+
+        // Initially error should be present
+        expect($targetElement.find('.error-message').length).toBe(1);
+
+        // Restore original setTimeout
+        global.setTimeout = originalSetTimeout;
+    });
+
+    it('should handle null error gracefully', () => {
+        displayUiError($targetElement, null, mockI18n, 'custom.error.type');
+
+        const errorText = getErrorMessageText();
+        expect(errorText).toBe(mockI18n['processor.jwt.unknownError']);
+    });
+
+    it('should handle undefined error gracefully', () => {
+        displayUiError($targetElement, undefined, mockI18n, 'custom.error.type');
+
+        const errorText = getErrorMessageText();
+        expect(errorText).toBe(mockI18n['processor.jwt.unknownError']);
+    });
+
+    it('should handle error with empty responseJSON message', () => {
+        const mockError = {
+            responseJSON: { message: '' }
+        };
+
+        displayUiError($targetElement, mockError, mockI18n, 'custom.error.type');
+
+        // Should fall back to unknown error since message is empty
+        const errorText = getErrorMessageText();
+        expect(errorText).toBe(mockI18n['processor.jwt.unknownError']);
+    });
+
+    it('should handle error with null responseJSON message', () => {
+        const mockError = {
+            responseJSON: { message: null }
+        };
+
+        displayUiError($targetElement, mockError, mockI18n, 'custom.error.type');
+
+        // Should use the null message (which gets cleaned to unknown error)
+        const errorText = getErrorMessageText();
+        expect(errorText).toBe(mockI18n['processor.jwt.unknownError']);
+    });
+
+    it('should handle both closable and auto-hide options together', () => {
+        const errorMessage = 'Test both options';
+        const mockError = { message: errorMessage };
+
+        displayUiError($targetElement, mockError, mockI18n, 'custom.error.type', {
+            closable: true,
+            autoHide: true
+        });
+
+        // Should have both close button and auto-hide functionality
+        expect($targetElement.find('.close-error').length).toBe(1);
+        expect($targetElement.find('.error-message').length).toBe(1);
+    });
 });
 
 describe('extractErrorMessage (direct test for edge cases not easily triggered via displayUiError inputs)', () => {

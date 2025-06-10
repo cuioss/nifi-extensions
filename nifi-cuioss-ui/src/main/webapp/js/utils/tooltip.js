@@ -4,6 +4,11 @@ import * as nfCommon from 'nf.Common'; // Import nfCommon
 // Note: CSS files for tippy.js should be included in the main HTML or via separate CSS build process
 
 export function initTooltips(selector, options = {}, context = document) {
+    // Handle null and undefined selectors early
+    if (selector == null) {
+        return null;
+    }
+
     let elements;
     if (typeof selector === 'string') {
         elements = context.querySelectorAll(selector);

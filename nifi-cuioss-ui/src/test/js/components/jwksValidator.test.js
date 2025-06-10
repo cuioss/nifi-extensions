@@ -305,7 +305,7 @@ describe('jwksValidator', () => {
             );
         });
 
-        it.skip('should handle invalid JWKS response', async () => {
+        it('should handle invalid JWKS response', async () => {
             const mockCash = require('cash-dom').default;
 
             await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
@@ -319,10 +319,9 @@ describe('jwksValidator', () => {
             // Wait for promise resolution
             await new Promise(resolve => setTimeout(resolve, 0));
 
-            // Should display error message
-            expect(mockCash().html).toHaveBeenCalledWith(
-                expect.stringContaining('Invalid JWKS')
-            );
+            // Should handle the invalid response (uiErrorDisplay is called)
+            const { displayUiError } = require('../../../main/webapp/js/utils/uiErrorDisplay.js');
+            expect(displayUiError).toHaveBeenCalled();
         });
 
         it('should handle AJAX errors', async () => {

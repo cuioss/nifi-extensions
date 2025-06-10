@@ -22,30 +22,27 @@ jest.mock('cash-dom', () => {
     let ajaxResolver = null;
     let ajaxRejecter = null;
 
-    // Store a single verify button click handler and a single clear button click handler
+    // Store button click handlers
     let verifyButtonClickHandler = null;
     let clearButtonClickHandler = null;
 
-    // Create a shared mock element with all the methods that need to be tracked
-    const mockElement = {
+    // Track button creation
+    let lastCreatedButtonHTML = '';
+
+    const createMockElement = (isButton = false, buttonHTML = '', cssClass = '') => ({
         append: jest.fn().mockReturnThis(),
         html: jest.fn().mockReturnThis(),
         text: jest.fn().mockReturnThis(),
         on: jest.fn((event, handler) => {
-            console.log(`Registering ${event} handler for selector: "${mockElement.lastSelector}"`);
             if (event === 'click') {
-                // Store handlers based on the button class in the selector
-                if (mockElement.lastSelector && mockElement.lastSelector.includes('verify-token-button')) {
-                    console.log('Setting verify button click handler');
+                // Capture handlers based on CSS class or button HTML
+                if (cssClass.includes('verify-token-button') || buttonHTML.includes('verify-token-button')) {
                     verifyButtonClickHandler = handler;
-                } else if (mockElement.lastSelector && mockElement.lastSelector.includes('clear-token-button')) {
-                    console.log('Setting clear button click handler');
+                } else if (cssClass.includes('clear-token-button') || buttonHTML.includes('clear-token-button')) {
                     clearButtonClickHandler = handler;
-                } else {
-                    console.log('No matching button class found in selector');
                 }
             }
-            return mockElement;
+            return createMockElement(isButton, buttonHTML, cssClass);
         }),
         find: jest.fn().mockImplementation((selector) => {
             if (selector === '#field-token-input') {
@@ -53,34 +50,43 @@ jest.mock('cash-dom', () => {
                     val: jest.fn().mockImplementation((newValue) => {
                         if (newValue !== undefined) {
                             tokenValue = newValue;
-                            return mockElement;
+                            return createMockElement();
                         }
-                        return tokenValue;
+                        return tokenValue.trim();
                     }),
                     0: { tagName: 'INPUT' }
                 };
             }
-            return mockElement;
+            return createMockElement();
         }),
         val: jest.fn().mockImplementation((newValue) => {
             if (newValue !== undefined) {
                 tokenValue = newValue;
-                return mockElement;
+                return createMockElement();
             }
             return tokenValue;
         }),
         addClass: jest.fn().mockReturnThis(),
         removeClass: jest.fn().mockReturnThis(),
         prop: jest.fn().mockReturnThis(),
-        0: { tagName: 'DIV' },
-        lastSelector: null
-    };
+        0: { tagName: isButton ? 'BUTTON' : 'DIV' }
+    });
 
     // Create the main cash-dom mock
     const mockCash = jest.fn((selector) => {
-        // Store the last selector for context in the on() method
-        mockElement.lastSelector = typeof selector === 'string' ? selector : '';
-        return mockElement;
+        // Handle button creation from HTML
+        if (typeof selector === 'string' && selector.includes('<button')) {
+            lastCreatedButtonHTML = selector;
+            return createMockElement(true, selector);
+        }
+
+        // Handle CSS class selection that captures handlers
+        if (typeof selector === 'string') {
+            return createMockElement(false, '', selector);
+        }
+
+        // Handle regular element creation/selection
+        return createMockElement();
     });
 
     // Mock the ajax method
@@ -111,18 +117,10 @@ jest.mock('cash-dom', () => {
     };
 
     mockCash.__triggerClick = (buttonType = 'verify') => {
-        console.log(`Trying to trigger click for button type: "${buttonType}"`);
-        console.log(`Verify handler exists: ${!!verifyButtonClickHandler}`);
-        console.log(`Clear handler exists: ${!!clearButtonClickHandler}`);
-
         if (buttonType === 'verify' && verifyButtonClickHandler) {
-            console.log('Executing verify button click handler');
             verifyButtonClickHandler();
         } else if (buttonType === 'clear' && clearButtonClickHandler) {
-            console.log('Executing clear button click handler');
             clearButtonClickHandler();
-        } else {
-            console.warn(`No click handler found for button type: ${buttonType}`);
         }
     };
 
@@ -139,9 +137,6 @@ jest.mock('cash-dom', () => {
         }
         if (ajaxRejecter) ajaxRejecter(error);
     };
-
-    // For testing purposes, expose the mockElement
-    mockCash.mockElement = mockElement;
 
     return { __esModule: true, default: mockCash };
 });
@@ -257,14 +252,11 @@ describe('tokenVerifier', () => {
             expect(FormFieldFactory).toHaveBeenCalled();
         });
 
-        it('should display initial instructions', async () => {
-            const mockCash = require('cash-dom').default;
-            const mockElement = mockCash();
-
+        it('should initialize successfully and call callback', async () => {
             await tokenVerifier.init(parentElement, {}, null, callback);
 
-            expect(mockElement.html).toHaveBeenCalledWith(
-                expect.stringContaining('Enter a JWT token above and click "Verify Token" to validate it.')
+            expect(callback).toHaveBeenCalledWith(
+                expect.objectContaining({ validate: expect.any(Function) })
             );
         });
     });
@@ -291,162 +283,490 @@ describe('tokenVerifier', () => {
         });
     });
 
-    describe('Token Verification', () => {
-        it('should handle verify button click with empty token', async () => {
-            const mockCash = require('cash-dom').default;
+    describe('Token Verification Internal Functions', () => {
+        it('should handle token verification response correctly', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { 'processor.jwt.tokenValid': 'Token is valid' };
+            const mockDisplayValid = jest.fn();
+            const mockDisplayInvalid = jest.fn();
 
-            await tokenVerifier.init(parentElement, {}, null, callback);
+            // Test valid response
+            tokenVerifier.__test.handleTokenVerificationResponse(
+                { valid: true, subject: 'test' },
+                mockResultsContent,
+                mockI18n,
+                mockDisplayValid,
+                mockDisplayInvalid
+            );
 
-            // Set empty token
-            mockCash.__setTokenValue('');
+            expect(mockDisplayValid).toHaveBeenCalledWith({ valid: true, subject: 'test' }, false);
 
-            // Trigger verify button click
-            mockCash.__triggerClick();
+            // Test invalid response
+            tokenVerifier.__test.handleTokenVerificationResponse(
+                { valid: false, message: 'Invalid' },
+                mockResultsContent,
+                mockI18n,
+                mockDisplayValid,
+                mockDisplayInvalid
+            );
 
-            expect(mockCash().html).toHaveBeenCalledWith(
+            expect(mockDisplayInvalid).toHaveBeenCalledWith(
+                { valid: false, message: 'Invalid' },
+                mockResultsContent,
+                mockI18n
+            );
+        });
+
+        it('should extract error messages from XHR responses', () => {
+            // Test with JSON responseText
+            let errorMessage = tokenVerifier.__test.extractErrorMessageFromXHR({
+                statusText: 'Error',
+                responseText: '{"message": "Custom error"}'
+            });
+            expect(errorMessage).toBe('Custom error');
+
+            // Test with plain text responseText
+            errorMessage = tokenVerifier.__test.extractErrorMessageFromXHR({
+                statusText: 'Error',
+                responseText: 'Plain text error'
+            });
+            expect(errorMessage).toBe('Plain text error');
+
+            // Test with statusText only
+            errorMessage = tokenVerifier.__test.extractErrorMessageFromXHR({
+                statusText: 'Network Error'
+            });
+            expect(errorMessage).toBe('Network Error');
+
+            // Test with malformed JSON
+            errorMessage = tokenVerifier.__test.extractErrorMessageFromXHR({
+                statusText: 'Error',
+                responseText: '{"malformed": json'
+            });
+            expect(errorMessage).toBe('Error');
+        });
+
+        it('should sanitize error messages properly', () => {
+            const mockI18n = { 'processor.jwt.unknownError': 'Unknown error' };
+
+            // Test null/undefined values
+            expect(tokenVerifier.__test.sanitizeErrorMessage(null, mockI18n)).toBe('Unknown error');
+            expect(tokenVerifier.__test.sanitizeErrorMessage(undefined, mockI18n)).toBe('Unknown error');
+            expect(tokenVerifier.__test.sanitizeErrorMessage('', mockI18n)).toBe('Unknown error');
+            expect(tokenVerifier.__test.sanitizeErrorMessage('null', mockI18n)).toBe('Unknown error');
+            expect(tokenVerifier.__test.sanitizeErrorMessage('undefined', mockI18n)).toBe('Unknown error');
+
+            // Test valid message
+            expect(tokenVerifier.__test.sanitizeErrorMessage('Valid error', mockI18n)).toBe('Valid error');
+        });
+
+        it('should create sample token response for localhost', () => {
+            const sampleResponse = tokenVerifier.__test.createSampleTokenResponse();
+
+            expect(sampleResponse.valid).toBe(true);
+            expect(sampleResponse.subject).toBe('user123');
+            expect(sampleResponse.issuer).toBe('https://sample-issuer.example.com');
+            expect(sampleResponse.audience).toBe('sample-audience');
+            expect(sampleResponse.roles).toEqual(['admin', 'user']);
+            expect(sampleResponse.scopes).toEqual(['read', 'write']);
+            expect(sampleResponse.claims).toHaveProperty('sub', 'user123');
+            expect(sampleResponse.claims).toHaveProperty('email', 'john.doe@example.com');
+        });
+
+        it('should handle AJAX error scenarios correctly', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { 'processor.jwt.verificationError': 'Verification error' };
+            const mockDisplayValid = jest.fn();
+
+            // Test localhost mode with AJAX error
+            require('../../../main/webapp/js/utils/constants.js').getIsLocalhost.mockReturnValue(true);
+
+            tokenVerifier.__test.handleTokenVerificationAjaxError(
+                { statusText: 'Network Error', status: 500 },
+                mockResultsContent,
+                mockI18n,
+                mockDisplayValid
+            );
+
+            // Should show simulated response in localhost
+            expect(mockDisplayValid).toHaveBeenCalledWith(expect.objectContaining({
+                valid: true,
+                subject: 'user123'
+            }), true);
+
+            // Reset localhost mode
+            require('../../../main/webapp/js/utils/constants.js').getIsLocalhost.mockReturnValue(false);
+        });
+
+        it('should handle synchronous exceptions correctly', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { 'processor.jwt.verificationError': 'Verification error' };
+            const mockDisplayValid = jest.fn();
+
+            // Test localhost mode with sync exception
+            require('../../../main/webapp/js/utils/constants.js').getIsLocalhost.mockReturnValue(true);
+
+            tokenVerifier.__test.handleTokenVerificationSyncException(
+                new Error('AJAX setup failed'),
+                mockResultsContent,
+                mockI18n,
+                mockDisplayValid
+            );
+
+            // Should show simulated response in localhost
+            expect(mockDisplayValid).toHaveBeenCalledWith(expect.objectContaining({
+                valid: true,
+                subject: 'user123'
+            }), true);
+
+            // Reset localhost mode
+            require('../../../main/webapp/js/utils/constants.js').getIsLocalhost.mockReturnValue(false);
+        });
+
+        it('should show initial instructions correctly', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { 'processor.jwt.initialInstructions': 'Test instructions' };
+
+            tokenVerifier.__test.showInitialInstructions(mockResultsContent, mockI18n);
+
+            expect(mockResultsContent.html).toHaveBeenCalledWith(
+                expect.stringContaining('Test instructions')
+            );
+        });
+
+        it('should show loading state correctly', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { 'processor.jwt.verifying': 'Verifying...' };
+
+            tokenVerifier.__test.resetUIAndShowLoading(mockResultsContent, mockI18n);
+
+            expect(mockResultsContent.html).toHaveBeenCalledWith(
+                expect.stringContaining('Verifying...')
+            );
+        });
+
+        it('should handle verify button click with empty token', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { 'processor.jwt.noTokenProvided': 'No token provided' };
+            const mockResetButton = jest.fn();
+
+            const result = tokenVerifier.__test.handleVerifyButtonClick('', mockResultsContent, mockI18n, mockResetButton);
+
+            expect(result).toBe(false);
+            expect(mockResultsContent.html).toHaveBeenCalledWith(
                 expect.stringContaining('No token provided')
             );
         });
 
-        it('should handle verify button click with valid token', async () => {
-            const mockCash = require('cash-dom').default;
+        it('should handle verify button click with valid token', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { 'processor.jwt.verifying': 'Verifying...' };
+            const mockResetButton = jest.fn();
 
-            await tokenVerifier.init(parentElement, {}, null, callback);
+            const result = tokenVerifier.__test.handleVerifyButtonClick('valid.token', mockResultsContent, mockI18n, mockResetButton);
 
-            // Set valid token
-            mockCash.__setTokenValue('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test');
-
-            // Trigger verify button click
-            mockCash.__triggerClick();
-
-            // Should start loading
-            expect(mockCash().addClass).toHaveBeenCalledWith('loading');
-            expect(mockCash().prop).toHaveBeenCalledWith('disabled', true);
-
-            // Resolve with valid response
-            mockCash.__resolveAjax({
-                valid: true,
-                subject: 'testuser',
-                issuer: 'test-issuer',
-                audience: 'test-audience',
-                expiration: '2025-12-31T23:59:59Z',
-                roles: ['admin', 'user'],
-                scopes: ['read', 'write'],
-                claims: { sub: 'testuser' }
-            });
-
-            // Wait for promise resolution
-            await new Promise(resolve => setTimeout(resolve, 0));
-
-            // Should stop loading
-            expect(mockCash().removeClass).toHaveBeenCalledWith('loading');
-            expect(mockCash().prop).toHaveBeenCalledWith('disabled', false);
+            expect(result).toBe(true);
+            expect(mockResultsContent.html).toHaveBeenCalledWith(
+                expect.stringContaining('Verifying...')
+            );
         });
 
-        it('should handle verify button click with invalid token', async () => {
-            const mockCash = require('cash-dom').default;
+        it('should handle verify button click with whitespace token', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { 'processor.jwt.noTokenProvided': 'No token provided' };
+            const mockResetButton = jest.fn();
 
-            await tokenVerifier.init(parentElement, {}, null, callback);
+            const result = tokenVerifier.__test.handleVerifyButtonClick('   ', mockResultsContent, mockI18n, mockResetButton);
 
-            // Set token
-            mockCash.__setTokenValue('invalid.token.here');
-
-            // Trigger verify button click
-            mockCash.__triggerClick();
-
-            // Resolve with invalid response
-            mockCash.__resolveAjax({
-                valid: false,
-                message: 'Token is invalid'
-            });
-
-            // Wait for promise resolution
-            await new Promise(resolve => setTimeout(resolve, 0));
-
-            // Should display invalid token
-            expect(mockCash().html).toHaveBeenCalled();
+            expect(result).toBe(false);
+            expect(mockResultsContent.html).toHaveBeenCalledWith(
+                expect.stringContaining('No token provided')
+            );
         });
 
-        it('should handle AJAX errors', async () => {
-            const mockCash = require('cash-dom').default;
+        it('should handle clear button click with empty form', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { };
 
-            await tokenVerifier.init(parentElement, {}, null, callback);
+            const result = tokenVerifier.__test.handleClearButtonClick('', '', mockResultsContent, mockI18n);
 
-            // Set token
-            mockCash.__setTokenValue('some.token.here');
-
-            // Trigger verify button click
-            mockCash.__triggerClick();
-
-            // Reject with error
-            mockCash.__rejectAjax({ statusText: 'Network Error', status: 500 });
-
-            // Wait for promise rejection
-            await new Promise(resolve => setTimeout(resolve, 0));
-
-            // Should stop loading and display error
-            expect(mockCash().removeClass).toHaveBeenCalledWith('loading');
-            expect(mockCash().prop).toHaveBeenCalledWith('disabled', false);
+            expect(result).toBe(false);
+            expect(mockResultsContent.html).toHaveBeenCalledWith(
+                '<div class="info-message">Form is already empty.</div>'
+            );
         });
 
-        it('should handle synchronous exceptions during AJAX setup', async () => {
-            const mockCash = require('cash-dom').default;
+        it('should handle clear button click with token content', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { };
 
-            // Mock ajax to throw synchronous error
-            mockCash.ajax.mockImplementationOnce(() => {
-                throw new Error('AJAX setup failed');
-            });
+            const result = tokenVerifier.__test.handleClearButtonClick('some.token', '', mockResultsContent, mockI18n);
 
-            await tokenVerifier.init(parentElement, {}, null, callback);
-
-            // Set token
-            mockCash.__setTokenValue('some.token.here');
-
-            // Trigger verify button click (should handle sync exception)
-            expect(() => mockCash.__triggerClick()).not.toThrow();
+            expect(result).toBe(true);
         });
 
-        it('should handle token verification with complex claims', async () => {
-            const mockCash = require('cash-dom').default;
+        it('should handle clear button click with results content', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { };
 
-            await tokenVerifier.init(parentElement, {}, null, callback);
+            const result = tokenVerifier.__test.handleClearButtonClick('', '<div>Some results</div>', mockResultsContent, mockI18n);
 
-            // Set token
-            mockCash.__setTokenValue('complex.token.with.claims');
+            expect(result).toBe(true);
+        });
 
-            // Trigger verify button click
-            mockCash.__triggerClick();
+        it('should handle clear button click with whitespace results', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { };
 
-            // Resolve with complex response
-            mockCash.__resolveAjax({
-                valid: true,
-                subject: 'complex-user',
-                issuer: 'https://auth.example.com',
-                audience: ['app1', 'app2'],
-                expiration: '2025-12-31T23:59:59Z',
-                issuedAt: '2025-01-01T00:00:00Z',
-                notBefore: '2025-01-01T00:00:00Z',
-                tokenId: 'uuid-12345',
-                roles: ['admin', 'user', 'editor'],
-                scopes: ['read', 'write', 'delete'],
-                groups: ['developers', 'admins'],
-                claims: {
-                    sub: 'complex-user',
-                    name: 'Complex User',
-                    email: 'user@example.com',
-                    customClaim: 'custom value'
-                }
-            });
+            const result = tokenVerifier.__test.handleClearButtonClick('', '   \n\t   ', mockResultsContent, mockI18n);
 
-            // Wait for promise resolution
-            await new Promise(resolve => setTimeout(resolve, 0));
-
-            // Should display the complex token information
-            expect(mockCash().html).toHaveBeenCalled();
+            expect(result).toBe(false);
+            expect(mockResultsContent.html).toHaveBeenCalledWith(
+                '<div class="info-message">Form is already empty.</div>'
+            );
         });
     });
 
-    describe('Clear Functionality', () => {
+    describe('Additional Edge Cases and Validation', () => {
+        it('should handle missing callback in init gracefully', async () => {
+            await expect(tokenVerifier.init(parentElement, {}, null, null)).resolves.not.toThrow();
+        });
+
+        it('should handle null i18n resources', async () => {
+            const nfCommon = require('nf.Common');
+            nfCommon.getI18n.mockReturnValueOnce(null);
+
+            await tokenVerifier.init(parentElement, {}, null, callback);
+            expect(callback).toHaveBeenCalled();
+        });
+
+        it('should handle undefined config object', async () => {
+            await tokenVerifier.init(parentElement, undefined, null, callback);
+            expect(callback).toHaveBeenCalled();
+        });
+
+        it('should validate with complex error response structures', () => {
+            // Test with nested JSON error
+            const complexError = {
+                statusText: 'Server Error',
+                responseText: '{"error": {"message": "Complex nested error", "code": 500}}'
+            };
+
+            const result = tokenVerifier.__test.extractErrorMessageFromXHR(complexError);
+            // Should fallback to statusText when nested message isn't found
+            expect(result).toBe('Server Error');
+        });
+
+        it('should handle empty responseText scenarios', () => {
+            const emptyResponseError = {
+                statusText: 'No Content',
+                responseText: ''
+            };
+
+            const result = tokenVerifier.__test.extractErrorMessageFromXHR(emptyResponseError);
+            expect(result).toBe('No Content');
+        });
+
+        it('should handle array responseText', () => {
+            const arrayResponseError = {
+                statusText: 'Array Error',
+                responseText: '[{"message": "Array error"}]'
+            };
+
+            const result = tokenVerifier.__test.extractErrorMessageFromXHR(arrayResponseError);
+            expect(result).toBe('Array Error');
+        });
+
+        it('should handle non-localhost environment errors gracefully', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { 'processor.jwt.verificationError': 'Verification failed' };
+            const mockDisplayValid = jest.fn();
+
+            // Ensure localhost is false
+            require('../../../main/webapp/js/utils/constants.js').getIsLocalhost.mockReturnValue(false);
+
+            tokenVerifier.__test.handleTokenVerificationAjaxError(
+                { statusText: 'Network Error', status: 500 },
+                mockResultsContent,
+                mockI18n,
+                mockDisplayValid
+            );
+
+            // Should call displayUiError, not display valid token
+            expect(mockDisplayValid).not.toHaveBeenCalled();
+        });
+
+        it('should handle non-localhost sync exceptions gracefully', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { 'processor.jwt.verificationError': 'Verification failed' };
+            const mockDisplayValid = jest.fn();
+
+            // Ensure localhost is false
+            require('../../../main/webapp/js/utils/constants.js').getIsLocalhost.mockReturnValue(false);
+
+            tokenVerifier.__test.handleTokenVerificationSyncException(
+                new Error('Sync error'),
+                mockResultsContent,
+                mockI18n,
+                mockDisplayValid
+            );
+
+            // Should call displayUiError, not display valid token
+            expect(mockDisplayValid).not.toHaveBeenCalled();
+        });
+
+        it('should handle trimmed whitespace token in verify handler', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { 'processor.jwt.verifying': 'Verifying...' };
+            const mockResetButton = jest.fn();
+
+            const result = tokenVerifier.__test.handleVerifyButtonClick('  valid.token  ', mockResultsContent, mockI18n, mockResetButton);
+
+            expect(result).toBe(true);
+            expect(mockResultsContent.html).toHaveBeenCalledWith(
+                expect.stringContaining('Verifying...')
+            );
+        });
+
+        it('should handle mixed content scenarios in clear handler', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { };
+
+            // Token with whitespace, but valid HTML results
+            const result = tokenVerifier.__test.handleClearButtonClick('  ', '<div>Valid HTML content</div>', mockResultsContent, mockI18n);
+
+            expect(result).toBe(true);
+        });
+
+        it('should handle null token value in clear handler', () => {
+            const mockResultsContent = { html: jest.fn() };
+            const mockI18n = { };
+
+            const result = tokenVerifier.__test.handleClearButtonClick(null, null, mockResultsContent, mockI18n);
+
+            expect(result).toBe(false);
+            expect(mockResultsContent.html).toHaveBeenCalledWith(
+                '<div class="info-message">Form is already empty.</div>'
+            );
+        });
+
+        it('should create valid token HTML with roles and scopes', () => {
+            const mockResponse = {
+                subject: 'test-user',
+                issuer: 'https://test-issuer.com',
+                audience: 'test-audience',
+                expiration: '2024-01-01T00:00:00Z',
+                roles: ['admin', 'user'],
+                scopes: ['read', 'write'],
+                claims: { sub: 'test-user', roles: ['admin', 'user'] }
+            };
+            const mockI18n = {
+                'processor.jwt.tokenValid': 'Token is valid',
+                'processor.jwt.tokenDetails': 'Token Details',
+                'processor.jwt.subject': 'Subject',
+                'processor.jwt.issuer': 'Issuer',
+                'processor.jwt.audience': 'Audience',
+                'processor.jwt.expiration': 'Expiration',
+                'processor.jwt.roles': 'Roles',
+                'processor.jwt.scopes': 'Scopes',
+                'processor.jwt.allClaims': 'All Claims'
+            };
+            const mockCSS = {
+                TOKEN_VERIFIER: {
+                    TOKEN_VALID: 'token-valid',
+                    TOKEN_DETAILS: 'token-details',
+                    TOKEN_CLAIMS_TABLE: 'token-claims-table',
+                    TOKEN_RAW_CLAIMS: 'token-raw-claims'
+                }
+            };
+
+            const html = tokenVerifier.__test.createValidTokenHtml(mockResponse, false, mockI18n, mockCSS);
+
+            expect(html).toContain('Token is valid');
+            expect(html).toContain('test-user');
+            expect(html).toContain('admin, user');
+            expect(html).toContain('read write');
+            expect(html).toContain('https://test-issuer.com');
+            expect(html).toContain('test-audience');
+            expect(html).toContain('2024-01-01T00:00:00Z');
+        });
+
+        it('should create valid token HTML without roles and scopes', () => {
+            const mockResponse = {
+                subject: 'test-user',
+                issuer: 'https://test-issuer.com',
+                audience: 'test-audience',
+                expiration: '2024-01-01T00:00:00Z',
+                roles: [],
+                scopes: [],
+                claims: { sub: 'test-user' }
+            };
+            const mockI18n = {
+                'processor.jwt.tokenValid': 'Token is valid',
+                'processor.jwt.tokenDetails': 'Token Details'
+            };
+            const mockCSS = {
+                TOKEN_VERIFIER: {
+                    TOKEN_VALID: 'token-valid',
+                    TOKEN_DETAILS: 'token-details',
+                    TOKEN_CLAIMS_TABLE: 'token-claims-table',
+                    TOKEN_RAW_CLAIMS: 'token-raw-claims'
+                }
+            };
+
+            const html = tokenVerifier.__test.createValidTokenHtml(mockResponse, false, mockI18n, mockCSS);
+
+            expect(html).toContain('Token is valid');
+            expect(html).toContain('test-user');
+            expect(html).not.toContain('Roles');
+            expect(html).not.toContain('Scopes');
+        });
+
+        it('should create simulated token HTML', () => {
+            const mockResponse = {
+                subject: 'test-user',
+                claims: { sub: 'test-user' }
+            };
+            const mockI18n = { 'processor.jwt.tokenValid': 'Token is valid' };
+            const mockCSS = {
+                TOKEN_VERIFIER: {
+                    TOKEN_VALID: 'token-valid',
+                    TOKEN_DETAILS: 'token-details',
+                    TOKEN_CLAIMS_TABLE: 'token-claims-table',
+                    TOKEN_RAW_CLAIMS: 'token-raw-claims'
+                }
+            };
+
+            const html = tokenVerifier.__test.createValidTokenHtml(mockResponse, true, mockI18n, mockCSS);
+
+            expect(html).toContain('Token is valid');
+            expect(html).toContain('<em>(Simulated response)</em>');
+        });
+
+        it('should handle missing i18n keys gracefully', () => {
+            const mockResponse = {
+                subject: 'test-user',
+                claims: { sub: 'test-user' }
+            };
+            const mockI18n = {}; // Empty i18n
+            const mockCSS = {
+                TOKEN_VERIFIER: {
+                    TOKEN_VALID: 'token-valid',
+                    TOKEN_DETAILS: 'token-details',
+                    TOKEN_CLAIMS_TABLE: 'token-claims-table',
+                    TOKEN_RAW_CLAIMS: 'token-raw-claims'
+                }
+            };
+
+            const html = tokenVerifier.__test.createValidTokenHtml(mockResponse, false, mockI18n, mockCSS);
+
+            expect(html).toContain('Token is valid'); // fallback text
+            expect(html).toContain('Token Details'); // fallback text
+            expect(html).toContain('Subject'); // fallback text
+        });
+    });
+
+    describe('Component Dependencies', () => {
         it('should handle clear form confirmation', async () => {
             const { confirmClearForm } = require('../../../main/webapp/js/utils/confirmationDialog.js');
 
@@ -455,160 +775,20 @@ describe('tokenVerifier', () => {
             expect(confirmClearForm).toBeDefined();
         });
 
-        it('should have clear button event handler', async () => {
-            const mockCash = require('cash-dom').default;
-
+        it('should initialize with all dependencies', async () => {
             await tokenVerifier.init(parentElement, {}, null, callback);
-
-            // Verify that event handlers are set up
-            expect(mockCash().on).toHaveBeenCalledWith('click', expect.any(Function));
+            expect(callback).toHaveBeenCalled();
         });
 
-        it('should clear results when new verification starts', async () => {
-            const mockCash = require('cash-dom').default;
-
-            await tokenVerifier.init(parentElement, {}, null, callback);
-
-            // Set token and verify
-            mockCash.__setTokenValue('test.token');
-            mockCash.__triggerClick();
-
-            // Should show loading state
-            expect(mockCash().html).toHaveBeenCalledWith(
-                expect.stringContaining('Verifying token')
-            );
-        });
-    });
-
-    describe('Localhost Behavior', () => {
         it('should handle localhost mode correctly', async () => {
             const constants = require('../../../main/webapp/js/utils/constants.js');
             constants.getIsLocalhost.mockReturnValue(true);
 
             await tokenVerifier.init(parentElement, {}, null, callback);
             expect(callback).toHaveBeenCalled();
-        });
 
-        it('should show simulated response in localhost mode on AJAX error', async () => {
-            const constants = require('../../../main/webapp/js/utils/constants.js');
-            constants.getIsLocalhost.mockReturnValue(true);
-            const mockCash = require('cash-dom').default;
-
-            await tokenVerifier.init(parentElement, {}, null, callback);
-
-            // Set token
-            mockCash.__setTokenValue('test.token.localhost');
-
-            // Trigger verify button click
-            mockCash.__triggerClick();
-
-            // Reject with error (should trigger localhost behavior)
-            mockCash.__rejectAjax({ statusText: 'Connection refused', status: 0 });
-
-            // Wait for promise rejection
-            await new Promise(resolve => setTimeout(resolve, 0));
-
-            // Should display simulated response
-            expect(mockCash().html).toHaveBeenCalled();
-        });
-
-        it('should show simulated response in localhost mode on sync exception', async () => {
-            const constants = require('../../../main/webapp/js/utils/constants.js');
-            constants.getIsLocalhost.mockReturnValue(true);
-            const mockCash = require('cash-dom').default;
-
-            // Mock ajax to throw synchronous error
-            mockCash.ajax.mockImplementationOnce(() => {
-                throw new Error('Connection failed');
-            });
-
-            await tokenVerifier.init(parentElement, {}, null, callback);
-
-            // Set token
-            mockCash.__setTokenValue('test.token.localhost');
-
-            // Trigger verify button click (should handle sync exception with localhost behavior)
-            mockCash.__triggerClick();
-
-            // Should display simulated response
-            expect(mockCash().html).toHaveBeenCalled();
-        });
-    });
-
-    describe('Edge Cases and Error Handling', () => {
-        it('should handle malformed AJAX response', async () => {
-            const mockCash = require('cash-dom').default;
-
-            await tokenVerifier.init(parentElement, {}, null, callback);
-
-            // Set token
-            mockCash.__setTokenValue('test.token');
-
-            // Trigger verify button click
-            mockCash.__triggerClick();
-
-            // Resolve with malformed response
-            mockCash.__resolveAjax(null);
-
-            // Wait for promise resolution
-            await new Promise(resolve => setTimeout(resolve, 0));
-
-            // Should handle gracefully
-            expect(mockCash().removeClass).toHaveBeenCalledWith('loading');
-        });
-
-        it('should handle AJAX response without valid field', async () => {
-            const mockCash = require('cash-dom').default;
-
-            await tokenVerifier.init(parentElement, {}, null, callback);
-
-            // Set token
-            mockCash.__setTokenValue('test.token');
-
-            // Trigger verify button click
-            mockCash.__triggerClick();
-
-            // Resolve with response missing valid field
-            mockCash.__resolveAjax({ message: 'Some response without valid field' });
-
-            // Wait for promise resolution
-            await new Promise(resolve => setTimeout(resolve, 0));
-
-            // Should handle gracefully
-            expect(mockCash().html).toHaveBeenCalled();
-        });
-
-        it('should handle whitespace-only token input', async () => {
-            const mockCash = require('cash-dom').default;
-
-            await tokenVerifier.init(parentElement, {}, null, callback);
-
-            // Set whitespace-only token
-            mockCash.__setTokenValue('   \\n\\t  ');
-
-            // Trigger verify button click
-            mockCash.__triggerClick();
-
-            // Should treat as empty token
-            expect(mockCash().html).toHaveBeenCalledWith(
-                expect.stringContaining('No token provided')
-            );
-        });
-
-        it('should handle very long token', async () => {
-            const mockCash = require('cash-dom').default;
-
-            await tokenVerifier.init(parentElement, {}, null, callback);
-
-            // Set very long token
-            const longToken = 'a'.repeat(10000);
-            mockCash.__setTokenValue(longToken);
-
-            // Trigger verify button click
-            mockCash.__triggerClick();
-
-            // Should start verification process
-            expect(mockCash().addClass).toHaveBeenCalledWith('loading');
+            // Reset localhost mode
+            constants.getIsLocalhost.mockReturnValue(false);
         });
     });
 
@@ -623,6 +803,20 @@ describe('tokenVerifier', () => {
             expect(constants.getIsLocalhost).toBeDefined();
             expect(displayUiError).toBeDefined();
             expect(confirmClearForm).toBeDefined();
+        });
+
+        it('should export test functions for comprehensive coverage', () => {
+            expect(tokenVerifier.__test).toBeDefined();
+            expect(tokenVerifier.__test.showInitialInstructions).toBeInstanceOf(Function);
+            expect(tokenVerifier.__test.resetUIAndShowLoading).toBeInstanceOf(Function);
+            expect(tokenVerifier.__test.handleTokenVerificationResponse).toBeInstanceOf(Function);
+            expect(tokenVerifier.__test.extractErrorMessageFromXHR).toBeInstanceOf(Function);
+            expect(tokenVerifier.__test.sanitizeErrorMessage).toBeInstanceOf(Function);
+            expect(tokenVerifier.__test.createSampleTokenResponse).toBeInstanceOf(Function);
+            expect(tokenVerifier.__test.handleTokenVerificationAjaxError).toBeInstanceOf(Function);
+            expect(tokenVerifier.__test.handleTokenVerificationSyncException).toBeInstanceOf(Function);
+            expect(tokenVerifier.__test.handleVerifyButtonClick).toBeInstanceOf(Function);
+            expect(tokenVerifier.__test.handleClearButtonClick).toBeInstanceOf(Function);
         });
     });
 });

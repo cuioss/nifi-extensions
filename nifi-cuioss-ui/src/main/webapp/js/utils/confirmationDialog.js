@@ -249,3 +249,57 @@ export const confirmResetConfiguration = (onConfirm) => {
         onConfirm
     });
 };
+
+/**
+ * Handles keyboard events for dialog (extracted for testing)
+ * @param {KeyboardEvent} e - The keyboard event
+ * @param {Function} cancelAction - Function to call on Escape
+ * @param {Function} confirmAction - Function to call on Enter (if on confirm button)
+ * @returns {boolean} True if event was handled
+ */
+const _handleKeyboardEvent = (e, cancelAction, confirmAction) => {
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        cancelAction();
+        return true;
+    } else if (e.key === 'Enter' && e.target.classList.contains('confirm-button')) {
+        e.preventDefault();
+        confirmAction();
+        return true;
+    }
+    return false;
+};
+
+/**
+ * Handles focus trapping for accessibility (extracted for testing)
+ * @param {KeyboardEvent} e - The keyboard event
+ * @param {HTMLElement} firstElement - First focusable element
+ * @param {HTMLElement} lastElement - Last focusable element
+ * @returns {boolean} True if focus was trapped
+ */
+const _handleFocusTrapping = (e, firstElement, lastElement) => {
+    if (e.key === 'Tab') {
+        if (e.shiftKey) {
+            // Shift + Tab
+            if (document.activeElement === firstElement) {
+                e.preventDefault();
+                lastElement.focus();
+                return true;
+            }
+        } else {
+            // Tab
+            if (document.activeElement === lastElement) {
+                e.preventDefault();
+                firstElement.focus();
+                return true;
+            }
+        }
+    }
+    return false;
+};
+
+// Export internal functions for testing
+export const __test = {
+    handleKeyboardEvent: _handleKeyboardEvent,
+    handleFocusTrapping: _handleFocusTrapping
+};
