@@ -35,7 +35,7 @@
             <artifactId>cui-java-tools</artifactId>
         </dependency>
         <dependency>
-            <groupId>de.cuioss</groupId>
+            <groupId>de.cuioss.jwt</groupId>
             <artifactId>cui-jwt-validation</artifactId>
             <scope>compile</scope>
         </dependency>
@@ -51,21 +51,10 @@
             <artifactId>nifi-api</artifactId>
             <scope>provided</scope>
         </dependency>
-        <!-- Not directly used but may be needed for future development -->
-        <!-- <dependency>
-            <groupId>org.apache.nifi</groupId>
-            <artifactId>nifi-utils</artifactId>
-        </dependency> -->
         <dependency>
             <groupId>org.apache.nifi</groupId>
             <artifactId>nifi-mock</artifactId>
         </dependency>
-        <!-- Not currently used in tests but may be needed for future test development -->
-        <!-- <dependency>
-            <groupId>de.cuioss.test</groupId>
-            <artifactId>cui-test-mockwebserver-junit5</artifactId>
-            <scope>test</scope>
-        </dependency> -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>

@@ -15,10 +15,9 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import lombok.experimental.UtilityClass;
-
 import de.cuioss.tools.logging.LogRecord;
 import de.cuioss.tools.logging.LogRecordModel;
+import lombok.experimental.UtilityClass;
 
 /**
  * Provides logging messages for the JWT authentication processors.

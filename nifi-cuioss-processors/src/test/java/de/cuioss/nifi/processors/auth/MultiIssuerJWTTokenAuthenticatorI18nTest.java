@@ -15,14 +15,7 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.util.HashMap;
-import java.util.Map;
-
-
+import de.cuioss.tools.logging.CuiLogger;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
@@ -30,7 +23,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import de.cuioss.tools.logging.CuiLogger;
+import java.util.HashMap;
+import java.util.Map;
+
+import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test class for internationalization aspects of {@link MultiIssuerJWTTokenAuthenticator}.
@@ -47,9 +44,9 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
         testRunner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
 
         // Configure basic properties
-        testRunner.setProperty(MultiIssuerJWTTokenAuthenticator.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
-        testRunner.setProperty(MultiIssuerJWTTokenAuthenticator.TOKEN_HEADER, "Authorization");
-        testRunner.setProperty(MultiIssuerJWTTokenAuthenticator.BEARER_TOKEN_PREFIX, "Bearer");
+        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
+        testRunner.setProperty(Properties.TOKEN_HEADER, Http.AUTHORIZATION_HEADER);
+        testRunner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Bearer");
 
         // Configure issuer properties
         testRunner.setProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
@@ -67,10 +64,10 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
         testRunner.run();
 
         // Then the error message should be internationalized
-        testRunner.assertTransferCount(MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED, 1);
+        testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
         MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(
-                MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED).get(0);
+                Relationships.AUTHENTICATION_FAILED).get(0);
 
         // Verify error attributes
         String errorReason = flowFile.getAttribute(JWTAttributes.Error.REASON);
@@ -111,10 +108,10 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
         testRunner.run();
 
         // Then the error message should be internationalized
-        testRunner.assertTransferCount(MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED, 1);
+        testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
         MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(
-                MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED).get(0);
+                Relationships.AUTHENTICATION_FAILED).get(0);
 
         // Verify error attributes
         String errorReason = flowFile.getAttribute(JWTAttributes.Error.REASON);
@@ -151,10 +148,10 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
         testRunner.run();
 
         // Then the error message should be internationalized
-        testRunner.assertTransferCount(MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED, 1);
+        testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
         MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(
-                MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED).get(0);
+                Relationships.AUTHENTICATION_FAILED).get(0);
 
         // Verify error attributes
         String errorReason = flowFile.getAttribute(JWTAttributes.Error.REASON);
@@ -174,7 +171,7 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
     void internationalizedValidationErrorMessages() {
         // Given a processor with an issuer that uses HTTP instead of HTTPS
         testRunner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
-        testRunner.setProperty(MultiIssuerJWTTokenAuthenticator.REQUIRE_HTTPS_FOR_JWKS, "true");
+        testRunner.setProperty(Properties.REQUIRE_HTTPS_FOR_JWKS, "true");
 
         // When configuring an issuer with HTTP URL
         try {
@@ -187,7 +184,7 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
 
             // Then the validation error should be internationalized
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(
-                    MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED).get(0);
+                    Relationships.AUTHENTICATION_FAILED).get(0);
 
             // The processor should still run but validation will fail
             String errorReason = flowFile.getAttribute(JWTAttributes.Error.REASON);
@@ -195,7 +192,7 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
 
             // We can't directly test the validation error message here, but we can verify
             // that the processor ran and produced an error
-            assertTrue(errorReason.length() > 0, "Error message should not be empty");
+            assertFalse(errorReason.isEmpty(), "Error message should not be empty");
         } catch (AssertionError e) {
             // This is also acceptable - if the validation is strict enough to prevent the processor from running
             assertTrue(e.getMessage().contains("https"),

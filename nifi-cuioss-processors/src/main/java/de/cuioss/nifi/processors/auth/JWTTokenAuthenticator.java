@@ -16,15 +16,14 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-
+import de.cuioss.nifi.processors.auth.JWTProcessorConstants.Error;
+import de.cuioss.nifi.processors.auth.JWTProcessorConstants.Http;
+import de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships;
+import de.cuioss.nifi.processors.auth.JWTProcessorConstants.TokenLocation;
+import de.cuioss.nifi.processors.auth.i18n.I18nResolver;
+import de.cuioss.nifi.processors.auth.i18n.NiFiI18nResolver;
+import de.cuioss.tools.logging.CuiLogger;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import org.apache.nifi.annotation.behavior.ReadsAttribute;
 import org.apache.nifi.annotation.behavior.ReadsAttributes;
@@ -35,19 +34,17 @@ import org.apache.nifi.annotation.documentation.SeeAlso;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
-import org.apache.nifi.processor.AbstractProcessor;
-import org.apache.nifi.processor.ProcessContext;
-import org.apache.nifi.processor.ProcessSession;
-import org.apache.nifi.processor.ProcessorInitializationContext;
-import org.apache.nifi.processor.Relationship;
-import org.apache.nifi.processor.util.StandardValidators;
+import org.apache.nifi.processor.*;
 
-import de.cuioss.tools.logging.CuiLogger;
+import java.time.Instant;
+import java.util.*;
+
+import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Properties;
 
 /**
  * JWTTokenAuthenticator is a NiFi processor that extracts and validates JWT tokens.
  * It extracts JWT tokens from flow files and routes them based on validation results.
- * 
+ * <p>
  * Note: This is a simplified version that only extracts tokens without validation.
  * Token validation will be implemented when the cui-jwt-validation library is available.
  */
@@ -62,57 +59,12 @@ import de.cuioss.tools.logging.CuiLogger;
         @WritesAttribute(attribute = JWTAttributes.Token.EXTRACTED_AT, description = "Timestamp when the token was extracted"),
         @WritesAttribute(attribute = JWTAttributes.Error.REASON, description = "Error reason if token extraction failed")
 })
+@EqualsAndHashCode(callSuper = true)
 public class JWTTokenAuthenticator extends AbstractProcessor {
 
     private static final CuiLogger LOGGER = new CuiLogger(JWTTokenAuthenticator.class);
 
-    // Relationships
-    public static final Relationship SUCCESS = new Relationship.Builder()
-            .name("success")
-            .description("FlowFiles with extracted tokens will be routed to this relationship")
-            .build();
-
-    public static final Relationship FAILURE = new Relationship.Builder()
-            .name("failure")
-            .description("FlowFiles with extraction failures will be routed to this relationship")
-            .build();
-
-    // Property Descriptors
-    public static final PropertyDescriptor TOKEN_LOCATION = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Token.LOCATION)
-            .displayName("Token Location")
-            .description("Defines where to extract the token from")
-            .required(true)
-            .allowableValues("AUTHORIZATION_HEADER", "CUSTOM_HEADER", "FLOW_FILE_CONTENT")
-            .defaultValue("AUTHORIZATION_HEADER")
-            .build();
-
-    public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Token.HEADER)
-            .displayName("Token Header")
-            .description("The header name containing the token when using AUTHORIZATION_HEADER")
-            .required(false)
-            .defaultValue("Authorization")
-            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-            .build();
-
-    public static final PropertyDescriptor CUSTOM_HEADER_NAME = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Token.CUSTOM_HEADER_NAME)
-            .displayName("Custom Header Name")
-            .description("The custom header name when using CUSTOM_HEADER")
-            .required(false)
-            .defaultValue("X-Authorization")
-            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-            .build();
-
-    public static final PropertyDescriptor BEARER_TOKEN_PREFIX = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Token.BEARER_PREFIX)
-            .displayName("Bearer Token Prefix")
-            .description("The prefix to strip from the token (e.g., \"Bearer \")")
-            .required(false)
-            .defaultValue("Bearer")
-            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-            .build();
+    private I18nResolver i18nResolver;
 
     @Getter
     private List<PropertyDescriptor> supportedPropertyDescriptors;
@@ -122,17 +74,20 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
 
     @Override
     protected void init(final ProcessorInitializationContext context) {
+        // Initialize i18n resolver
+        i18nResolver = NiFiI18nResolver.createDefault(context.getLogger());
+
         final List<PropertyDescriptor> descriptors = new ArrayList<>();
-        descriptors.add(TOKEN_LOCATION);
-        descriptors.add(TOKEN_HEADER);
-        descriptors.add(CUSTOM_HEADER_NAME);
-        descriptors.add(BEARER_TOKEN_PREFIX);
+        descriptors.add(Properties.TOKEN_LOCATION);
+        descriptors.add(Properties.TOKEN_HEADER);
+        descriptors.add(Properties.CUSTOM_HEADER_NAME);
+        descriptors.add(Properties.BEARER_TOKEN_PREFIX);
         this.supportedPropertyDescriptors = descriptors;
 
-        final Set<Relationship> relationships = new HashSet<>();
-        relationships.add(SUCCESS);
-        relationships.add(FAILURE);
-        this.relationships = relationships;
+        final Set<Relationship> rels = new HashSet<>();
+        rels.add(Relationships.SUCCESS);
+        rels.add(Relationships.FAILURE);
+        this.relationships = rels;
     }
 
     @Override
@@ -143,25 +98,21 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
         }
 
         // Extract token from flow file
-        String tokenLocation = context.getProperty(TOKEN_LOCATION).getValue();
+        String tokenLocation = context.getProperty(Properties.TOKEN_LOCATION).getValue();
         String token = null;
 
         try {
             // Extract token based on configured location
-            switch (tokenLocation) {
-                case "AUTHORIZATION_HEADER":
-                    token = extractTokenFromHeader(flowFile, context.getProperty(TOKEN_HEADER).getValue());
-                    break;
-                case "CUSTOM_HEADER":
-                    token = extractTokenFromHeader(flowFile, context.getProperty(CUSTOM_HEADER_NAME).getValue());
-                    break;
-                case "FLOW_FILE_CONTENT":
-                    token = extractTokenFromContent(flowFile, session);
-                    break;
-                default:
+            token = switch (tokenLocation) {
+                case TokenLocation.AUTHORIZATION_HEADER ->
+                    extractTokenFromHeader(flowFile, context.getProperty(Properties.TOKEN_HEADER).getValue());
+                case TokenLocation.CUSTOM_HEADER ->
+                    extractTokenFromHeader(flowFile, context.getProperty(Properties.CUSTOM_HEADER_NAME).getValue());
+                case TokenLocation.FLOW_FILE_CONTENT -> extractTokenFromContent(flowFile, session);
+                default ->
                     // Default to Authorization header
-                    token = extractTokenFromHeader(flowFile, "Authorization");
-            }
+                    extractTokenFromHeader(flowFile, Http.AUTHORIZATION_HEADER);
+            };
 
             // If no token found, log warning and route to failure
             if (token == null || token.isEmpty()) {
@@ -169,10 +120,12 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
 
                 // Add error attributes
                 Map<String, String> attributes = new HashMap<>();
-                attributes.put(JWTAttributes.Error.REASON, "No token found in the specified location: " + tokenLocation);
+                attributes.put(JWTAttributes.Error.CODE, Error.Code.NO_TOKEN_FOUND);
+                attributes.put(JWTAttributes.Error.REASON, i18nResolver.getTranslatedString(JWTTranslationKeys.Error.NO_TOKEN_FOUND, tokenLocation));
+                attributes.put(JWTAttributes.Error.CATEGORY, Error.Category.EXTRACTION_ERROR);
                 flowFile = session.putAllAttributes(flowFile, attributes);
 
-                session.transfer(flowFile, FAILURE);
+                session.transfer(flowFile, Relationships.FAILURE);
                 return;
             }
 
@@ -183,38 +136,39 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
             flowFile = session.putAllAttributes(flowFile, attributes);
 
             // Transfer to success relationship
-            session.transfer(flowFile, SUCCESS);
+            session.transfer(flowFile, Relationships.SUCCESS);
 
         } catch (Exception e) {
             LOGGER.error(e, "Error processing flow file: %s", e.getMessage());
 
             // Add error attributes
             Map<String, String> attributes = new HashMap<>();
-            attributes.put(JWTAttributes.Error.REASON, "Error processing flow file: " + e.getMessage());
+            attributes.put(JWTAttributes.Error.CODE, Error.Code.UNKNOWN);
+            attributes.put(JWTAttributes.Error.REASON, i18nResolver.getTranslatedString(JWTTranslationKeys.Error.UNKNOWN, e.getMessage()));
+            attributes.put(JWTAttributes.Error.CATEGORY, Error.Category.PROCESSING_ERROR);
             flowFile = session.putAllAttributes(flowFile, attributes);
 
-            session.transfer(flowFile, FAILURE);
+            session.transfer(flowFile, Relationships.FAILURE);
         }
     }
 
     /**
      * Extracts a token from a header in the flow file.
-     * 
+     *
      * @param flowFile The flow file containing the header
      * @param headerName The name of the header containing the token
      * @return The extracted token, or null if not found
      */
     private String extractTokenFromHeader(FlowFile flowFile, String headerName) {
-        String headerValue = flowFile.getAttribute("http.headers." + headerName.toLowerCase());
+        String headerValue = flowFile.getAttribute(Http.HEADERS_PREFIX + headerName.toLowerCase());
 
         if (headerValue == null || headerValue.isEmpty()) {
             return null;
         }
 
         // If header starts with Bearer prefix, strip it
-        String prefix = "Bearer ";
-        if (headerValue.startsWith(prefix)) {
-            return headerValue.substring(prefix.length()).trim();
+        if (headerValue.startsWith(Http.BEARER_PREFIX)) {
+            return headerValue.substring(Http.BEARER_PREFIX.length()).trim();
         }
 
         return headerValue.trim();
@@ -222,7 +176,7 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
 
     /**
      * Extracts a token from the content of the flow file.
-     * 
+     *
      * @param flowFile The flow file containing the token
      * @param session The process session
      * @return The extracted token, or null if not found

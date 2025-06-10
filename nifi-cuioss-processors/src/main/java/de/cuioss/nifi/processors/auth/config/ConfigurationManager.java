@@ -15,19 +15,13 @@
  */
 package de.cuioss.nifi.processors.auth.config;
 
+import de.cuioss.tools.logging.CuiLogger;
+import lombok.Getter;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-
-
-import lombok.Getter;
-
-import de.cuioss.tools.logging.CuiLogger;
+import java.util.*;
 
 /**
  * Manages configuration for the MultiIssuerJWTTokenAuthenticator processor.
@@ -96,7 +90,7 @@ public class ConfigurationManager {
 
     /**
      * Checks if the configuration file has been modified and reloads if necessary.
-     * 
+     *
      * @return true if configuration was reloaded, false otherwise
      */
     public boolean checkAndReloadConfiguration() {
@@ -118,7 +112,7 @@ public class ConfigurationManager {
 
     /**
      * Attempts to load configuration from a file.
-     * 
+     *
      * @return true if configuration was loaded from a file, false otherwise
      */
     private boolean loadFromConfigFile() {
@@ -158,7 +152,7 @@ public class ConfigurationManager {
 
     /**
      * Loads configuration from a specific file.
-     * 
+     *
      * @param file the configuration file
      * @return true if configuration was loaded successfully, false otherwise
      */
@@ -186,7 +180,7 @@ public class ConfigurationManager {
 
     /**
      * Loads configuration from a properties file.
-     * 
+     *
      * @param file the properties file
      * @throws IOException if an I/O error occurs
      */
@@ -212,7 +206,7 @@ public class ConfigurationManager {
 
     /**
      * Parses an issuer property from a properties file.
-     * 
+     *
      * @param key the property key
      * @param value the property value
      */
@@ -254,7 +248,7 @@ public class ConfigurationManager {
 
     /**
      * Parses an issuer environment variable.
-     * 
+     *
      * @param key the environment variable name
      * @param value the environment variable value
      */
@@ -275,7 +269,7 @@ public class ConfigurationManager {
 
     /**
      * Parses a general environment variable.
-     * 
+     *
      * @param key the environment variable name
      * @param value the environment variable value
      */
@@ -289,7 +283,7 @@ public class ConfigurationManager {
 
     /**
      * Converts an environment variable name to a property name.
-     * 
+     *
      * @param envName the environment variable name
      * @return the property name
      */
@@ -299,7 +293,7 @@ public class ConfigurationManager {
 
     /**
      * Gets a static property value.
-     * 
+     *
      * @param key the property key
      * @return the property value, or null if not found
      */
@@ -309,7 +303,7 @@ public class ConfigurationManager {
 
     /**
      * Gets a static property value with a default value.
-     * 
+     *
      * @param key the property key
      * @param defaultValue the default value
      * @return the property value, or the default value if not found
@@ -320,7 +314,7 @@ public class ConfigurationManager {
 
     /**
      * Gets all issuer IDs from the configuration.
-     * 
+     *
      * @return a list of issuer IDs
      */
     public List<String> getIssuerIds() {
@@ -329,7 +323,7 @@ public class ConfigurationManager {
 
     /**
      * Gets all properties for an issuer.
-     * 
+     *
      * @param issuerId the issuer ID
      * @return a map of properties for the issuer, or an empty map if not found
      */

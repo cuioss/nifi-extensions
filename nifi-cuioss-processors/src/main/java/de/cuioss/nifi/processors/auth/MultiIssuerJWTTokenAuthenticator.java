@@ -16,39 +16,6 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
-
-
-import lombok.Getter;
-import org.apache.nifi.annotation.behavior.ReadsAttribute;
-import org.apache.nifi.annotation.behavior.ReadsAttributes;
-import org.apache.nifi.annotation.behavior.RequiresInstanceClassLoading;
-import org.apache.nifi.annotation.behavior.WritesAttribute;
-import org.apache.nifi.annotation.behavior.WritesAttributes;
-import org.apache.nifi.annotation.documentation.CapabilityDescription;
-import org.apache.nifi.annotation.documentation.SeeAlso;
-import org.apache.nifi.annotation.documentation.Tags;
-import org.apache.nifi.annotation.lifecycle.OnScheduled;
-import org.apache.nifi.annotation.lifecycle.OnStopped;
-import org.apache.nifi.components.PropertyDescriptor;
-import org.apache.nifi.flowfile.FlowFile;
-import org.apache.nifi.processor.AbstractProcessor;
-import org.apache.nifi.processor.ProcessContext;
-import org.apache.nifi.processor.ProcessSession;
-import org.apache.nifi.processor.ProcessorInitializationContext;
-import org.apache.nifi.processor.Relationship;
-import org.apache.nifi.processor.util.StandardValidators;
-
 import de.cuioss.jwt.validation.IssuerConfig;
 import de.cuioss.jwt.validation.TokenValidator;
 import de.cuioss.jwt.validation.domain.token.AccessTokenContent;
@@ -58,6 +25,30 @@ import de.cuioss.nifi.processors.auth.config.ConfigurationManager;
 import de.cuioss.nifi.processors.auth.i18n.I18nResolver;
 import de.cuioss.nifi.processors.auth.i18n.NiFiI18nResolver;
 import de.cuioss.tools.logging.CuiLogger;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import org.apache.nifi.annotation.behavior.*;
+import org.apache.nifi.annotation.documentation.CapabilityDescription;
+import org.apache.nifi.annotation.documentation.SeeAlso;
+import org.apache.nifi.annotation.documentation.Tags;
+import org.apache.nifi.annotation.lifecycle.OnScheduled;
+import org.apache.nifi.annotation.lifecycle.OnStopped;
+import org.apache.nifi.components.PropertyDescriptor;
+import org.apache.nifi.flowfile.FlowFile;
+import org.apache.nifi.processor.*;
+import org.apache.nifi.processor.util.StandardValidators;
+
+import java.time.Instant;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.*;
+import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Properties;
+import static de.cuioss.nifi.processors.auth.JWTPropertyKeys.Issuer;
+import static de.cuioss.nifi.processors.auth.JWTTranslationKeys.Property;
+import static de.cuioss.nifi.processors.auth.JWTTranslationKeys.Validation;
 
 /**
  * MultiIssuerJWTTokenAuthenticator is a NiFi processor that validates JWT tokens from multiple issuers.
@@ -66,21 +57,36 @@ import de.cuioss.tools.logging.CuiLogger;
  */
 @Tags({"jwt", "oauth", "authentication", "authorization", "security", "token"})
 @CapabilityDescription("Validates JWT tokens from multiple issuers. Extracts JWT tokens from flow files, " +
-        "validates them against configured issuers, and routes flow files based on validation results.")
+    "validates them against configured issuers, and routes flow files based on validation results.")
 @SeeAlso({})
 @ReadsAttributes({
-        @ReadsAttribute(attribute = "http.headers.authorization", description = "HTTP Authorization header containing the JWT token")
+    @ReadsAttribute(attribute = "http.headers.authorization", description = "HTTP Authorization header containing the JWT token")
 })
 @WritesAttributes({
-        @WritesAttribute(attribute = JWTAttributes.Content.PREFIX + "*", description = "JWT token claims"),
-        @WritesAttribute(attribute = JWTAttributes.Token.VALIDATED_AT, description = "Timestamp when the token was validated"),
-        @WritesAttribute(attribute = JWTAttributes.Token.AUTHORIZATION_PASSED, description = "Whether the token passed authorization checks"),
-        @WritesAttribute(attribute = JWTAttributes.Error.CODE, description = "Error code if token validation failed"),
-        @WritesAttribute(attribute = JWTAttributes.Error.REASON, description = "Error reason if token validation failed"),
-        @WritesAttribute(attribute = JWTAttributes.Error.CATEGORY, description = "Error category if token validation failed")
+    @WritesAttribute(attribute = JWTAttributes.Content.PREFIX + "*", description = "JWT token claims"),
+    @WritesAttribute(attribute = JWTAttributes.Token.VALIDATED_AT, description = "Timestamp when the token was validated"),
+    @WritesAttribute(attribute = JWTAttributes.Token.AUTHORIZATION_PASSED, description = "Whether the token passed authorization checks"),
+    @WritesAttribute(attribute = JWTAttributes.Error.CODE, description = "Error code if token validation failed"),
+    @WritesAttribute(attribute = JWTAttributes.Error.REASON, description = "Error reason if token validation failed"),
+    @WritesAttribute(attribute = JWTAttributes.Error.CATEGORY, description = "Error category if token validation failed")
 })
 @RequiresInstanceClassLoading
+@EqualsAndHashCode(callSuper = true)
 public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
+
+    /**
+     * Standard JWT claim names that should be filtered out when adding claims to flow file attributes.
+     * Using TreeSet for better performance in lookups.
+     */
+    private static final Set<String> FILTERED_CLAIM_KEYS = new TreeSet<>(Arrays.asList(
+            "sub",   // Subject
+            "iss",   // Issuer
+            "exp",   // Expiration time
+            "roles", // Roles
+            "groups", // Groups
+            "scope", // Scope (singular)
+            "scopes" // Scope (plural)
+    ));
 
     private static final CuiLogger LOGGER = new CuiLogger(MultiIssuerJWTTokenAuthenticator.class);
 
@@ -95,7 +101,6 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     // Counter for tracking when to log metrics
     private final AtomicLong processedFlowFilesCount = new AtomicLong();
-    private static final long LOG_METRICS_INTERVAL = 100; // Log metrics every 100 flow files
 
     // Configuration manager for static files and environment variables
     private ConfigurationManager configurationManager;
@@ -109,116 +114,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     // Configuration cache to avoid recreating objects unnecessarily
     private final Map<String, IssuerConfig> issuerConfigCache = new ConcurrentHashMap<>();
 
-    // I18n resolver for internationalization
     private I18nResolver i18nResolver;
-
-    // Issuer prefix for dynamic properties
-    public static final String ISSUER_PREFIX = "issuer.";
-
-    // Relationships
-    public static final Relationship SUCCESS = new Relationship.Builder()
-            .name("success")
-            .description("FlowFiles with valid tokens will be routed to this relationship")
-            .build();
-
-    public static final Relationship AUTHENTICATION_FAILED = new Relationship.Builder()
-            .name("authentication-failed")
-            .description("FlowFiles with invalid tokens will be routed to this relationship")
-            .build();
-
-    // Property Descriptors
-    public static final PropertyDescriptor TOKEN_LOCATION = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Validation.TOKEN_LOCATION)
-            .displayName("Token Location") // Will be set dynamically in init method
-            .description("Defines where to extract the token from") // Will be set dynamically in init method
-            .required(true)
-            .allowableValues("AUTHORIZATION_HEADER", "CUSTOM_HEADER", "FLOW_FILE_CONTENT")
-            .defaultValue("AUTHORIZATION_HEADER")
-            .build();
-
-    public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Validation.TOKEN_HEADER)
-            .displayName("Token Header")
-            .description("The header name containing the token when using AUTHORIZATION_HEADER")
-            .required(false)
-            .defaultValue("Authorization")
-            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-            .build();
-
-    public static final PropertyDescriptor CUSTOM_HEADER_NAME = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Validation.CUSTOM_HEADER_NAME)
-            .displayName("Custom Header Name")
-            .description("The custom header name when using CUSTOM_HEADER")
-            .required(false)
-            .defaultValue("X-Authorization")
-            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-            .build();
-
-    public static final PropertyDescriptor BEARER_TOKEN_PREFIX = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Validation.BEARER_TOKEN_PREFIX)
-            .displayName("Bearer Token Prefix")
-            .description("The prefix to strip from the token (e.g., \"Bearer \")")
-            .required(false)
-            .defaultValue("Bearer")
-            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-            .build();
-
-    public static final PropertyDescriptor REQUIRE_VALID_TOKEN = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Validation.REQUIRE_VALID_TOKEN)
-            .displayName("Require Valid Token")
-            .description("Whether to require a valid token for processing")
-            .required(true)
-            .defaultValue("true")
-            .allowableValues("true", "false")
-            .build();
-
-    public static final PropertyDescriptor JWKS_REFRESH_INTERVAL = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL)
-            .displayName("JWKS Refresh Interval")
-            .description("Interval in seconds for refreshing JWKS keys")
-            .required(true)
-            .defaultValue("3600")
-            .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
-            .build();
-
-    public static final PropertyDescriptor MAXIMUM_TOKEN_SIZE = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Validation.MAXIMUM_TOKEN_SIZE)
-            .displayName("Maximum Token Size")
-            .description("Maximum token size in bytes")
-            .required(true)
-            .defaultValue("16384")
-            .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
-            .build();
-
-    public static final PropertyDescriptor ALLOWED_ALGORITHMS = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Validation.ALLOWED_ALGORITHMS)
-            .displayName("Allowed Algorithms")
-            .description("Comma-separated list of allowed JWT signing algorithms. " +
-                    "Recommended secure algorithms: RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512. " +
-                    "The 'none' algorithm is never allowed regardless of this setting.")
-            .required(true)
-            .defaultValue("RS256,RS384,RS512,ES256,ES384,ES512,PS256,PS384,PS512")
-            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-            .build();
-
-    public static final PropertyDescriptor REQUIRE_HTTPS_FOR_JWKS = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Validation.REQUIRE_HTTPS_FOR_JWKS)
-            .displayName("Require HTTPS for JWKS URLs")
-            .description("Whether to require HTTPS for JWKS URLs. Strongly recommended for production environments.")
-            .required(true)
-            .defaultValue("true")
-            .allowableValues("true", "false")
-            .build();
-
-    public static final PropertyDescriptor JWKS_CONNECTION_TIMEOUT = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Validation.JWKS_CONNECTION_TIMEOUT)
-            .displayName("JWKS Connection Timeout")
-            .description("Timeout in seconds for JWKS endpoint connections")
-            .required(true)
-            .defaultValue("10")
-            .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
-            .build();
-
 
     @Getter
     private List<PropertyDescriptor> supportedPropertyDescriptors;
@@ -234,25 +130,25 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         LOGGER.info("Initializing MultiIssuerJWTTokenAuthenticator processor");
 
         final List<PropertyDescriptor> descriptors = new ArrayList<>();
-        descriptors.add(TOKEN_LOCATION);
-        descriptors.add(TOKEN_HEADER);
-        descriptors.add(CUSTOM_HEADER_NAME);
-        descriptors.add(BEARER_TOKEN_PREFIX);
-        descriptors.add(REQUIRE_VALID_TOKEN);
-        descriptors.add(JWKS_REFRESH_INTERVAL);
-        descriptors.add(MAXIMUM_TOKEN_SIZE);
-        descriptors.add(ALLOWED_ALGORITHMS);
-        descriptors.add(REQUIRE_HTTPS_FOR_JWKS);
-        descriptors.add(JWKS_CONNECTION_TIMEOUT);
+        descriptors.add(Properties.TOKEN_LOCATION);
+        descriptors.add(Properties.TOKEN_HEADER);
+        descriptors.add(Properties.CUSTOM_HEADER_NAME);
+        descriptors.add(Properties.BEARER_TOKEN_PREFIX);
+        descriptors.add(Properties.REQUIRE_VALID_TOKEN);
+        descriptors.add(Properties.JWKS_REFRESH_INTERVAL);
+        descriptors.add(Properties.MAXIMUM_TOKEN_SIZE);
+        descriptors.add(Properties.ALLOWED_ALGORITHMS);
+        descriptors.add(Properties.REQUIRE_HTTPS_FOR_JWKS);
+        descriptors.add(Properties.JWKS_CONNECTION_TIMEOUT);
         this.supportedPropertyDescriptors = descriptors;
 
-        final Set<Relationship> relationships = new HashSet<>();
-        relationships.add(SUCCESS);
-        relationships.add(AUTHENTICATION_FAILED);
-        this.relationships = relationships;
+        final Set<Relationship> rels = new HashSet<>();
+        rels.add(Relationships.SUCCESS);
+        rels.add(Relationships.AUTHENTICATION_FAILED);
+        this.relationships = rels;
 
         LOGGER.info("MultiIssuerJWTTokenAuthenticator processor initialized with {} property descriptors",
-                descriptors.size());
+            descriptors.size());
     }
 
     @Override
@@ -267,62 +163,64 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 String propertyKey = issuerProperty.substring(dotIndex + 1);
 
                 // Create a more descriptive display name and description
-                String displayName = i18nResolver.getTranslatedString("property.issuer.dynamic.name", issuerName, propertyKey);
-                String description = i18nResolver.getTranslatedString("property.issuer.dynamic.description", propertyKey, issuerName);
+                String displayName = i18nResolver.getTranslatedString(Property.Issuer.DYNAMIC_NAME, issuerName, propertyKey);
+
 
                 // Add specific validators based on property key
-                if ("jwks-url".equals(propertyKey)) {
-                    return new PropertyDescriptor.Builder()
+                switch (propertyKey) {
+                    case Issuer.JWKS_URL -> {
+                        return new PropertyDescriptor.Builder()
                             .name(propertyDescriptorName)
                             .displayName(displayName)
-                            .description(i18nResolver.getTranslatedString("property.issuer.jwks.url.description", propertyKey, issuerName))
+                            .description(i18nResolver.getTranslatedString(Property.Issuer.JWKS_URL_DESCRIPTION, propertyKey, issuerName))
                             .required(false)
                             .dynamic(true)
                             .addValidator(StandardValidators.URL_VALIDATOR)
                             .build();
-                } else if ("issuer".equals(propertyKey)) {
-                    return new PropertyDescriptor.Builder()
+                    }
+                    case Issuer.ISSUER_NAME -> {
+                        return new PropertyDescriptor.Builder()
                             .name(propertyDescriptorName)
                             .displayName(displayName)
-                            .description(i18nResolver.getTranslatedString("property.issuer.issuer.description", propertyKey, issuerName))
+                            .description(i18nResolver.getTranslatedString(Property.Issuer.ISSUER_DESCRIPTION, propertyKey, issuerName))
                             .required(false)
                             .dynamic(true)
                             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                             .build();
-                } else if ("audience".equals(propertyKey) || "client-id".equals(propertyKey)) {
-                    return new PropertyDescriptor.Builder()
+                    }
+                    case Issuer.AUDIENCE, Issuer.CLIENT_ID -> {
+                        return new PropertyDescriptor.Builder()
                             .name(propertyDescriptorName)
                             .displayName(displayName)
                             .description(i18nResolver.getTranslatedString(
-                                    "audience".equals(propertyKey) ? "property.issuer.audience.description" : "property.issuer.client.id.description",
-                                    propertyKey, issuerName))
+                                Issuer.AUDIENCE.equals(propertyKey) ? Property.Issuer.AUDIENCE_DESCRIPTION : Property.Issuer.CLIENT_ID_DESCRIPTION,
+                                propertyKey, issuerName))
                             .required(false)
                             .dynamic(true)
                             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                             .build();
+                    }
+                    default -> new PropertyDescriptor.Builder()
+                        .name(propertyDescriptorName)
+                        .displayName(propertyDescriptorName)
+                        .description("Dynamic property for issuer configuration")
+                        .required(false)
+                        .dynamic(true)
+                        .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                        .build();
                 }
             }
-
-            // Default issuer property descriptor
-            return new PropertyDescriptor.Builder()
-                    .name(propertyDescriptorName)
-                    .displayName(propertyDescriptorName)
-                    .description("Dynamic property for issuer configuration")
-                    .required(false)
-                    .dynamic(true)
-                    .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-                    .build();
         }
 
         // Support other dynamic properties
         return new PropertyDescriptor.Builder()
-                .name(propertyDescriptorName)
-                .displayName(propertyDescriptorName)
-                .description("Dynamic property")
-                .required(false)
-                .dynamic(true)
-                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-                .build();
+            .name(propertyDescriptorName)
+            .displayName(propertyDescriptorName)
+            .description("Dynamic property")
+            .required(false)
+            .dynamic(true)
+            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+            .build();
     }
 
     /**
@@ -335,7 +233,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         // Initialize the ConfigurationManager
         configurationManager = new ConfigurationManager();
         LOGGER.info("Configuration manager initialized, external configuration loaded: %s",
-                configurationManager.isConfigurationLoaded());
+            configurationManager.isConfigurationLoaded());
 
         // Log all available property descriptors to help with debugging
         LOGGER.info("Available property descriptors:");
@@ -397,7 +295,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     // Log what changed if this is a reconfiguration (not initial setup)
                     if (tokenValidator.get() != null) {
                         LOGGER.info(AuthLogMessages.INFO.CONFIG_HASH_CHANGED.format(
-                                configurationHash.get(), currentConfigHash));
+                            configurationHash.get(), currentConfigHash));
 
                         // Clean up old resources before creating new ones
                         cleanupResources();
@@ -464,18 +362,18 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         StringBuilder hashBuilder = new StringBuilder();
 
         // Add static properties to hash
-        hashBuilder.append(context.getProperty(JWKS_REFRESH_INTERVAL).getValue());
-        hashBuilder.append(context.getProperty(MAXIMUM_TOKEN_SIZE).getValue());
-        hashBuilder.append(context.getProperty(REQUIRE_VALID_TOKEN).getValue());
+        hashBuilder.append(context.getProperty(Properties.JWKS_REFRESH_INTERVAL).getValue());
+        hashBuilder.append(context.getProperty(Properties.MAXIMUM_TOKEN_SIZE).getValue());
+        hashBuilder.append(context.getProperty(Properties.REQUIRE_VALID_TOKEN).getValue());
 
         // Add dynamic properties (issuers) to hash
         for (PropertyDescriptor propertyDescriptor : context.getProperties().keySet()) {
             String propertyName = propertyDescriptor.getName();
             if (propertyName.startsWith(ISSUER_PREFIX)) {
                 hashBuilder.append(propertyName)
-                        .append("=")
-                        .append(context.getProperty(propertyDescriptor).getValue())
-                        .append(";");
+                    .append("=")
+                    .append(context.getProperty(propertyDescriptor).getValue())
+                    .append(";");
             }
         }
 
@@ -484,9 +382,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             // Add static properties from external configuration
             for (Map.Entry<String, String> entry : configurationManager.getStaticProperties().entrySet()) {
                 hashBuilder.append(entry.getKey())
-                        .append("=")
-                        .append(entry.getValue())
-                        .append(";");
+                    .append("=")
+                    .append(entry.getValue())
+                    .append(";");
             }
 
             // Add issuer properties from external configuration
@@ -494,12 +392,12 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 Map<String, String> issuerProps = configurationManager.getIssuerProperties(issuerId);
                 for (Map.Entry<String, String> entry : issuerProps.entrySet()) {
                     hashBuilder.append("issuer.")
-                            .append(issuerId)
-                            .append(".")
-                            .append(entry.getKey())
-                            .append("=")
-                            .append(entry.getValue())
-                            .append(";");
+                        .append(issuerId)
+                        .append(".")
+                        .append(entry.getKey())
+                        .append("=")
+                        .append(entry.getValue())
+                        .append(";");
                 }
             }
         }
@@ -514,11 +412,54 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @return A list of issuer configurations
      */
     private List<IssuerConfig> createIssuerConfigs(final ProcessContext context) {
-        List<IssuerConfig> issuerConfigs = new ArrayList<>();
+        // Step 1: Load issuer properties from all sources
         Map<String, Map<String, String>> issuerPropertiesMap = new HashMap<>();
         Set<String> currentIssuerNames = new HashSet<>();
 
+        // Load configurations from external sources and UI
+        loadIssuerConfigurations(context, issuerPropertiesMap, currentIssuerNames);
+
+        // Step 2: Clean up removed issuers from cache
+        cleanupRemovedIssuers(currentIssuerNames);
+
+        // Step 3: Process each issuer configuration
+        List<IssuerConfig> issuerConfigs = processIssuerConfigurations(issuerPropertiesMap, context);
+
+        // Step 4: Log summary
+        logConfigurationSummary(issuerConfigs);
+
+        return issuerConfigs;
+    }
+
+    /**
+     * Loads issuer configurations from external configuration and UI properties.
+     *
+     * @param context             The process context
+     * @param issuerPropertiesMap Map to store issuer properties
+     * @param currentIssuerNames  Set to track current issuer names
+     */
+    private void loadIssuerConfigurations(
+        final ProcessContext context,
+        Map<String, Map<String, String>> issuerPropertiesMap,
+        Set<String> currentIssuerNames) {
+
         // First, load external configuration if available (highest precedence)
+        loadExternalConfigurations(issuerPropertiesMap, currentIssuerNames);
+
+        // Then, load UI configuration (lower precedence)
+        loadUIConfigurations(context, issuerPropertiesMap, currentIssuerNames);
+    }
+
+    /**
+     * Loads issuer configurations from external configuration source.
+     *
+     * @param issuerPropertiesMap Map to store issuer properties
+     * @param currentIssuerNames  Set to track current issuer names
+     */
+    private void loadExternalConfigurations(
+        Map<String, Map<String, String>> issuerPropertiesMap,
+        Set<String> currentIssuerNames) {
+
         if (configurationManager != null && configurationManager.isConfigurationLoaded()) {
             LOGGER.info("Loading issuer configurations from external configuration");
 
@@ -537,8 +478,20 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 LOGGER.info("Loaded external configuration for issuer %s: %s", issuerId, issuerProps);
             }
         }
+    }
 
-        // Then, load UI configuration (lower precedence)
+    /**
+     * Loads issuer configurations from UI properties.
+     *
+     * @param context             The process context
+     * @param issuerPropertiesMap Map to store issuer properties
+     * @param currentIssuerNames  Set to track current issuer names
+     */
+    private void loadUIConfigurations(
+        final ProcessContext context,
+        Map<String, Map<String, String>> issuerPropertiesMap,
+        Set<String> currentIssuerNames) {
+
         // Get all properties that start with the issuer prefix
         for (PropertyDescriptor propertyDescriptor : context.getProperties().keySet()) {
             String propertyName = propertyDescriptor.getName();
@@ -556,14 +509,18 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     // Only add UI property if it doesn't exist in external configuration
                     // This implements the precedence order: external Config > UI Config
                     Map<String, String> issuerProps = issuerPropertiesMap.computeIfAbsent(issuerName, k -> new HashMap<>());
-                    if (!issuerProps.containsKey(propertyKey)) {
-                        issuerProps.put(propertyKey, context.getProperty(propertyDescriptor).getValue());
-                    }
+                    issuerProps.computeIfAbsent(propertyKey, k-> context.getProperty(propertyDescriptor).getValue());
                 }
             }
         }
+    }
 
-        // Clean up removed issuers from cache
+    /**
+     * Removes issuers from cache that are no longer in the current configuration.
+     *
+     * @param currentIssuerNames Set of current issuer names
+     */
+    private void cleanupRemovedIssuers(Set<String> currentIssuerNames) {
         Set<String> cachedIssuerNames = new HashSet<>(issuerConfigCache.keySet());
         for (String cachedIssuerName : cachedIssuerNames) {
             if (!currentIssuerNames.contains(cachedIssuerName)) {
@@ -571,56 +528,96 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 issuerConfigCache.remove(cachedIssuerName);
             }
         }
+    }
 
-        // Validate and create issuer configurations
+    /**
+     * Processes each issuer configuration, validating and creating IssuerConfig objects.
+     *
+     * @param issuerPropertiesMap Map of issuer properties
+     * @param context             The process context
+     * @return List of valid IssuerConfig objects
+     */
+    private List<IssuerConfig> processIssuerConfigurations(
+        Map<String, Map<String, String>> issuerPropertiesMap,
+        final ProcessContext context) {
+
+        List<IssuerConfig> issuerConfigs = new ArrayList<>();
+
         for (Map.Entry<String, Map<String, String>> entry : issuerPropertiesMap.entrySet()) {
             String issuerName = entry.getKey();
             Map<String, String> properties = entry.getValue();
 
             LOGGER.info(AuthLogMessages.INFO.FOUND_ISSUER_CONFIG.format(issuerName, properties));
 
-            // Generate a hash for this issuer's properties to detect changes
-            String issuerPropertiesHash = generateIssuerPropertiesHash(properties);
-
-            // Check if we can reuse the cached issuer Config
-            IssuerConfig cachedConfig = issuerConfigCache.get(issuerName);
-            if (cachedConfig != null && issuerPropertiesHash.equals(cachedConfig.toString())) {
-                LOGGER.info(AuthLogMessages.INFO.REUSING_CACHED_CONFIG.format(issuerName));
-                issuerConfigs.add(cachedConfig);
-                continue;
-            }
-
-            // Validate issuer configuration
-            List<String> validationErrors = validateIssuerConfig(issuerName, properties, context);
-            if (!validationErrors.isEmpty()) {
-                for (String error : validationErrors) {
-                    LOGGER.warn(error);
-                }
-                LOGGER.warn(AuthLogMessages.WARN.INVALID_ISSUER_CONFIG.format(issuerName));
-                continue;
-            }
-
-            try {
-                // Create issuer configuration
-                IssuerConfig issuerConfig = createIssuerConfig(issuerName, properties, context);
-                if (issuerConfig != null) {
-                    issuerConfigs.add(issuerConfig);
-                    // Cache the issuer Config for future use
-                    issuerConfigCache.put(issuerName, issuerConfig);
-                    LOGGER.info(AuthLogMessages.INFO.CREATED_CACHED_CONFIG.format(issuerName));
-                }
-            } catch (Exception e) {
-                LOGGER.error(e, AuthLogMessages.ERROR.ISSUER_CONFIG_ERROR.format(issuerName, e.getMessage()));
+            // Try to use cached config or create a new one
+            IssuerConfig issuerConfig = getOrCreateIssuerConfig(issuerName, properties, context);
+            if (issuerConfig != null) {
+                issuerConfigs.add(issuerConfig);
             }
         }
 
+        return issuerConfigs;
+    }
+
+    /**
+     * Gets a cached issuer config or creates a new one if needed.
+     *
+     * @param issuerName The name of the issuer
+     * @param properties The properties for the issuer
+     * @param context    The process context
+     * @return The IssuerConfig object, or null if invalid
+     */
+    private IssuerConfig getOrCreateIssuerConfig(
+        String issuerName,
+        Map<String, String> properties,
+        final ProcessContext context) {
+
+        // Generate a hash for this issuer's properties to detect changes
+        String issuerPropertiesHash = generateIssuerPropertiesHash(properties);
+
+        // Check if we can reuse the cached issuer Config
+        IssuerConfig cachedConfig = issuerConfigCache.get(issuerName);
+        if (cachedConfig != null && issuerPropertiesHash.equals(cachedConfig.toString())) {
+            LOGGER.info(AuthLogMessages.INFO.REUSING_CACHED_CONFIG.format(issuerName));
+            return cachedConfig;
+        }
+
+        // Validate issuer configuration
+        List<String> validationErrors = validateIssuerConfig(issuerName, properties, context);
+        if (!validationErrors.isEmpty()) {
+            for (String error : validationErrors) {
+                LOGGER.warn(error);
+            }
+            LOGGER.warn(AuthLogMessages.WARN.INVALID_ISSUER_CONFIG.format(issuerName));
+            return null;
+        }
+
+        try {
+            // Create issuer configuration
+            IssuerConfig issuerConfig = createIssuerConfig(issuerName, properties, context);
+            if (issuerConfig != null) {
+                // Cache the issuer Config for future use
+                issuerConfigCache.put(issuerName, issuerConfig);
+                LOGGER.info(AuthLogMessages.INFO.CREATED_CACHED_CONFIG.format(issuerName));
+            }
+            return issuerConfig;
+        } catch (Exception e) {
+            LOGGER.error(e, AuthLogMessages.ERROR.ISSUER_CONFIG_ERROR.format(issuerName, e.getMessage()));
+            return null;
+        }
+    }
+
+    /**
+     * Logs a summary of the issuer configuration process.
+     *
+     * @param issuerConfigs The list of issuer configurations
+     */
+    private void logConfigurationSummary(List<IssuerConfig> issuerConfigs) {
         if (issuerConfigs.isEmpty()) {
             LOGGER.warn(AuthLogMessages.WARN.NO_VALID_ISSUER_CONFIGS.format());
         } else {
             LOGGER.info(AuthLogMessages.INFO.CREATED_ISSUER_CONFIGS.format(issuerConfigs.size()));
         }
-
-        return issuerConfigs;
     }
 
     /**
@@ -638,9 +635,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         for (String key : sortedKeys) {
             hashBuilder.append(key)
-                    .append("=")
-                    .append(properties.get(key))
-                    .append(";");
+                .append("=")
+                .append(properties.get(key))
+                .append(";");
         }
 
         return hashBuilder.toString();
@@ -651,41 +648,41 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      *
      * @param issuerName The name of the issuer
      * @param properties The properties for the issuer
-     * @param context The process context
+     * @param context    The process context
      * @return A list of validation errors, empty if valid
      */
     private List<String> validateIssuerConfig(String issuerName, Map<String, String> properties, ProcessContext context) {
         List<String> errors = new ArrayList<>();
 
         // Check required properties
-        if (!properties.containsKey("jwks-url") || properties.get("jwks-url").isEmpty()) {
-            errors.add(i18nResolver.getTranslatedString("validation.issuer.missing.jwks", issuerName));
+        if (!properties.containsKey(Issuer.JWKS_URL) || properties.get(Issuer.JWKS_URL).isEmpty()) {
+            errors.add(i18nResolver.getTranslatedString(Validation.Issuer.MISSING_JWKS, issuerName));
         } else {
             // Validate jwks-url format
-            String jwksUrl = properties.get("jwks-url");
-            if (!jwksUrl.startsWith("http://") && !jwksUrl.startsWith("https://")) {
-                errors.add(i18nResolver.getTranslatedString("validation.issuer.invalid.url", issuerName, jwksUrl));
+            String jwksUrl = properties.get(Issuer.JWKS_URL);
+            if (!jwksUrl.startsWith(Http.HTTP_PROTOCOL) && !jwksUrl.startsWith(Http.HTTPS_PROTOCOL)) {
+                errors.add(i18nResolver.getTranslatedString(Validation.Issuer.INVALID_URL, issuerName, jwksUrl));
             }
 
             // Enforce HTTPS for JWKS URLs if required
-            boolean requireHttps = context.getProperty(REQUIRE_HTTPS_FOR_JWKS).asBoolean();
-            if (requireHttps && jwksUrl.startsWith("http://")) {
-                errors.add(i18nResolver.getTranslatedString("validation.issuer.requires.https", issuerName));
+            boolean requireHttps = context.getProperty(Properties.REQUIRE_HTTPS_FOR_JWKS).asBoolean();
+            if (requireHttps && jwksUrl.startsWith(Http.HTTP_PROTOCOL)) {
+                errors.add(i18nResolver.getTranslatedString(Validation.Issuer.REQUIRES_HTTPS, issuerName));
                 LOGGER.error(AuthLogMessages.ERROR.HTTPS_REQUIRED.format(issuerName));
-            } else if (jwksUrl.startsWith("http://")) {
+            } else if (jwksUrl.startsWith(Http.HTTP_PROTOCOL)) {
                 // Just warn if HTTPS is not required but HTTP is used
                 LOGGER.warn(AuthLogMessages.WARN.INSECURE_JWKS_URL.format(issuerName));
             }
         }
 
         // Check issuer property
-        if (!properties.containsKey("issuer") || properties.get("issuer").isEmpty()) {
-            errors.add(i18nResolver.getTranslatedString("validation.issuer.missing.issuer", issuerName));
+        if (!properties.containsKey(Issuer.ISSUER_NAME) || properties.get(Issuer.ISSUER_NAME).isEmpty()) {
+            errors.add(i18nResolver.getTranslatedString(Validation.Issuer.MISSING_ISSUER, issuerName));
             LOGGER.info(AuthLogMessages.INFO.NO_ISSUER_PROPERTY.format(issuerName));
         }
 
         // Check for recommended properties
-        if (!properties.containsKey("audience") && !properties.containsKey("client-id")) {
+        if (!properties.containsKey(Issuer.AUDIENCE) && !properties.containsKey(Issuer.CLIENT_ID)) {
             LOGGER.warn(AuthLogMessages.WARN.NO_AUDIENCE_OR_CLIENT_ID.format(issuerName));
         }
 
@@ -697,13 +694,13 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      *
      * @param issuerName The name of the issuer
      * @param properties The properties for the issuer
-     * @param context The process context
+     * @param context    The process context
      * @return The IssuerConfig object, or null if the required properties are missing
      */
     private IssuerConfig createIssuerConfig(String issuerName, Map<String, String> properties, ProcessContext context) {
         // Required properties
-        String jwksUrl = properties.get("jwks-url");
-        String issuer = properties.get("issuer");
+        String jwksUrl = properties.get(Issuer.JWKS_URL);
+        String issuer = properties.get(Issuer.ISSUER_NAME);
 
         if (jwksUrl == null || jwksUrl.isEmpty()) {
             LOGGER.warn(AuthLogMessages.WARN.MISSING_JWKS_URL.format(issuerName));
@@ -717,22 +714,59 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         }
 
         // Optional properties
-        String audience = properties.get("audience");
-        String clientId = properties.get("client-id");
+        String audience = properties.get(Issuer.AUDIENCE);
+        String clientId = properties.get(Issuer.CLIENT_ID);
 
         // Log the properties for debugging
         LOGGER.info("Creating issuer configuration for %s with properties: jwksUrl=%s, issuer=%s, audience=%s, clientId=%s",
-                issuerName, jwksUrl, issuer, audience, clientId);
+            issuerName, jwksUrl, issuer, audience, clientId);
 
         try {
-            // TODO: Implement proper IssuerConfig creation once the cui-jwt-validation library API is better understood
-            // For now, return null to allow the processor to run but fail validation
-            LOGGER.warn("IssuerConfig creation not yet fully implemented. Validation will fail.");
+            // TODO: Implement proper IssuerConfig creation using the cui-jwt-validation library
+            // This requires proper integration with the library's API which is not yet available
+            // For now, log a warning and return null to indicate validation will fail
+
+            LOGGER.warn(AuthLogMessages.WARN.ISSUER_CONFIG_NOT_IMPLEMENTED.format(issuerName));
+
+            // Return null to indicate that validation will fail
+            // This should be replaced with proper implementation when the library integration is complete
             return null;
         } catch (Exception e) {
-            LOGGER.error(e, "Error creating IssuerConfig for %s: %s", issuerName, e.getMessage());
+            LOGGER.error(e, AuthLogMessages.ERROR.ISSUER_CONFIG_ERROR.format(issuerName, e.getMessage()));
             return null;
         }
+    }
+
+    /**
+     * Helper method to handle error cases and route to failure relationship.
+     *
+     * @param session       The process session
+     * @param flowFile      The flow file to process
+     * @param errorCode     The error code to set
+     * @param errorReason   The error reason message
+     * @param errorCategory The error category
+     * @return The updated flow file with error attributes
+     */
+    private FlowFile handleError(
+        ProcessSession session,
+        FlowFile flowFile,
+        String errorCode,
+        String errorReason,
+        String errorCategory) {
+
+        // Add error attributes
+        Map<String, String> attributes = new HashMap<>();
+        attributes.put(JWTAttributes.Error.CODE, errorCode);
+        attributes.put(JWTAttributes.Error.REASON, errorReason);
+        attributes.put(JWTAttributes.Error.CATEGORY, errorCategory);
+
+        // Update flow file with error attributes
+        flowFile = session.putAllAttributes(flowFile, attributes);
+
+        // Transfer to failure relationship
+        session.transfer(flowFile, Relationships.AUTHENTICATION_FAILED);
+
+        return flowFile;
     }
 
     @Override
@@ -758,133 +792,109 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         }
 
         // Extract token from flow file
-        String tokenLocation = context.getProperty(TOKEN_LOCATION).getValue();
+        String tokenLocation = context.getProperty(Properties.TOKEN_LOCATION).getValue();
         String token = null;
 
+        // Extract token based on configured location
         try {
-            // Extract token based on configured location
-            switch (tokenLocation) {
-                case "AUTHORIZATION_HEADER":
-                    token = extractTokenFromHeader(flowFile, context.getProperty(TOKEN_HEADER).getValue());
-                    break;
-                case "CUSTOM_HEADER":
-                    token = extractTokenFromHeader(flowFile, context.getProperty(CUSTOM_HEADER_NAME).getValue());
-                    break;
-                case "FLOW_FILE_CONTENT":
-                    token = extractTokenFromContent(flowFile, session);
-                    break;
-                default:
+            token = switch (tokenLocation) {
+                case "AUTHORIZATION_HEADER" ->
+                    extractTokenFromHeader(flowFile, context.getProperty(Properties.TOKEN_HEADER).getValue());
+                case "CUSTOM_HEADER" ->
+                    extractTokenFromHeader(flowFile, context.getProperty(Properties.CUSTOM_HEADER_NAME).getValue());
+                case "FLOW_FILE_CONTENT" -> extractTokenFromContent(flowFile, session);
+                default ->
                     // Default to Authorization header
-                    token = extractTokenFromHeader(flowFile, "Authorization");
-            }
+                    extractTokenFromHeader(flowFile, "Authorization");
+            };
 
             // If no token found, log warning and route to failure
             if (token == null || token.isEmpty()) {
                 LOGGER.warn("No token found in the specified location: %s", tokenLocation);
-
-                // Add error attributes
-                Map<String, String> attributes = new HashMap<>();
-                attributes.put(JWTAttributes.Error.CODE, "AUTH-001");
-                attributes.put(JWTAttributes.Error.REASON, i18nResolver.getTranslatedString("error.no.token.found", tokenLocation));
-                attributes.put(JWTAttributes.Error.CATEGORY, "EXTRACTION_ERROR");
-                flowFile = session.putAllAttributes(flowFile, attributes);
-
-                session.transfer(flowFile, AUTHENTICATION_FAILED);
+                handleError(
+                    session,
+                    flowFile,
+                    "AUTH-001",
+                    i18nResolver.getTranslatedString(JWTTranslationKeys.Error.NO_TOKEN_FOUND, tokenLocation),
+                    "EXTRACTION_ERROR"
+                );
                 return;
             }
 
             // Check token size limits
-            int maxTokenSize = context.getProperty(MAXIMUM_TOKEN_SIZE).asInteger();
+            int maxTokenSize = context.getProperty(Properties.MAXIMUM_TOKEN_SIZE).asInteger();
             if (token.length() > maxTokenSize) {
                 LOGGER.warn(AuthLogMessages.WARN.TOKEN_SIZE_EXCEEDED.format(maxTokenSize));
-
-                // Add error attributes
-                Map<String, String> attributes = new HashMap<>();
-                attributes.put(JWTAttributes.Error.CODE, "AUTH-003");
-                attributes.put(JWTAttributes.Error.REASON, i18nResolver.getTranslatedString("error.token.size.limit", maxTokenSize));
-                attributes.put(JWTAttributes.Error.CATEGORY, "TOKEN_SIZE_VIOLATION");
-                flowFile = session.putAllAttributes(flowFile, attributes);
-
-                session.transfer(flowFile, AUTHENTICATION_FAILED);
+                handleError(
+                    session,
+                    flowFile,
+                    "AUTH-003",
+                    i18nResolver.getTranslatedString(JWTTranslationKeys.Error.TOKEN_SIZE_LIMIT, maxTokenSize),
+                    "TOKEN_SIZE_VIOLATION"
+                );
                 return;
             }
 
             // Check for obviously malformed tokens (should have at least 2 dots for header.payload.signature)
             if (!token.contains(".")) {
                 LOGGER.warn("Token is malformed (missing segments)");
-
-                // Add error attributes
-                Map<String, String> attributes = new HashMap<>();
-                attributes.put(JWTAttributes.Error.CODE, "AUTH-004");
-                attributes.put(JWTAttributes.Error.REASON, i18nResolver.getTranslatedString("error.token.malformed"));
-                attributes.put(JWTAttributes.Error.CATEGORY, "MALFORMED_TOKEN");
-                flowFile = session.putAllAttributes(flowFile, attributes);
-
-                session.transfer(flowFile, AUTHENTICATION_FAILED);
+                handleError(
+                    session,
+                    flowFile,
+                    "AUTH-004",
+                    i18nResolver.getTranslatedString(JWTTranslationKeys.Error.TOKEN_MALFORMED),
+                    "MALFORMED_TOKEN"
+                );
                 return;
             }
 
+            // Validate token using the TokenValidator - will throw TokenValidationException if invalid
+            AccessTokenContent accessToken = validateToken(token, context);
 
-            try {
-                // Validate token using the TokenValidator - will throw TokenValidationException if invalid
-                AccessTokenContent accessToken = validateToken(token, context);
-
-                // Token is valid, add claims as attributes
-                Map<String, String> attributes = extractClaims(accessToken);
-                flowFile = session.putAllAttributes(flowFile, attributes);
-
-                // Transfer to success relationship
-                session.transfer(flowFile, SUCCESS);
-
-            } catch (TokenValidationException e) {
-                // Token validation failed
-                LOGGER.warn("Token validation failed: %s", e.getMessage());
-                String errorMessage = i18nResolver.getTranslatedString("error.token.validation.failed", e.getMessage());
-
-                // Add error attributes
-                Map<String, String> attributes = new HashMap<>();
-
-                // Determine more specific error code based on event type
-                String errorCode = "AUTH-002"; // Default error code
-                String category = e.getEventType().name();
-
-                // Map common validation failures to specific error codes
-                if (category.contains("EXPIRED")) {
-                    errorCode = "AUTH-005";
-                } else if (category.contains("SIGNATURE")) {
-                    errorCode = "AUTH-006";
-                } else if (category.contains("ISSUER")) {
-                    errorCode = "AUTH-007";
-                } else if (category.contains("AUDIENCE")) {
-                    errorCode = "AUTH-008";
-                }
-
-                attributes.put(JWTAttributes.Error.CODE, errorCode);
-                attributes.put(JWTAttributes.Error.REASON, errorMessage);
-                attributes.put(JWTAttributes.Error.CATEGORY, category);
-                flowFile = session.putAllAttributes(flowFile, attributes);
-
-                session.transfer(flowFile, AUTHENTICATION_FAILED);
-            }
-
-        } catch (Exception e) {
-            LOGGER.error(e, "Error processing flow file: %s", e.getMessage());
-
-            // Add error attributes
-            Map<String, String> attributes = new HashMap<>();
-            attributes.put(JWTAttributes.Error.CODE, "AUTH-999");
-            attributes.put(JWTAttributes.Error.REASON, i18nResolver.getTranslatedString("error.unknown", e.getMessage()));
-            attributes.put(JWTAttributes.Error.CATEGORY, "PROCESSING_ERROR");
+            // Token is valid, add claims as attributes
+            Map<String, String> attributes = extractClaims(accessToken);
             flowFile = session.putAllAttributes(flowFile, attributes);
 
-            session.transfer(flowFile, AUTHENTICATION_FAILED);
+            // Transfer to success relationship
+            session.transfer(flowFile, Relationships.SUCCESS);
+
+        } catch (TokenValidationException e) {
+            // Token validation failed
+            LOGGER.warn("Token validation failed: %s", e.getMessage());
+            String errorMessage = i18nResolver.getTranslatedString(JWTTranslationKeys.Error.TOKEN_VALIDATION_FAILED, e.getMessage());
+
+            // Determine more specific error code based on event type
+            String errorCode = "AUTH-002"; // Default error code
+            String category = e.getEventType().name();
+
+            // Map common validation failures to specific error codes
+            if (category.contains("EXPIRED")) {
+                errorCode = "AUTH-005";
+            } else if (category.contains("SIGNATURE")) {
+                errorCode = "AUTH-006";
+            } else if (category.contains("ISSUER")) {
+                errorCode = "AUTH-007";
+            } else if (category.contains("AUDIENCE")) {
+                errorCode = "AUTH-008";
+            }
+
+            handleError(session, flowFile, errorCode, errorMessage, category);
+        } catch (Exception e) {
+            LOGGER.error(e, "Error processing flow file: %s", e.getMessage());
+            handleError(
+                session,
+                flowFile,
+                "AUTH-999",
+                i18nResolver.getTranslatedString(JWTTranslationKeys.Error.UNKNOWN, e.getMessage()),
+                "PROCESSING_ERROR"
+            );
         }
     }
 
     /**
      * Extracts a token from a header in the flow file.
      *
-     * @param flowFile The flow file containing the header
+     * @param flowFile   The flow file containing the header
      * @param headerName The name of the header containing the token
      * @return The extracted token, or null if not found
      */
@@ -908,7 +918,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * Extracts a token from the content of the flow file.
      *
      * @param flowFile The flow file containing the token
-     * @param session The process session
+     * @param session  The process session
      * @return The extracted token, or null if not found
      */
     private String extractTokenFromContent(FlowFile flowFile, ProcessSession session) {
@@ -918,7 +928,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             byte[] buffer = new byte[4096];
             int len;
             while ((len = inputStream.read(buffer)) != -1) {
-                contentBuilder.append(new String(buffer, 0, len));
+                contentBuilder.append(new String(buffer, 0, len, java.nio.charset.StandardCharsets.UTF_8));
             }
         });
 
@@ -930,7 +940,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * Validates a token using the TokenValidator from cui-jwt-validation.
      *
      * @param tokenString The JWT token string to validate
-     * @param context The process context
+     * @param context     The process context
      * @return The parsed token if valid
      * @throws TokenValidationException if the token is invalid
      */
@@ -957,53 +967,31 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         // Add token identity information
         claims.put(JWTAttributes.Token.SUBJECT, token.getSubject());
         claims.put(JWTAttributes.Token.ISSUER, token.getIssuer());
-
-        // Add expiration information if available
-        if (token.getExpirationTime() != null) {
-            claims.put(JWTAttributes.Token.EXPIRATION, token.getExpirationTime().toString());
-        }
+        claims.put(JWTAttributes.Token.EXPIRATION, token.getExpirationTime().toString());
 
         // Add roles as a comma-separated list if available
         List<String> roles = token.getRoles();
-        if (roles != null && !roles.isEmpty()) {
+        if (!roles.isEmpty()) {
             claims.put(JWTAttributes.Authorization.ROLES, String.join(",", roles));
-
-            // Add individual roles with index for easier processing
-            for (int i = 0; i < roles.size(); i++) {
-                claims.put(JWTAttributes.Authorization.ROLES_PREFIX + i, roles.get(i));
-            }
         }
 
         // Add groups as a comma-separated list if available
         List<String> groups = token.getGroups();
-        if (groups != null && !groups.isEmpty()) {
+        if (!groups.isEmpty()) {
             claims.put(JWTAttributes.Authorization.GROUPS, String.join(",", groups));
-
-            // Add individual groups with index for easier processing
-            for (int i = 0; i < groups.size(); i++) {
-                claims.put(JWTAttributes.Authorization.GROUPS_PREFIX + i, groups.get(i));
-            }
         }
 
-        // Extract scopes if available (typically space-separated in 'scope' claim)
-        if (token.getClaims().containsKey("scope")) {
-            String scopeValue = token.getClaims().get("scope").getOriginalString();
-            if (scopeValue != null && !scopeValue.isEmpty()) {
-                claims.put(JWTAttributes.Authorization.SCOPES, scopeValue);
-
-                // Split scopes by space and add individual scopes with index
-                String[] scopes = scopeValue.split(" ");
-                for (int i = 0; i < scopes.length; i++) {
-                    if (!scopes[i].isEmpty()) {
-                        claims.put(JWTAttributes.Authorization.SCOPES_PREFIX + i, scopes[i]);
-                    }
-                }
-            }
+        // Get scopes directly from the token
+        List<String> scopes = token.getScopes();
+        if (!scopes.isEmpty()) {
+            claims.put(JWTAttributes.Authorization.SCOPES, String.join(",", scopes));
         }
 
-        // Add all token claims with consistent "jwt.content." prefix
+        // Add all token claims with consistent "jwt.content." prefix, filtering out duplicates
         token.getClaims().forEach((key, claimValue) -> {
-            claims.put(JWTAttributes.Content.PREFIX + key, claimValue.getOriginalString());
+            if (!FILTERED_CLAIM_KEYS.contains(key)) {
+                claims.put(JWTAttributes.Content.PREFIX + key, claimValue.getOriginalString());
+            }
         });
 
         return claims;

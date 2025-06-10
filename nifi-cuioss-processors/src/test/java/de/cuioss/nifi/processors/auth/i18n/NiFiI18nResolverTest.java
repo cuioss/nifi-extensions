@@ -15,19 +15,16 @@
  */
 package de.cuioss.nifi.processors.auth.i18n;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.util.Locale;
-
-
 import org.apache.nifi.logging.ComponentLog;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+
+import java.util.Locale;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test class for {@link NiFiI18nResolver}.

@@ -16,19 +16,19 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-
-import java.util.HashMap;
-import java.util.Map;
-
-
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Test class for {@link JWTTokenAuthenticator}.
@@ -46,8 +46,8 @@ class JWTTokenAuthenticatorTest {
     @DisplayName("Test extracting token from Authorization header")
     void extractTokenFromAuthorizationHeader() {
         // Setup
-        testRunner.setProperty(JWTTokenAuthenticator.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
-        testRunner.setProperty(JWTTokenAuthenticator.TOKEN_HEADER, "Authorization");
+        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
+        testRunner.setProperty(Properties.TOKEN_HEADER, Http.AUTHORIZATION_HEADER);
 
         // Sample JWT token
         String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
@@ -61,11 +61,11 @@ class JWTTokenAuthenticatorTest {
         testRunner.run();
 
         // Verify results
-        testRunner.assertTransferCount(JWTTokenAuthenticator.SUCCESS, 1);
-        testRunner.assertTransferCount(JWTTokenAuthenticator.FAILURE, 0);
+        testRunner.assertTransferCount(Relationships.SUCCESS, 1);
+        testRunner.assertTransferCount(Relationships.FAILURE, 0);
 
         // Get the output flow file
-        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(JWTTokenAuthenticator.SUCCESS).get(0);
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).get(0);
 
         // Verify attributes
         flowFile.assertAttributeExists("jwt.token");
@@ -77,8 +77,8 @@ class JWTTokenAuthenticatorTest {
     @DisplayName("Test extracting token from custom header")
     void extractTokenFromCustomHeader() {
         // Setup
-        testRunner.setProperty(JWTTokenAuthenticator.TOKEN_LOCATION, "CUSTOM_HEADER");
-        testRunner.setProperty(JWTTokenAuthenticator.CUSTOM_HEADER_NAME, "X-JWT-Token");
+        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.CUSTOM_HEADER);
+        testRunner.setProperty(Properties.CUSTOM_HEADER_NAME, "X-JWT-Token");
 
         // Sample JWT token
         String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
@@ -92,11 +92,11 @@ class JWTTokenAuthenticatorTest {
         testRunner.run();
 
         // Verify results
-        testRunner.assertTransferCount(JWTTokenAuthenticator.SUCCESS, 1);
-        testRunner.assertTransferCount(JWTTokenAuthenticator.FAILURE, 0);
+        testRunner.assertTransferCount(Relationships.SUCCESS, 1);
+        testRunner.assertTransferCount(Relationships.FAILURE, 0);
 
         // Get the output flow file
-        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(JWTTokenAuthenticator.SUCCESS).get(0);
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).get(0);
 
         // Verify attributes
         flowFile.assertAttributeExists("jwt.token");
@@ -108,7 +108,7 @@ class JWTTokenAuthenticatorTest {
     @DisplayName("Test extracting token from flow file content")
     void extractTokenFromFlowFileContent() {
         // Setup
-        testRunner.setProperty(JWTTokenAuthenticator.TOKEN_LOCATION, "FLOW_FILE_CONTENT");
+        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.FLOW_FILE_CONTENT);
 
         // Sample JWT token
         String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
@@ -120,11 +120,11 @@ class JWTTokenAuthenticatorTest {
         testRunner.run();
 
         // Verify results
-        testRunner.assertTransferCount(JWTTokenAuthenticator.SUCCESS, 1);
-        testRunner.assertTransferCount(JWTTokenAuthenticator.FAILURE, 0);
+        testRunner.assertTransferCount(Relationships.SUCCESS, 1);
+        testRunner.assertTransferCount(Relationships.FAILURE, 0);
 
         // Get the output flow file
-        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(JWTTokenAuthenticator.SUCCESS).get(0);
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).get(0);
 
         // Verify attributes
         flowFile.assertAttributeExists("jwt.token");
@@ -136,8 +136,8 @@ class JWTTokenAuthenticatorTest {
     @DisplayName("Test failure when no token is found")
     void failureWhenNoTokenFound() {
         // Setup
-        testRunner.setProperty(JWTTokenAuthenticator.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
-        testRunner.setProperty(JWTTokenAuthenticator.TOKEN_HEADER, "Authorization");
+        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
+        testRunner.setProperty(Properties.TOKEN_HEADER, Http.AUTHORIZATION_HEADER);
 
         // Create flow file without Authorization header
         testRunner.enqueue("test data");
@@ -146,11 +146,11 @@ class JWTTokenAuthenticatorTest {
         testRunner.run();
 
         // Verify results
-        testRunner.assertTransferCount(JWTTokenAuthenticator.SUCCESS, 0);
-        testRunner.assertTransferCount(JWTTokenAuthenticator.FAILURE, 1);
+        testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+        testRunner.assertTransferCount(Relationships.FAILURE, 1);
 
         // Get the output flow file
-        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(JWTTokenAuthenticator.FAILURE).get(0);
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.FAILURE).get(0);
 
         // Verify attributes
         flowFile.assertAttributeExists("jwt.error.reason");
@@ -161,9 +161,9 @@ class JWTTokenAuthenticatorTest {
     @DisplayName("Test extracting token with Bearer prefix")
     void extractTokenWithBearerPrefix() {
         // Setup
-        testRunner.setProperty(JWTTokenAuthenticator.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
-        testRunner.setProperty(JWTTokenAuthenticator.TOKEN_HEADER, "Authorization");
-        testRunner.setProperty(JWTTokenAuthenticator.BEARER_TOKEN_PREFIX, "Bearer");
+        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
+        testRunner.setProperty(Properties.TOKEN_HEADER, Http.AUTHORIZATION_HEADER);
+        testRunner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Bearer");
 
         // Sample JWT token
         String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
@@ -177,11 +177,11 @@ class JWTTokenAuthenticatorTest {
         testRunner.run();
 
         // Verify results
-        testRunner.assertTransferCount(JWTTokenAuthenticator.SUCCESS, 1);
-        testRunner.assertTransferCount(JWTTokenAuthenticator.FAILURE, 0);
+        testRunner.assertTransferCount(Relationships.SUCCESS, 1);
+        testRunner.assertTransferCount(Relationships.FAILURE, 0);
 
         // Get the output flow file
-        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(JWTTokenAuthenticator.SUCCESS).get(0);
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).get(0);
 
         // Verify attributes
         flowFile.assertAttributeExists("jwt.token");

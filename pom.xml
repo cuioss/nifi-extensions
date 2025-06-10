@@ -208,13 +208,13 @@
                 <scope>test</scope>
             </dependency>
             <dependency>
-                <groupId>de.cuioss</groupId>
+                <groupId>de.cuioss.jwt</groupId>
                 <artifactId>cui-jwt-validation</artifactId>
                 <version>${version.cui-jwt-validation}</version>
                 <scope>compile</scope>
             </dependency>
             <dependency>
-                <groupId>de.cuioss</groupId>
+                <groupId>de.cuioss.jwt</groupId>
                 <artifactId>cui-jwt-validation</artifactId>
                 <version>${version.cui-jwt-validation}</version>
                 <classifier>test</classifier>
