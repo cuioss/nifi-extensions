@@ -697,6 +697,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param context    The process context
      * @return The IssuerConfig object, or null if the required properties are missing
      */
+    @SuppressWarnings("java:S3516") // To be implemented
     private IssuerConfig createIssuerConfig(String issuerName, Map<String, String> properties, ProcessContext context) {
         // Required properties
         String jwksUrl = properties.get(Issuer.JWKS_URL);
