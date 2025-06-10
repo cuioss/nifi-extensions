@@ -393,7 +393,7 @@ describe('fadeOut functionality', () => {
 
         // Mock setTimeout and fadeOut
         const originalSetTimeout = global.setTimeout;
-        const mockSetTimeout = jest.fn((callback, delay) => {
+        const mockSetTimeout = jest.fn((callback) => {
             // Execute callback immediately for testing
             callback();
         });

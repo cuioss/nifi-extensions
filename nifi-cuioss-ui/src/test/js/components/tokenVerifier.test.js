@@ -530,7 +530,7 @@ describe('tokenVerifier', () => {
         it('should handle timeout management for clear button when form is empty', () => {
             // Mock setTimeout to capture timeout behavior
             const originalSetTimeout = global.setTimeout;
-            const mockSetTimeout = jest.fn((fn, delay) => {
+            const mockSetTimeout = jest.fn((fn) => {
                 fn(); // Execute immediately for testing
                 return 123; // Mock timeout ID
             });

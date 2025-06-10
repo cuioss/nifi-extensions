@@ -107,6 +107,7 @@ const extractErrorMessage = (error, i18n) => {
  * @param {object|Error} error - The error object (e.g., jqXHR from an AJAX failure, or a standard Error object).
  * @param {object} i18n - The i18n map for localized strings.
  * @param {string} [errorTypeKey='processor.jwt.validationError'] - Optional i18n key for the "error type" prefix.
+ * @param options
  */
 export const displayUiError = ($targetElement, error, i18n, errorTypeKey = 'processor.jwt.validationError', options = {}) => {
     const { type = 'error', closable = false, autoHide = false } = options;

@@ -15,7 +15,7 @@ $.fn.tooltip = jest.fn().mockImplementation(function (options) {
 // that can be expanded if needed.
 $.ajax = jest.fn((options) => {
     const deferred = {
-        then: jest.fn((callback) => {
+        then: jest.fn(() => {
             // If a success callback is provided in options, simulate its execution
             if (options.success && typeof options.success === 'function') {
                 // Simulate async behavior with proper promise error handling
@@ -59,6 +59,6 @@ $.ajax = jest.fn((options) => {
 // It's important to export $ from the original 'jquery' module,
 // but since we've augmented it, we don't need to re-export.
 // Jest will use this version of $ due to the setup file.
-// However, the original TODO had 'export default $;'
+// However, the original idea had 'export default $;'
 // Let's stick to the original plan for now.
 export default $;

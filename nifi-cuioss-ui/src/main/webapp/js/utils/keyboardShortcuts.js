@@ -64,7 +64,7 @@ const handleKeydown = (event) => {
     if (action && isValidContext(event)) {
         event.preventDefault();
         event.stopPropagation();
-        executeAction(action, event);
+        executeAction(action);
     }
 };
 
@@ -124,9 +124,8 @@ const isValidContext = (event) => {
 /**
  * Execute the action for a keyboard shortcut
  * @param {string} action - The action to execute
- * @param {Event} event - The original keyboard event
  */
-const executeAction = (action, event) => {
+const executeAction = (action) => {
     switch (action) {
         case 'verify-token':
             triggerTokenVerification();
@@ -349,7 +348,7 @@ export const registerShortcut = (shortcut, handler, description) => {
  */
 export const unregisterShortcut = (shortcut) => {
     const action = SHORTCUTS[shortcut];
-    if (action && action.startsWith('custom-')) {
+    if (action?.startsWith('custom-')) {
         activeHandlers.delete(action);
         delete SHORTCUTS[shortcut];
     }

@@ -25,9 +25,8 @@ export const createAjaxMock = ({
     isErrorScenario = false,
     isSynchronousErrorScenario = false
 }) => {
-    return jest.fn((ajaxSettings) => { // This is the function that will mock $.ajax
+    return jest.fn(() => { // This is the function that will mock $.ajax
         if (isSynchronousErrorScenario) {
-            // console.log('test-utils: Throwing synchronous error');
             throw new Error('Simulated synchronous AJAX error by test-utils');
         }
 
@@ -47,7 +46,6 @@ export const createAjaxMock = ({
                 // console.log('test-utils: Simulating localhost error scenario (will reject)');
                 promise._reject(errorData || { statusText: 'Simulated Localhost Error', responseText: 'Error for localhost test to trigger SUT catch' });
             } else {
-                // console.log('test-utils: Simulating actual error for non-localhost');
                 promise._reject(errorData || { statusText: 'Generic Test Error', responseText: 'Error from test-utils' });
             }
         } else { // Success scenario
