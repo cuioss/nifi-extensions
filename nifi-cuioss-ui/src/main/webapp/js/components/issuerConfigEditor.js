@@ -521,7 +521,7 @@ const addFormField = ($container, name, label, description, value, helpText) => 
         cssClass: 'issuer-config-field',
         helpText: helpText || null,
         validation: name === 'jwks-url' || name === 'issuer' ?
-            (val) => val && val.trim() ? { isValid: true } : { isValid: false, error: 'This field is required' } :
+            (val) => val?.trim() ? { isValid: true } : { isValid: false, error: 'This field is required' } :
             null
     };
 

@@ -305,11 +305,9 @@ const _extractErrorMessageFromXHR = (jqXHR) => {
                 console.debug('Failed to parse responseText as JSON:', e);
                 // Keep the original error message if JSON parsing fails
             }
-        } else {
+        } else if (typeof jqXHR.responseText === 'string') {
             // If responseText doesn't look like JSON, use it directly if it's a string
-            if (typeof jqXHR.responseText === 'string') {
-                errorMessage = jqXHR.responseText;
-            }
+            errorMessage = jqXHR.responseText;
         }
     }
 
