@@ -1,50 +1,75 @@
 /**
  * Tests for the formatters utility functions.
  */
-const formatters = require('utils/formatters');
+import * as formatters from 'utils/formatters';
+
+// btoa and atob are needed for formatJwtToken tests
+global.btoa = (str) => Buffer.from(str, 'binary').toString('base64');
+global.atob = (b64Encoded) => Buffer.from(b64Encoded, 'base64').toString('binary');
 
 describe('formatters', () => {
+    let consoleWarnSpy;
+    let consoleErrorSpy; // Though formatters.js seems to use warn for recoverable issues
+
+    beforeEach(() => {
+        // Spy on console.warn and console.error before each test
+        consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        // Restore original console functions after each test
+        consoleWarnSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
+    });
+
     describe('formatDate', () => {
+        it('should return the original string and warn if toLocaleString throws an error', () => {
+            const validDateString = '2023-03-10T10:00:00Z';
+            const originalToLocaleString = Date.prototype.toLocaleString;
+            const mockError = new Error('toLocaleString failed!');
+
+            Date.prototype.toLocaleString = jest.fn().mockImplementation(() => {
+                throw mockError;
+            });
+
+            const result = formatters.formatDate(validDateString);
+
+            expect(result).toBe(validDateString);
+            expect(consoleWarnSpy).toHaveBeenCalledWith(`Error formatting date: ${validDateString}`, mockError);
+
+            // Restore original method
+            Date.prototype.toLocaleString = originalToLocaleString;
+        });
+
         it('should format a valid date string', () => {
             const date = '2023-01-15T12:30:45Z';
             const result = formatters.formatDate(date);
 
             // Since toLocaleString output varies by environment, just check that it's not the original
+            // and that it's a non-empty string.
             expect(result).not.toBe(date);
             expect(result.length).toBeGreaterThan(0);
+            // A more robust check might involve parsing 'result' back to a Date and comparing timestamps,
+            // but that's often overkill if we trust toLocaleString() itself.
         });
 
-        it('should return an empty string for null or undefined', () => {
+        it('should return an empty string for null or undefined or empty string', () => {
             expect(formatters.formatDate(null)).toBe('');
             expect(formatters.formatDate(undefined)).toBe('');
             expect(formatters.formatDate('')).toBe('');
         });
 
-        it('should handle invalid date strings', () => {
+        it('should return "not-a-date" for "not-a-date" input and not warn', () => {
             const invalidDate = 'not-a-date';
-
-            // Should return the original string if it can't be parsed
             expect(formatters.formatDate(invalidDate)).toBe(invalidDate);
+            expect(consoleWarnSpy).not.toHaveBeenCalled();
+        });
 
-            // Mock implementation to avoid console.error
-            formatters.formatDate.mockImplementation(dateString => {
-                if (!dateString) return '';
-                try {
-                    const date = new Date(dateString);
-                    if (isNaN(date.getTime())) {
-                        return dateString;
-                    }
-                    return date.toLocaleString();
-                } catch (e) {
-                    return dateString;
-                }
-            });
-
-            // No console.error should be called with our mock implementation
-            const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-            formatters.formatDate(invalidDate);
-            expect(consoleSpy).not.toHaveBeenCalled();
-            consoleSpy.mockRestore();
+        it('should return the original string for other invalid date strings and warn', () => {
+            const invalidDate = 'this is not a date';
+            expect(formatters.formatDate(invalidDate)).toBe(invalidDate);
+            expect(consoleWarnSpy).toHaveBeenCalledWith(`Invalid date format: ${invalidDate}`);
         });
     });
 
@@ -84,8 +109,40 @@ describe('formatters', () => {
     });
 
     describe('formatJwtToken', () => {
+        it('should handle non-string token input (outer catch) and warn', () => {
+            const token = 12345; // Not a string, will cause token.split(".") to fail
+            const result = formatters.formatJwtToken(token);
+
+            expect(result.header).toBe('Error: Invalid token format');
+            expect(result.payload).toBe('Error: Could not parse token');
+            expect(result.signature).toBe('');
+            expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Error parsing JWT token: token.split is not a function'));
+        });
+
+        it('should handle JWT with only two parts (e.g., header.payload)', () => {
+            const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+            const payload = btoa(JSON.stringify({ sub: 'user123', name: 'Test User' }));
+            const token = `${header}.${payload}`; // Missing signature part
+
+            const result = formatters.formatJwtToken(token);
+
+            // Expecting successful decode of header and payload, empty signature
+            const parsedHeader = JSON.parse(result.header);
+            const parsedPayload = JSON.parse(result.payload);
+
+            expect(parsedHeader).toEqual({ alg: 'HS256', typ: 'JWT' });
+            expect(parsedPayload).toEqual({ sub: 'user123', name: 'Test User' });
+            expect(result.signature).toBe(''); // parts[2] will be undefined, then ""
+
+            // This scenario should NOT trigger the "Error decoding JWT token parts"
+            // because atob("") and JSON.parse("") on an empty signature part might not be an issue,
+            // or the logic handles it gracefully.
+            // The original code has `const signature = parts[2] || '';`
+            // The inner try...catch only decodes header and payload.
+            expect(consoleWarnSpy).not.toHaveBeenCalledWith(expect.stringContaining('Error decoding JWT token parts'));
+        });
+
         it('should format a valid JWT token', () => {
-            // Create a simple JWT token with base64-encoded parts
             const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
             const payload = btoa(JSON.stringify({ sub: 'user123', name: 'Test User' }));
             const signature = 'signature';
@@ -93,80 +150,103 @@ describe('formatters', () => {
 
             const result = formatters.formatJwtToken(token);
 
-            // Check that the result has the expected structure
             expect(result).toHaveProperty('header');
             expect(result).toHaveProperty('payload');
-            expect(result).toHaveProperty('signature');
+            expect(result).toHaveProperty('signature', signature);
 
-            // Check that the header and payload are decoded and formatted
-            expect(result.header).toContain('alg');
-            expect(result.header).toContain('HS256');
-            expect(result.payload).toContain('sub');
-            expect(result.payload).toContain('user123');
+            const parsedHeader = JSON.parse(result.header);
+            const parsedPayload = JSON.parse(result.payload);
+
+            expect(parsedHeader).toEqual({ alg: 'HS256', typ: 'JWT' });
+            expect(parsedPayload).toEqual({ sub: 'user123', name: 'Test User' });
+            expect(consoleWarnSpy).not.toHaveBeenCalled();
+        });
+
+        it('should handle JWT with invalid JSON in parts and warn', () => {
+            const header = btoa('not-json');
+            const payload = btoa('also-not-json');
+            const signature = 'signature';
+            const token = `${header}.${payload}.${signature}`;
+
+            // Clear any existing errors
+            delete window._formattersErrors;
+
+            const result = formatters.formatJwtToken(token);
+
+            expect(result.header).toContain('Unable to decode header');
+            expect(result.payload).toContain('Unable to decode payload');
             expect(result.signature).toBe(signature);
+            expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Error decoding JWT token parts'));
+
+            // Check error tracking functionality
+            expect(window._formattersErrors).toBeDefined();
+            expect(window._formattersErrors.length).toBe(1);
+            expect(window._formattersErrors[0]).toEqual(expect.objectContaining({
+                function: 'formatJwtToken.decode',
+                input: { header: header, payload: payload },
+                error: expect.any(String),
+                timestamp: expect.any(String)
+            }));
         });
 
-        it('should handle invalid JWT tokens', () => {
-            // Mock implementation to avoid console.error
-            formatters.formatJwtToken.mockImplementation(token => {
-                if (!token) {
-                    return { header: '', payload: '', signature: '' };
-                }
+        it('should handle JWT with non-base64 parts and warn', () => {
+            const token = 'not.base64.atall';
+            const result = formatters.formatJwtToken(token);
 
-                try {
-                    const parts = token.split('.');
-                    let header = parts[0] || '';
-                    let payload = parts[1] || '';
-                    const signature = parts[2] || '';
+            expect(result.header).toContain('Unable to decode header');
+            expect(result.payload).toContain('Unable to decode payload');
+            expect(result.signature).toBe('atall');
+            expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Error decoding JWT token parts'));
+        });
 
-                    // Try to decode and format header and payload
-                    try {
-                        if (header) {
-                            const decodedHeader = JSON.parse(atob(header));
-                            header = JSON.stringify(decodedHeader, null, 2);
-                        }
+        it('should handle malformed JWT (not enough parts) and warn', () => {
+            const token = 'invalidtoken';
+            const result = formatters.formatJwtToken(token);
+            // The current logic enters the inner catch, not the outer one for this specific input.
+            expect(result.header).toBe('Unable to decode header: invalidtoken');
+            expect(result.payload).toBe('Unable to decode payload: '); // payload was initialized to ''
+            expect(result.signature).toBe(''); // signature was initialized to ''
+            expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Error decoding JWT token parts'));
+        });
 
-                        if (payload) {
-                            const decodedPayload = JSON.parse(atob(payload));
-                            payload = JSON.stringify(decodedPayload, null, 2);
-                        }
-                    } catch (e) {
-                        // Return the original parts without logging an error
-                    }
+        it('should handle outer error path and track error metadata', () => {
+            // Clear any existing errors
+            delete window._formattersErrors;
 
-                    return { header, payload, signature };
-                } catch (e) {
-                    // Return empty parts without logging an error
-                    return { header: '', payload: '', signature: '' };
-                }
+            // Use an object that's truthy but will fail on .split() to trigger the outer catch
+            const token = { toString: () => { throw new Error('toString failed'); } };
+            const result = formatters.formatJwtToken(token);
+
+            expect(result).toEqual({
+                header: 'Error: Invalid token format',
+                payload: 'Error: Could not parse token',
+                signature: ''
             });
+            expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Error parsing JWT token: token.split is not a function'));
 
-            // Spy on console.error to verify it's NOT called
-            const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
-            // Test with an invalid token
-            const result = formatters.formatJwtToken('invalid.token');
-
-            // Should still return an object with the expected properties
-            expect(result).toHaveProperty('header');
-            expect(result).toHaveProperty('payload');
-            expect(result).toHaveProperty('signature');
-
-            // No error should be logged
-            expect(consoleSpy).not.toHaveBeenCalled();
-            consoleSpy.mockRestore();
+            // Check error tracking functionality for outer catch
+            expect(window._formattersErrors).toBeDefined();
+            expect(window._formattersErrors.length).toBe(1);
+            expect(window._formattersErrors[0]).toEqual(expect.objectContaining({
+                function: 'formatJwtToken',
+                input: token,
+                error: 'token.split is not a function',
+                timestamp: expect.any(String)
+            }));
         });
+
 
         it('should return empty parts for null or undefined', () => {
-            const result = formatters.formatJwtToken(null);
-            expect(result.header).toBe('');
-            expect(result.payload).toBe('');
-            expect(result.signature).toBe('');
+            const resultNull = formatters.formatJwtToken(null);
+            expect(resultNull.header).toBe('');
+            expect(resultNull.payload).toBe('');
+            expect(resultNull.signature).toBe('');
 
-            const result2 = formatters.formatJwtToken(undefined);
-            expect(result2.header).toBe('');
-            expect(result2.payload).toBe('');
-            expect(result2.signature).toBe('');
+            const resultUndefined = formatters.formatJwtToken(undefined);
+            expect(resultUndefined.header).toBe('');
+            expect(resultUndefined.payload).toBe('');
+            expect(resultUndefined.signature).toBe('');
+            expect(consoleWarnSpy).not.toHaveBeenCalled();
         });
     });
 
@@ -174,6 +254,7 @@ describe('formatters', () => {
         it('should format numbers with commas', () => {
             expect(formatters.formatNumber(1000)).toBe('1,000');
             expect(formatters.formatNumber(1000000)).toBe('1,000,000');
+            // Note: Intl.NumberFormat default for en-US does not include .00 for whole numbers
             expect(formatters.formatNumber(1234567.89)).toBe('1,234,567.89');
         });
 
@@ -194,16 +275,21 @@ describe('formatters', () => {
             const html = '<script>alert("XSS")</script>';
             const sanitized = formatters.sanitizeHtml(html);
 
-            expect(sanitized).not.toContain('<script>');
-            expect(sanitized).not.toContain('</script>');
-            expect(sanitized).toContain('&lt;script&gt;');
-            expect(sanitized).toContain('&lt;/script&gt;');
+            expect(sanitized).toBe('&lt;script&gt;alert("XSS")&lt;/script&gt;');
         });
 
-        it('should return an empty string for null or undefined', () => {
+        it('should return an empty string for null or undefined or empty string', () => {
             expect(formatters.sanitizeHtml(null)).toBe('');
             expect(formatters.sanitizeHtml(undefined)).toBe('');
             expect(formatters.sanitizeHtml('')).toBe('');
+        });
+
+        it('should correctly handle text with no HTML characters', () => {
+            expect(formatters.sanitizeHtml('Hello world')).toBe('Hello world');
+        });
+
+        it('should handle text with some HTML characters', () => {
+            expect(formatters.sanitizeHtml('<b>Bold</b> & "quotes"')).toBe('&lt;b&gt;Bold&lt;/b&gt; &amp; "quotes"');
         });
     });
 });

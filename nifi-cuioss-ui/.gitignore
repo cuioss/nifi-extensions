@@ -1,0 +1,29 @@
+# Build artifacts
+bundle.webpack.js
+bundle.webpack.js.map
+
+# Webpack build outputs
+src/main/webapp/js/bundle.webpack.js
+src/main/webapp/js/bundle.webpack.js.map
+
+# Node modules
+node_modules/
+
+# Build directories
+target/
+dist/
+
+# IDE files
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Coverage reports
+coverage/
+
+# Temporary files
+*.tmp
+*.log

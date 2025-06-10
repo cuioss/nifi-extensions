@@ -3,6 +3,7 @@
  */
 
 /* JWKS Validation Button */
+
 .jwks-verification-container {
     margin: 0;
     padding: 0;
@@ -20,7 +21,7 @@
     margin-right: 10px;
     padding: 5px 10px;
     background-color: var(--primary-color);
-    color: white;
+    color: var(--container-background);
     border: 1px solid var(--primary-color-dark);
     border-radius: 3px;
     cursor: pointer;

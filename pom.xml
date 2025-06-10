@@ -142,6 +142,21 @@
                 <artifactId>requirejs</artifactId>
                 <version>2.3.6</version>
             </dependency>
+            <dependency>
+                <groupId>org.webjars.npm</groupId>
+                <artifactId>cash-dom</artifactId>
+                <version>8.1.5</version>
+            </dependency>
+            <dependency>
+                <groupId>org.webjars.npm</groupId>
+                <artifactId>tippy.js</artifactId>
+                <version>6.3.7</version>
+            </dependency>
+            <dependency>
+                <groupId>org.webjars.npm</groupId>
+                <artifactId>popperjs__core</artifactId>
+                <version>2.11.8</version>
+            </dependency>
             <!-- Incoming-->
             <dependency>
                 <groupId>org.junit</groupId>

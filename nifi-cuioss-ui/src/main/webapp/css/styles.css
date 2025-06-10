@@ -4,13 +4,13 @@
  */
 
 /* Import variables first so they're available to all other modules */
-@import 'modules/variables.css';
+@import url('modules/variables.css');
 
 /* Import base styles */
-@import 'modules/base.css';
+@import url('modules/base.css');
 
 /* Import component-specific styles */
-@import 'modules/jwksValidator.css';
-@import 'modules/tokenVerifier.css';
-@import 'modules/metrics.css';
-@import 'modules/issuerConfigEditor.css';
+@import url('modules/jwksValidator.css');
+@import url('modules/tokenVerifier.css');
+@import url('modules/metrics.css');
+@import url('modules/issuerConfigEditor.css');

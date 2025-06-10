@@ -1,136 +1,372 @@
 /**
  * Tests for the API Client service.
  */
-const apiClient = require('services/apiClient');
-const $ = require('jquery');
+let apiClient; // To be required in beforeEach
 
-// Reset the jQuery mock before each test
-beforeEach(() => {
-    $.ajax.mockClear();
-});
+// Mock SUT (apiClient.js) and its dependencies
+
+// nfCommon is used by the SUT, so mock it.
+// apiClient.js is the SUT, so we DO NOT mock it. We import the actual.
+
+const mockAjax = jest.fn();
+// Mock cash-dom to provide our mockAjax function for $.ajax
+jest.mock('cash-dom', () => ({
+    __esModule: true, // if cash-dom is an ES module
+    default: { // if cash-dom exports $ as default
+        ajax: mockAjax
+    },
+    ajax: mockAjax // if cash-dom also has a named export (less likely for $)
+}));
+
+const mockI18n = {
+    'error.defaultUserMessage': 'An unexpected error has occurred. Please try again later or contact support if the issue persists.'
+};
+jest.mock('nf.Common', () => ({
+    getI18n: jest.fn()
+}));
+
 
 describe('apiClient', () => {
-    describe('validateJwksUrl', () => {
-        it('should be defined and callable', () => {
-            // Since we're having issues with the AJAX mocking in the test environment,
-            // let's simplify this test to just verify the basic functionality
+    'use strict';
 
-            // Setup
-            const jwksUrl = 'https://example.com/.well-known/jwks.json';
-            const successCallback = jest.fn();
-            const errorCallback = jest.fn();
+    let successCallback;
+    let errorCallback;
+    let consoleErrorSpy;
+    let localNfCommon;
 
-            // Verify that the method exists
-            expect(apiClient.validateJwksUrl).toBeDefined();
-            expect(typeof apiClient.validateJwksUrl).toBe('function');
+    beforeEach(() => {
+        jest.resetModules(); // This is important
+        apiClient = require('services/apiClient'); // Re-require SUT after resetModules
+        localNfCommon = require('nf.Common'); // Mocked at top level
+        localNfCommon.getI18n.mockReturnValue(mockI18n); // Configure the mock
 
-            // Verify that the method can be called without errors
-            expect(() => {
-                apiClient.validateJwksUrl(jwksUrl, successCallback, errorCallback);
-            }).not.toThrow();
+        // We clear the mock for 'ajax' which apiClient.js uses.
+        mockAjax.mockClear();
+
+        successCallback = jest.fn();
+        errorCallback = jest.fn();
+
+        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+        // Default mock for compatAjax for each test
+        // This is used by SUT's validateJwksUrl if it internally calls compatAjax
+        // and by other SUT functions if they use ajax.
+        // Since apiClient.js uses ajax internally, this mock will be used by it.
+        // This default implementation returns a promise that can be controlled in tests
+        // if a more specific mock isn't provided via mockResolvedValueOnce/mockRejectedValueOnce.
+        mockAjax.mockImplementation(() => {
+            let resolvePromise, rejectPromise;
+            const promise = new Promise((resolve, reject) => {
+                resolvePromise = resolve;
+                rejectPromise = reject;
+            });
+            // @ts-ignore
+            promise.resolve = resolvePromise;
+            // @ts-ignore
+            promise.reject = rejectPromise;
+            // Add done/fail/always for compatibility with SUT if it uses them (though cash-dom might not)
+            promise.done = (fn) => { promise.then(fn); return promise; };
+            promise.fail = (fn) => { promise.catch(fn); return promise; };
+            promise.always = (fn) => { promise.finally(fn); return promise; };
+            return promise;
         });
     });
 
+    afterEach(() => {
+        if (consoleErrorSpy) {
+            consoleErrorSpy.mockRestore();
+        }
+        jest.useRealTimers();
+    });
+
+    describe('validateJwksUrl', () => {
+        const jwksUrl = 'https://example.com/.well-known/jwks.json';
+
+        it('should make a POST request and resolve on success', async () => {
+            const mockResponseData = { valid: true, details: 'JWKS URL is valid' };
+            mockAjax.mockResolvedValue(mockResponseData);
+
+            const promise = apiClient.validateJwksUrl(jwksUrl);
+
+            await expect(promise).resolves.toEqual(mockResponseData);
+            expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({
+                method: 'POST',
+                url: expect.stringContaining('/validate-jwks-url'),
+                data: JSON.stringify({ jwksUrl: jwksUrl })
+            }));
+        });
+
+        it('should reject with a standardized error object on AJAX failure', async () => {
+            const mockJqXHR = { status: 500, statusText: 'Server Error', responseText: 'Server Message' };
+            mockAjax.mockRejectedValue(mockJqXHR);
+
+            const promise = apiClient.validateJwksUrl(jwksUrl);
+
+            await expect(promise).rejects.toEqual({
+                status: 500,
+                statusText: 'Server Error',
+                responseText: 'Server Message'
+            });
+        });
+
+        it('should correctly use statusText from errorThrown or textStatus if jqXHR.statusText is missing', async () => {
+            const mockJqXHRNoStatusText = { status: 404, responseText: 'Not Found Detail' };
+            mockAjax.mockRejectedValue(mockJqXHRNoStatusText);
+            const promise = apiClient.validateJwksUrl(jwksUrl);
+            await expect(promise).rejects.toEqual({
+                status: 404,
+                statusText: 'Unknown error',
+                responseText: 'Not Found Detail'
+            });
+
+            const mockJqXHRWithStatusText = { status: 403, statusText: 'Forbidden', responseText: 'Access Denied' };
+            mockAjax.mockRejectedValue(mockJqXHRWithStatusText);
+            const promise2 = apiClient.validateJwksUrl(jwksUrl);
+            await expect(promise2).rejects.toEqual({
+                status: 403,
+                statusText: 'Forbidden',
+                responseText: 'Access Denied'
+            });
+        });
+
+        it('should use "Unknown error" from _createXhrErrorObject if statusText is missing (Promise)', async () => {
+            const mockError = { status: 0, responseText: 'Network failed' }; // No statusText
+            mockAjax.mockRejectedValue(mockError);
+            await expect(apiClient.validateJwksUrl(jwksUrl)).rejects.toMatchObject({
+                statusText: 'Unknown error',
+                responseText: 'Network failed'
+            });
+        });
+    });
+
+    describe('getProcessorProperties', () => {
+        const processorId = 'proc-id-get';
+        const mockSuccessData = { component: { properties: { 'prop1': 'val1' } }, revision: { version: 1 } };
+
+        it('should resolve with properties on successful GET', async () => {
+            mockAjax.mockResolvedValue(mockSuccessData); // $.ajax().then() provides data directly
+            const response = await apiClient.getProcessorProperties(processorId);
+            expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({ method: 'GET', url: `../nifi-api/processors/${processorId}` }));
+            expect(response).toEqual(mockSuccessData); // response is data itself
+        });
+
+        it('should reject with error on failed GET', async () => {
+            const mockJqXHR = { status: 404, statusText: 'Not Found Error', responseText: 'Not Found' };
+            mockAjax.mockRejectedValue(mockJqXHR);
+
+            await expect(apiClient.getProcessorProperties(processorId)).rejects.toEqual(mockJqXHR);
+            expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({ method: 'GET', url: `../nifi-api/processors/${processorId}` }));
+        });
+    });
+
+    describe('updateProcessorProperties', () => {
+        const processorId = 'proc-id-update';
+        const propertiesToUpdate = { 'prop1': 'newVal' };
+
+        const mockInitialRevision = { version: 1 };
+        const mockInitialComponent = { id: processorId, properties: { 'prop1': 'initialVal' } };
+        const mockGetResponse = { component: mockInitialComponent, revision: mockInitialRevision }; // Data for GET
+
+        const mockPutResponseData = { component: { id: processorId, properties: propertiesToUpdate }, revision: { version: 2 } };
+
+        it('should GET then PUT and resolve with updated properties on success', async () => {
+            mockAjax
+                .mockResolvedValueOnce(mockGetResponse) // For the initial GET (data directly)
+                .mockResolvedValueOnce(mockPutResponseData); // For the PUT (data directly)
+
+            const response = await apiClient.updateProcessorProperties(processorId, propertiesToUpdate);
+
+            expect(mockAjax).toHaveBeenCalledTimes(2);
+            expect(mockAjax.mock.calls[0][0]).toEqual(expect.objectContaining({ method: 'GET', url: `../nifi-api/processors/${processorId}` }));
+            expect(mockAjax.mock.calls[1][0]).toEqual(expect.objectContaining({
+                method: 'PUT',
+                url: `../nifi-api/processors/${processorId}`,
+                data: JSON.stringify({
+                    revision: mockInitialRevision,
+                    component: { id: processorId, properties: propertiesToUpdate }
+                }),
+                contentType: 'application/json'
+            }));
+            expect(response).toEqual(mockPutResponseData); // Response is data itself
+        });
+
+        it('should reject if initial GET fails', async () => {
+            const mockJqXHR = { status: 500, statusText: 'GET Failed', responseText: 'GET Failed' };
+            mockAjax.mockRejectedValueOnce(mockJqXHR); // Fail the GET
+
+            await expect(apiClient.updateProcessorProperties(processorId, propertiesToUpdate)).rejects.toEqual(mockJqXHR);
+            expect(mockAjax).toHaveBeenCalledTimes(1); // Only GET should be called
+            expect(mockAjax.mock.calls[0][0]).toEqual(expect.objectContaining({ method: 'GET', url: `../nifi-api/processors/${processorId}` }));
+        });
+
+        it('should reject if PUT fails', async () => {
+            const mockJqXHR = { status: 500, statusText: 'PUT Failed', responseText: 'PUT Failed' };
+            mockAjax
+                .mockResolvedValueOnce(mockGetResponse) // GET succeeds
+                .mockRejectedValueOnce(mockJqXHR);      // PUT fails
+
+            await expect(apiClient.updateProcessorProperties(processorId, propertiesToUpdate)).rejects.toEqual(mockJqXHR);
+            expect(mockAjax).toHaveBeenCalledTimes(2);
+        });
+    });
+
+    // The remaining functions (validateJwksFile, validateJwksContent, verifyToken, getSecurityMetrics)
+    // follow a similar pattern to validateJwksUrl. Tests for these would involve:
+    // 1. Calling the actual SUT function.
+    // 2. Mocking `ajax` to resolve or reject.
+    // 3. Asserting `successCallback` or `errorCallback` is called with correct arguments,
+    //    including testing the `if (error.response)` and `else` branches in the SUT's catch block.
+    // These are omitted for brevity but would be needed for full coverage.
+    // The 'handleApiError edge cases' tests are effectively covered by testing the error paths
+    // of each callback-based function properly.
+
     describe('validateJwksFile', () => {
-        it('should be defined and callable', () => {
-            // Since we're having issues with the AJAX mocking in the test environment,
-            // let's simplify this test to just verify the basic functionality
+        const filePath = '/path/to/jwks.json';
 
-            // Setup
-            const filePath = '/path/to/jwks.json';
-            const successCallback = jest.fn();
-            const errorCallback = jest.fn();
+        it('should make a POST request and resolve on success', async () => {
+            const mockResponseData = { valid: true, keys: 1 };
+            mockAjax.mockResolvedValue(mockResponseData);
 
-            // Verify that the method exists
-            expect(apiClient.validateJwksFile).toBeDefined();
-            expect(typeof apiClient.validateJwksFile).toBe('function');
+            const promise = apiClient.validateJwksFile(filePath);
 
-            // Verify that the method can be called without errors
-            expect(() => {
-                apiClient.validateJwksFile(filePath, successCallback, errorCallback);
-            }).not.toThrow();
+            await expect(promise).resolves.toEqual(mockResponseData);
+            expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({
+                method: 'POST',
+                url: expect.stringContaining('/validate-jwks-file'),
+                data: JSON.stringify({ filePath: filePath })
+            }));
+        });
+
+        it('should reject with a standardized error object on AJAX failure', async () => {
+            const mockJqXHR = { status: 500, statusText: 'Read Error', responseText: 'File not accessible' };
+            mockAjax.mockRejectedValue(mockJqXHR);
+
+            const promise = apiClient.validateJwksFile(filePath);
+
+            await expect(promise).rejects.toEqual({
+                status: 500,
+                statusText: 'Read Error',
+                responseText: 'File not accessible'
+            });
         });
     });
 
     describe('validateJwksContent', () => {
-        it('should be defined and callable', () => {
-            // Since we're having issues with the AJAX mocking in the test environment,
-            // let's simplify this test to just verify the basic functionality
+        const jwksContent = '{"keys": [{"kty": "RSA", "kid": "key1"}]}';
 
-            // Setup
-            const jwksContent = '{"keys":[{"kid":"key1","kty":"RSA"}]}';
-            const successCallback = jest.fn();
-            const errorCallback = jest.fn();
+        it('should make a POST request and resolve on success', async () => {
+            const mockResponseData = { valid: true, keyCount: 1, jwks: {} };
+            mockAjax.mockResolvedValue(mockResponseData);
 
-            // Verify that the method exists
-            expect(apiClient.validateJwksContent).toBeDefined();
-            expect(typeof apiClient.validateJwksContent).toBe('function');
+            const promise = apiClient.validateJwksContent(jwksContent);
 
-            // Verify that the method can be called without errors
-            expect(() => {
-                apiClient.validateJwksContent(jwksContent, successCallback, errorCallback);
-            }).not.toThrow();
+            await expect(promise).resolves.toEqual(mockResponseData);
+            expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({
+                method: 'POST',
+                url: expect.stringContaining('/validate-jwks-content'),
+                data: JSON.stringify({ jwksContent: jwksContent })
+            }));
+        });
+
+        it('should reject with a standardized error object on AJAX failure', async () => {
+            const mockJqXHR = { status: 400, statusText: 'Invalid Content', responseText: 'Invalid JWKS format' };
+            mockAjax.mockRejectedValue(mockJqXHR);
+
+            const promise = apiClient.validateJwksContent(jwksContent);
+
+            await expect(promise).rejects.toEqual({
+                status: 400,
+                statusText: 'Invalid Content',
+                responseText: 'Invalid JWKS format'
+            });
         });
     });
 
     describe('verifyToken', () => {
-        it('should be defined and callable', () => {
-            // Since we're having issues with the AJAX mocking in the test environment,
-            // let's simplify this test to just verify the basic functionality
+        const token = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...';
 
-            // Setup
-            const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U';
-            const successCallback = jest.fn();
-            const errorCallback = jest.fn();
+        it('should make a POST request and resolve on success', async () => {
+            const mockResponseData = {
+                valid: true,
+                claims: { sub: 'user123', iss: 'https://auth.example.com' },
+                issuer: 'https://auth.example.com',
+                exp: 1234567890,
+                sub: 'user123',
+                aud: ['api-audience']
+            };
+            mockAjax.mockResolvedValue(mockResponseData);
 
-            // Verify that the method exists
-            expect(apiClient.verifyToken).toBeDefined();
-            expect(typeof apiClient.verifyToken).toBe('function');
+            const promise = apiClient.verifyToken(token);
 
-            // Verify that the method can be called without errors
-            expect(() => {
-                apiClient.verifyToken(token, successCallback, errorCallback);
-            }).not.toThrow();
+            await expect(promise).resolves.toEqual(mockResponseData);
+            expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({
+                method: 'POST',
+                url: expect.stringContaining('/verify-token'),
+                data: JSON.stringify({ token: token })
+            }));
+        });
+
+        it('should reject with a standardized error object on AJAX failure', async () => {
+            const mockJqXHR = { status: 401, statusText: 'Unauthorized', responseText: 'Invalid token signature' };
+            mockAjax.mockRejectedValue(mockJqXHR);
+
+            const promise = apiClient.verifyToken(token);
+
+            await expect(promise).rejects.toEqual({
+                status: 401,
+                statusText: 'Unauthorized',
+                responseText: 'Invalid token signature'
+            });
         });
     });
 
     describe('getSecurityMetrics', () => {
-        it('should be defined and callable', () => {
-            // Since we're having issues with the AJAX mocking in the test environment,
-            // let's simplify this test to just verify the basic functionality
+        it('should make a GET request and resolve on success', async () => {
+            const mockResponseData = {
+                totalValidations: 1000,
+                successfulValidations: 950,
+                failedValidations: 50,
+                issuerMetrics: { 'issuer1': { validations: 500, errors: 25 } },
+                recentErrors: [],
+                averageResponseTime: 150
+            };
+            mockAjax.mockResolvedValue(mockResponseData);
 
-            // Setup
-            const successCallback = jest.fn();
-            const errorCallback = jest.fn();
+            const promise = apiClient.getSecurityMetrics();
 
-            // Verify that the method exists
-            expect(apiClient.getSecurityMetrics).toBeDefined();
-            expect(typeof apiClient.getSecurityMetrics).toBe('function');
+            await expect(promise).resolves.toEqual(mockResponseData);
+            expect(mockAjax).toHaveBeenCalledWith(expect.objectContaining({
+                method: 'GET',
+                url: expect.stringContaining('/metrics')
+            }));
+        });
 
-            // Verify that the method can be called without errors
-            expect(() => {
-                apiClient.getSecurityMetrics(successCallback, errorCallback);
-            }).not.toThrow();
+        it('should reject with a standardized error object on AJAX failure', async () => {
+            const mockJqXHR = { status: 503, statusText: 'Service Unavailable', responseText: 'Metrics service down' };
+            mockAjax.mockRejectedValue(mockJqXHR);
+
+            const promise = apiClient.getSecurityMetrics();
+
+            await expect(promise).rejects.toEqual({
+                status: 503,
+                statusText: 'Service Unavailable',
+                responseText: 'Metrics service down'
+            });
         });
     });
 
-    describe('error handling', () => {
-        it('should have error handling in the API client', () => {
-            // Since we're having issues with the AJAX mocking in the test environment,
-            // let's simplify this test to just verify the basic functionality
+    // Legacy callback API tests removed - only Promise-based APIs are now supported
 
-            // Verify that the handleApiError function exists (indirectly)
-            expect(apiClient.validateJwksUrl).toBeDefined();
-            expect(apiClient.validateJwksFile).toBeDefined();
-            expect(apiClient.validateJwksContent).toBeDefined();
-            expect(apiClient.verifyToken).toBeDefined();
-            expect(apiClient.getSecurityMetrics).toBeDefined();
 
-            // Verify that console.error can be spied on
-            const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    describe('_createXhrErrorObject specific scenarios (tested via public methods)', () => {
+        const testUrl = 'any-url';
 
-            // Restore console.error
-            consoleSpy.mockRestore();
+        it('Promise: should use "Unknown error" if statusText, errorThrown, and textStatus are all falsy', async () => {
+            const mockError = { status: 0, responseText: '' };
+            mockAjax.mockRejectedValue(mockError);
+            await expect(apiClient.validateJwksUrl(testUrl)).rejects.toMatchObject({
+                statusText: 'Unknown error'
+            });
         });
     });
 });

@@ -3,6 +3,7 @@
  */
 
 /* Token Verification Interface */
+
 .token-verification-container {
     margin: 15px 0;
     padding: 10px;
@@ -27,7 +28,7 @@
 .verify-token-button {
     padding: 8px 15px;
     background-color: var(--primary-color);
-    color: white;
+    color: var(--container-background);
     border: none;
     border-radius: 3px;
     cursor: pointer;
@@ -35,6 +36,27 @@
 
 .verify-token-button:hover {
     background-color: var(--primary-color-dark);
+}
+
+.button-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.clear-token-button {
+    padding: 8px 15px;
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.clear-token-button:hover {
+    background-color: #5a6268;
 }
 
 .token-results-section {
@@ -72,6 +94,9 @@
 .token-loading {
     color: var(--primary-color);
     padding: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .token-details {
@@ -87,20 +112,20 @@
 .token-claims-table th {
     text-align: left;
     padding: 8px;
-    background-color: #f5f5f5;
-    border: 1px solid #ddd;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
     width: 30%;
 }
 
 .token-claims-table td {
     padding: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
 }
 
 .token-raw-claims {
-    background-color: #f5f5f5;
+    background-color: var(--background-color);
     padding: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 3px;
     overflow: auto;
     max-height: 300px;
@@ -111,13 +136,13 @@
 .token-error-details {
     margin-top: 10px;
     padding: 10px;
-    background-color: #fff5f5;
-    border: 1px solid #ffcccb;
+    background-color: rgb(var(--error-color-rgb, 255, 65, 54), 0.1);
+    border: 1px solid rgb(var(--error-color-rgb, 255, 65, 54), 0.3);
     border-radius: 3px;
 }
 
 .token-error-message {
-    color: #ff4136;
+    color: var(--error-color);
     font-weight: bold;
 }
 

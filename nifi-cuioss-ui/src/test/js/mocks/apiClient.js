@@ -1,40 +1,31 @@
 /**
- * Mock implementation of apiClient for testing.
+ * Mock implementation of apiClient for testing - Promise-based only.
  */
 
 module.exports = {
-    validateJwksUrl: jest.fn().mockImplementation((jwksUrl, successCallback, errorCallback) => {
-    // Mock implementation that simulates a successful response
-        successCallback({
-            valid: true,
-            keyCount: 3,
-            message: 'JWKS URL validated successfully'
-        });
+    validateJwksUrl: jest.fn().mockResolvedValue({
+        valid: true,
+        keyCount: 3,
+        message: 'JWKS URL validated successfully'
     }),
 
-    validateJwksFile: jest.fn().mockImplementation((filePath, successCallback, errorCallback) => {
-    // Mock implementation that simulates a successful response
-        successCallback({
-            valid: true,
-            keyCount: 2,
-            message: 'JWKS file validated successfully'
-        });
+    validateJwksFile: jest.fn().mockResolvedValue({
+        valid: true,
+        keyCount: 2,
+        message: 'JWKS file validated successfully'
     }),
 
-    validateJwksContent: jest.fn().mockImplementation((jwksContent, successCallback, errorCallback) => {
-    // Mock implementation that simulates a successful response
-        successCallback({
-            valid: true,
-            keyCount: 1,
-            message: 'JWKS content validated successfully'
-        });
+    validateJwksContent: jest.fn().mockResolvedValue({
+        valid: true,
+        keyCount: 1,
+        message: 'JWKS content validated successfully'
     }),
 
-    verifyToken: jest.fn().mockImplementation((token, successCallback, errorCallback) => {
-    // Mock implementation that simulates a successful response for a valid token
-    // or an error response for an invalid token
+    verifyToken: jest.fn().mockImplementation((token) => {
+        // Mock implementation that simulates a successful response for a valid token
+        // or an error response for an invalid token
         if (token?.includes('.')) {
-            successCallback({
+            return Promise.resolve({
                 valid: true,
                 subject: 'user123',
                 issuer: 'https://auth.example.com',
@@ -52,7 +43,7 @@ module.exports = {
                 }
             });
         } else {
-            successCallback({
+            return Promise.resolve({
                 valid: false,
                 message: 'Invalid token format',
                 category: 'MALFORMED_TOKEN'
@@ -60,18 +51,23 @@ module.exports = {
         }
     }),
 
-    getSecurityMetrics: jest.fn().mockImplementation((successCallback, errorCallback) => {
-    // Mock implementation that simulates a successful response
-        successCallback({
-            totalRequests: 100,
-            validTokens: 80,
-            invalidTokens: 20,
-            errorsByCategory: {
-                EXPIRED_TOKEN: 10,
-                INVALID_SIGNATURE: 5,
-                MALFORMED_TOKEN: 3,
-                OTHER: 2
-            }
-        });
+    getSecurityMetrics: jest.fn().mockResolvedValue({
+        totalRequests: 100,
+        validTokens: 80,
+        invalidTokens: 20,
+        errorsByCategory: {
+            EXPIRED_TOKEN: 10,
+            INVALID_SIGNATURE: 5,
+            MALFORMED_TOKEN: 3,
+            OTHER: 2
+        }
+    }),
+
+    getProcessorProperties: jest.fn().mockResolvedValue({
+        properties: {}
+    }),
+
+    updateProcessorProperties: jest.fn().mockResolvedValue({
+        properties: {}
     })
 };

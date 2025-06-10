@@ -3,23 +3,24 @@
  */
 
 /* Issuer Configuration Editor */
+
 .issuer-config-editor {
     margin: 15px 0;
     padding: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 5px;
-    background-color: #f9f9f9;
+    background-color: var(--background-color);
 }
 
 .issuer-config-editor h3 {
     margin-top: 0;
     margin-bottom: 10px;
-    color: #333;
+    color: var(--text-color);
 }
 
 .issuer-config-editor p {
     margin-bottom: 15px;
-    color: #666;
+    color: var(--text-color-light);
 }
 
 .issuers-container {
@@ -29,8 +30,8 @@
 .issuer-form {
     margin-bottom: 20px;
     padding: 15px;
-    background-color: #fff;
-    border: 1px solid #ddd;
+    background-color: var(--container-background);
+    border: 1px solid var(--border-color);
     border-radius: 5px;
 }
 
@@ -50,22 +51,22 @@
 .issuer-name {
     margin-left: 10px;
     padding: 5px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 3px;
     width: 200px;
 }
 
 .remove-issuer-button {
     padding: 5px 10px;
-    background-color: #ff4136;
-    color: #fff;
+    background-color: var(--error-color);
+    color: var(--container-background);
     border: none;
     border-radius: 3px;
     cursor: pointer;
 }
 
 .remove-issuer-button:hover {
-    background-color: #e60000;
+    background-color: var(--error-color-dark);
 }
 
 .form-fields {
@@ -85,38 +86,55 @@
 .form-field input {
     width: 100%;
     padding: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 3px;
 }
 
 .field-description {
     margin-top: 5px;
     font-size: 12px;
-    color: #666;
+    color: var(--text-color-light);
 }
 
 .add-issuer-button {
     padding: 8px 15px;
-    background-color: #0074d9;
-    color: #fff;
+    background-color: var(--primary-color);
+    color: var(--container-background);
     border: none;
     border-radius: 3px;
     cursor: pointer;
 }
 
 .add-issuer-button:hover {
-    background-color: #0063b1;
+    background-color: var(--primary-color-dark);
 }
 
 .save-issuer-button {
     padding: 8px 15px;
-    background-color: #2ecc40;
-    color: #fff;
+    background-color: var(--success-color);
+    color: var(--container-background);
     border: none;
     border-radius: 3px;
     cursor: pointer;
 }
 
 .save-issuer-button:hover {
-    background-color: #29b739;
+    background-color: var(--success-color-dark);
+}
+
+/* Message styles */
+
+.success-message {
+    color: var(--success-color);
+    font-weight: bold;
+}
+
+.error-message {
+    color: var(--error-color);
+    font-weight: bold;
+}
+
+.issuer-form-error-messages {
+    color: var(--error-color);
+    margin-top: 10px;
 }

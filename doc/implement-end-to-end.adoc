@@ -115,13 +115,186 @@ Refer to the link:specification/end-to-end-testing.adoc#_cypress_ui_tests[Cypres
 
 ==== Implementation Steps
 
-1. Initialize Cypress in the \`nifi-cuioss-ui\` directory
+1. Initialize Cypress in the new `e-2-e-cypress` module (instead of `nifi-cuioss-ui`)
 2. Set up project structure according to the specification
 3. Configure linting and formatting rules
 4. Create base page objects for NiFi canvas and processor configuration
 5. Implement console error verification system with allowed warnings list
 6. Set up test fixtures directory structure
 7. Create token generation utilities using Keycloak API
+
+==== e-2-e-cypress Module Structure
+
+The `e-2-e-cypress` module will be created as a standalone Maven module with the following structure:
+
+[source]
+----
+e-2-e-cypress/
+├── pom.xml                     # Maven configuration
+├── package.json                # Node/Cypress dependencies
+├── cypress.config.js           # Cypress configuration
+├── cypress/
+│   ├── fixtures/               # Test data
+│   │   ├── tokens/             # JWT token examples
+│   │   └── jwks/               # JWKS examples
+│   ├── e2e/                    # End-to-end test suites
+│   │   ├── processor-config/   # Processor configuration tests
+│   │   ├── token-validation/   # Token validation tests
+│   │   └── error-handling/     # Error handling tests
+│   ├── support/                # Support files
+│   │   ├── commands/           # Custom commands
+│   │   │   ├── login.js        # Login commands
+│   │   │   ├── navigation.js   # Navigation commands
+│   │   │   ├── processor.js    # Processor configuration commands
+│   │   │   └── validation.js   # Validation-specific commands
+│   │   ├── commands.js         # Main commands file
+│   │   ├── e2e.js              # e2e support file
+│   │   └── console-error-tracking.js # Console error handler
+│   └── selftests/              # Self-verification tests for commands
+│       ├── login-commands.cy.js # Tests for login commands
+│       ├── navigation-commands.cy.js # Tests for navigation commands
+│       └── processor-commands.cy.js # Tests for processor commands
+└── tests-report/               # Test report output directory
+----
+
+==== Cypress Custom Commands with Self-Verification
+
+The module will implement a comprehensive set of Cypress custom commands that abstract common operations in the NiFi UI. Each command will have corresponding self-verification tests that run during the build process to ensure the commands themselves function correctly.
+
+===== Command Categories
+
+1. *Login Commands*
+   * `cy.nifiLogin(username, password)` - Login to NiFi UI
+   * `cy.keycloakLogin(username, password)` - Login to Keycloak
+   * `cy.verifyLoggedIn()` - Verify successful login state
+
+2. *Navigation Commands*
+   * `cy.navigateToCanvas()` - Navigate to NiFi canvas
+   * `cy.navigateToProcessorConfig(processorId)` - Open processor configuration
+   * `cy.navigateToControllerServices()` - Navigate to controller services
+
+3. *Processor Commands*
+   * `cy.addProcessor(type, position)` - Add processor to canvas
+   * `cy.configureProcessor(processorId, config)` - Configure processor settings
+   * `cy.verifyProcessorProperties(processorId, expectedProps)` - Verify processor properties
+
+4. *JWT Token Commands*
+   * `cy.generateToken(claims)` - Generate JWT token with specific claims
+   * `cy.verifyTokenValidation(tokenId)` - Verify token validation results
+
+===== Self-Verification Tests
+
+Each custom command will have a corresponding self-verification test in the `cypress/selftests/` directory. These tests will:
+
+1. Run against the same test infrastructure as the actual end-to-end tests
+2. Verify that the commands operate correctly in isolation
+3. Be executed during the Maven build process before running the actual end-to-end tests
+4. Generate detailed reports to identify any command failures early
+
+[source,javascript]
+----
+// Example self-verification test structure (cypress/selftests/login-commands.cy.js)
+describe('Login Commands Self-Verification', () => {
+  beforeEach(() => {
+    // Setup test environment
+  });
+
+  it('should login to NiFi UI successfully', () => {
+    cy.nifiLogin('admin', 'adminadminadmin');
+    cy.verifyLoggedIn();
+  });
+
+  it('should handle failed login attempts', () => {
+    cy.nifiLogin('wrong', 'credentials')
+      .should('not.succeed');
+    cy.get('.login-error').should('be.visible');
+  });
+});
+----
+
+===== Maven Integration for Self-Tests
+
+The `pom.xml` for the `e-2-e-cypress` module will be configured to run the self-verification tests as part of the build process:
+
+1. Self-tests will run before the actual end-to-end tests
+2. Self-tests will use a dedicated Cypress configuration
+3. Failed self-tests will fail the build to ensure command integrity
+4. Reports will be generated to detail command performance and reliability
+
+This approach ensures that the custom commands maintain their reliability over time and prevents build breakage due to command implementation issues.
+
+==== JavaScript Code Standards and Structure
+
+The `e-2-e-cypress` module must maintain the same JavaScript code standards and structure as the existing `nifi-cuioss-ui` module to ensure consistency across the codebase. This includes:
+
+1. *Code Style and Linting*
+   * Use ESLint with the same configuration as `nifi-cuioss-ui`
+   * Follow the same code formatting rules using Prettier
+   * Maintain consistent naming conventions for variables, functions, and files
+
+2. *Testing Framework Configuration*
+   * Configure Jest for unit testing custom utilities
+   * Set up Cypress with the same reporting structure
+   * Maintain the same test directory organization
+
+3. *Code Coverage Requirements*
+   * Configure Istanbul/nyc for code coverage reporting
+   * Maintain minimum 80% test coverage for all custom JavaScript utilities
+   * Generate coverage reports in the same format as `nifi-cuioss-ui`
+
+4. *JavaScript Features and Compatibility*
+   * Use the same Babel configuration to ensure consistent transpilation
+   * Target the same browser compatibility as defined in `nifi-cuioss-ui`
+   * Use ES6+ features consistent with the existing codebase
+
+The module should include the following configuration files that mirror those in `nifi-cuioss-ui`:
+
+[source]
+----
+e-2-e-cypress/
+├── .eslintrc.js                # ESLint configuration matching nifi-cuioss-ui
+├── .prettierrc                 # Prettier configuration
+├── babel.config.js             # Babel configuration
+├── jest.config.js              # Jest configuration for unit tests
+├── cypress.config.js           # Cypress configuration
+└── package.json                # NPM dependencies and scripts
+----
+
+===== Integration with Existing Code Standards
+
+To ensure integration with existing code standards:
+
+1. Copy the relevant configuration files from `nifi-cuioss-ui` as a starting point
+2. Update paths and module-specific settings as needed
+3. Include the same NPM scripts for linting, testing, and coverage reporting
+4. Configure the same pre-commit hooks for code quality checks
+
+===== Code Coverage Configuration
+
+The coverage configuration should include:
+
+[source,javascript]
+----
+// Example jest.config.js for unit tests
+module.exports = {
+  collectCoverage: true,
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html'],
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
+    }
+  },
+  // Additional configuration matching nifi-cuioss-ui
+};
+----
+
+The Cypress tests should also be configured to generate coverage reports using the same tools and thresholds as the existing UI code.
+
+This approach ensures that all JavaScript code, including the end-to-end tests and custom utilities, maintains the same quality standards and consistency across the project.
 
 === Phase 3: Basic Test Implementation
 
@@ -255,8 +428,8 @@ Follow these steps to implement the console error verification system:
 
 [source,bash]
 ----
-mkdir -p nifi-cuioss-ui/cypress/support
-touch nifi-cuioss-ui/cypress/support/console-warnings-allowlist.js
+mkdir -p e-2-e-cypress/cypress/support
+touch e-2-e-cypress/cypress/support/console-warnings-allowlist.js
 ----
 
 2. Implement the allowlist with initial known warnings:
@@ -275,7 +448,7 @@ module.exports = [
 
 [source,bash]
 ----
-touch nifi-cuioss-ui/cypress/support/console-error-tracking.js
+touch e-2-e-cypress/cypress/support/console-error-tracking.js
 ----
 
 4. Add the console error tracking implementation as specified in the link:specification/end-to-end-testing.adoc#_console_error_verification[Console Error Verification] section.
@@ -284,12 +457,95 @@ touch nifi-cuioss-ui/cypress/support/console-error-tracking.js
 
 To integrate with Maven, follow these steps:
 
-1. Configure the \`frontend-maven-plugin\` in the \`nifi-cuioss-ui/pom.xml\` file
-2. Add the necessary NPM scripts to \`package.json\`
+1. Configure the `frontend-maven-plugin` in the `e-2-e-cypress/pom.xml` file
+2. Add the necessary NPM scripts to `package.json`
 3. Configure the Maven Failsafe plugin for integration testing
 4. Set up system properties for test environment URLs
 
-Refer to the link:specification/end-to-end-testing.adoc#_maven_integration[Maven Integration] section for detailed configuration examples.
+=== Maven Configuration for Self-Verification Tests
+
+For proper integration of the self-verification tests, include the following configuration in the module's `pom.xml`:
+
+[source,xml]
+----
+<plugin>
+  <groupId>com.github.eirslett</groupId>
+  <artifactId>frontend-maven-plugin</artifactId>
+  <executions>
+    <!-- Standard npm and node setup -->
+    <execution>
+      <id>install-node-and-npm</id>
+      <!-- ... -->
+    </execution>
+    <!-- Run self-verification tests first -->
+    <execution>
+      <id>cypress-selftests</id>
+      <goals>
+        <goal>npm</goal>
+      </goals>
+      <phase>pre-integration-test</phase>
+      <configuration>
+        <arguments>run cypress:selftests</arguments>
+        <environmentVariables>
+          <CYPRESS_BASE_URL>https://localhost:8443/nifi</CYPRESS_BASE_URL>
+          <CYPRESS_KEYCLOAK_URL>https://localhost:8443/auth</CYPRESS_KEYCLOAK_URL>
+        </environmentVariables>
+        <failOnError>true</failOnError>
+      </configuration>
+    </execution>
+    <!-- Run actual E2E tests only if self-tests pass -->
+    <execution>
+      <id>cypress-e2e</id>
+      <goals>
+        <goal>npm</goal>
+      </goals>
+      <phase>integration-test</phase>
+      <configuration>
+        <arguments>run cypress:run</arguments>
+        <!-- ... -->
+      </configuration>
+    </execution>
+  </executions>
+</plugin>
+----
+
+The corresponding NPM scripts in `package.json`:
+
+[source,json]
+----
+{
+  "scripts": {
+    "cypress:selftests": "cypress run --config-file cypress.selftests.config.js",
+    "cypress:run": "cypress run",
+    "cypress:open": "cypress open"
+  }
+}
+----
+
+With a special self-tests configuration file (`cypress.selftests.config.js`):
+
+[source,javascript]
+----
+const { defineConfig } = require('cypress');
+
+module.exports = defineConfig({
+  e2e: {
+    specPattern: 'cypress/selftests/**/*.cy.js',
+    supportFile: 'cypress/support/e2e.js',
+    // Set shorter timeouts for self-tests as they should be fast
+    defaultCommandTimeout: 5000,
+    video: false,
+    // Generate a separate report for self-tests
+    reporter: 'junit',
+    reporterOptions: {
+      mochaFile: 'tests-report/selftests-[hash].xml',
+      toConsole: true
+    }
+  }
+});
+----
+
+Refer to the link:specification/end-to-end-testing.adoc#_maven_integration[Maven Integration] section for additional configuration examples.
 
 == CI/CD Integration
 

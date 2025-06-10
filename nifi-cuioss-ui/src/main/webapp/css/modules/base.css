@@ -3,8 +3,9 @@
  */
 
 /* Base styles */
+
 body {
-    font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif;
     margin: 0;
     padding: 20px;
     background-color: var(--background-color);
@@ -13,16 +14,18 @@ body {
 }
 
 /* Container styles */
+
 #jwt-validator-container {
     max-width: 1200px;
     margin: 0 auto;
     background-color: var(--container-background);
     border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 12%), 0 1px 2px rgb(0 0 0 / 24%);
     padding: 20px;
 }
 
-/* Loading indicator */
+/* Loading indicators and animations */
+
 #loading-indicator {
     text-align: center;
     padding: 20px;
@@ -30,7 +33,469 @@ body {
     color: var(--text-color-light);
 }
 
+/* Enhanced loading spinner animation */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+@keyframes fadeInOut {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+}
+
+/* Loading spinner styles */
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    border-top-color: var(--primary-color);
+    animation: spin 1s ease-in-out infinite;
+    margin-right: 8px;
+}
+
+.loading-spinner.large {
+    width: 24px;
+    height: 24px;
+    border-width: 3px;
+}
+
+/* Loading text animation */
+.loading-text {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Button loading states */
+button.loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+}
+
+button.loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid transparent;
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Loading overlay for sections */
+.loading-overlay {
+    position: relative;
+}
+
+.loading-overlay::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: inherit;
+}
+
+.loading-overlay::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    margin: -12px 0 0 -12px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    z-index: 11;
+}
+
+/* Skeleton loading placeholders */
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading-shimmer 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes loading-shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.skeleton-text {
+    height: 1em;
+    margin: 0.5em 0;
+}
+
+.skeleton-text.short { width: 60%; }
+.skeleton-text.medium { width: 80%; }
+.skeleton-text.long { width: 100%; }
+
+/* Keyboard shortcuts UI */
+
+kbd {
+    display: inline-block;
+    padding: 2px 6px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #555;
+    vertical-align: middle;
+    background-color: #fcfcfc;
+    border: solid 1px #ccc;
+    border-bottom-color: #bbb;
+    border-radius: 3px;
+    box-shadow: inset 0 -1px 0 #bbb;
+    font-family: monospace;
+}
+
+.keyboard-shortcuts-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.keyboard-shortcuts-modal .modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+}
+
+.keyboard-shortcuts-modal .modal-content {
+    position: relative;
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.keyboard-shortcuts-help h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: var(--text-color);
+}
+
+.shortcuts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.shortcut-group h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: var(--primary-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
+
+.shortcut-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.shortcut-item:last-child {
+    border-bottom: none;
+}
+
+.close-help-btn {
+    margin-top: 20px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.close-help-btn:hover {
+    background-color: var(--primary-color-dark);
+}
+
+/* Action feedback toast */
+.keyboard-action-feedback {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 10000;
+    font-size: 14px;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.keyboard-action-feedback.fade-out {
+    opacity: 0;
+}
+
+/* Shortcuts hint */
+.shortcuts-hint {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #333;
+    color: white;
+    padding: 12px 16px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 9998;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.shortcuts-hint.fade-out {
+    opacity: 0;
+}
+
+.close-hint {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-hint:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+}
+
+/* Confirmation dialogs */
+
+.confirmation-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.confirmation-dialog.show {
+    opacity: 1;
+}
+
+.confirmation-dialog .dialog-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+}
+
+.confirmation-dialog .dialog-content {
+    position: relative;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    max-width: 480px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: hidden;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.confirmation-dialog.show .dialog-content {
+    transform: scale(1);
+}
+
+.confirmation-dialog .dialog-header {
+    padding: 24px 24px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.confirmation-dialog .dialog-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.confirmation-dialog .dialog-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+}
+
+.confirmation-dialog .dialog-body {
+    padding: 16px 24px;
+}
+
+.confirmation-dialog .dialog-message {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #555;
+}
+
+.confirmation-dialog .dialog-footer {
+    padding: 16px 24px 24px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.confirmation-dialog .cancel-button,
+.confirmation-dialog .confirm-button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    min-width: 80px;
+}
+
+.confirmation-dialog .cancel-button {
+    background-color: #f5f5f5;
+    color: #666;
+    border: 1px solid #ddd;
+}
+
+.confirmation-dialog .cancel-button:hover {
+    background-color: #e8e8e8;
+}
+
+.confirmation-dialog .cancel-button:active {
+    transform: translateY(1px);
+}
+
+.confirmation-dialog .confirm-button {
+    color: white;
+    font-weight: 600;
+}
+
+.confirmation-dialog .danger-button {
+    background-color: #dc3545;
+}
+
+.confirmation-dialog .danger-button:hover {
+    background-color: #c82333;
+}
+
+.confirmation-dialog .danger-button:focus {
+    outline: 2px solid #dc3545;
+    outline-offset: 2px;
+}
+
+.confirmation-dialog .warning-button {
+    background-color: #fd7e14;
+}
+
+.confirmation-dialog .warning-button:hover {
+    background-color: #e76500;
+}
+
+.confirmation-dialog .warning-button:focus {
+    outline: 2px solid #fd7e14;
+    outline-offset: 2px;
+}
+
+.confirmation-dialog .info-button {
+    background-color: #0d6efd;
+}
+
+.confirmation-dialog .info-button:hover {
+    background-color: #0b5ed7;
+}
+
+.confirmation-dialog .info-button:focus {
+    outline: 2px solid #0d6efd;
+    outline-offset: 2px;
+}
+
+.confirmation-dialog .confirm-button:active {
+    transform: translateY(1px);
+}
+
+/* Dialog type variants */
+.confirmation-dialog.dialog-danger .dialog-header {
+    border-bottom-color: #dc3545;
+}
+
+.confirmation-dialog.dialog-danger .dialog-title {
+    color: #dc3545;
+}
+
+.confirmation-dialog.dialog-warning .dialog-header {
+    border-bottom-color: #fd7e14;
+}
+
+.confirmation-dialog.dialog-warning .dialog-title {
+    color: #fd7e14;
+}
+
+.confirmation-dialog.dialog-info .dialog-header {
+    border-bottom-color: #0d6efd;
+}
+
+.confirmation-dialog.dialog-info .dialog-title {
+    color: #0d6efd;
+}
+
 /* Form elements */
+
 input, select, textarea {
     width: 100%;
     padding: 8px 12px;
@@ -43,7 +508,7 @@ input, select, textarea {
 
 button {
     background-color: var(--button-color);
-    color: white;
+    color: #fff;
     padding: 10px 15px;
     margin: 8px 0;
     border: none;
@@ -57,6 +522,7 @@ button:hover {
 }
 
 /* Help tooltip */
+
 .help-tooltip {
     margin-left: 5px;
     color: var(--text-color-light);
@@ -64,30 +530,220 @@ button:hover {
 }
 
 /* Property labels */
+
 .property-label {
     font-weight: bold;
     margin-bottom: 5px;
 }
 
 /* Error messages */
+
 .error-message {
     color: var(--error-color);
     background-color: #ffebee;
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 10px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    border: 1px solid #ffcccb;
+    box-shadow: 0 2px 4px rgba(255, 0, 0, 0.1);
+    position: relative;
+    animation: errorSlideIn 0.3s ease-out;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.error-message::before {
+    content: '⚠️';
+    flex-shrink: 0;
+    font-size: 16px;
+    margin-top: 1px;
+}
+
+.error-message.closable {
+    padding-right: 40px;
+}
+
+.error-message .close-error {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: var(--error-color);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+
+.error-message .close-error:hover {
+    background-color: rgba(255, 0, 0, 0.1);
+}
+
+@keyframes errorSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Error types */
+.error-message.validation-error {
+    background-color: #fff3e0;
+    border-color: #ffcc80;
+    color: #f57f17;
+}
+
+.error-message.validation-error::before {
+    content: '📝';
+}
+
+.error-message.network-error {
+    background-color: #f3e5f5;
+    border-color: #ce93d8;
+    color: #7b1fa2;
+}
+
+.error-message.network-error::before {
+    content: '🌐';
+}
+
+.error-message.server-error {
+    background-color: #ffebee;
+    border-color: #ef9a9a;
+    color: #c62828;
+}
+
+.error-message.server-error::before {
+    content: '🔥';
+}
+
+/* Global error container positioning */
+.global-error-messages {
+    position: sticky;
+    top: 10px;
+    z-index: 100;
+    margin-bottom: 20px;
+}
+
+/* Form-specific error containers */
+.issuer-form-error-messages {
+    margin-top: 15px;
+    padding: 0;
+    border-radius: 6px;
+    background-color: transparent;
 }
 
 /* Success messages */
+
 .success-message {
     color: var(--success-color);
     background-color: #e8f5e9;
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 10px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    border: 1px solid #a5d6a7;
+    box-shadow: 0 2px 4px rgba(0, 128, 0, 0.1);
+    position: relative;
+    animation: successSlideIn 0.3s ease-out;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.success-message::before {
+    content: '✅';
+    flex-shrink: 0;
+    font-size: 16px;
+    margin-top: 1px;
+}
+
+.success-message.auto-dismiss {
+    animation: successSlideIn 0.3s ease-out, successFadeOut 0.5s ease-in 4.5s forwards;
+}
+
+@keyframes successSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes successFadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
+/* Info messages */
+.info-message {
+    color: #1976d2;
+    background-color: #e3f2fd;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    border: 1px solid #90caf9;
+    box-shadow: 0 2px 4px rgba(0, 0, 255, 0.1);
+    position: relative;
+    animation: errorSlideIn 0.3s ease-out;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.info-message::before {
+    content: 'ℹ️';
+    flex-shrink: 0;
+    font-size: 16px;
+    margin-top: 1px;
+}
+
+/* Warning messages */
+.warning-message {
+    color: #f57f17;
+    background-color: #fffde7;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    border: 1px solid #fff176;
+    box-shadow: 0 2px 4px rgba(255, 193, 7, 0.1);
+    position: relative;
+    animation: errorSlideIn 0.3s ease-out;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.warning-message::before {
+    content: '⚠️';
+    flex-shrink: 0;
+    font-size: 16px;
+    margin-top: 1px;
 }
 
 /* Help text and tooltips */
+
 .help-text {
     margin: 10px 0;
     padding: 10px;
@@ -99,6 +755,7 @@ button:hover {
 }
 
 /* Custom tabs */
+
 .custom-tabs {
     margin-top: 20px;
     border: 1px solid var(--border-color);
@@ -149,6 +806,7 @@ button:hover {
 }
 
 /* Custom components */
+
 .custom-component {
     margin-bottom: 20px;
     padding: 15px;
