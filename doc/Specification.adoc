@@ -50,7 +50,6 @@ The MultiIssuerJWTTokenAuthenticator uses the following key dependencies:
 * cui-test-mockwebserver-junit5 (for unit testing JWKS endpoints)
 * cui-test-keycloak-integration (for integration testing with real tokens)
 * JUnit 5 with JUnit Jupiter for modern testing approaches
-* Mockito for mocking dependencies during testing
 
 These libraries provide a robust foundation for implementing and testing JWT authentication in NiFi 2.4.0 environments.
 

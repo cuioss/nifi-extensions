@@ -58,7 +58,7 @@ import static de.cuioss.nifi.processors.auth.JWTTranslationKeys.Validation;
 @Tags({"jwt", "oauth", "authentication", "authorization", "security", "token"})
 @CapabilityDescription("Validates JWT tokens from multiple issuers. Extracts JWT tokens from flow files, " +
     "validates them against configured issuers, and routes flow files based on validation results.")
-@SeeAlso({})
+@SeeAlso()
 @ReadsAttributes({
     @ReadsAttribute(attribute = "http.headers.authorization", description = "HTTP Authorization header containing the JWT token")
 })
@@ -793,7 +793,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         // Extract token from flow file
         String tokenLocation = context.getProperty(Properties.TOKEN_LOCATION).getValue();
-        String token = null;
+        String token;
 
         // Extract token based on configured location
         try {

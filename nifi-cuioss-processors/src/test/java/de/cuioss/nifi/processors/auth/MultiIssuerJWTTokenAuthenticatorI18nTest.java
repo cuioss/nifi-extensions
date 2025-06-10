@@ -91,9 +91,7 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
 
         // Create a very large token (exceeding the default 16384 byte limit)
         StringBuilder largeToken = new StringBuilder("Bearer ");
-        for (int i = 0; i < 20000; i++) {
-            largeToken.append("X");
-        }
+        largeToken.append("X".repeat(20000));
 
         // Make sure the header name matches what the processor is looking for
         attributes.put("http.headers.authorization", largeToken.toString());

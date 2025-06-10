@@ -15,12 +15,9 @@
  */
 package de.cuioss.nifi.processors.auth.i18n;
 
-import org.apache.nifi.logging.ComponentLog;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 import java.util.Locale;
 
@@ -32,15 +29,11 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Tests for NiFiI18nResolver")
 class NiFiI18nResolverTest {
 
-    @Mock
-    private ComponentLog logger;
-
     private I18nResolver defaultResolver;
     private I18nResolver germanResolver;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
         // Explicitly use English locale for default resolver to ensure consistent test results
         defaultResolver = NiFiI18nResolver.createResolver(Locale.ENGLISH);
         germanResolver = NiFiI18nResolver.createResolver(Locale.GERMAN);

@@ -50,7 +50,7 @@ import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Properties;
  */
 @Tags({"jwt", "oauth", "authentication", "authorization", "security", "token"})
 @CapabilityDescription("Extracts JWT tokens from flow files and routes them based on validation results.")
-@SeeAlso({})
+@SeeAlso()
 @ReadsAttributes({
         @ReadsAttribute(attribute = "http.headers.authorization", description = "HTTP Authorization header containing the JWT token")
 })
@@ -99,7 +99,7 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
 
         // Extract token from flow file
         String tokenLocation = context.getProperty(Properties.TOKEN_LOCATION).getValue();
-        String token = null;
+        String token;
 
         try {
             // Extract token based on configured location
