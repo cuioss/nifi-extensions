@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 
@@ -84,7 +85,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private static final CuiLogger LOGGER = new CuiLogger(MultiIssuerJWTTokenAuthenticator.class);
 
     // TokenValidator instance for token validation
-    private volatile TokenValidator tokenValidator;
+    private final AtomicReference<TokenValidator> tokenValidator = new AtomicReference<>();
 
     // Security event counter for tracking validation events
     private SecurityEventCounter securityEventCounter;
@@ -93,7 +94,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private final Object tokenValidatorLock = new Object();
 
     // Counter for tracking when to log metrics
-    private volatile long processedFlowFilesCount = 0;
+    private final AtomicLong processedFlowFilesCount = new AtomicLong();
     private static final long LOG_METRICS_INTERVAL = 100; // Log metrics every 100 flow files
 
     // Configuration manager for static files and environment variables
@@ -229,7 +230,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     protected void init(final ProcessorInitializationContext context) {
         // Initialize i18n resolver
         i18nResolver = NiFiI18nResolver.createDefault(context.getLogger());
-        
+
         LOGGER.info("Initializing MultiIssuerJWTTokenAuthenticator processor");
 
         final List<PropertyDescriptor> descriptors = new ArrayList<>();
@@ -249,8 +250,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         relationships.add(SUCCESS);
         relationships.add(AUTHENTICATION_FAILED);
         this.relationships = relationships;
-        
-        LOGGER.info("MultiIssuerJWTTokenAuthenticator processor initialized with {} property descriptors", 
+
+        LOGGER.info("MultiIssuerJWTTokenAuthenticator processor initialized with {} property descriptors",
                 descriptors.size());
     }
 
@@ -326,7 +327,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     /**
      * Initializes the TokenValidator when the processor is scheduled.
-     * 
+     *
      * @param context The process context
      */
     @OnScheduled
@@ -353,9 +354,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     @OnStopped
     public void onStopped() {
         synchronized (tokenValidatorLock) {
-            if (tokenValidator != null) {
+            if (tokenValidator.get() != null) {
                 // No explicit cleanup needed for TokenValidator in current version
-                tokenValidator = null;
+                tokenValidator.set(null);
                 securityEventCounter = null;
                 LOGGER.info(AuthLogMessages.INFO.PROCESSOR_STOPPED.format());
             }
@@ -368,7 +369,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     /**
      * Gets or creates the TokenValidator instance.
-     * 
+     *
      * @param context The process context
      * @return The TokenValidator instance
      */
@@ -387,14 +388,14 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         String currentConfigHash = generateConfigurationHash(context);
 
         // Check if configuration has changed
-        if (tokenValidator == null || !configurationHash.get().equals(currentConfigHash) || configFileChanged) {
+        if (tokenValidator.get() == null || !configurationHash.get().equals(currentConfigHash) || configFileChanged) {
             synchronized (tokenValidatorLock) {
                 // Double-check inside synchronized block
-                if (tokenValidator == null || !configurationHash.get().equals(currentConfigHash) || configFileChanged) {
+                if (tokenValidator.get() == null || !configurationHash.get().equals(currentConfigHash) || configFileChanged) {
                     LOGGER.info(AuthLogMessages.INFO.CONFIG_CHANGE_DETECTED.format());
 
                     // Log what changed if this is a reconfiguration (not initial setup)
-                    if (tokenValidator != null) {
+                    if (tokenValidator.get() != null) {
                         LOGGER.info(AuthLogMessages.INFO.CONFIG_HASH_CHANGED.format(
                                 configurationHash.get(), currentConfigHash));
 
@@ -407,10 +408,11 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
                     // Create a new TokenValidator with issuer configurations
                     // The TokenValidator creates a SecurityEventCounter internally
-                    tokenValidator = new TokenValidator(issuerConfigs.toArray(new IssuerConfig[0]));
+                    TokenValidator newValidator = new TokenValidator(issuerConfigs.toArray(new IssuerConfig[0]));
+                    tokenValidator.set(newValidator);
 
                     // Get the SecurityEventCounter for metrics
-                    securityEventCounter = tokenValidator.getSecurityEventCounter();
+                    securityEventCounter = tokenValidator.get().getSecurityEventCounter();
 
                     // Update configuration hash
                     configurationHash.set(currentConfigHash);
@@ -423,7 +425,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             }
         }
 
-        return tokenValidator;
+        return tokenValidator.get();
     }
 
     /**
@@ -434,13 +436,13 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         LOGGER.info(AuthLogMessages.INFO.CLEANING_RESOURCES.format());
 
         // Clean up TokenValidator resources if needed
-        if (tokenValidator != null) {
+        if (tokenValidator.get() != null) {
             try {
                 // Note: The current TokenValidator implementation doesn't have explicit cleanup methods
                 // If future versions add cleanup methods, they should be called here
 
                 // For now, we just null out the references to allow garbage collection
-                tokenValidator = null;
+                tokenValidator.set(null);
                 securityEventCounter = null;
             } catch (Exception e) {
                 LOGGER.warn(AuthLogMessages.WARN.RESOURCE_CLEANUP_ERROR.format(e.getMessage()));
@@ -454,7 +456,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     /**
      * Generates a hash of the current configuration.
-     * 
+     *
      * @param context The process context
      * @return A hash string representing the current configuration
      */
@@ -507,7 +509,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     /**
      * Creates issuer configurations based on processor properties and external configuration.
-     * 
+     *
      * @param context The process context
      * @return A list of issuer configurations
      */
@@ -623,7 +625,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     /**
      * Generates a hash for an issuer's properties to detect changes.
-     * 
+     *
      * @param properties The issuer properties
      * @return A hash string representing the properties
      */
@@ -646,7 +648,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     /**
      * Validates an issuer configuration.
-     * 
+     *
      * @param issuerName The name of the issuer
      * @param properties The properties for the issuer
      * @param context The process context
@@ -692,7 +694,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     /**
      * Creates an IssuerConfig object from the given properties.
-     * 
+     *
      * @param issuerName The name of the issuer
      * @param properties The properties for the issuer
      * @param context The process context
@@ -741,10 +743,10 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         }
 
         // Increment the processed flow files count
-        processedFlowFilesCount++;
+        processedFlowFilesCount.incrementAndGet();
 
         // Log metrics periodically
-        if (processedFlowFilesCount % LOG_METRICS_INTERVAL == 0) {
+        if (processedFlowFilesCount.intValue() % LOG_METRICS_INTERVAL == 0) {
             logSecurityMetrics();
         }
 
@@ -881,7 +883,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     /**
      * Extracts a token from a header in the flow file.
-     * 
+     *
      * @param flowFile The flow file containing the header
      * @param headerName The name of the header containing the token
      * @return The extracted token, or null if not found
@@ -904,7 +906,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     /**
      * Extracts a token from the content of the flow file.
-     * 
+     *
      * @param flowFile The flow file containing the token
      * @param session The process session
      * @return The extracted token, or null if not found
@@ -926,7 +928,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     /**
      * Validates a token using the TokenValidator from cui-jwt-validation.
-     * 
+     *
      * @param tokenString The JWT token string to validate
      * @param context The process context
      * @return The parsed token if valid
@@ -941,7 +943,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     /**
      * Extracts claims from a token and converts them to a map of attributes.
-     * 
+     *
      * @param token The parsed access token
      * @return A map of claim names to string values
      */
