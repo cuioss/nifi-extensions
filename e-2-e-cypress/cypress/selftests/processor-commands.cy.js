@@ -106,7 +106,11 @@ describe('Processor Commands Self-Verification', () => {
         .contains('File Size')
         .parents('.processor-property-row')
         .find('input')
-        .clear()
+        .clear();
+      cy.get('.processor-property-name')
+        .contains('File Size')
+        .parents('.processor-property-row')
+        .find('input')
         .type('invalid-size');
 
       // Apply and check for validation errors

@@ -46,7 +46,11 @@ describe('JWKS Validation E2E Tests', () => {
         .contains('JWKS URL')
         .parents('.processor-property-row')
         .find('input')
-        .clear()
+        .clear();
+      cy.get('.processor-property-name')
+        .contains('JWKS URL')
+        .parents('.processor-property-row')
+        .find('input')
         .type(invalidJwksUrl);
 
       // Apply configuration
@@ -128,7 +132,11 @@ describe('JWKS Validation E2E Tests', () => {
         .contains('JWKS Content')
         .parents('.processor-property-row')
         .find('textarea')
-        .clear()
+        .clear();
+      cy.get('.processor-property-name')
+        .contains('JWKS Content')
+        .parents('.processor-property-row')
+        .find('textarea')
         .type(invalidJwksContent);
 
       // Apply configuration

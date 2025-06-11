@@ -14,8 +14,10 @@ Cypress.Commands.add('nifiLogin', (username, password) => {
   cy.get('input[id$="username"]').should('be.visible');
 
   // Fill in username and password
-  cy.get('input[id$="username"]').clear().type(username);
-  cy.get('input[id$="password"]').clear().type(password);
+  cy.get('input[id$="username"]').clear();
+  cy.get('input[id$="username"]').type(username);
+  cy.get('input[id$="password"]').clear();
+  cy.get('input[id$="password"]').type(password);
 
   // Click login button
   cy.get('input[value="Login"]').click();
@@ -39,8 +41,10 @@ Cypress.Commands.add('keycloakLogin', (username, password) => {
   cy.get('body').then(($body) => {
     if ($body.find('#kc-login-form').length > 0) {
       // Not logged in, fill form
-      cy.get('#username').clear().type(username);
-      cy.get('#password').clear().type(password);
+      cy.get('#username').clear();
+      cy.get('#username').type(username);
+      cy.get('#password').clear();
+      cy.get('#password').type(password);
       cy.get('#kc-login').click();
     }
   });

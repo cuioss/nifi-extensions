@@ -45,7 +45,8 @@ Cypress.Commands.add('verifyTokenValidation', (processorId, tokenId) => {
   cy.get('.processor-configuration-tab').contains('Token Validation').click();
 
   // Enter the token in the validation input
-  cy.get('#token-validation-input').clear().type(tokenId);
+  cy.get('#token-validation-input').clear();
+  cy.get('#token-validation-input').type(tokenId);
 
   // Click the validate button
   cy.get('#validate-token-button').click();

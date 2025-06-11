@@ -42,7 +42,8 @@ Cypress.Commands.add('configureProcessor', (processorId, config) => {
 
   // Configure based on the provided settings
   if (config.name) {
-    cy.get('input[id$="processor-name"]').clear().type(config.name);
+    cy.get('input[id$="processor-name"]').clear();
+    cy.get('input[id$="processor-name"]').type(config.name);
   }
 
   // Handle processor properties if provided
@@ -57,7 +58,11 @@ Cypress.Commands.add('configureProcessor', (processorId, config) => {
         .contains(key)
         .parents('.processor-property-row')
         .find('input, select, textarea')
-        .clear()
+        .clear();
+      cy.get('.processor-property-name')
+        .contains(key)
+        .parents('.processor-property-row')
+        .find('input, select, textarea')
         .type(value);
     });
   }

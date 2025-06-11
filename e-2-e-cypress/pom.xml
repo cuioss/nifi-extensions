@@ -45,6 +45,17 @@
                             <arguments>install</arguments>
                         </configuration>
                     </execution>
+                    <!-- Run linting to check code quality -->
+                    <execution>
+                        <id>npm-lint</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>test</phase>
+                        <configuration>
+                            <arguments>run lint:check</arguments>
+                        </configuration>
+                    </execution>
                     <!-- Run self-verification tests first -->
                     <execution>
                         <id>cypress-selftests</id>

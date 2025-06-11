@@ -90,7 +90,11 @@ describe('Processor Configuration E2E Tests', () => {
         .contains('JWKS URL')
         .parents('.processor-property-row')
         .find('input')
-        .clear()
+        .clear();
+      cy.get('.processor-property-name')
+        .contains('JWKS URL')
+        .parents('.processor-property-row')
+        .find('input')
         .type('invalid-url');
 
       // Apply configuration

@@ -29,8 +29,10 @@ describe('Login Commands Self-Verification', () => {
     cy.get('input[id$="username"]').should('be.visible');
 
     // Try to login with invalid credentials
-    cy.get('input[id$="username"]').clear().type('invalid');
-    cy.get('input[id$="password"]').clear().type('invalid');
+    cy.get('input[id$="username"]').clear();
+    cy.get('input[id$="username"]').type('invalid');
+    cy.get('input[id$="password"]').clear();
+    cy.get('input[id$="password"]').type('invalid');
     cy.get('input[value="Login"]').click();
 
     // Should remain on login page or show error

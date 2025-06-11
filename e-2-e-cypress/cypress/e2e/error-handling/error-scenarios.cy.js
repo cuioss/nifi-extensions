@@ -71,7 +71,11 @@ describe('Error Handling E2E Tests', () => {
         .contains('JWKS File Path')
         .parents('.processor-property-row')
         .find('input')
-        .clear()
+        .clear();
+      cy.get('.processor-property-name')
+        .contains('JWKS File Path')
+        .parents('.processor-property-row')
+        .find('input')
         .type('/nonexistent/path/to/jwks.json');
 
       // Apply configuration
@@ -107,7 +111,11 @@ describe('Error Handling E2E Tests', () => {
         .contains('JWKS Content')
         .parents('.processor-property-row')
         .find('textarea')
-        .clear()
+        .clear();
+      cy.get('.processor-property-name')
+        .contains('JWKS Content')
+        .parents('.processor-property-row')
+        .find('textarea')
         .type(malformedJson);
 
       // Apply configuration
