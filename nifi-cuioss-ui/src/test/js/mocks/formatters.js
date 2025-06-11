@@ -14,7 +14,7 @@ module.exports = {
             }
             return date.toLocaleString();
         } catch (e) {
-            // Return the original string without logging an error
+            console.error('Error formatting date:', e);
             return dateString;
         }
     }),
@@ -74,19 +74,20 @@ module.exports = {
                     payload = JSON.stringify(decodedPayload, null, 2);
                 }
             } catch (e) {
-                // Return the original parts without logging an error
+                console.error('Error decoding JWT token parts:', e);
             }
 
             return { header, payload, signature };
         } catch (e) {
-            // Return empty parts without logging an error
+            console.error('Error processing JWT token:', e);
             return { header: '', payload: '', signature: '' };
         }
     }),
 
     formatNumber: jest.fn().mockImplementation(number => {
         if (number === undefined || number === null) return '';
-        return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        // Use Intl.NumberFormat instead of regex for better performance and security
+        return new Intl.NumberFormat('en-US').format(number);
     }),
 
     sanitizeHtml: jest.fn().mockImplementation(html => {

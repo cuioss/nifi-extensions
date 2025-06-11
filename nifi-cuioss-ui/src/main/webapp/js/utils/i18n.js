@@ -198,10 +198,10 @@ export const getAvailableLanguages = function () {
      */
 export const translate = function (key, params) {
     // Get the translation for the current language
-    const translation = translations[currentLanguage] && translations[currentLanguage][key];
+    const translation = translations[currentLanguage]?.[key];
 
     // If the translation doesn't exist, try to get it from the default language
-    const defaultTranslation = translations.en && translations.en[key];
+    const defaultTranslation = translations.en?.[key];
 
     // Use the translation, the default translation, or the key itself
     let result = translation || defaultTranslation || key;
