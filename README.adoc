@@ -50,3 +50,16 @@ To skip tests:
 ```bash
 ./mvnw clean install -DskipTests
 ```
+
+=== Frontend Configuration
+
+The project uses unified frontend configuration across modules:
+
+* Node.js v20.12.2
+* NPM 10.5.0  
+* Frontend Maven Plugin 1.15.1
+* ESLint 8.57.1 with zero-warning policy
+* Prettier 3.4.2 for code formatting
+* Cypress 14.4.1 for E2E testing
+
+All frontend configuration is centralized in the root POM properties.

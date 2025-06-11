@@ -7,12 +7,13 @@ This module provides comprehensive end-to-end testing for the MultiIssuerJWTToke
 The e-2-e-cypress module is *production-ready* with all core functionality implemented:
 
 * ✅ 15+ Custom Cypress commands
-* ✅ Self-verification test system 
+* ✅ Self-verification unit test system (24 tests)
 * ✅ Console error monitoring
 * ✅ Complete test coverage (processor config, token validation, error handling)
-* ✅ Maven integration
-* ✅ Code quality standards (ESLint, Prettier)
+* ✅ Maven integration with unified configuration
+* ✅ Code quality standards (ESLint, Prettier) integrated into build
 * ✅ Latest stable dependencies (Cypress 14.4.1, ESLint 8.57.1, Node.js 20.12.2)
+* ✅ Unified frontend-maven-plugin configuration across modules
 
 == Quick Start
 
@@ -114,30 +115,95 @@ Reusable Cypress commands for common operations:
 
 * `cy.generateToken(claims)` - Generate JWT token with specific claims
 * `cy.verifyTokenValidation(processorId, token)` - Verify token validation results
-* `cy.createTestToken(payload, secret)` - Create test token with custom payload
-* `cy.verifyJwksEndpoint(jwksUrl)` - Verify JWKS endpoint accessibility
 
-== Maven Integration
+=== Unit Tests (Self-Tests)
 
-The module integrates with Maven through the `frontend-maven-plugin`:
+The module includes comprehensive unit tests that verify command functionality without requiring external services:
 
 [source,bash]
 ----
-# Run through Maven
-mvn clean verify
+# Run unit tests only
+npm run cypress:selftests
 
-# Run only self-tests
-mvn clean pre-integration-test
-
-# Run full test suite  
-mvn clean integration-test
+# Run via Maven
+mvn test -pl :e-2-e-cypress
 ----
 
-=== Integration Test Execution Order
+*Command Unit Tests (14 tests):*
+* Custom command registration verification
+* Command parameter validation
+* Environment configuration testing  
+* Support file loading verification
+* DOM interaction testing
+* Error handling validation
 
-. *Pre-integration-test phase*: Self-verification tests run first
-. *Integration-test phase*: Main E2E tests run only if self-tests pass
-. *Post-integration-test phase*: Test reports generated
+*Validation Unit Tests (10 tests):*
+* JWT token structure validation
+* JWKS structure validation
+* Token generation utilities
+* Mock validation workflows
+* Environment variable handling
+* Error simulation testing
+
+== Maven Integration
+
+The module integrates with Maven through the unified `frontend-maven-plugin` configuration:
+
+[source,bash]
+----
+# Run through Maven (includes linting + unit tests)
+mvn clean test
+
+# Run only self-tests (unit tests)
+mvn clean pre-integration-test
+
+# Run full test suite including E2E tests
+mvn clean integration-test
+
+# Check code formatting
+npm run format:check
+
+# Auto-fix formatting issues
+npm run format
+----
+
+=== Unified Frontend Configuration
+
+This module uses centralized frontend configuration properties defined in the root POM:
+
+* `frontend.maven.plugin.version` - Frontend Maven plugin version (1.15.1)
+* `frontend.node.version` - Node.js version (v20.12.2)  
+* `frontend.npm.version` - NPM version (10.5.0)
+
+=== Build Integration & Quality Checks
+
+The Maven build includes automated quality checks:
+
+. *Test phase*: ESLint runs with `--max-warnings 0` (build fails on any warnings)
+. *Pre-integration-test phase*: Unit tests verify command functionality
+. *Integration-test phase*: E2E tests run only if unit tests pass
+
+=== Test Structure
+
+[source]
+----
+cypress/
+├── e2e/                    # End-to-end integration tests
+│   ├── error-handling/
+│   ├── processor-config/
+│   └── token-validation/
+├── integration/            # Integration-style tests (require external services)
+│   ├── login-commands.cy.js
+│   ├── navigation-commands.cy.js  
+│   └── processor-commands.cy.js
+├── selftests/             # Unit tests (no external dependencies)
+│   ├── command-unit-tests.cy.js      # 14 tests - command registration & framework
+│   └── validation-unit-tests.cy.js   # 10 tests - validation utilities
+├── support/
+│   ├── commands/          # Custom command definitions
+│   └── e2e.js            # Test configuration
+└── fixtures/              # Test data and HTML fixtures
+----
 
 == Configuration
 
