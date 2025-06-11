@@ -103,6 +103,15 @@ jobs:
       run: |
         # Build NAR and copy to deployment location
         ./copy-deployment.sh
+        
+        # Verify NAR deployment
+        echo "Checking NAR deployment..."
+        ls -la ../../../target/nifi-deploy/ || echo "NAR deployment directory not found"
+        
+        # Show Docker environment info
+        echo "Docker environment info:"
+        docker --version
+        docker compose version
     
     - name: Install E2E test dependencies
       working-directory: e-2-e-cypress
@@ -114,9 +123,46 @@ jobs:
         # Start the test containers
         ./run-test-container.sh
         
-        # Wait for services to be ready
-        timeout 300 bash -c 'until curl -k -f https://localhost:9095/nifi; do sleep 5; done'
-        timeout 300 bash -c 'until curl -k -f https://localhost:9085/auth; do sleep 5; done'
+        echo "Waiting for containers to be healthy..."
+        
+        # Wait for containers to be healthy using Docker Compose health checks
+        # NiFi can take 3-5 minutes to fully start up
+        timeout 600 bash -c '
+          until docker compose ps --format "table {{.Name}}\t{{.Status}}" | grep -E "(healthy|Up.*healthy).*nifi"; do 
+            echo "Waiting for NiFi to be healthy..."
+            docker compose ps
+            sleep 10
+          done
+        '
+        
+        timeout 300 bash -c '
+          until docker compose ps --format "table {{.Name}}\t{{.Status}}" | grep -E "(healthy|Up.*healthy).*keycloak"; do 
+            echo "Waiting for Keycloak to be healthy..."
+            docker compose ps
+            sleep 10
+          done
+        '
+        
+        echo "All containers are healthy. Verifying connectivity..."
+        
+        # Final connectivity verification with detailed error output
+        echo "Testing NiFi connectivity..."
+        timeout 60 bash -c '
+          until curl -k -f -v https://localhost:9095/nifi/; do 
+            echo "NiFi not ready yet, retrying in 10 seconds..."
+            sleep 10
+          done
+        '
+        
+        echo "Testing Keycloak connectivity..."
+        timeout 60 bash -c '
+          until curl -k -f -v https://localhost:9085/auth/; do 
+            echo "Keycloak not ready yet, retrying in 10 seconds..."
+            sleep 10
+          done
+        '
+        
+        echo "Both services are ready for testing!"
     
     - name: Run self-verification tests
       working-directory: e-2-e-cypress
@@ -149,6 +195,40 @@ jobs:
       with:
         name: test-reports
         path: e-2-e-cypress/tests-report/*.xml
+    
+    - name: Collect container logs
+      if: always()
+      working-directory: integration-testing/src/main/docker
+      run: |
+        echo "Collecting container logs for debugging..."
+        mkdir -p ../../../container-logs
+        
+        # Get container status
+        echo "Container status:"
+        docker compose ps
+        
+        # Collect NiFi logs
+        echo "Collecting NiFi logs..."
+        docker compose logs nifi > ../../../container-logs/nifi.log 2>&1 || echo "Failed to collect NiFi logs"
+        
+        # Collect Keycloak logs  
+        echo "Collecting Keycloak logs..."
+        docker compose logs keycloak > ../../../container-logs/keycloak.log 2>&1 || echo "Failed to collect Keycloak logs"
+        
+        # Show recent logs
+        echo "Recent NiFi logs (last 50 lines):"
+        tail -50 ../../../container-logs/nifi.log || echo "No NiFi logs available"
+        
+        echo "Recent Keycloak logs (last 50 lines):"
+        tail -50 ../../../container-logs/keycloak.log || echo "No Keycloak logs available"
+    
+    - name: Upload container logs
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: container-logs
+        path: container-logs/
+        retention-days: 30
     
     - name: Stop test environment
       if: always()
