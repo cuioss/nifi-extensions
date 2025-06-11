@@ -66,8 +66,8 @@
                         <configuration>
                             <arguments>run cypress:selftests</arguments>
                             <environmentVariables>
-                                <CYPRESS_BASE_URL>https://localhost:8443/nifi</CYPRESS_BASE_URL>
-                                <CYPRESS_KEYCLOAK_URL>https://localhost:8443/auth</CYPRESS_KEYCLOAK_URL>
+                                <CYPRESS_BASE_URL>https://localhost:9095/nifi</CYPRESS_BASE_URL>
+                                <CYPRESS_KEYCLOAK_URL>https://localhost:9085/auth</CYPRESS_KEYCLOAK_URL>
                             </environmentVariables>
                             <failOnError>true</failOnError>
                         </configuration>
@@ -82,8 +82,8 @@
                         <configuration>
                             <arguments>run cypress:run</arguments>
                             <environmentVariables>
-                                <CYPRESS_BASE_URL>https://localhost:8443/nifi</CYPRESS_BASE_URL>
-                                <CYPRESS_KEYCLOAK_URL>https://localhost:8443/auth</CYPRESS_KEYCLOAK_URL>
+                                <CYPRESS_BASE_URL>https://localhost:9095/nifi</CYPRESS_BASE_URL>
+                                <CYPRESS_KEYCLOAK_URL>https://localhost:9085/auth</CYPRESS_KEYCLOAK_URL>
                             </environmentVariables>
                         </configuration>
                     </execution>

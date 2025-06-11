@@ -98,36 +98,39 @@ jobs:
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
     
-    - name: Build NAR package
-      run: mvn clean package -DskipTests -pl nifi-cuioss-processors,nifi-cuioss-nar
+    - name: Build and deploy NAR package
+      working-directory: integration-testing/src/main/docker
+      run: |
+        # Build NAR and copy to deployment location
+        ./copy-deployment.sh
     
     - name: Install E2E test dependencies
       working-directory: e-2-e-cypress
       run: npm ci
     
     - name: Start test environment
-      working-directory: integration-testing
+      working-directory: integration-testing/src/main/docker
       run: |
         # Start the test containers
         ./run-test-container.sh
         
         # Wait for services to be ready
-        timeout 300 bash -c 'until curl -k -f https://localhost:8443/nifi; do sleep 5; done'
-        timeout 300 bash -c 'until curl -k -f https://localhost:8443/auth; do sleep 5; done'
+        timeout 300 bash -c 'until curl -k -f https://localhost:9095/nifi; do sleep 5; done'
+        timeout 300 bash -c 'until curl -k -f https://localhost:9085/auth; do sleep 5; done'
     
     - name: Run self-verification tests
       working-directory: e-2-e-cypress
       run: npm run cypress:selftests
       env:
-        CYPRESS_BASE_URL: https://localhost:8443/nifi
-        CYPRESS_KEYCLOAK_URL: https://localhost:8443/auth
+        CYPRESS_BASE_URL: https://localhost:9095/nifi
+        CYPRESS_KEYCLOAK_URL: https://localhost:9085/auth
     
     - name: Run E2E tests
       working-directory: e-2-e-cypress
       run: npm run cypress:run
       env:
-        CYPRESS_BASE_URL: https://localhost:8443/nifi
-        CYPRESS_KEYCLOAK_URL: https://localhost:8443/auth
+        CYPRESS_BASE_URL: https://localhost:9095/nifi
+        CYPRESS_KEYCLOAK_URL: https://localhost:9085/auth
     
     - name: Upload test results
       uses: actions/upload-artifact@v4
@@ -149,7 +152,7 @@ jobs:
     
     - name: Stop test environment
       if: always()
-      working-directory: integration-testing
+      working-directory: integration-testing/src/main/docker
       run: ./stop-test-container.sh
 
     - name: Analyze console errors
