@@ -57,3 +57,40 @@ Cypress.Commands.add('verifyTokenValidation', (processorId, tokenId) => {
   // Return the validation results for further assertions
   return cy.get('#validation-results');
 });
+
+/**
+ * Generate a valid JWT token for a specific issuer
+ * @param {string} issuerName - The name of the issuer to generate token for
+ * @returns {Cypress.Chainable<string>} The generated valid JWT token
+ */
+Cypress.Commands.add('generateValidToken', (issuerName) => {
+  // Create a valid JWT token for testing purposes
+  const header = {
+    alg: 'RS256',
+    typ: 'JWT',
+    kid: 'test-key-id'
+  };
+
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iss: issuerName === 'test-issuer' ? 'https://test.example.com' : `https://${issuerName}.example.com`,
+    sub: 'test-subject-123',
+    aud: 'test-audience',
+    exp: now + 3600, // Expires in 1 hour
+    iat: now,
+    nbf: now,
+    jti: `test-token-${Date.now()}`,
+    scope: 'read write',
+    roles: ['user', 'reader']
+  };
+
+  // For testing, create a mock JWT structure
+  // In a real implementation, this would use proper JWT signing
+  const encodedHeader = btoa(JSON.stringify(header));
+  const encodedPayload = btoa(JSON.stringify(payload));
+  const mockSignature = 'mock-signature-for-testing';
+
+  const token = `${encodedHeader}.${encodedPayload}.${mockSignature}`;
+  
+  return cy.wrap(token);
+});

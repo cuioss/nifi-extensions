@@ -8,3 +8,7 @@ import './commands/login';
 import './commands/navigation';
 import './commands/processor';
 import './commands/validation';
+import './commands/i18n';
+import './commands/browser';
+import './commands/accessibility';
+import './commands/visual';
