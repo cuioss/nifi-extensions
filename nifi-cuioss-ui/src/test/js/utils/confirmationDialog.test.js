@@ -153,7 +153,7 @@ const mockRequestAnimationFrame = jest.fn(cb => {
     setTimeout(cb, 0);
     return 1; // Return a non-zero ID as the real function would
 });
-global.requestAnimationFrame = mockRequestAnimationFrame;
+window.requestAnimationFrame = mockRequestAnimationFrame;
 
 // Mock setTimeout
 const originalSetTimeout = global.setTimeout;
@@ -461,18 +461,6 @@ describe('confirmationDialog', () => {
         });
     });
 
-    describe('Animation and timing', () => {
-        it.skip('should use requestAnimationFrame for showing dialog', async () => {
-            const options = {
-                title: 'Test Title',
-                message: 'Test message'
-            };
-
-            confirmationDialog.showConfirmationDialog(options);
-
-            expect(mockRequestAnimationFrame).toHaveBeenCalled();
-        });
-    });
 
     describe('Keyboard Event Handling', () => {
         it('should handle Escape key', () => {
