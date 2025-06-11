@@ -1,6 +1,6 @@
 /**
  * Cypress Commands for Visual Testing
- * 
+ *
  * These commands provide utilities for visual regression testing, screenshot comparison,
  * layout verification, and visual consistency checks across different states and themes.
  */
@@ -18,10 +18,10 @@ Cypress.Commands.add('configureVisualTesting', () => {
       enabled: true,
       screenshotPath: 'cypress/screenshots/visual-tests',
       threshold: 0.02, // Default 2% threshold
-      retryTimes: 3
+      retryTimes: 3,
     };
   });
-  
+
   // Ensure consistent rendering environment
   cy.viewport(1366, 768); // Standard desktop resolution
   cy.wait(500); // Allow for initial rendering
@@ -39,15 +39,15 @@ Cypress.Commands.add('visualSnapshot', (name, options = {}) => {
     threshold: 0.02,
     capture: 'viewport',
     element: null,
-    overwrite: false
+    overwrite: false,
   };
-  
+
   const config = { ...defaultOptions, ...options };
-  
+
   // Generate timestamp for unique naming
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const filename = `${name}-${timestamp}`;
-  
+
   if (config.element) {
     // Take screenshot of specific element
     cy.wrap(config.element).screenshot(filename, {
@@ -55,7 +55,7 @@ Cypress.Commands.add('visualSnapshot', (name, options = {}) => {
       onAfterScreenshot: ($el, props) => {
         cy.log(`Visual snapshot saved: ${props.path}`);
         cy.storeVisualSnapshot(name, props.path, config);
-      }
+      },
     });
   } else {
     // Take full viewport screenshot
@@ -64,7 +64,7 @@ Cypress.Commands.add('visualSnapshot', (name, options = {}) => {
       onAfterScreenshot: ($el, props) => {
         cy.log(`Visual snapshot saved: ${props.path}`);
         cy.storeVisualSnapshot(name, props.path, config);
-      }
+      },
     });
   }
 });
@@ -80,13 +80,13 @@ Cypress.Commands.add('storeVisualSnapshot', (name, path, config) => {
     if (!win.visualSnapshots) {
       win.visualSnapshots = {};
     }
-    
+
     win.visualSnapshots[name] = {
       path: path,
       timestamp: new Date().toISOString(),
       config: config,
       browser: Cypress.browser.name,
-      viewport: `${win.innerWidth}x${win.innerHeight}`
+      viewport: `${win.innerWidth}x${win.innerHeight}`,
     };
   });
 });
@@ -101,20 +101,22 @@ Cypress.Commands.add('verifyProcessorVisualBaseline', (processorId) => {
   cy.getProcessorElement(processorId).then(($processor) => {
     const element = $processor[0];
     const rect = element.getBoundingClientRect();
-    
+
     // Verify processor has reasonable dimensions
     expect(rect.width).to.be.greaterThan(50);
     expect(rect.height).to.be.greaterThan(30);
-    
+
     // Verify processor is visible
     expect(rect.width).to.be.greaterThan(0);
     expect(rect.height).to.be.greaterThan(0);
-    
+
     // Verify processor is within viewport
     expect(rect.left).to.be.at.least(0);
     expect(rect.top).to.be.at.least(0);
-    
-    cy.log(`Processor visual baseline verified: ${rect.width}x${rect.height} at (${rect.left}, ${rect.top})`);
+
+    cy.log(
+      `Processor visual baseline verified: ${rect.width}x${rect.height} at (${rect.left}, ${rect.top})`
+    );
   });
 });
 
@@ -125,25 +127,27 @@ Cypress.Commands.add('verifyConfigDialogVisualBaseline', () => {
   cy.get('.configuration-dialog').then(($dialog) => {
     const element = $dialog[0];
     const rect = element.getBoundingClientRect();
-    
+
     // Verify dialog has reasonable dimensions
     expect(rect.width).to.be.greaterThan(400);
     expect(rect.height).to.be.greaterThan(300);
-    
+
     // Verify dialog is centered (approximately)
     const viewportWidth = Cypress.config('viewportWidth');
     const viewportHeight = Cypress.config('viewportHeight');
-    
+
     const centerX = viewportWidth / 2;
     const centerY = viewportHeight / 2;
     const dialogCenterX = rect.left + rect.width / 2;
     const dialogCenterY = rect.top + rect.height / 2;
-    
+
     // Allow some tolerance for centering
     expect(Math.abs(dialogCenterX - centerX)).to.be.below(100);
     expect(Math.abs(dialogCenterY - centerY)).to.be.below(100);
-    
-    cy.log(`Dialog visual baseline verified: ${rect.width}x${rect.height} centered at (${dialogCenterX}, ${dialogCenterY})`);
+
+    cy.log(
+      `Dialog visual baseline verified: ${rect.width}x${rect.height} centered at (${dialogCenterX}, ${dialogCenterY})`
+    );
   });
 });
 
@@ -153,22 +157,23 @@ Cypress.Commands.add('verifyConfigDialogVisualBaseline', () => {
 Cypress.Commands.add('verifyErrorVisualIndicators', () => {
   // Check for visual error indicators
   cy.get('.error, .invalid, .validation-error').should('be.visible');
-  
+
   // Verify error styling
   cy.get('.error, .invalid, .validation-error').each(($element) => {
     const computedStyle = window.getComputedStyle($element[0]);
-    
+
     // Verify error has distinct visual styling
     const color = computedStyle.color;
     const backgroundColor = computedStyle.backgroundColor;
     const borderColor = computedStyle.borderColor;
-    
+
     // At least one error styling should be present
-    const hasErrorStyling = color.includes('red') || 
-                           backgroundColor.includes('red') || 
-                           borderColor.includes('red') ||
-                           $element.find('.error-icon').length > 0;
-    
+    const hasErrorStyling =
+      color.includes('red') ||
+      backgroundColor.includes('red') ||
+      borderColor.includes('red') ||
+      $element.find('.error-icon').length > 0;
+
     expect(hasErrorStyling).to.be.true;
   });
 });
@@ -182,11 +187,11 @@ Cypress.Commands.add('verifyErrorVisualIndicators', () => {
 Cypress.Commands.add('verifyProcessorPositioning', (processorId) => {
   cy.getProcessorElement(processorId).then(($processor) => {
     const rect = $processor[0].getBoundingClientRect();
-    
+
     // Verify processor is positioned within canvas bounds
     cy.get('.canvas').then(($canvas) => {
       const canvasRect = $canvas[0].getBoundingClientRect();
-      
+
       expect(rect.left).to.be.at.least(canvasRect.left);
       expect(rect.top).to.be.at.least(canvasRect.top);
       expect(rect.right).to.be.at.most(canvasRect.right);
@@ -203,11 +208,11 @@ Cypress.Commands.add('verifyFormElementAlignment', () => {
   cy.get('input, select, textarea').then(($inputs) => {
     if ($inputs.length > 1) {
       const firstRect = $inputs[0].getBoundingClientRect();
-      
+
       // Check if other inputs are aligned with the first
       for (let i = 1; i < $inputs.length; i++) {
         const rect = $inputs[i].getBoundingClientRect();
-        
+
         // Allow small tolerance for alignment
         const leftDifference = Math.abs(rect.left - firstRect.left);
         expect(leftDifference).to.be.below(10); // 10px tolerance
@@ -224,17 +229,18 @@ Cypress.Commands.add('verifyLabelAlignment', () => {
   cy.get('label').each(($label) => {
     const labelRect = $label[0].getBoundingClientRect();
     const forAttr = $label.attr('for');
-    
+
     if (forAttr) {
       cy.get(`#${forAttr}`).then(($input) => {
         const inputRect = $input[0].getBoundingClientRect();
-        
+
         // Labels should be positioned relative to their inputs
         // Either above (top alignment) or to the left (left alignment)
         const isAbove = labelRect.bottom <= inputRect.top + 5;
         const isLeft = labelRect.right <= inputRect.left + 5;
-        const isOverlapping = labelRect.top <= inputRect.bottom && labelRect.bottom >= inputRect.top;
-        
+        const isOverlapping =
+          labelRect.top <= inputRect.bottom && labelRect.bottom >= inputRect.top;
+
         expect(isAbove || isLeft || isOverlapping).to.be.true;
       });
     }
@@ -249,18 +255,18 @@ Cypress.Commands.add('verifyButtonAlignment', () => {
   cy.get('.button-container, .dialog-buttons').then(($container) => {
     if ($container.length > 0) {
       const buttons = $container.find('button');
-      
+
       if (buttons.length > 1) {
         const firstButtonRect = buttons[0].getBoundingClientRect();
-        
+
         buttons.each((index, button) => {
           if (index > 0) {
             const rect = button.getBoundingClientRect();
-            
+
             // Buttons should be aligned (either horizontally or vertically)
             const horizontalAlignment = Math.abs(rect.top - firstButtonRect.top) < 5;
             const verticalAlignment = Math.abs(rect.left - firstButtonRect.left) < 5;
-            
+
             expect(horizontalAlignment || verticalAlignment).to.be.true;
           }
         });
@@ -280,12 +286,12 @@ Cypress.Commands.add('verifyColorConsistency', () => {
     if ($primaryElements.length > 1) {
       const firstStyle = window.getComputedStyle($primaryElements[0]);
       const firstColor = firstStyle.backgroundColor || firstStyle.color;
-      
+
       $primaryElements.each((index, element) => {
         if (index > 0) {
           const style = window.getComputedStyle(element);
           const color = style.backgroundColor || style.color;
-          
+
           // Colors should be consistent (allowing for minor variations)
           expect(color).to.equal(firstColor);
         }
@@ -302,17 +308,18 @@ Cypress.Commands.add('verifyFontConsistency', () => {
   cy.get('body, .main-content').then(($elements) => {
     const bodyStyle = window.getComputedStyle($elements[0]);
     const baseFontFamily = bodyStyle.fontFamily;
-    
+
     // Check that important elements use consistent fonts
     cy.get('h1, h2, h3, p, span, div').each(($element) => {
       const style = window.getComputedStyle($element[0]);
       const fontFamily = style.fontFamily;
-      
+
       // Font should be consistent or an acceptable variant
-      const isConsistent = fontFamily === baseFontFamily || 
-                          fontFamily.includes(baseFontFamily) ||
-                          baseFontFamily.includes(fontFamily);
-      
+      const isConsistent =
+        fontFamily === baseFontFamily ||
+        fontFamily.includes(baseFontFamily) ||
+        baseFontFamily.includes(fontFamily);
+
       expect(isConsistent).to.be.true;
     });
   });
@@ -327,21 +334,21 @@ Cypress.Commands.add('verifyBrandColors', () => {
     primary: ['rgb(0, 123, 255)', '#007bff'],
     secondary: ['rgb(108, 117, 125)', '#6c757d'],
     success: ['rgb(40, 167, 69)', '#28a745'],
-    danger: ['rgb(220, 53, 69)', '#dc3545']
+    danger: ['rgb(220, 53, 69)', '#dc3545'],
   };
-  
+
   // Check that brand colors are used appropriately
-  Object.keys(brandColors).forEach(colorType => {
+  Object.keys(brandColors).forEach((colorType) => {
     cy.get(`.${colorType}, .btn-${colorType}, .text-${colorType}`).then(($elements) => {
       $elements.each((index, element) => {
         const style = window.getComputedStyle(element);
         const color = style.color || style.backgroundColor;
-        
+
         // Color should match one of the brand colors
-        const matchesBrand = brandColors[colorType].some(brandColor => 
+        const matchesBrand = brandColors[colorType].some((brandColor) =>
           color.includes(brandColor)
         );
-        
+
         if (!matchesBrand) {
           cy.log(`Warning: Element may not use brand ${colorType} color: ${color}`);
         }
@@ -359,19 +366,20 @@ Cypress.Commands.add('verifyTypographyGuidelines', () => {
     const style = window.getComputedStyle($heading[0]);
     const fontSize = parseFloat(style.fontSize);
     const fontWeight = style.fontWeight;
-    
+
     // Headings should have appropriate font sizes and weights
     expect(fontSize).to.be.at.least(14); // Minimum readable size
     expect(['bold', '600', '700', '800', '900']).to.include(fontWeight);
   });
-  
+
   // Check body text readability
   cy.get('p, span, div').each(($element) => {
     const text = $element.text().trim();
-    if (text.length > 10) { // Only check elements with substantial text
+    if (text.length > 10) {
+      // Only check elements with substantial text
       const style = window.getComputedStyle($element[0]);
       const fontSize = parseFloat(style.fontSize);
-      
+
       // Body text should be readable
       expect(fontSize).to.be.at.least(12);
     }
@@ -387,12 +395,12 @@ Cypress.Commands.add('verifySpacingConsistency', () => {
     const style = window.getComputedStyle($element[0]);
     const margin = style.margin;
     const padding = style.padding;
-    
+
     // Spacing should follow consistent patterns (multiples of 4px or 8px)
-    const marginValues = margin.split(' ').map(val => parseFloat(val));
-    const paddingValues = padding.split(' ').map(val => parseFloat(val));
-    
-    [...marginValues, ...paddingValues].forEach(value => {
+    const marginValues = margin.split(' ').map((val) => parseFloat(val));
+    const paddingValues = padding.split(' ').map((val) => parseFloat(val));
+
+    [...marginValues, ...paddingValues].forEach((value) => {
       if (!isNaN(value) && value > 0) {
         // Check if value follows spacing scale (4px, 8px, 12px, 16px, etc.)
         const isOnScale = value % 4 === 0;
@@ -414,7 +422,7 @@ Cypress.Commands.add('enableDarkTheme', () => {
     win.document.body.classList.add('dark-theme');
     win.document.body.setAttribute('data-theme', 'dark');
   });
-  
+
   cy.wait(300); // Allow for theme transition
 });
 
@@ -426,7 +434,7 @@ Cypress.Commands.add('disableDarkTheme', () => {
     win.document.body.classList.remove('dark-theme');
     win.document.body.removeAttribute('data-theme');
   });
-  
+
   cy.wait(300);
 });
 
@@ -438,7 +446,7 @@ Cypress.Commands.add('enableHighContrastTheme', () => {
     win.document.body.classList.add('high-contrast');
     win.document.body.setAttribute('data-theme', 'high-contrast');
   });
-  
+
   cy.wait(300);
 });
 
@@ -450,7 +458,7 @@ Cypress.Commands.add('disableHighContrastTheme', () => {
     win.document.body.classList.remove('high-contrast');
     win.document.body.removeAttribute('data-theme');
   });
-  
+
   cy.wait(300);
 });
 
@@ -480,7 +488,7 @@ Cypress.Commands.add('verifyResponsiveLayout', (resolution) => {
 Cypress.Commands.add('verifyMobileLayoutAdaptation', () => {
   // Check that UI adapts for mobile
   cy.get('body').should('have.class', 'mobile').or('have.attr', 'data-mobile', 'true');
-  
+
   // Verify touch-friendly elements
   cy.get('button, .clickable').each(($element) => {
     const rect = $element[0].getBoundingClientRect();
@@ -494,13 +502,13 @@ Cypress.Commands.add('verifyMobileLayoutAdaptation', () => {
 Cypress.Commands.add('verifyTabletLayoutAdaptation', () => {
   // Check tablet-specific adaptations
   cy.get('.canvas').should('be.visible');
-  
+
   // Verify responsive grid behavior
   cy.get('.grid, .layout').then(($grid) => {
     if ($grid.length > 0) {
       const style = window.getComputedStyle($grid[0]);
       const gridColumns = style.gridTemplateColumns;
-      
+
       // Should adapt column count for tablet
       if (gridColumns && gridColumns !== 'none') {
         cy.log(`Grid adapted for tablet: ${gridColumns}`);
@@ -526,7 +534,7 @@ Cypress.Commands.add('setZoomLevel', (zoomLevel) => {
   cy.window().then((win) => {
     win.document.body.style.zoom = `${zoomLevel}%`;
   });
-  
+
   cy.wait(300); // Allow for zoom adjustment
 });
 
@@ -537,7 +545,7 @@ Cypress.Commands.add('resetZoomLevel', () => {
   cy.window().then((win) => {
     win.document.body.style.zoom = '100%';
   });
-  
+
   cy.wait(300);
 });
 
@@ -549,13 +557,13 @@ Cypress.Commands.add('verifyZoomLayout', (zoomLevel) => {
   // Verify no horizontal scrolling at zoom level
   cy.window().then((win) => {
     const hasHorizontalScroll = win.document.body.scrollWidth > win.innerWidth;
-    
+
     if (zoomLevel <= 200) {
       // At 200% zoom or less, horizontal scrolling should be minimal
       expect(hasHorizontalScroll).to.be.false;
     }
   });
-  
+
   // Verify important elements are still visible
   cy.get('.canvas').should('be.visible');
 });
@@ -589,14 +597,16 @@ Cypress.Commands.add('verifyCrispRendering', (ratio) => {
   // Verify images and icons are crisp at high DPI
   cy.get('img, .icon, svg').each(($element) => {
     const element = $element[0];
-    
+
     // Check for high DPI attributes or CSS
     const hasSrcSet = element.hasAttribute('srcset');
     const hasHighDPICSS = window.getComputedStyle(element).imageRendering !== 'auto';
-    
+
     if (ratio > 1.5) {
       // At high DPI, should have some optimization
-      cy.log(`High DPI optimization check for ratio ${ratio}: srcset=${hasSrcSet}, CSS=${hasHighDPICSS}`);
+      cy.log(
+        `High DPI optimization check for ratio ${ratio}: srcset=${hasSrcSet}, CSS=${hasHighDPICSS}`
+      );
     }
   });
 });
@@ -609,24 +619,26 @@ Cypress.Commands.add('verifyCrispRendering', (ratio) => {
  */
 Cypress.Commands.add('configureProcessorForTesting', (processorId) => {
   cy.openProcessorConfigDialog(processorId);
-  
+
   // Set valid configuration for visual testing
   cy.setProcessorProperty('JWKS Source Type', 'IN_MEMORY');
   cy.setProcessorProperty('Token Audience', 'test-audience');
   cy.setProcessorProperty('Default Issuer', 'test-issuer');
-  
+
   // Add valid JWKS content
   const testJWKS = JSON.stringify({
-    keys: [{
-      kty: 'RSA',
-      kid: 'test-key-1',
-      use: 'sig',
-      n: 'test-modulus',
-      e: 'AQAB'
-    }]
+    keys: [
+      {
+        kty: 'RSA',
+        kid: 'test-key-1',
+        use: 'sig',
+        n: 'test-modulus',
+        e: 'AQAB',
+      },
+    ],
   });
   cy.setProcessorProperty('JWKS Content', testJWKS);
-  
+
   cy.clickApplyButton();
   cy.closeDialog();
 });

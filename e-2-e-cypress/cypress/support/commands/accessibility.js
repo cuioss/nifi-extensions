@@ -1,6 +1,6 @@
 /**
  * Cypress Commands for Accessibility (a11y) Testing
- * 
+ *
  * These commands provide utilities for testing accessibility compliance, keyboard navigation,
  * screen reader compatibility, and WCAG 2.1 AA standards compliance.
  */
@@ -15,29 +15,26 @@ import 'cypress-axe';
  */
 Cypress.Commands.add('configureAxe', () => {
   cy.injectAxe();
-  
+
   // Configure axe with specific rules and options
   cy.configureAxe({
     rules: [
       {
         id: 'color-contrast',
-        enabled: true
+        enabled: true,
       },
       {
         id: 'keyboard-navigation',
-        enabled: true
+        enabled: true,
       },
       {
         id: 'focus-management',
-        enabled: true
-      }
+        enabled: true,
+      },
     ],
     tags: ['wcag2a', 'wcag2aa', 'wcag21aa'],
     // Exclude elements that may have known issues we can't control
-    exclude: [
-      '.third-party-component',
-      '.legacy-element'
-    ]
+    exclude: ['.third-party-component', '.legacy-element'],
   });
 });
 
@@ -50,7 +47,7 @@ Cypress.Commands.add('configureAxe', () => {
 Cypress.Commands.add('navigateToProcessorWithKeyboard', (processorId) => {
   // Use Tab to navigate to the processor
   cy.get('body').tab();
-  
+
   // Continue tabbing until we reach the processor or use arrow keys
   cy.get('.canvas').then(($canvas) => {
     if ($canvas.find(`[data-processor-id="${processorId}"]`).length > 0) {
@@ -68,10 +65,10 @@ Cypress.Commands.add('testTabNavigation', () => {
   // Get all focusable elements in order
   cy.getFocusableElements().then(($elements) => {
     // Tab through each element and verify focus
-    $elements.each((index, element) => {
+    for (let i = 0; i < $elements.length; i++) {
       cy.focused().tab();
       cy.focused().should('be.visible');
-    });
+    }
   });
 });
 
@@ -82,7 +79,7 @@ Cypress.Commands.add('testEnterKeySubmission', () => {
   // Focus on a submit button and press Enter
   cy.get('.apply-button, .ok-button').focus();
   cy.focused().type('{enter}');
-  
+
   // Verify appropriate action is taken (dialog closes or form submits)
   cy.verifyEnterKeyAction();
 });
@@ -103,21 +100,22 @@ Cypress.Commands.add('verifyFocusIndicators', () => {
   cy.getFocusableElements().each(($element) => {
     // Focus the element
     cy.wrap($element).focus();
-    
+
     // Verify focus indicator is visible
     cy.wrap($element).then(($el) => {
       const computedStyle = window.getComputedStyle($el[0]);
       const outline = computedStyle.outline;
       const outlineWidth = computedStyle.outlineWidth;
       const boxShadow = computedStyle.boxShadow;
-      
+
       // Verify some form of focus indicator exists
-      const hasFocusIndicator = outline !== 'none' || 
-                               outlineWidth !== '0px' || 
-                               boxShadow !== 'none' ||
-                               $el.hasClass('focused') ||
-                               $el.attr('data-focused') === 'true';
-      
+      const hasFocusIndicator =
+        outline !== 'none' ||
+        outlineWidth !== '0px' ||
+        boxShadow !== 'none' ||
+        $el.hasClass('focused') ||
+        $el.attr('data-focused') === 'true';
+
       expect(hasFocusIndicator).to.be.true;
     });
   });
@@ -136,7 +134,7 @@ Cypress.Commands.add('verifyTabOrder', (expectedOrder) => {
       // Tab to next element
       cy.focused().tab();
     }
-    
+
     // Verify correct element is focused
     cy.get(selector).should('have.focus').or('be.focused');
   });
@@ -154,7 +152,7 @@ Cypress.Commands.add('verifyFocusTrapping', () => {
         cy.wrap($elements.last()).focus();
         cy.focused().tab();
         cy.wrap($elements.first()).should('have.focus');
-        
+
         // Focus first element and shift+tab - should cycle to last
         cy.wrap($elements.first()).focus();
         cy.focused().tab({ shift: true });
@@ -184,7 +182,7 @@ Cypress.Commands.add('verifyFormLabels', () => {
     const id = $element.attr('id');
     const ariaLabel = $element.attr('aria-label');
     const ariaLabelledBy = $element.attr('aria-labelledby');
-    
+
     if (id) {
       // Check for associated label
       cy.get(`label[for="${id}"]`).should('exist');
@@ -229,7 +227,7 @@ Cypress.Commands.add('verifyHelpTextAssociation', () => {
 Cypress.Commands.add('verifyAriaLiveRegions', () => {
   // Check for live regions
   cy.get('[aria-live]').should('exist');
-  
+
   // Verify live regions are used for dynamic content
   cy.get('[aria-live="polite"], [aria-live="assertive"]').each(($liveRegion) => {
     // Live regions should have content or be ready to receive it
@@ -243,12 +241,12 @@ Cypress.Commands.add('verifyAriaLiveRegions', () => {
 Cypress.Commands.add('verifyStatusAnnouncements', () => {
   // Check for status or alert elements
   cy.get('[role="status"], [role="alert"], .status-message').should('exist');
-  
+
   // Verify they have content or aria-live attributes
   cy.get('[role="status"], [role="alert"]').each(($statusElement) => {
     const hasContent = $statusElement.text().trim().length > 0;
     const hasAriaLive = $statusElement.attr('aria-live');
-    
+
     expect(hasContent || hasAriaLive).to.be.true;
   });
 });
@@ -262,9 +260,9 @@ Cypress.Commands.add('verifyAccessibleErrorMessages', () => {
     // Error should be announced to screen readers
     const role = $errorElement.attr('role');
     const ariaLive = $errorElement.attr('aria-live');
-    
+
     expect(role === 'alert' || ariaLive === 'assertive' || ariaLive === 'polite').to.be.true;
-    
+
     // Error should have meaningful text
     expect($errorElement.text().trim()).to.not.be.empty;
   });
@@ -293,7 +291,7 @@ Cypress.Commands.add('verifyProcessorStatusAnnouncement', (processorId, expected
   cy.getProcessorElement(processorId).within(() => {
     // Check for status information
     cy.get('.status-text, [aria-label*="status"], [title*="status"]').should('exist');
-    
+
     // Verify status text contains expected status
     cy.get('body').should('contain.text', expectedStatus.toLowerCase());
   });
@@ -307,10 +305,10 @@ Cypress.Commands.add('verifyProcessorStatusAnnouncement', (processorId, expected
 Cypress.Commands.add('verifySemanticHTML', () => {
   // Check for proper use of semantic elements
   cy.get('main, section, article, aside, nav, header, footer').should('exist');
-  
+
   // Verify headings are used properly
   cy.get('h1, h2, h3, h4, h5, h6').should('exist');
-  
+
   // Verify lists use proper list markup
   cy.get('ul li, ol li, dl dt, dl dd').should('exist');
 });
@@ -323,7 +321,7 @@ Cypress.Commands.add('verifySemanticFormStructure', () => {
   cy.get('form').should('exist');
   cy.get('fieldset').should('exist');
   cy.get('legend').should('exist');
-  
+
   // Verify form controls are properly structured
   cy.get('label + input, label + select, label + textarea').should('exist');
 });
@@ -334,15 +332,15 @@ Cypress.Commands.add('verifySemanticFormStructure', () => {
 Cypress.Commands.add('verifyHeadingHierarchy', () => {
   cy.get('h1, h2, h3, h4, h5, h6').then(($headings) => {
     let previousLevel = 0;
-    
+
     $headings.each((index, heading) => {
       const currentLevel = parseInt(heading.tagName.charAt(1));
-      
+
       // Verify heading levels don't skip levels
       if (previousLevel > 0) {
         expect(currentLevel).to.be.at.most(previousLevel + 1);
       }
-      
+
       previousLevel = currentLevel;
     });
   });
@@ -355,16 +353,41 @@ Cypress.Commands.add('verifyAriaRoles', () => {
   // Check for proper ARIA roles
   cy.get('[role]').each(($element) => {
     const role = $element.attr('role');
-    
+
     // Verify role is a valid ARIA role
     const validRoles = [
-      'alert', 'alertdialog', 'application', 'article', 'banner', 'button',
-      'checkbox', 'dialog', 'form', 'heading', 'img', 'link', 'list',
-      'listitem', 'main', 'menu', 'menuitem', 'navigation', 'option',
-      'presentation', 'progressbar', 'radio', 'region', 'search',
-      'status', 'tab', 'tablist', 'tabpanel', 'textbox', 'toolbar'
+      'alert',
+      'alertdialog',
+      'application',
+      'article',
+      'banner',
+      'button',
+      'checkbox',
+      'dialog',
+      'form',
+      'heading',
+      'img',
+      'link',
+      'list',
+      'listitem',
+      'main',
+      'menu',
+      'menuitem',
+      'navigation',
+      'option',
+      'presentation',
+      'progressbar',
+      'radio',
+      'region',
+      'search',
+      'status',
+      'tab',
+      'tablist',
+      'tabpanel',
+      'textbox',
+      'toolbar',
     ];
-    
+
     expect(validRoles).to.include(role);
   });
 });
@@ -377,7 +400,7 @@ Cypress.Commands.add('verifyAriaProperties', () => {
   cy.get('[aria-label]').each(($element) => {
     expect($element.attr('aria-label').trim()).to.not.be.empty;
   });
-  
+
   // Check aria-labelledby references
   cy.get('[aria-labelledby]').each(($element) => {
     const labelledBy = $element.attr('aria-labelledby');
@@ -385,7 +408,7 @@ Cypress.Commands.add('verifyAriaProperties', () => {
       cy.get(`#${id}`).should('exist');
     });
   });
-  
+
   // Check aria-describedby references
   cy.get('[aria-describedby]').each(($element) => {
     const describedBy = $element.attr('aria-describedby');
@@ -404,13 +427,13 @@ Cypress.Commands.add('verifyAriaStates', () => {
     const expanded = $element.attr('aria-expanded');
     expect(['true', 'false']).to.include(expanded);
   });
-  
+
   // Check aria-selected for selectable items
   cy.get('[aria-selected]').each(($element) => {
     const selected = $element.attr('aria-selected');
     expect(['true', 'false']).to.include(selected);
   });
-  
+
   // Check aria-checked for checkable items
   cy.get('[aria-checked]').each(($element) => {
     const checked = $element.attr('aria-checked');
@@ -427,8 +450,8 @@ Cypress.Commands.add('checkColorContrast', () => {
   // Run axe-core color contrast checks
   cy.checkA11y(null, {
     rules: {
-      'color-contrast': { enabled: true }
-    }
+      'color-contrast': { enabled: true },
+    },
   });
 });
 
@@ -440,11 +463,11 @@ Cypress.Commands.add('verifyProcessorColorContrast', (processorId) => {
   cy.getProcessorElement(processorId).then(($processor) => {
     const element = $processor[0];
     const computedStyle = window.getComputedStyle(element);
-    
+
     // Get colors
     const backgroundColor = computedStyle.backgroundColor;
     const color = computedStyle.color;
-    
+
     // Verify colors are not transparent
     expect(backgroundColor).to.not.equal('rgba(0, 0, 0, 0)');
     expect(color).to.not.equal('rgba(0, 0, 0, 0)');
@@ -458,8 +481,8 @@ Cypress.Commands.add('verifyDialogColorContrast', () => {
   cy.get('.configuration-dialog').within(() => {
     cy.checkA11y(null, {
       rules: {
-        'color-contrast': { enabled: true }
-      }
+        'color-contrast': { enabled: true },
+      },
     });
   });
 });
@@ -471,12 +494,13 @@ Cypress.Commands.add('verifyNonColorErrorIndicators', () => {
   // Check for error indicators beyond color
   cy.get('.error, .invalid, [aria-invalid="true"]').each(($element) => {
     const hasIcon = $element.find('.error-icon, .warning-icon').length > 0;
-    const hasTextIndicator = $element.text().includes('Error') || 
-                            $element.text().includes('Invalid') ||
-                            $element.text().includes('Required');
+    const hasTextIndicator =
+      $element.text().includes('Error') ||
+      $element.text().includes('Invalid') ||
+      $element.text().includes('Required');
     const hasBorderChange = $element.css('border-style') !== 'none';
     const hasAriaInvalid = $element.attr('aria-invalid') === 'true';
-    
+
     // At least one non-color indicator should be present
     expect(hasIcon || hasTextIndicator || hasBorderChange || hasAriaInvalid).to.be.true;
   });
@@ -496,9 +520,9 @@ Cypress.Commands.add('getFocusableElements', () => {
     'select',
     'textarea',
     '[tabindex]:not([tabindex="-1"])',
-    '[contenteditable="true"]'
+    '[contenteditable="true"]',
   ].join(', ');
-  
+
   return cy.get(focusableSelectors).filter(':visible');
 });
 
@@ -517,10 +541,10 @@ Cypress.Commands.add('verifyEnterKeyAction', () => {
 Cypress.Commands.add('verifyLandmarkRegions', () => {
   // Check for main content landmark
   cy.get('main, [role="main"]').should('exist');
-  
+
   // Check for navigation landmarks
   cy.get('nav, [role="navigation"]').should('exist');
-  
+
   // Check for banner/header
   cy.get('header, [role="banner"]').should('exist');
 });
@@ -533,7 +557,7 @@ Cypress.Commands.add('verifyNavigationLandmarks', () => {
     // Navigation should have accessible name
     const ariaLabel = $nav.attr('aria-label');
     const ariaLabelledBy = $nav.attr('aria-labelledby');
-    
+
     expect(ariaLabel || ariaLabelledBy).to.exist;
   });
 });
@@ -553,10 +577,11 @@ Cypress.Commands.add('verifyDynamicAriaUpdates', () => {
   // After a state change, verify ARIA attributes are updated
   cy.get('[aria-expanded], [aria-selected], [aria-checked]').each(($element) => {
     // States should be properly maintained
-    const state = $element.attr('aria-expanded') || 
-                  $element.attr('aria-selected') || 
-                  $element.attr('aria-checked');
-    
+    const state =
+      $element.attr('aria-expanded') ||
+      $element.attr('aria-selected') ||
+      $element.attr('aria-checked');
+
     expect(['true', 'false', 'mixed']).to.include(state);
   });
 });
@@ -568,7 +593,7 @@ Cypress.Commands.add('verifyAriaExpanded', () => {
   cy.get('[aria-expanded]').each(($element) => {
     const expanded = $element.attr('aria-expanded');
     expect(['true', 'false']).to.include(expanded);
-    
+
     // If expanded, controlled element should be visible
     if (expanded === 'true') {
       const controls = $element.attr('aria-controls');
@@ -590,13 +615,13 @@ Cypress.Commands.add('verifyProcessorAccessibility', (processorId) => {
     // Run accessibility checks on processor
     cy.checkA11y();
   });
-  
+
   // Verify processor has accessible name
   cy.getProcessorElement(processorId).then(($processor) => {
     const ariaLabel = $processor.attr('aria-label');
     const title = $processor.attr('title');
     const text = $processor.text().trim();
-    
+
     expect(ariaLabel || title || text).to.not.be.empty;
   });
 });
@@ -608,10 +633,10 @@ Cypress.Commands.add('verifyDialogAccessibility', () => {
   cy.get('.configuration-dialog').within(() => {
     // Run comprehensive accessibility checks
     cy.checkA11y();
-    
+
     // Verify dialog has proper role
     cy.get('[role="dialog"], [role="alertdialog"]').should('exist');
-    
+
     // Verify dialog has accessible name
     cy.get('[aria-labelledby], [aria-label]').should('exist');
   });
@@ -624,19 +649,19 @@ Cypress.Commands.add('verifyDialogAccessibility', () => {
 Cypress.Commands.add('simulateScreenReaderFlow', (processorId) => {
   // Navigate to processor
   cy.navigateToProcessorWithKeyboard(processorId);
-  
+
   // Open configuration
   cy.focused().type('{enter}');
-  
+
   // Navigate through form with Tab
   cy.testTabNavigation();
-  
+
   // Make configuration changes
   cy.getFocusableElements().first().type('test-value');
-  
+
   // Submit form
   cy.get('.apply-button').focus().type('{enter}');
-  
+
   cy.log('Screen reader workflow simulation complete');
 });
 
@@ -646,11 +671,11 @@ Cypress.Commands.add('simulateScreenReaderFlow', (processorId) => {
  */
 Cypress.Commands.add('configureProcessorForError', (processorId) => {
   cy.openProcessorConfigDialog(processorId);
-  
+
   // Set invalid configuration
   cy.setProcessorProperty('JWKS Source Type', 'SERVER');
   cy.setProcessorProperty('JWKS Server URL', 'invalid-url');
-  
+
   cy.clickApplyButton();
   cy.closeDialog();
 });

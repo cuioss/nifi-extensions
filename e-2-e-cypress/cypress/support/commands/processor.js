@@ -170,13 +170,13 @@ Cypress.Commands.add('sendTokenToProcessor', (processorId, token) => {
     method: 'POST',
     url: `/nifi-api/processors/${processorId}/test-token`,
     headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
     },
     body: {
-      token: token
+      token: token,
     },
-    failOnStatusCode: false // Allow both success and failure responses
+    failOnStatusCode: false, // Allow both success and failure responses
   });
 });
 
@@ -185,7 +185,8 @@ Cypress.Commands.add('sendTokenToProcessor', (processorId, token) => {
  * @param {string} processorId - The ID of the processor
  */
 Cypress.Commands.add('sendExpiredToken', (processorId) => {
-  const expiredToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.expired-signature';
+  const expiredToken =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.expired-signature';
   cy.sendTokenToProcessor(processorId, expiredToken);
 });
 
@@ -194,7 +195,8 @@ Cypress.Commands.add('sendExpiredToken', (processorId) => {
  * @param {string} processorId - The ID of the processor
  */
 Cypress.Commands.add('sendTokenWithInvalidSignature', (processorId) => {
-  const invalidToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.invalid-signature-here';
+  const invalidToken =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.invalid-signature-here';
   cy.sendTokenToProcessor(processorId, invalidToken);
 });
 
@@ -203,6 +205,7 @@ Cypress.Commands.add('sendTokenWithInvalidSignature', (processorId) => {
  * @param {string} processorId - The ID of the processor
  */
 Cypress.Commands.add('sendTokenWithMissingClaims', (processorId) => {
-  const tokenWithMissingClaims = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiSm9obiBEb2UifQ.missing-claims-signature';
+  const tokenWithMissingClaims =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiSm9obiBEb2UifQ.missing-claims-signature';
   cy.sendTokenToProcessor(processorId, tokenWithMissingClaims);
 });

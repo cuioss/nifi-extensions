@@ -68,12 +68,15 @@ Cypress.Commands.add('generateValidToken', (issuerName) => {
   const header = {
     alg: 'RS256',
     typ: 'JWT',
-    kid: 'test-key-id'
+    kid: 'test-key-id',
   };
 
   const now = Math.floor(Date.now() / 1000);
   const payload = {
-    iss: issuerName === 'test-issuer' ? 'https://test.example.com' : `https://${issuerName}.example.com`,
+    iss:
+      issuerName === 'test-issuer'
+        ? 'https://test.example.com'
+        : `https://${issuerName}.example.com`,
     sub: 'test-subject-123',
     aud: 'test-audience',
     exp: now + 3600, // Expires in 1 hour
@@ -81,7 +84,7 @@ Cypress.Commands.add('generateValidToken', (issuerName) => {
     nbf: now,
     jti: `test-token-${Date.now()}`,
     scope: 'read write',
-    roles: ['user', 'reader']
+    roles: ['user', 'reader'],
   };
 
   // For testing, create a mock JWT structure
@@ -91,6 +94,6 @@ Cypress.Commands.add('generateValidToken', (issuerName) => {
   const mockSignature = 'mock-signature-for-testing';
 
   const token = `${encodedHeader}.${encodedPayload}.${mockSignature}`;
-  
+
   return cy.wrap(token);
 });

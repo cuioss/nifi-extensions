@@ -1,9 +1,9 @@
 /**
  * End-to-End Tests for Cross-Browser Compatibility - Phase 5.3
- * 
+ *
  * This test suite validates the MultiIssuerJWTTokenAuthenticator functionality across different browsers,
  * ensuring consistent behavior and compatibility with various browser engines and versions.
- * 
+ *
  * Test Categories:
  * 1. Browser Detection and Feature Support
  * 2. JavaScript Engine Compatibility
@@ -16,7 +16,7 @@
 describe('Cross-Browser Compatibility Tests', () => {
   let processorId;
   let browserInfo;
-  
+
   before(() => {
     // Detect browser information once for the entire suite
     cy.getBrowserInfo().then((info) => {
@@ -30,16 +30,15 @@ describe('Cross-Browser Compatibility Tests', () => {
     cy.clearAllSessionStorage();
     cy.clearAllLocalStorage();
     cy.clearCookies();
-    
+
     // Login and navigate to canvas
     cy.loginToNiFi();
     cy.navigateToCanvas();
-    
+
     // Add processor for testing
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator')
-      .then((id) => {
-        processorId = id;
-      });
+    cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((id) => {
+      processorId = id;
+    });
   });
 
   afterEach(() => {
@@ -59,7 +58,7 @@ describe('Cross-Browser Compatibility Tests', () => {
         expect(features.es6).to.be.true;
         expect(features.fetch).to.be.true;
         expect(features.promises).to.be.true;
-        
+
         // Log browser-specific capabilities
         cy.log('Browser Feature Support:', JSON.stringify(features, null, 2));
       });
@@ -68,7 +67,7 @@ describe('Cross-Browser Compatibility Tests', () => {
     it('should handle browser-specific quirks gracefully', () => {
       // Test browser-specific behavior handling
       cy.testBrowserQuirks(browserInfo.family);
-      
+
       // Verify the processor still works correctly
       cy.getProcessorElement(processorId).should('be.visible');
       cy.openProcessorConfigDialog(processorId);
@@ -79,13 +78,13 @@ describe('Cross-Browser Compatibility Tests', () => {
     it('should support required CSS features', () => {
       // Test CSS Grid support (required for modern UI)
       cy.checkCSSFeatureSupport('grid').should('be.true');
-      
+
       // Test Flexbox support
       cy.checkCSSFeatureSupport('flexbox').should('be.true');
-      
+
       // Test CSS Variables support
       cy.checkCSSFeatureSupport('custom-properties').should('be.true');
-      
+
       // Verify UI renders correctly with supported features
       cy.verifyUIRenderingConsistency();
     });
@@ -96,16 +95,16 @@ describe('Cross-Browser Compatibility Tests', () => {
         { width: 1920, height: 1080, name: 'Desktop Large' },
         { width: 1366, height: 768, name: 'Desktop Standard' },
         { width: 1024, height: 768, name: 'Tablet Landscape' },
-        { width: 768, height: 1024, name: 'Tablet Portrait' }
+        { width: 768, height: 1024, name: 'Tablet Portrait' },
       ];
 
       viewports.forEach((viewport) => {
         cy.viewport(viewport.width, viewport.height);
         cy.log(`Testing viewport: ${viewport.name} (${viewport.width}x${viewport.height})`);
-        
+
         // Verify processor is still visible and functional
         cy.getProcessorElement(processorId).should('be.visible');
-        
+
         // Test responsive behavior
         cy.verifyResponsiveDesign(viewport);
       });
@@ -116,40 +115,40 @@ describe('Cross-Browser Compatibility Tests', () => {
     it('should handle ES6+ features consistently', () => {
       // Test arrow functions, template literals, destructuring, etc.
       cy.testES6Compatibility();
-      
+
       // Verify processor functionality uses compatible JavaScript
       cy.configureProcessorForTesting(processorId);
       cy.startProcessor(processorId);
       cy.sendTokenToProcessor(processorId, cy.generateValidToken());
       cy.wait(2000);
       cy.verifyProcessorState(processorId, 'RUNNING');
-      
+
       cy.stopProcessor(processorId);
     });
 
     it('should handle asynchronous operations correctly', () => {
       // Test Promise handling across browsers
       cy.testAsyncCompatibility();
-      
+
       // Test Fetch API consistency
       cy.testFetchAPIConsistency();
-      
+
       // Verify AJAX requests work consistently
       cy.openProcessorConfigDialog(processorId);
       cy.setProcessorProperty('JWKS Source Type', 'SERVER');
       cy.setProcessorProperty('JWKS Server URL', 'https://httpbin.org/delay/1');
-      
+
       // Apply configuration and verify async behavior
       cy.clickApplyButton();
       cy.verifyAsyncConfigurationHandling();
-      
+
       cy.closeDialog();
     });
 
     it('should handle DOM manipulation consistently', () => {
       // Test DOM querying and manipulation
       cy.testDOMCompatibility();
-      
+
       // Verify processor configuration UI manipulates DOM correctly
       cy.openProcessorConfigDialog(processorId);
       cy.verifyDOMManipulationConsistency();
@@ -159,12 +158,12 @@ describe('Cross-Browser Compatibility Tests', () => {
     it('should handle event handling uniformly', () => {
       // Test event listener compatibility
       cy.testEventHandlingCompatibility();
-      
+
       // Test mouse and keyboard events on processor
       cy.getProcessorElement(processorId).trigger('mouseenter');
       cy.getProcessorElement(processorId).trigger('mouseleave');
       cy.getProcessorElement(processorId).click();
-      
+
       // Verify events are handled consistently
       cy.verifyEventHandlingConsistency(processorId);
     });
@@ -174,25 +173,25 @@ describe('Cross-Browser Compatibility Tests', () => {
     it('should render processor UI consistently across browsers', () => {
       // Take screenshots for visual comparison
       cy.takeScreenshotForComparison(processorId, 'processor-initial');
-      
+
       // Open configuration dialog
       cy.openProcessorConfigDialog(processorId);
       cy.takeScreenshotForComparison(processorId, 'processor-config-dialog');
-      
+
       // Verify layout consistency
       cy.verifyLayoutConsistency();
-      
+
       cy.closeDialog();
     });
 
     it('should handle CSS animations and transitions uniformly', () => {
       // Test animation support
       cy.checkAnimationSupport();
-      
+
       // Test processor state transitions
       cy.startProcessor(processorId);
       cy.verifyAnimationConsistency(processorId, 'start');
-      
+
       cy.stopProcessor(processorId);
       cy.verifyAnimationConsistency(processorId, 'stop');
     });
@@ -200,7 +199,7 @@ describe('Cross-Browser Compatibility Tests', () => {
     it('should render fonts and text consistently', () => {
       // Verify font rendering
       cy.verifyFontRendering();
-      
+
       // Check text in processor configuration
       cy.openProcessorConfigDialog(processorId);
       cy.verifyTextRenderingConsistency();
@@ -211,7 +210,7 @@ describe('Cross-Browser Compatibility Tests', () => {
       // Test modal dialogs and overlays
       cy.openProcessorConfigDialog(processorId);
       cy.verifyModalLayering();
-      
+
       // Test context menus
       cy.closeDialog();
       cy.getProcessorElement(processorId).rightclick();
@@ -224,7 +223,7 @@ describe('Cross-Browser Compatibility Tests', () => {
     it('should handle local storage consistently', () => {
       // Test localStorage behavior
       cy.testLocalStorageCompatibility();
-      
+
       // Verify processor configuration persistence
       cy.configureProcessorForTesting(processorId);
       cy.verifyConfigurationPersistence();
@@ -233,7 +232,7 @@ describe('Cross-Browser Compatibility Tests', () => {
     it('should handle session storage uniformly', () => {
       // Test sessionStorage behavior
       cy.testSessionStorageCompatibility();
-      
+
       // Verify session data handling
       cy.verifySessionDataHandling();
     });
@@ -241,7 +240,7 @@ describe('Cross-Browser Compatibility Tests', () => {
     it('should handle cookie operations consistently', () => {
       // Test cookie handling across browsers
       cy.testCookieCompatibility();
-      
+
       // Verify authentication cookie handling
       cy.verifyCookieHandling();
     });
@@ -249,10 +248,10 @@ describe('Cross-Browser Compatibility Tests', () => {
     it('should handle URL and history API uniformly', () => {
       // Test history API support
       cy.testHistoryAPICompatibility();
-      
+
       // Test URL parameter handling
       cy.testURLParameterHandling();
-      
+
       // Navigate and verify history works
       cy.navigateToCanvas();
       cy.verifyHistoryAPIConsistency();
@@ -267,7 +266,7 @@ describe('Cross-Browser Compatibility Tests', () => {
         expect(metrics.querySelector).to.be.below(100); // ms
         expect(metrics.appendChild).to.be.below(50); // ms
         expect(metrics.removeChild).to.be.below(50); // ms
-        
+
         cy.log('DOM Performance Metrics:', JSON.stringify(metrics, null, 2));
       });
     });
@@ -275,12 +274,12 @@ describe('Cross-Browser Compatibility Tests', () => {
     it('should handle large datasets efficiently', () => {
       // Configure processor with complex settings
       cy.configureProcessorWithLargeDataset(processorId);
-      
+
       // Measure rendering performance
       cy.measureRenderingPerformance().then((metrics) => {
         expect(metrics.configDialogRender).to.be.below(2000); // ms
         expect(metrics.propertyListRender).to.be.below(1000); // ms
-        
+
         cy.log('Rendering Performance Metrics:', JSON.stringify(metrics, null, 2));
       });
     });
@@ -290,7 +289,7 @@ describe('Cross-Browser Compatibility Tests', () => {
       cy.measureNetworkPerformance().then((metrics) => {
         expect(metrics.avgResponseTime).to.be.below(5000); // ms
         expect(metrics.connectionTime).to.be.below(2000); // ms
-        
+
         cy.log('Network Performance Metrics:', JSON.stringify(metrics, null, 2));
       });
     });
@@ -301,7 +300,7 @@ describe('Cross-Browser Compatibility Tests', () => {
         // Verify memory usage is reasonable
         expect(metrics.initialMemory).to.be.above(0);
         expect(metrics.peakMemory).to.be.below(metrics.initialMemory * 5); // Not more than 5x initial
-        
+
         cy.log('Memory Usage Metrics:', JSON.stringify(metrics, null, 2));
       });
     });
@@ -311,7 +310,7 @@ describe('Cross-Browser Compatibility Tests', () => {
     it('should handle HTTPS consistently', () => {
       // Verify HTTPS handling
       cy.verifyHTTPSConsistency();
-      
+
       // Test secure cookie handling
       cy.verifySecureCookieHandling();
     });
@@ -319,7 +318,7 @@ describe('Cross-Browser Compatibility Tests', () => {
     it('should handle Content Security Policy uniformly', () => {
       // Test CSP compliance
       cy.verifyCSPCompliance();
-      
+
       // Verify no CSP violations in processor functionality
       cy.configureProcessorForTesting(processorId);
       cy.startProcessor(processorId);
@@ -330,7 +329,7 @@ describe('Cross-Browser Compatibility Tests', () => {
     it('should handle CORS requests consistently', () => {
       // Test CORS handling
       cy.verifyCORSHandling();
-      
+
       // Test JWKS endpoint requests with CORS
       cy.openProcessorConfigDialog(processorId);
       cy.setProcessorProperty('JWKS Source Type', 'SERVER');
@@ -342,18 +341,18 @@ describe('Cross-Browser Compatibility Tests', () => {
     it('should handle JWT token security consistently', () => {
       // Test JWT handling across browsers
       cy.verifyJWTSecurityConsistency();
-      
+
       // Verify token validation behavior
       cy.configureProcessorForTesting(processorId);
       cy.startProcessor(processorId);
-      
+
       // Send various token types
       cy.sendTokenToProcessor(processorId, cy.generateValidToken());
       cy.sendTokenToProcessor(processorId, 'invalid.token.here');
-      
+
       cy.wait(2000);
       cy.verifyTokenValidationConsistency(processorId);
-      
+
       cy.stopProcessor(processorId);
     });
   });
