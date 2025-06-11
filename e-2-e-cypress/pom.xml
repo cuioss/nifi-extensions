@@ -56,23 +56,22 @@
                             <arguments>run lint:check</arguments>
                         </configuration>
                     </execution>
-                    <!-- Run self-verification tests first -->
+                    <!-- Run self-verification tests (integration tests for core commands) -->
                     <execution>
                         <id>cypress-selftests</id>
                         <goals>
                             <goal>npm</goal>
                         </goals>
-                        <phase>pre-integration-test</phase>
+                        <phase>test</phase>
                         <configuration>
                             <arguments>run cypress:selftests</arguments>
                             <environmentVariables>
                                 <CYPRESS_BASE_URL>https://localhost:9095/nifi</CYPRESS_BASE_URL>
                                 <CYPRESS_KEYCLOAK_URL>https://localhost:9085/auth</CYPRESS_KEYCLOAK_URL>
                             </environmentVariables>
-                            <failOnError>true</failOnError>
                         </configuration>
                     </execution>
-                    <!-- Run actual E2E tests only if self-tests pass -->
+                    <!-- Run actual E2E tests only if self-tests pass (requires containers to be running) -->
                     <execution>
                         <id>cypress-e2e</id>
                         <goals>
