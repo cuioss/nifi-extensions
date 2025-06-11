@@ -55,6 +55,11 @@
         <rewrite-migrate-java.version>3.11.0</rewrite-migrate-java.version>
         <project.build.outputTimestamp>2025-04-30T06:58:46Z</project.build.outputTimestamp>
 
+        <!-- Frontend Maven Plugin -->
+        <frontend.maven.plugin.version>1.15.1</frontend.maven.plugin.version>
+        <frontend.node.version>v20.12.2</frontend.node.version>
+        <frontend.npm.version>10.5.0</frontend.npm.version>
+
         <!-- The version needs to be aligned with the one defined within the nifi boms. Otherwise, it's getting messy-->
         <version.junit.jupiter>5.11.3</version.junit.jupiter>
         <version.lombok>1.18.38</version.lombok>

@@ -12,12 +12,13 @@ The e-2-e-cypress module is *production-ready* with all core functionality imple
 * ✅ Complete test coverage (processor config, token validation, error handling)
 * ✅ Maven integration
 * ✅ Code quality standards (ESLint, Prettier)
+* ✅ Latest stable dependencies (Cypress 14.4.1, ESLint 8.57.1, Node.js 20.12.2)
 
 == Quick Start
 
 === Prerequisites
 
-* Node.js 16.x or higher
+* Node.js 20.x or higher (automatically installed via Maven)
 * Maven 3.8.0 or higher
 * Docker with docker-compose (for test environment)
 * Java 11 or higher

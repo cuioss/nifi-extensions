@@ -57,13 +57,6 @@ describe('Error Handling E2E Tests', () => {
 
   it('should handle invalid file paths for JWKS file type', () => {
     cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
-      const config = {
-        properties: {
-          'JWKS Type': 'File',
-          'JWKS File Path': '/nonexistent/path/to/jwks.json',
-        },
-      };
-
       // Configure processor with invalid file path
       cy.navigateToProcessorConfig(processorId);
       cy.get('.processor-configuration-tab').contains('Properties').click();

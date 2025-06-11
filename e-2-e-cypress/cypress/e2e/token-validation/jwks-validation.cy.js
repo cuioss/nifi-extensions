@@ -32,13 +32,6 @@ describe('JWKS Validation E2E Tests', () => {
     cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
       const invalidJwksUrl = 'https://invalid-jwks-server.com/jwks';
 
-      const config = {
-        properties: {
-          'JWKS Type': 'Server',
-          'JWKS URL': invalidJwksUrl,
-        },
-      };
-
       // Configure processor with invalid JWKS URL
       cy.navigateToProcessorConfig(processorId);
       cy.get('.processor-configuration-tab').contains('Properties').click();
@@ -75,7 +68,7 @@ describe('JWKS Validation E2E Tests', () => {
   });
 
   it('should validate file-based JWKS configuration', () => {
-    cy.fixture('jwks/test-jwks.json').then((jwksData) => {
+    cy.fixture('jwks/test-jwks.json').then(() => {
       cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
         const config = {
           properties: {
