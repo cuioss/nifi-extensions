@@ -16,5 +16,11 @@
 # Jest log files
 jest_stderr.log
 jest_stdout.log
+
+# Cypress test reports and artifacts
+**/tests-report/
+**/cypress/screenshots/
+**/cypress/videos/
+
 /CLAUDE.md
 **/.claude
