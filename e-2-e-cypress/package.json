@@ -10,7 +10,8 @@
     "lint:fix": "eslint 'cypress/**/*.js' --fix",
     "lint:check": "eslint 'cypress/**/*.js' --max-warnings 0",
     "format": "prettier --write 'cypress/**/*.js'",
-    "format:check": "prettier --check 'cypress/**/*.js'"
+    "format:check": "prettier --check 'cypress/**/*.js'",
+    "analyze-console-errors": "node scripts/analyze-console-errors.js"
   },
   "devDependencies": {
     "@cypress/code-coverage": "^3.13.4",

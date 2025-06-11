@@ -333,6 +333,21 @@ Run with debug output:
 DEBUG=cypress:* npm run cypress:run
 ----
 
+=== Console Error Analysis
+
+Analyze console errors from test runs:
+
+[source,bash]
+----
+# Analyze console errors for a specific run ID
+npm run analyze-console-errors [run-id]
+
+# Example
+npm run analyze-console-errors 2025-06-11T14-30-00
+----
+
+This generates detailed HTML and JSON reports in `cypress/reports/console-analysis/`.
+
 === Check Setup
 
 Use the verification script to diagnose issues:
@@ -359,7 +374,32 @@ The module is designed for CI/CD pipelines:
 * ✅ Proper error handling and reporting
 * ✅ Artifact collection for failed tests
 * ✅ Configurable through environment variables
-* 🔄 GitHub Actions workflow (Phase 4 - optional)
+* ✅ **Complete GitHub Actions workflow** with automated testing and reporting
+
+=== GitHub Actions Workflow
+
+The complete CI/CD pipeline is implemented in `.github/workflows/e2e-tests.yml`:
+
+**Frontend Quality Checks Job:**
+* Runs linting and unit tests for both frontend modules
+* Uses unified Node.js 20.12.2 and frontend configuration
+* Caches Maven and NPM dependencies for speed
+* Collects test results and coverage reports
+
+**E2E Integration Tests Job:**
+* Builds NAR package and starts Docker test environment
+* Runs self-verification tests first to ensure command reliability
+* Executes full E2E test suite with environment variables
+* Collects test results, videos, screenshots, and JUnit reports
+* Performs console error analysis on failures
+* Guaranteed environment cleanup
+
+**Triggers:**
+* Push to `main`, `develop`, `feature/end-to-end-testing` branches
+* Pull requests to `main`, `develop` branches
+* Changes to relevant paths (e-2-e-cypress/, processors/, integration-testing/, etc.)
+
+For detailed CI/CD documentation, see link:doc/ci-cd-integration.md[CI/CD Integration Guide].
 
 === CI Environment Setup
 
