@@ -697,7 +697,6 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param context    The process context
      * @return The IssuerConfig object, or null if the required properties are missing
      */
-    @SuppressWarnings("java:S3516") // To be implemented
     private IssuerConfig createIssuerConfig(String issuerName, Map<String, String> properties, ProcessContext context) {
         // Required properties
         String jwksUrl = properties.get(Issuer.JWKS_URL);
@@ -723,15 +722,21 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             issuerName, jwksUrl, issuer, audience, clientId);
 
         try {
-            // TODO: Implement proper IssuerConfig creation using the cui-jwt-validation library
-            // This requires proper integration with the library's API which is not yet available
-            // For now, log a warning and return null to indicate validation will fail
+            // Create issuer configuration using builder pattern
+            // Based on the examples in Usage.adoc
+            IssuerConfig issuerConfig = IssuerConfig.builder()
+                .issuer(issuer)
+                // Configure JWKS URL directly
+                .jwksFilePath(jwksUrl)
+                // Add optional audience if provided
+                .expectedAudience(audience != null && !audience.isEmpty() ? audience : null)
+                // Add optional client ID if provided
+                .expectedClientId(clientId != null && !clientId.isEmpty() ? clientId : null)
+                .build();
 
-            LOGGER.warn(AuthLogMessages.WARN.ISSUER_CONFIG_NOT_IMPLEMENTED.format(issuerName));
+            LOGGER.info(AuthLogMessages.INFO.ISSUER_CONFIG_CREATED.format(issuerName));
 
-            // Return null to indicate that validation will fail
-            // This should be replaced with proper implementation when the library integration is complete
-            return null;
+            return issuerConfig;
         } catch (Exception e) {
             LOGGER.error(e, AuthLogMessages.ERROR.ISSUER_CONFIG_ERROR.format(issuerName, e.getMessage()));
             return null;
