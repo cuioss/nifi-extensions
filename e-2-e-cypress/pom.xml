@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>de.cuioss.nifi</groupId>
+        <artifactId>nifi-extensions</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>e-2-e-cypress</artifactId>
+    <packaging>pom</packaging>
+
+    <name>NiFi Extensions :: End-to-End Cypress Tests</name>
+    <description>End-to-End Cypress tests for NiFi Extensions</description>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>1.12.1</version>
+                <executions>
+                    <!-- Install Node and NPM -->
+                    <execution>
+                        <id>install-node-and-npm</id>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                        <configuration>
+                            <nodeVersion>v16.16.0</nodeVersion>
+                            <npmVersion>8.11.0</npmVersion>
+                        </configuration>
+                    </execution>
+                    <!-- Install dependencies -->
+                    <execution>
+                        <id>npm-install</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                        <configuration>
+                            <arguments>install</arguments>
+                        </configuration>
+                    </execution>
+                    <!-- Run self-verification tests first -->
+                    <execution>
+                        <id>cypress-selftests</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>pre-integration-test</phase>
+                        <configuration>
+                            <arguments>run cypress:selftests</arguments>
+                            <environmentVariables>
+                                <CYPRESS_BASE_URL>https://localhost:8443/nifi</CYPRESS_BASE_URL>
+                                <CYPRESS_KEYCLOAK_URL>https://localhost:8443/auth</CYPRESS_KEYCLOAK_URL>
+                            </environmentVariables>
+                            <failOnError>true</failOnError>
+                        </configuration>
+                    </execution>
+                    <!-- Run actual E2E tests only if self-tests pass -->
+                    <execution>
+                        <id>cypress-e2e</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>integration-test</phase>
+                        <configuration>
+                            <arguments>run cypress:run</arguments>
+                            <environmentVariables>
+                                <CYPRESS_BASE_URL>https://localhost:8443/nifi</CYPRESS_BASE_URL>
+                                <CYPRESS_KEYCLOAK_URL>https://localhost:8443/auth</CYPRESS_KEYCLOAK_URL>
+                            </environmentVariables>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

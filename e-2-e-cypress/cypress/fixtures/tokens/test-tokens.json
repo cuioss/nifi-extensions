@@ -1,0 +1,50 @@
+{
+  "validToken": {
+    "header": {
+      "alg": "RS256",
+      "typ": "JWT",
+      "kid": "test-key-1"
+    },
+    "payload": {
+      "iss": "https://localhost:8443/auth/realms/oauth_integration_tests",
+      "sub": "test-user",
+      "aud": "test_client",
+      "exp": 1735689600,
+      "iat": 1735686000,
+      "jti": "test-token-id",
+      "scope": "openid profile email"
+    }
+  },
+  "expiredToken": {
+    "header": {
+      "alg": "RS256",
+      "typ": "JWT",
+      "kid": "test-key-1"
+    },
+    "payload": {
+      "iss": "https://localhost:8443/auth/realms/oauth_integration_tests",
+      "sub": "test-user",
+      "aud": "test_client",
+      "exp": 1609459200,
+      "iat": 1609455600,
+      "jti": "expired-token-id",
+      "scope": "openid profile email"
+    }
+  },
+  "invalidIssuerToken": {
+    "header": {
+      "alg": "RS256",
+      "typ": "JWT",
+      "kid": "test-key-1"
+    },
+    "payload": {
+      "iss": "https://malicious-issuer.com",
+      "sub": "test-user",
+      "aud": "test_client",
+      "exp": 1735689600,
+      "iat": 1735686000,
+      "jti": "invalid-issuer-token-id",
+      "scope": "openid profile email"
+    }
+  }
+}

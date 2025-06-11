@@ -1,0 +1,29 @@
+{
+  "name": "e-2-e-cypress",
+  "version": "1.0.0",
+  "description": "End-to-End Cypress tests for NiFi Extensions",
+  "scripts": {
+    "cypress:selftests": "cypress run --config-file cypress.selftests.config.js",
+    "cypress:run": "cypress run",
+    "cypress:open": "cypress open",
+    "lint": "eslint 'cypress/**/*.js'",
+    "lint:fix": "eslint 'cypress/**/*.js' --fix"
+  },
+  "devDependencies": {
+    "@cypress/code-coverage": "^3.10.0",
+    "axe-core": "^4.6.3",
+    "cypress": "^12.8.1",
+    "cypress-axe": "^1.4.0",
+    "cypress-multi-reporters": "^1.6.2",
+    "eslint": "^8.36.0",
+    "eslint-config-prettier": "^8.7.0",
+    "eslint-plugin-cypress": "^2.12.1",
+    "eslint-plugin-prettier": "^4.2.1",
+    "jwt-decode": "^3.1.2",
+    "mocha": "^10.2.0",
+    "mochawesome": "^7.1.3",
+    "mochawesome-merge": "^4.2.2",
+    "mochawesome-report-generator": "^6.2.0",
+    "prettier": "^2.8.4"
+  }
+}
