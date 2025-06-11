@@ -594,7 +594,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         try {
             // Create issuer configuration
-            IssuerConfig issuerConfig = createIssuerConfig(issuerName, properties, context);
+            IssuerConfig issuerConfig = createIssuerConfig(issuerName, properties);
             if (issuerConfig != null) {
                 // Cache the issuer Config for future use
                 issuerConfigCache.put(issuerName, issuerConfig);
@@ -694,10 +694,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      *
      * @param issuerName The name of the issuer
      * @param properties The properties for the issuer
-     * @param context    The process context
      * @return The IssuerConfig object, or null if the required properties are missing
      */
-    private IssuerConfig createIssuerConfig(String issuerName, Map<String, String> properties, ProcessContext context) {
+    private IssuerConfig createIssuerConfig(String issuerName, Map<String, String> properties) {
         // Required properties
         String jwksUrl = properties.get(Issuer.JWKS_URL);
         String issuer = properties.get(Issuer.ISSUER_NAME);

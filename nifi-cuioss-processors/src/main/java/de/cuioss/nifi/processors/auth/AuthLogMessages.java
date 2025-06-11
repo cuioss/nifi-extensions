@@ -131,6 +131,12 @@ public final class AuthLogMessages {
                 .identifier(17)
                 .template("Security event counter is not available for monitoring")
                 .build();
+
+        public static final LogRecord ISSUER_CONFIG_CREATED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(18)
+                .template("Successfully created issuer configuration for %s")
+                .build();
     }
 
     @UtilityClass
