@@ -5,6 +5,9 @@
 
 set -e
 
+# Navigate to project root (two levels up from e-2-e-cypress/scripts/)
+cd "$(dirname "$0")/../.."
+
 echo "🚀 Starting Local Integration Test Suite"
 echo "========================================"
 

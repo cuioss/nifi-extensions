@@ -23,13 +23,13 @@ The easiest way to run all tests locally:
 
 ```bash
 # Run complete test suite
-./run-integration-tests.sh
+./e-2-e-cypress/scripts/run-integration-tests.sh
 
 # Available options:
-./run-integration-tests.sh --help
-./run-integration-tests.sh --skip-build      # Use existing artifacts
-./run-integration-tests.sh --keep-containers # Keep containers running after tests
-./run-integration-tests.sh --only-selftests  # Run only command validation tests
+./e-2-e-cypress/scripts/run-integration-tests.sh --help
+./e-2-e-cypress/scripts/run-integration-tests.sh --skip-build      # Use existing artifacts
+./e-2-e-cypress/scripts/run-integration-tests.sh --keep-containers # Keep containers running after tests
+./e-2-e-cypress/scripts/run-integration-tests.sh --only-selftests  # Run only command validation tests
 ```
 
 This script will:
@@ -61,16 +61,16 @@ If containers are already running, use the quick runner:
 
 ```bash
 # Run self-tests only (fast)
-./run-tests-quick.sh
+./e-2-e-cypress/scripts/run-tests-quick.sh
 
 # Run full E2E test suite
-./run-tests-quick.sh --full
+./e-2-e-cypress/scripts/run-tests-quick.sh --full
 
 # Run specific tests
-./run-tests-quick.sh --spec '**/login*.cy.js'
+./e-2-e-cypress/scripts/run-tests-quick.sh --spec '**/login*.cy.js'
 
 # Run with browser visible (debugging)
-./run-tests-quick.sh --headed
+./e-2-e-cypress/scripts/run-tests-quick.sh --headed
 ```
 
 ## Manual Container Management
@@ -111,14 +111,14 @@ While containers are running:
 
 1. Start containers once:
    ```bash
-   ./run-integration-tests.sh --keep-containers --only-selftests
+   ./e-2-e-cypress/scripts/run-integration-tests.sh --keep-containers --only-selftests
    ```
 
 2. Make changes to tests or code
 
 3. Run quick tests:
    ```bash
-   ./run-tests-quick.sh
+   ./e-2-e-cypress/scripts/run-tests-quick.sh
    ```
 
 4. Open Cypress UI for debugging:
@@ -131,7 +131,7 @@ While containers are running:
 
 1. Create test files in `e-2-e-cypress/cypress/e2e/` or `e-2-e-cypress/cypress/selftests/`
 2. Use the existing custom commands in `e-2-e-cypress/cypress/support/commands/`
-3. Test locally with `./run-tests-quick.sh`
+3. Test locally with `./e-2-e-cypress/scripts/run-tests-quick.sh`
 4. Commit and push - CI will run the same tests
 
 ## Troubleshooting
@@ -158,10 +158,10 @@ docker compose up -d --build
 
 ```bash
 # Run with browser visible for debugging
-./run-tests-quick.sh --headed
+./e-2-e-cypress/scripts/run-tests-quick.sh --headed
 
 # Run specific test file
-./run-tests-quick.sh --spec '**/failing-test.cy.js'
+./e-2-e-cypress/scripts/run-tests-quick.sh --spec '**/failing-test.cy.js'
 
 # Check test artifacts
 ls -la e-2-e-cypress/cypress/screenshots/
@@ -208,7 +208,7 @@ This ensures that tests passing locally will also pass in CI.
 1. Use `--skip-build` if you haven't changed code
 2. Use `--keep-containers` to avoid restart overhead
 3. Use `--only-selftests` for faster feedback
-4. Use `./run-tests-quick.sh` for rapid iteration
+4. Use `./e-2-e-cypress/scripts/run-tests-quick.sh` for rapid iteration
 
 ## Configuration
 

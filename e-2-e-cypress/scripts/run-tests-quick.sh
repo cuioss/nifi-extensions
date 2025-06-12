@@ -5,6 +5,9 @@
 
 set -e
 
+# Navigate to project root (two levels up from e-2-e-cypress/scripts/)
+cd "$(dirname "$0")/../.."
+
 echo "🧪 Quick Integration Test Runner"
 echo "================================"
 
@@ -31,7 +34,7 @@ print_status "Checking if test environment is running..."
 
 if ! curl -k --fail --max-time 5 https://localhost:9095/nifi/ >/dev/null 2>&1; then
     print_warning "NiFi not accessible at https://localhost:9095/nifi/"
-    echo "To start the full test environment, run: ./run-integration-tests.sh"
+    echo "To start the full test environment, run: ./e-2-e-cypress/scripts/run-integration-tests.sh"
     echo "Or manually start containers: cd integration-testing/src/main/docker && docker compose up -d"
     exit 1
 fi
@@ -77,4 +80,4 @@ echo ""
 print_status "Quick access:"
 print_status "  • NiFi UI: https://localhost:9095/nifi/"
 print_status "  • Open Cypress UI: npm run cypress:open"
-print_status "  • Run full tests: $0 --full"
+print_status "  • Run full tests: ./e-2-e-cypress/scripts/run-tests-quick.sh --full"

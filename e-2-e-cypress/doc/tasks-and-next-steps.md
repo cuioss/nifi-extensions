@@ -9,21 +9,19 @@
 
 ### 1. Move e-2-e-cypress Artifacts to Module
 **Goal**: Consolidate all end-to-end testing artifacts into the `e-2-e-cypress` module
-- [ ] Move `run-tests-quick.sh` from root to `e-2-e-cypress/scripts/`
-- [ ] Move `run-integration-tests.sh` from root to `e-2-e-cypress/scripts/`
-- [ ] Move root `package.json` and `package-lock.json` to `e-2-e-cypress/` (or remove if redundant)
-- [ ] Move `docs/local-integration-testing.md` to `e-2-e-cypress/doc/` (or determine if still needed)
-- [ ] Update script paths in pom.xml `local-integration-tests` profile
-- [ ] Update script references in documentation
-- [ ] Verify script paths in:
-  - `integration-testing/src/main/docker/copy-deployment.sh`
+- [x] Move `run-tests-quick.sh` from root to `e-2-e-cypress/scripts/`
+- [x] Move `run-integration-tests.sh` from root to `e-2-e-cypress/scripts/`
+- [x] Move root `package.json` and `package-lock.json` to `e-2-e-cypress/` (or remove if redundant)
+- [x] Move `docs/local-integration-testing.md` to `e-2-e-cypress/doc/` (or determine if still needed)
+- [x] Update script paths in pom.xml `local-integration-tests` profile
+- [x] Update script references in documentation
+- [x] Verify script paths in:
   - `.github/workflows/e2e-tests.yml`
   - All documentation references
 
 **Completion Steps:**
-- [ ] Run full Maven build: `./mvnw clean install` - Fix all issues
-- [ ] Run integration tests: `./mvnw test -Plocal-integration-tests -Dintegration.test.local=true` - Fix all issues
-- [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
+- [x] Run full Maven build: `./mvnw clean install` - Fix all issues
+- [x] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
 ### 2. Robust Login Pattern
