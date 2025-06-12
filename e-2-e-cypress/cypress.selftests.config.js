@@ -5,7 +5,7 @@ module.exports = defineConfig({
     specPattern: 'cypress/selftests/**/*.cy.js',
     supportFile: 'cypress/support/e2e.js',
     // Configure base URL for integration tests
-    baseUrl: process.env.CYPRESS_BASE_URL || 'https://localhost:9095/nifi',
+    baseUrl: process.env.CYPRESS_BASE_URL || 'http://localhost:9094/nifi',
     // Set longer timeouts for integration tests against real NiFi
     defaultCommandTimeout: 15000,
     requestTimeout: 10000,
@@ -20,8 +20,8 @@ module.exports = defineConfig({
     },
     env: {
       // Pass through environment variables
-      CYPRESS_BASE_URL: process.env.CYPRESS_BASE_URL || 'https://localhost:9095/nifi',
-      CYPRESS_KEYCLOAK_URL: process.env.CYPRESS_KEYCLOAK_URL || 'https://localhost:9085/auth'
+      CYPRESS_BASE_URL: process.env.CYPRESS_BASE_URL || 'http://localhost:9094/nifi',
+      CYPRESS_KEYCLOAK_URL: process.env.CYPRESS_KEYCLOAK_URL || 'https://localhost:9085'
     }
   }
 });

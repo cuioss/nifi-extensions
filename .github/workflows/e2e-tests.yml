@@ -148,7 +148,7 @@ jobs:
         # Final connectivity verification with detailed error output
         echo "Testing NiFi connectivity..."
         timeout 60 bash -c '
-          until curl -k -f -v https://localhost:9095/nifi/; do 
+          until curl -f -v http://localhost:9094/nifi/; do 
             echo "NiFi not ready yet, retrying in 10 seconds..."
             sleep 10
           done
@@ -156,7 +156,7 @@ jobs:
         
         echo "Testing Keycloak connectivity..."
         timeout 60 bash -c '
-          until curl -k -f -v https://localhost:9085/auth/; do 
+          until curl -k -f -v https://localhost:9085/; do 
             echo "Keycloak not ready yet, retrying in 10 seconds..."
             sleep 10
           done
@@ -168,15 +168,15 @@ jobs:
       working-directory: e-2-e-cypress
       run: npm run cypress:selftests
       env:
-        CYPRESS_BASE_URL: https://localhost:9095/nifi
-        CYPRESS_KEYCLOAK_URL: https://localhost:9085/auth
+        CYPRESS_BASE_URL: http://localhost:9094/nifi
+        CYPRESS_KEYCLOAK_URL: https://localhost:9085
     
     - name: Run E2E tests
       working-directory: e-2-e-cypress
       run: npm run cypress:run
       env:
-        CYPRESS_BASE_URL: https://localhost:9095/nifi
-        CYPRESS_KEYCLOAK_URL: https://localhost:9085/auth
+        CYPRESS_BASE_URL: http://localhost:9094/nifi
+        CYPRESS_KEYCLOAK_URL: https://localhost:9085
     
     - name: Upload test results
       uses: actions/upload-artifact@v4

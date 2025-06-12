@@ -2,7 +2,7 @@ const { defineConfig } = require('cypress');
 
 module.exports = defineConfig({
   e2e: {
-    baseUrl: 'https://localhost:8443/nifi',
+    baseUrl: 'http://localhost:9094/nifi',
     specPattern: 'cypress/e2e/**/*.cy.js',
     supportFile: 'cypress/support/e2e.js',
     viewportWidth: 1280,
@@ -23,7 +23,7 @@ module.exports = defineConfig({
     }
   },
   env: {
-    keycloakUrl: 'https://localhost:8443/auth',
+    keycloakUrl: 'https://localhost:9085',
     keycloakRealm: 'oauth_integration_tests',
     keycloakClientId: 'test_client',
     keycloakClientSecret: 'test_client_secret',

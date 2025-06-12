@@ -162,7 +162,7 @@ cp nifi/conf/nifi.properties.backup nifi/conf/nifi.properties
 
 # Update docker-compose.yml to restore HTTPS
 # Remove HTTP environment variables
-# Change port mapping back to 9095:9095
+# Change port mapping back to 9094:9094
 
 # Restart containers
 docker compose down && docker compose up -d

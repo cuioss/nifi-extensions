@@ -1,15 +1,15 @@
 /**
- * REAL integration tests for JWT validation functionality
+ * JWT validation integration tests for JWT validation functionality
  * These tests verify JWT token validation against an actual NiFi instance
  *
  * Prerequisites:
- * - NiFi must be running on https://localhost:9095/nifi
+ * - NiFi must be running on http://localhost:9094/nifi
  * - Default credentials: admin/adminadminadmin
  * - MultiIssuerJWTTokenAuthenticator processor must be available
  */
 
 describe('JWT Validation Integration Tests', () => {
-  const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'https://localhost:9095/nifi';
+  const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'http://localhost:9094/nifi';
 
   before(() => {
     // Verify NiFi is accessible before running tests

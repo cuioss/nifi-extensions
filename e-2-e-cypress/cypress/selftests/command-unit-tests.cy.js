@@ -3,13 +3,13 @@
  * These tests verify core functionality against an actual NiFi instance
  *
  * Prerequisites:
- * - NiFi must be running on https://localhost:9095/nifi
+ * - NiFi must be running on http://localhost:9094/nifi
  * - Default credentials: admin/adminadminadmin
  * - MultiIssuerJWTTokenAuthenticator processor must be available
  */
 
 describe('Core Command Integration Tests', () => {
-  const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'https://localhost:9095/nifi';
+  const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'http://localhost:9094/nifi';
 
   before(() => {
     // Verify NiFi is accessible before running tests

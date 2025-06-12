@@ -89,7 +89,7 @@
                     │
 ┌─────────────────────────────────────────┐
 │ Docker Environment                      │
-│ - NiFi Container (port 9095)           │
+│ - NiFi Container (port 9094)           │
 │ - Keycloak Container (port 9085)       │
 │ - Persistent volumes for NAR files     │
 └─────────────────────────────────────────┘
@@ -166,7 +166,7 @@ cy.verifyCanvasAccessible()      // Canvas availability check
 services:
   nifi:
     image: apache/nifi:2.4.0
-    ports: ["9095:8443"]
+    ports: ["9094:9094"]
     environment:
       - NIFI_WEB_HTTP_PORT=8080
       - NIFI_WEB_HTTPS_PORT=8443
@@ -225,7 +225,7 @@ Total Tests: 14
 docker ps | grep -E "(nifi|keycloak)" | wc -l  # Should return 2
 
 # NiFi availability
-curl -k https://localhost:9095/nifi/ | grep -o "nifi"
+curl http://localhost:9094/nifi/ | grep -o "nifi"
 
 # Keycloak availability  
 curl http://localhost:9085/auth/realms/master | grep -o "master"

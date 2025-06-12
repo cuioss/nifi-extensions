@@ -1,7 +1,7 @@
 // Simple test to understand login flow and available elements
 describe('NiFi Login Analysis', () => {
   it('should identify login requirements', () => {
-    cy.visit('https://localhost:9095/nifi/');
+    cy.visit('http://localhost:9094/nifi/');
     
     // Wait for Angular app to load
     cy.get('nifi', { timeout: 30000 }).should('exist');
