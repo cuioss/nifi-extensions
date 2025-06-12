@@ -48,6 +48,17 @@ This directory contains comprehensive documentation for the NiFi 2.4.0 UI integr
 
 **Who should read**: Developers writing new tests, QA engineers debugging test issues
 
+### 🎭 [MCP Playwright Integration](./mcp-playwright-guide.md)
+**Purpose**: MCP Playwright tool setup and integration guide  
+**Contents**:
+- Complete MCP Playwright tool configuration
+- HTTP environment setup for MCP compatibility
+- Local application analysis and browser automation
+- Integration with existing Cypress testing workflow
+- Troubleshooting and best practices
+
+**Who should read**: Developers using MCP Playwright tool, test automation engineers
+
 ### 📅 [Next Steps and Roadmap](./tasks-and-next-steps.md)
 **Purpose**: Actionable roadmap for continued improvement  
 **Contents**:
