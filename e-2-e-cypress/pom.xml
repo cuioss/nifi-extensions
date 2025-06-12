@@ -90,4 +90,90 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>local-integration-tests</id>
+            <activation>
+                <property>
+                    <name>integration.test.local</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.eirslett</groupId>
+                        <artifactId>frontend-maven-plugin</artifactId>
+                        <version>${frontend.maven.plugin.version}</version>
+                        <executions>
+                            <!-- Install Node and NPM -->
+                            <execution>
+                                <id>local-install-node-and-npm</id>
+                                <goals>
+                                    <goal>install-node-and-npm</goal>
+                                </goals>
+                                <phase>pre-integration-test</phase>
+                                <configuration>
+                                    <nodeVersion>${frontend.node.version}</nodeVersion>
+                                    <npmVersion>${frontend.npm.version}</npmVersion>
+                                </configuration>
+                            </execution>
+                            <!-- Install dependencies -->
+                            <execution>
+                                <id>local-npm-install</id>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <phase>pre-integration-test</phase>
+                                <configuration>
+                                    <arguments>install</arguments>
+                                </configuration>
+                            </execution>
+                            <!-- Run linting to check code quality -->
+                            <execution>
+                                <id>local-npm-lint</id>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <phase>integration-test</phase>
+                                <configuration>
+                                    <arguments>run lint:check</arguments>
+                                </configuration>
+                            </execution>
+                            <!-- Run self-verification tests (integration tests for core commands) -->
+                            <execution>
+                                <id>local-cypress-selftests</id>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <phase>integration-test</phase>
+                                <configuration>
+                                    <arguments>run cypress:selftests</arguments>
+                                    <environmentVariables>
+                                        <CYPRESS_BASE_URL>https://localhost:9095/nifi</CYPRESS_BASE_URL>
+                                        <CYPRESS_KEYCLOAK_URL>https://localhost:9085/auth</CYPRESS_KEYCLOAK_URL>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                            <!-- Run actual E2E tests -->
+                            <execution>
+                                <id>local-cypress-e2e</id>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <phase>integration-test</phase>
+                                <configuration>
+                                    <arguments>run cypress:run</arguments>
+                                    <environmentVariables>
+                                        <CYPRESS_BASE_URL>https://localhost:9095/nifi</CYPRESS_BASE_URL>
+                                        <CYPRESS_KEYCLOAK_URL>https://localhost:9085/auth</CYPRESS_KEYCLOAK_URL>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

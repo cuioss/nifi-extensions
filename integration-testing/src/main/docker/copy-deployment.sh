@@ -9,7 +9,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 NAR_TARGET_DIR="${PROJECT_ROOT}/nifi-cuioss-nar/target"
-DEPLOY_DIR="${PROJECT_ROOT}/integration-testing/target/nifi-deploy"
+DEPLOY_DIR="${PROJECT_ROOT}/target/nifi-deploy"
 
 # Navigate to the project root to run Maven
 cd "${PROJECT_ROOT}"

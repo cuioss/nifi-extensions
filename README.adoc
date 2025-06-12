@@ -23,6 +23,7 @@ image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-exten
 * link:doc/Specification.adoc[Specification]
 * link:nifi-cuioss-processors/README.md[NiFi CUI-OSS Processors]
 * link:integration-testing/README.adoc[Integration Testing Environment]
+* link:docs/local-integration-testing.md[Local Integration Testing Guide]
 
 == Components
 
@@ -40,6 +41,7 @@ Complete Cypress-based end-to-end testing framework with:
 * Console error monitoring with allowlist management
 * **Complete CI/CD integration** with GitHub Actions
 * Docker-based test environment with NiFi and Keycloak
+* **Local integration testing** with automated container management
 
 See link:e-2-e-cypress/README.adoc[E2E Testing Documentation] for details.
 
@@ -64,6 +66,23 @@ To skip tests:
 ```bash
 ./mvnw clean install -DskipTests
 ```
+
+=== Local Integration Testing
+
+Run the complete integration test suite locally with automated container management:
+
+```bash
+# Full integration test suite with container lifecycle
+./run-integration-tests.sh
+
+# Quick test run (containers already running)
+./run-tests-quick.sh
+
+# Maven profile directly
+./mvnw integration-test -Plocal-integration-tests -Dintegration.test.local=true
+```
+
+See link:docs/local-integration-testing.md[Local Integration Testing Guide] for detailed instructions.
 
 === Frontend Configuration
 
