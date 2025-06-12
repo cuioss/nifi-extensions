@@ -1,4 +1,4 @@
-# NiFi Integration Test Tasks - Prioritized
+# NiFi Integration Test Tasks - Implementation Order
 
 ## Current Status
 - **Test Success Rate**: 71% (10/14 tests passing)
@@ -27,63 +27,9 @@
 - **Authentication**: Keycloak OIDC (admin/ctsBtRBKHRAx69EqUghvvgEvjnaLjFEB)
 - **Test Philosophy**: Testing custom processor logic using NiFi as a platform  
 
-## Priority 1: Project Organization & Infrastructure (Critical)
+## Implementation Tasks
 
-### 1. Move e-2-e-cypress Artifacts to Module
-**Goal**: Consolidate all end-to-end testing artifacts into the `e-2-e-cypress` module
-- [x] Move `run-tests-quick.sh` from root to `e-2-e-cypress/scripts/`
-- [x] Move `run-integration-tests.sh` from root to `e-2-e-cypress/scripts/`
-- [x] Move root `package.json` and `package-lock.json` to `e-2-e-cypress/` (or remove if redundant)
-- [x] Move `docs/local-integration-testing.md` to `e-2-e-cypress/doc/` (or determine if still needed)
-- [x] Update script paths in pom.xml `local-integration-tests` profile
-- [x] Update script references in documentation
-- [x] Verify script paths in:
-  - `.github/workflows/e2e-tests.yml`
-  - All documentation references
-
-**Completion Steps:**
-- [x] Run full Maven build: `./mvnw clean install` - Fix all issues
-- [x] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
-- [x] Git commit with descriptive message
-
-### 2. Robust Login Pattern
-**File**: `/cypress/support/commands/login.js`
-- [x] Simplify login approach - focus on "am I logged in?" not "how does login work?"
-- [x] Add login state detection - check if already logged in before attempting login
-- [x] Create login recovery - if login fails, try alternative approaches
-- [x] Remove deep NiFi testing - we don't need to validate NiFi's login flow
-
-**Implementation Details:**
-- ✅ **State Detection**: `isLoggedIn()` command checks current authentication state
-- ✅ **Robust Authentication**: `ensureAuthenticatedAndReady()` main command for tests
-- ✅ **Recovery Mechanisms**: Multiple fallback strategies with retry logic
-- ✅ **Performance Optimization**: `quickLoginCheck()` for beforeEach hooks
-- ✅ **Backward Compatibility**: Legacy `nifiLogin()` command maintained
-- ✅ **Anonymous Access Support**: Automatic detection and handling
-- ✅ **Focus on Testing**: Commands prioritize getting to processor testing quickly
-
-**Usage Examples:**
-```javascript
-// Recommended for new tests
-cy.ensureAuthenticatedAndReady();
-
-// Fast check for beforeEach
-cy.quickLoginCheck();
-
-// Legacy compatibility 
-cy.nifiLogin(); // Uses robust pattern internally
-```
-
-**Test Results:** ✅ All login tests passing with new robust pattern
-
-**Completion Steps:**
-- [x] Run full Maven build: `./mvnw clean install` - All builds successful
-- [x] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
-- [x] Git commit with descriptive message
-
-## Priority 2: Authentication & Navigation
-
-### 3. Simple Navigation Pattern  
+### 1. Simple Navigation Pattern  
 - [ ] Direct URL navigation - use direct URLs when possible instead of clicking through UI
 - [ ] State-based navigation - check current location, navigate only if needed
 - [ ] Remove navigation testing - we don't need to test NiFi's navigation
@@ -100,9 +46,7 @@ cy.nifiLogin(); // Uses robust pattern internally
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-## Priority 3: Processor State Detection (Foundation)
-
-### 4. Processor Configuration Detection
+### 2. Processor Configuration Detection
 **File**: `/cypress/support/commands/processor.js`
 - [ ] Create `isProcessorConfigured()` command
 - [ ] Add processor property inspection
@@ -119,7 +63,7 @@ cy.nifiLogin(); // Uses robust pattern internally
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 5. Processor ID Management
+### 3. Processor ID Management
 - [ ] Focus on functional ID extraction - get any working ID, don't test how IDs work
 - [ ] Use processor types for identification - find processor by type when ID fails
 - [ ] Create processor reference system - our own way to track processors for testing
@@ -135,7 +79,7 @@ cy.nifiLogin(); // Uses robust pattern internally
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 6. Custom Processor Testing Focus
+### 4. Custom Processor Testing Focus
 - [ ] Create custom processor test patterns (JWT validation, multi-issuer configuration, error handling)
 - [ ] Minimal NiFi interaction required (setup → trigger → verify)
 - [ ] Focus on processor business logic (JWT token validation, multi-issuer handling, error conditions)
@@ -146,9 +90,7 @@ cy.nifiLogin(); // Uses robust pattern internally
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-## Priority 4: Test Optimization
-
-### 7. Address Current Failure Patterns
+### 5. Address Current Failure Patterns
 **Goal**: Fix the most common test failure patterns identified from current testing
 - [ ] Fix navigation timeouts - Angular routing detection issues (affects 33% success rate)
 - [ ] Improve element discovery for dynamic UI elements
@@ -165,7 +107,7 @@ cy.nifiLogin(); // Uses robust pattern internally
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 8. Remove NiFi Testing, Focus on Custom Logic
+### 6. Remove NiFi Testing, Focus on Custom Logic
 - [ ] Audit existing tests - identify what's testing NiFi vs our code
 - [ ] Simplify test scenarios - remove complex NiFi interaction testing
 - [ ] Focus on processor functionality - test our JWT validation, not NiFi's processor framework
@@ -179,7 +121,7 @@ cy.nifiLogin(); // Uses robust pattern internally
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 9. Robust Test Patterns
+### 7. Robust Test Patterns
 - [ ] Create stable test setup pattern (Login → Navigate → Verify processor → Test our logic)
 - [ ] Add test isolation (each test gets clean processor state)
 - [ ] Implement graceful degradation (tests continue if minor UI elements change)
@@ -194,9 +136,7 @@ cy.nifiLogin(); // Uses robust pattern internally
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-## Priority 5: Performance & Resource Optimization
-
-### 10. Test Performance Improvements
+### 8. Test Performance Improvements
 **Goal**: Optimize test execution time and resource usage
 - [ ] Reduce login overhead (currently 7-8 seconds per session)
 - [ ] Optimize test suite execution (currently ~45 seconds total)
@@ -216,9 +156,7 @@ cy.nifiLogin(); // Uses robust pattern internally
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-## Priority 6: Infrastructure Cleanup
-
-### 11. Docker Script Consolidation
+### 9. Docker Script Consolidation
 - [ ] Standardize remaining infrastructure scripts
 - [ ] Create consistent script naming convention
 - [ ] Improve script documentation
@@ -238,7 +176,7 @@ cy.nifiLogin(); // Uses robust pattern internally
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 12. Infrastructure Documentation Cleanup
+### 10. Infrastructure Documentation Cleanup
 - [ ] Audit infrastructure references in all documentation
 - [ ] Update setup guides to use simplified docker-compose approach
 - [ ] Remove references to deleted scripts from README files
@@ -258,7 +196,7 @@ cy.nifiLogin(); // Uses robust pattern internally
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 13. Rewrite GitHub Actions E2E Workflow
+### 11. Rewrite GitHub Actions E2E Workflow
 **File**: `.github/workflows/e2e-tests.yml`
 **Goal**: Completely rewrite workflow to use Maven profile-based structure with improved triggers
 - [ ] Replace current workflow with Maven profile execution (`local-integration-tests`)
@@ -278,9 +216,7 @@ cy.nifiLogin(); // Uses robust pattern internally
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-## Priority 7: Advanced Features
-
-### 14. Advanced Workflow Testing
+### 12. Advanced Workflow Testing
 - [ ] Multi-processor pipeline creation
 - [ ] Processor configuration testing
 - [ ] Data flow validation
@@ -292,7 +228,7 @@ cy.nifiLogin(); // Uses robust pattern internally
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 15. Performance Benchmarking
+### 13. Performance Benchmarking
 - [ ] Establish baseline performance metrics
 - [ ] Create performance regression tests
 - [ ] Monitor test execution times
@@ -304,7 +240,7 @@ cy.nifiLogin(); // Uses robust pattern internally
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 16. Test Data Management
+### 14. Test Data Management
 - [ ] Implement test data setup/teardown
 - [ ] Create reusable test fixtures
 - [ ] Add data validation utilities
@@ -316,9 +252,7 @@ cy.nifiLogin(); // Uses robust pattern internally
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-## Priority 8: Documentation & Maintenance
-
-### 17. Troubleshooting Documentation
+### 15. Troubleshooting Documentation
 - [ ] Create common failure pattern guide
 - [ ] Document debugging procedures
 - [ ] Add environment setup troubleshooting
@@ -338,7 +272,7 @@ cy.nifiLogin(); // Uses robust pattern internally
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 18. Recipe Documentation
+### 16. Recipe Documentation
 - [ ] Create "how-to" guides for common test patterns
 - [ ] Document custom command usage
 - [ ] Add integration examples
@@ -357,9 +291,7 @@ cy.nifiLogin(); // Uses robust pattern internally
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-## Priority 9: Long-term Vision
-
-### 19. Advanced Integration Testing
+### 17. Advanced Integration Testing
 - [ ] End-to-end workflow automation
 - [ ] Performance load testing
 - [ ] Security testing integration
@@ -371,7 +303,7 @@ cy.nifiLogin(); // Uses robust pattern internally
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 20. CI/CD Integration Enhancement
+### 18. CI/CD Integration Enhancement
 - [ ] Parallel test execution
 - [ ] Test result reporting and analytics
 - [ ] Automated test maintenance
