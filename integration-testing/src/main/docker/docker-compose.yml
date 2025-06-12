@@ -4,9 +4,15 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "9095:9095"
+      - "9094:9094"
     environment:
-      - NIFI_WEB_HTTPS_PORT=9095
+      - NIFI_WEB_HTTP_PORT=9094
+      - NIFI_WEB_HTTP_HOST=0.0.0.0
+      - NIFI_WEB_HTTPS_PORT=
+      - NIFI_WEB_HTTPS_HOST=
+      - NIFI_REMOTE_INPUT_SECURE=false
+      - NIFI_REMOTE_INPUT_HTTP_ENABLED=false
+      - NIFI_CLUSTER_PROTOCOL_IS_SECURE=false
       - NIFI_HOME=/opt/nifi/nifi-current
       - NIFI_LOG_DIR=/opt/nifi/nifi-current/logs
       - NIFI_BOOTSTRAP_CONF=/opt/nifi/nifi-current/conf/bootstrap.conf
@@ -15,12 +21,43 @@ services:
       - ../../../target/nifi-deploy:/opt/nifi/nifi-current/nar_extensions
       - ./nifi/conf:/opt/nifi/nifi-current/conf
     healthcheck:
-      test: ["CMD", "curl", "-k", "--fail", "--insecure", "--retry", "5", "--retry-delay", "10", "--max-time", "15", "https://localhost:9095/nifi/"]
+      test: ["CMD", "curl", "--fail", "--retry", "5", "--retry-delay", "10", "--max-time", "15", "http://localhost:9094/nifi/"]
       interval: 60s
       timeout: 30s
       retries: 10
     networks:
       - nifi-keycloak-network
+
+  # Uncomment below for HTTPS NiFi (comment out the HTTP nifi service above)
+  # nifi-https:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "9095:9095"
+  #   environment:
+  #     - NIFI_WEB_HTTP_PORT=
+  #     - NIFI_WEB_HTTP_HOST=
+  #     - NIFI_WEB_HTTPS_PORT=9095
+  #     - NIFI_WEB_HTTPS_HOST=0.0.0.0
+  #     - NIFI_REMOTE_INPUT_SECURE=true
+  #     - NIFI_REMOTE_INPUT_HTTP_ENABLED=false
+  #     - NIFI_CLUSTER_PROTOCOL_IS_SECURE=true
+  #     - NIFI_HOME=/opt/nifi/nifi-current
+  #     - NIFI_LOG_DIR=/opt/nifi/nifi-current/logs
+  #     - NIFI_BOOTSTRAP_CONF=/opt/nifi/nifi-current/conf/bootstrap.conf
+  #     - NIFI_CONF_DIR=/opt/nifi/nifi-current/conf
+  #   volumes:
+  #     - ../../../target/nifi-deploy:/opt/nifi/nifi-current/nar_extensions
+  #     - ./nifi/conf:/opt/nifi/nifi-current/conf
+  #     - ./certificates:/opt/nifi/nifi-current/conf/certs
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-k", "--fail", "--retry", "5", "--retry-delay", "10", "--max-time", "15", "https://localhost:9095/nifi/"]
+  #     interval: 60s
+  #     timeout: 30s
+  #     retries: 10
+  #   networks:
+  #     - nifi-keycloak-network
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0.1

@@ -35,7 +35,12 @@ echo ""
 
 # Verify that NiFi is accessible via HTTPS
 echo "Verifying that NiFi is accessible via HTTPS..."
-curl -k -s -o /dev/null -w "%{http_code}" https://localhost:9095/nifi/ || echo "Failed to connect to NiFi via HTTPS"
+# Check NiFi HTTP connectivity
+echo "Checking NiFi HTTP connectivity..."
+curl -s -o /dev/null -w "%{http_code}" http://localhost:9094/nifi/ || echo "Failed to connect to NiFi via HTTP"
+
+# Note: HTTPS is available via commented configuration in docker-compose.yml
+echo "HTTPS NiFi is available by uncommenting nifi-https service in docker-compose.yml"
 
 # Verify that Keycloak is accessible via HTTPS
 echo "Verifying that Keycloak is accessible via HTTPS..."

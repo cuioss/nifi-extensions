@@ -30,18 +30,19 @@ cd ../../..
 +
 [source,bash]
 ----
-./integration-testing/src/main/docker/run-test-container.sh
+./integration-testing/src/main/docker/start-nifi.sh
 ----
 
 3. Access services:
-* NiFi UI: https://localhost:9095/nifi/ (admin/adminadminadmin)
-* Keycloak Admin: http://localhost:9080/admin/ or https://localhost:9085/admin/ (admin/admin)
+* NiFi UI: http://localhost:9094/nifi/ (admin/adminadminadmin)
+* Keycloak Admin HTTP: http://localhost:9080/admin/ (admin/admin)
+* Keycloak Admin HTTPS: https://localhost:9085/admin/ (admin/admin)
 
 4. Stop the environment:
 +
 [source,bash]
 ----
-./integration-testing/src/main/docker/stop-test-container.sh
+docker compose down
 ----
 
 == Environment Components
@@ -51,9 +52,9 @@ cd ../../..
 Located in `src/main/docker`:
 
 * `Dockerfile`: NiFi container configuration
-* `docker-compose.yml`: Container orchestration
+* `docker-compose.yml`: Container orchestration with HTTP NiFi (HTTPS variant available as comments)
 * Helper scripts:
-** `run-test-container.sh`: Builds NAR, checks certificates, starts containers
+** `start-nifi.sh`: Starts containers and waits for services to be ready
 ** `stop-test-container.sh`: Stops and removes containers
 ** `copy-deployment.sh`: Builds NAR and copies to deployment location
 ** `redeploy-nifi.sh`: Builds NAR, copies to deployment location, and restarts NiFi
@@ -65,7 +66,7 @@ Located in `src/main/docker`:
 
 === NiFi Configuration
 
-* HTTPS on port 9095
+* HTTP on port 9094 (optimized for testing and development)
 * Authentication with SingleUserLoginIdentityProvider
 * Credentials: admin/adminadminadmin
 * MultiIssuerJWTTokenAuthenticator processor mounted via volume
@@ -92,12 +93,43 @@ Located in `src/main/docker`:
 * Only NiFi configuration and NAR deployment preserved between restarts
 * Keycloak uses in-memory database
 
+== Using HTTPS for NiFi
+
+If you need HTTPS for production-like testing or security requirements:
+
+1. Edit `docker-compose.yml`:
+   * Comment out the `nifi` service (lines with HTTP configuration)
+   * Uncomment the `nifi-https` service (remove `#` from those lines)
+
+2. Update the service name in scripts if needed:
++
+[source,bash]
+----
+# Change docker compose commands from 'nifi' to 'nifi-https'
+docker compose logs nifi-https
+docker compose restart nifi-https
+----
+
+3. Access NiFi via HTTPS:
+   * NiFi UI: https://localhost:9095/nifi/ (admin/adminadminadmin)
+   * Accept the self-signed certificate in your browser
+
+4. Update JWKS URLs in processor configuration:
+   * Use HTTPS Keycloak endpoint: `https://keycloak:9085/realms/oauth_integration_tests/protocol/openid-connect/certs`
+
+=== HTTPS Configuration Details
+
+* HTTPS on port 9095
+* Self-signed certificates (suitable for testing)
+* All SSL/TLS security features enabled
+* Certificate files mounted from `./certificates/` directory
+
 == Testing the Processor
 
 1. Drag the processor onto the NiFi canvas
 2. Configure the JWKS URL:
-   * HTTP: `http://keycloak:9080/realms/oauth_integration_tests/protocol/openid-connect/certs`
-   * HTTPS: `https://keycloak:9085/realms/oauth_integration_tests/protocol/openid-connect/certs`
+   * For HTTP NiFi: `http://keycloak:9080/realms/oauth_integration_tests/protocol/openid-connect/certs`
+   * For HTTPS NiFi: `https://keycloak:9085/realms/oauth_integration_tests/protocol/openid-connect/certs`
 3. Obtain a token from Keycloak:
 +
 [source,bash]
@@ -126,8 +158,8 @@ curl -X POST \
 === Container Issues
 
 * Check container status: `docker ps | grep nifi` or `docker ps | grep keycloak`
-* View logs: `docker compose -f src/main/docker/docker-compose.yml logs nifi`
-* Ensure ports 9080, 9085, and 9095 are available
+* View logs: `docker compose logs nifi`
+* Ensure ports 9080, 9085, and 9094 are available
 
 === Certificate Issues
 
