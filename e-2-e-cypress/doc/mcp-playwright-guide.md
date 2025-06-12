@@ -140,7 +140,7 @@ curl http://localhost:9094/nifi
 
 **SSL Certificate Errors**
 - Ensure using HTTP URLs (port 9094) not HTTPS (port 9095)
-- For HTTPS testing, use `./start-nifi-https.sh` but expect MCP limitations
+- For HTTPS testing, configure docker-compose.yml for HTTPS variant but expect MCP limitations
 
 ### Container Issues
 ```bash
