@@ -1,7 +1,86 @@
 /**
  * Custom commands related to processor operations
  * Updated for NiFi 2.4.0 Angular UI
+ * Optimized for Tasks 1-3 implementation
  */
+
+// === UTILITY FUNCTIONS ===
+// Helper functions to reduce complexity and improve maintainability
+
+/**
+ * Safe string conversion for template literals
+ * Prevents object stringification errors in ESLint
+ * @param {any} value - Value to convert to string
+ * @returns {string} - Safe string representation
+ */
+function safeString(value) {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+/**
+ * Build processor selector array with safe string handling
+ * @param {string} processorId - The processor ID
+ * @returns {Array<string>} - Array of CSS selectors
+ */
+function buildProcessorSelectors(processorId) {
+  const safeId = safeString(processorId);
+  return [
+    `[data-testid="${safeId}"]`,
+    `g[id="${safeId}"]`,
+    `[id="${safeId}"]`,
+    `[data-processor-id="${safeId}"]`,
+    `[data-id="${safeId}"]`,
+    `.processor[data-id="${safeId}"]`
+  ];
+}
+
+/**
+ * Build type-based selectors for processor discovery
+ * @param {string} processorType - The processor type
+ * @returns {Array<string>} - Array of type-based selectors
+ */
+function buildTypeSelectors(processorType) {
+  const safeType = safeString(processorType);
+  const baseSelectors = [
+    `*:contains("${safeType}")`,
+    `[title*="${safeType}"]`,
+    `[class*="${safeType}"]`,
+    `[data-processor-type="${safeType}"]`
+  ];
+  
+  // Add JWT-specific selectors if applicable
+  if (safeType.includes('JWT')) {
+    baseSelectors.push(
+      '*:contains("JWT")',
+      '*:contains("Token")',
+      '*:contains("Authenticator")'
+    );
+  }
+  
+  return baseSelectors;
+}
+
+/**
+ * Find element using selector array with early return optimization
+ * @param {JQuery} $body - Body element to search within
+ * @param {Array<string>} selectors - Array of selectors to try
+ * @returns {JQuery|null} - Found element or null
+ */
+function findElementWithSelectors($body, selectors) {
+  for (const selector of selectors) {
+    const elements = $body.find(selector);
+    if (elements.length > 0) {
+      return elements.first();
+    }
+  }
+  return null;
+}
 
 /**
  * Add a processor to the canvas - simplified version for modern NiFi Angular UI
@@ -125,86 +204,113 @@ Cypress.Commands.add('verifyCanvasAccessible', () => {
 
 /**
  * Configure a processor with the provided settings
+ * Optimized to reduce complexity and nesting
  * @param {string} processorId - The ID of the processor to configure
  * @param {Object} config - Configuration object with settings to apply
  */
 Cypress.Commands.add('configureProcessor', (processorId, config) => {
-  // Try to find and open processor configuration
-  cy.get('body').then(($body) => {
-    // Look for processor elements using various selectors
-    const processorSelectors = [
-      `[data-testid="${processorId}"]`,
-      `g[id="${processorId}"]`,
-      `[id="${processorId}"]`,
-      `.processor[data-id="${processorId}"]`,
-    ];
+  const safeId = safeString(processorId);
+  cy.log(`Configuring processor: ${safeId}`);
 
-    let processorElement = null;
-    for (const selector of processorSelectors) {
-      const elements = $body.find(selector);
-      if (elements.length > 0) {
-        processorElement = elements.first();
-        break;
-      }
+  return cy.get('body').then(($body) => {
+    const processorSelectors = buildProcessorSelectors(processorId);
+    const processorElement = findElementWithSelectors($body, processorSelectors);
+
+    if (!processorElement) {
+      cy.log(`Processor element not found for ID: ${safeId}`);
+      return;
     }
 
-    if (processorElement) {
-      // Double-click to open configuration
-      cy.wrap(processorElement).dblclick({ force: true });
-      cy.wait(1000);
+    // Open configuration dialog
+    cy.wrap(processorElement).dblclick({ force: true });
+    cy.wait(1000);
 
-      // Look for configuration dialog
-      cy.get('body').then(($dialogBody) => {
-        const configDialogs = $dialogBody.find(
-          '[role="dialog"], .mat-dialog-container, .configuration-dialog, .processor-config-dialog'
-        );
+    return cy.configureProcessorInDialog(config);
+  });
+});
 
-        if (configDialogs.length > 0) {
-          // Configure based on the provided settings
-          if (config.name) {
-            cy.get('input[id*="name"], input[placeholder*="name"], input[label*="Name"]')
-              .first()
-              .clear()
-              .type(config.name);
-          }
+/**
+ * Handle processor configuration within opened dialog
+ * Extracted to reduce nesting in main configure function
+ * @param {Object} config - Configuration object
+ */
+Cypress.Commands.add('configureProcessorInDialog', (config) => {
+  return cy.get('body').then(($dialogBody) => {
+    const configDialogs = $dialogBody.find(
+      '[role="dialog"], .mat-dialog-container, .configuration-dialog, .processor-config-dialog'
+    );
 
-          // Handle processor properties if provided
-          if (config.properties) {
-            // Click on Properties tab if available
-            cy.get('body').then(($tabBody) => {
-              const propertyTabs = $tabBody.find(
-                '*:contains("Properties"), *:contains("PROPERTIES")'
-              );
-              if (propertyTabs.length > 0) {
-                cy.wrap(propertyTabs.first()).click({ force: true });
-                cy.wait(500);
-              }
-            });
+    if (configDialogs.length === 0) {
+      cy.log('No configuration dialog found');
+      return;
+    }
 
-            // Iterate through each property and set its value
-            Object.entries(config.properties).forEach(([key, value]) => {
-              cy.get('body').then(($propBody) => {
-                // Look for property rows/fields
-                const propertyElements = $propBody.find(`*:contains("${key}")`);
-                if (propertyElements.length > 0) {
-                  const propertyRow = propertyElements
-                    .closest('tr, .property-row, .mat-form-field, .form-group')
-                    .first();
-                  const inputs = propertyRow.find('input, select, textarea');
-                  if (inputs.length > 0) {
-                    cy.wrap(inputs.first()).clear().type(value);
-                  }
-                }
-              });
-            });
-          }
+    // Configure name if provided
+    if (config.name) {
+      cy.setProcessorName(config.name);
+    }
 
-          // Apply configuration - look for Apply/Save button
-          cy.get('button')
-            .contains(/^(Apply|Save|OK)$/i)
-            .click({ force: true });
-        }
-      });
+    // Configure properties if provided
+    if (config.properties) {
+      cy.setProcessorProperties(config.properties);
+    }
+
+    // Apply configuration
+    cy.get('button')
+      .contains(/^(Apply|Save|OK)$/i)
+      .click({ force: true });
+  });
+});
+
+/**
+ * Set processor name in configuration dialog
+ * @param {string} name - Processor name to set
+ */
+Cypress.Commands.add('setProcessorName', (name) => {
+  cy.get('input[id*="name"], input[placeholder*="name"], input[label*="Name"]')
+    .first()
+    .clear()
+    .type(name);
+});
+
+/**
+ * Set processor properties in configuration dialog
+ * @param {Object} properties - Properties to set
+ */
+Cypress.Commands.add('setProcessorProperties', (properties) => {
+  // Click on Properties tab if available
+  cy.get('body').then(($tabBody) => {
+    const propertyTabs = $tabBody.find(
+      '*:contains("Properties"), *:contains("PROPERTIES")'
+    );
+    if (propertyTabs.length > 0) {
+      cy.wrap(propertyTabs.first()).click({ force: true });
+      cy.wait(500);
+    }
+  });
+
+  // Set each property
+  Object.entries(properties).forEach(([key, value]) => {
+    cy.setIndividualProperty(key, value);
+  });
+});
+
+/**
+ * Set individual processor property
+ * @param {string} key - Property key
+ * @param {string} value - Property value
+ */
+Cypress.Commands.add('setIndividualProperty', (key, value) => {
+  cy.get('body').then(($propBody) => {
+    const propertyElements = $propBody.find(`*:contains("${safeString(key)}")`);
+    if (propertyElements.length > 0) {
+      const propertyRow = propertyElements
+        .closest('tr, .property-row, .mat-form-field, .form-group')
+        .first();
+      const inputs = propertyRow.find('input, select, textarea');
+      if (inputs.length > 0) {
+        cy.wrap(inputs.first()).clear().type(value);
+      }
     }
   });
 });
@@ -364,10 +470,12 @@ Cypress.Commands.add('openProcessorConfigDialog', (processorId) => {
  * @param {string} token - The JWT token to send
  */
 Cypress.Commands.add('sendTokenToProcessor', (processorId, token) => {
+  const safeId = safeString(processorId);
+  
   // Create a flow file with the token in the Authorization header
   cy.request({
     method: 'POST',
-    url: `/nifi-api/processors/${processorId}/test-token`,
+    url: `/nifi-api/processors/${safeId}/test-token`,
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
@@ -379,101 +487,19 @@ Cypress.Commands.add('sendTokenToProcessor', (processorId, token) => {
   });
 });
 
-/**
- * Send an expired token to processor for testing
- * @param {string} processorId - The ID of the processor
- */
-Cypress.Commands.add('sendExpiredToken', (processorId) => {
-  const expiredToken =
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.expired-signature';
-  cy.sendTokenToProcessor(processorId, expiredToken);
-});
+// ...existing code...
 
 /**
- * Send a token with invalid signature to processor for testing
- * @param {string} processorId - The ID of the processor
- */
-Cypress.Commands.add('sendTokenWithInvalidSignature', (processorId) => {
-  const invalidToken =
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.invalid-signature-here';
-  cy.sendTokenToProcessor(processorId, invalidToken);
-});
-
-/**
- * Send a token with missing required claims to processor for testing
- * @param {string} processorId - The ID of the processor
- */
-Cypress.Commands.add('sendTokenWithMissingClaims', (processorId) => {
-  const tokenWithMissingClaims =
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiSm9obiBEb2UifQ.missing-claims-signature';
-  cy.sendTokenToProcessor(processorId, tokenWithMissingClaims);
-});
-
-/**
- * Clean up all processors from the canvas
- * Useful for test cleanup
- */
-Cypress.Commands.add('cleanupAllProcessors', () => {
-  cy.get('body').then(($body) => {
-    const processors = $body.find('g.processor, [class*="processor"], .component');
-    cy.log(`Found ${processors.length} processors to clean up`);
-
-    if (processors.length > 0) {
-      // Try to select all and delete
-      processors.each((index, element) => {
-        cy.wrap(element).click({ force: true });
-        cy.wait(100);
-      });
-
-      // Try keyboard delete
-      cy.get('body').type('{del}');
-      cy.wait(500);
-
-      // If keyboard delete doesn't work, try individual removal
-      cy.get('body').then(($afterBody) => {
-        const remainingProcessors = $afterBody.find(
-          'g.processor, [class*="processor"], .component'
-        );
-        if (remainingProcessors.length > 0) {
-          remainingProcessors.each((index, element) => {
-            cy.wrap(element).rightclick({ force: true });
-            cy.wait(200);
-
-            // Look for delete option in context menu
-            cy.get('body').then(($menuBody) => {
-              const deleteOptions = $menuBody.find('*:contains("Delete"), *:contains("Remove")');
-              if (deleteOptions.length > 0) {
-                cy.wrap(deleteOptions.first()).click({ force: true });
-                cy.wait(200);
-
-                // Confirm if dialog appears
-                cy.get('body').then(($confirmBody) => {
-                  const confirmButtons = $confirmBody.find(
-                    'button:contains("Delete"), button:contains("Yes"), button:contains("Confirm")'
-                  );
-                  if (confirmButtons.length > 0) {
-                    cy.wrap(confirmButtons.first()).click({ force: true });
-                    cy.wait(200);
-                  }
-                });
-              }
-            });
-          });
-        }
-      });
-    }
-  });
-});
-
-/**
- * Find processor by type name on canvas
+ * Find processor by type name on canvas (Optimized)
  * @param {string} processorType - The type name to search for
  * @returns {Cypress.Chainable} - Element if found
  */
 Cypress.Commands.add('findProcessorByType', (processorType) => {
+  const safeType = safeString(processorType);
+  
   return cy.get('body').then(($body) => {
     // Look for text content that matches the processor type
-    const elements = $body.find(`*:contains("${processorType}")`);
+    const elements = $body.find(`*:contains("${safeType}")`);
     if (elements.length > 0) {
       // Find the closest processor-like element
       const processorElement = elements
@@ -484,18 +510,19 @@ Cypress.Commands.add('findProcessorByType', (processorType) => {
       }
     }
 
-    cy.log(`No processor found with type: ${processorType}`);
+    cy.log(`No processor found with type: ${safeType}`);
     return cy.wrap(null);
   });
 });
 
 /**
- * Wait for processor to be in specific state
+ * Wait for processor to be in specific state (Optimized)
  * @param {string} processorId - The processor ID
  * @param {string} expectedState - Expected state (RUNNING, STOPPED, etc.)
  * @param {number} timeout - Timeout in milliseconds
  */
 Cypress.Commands.add('waitForProcessorState', (processorId, expectedState, timeout = 10000) => {
+  const safeId = safeString(processorId);
   const startTime = Date.now();
 
   const checkState = () => {
@@ -514,7 +541,7 @@ Cypress.Commands.add('waitForProcessorState', (processorId, expectedState, timeo
       // Check if timeout reached
       if (Date.now() - startTime > timeout) {
         throw new Error(
-          `Timeout waiting for processor ${processorId} to reach state ${expectedState}`
+          `Timeout waiting for processor ${safeId} to reach state ${expectedState}`
         );
       }
 
@@ -531,49 +558,33 @@ Cypress.Commands.add('waitForProcessorState', (processorId, expectedState, timeo
 // Implementation for Task 2: Processor Configuration Detection
 
 /**
- * Check if a processor is configured with the expected properties
+ * Check if a processor is configured with the expected properties (Optimized)
  * This is the main command for Processor Configuration Detection
  * @param {string} processorId - The ID of the processor to check
  * @param {Object} expectedConfig - Expected configuration to verify
  * @returns {Cypress.Chainable<boolean>} - Returns true if configured as expected
  */
 Cypress.Commands.add('isProcessorConfigured', (processorId, expectedConfig = {}) => {
-  cy.log(`Checking configuration for processor: ${processorId}`);
+  const safeId = safeString(processorId);
+  cy.log(`Checking configuration for processor: ${safeId}`);
 
   return cy.getProcessorElement(processorId).then(($element) => {
-    // Check if processor has expected name
-    if (expectedConfig.name) {
-      const currentName = $element.find('.processor-name, .name, text').first().text() || '';
-      if (!currentName.includes(expectedConfig.name)) {
-        cy.log(`Processor name mismatch. Expected: ${expectedConfig.name}, Found: ${currentName}`);
-        return cy.wrap(false);
-      }
+    // Check processor name if expected
+    if (expectedConfig.name && !cy.checkProcessorName($element, expectedConfig.name)) {
+      return cy.wrap(false);
     }
 
-    // Check if processor has expected properties configured
+    // Check processor properties if expected
     if (expectedConfig.properties && Object.keys(expectedConfig.properties).length > 0) {
-      return cy.inspectProcessorProperties(processorId).then((currentProperties) => {
-        const isConfigured = cy.compareProcessorPropertiesSync(
-          currentProperties,
-          expectedConfig.properties
-        );
-        cy.log(`Processor properties configured: ${isConfigured}`);
-        return cy.wrap(isConfigured);
-      });
+      return cy.validateProcessorProperties(processorId, expectedConfig.properties);
     }
 
-    // Check if processor has expected state
-    if (expectedConfig.state) {
-      const currentState = cy.getProcessorStateFromElement($element);
-      if (currentState !== expectedConfig.state) {
-        cy.log(
-          `Processor state mismatch. Expected: ${expectedConfig.state}, Found: ${currentState}`
-        );
-        return cy.wrap(false);
-      }
+    // Check processor state if expected
+    if (expectedConfig.state && !cy.checkProcessorState($element, expectedConfig.state)) {
+      return cy.wrap(false);
     }
 
-    // Check if processor has required configuration setup
+    // Check basic setup requirements
     const hasRequiredSetup = cy.detectProcessorSetupFromElement($element);
     cy.log(`Processor has required setup: ${hasRequiredSetup}`);
 
@@ -582,68 +593,149 @@ Cypress.Commands.add('isProcessorConfigured', (processorId, expectedConfig = {})
 });
 
 /**
- * Inspect processor properties by opening configuration dialog
+ * Check processor name (extracted helper)
+ * @param {JQuery} $element - Processor element
+ * @param {string} expectedName - Expected name
+ * @returns {boolean} - True if name matches
+ */
+Cypress.Commands.add('checkProcessorName', ($element, expectedName) => {
+  const currentName = $element.find('.processor-name, .name, text').first().text() || '';
+  if (!currentName.includes(expectedName)) {
+    cy.log(`Processor name mismatch. Expected: ${expectedName}, Found: ${currentName}`);
+    return false;
+  }
+  return true;
+});
+
+/**
+ * Check processor state (extracted helper)
+ * @param {JQuery} $element - Processor element
+ * @param {string} expectedState - Expected state
+ * @returns {boolean} - True if state matches
+ */
+Cypress.Commands.add('checkProcessorState', ($element, expectedState) => {
+  const currentState = cy.getProcessorStateFromElement($element);
+  if (currentState !== expectedState) {
+    cy.log(`Processor state mismatch. Expected: ${expectedState}, Found: ${currentState}`);
+    return false;
+  }
+  return true;
+});
+
+/**
+ * Validate processor properties (extracted to reduce complexity)
+ * @param {string} processorId - Processor ID
+ * @param {Object} expectedProperties - Expected properties
+ * @returns {Cypress.Chainable<boolean>} - Validation result
+ */
+Cypress.Commands.add('validateProcessorProperties', (processorId, expectedProperties) => {
+  return cy.inspectProcessorProperties(processorId).then((currentProperties) => {
+    const isConfigured = cy.compareProcessorPropertiesSync(
+      currentProperties,
+      expectedProperties
+    );
+    cy.log(`Processor properties configured: ${isConfigured}`);
+    return cy.wrap(isConfigured);
+  });
+});
+
+/**
+ * Inspect processor properties by opening configuration dialog (Optimized)
  * @param {string} processorId - The processor ID
  * @returns {Cypress.Chainable<Object>} - Current processor properties
  */
 Cypress.Commands.add('inspectProcessorProperties', (processorId) => {
-  cy.log(`Inspecting properties for processor: ${processorId}`);
+  const safeId = safeString(processorId);
+  cy.log(`Inspecting properties for processor: ${safeId}`);
 
   return cy.getProcessorElement(processorId).then(($element) => {
     // Open configuration dialog
     cy.wrap($element).dblclick({ force: true });
     cy.wait(1000);
 
-    // Look for configuration dialog
-    return cy.get('body').then(($body) => {
-      const configDialogs = $body.find(
-        '[role="dialog"], .mat-dialog-container, .configuration-dialog, .processor-config-dialog'
-      );
-
-      if (configDialogs.length > 0) {
-        // Navigate to Properties tab if it exists
-        const propertyTabs = $body.find('*:contains("Properties"), *:contains("PROPERTIES")');
-        if (propertyTabs.length > 0) {
-          cy.wrap(propertyTabs.first()).click({ force: true });
-          cy.wait(500);
-        }
-
-        // Extract current properties
-        const properties = {};
-        const propertyRows = $body.find('.property-row, tr[class*="property"], .mat-form-field');
-
-        propertyRows.each((index, row) => {
-          const $row = Cypress.$(row);
-          const nameElement = $row.find('.property-name, .name, td:first-child, label');
-          const valueElement = $row.find(
-            'input, select, textarea, .property-value, .value, td:last-child'
-          );
-
-          if (nameElement.length > 0 && valueElement.length > 0) {
-            const name = nameElement.text().trim();
-            const value = valueElement.is('input, select, textarea')
-              ? valueElement.val()
-              : valueElement.text().trim();
-
-            if (name && value) {
-              properties[name] = value;
-            }
-          }
-        });
-
-        // Close dialog
-        cy.get('button')
-          .contains(/^(Cancel|Close)$/i)
-          .click({ force: true });
-        cy.wait(500);
-
-        return cy.wrap(properties);
-      } else {
-        cy.log('No configuration dialog found');
-        return cy.wrap({});
-      }
-    });
+    return cy.extractPropertiesFromDialog();
   });
+});
+
+/**
+ * Extract properties from configuration dialog (extracted to reduce nesting)
+ * @returns {Cypress.Chainable<Object>} - Extracted properties
+ */
+Cypress.Commands.add('extractPropertiesFromDialog', () => {
+  return cy.get('body').then(($body) => {
+    const configDialogs = $body.find(
+      '[role="dialog"], .mat-dialog-container, .configuration-dialog, .processor-config-dialog'
+    );
+
+    if (configDialogs.length === 0) {
+      cy.log('No configuration dialog found');
+      return cy.wrap({});
+    }
+
+    // Navigate to Properties tab if it exists
+    cy.navigateToPropertiesTab($body);
+
+    // Extract properties
+    const properties = cy.extractPropertyValues($body);
+
+    // Close dialog
+    cy.closeConfigurationDialog();
+
+    return cy.wrap(properties);
+  });
+});
+
+/**
+ * Navigate to Properties tab (extracted helper)
+ * @param {JQuery} $body - Body element
+ */
+Cypress.Commands.add('navigateToPropertiesTab', ($body) => {
+  const propertyTabs = $body.find('*:contains("Properties"), *:contains("PROPERTIES")');
+  if (propertyTabs.length > 0) {
+    cy.wrap(propertyTabs.first()).click({ force: true });
+    cy.wait(500);
+  }
+});
+
+/**
+ * Extract property values from dialog (extracted helper)
+ * @param {JQuery} $body - Body element
+ * @returns {Object} - Property key-value pairs
+ */
+Cypress.Commands.add('extractPropertyValues', ($body) => {
+  const properties = {};
+  const propertyRows = $body.find('.property-row, tr[class*="property"], .mat-form-field');
+
+  propertyRows.each((index, row) => {
+    const $row = Cypress.$(row);
+    const nameElement = $row.find('.property-name, .name, td:first-child, label');
+    const valueElement = $row.find(
+      'input, select, textarea, .property-value, .value, td:last-child'
+    );
+
+    if (nameElement.length > 0 && valueElement.length > 0) {
+      const name = nameElement.text().trim();
+      const value = valueElement.is('input, select, textarea')
+        ? valueElement.val()
+        : valueElement.text().trim();
+
+      if (name && value) {
+        properties[name] = value;
+      }
+    }
+  });
+
+  return properties;
+});
+
+/**
+ * Close configuration dialog (extracted helper)
+ */
+Cypress.Commands.add('closeConfigurationDialog', () => {
+  cy.get('button')
+    .contains(/^(Cancel|Close)$/i)
+    .click({ force: true });
+  cy.wait(500);
 });
 
 /**
@@ -686,39 +778,81 @@ Cypress.Commands.add('compareProcessorPropertiesSync', (currentProperties, expec
 });
 
 /**
- * Get processor state from DOM element (synchronous)
+ * Get processor state from DOM element (optimized)
+ * Reduced cognitive complexity by extracting helper functions
  * @param {JQuery} $element - The processor DOM element
  * @returns {string} - Processor state
  */
 Cypress.Commands.add('getProcessorStateFromElement', ($element) => {
-  // Look for state indicators in various forms
-  const stateElements = $element.find('.processor-state, .state-indicator, [class*="state"]');
+  // Check text-based state indicators first
+  const textState = cy.getStateFromText($element);
+  if (textState !== 'UNKNOWN') {
+    return textState;
+  }
 
+  // Check class-based state indicators
+  const classState = cy.getStateFromClasses($element);
+  if (classState !== 'UNKNOWN') {
+    return classState;
+  }
+
+  // Check visual indicators
+  const visualState = cy.getStateFromVisualIndicators($element);
+  return visualState;
+});
+
+/**
+ * Extract state from text elements
+ * @param {JQuery} $element - Processor element
+ * @returns {string} - State or 'UNKNOWN'
+ */
+Cypress.Commands.add('getStateFromText', ($element) => {
+  const stateElements = $element.find('.processor-state, .state-indicator, [class*="state"]');
+  
   if (stateElements.length > 0) {
     const stateText = stateElements.first().text().trim().toUpperCase();
+    
     if (stateText.includes('RUNNING')) return 'RUNNING';
     if (stateText.includes('STOPPED')) return 'STOPPED';
     if (stateText.includes('INVALID')) return 'INVALID';
     if (stateText.includes('DISABLED')) return 'DISABLED';
   }
-
-  // Check class names for state indicators
-  const classes = $element.attr('class') || '';
-  if (classes.includes('running')) return 'RUNNING';
-  if (classes.includes('stopped')) return 'STOPPED';
-  if (classes.includes('invalid')) return 'INVALID';
-  if (classes.includes('disabled')) return 'DISABLED';
-
-  // Check for visual state indicators (colors, icons)
-  if ($element.find('.running-indicator, .green-indicator').length > 0) return 'RUNNING';
-  if ($element.find('.stopped-indicator, .red-indicator').length > 0) return 'STOPPED';
-  if ($element.find('.invalid-indicator, .yellow-indicator').length > 0) return 'INVALID';
-
+  
   return 'UNKNOWN';
 });
 
 /**
- * Detect if processor has required setup/configuration (synchronous)
+ * Extract state from CSS classes
+ * @param {JQuery} $element - Processor element
+ * @returns {string} - State or 'UNKNOWN'
+ */
+Cypress.Commands.add('getStateFromClasses', ($element) => {
+  const classes = $element.attr('class') || '';
+  
+  if (classes.includes('running')) return 'RUNNING';
+  if (classes.includes('stopped')) return 'STOPPED';
+  if (classes.includes('invalid')) return 'INVALID';
+  if (classes.includes('disabled')) return 'DISABLED';
+  
+  return 'UNKNOWN';
+});
+
+/**
+ * Extract state from visual indicators
+ * @param {JQuery} $element - Processor element  
+ * @returns {string} - State or 'UNKNOWN'
+ */
+Cypress.Commands.add('getStateFromVisualIndicators', ($element) => {
+  if ($element.find('.running-indicator, .green-indicator').length > 0) return 'RUNNING';
+  if ($element.find('.stopped-indicator, .red-indicator').length > 0) return 'STOPPED';
+  if ($element.find('.invalid-indicator, .yellow-indicator').length > 0) return 'INVALID';
+  
+  return 'UNKNOWN';
+});
+
+/**
+ * Detect if processor has required setup/configuration (optimized)
+ * Removed unused variables and simplified logic
  * @param {JQuery} $element - The processor DOM element
  * @returns {boolean} - True if processor has required setup
  */
@@ -727,23 +861,19 @@ Cypress.Commands.add('detectProcessorSetupFromElement', ($element) => {
   const hasValidState = $element.find('.invalid-indicator, [class*="invalid"]').length === 0;
   const hasNoErrors = $element.find('.error-indicator, [class*="error"]').length === 0;
 
-  // Check if processor appears to be configured (not in default state)
-  const hasCustomization =
-    $element.find('.configured-indicator, [class*="configured"]').length > 0 ||
-    $element.find('.unconfigured-indicator, [class*="unconfigured"]').length === 0;
-
   // A processor is considered "set up" if it has valid state and no errors
   return hasValidState && hasNoErrors;
 });
 
 /**
- * Create a reliable processor reference system for testing
+ * Create a reliable processor reference system for testing (Optimized)
  * @param {string} processorType - The processor type
  * @param {Object} position - Position coordinates
  * @returns {Cypress.Chainable<Object>} - Processor reference object
  */
 Cypress.Commands.add('createProcessorReference', (processorType, position = { x: 300, y: 300 }) => {
-  cy.log(`Creating processor reference for type: ${processorType}`);
+  const safeType = safeString(processorType);
+  cy.log(`Creating processor reference for type: ${safeType}`);
 
   // Count existing processors before adding
   return cy.get('body').then(($body) => {
@@ -752,32 +882,38 @@ Cypress.Commands.add('createProcessorReference', (processorType, position = { x:
     // Add processor using existing command
     return cy.addProcessor(processorType, position).then((processorId) => {
       // Create comprehensive reference object
-      const reference = {
-        id: processorId,
-        type: processorType,
-        position: position,
-        index: existingCount,
-        timestamp: Date.now(),
-        // Primary identification methods
-        selectors: [
-          `[data-testid="${processorId}"]`,
-          `g[id="${processorId}"]`,
-          `[id="${processorId}"]`,
-          `.processor[data-id="${processorId}"]`,
-          `[data-processor-id="${processorId}"]`,
-        ],
-        // Alternative identification by position or index
-        fallbackSelectors: [
-          `g.processor:nth-child(${existingCount + 1})`,
-          `[class*="processor"]:nth-child(${existingCount + 1})`,
-          `.component:nth-child(${existingCount + 1})`,
-        ],
-      };
+      const reference = cy.buildProcessorReference(processorType, processorId, position, existingCount);
 
       cy.log('Created processor reference:', reference);
       return cy.wrap(reference);
     });
   });
+});
+
+/**
+ * Build processor reference object (extracted for clarity)
+ * @param {string} processorType - Processor type
+ * @param {string} processorId - Processor ID
+ * @param {Object} position - Position coordinates
+ * @param {number} existingCount - Count of existing processors
+ * @returns {Object} - Reference object
+ */
+Cypress.Commands.add('buildProcessorReference', (processorType, processorId, position, existingCount) => {
+  return {
+    id: processorId,
+    type: processorType,
+    position: position,
+    index: existingCount,
+    timestamp: Date.now(),
+    // Primary identification methods
+    selectors: buildProcessorSelectors(processorId),
+    // Alternative identification by position or index
+    fallbackSelectors: [
+      `g.processor:nth-child(${existingCount + 1})`,
+      `[class*="processor"]:nth-child(${existingCount + 1})`,
+      `.component:nth-child(${existingCount + 1})`,
+    ],
+  };
 });
 
 /**
@@ -812,7 +948,7 @@ Cypress.Commands.add('getProcessorByReference', (processorRef) => {
 });
 
 /**
- * Task 3: Enhanced Processor ID Management 
+ * Task 3: Enhanced Processor ID Management (Optimized)
  * Focus on functional ID extraction - get any working ID, don't test how IDs work
  * Use processor types for identification - find processor by type when ID fails
  * Create processor reference system - our own way to track processors for testing
@@ -821,97 +957,101 @@ Cypress.Commands.add('getProcessorByReference', (processorRef) => {
  * @returns {Cypress.Chainable} - Processor DOM element
  */
 Cypress.Commands.add('findProcessorElement', (processorId) => {
-  cy.log(`[Task 3] Finding processor element: ${processorId}`);
+  const safeId = safeString(processorId);
+  cy.log(`[Task 3] Finding processor element: ${safeId}`);
 
   return cy.get('body').then(($body) => {
     // Strategy 1: Direct functional ID match (simplified, no validation)
-    const idSelectors = [
-      `[data-testid="${processorId}"]`,
-      `g[id="${processorId}"]`,
-      `[id="${processorId}"]`,
-      `[data-processor-id="${processorId}"]`,
-      `[data-id="${processorId}"]`,
-    ];
-
-    for (const selector of idSelectors) {
-      const elements = $body.find(selector);
-      if (elements.length > 0) {
-        cy.log(`Found processor using selector: ${selector}`);
-        return cy.get(selector).first();
-      }
+    const idSelectors = buildProcessorSelectors(processorId);
+    const idElement = findElementWithSelectors($body, idSelectors);
+    
+    if (idElement) {
+      cy.log('Found processor using ID-based selector');
+      return cy.wrap(idElement);
     }
 
     // Strategy 2: Use processor type for identification (Task 3)
-    // When ID fails, find by processor type - this is our testing approach
-    if (processorId.includes('TokenAuthenticator') || processorId.includes('JWT')) {
-      const typeBasedProcessors = $body.find('*:contains("TokenAuthenticator"), *:contains("JWT")');
-      if (typeBasedProcessors.length > 0) {
-        const processorElement = typeBasedProcessors.closest('g.processor, [class*="processor"], .component').first();
-        if (processorElement.length > 0) {
-          cy.log(`Found processor by type-based identification`);
-          return cy.get(processorElement).first();
-        }
-      }
+    const typeElement = cy.findProcessorByTypeStrategy(processorId, $body);
+    if (typeElement) {
+      return typeElement;
     }
 
     // Strategy 3: Functional approach - get any working processor ID
-    // Don't test how IDs work, just get something that works for testing
-    const allProcessors = $body.find('g.processor, [class*="processor"], .component');
-    if (allProcessors.length > 0) {
-      // If ID is numeric, try to find by index
-      const idMatch = processorId.match(/\d+/);
-      if (idMatch) {
-        const index = parseInt(idMatch[0]);
-        if (allProcessors.length > index) {
-          cy.log(`Found processor by index-based approach: ${index}`);
-          return cy.get('g.processor, [class*="processor"], .component').eq(index);
-        }
-      }
-      
-      // Last resort: return first available processor for testing
-      cy.log('Using first available processor as functional fallback');
-      return cy.get('g.processor, [class*="processor"], .component').first();
-    }
-
-    throw new Error(`No processor element found for ID: ${processorId}`);
+    return cy.getFunctionalProcessorFallback(processorId, $body);
   });
+});
+
+/**
+ * Find processor by type strategy (extracted for clarity)
+ * @param {string} processorId - Processor ID that might contain type info
+ * @param {JQuery} $body - Body element to search
+ * @returns {Cypress.Chainable|null} - Element or null
+ */
+Cypress.Commands.add('findProcessorByTypeStrategy', (processorId, $body) => {
+  const safeId = safeString(processorId);
+  
+  if (safeId.includes('TokenAuthenticator') || safeId.includes('JWT')) {
+    const typeBasedProcessors = $body.find('*:contains("TokenAuthenticator"), *:contains("JWT")');
+    if (typeBasedProcessors.length > 0) {
+      const processorElement = typeBasedProcessors.closest('g.processor, [class*="processor"], .component').first();
+      if (processorElement.length > 0) {
+        cy.log('Found processor by type-based identification');
+        return cy.wrap(processorElement);
+      }
+    }
+  }
+  
+  return null;
+});
+
+/**
+ * Functional processor fallback (extracted for clarity)
+ * @param {string} processorId - Original processor ID
+ * @param {JQuery} $body - Body element to search
+ * @returns {Cypress.Chainable} - Element or error
+ */
+Cypress.Commands.add('getFunctionalProcessorFallback', (processorId, $body) => {
+  const safeId = safeString(processorId);
+  const allProcessors = $body.find('g.processor, [class*="processor"], .component');
+  
+  if (allProcessors.length > 0) {
+    // If ID is numeric, try to find by index
+    const regExp = /\d+/;
+    const idMatch = regExp.exec(safeId);
+    if (idMatch) {
+      const index = parseInt(idMatch[0]);
+      if (allProcessors.length > index) {
+        cy.log(`Found processor by index-based approach: ${index}`);
+        return cy.get('g.processor, [class*="processor"], .component').eq(index);
+      }
+    }
+    
+    // Last resort: return first available processor for testing
+    cy.log('Using first available processor as functional fallback');
+    return cy.get('g.processor, [class*="processor"], .component').first();
+  }
+
+  throw new Error(`No processor element found for ID: ${safeId}`);
 });
 
 // === TASK 3: PROCESSOR ID MANAGEMENT ===
 // Enhanced commands for functional processor identification and management
 
 /**
- * Get any working processor ID - functional approach, no validation
+ * Get any working processor ID - functional approach, no validation (Optimized)
  * Task 3: Focus on functional ID extraction 
  * @param {string} processorType - Optional processor type filter
  * @returns {Cypress.Chainable<string>} - Any working processor ID for testing
  */
 Cypress.Commands.add('getAnyWorkingProcessorId', (processorType = null) => {
-  cy.log(`[Task 3] Getting any working processor ID for type: ${processorType || 'any'}`);
+  cy.log(`[Task 3] Getting any working processor ID for type: ${safeString(processorType || 'any')}`);
   
   return cy.get('body').then(($body) => {
-    let processors;
+    let processors = cy.findProcessorsByType($body, processorType);
     
-    // If processor type specified, try to find by type first
-    if (processorType) {
-      processors = $body.find(`*:contains("${processorType}")`).closest('g.processor, [class*="processor"], .component');
-    }
-    
-    // Fallback to any processor
-    if (!processors || processors.length === 0) {
-      processors = $body.find('g.processor, [class*="processor"], .component');
-    }
-    
-    if (processors.length > 0) {
+    if (processors && processors.length > 0) {
       const element = processors.first();
-      
-      // Try to extract any working ID - functional approach
-      let workingId = element.attr('id') || 
-                     element.attr('data-testid') || 
-                     element.attr('data-processor-id') ||
-                     element.attr('data-id') ||
-                     `functional-processor-${Date.now()}`;
-      
+      const workingId = cy.extractWorkingId(element);
       cy.log(`Found working processor ID: ${workingId}`);
       return cy.wrap(workingId);
     }
@@ -924,26 +1064,44 @@ Cypress.Commands.add('getAnyWorkingProcessorId', (processorType = null) => {
 });
 
 /**
- * Find processor by type - when ID fails, use processor type
+ * Find processors by type (extracted helper)
+ * @param {JQuery} $body - Body element to search
+ * @param {string} processorType - Type to filter by
+ * @returns {JQuery} - Found processors
+ */
+Cypress.Commands.add('findProcessorsByType', ($body, processorType) => {
+  if (processorType) {
+    const safeType = safeString(processorType);
+    return $body.find(`*:contains("${safeType}")`).closest('g.processor, [class*="processor"], .component');
+  }
+  
+  return $body.find('g.processor, [class*="processor"], .component');
+});
+
+/**
+ * Extract working ID from processor element (extracted helper)
+ * @param {JQuery} element - Processor element
+ * @returns {string} - Working ID
+ */
+Cypress.Commands.add('extractWorkingId', (element) => {
+  return element.attr('id') || 
+         element.attr('data-testid') || 
+         element.attr('data-processor-id') ||
+         element.attr('data-id') ||
+         `functional-processor-${Date.now()}`;
+});
+
+/**
+ * Find processor by type - when ID fails, use processor type (Optimized)
  * Task 3: Use processor types for identification
  * @param {string} processorType - The processor type to find
  * @returns {Cypress.Chainable} - Processor element if found
  */
 Cypress.Commands.add('findProcessorByTypeEnhanced', (processorType) => {
-  cy.log(`[Task 3] Finding processor by type: ${processorType}`);
+  cy.log(`[Task 3] Finding processor by type: ${safeString(processorType)}`);
   
   return cy.get('body').then(($body) => {
-    // Multiple strategies to find by type
-    const typeSelectors = [
-      `*:contains("${processorType}")`,
-      `[title*="${processorType}"]`,
-      `[class*="${processorType}"]`,
-      `[data-processor-type="${processorType}"]`,
-      // Try abbreviated versions for JWT processors
-      ...(processorType.includes('JWT') ? ['*:contains("JWT")', '*:contains("Token")'] : []),
-      // Try partial matches
-      `*:contains("${processorType.split(/(?=[A-Z])/).join('')}")` // Remove camelCase spaces
-    ];
+    const typeSelectors = buildTypeSelectors(processorType);
     
     for (const selector of typeSelectors) {
       const elements = $body.find(selector);
@@ -956,20 +1114,21 @@ Cypress.Commands.add('findProcessorByTypeEnhanced', (processorType) => {
       }
     }
     
-    cy.log(`No processor found for type: ${processorType}`);
+    cy.log(`No processor found for type: ${safeString(processorType)}`);
     return cy.wrap(null);
   });
 });
 
 /**
- * Enhanced processor reference system for multi-processor coordination
+ * Enhanced processor reference system for multi-processor coordination (Optimized)
  * Task 3: Our own way to track processors for testing
  * @param {string} processorType - The processor type
  * @param {Object} config - Configuration for the reference
  * @returns {Cypress.Chainable<Object>} - Enhanced processor reference
  */
 Cypress.Commands.add('createEnhancedProcessorReference', (processorType, config = {}) => {
-  cy.log(`[Task 3] Creating enhanced processor reference for: ${processorType}`);
+  const safeType = safeString(processorType);
+  cy.log(`[Task 3] Creating enhanced processor reference for: ${safeType}`);
   
   const defaultConfig = {
     position: { x: 300, y: 300 },
@@ -983,49 +1142,7 @@ Cypress.Commands.add('createEnhancedProcessorReference', (processorType, config 
     const existingCount = $body.find('g.processor, [class*="processor"], .component').length;
     
     // Create comprehensive reference with enhanced strategies
-    const enhancedReference = {
-      type: processorType,
-      config: finalConfig,
-      timestamp: Date.now(),
-      testId: `test-ref-${Date.now()}`,
-      
-      // Functional identification strategies
-      identificationStrategies: [
-        'type-based-discovery',
-        'index-based-fallback', 
-        'functional-id-generation',
-        'position-based-tracking'
-      ],
-      
-      // Enhanced selectors for multi-processor coordination
-      functionalSelectors: [
-        `[data-processor-type="${processorType}"]`,
-        `*:contains("${processorType}")`,
-        ...(processorType.includes('JWT') ? [
-          '*:contains("JWT")',
-          '*:contains("Token")',
-          '*:contains("Authenticator")'
-        ] : []),
-        // Index-based selectors for coordination
-        `g.processor:nth-child(${existingCount + 1})`,
-        `[class*="processor"]:nth-child(${existingCount + 1})`
-      ],
-      
-      // Cleanup coordination
-      cleanupTargets: [
-        'g.processor',
-        '[class*="processor"]',
-        '.component'
-      ],
-      
-      // Test coordination metadata
-      testMetadata: {
-        createdAt: new Date().toISOString(),
-        testPhase: 'processor-id-management',
-        task: 'task-3',
-        coordination: true
-      }
-    };
+    const enhancedReference = cy.buildEnhancedReference(processorType, finalConfig, existingCount);
     
     cy.log('Enhanced processor reference created:', enhancedReference);
     return cy.wrap(enhancedReference);
@@ -1033,24 +1150,95 @@ Cypress.Commands.add('createEnhancedProcessorReference', (processorType, config 
 });
 
 /**
- * Get processor using enhanced reference system
+ * Build enhanced reference object (extracted for clarity)
+ * @param {string} processorType - Processor type
+ * @param {Object} finalConfig - Final configuration
+ * @param {number} existingCount - Count of existing processors
+ * @returns {Object} - Enhanced reference object
+ */
+Cypress.Commands.add('buildEnhancedReference', (processorType, finalConfig, existingCount) => {
+  const safeType = safeString(processorType);
+  
+  return {
+    type: processorType,
+    config: finalConfig,
+    timestamp: Date.now(),
+    testId: `test-ref-${Date.now()}`,
+    
+    // Functional identification strategies
+    identificationStrategies: [
+      'type-based-discovery',
+      'index-based-fallback', 
+      'functional-id-generation',
+      'position-based-tracking'
+    ],
+    
+    // Enhanced selectors for multi-processor coordination
+    functionalSelectors: cy.buildFunctionalSelectors(processorType, existingCount),
+    
+    // Cleanup coordination
+    cleanupTargets: [
+      'g.processor',
+      '[class*="processor"]',
+      '.component'
+    ],
+    
+    // Test coordination metadata
+    testMetadata: {
+      createdAt: new Date().toISOString(),
+      testPhase: 'processor-id-management',
+      task: 'task-3',
+      coordination: true
+    }
+  };
+});
+
+/**
+ * Build functional selectors array (extracted helper)
+ * @param {string} processorType - Processor type
+ * @param {number} existingCount - Count of existing processors
+ * @returns {Array<string>} - Functional selectors
+ */
+Cypress.Commands.add('buildFunctionalSelectors', (processorType, existingCount) => {
+  const baseSelectors = [
+    `[data-processor-type="${safeString(processorType)}"]`,
+    `*:contains("${safeString(processorType)}")`,
+    // Index-based selectors for coordination
+    `g.processor:nth-child(${existingCount + 1})`,
+    `[class*="processor"]:nth-child(${existingCount + 1})`
+  ];
+  
+  // Add JWT-specific selectors if applicable
+  if (safeString(processorType).includes('JWT')) {
+    baseSelectors.push(
+      '*:contains("JWT")',
+      '*:contains("Token")',
+      '*:contains("Authenticator")'
+    );
+  }
+  
+  return baseSelectors;
+});
+
+/**
+ * Get processor using enhanced reference system (Optimized)
  * Task 3: Enhanced multi-processor coordination
  * @param {Object} enhancedRef - Enhanced processor reference
  * @returns {Cypress.Chainable} - Processor element
  */
 Cypress.Commands.add('getProcessorByEnhancedReference', (enhancedRef) => {
-  cy.log(`[Task 3] Getting processor using enhanced reference for: ${enhancedRef.type}`);
+  const safeType = safeString(enhancedRef.type);
+  cy.log(`[Task 3] Getting processor using enhanced reference for: ${safeType}`);
   
   return cy.get('body').then(($body) => {
     // Try functional selectors in priority order
-    for (const selector of enhancedRef.functionalSelectors) {
-      const elements = $body.find(selector);
-      if (elements.length > 0) {
-        const processorElement = elements.closest('g.processor, [class*="processor"], .component').first();
-        if (processorElement.length > 0) {
-          cy.log(`Found processor using enhanced selector: ${selector}`);
-          return cy.wrap(processorElement);
-        }
+    const element = findElementWithSelectors($body, enhancedRef.functionalSelectors);
+    
+    if (element) {
+      const processorElement = element.closest('g.processor, [class*="processor"], .component').first();
+      if (processorElement.length > 0) {
+        cy.log('Found processor using enhanced reference');
+        return cy.wrap(processorElement);
       }
     }
     
@@ -1059,12 +1247,12 @@ Cypress.Commands.add('getProcessorByEnhancedReference', (enhancedRef) => {
       return cy.findProcessorByTypeEnhanced(enhancedRef.type);
     }
     
-    throw new Error(`No processor found using enhanced reference for type: ${enhancedRef.type}`);
+    throw new Error(`No processor found using enhanced reference for type: ${safeType}`);
   });
 });
 
 /**
- * Enhanced cleanup for multi-processor scenarios
+ * Enhanced cleanup for multi-processor scenarios (Optimized)
  * Task 3: Improve cleanup mechanisms for complex scenarios
  */
 Cypress.Commands.add('enhancedProcessorCleanup', () => {
@@ -1079,56 +1267,98 @@ Cypress.Commands.add('enhancedProcessorCleanup', () => {
       '*[id*="processor"]'
     ];
     
-    let totalProcessors = 0;
-    
-    // Count all processors across different selectors
-    processorTargets.forEach(target => {
-      const found = $body.find(target);
-      totalProcessors += found.length;
-    });
-    
+    const totalProcessors = cy.countAllProcessors($body, processorTargets);
     cy.log(`Found ${totalProcessors} total processor elements for cleanup`);
     
     if (totalProcessors > 0) {
-      // Enhanced cleanup strategy
-      processorTargets.forEach(target => {
-        cy.get('body').then(($currentBody) => {
-          const elements = $currentBody.find(target);
-          if (elements.length > 0) {
-            // Try multiple cleanup approaches
-            cy.wrap(elements).each(($el) => {
-              // Try right-click context menu
-              cy.wrap($el).rightclick({ force: true });
-              cy.wait(200);
-              
-              // Look for delete options
-              cy.get('body').then(($menuBody) => {
-                const deleteOptions = $menuBody.find('*:contains("Delete"), *:contains("Remove")');
-                if (deleteOptions.length > 0) {
-                  cy.wrap(deleteOptions.first()).click({ force: true });
-                  cy.wait(200);
-                  
-                  // Confirm if dialog appears
-                  cy.get('body').then(($dialogBody) => {
-                    const confirmButtons = $dialogBody.find('button:contains("Delete"), button:contains("Yes"), button:contains("Confirm")');
-                    if (confirmButtons.length > 0) {
-                      cy.wrap(confirmButtons.first()).click({ force: true });
-                    }
-                  });
-                }
-              });
-            });
-          }
-        });
-      });
-      
-      // Fallback: keyboard delete
-      cy.get('body').type('{selectall}');
-      cy.wait(500);
-      cy.get('body').type('{del}');
-      cy.wait(1000);
+      cy.performCleanupOperations(processorTargets);
+      cy.performFallbackCleanup();
     }
     
     cy.log('[Task 3] Enhanced processor cleanup completed');
   });
+});
+
+/**
+ * Count all processors across different selectors (extracted helper)
+ * @param {JQuery} $body - Body element
+ * @param {Array<string>} targets - Selector targets
+ * @returns {number} - Total count
+ */
+Cypress.Commands.add('countAllProcessors', ($body, targets) => {
+  let totalProcessors = 0;
+  targets.forEach(target => {
+    const found = $body.find(target);
+    totalProcessors += found.length;
+  });
+  return totalProcessors;
+});
+
+/**
+ * Perform cleanup operations for each target (extracted to reduce nesting)
+ * @param {Array<string>} targets - Cleanup targets
+ */
+Cypress.Commands.add('performCleanupOperations', (targets) => {
+  targets.forEach(target => {
+    cy.cleanupProcessorsByTarget(target);
+  });
+});
+
+/**
+ * Cleanup processors for specific target selector
+ * @param {string} target - Target selector
+ */
+Cypress.Commands.add('cleanupProcessorsByTarget', (target) => {
+  cy.get('body').then(($currentBody) => {
+    const elements = $currentBody.find(target);
+    if (elements.length > 0) {
+      cy.wrap(elements).each(($el) => {
+        cy.attemptContextMenuDelete($el);
+      });
+    }
+  });
+});
+
+/**
+ * Attempt context menu delete for processor element
+ * @param {JQuery} $el - Processor element
+ */
+Cypress.Commands.add('attemptContextMenuDelete', ($el) => {
+  // Try right-click context menu
+  cy.wrap($el).rightclick({ force: true });
+  cy.wait(200);
+  
+  // Look for delete options
+  cy.get('body').then(($menuBody) => {
+    const deleteOptions = $menuBody.find('*:contains("Delete"), *:contains("Remove")');
+    if (deleteOptions.length > 0) {
+      cy.wrap(deleteOptions.first()).click({ force: true });
+      cy.wait(200);
+      
+      cy.confirmDeletionIfRequired();
+    }
+  });
+});
+
+/**
+ * Confirm deletion if dialog appears (extracted helper)
+ */
+Cypress.Commands.add('confirmDeletionIfRequired', () => {
+  cy.get('body').then(($dialogBody) => {
+    const confirmButtons = $dialogBody.find('button:contains("Delete"), button:contains("Yes"), button:contains("Confirm")');
+    if (confirmButtons.length > 0) {
+      cy.wrap(confirmButtons.first()).click({ force: true });
+    }
+  });
+});
+
+/**
+ * Perform fallback cleanup using keyboard shortcuts
+ */
+Cypress.Commands.add('performFallbackCleanup', () => {
+  // Fallback: keyboard delete
+  cy.get('body').type('{selectall}');
+  cy.wait(500);
+  cy.get('body').type('{del}');
+  cy.wait(1000);
 });
