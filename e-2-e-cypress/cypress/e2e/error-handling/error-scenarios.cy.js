@@ -2,7 +2,7 @@
  * End-to-End tests for error handling scenarios
  */
 
-import { SELECTORS, TEXT_CONSTANTS, TEST_DATA } from '../support/constants.js';
+import { SELECTORS, TEXT_CONSTANTS, TEST_DATA } from '../../support/constants.js';
 
 describe('Error Handling E2E Tests', () => {
   beforeEach(() => {

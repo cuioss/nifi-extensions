@@ -9,7 +9,7 @@ describe('Enhanced Commands Verification', () => {
     cy.navigateToCanvas();
 
     // Test cleanup command
-    cy.cleanupAllProcessors();
+    cy.enhancedProcessorCleanup();
     cy.log('✅ Cleanup command executed');
 
     // Test enhanced add processor

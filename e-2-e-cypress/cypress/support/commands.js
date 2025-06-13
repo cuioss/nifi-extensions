@@ -7,6 +7,8 @@
 import './commands/login';
 import './commands/navigation';
 import './commands/processor';
+import './commands/processor-add-alternatives';
+import './commands/processor-testing-strategy';
 import './commands/validation';
 import './commands/i18n';
 import './commands/browser';

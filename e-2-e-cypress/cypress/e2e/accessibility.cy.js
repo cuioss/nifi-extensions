@@ -33,7 +33,7 @@ describe('Accessibility (a11y) Tests', () => {
     cy.clearCookies();
 
     // Login and navigate to canvas
-    cy.loginToNiFi();
+    cy.nifiLogin();
     cy.navigateToCanvas();
 
     // Add processor for accessibility testing

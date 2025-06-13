@@ -19,6 +19,7 @@ import {
   extractProcessorId,
   getProcessorState,
   verifyProcessorState,
+  findElementWithSelectors,
 } from './processor-utils.js';
 import {
   navigateToPropertiesTab,
@@ -29,10 +30,13 @@ import {
   openProcessorConfigDialog,
 } from './processor-config.js';
 
+// Import alternative processor addition methods
+import './processor-add-alternatives.js';
+
 // Note: Utility functions now imported from processor-utils.js
 
 /**
- * Add a processor to the canvas - simplified version for modern NiFi Angular UI
+ * Add a processor to the canvas - enhanced version with multiple fallback methods for NiFi 2.4.0
  * @param {string} type - The type of processor to add
  * @param {object} position - The position coordinates {x, y} where to add the processor
  * @returns {Cypress.Chainable<string>} - Returns the processor ID if successfully added
@@ -44,97 +48,35 @@ Cypress.Commands.add('addProcessor', (type, position = { x: 300, y: 300 }) => {
   // Wait for UI to be ready - use proper wait for element
   cy.get('nifi').should('be.visible');
 
-  // Look for the main canvas/flow area in the Angular app
-  cy.get('nifi').should('be.visible');
-
   // Count existing processors before adding new one
   return cy.get('body').then(($body) => {
     const existingProcessors = $body.find(SELECTORS.PROCESSOR).length;
     cy.log(`Found ${existingProcessors} existing processors before addition`);
 
-    // Look for any canvas, svg, or flow area within the nifi component
+    // Method 1: Try the traditional double-click approach first
     const canvasElements = $body.find(
       'svg, canvas, [role="main"], .flow-canvas, .nifi-canvas, .canvas-container'
     );
 
     if (canvasElements.length > 0) {
-      // Double-click on canvas area to trigger add processor dialog
+      cy.log('🎯 Attempting traditional double-click method');
       cy.wrap(canvasElements.first()).dblclick({ force: true });
-      // Wait for dialog to appear instead of arbitrary time
-      waitForDialog();
+      
+      // Check if dialog appeared within short timeout
+      return cy.get('body', { timeout: 2000 }).then(($checkBody) => {
+        const dialogs = $checkBody.find(SELECTORS.DIALOG);
+        if (dialogs.length > 0) {
+          cy.log('✅ Traditional double-click successful');
+          return cy.selectProcessorFromDialog(type);
+        } else {
+          cy.log('⚠️ Traditional double-click failed, trying alternatives');
+          return cy.addProcessorAlternative(type, { position });
+        }
+      });
     } else {
-      // Fallback: try double-clicking within the nifi component
-      cy.get('nifi').dblclick(position.x, position.y, { force: true });
-      // Wait for dialog to appear instead of arbitrary time
-      waitForDialog();
+      cy.log('⚠️ No canvas elements found, using alternative methods');
+      return cy.addProcessorAlternative(type, { position });
     }
-
-    // Look for processor selection dialog or add component dialog
-    return cy.get('body').then(($dialogBody) => {
-      // Try to find any dialog that might contain processor types
-      const dialogs = $dialogBody.find(SELECTORS.DIALOG);
-
-      if (dialogs.length > 0) {
-        // Look for search/filter input
-        cy.get(
-          'input[type="text"], input[type="search"], input[placeholder*="filter"], input[placeholder*="search"]'
-        )
-          .first()
-          .type(type, { force: true });
-        // Replace arbitrary wait with proper condition wait
-        waitForVisible('body:contains("' + type + '")', TIMEOUTS.SHORT);
-
-        // Try to find and click the processor type
-        cy.get('body').contains(type, { timeout: 5000 }).click({ force: true });
-
-        // Look for Add/OK button to confirm
-        cy.get('button')
-          .contains(/^(Add|OK|Create)$/i)
-          .click({ force: true });
-
-        // Wait for processor to be added by checking for increased count
-        cy.get('body').then(($checkBody) => {
-          cy.wrap($checkBody).should(($body) => {
-            const currentProcessors = $body.find(SELECTORS.PROCESSOR).length;
-            expect(currentProcessors).to.be.greaterThan(existingProcessors);
-          });
-        });
-
-        // Try to extract the actual processor ID from the newly added processor
-        return cy.get('body').then(($newBody) => {
-          const newProcessors = $newBody.find('g.processor, [class*="processor"], .component');
-          cy.log(`Found ${newProcessors.length} processors after addition`);
-
-          if (newProcessors.length > existingProcessors) {
-            // Find the newest processor (likely the last one)
-            const newestProcessor = newProcessors.last();
-
-            // Try to extract ID from various attributes
-            let processorId =
-              newestProcessor.attr('id') ||
-              newestProcessor.attr('data-testid') ||
-              newestProcessor.attr('data-processor-id') ||
-              newestProcessor.attr('data-id');
-
-            if (!processorId) {
-              // Generate a unique ID based on processor count and timestamp
-              processorId = `processor-${newProcessors.length}-${Date.now()}`;
-              cy.log(`Generated processor ID: ${processorId}`);
-            } else {
-              cy.log(`Extracted processor ID: ${processorId}`);
-            }
-
-            return cy.wrap(processorId);
-          } else {
-            cy.log('No new processor detected after addition attempt');
-            return cy.wrap(null);
-          }
-        });
-      } else {
-        cy.log('No processor dialog found, processor addition may have failed');
-        return cy.wrap(null);
-      }
-    });
   });
 });
 

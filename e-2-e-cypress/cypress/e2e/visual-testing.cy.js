@@ -34,7 +34,7 @@ describe('Visual Testing', () => {
     cy.clearCookies();
 
     // Login and navigate to canvas
-    cy.loginToNiFi();
+    cy.nifiLogin();
     cy.navigateToCanvas();
 
     // Add processor for visual testing
@@ -653,7 +653,7 @@ describe('Visual Testing', () => {
 
       // Refresh page and verify consistency
       cy.reload();
-      cy.loginToNiFi();
+      cy.nifiLogin();
       cy.navigateToCanvas();
 
       // Add processor again

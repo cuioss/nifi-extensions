@@ -13,7 +13,7 @@ describe('Processor Configuration Detection', () => {
 
   afterEach(() => {
     // Clean up processors after each test
-    cy.cleanupAllProcessors();
+    cy.enhancedProcessorCleanup();
   });
 
   it('should detect unconfigured processor', () => {

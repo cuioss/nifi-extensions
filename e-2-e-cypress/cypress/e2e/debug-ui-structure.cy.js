@@ -4,7 +4,7 @@ import { TEXT_CONSTANTS } from '../support/constants.js';
 
 describe('NiFi UI Structure Debug', () => {
   it('should capture UI structure and selectors', () => {
-    cy.visit('https://localhost:9095/nifi/');
+    cy.visit('http://localhost:9094/nifi/');
 
     // Wait for page to load properly instead of arbitrary time
     cy.get('body').should(TEXT_CONSTANTS.BE_VISIBLE);

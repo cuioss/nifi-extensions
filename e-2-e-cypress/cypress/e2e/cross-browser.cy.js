@@ -33,7 +33,7 @@ describe('Cross-Browser Compatibility Tests', () => {
     cy.clearCookies();
 
     // Login and navigate to canvas
-    cy.loginToNiFi();
+    cy.nifiLogin();
     cy.navigateToCanvas();
 
     // Add processor for testing

@@ -30,7 +30,7 @@ describe('Internationalization (i18n) Tests', () => {
     cy.clearCookies();
 
     // Login and navigate to canvas
-    cy.loginToNiFi();
+    cy.nifiLogin();
     cy.navigateToCanvas();
 
     // Add and configure the processor for i18n testing
@@ -99,7 +99,7 @@ describe('Internationalization (i18n) Tests', () => {
 
       // Simulate page reload
       cy.reload();
-      cy.loginToNiFi();
+      cy.nifiLogin();
       cy.navigateToCanvas();
 
       // Verify language preference persisted

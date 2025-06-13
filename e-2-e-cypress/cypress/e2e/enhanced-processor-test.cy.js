@@ -9,12 +9,12 @@ describe('Enhanced Processor Integration Test', () => {
     // Clean up before each test
     cy.nifiLogin();
     cy.navigateToCanvas();
-    cy.cleanupAllProcessors();
+    cy.enhancedProcessorCleanup();
   });
 
   afterEach(() => {
     // Clean up after each test
-    cy.cleanupAllProcessors();
+    cy.enhancedProcessorCleanup();
   });
 
   it('should add processor with proper ID extraction', () => {
@@ -81,7 +81,7 @@ describe('Enhanced Processor Integration Test', () => {
       cy.log(`Total processors added: ${processorIds.length}`);
 
       // Test cleanup
-      cy.cleanupAllProcessors();
+      cy.enhancedProcessorCleanup();
       // Loading wait removed - using proper element readiness checks
 
       // Verify cleanup worked

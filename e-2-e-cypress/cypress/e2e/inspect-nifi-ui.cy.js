@@ -2,7 +2,7 @@ import { TEXT_CONSTANTS } from "../support/constants.js";
 // Debug script to examine NiFi UI and identify actual login elements
 describe('NiFi UI Inspection', () => {
   it('should identify login elements and canvas structure', () => {
-    cy.visit('https://localhost:9095/nifi/');
+    cy.visit('http://localhost:9094/nifi/');
 
     // Wait for Angular to load
     cy.get('body', { timeout: 30000 }).should(TEXT_CONSTANTS.EXIST);
