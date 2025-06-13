@@ -24,10 +24,14 @@ module.exports = {
     "unicorn"
   ],
   rules: {
+    // CUI Standards - Fundamental Rules
+    "no-console": "warn", // Allow console for debugging but warn
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }], // Ignore vars starting with _
+    "prefer-const": "error",
+    "no-var": "error",
+    
     // CUI Standards - Code Quality Rules
     "prettier/prettier": "error",
-    "no-console": "warn",
-    "no-unused-vars": "warn",
     
     // CUI Standards - Cypress Rules
     "cypress/no-unnecessary-waiting": "warn",
@@ -83,8 +87,6 @@ module.exports = {
     // CUI Standards - Additional Quality Rules
     "unicorn/filename-case": ["error", { "case": "kebabCase" }],
     "unicorn/no-null": "off", // Allow null for Cypress compatibility
-    "prefer-const": "error",
-    "no-var": "error"
   },
   
   // Cypress-specific overrides for test files
@@ -115,7 +117,18 @@ module.exports = {
         "jsdoc/require-description": "off",
         "jsdoc/require-param-description": "off",
         "jsdoc/require-returns-description": "off",
-        "jsdoc/require-example": "off"
+        "jsdoc/require-example": "off",
+        "jsdoc/no-defaults": "off",      // Allow JSDoc parameter defaults
+        "jsdoc/check-types": "off"       // Less strict type checking
+      }
+    },
+    {
+      files: ["**/*debug*.js", "**/*debug*.cy.js"],
+      rules: {
+        // Allow console statements in debug files
+        "no-console": "off",
+        "cypress/no-unnecessary-waiting": "warn", // Still warn about waits but allow for debugging
+        "max-lines-per-function": "off" // Debug functions can be very large
       }
     }
   ]

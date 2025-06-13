@@ -1492,7 +1492,7 @@ Cypress.Commands.add('testProcessorConfigurationDialog', (processorId) => {
     if ($element && $element.length > 0) {
       // Double-click to open configuration dialog
       cy.wrap($element).dblclick({ force: true });
-      // Loading wait removed - using proper element readiness checks;
+      cy.wait(2000);
 
       cy.get('body').then(($body) => {
         const dialogElements = $body.find(
@@ -1608,7 +1608,7 @@ Cypress.Commands.add('testPropertyInputFields', (processorId) => {
 
   // Open configuration dialog first
   cy.getProcessorElement(processorId).dblclick({ force: true });
-  // Loading wait removed - using proper element readiness checks;
+  cy.wait(2000);
 
   cy.get('body').then(($body) => {
     const propertyInputs = $body.find('input[type="text"], textarea, .property-input');

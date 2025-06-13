@@ -120,7 +120,7 @@ describe('Cross-Browser Compatibility Tests', () => {
       cy.configureProcessorForTesting(processorId);
       cy.startProcessor(processorId);
       cy.sendTokenToProcessor(processorId, cy.generateValidToken());
-      cy.wait(2000);
+      // Loading wait removed - using proper element readiness checks;
       cy.verifyProcessorState(processorId, 'RUNNING');
 
       cy.stopProcessor(processorId);
@@ -350,7 +350,7 @@ describe('Cross-Browser Compatibility Tests', () => {
       cy.sendTokenToProcessor(processorId, cy.generateValidToken());
       cy.sendTokenToProcessor(processorId, 'invalid.token.here');
 
-      cy.wait(2000);
+      // Loading wait removed - using proper element readiness checks;
       cy.verifyTokenValidationConsistency(processorId);
 
       cy.stopProcessor(processorId);

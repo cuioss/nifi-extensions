@@ -13,6 +13,13 @@
  * 6. Error Handling and User Feedback
  */
 
+/**
+ * Accessibility Testing Scenarios
+ * CUI Standards Compliant
+ */
+
+import { SELECTORS } from '../constants.js';
+
 describe('Accessibility (a11y) Tests', () => {
   let processorId;
 
@@ -109,11 +116,11 @@ describe('Accessibility (a11y) Tests', () => {
 
       // Test Space or Enter to configure
       cy.focused().type('{enter}');
-      cy.get('.configuration-dialog').should('be.visible');
+      cy.get(SELECTORS.CONFIGURATION_DIALOG).should('be.visible');
 
       // Test Escape to close
       cy.focused().type('{esc}');
-      cy.get('.configuration-dialog').should('not.exist');
+      cy.get(SELECTORS.CONFIGURATION_DIALOG).should('not.exist');
     });
   });
 

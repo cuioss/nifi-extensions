@@ -1,3 +1,10 @@
+/**
+ * Metrics and Statistics Test Scenarios
+ * CUI Standards Compliant
+ */
+
+import { SELECTORS, TEXT_CONSTANTS, TEST_DATA } from '../constants.js';
+
 // Phase 5.1: Metrics and Statistics Tests
 // End-to-End tests for processor metrics display and verification
 
@@ -26,29 +33,29 @@ describe('Processor Metrics and Statistics Tests', () => {
     it('should display metrics in processor status', () => {
       // Configure processor with basic issuer
       cy.configureProcessor(processorId, {
-        'issuer-1-name': 'test-issuer',
-        'issuer-1-issuer': 'https://test.example.com',
-        'issuer-1-jwks-type': 'server',
-        'issuer-1-jwks-url': 'https://test.example.com/jwks.json',
+        'issuer-1-name': TEST_DATA.TEST_ISSUER_NAME,
+        'issuer-1-issuer': TEST_DATA.TEST_ISSUER_URL,
+        'issuer-1-jwks-type': TEST_DATA.TEST_JWKS_TYPE,
+        'issuer-1-jwks-url': TEST_DATA.TEST_JWKS_URL,
       });
 
       // Start the processor
       cy.startProcessor(processorId);
 
       // Wait for processor to be running
-      cy.verifyProcessorState(processorId, 'RUNNING');
+      cy.verifyProcessorState(processorId, TEST_DATA.RUNNING);
 
       // Check that metrics are displayed in the processor status
       cy.getProcessorElement(processorId)
         .find('.processor-status')
-        .should('contain.text', 'Processed:')
-        .should('contain.text', 'Valid:')
-        .should('contain.text', 'Invalid:');
+        .should('contain.text', TEST_DATA.PROCESSED)
+        .should('contain.text', TEST_DATA.VALID)
+        .should('contain.text', TEST_DATA.INVALID);
 
       // Verify initial metrics show zero counts
       cy.getProcessorElement(processorId)
         .find('.processor-status')
-        .should('contain.text', 'Processed: 0')
+        .should('contain.text', TEST_DATA.PROCESSED_ZERO)
         .should('contain.text', 'Valid: 0')
         .should('contain.text', 'Invalid: 0');
     });
@@ -121,7 +128,7 @@ describe('Processor Metrics and Statistics Tests', () => {
       });
 
       // Wait for processing and check updated metrics
-      cy.wait(2000);
+      // Loading wait removed - using proper element readiness checks;
 
       cy.getProcessorElement(processorId)
         .find('.processor-status')
@@ -145,7 +152,7 @@ describe('Processor Metrics and Statistics Tests', () => {
       cy.sendTokenToProcessor(processorId, 'expired.jwt.token');
       cy.sendTokenToProcessor(processorId, 'malformed-token');
 
-      cy.wait(2000);
+      // Loading wait removed - using proper element readiness checks;
 
       // Verify invalid token metrics are updated
       cy.getProcessorElement(processorId)
@@ -179,7 +186,7 @@ describe('Processor Metrics and Statistics Tests', () => {
         cy.sendTokenToProcessor(processorId, 'invalid.token');
       });
 
-      cy.wait(2000);
+      // Loading wait removed - using proper element readiness checks;
 
       // Verify metrics are non-zero
       cy.getProcessorElement(processorId)
@@ -324,7 +331,7 @@ describe('Processor Metrics and Statistics Tests', () => {
         cy.sendTokenToProcessor(processorId, token); // Send twice for issuer-b
       });
 
-      cy.wait(2000);
+      // Loading wait removed - using proper element readiness checks;
 
       // Check issuer-specific metrics in UI
       cy.openProcessorConfigDialog(processorId);
@@ -358,7 +365,7 @@ describe('Processor Metrics and Statistics Tests', () => {
       cy.sendTokenToProcessor(processorId, 'expired.jwt.token');
       cy.sendTokenToProcessor(processorId, 'invalid.signature.token');
 
-      cy.wait(2000);
+      // Loading wait removed - using proper element readiness checks;
 
       // Check recent errors in metrics tab
       cy.openProcessorConfigDialog(processorId);

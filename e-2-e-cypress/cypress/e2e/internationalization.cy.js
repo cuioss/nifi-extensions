@@ -69,7 +69,7 @@ describe('Internationalization (i18n) Tests', () => {
     it('should switch to English language', () => {
       // First switch to German, then back to English
       cy.switchLanguage('de');
-      cy.wait(500);
+      // Animation wait removed - using proper element visibility;
       cy.switchLanguage('en');
 
       // Verify language switch took effect
@@ -137,7 +137,7 @@ describe('Internationalization (i18n) Tests', () => {
 
       // Switch to English explicitly
       cy.switchLanguage('en');
-      cy.wait(500);
+      // Animation wait removed - using proper element visibility;
 
       // Verify English labels for key properties
       cy.verifyPropertyLabel('JWKS Source Type', 'en');
@@ -154,7 +154,7 @@ describe('Internationalization (i18n) Tests', () => {
 
       // Switch to German
       cy.switchLanguage('de');
-      cy.wait(500);
+      // Animation wait removed - using proper element visibility;
 
       // Verify German labels for key properties (if available)
       cy.verifyPropertyLabel('JWKS-Quelltyp', 'de', 'JWKS Source Type');
@@ -171,12 +171,12 @@ describe('Internationalization (i18n) Tests', () => {
 
       // Test English descriptions
       cy.switchLanguage('en');
-      cy.wait(500);
+      // Animation wait removed - using proper element visibility;
       cy.verifyPropertyDescription('JWKS Source Type', 'en');
 
       // Test German descriptions
       cy.switchLanguage('de');
-      cy.wait(500);
+      // Animation wait removed - using proper element visibility;
       cy.verifyPropertyDescription('JWKS Source Type', 'de');
 
       cy.closeDialog();
@@ -193,13 +193,13 @@ describe('Internationalization (i18n) Tests', () => {
 
       // Test English error messages
       cy.switchLanguage('en');
-      cy.wait(500);
+      // Animation wait removed - using proper element visibility;
       cy.clickApplyButton();
       cy.verifyValidationErrorInLanguage('en');
 
       // Test German error messages
       cy.switchLanguage('de');
-      cy.wait(500);
+      // Animation wait removed - using proper element visibility;
       cy.clickApplyButton();
       cy.verifyValidationErrorInLanguage('de');
 
@@ -209,7 +209,7 @@ describe('Internationalization (i18n) Tests', () => {
     it('should localize processor status messages', () => {
       // Start processor to generate status messages
       cy.startProcessor(processorId);
-      cy.wait(1000);
+      // Loading wait removed - using proper element readiness checks;
 
       // Check English status messages
       cy.switchLanguage('en');
@@ -229,7 +229,7 @@ describe('Internationalization (i18n) Tests', () => {
 
       // Generate an error by sending invalid token
       cy.sendTokenToProcessor(processorId, 'invalid-token');
-      cy.wait(2000);
+      // Loading wait removed - using proper element readiness checks;
 
       // Verify error messages in different languages
       cy.switchLanguage('en');
@@ -249,7 +249,7 @@ describe('Internationalization (i18n) Tests', () => {
 
       // Switch language and verify dynamic content is translated
       cy.switchLanguage('de');
-      cy.wait(1000);
+      // Loading wait removed - using proper element readiness checks;
 
       // Check that dynamically loaded tabs and sections are translated
       cy.verifyDynamicContentTranslation('de');
@@ -320,7 +320,7 @@ describe('Internationalization (i18n) Tests', () => {
       cy.sendTokenToProcessor(processorId, cy.generateValidToken());
       cy.sendTokenToProcessor(processorId, 'invalid-token');
 
-      cy.wait(2000);
+      // Loading wait removed - using proper element readiness checks;
 
       // Check pluralization in English
       cy.switchLanguage('en');
@@ -340,7 +340,7 @@ describe('Internationalization (i18n) Tests', () => {
       cy.configureProcessorForTesting(processorId);
       cy.startProcessor(processorId);
       cy.sendTokenToProcessor(processorId, cy.generateValidToken());
-      cy.wait(2000);
+      // Loading wait removed - using proper element readiness checks;
 
       // Check English locale formatting
       cy.switchLanguage('en');

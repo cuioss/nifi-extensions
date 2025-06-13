@@ -2,6 +2,8 @@
  * End-to-End tests for error handling scenarios
  */
 
+import { SELECTORS, TEXT_CONSTANTS } from '../constants.js';
+
 describe('Error Handling E2E Tests', () => {
   beforeEach(() => {
     // Login and navigate to canvas before each test
@@ -13,20 +15,20 @@ describe('Error Handling E2E Tests', () => {
     cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
       // Try to apply configuration without required properties
       cy.navigateToProcessorConfig(processorId);
-      cy.get('.processor-configuration-tab').contains('Properties').click();
+      cy.get(SELECTORS.PROCESSOR_CONFIG_TAB).contains(TEXT_CONSTANTS.PROPERTIES).click();
 
       // Leave JWKS Type empty or set to invalid value
-      cy.get('.processor-property-name')
-        .contains('JWKS Type')
-        .parents('.processor-property-row')
+      cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
+        .contains(TEXT_CONSTANTS.JWKS_TYPE)
+        .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('select')
         .select(''); // Select empty value if available
 
       // Try to apply
-      cy.get('button').contains('Apply').click();
+      cy.get('button').contains(TEXT_CONSTANTS.APPLY).click();
 
       // Should show validation error
-      cy.get('.validation-error, .error-message').should('be.visible');
+      cy.get(SELECTORS.VALIDATION_ERROR).should('be.visible');
 
       // Cancel the configuration
       cy.get('button').contains('Cancel').click();

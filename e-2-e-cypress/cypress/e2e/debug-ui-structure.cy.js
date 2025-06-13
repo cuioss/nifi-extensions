@@ -3,8 +3,9 @@ describe('NiFi UI Structure Debug', () => {
   it('should capture UI structure and selectors', () => {
     cy.visit('https://localhost:9095/nifi/');
 
-    // Wait for page to load
-    cy.wait(10000);
+    // Wait for page to load properly instead of arbitrary time
+    cy.get('body').should('be.visible');
+    cy.get('nifi', { timeout: 10000 }).should('exist');
 
     // Log the page title
     cy.title().then((title) => {

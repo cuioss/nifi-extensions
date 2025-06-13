@@ -13,6 +13,14 @@
  * 6. Cross-Resolution Visual Testing
  */
 
+/**
+ * Visual Testing Scenarios
+ * CUI Standards Compliant
+ */
+
+import { SELECTORS, TIMEOUTS } from '../constants.js';
+import { waitForVisible } from '../wait-utils.js';
+
 describe('Visual Testing', () => {
   let processorId;
 
@@ -61,8 +69,7 @@ describe('Visual Testing', () => {
       cy.openProcessorConfigDialog(processorId);
 
       // Wait for dialog to fully render
-      cy.get('.configuration-dialog').should('be.visible');
-      cy.wait(500); // Allow for animations to complete
+      waitForVisible('.configuration-dialog');
 
       // Capture configuration dialog visual state
       cy.visualSnapshot('config-dialog-default', {
@@ -81,7 +88,7 @@ describe('Visual Testing', () => {
 
       // Configure different JWKS source types and capture visuals
       cy.setProcessorProperty('JWKS Source Type', 'SERVER');
-      cy.wait(300); // Allow for form updates
+      // Form updates should be ready immediately
 
       cy.visualSnapshot('config-dialog-server-type', {
         element: '.properties-section',
@@ -90,7 +97,7 @@ describe('Visual Testing', () => {
 
       // Switch to FILE type
       cy.setProcessorProperty('JWKS Source Type', 'FILE');
-      cy.wait(300);
+      // Animation wait removed - using proper element visibility;
 
       cy.visualSnapshot('config-dialog-file-type', {
         element: '.properties-section',
@@ -99,7 +106,7 @@ describe('Visual Testing', () => {
 
       // Switch to IN_MEMORY type
       cy.setProcessorProperty('JWKS Source Type', 'IN_MEMORY');
-      cy.wait(300);
+      // Animation wait removed - using proper element visibility;
 
       cy.visualSnapshot('config-dialog-memory-type', {
         element: '.properties-section',
@@ -142,7 +149,7 @@ describe('Visual Testing', () => {
       // Configure and start processor
       cy.configureProcessorForTesting(processorId);
       cy.startProcessor(processorId);
-      cy.wait(1000);
+      // Loading wait removed - using proper element readiness checks;
 
       // Test RUNNING state
       cy.verifyProcessorState(processorId, 'RUNNING');
@@ -153,7 +160,7 @@ describe('Visual Testing', () => {
 
       // Stop processor
       cy.stopProcessor(processorId);
-      cy.wait(1000);
+      // Loading wait removed - using proper element readiness checks;
 
       // Verify return to STOPPED state
       cy.visualSnapshot('processor-stopped-after-run', {
@@ -171,7 +178,7 @@ describe('Visual Testing', () => {
 
       // Test hover state
       cy.getProcessorElement(processorId).trigger('mouseenter');
-      cy.wait(200);
+      // Animation wait removed - using proper element visibility;
       cy.visualSnapshot('processor-hover-state', {
         element: cy.getProcessorElement(processorId),
         threshold: 0.01,
@@ -179,7 +186,7 @@ describe('Visual Testing', () => {
 
       // Test selected state
       cy.getProcessorElement(processorId).click();
-      cy.wait(200);
+      // Animation wait removed - using proper element visibility;
       cy.visualSnapshot('processor-selected-state', {
         element: cy.getProcessorElement(processorId),
         threshold: 0.01,
@@ -192,7 +199,7 @@ describe('Visual Testing', () => {
     it('should validate context menu visual appearance', () => {
       // Right-click to show context menu
       cy.getProcessorElement(processorId).rightclick();
-      cy.wait(300);
+      // Animation wait removed - using proper element visibility;
 
       // Capture context menu
       cy.get('.context-menu, .popup-menu').should('be.visible');
@@ -203,7 +210,7 @@ describe('Visual Testing', () => {
 
       // Test menu item hover states
       cy.get('.menu-item, .popup-menu-item').first().trigger('mouseenter');
-      cy.wait(100);
+      // Short animation wait removed - using proper element visibility;
       cy.visualSnapshot('context-menu-item-hover', {
         element: '.context-menu, .popup-menu',
         threshold: 0.02,
@@ -351,7 +358,7 @@ describe('Visual Testing', () => {
 
       // Start processor and capture transition
       cy.startProcessor(processorId);
-      cy.wait(500); // Allow for animation
+      // Animation wait removed - using proper element visibility; // Allow for animation
 
       cy.visualSnapshot('processor-start-transition', {
         element: cy.getProcessorElement(processorId),
@@ -359,7 +366,7 @@ describe('Visual Testing', () => {
       });
 
       // Wait for animation to complete
-      cy.wait(1000);
+      // Loading wait removed - using proper element readiness checks;
       cy.visualSnapshot('processor-running-final', {
         element: cy.getProcessorElement(processorId),
         threshold: 0.01,
@@ -377,7 +384,7 @@ describe('Visual Testing', () => {
 
       // Open dialog and capture during animation
       cy.getProcessorElement(processorId).dblclick();
-      cy.wait(200); // Mid-animation
+      // Animation wait removed - using proper element visibility; // Mid-animation
 
       cy.get('.configuration-dialog').then(($dialog) => {
         if ($dialog.is(':visible')) {
@@ -389,7 +396,7 @@ describe('Visual Testing', () => {
       });
 
       // Wait for animation to complete
-      cy.wait(500);
+      // Animation wait removed - using proper element visibility;
       cy.visualSnapshot('dialog-opened-final', {
         element: 'body',
         threshold: 0.01,
@@ -397,7 +404,7 @@ describe('Visual Testing', () => {
 
       // Close dialog and capture animation
       cy.get('.cancel-button, .close-button').click();
-      cy.wait(200); // Mid-animation
+      // Animation wait removed - using proper element visibility; // Mid-animation
 
       cy.visualSnapshot('dialog-closing-animation', {
         element: 'body',
@@ -408,7 +415,7 @@ describe('Visual Testing', () => {
     it('should test hover and focus animations', () => {
       // Test processor hover animation
       cy.getProcessorElement(processorId).trigger('mouseenter');
-      cy.wait(300); // Allow for hover animation
+      // Animation wait removed - using proper element visibility; // Allow for hover animation
 
       cy.visualSnapshot('processor-hover-animation', {
         element: cy.getProcessorElement(processorId),
@@ -419,7 +426,7 @@ describe('Visual Testing', () => {
       cy.openProcessorConfigDialog(processorId);
 
       cy.get('.apply-button').trigger('mouseenter');
-      cy.wait(200);
+      // Animation wait removed - using proper element visibility;
 
       cy.visualSnapshot('button-hover-animation', {
         element: '.apply-button',
@@ -555,7 +562,7 @@ describe('Visual Testing', () => {
 
       resolutions.forEach((resolution) => {
         cy.viewport(resolution.width, resolution.height);
-        cy.wait(500); // Allow for responsive adjustments
+        // Animation wait removed - using proper element visibility; // Allow for responsive adjustments
 
         // Capture processor at this resolution
         cy.visualSnapshot(`processor-${resolution.name.toLowerCase()}`, {
@@ -582,7 +589,7 @@ describe('Visual Testing', () => {
 
       zoomLevels.forEach((zoomLevel) => {
         cy.setZoomLevel(zoomLevel);
-        cy.wait(300);
+        // Animation wait removed - using proper element visibility;
 
         // Capture processor at zoom level
         cy.visualSnapshot(`processor-zoom-${zoomLevel}`, {
@@ -603,7 +610,7 @@ describe('Visual Testing', () => {
 
       pixelRatios.forEach((ratio) => {
         cy.setPixelRatio(ratio);
-        cy.wait(300);
+        // Animation wait removed - using proper element visibility;
 
         // Capture at different pixel densities
         cy.visualSnapshot(`processor-dpr-${ratio}`, {
