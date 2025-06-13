@@ -1,3 +1,4 @@
+import { TEXT_CONSTANTS } from "../support/constants.js";
 /**
  * Processor Configuration Detection Tests
  * Validates the new isProcessorConfigured command and related functionality
@@ -34,7 +35,7 @@ describe('Processor Configuration Detection', () => {
     cy.addProcessor('GenerateFlowFile').then((processorId) => {
       if (processorId) {
         cy.getProcessorElement(processorId)
-          .should('exist')
+          .should(TEXT_CONSTANTS.EXIST)
           .then(($element) => {
             // Verify we can find the processor element
             expect($element).to.exist;
@@ -54,7 +55,7 @@ describe('Processor Configuration Detection', () => {
       expect(processorRef).to.have.property('fallbackSelectors');
 
       // Test getting processor by reference
-      cy.getProcessorByReference(processorRef).should('exist');
+      cy.getProcessorByReference(processorRef).should(TEXT_CONSTANTS.EXIST);
     });
   });
 
@@ -62,7 +63,7 @@ describe('Processor Configuration Detection', () => {
     cy.addProcessor('LogAttribute').then((processorId) => {
       if (processorId) {
         // Test improved discovery mechanism
-        cy.findProcessorElement(processorId).should('exist');
+        cy.findProcessorElement(processorId).should(TEXT_CONSTANTS.EXIST);
 
         cy.log(`Successfully found processor with ID: ${processorId}`);
       }
@@ -74,8 +75,8 @@ describe('Processor Configuration Detection', () => {
     cy.createProcessorReference('GenerateFlowFile', { x: 200, y: 200 }).then((ref1) => {
       cy.createProcessorReference('UpdateAttribute', { x: 400, y: 200 }).then((ref2) => {
         // Verify all processors exist and can be found
-        cy.getProcessorByReference(ref1).should('exist');
-        cy.getProcessorByReference(ref2).should('exist');
+        cy.getProcessorByReference(ref1).should(TEXT_CONSTANTS.EXIST);
+        cy.getProcessorByReference(ref2).should(TEXT_CONSTANTS.EXIST);
 
         // Check configuration status
         cy.isProcessorConfigured(ref1.id).then((isConfigured) => {

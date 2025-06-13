@@ -116,11 +116,11 @@ describe('Accessibility (a11y) Tests', () => {
 
       // Test Space or Enter to configure
       cy.focused().type('{enter}');
-      cy.get(SELECTORS.CONFIGURATION_DIALOG).should('be.visible');
+      cy.get(SELECTORS.CONFIGURATION_DIALOG).should(TEXT_CONSTANTS.BE_VISIBLE);
 
       // Test Escape to close
       cy.focused().type('{esc}');
-      cy.get(SELECTORS.CONFIGURATION_DIALOG).should('not.exist');
+      cy.get(SELECTORS.CONFIGURATION_DIALOG).should(TEXT_CONSTANTS.NOT_EXIST);
     });
   });
 

@@ -15,8 +15,7 @@ describe('Token Validation E2E Tests', () => {
       const config = {
         properties: {
           'JWKS Type': 'Server',
-          'JWKS URL':
-            'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs',
+          'JWKS URL': 'TEST_DATA.KEYCLOAK_JWKS_URL',
         },
       };
 
@@ -36,8 +35,7 @@ describe('Token Validation E2E Tests', () => {
       const config = {
         properties: {
           'JWKS Type': 'Server',
-          'JWKS URL':
-            'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs',
+          'JWKS URL': 'TEST_DATA.KEYCLOAK_JWKS_URL',
         },
       };
 
@@ -58,8 +56,7 @@ describe('Token Validation E2E Tests', () => {
       const config = {
         properties: {
           'JWKS Type': 'Server',
-          'JWKS URL':
-            'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs',
+          'JWKS URL': 'TEST_DATA.KEYCLOAK_JWKS_URL',
           'Issuer Validation': 'true',
           'Expected Issuer': 'https://localhost:8443/auth/realms/oauth_integration_tests',
         },
@@ -82,8 +79,7 @@ describe('Token Validation E2E Tests', () => {
       const config = {
         properties: {
           'JWKS Type': 'Server',
-          'JWKS URL':
-            'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs',
+          'JWKS URL': 'TEST_DATA.KEYCLOAK_JWKS_URL',
         },
       };
 
@@ -113,8 +109,7 @@ describe('Token Validation E2E Tests', () => {
       const config = {
         properties: {
           'JWKS Type': 'Server',
-          'JWKS URL':
-            'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs',
+          'JWKS URL': 'TEST_DATA.KEYCLOAK_JWKS_URL',
           'Required Claims': 'scope,role',
           'Claim Validation': 'true',
         },

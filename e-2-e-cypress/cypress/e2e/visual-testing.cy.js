@@ -18,7 +18,7 @@
  * CUI Standards Compliant
  */
 
-import { TEXT_CONSTANTS } from '../support/constants.js';
+import { SELECTORS, TEXT_CONSTANTS } from '../support/constants.js';
 import { waitForVisible } from '../support/wait-utils.js';
 
 describe('Visual Testing', () => {
@@ -69,11 +69,11 @@ describe('Visual Testing', () => {
       cy.openProcessorConfigDialog(processorId);
 
       // Wait for dialog to fully render
-      waitForVisible('.configuration-dialog');
+      waitForVisible(SELECTORS.CONFIGURATION_DIALOG);
 
       // Capture configuration dialog visual state
       cy.visualSnapshot('config-dialog-default', {
-        element: '.configuration-dialog',
+        element: SELECTORS.CONFIGURATION_DIALOG,
         threshold: 0.02,
       });
 
@@ -91,7 +91,7 @@ describe('Visual Testing', () => {
       // Form updates should be ready immediately
 
       cy.visualSnapshot('config-dialog-server-type', {
-        element: '.properties-section',
+        element: 'SELECTORS.PROPERTIES_SECTION',
         threshold: 0.02,
       });
 
@@ -100,7 +100,7 @@ describe('Visual Testing', () => {
       // Animation wait removed - using proper element visibility;
 
       cy.visualSnapshot('config-dialog-file-type', {
-        element: '.properties-section',
+        element: 'SELECTORS.PROPERTIES_SECTION',
         threshold: 0.02,
       });
 
@@ -109,7 +109,7 @@ describe('Visual Testing', () => {
       // Animation wait removed - using proper element visibility;
 
       cy.visualSnapshot('config-dialog-memory-type', {
-        element: '.properties-section',
+        element: 'SELECTORS.PROPERTIES_SECTION',
         threshold: 0.02,
       });
 
@@ -126,7 +126,7 @@ describe('Visual Testing', () => {
 
       // Capture error state visuals
       cy.visualSnapshot('config-dialog-error-state', {
-        element: '.configuration-dialog',
+        element: 'SELECTORS.CONFIGURATION_DIALOG',
         threshold: 0.02,
       });
 
@@ -234,7 +234,7 @@ describe('Visual Testing', () => {
       cy.get('body').then(($body) => {
         if ($body.find('.loading, .spinner, .progress').length > 0) {
           cy.visualSnapshot('config-dialog-loading-state', {
-            element: '.configuration-dialog',
+            element: 'SELECTORS.CONFIGURATION_DIALOG',
             threshold: 0.02,
           });
         }
@@ -276,15 +276,15 @@ describe('Visual Testing', () => {
 
       // Capture full dialog layout
       cy.visualSnapshot('config-dialog-full-layout', {
-        element: '.configuration-dialog',
+        element: 'SELECTORS.CONFIGURATION_DIALOG',
         threshold: 0.02,
       });
 
       // Verify specific layout sections
-      cy.get('.properties-section').then(($section) => {
+      cy.get('SELECTORS.PROPERTIES_SECTION').then(($section) => {
         if ($section.length > 0) {
           cy.visualSnapshot('config-properties-section', {
-            element: '.properties-section',
+            element: 'SELECTORS.PROPERTIES_SECTION',
             threshold: 0.02,
           });
         }
@@ -386,7 +386,7 @@ describe('Visual Testing', () => {
       cy.getProcessorElement(processorId).dblclick();
       // Animation wait removed - using proper element visibility; // Mid-animation
 
-      cy.get('.configuration-dialog').then(($dialog) => {
+      cy.get('SELECTORS.CONFIGURATION_DIALOG').then(($dialog) => {
         if ($dialog.is(':visible')) {
           cy.visualSnapshot('dialog-opening-animation', {
             element: 'body',
@@ -456,7 +456,7 @@ describe('Visual Testing', () => {
         }
       });
 
-      cy.get('body', { timeout: 15000 }).should('exist');
+      cy.get('body', { timeout: 15000 }).should(TEXT_CONSTANTS.EXIST);
       cy.closeDialog();
     });
   });
@@ -472,7 +472,7 @@ describe('Visual Testing', () => {
       // Capture dialog styling
       cy.openProcessorConfigDialog(processorId);
       cy.visualSnapshot('dialog-styling', {
-        element: '.configuration-dialog',
+        element: 'SELECTORS.CONFIGURATION_DIALOG',
         threshold: 0.01,
       });
 
@@ -501,7 +501,7 @@ describe('Visual Testing', () => {
           // Capture dialog in dark theme
           cy.openProcessorConfigDialog(processorId);
           cy.visualSnapshot('dialog-dark-theme', {
-            element: '.configuration-dialog',
+            element: 'SELECTORS.CONFIGURATION_DIALOG',
             threshold: 0.02,
           });
 
@@ -524,7 +524,7 @@ describe('Visual Testing', () => {
       // Capture dialog in high contrast
       cy.openProcessorConfigDialog(processorId);
       cy.visualSnapshot('dialog-high-contrast', {
-        element: '.configuration-dialog',
+        element: 'SELECTORS.CONFIGURATION_DIALOG',
         threshold: 0.03,
       });
 
@@ -573,7 +573,7 @@ describe('Visual Testing', () => {
         // Capture configuration dialog
         cy.openProcessorConfigDialog(processorId);
         cy.visualSnapshot(`dialog-${resolution.name.toLowerCase()}`, {
-          element: '.configuration-dialog',
+          element: 'SELECTORS.CONFIGURATION_DIALOG',
           threshold: 0.02,
         });
 

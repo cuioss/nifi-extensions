@@ -1,3 +1,4 @@
+import { TEXT_CONSTANTS } from "../support/constants.js";
 /**
  * Demonstration of Working NiFi Integration Test Capabilities
  * This test showcases the successfully updated commands for NiFi 2.4.0 Angular UI
@@ -11,7 +12,7 @@ describe('NiFi Integration Test - Working Features Demo', () => {
     cy.verifyLoggedIn();
 
     // Verify we're in the Angular NiFi application
-    cy.get('nifi').should('exist');
+    cy.get('nifi').should(TEXT_CONSTANTS.EXIST);
     cy.get('body').should(($body) => {
       const hasAngularContent = $body.find('nifi').children().length > 0;
       expect(hasAngularContent).to.be.true;
@@ -31,7 +32,7 @@ describe('NiFi Integration Test - Working Features Demo', () => {
         cy.log(`✅ Processor added successfully with ID: ${processorId}`);
 
         // Test processor element retrieval
-        cy.getProcessorElement(processorId).should('exist');
+        cy.getProcessorElement(processorId).should(TEXT_CONSTANTS.EXIST);
         cy.log('✅ Processor element retrieval working');
 
         // Test processor configuration (basic)

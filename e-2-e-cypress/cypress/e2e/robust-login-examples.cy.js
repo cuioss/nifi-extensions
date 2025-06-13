@@ -1,3 +1,4 @@
+import { TEXT_CONSTANTS } from "../support/constants.js";
 /**
  * Robust Login Pattern Example Test
  *
@@ -104,7 +105,7 @@ describe('Robust Login Pattern Examples', () => {
       cy.quickLoginCheck();
 
       // Continue with test logic
-      cy.get('nifi').should('exist');
+      cy.get('nifi').should(TEXT_CONSTANTS.EXIST);
     });
 
     it('should minimize authentication overhead', () => {
@@ -147,7 +148,7 @@ describe('Robust Login Pattern Examples', () => {
       cy.visit('/', { timeout: 30000 });
 
       // Test anonymous access verification
-      cy.get('nifi', { timeout: 30000 }).should('exist');
+      cy.get('nifi', { timeout: 30000 }).should(TEXT_CONSTANTS.EXIST);
       cy.verifyAnonymousAccess();
       cy.verifyCanAccessProcessors();
     });

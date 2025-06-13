@@ -3,6 +3,8 @@
  * Validates enhanced processor ID management functionality
  */
 
+import { SELECTORS, TEXT_CONSTANTS } from '../support/constants.js';
+
 describe('Task 3: Processor ID Management', () => {
   beforeEach(() => {
     // Login and navigate to canvas before each test
@@ -131,14 +133,14 @@ describe('Task 3: Processor ID Management', () => {
     });
 
     // Wait for processors to be added to DOM
-    cy.get('g.processor, [class*="processor"], .component', { timeout: 10000 }).should(
+    cy.get(SELECTORS.PROCESSOR, { timeout: 10000 }).should(
       'have.length.at.least',
       3
     );
 
     // Count processors before cleanup
     cy.get('body').then(($body) => {
-      const beforeCount = $body.find('g.processor, [class*="processor"], .component').length;
+      const beforeCount = $body.find(SELECTORS.PROCESSOR).length;
       cy.log(`Processors before cleanup: ${beforeCount}`);
 
       // Perform enhanced cleanup
@@ -179,7 +181,7 @@ describe('Task 3: Processor ID Management', () => {
     // Test functional ID generation when no processors exist
     cy.enhancedProcessorCleanup(); // Clear everything first
     // Wait for cleanup to complete
-    cy.get('body').should('be.visible');
+    cy.get('body').should(TEXT_CONSTANTS.BE_VISIBLE);
 
     cy.getAnyWorkingProcessorId().then((functionalId) => {
       expect(functionalId).to.exist;

@@ -1,4 +1,4 @@
-import { SELECTORS } from '../support/constants.js';
+import { SELECTORS, TEXT_CONSTANTS } from '../support/constants.js';
 
 // Simple test to understand login flow and available elements
 describe('NiFi Login Analysis', () => {
@@ -6,10 +6,10 @@ describe('NiFi Login Analysis', () => {
     cy.visit('http://localhost:9094/nifi/');
 
     // Wait for Angular app to load
-    cy.get('nifi', { timeout: 30000 }).should('exist');
+    cy.get('nifi', { timeout: 30000 }).should(TEXT_CONSTANTS.EXIST);
 
     // Wait for content to load completely
-    cy.get('nifi').should('be.visible');
+    cy.get('nifi').should(TEXT_CONSTANTS.BE_VISIBLE);
 
     // Check if we need to login or if we're already logged in
     cy.get('body').then(($body) => {

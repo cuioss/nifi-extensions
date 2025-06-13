@@ -1,3 +1,4 @@
+import { TEXT_CONSTANTS } from "../support/constants.js";
 /**
  * End-to-End Tests for Cross-Browser Compatibility - Phase 5.3
  *
@@ -69,7 +70,7 @@ describe('Cross-Browser Compatibility Tests', () => {
       cy.testBrowserQuirks(browserInfo.family);
 
       // Verify the processor still works correctly
-      cy.getProcessorElement(processorId).should('be.visible');
+      cy.getProcessorElement(processorId).should(TEXT_CONSTANTS.BE_VISIBLE);
       cy.openProcessorConfigDialog(processorId);
       cy.verifyConfigurationDialogBehavior(browserInfo.family);
       cy.closeDialog();
@@ -103,7 +104,7 @@ describe('Cross-Browser Compatibility Tests', () => {
         cy.log(`Testing viewport: ${viewport.name} (${viewport.width}x${viewport.height})`);
 
         // Verify processor is still visible and functional
-        cy.getProcessorElement(processorId).should('be.visible');
+        cy.getProcessorElement(processorId).should(TEXT_CONSTANTS.BE_VISIBLE);
 
         // Test responsive behavior
         cy.verifyResponsiveDesign(viewport);

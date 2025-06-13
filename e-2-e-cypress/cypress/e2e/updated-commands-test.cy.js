@@ -1,3 +1,4 @@
+import { TEXT_CONSTANTS } from "../support/constants.js";
 /**
  * Test the updated commands for NiFi 2.4.0 Angular UI
  * This test verifies that our command updates work with the modern UI
@@ -14,7 +15,7 @@ describe('Updated Commands Integration Test', () => {
     cy.verifyCanvasAccessible();
 
     // Verify UI is loaded
-    cy.get('nifi').should('be.visible');
+    cy.get('nifi').should(TEXT_CONSTANTS.BE_VISIBLE);
     cy.get('body').should(($body) => {
       const hasAngularContent = $body.find('nifi').children().length > 0;
       expect(hasAngularContent).to.be.true;
@@ -31,7 +32,7 @@ describe('Updated Commands Integration Test', () => {
         cy.log(`Processor added with ID: ${processorId}`);
 
         // Test processor element retrieval
-        cy.getProcessorElement(processorId).should('exist');
+        cy.getProcessorElement(processorId).should(TEXT_CONSTANTS.EXIST);
 
         // Test processor configuration
         cy.configureProcessor(processorId, {

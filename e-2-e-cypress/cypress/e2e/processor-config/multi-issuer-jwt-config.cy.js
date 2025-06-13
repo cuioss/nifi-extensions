@@ -103,7 +103,7 @@ describe('Processor Configuration E2E Tests', () => {
       cy.get('button').contains(TEXT_CONSTANTS.APPLY).click();
 
       // Should show validation error
-      cy.get('.validation-error, .error-message').should('be.visible');
+      cy.get('.validation-error, .error-message').should(TEXT_CONSTANTS.BE_VISIBLE);
 
       // Cancel the configuration
       cy.get('button').contains('Cancel').click();

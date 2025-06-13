@@ -8,7 +8,7 @@ describe('NiFi UI Structure Debug', () => {
 
     // Wait for page to load properly instead of arbitrary time
     cy.get('body').should(TEXT_CONSTANTS.BE_VISIBLE);
-    cy.get('nifi', { timeout: 10000 }).should('exist');
+    cy.get('nifi', { timeout: 10000 }).should(TEXT_CONSTANTS.EXIST);
 
     // Log the page title
     cy.title().then((title) => {

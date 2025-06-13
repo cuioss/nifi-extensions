@@ -1,3 +1,4 @@
+import { TEXT_CONSTANTS } from "../support/constants.js";
 // Test to examine the NiFi UI structure after successful login
 describe('NiFi UI Structure Analysis', () => {
   it('should examine UI elements after login', () => {
@@ -5,7 +6,7 @@ describe('NiFi UI Structure Analysis', () => {
     cy.verifyLoggedIn();
 
     // Wait for full UI to load
-    cy.get('body').should('be.visible');
+    cy.get('body').should(TEXT_CONSTANTS.BE_VISIBLE);
     cy.get('button', { timeout: 10000 }).should('have.length.at.least', 1);
 
     // Look for buttons and clickable elements

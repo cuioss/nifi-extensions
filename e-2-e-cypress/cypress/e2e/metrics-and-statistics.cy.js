@@ -110,7 +110,7 @@ describe('Processor Metrics and Statistics Tests', () => {
 
       // Verify Reset Metrics button is present
       cy.get(SELECTORS.RESET_METRICS_BUTTON)
-        .should('be.visible')
+        .should(TEXT_CONSTANTS.BE_VISIBLE)
         .should(TEXT_CONSTANTS.CONTAIN_TEXT, TEST_DATA.RESET_METRICS);
     });
   });
@@ -200,14 +200,14 @@ describe('Processor Metrics and Statistics Tests', () => {
 
       // Open metrics tab and reset metrics
       cy.openProcessorConfigDialog(processorId);
-      cy.get('SELECTORS.METRICS_TAB').click();
+      cy.get(SELECTORS.METRICS_TAB).click();
 
-      cy.get('[data-testid="reset-metrics-button"]').click();
+      cy.get(SELECTORS.RESET_METRICS_BUTTON).click();
 
       // Confirm reset dialog
-      cy.get('[data-testid="confirm-reset-dialog"]').should('be.visible');
+      cy.get(SELECTORS.CONFIRM_RESET_DIALOG).should(TEXT_CONSTANTS.BE_VISIBLE);
 
-      cy.get('[data-testid="confirm-reset-button"]').click();
+      cy.get(SELECTORS.CONFIRM_RESET_BUTTON).click();
 
       // Close config dialog
       cy.get('[data-testid="config-dialog-close"]').click();
@@ -292,7 +292,7 @@ describe('Processor Metrics and Statistics Tests', () => {
       }
 
       // Wait for metrics to be processed
-      cy.get('[data-testid="performance-metrics"]', { timeout: 10000 }).should('exist');
+      cy.get('[data-testid="performance-metrics"]', { timeout: 10000 }).should(TEXT_CONSTANTS.EXIST);
 
       // Check that response time metrics are tracked
       cy.openProcessorConfigDialog(processorId);
@@ -378,7 +378,7 @@ describe('Processor Metrics and Statistics Tests', () => {
       cy.get('SELECTORS.METRICS_TAB').click();
 
       cy.get('[data-testid="recent-errors"]')
-        .should('be.visible')
+        .should(TEXT_CONSTANTS.BE_VISIBLE)
         .should(TEXT_CONSTANTS.CONTAIN_TEXT, 'Recent Validation Errors');
 
       // Verify error details are shown
@@ -409,7 +409,7 @@ describe('Processor Metrics and Statistics Tests', () => {
       cy.sendTokenWithMissingClaims(processorId); // Missing claims
 
       // Wait for error metrics to be processed
-      cy.get('SELECTORS.METRICS_TAB', { timeout: 10000 }).should('exist');
+      cy.get('SELECTORS.METRICS_TAB', { timeout: 10000 }).should(TEXT_CONSTANTS.EXIST);
 
       // Verify error categorization in metrics
       cy.openProcessorConfigDialog(processorId);

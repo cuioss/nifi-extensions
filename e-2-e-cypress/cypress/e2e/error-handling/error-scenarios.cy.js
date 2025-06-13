@@ -81,7 +81,7 @@ describe('Error Handling E2E Tests', () => {
         .type(TEST_DATA.INVALID_JWKS_PATH);
 
       // Apply configuration
-      cy.get('button').contains('Apply').click();
+      cy.get('button').contains(TEXT_CONSTANTS.APPLY).click();
 
       // Configuration might be accepted but will fail at runtime
       cy.get('body').then(($body) => {
@@ -121,7 +121,7 @@ describe('Error Handling E2E Tests', () => {
         .type(malformedJson);
 
       // Apply configuration
-      cy.get('button').contains('Apply').click();
+      cy.get('button').contains(TEXT_CONSTANTS.APPLY).click();
 
       // Should show JSON validation error
       cy.get('body').then(($body) => {
@@ -177,7 +177,7 @@ describe('Error Handling E2E Tests', () => {
       cy.get('.context-menu').contains('Start').click();
 
       // Processor should attempt to start
-      cy.get(`g[id="${processorId}"]`).should('exist');
+      cy.get(`g[id="${processorId}"]`).should(TEXT_CONSTANTS.EXIST);
 
       // Stop the processor
       cy.get(`g[id="${processorId}"]`).rightclick();
@@ -218,7 +218,7 @@ describe('Error Handling E2E Tests', () => {
         cy.navigateToProcessorConfig(processorId);
         cy.get(SELECTORS.CONFIGURATION_DIALOG).should(TEXT_CONSTANTS.BE_VISIBLE);
         cy.get('button').contains(TEXT_CONSTANTS.CANCEL).click();
-        cy.get(SELECTORS.CONFIGURATION_DIALOG).should('not.exist');
+        cy.get(SELECTORS.CONFIGURATION_DIALOG).should(TEXT_CONSTANTS.NOT_EXIST);
       }
     });
   });
@@ -227,17 +227,17 @@ describe('Error Handling E2E Tests', () => {
     cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
       // Open configuration dialog
       cy.navigateToProcessorConfig(processorId);
-      cy.get(SELECTORS.CONFIGURATION_DIALOG).should('be.visible');
+      cy.get(SELECTORS.CONFIGURATION_DIALOG).should(TEXT_CONSTANTS.BE_VISIBLE);
 
       // Refresh the page
       cy.reload();
 
       // Should be back on canvas without dialog
-      cy.get('#canvas-container').should('be.visible');
-      cy.get(SELECTORS.CONFIGURATION_DIALOG).should('not.exist');
+      cy.get('#canvas-container').should(TEXT_CONSTANTS.BE_VISIBLE);
+      cy.get(SELECTORS.CONFIGURATION_DIALOG).should(TEXT_CONSTANTS.NOT_EXIST);
 
       // Processor should still exist
-      cy.get(`g[id="${processorId}"]`).should('exist');
+      cy.get(`g[id="${processorId}"]`).should(TEXT_CONSTANTS.EXIST);
     });
   });
 });

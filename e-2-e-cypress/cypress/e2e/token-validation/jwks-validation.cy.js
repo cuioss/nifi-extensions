@@ -36,7 +36,7 @@ describe('JWKS Validation E2E Tests', () => {
 
       // Configure processor with invalid JWKS URL
       cy.navigateToProcessorConfig(processorId);
-      cy.get('.processor-configuration-tab').contains('Properties').click();
+      cy.get('.processor-configuration-tab').contains(TEXT_CONSTANTS.PROPERTIES).click();
 
       cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
         .contains('JWKS Type')
@@ -103,7 +103,7 @@ describe('JWKS Validation E2E Tests', () => {
 
         // Verify the JWKS content was properly configured
         cy.navigateToProcessorConfig(processorId);
-        cy.get('.processor-configuration-tab').contains('Properties').click();
+        cy.get('.processor-configuration-tab').contains(TEXT_CONSTANTS.PROPERTIES).click();
 
         cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
           .contains('JWKS Content')
@@ -122,7 +122,7 @@ describe('JWKS Validation E2E Tests', () => {
 
       // Configure processor with invalid JWKS content
       cy.navigateToProcessorConfig(processorId);
-      cy.get('.processor-configuration-tab').contains('Properties').click();
+      cy.get('.processor-configuration-tab').contains(TEXT_CONSTANTS.PROPERTIES).click();
 
       cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
         .contains('JWKS Type')

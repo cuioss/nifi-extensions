@@ -1,3 +1,4 @@
+import { TEXT_CONSTANTS } from "../support/constants.js";
 /**
  * Simple Navigation Pattern Implementation Test
  *
@@ -21,7 +22,7 @@ describe('Simple Navigation Pattern Tests', () => {
       cy.url().should('include', '/nifi');
 
       // Verify we're ready for processor testing
-      cy.get('nifi').should('be.visible');
+      cy.get('nifi').should(TEXT_CONSTANTS.BE_VISIBLE);
 
       cy.log('✅ Direct canvas navigation working');
     });
@@ -78,7 +79,7 @@ describe('Simple Navigation Pattern Tests', () => {
       cy.verifyCanvasAccessible();
 
       // Should have basic indicators we're ready for processor testing
-      cy.get('nifi').should('exist');
+      cy.get('nifi').should(TEXT_CONSTANTS.EXIST);
       cy.get('body').should(($body) => {
         const hasContent = $body.find('nifi').children().length > 0;
         expect(hasContent).to.be.true;

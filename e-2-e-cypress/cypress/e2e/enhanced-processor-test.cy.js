@@ -1,3 +1,4 @@
+import { TEXT_CONSTANTS } from "../support/constants.js";
 /**
  * Enhanced Integration Test with Improved Processor Commands
  * Tests the updated processor management functionality
@@ -29,7 +30,7 @@ describe('Enhanced Processor Integration Test', () => {
 
       // Test the enhanced getProcessorElement command
       cy.getProcessorElement(processorId)
-        .should('exist')
+        .should(TEXT_CONSTANTS.EXIST)
         .then(($element) => {
           expect($element).to.exist;
           cy.log('✅ Processor element retrieval working');
@@ -37,7 +38,7 @@ describe('Enhanced Processor Integration Test', () => {
 
       // Test finding processor by type
       cy.findProcessorByType('MultiIssuerJWTTokenAuthenticator')
-        .should('exist')
+        .should(TEXT_CONSTANTS.EXIST)
         .then(($element) => {
           if ($element) {
             cy.log('✅ Processor found by type name');
@@ -62,10 +63,11 @@ describe('Enhanced Processor Integration Test', () => {
     processorTypes.forEach((type, index) => {
       // Safe array access to avoid object injection
       const safeIndex = Math.max(0, Math.min(index, positions.length - 1));
-      const position =
-        positions.length > 0 && index < positions.length
-          ? positions[safeIndex]
-          : { x: 100 + index * 200, y: 100 };
+      const hasValidPosition = positions.length > 0 && index < positions.length;
+      const safePosition = hasValidPosition ? positions.at(safeIndex) || {} : {};
+      const position = hasValidPosition
+        ? { x: safePosition.x || 100, y: safePosition.y || 100 }
+        : { x: 100 + index * 200, y: 100 };
       cy.addProcessor(type, position).then((processorId) => {
         if (processorId) {
           processorIds.push(processorId);
@@ -153,7 +155,7 @@ describe('Enhanced Processor Integration Test', () => {
     cy.log('Testing processor type verification...');
 
     // Simulate opening add processor dialog
-    cy.get('nifi').should('be.visible');
+    cy.get('nifi').should(TEXT_CONSTANTS.BE_VISIBLE);
 
     cy.get('body').then(($body) => {
       const canvasElements = $body.find('svg, canvas, [role="main"]');

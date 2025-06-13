@@ -1,3 +1,4 @@
+import { TEXT_CONSTANTS } from "../support/constants.js";
 /**
  * Task 4: Custom Processor Testing Focus
  * Tests custom JWT processor UI components and basic functionality
@@ -34,7 +35,7 @@ describe('Task 4: Custom Processor Testing Focus', () => {
         if (canvas.length > 0) {
           cy.wrap(canvas).rightclick({ force: true });
           // Wait for context menu to appear
-          cy.get('body').should('be.visible');
+          cy.get('body').should(TEXT_CONSTANTS.BE_VISIBLE);
 
           // Look for "Add Processor" option
           cy.get('body').then(($menuBody) => {
@@ -45,7 +46,7 @@ describe('Task 4: Custom Processor Testing Focus', () => {
               cy.log('✅ Add Processor option found in context menu');
               cy.wrap(addProcessorOption.first()).click({ force: true });
               // Wait for processor catalog to load
-              cy.get('body').should('be.visible');
+              cy.get('body').should(TEXT_CONSTANTS.BE_VISIBLE);
 
               // Check for custom JWT processors in catalog
               cy.testCustomProcessorCatalogVisibility();
@@ -54,7 +55,7 @@ describe('Task 4: Custom Processor Testing Focus', () => {
               // Try alternative approach - double-click canvas
               cy.wrap(canvas).dblclick({ force: true });
               // Wait for processor catalog to appear
-              cy.get('body').should('be.visible');
+              cy.get('body').should(TEXT_CONSTANTS.BE_VISIBLE);
               cy.testCustomProcessorCatalogVisibility();
             }
           });
@@ -146,8 +147,10 @@ describe('Task 4: Custom Processor Testing Focus', () => {
       customProcessors.forEach((processorType, index) => {
         // Safe array access to prevent object injection
         const safeIndex = Math.max(0, Math.min(index, positions.length - 1));
-        const position =
-          positions.length > index ? positions[safeIndex] : { x: 100 + index * 200, y: 100 };
+        const safePosition = positions.length > index ? positions.at(safeIndex) || {} : {};
+        const position = positions.length > index 
+          ? { x: safePosition.x || 100, y: safePosition.y || 100 }
+          : { x: 100 + index * 200, y: 100 };
         cy.addProcessor(processorType, position).then((processorId) => {
           if (processorId) {
             processorIds.push(processorId);

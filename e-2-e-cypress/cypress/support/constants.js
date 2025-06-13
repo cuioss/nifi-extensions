@@ -11,6 +11,7 @@ export const SELECTORS = {
   DIALOG:
     '[role="dialog"], .mat-dialog-container, .dialog, .add-component-dialog, .processor-dialog',
   CONFIGURATION_DIALOG: '.configuration-dialog',
+  PROPERTIES_SECTION: '.properties-section',
 
   // Processor selectors
   PROCESSOR: 'g.processor, [class*="processor"], .component',
@@ -193,6 +194,9 @@ export const TEST_DATA = {
   TEST_JWKS_TYPE: 'server',
   SERVER: 'SERVER',
   INVALID_URL_OLD: 'invalid-url',
+  
+  // Keycloak test URLs
+  KEYCLOAK_JWKS_URL: 'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs',
 
   // Processor configuration property keys
   ISSUER_1_NAME: 'issuer-1-name',
