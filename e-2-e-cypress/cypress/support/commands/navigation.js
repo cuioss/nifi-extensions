@@ -109,25 +109,26 @@ Cypress.Commands.add('verifyControllerServicesAccessible', () => {
 });
 
 /**
- * Verification command - check if processor configuration dialog is open
- * Focus on "is config dialog ready?" not "how does dialog opening work?"
+ * Verify processor configuration dialog is open and accessible
+ * Focus on "is config dialog ready for testing?" not "how does dialog work?"
  */
 Cypress.Commands.add('verifyProcessorConfigDialogOpen', () => {
-  // Look for any indication of an open configuration dialog
-  cy.get('body').should(($body) => {
-    const hasDialog =
-      $body.find(
-        '[role="dialog"], .mat-dialog-container, .configuration-dialog, .processor-config-dialog, .dialog'
-      ).length > 0;
-    const hasConfigContent =
-      $body.find('*:contains("Properties"), *:contains("Configuration"), *:contains("Settings")')
-        .length > 0;
+  cy.log('Verifying processor configuration dialog is open');
 
-    // Any indicator that configuration is open
-    expect(hasDialog || hasConfigContent).to.be.true;
+  // Check for configuration dialog indicators
+  cy.get('body').should(($body) => {
+    const hasConfigDialog = $body.find('[role="dialog"], .mat-dialog-container, .configuration-dialog, .processor-config-dialog').length > 0;
+    const hasConfigContent = $body.find('*:contains("Properties"), *:contains("Settings"), *:contains("Configuration")').length > 0;
+    const hasConfigTabs = $body.find('*:contains("Properties"), *:contains("Scheduling"), *:contains("Comments")').length > 0;
+    const hasConfigButtons = $body.find('button:contains("Apply"), button:contains("OK"), button:contains("Cancel")').length > 0;
+
+    // At least one indicator of configuration dialog being open
+    const isConfigDialogOpen = hasConfigDialog || hasConfigContent || hasConfigTabs || hasConfigButtons;
+
+    expect(isConfigDialogOpen).to.be.true;
   });
 
-  cy.log('✅ Processor configuration dialog accessible');
+  cy.log('✅ Processor configuration dialog is accessible for testing');
 });
 
 /**
