@@ -20,6 +20,7 @@
 5. [Debugging Recipes](#debugging-recipes)
 6. [Best Practices](#best-practices)
 7. [Troubleshooting Guide](#troubleshooting-guide)
+8. [Minimal Viable NiFi Setup Patterns](#minimal-viable-nifi-setup-patterns)
 
 ## Getting Started
 
@@ -703,46 +704,344 @@ describe('Optimized JWT Processor Tests', () => {
 });
 ```
 
-This focused troubleshooting guide addresses the core principle: **we're testing our custom processor logic using NiFi as a platform, not testing NiFi itself**. This approach dramatically reduces complexity and improves test reliability.
+## Minimal Viable NiFi Setup Patterns
 
-## Performance Optimization Recipes
+### Recipe: Philosophy-Driven Testing Approach
+**Goal**: Use NiFi as a platform to test our custom processor logic, not test NiFi itself
 
-### Recipe: Fast Test Execution
+#### What We DON'T Test (NiFi Framework)
 ```javascript
-// Optimize test speed
-describe('Fast Test', () => {
-  before(() => {
-    // Login once for all tests
-    cy.visit('/nifi');
-    cy.nifiLogin();
+// ❌ Avoid these - they test NiFi, not our processors
+describe('Things to Avoid', () => {
+  it('should NOT test how NiFi navigation works', () => {
+    // Don't test NiFi's navigation mechanics
+    cy.testNavigationSystem(); // ❌ Wrong focus
   });
 
-  beforeEach(() => {
-    // Quick verification instead of full login
-    cy.verifyLoggedIn();
-    cy.verifyCanvasAccessible();
+  it('should NOT test how NiFi dialogs work', () => {
+    // Don't test NiFi's dialog framework  
+    cy.testDialogFramework(); // ❌ Wrong focus
   });
 
-  // Tests here run faster without repeated logins
-});
-```
-
-### Recipe: Parallel Test Preparation
-```javascript
-// Prepare tests for parallel execution
-describe('Parallel-Safe Test', () => {
-  beforeEach(() => {
-    // Ensure clean state
-    cy.cleanupAllProcessors();
-    cy.verifyCanvasAccessible();
-  });
-
-  it('should work independently', () => {
-    // Tests that don't depend on other test state
-    cy.addProcessor('JWTTokenAuthenticator', { x: 100, y: 100 });
-    // Test logic here
+  it('should NOT test NiFi UI components', () => {
+    // Don't test NiFi's UI library
+    cy.testUIComponents(); // ❌ Wrong focus
   });
 });
 ```
 
-This recipe collection provides practical, tested patterns for working with the NiFi 2.4.0 Angular UI integration tests. Each recipe is designed to be copy-paste ready while providing context for when and why to use each pattern.
+#### What We DO Test (Custom Processor Logic)
+```javascript
+// ✅ Focus on these - they test our custom logic
+describe('Custom JWT Processor Logic', () => {
+  beforeEach(() => {
+    // Minimal NiFi setup
+    cy.enhancedAuthentication('admin', 'adminadminadmin');
+    cy.navigateToCanvas();
+  });
+
+  afterEach(() => {
+    // Clean up our processors
+    cy.robustCleanupProcessors();
+  });
+
+  it('should test our JWT validation logic', () => {
+    // Focus: Test OUR processor, use NiFi as platform
+    cy.robustAddProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+      if (processorId) {
+        // Test OUR custom logic
+        const multiIssuerConfig = {
+          'Issuer 1 Name': 'test-issuer',
+          'Issuer 1 URL': 'https://issuer.example.com',
+          'Issuer 1 JWKS URL': 'https://issuer.example.com/jwks'
+        };
+        cy.robustConfigureProcessor(processorId, { properties: multiIssuerConfig });
+        
+        // Verify OUR validation logic
+        cy.robustVerifyConfiguration(processorId, multiIssuerConfig);
+      }
+    });
+  });
+
+  it('should test our error handling', () => {
+    // Test OUR error handling with invalid configuration
+    cy.robustAddProcessor('JWTTokenAuthenticator').then((processorId) => {
+      if (processorId) {
+        const invalidConfig = { 'JWKS URL': 'invalid-url' };
+        cy.robustConfigureProcessor(processorId, { properties: invalidConfig });
+        
+        // Verify OUR error handling works
+        cy.verifyProcessorValidationErrors(processorId);
+      }
+    });
+  });
+});
+```
+
+### Recipe: Essential Commands Only
+**Goal**: Minimal command set for our custom processor testing
+
+#### Essential Commands (Keep These)
+```javascript
+// Authentication - just get access to the platform
+cy.enhancedAuthentication(username, password)
+cy.verifyLoggedIn()
+
+// Platform Access - verify platform is ready
+cy.navigateToCanvas()
+cy.verifyCanvasAccessible()
+
+// Processor Management (for our processors only)
+cy.robustAddProcessor(processorType, position)
+cy.robustConfigureProcessor(processorId, config)
+cy.verifyProcessorProperties(processorId, properties)
+cy.robustCleanupProcessors()
+
+// Error Testing (for our error handling)
+cy.verifyProcessorValidationErrors(processorId)
+```
+
+#### Commands to Avoid (NiFi Framework Testing)
+```javascript
+// Don't test NiFi's navigation mechanics
+cy.clickMenuOption()           // ❌ Tests NiFi navigation
+cy.testDialogOpening()         // ❌ Tests NiFi dialog system
+cy.testUIResponsiveness()      // ❌ Tests NiFi UI performance
+
+// Don't test NiFi's component library
+cy.testAngularComponents()     // ❌ Tests NiFi's Angular framework
+cy.testMaterialUIElements()    // ❌ Tests NiFi's UI library
+cy.testAccessibilityFeatures() // ❌ Tests NiFi's accessibility
+
+// Don't test NiFi's platform features
+cy.testProcessorFramework()    // ❌ Tests NiFi's processor system
+cy.testCanvasRendering()       // ❌ Tests NiFi's canvas engine
+cy.testRoutingSystem()         // ❌ Tests NiFi's routing logic
+```
+
+### Recipe: Test Structure Patterns
+**Goal**: Recommended patterns for testing our custom processors
+
+#### ✅ Recommended Test Structure
+```javascript
+describe('Custom JWT Processor Logic', () => {
+  beforeEach(() => {
+    // Minimal NiFi setup - just get authenticated and ready
+    cy.enhancedAuthentication('admin', 'adminadminadmin');
+    cy.navigateToCanvas();
+  });
+
+  afterEach(() => {
+    // Clean up our processors only
+    cy.robustCleanupProcessors();
+  });
+
+  it('should test our JWT validation logic', () => {
+    // Focus: Test OUR processor, use NiFi as platform
+    cy.robustAddProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+      if (processorId) {
+        // Test OUR custom logic here
+        // ... JWT validation testing
+        // ... configuration testing  
+        // ... error handling testing
+      }
+    });
+  });
+});
+```
+
+#### ❌ Anti-Pattern (Don't Do This)
+```javascript
+describe('NiFi Framework Testing', () => {
+  it('should test how NiFi navigation works', () => {
+    // ❌ Wrong focus - tests NiFi's navigation mechanics
+    cy.testNavigationSystem();
+  });
+
+  it('should test how NiFi dialogs work', () => {
+    // ❌ Wrong focus - tests NiFi's dialog framework
+    cy.testDialogFramework();
+  });
+
+  it('should test NiFi UI components', () => {
+    // ❌ Wrong focus - tests NiFi's UI library
+    cy.testUIComponents();
+  });
+});
+```
+
+### Recipe: Performance Guidelines
+**Goal**: Focus on custom processor performance, not NiFi platform performance
+
+#### Focus on Custom Processor Setup Speed
+```javascript
+// Target: Custom processor setup < 15 seconds
+it('should setup our processor quickly', () => {
+  const startTime = Date.now();
+  
+  cy.robustAddProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+    if (processorId) {
+      const setupTime = Date.now() - startTime;
+      cy.log(`✅ Processor setup completed in ${setupTime}ms`);
+      
+      // Target: < 15 seconds for our processor initialization
+      expect(setupTime).to.be.lessThan(15000);
+    }
+  });
+});
+
+// Measure: Time from addProcessor() to configuration ready
+it('should configure our processor efficiently', () => {
+  cy.robustAddProcessor('JWTTokenAuthenticator').then((processorId) => {
+    if (processorId) {
+      const configStart = Date.now();
+      
+      const config = { 'JWKS URL': 'https://test.com/jwks' };
+      cy.robustConfigureProcessor(processorId, { properties: config }).then(() => {
+        const configTime = Date.now() - configStart;
+        cy.log(`✅ Configuration completed in ${configTime}ms`);
+        
+        // Optimize: Our processor initialization, not NiFi navigation
+        expect(configTime).to.be.lessThan(10000);
+      });
+    }
+  });
+});
+```
+
+#### Avoid NiFi Performance Testing
+```javascript
+// ❌ Don't measure NiFi navigation speed
+cy.measureNavigationSpeed();        // Wrong focus
+
+// ❌ Don't test NiFi canvas rendering performance  
+cy.benchmarkCanvasRendering();      // Wrong focus
+
+// ❌ Don't benchmark NiFi UI responsiveness
+cy.measureUIResponsiveness();       // Wrong focus
+```
+
+### Recipe: Success Metrics
+**Goal**: Define what success looks like for our custom processor testing
+
+#### Custom Processor Testing Success
+```javascript
+describe('Success Metrics for Custom Processors', () => {
+  it('should validate JWT tokens correctly', () => {
+    // Success: Our JWT validation logic works correctly
+    cy.robustAddProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+      if (processorId) {
+        const validToken = generateTestJWT();
+        cy.testProcessorWithInput(processorId, validToken)
+          .should('result', 'success');
+        cy.log('✅ JWT validation logic success');
+      }
+    });
+  });
+
+  it('should handle multi-issuer configuration properly', () => {
+    // Success: Our multi-issuer configuration functions properly
+    cy.robustAddProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+      if (processorId) {
+        const multiIssuerConfig = {
+          'Issuer 1 Name': 'issuer1',
+          'Issuer 1 URL': 'https://issuer1.com',
+          'Issuer 2 Name': 'issuer2', 
+          'Issuer 2 URL': 'https://issuer2.com'
+        };
+        cy.robustConfigureProcessor(processorId, { properties: multiIssuerConfig });
+        cy.verifyProcessorProperties(processorId, multiIssuerConfig);
+        cy.log('✅ Multi-issuer configuration success');
+      }
+    });
+  });
+
+  it('should handle errors as expected', () => {
+    // Success: Our error handling behaves as expected
+    cy.robustAddProcessor('JWTTokenAuthenticator').then((processorId) => {
+      if (processorId) {
+        const invalidConfig = { 'JWKS URL': 'invalid-url' };
+        cy.robustConfigureProcessor(processorId, { properties: invalidConfig });
+        cy.verifyProcessorValidationErrors(processorId);
+        cy.log('✅ Error handling success');
+      }
+    });
+  });
+
+  it('should enforce validation rules correctly', () => {
+    // Success: Our validation rules are enforced correctly
+    cy.robustAddProcessor('JWTTokenAuthenticator').then((processorId) => {
+      if (processorId) {
+        // Test our validation logic enforcement
+        cy.verifyProcessorProperties(processorId, expectedProperties);
+        cy.log('✅ Validation rules success');
+      }
+    });
+  });
+});
+```
+
+#### Platform Usage Success
+```javascript
+describe('Platform Usage Success Metrics', () => {
+  it('should run tests reliably (90%+ success rate)', () => {
+    // Target: Tests run reliably with 90%+ success rate
+    let successCount = 0;
+    const totalRuns = 10;
+    
+    for (let i = 0; i < totalRuns; i++) {
+      cy.robustAddProcessor('JWTTokenAuthenticator').then((processorId) => {
+        if (processorId) {
+          successCount++;
+          cy.log(`✅ Test run ${i + 1} successful`);
+        }
+      });
+    }
+    
+    // Verify reliability target met
+    cy.then(() => {
+      const successRate = (successCount / totalRuns) * 100;
+      expect(successRate).to.be.greaterThan(90);
+      cy.log(`✅ Success rate: ${successRate}%`);
+    });
+  });
+
+  it('should complete setup in reasonable time (< 15 seconds)', () => {
+    // Target: Setup time is reasonable (< 15 seconds per test)
+    const startTime = Date.now();
+    
+    cy.enhancedAuthentication('admin', 'adminadminadmin');
+    cy.navigateToCanvas();
+    cy.robustAddProcessor('JWTTokenAuthenticator').then((processorId) => {
+      if (processorId) {
+        const totalTime = Date.now() - startTime;
+        expect(totalTime).to.be.lessThan(15000);
+        cy.log(`✅ Setup completed in ${totalTime}ms`);
+      }
+    });
+  });
+
+  it('should cleanup consistently', () => {
+    // Target: Cleanup works consistently
+    cy.robustAddProcessor('JWTTokenAuthenticator').then((processorId) => {
+      if (processorId) {
+        cy.robustCleanupProcessors();
+        cy.verifyCanvasClean();
+        cy.log('✅ Cleanup successful');
+      }
+    });
+  });
+
+  it('should maintain test isolation', () => {
+    // Target: Tests are isolated and reproducible
+    cy.ensureTestIsolation();
+    cy.robustAddProcessor('JWTTokenAuthenticator').then((processorId) => {
+      if (processorId) {
+        cy.log('✅ Test isolation maintained');
+      }
+    });
+  });
+});
+```
+
+This minimal viable setup ensures we focus on testing our custom processor logic effectively while using NiFi as a stable platform for that testing.

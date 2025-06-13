@@ -1,39 +1,91 @@
 /**
  * Custom commands related to login functionality
  *
- * Robust Login Pattern Implementation:
- * - Simplify login approach - focus on "am I logged in?" not "how does login work?"
- * - Add login state detection - check if already logged in before attempting login
- * - Create login recovery - if login fails, try alternative approaches
- * - Remove deep NiFi testing - we don't need to validate NiFi's login flow
+ * Task 3: Robust Login Pattern Implementation:
+ * - Stable authentication with state detection and fallback strategies
+ * - Error recovery and retry mechanisms with exponential backoff
+ * - Environment health verification before authentication
+ * - Performance monitoring and optimization
+ * - Graceful degradation for UI changes
  */
+
+import { 
+  retryWithBackoff, 
+  verifyTestEnvironment, 
+  ensureTestIsolation,
+  measureTestPerformance,
+  robustElementSelect
+} from '../utils/test-stability.js';
 
 /**
- * Check if user is already logged in to NiFi
- * This is the core of our robust login pattern - detect current state first
+ * Enhanced login state detection with robust patterns
+ * Task 3: Multiple detection strategies with fallback mechanisms
  */
-Cypress.Commands.add('isLoggedIn', () => {
-  return cy.get('body').then(($body) => {
-    // Multiple indicators that we're logged in
-    const hasNifiApp = $body.find('nifi').length > 0;
-    const hasAngularContent = $body.find('nifi').children().length > 0;
-    const hasLoginForm = $body.find('input[type="password"], input[id$="password"]').length > 0;
-    const hasCanvas = $body.find('#canvas-container, .canvas, [data-testid*="canvas"]').length > 0;
+Cypress.Commands.add('isLoggedIn', (options = {}) => {
+  const { timeout = 10000, thorough = false } = options;
+  
+  return cy.wrap(null).then(() => {
+    return measureTestPerformance('login-state-detection', () => {
+      return cy.get('body', { timeout })
+        .then(($body) => {
+          // Primary indicators (fast checks)
+          const primaryChecks = {
+            hasNifiApp: $body.find('nifi').length > 0,
+            hasAngularContent: $body.find('nifi').children().length > 0,
+            hasLoginForm: $body.find('input[type="password"], input[id$="password"]').length > 0,
+            hasCanvas: $body.find('#canvas-container, .canvas, [data-testid*="canvas"]').length > 0
+          };
 
-    // We're logged in if we have NiFi app content and no login forms
-    const loggedIn = hasNifiApp && hasAngularContent && !hasLoginForm;
+          // If thorough check requested or primary indicators are ambiguous
+          if (thorough || (!primaryChecks.hasNifiApp && !primaryChecks.hasLoginForm)) {
+            const thoroughChecks = {
+              hasUserDropdown: $body.find('[data-testid*="user"], .user-menu, #user-menu').length > 0,
+              hasToolbar: $body.find('.toolbar, .header, [data-testid*="toolbar"]').length > 0,
+              hasNavigationElements: $body.find('.navigation, .nav, [data-testid*="nav"]').length > 0,
+              urlIndicatesLogin: window.location.href.includes('/nifi') && !window.location.href.includes('/login')
+            };
 
-    cy.log(
-      `Login state check: NiFi app=${hasNifiApp}, content=${hasAngularContent}, loginForm=${hasLoginForm}, canvas=${hasCanvas}, result=${loggedIn}`
-    );
+            Object.assign(primaryChecks, thoroughChecks);
+          }
 
-    return cy.wrap(loggedIn);
+          // Logical determination with multiple fallback strategies
+          const loginStrategies = [
+            // Strategy 1: Standard Angular app detection
+            () => primaryChecks.hasNifiApp && primaryChecks.hasAngularContent && !primaryChecks.hasLoginForm,
+            
+            // Strategy 2: Canvas-based detection (fallback for UI changes)
+            () => primaryChecks.hasCanvas && !primaryChecks.hasLoginForm,
+            
+            // Strategy 3: URL-based detection (fallback for major UI changes)
+            () => primaryChecks.urlIndicatesLogin && !primaryChecks.hasLoginForm,
+            
+            // Strategy 4: Presence of authenticated UI elements
+            () => (primaryChecks.hasUserDropdown || primaryChecks.hasToolbar) && !primaryChecks.hasLoginForm
+          ];
+
+          let loggedIn = false;
+          let strategy = 'unknown';
+
+          for (let i = 0; i < loginStrategies.length; i++) {
+            if (loginStrategies[i]()) {
+              loggedIn = true;
+              strategy = `strategy-${i + 1}`;
+              break;
+            }
+          }
+
+          cy.log(`[LoginDetection] State: ${loggedIn ? 'LOGGED_IN' : 'NOT_LOGGED_IN'} (${strategy})`);
+          cy.log(`[LoginDetection] Indicators: ${JSON.stringify(primaryChecks, null, 2)}`);
+
+          return cy.wrap(loggedIn);
+        });
+    });
   });
 });
 
 /**
- * Ensure we're authenticated and ready for testing
- * This is the main command tests should use - it handles all the complexity
+ * Robust authentication command with enhanced stability patterns
+ * Task 3: Comprehensive authentication with fallback strategies and error recovery
  */
 Cypress.Commands.add('ensureAuthenticatedAndReady', (options = {}) => {
   const defaultOptions = {
@@ -41,223 +93,209 @@ Cypress.Commands.add('ensureAuthenticatedAndReady', (options = {}) => {
     password: 'adminadminadmin',
     maxRetries: 3,
     timeout: 30000,
+    verifyEnvironment: true,
+    isolateTests: true
   };
 
   const opts = { ...defaultOptions, ...options };
 
-  cy.log('🔍 Ensuring authenticated and ready for testing...');
+  return cy.wrap(null).then(() => {
+    return measureTestPerformance('authentication-flow', () => {
+      cy.log('🔍 [Task3] Ensuring authenticated and ready for testing...');
 
-  // Step 1: Check current state
-  return cy.isLoggedIn().then((loggedIn) => {
-    if (loggedIn) {
-      cy.log('✅ Already logged in - proceeding with tests');
-      return cy.verifyCanAccessProcessors();
-    } else {
-      cy.log('🔑 Not logged in - attempting authentication');
-      return cy.performRobustLogin(opts.username, opts.password, opts.maxRetries);
-    }
-  });
-});
-
-/**
- * Perform robust login with multiple fallback strategies
- * Internal command - tests should use ensureAuthenticatedAndReady() instead
- */
-Cypress.Commands.add(
-  'performRobustLogin',
-  (username = 'admin', password = 'adminadminadmin', maxRetries = 3) => {
-    cy.log(`🔄 Attempting robust login for user: ${username}`);
-
-    // Strategy 1: Direct visit and check if login is needed
-    cy.visit('/', { timeout: 30000 });
-
-    // Wait for page to load
-    cy.get('nifi', { timeout: 30000 }).should('exist');
-    cy.get('body', { timeout: 10000 }).should('exist'); // Allow Angular app initialization
-
-    return cy.isLoggedIn().then((alreadyLoggedIn) => {
-      if (alreadyLoggedIn) {
-        cy.log('✅ Login not needed - already authenticated');
-        return cy.wrap(true);
+      // Step 0: Environment verification (Task 3 enhancement)
+      let setupPromise = cy.wrap(null);
+      
+      if (opts.verifyEnvironment) {
+        setupPromise = setupPromise.then(() => verifyTestEnvironment());
+      }
+      
+      if (opts.isolateTests) {
+        setupPromise = setupPromise.then(() => ensureTestIsolation());
       }
 
-      // Strategy 2: Look for and handle login forms
-      return cy.get('body').then(($body) => {
-        const hasPasswordField =
-          $body.find('input[type="password"], input[id$="password"]').length > 0;
-
-        if (hasPasswordField) {
-          cy.log('🔑 Login form detected - performing authentication');
-          return cy.handleLoginForm(username, password, maxRetries);
+      return setupPromise.then(() => {
+        // Step 1: Enhanced state detection with retry mechanism
+        return retryWithBackoff(
+          () => cy.isLoggedIn({ thorough: true }),
+          {
+            maxAttempts: 2,
+            initialDelay: 1000,
+            description: 'login state detection'
+          }
+        );
+      })
+      .then((loggedIn) => {
+        if (loggedIn) {
+          cy.log('✅ [Task3] Already authenticated, verifying readiness...');
+          return cy.verifyCanvasAccessible();
         } else {
-          cy.log('ℹ️ No login form detected - may be anonymous access');
-          // For anonymous access, just verify we can access the app
-          return cy.verifyAnonymousAccess();
+          cy.log('🔑 [Task3] Not authenticated, initiating robust login...');
+          return cy.performRobustLogin(opts);
         }
+      })
+      .then(() => {
+        // Final verification with enhanced patterns
+        return cy.verifyAuthenticationComplete();
       });
     });
-  }
-);
+  });
+});
 
 /**
- * Handle login form interaction with retry logic
- * Internal command with multiple fallback approaches
+ * Perform robust login with multiple strategies and error recovery
+ * Task 3: Enhanced login process with graceful degradation
  */
-Cypress.Commands.add('handleLoginForm', (username, password, maxRetries = 3) => {
-  /**
-   *
-   * @param retryCount
-   * @example
-   */
-  const attempt = (retryCount) => {
-    if (retryCount >= maxRetries) {
-      throw new Error(`Login failed after ${maxRetries} attempts`);
+Cypress.Commands.add('performRobustLogin', (options = {}) => {
+  const { username, password, maxRetries, timeout } = options;
+
+  // Multiple login strategies for different UI states
+  const loginStrategies = [
+    // Strategy 1: Direct field input (most common)
+    () => {
+      cy.log('[LoginStrategy1] Using direct field input...');
+      return robustElementSelect([
+        'input[name="username"]',
+        'input[id="username"]', 
+        'input[type="text"]',
+        'input:first'
+      ], { description: 'username field' })
+      .then(($usernameField) => {
+        if ($usernameField) {
+          cy.wrap($usernameField).clear().type(username);
+          
+          return robustElementSelect([
+            'input[name="password"]',
+            'input[id="password"]',
+            'input[type="password"]'
+          ], { description: 'password field' })
+          .then(($passwordField) => {
+            if ($passwordField) {
+              cy.wrap($passwordField).clear().type(password);
+              
+              return robustElementSelect([
+                'button[type="submit"]',
+                'input[type="submit"]',
+                'button:contains("Login")',
+                'button:contains("Sign")',
+                '.login-button'
+              ], { description: 'login button' })
+              .then(($loginButton) => {
+                if ($loginButton) {
+                  cy.wrap($loginButton).click();
+                  return true;
+                }
+                return false;
+              });
+            }
+            return false;
+          });
+        }
+        return false;
+      });
+    },
+
+    // Strategy 2: Form-based approach (fallback)
+    () => {
+      cy.log('[LoginStrategy2] Using form-based approach...');
+      return cy.get('body').then(($body) => {
+        const $form = $body.find('form');
+        if ($form.length > 0) {
+          cy.wrap($form).within(() => {
+            cy.get('input').first().type(username);
+            cy.get('input[type="password"]').type(password);
+            cy.get('button, input[type="submit"]').first().click();
+          });
+          return true;
+        }
+        return false;
+      });
+    },
+
+    // Strategy 3: Angular component approach (modern UI fallback)
+    () => {
+      cy.log('[LoginStrategy3] Using Angular component approach...');
+      return cy.get('body').then(($body) => {
+        if ($body.find('mat-form-field, .mat-form-field').length > 0) {
+          cy.get('mat-form-field input, .mat-form-field input').first().type(username);
+          cy.get('mat-form-field input[type="password"], .mat-form-field input[type="password"]').type(password);
+          cy.get('button[mat-raised-button], .mat-raised-button').click();
+          return true;
+        }
+        return false;
+      });
     }
+  ];
 
-    cy.log(`🔄 Login attempt ${retryCount + 1} of ${maxRetries}`);
+  return retryWithBackoff(
+    () => {
+      // Try each login strategy until one succeeds
+      return cy.wrap(null).then(() => {
+        return new Cypress.Promise((resolve, reject) => {
+          let currentStrategy = 0;
 
-    // Clear any existing form data
-    cy.get('input[type="text"], input[id$="username"], input[name*="user"]').first().clear();
-    cy.get('input[type="password"], input[id$="password"]').clear();
+          function tryNextStrategy() {
+            if (currentStrategy >= loginStrategies.length) {
+              reject(new Error('All login strategies failed'));
+              return;
+            }
 
-    // Fill in credentials
-    cy.get('input[type="text"], input[id$="username"], input[name*="user"]').first().type(username);
-    cy.get('input[type="password"], input[id$="password"]').type(password);
+            loginStrategies[currentStrategy]()
+              .then((success) => {
+                if (success) {
+                  cy.log(`[RobustLogin] Strategy ${currentStrategy + 1} succeeded`);
+                  resolve();
+                } else {
+                  currentStrategy++;
+                  tryNextStrategy();
+                }
+              })
+              .catch(() => {
+                currentStrategy++;
+                tryNextStrategy();
+              });
+          }
 
-    // Submit form (try multiple button patterns)
-    cy.get('body').then(($body) => {
-      const submitBtn = $body
-        .find(
-          'button[type="submit"], input[type="submit"], button:contains("Login"), button:contains("Sign")'
-        )
-        .first();
-      if (submitBtn.length > 0) {
-        cy.wrap(submitBtn).click();
-      } else {
-        // Fallback: try pressing Enter
-        cy.get('input[type="password"]').type('{enter}');
+          tryNextStrategy();
+        });
+      });
+    },
+    {
+      maxAttempts: maxRetries,
+      initialDelay: 2000,
+      description: 'robust login process'
+    }
+  );
+});
+
+/**
+ * Verify authentication completion with enhanced checks
+ * Task 3: Comprehensive verification with multiple indicators
+ */
+Cypress.Commands.add('verifyAuthenticationComplete', () => {
+  cy.log('[Task3] Verifying authentication completion...');
+
+  // Wait for authentication to complete with multiple indicators
+  return cy.wrap(null).then(() => {
+    // Check for successful login indicators
+    return retryWithBackoff(
+      () => {
+        return cy.isLoggedIn({ thorough: true }).then((loggedIn) => {
+          if (!loggedIn) {
+            throw new Error('Authentication verification failed');
+          }
+          return loggedIn;
+        });
+      },
+      {
+        maxAttempts: 5,
+        initialDelay: 1000,
+        description: 'authentication completion verification'
       }
-    });
-
-    // Wait for login to process
-    cy.get('body', { timeout: 15000 }).should('exist');
-
-    // Check if login was successful
-    return cy.isLoggedIn().then((success) => {
-      if (success) {
-        cy.log('✅ Login successful');
-        return cy.wrap(true);
-      } else {
-        cy.log(`❌ Login attempt ${retryCount + 1} failed - retrying...`);
-        return attempt(retryCount + 1);
-      }
-    });
-  };
-
-  return attempt(0);
-});
-
-/**
- * Verify anonymous access works (for setups without authentication)
- */
-Cypress.Commands.add('verifyAnonymousAccess', () => {
-  cy.log('🔍 Verifying anonymous access...');
-
-  // In anonymous mode, just verify the app loads properly
-  cy.get('nifi', { timeout: 30000 }).should('exist');
-  cy.get('body').should('be.visible');
-
-  // Wait a bit for Angular to initialize
-  cy.get('body', { timeout: 15000 }).should('exist');
-
-  // Verify we can access main UI elements
-  cy.get('body').then(($body) => {
-    const hasAngularContent = $body.find('nifi').children().length > 0;
-    const hasButtons = $body.find('button').length > 0;
-
-    if (hasAngularContent || hasButtons) {
-      cy.log('✅ Anonymous access verified');
-      return cy.wrap(true);
-    } else {
-      // More lenient check - just verify NiFi app exists
-      const hasNifiApp = $body.find('nifi').length > 0;
-      if (hasNifiApp) {
-        cy.log('✅ Anonymous access verified (basic)');
-        return cy.wrap(true);
-      } else {
-        throw new Error('Anonymous access verification failed - app not properly loaded');
-      }
-    }
-  });
-});
-
-/**
- * Verify we can access processors (basic functionality check)
- * This confirms we're ready for testing our custom processors
- */
-Cypress.Commands.add('verifyCanAccessProcessors', () => {
-  cy.log('🔍 Verifying processor access...');
-
-  // We don't need to test NiFi's canvas - just verify we can reach processor functionality
-  cy.url().then((currentUrl) => {
-    if (!currentUrl.includes('nifi')) {
-      cy.visit('/nifi');
-      cy.get('body', { timeout: 10000 }).should('exist');
-    }
-  });
-
-  // Basic verification that we're in the main app
-  cy.get('nifi').should('exist');
-  cy.get('body').should(($body) => {
-    const hasMainContent = $body.find('nifi').children().length > 0;
-    expect(hasMainContent, 'Should have main NiFi content for processor access').to.be.true;
-  });
-
-  cy.log('✅ Processor access verified');
-});
-
-/**
- * Legacy login command - kept for backward compatibility
- * New tests should use ensureAuthenticatedAndReady() instead
- */
-Cypress.Commands.add('nifiLogin', (username = 'admin', password = 'adminadminadmin') => {
-  cy.log('⚠️ Using legacy nifiLogin - consider switching to ensureAuthenticatedAndReady()');
-  return cy.ensureAuthenticatedAndReady({ username, password });
-});
-
-/**
- * Verify we're in the main NiFi application - Simplified and robust version
- * Enhanced to work reliably with the new robust login pattern
- */
-Cypress.Commands.add('verifyLoggedIn', () => {
-  return cy.isLoggedIn().then((loggedIn) => {
-    if (!loggedIn) {
-      throw new Error('Verification failed: User is not logged in');
-    }
-
-    // Additional verification for test stability
-    cy.get('nifi').should('exist');
-    cy.url().should('include', '/nifi');
-
-    cy.log('✅ Login verification successful');
-  });
-});
-
-/**
- * Quick login state check for beforeEach hooks
- * Optimized for performance - minimal verification
- */
-Cypress.Commands.add('quickLoginCheck', () => {
-  return cy.get('body', { timeout: 5000 }).then(($body) => {
-    const hasNifiApp = $body.find('nifi').length > 0;
-    const hasLoginForm = $body.find('input[type="password"]').length > 0;
-
-    if (!hasNifiApp || hasLoginForm) {
-      cy.log('🔄 Quick login check failed - performing full authentication');
-      return cy.ensureAuthenticatedAndReady();
-    } else {
-      cy.log('✅ Quick login check passed');
-      return cy.wrap(true);
-    }
+    );
+  })
+  .then(() => {
+    cy.log('✅ [Task3] Authentication verified successfully');
+    return cy.wrap(true);
   });
 });
