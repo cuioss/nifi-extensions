@@ -7,6 +7,8 @@
  * - Integration test environment should be running
  */
 
+import { TEXT_CONSTANTS, TEST_DATA } from '../support/constants.js';
+
 describe('JWT Validation Integration Tests', () => {
   const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'http://localhost:9094/nifi';
 
@@ -33,7 +35,7 @@ describe('JWT Validation Integration Tests', () => {
     it('should generate properly formatted JWT tokens', () => {
       const testClaims = {
         sub: 'test-user-123',
-        iss: 'https://test.example.com',
+        iss: TEXT_CONSTANTS.TEST_EXAMPLE_URL,
         aud: 'test-audience',
       };
 
@@ -61,7 +63,7 @@ describe('JWT Validation Integration Tests', () => {
     it('should include required JWT claims', () => {
       const testClaims = {
         sub: 'test-subject',
-        iss: 'test-issuer',
+        iss: TEXT_CONSTANTS.TEST_ISSUER_VALUE,
       };
 
       cy.generateToken(testClaims).then((token) => {
@@ -106,17 +108,17 @@ describe('JWT Validation Integration Tests', () => {
       // Test that we can configure the processor with JWKS settings
       cy.configureProcessor(processorId, {
         properties: {
-          'issuer-1-name': 'test-issuer',
-          'issuer-1-issuer': 'https://test.example.com',
-          'issuer-1-jwks-type': 'server',
-          'issuer-1-jwks-url': 'https://test.example.com/.well-known/jwks.json',
+          [TEST_DATA.ISSUER_1_NAME]: TEXT_CONSTANTS.TEST_ISSUER_VALUE,
+          [TEST_DATA.ISSUER_1_ISSUER]: TEXT_CONSTANTS.TEST_EXAMPLE_URL,
+          [TEST_DATA.ISSUER_1_JWKS_TYPE]: 'server',
+          [TEST_DATA.ISSUER_1_JWKS_URL]: 'https://test.example.com/.well-known/jwks.json',
         },
       });
 
       // Verify processor was configured successfully
       cy.verifyProcessorProperties(processorId, {
-        'issuer-1-name': 'test-issuer',
-        'issuer-1-issuer': 'https://test.example.com',
+        [TEST_DATA.ISSUER_1_NAME]: TEXT_CONSTANTS.TEST_ISSUER_VALUE,
+        [TEST_DATA.ISSUER_1_ISSUER]: TEXT_CONSTANTS.TEST_EXAMPLE_URL,
       });
     });
 

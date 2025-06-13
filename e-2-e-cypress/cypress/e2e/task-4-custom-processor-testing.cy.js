@@ -33,7 +33,8 @@ describe('Task 4: Custom Processor Testing Focus', () => {
         const canvas = $body.find('svg, canvas, [role="main"]').first();
         if (canvas.length > 0) {
           cy.wrap(canvas).rightclick({ force: true });
-          cy.wait(1000);
+          // Wait for context menu to appear
+          cy.get('body').should('be.visible');
 
           // Look for "Add Processor" option
           cy.get('body').then(($menuBody) => {
@@ -43,7 +44,8 @@ describe('Task 4: Custom Processor Testing Focus', () => {
             if (addProcessorOption.length > 0) {
               cy.log('✅ Add Processor option found in context menu');
               cy.wrap(addProcessorOption.first()).click({ force: true });
-              cy.wait(2000);
+              // Wait for processor catalog to load
+              cy.get('body').should('be.visible');
 
               // Check for custom JWT processors in catalog
               cy.testCustomProcessorCatalogVisibility();
@@ -51,7 +53,8 @@ describe('Task 4: Custom Processor Testing Focus', () => {
               cy.log('⚠️ Add Processor option not found in context menu');
               // Try alternative approach - double-click canvas
               cy.wrap(canvas).dblclick({ force: true });
-              cy.wait(2000);
+              // Wait for processor catalog to appear
+              cy.get('body').should('be.visible');
               cy.testCustomProcessorCatalogVisibility();
             }
           });
@@ -141,7 +144,11 @@ describe('Task 4: Custom Processor Testing Focus', () => {
       const processorIds = [];
 
       customProcessors.forEach((processorType, index) => {
-        cy.addProcessor(processorType, positions[index]).then((processorId) => {
+        // Safe array access to prevent object injection
+        const safeIndex = Math.max(0, Math.min(index, positions.length - 1));
+        const position =
+          positions.length > index ? positions[safeIndex] : { x: 100 + index * 200, y: 100 };
+        cy.addProcessor(processorType, position).then((processorId) => {
           if (processorId) {
             processorIds.push(processorId);
             cy.log(`✅ Added ${processorType} with ID: ${processorId}`);

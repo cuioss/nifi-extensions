@@ -12,7 +12,8 @@ import { safeString, buildProcessorSelectors } from './processor-utils.js';
  * @returns {Cypress.Chainable} Cypress chainable
  */
 export function navigateToPropertiesTab() {
-  return cy.get('.processor-configuration-tab, .mat-tab-label')
+  return cy
+    .get('.processor-configuration-tab, .mat-tab-label')
     .contains(TEXT_CONSTANTS.PROPERTIES)
     .click();
 }
@@ -24,19 +25,19 @@ export function navigateToPropertiesTab() {
 export function extractPropertyValues() {
   return cy.get('body').then(($body) => {
     const properties = {};
-    
+
     // Find property rows and extract name-value pairs
     $body.find('.processor-property-row, .property-row').each((index, row) => {
       const $row = Cypress.$(row);
       const name = $row.find('.processor-property-name, .property-name').text().trim();
-      const value = $row.find('input, select, textarea').val() || 
-                   $row.find('.property-value').text().trim();
-      
+      const value =
+        $row.find('input, select, textarea').val() || $row.find('.property-value').text().trim();
+
       if (name) {
         properties[name] = value || '';
       }
     });
-    
+
     return cy.wrap(properties);
   });
 }
@@ -49,8 +50,9 @@ export function extractPropertyValues() {
  */
 export function setProcessorProperty(propertyName, propertyValue) {
   const safeValue = safeString(propertyValue);
-  
-  return cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
+
+  return cy
+    .get(SELECTORS.PROCESSOR_PROPERTY_NAME)
     .contains(propertyName)
     .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
     .within(() => {
@@ -99,7 +101,7 @@ export function closeConfigurationDialog() {
       // Fallback: press Escape
       cy.get('body').type('{esc}');
     }
-    
+
     // Wait for dialog to close
     cy.get(SELECTORS.DIALOG).should('not.exist');
   });
@@ -112,14 +114,14 @@ export function closeConfigurationDialog() {
  */
 export function openProcessorConfigDialog(processorId) {
   const selectors = buildProcessorSelectors(processorId);
-  
+
   return cy.get('body').then(($body) => {
     for (const selector of selectors) {
       const $element = $body.find(selector);
       if ($element.length > 0) {
         // Try double-click first
-        cy.wrap($element).dblclick({ force: true });
-        
+        cy.wrap(_$element).dblclick({ force: true });
+
         // Wait for dialog to appear
         return waitForDialog();
       }

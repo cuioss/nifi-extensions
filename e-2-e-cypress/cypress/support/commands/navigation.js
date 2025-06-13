@@ -26,7 +26,7 @@ Cypress.Commands.add('navigateToCanvas', () => {
       cy.get('nifi', { timeout: 30000 }).should('exist');
 
       // Wait for Angular to fully load
-      cy.wait(2000);
+      cy.get('body', { timeout: 10000 }).should('exist');
 
       // Verify we reached our destination
       cy.verifyCanvasAccessible();
@@ -46,7 +46,7 @@ Cypress.Commands.add('navigateToProcessorConfig', (processorId) => {
   cy.getProcessorElement(processorId).then(($element) => {
     // Double-click to open configuration - most direct approach
     cy.wrap($element).dblclick({ force: true });
-    cy.wait(1000);
+    cy.get('body', { timeout: 5000 }).should('exist');
 
     // Verify we reached our destination (configuration dialog open)
     cy.verifyProcessorConfigDialogOpen();

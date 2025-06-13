@@ -2,6 +2,8 @@
  * Custom commands related to JWT token validation
  */
 
+import { TEXT_CONSTANTS } from '../constants.js';
+
 /**
  * Generate a JWT token with specific claims using Keycloak
  * @param {object} claims - The claims to include in the token
@@ -74,8 +76,8 @@ Cypress.Commands.add('generateValidToken', (issuerName) => {
   const now = Math.floor(Date.now() / 1000);
   const payload = {
     iss:
-      issuerName === 'test-issuer'
-        ? 'https://test.example.com'
+      issuerName === TEXT_CONSTANTS.TEST_ISSUER_VALUE
+        ? TEXT_CONSTANTS.TEST_EXAMPLE_URL
         : `https://${issuerName}.example.com`,
     sub: 'test-subject-123',
     aud: 'test-audience',

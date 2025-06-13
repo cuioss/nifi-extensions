@@ -2,6 +2,8 @@
  * End-to-End tests for MultiIssuerJWTTokenAuthenticator processor configuration
  */
 
+import { SELECTORS, TEXT_CONSTANTS } from '../../support/constants.js';
+
 describe('Processor Configuration E2E Tests', () => {
   beforeEach(() => {
     // Login and navigate to canvas before each test
@@ -83,22 +85,22 @@ describe('Processor Configuration E2E Tests', () => {
     cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
       // Configure with invalid settings
       cy.navigateToProcessorConfig(processorId);
-      cy.get('.processor-configuration-tab').contains('Properties').click();
+      cy.get(SELECTORS.PROCESSOR_CONFIG_TAB).contains(TEXT_CONSTANTS.PROPERTIES).click();
 
       // Set invalid JWKS URL
-      cy.get('.processor-property-name')
-        .contains('JWKS URL')
-        .parents('.processor-property-row')
+      cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
+        .contains(TEXT_CONSTANTS.JWKS_URL)
+        .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('input')
         .clear();
-      cy.get('.processor-property-name')
-        .contains('JWKS URL')
-        .parents('.processor-property-row')
+      cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
+        .contains(TEXT_CONSTANTS.JWKS_URL)
+        .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('input')
         .type('invalid-url');
 
       // Apply configuration
-      cy.get('button').contains('Apply').click();
+      cy.get('button').contains(TEXT_CONSTANTS.APPLY).click();
 
       // Should show validation error
       cy.get('.validation-error, .error-message').should('be.visible');

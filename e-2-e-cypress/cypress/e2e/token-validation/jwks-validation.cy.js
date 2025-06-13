@@ -2,6 +2,8 @@
  * End-to-End tests for JWKS validation
  */
 
+import { SELECTORS, TEXT_CONSTANTS, TEST_DATA } from '../../support/constants.js';
+
 describe('JWKS Validation E2E Tests', () => {
   beforeEach(() => {
     // Login and navigate to canvas before each test
@@ -16,7 +18,7 @@ describe('JWKS Validation E2E Tests', () => {
 
       const config = {
         properties: {
-          'JWKS Type': 'Server',
+          'JWKS Type': TEST_DATA.SERVER,
           'JWKS URL': jwksUrl,
         },
       };
@@ -36,25 +38,25 @@ describe('JWKS Validation E2E Tests', () => {
       cy.navigateToProcessorConfig(processorId);
       cy.get('.processor-configuration-tab').contains('Properties').click();
 
-      cy.get('.processor-property-name')
+      cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
         .contains('JWKS Type')
-        .parents('.processor-property-row')
+        .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('select')
-        .select('Server');
+        .select(TEST_DATA.SERVER);
 
-      cy.get('.processor-property-name')
+      cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
         .contains('JWKS URL')
-        .parents('.processor-property-row')
+        .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('input')
         .clear();
-      cy.get('.processor-property-name')
+      cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
         .contains('JWKS URL')
-        .parents('.processor-property-row')
+        .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('input')
         .type(invalidJwksUrl);
 
       // Apply configuration
-      cy.get('button').contains('Apply').click();
+      cy.get('button').contains(TEXT_CONSTANTS.APPLY).click();
 
       // Should show validation error or warning about connectivity
       cy.get('body').then(($body) => {
@@ -103,9 +105,9 @@ describe('JWKS Validation E2E Tests', () => {
         cy.navigateToProcessorConfig(processorId);
         cy.get('.processor-configuration-tab').contains('Properties').click();
 
-        cy.get('.processor-property-name')
+        cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
           .contains('JWKS Content')
-          .parents('.processor-property-row')
+          .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
           .find('textarea')
           .should('contain.value', '"keys"');
 
@@ -122,25 +124,25 @@ describe('JWKS Validation E2E Tests', () => {
       cy.navigateToProcessorConfig(processorId);
       cy.get('.processor-configuration-tab').contains('Properties').click();
 
-      cy.get('.processor-property-name')
+      cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
         .contains('JWKS Type')
-        .parents('.processor-property-row')
+        .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('select')
         .select('In-Memory');
 
-      cy.get('.processor-property-name')
+      cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
         .contains('JWKS Content')
-        .parents('.processor-property-row')
+        .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('textarea')
         .clear();
-      cy.get('.processor-property-name')
+      cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
         .contains('JWKS Content')
-        .parents('.processor-property-row')
+        .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('textarea')
         .type(invalidJwksContent);
 
       // Apply configuration
-      cy.get('button').contains('Apply').click();
+      cy.get('button').contains(TEXT_CONSTANTS.APPLY).click();
 
       // Should show validation error for invalid JWKS format
       cy.get('body').then(($body) => {

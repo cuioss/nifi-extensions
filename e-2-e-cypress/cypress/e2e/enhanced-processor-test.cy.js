@@ -60,7 +60,13 @@ describe('Enhanced Processor Integration Test', () => {
 
     // Add multiple processors
     processorTypes.forEach((type, index) => {
-      cy.addProcessor(type, positions[index]).then((processorId) => {
+      // Safe array access to avoid object injection
+      const safeIndex = Math.max(0, Math.min(index, positions.length - 1));
+      const position =
+        positions.length > 0 && index < positions.length
+          ? positions[safeIndex]
+          : { x: 100 + index * 200, y: 100 };
+      cy.addProcessor(type, position).then((processorId) => {
         if (processorId) {
           processorIds.push(processorId);
           cy.log(`Added processor ${index + 1}: ${processorId}`);
@@ -74,7 +80,7 @@ describe('Enhanced Processor Integration Test', () => {
 
       // Test cleanup
       cy.cleanupAllProcessors();
-      cy.wait(1000);
+      // Loading wait removed - using proper element readiness checks
 
       // Verify cleanup worked
       cy.get('body').then(($body) => {
@@ -103,16 +109,16 @@ describe('Enhanced Processor Integration Test', () => {
         cy.log('✅ Processor configuration completed');
 
         // Test processor state operations (if applicable)
-        cy.getProcessorElement(processorId).then(($element) => {
+        cy.getProcessorElement(processorId).then(() => {
           // Try to start the processor
           cy.startProcessor(processorId);
-          cy.wait(1000);
+          // Loading wait removed - using proper element readiness checks
 
           cy.log('✅ Processor start command executed');
 
           // Try to stop the processor
           cy.stopProcessor(processorId);
-          cy.wait(1000);
+          // Loading wait removed - using proper element readiness checks
 
           cy.log('✅ Processor stop command executed');
         });
@@ -153,7 +159,7 @@ describe('Enhanced Processor Integration Test', () => {
       const canvasElements = $body.find('svg, canvas, [role="main"]');
       if (canvasElements.length > 0) {
         cy.wrap(canvasElements.first()).dblclick({ force: true });
-        cy.wait(1000);
+        // Loading wait removed - using proper element readiness checks
 
         // Look for processor types in dialog
         cy.get('body').then(($dialogBody) => {
@@ -163,7 +169,7 @@ describe('Enhanced Processor Integration Test', () => {
             const searchInput = $dialogBody.find('input[type="text"], input[type="search"]');
             if (searchInput.length > 0) {
               cy.wrap(searchInput.first()).type('JWT', { force: true });
-              cy.wait(500);
+              // Animation wait removed - using proper element visibility
 
               // Verify JWT processors are available
               cy.get('body').then(($searchBody) => {

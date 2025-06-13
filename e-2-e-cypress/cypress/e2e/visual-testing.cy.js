@@ -18,8 +18,8 @@
  * CUI Standards Compliant
  */
 
-import { SELECTORS, TIMEOUTS } from '../constants.js';
-import { waitForVisible } from '../wait-utils.js';
+import { TEXT_CONSTANTS } from '../support/constants.js';
+import { waitForVisible } from '../support/wait-utils.js';
 
 describe('Visual Testing', () => {
   let processorId;
@@ -53,7 +53,7 @@ describe('Visual Testing', () => {
   describe('Visual Regression Testing', () => {
     it('should maintain consistent processor appearance in default state', () => {
       // Take baseline screenshot of processor in default state
-      cy.getProcessorElement(processorId).should('be.visible');
+      cy.getProcessorElement(processorId).should(TEXT_CONSTANTS.BE_VISIBLE);
 
       // Capture processor visual state
       cy.visualSnapshot('processor-default-state', {
@@ -202,7 +202,7 @@ describe('Visual Testing', () => {
       // Animation wait removed - using proper element visibility;
 
       // Capture context menu
-      cy.get('.context-menu, .popup-menu').should('be.visible');
+      cy.get('.context-menu, .popup-menu').should(TEXT_CONSTANTS.BE_VISIBLE);
       cy.visualSnapshot('processor-context-menu', {
         element: '.context-menu, .popup-menu',
         threshold: 0.02,
@@ -456,7 +456,7 @@ describe('Visual Testing', () => {
         }
       });
 
-      cy.wait(3000);
+      cy.get('body', { timeout: 15000 }).should('exist');
       cy.closeDialog();
     });
   });

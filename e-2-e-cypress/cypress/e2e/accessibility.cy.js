@@ -13,12 +13,12 @@
  * 6. Error Handling and User Feedback
  */
 
+import { SELECTORS, TEXT_CONSTANTS, TEST_DATA } from '../support/constants.js';
+
 /**
  * Accessibility Testing Scenarios
  * CUI Standards Compliant
  */
-
-import { SELECTORS } from '../constants.js';
 
 describe('Accessibility (a11y) Tests', () => {
   let processorId;
@@ -144,7 +144,7 @@ describe('Accessibility (a11y) Tests', () => {
       cy.openProcessorConfigDialog(processorId);
 
       // Change a property that triggers validation
-      cy.setProcessorProperty('JWKS Source Type', 'SERVER');
+      cy.setProcessorProperty(TEXT_CONSTANTS.JWKS_SOURCE_TYPE, TEST_DATA.SERVER);
 
       // Verify aria-live regions are updated
       cy.verifyAriaLiveRegions();
@@ -159,8 +159,8 @@ describe('Accessibility (a11y) Tests', () => {
       cy.openProcessorConfigDialog(processorId);
 
       // Trigger validation errors
-      cy.setProcessorProperty('JWKS Source Type', 'SERVER');
-      cy.setProcessorProperty('JWKS Server URL', 'invalid-url');
+      cy.setProcessorProperty(TEXT_CONSTANTS.JWKS_SOURCE_TYPE, TEST_DATA.SERVER);
+      cy.setProcessorProperty(TEXT_CONSTANTS.JWKS_SERVER_URL, TEST_DATA.INVALID_URL);
       cy.clickApplyButton();
 
       // Verify error messages are accessible
@@ -174,7 +174,7 @@ describe('Accessibility (a11y) Tests', () => {
 
     it('should provide processor status information to screen readers', () => {
       // Verify processor state is announced
-      cy.verifyProcessorStatusAnnouncement(processorId, 'STOPPED');
+      cy.verifyProcessorStatusAnnouncement(processorId, TEST_DATA.STOPPED);
 
       // Start processor and verify status change
       cy.startProcessor(processorId);
@@ -182,7 +182,7 @@ describe('Accessibility (a11y) Tests', () => {
 
       // Stop processor and verify status change
       cy.stopProcessor(processorId);
-      cy.verifyProcessorStatusAnnouncement(processorId, 'STOPPED');
+      cy.verifyProcessorStatusAnnouncement(processorId, TEST_DATA.STOPPED);
     });
   });
 
@@ -232,7 +232,7 @@ describe('Accessibility (a11y) Tests', () => {
       cy.openProcessorConfigDialog(processorId);
 
       // Change configuration and verify ARIA updates
-      cy.setProcessorProperty('JWKS Source Type', 'FILE');
+      cy.setProcessorProperty(TEXT_CONSTANTS.JWKS_SOURCE_TYPE, 'FILE');
       cy.verifyDynamicAriaUpdates();
 
       // Verify aria-expanded for collapsible sections
@@ -259,7 +259,7 @@ describe('Accessibility (a11y) Tests', () => {
     it('should not rely solely on color for information', () => {
       // Verify error states use more than just color
       cy.openProcessorConfigDialog(processorId);
-      cy.setProcessorProperty('JWKS Server URL', 'invalid-url');
+      cy.setProcessorProperty(TEXT_CONSTANTS.JWKS_SERVER_URL, TEST_DATA.INVALID_URL);
       cy.clickApplyButton();
 
       // Verify errors are indicated with icons, text, or other non-color cues
@@ -363,8 +363,8 @@ describe('Accessibility (a11y) Tests', () => {
       cy.openProcessorConfigDialog(processorId);
 
       // Create configuration errors
-      cy.setProcessorProperty('JWKS Source Type', 'SERVER');
-      cy.setProcessorProperty('JWKS Server URL', '');
+      cy.setProcessorProperty(TEXT_CONSTANTS.JWKS_SOURCE_TYPE, TEST_DATA.SERVER);
+      cy.setProcessorProperty(TEXT_CONSTANTS.JWKS_SERVER_URL, '');
       cy.clickApplyButton();
 
       // Verify error messages are accessible
@@ -393,8 +393,8 @@ describe('Accessibility (a11y) Tests', () => {
       cy.openProcessorConfigDialog(processorId);
 
       // Set configuration that may cause loading
-      cy.setProcessorProperty('JWKS Source Type', 'SERVER');
-      cy.setProcessorProperty('JWKS Server URL', 'https://httpbin.org/delay/2');
+      cy.setProcessorProperty(TEXT_CONSTANTS.JWKS_SOURCE_TYPE, TEST_DATA.SERVER);
+      cy.setProcessorProperty(TEXT_CONSTANTS.JWKS_SERVER_URL, 'https://httpbin.org/delay/2');
 
       // Verify loading states are announced
       cy.verifyLoadingStateAnnouncements();

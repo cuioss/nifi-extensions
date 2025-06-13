@@ -4,7 +4,7 @@ describe('NiFi UI Inspection', () => {
     cy.visit('https://localhost:9095/nifi/');
 
     // Wait for Angular to load
-    cy.wait(10000);
+    cy.get('body', { timeout: 30000 }).should('exist');
 
     // Check if we're on a login page or directly on canvas
     cy.get('body').then(($body) => {

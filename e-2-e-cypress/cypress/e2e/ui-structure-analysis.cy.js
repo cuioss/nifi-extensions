@@ -5,15 +5,16 @@ describe('NiFi UI Structure Analysis', () => {
     cy.verifyLoggedIn();
 
     // Wait for full UI to load
-    cy.wait(5000);
+    cy.get('body').should('be.visible');
+    cy.get('button', { timeout: 10000 }).should('have.length.at.least', 1);
 
     // Look for buttons and clickable elements
     cy.get('body').then(($body) => {
-      console.log('\n=== POST-LOGIN UI ANALYSIS ===');
+      cy.log('\n=== POST-LOGIN UI ANALYSIS ===');
 
       // Find all buttons
       const buttons = $body.find('button');
-      console.log(`Found ${buttons.length} buttons after login`);
+      cy.log(`Found ${buttons.length} buttons after login`);
 
       buttons.each((index, button) => {
         const $btn = Cypress.$(button);
@@ -24,7 +25,7 @@ describe('NiFi UI Structure Analysis', () => {
         const visible = $btn.is(':visible');
 
         if (visible && (text || ariaLabel || id)) {
-          console.log(`Button ${index}:`, {
+          cy.log(`Button ${index}:`, {
             text: text,
             id: id,
             classes: classes,
@@ -35,7 +36,7 @@ describe('NiFi UI Structure Analysis', () => {
       });
 
       // Look for elements that might be the canvas or main workspace
-      console.log('\n=== CANVAS/WORKSPACE ANALYSIS ===');
+      cy.log('\n=== CANVAS/WORKSPACE ANALYSIS ===');
       const workspaceElements = $body.find('*').filter((i, el) => {
         const $el = Cypress.$(el);
         const id = $el.attr('id') || '';
@@ -51,10 +52,10 @@ describe('NiFi UI Structure Analysis', () => {
         );
       });
 
-      console.log(`Found ${workspaceElements.length} workspace-like elements`);
+      cy.log(`Found ${workspaceElements.length} workspace-like elements`);
       workspaceElements.each((index, el) => {
         const $el = Cypress.$(el);
-        console.log(`Workspace element ${index}:`, {
+        cy.log(`Workspace element ${index}:`, {
           tagName: el.tagName,
           id: $el.attr('id'),
           classes: $el.attr('class'),
@@ -63,7 +64,7 @@ describe('NiFi UI Structure Analysis', () => {
       });
 
       // Look for menu or toolbar elements
-      console.log('\n=== MENU/TOOLBAR ANALYSIS ===');
+      cy.log('\n=== MENU/TOOLBAR ANALYSIS ===');
       const menuElements = $body.find('*').filter((i, el) => {
         const $el = Cypress.$(el);
         const id = $el.attr('id') || '';
@@ -78,11 +79,11 @@ describe('NiFi UI Structure Analysis', () => {
         );
       });
 
-      console.log(`Found ${menuElements.length} menu/toolbar elements`);
+      cy.log(`Found ${menuElements.length} menu/toolbar elements`);
       menuElements.each((index, el) => {
         const $el = Cypress.$(el);
         if ($el.is(':visible')) {
-          console.log(`Menu element ${index}:`, {
+          cy.log(`Menu element ${index}:`, {
             tagName: el.tagName,
             id: $el.attr('id'),
             classes: $el.attr('class'),

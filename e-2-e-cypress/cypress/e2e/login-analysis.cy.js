@@ -1,3 +1,5 @@
+import { SELECTORS } from '../support/constants.js';
+
 // Simple test to understand login flow and available elements
 describe('NiFi Login Analysis', () => {
   it('should identify login requirements', () => {
@@ -6,19 +8,16 @@ describe('NiFi Login Analysis', () => {
     // Wait for Angular app to load
     cy.get('nifi', { timeout: 30000 }).should('exist');
 
-    // Wait a bit more for content to load
-    cy.wait(10000);
+    // Wait for content to load completely
+    cy.get('nifi').should('be.visible');
 
     // Check if we need to login or if we're already logged in
     cy.get('body').then(($body) => {
-      const bodyText = $body.text();
-      const hasUsernameField =
-        $body.find(
-          'input[type="text"], input[type="email"], input[name*="user"], input[placeholder*="user"], input[id*="user"]'
-        ).length > 0;
-      const hasPasswordField = $body.find('input[type="password"]').length > 0;
+      // Check for login elements without storing unused variable
+      const hasUsernameField = $body.find(SELECTORS.USERNAME_FIELD_SELECTOR).length > 0;
+      const hasPasswordField = $body.find(SELECTORS.PASSWORD_FIELD_SELECTOR).length > 0;
       const hasLoginButton =
-        $body.find('button').filter((i, btn) => {
+        $body.find(SELECTORS.BUTTON).filter((i, btn) => {
           const $btn = Cypress.$(btn);
           const text = $btn.text().toLowerCase();
           return text.includes('login') || text.includes('sign in') || text.includes('submit');
@@ -28,19 +27,18 @@ describe('NiFi Login Analysis', () => {
         cy.log('LOGIN REQUIRED - Found username and password fields');
 
         // Find and fill username field
-        cy.get(
-          'input[type="text"], input[type="email"], input[name*="user"], input[placeholder*="user"], input[id*="user"]'
-        )
-          .first()
-          .clear()
-          .type('admin');
+        cy.get(SELECTORS.USERNAME_FIELD_SELECTOR).first();
+        cy.get(SELECTORS.USERNAME_FIELD_SELECTOR).first().clear();
+        cy.get(SELECTORS.USERNAME_FIELD_SELECTOR).first().type('admin');
 
         // Find and fill password field
-        cy.get('input[type="password"]').first().clear().type('ctsBtRBKHRAx69EqUghvvgEvjnaLjFEB');
+        cy.get(SELECTORS.PASSWORD_FIELD_SELECTOR).first();
+        cy.get(SELECTORS.PASSWORD_FIELD_SELECTOR).first().clear();
+        cy.get(SELECTORS.PASSWORD_FIELD_SELECTOR).first().type('ctsBtRBKHRAx69EqUghvvgEvjnaLjFEB');
 
         // Find and click login button
         if (hasLoginButton) {
-          cy.get('button')
+          cy.get(SELECTORS.BUTTON)
             .filter((i, btn) => {
               const $btn = Cypress.$(btn);
               const text = $btn.text().toLowerCase();
@@ -54,7 +52,7 @@ describe('NiFi Login Analysis', () => {
         }
 
         // Wait for login to complete
-        cy.wait(5000);
+        cy.url().should('include', '/nifi');
       } else {
         cy.log('NO LOGIN REQUIRED - Direct access to NiFi');
       }

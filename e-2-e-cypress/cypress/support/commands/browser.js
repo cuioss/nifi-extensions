@@ -5,6 +5,8 @@
  * performance measurement, and cross-browser behavior validation.
  */
 
+import { TEXT_CONSTANTS } from '../constants.js';
+
 // Browser Detection and Information Commands
 
 /**
@@ -315,7 +317,7 @@ Cypress.Commands.add('verifyDesktopLayout', () => {
  * Test ES6+ compatibility
  */
 Cypress.Commands.add('testES6Compatibility', () => {
-  cy.window().then((win) => {
+  cy.window().then((_win) => {
     // Test arrow functions
     /**
      * Test arrow function for browser compatibility validation
@@ -664,7 +666,7 @@ Cypress.Commands.add('configureProcessorWithLargeDataset', (processorId) => {
   cy.setProcessorProperty('JWKS Source Type', 'IN_MEMORY');
   cy.setProcessorProperty('JWKS Content', JSON.stringify(largeJWKS));
   cy.setProcessorProperty('Token Audience', 'test-audience');
-  cy.setProcessorProperty('Default Issuer', 'test-issuer');
+  cy.setProcessorProperty('Default Issuer', TEXT_CONSTANTS.TEST_ISSUER_VALUE);
 
   cy.clickApplyButton();
   cy.closeDialog();

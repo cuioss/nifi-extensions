@@ -18,7 +18,7 @@
  * CUI Standards Compliant
  */
 
-import { TEXT_CONSTANTS } from '../constants.js';
+import { TEXT_CONSTANTS } from '../support/constants.js';
 
 describe('Internationalization (i18n) Tests', () => {
   let processorId;
@@ -67,7 +67,7 @@ describe('Internationalization (i18n) Tests', () => {
       cy.verifyLanguageInUI('de');
 
       // Check that processor labels are in German
-      cy.getProcessorElement(processorId).should('be.visible');
+      cy.getProcessorElement(processorId).should(TEXT_CONSTANTS.BE_VISIBLE);
       cy.openProcessorConfigDialog(processorId);
       cy.verifyProcessorLabelsInLanguage('de');
       cy.closeDialog();
@@ -86,7 +86,7 @@ describe('Internationalization (i18n) Tests', () => {
       cy.verifyLanguageInUI('en');
 
       // Check that processor labels are in English
-      cy.getProcessorElement(processorId).should('be.visible');
+      cy.getProcessorElement(processorId).should(TEXT_CONSTANTS.BE_VISIBLE);
       cy.openProcessorConfigDialog(processorId);
       cy.verifyProcessorLabelsInLanguage('en');
       cy.closeDialog();
@@ -164,11 +164,19 @@ describe('Internationalization (i18n) Tests', () => {
       // Animation wait removed - using proper element visibility;
 
       // Verify German labels for key properties (if available)
-      cy.verifyPropertyLabel('JWKS-Quelltyp', 'de', 'JWKS Source Type');
-      cy.verifyPropertyLabel('Token-Zielgruppe', 'de', 'Token Audience');
-      cy.verifyPropertyLabel('Standard-Aussteller', 'de', 'Default Issuer');
-      cy.verifyPropertyLabel('JWKS-Server-URL', 'de', 'JWKS Server URL');
-      cy.verifyPropertyLabel('Verbindungs-Timeout', 'de', 'Connection Timeout');
+      cy.verifyPropertyLabel(
+        'JWKS-Quelltyp',
+        TEXT_CONSTANTS.GERMAN,
+        TEXT_CONSTANTS.JWKS_SOURCE_TYPE
+      );
+      cy.verifyPropertyLabel('Token-Zielgruppe', TEXT_CONSTANTS.GERMAN, 'Token Audience');
+      cy.verifyPropertyLabel('Standard-Aussteller', TEXT_CONSTANTS.GERMAN, 'Default Issuer');
+      cy.verifyPropertyLabel('JWKS-Server-URL', TEXT_CONSTANTS.GERMAN, 'JWKS Server URL');
+      cy.verifyPropertyLabel(
+        'Verbindungs-Timeout',
+        TEXT_CONSTANTS.GERMAN,
+        TEXT_CONSTANTS.CONNECTION_TIMEOUT
+      );
 
       cy.closeDialog();
     });

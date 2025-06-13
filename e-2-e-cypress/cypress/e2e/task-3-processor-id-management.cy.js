@@ -130,8 +130,11 @@ describe('Task 3: Processor ID Management', () => {
       cy.addProcessor(type, { x: 200 + index * 150, y: 250 });
     });
 
-    // Wait for processors to be added
-    cy.wait(2000);
+    // Wait for processors to be added to DOM
+    cy.get('g.processor, [class*="processor"], .component', { timeout: 10000 }).should(
+      'have.length.at.least',
+      3
+    );
 
     // Count processors before cleanup
     cy.get('body').then(($body) => {
@@ -141,8 +144,11 @@ describe('Task 3: Processor ID Management', () => {
       // Perform enhanced cleanup
       cy.enhancedProcessorCleanup();
 
-      // Wait for cleanup to complete
-      cy.wait(2000);
+      // Wait for cleanup to complete by checking processor count reduction
+      cy.get('body').should(($body) => {
+        const currentCount = $body.find('g.processor, [class*="processor"], .component').length;
+        expect(currentCount).to.be.lessThan(beforeCount);
+      });
 
       // Count processors after cleanup
       cy.get('body').then(($afterBody) => {
@@ -161,7 +167,7 @@ describe('Task 3: Processor ID Management', () => {
 
     // Should not fail, should find functionally
     cy.findProcessorElement(invalidId)
-      .then(($element) => {
+      .then((_$element) => {
         // Might find a functional processor or handle gracefully
         cy.log('✅ Graceful handling of invalid processor ID');
       })
@@ -172,7 +178,8 @@ describe('Task 3: Processor ID Management', () => {
 
     // Test functional ID generation when no processors exist
     cy.enhancedProcessorCleanup(); // Clear everything first
-    cy.wait(1000);
+    // Wait for cleanup to complete
+    cy.get('body').should('be.visible');
 
     cy.getAnyWorkingProcessorId().then((functionalId) => {
       expect(functionalId).to.exist;

@@ -73,7 +73,7 @@ Cypress.Commands.add(
 
     // Wait for page to load
     cy.get('nifi', { timeout: 30000 }).should('exist');
-    cy.wait(2000); // Allow Angular app initialization
+    cy.get('body', { timeout: 10000 }).should('exist'); // Allow Angular app initialization
 
     return cy.isLoggedIn().then((alreadyLoggedIn) => {
       if (alreadyLoggedIn) {
@@ -140,7 +140,7 @@ Cypress.Commands.add('handleLoginForm', (username, password, maxRetries = 3) => 
     });
 
     // Wait for login to process
-    cy.wait(3000);
+    cy.get('body', { timeout: 15000 }).should('exist');
 
     // Check if login was successful
     return cy.isLoggedIn().then((success) => {
@@ -168,7 +168,7 @@ Cypress.Commands.add('verifyAnonymousAccess', () => {
   cy.get('body').should('be.visible');
 
   // Wait a bit for Angular to initialize
-  cy.wait(3000);
+  cy.get('body', { timeout: 15000 }).should('exist');
 
   // Verify we can access main UI elements
   cy.get('body').then(($body) => {
@@ -202,7 +202,7 @@ Cypress.Commands.add('verifyCanAccessProcessors', () => {
   cy.url().then((currentUrl) => {
     if (!currentUrl.includes('nifi')) {
       cy.visit('/nifi');
-      cy.wait(2000);
+      cy.get('body', { timeout: 10000 }).should('exist');
     }
   });
 

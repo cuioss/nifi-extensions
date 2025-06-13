@@ -3,6 +3,8 @@
  * These tests verify that the custom processor commands work correctly
  */
 
+import { SELECTORS, TEXT_CONSTANTS } from '../support/constants.js';
+
 describe('Processor Commands Self-Verification', () => {
   beforeEach(() => {
     // Login and navigate to canvas before each test
@@ -71,7 +73,7 @@ describe('Processor Commands Self-Verification', () => {
       // Open again and close with Apply
       cy.navigateToProcessorConfig(processorId);
       cy.get('.configuration-dialog').should('be.visible');
-      cy.get('button').contains('Apply').click();
+      cy.get('button').contains(TEXT_CONSTANTS.APPLY).click();
       cy.get('.configuration-dialog').should('not.exist');
     });
   });
@@ -102,19 +104,19 @@ describe('Processor Commands Self-Verification', () => {
       cy.get('.processor-configuration-tab').contains('Properties').click();
 
       // Try to set an invalid file size
-      cy.get('.processor-property-name')
+      cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
         .contains('File Size')
-        .parents('.processor-property-row')
+        .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('input')
         .clear();
-      cy.get('.processor-property-name')
+      cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
         .contains('File Size')
-        .parents('.processor-property-row')
+        .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('input')
         .type('invalid-size');
 
       // Apply and check for validation errors
-      cy.get('button').contains('Apply').click();
+      cy.get('button').contains(TEXT_CONSTANTS.APPLY).click();
 
       // Should show validation error or keep dialog open
       cy.get('body').then(($body) => {

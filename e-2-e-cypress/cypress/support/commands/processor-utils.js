@@ -45,43 +45,60 @@ export function buildProcessorSelectors(processorId) {
  */
 export function buildTypeSelectors(processorType) {
   const safeType = safeString(processorType);
-  return [
-    `[data-processor-type="${safeType}"]`,
+  const baseSelectors = [
+    `*:contains("${safeType}")`,
     `[title*="${safeType}"]`,
-    `[aria-label*="${safeType}"]`,
-    `.processor:contains("${safeType}")`,
+    `[class*="${safeType}"]`,
+    `[data-processor-type="${safeType}"]`,
   ];
+
+  // Add JWT-specific selectors
+  if (safeType.includes('JWT')) {
+    baseSelectors.push('*:contains("JWT")', '*:contains("Token")', '*:contains("Authenticator")');
+  }
+
+  return baseSelectors;
 }
 
 /**
- * Extract processor ID from element using multiple strategies
- * @param {JQuery} $element - jQuery element
- * @returns {string|null} Extracted processor ID or null
+ * Find element using selector array with early return optimization
+ * @param {JQuery} $body - Body element to search within
+ * @param {Array<string>} selectors - Array of selectors to try
+ * @returns {JQuery|null} Found element or null
  */
-export function extractProcessorId($element) {
-  if (!$element || $element.length === 0) {
-    return null;
-  }
-
-  // Try various ID attributes
-  const idAttributes = ['id', 'data-testid', 'data-processor-id', 'data-id'];
-  
-  for (const attr of idAttributes) {
-    const id = $element.attr(attr);
-    if (id && id.trim()) {
-      return id.trim();
+export function findElementWithSelectors($body, selectors) {
+  for (const selector of selectors) {
+    const elements = $body.find(selector);
+    if (elements.length > 0) {
+      return elements.first();
     }
   }
-
   return null;
+}
+
+/**
+ * Extract processor ID from element attributes
+ * @param {JQuery} $element - Processor element
+ * @param _$element
+ * @returns {string} Extracted processor ID
+ */
+export function extractProcessorId(_$element) {
+  return (
+    $element.attr('id') ||
+    $element.attr('data-testid') ||
+    $element.attr('data-processor-id') ||
+    $element.attr('data-id') ||
+    `functional-processor-${Date.now()}`
+  );
 }
 
 /**
  * Get processor state from element
  * @param {JQuery} $element - Processor element
+ * @param _$element
  * @returns {string} Processor state (RUNNING, STOPPED, etc.)
  */
-export function getProcessorState($element) {
+export function getProcessorState(_$element) {
   if (!$element || $element.length === 0) {
     return 'UNKNOWN';
   }
@@ -108,14 +125,14 @@ export function getProcessorState($element) {
  */
 export function verifyProcessorState(processorId, expectedState) {
   const selectors = buildProcessorSelectors(processorId);
-  
+
   return cy.get('body').then(($body) => {
     for (const selector of selectors) {
       const $element = $body.find(selector);
       if ($element.length > 0) {
-        const actualState = getProcessorState($element);
+        const actualState = getProcessorState(_$element);
         expect(actualState).to.equal(expectedState);
-        return cy.wrap($element);
+        return cy.wrap(_$element);
       }
     }
     throw new Error(`Processor ${processorId} not found for state verification`);

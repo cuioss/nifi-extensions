@@ -18,7 +18,6 @@ export const SELECTORS = {
   PROCESSOR_CONFIG_TAB: '.processor-configuration-tab',
   PROCESSOR_PROPERTY_NAME: '.processor-property-name',
   PROCESSOR_PROPERTY_ROW: '.processor-property-row',
-  PROCESSOR_STATUS: '.processor-status',
 
   // Error and validation selectors
   VALIDATION_ERROR: '.validation-error, .error-message',
@@ -30,11 +29,6 @@ export const SELECTORS = {
   BUTTON: 'button',
   BODY: 'body',
 
-  // Generic login form selectors
-  USERNAME_FIELD_SELECTOR:
-    'input[type="text"], input[type="email"], input[name*="user"], input[placeholder*="user"], input[id*="user"]',
-  PASSWORD_FIELD_SELECTOR: 'input[type="password"]',
-
   // Navigation elements
   MENU_ITEMS: '.menu-item',
   NAVIGATION_LINKS: '.nav-link',
@@ -43,27 +37,7 @@ export const SELECTORS = {
   MAIN_CONTENT: '.main-content',
   SIDEBAR: '.sidebar',
   HEADER: '.header',
-
-  // Common test ID selectors
-  PROCESSOR_DETAILS_METRICS: '[data-testid="processor-details-metrics"]',
-  CONFIG_DIALOG_TABS: '[data-testid="config-dialog-tabs"]',
-  METRICS_TAB_CONTENT: '[data-testid="metrics-tab-content"]',
-  METRICS_PERCENTAGES: '[data-testid="metrics-percentages"]',
-  RESET_METRICS_BUTTON: '[data-testid="reset-metrics-button"]',
-  CONFIRM_RESET_DIALOG: '[data-testid="confirm-reset-dialog"]',
-  CONFIRM_RESET_BUTTON: '[data-testid="confirm-reset-button"]',
-  CONFIG_DIALOG_CLOSE: '[data-testid="config-dialog-close"]',
-  PERFORMANCE_METRICS: '[data-testid="performance-metrics"]',
-  AVG_RESPONSE_TIME: '[data-testid="avg-response-time"]',
-  ISSUER_METRICS: '[data-testid="issuer-metrics"]',
-  RECENT_ERRORS: '[data-testid="recent-errors"]',
-  ERROR_LIST: '[data-testid="error-list"]',
-  ERROR_BREAKDOWN: '[data-testid="error-breakdown"]',
-
-  // Common data-tab selectors
-  METRICS_TAB: '[data-tab="metrics"]',
-  PROPERTIES_TAB: '[data-tab="properties"]',
-  SETTINGS_TAB: '[data-tab="settings"]',
+  PROCESSOR_STATUS: '.processor-status',
 };
 
 // Common text constants
@@ -108,11 +82,49 @@ export const TEXT_CONSTANTS = {
   TEST_ISSUER: 'test-issuer',
   ID_ATTR: 'id',
 
-  // Common test values
-  TEST_ISSUER_VALUE: 'test-issuer',
-  TEST_EXAMPLE_URL: 'https://test.example.com',
-  TEST_JWKS_JSON_URL: 'https://test.example.com/jwks.json',
-  SERVER_TYPE: 'server',
+  // Common element states and assertions
+  BE_VISIBLE: 'be.visible',
+  BE_ENABLED: 'be.enabled',
+  BE_DISABLED: 'be.disabled',
+  EXIST: 'exist',
+  NOT_EXIST: 'not.exist',
+  CONTAIN: 'contain',
+  CONTAIN_TEXT: 'contain.text',
+  HAVE_TEXT: 'have.text',
+  HAVE_VALUE: 'have.value',
+  HAVE_CLASS: 'have.class',
+  HAVE_ATTR: 'have.attr',
+
+  // Common processor selectors for duplicate strings
+  PROCESSOR_DETAILS_PANE: '[data-testid="processor-details-pane"]',
+  CONFIRM_RESET_DIALOG: '[data-testid="confirm-reset-dialog"]',
+  CANVAS_CONTAINER: '#canvas-container',
+  CONTEXT_MENU: '.context-menu, .popup-menu',
+
+  // Common CSS classes
+  VALIDATION_ERROR_CLASS: '.validation-error',
+  ERROR_MESSAGE_CLASS: '.error-message',
+  SUCCESS_MESSAGE_CLASS: '.success-message',
+  WARNING_MESSAGE_CLASS: '.warning-message',
+  LOADING_SPINNER_CLASS: '.loading-spinner',
+
+  // Common attribute names
+  DATA_TESTID: 'data-testid',
+  ARIA_LABEL: 'aria-label',
+  ROLE: 'role',
+  ID: 'id',
+  CLASS: 'class',
+
+  // Common HTTP status codes
+  HTTP_200: 200,
+  HTTP_401: 401,
+  HTTP_403: 403,
+  HTTP_404: 404,
+  HTTP_500: 500,
+
+  // Accessibility labels
+  CLOSE_DIALOG: 'Close dialog',
+  MENU_TOGGLE: 'Toggle menu',
 
   // Language codes
   ENGLISH: 'en',
@@ -161,6 +173,12 @@ export const TEXT_CONSTANTS = {
   // Accessibility labels
   CLOSE_DIALOG: 'Close dialog',
   MENU_TOGGLE: 'Toggle menu',
+
+  // Language codes
+  ENGLISH: 'en',
+  GERMAN: 'de',
+  FRENCH: 'fr',
+  SPANISH: 'es',
 };
 
 // Common timeouts (in milliseconds)
@@ -192,18 +210,13 @@ export const TEST_DATA = {
   TEST_JWKS_URL: 'https://test.example.com/jwks.json',
   TEST_JWKS_TYPE: 'server',
   SERVER: 'SERVER',
-  INVALID_URL_OLD: 'invalid-url',
+  INVALID_URL: 'invalid-url',
 
   // Processor configuration property keys
   ISSUER_1_NAME: 'issuer-1-name',
   ISSUER_1_ISSUER: 'issuer-1-issuer',
   ISSUER_1_JWKS_TYPE: 'issuer-1-jwks-type',
   ISSUER_1_JWKS_URL: 'issuer-1-jwks-url',
-
-  // Error test data
-  INVALID_JWKS_PATH: '/nonexistent/path/to/jwks.json',
-  INVALID_URL: 'invalid-url-format',
-  MALFORMED_JSON: '{"malformed": json}',
 
   // Processor states
   RUNNING: 'RUNNING',

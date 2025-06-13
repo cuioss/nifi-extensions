@@ -1,10 +1,13 @@
 // Debug script to examine NiFi UI structure
+
+import { TEXT_CONSTANTS } from '../support/constants.js';
+
 describe('NiFi UI Structure Debug', () => {
   it('should capture UI structure and selectors', () => {
     cy.visit('https://localhost:9095/nifi/');
 
     // Wait for page to load properly instead of arbitrary time
-    cy.get('body').should('be.visible');
+    cy.get('body').should(TEXT_CONSTANTS.BE_VISIBLE);
     cy.get('nifi', { timeout: 10000 }).should('exist');
 
     // Log the page title

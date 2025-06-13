@@ -29,83 +29,7 @@ import {
   openProcessorConfigDialog,
 } from './processor-config.js';
 
-// === UTILITY FUNCTIONS ===
-// Helper functions to reduce complexity and improve maintainability
-
-/**
- * Safe string conversion for template literals
- * Prevents object stringification errors in ESLint
- * @param {any} value - Value to convert to string
- * @returns {string} - Safe string representation
- * @example
- */
-function safeString(value) {
-  if (value === null || value === undefined) {
-    return '';
-  }
-  if (typeof value === 'object') {
-    return JSON.stringify(value);
-  }
-  return String(value);
-}
-
-/**
- * Build processor selector array with safe string handling
- * @param {string} processorId - The processor ID
- * @returns {Array<string>} - Array of CSS selectors
- * @example
- */
-function buildProcessorSelectors(processorId) {
-  const safeId = safeString(processorId);
-  return [
-    `[data-testid="${safeId}"]`,
-    `g[id="${safeId}"]`,
-    `[id="${safeId}"]`,
-    `[data-processor-id="${safeId}"]`,
-    `[data-id="${safeId}"]`,
-    `.processor[data-id="${safeId}"]`,
-  ];
-}
-
-/**
- * Build type-based selectors for processor discovery
- * @param {string} processorType - The processor type
- * @returns {Array<string>} - Array of type-based selectors
- * @example
- */
-function buildTypeSelectors(processorType) {
-  const safeType = safeString(processorType);
-  const baseSelectors = [
-    `*:contains("${safeType}")`,
-    `[title*="${safeType}"]`,
-    `[class*="${safeType}"]`,
-    `[data-processor-type="${safeType}"]`,
-  ];
-
-  // Add JWT-specific selectors if applicable
-  if (safeType.includes('JWT')) {
-    baseSelectors.push('*:contains("JWT")', '*:contains("Token")', '*:contains("Authenticator")');
-  }
-
-  return baseSelectors;
-}
-
-/**
- * Find element using selector array with early return optimization
- * @param {JQuery} $body - Body element to search within
- * @param {Array<string>} selectors - Array of selectors to try
- * @returns {JQuery|null} - Found element or null
- * @example
- */
-function findElementWithSelectors($body, selectors) {
-  for (const selector of selectors) {
-    const elements = $body.find(selector);
-    if (elements.length > 0) {
-      return elements.first();
-    }
-  }
-  return null;
-}
+// Note: Utility functions now imported from processor-utils.js
 
 /**
  * Add a processor to the canvas - simplified version for modern NiFi Angular UI
@@ -379,9 +303,9 @@ Cypress.Commands.add('verifyProcessorProperties', (processorId, expectedProps) =
  * @param {string} processorId - The ID of the processor to start
  */
 Cypress.Commands.add('startProcessor', (processorId) => {
-  cy.getProcessorElement(processorId).then(($element) => {
+  cy.getProcessorElement(processorId).then((_$element) => {
     // Try right-click context menu approach
-    cy.wrap($element).rightclick({ force: true });
+    cy.wrap(_$element).rightclick({ force: true });
     // Animation wait removed - using proper element visibility;
 
     // Look for context menu and Start option
@@ -391,7 +315,7 @@ Cypress.Commands.add('startProcessor', (processorId) => {
         cy.get('*:contains("Start")').first().click({ force: true });
       } else {
         // Fallback: try double-click and look for start button in dialog
-        cy.wrap($element).dblclick({ force: true });
+        cy.wrap(_$element).dblclick({ force: true });
         // Animation wait removed - using proper element visibility;
         cy.get('button')
           .contains(/^Start$/i)
@@ -407,9 +331,9 @@ Cypress.Commands.add('startProcessor', (processorId) => {
  * @param {string} processorId - The ID of the processor to stop
  */
 Cypress.Commands.add('stopProcessor', (processorId) => {
-  cy.getProcessorElement(processorId).then(($element) => {
+  cy.getProcessorElement(processorId).then((_$element) => {
     // Try right-click context menu approach
-    cy.wrap($element).rightclick({ force: true });
+    cy.wrap(_$element).rightclick({ force: true });
     // Animation wait removed - using proper element visibility;
 
     // Look for context menu and Stop option
@@ -419,7 +343,7 @@ Cypress.Commands.add('stopProcessor', (processorId) => {
         cy.get('*:contains("Stop")').first().click({ force: true });
       } else {
         // Fallback: try double-click and look for stop button in dialog
-        cy.wrap($element).dblclick({ force: true });
+        cy.wrap(_$element).dblclick({ force: true });
         // Animation wait removed - using proper element visibility;
         cy.get('button')
           .contains(/^Stop$/i)
@@ -435,9 +359,9 @@ Cypress.Commands.add('stopProcessor', (processorId) => {
  * @param {string} processorId - The ID of the processor to remove
  */
 Cypress.Commands.add('removeProcessor', (processorId) => {
-  cy.getProcessorElement(processorId).then(($element) => {
+  cy.getProcessorElement(processorId).then((_$element) => {
     // Try right-click context menu approach
-    cy.wrap($element).rightclick({ force: true });
+    cy.wrap(_$element).rightclick({ force: true });
     // Animation wait removed - using proper element visibility;
 
     // Look for context menu and Delete option
@@ -460,9 +384,9 @@ Cypress.Commands.add('removeProcessor', (processorId) => {
         });
       } else {
         // Fallback: select and use keyboard delete
-        cy.wrap($element).click({ force: true });
+        cy.wrap(_$element).click({ force: true });
         // Animation wait removed - using proper element visibility;
-        cy.wrap($element).type('{del}');
+        cy.wrap(_$element).type('{del}');
       }
     });
   });
@@ -562,7 +486,7 @@ Cypress.Commands.add('waitForProcessorState', (processorId, expectedState, timeo
    * @example
    */
   const checkState = () => {
-    return cy.getProcessorElement(processorId).then(($element) => {
+    return cy.getProcessorElement(processorId).then((_$element) => {
       // Look for state indicators in the processor element
       const stateIndicators = $element.find('.processor-state, .state-indicator, [class*="state"]');
 
@@ -602,7 +526,7 @@ Cypress.Commands.add('isProcessorConfigured', (processorId, expectedConfig = {})
   const safeId = safeString(processorId);
   cy.log(`Checking configuration for processor: ${safeId}`);
 
-  return cy.getProcessorElement(processorId).then(($element) => {
+  return cy.getProcessorElement(processorId).then((_$element) => {
     // Check processor name if expected
     if (expectedConfig.name && !cy.checkProcessorName($element, expectedConfig.name)) {
       return cy.wrap(false);
@@ -619,7 +543,7 @@ Cypress.Commands.add('isProcessorConfigured', (processorId, expectedConfig = {})
     }
 
     // Check basic setup requirements
-    return cy.detectProcessorSetupFromElement($element).then((hasRequiredSetup) => {
+    return cy.detectProcessorSetupFromElement(_$element).then((hasRequiredSetup) => {
       cy.log(`Processor has required setup: ${hasRequiredSetup}`);
       return cy.wrap(hasRequiredSetup);
     });
@@ -648,7 +572,7 @@ Cypress.Commands.add('checkProcessorName', ($element, expectedName) => {
  * @returns {boolean} - True if state matches
  */
 Cypress.Commands.add('checkProcessorState', ($element, expectedState) => {
-  return cy.getProcessorStateFromElement($element).then((currentState) => {
+  return cy.getProcessorStateFromElement(_$element).then((currentState) => {
     if (currentState !== expectedState) {
       cy.log(`Processor state mismatch. Expected: ${expectedState}, Found: ${currentState}`);
       return false;
@@ -683,9 +607,9 @@ Cypress.Commands.add('inspectProcessorProperties', (processorId) => {
   const safeId = safeString(processorId);
   cy.log(`Inspecting properties for processor: ${safeId}`);
 
-  return cy.getProcessorElement(processorId).then(($element) => {
+  return cy.getProcessorElement(processorId).then((_$element) => {
     // Open configuration dialog
-    cy.wrap($element).dblclick({ force: true });
+    cy.wrap(_$element).dblclick({ force: true });
     // Loading wait removed - using proper element readiness checks;
 
     return cy.extractPropertiesFromDialog();
@@ -817,21 +741,21 @@ Cypress.Commands.add('compareProcessorPropertiesSync', (currentProperties, expec
  * @param {JQuery} $element - The processor DOM element
  * @returns {string} - Processor state
  */
-Cypress.Commands.add('getProcessorStateFromElement', ($element) => {
+Cypress.Commands.add('getProcessorStateFromElement', (_$element) => {
   // Check text-based state indicators first
-  return cy.getStateFromText($element).then((textState) => {
+  return cy.getStateFromText(_$element).then((textState) => {
     if (textState !== 'UNKNOWN') {
       return textState;
     }
 
     // Check class-based state indicators
-    return cy.getStateFromClasses($element).then((classState) => {
+    return cy.getStateFromClasses(_$element).then((classState) => {
       if (classState !== 'UNKNOWN') {
         return classState;
       }
 
       // Check visual indicators
-      return cy.getStateFromVisualIndicators($element);
+      return cy.getStateFromVisualIndicators(_$element);
     });
   });
 });
@@ -841,7 +765,7 @@ Cypress.Commands.add('getProcessorStateFromElement', ($element) => {
  * @param {JQuery} $element - Processor element
  * @returns {string} - State or 'UNKNOWN'
  */
-Cypress.Commands.add('getStateFromText', ($element) => {
+Cypress.Commands.add('getStateFromText', (_$element) => {
   const stateElements = $element.find('.processor-state, .state-indicator, [class*="state"]');
 
   if (stateElements.length > 0) {
@@ -861,7 +785,7 @@ Cypress.Commands.add('getStateFromText', ($element) => {
  * @param {JQuery} $element - Processor element
  * @returns {string} - State or 'UNKNOWN'
  */
-Cypress.Commands.add('getStateFromClasses', ($element) => {
+Cypress.Commands.add('getStateFromClasses', (_$element) => {
   const classes = $element.attr('class') || '';
 
   if (classes.includes('running')) return 'RUNNING';
@@ -877,7 +801,7 @@ Cypress.Commands.add('getStateFromClasses', ($element) => {
  * @param {JQuery} $element - Processor element
  * @returns {string} - State or 'UNKNOWN'
  */
-Cypress.Commands.add('getStateFromVisualIndicators', ($element) => {
+Cypress.Commands.add('getStateFromVisualIndicators', (_$element) => {
   if ($element.find('.running-indicator, .green-indicator').length > 0) return 'RUNNING';
   if ($element.find('.stopped-indicator, .red-indicator').length > 0) return 'STOPPED';
   if ($element.find('.invalid-indicator, .yellow-indicator').length > 0) return 'INVALID';
@@ -891,7 +815,7 @@ Cypress.Commands.add('getStateFromVisualIndicators', ($element) => {
  * @param {JQuery} $element - The processor DOM element
  * @returns {boolean} - True if processor has required setup
  */
-Cypress.Commands.add('detectProcessorSetupFromElement', ($element) => {
+Cypress.Commands.add('detectProcessorSetupFromElement', (_$element) => {
   // Check if processor has basic configuration
   const hasValidState = $element.find('.invalid-indicator, [class*="invalid"]').length === 0;
   const hasNoErrors = $element.find('.error-indicator, [class*="error"]').length === 0;
@@ -1065,7 +989,7 @@ Cypress.Commands.add('getFunctionalProcessorFallback', (processorId, $body) => {
       const index = parseInt(idMatch[0]);
       if (allProcessors.length > index) {
         cy.log(`Found processor by index-based approach: ${index}`);
-        return cy.get('g.processor, [class*="processor"], .component').eq(index);
+        return cy.get('g.processor, [class*="processor"], .component').eq(_index);
       }
     }
 
@@ -1504,10 +1428,10 @@ Cypress.Commands.add('testCustomProcessorCatalogVisibility', () => {
 Cypress.Commands.add('testProcessorConfigurationDialog', (processorId) => {
   cy.log(`[Task 4] Testing configuration dialog for processor: ${safeString(processorId)}`);
 
-  cy.getProcessorElement(processorId).then(($element) => {
+  cy.getProcessorElement(processorId).then((_$element) => {
     if ($element && $element.length > 0) {
       // Double-click to open configuration dialog
-      cy.wrap($element).dblclick({ force: true });
+      cy.wrap(_$element).dblclick({ force: true });
       // Loading wait removed - using proper element readiness checks;
 
       cy.get('body').then(($body) => {
@@ -1660,10 +1584,10 @@ Cypress.Commands.add('testPropertyInputFields', (processorId) => {
 Cypress.Commands.add('testProcessorStateUI', (processorId) => {
   cy.log(`[Task 4] Testing processor state UI for: ${safeString(processorId)}`);
 
-  cy.getProcessorElement(processorId).then(($element) => {
+  cy.getProcessorElement(processorId).then((_$element) => {
     if ($element && $element.length > 0) {
       // Test state visual indicators using Task 2 state detection
-      return cy.getProcessorStateFromElement($element).then((state) => {
+      return cy.getProcessorStateFromElement(_$element).then((state) => {
         cy.log(`Processor state detected: ${state}`);
 
         // Test state-specific UI elements
@@ -1695,10 +1619,10 @@ Cypress.Commands.add('testProcessorCanvasDisplay', (processorId, processorType) 
     `[Task 4] Testing canvas display for ${safeString(processorType)}: ${safeString(processorId)}`
   );
 
-  cy.getProcessorElement(processorId).then(($element) => {
+  cy.getProcessorElement(processorId).then((_$element) => {
     if ($element && $element.length > 0) {
       // Test processor visibility
-      cy.wrap($element).should('be.visible');
+      cy.wrap(_$element).should('be.visible');
       cy.log('✅ Processor visible on canvas');
 
       // Test processor name display
@@ -2070,9 +1994,9 @@ Cypress.Commands.add('testPropertyHelpUI', (processorId) => {
 Cypress.Commands.add('testProcessorControlsUI', (processorId) => {
   cy.log(`[Task 4] Testing processor controls UI for: ${safeString(processorId)}`);
 
-  cy.getProcessorElement(processorId).then(($element) => {
+  cy.getProcessorElement(processorId).then((_$element) => {
     // Right-click to access controls
-    cy.wrap($element).rightclick({ force: true });
+    cy.wrap(_$element).rightclick({ force: true });
     // Loading wait removed - using proper element readiness checks;
 
     cy.get('body').then(($body) => {
@@ -2098,14 +2022,14 @@ Cypress.Commands.add('testProcessorControlsUI', (processorId) => {
 Cypress.Commands.add('testConfigurationStateUI', (processorId) => {
   cy.log(`[Task 4] Testing configuration state UI for: ${safeString(processorId)}`);
 
-  cy.getProcessorElement(processorId).then(($element) => {
+  cy.getProcessorElement(processorId).then((_$element) => {
     const stateElements = $element.find('.state, .status, .config-state');
     if (stateElements.length > 0) {
       cy.log('✅ Configuration state UI elements found');
     }
 
     // Test using Task 2 setup detection
-    return cy.detectProcessorSetupFromElement($element).then((hasSetup) => {
+    return cy.detectProcessorSetupFromElement(_$element).then((hasSetup) => {
       cy.log(`Configuration setup detected: ${hasSetup}`);
     });
   });
@@ -2142,9 +2066,9 @@ Cypress.Commands.add('testProcessorUICoordination', (references) => {
   cy.log(`[Task 4] Testing processor UI coordination for ${references.length} processors...`);
 
   references.forEach((ref, index) => {
-    cy.getProcessorByEnhancedReference(ref).then(($element) => {
-      if ($element) {
-        cy.wrap($element).should('be.visible');
+    cy.getProcessorByEnhancedReference(ref).then((_$element) => {
+      if (_$element) {
+        cy.wrap(_$element).should('be.visible');
         cy.log(`✅ Reference ${index + 1} UI coordination working`);
       }
     });

@@ -14,7 +14,7 @@ Cypress.Commands.add('nifiLogin', () => {
   cy.get('nifi', { timeout: 30000 }).should('exist');
 
   // Wait for app initialization
-  cy.wait(2000);
+  cy.get('body', { timeout: 10000 }).should('exist');
 
   // Verify main UI is ready
   cy.get('body').should('be.visible');

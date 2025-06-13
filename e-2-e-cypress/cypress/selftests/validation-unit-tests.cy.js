@@ -8,6 +8,8 @@
  * - MultiIssuerJWTTokenAuthenticator processor must be available
  */
 
+import { TEXT_CONSTANTS } from '../support/constants.js';
+
 describe('JWT Validation Integration Tests', () => {
   const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'http://localhost:9094/nifi';
 
@@ -71,7 +73,7 @@ describe('JWT Validation Integration Tests', () => {
     it('should handle JWT token with valid structure', () => {
       // Create a mock valid JWT token structure
       const validJwtPayload = {
-        iss: 'test-issuer',
+        iss: TEXT_CONSTANTS.TEST_ISSUER_VALUE,
         aud: 'test-audience',
         exp: Math.floor(Date.now() / 1000) + 3600, // Expires in 1 hour
         iat: Math.floor(Date.now() / 1000),

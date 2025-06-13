@@ -2,7 +2,7 @@
  * End-to-End tests for error handling scenarios
  */
 
-import { SELECTORS, TEXT_CONSTANTS } from '../constants.js';
+import { SELECTORS, TEXT_CONSTANTS, TEST_DATA } from '../support/constants.js';
 
 describe('Error Handling E2E Tests', () => {
   beforeEach(() => {
@@ -28,10 +28,10 @@ describe('Error Handling E2E Tests', () => {
       cy.get('button').contains(TEXT_CONSTANTS.APPLY).click();
 
       // Should show validation error
-      cy.get(SELECTORS.VALIDATION_ERROR).should('be.visible');
+      cy.get(SELECTORS.VALIDATION_ERROR).should(TEXT_CONSTANTS.BE_VISIBLE);
 
       // Cancel the configuration
-      cy.get('button').contains('Cancel').click();
+      cy.get('button').contains(TEXT_CONSTANTS.CANCEL).click();
     });
   });
 
@@ -61,35 +61,35 @@ describe('Error Handling E2E Tests', () => {
     cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
       // Configure processor with invalid file path
       cy.navigateToProcessorConfig(processorId);
-      cy.get('.processor-configuration-tab').contains('Properties').click();
+      cy.get(SELECTORS.PROCESSOR_CONFIG_TAB).contains(TEXT_CONSTANTS.PROPERTIES).click();
 
-      cy.get('.processor-property-name')
-        .contains('JWKS Type')
-        .parents('.processor-property-row')
+      cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
+        .contains(TEXT_CONSTANTS.JWKS_TYPE)
+        .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('select')
         .select('File');
 
-      cy.get('.processor-property-name')
-        .contains('JWKS File Path')
-        .parents('.processor-property-row')
+      cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
+        .contains(TEXT_CONSTANTS.JWKS_FILE_PATH)
+        .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('input')
         .clear();
       cy.get('.processor-property-name')
-        .contains('JWKS File Path')
-        .parents('.processor-property-row')
+        .contains(TEXT_CONSTANTS.JWKS_FILE_PATH)
+        .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('input')
-        .type('/nonexistent/path/to/jwks.json');
+        .type(TEST_DATA.INVALID_JWKS_PATH);
 
       // Apply configuration
       cy.get('button').contains('Apply').click();
 
       // Configuration might be accepted but will fail at runtime
       cy.get('body').then(($body) => {
-        const dialogClosed = $body.find('.configuration-dialog').length === 0;
+        const dialogClosed = $body.find(SELECTORS.CONFIGURATION_DIALOG).length === 0;
         const hasError = $body.find('.validation-error').length > 0;
 
         if (!dialogClosed && hasError) {
-          cy.get('button').contains('Cancel').click();
+          cy.get('button').contains(TEXT_CONSTANTS.CANCEL).click();
         }
       });
     });
@@ -101,22 +101,22 @@ describe('Error Handling E2E Tests', () => {
 
       // Configure processor with malformed JSON
       cy.navigateToProcessorConfig(processorId);
-      cy.get('.processor-configuration-tab').contains('Properties').click();
+      cy.get(SELECTORS.PROCESSOR_CONFIG_TAB).contains(TEXT_CONSTANTS.PROPERTIES).click();
 
       cy.get('.processor-property-name')
         .contains('JWKS Type')
-        .parents('.processor-property-row')
+        .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('select')
         .select('In-Memory');
 
       cy.get('.processor-property-name')
         .contains('JWKS Content')
-        .parents('.processor-property-row')
+        .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('textarea')
         .clear();
       cy.get('.processor-property-name')
         .contains('JWKS Content')
-        .parents('.processor-property-row')
+        .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('textarea')
         .type(malformedJson);
 
@@ -126,14 +126,14 @@ describe('Error Handling E2E Tests', () => {
       // Should show JSON validation error
       cy.get('body').then(($body) => {
         const hasValidationError = $body.find('.validation-error, .error-message').length > 0;
-        const dialogStillOpen = $body.find('.configuration-dialog').length > 0;
+        const dialogStillOpen = $body.find(SELECTORS.CONFIGURATION_DIALOG).length > 0;
 
         if (hasValidationError) {
           expect(true).to.be.true; // Expected validation error
         }
 
         if (dialogStillOpen) {
-          cy.get('button').contains('Cancel').click();
+          cy.get('button').contains(TEXT_CONSTANTS.CANCEL).click();
         }
       });
     });
@@ -216,9 +216,9 @@ describe('Error Handling E2E Tests', () => {
       // Try to navigate to processor config multiple times rapidly
       for (let i = 0; i < 3; i++) {
         cy.navigateToProcessorConfig(processorId);
-        cy.get('.configuration-dialog').should('be.visible');
-        cy.get('button').contains('Cancel').click();
-        cy.get('.configuration-dialog').should('not.exist');
+        cy.get(SELECTORS.CONFIGURATION_DIALOG).should(TEXT_CONSTANTS.BE_VISIBLE);
+        cy.get('button').contains(TEXT_CONSTANTS.CANCEL).click();
+        cy.get(SELECTORS.CONFIGURATION_DIALOG).should('not.exist');
       }
     });
   });
@@ -227,14 +227,14 @@ describe('Error Handling E2E Tests', () => {
     cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
       // Open configuration dialog
       cy.navigateToProcessorConfig(processorId);
-      cy.get('.configuration-dialog').should('be.visible');
+      cy.get(SELECTORS.CONFIGURATION_DIALOG).should('be.visible');
 
       // Refresh the page
       cy.reload();
 
       // Should be back on canvas without dialog
       cy.get('#canvas-container').should('be.visible');
-      cy.get('.configuration-dialog').should('not.exist');
+      cy.get(SELECTORS.CONFIGURATION_DIALOG).should('not.exist');
 
       // Processor should still exist
       cy.get(`g[id="${processorId}"]`).should('exist');

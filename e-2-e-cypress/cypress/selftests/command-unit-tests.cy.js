@@ -92,7 +92,7 @@ describe('Core Command Integration Tests', () => {
             cy.wrap(submitButtons.first()).click();
 
             // Should still be on login page or show error - verify we're NOT logged in
-            cy.wait(2000);
+            cy.get('body', { timeout: 10000 }).should('exist');
             cy.get('body').then(($errorBody) => {
               const hasLoginForm = $errorBody.find('input[type="password"]').length > 0;
               const hasNifiMain = $errorBody.find('nifi').children().length > 0;
@@ -197,12 +197,12 @@ describe('Core Command Integration Tests', () => {
         if (processorElements.length > 0) {
           processorElements.each((index, element) => {
             cy.wrap(element).rightclick({ force: true });
-            cy.wait(500);
+            cy.get('body', { timeout: 2000 }).should('exist');
             cy.get('body').then(($menuBody) => {
               const deleteOptions = $menuBody.find('*:contains("Delete"), *:contains("Remove")');
               if (deleteOptions.length > 0) {
                 cy.wrap(deleteOptions.first()).click({ force: true });
-                cy.wait(500);
+                cy.get('body', { timeout: 2000 }).should('exist');
                 // Confirm if dialog appears
                 cy.get('body').then(($confirmBody) => {
                   const confirmButtons = $confirmBody.find(
@@ -254,7 +254,7 @@ describe('Core Command Integration Tests', () => {
 
       // Try double-clicking to open add processor dialog
       cy.get('nifi').dblclick(300, 300, { force: true });
-      cy.wait(1000);
+      cy.get('body', { timeout: 5000 }).should('exist');
 
       // Wait for add processor dialog - use flexible selectors
       cy.get('body').then(($body) => {
@@ -268,7 +268,7 @@ describe('Core Command Integration Tests', () => {
           );
           if (searchInputs.length > 0) {
             cy.wrap(searchInputs.first()).type('MultiIssuerJWTTokenAuthenticator');
-            cy.wait(500);
+            cy.get('body', { timeout: 2000 }).should('exist');
 
             // Verify our processor appears in the list
             cy.get('body').should('contain.text', 'MultiIssuerJWTTokenAuthenticator');
@@ -302,7 +302,7 @@ describe('Core Command Integration Tests', () => {
 
       const processorIds = [];
 
-      positions.forEach((position, index) => {
+      positions.forEach((position, _index) => {
         cy.addProcessor('MultiIssuerJWTTokenAuthenticator', position).then((processorId) => {
           processorIds.push(processorId);
 

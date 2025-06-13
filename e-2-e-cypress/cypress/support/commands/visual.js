@@ -5,6 +5,8 @@
  * layout verification, and visual consistency checks across different states and themes.
  */
 
+import { TEXT_CONSTANTS } from '../constants.js';
+
 // Configuration and Setup Commands
 
 /**
@@ -24,7 +26,7 @@ Cypress.Commands.add('configureVisualTesting', () => {
 
   // Ensure consistent rendering environment
   cy.viewport(1366, 768); // Standard desktop resolution
-  cy.wait(500); // Allow for initial rendering
+  cy.get('body', { timeout: 2000 }).should('exist'); // Allow for initial rendering
 });
 
 // Visual Snapshot Commands
@@ -635,7 +637,7 @@ Cypress.Commands.add('configureProcessorForTesting', (processorId) => {
   // Set valid configuration for visual testing
   cy.setProcessorProperty('JWKS Source Type', 'IN_MEMORY');
   cy.setProcessorProperty('Token Audience', 'test-audience');
-  cy.setProcessorProperty('Default Issuer', 'test-issuer');
+  cy.setProcessorProperty('Default Issuer', TEXT_CONSTANTS.TEST_ISSUER_VALUE);
 
   // Add valid JWKS content
   const testJWKS = JSON.stringify({
