@@ -52,7 +52,6 @@
     "jest-environment-jsdom": "^29.7.0",
     "prettier": "^3.3.2",
     "stylelint": "^16.6.1",
-    "stylelint-config-prettier": "^9.0.5",
     "stylelint-config-standard": "^38.0.0",
     "stylelint-declaration-strict-value": "^1.10.11",
     "stylelint-order": "^7.0.0",
