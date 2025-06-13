@@ -11,7 +11,7 @@
 - **JavaScript Standards Compliance**: 📋 Required - CUI JavaScript standards implementation needed
 - **CSS Standards Compliance**: 📋 Required - CUI CSS standards implementation needed
 - **Infrastructure**: Docker environment operational  
-- **Implementation Phase**: Production Ready - Tasks 1-3 completed and optimized, Tasks 4-20 planned (including CUI standards compliance)
+- **Implementation Phase**: Production Ready - Tasks 1-3 completed and optimized, Tasks 4-21 planned (including CUI standards compliance)
 - **Test Distribution**:
   - Login Tests: 4/4 ✅ (100%)
   - Navigation Tests: 11/11 ✅ (100%)
@@ -153,7 +153,7 @@ The comprehensive optimization has created a **production-ready foundation** for
 - **Performance Benchmarking**: Foundation established for metrics collection
 - **Comprehensive Test Validation**: Optimized codebase ready for extensive testing
 
-#### ✅ Foundation for Tasks 4-20
+#### ✅ Foundation for Tasks 4-21
 - **Robust Architecture**: Extensible design for complex scenarios
 - **Reusable Utilities**: Common functions for future task implementations
 - **Performance-Optimized Patterns**: Efficient patterns for scaling
@@ -171,7 +171,7 @@ The NiFi integration testing framework is now **optimized, robust, and ready** f
 - Task 4 implementation and beyond
 - High success rates (95%+ achieved)
 - Maintainable, production-grade code quality
-- Extensible architecture for the remaining 17 tasks in the roadmap (including CUI standards compliance)
+- Extensible architecture for the remaining 18 tasks in the roadmap (including CUI standards compliance)
 
 ## Architecture Overview
 - **Infrastructure**: Docker-based with NiFi 2.4.0 + Keycloak
@@ -365,6 +365,7 @@ For advanced UI analysis and exploration of the NiFi interface, Copilot can util
 - ✅ Configuration status detection
 - ✅ Multi-processor workflow handling
 - ✅ State and setup detection
+- ✅ Property management features
 
 **Impact on Test Reliability:**
 - **Before**: 67% success rate (2/3 processor tests passing)
@@ -510,35 +511,111 @@ For advanced UI analysis and exploration of the NiFi interface, Copilot can util
 - [x] Git commit with descriptive message
 
 ### 4. Custom Processor Testing Focus (Status: 🚀 Next Priority - Ready for Implementation)
-- [ ] Create custom processor test patterns (JWT validation, multi-issuer configuration, error handling)
-- [ ] Minimal NiFi interaction required (setup → trigger → verify)
-- [ ] Focus on processor business logic (JWT token validation, multi-issuer handling, error conditions)
-- [ ] **FOUNDATION READY**: Optimized codebase provides robust foundation for implementation
-- [ ] **UTILITIES AVAILABLE**: 15+ helper functions ready for processor testing scenarios
-- [ ] **ERROR HANDLING**: Consistent patterns established for reliable test execution
+**Current Scope**: Basic UI display and interaction testing (backend not completed yet)
+- [ ] **Basic Processor UI Testing**: Test processor display and configuration UI interactions
+  - [ ] Verify custom processors appear in processor catalog
+  - [ ] Test processor configuration dialog opens and displays properly
+  - [ ] Validate property input fields and UI components
+  - [ ] Test processor state changes (start/stop/configure)
+- [ ] **UI Integration Testing**: Focus on frontend functionality without backend dependency
+  - [ ] Test processor addition to canvas
+  - [ ] Verify configuration persistence in UI
+  - [ ] Test multi-processor coordination UI patterns
+  - [ ] Validate error handling in UI layer
+- [ ] **Backend Integration Detection**: Identify missing backend functionality
+  - [ ] Test for actual JWT validation capabilities
+  - [ ] Detect backend service availability
+  - [ ] Document backend integration gaps
+  - [ ] Create follow-up task for full backend integration
+- [ ] **Minimal NiFi Interaction**: Setup → UI Test → Verify Display
+- [ ] **Foundation Ready**: Optimized codebase provides robust foundation for UI testing
 
 **Implementation Strategy**: 
 With Tasks 1-3 completed and optimized, Task 4 can leverage:
 - **Robust Processor Management**: Enhanced processor discovery and configuration detection
-- **Optimized Performance**: Reduced complexity and improved reliability
-- **Modular Architecture**: Reusable components for complex testing scenarios
+- **Optimized Performance**: Reduced complexity and improved reliability  
+- **Modular Architecture**: Reusable components for UI testing scenarios
 - **Production-Ready Foundation**: 95%+ success rate and consistent error handling
 
 **Recommended Approach**:
-1. **JWT Validation Patterns**: Use optimized processor configuration detection for JWT processor setup
-2. **Multi-Issuer Testing**: Leverage enhanced reference system for multi-processor coordination
-3. **Error Condition Testing**: Utilize consistent error handling patterns established in optimization
-4. **Business Logic Focus**: Minimal NiFi interaction using functional processor identification
+1. **UI-First Testing**: Use optimized processor configuration detection for processor UI setup
+2. **Multi-Processor UI Testing**: Leverage enhanced reference system for UI coordination testing
+3. **Frontend Error Testing**: Test UI error handling without requiring backend services
+4. **Backend Gap Detection**: Identify and document missing backend integration points
+
+**Task Completion Criteria**:
+- ✅ All processor UI components display correctly
+- ✅ Configuration dialogs work properly  
+- ✅ UI state management functions as expected
+- ✅ Backend integration gaps identified and documented
+- ✅ Follow-up task created for full backend integration testing
 
 **Priority**: High - Next immediate task after optimization completion
 
 **Completion Steps:**
-- [ ] Run full Maven build: `./mvnw clean install` - Fix all issues
-- [ ] Run integration tests: `./mvnw test -Plocal-integration-tests -Dintegration.test.local=true` - Fix all issues
+- [ ] Implement basic UI testing for custom processors
+- [ ] Test processor configuration UI without backend dependency
+- [ ] Document backend integration requirements
+- [ ] Create Task 4b for full backend integration testing
+- [ ] Run full Maven build: `./mvnw clean install` - Verify UI functionality
+- [ ] Run integration tests: `./mvnw test -Plocal-integration-tests -Dintegration.test.local=true` - Test UI components
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 5. Address Current Failure Patterns
+### 4b. Full Backend Integration Testing (Status: 📅 Future - Backend Completion Required)
+**Goal**: Complete end-to-end testing once backend JWT validation services are implemented
+- [ ] **JWT Validation Logic Testing**: Test actual JWT token validation capabilities
+  - [ ] Valid JWT token processing and validation
+  - [ ] Invalid JWT token rejection and error handling
+  - [ ] Expired token detection and appropriate responses
+  - [ ] Malformed token handling and error reporting
+- [ ] **Multi-Issuer Configuration Testing**: Test multiple JWT issuer support
+  - [ ] Multiple issuer configuration and validation
+  - [ ] Issuer-specific token validation
+  - [ ] Issuer precedence and fallback mechanisms
+  - [ ] Cross-issuer token validation scenarios
+- [ ] **Backend Service Integration**: Test integration with actual backend services
+  - [ ] Service-to-service authentication flows
+  - [ ] Backend API endpoint validation
+  - [ ] Error propagation from backend to UI
+  - [ ] Performance testing with real backend load
+- [ ] **Business Logic Validation**: Test core JWT processor functionality
+  - [ ] Token extraction from various sources (headers, parameters, body)
+  - [ ] Custom claim validation and processing
+  - [ ] Token transformation and enrichment
+  - [ ] Integration with NiFi data flow patterns
+
+**Prerequisites for Implementation**:
+- ✅ Task 4 completed (UI testing and backend gap identification)
+- 🔄 Backend JWT validation services implemented
+- 🔄 Backend API endpoints available and functional
+- 🔄 Integration layer between UI and backend complete
+
+**Implementation Strategy**:
+- **Build on Task 4 Foundation**: Use UI testing patterns established in Task 4
+- **Backend Integration**: Extend existing tests to include actual backend validation
+- **Error Scenario Testing**: Test full error handling chain from backend to UI
+- **Performance Validation**: Ensure end-to-end performance meets requirements
+
+**Success Criteria**:
+- ✅ All JWT validation scenarios working end-to-end
+- ✅ Multi-issuer configuration fully functional
+- ✅ Backend integration stable and reliable
+- ✅ Performance benchmarks met for production use
+
+**Priority**: Future - Implementation blocked until backend completion
+
+**Completion Steps (Future)**:
+- [ ] Verify backend services are implemented and accessible
+- [ ] Extend Task 4 UI tests to include backend validation
+- [ ] Implement end-to-end JWT validation test scenarios
+- [ ] Add performance and load testing for backend integration
+- [ ] Run full Maven build: `./mvnw clean install` - Verify full integration
+- [ ] Run integration tests: `./mvnw test -Plocal-integration-tests -Dintegration.test.local=true` - Test complete functionality
+- [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
+- [ ] Git commit with descriptive message
+
+### 6. Address Current Failure Patterns
 **Goal**: Fix the most common test failure patterns identified from current testing
 - [ ] Fix navigation timeouts - Angular routing detection issues (affects 33% success rate)
 - [ ] Improve element discovery for dynamic UI elements
@@ -555,7 +632,7 @@ With Tasks 1-3 completed and optimized, Task 4 can leverage:
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 6. Remove NiFi Testing, Focus on Custom Logic
+### 7. Remove NiFi Testing, Focus on Custom Logic
 - [ ] Audit existing tests - identify what's testing NiFi vs our code
 - [ ] Simplify test scenarios - remove complex NiFi interaction testing
 - [ ] Focus on processor functionality - test our JWT validation, not NiFi's processor framework
@@ -569,7 +646,7 @@ With Tasks 1-3 completed and optimized, Task 4 can leverage:
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 7. Robust Test Patterns
+### 8. Robust Test Patterns
 - [ ] Create stable test setup pattern (Login → Navigate → Verify processor → Test our logic)
 - [ ] Add test isolation (each test gets clean processor state)
 - [ ] Implement graceful degradation (tests continue if minor UI elements change)
@@ -584,7 +661,7 @@ With Tasks 1-3 completed and optimized, Task 4 can leverage:
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 8. Test Performance Improvements
+### 9. Test Performance Improvements
 **Goal**: Optimize test execution time and resource usage
 - [ ] Reduce login overhead (currently 7-8 seconds per session)
 - [ ] Optimize test suite execution (currently ~45 seconds total)
@@ -604,7 +681,7 @@ With Tasks 1-3 completed and optimized, Task 4 can leverage:
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 9. Docker Script Consolidation
+### 10. Docker Script Consolidation
 - [ ] Standardize remaining infrastructure scripts
 - [ ] Create consistent script naming convention
 - [ ] Improve script documentation
@@ -624,7 +701,7 @@ With Tasks 1-3 completed and optimized, Task 4 can leverage:
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 10. Infrastructure Documentation Cleanup
+### 11. Infrastructure Documentation Cleanup
 - [ ] Audit infrastructure references in all documentation
 - [ ] Update setup guides to use simplified docker-compose approach
 - [ ] Remove references to deleted scripts from README files
@@ -644,7 +721,7 @@ With Tasks 1-3 completed and optimized, Task 4 can leverage:
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 11. Rewrite GitHub Actions E2E Workflow
+### 12. Rewrite GitHub Actions E2E Workflow
 **File**: `.github/workflows/e2e-tests.yml`
 **Goal**: Completely rewrite workflow to use Maven profile-based structure with improved triggers
 - [ ] Replace current workflow with Maven profile execution (`local-integration-tests`)
@@ -664,7 +741,7 @@ With Tasks 1-3 completed and optimized, Task 4 can leverage:
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 12. Advanced Workflow Testing
+### 13. Advanced Workflow Testing
 - [ ] Multi-processor pipeline creation
 - [ ] Processor configuration testing
 - [ ] Data flow validation
@@ -676,7 +753,7 @@ With Tasks 1-3 completed and optimized, Task 4 can leverage:
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 13. Performance Benchmarking
+### 14. Performance Benchmarking
 - [ ] Establish baseline performance metrics
 - [ ] Create performance regression tests
 - [ ] Monitor test execution times
@@ -688,7 +765,7 @@ With Tasks 1-3 completed and optimized, Task 4 can leverage:
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 14. Test Data Management
+### 15. Test Data Management
 - [ ] Implement test data setup/teardown
 - [ ] Create reusable test fixtures
 - [ ] Add data validation utilities
@@ -700,7 +777,7 @@ With Tasks 1-3 completed and optimized, Task 4 can leverage:
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 15. Troubleshooting Documentation
+### 16. Troubleshooting Documentation
 - [ ] Create common failure pattern guide
 - [ ] Document debugging procedures
 - [ ] Add environment setup troubleshooting
@@ -720,7 +797,7 @@ With Tasks 1-3 completed and optimized, Task 4 can leverage:
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 16. Recipe Documentation
+### 17. Recipe Documentation
 - [ ] Create "how-to" guides for common test patterns
 - [ ] Document custom command usage
 - [ ] Add integration examples
@@ -739,7 +816,7 @@ With Tasks 1-3 completed and optimized, Task 4 can leverage:
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 17. Advanced Integration Testing
+### 18. Advanced Integration Testing
 - [ ] End-to-end workflow automation
 - [ ] Performance load testing
 - [ ] Security testing integration
@@ -751,7 +828,7 @@ With Tasks 1-3 completed and optimized, Task 4 can leverage:
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 18. CI/CD Integration Enhancement
+### 19. CI/CD Integration Enhancement
 - [ ] Parallel test execution
 - [ ] Test result reporting and analytics
 - [ ] Automated test maintenance
@@ -763,7 +840,7 @@ With Tasks 1-3 completed and optimized, Task 4 can leverage:
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 19. JavaScript Standards Compliance (Status: 📋 Required - CUI Standards Implementation)
+### 20. JavaScript Standards Compliance (Status: 📋 Required - CUI Standards Implementation)
 **Goal**: Implement and conform to CUI JavaScript coding standards across all JavaScript files
 - [ ] **ESLint Configuration Enhancement**: Update `.eslintrc.js` with CUI-specific rules
   - [ ] Add CUI custom rules for naming conventions
@@ -817,7 +894,7 @@ With Tasks 1-3 completed and optimized, Task 4 can leverage:
 - [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
 - [ ] Git commit with descriptive message
 
-### 20. CSS Standards Compliance (Status: 📋 Required - CUI Standards Implementation)
+### 21. CSS Standards Compliance (Status: 📋 Required - CUI Standards Implementation)
 **Goal**: Implement and conform to CUI CSS coding standards across all stylesheets
 - [ ] **CSS Architecture Standards**: Implement CUI CSS organizational patterns
   - [ ] Adopt BEM (Block Element Modifier) methodology
