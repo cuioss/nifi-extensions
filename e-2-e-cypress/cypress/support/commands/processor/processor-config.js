@@ -120,7 +120,7 @@ export function openProcessorConfigDialog(processorId) {
       const $element = $body.find(selector);
       if ($element.length > 0) {
         // Try double-click first
-        cy.wrap(_$element).dblclick({ force: true });
+        cy.wrap($element).dblclick({ force: true });
 
         // Wait for dialog to appear
         return waitForDialog();

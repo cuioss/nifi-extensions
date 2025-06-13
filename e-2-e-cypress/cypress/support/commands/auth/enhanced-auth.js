@@ -231,18 +231,16 @@ Cypress.Commands.add('enhancedAuthentication', (options = {}) => {
     cy.log('🔍 [Task3] Starting enhanced authentication...');
 
     // Step 1: Optional environment verification
-    let setupChain = cy.wrap(null);
-
     if (opts.verifyEnvironment) {
-      setupChain = setupChain.then(() => verifyTestEnvironment());
+      cy.then(() => verifyTestEnvironment());
     }
 
     if (opts.isolateTests) {
-      setupChain = setupChain.then(() => ensureTestIsolation());
+      cy.then(() => ensureTestIsolation());
     }
 
     // Step 2: Check current authentication state
-    return setupChain
+    return cy
       .then(() => cy.robustLoginStateCheck({ thorough: true }))
       .then((isLoggedIn) => {
         if (isLoggedIn) {

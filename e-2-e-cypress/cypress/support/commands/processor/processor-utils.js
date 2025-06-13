@@ -1,7 +1,22 @@
 /**
  * Processor Management Utilities
- * CUI Standards Compliant - Core processor operations
+ * CUI Standards Compliant - Core processor utilities
  */
+
+/**
+ * Extract processor ID from element
+ * @param {JQuery} $element - Processor element
+ * @returns {string} Extracted processor ID
+ */
+export function extractProcessorId($element) {
+  return (
+    $element.attr('id') ||
+    $element.attr('data-testid') ||
+    $element.attr('data-processor-id') ||
+    $element.attr('data-id') ||
+    `functional-processor-${Date.now()}`
+  );
+}
 
 import { SELECTORS, TIMEOUTS } from '../../constants.js';
 import { waitForVisible, waitForDialog } from '../../wait-utils.js';
@@ -77,28 +92,11 @@ export function findElementWithSelectors($body, selectors) {
 }
 
 /**
- * Extract processor ID from element attributes
- * @param {JQuery} $element - Processor element
- * @param _$element
- * @returns {string} Extracted processor ID
- */
-export function extractProcessorId(_$element) {
-  return (
-    $element.attr('id') ||
-    $element.attr('data-testid') ||
-    $element.attr('data-processor-id') ||
-    $element.attr('data-id') ||
-    `functional-processor-${Date.now()}`
-  );
-}
-
-/**
  * Get processor state from element
  * @param {JQuery} $element - Processor element
- * @param _$element
  * @returns {string} Processor state (RUNNING, STOPPED, etc.)
  */
-export function getProcessorState(_$element) {
+export function getProcessorState($element) {
   if (!$element || $element.length === 0) {
     return 'UNKNOWN';
   }
@@ -130,9 +128,9 @@ export function verifyProcessorState(processorId, expectedState) {
     for (const selector of selectors) {
       const $element = $body.find(selector);
       if ($element.length > 0) {
-        const actualState = getProcessorState(_$element);
+        const actualState = getProcessorState($element);
         expect(actualState).to.equal(expectedState);
-        return cy.wrap(_$element);
+        return cy.wrap($element);
       }
     }
     throw new Error(`Processor ${processorId} not found for state verification`);

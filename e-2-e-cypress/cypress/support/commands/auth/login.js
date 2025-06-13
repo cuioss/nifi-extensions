@@ -109,17 +109,15 @@ Cypress.Commands.add('ensureAuthenticatedAndReady', (options = {}) => {
       cy.log('🔍 [Task3] Ensuring authenticated and ready for testing...');
 
       // Step 0: Environment verification (Task 3 enhancement)
-      let setupPromise = cy.wrap(null);
-
       if (opts.verifyEnvironment) {
-        setupPromise = setupPromise.then(() => verifyTestEnvironment());
+        cy.then(() => verifyTestEnvironment());
       }
 
       if (opts.isolateTests) {
-        setupPromise = setupPromise.then(() => ensureTestIsolation());
+        cy.then(() => ensureTestIsolation());
       }
 
-      return setupPromise
+      return cy
         .then(() => {
           // Step 1: Enhanced state detection with retry mechanism
           return retryWithBackoff(() => cy.isLoggedIn({ thorough: true }), {

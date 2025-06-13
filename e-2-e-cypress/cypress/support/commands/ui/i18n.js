@@ -14,7 +14,7 @@ import { TEXT_CONSTANTS } from '../../constants.js';
  * @returns {string} Current language code (e.g., 'en', 'de')
  */
 Cypress.Commands.add('getCurrentLanguage', () => {
-  return cy.window().then((_win) => {
+  return cy.window().then((win) => {
     // Check multiple possible sources for current language
     const lang =
       win.localStorage.getItem('nifi-language') ||
@@ -29,22 +29,22 @@ Cypress.Commands.add('getCurrentLanguage', () => {
  * Switch the application language
  * @param {string} languageCode - Target language code ('en', 'de')
  */
-Cypress.Commands.add('switchLanguage', (_languageCode) => {
-  cy.window().then((_win) => {
+Cypress.Commands.add('switchLanguage', (languageCode) => {
+  cy.window().then((win) => {
     // Store language preference
     win.localStorage.setItem('nifi-language', languageCode);
 
     // Trigger language change event if the application supports it
     if (win.NiFi && win.NiFi.Common && win.NiFi.Common.setLanguage) {
-      win.NiFi.Common.setLanguage(_languageCode);
+      win.NiFi.Common.setLanguage(languageCode);
     }
 
     // Alternative: Look for language switcher in UI
     cy.get('body').then(($body) => {
       if ($body.find('[data-testid="language-selector"]').length) {
-        cy.get('[data-testid="language-selector"]').select(_languageCode);
+        cy.get('[data-testid="language-selector"]').select(languageCode);
       } else if ($body.find('.language-switcher').length) {
-        cy.get('.language-switcher').select(_languageCode);
+        cy.get('.language-switcher').select(languageCode);
       }
     });
   });
@@ -57,7 +57,7 @@ Cypress.Commands.add('switchLanguage', (_languageCode) => {
  * Verify that the UI reflects the specified language
  * @param {string} languageCode - Expected language code
  */
-Cypress.Commands.add('verifyLanguageInUI', (_languageCode) => {
+Cypress.Commands.add('verifyLanguageInUI', (languageCode) => {
   // Check common UI elements that should be translated
   cy.get('body')
     .should('have.attr', 'lang', languageCode)
@@ -80,8 +80,8 @@ Cypress.Commands.add('verifyLanguageInUI', (_languageCode) => {
  * Verify that translation resources are loaded for the specified language
  * @param {string} languageCode - Language to verify resources for
  */
-Cypress.Commands.add('verifyTranslationResourcesLoaded', (_languageCode) => {
-  cy.window().then((_win) => {
+Cypress.Commands.add('verifyTranslationResourcesLoaded', (languageCode) => {
+  cy.window().then((win) => {
     // Check if translation resources are available
     const i18n = win.i18n || win.NiFi?.I18n || win.translations;
     expect(i18n).to.exist;
@@ -100,7 +100,7 @@ Cypress.Commands.add('verifyTranslationResourcesLoaded', (_languageCode) => {
  */
 Cypress.Commands.add('verifyTranslationFallback', (primaryLang, fallbackLang) => {
   cy.window().then((_win) => {
-    const i18n = win.i18n || win.NiFi?.I18n;
+    const i18n = _win.i18n || _win.NiFi?.I18n;
     if (i18n) {
       // Test a potentially missing key for the primary language
       const testKey = `test.missing.key.${primaryLang}`;
@@ -163,7 +163,7 @@ Cypress.Commands.add('verifyPropertyLabel', (expectedLabel, languageCode, fallba
  * @param {string} propertyName - Name/key of the property
  * @param {string} languageCode - Language code for verification
  */
-Cypress.Commands.add('verifyPropertyDescription', (propertyName, _languageCode) => {
+Cypress.Commands.add('verifyPropertyDescription', (propertyName, languageCode) => {
   // Find the property row and check its description
   cy.contains('.property-name, .property-label', propertyName)
     .closest('.property-row, .property-item')
@@ -178,7 +178,7 @@ Cypress.Commands.add('verifyPropertyDescription', (propertyName, _languageCode) 
  * Verify that validation errors are displayed in the correct language
  * @param {string} languageCode - Expected language
  */
-Cypress.Commands.add('verifyValidationErrorInLanguage', (_languageCode) => {
+Cypress.Commands.add('verifyValidationErrorInLanguage', (languageCode) => {
   // Look for validation error messages
   cy.get('.validation-error, .error-message, .nf-error').should('exist');
 
@@ -252,7 +252,7 @@ Cypress.Commands.add('verifyRuntimeErrorMessage', (processorId, languageCode) =>
  * Verify that dynamically loaded content is properly translated
  * @param {string} languageCode - Expected language
  */
-Cypress.Commands.add('verifyDynamicContentTranslation', (_languageCode) => {
+Cypress.Commands.add('verifyDynamicContentTranslation', (languageCode) => {
   // Check tabs in the configuration dialog
   cy.get('.tab, .tab-label').should('have.length.greaterThan', 0);
 
@@ -269,7 +269,7 @@ Cypress.Commands.add('verifyDynamicContentTranslation', (_languageCode) => {
  * Verify context menu items in the specified language
  * @param {string} languageCode - Expected language
  */
-Cypress.Commands.add('verifyContextMenuInLanguage', (_languageCode) => {
+Cypress.Commands.add('verifyContextMenuInLanguage', (languageCode) => {
   // Verify context menu is visible and has items
   cy.get('.context-menu, .popup-menu').should('be.visible');
 
@@ -357,7 +357,7 @@ Cypress.Commands.add('verifyPluralizedMessage', (languageCode, messageType, coun
  * Verify date and number formatting according to locale
  * @param {string} languageCode - Language/locale code
  */
-Cypress.Commands.add('verifyDateFormatting', (_languageCode) => {
+Cypress.Commands.add('verifyDateFormatting', (languageCode) => {
   // Look for date/time displays in the UI
   cy.get('.timestamp, .date, .time').should('exist');
 
@@ -372,7 +372,7 @@ Cypress.Commands.add('verifyDateFormatting', (_languageCode) => {
  * Verify number formatting according to locale
  * @param {string} languageCode - Language/locale code
  */
-Cypress.Commands.add('verifyNumberFormatting', (_languageCode) => {
+Cypress.Commands.add('verifyNumberFormatting', (languageCode) => {
   // Look for numeric displays (metrics, counts, etc.)
   cy.get('.number, .count, .metric-value').should('exist');
 

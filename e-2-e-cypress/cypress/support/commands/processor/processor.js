@@ -431,7 +431,7 @@ Cypress.Commands.add('waitForProcessorState', (processorId, expectedState, timeo
    * @example
    */
   const checkState = () => {
-    return cy.getProcessorElement(processorId).then((_$element) => {
+    return cy.getProcessorElement(processorId).then(($element) => {
       // Look for state indicators in the processor element
       const stateIndicators = $element.find('.processor-state, .state-indicator, [class*="state"]');
 
@@ -471,7 +471,7 @@ Cypress.Commands.add('isProcessorConfigured', (processorId, expectedConfig = {})
   const safeId = safeString(processorId);
   cy.log(`Checking configuration for processor: ${safeId}`);
 
-  return cy.getProcessorElement(processorId).then((_$element) => {
+  return cy.getProcessorElement(processorId).then(($element) => {
     // Check processor name if expected
     if (expectedConfig.name && !cy.checkProcessorName($element, expectedConfig.name)) {
       return cy.wrap(false);
@@ -488,7 +488,7 @@ Cypress.Commands.add('isProcessorConfigured', (processorId, expectedConfig = {})
     }
 
     // Check basic setup requirements
-    return cy.detectProcessorSetupFromElement(_$element).then((hasRequiredSetup) => {
+    return cy.detectProcessorSetupFromElement($element).then((hasRequiredSetup) => {
       cy.log(`Processor has required setup: ${hasRequiredSetup}`);
       return cy.wrap(hasRequiredSetup);
     });
@@ -517,7 +517,7 @@ Cypress.Commands.add('checkProcessorName', ($element, expectedName) => {
  * @returns {boolean} - True if state matches
  */
 Cypress.Commands.add('checkProcessorState', ($element, expectedState) => {
-  return cy.getProcessorStateFromElement(_$element).then((currentState) => {
+  return cy.getProcessorStateFromElement($element).then((currentState) => {
     if (currentState !== expectedState) {
       cy.log(`Processor state mismatch. Expected: ${expectedState}, Found: ${currentState}`);
       return false;
@@ -710,7 +710,7 @@ Cypress.Commands.add('getProcessorStateFromElement', (_$element) => {
  * @param {JQuery} $element - Processor element
  * @returns {string} - State or 'UNKNOWN'
  */
-Cypress.Commands.add('getStateFromText', (_$element) => {
+Cypress.Commands.add('getStateFromText', ($element) => {
   const stateElements = $element.find('.processor-state, .state-indicator, [class*="state"]');
 
   if (stateElements.length > 0) {
@@ -730,7 +730,7 @@ Cypress.Commands.add('getStateFromText', (_$element) => {
  * @param {JQuery} $element - Processor element
  * @returns {string} - State or 'UNKNOWN'
  */
-Cypress.Commands.add('getStateFromClasses', (_$element) => {
+Cypress.Commands.add('getStateFromClasses', ($element) => {
   const classes = $element.attr('class') || '';
 
   if (classes.includes('running')) return 'RUNNING';
@@ -746,7 +746,7 @@ Cypress.Commands.add('getStateFromClasses', (_$element) => {
  * @param {JQuery} $element - Processor element
  * @returns {string} - State or 'UNKNOWN'
  */
-Cypress.Commands.add('getStateFromVisualIndicators', (_$element) => {
+Cypress.Commands.add('getStateFromVisualIndicators', ($element) => {
   if ($element.find('.running-indicator, .green-indicator').length > 0) return 'RUNNING';
   if ($element.find('.stopped-indicator, .red-indicator').length > 0) return 'STOPPED';
   if ($element.find('.invalid-indicator, .yellow-indicator').length > 0) return 'INVALID';
@@ -760,7 +760,7 @@ Cypress.Commands.add('getStateFromVisualIndicators', (_$element) => {
  * @param {JQuery} $element - The processor DOM element
  * @returns {boolean} - True if processor has required setup
  */
-Cypress.Commands.add('detectProcessorSetupFromElement', (_$element) => {
+Cypress.Commands.add('detectProcessorSetupFromElement', ($element) => {
   // Check if processor has basic configuration
   const hasValidState = $element.find('.invalid-indicator, [class*="invalid"]').length === 0;
   const hasNoErrors = $element.find('.error-indicator, [class*="error"]').length === 0;
@@ -934,7 +934,7 @@ Cypress.Commands.add('getFunctionalProcessorFallback', (processorId, $body) => {
       const index = parseInt(idMatch[0]);
       if (allProcessors.length > index) {
         cy.log(`Found processor by index-based approach: ${index}`);
-        return cy.get('g.processor, [class*="processor"], .component').eq(_index);
+        return cy.get('g.processor, [class*="processor"], .component').eq(index);
       }
     }
 
@@ -1373,10 +1373,10 @@ Cypress.Commands.add('testCustomProcessorCatalogVisibility', () => {
 Cypress.Commands.add('testProcessorConfigurationDialog', (processorId) => {
   cy.log(`[Task 4] Testing configuration dialog for processor: ${safeString(processorId)}`);
 
-  cy.getProcessorElement(processorId).then((_$element) => {
+  cy.getProcessorElement(processorId).then(($element) => {
     if ($element && $element.length > 0) {
       // Double-click to open configuration dialog
-      cy.wrap(_$element).dblclick({ force: true });
+      cy.wrap($element).dblclick({ force: true });
       // Loading wait removed - using proper element readiness checks;
 
       cy.get('body').then(($body) => {
@@ -1529,10 +1529,10 @@ Cypress.Commands.add('testPropertyInputFields', (processorId) => {
 Cypress.Commands.add('testProcessorStateUI', (processorId) => {
   cy.log(`[Task 4] Testing processor state UI for: ${safeString(processorId)}`);
 
-  cy.getProcessorElement(processorId).then((_$element) => {
+  cy.getProcessorElement(processorId).then(($element) => {
     if ($element && $element.length > 0) {
       // Test state visual indicators using Task 2 state detection
-      return cy.getProcessorStateFromElement(_$element).then((state) => {
+      return cy.getProcessorStateFromElement($element).then((state) => {
         cy.log(`Processor state detected: ${state}`);
 
         // Test state-specific UI elements
@@ -1564,10 +1564,10 @@ Cypress.Commands.add('testProcessorCanvasDisplay', (processorId, processorType) 
     `[Task 4] Testing canvas display for ${safeString(processorType)}: ${safeString(processorId)}`
   );
 
-  cy.getProcessorElement(processorId).then((_$element) => {
+  cy.getProcessorElement(processorId).then(($element) => {
     if ($element && $element.length > 0) {
       // Test processor visibility
-      cy.wrap(_$element).should('be.visible');
+      cy.wrap($element).should('be.visible');
       cy.log('✅ Processor visible on canvas');
 
       // Test processor name display
@@ -1967,14 +1967,14 @@ Cypress.Commands.add('testProcessorControlsUI', (processorId) => {
 Cypress.Commands.add('testConfigurationStateUI', (processorId) => {
   cy.log(`[Task 4] Testing configuration state UI for: ${safeString(processorId)}`);
 
-  cy.getProcessorElement(processorId).then((_$element) => {
+  cy.getProcessorElement(processorId).then(($element) => {
     const stateElements = $element.find('.state, .status, .config-state');
     if (stateElements.length > 0) {
       cy.log('✅ Configuration state UI elements found');
     }
 
     // Test using Task 2 setup detection
-    return cy.detectProcessorSetupFromElement(_$element).then((hasSetup) => {
+    return cy.detectProcessorSetupFromElement($element).then((hasSetup) => {
       cy.log(`Configuration setup detected: ${hasSetup}`);
     });
   });
