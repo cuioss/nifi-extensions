@@ -58,8 +58,13 @@ export const TEXT_CONSTANTS = {
   SUCCESS: 'Success',
   ERROR: 'Error',
 
-  // Common processor property names
+  // Common property names for JWT processors
   JWKS_TYPE: 'JWKS Type',
+  JWKS_SOURCE_TYPE: 'JWKS Source Type',
+  TOKEN_AUDIENCE: 'Token Audience',
+  DEFAULT_ISSUER: 'Default Issuer',
+  JWKS_SERVER_URL: 'JWKS Server URL',
+  CONNECTION_TIMEOUT: 'Connection Timeout',
 
   // Accessibility labels
   CLOSE_DIALOG: 'Close dialog',

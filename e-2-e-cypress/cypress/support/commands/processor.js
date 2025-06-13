@@ -12,6 +12,22 @@ import {
   waitForProcessors,
   waitForMinElementCount,
 } from '../wait-utils.js';
+import {
+  safeString,
+  buildProcessorSelectors,
+  buildTypeSelectors,
+  extractProcessorId,
+  getProcessorState,
+  verifyProcessorState,
+} from './processor-utils.js';
+import {
+  navigateToPropertiesTab,
+  extractPropertyValues,
+  setProcessorProperty,
+  validatePropertiesMatch,
+  closeConfigurationDialog,
+  openProcessorConfigDialog,
+} from './processor-config.js';
 
 // === UTILITY FUNCTIONS ===
 // Helper functions to reduce complexity and improve maintainability

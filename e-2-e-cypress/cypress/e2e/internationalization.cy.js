@@ -13,6 +13,13 @@
  * 6. Parameter Substitution
  */
 
+/**
+ * Internationalization Testing Scenarios
+ * CUI Standards Compliant
+ */
+
+import { TEXT_CONSTANTS } from '../constants.js';
+
 describe('Internationalization (i18n) Tests', () => {
   let processorId;
 
@@ -140,11 +147,11 @@ describe('Internationalization (i18n) Tests', () => {
       // Animation wait removed - using proper element visibility;
 
       // Verify English labels for key properties
-      cy.verifyPropertyLabel('JWKS Source Type', 'en');
-      cy.verifyPropertyLabel('Token Audience', 'en');
-      cy.verifyPropertyLabel('Default Issuer', 'en');
-      cy.verifyPropertyLabel('JWKS Server URL', 'en');
-      cy.verifyPropertyLabel('Connection Timeout', 'en');
+      cy.verifyPropertyLabel(TEXT_CONSTANTS.JWKS_SOURCE_TYPE, TEXT_CONSTANTS.ENGLISH);
+      cy.verifyPropertyLabel(TEXT_CONSTANTS.TOKEN_AUDIENCE, TEXT_CONSTANTS.ENGLISH);
+      cy.verifyPropertyLabel(TEXT_CONSTANTS.DEFAULT_ISSUER, TEXT_CONSTANTS.ENGLISH);
+      cy.verifyPropertyLabel(TEXT_CONSTANTS.JWKS_SERVER_URL, TEXT_CONSTANTS.ENGLISH);
+      cy.verifyPropertyLabel(TEXT_CONSTANTS.CONNECTION_TIMEOUT, TEXT_CONSTANTS.ENGLISH);
 
       cy.closeDialog();
     });
