@@ -52,10 +52,10 @@ module.exports = {
       }
     ],
     
-    // CUI Standards - Code Complexity Rules
-    "complexity": ["error", 10],
-    "max-depth": ["error", 3],
-    "max-lines-per-function": ["error", 50],
+    // CUI Standards - Code Complexity Rules (Cypress-adapted)
+    "complexity": ["warn", 20], // Increased for Cypress test complexity
+    "max-depth": ["warn", 5],   // Increased for Cypress nested describes/its
+    "max-lines-per-function": ["warn", 200], // Cypress test functions can be large
     "max-params": ["error", 5],
     
     // CUI Standards - Naming Conventions
@@ -75,15 +75,48 @@ module.exports = {
     "security/detect-object-injection": "warn",
     "security/detect-non-literal-regexp": "warn",
     
-    // CUI Standards - Code Quality from SonarJS
-    "sonarjs/cognitive-complexity": ["error", 10],
+    // CUI Standards - Code Quality from SonarJS (Cypress-adapted)
+    "sonarjs/cognitive-complexity": ["warn", 25], // Increased for Cypress test complexity
     "sonarjs/no-duplicate-string": "warn",
-    "sonarjs/no-identical-functions": "error",
+    "sonarjs/no-identical-functions": "warn", // Changed to warn for similar test patterns
     
     // CUI Standards - Additional Quality Rules
     "unicorn/filename-case": ["error", { "case": "kebabCase" }],
     "unicorn/no-null": "off", // Allow null for Cypress compatibility
     "prefer-const": "error",
     "no-var": "error"
-  }
+  },
+  
+  // Cypress-specific overrides for test files
+  overrides: [
+    {
+      files: ["cypress/e2e/**/*.cy.js", "cypress/integration/**/*.cy.js"],
+      rules: {
+        // Relax rules for Cypress test files
+        "max-lines-per-function": "off", // Cypress tests can have very large functions
+        "complexity": "off",             // Cypress tests can be complex
+        "sonarjs/cognitive-complexity": "off", // Cypress tests naturally complex
+        "jsdoc/require-jsdoc": "off",    // Don't require JSDoc for test functions
+        "jsdoc/require-description": "off",
+        "jsdoc/require-param-description": "off",
+        "jsdoc/require-returns-description": "off",
+        "jsdoc/require-example": "off",
+        "no-unused-vars": "warn"         // Keep as warning for cleanup
+      }
+    },
+    {
+      files: ["cypress/support/**/*.js"],
+      rules: {
+        // Relaxed rules for support files (custom commands, etc.)
+        "max-lines-per-function": ["warn", 100], // Support functions can be larger
+        "complexity": ["warn", 15],
+        "sonarjs/cognitive-complexity": ["warn", 15],
+        "jsdoc/require-jsdoc": "off",    // Don't require JSDoc for Cypress commands
+        "jsdoc/require-description": "off",
+        "jsdoc/require-param-description": "off",
+        "jsdoc/require-returns-description": "off",
+        "jsdoc/require-example": "off"
+      }
+    }
+  ]
 };
