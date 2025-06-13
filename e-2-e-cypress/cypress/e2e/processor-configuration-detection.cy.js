@@ -33,11 +33,13 @@ describe('Processor Configuration Detection', () => {
   it('should extract processor information correctly', () => {
     cy.addProcessor('GenerateFlowFile').then((processorId) => {
       if (processorId) {
-        cy.getProcessorElement(processorId).should('exist').then(($element) => {
-          // Verify we can find the processor element
-          expect($element).to.exist;
-          cy.log('Successfully found processor element');
-        });
+        cy.getProcessorElement(processorId)
+          .should('exist')
+          .then(($element) => {
+            // Verify we can find the processor element
+            expect($element).to.exist;
+            cy.log('Successfully found processor element');
+          });
       }
     });
   });
@@ -61,7 +63,7 @@ describe('Processor Configuration Detection', () => {
       if (processorId) {
         // Test improved discovery mechanism
         cy.findProcessorElement(processorId).should('exist');
-        
+
         cy.log(`Successfully found processor with ID: ${processorId}`);
       }
     });
@@ -74,7 +76,7 @@ describe('Processor Configuration Detection', () => {
         // Verify all processors exist and can be found
         cy.getProcessorByReference(ref1).should('exist');
         cy.getProcessorByReference(ref2).should('exist');
-        
+
         // Check configuration status
         cy.isProcessorConfigured(ref1.id).then((isConfigured) => {
           expect(isConfigured).to.be.a('boolean');
@@ -88,7 +90,7 @@ describe('Processor Configuration Detection', () => {
       if (processorId) {
         cy.getProcessorElement(processorId).then(($element) => {
           const state = cy.getProcessorStateFromElement($element);
-          
+
           // Should return a valid state
           expect(['RUNNING', 'STOPPED', 'INVALID', 'DISABLED', 'UNKNOWN']).to.include(state);
           cy.log(`Processor state: ${state}`);
@@ -102,7 +104,7 @@ describe('Processor Configuration Detection', () => {
       if (processorId) {
         cy.getProcessorElement(processorId).then(($element) => {
           const hasSetup = cy.detectProcessorSetupFromElement($element);
-          
+
           // Should return a boolean
           expect(hasSetup).to.be.a('boolean');
           cy.log(`Processor has setup: ${hasSetup}`);

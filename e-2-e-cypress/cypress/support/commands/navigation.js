@@ -117,13 +117,23 @@ Cypress.Commands.add('verifyProcessorConfigDialogOpen', () => {
 
   // Check for configuration dialog indicators
   cy.get('body').should(($body) => {
-    const hasConfigDialog = $body.find('[role="dialog"], .mat-dialog-container, .configuration-dialog, .processor-config-dialog').length > 0;
-    const hasConfigContent = $body.find('*:contains("Properties"), *:contains("Settings"), *:contains("Configuration")').length > 0;
-    const hasConfigTabs = $body.find('*:contains("Properties"), *:contains("Scheduling"), *:contains("Comments")').length > 0;
-    const hasConfigButtons = $body.find('button:contains("Apply"), button:contains("OK"), button:contains("Cancel")').length > 0;
+    const hasConfigDialog =
+      $body.find(
+        '[role="dialog"], .mat-dialog-container, .configuration-dialog, .processor-config-dialog'
+      ).length > 0;
+    const hasConfigContent =
+      $body.find('*:contains("Properties"), *:contains("Settings"), *:contains("Configuration")')
+        .length > 0;
+    const hasConfigTabs =
+      $body.find('*:contains("Properties"), *:contains("Scheduling"), *:contains("Comments")')
+        .length > 0;
+    const hasConfigButtons =
+      $body.find('button:contains("Apply"), button:contains("OK"), button:contains("Cancel")')
+        .length > 0;
 
     // At least one indicator of configuration dialog being open
-    const isConfigDialogOpen = hasConfigDialog || hasConfigContent || hasConfigTabs || hasConfigButtons;
+    const isConfigDialogOpen =
+      hasConfigDialog || hasConfigContent || hasConfigTabs || hasConfigButtons;
 
     expect(isConfigDialogOpen).to.be.true;
   });

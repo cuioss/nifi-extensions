@@ -8,11 +8,11 @@ describe('Updated Commands Integration Test', () => {
     // Test login
     cy.nifiLogin();
     cy.verifyLoggedIn();
-    
+
     // Test navigation
     cy.navigateToCanvas();
     cy.verifyCanvasAccessible();
-    
+
     // Verify UI is loaded
     cy.get('nifi').should('be.visible');
     cy.get('body').should(($body) => {
@@ -24,23 +24,23 @@ describe('Updated Commands Integration Test', () => {
   it('should test processor commands', () => {
     cy.nifiLogin();
     cy.navigateToCanvas();
-    
+
     // Test processor addition
     cy.addProcessor('MultiIssuerJWTTokenAuthenticator', { x: 400, y: 300 }).then((processorId) => {
       if (processorId) {
         cy.log(`Processor added with ID: ${processorId}`);
-        
+
         // Test processor element retrieval
         cy.getProcessorElement(processorId).should('exist');
-        
+
         // Test processor configuration
         cy.configureProcessor(processorId, {
           name: 'Test JWT Processor',
           properties: {
-            'Issuer URLs': 'https://test.issuer.com'
-          }
+            'Issuer URLs': 'https://test.issuer.com',
+          },
         });
-        
+
         // Test processor removal
         cy.removeProcessor(processorId);
       } else {
@@ -52,10 +52,11 @@ describe('Updated Commands Integration Test', () => {
   it('should test controller services navigation', () => {
     cy.nifiLogin();
     cy.navigateToControllerServices();
-    
+
     // Verify we're in controller services area
     cy.get('body').should(($body) => {
-      const hasControllerContent = $body.find('*:contains("Controller"), *:contains("Services")').length > 0;
+      const hasControllerContent =
+        $body.find('*:contains("Controller"), *:contains("Services")').length > 0;
       expect(hasControllerContent).to.be.true;
     });
   });

@@ -7,25 +7,25 @@ describe('Enhanced Commands Verification', () => {
     // Login and navigate
     cy.nifiLogin();
     cy.navigateToCanvas();
-    
+
     // Test cleanup command
     cy.cleanupAllProcessors();
     cy.log('✅ Cleanup command executed');
-    
+
     // Test enhanced add processor
     cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
       cy.log(`Processor ID returned: ${processorId}`);
-      
+
       if (processorId) {
         cy.log('✅ Enhanced addProcessor working');
-        
+
         // Test enhanced getProcessorElement
         cy.getProcessorElement(processorId).then(($element) => {
           if ($element) {
             cy.log('✅ Enhanced getProcessorElement working');
           }
         });
-        
+
         // Test findProcessorByType
         cy.findProcessorByType('MultiIssuerJWTTokenAuthenticator').then(($element) => {
           if ($element) {

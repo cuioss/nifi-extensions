@@ -9,13 +9,13 @@
  */
 Cypress.Commands.add('nifiLogin', () => {
   cy.visit('/nifi');
-  
+
   // Wait for Angular app to load - this is the only requirement
   cy.get('nifi', { timeout: 30000 }).should('exist');
-  
+
   // Wait for app initialization
   cy.wait(2000);
-  
+
   // Verify main UI is ready
   cy.get('body').should('be.visible');
 });
@@ -57,5 +57,5 @@ module.exports = {
   // Export for testing
   isAnonymousMode: true,
   authRequired: false,
-  loginMethod: 'anonymous-access'
+  loginMethod: 'anonymous-access',
 };

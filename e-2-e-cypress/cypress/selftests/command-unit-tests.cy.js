@@ -50,10 +50,10 @@ describe('Core Command Integration Tests', () => {
 
       // Visit the application
       cy.visit('/');
-      
+
       // Wait for Angular to load
       cy.get('nifi', { timeout: 30000 }).should('exist');
-      
+
       // The login should complete without throwing errors
       cy.nifiLogin();
       cy.verifyLoggedIn();
@@ -66,31 +66,37 @@ describe('Core Command Integration Tests', () => {
 
       // Visit the application first
       cy.visit('/');
-      
+
       // Wait for the Angular app to load
       cy.get('nifi', { timeout: 30000 }).should('exist');
-      
+
       // Try to find login form elements - use flexible selectors
       cy.get('body').then(($body) => {
         // Look for username input fields
-        const usernameInputs = $body.find('input[type="text"], input[type="email"], input[placeholder*="user"], input[name*="user"]');
-        const passwordInputs = $body.find('input[type="password"], input[placeholder*="pass"], input[name*="pass"]');
-        
+        const usernameInputs = $body.find(
+          'input[type="text"], input[type="email"], input[placeholder*="user"], input[name*="user"]'
+        );
+        const passwordInputs = $body.find(
+          'input[type="password"], input[placeholder*="pass"], input[name*="pass"]'
+        );
+
         if (usernameInputs.length > 0 && passwordInputs.length > 0) {
           cy.wrap(usernameInputs.first()).clear().type('invalid');
           cy.wrap(passwordInputs.first()).clear().type('invalid');
-          
+
           // Look for login/submit button
-          const submitButtons = $body.find('button[type="submit"], input[type="submit"], button:contains("Login"), button:contains("Sign")');
+          const submitButtons = $body.find(
+            'button[type="submit"], input[type="submit"], button:contains("Login"), button:contains("Sign")'
+          );
           if (submitButtons.length > 0) {
             cy.wrap(submitButtons.first()).click();
-            
+
             // Should still be on login page or show error - verify we're NOT logged in
             cy.wait(2000);
             cy.get('body').then(($errorBody) => {
               const hasLoginForm = $errorBody.find('input[type="password"]').length > 0;
               const hasNifiMain = $errorBody.find('nifi').children().length > 0;
-              
+
               // Should either still have login form OR not have main NiFi content
               expect(hasLoginForm || !hasNifiMain).to.be.true;
             });
@@ -130,10 +136,12 @@ describe('Core Command Integration Tests', () => {
 
       // Verify main UI elements are present
       cy.get('nifi').should('be.visible');
-      
+
       // Look for canvas or main flow area - use flexible selectors
       cy.get('body').then(($body) => {
-        const canvasElements = $body.find('svg, canvas, [role="main"], .flow-canvas, .nifi-canvas, .canvas-container, #canvas');
+        const canvasElements = $body.find(
+          'svg, canvas, [role="main"], .flow-canvas, .nifi-canvas, .canvas-container, #canvas'
+        );
         if (canvasElements.length > 0) {
           cy.wrap(canvasElements.first()).should('be.visible');
         } else {
@@ -143,7 +151,7 @@ describe('Core Command Integration Tests', () => {
           });
         }
       });
-      
+
       cy.url().should('include', '/nifi');
     });
 
@@ -153,7 +161,8 @@ describe('Core Command Integration Tests', () => {
 
       // Verify we're in controller services area - use flexible verification
       cy.get('body').then(($body) => {
-        const hasControllerContent = $body.find('*:contains("Controller"), *:contains("Services")').length > 0;
+        const hasControllerContent =
+          $body.find('*:contains("Controller"), *:contains("Services")').length > 0;
         expect(hasControllerContent).to.be.true;
       });
     });
@@ -182,7 +191,9 @@ describe('Core Command Integration Tests', () => {
       // Clean up any processors we added during tests
       cy.get('body').then(($body) => {
         // Remove any processors that might have been added - use flexible selectors
-        const processorElements = $body.find('[class*="processor"], g.processor, [data-processor-type*="MultiIssuer"]');
+        const processorElements = $body.find(
+          '[class*="processor"], g.processor, [data-processor-type*="MultiIssuer"]'
+        );
         if (processorElements.length > 0) {
           processorElements.each((index, element) => {
             cy.wrap(element).rightclick({ force: true });
@@ -194,7 +205,9 @@ describe('Core Command Integration Tests', () => {
                 cy.wait(500);
                 // Confirm if dialog appears
                 cy.get('body').then(($confirmBody) => {
-                  const confirmButtons = $confirmBody.find('button:contains("Delete"), button:contains("Yes"), button:contains("Confirm")');
+                  const confirmButtons = $confirmBody.find(
+                    'button:contains("Delete"), button:contains("Yes"), button:contains("Confirm")'
+                  );
                   if (confirmButtons.length > 0) {
                     cy.wrap(confirmButtons.first()).click({ force: true });
                   }
@@ -217,7 +230,9 @@ describe('Core Command Integration Tests', () => {
 
             // Verify processor appears on canvas using flexible selectors
             cy.get('body').then(($body) => {
-              const processorElements = $body.find(`[data-testid="${processorId}"], g[id="${processorId}"], [id="${processorId}"], [data-processor-id="${processorId}"]`);
+              const processorElements = $body.find(
+                `[data-testid="${processorId}"], g[id="${processorId}"], [id="${processorId}"], [data-processor-id="${processorId}"]`
+              );
               if (processorElements.length > 0) {
                 cy.wrap(processorElements.first()).should('be.visible');
               } else {
@@ -236,17 +251,21 @@ describe('Core Command Integration Tests', () => {
     it('should verify processor is available in processor types', () => {
       // Try to open processor addition dialog
       cy.get('nifi').should('be.visible');
-      
+
       // Try double-clicking to open add processor dialog
       cy.get('nifi').dblclick(300, 300, { force: true });
       cy.wait(1000);
 
       // Wait for add processor dialog - use flexible selectors
       cy.get('body').then(($body) => {
-        const dialogs = $body.find('[role="dialog"], .mat-dialog-container, .add-processor-dialog, .new-processor-type, .dialog');
+        const dialogs = $body.find(
+          '[role="dialog"], .mat-dialog-container, .add-processor-dialog, .new-processor-type, .dialog'
+        );
         if (dialogs.length > 0) {
           // Search for our processor
-          const searchInputs = $body.find('input[type="text"], input[type="search"], input[placeholder*="filter"], input[placeholder*="search"]');
+          const searchInputs = $body.find(
+            'input[type="text"], input[type="search"], input[placeholder*="filter"], input[placeholder*="search"]'
+          );
           if (searchInputs.length > 0) {
             cy.wrap(searchInputs.first()).type('MultiIssuerJWTTokenAuthenticator');
             cy.wait(500);
@@ -257,7 +276,9 @@ describe('Core Command Integration Tests', () => {
 
           // Close dialog
           cy.get('body').then(($closeBody) => {
-            const closeButtons = $closeBody.find('button:contains("Cancel"), button:contains("Close"), .dialog-close, [aria-label*="close"]');
+            const closeButtons = $closeBody.find(
+              'button:contains("Cancel"), button:contains("Close"), .dialog-close, [aria-label*="close"]'
+            );
             if (closeButtons.length > 0) {
               cy.wrap(closeButtons.first()).click({ force: true });
             } else {

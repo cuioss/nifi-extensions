@@ -35,8 +35,8 @@ describe('Processor Configuration Detection', () => {
           name: 'Test JWT Authenticator',
           properties: {
             'Issuer URL': 'https://test.example.com',
-            'Audience': 'test-audience'
-          }
+            Audience: 'test-audience',
+          },
         };
 
         // Configure the processor
@@ -55,7 +55,7 @@ describe('Processor Configuration Detection', () => {
       if (processorId) {
         cy.getProcessorElement(processorId).then(($element) => {
           const processorInfo = cy.extractProcessorInfo($element);
-          
+
           // Verify extracted information
           expect(processorInfo).to.have.property('id');
           expect(processorInfo).to.have.property('name');
@@ -72,7 +72,7 @@ describe('Processor Configuration Detection', () => {
         // Configure processor with specific properties
         const testProperties = {
           'File Size': '1024B',
-          'Batch Size': '5'
+          'Batch Size': '5',
         };
 
         cy.configureProcessor(processorId, { properties: testProperties });
@@ -106,7 +106,7 @@ describe('Processor Configuration Detection', () => {
       if (processorId) {
         // Test improved discovery mechanism
         cy.findProcessorElement(processorId).should('exist');
-        
+
         // Test that it can find processors even with partial IDs
         const partialId = processorId.substring(0, 8);
         cy.findProcessorElement(partialId).should('exist');
@@ -119,7 +119,7 @@ describe('Processor Configuration Detection', () => {
       if (processorId) {
         cy.getProcessorElement(processorId).then(($element) => {
           const hasSetup = cy.detectProcessorSetup($element);
-          
+
           // Initially should have basic setup (no errors)
           expect(hasSetup).to.be.true;
         });
@@ -131,12 +131,12 @@ describe('Processor Configuration Detection', () => {
     const currentProperties = {
       'File Size': '1024B',
       'Batch Size': '10',
-      'Custom Text': 'Hello World'
+      'Custom Text': 'Hello World',
     };
 
     const expectedProperties = {
       'File Size': '1024B',
-      'Batch Size': '10'
+      'Batch Size': '10',
     };
 
     const result = cy.compareProcessorProperties(currentProperties, expectedProperties);
@@ -144,7 +144,7 @@ describe('Processor Configuration Detection', () => {
 
     // Test mismatch
     const mismatchedProperties = {
-      'File Size': '2048B'
+      'File Size': '2048B',
     };
 
     const mismatchResult = cy.compareProcessorProperties(currentProperties, mismatchedProperties);
@@ -153,17 +153,17 @@ describe('Processor Configuration Detection', () => {
 
   it('should handle multiple processor workflow', () => {
     const processors = [];
-    
+
     // Create multiple processors with references
     cy.createProcessorReference('GenerateFlowFile', { x: 200, y: 200 }).then((ref1) => {
       processors.push(ref1);
-      
+
       cy.createProcessorReference('UpdateAttribute', { x: 400, y: 200 }).then((ref2) => {
         processors.push(ref2);
-        
+
         cy.createProcessorReference('LogAttribute', { x: 600, y: 200 }).then((ref3) => {
           processors.push(ref3);
-          
+
           // Verify all processors exist and can be found
           processors.forEach((ref) => {
             cy.getProcessorByReference(ref).should('exist');
@@ -182,7 +182,7 @@ describe('Processor Configuration Detection', () => {
       if (processorId) {
         cy.getProcessorElement(processorId).then(($element) => {
           const state = cy.getProcessorState($element);
-          
+
           // Should return a valid state
           expect(['RUNNING', 'STOPPED', 'INVALID', 'DISABLED', 'UNKNOWN']).to.include(state);
         });

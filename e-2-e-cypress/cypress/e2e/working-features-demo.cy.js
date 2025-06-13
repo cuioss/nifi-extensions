@@ -9,7 +9,7 @@ describe('NiFi Integration Test - Working Features Demo', () => {
     cy.log('Testing login functionality...');
     cy.nifiLogin();
     cy.verifyLoggedIn();
-    
+
     // Verify we're in the Angular NiFi application
     cy.get('nifi').should('exist');
     cy.get('body').should(($body) => {
@@ -29,19 +29,20 @@ describe('NiFi Integration Test - Working Features Demo', () => {
     cy.addProcessor('MultiIssuerJWTTokenAuthenticator', { x: 350, y: 250 }).then((processorId) => {
       if (processorId) {
         cy.log(`✅ Processor added successfully with ID: ${processorId}`);
-        
+
         // Test processor element retrieval
         cy.getProcessorElement(processorId).should('exist');
         cy.log('✅ Processor element retrieval working');
-        
+
         // Test processor configuration (basic)
         cy.configureProcessor(processorId, {
-          name: 'Demo JWT Processor'
+          name: 'Demo JWT Processor',
         });
         cy.log('✅ Processor configuration working');
-        
       } else {
-        cy.log('⚠️ Processor addition returned null - UI interaction successful but ID extraction needs improvement');
+        cy.log(
+          '⚠️ Processor addition returned null - UI interaction successful but ID extraction needs improvement'
+        );
       }
     });
 
@@ -58,18 +59,18 @@ describe('NiFi Integration Test - Working Features Demo', () => {
 
   it('should demonstrate current limitations', () => {
     cy.nifiLogin();
-    
+
     cy.log('Testing known limitations...');
-    
+
     // ❌ Controller services navigation - NEEDS IMPROVEMENT
     cy.log('⚠️ Controller services navigation has timeout issues');
-    
-    // ❌ Multi-processor workflows - NEEDS IMPROVEMENT  
+
+    // ❌ Multi-processor workflows - NEEDS IMPROVEMENT
     cy.log('⚠️ Multi-processor workflows need processor ID tracking fixes');
-    
+
     // ❌ Complex navigation - NEEDS IMPROVEMENT
     cy.log('⚠️ Complex navigation between UI sections needs refinement');
-    
+
     cy.log('📋 See INTEGRATION_TEST_STATUS.md for detailed improvement plan');
   });
 });

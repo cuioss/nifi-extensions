@@ -33,29 +33,39 @@ describe('JWT Validation Integration Tests', () => {
 
     it('should validate JWT token format against processor configuration', () => {
       // Add a MultiIssuerJWTTokenAuthenticator processor
-      cy.addProcessor('MultiIssuerJWTTokenAuthenticator', { x: 400, y: 300 }).then((processorId) => {
-        // Double-click to configure processor
-        cy.get(`[data-testid="${processorId}"], g[id="${processorId}"]`).dblclick();
+      cy.addProcessor('MultiIssuerJWTTokenAuthenticator', { x: 400, y: 300 }).then(
+        (processorId) => {
+          // Double-click to configure processor
+          cy.get(`[data-testid="${processorId}"], g[id="${processorId}"]`).dblclick();
 
-        // Wait for configuration dialog
-        cy.get('.processor-configuration, .dialog-content', { timeout: 10000 }).should('be.visible');
+          // Wait for configuration dialog
+          cy.get('.processor-configuration, .dialog-content', { timeout: 10000 }).should(
+            'be.visible'
+          );
 
-        // Check if JWT validation properties are available
-        cy.get('body').then(($body) => {
-          const hasProperties = $body.find('input[name*="issuer"], input[name*="audience"], select[name*="algorithm"]').length > 0;
-          
-          if (hasProperties) {
-            // Verify JWT-related configuration options exist
-            cy.get('.property-editor').should('contain.text', 'issuer').or('contain.text', 'audience').or('contain.text', 'algorithm');
-            cy.log('JWT validation properties found in processor configuration');
-          } else {
-            cy.log('JWT validation properties not visible in current view');
-          }
-        });
+          // Check if JWT validation properties are available
+          cy.get('body').then(($body) => {
+            const hasProperties =
+              $body.find(
+                'input[name*="issuer"], input[name*="audience"], select[name*="algorithm"]'
+              ).length > 0;
 
-        // Close configuration dialog
-        cy.get('button:contains("Cancel"), .dialog-close').click();
-      });
+            if (hasProperties) {
+              // Verify JWT-related configuration options exist
+              cy.get('.property-editor')
+                .should('contain.text', 'issuer')
+                .or('contain.text', 'audience')
+                .or('contain.text', 'algorithm');
+              cy.log('JWT validation properties found in processor configuration');
+            } else {
+              cy.log('JWT validation properties not visible in current view');
+            }
+          });
+
+          // Close configuration dialog
+          cy.get('button:contains("Cancel"), .dialog-close').click();
+        }
+      );
     });
 
     it('should handle JWT token with valid structure', () => {
@@ -65,7 +75,7 @@ describe('JWT Validation Integration Tests', () => {
         aud: 'test-audience',
         exp: Math.floor(Date.now() / 1000) + 3600, // Expires in 1 hour
         iat: Math.floor(Date.now() / 1000),
-        sub: 'test-subject'
+        sub: 'test-subject',
       };
 
       // Verify the token structure meets JWT standards
@@ -93,11 +103,12 @@ describe('JWT Validation Integration Tests', () => {
 
       invalidTokens.forEach((invalidToken, index) => {
         // Verify each invalid token fails validation
-        const isValid = invalidToken.iss && 
-                       invalidToken.aud && 
-                       invalidToken.exp && 
-                       invalidToken.exp > Math.floor(Date.now() / 1000);
-        
+        const isValid =
+          invalidToken.iss &&
+          invalidToken.aud &&
+          invalidToken.exp &&
+          invalidToken.exp > Math.floor(Date.now() / 1000);
+
         expect(isValid).to.be.false;
         cy.log(`Invalid token ${index + 1} correctly identified as invalid`);
       });
@@ -112,34 +123,38 @@ describe('JWT Validation Integration Tests', () => {
 
     it('should validate JWKS endpoint configuration', () => {
       // Add processor and test JWKS configuration
-      cy.addProcessor('MultiIssuerJWTTokenAuthenticator', { x: 500, y: 300 }).then((processorId) => {
-        // Configure processor with JWKS URL
-        cy.get(`[data-testid="${processorId}"], g[id="${processorId}"]`).dblclick();
+      cy.addProcessor('MultiIssuerJWTTokenAuthenticator', { x: 500, y: 300 }).then(
+        (processorId) => {
+          // Configure processor with JWKS URL
+          cy.get(`[data-testid="${processorId}"], g[id="${processorId}"]`).dblclick();
 
-        // Wait for configuration dialog
-        cy.get('.processor-configuration, .dialog-content', { timeout: 10000 }).should('be.visible');
+          // Wait for configuration dialog
+          cy.get('.processor-configuration, .dialog-content', { timeout: 10000 }).should(
+            'be.visible'
+          );
 
-        // Test JWKS URL validation (mock validation since we don't have real JWKS)
-        const mockJwksUrl = 'https://example.com/.well-known/jwks.json';
-        
-        cy.get('body').then(($body) => {
-          // Look for JWKS-related configuration fields
-          const hasJwksField = $body.find('input[name*="jwks"], input[name*="key"]').length > 0;
-          
-          if (hasJwksField) {
-            cy.log('JWKS configuration field found');
-            // Validate URL format
-            expect(mockJwksUrl).to.match(/^https?:\/\/.+\/\.well-known\/jwks\.json$/);
-          } else {
-            cy.log('JWKS configuration not visible, testing URL format validation');
-            // Still test URL validation logic
-            expect(mockJwksUrl).to.include('.well-known/jwks.json');
-          }
-        });
+          // Test JWKS URL validation (mock validation since we don't have real JWKS)
+          const mockJwksUrl = 'https://example.com/.well-known/jwks.json';
 
-        // Close dialog
-        cy.get('button:contains("Cancel"), .dialog-close').click();
-      });
+          cy.get('body').then(($body) => {
+            // Look for JWKS-related configuration fields
+            const hasJwksField = $body.find('input[name*="jwks"], input[name*="key"]').length > 0;
+
+            if (hasJwksField) {
+              cy.log('JWKS configuration field found');
+              // Validate URL format
+              expect(mockJwksUrl).to.match(/^https?:\/\/.+\/\.well-known\/jwks\.json$/);
+            } else {
+              cy.log('JWKS configuration not visible, testing URL format validation');
+              // Still test URL validation logic
+              expect(mockJwksUrl).to.include('.well-known/jwks.json');
+            }
+          });
+
+          // Close dialog
+          cy.get('button:contains("Cancel"), .dialog-close').click();
+        }
+      );
     });
 
     it('should validate JWKS key structure', () => {
@@ -152,9 +167,9 @@ describe('JWT Validation Integration Tests', () => {
             use: 'sig',
             alg: 'RS256',
             n: 'mock-modulus',
-            e: 'AQAB'
-          }
-        ]
+            e: 'AQAB',
+          },
+        ],
       };
 
       // Validate JWKS structure
@@ -175,45 +190,52 @@ describe('JWT Validation Integration Tests', () => {
     });
 
     it('should validate processor configuration properties', () => {
-      cy.addProcessor('MultiIssuerJWTTokenAuthenticator', { x: 600, y: 300 }).then((processorId) => {
-        // Open processor configuration
-        cy.get(`[data-testid="${processorId}"], g[id="${processorId}"]`).dblclick();
+      cy.addProcessor('MultiIssuerJWTTokenAuthenticator', { x: 600, y: 300 }).then(
+        (processorId) => {
+          // Open processor configuration
+          cy.get(`[data-testid="${processorId}"], g[id="${processorId}"]`).dblclick();
 
-        // Wait for configuration dialog
-        cy.get('.processor-configuration, .dialog-content', { timeout: 10000 }).should('be.visible');
+          // Wait for configuration dialog
+          cy.get('.processor-configuration, .dialog-content', { timeout: 10000 }).should(
+            'be.visible'
+          );
 
-        // Verify processor has configurable properties
-        cy.get('.property-editor, .properties-table').should('exist');
+          // Verify processor has configurable properties
+          cy.get('.property-editor, .properties-table').should('exist');
 
-        // Test configuration validation by checking for required fields
-        cy.get('body').then(($body) => {
-          const hasProperties = $body.find('.property-name, .property-editor input').length > 0;
-          expect(hasProperties).to.be.true;
-          cy.log('Processor configuration properties are available');
-        });
+          // Test configuration validation by checking for required fields
+          cy.get('body').then(($body) => {
+            const hasProperties = $body.find('.property-name, .property-editor input').length > 0;
+            expect(hasProperties).to.be.true;
+            cy.log('Processor configuration properties are available');
+          });
 
-        // Close configuration
-        cy.get('button:contains("Cancel"), .dialog-close').click();
-      });
+          // Close configuration
+          cy.get('button:contains("Cancel"), .dialog-close').click();
+        }
+      );
     });
 
     it('should handle processor validation errors gracefully', () => {
-      cy.addProcessor('MultiIssuerJWTTokenAuthenticator', { x: 700, y: 300 }).then((processorId) => {
-        // Verify processor shows validation state
-        cy.get(`[data-testid="${processorId}"], g[id="${processorId}"]`).should('be.visible');
+      cy.addProcessor('MultiIssuerJWTTokenAuthenticator', { x: 700, y: 300 }).then(
+        (processorId) => {
+          // Verify processor shows validation state
+          cy.get(`[data-testid="${processorId}"], g[id="${processorId}"]`).should('be.visible');
 
-        // Check if processor shows any validation indicators
-        cy.get(`[data-testid="${processorId}"], g[id="${processorId}"]`).then(($processor) => {
-          // Look for validation state indicators (warnings, errors, etc.)
-          const hasValidationState = $processor.find('.fa-warning, .fa-exclamation, .validation-error').length > 0;
-          
-          if (hasValidationState) {
-            cy.log('Processor validation state indicators found');
-          } else {
-            cy.log('Processor appears in default state (no validation errors visible)');
-          }
-        });
-      });
+          // Check if processor shows any validation indicators
+          cy.get(`[data-testid="${processorId}"], g[id="${processorId}"]`).then(($processor) => {
+            // Look for validation state indicators (warnings, errors, etc.)
+            const hasValidationState =
+              $processor.find('.fa-warning, .fa-exclamation, .validation-error').length > 0;
+
+            if (hasValidationState) {
+              cy.log('Processor validation state indicators found');
+            } else {
+              cy.log('Processor appears in default state (no validation errors visible)');
+            }
+          });
+        }
+      );
     });
   });
 
@@ -225,29 +247,31 @@ describe('JWT Validation Integration Tests', () => {
 
     it('should simulate end-to-end token validation workflow', () => {
       // Add processor for validation workflow
-      cy.addProcessor('MultiIssuerJWTTokenAuthenticator', { x: 300, y: 400 }).then((processorId) => {
-        // Verify processor is ready for token validation
-        cy.get(`[data-testid="${processorId}"], g[id="${processorId}"]`).should('be.visible');
+      cy.addProcessor('MultiIssuerJWTTokenAuthenticator', { x: 300, y: 400 }).then(
+        (processorId) => {
+          // Verify processor is ready for token validation
+          cy.get(`[data-testid="${processorId}"], g[id="${processorId}"]`).should('be.visible');
 
-        // Mock token validation workflow
-        const mockValidationWorkflow = {
-          step1: 'Token received',
-          step2: 'Token parsed',
-          step3: 'Signature verified',
-          step4: 'Claims validated',
-          step5: 'Authorization checked'
-        };
+          // Mock token validation workflow
+          const mockValidationWorkflow = {
+            step1: 'Token received',
+            step2: 'Token parsed',
+            step3: 'Signature verified',
+            step4: 'Claims validated',
+            step5: 'Authorization checked',
+          };
 
-        // Verify workflow steps are logically valid
-        Object.values(mockValidationWorkflow).forEach((step, index) => {
-          expect(step).to.be.a('string');
-          expect(step.length).to.be.greaterThan(0);
-          cy.log(`Validation step ${index + 1}: ${step}`);
-        });
+          // Verify workflow steps are logically valid
+          Object.values(mockValidationWorkflow).forEach((step, index) => {
+            expect(step).to.be.a('string');
+            expect(step.length).to.be.greaterThan(0);
+            cy.log(`Validation step ${index + 1}: ${step}`);
+          });
 
-        // Simulate successful workflow completion
-        cy.log('Token validation workflow simulation completed successfully');
-      });
+          // Simulate successful workflow completion
+          cy.log('Token validation workflow simulation completed successfully');
+        }
+      );
     });
 
     it('should handle validation workflow failures', () => {
@@ -257,7 +281,7 @@ describe('JWT Validation Integration Tests', () => {
         'Signature verification failed',
         'Token expired',
         'Invalid issuer',
-        'Missing required claims'
+        'Missing required claims',
       ];
 
       mockFailureScenarios.forEach((scenario, index) => {
@@ -297,7 +321,7 @@ describe('JWT Validation Integration Tests', () => {
       const positions = [
         { x: 200, y: 500 },
         { x: 400, y: 500 },
-        { x: 600, y: 500 }
+        { x: 600, y: 500 },
       ];
 
       const processorPromises = positions.map((position) => {
