@@ -92,8 +92,8 @@ Cypress.Commands.add('addProcessor', (type, position = { x: 300, y: 300 }) => {
   // First, ensure we're logged in and in the main UI
   cy.verifyLoggedIn();
 
-  // Wait for UI to be ready
-  cy.wait(2000);
+  // Wait for UI to be ready - use proper wait for element
+  cy.get('nifi').should('be.visible');
 
   // Look for the main canvas/flow area in the Angular app
   cy.get('nifi').should('be.visible');
@@ -111,11 +111,15 @@ Cypress.Commands.add('addProcessor', (type, position = { x: 300, y: 300 }) => {
     if (canvasElements.length > 0) {
       // Double-click on canvas area to trigger add processor dialog
       cy.wrap(canvasElements.first()).dblclick({ force: true });
-      cy.wait(1000);
+      // Wait for dialog to appear instead of arbitrary time
+      cy.get('[role="dialog"], .mat-dialog-container, .dialog, .add-component-dialog, .processor-dialog', { timeout: 5000 })
+        .should('be.visible');
     } else {
       // Fallback: try double-clicking within the nifi component
       cy.get('nifi').dblclick(position.x, position.y, { force: true });
-      cy.wait(1000);
+      // Wait for dialog to appear instead of arbitrary time
+      cy.get('[role="dialog"], .mat-dialog-container, .dialog, .add-component-dialog, .processor-dialog', { timeout: 5000 })
+        .should('be.visible');
     }
 
     // Look for processor selection dialog or add component dialog
@@ -136,13 +140,19 @@ Cypress.Commands.add('addProcessor', (type, position = { x: 300, y: 300 }) => {
 
         // Try to find and click the processor type
         cy.get('body').contains(type, { timeout: 5000 }).click({ force: true });
-        cy.wait(500);
-
+        
         // Look for Add/OK button to confirm
         cy.get('button')
           .contains(/^(Add|OK|Create)$/i)
           .click({ force: true });
-        cy.wait(2000); // Give time for processor to be added
+        
+        // Wait for processor to be added by checking for increased count
+        cy.get('body').then(($checkBody) => {
+          cy.wrap($checkBody).should(($body) => {
+            const currentProcessors = $body.find('g.processor, [class*="processor"], .component').length;
+            expect(currentProcessors).to.be.greaterThan(existingProcessors);
+          });
+        });
 
         // Try to extract the actual processor ID from the newly added processor
         return cy.get('body').then(($newBody) => {
@@ -223,7 +233,10 @@ Cypress.Commands.add('configureProcessor', (processorId, config) => {
 
     // Open configuration dialog
     cy.wrap(processorElement).dblclick({ force: true });
-    cy.wait(1000);
+    
+    // Wait for configuration dialog to appear
+    cy.get('[role="dialog"], .mat-dialog-container, .processor-configuration-dialog', { timeout: 5000 })
+      .should('be.visible');
 
     return cy.configureProcessorInDialog(config);
   });
