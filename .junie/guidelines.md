@@ -24,37 +24,41 @@ This file provides guidance to Junie when working with code in this repository.
 - Log messages: `doc/LogMessage.md`
 
 ## CUI Standards Documentation
-- Standards Overview: `doc/library/standards/README.adoc`
+- Standards Overview: `/Users/oliver/git/cui-llm-rules/standards/README.md`
+
+### JavaScript and CSS Standards:
+- JavaScript Standards: `/Users/oliver/git/cui-llm-rules/standards/javascript/`
+- CSS Standards: `/Users/oliver/git/cui-llm-rules/standards/css/`
 
 ### Java Standards
-- Java Code Standards: `doc/library/standards/java/java-code-standards.adoc`
-- DSL-Style Constants: `doc/library/standards/java/dsl-style-constants.adoc`
-- Java README: `doc/library/standards/java/README.adoc`
+- Java Code Standards: `/Users/oliver/git/cui-llm-rules/standards/java/java-code-standards.adoc`
+- DSL-Style Constants: `/Users/oliver/git/cui-llm-rules/standards/java/dsl-style-constants.adoc`
+- Java README: `/Users/oliver/git/cui-llm-rules/standards/java/README.adoc`
 
 ### Documentation Standards
-- General Documentation: `doc/library/standards/documentation/general-standard.adoc`
-- Javadoc Standards: `doc/library/standards/documentation/javadoc-standards.adoc`
-- Javadoc Maintenance: `doc/library/standards/documentation/javadoc-maintenance.adoc`
-- README Structure: `doc/library/standards/documentation/readme-structure.adoc`
-- Documentation README: `doc/library/standards/documentation/README.adoc`
+- General Documentation: `/Users/oliver/git/cui-llm-rules/standards/documentation/general-standard.adoc`
+- Javadoc Standards: `/Users/oliver/git/cui-llm-rules/standards/documentation/javadoc-standards.adoc`
+- Javadoc Maintenance: `/Users/oliver/git/cui-llm-rules/standards/documentation/javadoc-maintenance.adoc`
+- README Structure: `/Users/oliver/git/cui-llm-rules/standards/documentation/readme-structure.adoc`
+- Documentation README: `/Users/oliver/git/cui-llm-rules/standards/documentation/README.adoc`
 
 ### Logging Standards
-- Logging Core Standards: `doc/library/standards/logging/core-standards.adoc`
-- Logging Implementation Guide: `doc/library/standards/logging/implementation-guide.adoc`
-- Logging Testing Guide: `doc/library/standards/logging/testing-guide.adoc`
-- Logging README: `doc/library/standards/logging/README.adoc`
+- Logging Core Standards: `/Users/oliver/git/cui-llm-rules/standards/logging/core-standards.adoc`
+- Logging Implementation Guide: `/Users/oliver/git/cui-llm-rules/standards/logging/implementation-guide.adoc`
+- Logging Testing Guide: `/Users/oliver/git/cui-llm-rules/standards/logging/testing-guide.adoc`
+- Logging README: `/Users/oliver/git/cui-llm-rules/standards/logging/README.adoc`
 
 ### Testing Standards
-- Testing Core Standards: `doc/library/standards/testing/core-standards.adoc`
-- Quality Standards: `doc/library/standards/testing/quality-standards.adoc`
-- Testing README: `doc/library/standards/testing/README.adoc`
+- Testing Core Standards: `/Users/oliver/git/cui-llm-rules/standards/testing/core-standards.adoc`
+- Quality Standards: `/Users/oliver/git/cui-llm-rules/standards/testing/quality-standards.adoc`
+- Testing README: `/Users/oliver/git/cui-llm-rules/standards/testing/README.adoc`
 
 ### Requirements Standards
-- Requirements Documents: `doc/library/standards/requirements/requirements-document.adoc`
-- Specification Documents: `doc/library/standards/requirements/specification-documents.adoc`
-- New Project Guide: `doc/library/standards/requirements/new-project-guide.adoc`
-- Planning: `doc/library/standards/requirements/planning.adoc`
-- Requirements README: `doc/library/standards/requirements/README.adoc`
+- Requirements Documents: `/Users/oliver/git/cui-llm-rules/standards/requirements/requirements-document.adoc`
+- Specification Documents: `/Users/oliver/git/cui-llm-rules/standards/requirements/specification-documents.adoc`
+- New Project Guide: `/Users/oliver/git/cui-llm-rules/standards/requirements/new-project-guide.adoc`
+- Planning: `/Users/oliver/git/cui-llm-rules/standards/requirements/planning.adoc`
+- Requirements README: `/Users/oliver/git/cui-llm-rules/standards/requirements/README.adoc`
 
 ## Code Style Guidelines
 - Follow package structure: reverse domain name notation (de.cuioss.jwt.validation)

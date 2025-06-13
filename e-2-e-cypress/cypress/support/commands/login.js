@@ -104,6 +104,11 @@ Cypress.Commands.add(
  * Internal command with multiple fallback approaches
  */
 Cypress.Commands.add('handleLoginForm', (username, password, maxRetries = 3) => {
+  /**
+   *
+   * @param retryCount
+   * @example
+   */
   const attempt = (retryCount) => {
     if (retryCount >= maxRetries) {
       throw new Error(`Login failed after ${maxRetries} attempts`);

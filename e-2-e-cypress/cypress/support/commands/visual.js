@@ -32,7 +32,7 @@ Cypress.Commands.add('configureVisualTesting', () => {
 /**
  * Take a visual snapshot for comparison
  * @param {string} name - Name of the snapshot
- * @param {Object} options - Options for the snapshot
+ * @param {object} options - Options for the snapshot
  */
 Cypress.Commands.add('visualSnapshot', (name, options = {}) => {
   const defaultOptions = {
@@ -52,6 +52,12 @@ Cypress.Commands.add('visualSnapshot', (name, options = {}) => {
     // Take screenshot of specific element
     cy.wrap(config.element).screenshot(filename, {
       capture: 'runner',
+      /**
+       *
+       * @param $el
+       * @param props
+       * @example
+       */
       onAfterScreenshot: ($el, props) => {
         cy.log(`Visual snapshot saved: ${props.path}`);
         cy.storeVisualSnapshot(name, props.path, config);
@@ -61,6 +67,12 @@ Cypress.Commands.add('visualSnapshot', (name, options = {}) => {
     // Take full viewport screenshot
     cy.screenshot(filename, {
       capture: config.capture,
+      /**
+       *
+       * @param $el
+       * @param props
+       * @example
+       */
       onAfterScreenshot: ($el, props) => {
         cy.log(`Visual snapshot saved: ${props.path}`);
         cy.storeVisualSnapshot(name, props.path, config);
@@ -73,7 +85,7 @@ Cypress.Commands.add('visualSnapshot', (name, options = {}) => {
  * Store visual snapshot metadata for later comparison
  * @param {string} name - Snapshot name
  * @param {string} path - Screenshot path
- * @param {Object} config - Snapshot configuration
+ * @param {object} config - Snapshot configuration
  */
 Cypress.Commands.add('storeVisualSnapshot', (name, path, config) => {
   cy.window().then((win) => {
@@ -466,7 +478,7 @@ Cypress.Commands.add('disableHighContrastTheme', () => {
 
 /**
  * Verify responsive layout at given resolution
- * @param {Object} resolution - Resolution configuration
+ * @param {object} resolution - Resolution configuration
  */
 Cypress.Commands.add('verifyResponsiveLayout', (resolution) => {
   // Verify layout adapts appropriately

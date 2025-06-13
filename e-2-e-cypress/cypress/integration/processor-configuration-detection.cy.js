@@ -54,13 +54,13 @@ describe('Processor Configuration Detection', () => {
     cy.addProcessor('GenerateFlowFile').then((processorId) => {
       if (processorId) {
         cy.getProcessorElement(processorId).then(($element) => {
-          const processorInfo = cy.extractProcessorInfo($element);
-
-          // Verify extracted information
-          expect(processorInfo).to.have.property('id');
-          expect(processorInfo).to.have.property('name');
-          expect(processorInfo).to.have.property('type');
-          expect(processorInfo).to.have.property('state');
+          cy.extractProcessorInfo($element).then((processorInfo) => {
+            // Verify extracted information
+            expect(processorInfo).to.have.property('id');
+            expect(processorInfo).to.have.property('name');
+            expect(processorInfo).to.have.property('type');
+            expect(processorInfo).to.have.property('state');
+          });
         });
       }
     });
@@ -118,10 +118,10 @@ describe('Processor Configuration Detection', () => {
     cy.addProcessor('UpdateAttribute').then((processorId) => {
       if (processorId) {
         cy.getProcessorElement(processorId).then(($element) => {
-          const hasSetup = cy.detectProcessorSetup($element);
-
-          // Initially should have basic setup (no errors)
-          expect(hasSetup).to.be.true;
+          cy.detectProcessorSetup($element).then((hasSetup) => {
+            // Initially should have basic setup (no errors)
+            expect(hasSetup).to.be.true;
+          });
         });
       }
     });
@@ -139,16 +139,20 @@ describe('Processor Configuration Detection', () => {
       'Batch Size': '10',
     };
 
-    const result = cy.compareProcessorProperties(currentProperties, expectedProperties);
-    expect(result).to.be.true;
+    cy.compareProcessorProperties(currentProperties, expectedProperties).then((result) => {
+      expect(result).to.be.true;
+    });
 
     // Test mismatch
     const mismatchedProperties = {
       'File Size': '2048B',
     };
 
-    const mismatchResult = cy.compareProcessorProperties(currentProperties, mismatchedProperties);
-    expect(mismatchResult).to.be.false;
+    cy.compareProcessorProperties(currentProperties, mismatchedProperties).then(
+      (mismatchResult) => {
+        expect(mismatchResult).to.be.false;
+      }
+    );
   });
 
   it('should handle multiple processor workflow', () => {
@@ -181,10 +185,10 @@ describe('Processor Configuration Detection', () => {
     cy.addProcessor('GenerateFlowFile').then((processorId) => {
       if (processorId) {
         cy.getProcessorElement(processorId).then(($element) => {
-          const state = cy.getProcessorState($element);
-
-          // Should return a valid state
-          expect(['RUNNING', 'STOPPED', 'INVALID', 'DISABLED', 'UNKNOWN']).to.include(state);
+          cy.getProcessorState($element).then((state) => {
+            // Should return a valid state
+            expect(['RUNNING', 'STOPPED', 'INVALID', 'DISABLED', 'UNKNOWN']).to.include(state);
+          });
         });
       }
     });

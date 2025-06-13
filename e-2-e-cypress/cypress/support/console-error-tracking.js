@@ -16,6 +16,11 @@ Cypress.on('window:before:load', (win) => {
   win.consoleWarnings = [];
 
   // Override console.error
+  /**
+   *
+   * @param {...any} args
+   * @example
+   */
   win.console.error = (...args) => {
     // Call original console.error
     originalConsole.error(...args);
@@ -29,6 +34,11 @@ Cypress.on('window:before:load', (win) => {
   };
 
   // Override console.warn
+  /**
+   *
+   * @param {...any} args
+   * @example
+   */
   win.console.warn = (...args) => {
     // Call original console.warn
     originalConsole.warn(...args);

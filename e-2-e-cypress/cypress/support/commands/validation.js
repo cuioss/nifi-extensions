@@ -4,7 +4,7 @@
 
 /**
  * Generate a JWT token with specific claims using Keycloak
- * @param {Object} claims - The claims to include in the token
+ * @param {object} claims - The claims to include in the token
  * @returns {string} The generated JWT token
  */
 Cypress.Commands.add('generateToken', (claims) => {

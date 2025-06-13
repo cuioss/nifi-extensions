@@ -89,11 +89,11 @@ describe('Processor Configuration Detection', () => {
     cy.addProcessor('GenerateFlowFile').then((processorId) => {
       if (processorId) {
         cy.getProcessorElement(processorId).then(($element) => {
-          const state = cy.getProcessorStateFromElement($element);
-
-          // Should return a valid state
-          expect(['RUNNING', 'STOPPED', 'INVALID', 'DISABLED', 'UNKNOWN']).to.include(state);
-          cy.log(`Processor state: ${state}`);
+          cy.getProcessorStateFromElement($element).then((state) => {
+            // Should return a valid state
+            expect(['RUNNING', 'STOPPED', 'INVALID', 'DISABLED', 'UNKNOWN']).to.include(state);
+            cy.log(`Processor state: ${state}`);
+          });
         });
       }
     });
@@ -103,11 +103,11 @@ describe('Processor Configuration Detection', () => {
     cy.addProcessor('UpdateAttribute').then((processorId) => {
       if (processorId) {
         cy.getProcessorElement(processorId).then(($element) => {
-          const hasSetup = cy.detectProcessorSetupFromElement($element);
-
-          // Should return a boolean
-          expect(hasSetup).to.be.a('boolean');
-          cy.log(`Processor has setup: ${hasSetup}`);
+          cy.detectProcessorSetupFromElement($element).then((hasSetup) => {
+            // Should return a boolean
+            expect(hasSetup).to.be.a('boolean');
+            cy.log(`Processor has setup: ${hasSetup}`);
+          });
         });
       }
     });

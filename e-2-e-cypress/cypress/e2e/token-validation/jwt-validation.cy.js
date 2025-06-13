@@ -126,7 +126,7 @@ describe('Token Validation E2E Tests', () => {
       const customClaims = {
         scope: 'read write',
         role: 'admin',
-        custom_claim: 'custom_value',
+        customClaim: 'custom_value',
       };
 
       cy.generateToken(customClaims).then((token) => {

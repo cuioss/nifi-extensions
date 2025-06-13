@@ -9,7 +9,7 @@
 
 /**
  * Get comprehensive browser information
- * @returns {Object} Browser information including name, version, family, and capabilities
+ * @returns {object} Browser information including name, version, family, and capabilities
  */
 Cypress.Commands.add('getBrowserInfo', () => {
   return cy.window().then((win) => {
@@ -33,7 +33,7 @@ Cypress.Commands.add('getBrowserInfo', () => {
 
 /**
  * Check browser feature support
- * @returns {Object} Object with feature support flags
+ * @returns {object} Object with feature support flags
  */
 Cypress.Commands.add('checkBrowserFeatureSupport', () => {
   return cy.window().then((win) => {
@@ -273,7 +273,7 @@ Cypress.Commands.add('verifyWebKitDialogBehavior', () => {
 
 /**
  * Verify responsive design behavior
- * @param {Object} viewport - Viewport configuration
+ * @param {object} viewport - Viewport configuration
  */
 Cypress.Commands.add('verifyResponsiveDesign', (viewport) => {
   // Verify UI adapts to different screen sizes
@@ -317,6 +317,12 @@ Cypress.Commands.add('verifyDesktopLayout', () => {
 Cypress.Commands.add('testES6Compatibility', () => {
   cy.window().then((win) => {
     // Test arrow functions
+    /**
+     * Test arrow function for browser compatibility validation
+     * @returns {string} Test string value
+     * @example
+     * const result = arrowFunc(); // returns 'test'
+     */
     const arrowFunc = () => 'test';
     expect(arrowFunc()).to.equal('test');
 
@@ -336,10 +342,27 @@ Cypress.Commands.add('testES6Compatibility', () => {
     expect(arr2).to.deep.equal([1, 2, 3]);
 
     // Test class syntax
+    /**
+     *
+     */
     class TestClass {
+      /**
+       * Test method for browser compatibility validation
+       * @param {any} value - The value to process
+       * @example
+       * const testClass = new TestClass();
+       * testClass.testMethod('value');
+       */
       constructor(value) {
         this.value = value;
       }
+      /**
+       * Get the stored value for testing purposes
+       * @returns {any} The stored value
+       * @example
+       * const instance = new TestClass('test');
+       * const value = instance.getValue(); // returns 'test'
+       */
       getValue() {
         return this.value;
       }
@@ -440,6 +463,10 @@ Cypress.Commands.add('testEventHandlingCompatibility', () => {
     let eventFired = false;
     const testEl = doc.createElement('div');
 
+    /**
+     *
+     * @example
+     */
     const eventHandler = () => {
       eventFired = true;
     };
@@ -495,7 +522,7 @@ Cypress.Commands.add('verifyEventHandlingConsistency', (processorId) => {
 
 /**
  * Measure DOM operation performance
- * @returns {Object} Performance metrics
+ * @returns {object} Performance metrics
  */
 Cypress.Commands.add('measureDOMPerformance', () => {
   return cy.window().then((win) => {
@@ -524,7 +551,7 @@ Cypress.Commands.add('measureDOMPerformance', () => {
 
 /**
  * Measure rendering performance
- * @returns {Object} Rendering performance metrics
+ * @returns {object} Rendering performance metrics
  */
 Cypress.Commands.add('measureRenderingPerformance', () => {
   return cy.window().then((win) => {
@@ -552,7 +579,7 @@ Cypress.Commands.add('measureRenderingPerformance', () => {
 
 /**
  * Measure network performance
- * @returns {Object} Network performance metrics
+ * @returns {object} Network performance metrics
  */
 Cypress.Commands.add('measureNetworkPerformance', () => {
   return cy.window().then((win) => {
@@ -579,7 +606,7 @@ Cypress.Commands.add('measureNetworkPerformance', () => {
 
 /**
  * Measure memory usage
- * @returns {Object} Memory usage metrics
+ * @returns {object} Memory usage metrics
  */
 Cypress.Commands.add('measureMemoryUsage', () => {
   return cy.window().then((win) => {
@@ -657,6 +684,12 @@ Cypress.Commands.add('takeScreenshotForComparison', (processorId, screenshotName
 
   cy.screenshot(filename, {
     capture: 'viewport',
+    /**
+     *
+     * @param $el
+     * @param props
+     * @example
+     */
     onAfterScreenshot: ($el, props) => {
       cy.log(`Screenshot saved: ${props.path}`);
     },
@@ -729,8 +762,13 @@ Cypress.Commands.add('verifyCSPCompliance', () => {
   cy.window().then((win) => {
     // Monitor console for CSP violations
     const originalConsoleError = win.console.error;
-    let cspViolations = [];
+    const cspViolations = [];
 
+    /**
+     *
+     * @param {...any} args
+     * @example
+     */
     win.console.error = function (...args) {
       const message = args.join(' ');
       if (message.includes('Content Security Policy')) {

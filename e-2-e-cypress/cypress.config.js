@@ -11,6 +11,24 @@ module.exports = defineConfig({
     defaultCommandTimeout: 10000,
     videoCompression: 15,
     screenshotOnRunFailure: true,
+    setupNodeEvents(on, config) {
+      // Register tasks for logging and backend gap detection
+      on('task', {
+        log(message) {
+          console.log(message);
+          return null;
+        },
+        logBackendGap(gapData) {
+          console.log('🔍 Backend Integration Gap Detected:');
+          console.log(`  Component: ${gapData.component}`);
+          console.log(`  Expected: ${gapData.expected}`);
+          console.log(`  Actual: ${gapData.actual}`);
+          console.log(`  Impact: ${gapData.impact}`);
+          console.log(`  Timestamp: ${gapData.timestamp}`);
+          return null;
+        }
+      });
+    },
     reporter: 'cypress-multi-reporters',
     reporterOptions: {
       reporterEnabled: 'mochawesome',
