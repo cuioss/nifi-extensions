@@ -13,11 +13,11 @@ describe('Processor Testing Strategy Implementation', () => {
   it('should verify processor access capabilities', () => {
     cy.verifyCanAccessProcessors().then((result) => {
       cy.log(`Processor access result: ${JSON.stringify(result)}`);
-      
+
       expect(result).to.have.property('accessible');
       expect(result).to.have.property('count');
       expect(result).to.have.property('message');
-      
+
       if (result.accessible) {
         cy.log(`✅ ${result.count} processors available for testing`);
       } else {
@@ -40,20 +40,20 @@ describe('Processor Testing Strategy Implementation', () => {
     cy.get('body').then(($body) => {
       const processors = $body.find(SELECTORS.PROCESSOR);
       const processorCount = processors.length;
-      
+
       cy.log(`📊 Canvas State Report:`);
       cy.log(`- Total processors: ${processorCount}`);
-      
+
       if (processorCount > 0) {
         cy.log(`- Processors found on canvas - testing capabilities available`);
-        
+
         // Document each processor
         processors.each((index, processor) => {
           const $proc = Cypress.$(processor);
           const id = $proc.attr('id') || `processor-${index}`;
           const classes = $proc.attr('class') || '';
           const text = $proc.text().trim();
-          
+
           cy.log(`  Processor ${index + 1}:`);
           cy.log(`    ID: ${id}`);
           cy.log(`    Classes: ${classes}`);
@@ -65,7 +65,7 @@ describe('Processor Testing Strategy Implementation', () => {
         cy.log(`  1. Manually add processors to NiFi canvas`);
         cy.log(`  2. Re-run tests for full processor functionality testing`);
       }
-      
+
       // This test always passes - it's documentation
       expect(true).to.be.true;
     });
@@ -86,7 +86,7 @@ describe('Processor Testing Strategy Implementation', () => {
     cy.log('');
     cy.log('To enable full processor testing capabilities:');
     cy.log('');
-    cy.log('1. Open NiFi UI manually: http://localhost:9094');
+    cy.log('1. Open NiFi UI manually: ' + Cypress.config('baseUrl'));
     cy.log('2. Login with: admin / adminadminadmin');
     cy.log('3. Add processors to the canvas:');
     cy.log('   - Use the toolbar or menu options in NiFi UI');
@@ -96,7 +96,7 @@ describe('Processor Testing Strategy Implementation', () => {
     cy.log('5. Re-run Cypress tests');
     cy.log('');
     cy.log('The tests will then automatically detect and test the processors');
-    
+
     // Always passes
     expect(true).to.be.true;
   });

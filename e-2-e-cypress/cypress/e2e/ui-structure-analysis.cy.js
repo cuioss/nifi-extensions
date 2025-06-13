@@ -1,4 +1,4 @@
-import { TEXT_CONSTANTS } from "../support/constants.js";
+import { TEXT_CONSTANTS } from '../support/constants.js';
 // Test to examine the NiFi UI structure after successful login
 describe('NiFi UI Structure Analysis', () => {
   it('should examine UI elements after login', () => {

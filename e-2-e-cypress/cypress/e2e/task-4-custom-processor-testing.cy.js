@@ -1,4 +1,4 @@
-import { TEXT_CONSTANTS } from "../support/constants.js";
+import { TEXT_CONSTANTS } from '../support/constants.js';
 /**
  * Task 4: Custom Processor Testing Focus
  * Tests custom JWT processor UI components and basic functionality
@@ -148,9 +148,10 @@ describe('Task 4: Custom Processor Testing Focus', () => {
         // Safe array access to prevent object injection
         const safeIndex = Math.max(0, Math.min(index, positions.length - 1));
         const safePosition = positions.length > index ? positions.at(safeIndex) || {} : {};
-        const position = positions.length > index 
-          ? { x: safePosition.x || 100, y: safePosition.y || 100 }
-          : { x: 100 + index * 200, y: 100 };
+        const position =
+          positions.length > index
+            ? { x: safePosition.x || 100, y: safePosition.y || 100 }
+            : { x: 100 + index * 200, y: 100 };
         cy.addProcessor(processorType, position).then((processorId) => {
           if (processorId) {
             processorIds.push(processorId);

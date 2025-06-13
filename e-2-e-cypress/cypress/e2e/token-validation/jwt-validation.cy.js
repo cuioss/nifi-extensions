@@ -2,6 +2,8 @@
  * End-to-End tests for JWT token validation
  */
 
+import { URLS } from '../../support/constants.js';
+
 describe('Token Validation E2E Tests', () => {
   beforeEach(() => {
     // Login and navigate to canvas before each test
@@ -58,7 +60,7 @@ describe('Token Validation E2E Tests', () => {
           'JWKS Type': 'Server',
           'JWKS URL': 'TEST_DATA.KEYCLOAK_JWKS_URL',
           'Issuer Validation': 'true',
-          'Expected Issuer': 'https://localhost:8443/auth/realms/oauth_integration_tests',
+          'Expected Issuer': URLS.KEYCLOAK_ISSUER_URL,
         },
       };
 

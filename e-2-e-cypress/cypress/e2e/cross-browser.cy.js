@@ -1,4 +1,4 @@
-import { TEXT_CONSTANTS } from "../support/constants.js";
+import { TEXT_CONSTANTS } from '../support/constants.js';
 /**
  * End-to-End Tests for Cross-Browser Compatibility - Phase 5.3
  *

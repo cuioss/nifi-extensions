@@ -1,4 +1,4 @@
-import { TEXT_CONSTANTS } from "../support/constants.js";
+import { TEXT_CONSTANTS } from '../support/constants.js';
 /**
  * Processor Configuration Detection Tests
  * Validates the new isProcessorConfigured command and related functionality

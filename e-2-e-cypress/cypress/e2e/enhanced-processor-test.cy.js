@@ -1,4 +1,4 @@
-import { TEXT_CONSTANTS } from "../support/constants.js";
+import { TEXT_CONSTANTS } from '../support/constants.js';
 /**
  * Enhanced Integration Test with Improved Processor Commands
  * Tests the updated processor management functionality

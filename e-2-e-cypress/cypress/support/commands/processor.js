@@ -61,7 +61,7 @@ Cypress.Commands.add('addProcessor', (type, position = { x: 300, y: 300 }) => {
     if (canvasElements.length > 0) {
       cy.log('🎯 Attempting traditional double-click method');
       cy.wrap(canvasElements.first()).dblclick({ force: true });
-      
+
       // Check if dialog appeared within short timeout
       return cy.get('body', { timeout: 2000 }).then(($checkBody) => {
         const dialogs = $checkBody.find(SELECTORS.DIALOG);

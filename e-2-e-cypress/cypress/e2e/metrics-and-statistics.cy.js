@@ -292,7 +292,9 @@ describe('Processor Metrics and Statistics Tests', () => {
       }
 
       // Wait for metrics to be processed
-      cy.get('[data-testid="performance-metrics"]', { timeout: 10000 }).should(TEXT_CONSTANTS.EXIST);
+      cy.get('[data-testid="performance-metrics"]', { timeout: 10000 }).should(
+        TEXT_CONSTANTS.EXIST
+      );
 
       // Check that response time metrics are tracked
       cy.openProcessorConfigDialog(processorId);

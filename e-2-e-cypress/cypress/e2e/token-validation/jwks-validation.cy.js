@@ -2,7 +2,7 @@
  * End-to-End tests for JWKS validation
  */
 
-import { SELECTORS, TEXT_CONSTANTS, TEST_DATA } from '../../support/constants.js';
+import { SELECTORS, TEXT_CONSTANTS, TEST_DATA, URLS } from '../../support/constants.js';
 
 describe('JWKS Validation E2E Tests', () => {
   beforeEach(() => {
@@ -13,8 +13,7 @@ describe('JWKS Validation E2E Tests', () => {
 
   it('should validate JWKS server endpoint', () => {
     cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
-      const jwksUrl =
-        'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs';
+      const jwksUrl = URLS.KEYCLOAK_JWKS_URL;
 
       const config = {
         properties: {
@@ -166,8 +165,7 @@ describe('JWKS Validation E2E Tests', () => {
       const config = {
         properties: {
           'JWKS Type': 'Server',
-          'JWKS URL':
-            'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs',
+          'JWKS URL': URLS.KEYCLOAK_JWKS_URL,
           'JWKS Refresh Interval': '300 seconds',
           'JWKS Cache Size': '100',
         },
@@ -183,8 +181,7 @@ describe('JWKS Validation E2E Tests', () => {
       const config = {
         properties: {
           'JWKS Type': 'Server',
-          'JWKS URL':
-            'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs',
+          'JWKS URL': URLS.KEYCLOAK_JWKS_URL,
           'Additional JWKS URLs':
             'https://another-issuer.com/.well-known/jwks.json,https://third-issuer.com/jwks',
         },

@@ -174,6 +174,31 @@ export const TIMEOUTS = {
 
 // Common URLs and endpoints
 export const URLS = {
+  // NiFi base configuration - uses Cypress baseUrl with fallback
+  NIFI_BASE: Cypress.config('baseUrl') || 'http://localhost:9094/nifi',
+
+  // Keycloak configuration - uses environment variables with fallbacks
+  // Note: The hardcoded URLs were using port 8443, but current config uses 9085
+  // Using environment-configurable approach to support both
+  KEYCLOAK_BASE:
+    Cypress.env('KEYCLOAK_URL') || Cypress.env('keycloakUrl') || 'https://localhost:9085',
+  KEYCLOAK_REALM: `/auth/realms/${Cypress.env('keycloakRealm') || 'oauth_integration_tests'}`,
+  KEYCLOAK_JWKS_ENDPOINT: '/protocol/openid-connect/certs',
+
+  // Computed URLs for convenience
+  get KEYCLOAK_REALM_URL() {
+    return `${this.KEYCLOAK_BASE}${this.KEYCLOAK_REALM}`;
+  },
+
+  get KEYCLOAK_JWKS_URL() {
+    return `${this.KEYCLOAK_REALM_URL}${this.KEYCLOAK_JWKS_ENDPOINT}`;
+  },
+
+  get KEYCLOAK_ISSUER_URL() {
+    return this.KEYCLOAK_REALM_URL;
+  },
+
+  // Legacy endpoints for backwards compatibility
   BASE_URL: 'http://localhost:8080',
   LOGIN_PAGE: '/login',
   DASHBOARD: '/dashboard',
@@ -194,9 +219,11 @@ export const TEST_DATA = {
   TEST_JWKS_TYPE: 'server',
   SERVER: 'SERVER',
   INVALID_URL_OLD: 'invalid-url',
-  
-  // Keycloak test URLs
-  KEYCLOAK_JWKS_URL: 'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs',
+
+  // Keycloak test URLs - use centralized URL configuration
+  get KEYCLOAK_JWKS_URL() {
+    return URLS.KEYCLOAK_JWKS_URL;
+  },
 
   // Processor configuration property keys
   ISSUER_1_NAME: 'issuer-1-name',

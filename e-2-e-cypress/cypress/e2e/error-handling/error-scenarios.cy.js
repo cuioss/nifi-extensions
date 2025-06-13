@@ -2,7 +2,7 @@
  * End-to-End tests for error handling scenarios
  */
 
-import { SELECTORS, TEXT_CONSTANTS, TEST_DATA } from '../../support/constants.js';
+import { SELECTORS, TEXT_CONSTANTS, TEST_DATA, URLS } from '../../support/constants.js';
 
 describe('Error Handling E2E Tests', () => {
   beforeEach(() => {
@@ -165,8 +165,7 @@ describe('Error Handling E2E Tests', () => {
       const config = {
         properties: {
           'JWKS Type': 'Server',
-          'JWKS URL':
-            'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs',
+          'JWKS URL': URLS.KEYCLOAK_JWKS_URL,
         },
       };
 
@@ -197,8 +196,7 @@ describe('Error Handling E2E Tests', () => {
           const config = {
             properties: {
               'JWKS Type': 'Server',
-              'JWKS URL':
-                'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs',
+              'JWKS URL': URLS.KEYCLOAK_JWKS_URL,
             },
           };
 

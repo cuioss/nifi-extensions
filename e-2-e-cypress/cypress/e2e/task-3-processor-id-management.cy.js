@@ -133,10 +133,7 @@ describe('Task 3: Processor ID Management', () => {
     });
 
     // Wait for processors to be added to DOM
-    cy.get(SELECTORS.PROCESSOR, { timeout: 10000 }).should(
-      'have.length.at.least',
-      3
-    );
+    cy.get(SELECTORS.PROCESSOR, { timeout: 10000 }).should('have.length.at.least', 3);
 
     // Count processors before cleanup
     cy.get('body').then(($body) => {

@@ -103,6 +103,84 @@ The following foundational tasks have been completed and provide a solid infrast
 
 ## Open Implementation Tasks
 
+### ✅ **COMPLETED: Centralize URL Configuration** 
+**Goal**: Eliminate hardcoded URLs and establish centralized environment configuration
+**Impact**: High - affects maintainability, environment portability, and CI/CD setup
+**Effort**: 2-3 hours
+
+**✅ COMPLETED ACHIEVEMENTS**:
+
+**1. Extended constants.js with URL configuration**:
+```javascript
+export const URLS = {
+  // NiFi base configuration - uses Cypress baseUrl with fallback
+  NIFI_BASE: Cypress.config('baseUrl') || 'http://localhost:9094/nifi',
+  
+  // Keycloak configuration - uses environment variables with fallbacks
+  KEYCLOAK_BASE: Cypress.env('KEYCLOAK_URL') || Cypress.env('keycloakUrl') || 'https://localhost:9085',
+  KEYCLOAK_REALM: `/auth/realms/${Cypress.env('keycloakRealm') || 'oauth_integration_tests'}`,
+  KEYCLOAK_JWKS_ENDPOINT: '/protocol/openid-connect/certs',
+  
+  // Computed URLs for convenience
+  get KEYCLOAK_REALM_URL() {
+    return `${this.KEYCLOAK_BASE}${this.KEYCLOAK_REALM}`;
+  },
+  
+  get KEYCLOAK_JWKS_URL() {
+    return `${this.KEYCLOAK_REALM_URL}${this.KEYCLOAK_JWKS_ENDPOINT}`;
+  },
+  
+  get KEYCLOAK_ISSUER_URL() {
+    return this.KEYCLOAK_REALM_URL;
+  },
+};
+```
+
+**2. Replaced all hardcoded URLs**:
+- ✅ `debug-ui-structure.cy.js` - Now uses `cy.visit('/')`
+- ✅ `inspect-nifi-ui.cy.js` - Now uses `cy.visit('/')`
+- ✅ `login-analysis.cy.js` - Now uses `cy.visit('/')`
+- ✅ `error-scenarios.cy.js` - Now uses `URLS.KEYCLOAK_JWKS_URL`
+- ✅ `jwks-validation.cy.js` - Now uses `URLS.KEYCLOAK_JWKS_URL`
+- ✅ `jwt-validation.cy.js` - Now uses `URLS.KEYCLOAK_ISSUER_URL`
+- ✅ `multi-issuer-jwt-config.cy.js` - Hardcoded URLs consolidated
+- ✅ `processor-strategy-test.cy.js` - Now uses `Cypress.config('baseUrl')`
+- ✅ `simple-strategy-test.cy.js` - Now uses `Cypress.config('baseUrl')`
+
+**3. Created environment configuration system**:
+- ✅ Support for `cypress.env.json` overrides via `Cypress.env('KEYCLOAK_URL')`
+- ✅ CI/CD environment variable support compatible with existing Maven configuration
+- ✅ Development vs production URL handling with fallback defaults
+- ✅ Backward compatibility with existing `keycloakUrl` and `keycloakRealm` environment variables
+
+**4. Updated navigation commands**:
+- ✅ Verified `cy.nifiLogin()` uses centralized URLs via `cy.visit('/')`
+- ✅ Verified `cy.navigateToCanvas()` uses base configuration properly
+
+**Success Criteria Achieved**:
+- ✅ Zero hardcoded URLs in test files
+- ✅ Single source of truth for all service URLs in `/cypress/support/constants.js`
+- ✅ Environment variable support for CI/CD via both `KEYCLOAK_URL` and `keycloakUrl`
+- ✅ Easy URL changes via configuration only
+- ✅ All existing tests compatible with centralized URLs
+- ✅ Created verification test `test-url-centralization.cy.js`
+
+**Implementation Results**:
+- **Files Modified**: 10 test files + constants.js
+- **URL Configuration**: Centralized in `URLS` object with computed properties
+- **Environment Support**: Full CI/CD integration with Maven environment variables
+- **Backward Compatibility**: Maintained with existing Cypress config
+- **Documentation**: URL configuration patterns documented
+
+**Next Steps**:
+- ✅ Document URL configuration in setup guide  
+- ✅ Create environment-specific configuration examples
+- ✅ Establish CI/CD environment variable patterns
+
+**Status**: ✅ **COMPLETED** - URL centralization fully implemented and verified
+
+---
+
 ### 1. Address Current Failure Patterns ✅ **COMPLETED**
 **Goal**: Fix the most common test failure patterns identified from current testing
 - ✅ **Fixed login command standardization** - Resolved `cy.loginToNiFi` → `cy.nifiLogin` in 6 test files

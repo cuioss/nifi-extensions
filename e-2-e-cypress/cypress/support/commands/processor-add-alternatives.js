@@ -14,7 +14,7 @@ import { waitForVisible, waitForDialog } from '../wait-utils.js';
  */
 function tryToolbarAddProcessor(type, position = { x: 300, y: 300 }) {
   cy.log('🔧 Trying toolbar approach for adding processor');
-  
+
   // Look for common toolbar selectors that might contain "Add Processor" button
   const toolbarSelectors = [
     'button[title*="Add"]',
@@ -25,7 +25,7 @@ function tryToolbarAddProcessor(type, position = { x: 300, y: 300 }) {
     '.actions button',
     '.flow-toolbar button',
     '[role="toolbar"] button',
-    '.mat-toolbar button'
+    '.mat-toolbar button',
   ];
 
   // Try each toolbar selector
@@ -35,7 +35,7 @@ function tryToolbarAddProcessor(type, position = { x: 300, y: 300 }) {
       if (toolbarButtons.length > 0) {
         cy.log(`Found ${toolbarButtons.length} toolbar buttons with selector: ${selector}`);
         cy.get(selector).first().click({ force: true });
-        
+
         // Check if dialog appeared
         cy.get('body').then(($dialogCheck) => {
           const dialogs = $dialogCheck.find(SELECTORS.DIALOG);
@@ -47,7 +47,7 @@ function tryToolbarAddProcessor(type, position = { x: 300, y: 300 }) {
       }
     });
   }
-  
+
   return false;
 }
 
@@ -58,14 +58,14 @@ function tryToolbarAddProcessor(type, position = { x: 300, y: 300 }) {
  */
 function tryRightClickAddProcessor(type, position = { x: 300, y: 300 }) {
   cy.log('🖱️ Trying right-click context menu approach');
-  
+
   // Try right-clicking on canvas area
   cy.get('body').then(($body) => {
     const canvasElements = $body.find('svg, canvas, [role="main"], .flow-canvas, .nifi-canvas');
-    
+
     if (canvasElements.length > 0) {
       cy.wrap(canvasElements.first()).rightclick(position.x, position.y, { force: true });
-      
+
       // Look for context menu
       cy.wait(1000);
       cy.get('body').then(($contextCheck) => {
@@ -73,13 +73,15 @@ function tryRightClickAddProcessor(type, position = { x: 300, y: 300 }) {
         if (contextMenus.length > 0) {
           cy.log('✅ Context menu appeared');
           // Look for "Add Processor" or similar option
-          cy.get('body').contains(/Add.*Processor|New.*Processor|Create.*Processor/i).click({ force: true });
+          cy.get('body')
+            .contains(/Add.*Processor|New.*Processor|Create.*Processor/i)
+            .click({ force: true });
           return true;
         }
       });
     }
   });
-  
+
   return false;
 }
 
@@ -90,7 +92,7 @@ function tryRightClickAddProcessor(type, position = { x: 300, y: 300 }) {
  */
 function tryDragDropAddProcessor(type, position = { x: 300, y: 300 }) {
   cy.log('🎯 Trying drag-and-drop from palette approach');
-  
+
   // Look for component palette or processor list
   const paletteSelectors = [
     '.component-palette',
@@ -98,33 +100,35 @@ function tryDragDropAddProcessor(type, position = { x: 300, y: 300 }) {
     '.processors-list',
     '.components-list',
     '[data-testid*="palette"]',
-    '[aria-label*="palette"]'
+    '[aria-label*="palette"]',
   ];
-  
+
   for (const selector of paletteSelectors) {
     cy.get('body').then(($body) => {
       const palettes = $body.find(selector);
       if (palettes.length > 0) {
         cy.log(`Found palette with selector: ${selector}`);
-        
+
         // Look for the specific processor type in the palette
         cy.get(selector).within(() => {
-          cy.get('body').contains(type).then(($processorItem) => {
-            if ($processorItem.length > 0) {
-              // Try drag and drop to canvas
-              const canvasElements = $body.find('svg, canvas, [role="main"]');
-              if (canvasElements.length > 0) {
-                cy.wrap($processorItem).drag(canvasElements.first());
-                cy.log('✅ Drag-and-drop attempt completed');
-                return true;
+          cy.get('body')
+            .contains(type)
+            .then(($processorItem) => {
+              if ($processorItem.length > 0) {
+                // Try drag and drop to canvas
+                const canvasElements = $body.find('svg, canvas, [role="main"]');
+                if (canvasElements.length > 0) {
+                  cy.wrap($processorItem).drag(canvasElements.first());
+                  cy.log('✅ Drag-and-drop attempt completed');
+                  return true;
+                }
               }
-            }
-          });
+            });
         });
       }
     });
   }
-  
+
   return false;
 }
 
@@ -134,31 +138,30 @@ function tryDragDropAddProcessor(type, position = { x: 300, y: 300 }) {
  */
 function tryMenuAddProcessor(type) {
   cy.log('📋 Trying menu navigation approach');
-  
+
   // Look for main menu options
-  const menuSelectors = [
-    '[role="menubar"]',
-    '.main-menu',
-    '.app-menu',
-    '.nifi-menu'
-  ];
-  
+  const menuSelectors = ['[role="menubar"]', '.main-menu', '.app-menu', '.nifi-menu'];
+
   for (const selector of menuSelectors) {
     cy.get('body').then(($body) => {
       const menus = $body.find(selector);
       if (menus.length > 0) {
         cy.get(selector).within(() => {
           // Look for "Add", "Insert", "New" or similar menu items
-          cy.get('body').contains(/Add|Insert|New|Create/i).click({ force: true });
-          
+          cy.get('body')
+            .contains(/Add|Insert|New|Create/i)
+            .click({ force: true });
+
           // Look for "Processor" submenu
-          cy.get('body').contains(/Processor/i).click({ force: true });
+          cy.get('body')
+            .contains(/Processor/i)
+            .click({ force: true });
           return true;
         });
       }
     });
   }
-  
+
   return false;
 }
 
@@ -169,13 +172,13 @@ function tryMenuAddProcessor(type) {
  */
 Cypress.Commands.add('addProcessorAlternative', (type, options = {}) => {
   const position = options.position || { x: 300, y: 300 };
-  
+
   cy.log(`🚀 Attempting to add processor: ${type} using alternative methods`);
-  
+
   // Ensure we're logged in and ready
   cy.verifyLoggedIn();
   cy.get('nifi').should('be.visible');
-  
+
   // Method 1: Try toolbar approach
   cy.get('body').then(($body) => {
     // Try toolbar first
@@ -183,25 +186,25 @@ Cypress.Commands.add('addProcessorAlternative', (type, options = {}) => {
       cy.log('✅ Toolbar method successful');
       return cy.selectProcessorFromDialog(type);
     }
-    
+
     // Method 2: Try right-click
     if (tryRightClickAddProcessor(type, position)) {
       cy.log('✅ Right-click method successful');
       return cy.selectProcessorFromDialog(type);
     }
-    
+
     // Method 3: Try drag-and-drop
     if (tryDragDropAddProcessor(type, position)) {
       cy.log('✅ Drag-drop method successful');
       return cy.wrap(null); // Drag-drop doesn't need dialog selection
     }
-    
+
     // Method 4: Try menu navigation
     if (tryMenuAddProcessor(type)) {
       cy.log('✅ Menu method successful');
       return cy.selectProcessorFromDialog(type);
     }
-    
+
     // Method 5: Fallback to API approach
     cy.log('⚠️ All UI methods failed, attempting API approach');
     return cy.addProcessorViaAPI(type, position);
@@ -215,25 +218,27 @@ Cypress.Commands.add('addProcessorAlternative', (type, options = {}) => {
 Cypress.Commands.add('selectProcessorFromDialog', (type) => {
   // Wait for any dialog to appear
   cy.get(SELECTORS.DIALOG, { timeout: TIMEOUTS.LONG }).should('be.visible');
-  
+
   // Look for search/filter input
   cy.get('input[type="text"], input[type="search"], input[placeholder*="filter"]')
     .first()
     .clear()
     .type(type, { force: true });
-  
+
   // Wait for filtered results
   cy.wait(1000);
-  
+
   // Click on the matching processor type
   cy.get('body').contains(type, { timeout: TIMEOUTS.MEDIUM }).click({ force: true });
-  
+
   // Click Add/OK button
-  cy.get('button').contains(/^(Add|OK|Create)$/i).click({ force: true });
-  
+  cy.get('button')
+    .contains(/^(Add|OK|Create)$/i)
+    .click({ force: true });
+
   // Wait for dialog to close
   cy.get(SELECTORS.DIALOG).should('not.exist');
-  
+
   // Return processor ID if possible
   return cy.getLastAddedProcessorId();
 });
@@ -245,36 +250,37 @@ Cypress.Commands.add('selectProcessorFromDialog', (type) => {
  */
 Cypress.Commands.add('addProcessorViaAPI', (type, position) => {
   cy.log('🔌 Using API approach to add processor');
-  
+
   // Get the process group ID (root is usually the canvas)
   cy.request('GET', '/nifi-api/flow/process-groups/root').then((response) => {
     const processGroupId = response.body.processGroupFlow.id;
-    
+
     // Create processor via API
     const processorData = {
-      'revision': {
-        'version': 0
+      revision: {
+        version: 0,
       },
-      'component': {
-        'type': type,
-        'position': {
-          'x': position.x,
-          'y': position.y
-        }
-      }
+      component: {
+        type: type,
+        position: {
+          x: position.x,
+          y: position.y,
+        },
+      },
     };
-    
-    cy.request('POST', `/nifi-api/process-groups/${processGroupId}/processors`, processorData)
-      .then((createResponse) => {
+
+    cy.request('POST', `/nifi-api/process-groups/${processGroupId}/processors`, processorData).then(
+      (createResponse) => {
         const processorId = createResponse.body.id;
         cy.log(`✅ Processor created via API with ID: ${processorId}`);
-        
+
         // Refresh the UI to show the new processor
         cy.reload();
         cy.nifiLogin('admin', 'adminadminadmin');
-        
+
         return cy.wrap(processorId);
-      });
+      }
+    );
   });
 });
 
@@ -282,26 +288,30 @@ Cypress.Commands.add('addProcessorViaAPI', (type, position) => {
  * Get the ID of the most recently added processor
  */
 Cypress.Commands.add('getLastAddedProcessorId', () => {
-  return cy.get(SELECTORS.PROCESSOR).last().then(($processor) => {
-    // Try to extract processor ID from various attributes
-    const id = $processor.attr('id') || 
-               $processor.attr('data-id') || 
-               $processor.attr('data-processor-id') ||
-               $processor.find('[data-id]').attr('data-id');
-    
-    if (id) {
-      cy.log(`📋 Found processor ID: ${id}`);
-      return cy.wrap(id);
-    } else {
-      cy.log('⚠️ Could not determine processor ID');
-      return cy.wrap(null);
-    }
-  });
+  return cy
+    .get(SELECTORS.PROCESSOR)
+    .last()
+    .then(($processor) => {
+      // Try to extract processor ID from various attributes
+      const id =
+        $processor.attr('id') ||
+        $processor.attr('data-id') ||
+        $processor.attr('data-processor-id') ||
+        $processor.find('[data-id]').attr('data-id');
+
+      if (id) {
+        cy.log(`📋 Found processor ID: ${id}`);
+        return cy.wrap(id);
+      } else {
+        cy.log('⚠️ Could not determine processor ID');
+        return cy.wrap(null);
+      }
+    });
 });
 
 export {
   tryToolbarAddProcessor,
   tryRightClickAddProcessor,
   tryDragDropAddProcessor,
-  tryMenuAddProcessor
+  tryMenuAddProcessor,
 };

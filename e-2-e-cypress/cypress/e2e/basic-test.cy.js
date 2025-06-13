@@ -1,4 +1,4 @@
-import { TEXT_CONSTANTS } from "../support/constants.js";
+import { TEXT_CONSTANTS } from '../support/constants.js';
 // Basic connectivity test with robust login pattern
 describe('Basic Test', () => {
   it('should connect to NiFi using robust login pattern', () => {

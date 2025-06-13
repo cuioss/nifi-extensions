@@ -3,7 +3,8 @@ import { SELECTORS, TEXT_CONSTANTS } from '../support/constants.js';
 // Simple test to understand login flow and available elements
 describe('NiFi Login Analysis', () => {
   it('should identify login requirements', () => {
-    cy.visit('http://localhost:9094/nifi/');
+    // Use centralized URL configuration instead of hardcoded URL
+    cy.visit('/');
 
     // Wait for Angular app to load
     cy.get('nifi', { timeout: 30000 }).should(TEXT_CONSTANTS.EXIST);
