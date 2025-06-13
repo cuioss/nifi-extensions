@@ -12,7 +12,7 @@ This guide provides step-by-step instructions for setting up and using the NiFi 
 - **Architecture**: Modular design with 15+ helper functions
 - **Performance**: Optimized DOM queries and reduced redundancy
 
-**Optimization Results**: The framework has undergone comprehensive optimization with significant improvements in code quality, maintainability, and performance. See [Optimization Report](optimization-report.md) and [Optimization Complete](optimization-complete.md) for detailed technical achievements.
+**Optimization Results**: The framework has undergone comprehensive optimization with significant improvements in code quality, maintainability, and performance. See the "Comprehensive Optimization Achievements" section below for detailed technical achievements.
 
 **Next Steps**: Ready for Task 4 (Custom Processor Testing Focus) implementation.
 

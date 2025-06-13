@@ -48,7 +48,7 @@ The framework underwent comprehensive optimization with outstanding results:
 - **Performance**: Optimized DOM queries, reduced code duplication by 80%+
 - **Reliability**: Enhanced error handling and fallback mechanisms
 
-**Technical Details**: See [Optimization Complete](./doc/optimization-complete.md) for comprehensive technical achievements and metrics.
+**Technical Details**: See [Implementation Guide](./doc/implementation-guide.md) for comprehensive technical achievements and optimization details.
 
 ## Documentation Structure
 

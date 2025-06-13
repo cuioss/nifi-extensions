@@ -17,6 +17,34 @@
   - Error Handling: 2/2 ✅ (100%)
   - Performance: 1/2 ⚠️ (50%)
 
+## 📝 Documentation Policy
+
+**IMPORTANT**: Do not create new documentation files. Use existing documentation structure instead.
+
+### Existing Documentation Structure (USE THESE ONLY):
+- **[README.md](../README.md)**: Project overview and quick start
+- **[doc/overview.md](overview.md)**: Core philosophy and architecture
+- **[doc/current-status.md](current-status.md)**: Current implementation status
+- **[doc/implementation-guide.md](implementation-guide.md)**: Complete setup and technical details
+- **[doc/recipes-and-howto.md](recipes-and-howto.md)**: Practical examples and patterns
+- **[doc/tasks-and-next-steps.md](tasks-and-next-steps.md)**: This file - roadmap and task tracking
+- **[doc/findings-and-analysis.md](findings-and-analysis.md)**: Technical analysis and discoveries
+
+### Documentation Best Practices:
+1. **Update existing files** instead of creating new ones
+2. **Integrate new content** into the appropriate existing document
+3. **Use sections and subsections** to organize content within existing files
+4. **Cross-reference** between existing documents using relative links
+5. **Keep documentation structure flat** - avoid deep hierarchies
+
+### Recent Example:
+The optimization work was properly integrated into existing files rather than creating separate optimization documents:
+- Technical details → `implementation-guide.md`
+- Status updates → `current-status.md` and this file
+- Overview updates → `README.md`
+
+**Rationale**: Proliferating documentation files makes maintenance difficult and creates information silos. The current 7-file structure covers all necessary aspects comprehensively.
+
 ## 🎯 Optimization Results (December 2024 - COMPLETED ✅)
 
 ### Critical Issues Resolved
@@ -130,9 +158,11 @@ The comprehensive optimization has created a **production-ready foundation** for
 - **Maintainable Codebase**: Easy to extend and modify for new requirements
 
 ### Optimization Documentation
-For complete optimization details, see:
-- **[Optimization Report](optimization-report.md)**: Comprehensive analysis and implementation details
-- **[Optimization Complete](optimization-complete.md)**: Executive summary and technical achievements
+### Optimization Documentation
+All optimization details have been integrated into the main documentation:
+- **Technical Details**: See "Comprehensive Optimization Achievements" section in [implementation-guide.md](implementation-guide.md)
+- **Current Status**: Optimization results integrated into this file above
+- **Overview**: Optimization achievements included in [README.md](../README.md)
 
 ### Ready for Production
 The NiFi integration testing framework is now **optimized, robust, and ready** for:
