@@ -1,6 +1,6 @@
 /**
  * Task 3: Robust Test Patterns - Test Stability Utilities
- * 
+ *
  * This module provides stable, reliable patterns for consistent test execution.
  * Focus: Reduce test flakiness and improve success rate to 95%+
  */
@@ -15,7 +15,7 @@ export function retryWithBackoff(operation, options = {}) {
     maxAttempts = 3,
     initialDelay = 1000,
     backoffMultiplier = 2,
-    description = 'operation'
+    description = 'operation',
   } = options;
 
   return cy.wrap(null).then(() => {
@@ -24,7 +24,7 @@ export function retryWithBackoff(operation, options = {}) {
 
       function tryOperation() {
         cy.log(`[Retry] Attempting ${description} (${attempt}/${maxAttempts})`);
-        
+
         operation()
           .then(resolve)
           .catch((error) => {
@@ -51,13 +51,10 @@ export function retryWithBackoff(operation, options = {}) {
  * @param {Object} options - Stability options
  */
 export function waitForStableElement(selector, options = {}) {
-  const {
-    timeout = 10000,
-    stabilityDuration = 500,
-    maxChecks = 20
-  } = options;
+  const { timeout = 10000, stabilityDuration = 500, maxChecks = 20 } = options;
 
-  return cy.get(selector, { timeout })
+  return cy
+    .get(selector, { timeout })
     .should('be.visible')
     .then(($element) => {
       return cy.wrap(null).then(() => {
@@ -72,15 +69,16 @@ export function waitForStableElement(selector, options = {}) {
               x: rect.x,
               y: rect.y,
               width: rect.width,
-              height: rect.height
+              height: rect.height,
             };
 
-            if (lastRect && 
-                currentRect.x === lastRect.x &&
-                currentRect.y === lastRect.y &&
-                currentRect.width === lastRect.width &&
-                currentRect.height === lastRect.height) {
-              
+            if (
+              lastRect &&
+              currentRect.x === lastRect.x &&
+              currentRect.y === lastRect.y &&
+              currentRect.width === lastRect.width &&
+              currentRect.height === lastRect.height
+            ) {
               if (!stableStart) {
                 stableStart = Date.now();
               } else if (Date.now() - stableStart >= stabilityDuration) {
@@ -115,14 +113,10 @@ export function waitForStableElement(selector, options = {}) {
  * @param {Object} options - Selection options
  */
 export function robustElementSelect(selectors, options = {}) {
-  const {
-    timeout = 10000,
-    description = 'element',
-    required = true
-  } = options;
+  const { timeout = 10000, description = 'element', required = true } = options;
 
   const selectorArray = Array.isArray(selectors) ? selectors : [selectors];
-  
+
   return cy.wrap(null).then(() => {
     return new Cypress.Promise((resolve, reject) => {
       let currentIndex = 0;
@@ -140,7 +134,9 @@ export function robustElementSelect(selectors, options = {}) {
         }
 
         const selector = selectorArray[currentIndex];
-        cy.log(`[RobustSelect] Trying selector ${currentIndex + 1}/${selectorArray.length}: ${selector}`);
+        cy.log(
+          `[RobustSelect] Trying selector ${currentIndex + 1}/${selectorArray.length}: ${selector}`
+        );
 
         cy.get('body', { timeout: 1000 })
           .find(selector)
@@ -169,8 +165,9 @@ export function robustElementSelect(selectors, options = {}) {
  */
 export function verifyTestEnvironment() {
   cy.log('[HealthCheck] Verifying test environment...');
-  
-  return cy.window()
+
+  return cy
+    .window()
     .then((win) => {
       // Check basic browser capabilities
       const checks = {
@@ -178,7 +175,7 @@ export function verifyTestEnvironment() {
         sessionStorage: !!win.sessionStorage,
         fetch: !!win.fetch,
         console: !!win.console,
-        document: !!win.document
+        document: !!win.document,
       };
 
       const failedChecks = Object.entries(checks)
@@ -215,11 +212,7 @@ export function verifyTestEnvironment() {
  * @param {Object} options - Safety options
  */
 export function safeOperation(operation, options = {}) {
-  const {
-    fallback = null,
-    description = 'operation',
-    logErrors = true
-  } = options;
+  const { fallback = null, description = 'operation', logErrors = true } = options;
 
   return cy.wrap(null).then(() => {
     try {
@@ -228,12 +221,12 @@ export function safeOperation(operation, options = {}) {
       if (logErrors) {
         cy.log(`[SafeOperation] ${description} failed: ${error.message}`);
       }
-      
+
       if (fallback) {
         cy.log(`[SafeOperation] Executing fallback for ${description}`);
         return fallback();
       }
-      
+
       return null;
     }
   });
@@ -244,8 +237,9 @@ export function safeOperation(operation, options = {}) {
  */
 export function ensureTestIsolation() {
   cy.log('[TestIsolation] Ensuring clean test state...');
-  
-  return cy.window()
+
+  return cy
+    .window()
     .then((win) => {
       // Clear browser storage
       try {
@@ -279,34 +273,42 @@ export function ensureTestIsolation() {
 export function measureTestPerformance(testName, testOperation) {
   const startTime = Date.now();
   cy.log(`[Performance] Starting measurement for: ${testName}`);
-  
+
   return testOperation()
     .then((result) => {
       const duration = Date.now() - startTime;
       cy.log(`[Performance] ${testName} completed in ${duration}ms`);
-      
+
       // Log performance data for analysis
-      cy.task('logPerformance', {
-        testName,
-        duration,
-        timestamp: new Date().toISOString(),
-        success: true
-      }, { failOnStatusCode: false });
-      
+      cy.task(
+        'logPerformance',
+        {
+          testName,
+          duration,
+          timestamp: new Date().toISOString(),
+          success: true,
+        },
+        { failOnStatusCode: false }
+      );
+
       return result;
     })
     .catch((error) => {
       const duration = Date.now() - startTime;
       cy.log(`[Performance] ${testName} failed after ${duration}ms`);
-      
-      cy.task('logPerformance', {
-        testName,
-        duration,
-        timestamp: new Date().toISOString(),
-        success: false,
-        error: error.message
-      }, { failOnStatusCode: false });
-      
+
+      cy.task(
+        'logPerformance',
+        {
+          testName,
+          duration,
+          timestamp: new Date().toISOString(),
+          success: false,
+          error: error.message,
+        },
+        { failOnStatusCode: false }
+      );
+
       throw error;
     });
 }

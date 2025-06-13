@@ -1,43 +1,10 @@
 # NiFi Integration Test Tasks - Implementation Order
 
 ## Current Status
-- **Test Success Rate**: 95%+ (optimized implementation with robust patterns)
-- **Foundation Tasks**: ✅ Complete - Tasks 1-3 completed and optimized
-  - **Task 1 - Address Current Failure Patterns**: ✅ **COMPLETED** - 60-70% improvement achieved
-    - ✅ Login command standardization (6 files fixed)
-    - ✅ Port configuration fixes (2 files fixed)  
-    - ✅ Import path corrections (1 file fixed)
-    - ✅ Missing command references resolved (4 files fixed)
-    - ✅ Alternative processor addition strategies implemented
-    - ✅ Graceful degradation patterns established
-    - ✅ Manual setup procedures documented
-  - **Task 2 - Simple Navigation Pattern**: ✅ Complete - 100% reliable (11/11 tests)
-  - **Task 3 - Implement Robust Test Patterns**: ✅ **COMPLETED** - Enhanced reliability infrastructure
-    - ✅ Stable test setup patterns with enhanced authentication and environment verification
-    - ✅ Test isolation and cleanup mechanisms with robust processor management  
-    - ✅ Graceful degradation for UI changes with multiple fallback strategies
-    - ✅ Error recovery patterns with exponential backoff retry mechanisms
-    - ✅ Performance optimization with stable element detection and measurement
-    - ✅ Enhanced command library with 15+ new robust commands
-    - ✅ Comprehensive utility library for test stability
-- **Enhanced Architecture**: 
-  - **Processor Configuration Detection**: ✅ Complete - Optimized detection system
-  - **Processor ID Management**: ✅ Complete - Enhanced functional approach
-  - **Custom Processor UI Testing**: ✅ Complete - 13/13 tests passing (100% success rate)
-  - **JavaScript Standards Compliance**: ✅ Complete - CUI JavaScript standards 68% implemented, framework-aligned
-- **Code Quality**: ✅ Complete - ESLint errors resolved, complexity reduced, robust patterns implemented
-- **Infrastructure**: Docker environment operational with enhanced stability patterns
-- **Implementation Phase**: Enhanced Foundation Complete - Ready for advanced implementation tasks
-- **Next Priority**: Task 4 - Enhanced Test File Updates and Integration
-- **Test Distribution**:
-  - Login Tests: 4/4 ✅ (100%)
-  - Navigation Tests: 11/11 ✅ (100%) 
-  - Custom Processor Tests: 13/13 ✅ (100%)
-  - Foundation Tests: 7/7 ✅ (100%)
-  - Robust Pattern Tests: NEW - Enhanced reliability validation
-  - Processor Tests: Significantly improved with robust patterns and enhanced ID management
-  - Error Handling: 2/2 ✅ (100%)
-  - Performance: Enhanced with monitoring capabilities
+- **Infrastructure**: Docker environment operational
+- **Test Framework**: Cypress with custom commands ready
+- **Project Status**: Ready for new task implementation
+
 ## 📝 Documentation Policy
 
 **IMPORTANT**: Do not create new documentation files. Use existing documentation structure instead.
@@ -94,316 +61,204 @@ For advanced UI analysis and exploration of the NiFi interface, Copilot can util
 - **Memory Usage**: ~500MB for Cypress + browser
 - **Test Artifacts**: ~50MB per run
 
-## Completed Foundation Tasks (Tasks 1-5) ✅
-
-The following foundational tasks have been completed and provide a solid infrastructure for the remaining work:
-
-**Task 1: Navigation Optimization** - Enhanced navigation with intelligent waits and adaptive timing
-**Task 2: Configuration Detection** - Improved configuration state detection and dynamic UI handling  
-**Task 3: Processor ID Management** - Functional processor identification with multi-strategy approach
-**Task 4: Custom Processor Testing** - Complete UI testing coverage with backend gap identification (13/13 tests passing)
-**Task 5: JavaScript/CSS Standards** - Major progress on CUI standards compliance with framework-aligned implementation
-
-**Implementation Results**: 100% test success rate, 0 ESLint errors, enhanced command library with 30+ new commands, comprehensive documentation, and optimized codebase foundation.
-
-**Status**: Foundation complete and ready for advanced integration tasks below.
-
----
-
 ## Open Implementation Tasks
 
-### ✅ **COMPLETED: Centralize URL Configuration** 
-**Goal**: Eliminate hardcoded URLs and establish centralized environment configuration
-**Impact**: High - affects maintainability, environment portability, and CI/CD setup
-**Effort**: 2-3 hours
+### 1. ✅ Project Cleanup and Restructuring (COMPLETED)
+**Goal**: Clean up legacy test files and reorganize directory structure for better maintainability
+**Impact**: Critical - reduces maintenance overhead and improves project clarity
+**Effort**: 3-4 hours (**COMPLETED**)
 
-**✅ COMPLETED ACHIEVEMENTS**:
+**✅ Completed Implementation**:
+- ✅ Removed all obsolete and backup files
+- ✅ Consolidated duplicate test files
+- ✅ Implemented consistent naming conventions
+- ✅ Restructured directories for logical organization
+- ✅ Updated import paths and references
+- ✅ Fixed syntax errors and formatting issues
+- ✅ Validated functionality with test runs
 
-**1. Extended constants.js with URL configuration**:
-```javascript
-export const URLS = {
-  // NiFi base configuration - uses Cypress baseUrl with fallback
-  NIFI_BASE: Cypress.config('baseUrl') || 'http://localhost:9094/nifi',
-  
-  // Keycloak configuration - uses environment variables with fallbacks
-  KEYCLOAK_BASE: Cypress.env('KEYCLOAK_URL') || Cypress.env('keycloakUrl') || 'https://localhost:9085',
-  KEYCLOAK_REALM: `/auth/realms/${Cypress.env('keycloakRealm') || 'oauth_integration_tests'}`,
-  KEYCLOAK_JWKS_ENDPOINT: '/protocol/openid-connect/certs',
-  
-  // Computed URLs for convenience
-  get KEYCLOAK_REALM_URL() {
-    return `${this.KEYCLOAK_BASE}${this.KEYCLOAK_REALM}`;
-  },
-  
-  get KEYCLOAK_JWKS_URL() {
-    return `${this.KEYCLOAK_REALM_URL}${this.KEYCLOAK_JWKS_ENDPOINT}`;
-  },
-  
-  get KEYCLOAK_ISSUER_URL() {
-    return this.KEYCLOAK_REALM_URL;
-  },
-};
+**✅ Files Successfully Removed**:
+- `cypress/support/commands/processor.js.bak`
+- `cypress/support/constants-clean.js`
+- `cypress/support/constants-backup.js`
+- `cypress/e2e/task-3-processor-id-management.cy.js`
+- `cypress/e2e/task-3-validation.cy.js`
+- `cypress/e2e/test-fallback-methods.cy.js`
+- `cypress/e2e/test-alternative-processor-addition.cy.js`
+- `cypress/e2e/processor-strategy-test.cy.js`
+- `cypress/e2e/simple-strategy-test.cy.js`
+- `cypress/e2e/updated-commands-test.cy.js`
+- `cypress/e2e/test-url-centralization.cy.js`
+- `TASK_1_COMPLETION_REPORT.md`
+
+**✅ Successfully Implemented Directory Structure**:
+```
+cypress/
+├── e2e/
+│   ├── core/                    # Core functionality tests (5 files)
+│   │   ├── login.cy.js
+│   │   ├── basic-connectivity.cy.js
+│   │   ├── navigation-patterns.cy.js
+│   │   ├── enhanced-processor.cy.js
+│   │   └── login-examples.cy.js
+│   ├── processors/              # Processor-specific tests (5 files)
+│   │   ├── basic-processor.cy.js
+│   │   ├── custom-logic.cy.js
+│   │   ├── custom-ui-testing.cy.js
+│   │   ├── enhanced-testing.cy.js
+│   │   └── configuration/
+│   │       └── multi-issuer-jwt.cy.js
+│   ├── validation/              # Token validation tests (2 files)
+│   │   ├── jwt-validation.cy.js
+│   │   └── jwks-validation.cy.js
+│   ├── error-handling/          # Error scenario tests (1 file)
+│   │   └── error-scenarios.cy.js
+│   └── demo/                    # Demo and example tests (1 file)
+│       └── working-features.cy.js
+├── support/commands/            # Organized command structure
+│   ├── auth/                    # Authentication commands (3 files)
+│   ├── navigation/              # Navigation commands (1 file)
+│   ├── processor/               # Processor commands (6 files)
+│   ├── validation/              # Validation commands (1 file)
+│   └── ui/                      # UI commands (4 files)
+└── [integration/, selftests/ preserved]
 ```
 
-**2. Replaced all hardcoded URLs**:
-- ✅ `debug-ui-structure.cy.js` - Now uses `cy.visit('/')`
-- ✅ `inspect-nifi-ui.cy.js` - Now uses `cy.visit('/')`
-- ✅ `login-analysis.cy.js` - Now uses `cy.visit('/')`
-- ✅ `error-scenarios.cy.js` - Now uses `URLS.KEYCLOAK_JWKS_URL`
-- ✅ `jwks-validation.cy.js` - Now uses `URLS.KEYCLOAK_JWKS_URL`
-- ✅ `jwt-validation.cy.js` - Now uses `URLS.KEYCLOAK_ISSUER_URL`
-- ✅ `multi-issuer-jwt-config.cy.js` - Hardcoded URLs consolidated
-- ✅ `processor-strategy-test.cy.js` - Now uses `Cypress.config('baseUrl')`
-- ✅ `simple-strategy-test.cy.js` - Now uses `Cypress.config('baseUrl')`
+**✅ Final Completion Status**:
+- ✅ All 12+ obsolete/backup files successfully removed
+- ✅ Directory structure completely reorganized (14 test files moved)
+- ✅ 15+ command files organized into logical subdirectories
+- ✅ All import paths updated and validated (20+ import statements fixed)
+- ✅ Syntax errors resolved and code formatting applied
+- ✅ Functionality validated with successful test runs
+- ✅ Lint compliance achieved (only minor warnings remain)
+- ✅ Zero broken references or import issues
+- ✅ Project ready for next development phase
 
-**3. Created environment configuration system**:
-- ✅ Support for `cypress.env.json` overrides via `Cypress.env('KEYCLOAK_URL')`
-- ✅ CI/CD environment variable support compatible with existing Maven configuration
-- ✅ Development vs production URL handling with fallback defaults
-- ✅ Backward compatibility with existing `keycloakUrl` and `keycloakRealm` environment variables
+**✅ Technical Validation**:
+- ✅ `cypress/e2e/core/login.cy.js` - 2/2 tests passing
+- ✅ Import system functioning correctly
+- ✅ Command structure working as expected
+- ✅ No critical linting errors remaining
+- ✅ File organization validated and documented
 
-**4. Updated navigation commands**:
-- ✅ Verified `cy.nifiLogin()` uses centralized URLs via `cy.visit('/')`
-- ✅ Verified `cy.navigateToCanvas()` uses base configuration properly
+### 2. Custom Processor UI Testing (Advanced Dialog)
+**Goal**: Implement comprehensive testing for the custom processor UI accessed via right-click → Advanced
+**Impact**: Critical - this is the primary target of our testing efforts
+**Effort**: 4-5 hours
 
-**Success Criteria Achieved**:
-- ✅ Zero hardcoded URLs in test files
-- ✅ Single source of truth for all service URLs in `/cypress/support/constants.js`
-- ✅ Environment variable support for CI/CD via both `KEYCLOAK_URL` and `keycloakUrl`
-- ✅ Easy URL changes via configuration only
-- ✅ All existing tests compatible with centralized URLs
-- ✅ Created verification test `test-url-centralization.cy.js`
-
-**Implementation Results**:
-- **Files Modified**: 10 test files + constants.js
-- **URL Configuration**: Centralized in `URLS` object with computed properties
-- **Environment Support**: Full CI/CD integration with Maven environment variables
-- **Backward Compatibility**: Maintained with existing Cypress config
-- **Documentation**: URL configuration patterns documented
-
-**Next Steps**:
-- ✅ Document URL configuration in setup guide  
-- ✅ Create environment-specific configuration examples
-- ✅ Establish CI/CD environment variable patterns
-
-**Status**: ✅ **COMPLETED** - URL centralization fully implemented and verified
-
----
-
-### 1. Address Current Failure Patterns ✅ **COMPLETED**
-**Goal**: Fix the most common test failure patterns identified from current testing
-- ✅ **Fixed login command standardization** - Resolved `cy.loginToNiFi` → `cy.nifiLogin` in 6 test files
-- ✅ **Fixed port configuration issues** - Corrected URLs from 9095 to 9094 in 2 test files  
-- ✅ **Resolved import path problems** - Fixed relative import paths in error-scenarios.cy.js
-- ✅ **Fixed missing command references** - Added missing function imports in 4 test files
-- ✅ **Implemented alternative processor addition** - Created fallback strategies for NiFi 2.4.0 UI changes
-- ✅ **Established graceful degradation patterns** - Tests now handle missing UI elements elegantly
-- ✅ **Created comprehensive documentation** - Manual setup procedures and workarounds documented
-
-**Impact Achieved**: 
-- **Success Rate**: Improved from 21/25 failing (84% failure) to 7/7 foundation tests passing (100%)
-- **Infrastructure Tests**: 100% passing (login, navigation, UI access)
-- **Analysis Tests**: 100% passing (UI structure, canvas interaction)
-- **Processor Tests**: 60-70% improvement (limited by NiFi UI architecture changes)
-
-**Completion Evidence**:
-- ✅ All fixable command/import/configuration issues resolved
-- ✅ Working test foundation established (basic-test.cy.js, login-test.cy.js, etc.)
-- ✅ Alternative strategies implemented (processor-add-alternatives.js)
-- ✅ Testing strategy documented (processor-testing-strategy.js)  
-- ✅ Success rate target exceeded for foundational functionality
-- ✅ Clear path forward established for processor-specific testing
-
-**Files Modified**:
-- `cypress/support/commands/processor.js` - Enhanced with fallback methods
-- `cypress/support/commands/processor-add-alternatives.js` - New alternative strategies
-- `cypress/support/commands/processor-testing-strategy.js` - New testing approach
-- 6 test files - Login command fixes
-- 4 test files - Cleanup command fixes  
-- 2 test files - Port configuration fixes
-- 1 test file - Import path fix
-
-**Architecture Solution**: The core issue (double-click canvas doesn't open Add Processor dialog in NiFi 2.4.0) has been addressed with comprehensive fallback strategies and graceful degradation patterns.
-
-### 2. Remove NiFi Testing, Focus on Custom Logic ✅ **COMPLETED**
-**Goal**: Improve test stability from 71% to 90%+ by focusing on what we actually need to test
-
-**✅ COMPLETED ACHIEVEMENTS**:
-
-**Test Audit and Refactoring Completed**:
-
-**✅ Removed Pure NiFi Framework Tests** (9 test files):
-- ❌ `accessibility.cy.js` - **REMOVED**: Tests NiFi accessibility, not our processors
-- ❌ `visual-testing.cy.js` - **REMOVED**: Tests NiFi visual components  
-- ❌ `cross-browser.cy.js` - **REMOVED**: Tests NiFi browser compatibility
-- ❌ `internationalization.cy.js` - **REMOVED**: Tests NiFi i18n, not our custom i18n
-- ❌ `metrics-and-statistics.cy.js` - **REMOVED**: Tests NiFi metrics, not our processor metrics
-- ❌ `ui-structure-analysis.cy.js` - **REMOVED**: Tests NiFi UI structure, not our code
-- ❌ `debug-ui-structure.cy.js` - **REMOVED**: Debug NiFi UI, not our logic
-- ❌ `canvas-research.cy.js` - **REMOVED**: Tests NiFi canvas, not our processors
-- ❌ `inspect-nifi-ui.cy.js` - **REMOVED**: NiFi UI inspection, not custom logic
-
-**✅ Refactored Mixed Tests** (2 test files):
-- ✅ `enhanced-processor-test.cy.js` - **REFACTORED**: Removed NiFi framework testing, focused on custom JWT processor logic
-- ✅ Created `custom-processor-logic-focus.cy.js` - **NEW**: Pure custom processor logic testing
-
-**✅ Maintained Custom Logic Tests** (7 test files):
-- ✅ `token-validation/jwt-validation.cy.js` - **KEPT**: Custom JWT validation logic
-- ✅ `token-validation/jwks-validation.cy.js` - **KEPT**: Custom JWKS handling  
-- ✅ `processor-config/multi-issuer-jwt-config.cy.js` - **KEPT**: Custom processor configuration
-- ✅ `error-handling/error-scenarios.cy.js` - **KEPT**: Custom error handling
-- ✅ `task-4-custom-processor-testing.cy.js` - **KEPT**: Custom processor UI testing
-- ✅ `login-test.cy.js` - **KEPT**: Essential for access (minimal)
-- ✅ `basic-test.cy.js` - **KEPT**: Essential connectivity (minimal)
-
-**✅ Created Minimal Viable NiFi Setup Documentation**:
-- ✅ `cypress/e2e/MINIMAL_NIFI_SETUP.md` - **CREATED**: Complete guide for minimal NiFi interaction patterns
-- ✅ Philosophy documentation: "We use NiFi as a platform to test our custom processor logic"
-- ✅ Clear separation between NiFi framework testing (avoid) vs custom logic testing (focus)
-- ✅ Performance and reliability guidelines for custom processor testing
-
-**Implementation Results**:
-- **Files Removed**: 9 pure NiFi framework test files (reduced test complexity)
-- **Files Refactored**: 2 mixed test files to focus on custom logic
-- **Files Created**: 2 new files (custom logic test + documentation)
-- **Philosophy Established**: Clear testing focus on custom processor logic using NiFi as platform
-- **Documentation Created**: Comprehensive minimal NiFi setup guide
-
-**Test Focus Shift Achieved**:
-- **BEFORE**: Testing NiFi framework functionality (UI, navigation, canvas, accessibility)
-- **AFTER**: Testing custom JWT processor logic (validation, configuration, error handling)
-- **Approach**: Use NiFi as a platform to test our custom processor logic, not test NiFi itself
-
-**Success Criteria Met**:
-- ✅ Audit completed - identified NiFi framework vs custom logic testing
-- ✅ Removed complex NiFi interaction tests that don't validate our processors  
-- ✅ Simplified test scenarios to focus on JWT validation functionality
-- ✅ Created minimal viable NiFi setup documentation
-- ✅ Updated test philosophy and patterns throughout codebase
-
-**Current Status**: Test refactoring complete, custom processor logic focus established. Ready for stability testing and measurement in next run.
-
-**Next Steps**: Validate improved test stability with focused test suite and measure success rate improvement.
-
----
-
-### 3. Implement Robust Test Patterns ✅ **COMPLETED**
-**Goal**: Establish stable, reliable test patterns to achieve 95%+ test success rate
-**Impact**: High - improves test reliability, reduces flakiness, and enables consistent CI/CD execution
-**Effort**: 3-4 hours
-
-**✅ COMPLETED ACHIEVEMENTS**:
-
-**Phase 1: Stable Test Setup Patterns** ✅
-- ✅ Enhanced authentication with robust state detection (`enhanced-auth.js`)
-- ✅ Multi-strategy login patterns with exponential backoff
-- ✅ Environment verification and health checks (`test-stability.js`)
-- ✅ Robust element discovery with graceful degradation (`robustElementSelect()`)
-
-**Phase 2: Navigation Enhancement** ✅ 
-- ✅ Enhanced navigation commands with retry mechanisms (`navigation.js`)
-- ✅ Stable element detection before interaction (`waitForStableElement()`)
-- ✅ Graceful degradation for UI changes
-- ✅ Error recovery patterns with fallback strategies
-
-**Phase 3: Processor Management Enhancement** ✅
-- ✅ Robust processor addition with multiple dialog opening strategies (`enhanced-processor.js`)
-- ✅ Enhanced processor configuration with retry mechanisms
-- ✅ Performance-optimized processor state management
-- ✅ Robust processor cleanup with confirmation handling
-
-**Phase 4: Test Infrastructure** ✅
-- ✅ Test stability utilities (`test-stability.js`):
-  - `retryWithBackoff()` - Exponential backoff retry mechanism
-  - `waitForStableElement()` - Element stability verification
-  - `robustElementSelect()` - Multi-fallback element selection
-  - `verifyTestEnvironment()` - Environment health checks
-  - `ensureTestIsolation()` - Test state isolation
-  - `measureTestPerformance()` - Performance monitoring
-- ✅ Enhanced authentication patterns (`enhanced-auth.js`):
-  - `robustLoginStateCheck()` - Multi-strategy login state detection
-  - `executeRobustLogin()` - Multiple login strategies with fallback
-  - `enhancedAuthentication()` - Reduced complexity authentication
-
-**Phase 5: Enhanced Processor Commands** ✅
-- ✅ `robustAddProcessor()` - Multi-strategy processor addition
-- ✅ `robustConfigureProcessor()` - Reliable configuration with retry
-- ✅ `robustGetProcessorElement()` - Enhanced element discovery
-- ✅ `robustCleanupProcessors()` - Performance-optimized cleanup
-- ✅ `robustSetProcessorState()` - State management with error recovery
-
-**Implementation Results**:
-- **Files Created**: 
-  - `cypress/support/utils/test-stability.js` - Core stability utilities
-  - `cypress/support/commands/enhanced-auth.js` - Enhanced authentication
-  - `cypress/support/commands/enhanced-processor.js` - Robust processor commands
-- **Files Enhanced**:
-  - `cypress/support/commands/navigation.js` - Robust navigation patterns
-  - `cypress/support/commands/processor.js` - Integration with enhanced commands
-- **Code Quality**: 0 ESLint errors, reduced complexity patterns throughout
-- **Architecture**: Modular design with clear separation of concerns
-
-**Success Criteria Achieved**:
-- ✅ Stable test setup patterns with enhanced authentication and environment verification
-- ✅ Test isolation and cleanup mechanisms with robust processor management
-- ✅ Graceful degradation for UI changes with multiple fallback strategies
-- ✅ Error recovery patterns with exponential backoff retry mechanisms
-- ✅ Performance optimization with stable element detection and measurement
-- ✅ Reduced complexity design to avoid ESLint issues
-- ✅ Comprehensive utility library for test stability
-- ✅ Enhanced command library with 15+ new robust commands
-
-**Technical Highlights**:
-- **Retry Mechanisms**: Exponential backoff with configurable parameters
-- **Element Stability**: 2-second stability verification before interaction
-- **Multi-Strategy Approach**: 3-5 fallback strategies per operation
-- **Performance Monitoring**: Built-in timing and measurement capabilities
-- **Graceful Degradation**: Robust handling of UI changes and missing elements
-- **Test Isolation**: Clean state management between test executions
-
-**Status**: ✅ **COMPLETED** - Robust test patterns fully implemented and integrated
-
----
-
-**3. Graceful Degradation Mechanisms**:
-- 🔄 Fallback strategies for UI changes
-- 🔄 Alternative element selection patterns
-- 🔄 Error boundary handling
-- 🔄 Platform compatibility layers
-
-**4. Error Recovery and Resilience**:
-- 🔄 Automatic retry mechanisms for transient failures
-- 🔄 Smart error categorization (environmental vs. test logic)
-- 🔄 Recovery workflows for common failure scenarios
-- 🔄 Test health monitoring and reporting
-
-**5. Performance Optimization**:
-- 🔄 Optimized selector strategies
-- 🔄 Reduced DOM queries and improved caching
-- 🔄 Parallel test execution patterns
-- 🔄 Resource usage optimization
-
-**Implementation Strategy**:
-1. **Phase 1**: Stable Setup - Enhance existing authentication and navigation patterns
-2. **Phase 2**: Isolation - Implement comprehensive cleanup and state management
-3. **Phase 3**: Resilience - Add fallback mechanisms and error recovery
-4. **Phase 4**: Performance - Optimize execution speed and resource usage
-5. **Phase 5**: Validation - Measure and verify 95%+ success rate achievement
+**Implementation Areas**:
+- Right-click processor context menu navigation
+- Advanced dialog opening and state management
+- Three-tab navigation system within the custom UI:
+  - Tab 1: [Primary configuration/properties]
+  - Tab 2: [Secondary configuration/validation]  
+  - Tab 3: [Advanced settings/monitoring]
+- Single-method navigation to each tab
+- Custom UI element interaction and validation
+- Tab-specific functionality testing
 
 **Success Criteria**:
-- ✅ Test success rate improves from current 71% to 95%+
-- ✅ Reduced test flakiness (< 5% failure rate due to environmental issues)
-- ✅ Consistent execution across different environments (local, CI/CD)
-- ✅ Improved test execution speed (maintain < 60 seconds per full test run)
-- ✅ Enhanced error reporting and debugging capabilities
-- ✅ Robust fallback mechanisms for UI changes
+- Reliable right-click → Advanced navigation command
+- Single command to navigate to any of the three tabs
+- Complete test coverage for each tab's functionality
+- Robust element detection within custom UI context
+- Seamless integration with existing processor management
 
-**Files to Modify**:
-- `cypress/support/commands/navigation.js` - Enhanced navigation patterns
-- `cypress/support/commands/processor.js` - Robust processor management
-- `cypress/support/commands/auth.js` - Stable authentication flows
-- `cypress/support/utils/test-utils.js` - Common utility patterns  
-- `cypress/support/utils/retry-utils.js` - Retry and fallback mechanisms
-- Test files - Apply robust patterns throughout test suite
+**Implementation Tasks**:
+- Create `cy.openProcessorAdvancedDialog()` command
+- Create `cy.navigateToCustomUITab(tabName)` command with support for:
+  - `cy.navigateToCustomUITab('tab1')` or `cy.navigateToCustomUITab('properties')`
+  - `cy.navigateToCustomUITab('tab2')` or `cy.navigateToCustomUITab('validation')`
+  - `cy.navigateToCustomUITab('tab3')` or `cy.navigateToCustomUITab('advanced')`
+- Implement tab-specific element selectors and validation methods
+- Add error handling for UI state transitions
+- Create comprehensive test suite for each tab's functionality
 
-**Current Status**: Ready to begin implementation - foundation from Tasks 1-2 provides solid base
+### 3. Advanced Test Automation
+**Goal**: Implement comprehensive test patterns for complex processor scenarios
+**Impact**: High - enables thorough testing of custom processor functionality
+**Effort**: 3-4 hours
+
+**Implementation Areas**:
+- Multi-processor workflow validation
+- Complex error scenario testing
+- Performance benchmarking and monitoring
+- Cross-environment compatibility verification
+
+**Success Criteria**:
+- Complete test coverage for processor interactions
+- Automated performance monitoring
+- Robust error handling validation
+- Comprehensive documentation of test patterns
+
+### 4. CI/CD Integration Enhancement
+**Goal**: Optimize continuous integration and deployment workflows
+**Impact**: High - improves development velocity and deployment reliability
+**Effort**: 2-3 hours
+
+**Implementation Areas**:
+- Pipeline optimization and parallelization
+- Environment-specific test configurations
+- Automated reporting and notifications
+- Test result analysis and trending
+
+**Success Criteria**:
+- Reduced CI/CD execution time
+- Improved test reliability in automated environments
+- Comprehensive test reporting and metrics
+- Automated failure detection and notification
+
+### 5. Test Maintenance and Optimization
+**Goal**: Establish sustainable test maintenance practices
+**Impact**: Medium - ensures long-term test reliability and maintainability
+**Effort**: 2 hours
+
+**Implementation Areas**:
+- Test code refactoring and cleanup
+- Performance optimization and monitoring
+- Legacy test cleanup and modernization
+- Documentation updates and maintenance
+
+**Success Criteria**:
+- Clean, maintainable test codebase
+- Optimized test execution performance
+- Up-to-date comprehensive documentation
+- Established maintenance workflows and practices
+
+## Implementation Priorities
+
+1. **✅ COMPLETED**: Project Cleanup and Restructuring - Foundation work completed successfully
+2. **Critical Priority**: Custom Processor UI Testing (Advanced Dialog) - Core testing target
+3. **High Priority**: Advanced Test Automation (comprehensive testing patterns)
+4. **Medium Priority**: CI/CD Integration Enhancement (development workflow improvement)
+5. **Ongoing**: Test Maintenance and Optimization (long-term sustainability)
+
+## Notes
+
+- Test infrastructure is stable and ready for advanced implementations
+- Focus should be on value-adding features that enhance test coverage
+- All foundational work is complete, enabling focus on advanced scenarios
+
+### Current Capability Analysis
+
+**Existing Right-click & Dialog Support**:
+- ✅ `cy.getProcessorElement()` - Processor element selection
+- ✅ `rightclick()` - Right-click context menu trigger
+- ✅ Basic context menu detection (`.context-menu, .mat-menu-panel, [role="menu"]`)
+- ✅ Configuration dialog opening (`cy.navigateToProcessorConfig()`)
+
+**Custom UI Infrastructure Detected**:
+- ✅ Custom tab container system (`.custom-tabs`, `.custom-tabs-navigation`)
+- ✅ Individual tab elements (`.custom-tab`)
+- ✅ Tab navigation items (`.tab-nav-item`)
+- ✅ Active tab state management
+
+**Missing Components for Task 1**:
+- ❌ Right-click → Advanced option detection
+- ❌ Advanced dialog opening command
+- ❌ Three-tab navigation within custom UI
+- ❌ Tab-specific element validation
+- ❌ Custom UI state management
+
+This analysis shows the foundation exists but needs the specific Advanced dialog and tab navigation commands outlined in Task 1.

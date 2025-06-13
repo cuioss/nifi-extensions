@@ -1,7 +1,7 @@
 /**
  * Enhanced Processor Management Commands with Robust Test Patterns
  * Task 3 Implementation - Robust Test Patterns for Processor Operations
- * 
+ *
  * Features:
  * - Retry mechanisms with exponential backoff
  * - Graceful degradation for UI changes
@@ -11,14 +11,14 @@
  */
 
 // Import test stability utilities
-const { 
-  retryWithBackoff, 
-  waitForStableElement, 
+const {
+  retryWithBackoff,
+  waitForStableElement,
   robustElementSelect,
   verifyTestEnvironment,
   ensureTestIsolation,
-  measureTestPerformance
-} = require('../utils/test-stability');
+  measureTestPerformance,
+} = require('../../utils/test-stability');
 
 /**
  * Enhanced processor addition with robust patterns
@@ -41,15 +41,17 @@ Cypress.Commands.add('robustAddProcessor', (processorType, options = {}) => {
       const existingCount = $body.find('g.processor, [class*="processor"], .component').length;
 
       // Multiple strategies for opening add processor dialog
-      const executeDoubleClick = () => cy.get('nifi').dblclick(finalOptions.x, finalOptions.y, { force: true });
-      
-      const executeCanvasClick = () => cy.get('.canvas').dblclick(finalOptions.x, finalOptions.y, { force: true });
-      
+      const executeDoubleClick = () =>
+        cy.get('nifi').dblclick(finalOptions.x, finalOptions.y, { force: true });
+
+      const executeCanvasClick = () =>
+        cy.get('.canvas').dblclick(finalOptions.x, finalOptions.y, { force: true });
+
       const executeContextMenu = () => cy.robustContextMenuAction(finalOptions.x, finalOptions.y);
 
       const tryOpenDialog = (strategyIndex = 0) => {
         const strategies = [executeDoubleClick, executeCanvasClick, executeContextMenu];
-        
+
         if (strategyIndex >= strategies.length) {
           throw new Error('All dialog opening strategies failed');
         }
@@ -69,18 +71,21 @@ Cypress.Commands.add('robustAddProcessor', (processorType, options = {}) => {
     });
   };
 
-  return cy.wrap(null).then(() =>
-    retryWithBackoff(performProcessorAddition, {
-      maxRetries: 3,
-      baseDelay: 1000,
-      maxDelay: 5000,
-      backoffFactor: 2
-    })
-  ).then((processorId) => {
-    const duration = Date.now() - startTime;
-    cy.log(`✅ Processor addition completed in ${duration}ms`);
-    return processorId;
-  });
+  return cy
+    .wrap(null)
+    .then(() =>
+      retryWithBackoff(performProcessorAddition, {
+        maxRetries: 3,
+        baseDelay: 1000,
+        maxDelay: 5000,
+        backoffFactor: 2,
+      })
+    )
+    .then((processorId) => {
+      const duration = Date.now() - startTime;
+      cy.log(`✅ Processor addition completed in ${duration}ms`);
+      return processorId;
+    });
 });
 
 /**
@@ -101,7 +106,9 @@ Cypress.Commands.add('executeDialogStrategy', (strategy, strategyIndex, retryFun
  * @param {number} y - Y coordinate
  */
 Cypress.Commands.add('robustContextMenuAction', (x, y) => {
-  return cy.get('body').trigger('contextmenu', x, y)
+  return cy
+    .get('body')
+    .trigger('contextmenu', x, y)
     .then(() => cy.wait(500))
     .then(() => robustElementSelect(['*:contains("Add")', '.add-processor']));
 });
@@ -121,12 +128,10 @@ Cypress.Commands.add('retryDialogStrategy', (nextIndex, tryFunction) => {
  */
 Cypress.Commands.add('checkForDialog', () => {
   // Wait for dialog with multiple selector strategies
-  return robustElementSelect([
-    '[role="dialog"]',
-    '.mat-dialog-container',
-    '.add-processor-dialog',
-    '.processor-dialog'
-  ], { timeout: 5000 });
+  return robustElementSelect(
+    ['[role="dialog"]', '.mat-dialog-container', '.add-processor-dialog', '.processor-dialog'],
+    { timeout: 5000 }
+  );
 });
 
 /**
@@ -136,19 +141,21 @@ Cypress.Commands.add('checkForDialog', () => {
 Cypress.Commands.add('searchAndSelectProcessor', (processorType) => {
   const searchStrategies = [
     // Strategy 1: Direct search input
-    () => robustElementSelect([
-      'input[type="search"]',
-      'input[placeholder*="search"]',
-      'input[placeholder*="filter"]',
-      'input[type="text"]'
-    ]),
-    
+    () =>
+      robustElementSelect([
+        'input[type="search"]',
+        'input[placeholder*="search"]',
+        'input[placeholder*="filter"]',
+        'input[type="text"]',
+      ]),
+
     // Strategy 2: Category navigation
-    () => robustElementSelect([
-      '*:contains("Custom")',
-      '*:contains("Security")',
-      '*:contains("Authentication")'
-    ])
+    () =>
+      robustElementSelect([
+        '*:contains("Custom")',
+        '*:contains("Security")',
+        '*:contains("Authentication")',
+      ]),
   ];
 
   const applySearchInput = ($input) => {
@@ -193,7 +200,7 @@ Cypress.Commands.add('selectProcessorDirectly', (processorType) => {
       `*:contains("${processorType}")`,
       `[data-processor-type="${processorType}"]`,
       `[title*="${processorType}"]`,
-      '.processor-option:first'  // Fallback to first available
+      '.processor-option:first', // Fallback to first available
     ];
 
     const trySelection = (selectorIndex = 0) => {
@@ -206,12 +213,13 @@ Cypress.Commands.add('selectProcessorDirectly', (processorType) => {
 
       if (elements.length > 0) {
         const executeSelection = () => cy.get(selector).first().click({ force: true });
-        
-        const confirmSelection = () => robustElementSelect([
-          'button:contains("Add")',
-          'button:contains("OK")',
-          'button:contains("Create")'
-        ]);
+
+        const confirmSelection = () =>
+          robustElementSelect([
+            'button:contains("Add")',
+            'button:contains("OK")',
+            'button:contains("Create")',
+          ]);
 
         return executeSelection()
           .then(() => confirmSelection())
@@ -234,18 +242,19 @@ Cypress.Commands.add('verifyProcessorAddition', (existingCount, processorType) =
   return cy.get('body').then(($body) => {
     const checkAddition = () => {
       const currentProcessors = $body.find('g.processor, [class*="processor"], .component');
-      
+
       if (currentProcessors.length > existingCount) {
         const newestProcessor = currentProcessors.last();
-        
+
         const waitForStability = () => waitForStableElement(newestProcessor[0], 2000);
-        
+
         const extractProcessorId = () => {
-          const processorId = newestProcessor.attr('id') ||
-                            newestProcessor.attr('data-testid') ||
-                            newestProcessor.attr('data-processor-id') ||
-                            `processor-${Date.now()}`;
-                            
+          const processorId =
+            newestProcessor.attr('id') ||
+            newestProcessor.attr('data-testid') ||
+            newestProcessor.attr('data-processor-id') ||
+            `processor-${Date.now()}`;
+
           cy.log(`✅ Processor added with ID: ${processorId}`);
           return processorId;
         };
@@ -260,7 +269,7 @@ Cypress.Commands.add('verifyProcessorAddition', (existingCount, processorType) =
     return retryWithBackoff(checkAddition, {
       maxRetries: 5,
       baseDelay: 500,
-      maxDelay: 2000
+      maxDelay: 2000,
     });
   });
 });
@@ -276,7 +285,8 @@ Cypress.Commands.add('robustConfigureProcessor', (processorId, config) => {
 
   const performConfiguration = () => {
     // First, ensure processor element is stable
-    return cy.robustGetProcessorElement(processorId)
+    return cy
+      .robustGetProcessorElement(processorId)
       .then(($element) => waitForStableElement($element[0], 1000))
       .then(($element) => {
         // Open configuration with navigation command
@@ -292,16 +302,19 @@ Cypress.Commands.add('robustConfigureProcessor', (processorId, config) => {
       });
   };
 
-  return cy.wrap(null).then(() =>
-    retryWithBackoff(performConfiguration, {
-      maxRetries: 3,
-      baseDelay: 1000,
-      maxDelay: 4000
-    })
-  ).then(() => {
-    const duration = Date.now() - startTime;
-    cy.log(`✅ Processor configuration completed in ${duration}ms`);
-  });
+  return cy
+    .wrap(null)
+    .then(() =>
+      retryWithBackoff(performConfiguration, {
+        maxRetries: 3,
+        baseDelay: 1000,
+        maxDelay: 4000,
+      })
+    )
+    .then(() => {
+      const duration = Date.now() - startTime;
+      cy.log(`✅ Processor configuration completed in ${duration}ms`);
+    });
 });
 
 /**
@@ -313,10 +326,11 @@ Cypress.Commands.add('robustGetProcessorElement', (processorId) => {
     () => cy.get(`g[id="${processorId}"]`),
     () => cy.get(`[data-testid="${processorId}"]`),
     () => cy.get(`[data-processor-id="${processorId}"]`),
-    () => cy.get('g.processor').filter((index, element) => 
-      element.getAttribute('id')?.includes(processorId)
-    ),
-    () => cy.get('g.processor').first() // Fallback
+    () =>
+      cy
+        .get('g.processor')
+        .filter((index, element) => element.getAttribute('id')?.includes(processorId)),
+    () => cy.get('g.processor').first(), // Fallback
   ];
 
   const tryStrategy = (strategyIndex = 0) => {
@@ -343,30 +357,32 @@ Cypress.Commands.add('robustGetProcessorElement', (processorId) => {
  * @param {object} config - Configuration to apply
  */
 Cypress.Commands.add('robustApplyConfiguration', (config) => {
-  return cy.get('body').then(($body) => {
-    // Apply name if provided
-    if (config.name) {
-      return cy.robustSetProcessorName(config.name)
-        .then(() => {
+  return cy
+    .get('body')
+    .then(($body) => {
+      // Apply name if provided
+      if (config.name) {
+        return cy.robustSetProcessorName(config.name).then(() => {
           if (config.properties) {
             return cy.robustSetProcessorProperties(config.properties);
           }
         });
-    } else if (config.properties) {
-      return cy.robustSetProcessorProperties(config.properties);
-    }
-  }).then(() => {
-    // Apply configuration with confirmation
-    return robustElementSelect([
-      'button:contains("Apply")',
-      'button:contains("OK")',
-      'button:contains("Save")'
-    ]).then(($button) => {
-      cy.wrap($button).click({ force: true });
-      // Wait for dialog to close
-      return cy.wait(1000);
+      } else if (config.properties) {
+        return cy.robustSetProcessorProperties(config.properties);
+      }
+    })
+    .then(() => {
+      // Apply configuration with confirmation
+      return robustElementSelect([
+        'button:contains("Apply")',
+        'button:contains("OK")',
+        'button:contains("Save")',
+      ]).then(($button) => {
+        cy.wrap($button).click({ force: true });
+        // Wait for dialog to close
+        return cy.wait(1000);
+      });
     });
-  });
 });
 
 /**
@@ -378,7 +394,7 @@ Cypress.Commands.add('robustSetProcessorName', (name) => {
     'input[data-testid="processor-name"]',
     'input[placeholder*="name"]',
     'input[id*="name"]',
-    '.processor-name input'
+    '.processor-name input',
   ]).then(($input) => {
     cy.wrap($input).clear({ force: true }).type(name, { force: true });
     return waitForStableElement($input[0], 500);
@@ -394,28 +410,31 @@ Cypress.Commands.add('robustSetProcessorProperties', (properties) => {
   return robustElementSelect([
     'mat-tab:contains("Properties")',
     'tab:contains("Properties")',
-    '*:contains("Properties")'
-  ]).then(($tab) => {
-    cy.wrap($tab).click({ force: true });
-    return cy.wait(500);
-  }).then(() => {
-    // Apply each property
-    const propertyNames = Object.keys(properties);
-    
-    const applyProperty = (index = 0) => {
-      if (index >= propertyNames.length) {
-        return Promise.resolve();
-      }
+    '*:contains("Properties")',
+  ])
+    .then(($tab) => {
+      cy.wrap($tab).click({ force: true });
+      return cy.wait(500);
+    })
+    .then(() => {
+      // Apply each property
+      const propertyNames = Object.keys(properties);
 
-      const propertyName = propertyNames[index];
-      const propertyValue = properties[propertyName];
+      const applyProperty = (index = 0) => {
+        if (index >= propertyNames.length) {
+          return Promise.resolve();
+        }
 
-      return cy.robustSetSingleProperty(propertyName, propertyValue)
-        .then(() => applyProperty(index + 1));
-    };
+        const propertyName = propertyNames[index];
+        const propertyValue = properties[propertyName];
 
-    return applyProperty();
-  });
+        return cy
+          .robustSetSingleProperty(propertyName, propertyValue)
+          .then(() => applyProperty(index + 1));
+      };
+
+      return applyProperty();
+    });
 });
 
 /**
@@ -430,7 +449,7 @@ Cypress.Commands.add('robustSetSingleProperty', (propertyName, propertyValue) =>
       `tr:contains("${propertyName}")`,
       `[data-property-name="${propertyName}"]`,
       `*:contains("${propertyName}") input`,
-      '.property-row'
+      '.property-row',
     ];
 
     const findPropertyRow = (selectorIndex = 0) => {
@@ -440,13 +459,17 @@ Cypress.Commands.add('robustSetSingleProperty', (propertyName, propertyValue) =>
       }
 
       const selector = propertyRowSelectors[selectorIndex];
-      const elements = $body.find(selector);    if (elements.length > 0) {
-      return cy.get(selector).first().within(() => {
-        return cy.robustApplyPropertyValue(propertyValue);
-      });
-    } else {
-      return findPropertyRow(selectorIndex + 1);
-    }
+      const elements = $body.find(selector);
+      if (elements.length > 0) {
+        return cy
+          .get(selector)
+          .first()
+          .within(() => {
+            return cy.robustApplyPropertyValue(propertyValue);
+          });
+      } else {
+        return findPropertyRow(selectorIndex + 1);
+      }
     };
 
     return findPropertyRow();
@@ -459,7 +482,7 @@ Cypress.Commands.add('robustSetSingleProperty', (propertyName, propertyValue) =>
  */
 Cypress.Commands.add('robustApplyPropertyValue', (propertyValue) => {
   const findInputElement = () => robustElementSelect(['input', 'textarea', 'select']);
-  
+
   const applyValue = ($input) => {
     cy.wrap($input).clear({ force: true }).type(propertyValue, { force: true });
     return waitForStableElement($input[0], 500);
@@ -477,7 +500,7 @@ Cypress.Commands.add('robustVerifyConfiguration', (processorId, expectedConfig) 
   return cy.robustGetProcessorElement(processorId).then(($element) => {
     // Basic verification - check processor is not in error state
     const hasErrors = $element.find('.error, .invalid, [class*="error"]').length > 0;
-    
+
     if (hasErrors) {
       cy.log('⚠️ Processor configuration may have validation errors');
     } else {
@@ -497,7 +520,7 @@ Cypress.Commands.add('robustCleanupProcessors', () => {
   const performCleanup = () => {
     return cy.get('body').then(($body) => {
       const processors = $body.find('g.processor, [class*="processor"], .component');
-      
+
       if (processors.length === 0) {
         cy.log('No processors to clean up');
         return;
@@ -506,33 +529,38 @@ Cypress.Commands.add('robustCleanupProcessors', () => {
       cy.log(`Cleaning up ${processors.length} processors`);
 
       // Select all processors
-      return cy.get('body').type('{ctrl+a}', { force: true })
+      return cy
+        .get('body')
+        .type('{ctrl+a}', { force: true })
         .then(() => cy.wait(500))
         .then(() => cy.get('body').type('{del}', { force: true }))
         .then(() => cy.handleCleanupConfirmation());
     });
   };
 
-  return cy.wrap(null).then(() =>
-    retryWithBackoff(performCleanup, {
-      maxRetries: 3,
-      baseDelay: 1000,
-      maxDelay: 3000
-    })
-  ).then(() => {
-    cy.log('✅ Processor cleanup completed');
-  });
+  return cy
+    .wrap(null)
+    .then(() =>
+      retryWithBackoff(performCleanup, {
+        maxRetries: 3,
+        baseDelay: 1000,
+        maxDelay: 3000,
+      })
+    )
+    .then(() => {
+      cy.log('✅ Processor cleanup completed');
+    });
 });
 
 /**
  * Helper command to handle cleanup confirmation dialog
  */
 Cypress.Commands.add('handleCleanupConfirmation', () => {
-  const findDeleteButton = () => robustElementSelect([
-    'button:contains("Delete")',
-    'button:contains("Yes")',
-    'button:contains("Confirm")'
-  ], { timeout: 2000 });
+  const findDeleteButton = () =>
+    robustElementSelect(
+      ['button:contains("Delete")', 'button:contains("Yes")', 'button:contains("Confirm")'],
+      { timeout: 2000 }
+    );
 
   const handleConfirmation = ($button) => {
     if ($button) {
@@ -545,9 +573,7 @@ Cypress.Commands.add('handleCleanupConfirmation', () => {
     cy.log('Cleanup completed without confirmation dialog');
   };
 
-  return findDeleteButton()
-    .then(handleConfirmation)
-    .catch(handleNoDialog);
+  return findDeleteButton().then(handleConfirmation).catch(handleNoDialog);
 });
 
 /**
@@ -557,9 +583,10 @@ Cypress.Commands.add('handleCleanupConfirmation', () => {
  */
 Cypress.Commands.add('robustSetProcessorState', (processorId, targetState) => {
   const startTime = Date.now();
-  
+
   const performStateChange = () => {
-    return cy.robustGetProcessorElement(processorId)
+    return cy
+      .robustGetProcessorElement(processorId)
       .then(($element) => {
         // Right-click for context menu
         cy.wrap($element).rightclick({ force: true });
@@ -567,10 +594,11 @@ Cypress.Commands.add('robustSetProcessorState', (processorId, targetState) => {
       })
       .then(() => {
         // Find appropriate state command
-        const stateCommands = targetState === 'start' 
-          ? ['*:contains("Start")', '*:contains("Run")']
-          : ['*:contains("Stop")', '*:contains("Terminate")'];
-        
+        const stateCommands =
+          targetState === 'start'
+            ? ['*:contains("Start")', '*:contains("Run")']
+            : ['*:contains("Stop")', '*:contains("Terminate")'];
+
         return robustElementSelect(stateCommands);
       })
       .then(($command) => {
@@ -579,13 +607,16 @@ Cypress.Commands.add('robustSetProcessorState', (processorId, targetState) => {
       });
   };
 
-  return cy.wrap(null).then(() =>
-    retryWithBackoff(performStateChange, {
-      maxRetries: 2,
-      baseDelay: 1000
-    })
-  ).then(() => {
-    const duration = Date.now() - startTime;
-    cy.log(`✅ Processor state change completed in ${duration}ms`);
-  });
+  return cy
+    .wrap(null)
+    .then(() =>
+      retryWithBackoff(performStateChange, {
+        maxRetries: 2,
+        baseDelay: 1000,
+      })
+    )
+    .then(() => {
+      const duration = Date.now() - startTime;
+      cy.log(`✅ Processor state change completed in ${duration}ms`);
+    });
 });

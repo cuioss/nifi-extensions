@@ -5,7 +5,7 @@
  * including language switching, translation verification, and locale-specific formatting.
  */
 
-import { TEXT_CONSTANTS } from '../constants.js';
+import { TEXT_CONSTANTS } from '../../constants.js';
 
 // Language Detection and Switching Commands
 

@@ -11,12 +11,12 @@
  */
 
 // Import test stability utilities
-const { 
-  retryWithBackoff, 
-  waitForStableElement, 
+const {
+  retryWithBackoff,
+  waitForStableElement,
   robustElementSelect,
-  verifyTestEnvironment 
-} = require('../utils/test-stability');
+  verifyTestEnvironment,
+} = require('../../utils/test-stability');
 
 /**
  * Enhanced navigate to NiFi canvas with robust patterns
@@ -24,10 +24,10 @@ const {
  */
 Cypress.Commands.add('navigateToCanvas', () => {
   cy.log('Starting robust canvas navigation');
-  
+
   // Verify test environment first
   cy.wrap(null).then(() => verifyTestEnvironment());
-  
+
   // Enhanced state-based navigation with retry
   const performNavigation = () => {
     return cy.url().then((currentUrl) => {
@@ -37,27 +37,29 @@ Cypress.Commands.add('navigateToCanvas', () => {
       } else {
         cy.log('Navigating directly to NiFi canvas with robust patterns');
         cy.visit('/nifi');
-        
+
         // Enhanced element detection with stability verification
-        return cy.wrap(null).then(() => 
-          robustElementSelect(['nifi', '[ng-app]', 'body'], { timeout: 30000 })
-        ).then(() => {
-          // Wait for stable state before proceeding
-          return waitForStableElement('body', 2000);
-        }).then(() => {
-          cy.verifyCanvasAccessible();
-        });
+        return cy
+          .wrap(null)
+          .then(() => robustElementSelect(['nifi', '[ng-app]', 'body'], { timeout: 30000 }))
+          .then(() => {
+            // Wait for stable state before proceeding
+            return waitForStableElement('body', 2000);
+          })
+          .then(() => {
+            cy.verifyCanvasAccessible();
+          });
       }
     });
   };
 
   // Apply retry mechanism with exponential backoff
-  cy.wrap(null).then(() => 
+  cy.wrap(null).then(() =>
     retryWithBackoff(performNavigation, {
       maxRetries: 3,
       baseDelay: 1000,
       maxDelay: 5000,
-      backoffFactor: 2
+      backoffFactor: 2,
     })
   );
 });
@@ -73,36 +75,41 @@ Cypress.Commands.add('navigateToProcessorConfig', (processorId) => {
   // Helper function to try opening configuration with different strategies
   const tryConfigurationStrategies = ($element) => {
     const executeDoubleClick = () => cy.wrap($element).dblclick({ force: true });
-    
-    const executeContextMenu = () => 
-      cy.wrap($element).rightclick().then(() => 
-        robustElementSelect([
-          'button:contains("Configure")', 
-          '[data-testid="configure"]',
-          '.configure-option'
-        ])
-      );
-    
-    const executeKeyboard = () => 
-      cy.wrap($element).click().then(() => cy.get('body').type('{enter}'));
+
+    const executeContextMenu = () =>
+      cy
+        .wrap($element)
+        .rightclick()
+        .then(() =>
+          robustElementSelect([
+            'button:contains("Configure")',
+            '[data-testid="configure"]',
+            '.configure-option',
+          ])
+        );
+
+    const executeKeyboard = () =>
+      cy
+        .wrap($element)
+        .click()
+        .then(() => cy.get('body').type('{enter}'));
 
     // Chain strategies with fallback handling
     return executeDoubleClick()
       .then(() => cy.verifyProcessorConfigDialogOpen())
       .catch(() => {
         cy.log('Double-click failed, trying context menu');
-        return executeContextMenu()
-          .then(() => cy.verifyProcessorConfigDialogOpen());
+        return executeContextMenu().then(() => cy.verifyProcessorConfigDialogOpen());
       })
       .catch(() => {
         cy.log('Context menu failed, trying keyboard approach');
-        return executeKeyboard()
-          .then(() => cy.verifyProcessorConfigDialogOpen());
+        return executeKeyboard().then(() => cy.verifyProcessorConfigDialogOpen());
       });
   };
 
   const openConfiguration = () => {
-    return cy.getProcessorElement(processorId)
+    return cy
+      .getProcessorElement(processorId)
       .then(($element) => waitForStableElement($element[0], 1000))
       .then(($element) => tryConfigurationStrategies($element));
   };
@@ -112,7 +119,7 @@ Cypress.Commands.add('navigateToProcessorConfig', (processorId) => {
     retryWithBackoff(openConfiguration, {
       maxRetries: 3,
       baseDelay: 1000,
-      maxDelay: 4000
+      maxDelay: 4000,
     })
   );
 });
@@ -124,7 +131,7 @@ Cypress.Commands.add('ensureOnProcessorCanvas', () => {
   const checkAndNavigate = () => {
     return cy.url().then((currentUrl) => {
       const needsNavigation = !currentUrl.includes('/nifi') || currentUrl.includes('login');
-      
+
       if (needsNavigation) {
         cy.log('Not on processor canvas - navigating directly');
         return cy.navigateToCanvas();
@@ -135,9 +142,7 @@ Cypress.Commands.add('ensureOnProcessorCanvas', () => {
     });
   };
 
-  cy.wrap(null).then(() => 
-    retryWithBackoff(checkAndNavigate, { maxRetries: 2, baseDelay: 500 })
-  );
+  cy.wrap(null).then(() => retryWithBackoff(checkAndNavigate, { maxRetries: 2, baseDelay: 500 }));
 });
 
 /**
@@ -148,19 +153,25 @@ Cypress.Commands.add('verifyControllerServicesAccessible', () => {
   const checkAccessibility = () => {
     return cy.get('body').then(($body) => {
       // Multiple detection strategies for controller services
-      const hasControllerContent = $body.find('*:contains("Controller"), *:contains("Services"), *:contains("Settings")').length > 0;
-      const hasSettingsContent = $body.find('[class*="settings"], [class*="controller"]').length > 0;
-      const urlIndicatesSettings = ['settings', 'controller', 'services'].some(term => 
+      const hasControllerContent =
+        $body.find('*:contains("Controller"), *:contains("Services"), *:contains("Settings")')
+          .length > 0;
+      const hasSettingsContent =
+        $body.find('[class*="settings"], [class*="controller"]').length > 0;
+      const urlIndicatesSettings = ['settings', 'controller', 'services'].some((term) =>
         window.location.hash.toLowerCase().includes(term)
       );
-      const isValidNiFiState = $body.find('nifi').length > 0 && $body.find('nifi').children().length > 0;
+      const isValidNiFiState =
+        $body.find('nifi').length > 0 && $body.find('nifi').children().length > 0;
 
       // Graceful degradation - accept various valid states
       const isAccessible = hasControllerContent || hasSettingsContent || urlIndicatesSettings;
       const isReadyForTesting = isAccessible || isValidNiFiState;
 
       if (!isReadyForTesting) {
-        cy.log('⚠️ Controller services not directly accessible - but NiFi is ready for processor testing');
+        cy.log(
+          '⚠️ Controller services not directly accessible - but NiFi is ready for processor testing'
+        );
       }
 
       // Always pass for testing readiness focus
@@ -168,7 +179,8 @@ Cypress.Commands.add('verifyControllerServicesAccessible', () => {
     });
   };
 
-  cy.wrap(null).then(() => checkAccessibility())
+  cy.wrap(null)
+    .then(() => checkAccessibility())
     .then(() => cy.log('✅ Controller services navigation verified - ready for testing'));
 });
 
@@ -183,41 +195,40 @@ Cypress.Commands.add('verifyProcessorConfigDialogOpen', () => {
       // Multiple detection strategies for configuration dialog
       const dialogSelectors = [
         '[role="dialog"]',
-        '.mat-dialog-container', 
-        '.configuration-dialog', 
-        '.processor-config-dialog'
+        '.mat-dialog-container',
+        '.configuration-dialog',
+        '.processor-config-dialog',
       ];
-      
+
       const contentIndicators = ['Properties', 'Settings', 'Configuration'];
       const tabIndicators = ['Properties', 'Scheduling', 'Comments'];
       const buttonIndicators = ['Apply', 'OK', 'Cancel'];
 
-      const hasConfigDialog = dialogSelectors.some(selector => $body.find(selector).length > 0);
-      const hasConfigContent = contentIndicators.some(text => 
-        $body.find(`*:contains("${text}")`).length > 0
+      const hasConfigDialog = dialogSelectors.some((selector) => $body.find(selector).length > 0);
+      const hasConfigContent = contentIndicators.some(
+        (text) => $body.find(`*:contains("${text}")`).length > 0
       );
-      const hasConfigTabs = tabIndicators.some(text => 
-        $body.find(`*:contains("${text}")`).length > 0
+      const hasConfigTabs = tabIndicators.some(
+        (text) => $body.find(`*:contains("${text}")`).length > 0
       );
-      const hasConfigButtons = buttonIndicators.some(text => 
-        $body.find(`button:contains("${text}")`).length > 0
+      const hasConfigButtons = buttonIndicators.some(
+        (text) => $body.find(`button:contains("${text}")`).length > 0
       );
 
-      const isConfigDialogOpen = hasConfigDialog || hasConfigContent || hasConfigTabs || hasConfigButtons;
-      
+      const isConfigDialogOpen =
+        hasConfigDialog || hasConfigContent || hasConfigTabs || hasConfigButtons;
+
       if (!isConfigDialogOpen) {
         throw new Error('Configuration dialog not detected with any strategy');
       }
-      
+
       return true;
     });
   };
 
-  cy.wrap(null).then(() => 
-    retryWithBackoff(checkDialogState, { maxRetries: 3, baseDelay: 500 })
-  ).then(() => 
-    cy.log('✅ Processor configuration dialog is accessible for testing')
-  );
+  cy.wrap(null)
+    .then(() => retryWithBackoff(checkDialogState, { maxRetries: 3, baseDelay: 500 }))
+    .then(() => cy.log('✅ Processor configuration dialog is accessible for testing'));
 });
 
 /**
@@ -236,7 +247,7 @@ Cypress.Commands.add('navigateToControllerServices', () => {
     });
   };
 
-  cy.wrap(null).then(() => 
+  cy.wrap(null).then(() =>
     retryWithBackoff(ensureControllerServicesAccess, { maxRetries: 2, baseDelay: 1000 })
   );
 });

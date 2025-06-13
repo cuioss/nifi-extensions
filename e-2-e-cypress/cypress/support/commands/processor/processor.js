@@ -8,13 +8,13 @@
 // Import enhanced processor commands with robust patterns
 require('./enhanced-processor');
 
-import { SELECTORS, TIMEOUTS } from '../constants.js';
+import { SELECTORS, TIMEOUTS } from '../../constants.js';
 import {
   waitForVisible,
   waitForDialog,
   waitForProcessors,
   waitForMinElementCount,
-} from '../wait-utils.js';
+} from '../../wait-utils.js';
 import {
   safeString,
   buildProcessorSelectors,
@@ -2055,4 +2055,8 @@ Cypress.Commands.add('testProcessorDisplayVerification', () => {
       cy.log('ℹ️ No processors currently displayed - add one for verification');
 
       cy.addProcessor('GenerateFlowFile', { x: 300, y: 300 }).then((processorId) => {
-        if
+        cy.log(`✅ Test processor added with ID: ${processorId}`);
+      });
+    }
+  });
+});

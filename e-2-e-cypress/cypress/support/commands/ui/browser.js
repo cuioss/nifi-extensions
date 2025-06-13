@@ -5,7 +5,7 @@
  * performance measurement, and cross-browser behavior validation.
  */
 
-import { TEXT_CONSTANTS } from '../constants.js';
+import { TEXT_CONSTANTS } from '../../constants.js';
 
 // Browser Detection and Information Commands
 

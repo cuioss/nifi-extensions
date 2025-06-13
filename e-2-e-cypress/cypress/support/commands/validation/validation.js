@@ -2,7 +2,7 @@
  * Custom commands related to JWT token validation
  */
 
-import { TEXT_CONSTANTS } from '../constants.js';
+import { TEXT_CONSTANTS } from '../../constants.js';
 
 /**
  * Generate a JWT token with specific claims using Keycloak

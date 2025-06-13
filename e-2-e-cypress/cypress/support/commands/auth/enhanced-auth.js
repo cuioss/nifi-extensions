@@ -1,16 +1,16 @@
 /**
  * Task 3: Enhanced Authentication Commands
- * 
+ *
  * Robust authentication patterns with reduced complexity and improved reliability
  */
 
-import { 
-  retryWithBackoff, 
-  verifyTestEnvironment, 
+import {
+  retryWithBackoff,
+  verifyTestEnvironment,
   ensureTestIsolation,
   measureTestPerformance,
-  robustElementSelect
-} from '../utils/test-stability.js';
+  robustElementSelect,
+} from '../../utils/test-stability.js';
 
 /**
  * Helper function to check login indicators
@@ -22,7 +22,7 @@ function evaluateLoginIndicators(checks) {
     checks.hasNifiApp && checks.hasAngularContent && !checks.hasLoginForm,
     checks.hasCanvas && !checks.hasLoginForm,
     checks.urlIndicatesLogin && !checks.hasLoginForm,
-    (checks.hasUserDropdown || checks.hasToolbar) && !checks.hasLoginForm
+    (checks.hasUserDropdown || checks.hasToolbar) && !checks.hasLoginForm,
   ];
 
   for (let i = 0; i < strategies.length; i++) {
@@ -44,13 +44,16 @@ function gatherLoginIndicators($body, thorough = false) {
     hasAngularContent: $body.find('nifi').children().length > 0,
     hasLoginForm: $body.find('input[type="password"], input[id$="password"]').length > 0,
     hasCanvas: $body.find('#canvas-container, .canvas, [data-testid*="canvas"]').length > 0,
-    urlIndicatesLogin: window.location.href.includes('/nifi') && !window.location.href.includes('/login')
+    urlIndicatesLogin:
+      window.location.href.includes('/nifi') && !window.location.href.includes('/login'),
   };
 
   if (thorough || (!primaryChecks.hasNifiApp && !primaryChecks.hasLoginForm)) {
-    primaryChecks.hasUserDropdown = $body.find('[data-testid*="user"], .user-menu, #user-menu').length > 0;
+    primaryChecks.hasUserDropdown =
+      $body.find('[data-testid*="user"], .user-menu, #user-menu').length > 0;
     primaryChecks.hasToolbar = $body.find('.toolbar, .header, [data-testid*="toolbar"]').length > 0;
-    primaryChecks.hasNavigationElements = $body.find('.navigation, .nav, [data-testid*="nav"]').length > 0;
+    primaryChecks.hasNavigationElements =
+      $body.find('.navigation, .nav, [data-testid*="nav"]').length > 0;
   }
 
   return primaryChecks;
@@ -61,18 +64,19 @@ function gatherLoginIndicators($body, thorough = false) {
  */
 Cypress.Commands.add('robustLoginStateCheck', (options = {}) => {
   const { timeout = 10000, thorough = false } = options;
-  
+
   return measureTestPerformance('login-state-detection', () => {
-    return cy.get('body', { timeout })
-      .then(($body) => {
-        const checks = gatherLoginIndicators($body, thorough);
-        const result = evaluateLoginIndicators(checks);
+    return cy.get('body', { timeout }).then(($body) => {
+      const checks = gatherLoginIndicators($body, thorough);
+      const result = evaluateLoginIndicators(checks);
 
-        cy.log(`[RobustLogin] State: ${result.loggedIn ? 'LOGGED_IN' : 'NOT_LOGGED_IN'} (${result.strategy})`);
-        cy.log(`[RobustLogin] Indicators: ${JSON.stringify(checks, null, 2)}`);
+      cy.log(
+        `[RobustLogin] State: ${result.loggedIn ? 'LOGGED_IN' : 'NOT_LOGGED_IN'} (${result.strategy})`
+      );
+      cy.log(`[RobustLogin] Indicators: ${JSON.stringify(checks, null, 2)}`);
 
-        return cy.wrap(result.loggedIn);
-      });
+      return cy.wrap(result.loggedIn);
+    });
   });
 });
 
@@ -109,28 +113,45 @@ function createLoginStrategies(username, password) {
     // Strategy 1: Direct field input
     () => {
       cy.log('[LoginStrategy1] Direct field input...');
-      const usernameSelectors = ['input[name="username"]', 'input[id="username"]', 'input[type="text"]', 'input:first'];
-      const passwordSelectors = ['input[name="password"]', 'input[id="password"]', 'input[type="password"]'];
-      const buttonSelectors = ['button[type="submit"]', 'input[type="submit"]', 'button:contains("Login")', '.login-button'];
+      const usernameSelectors = [
+        'input[name="username"]',
+        'input[id="username"]',
+        'input[type="text"]',
+        'input:first',
+      ];
+      const passwordSelectors = [
+        'input[name="password"]',
+        'input[id="password"]',
+        'input[type="password"]',
+      ];
+      const buttonSelectors = [
+        'button[type="submit"]',
+        'input[type="submit"]',
+        'button:contains("Login")',
+        '.login-button',
+      ];
 
-      return robustElementSelect(usernameSelectors, { description: 'username field' })
-        .then(($username) => {
+      return robustElementSelect(usernameSelectors, { description: 'username field' }).then(
+        ($username) => {
           if (!$username) return false;
           cy.wrap($username).clear().type(username);
-          
-          return robustElementSelect(passwordSelectors, { description: 'password field' })
-            .then(($password) => {
+
+          return robustElementSelect(passwordSelectors, { description: 'password field' }).then(
+            ($password) => {
               if (!$password) return false;
               cy.wrap($password).clear().type(password);
-              
-              return robustElementSelect(buttonSelectors, { description: 'login button' })
-                .then(($button) => {
+
+              return robustElementSelect(buttonSelectors, { description: 'login button' }).then(
+                ($button) => {
                   if (!$button) return false;
                   cy.wrap($button).click();
                   return true;
-                });
-            });
-        });
+                }
+              );
+            }
+          );
+        }
+      );
     },
 
     // Strategy 2: Form-based approach
@@ -139,7 +160,7 @@ function createLoginStrategies(username, password) {
       return cy.get('body').then(($body) => {
         const $form = $body.find('form');
         if ($form.length === 0) return false;
-        
+
         cy.wrap($form).within(() => {
           cy.get('input').first().type(username);
           cy.get('input[type="password"]').type(password);
@@ -154,13 +175,15 @@ function createLoginStrategies(username, password) {
       cy.log('[LoginStrategy3] Angular component approach...');
       return cy.get('body').then(($body) => {
         if ($body.find('mat-form-field, .mat-form-field').length === 0) return false;
-        
+
         cy.get('mat-form-field input, .mat-form-field input').first().type(username);
-        cy.get('mat-form-field input[type="password"], .mat-form-field input[type="password"]').type(password);
+        cy.get(
+          'mat-form-field input[type="password"], .mat-form-field input[type="password"]'
+        ).type(password);
         cy.get('button[mat-raised-button], .mat-raised-button').click();
         return true;
       });
-    }
+    },
   ];
 }
 
@@ -184,7 +207,7 @@ Cypress.Commands.add('executeRobustLogin', (options = {}) => {
     {
       maxAttempts: maxRetries,
       initialDelay: 2000,
-      description: 'robust login execution'
+      description: 'robust login execution',
     }
   );
 });
@@ -199,7 +222,7 @@ Cypress.Commands.add('enhancedAuthentication', (options = {}) => {
     password: 'adminadminadmin',
     maxRetries: 3,
     verifyEnvironment: true,
-    isolateTests: true
+    isolateTests: true,
   };
 
   const opts = { ...defaultOptions, ...options };
@@ -209,11 +232,11 @@ Cypress.Commands.add('enhancedAuthentication', (options = {}) => {
 
     // Step 1: Optional environment verification
     let setupChain = cy.wrap(null);
-    
+
     if (opts.verifyEnvironment) {
       setupChain = setupChain.then(() => verifyTestEnvironment());
     }
-    
+
     if (opts.isolateTests) {
       setupChain = setupChain.then(() => ensureTestIsolation());
     }
@@ -227,7 +250,8 @@ Cypress.Commands.add('enhancedAuthentication', (options = {}) => {
           return cy.verifyCanvasAccessible();
         } else {
           cy.log('🔑 [Task3] Authentication required');
-          return cy.executeRobustLogin(opts)
+          return cy
+            .executeRobustLogin(opts)
             .then(() => cy.robustLoginStateCheck({ thorough: true }))
             .then((authSuccess) => {
               if (!authSuccess) {

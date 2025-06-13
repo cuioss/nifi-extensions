@@ -5,7 +5,7 @@
  * layout verification, and visual consistency checks across different states and themes.
  */
 
-import { TEXT_CONSTANTS } from '../constants.js';
+import { TEXT_CONSTANTS } from '../../constants.js';
 
 // Configuration and Setup Commands
 

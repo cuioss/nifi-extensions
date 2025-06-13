@@ -3,8 +3,8 @@
  * CUI Standards Compliant - Core processor operations
  */
 
-import { SELECTORS, TIMEOUTS } from '../constants.js';
-import { waitForVisible, waitForDialog } from '../wait-utils.js';
+import { SELECTORS, TIMEOUTS } from '../../constants.js';
+import { waitForVisible, waitForDialog } from '../../wait-utils.js';
 
 /**
  * Safe string conversion for template literals

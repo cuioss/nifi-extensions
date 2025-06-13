@@ -10,8 +10,8 @@
  * 3. Provide manual setup instructions for comprehensive testing
  */
 
-import { SELECTORS, TIMEOUTS } from '../constants.js';
-import { waitForVisible } from '../wait-utils.js';
+import { SELECTORS, TIMEOUTS } from '../../constants.js';
+import { waitForVisible } from '../../wait-utils.js';
 
 /**
  * Smart processor testing command that works with existing processors

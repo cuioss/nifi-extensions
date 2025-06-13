@@ -9,13 +9,13 @@
  * - Graceful degradation for UI changes
  */
 
-import { 
-  retryWithBackoff, 
-  verifyTestEnvironment, 
+import {
+  retryWithBackoff,
+  verifyTestEnvironment,
   ensureTestIsolation,
   measureTestPerformance,
-  robustElementSelect
-} from '../utils/test-stability.js';
+  robustElementSelect,
+} from '../../utils/test-stability.js';
 
 /**
  * Enhanced login state detection with robust patterns
@@ -23,62 +23,67 @@ import {
  */
 Cypress.Commands.add('isLoggedIn', (options = {}) => {
   const { timeout = 10000, thorough = false } = options;
-  
+
   return cy.wrap(null).then(() => {
     return measureTestPerformance('login-state-detection', () => {
-      return cy.get('body', { timeout })
-        .then(($body) => {
-          // Primary indicators (fast checks)
-          const primaryChecks = {
-            hasNifiApp: $body.find('nifi').length > 0,
-            hasAngularContent: $body.find('nifi').children().length > 0,
-            hasLoginForm: $body.find('input[type="password"], input[id$="password"]').length > 0,
-            hasCanvas: $body.find('#canvas-container, .canvas, [data-testid*="canvas"]').length > 0
+      return cy.get('body', { timeout }).then(($body) => {
+        // Primary indicators (fast checks)
+        const primaryChecks = {
+          hasNifiApp: $body.find('nifi').length > 0,
+          hasAngularContent: $body.find('nifi').children().length > 0,
+          hasLoginForm: $body.find('input[type="password"], input[id$="password"]').length > 0,
+          hasCanvas: $body.find('#canvas-container, .canvas, [data-testid*="canvas"]').length > 0,
+        };
+
+        // If thorough check requested or primary indicators are ambiguous
+        if (thorough || (!primaryChecks.hasNifiApp && !primaryChecks.hasLoginForm)) {
+          const thoroughChecks = {
+            hasUserDropdown: $body.find('[data-testid*="user"], .user-menu, #user-menu').length > 0,
+            hasToolbar: $body.find('.toolbar, .header, [data-testid*="toolbar"]').length > 0,
+            hasNavigationElements: $body.find('.navigation, .nav, [data-testid*="nav"]').length > 0,
+            urlIndicatesLogin:
+              window.location.href.includes('/nifi') && !window.location.href.includes('/login'),
           };
 
-          // If thorough check requested or primary indicators are ambiguous
-          if (thorough || (!primaryChecks.hasNifiApp && !primaryChecks.hasLoginForm)) {
-            const thoroughChecks = {
-              hasUserDropdown: $body.find('[data-testid*="user"], .user-menu, #user-menu').length > 0,
-              hasToolbar: $body.find('.toolbar, .header, [data-testid*="toolbar"]').length > 0,
-              hasNavigationElements: $body.find('.navigation, .nav, [data-testid*="nav"]').length > 0,
-              urlIndicatesLogin: window.location.href.includes('/nifi') && !window.location.href.includes('/login')
-            };
+          Object.assign(primaryChecks, thoroughChecks);
+        }
 
-            Object.assign(primaryChecks, thoroughChecks);
+        // Logical determination with multiple fallback strategies
+        const loginStrategies = [
+          // Strategy 1: Standard Angular app detection
+          () =>
+            primaryChecks.hasNifiApp &&
+            primaryChecks.hasAngularContent &&
+            !primaryChecks.hasLoginForm,
+
+          // Strategy 2: Canvas-based detection (fallback for UI changes)
+          () => primaryChecks.hasCanvas && !primaryChecks.hasLoginForm,
+
+          // Strategy 3: URL-based detection (fallback for major UI changes)
+          () => primaryChecks.urlIndicatesLogin && !primaryChecks.hasLoginForm,
+
+          // Strategy 4: Presence of authenticated UI elements
+          () =>
+            (primaryChecks.hasUserDropdown || primaryChecks.hasToolbar) &&
+            !primaryChecks.hasLoginForm,
+        ];
+
+        let loggedIn = false;
+        let strategy = 'unknown';
+
+        for (let i = 0; i < loginStrategies.length; i++) {
+          if (loginStrategies[i]()) {
+            loggedIn = true;
+            strategy = `strategy-${i + 1}`;
+            break;
           }
+        }
 
-          // Logical determination with multiple fallback strategies
-          const loginStrategies = [
-            // Strategy 1: Standard Angular app detection
-            () => primaryChecks.hasNifiApp && primaryChecks.hasAngularContent && !primaryChecks.hasLoginForm,
-            
-            // Strategy 2: Canvas-based detection (fallback for UI changes)
-            () => primaryChecks.hasCanvas && !primaryChecks.hasLoginForm,
-            
-            // Strategy 3: URL-based detection (fallback for major UI changes)
-            () => primaryChecks.urlIndicatesLogin && !primaryChecks.hasLoginForm,
-            
-            // Strategy 4: Presence of authenticated UI elements
-            () => (primaryChecks.hasUserDropdown || primaryChecks.hasToolbar) && !primaryChecks.hasLoginForm
-          ];
+        cy.log(`[LoginDetection] State: ${loggedIn ? 'LOGGED_IN' : 'NOT_LOGGED_IN'} (${strategy})`);
+        cy.log(`[LoginDetection] Indicators: ${JSON.stringify(primaryChecks, null, 2)}`);
 
-          let loggedIn = false;
-          let strategy = 'unknown';
-
-          for (let i = 0; i < loginStrategies.length; i++) {
-            if (loginStrategies[i]()) {
-              loggedIn = true;
-              strategy = `strategy-${i + 1}`;
-              break;
-            }
-          }
-
-          cy.log(`[LoginDetection] State: ${loggedIn ? 'LOGGED_IN' : 'NOT_LOGGED_IN'} (${strategy})`);
-          cy.log(`[LoginDetection] Indicators: ${JSON.stringify(primaryChecks, null, 2)}`);
-
-          return cy.wrap(loggedIn);
-        });
+        return cy.wrap(loggedIn);
+      });
     });
   });
 });
@@ -94,7 +99,7 @@ Cypress.Commands.add('ensureAuthenticatedAndReady', (options = {}) => {
     maxRetries: 3,
     timeout: 30000,
     verifyEnvironment: true,
-    isolateTests: true
+    isolateTests: true,
   };
 
   const opts = { ...defaultOptions, ...options };
@@ -105,39 +110,37 @@ Cypress.Commands.add('ensureAuthenticatedAndReady', (options = {}) => {
 
       // Step 0: Environment verification (Task 3 enhancement)
       let setupPromise = cy.wrap(null);
-      
+
       if (opts.verifyEnvironment) {
         setupPromise = setupPromise.then(() => verifyTestEnvironment());
       }
-      
+
       if (opts.isolateTests) {
         setupPromise = setupPromise.then(() => ensureTestIsolation());
       }
 
-      return setupPromise.then(() => {
-        // Step 1: Enhanced state detection with retry mechanism
-        return retryWithBackoff(
-          () => cy.isLoggedIn({ thorough: true }),
-          {
+      return setupPromise
+        .then(() => {
+          // Step 1: Enhanced state detection with retry mechanism
+          return retryWithBackoff(() => cy.isLoggedIn({ thorough: true }), {
             maxAttempts: 2,
             initialDelay: 1000,
-            description: 'login state detection'
+            description: 'login state detection',
+          });
+        })
+        .then((loggedIn) => {
+          if (loggedIn) {
+            cy.log('✅ [Task3] Already authenticated, verifying readiness...');
+            return cy.verifyCanvasAccessible();
+          } else {
+            cy.log('🔑 [Task3] Not authenticated, initiating robust login...');
+            return cy.performRobustLogin(opts);
           }
-        );
-      })
-      .then((loggedIn) => {
-        if (loggedIn) {
-          cy.log('✅ [Task3] Already authenticated, verifying readiness...');
-          return cy.verifyCanvasAccessible();
-        } else {
-          cy.log('🔑 [Task3] Not authenticated, initiating robust login...');
-          return cy.performRobustLogin(opts);
-        }
-      })
-      .then(() => {
-        // Final verification with enhanced patterns
-        return cy.verifyAuthenticationComplete();
-      });
+        })
+        .then(() => {
+          // Final verification with enhanced patterns
+          return cy.verifyAuthenticationComplete();
+        });
     });
   });
 });
@@ -154,33 +157,30 @@ Cypress.Commands.add('performRobustLogin', (options = {}) => {
     // Strategy 1: Direct field input (most common)
     () => {
       cy.log('[LoginStrategy1] Using direct field input...');
-      return robustElementSelect([
-        'input[name="username"]',
-        'input[id="username"]', 
-        'input[type="text"]',
-        'input:first'
-      ], { description: 'username field' })
-      .then(($usernameField) => {
+      return robustElementSelect(
+        ['input[name="username"]', 'input[id="username"]', 'input[type="text"]', 'input:first'],
+        { description: 'username field' }
+      ).then(($usernameField) => {
         if ($usernameField) {
           cy.wrap($usernameField).clear().type(username);
-          
-          return robustElementSelect([
-            'input[name="password"]',
-            'input[id="password"]',
-            'input[type="password"]'
-          ], { description: 'password field' })
-          .then(($passwordField) => {
+
+          return robustElementSelect(
+            ['input[name="password"]', 'input[id="password"]', 'input[type="password"]'],
+            { description: 'password field' }
+          ).then(($passwordField) => {
             if ($passwordField) {
               cy.wrap($passwordField).clear().type(password);
-              
-              return robustElementSelect([
-                'button[type="submit"]',
-                'input[type="submit"]',
-                'button:contains("Login")',
-                'button:contains("Sign")',
-                '.login-button'
-              ], { description: 'login button' })
-              .then(($loginButton) => {
+
+              return robustElementSelect(
+                [
+                  'button[type="submit"]',
+                  'input[type="submit"]',
+                  'button:contains("Login")',
+                  'button:contains("Sign")',
+                  '.login-button',
+                ],
+                { description: 'login button' }
+              ).then(($loginButton) => {
                 if ($loginButton) {
                   cy.wrap($loginButton).click();
                   return true;
@@ -218,13 +218,15 @@ Cypress.Commands.add('performRobustLogin', (options = {}) => {
       return cy.get('body').then(($body) => {
         if ($body.find('mat-form-field, .mat-form-field').length > 0) {
           cy.get('mat-form-field input, .mat-form-field input').first().type(username);
-          cy.get('mat-form-field input[type="password"], .mat-form-field input[type="password"]').type(password);
+          cy.get(
+            'mat-form-field input[type="password"], .mat-form-field input[type="password"]'
+          ).type(password);
           cy.get('button[mat-raised-button], .mat-raised-button').click();
           return true;
         }
         return false;
       });
-    }
+    },
   ];
 
   return retryWithBackoff(
@@ -263,7 +265,7 @@ Cypress.Commands.add('performRobustLogin', (options = {}) => {
     {
       maxAttempts: maxRetries,
       initialDelay: 2000,
-      description: 'robust login process'
+      description: 'robust login process',
     }
   );
 });
@@ -276,26 +278,28 @@ Cypress.Commands.add('verifyAuthenticationComplete', () => {
   cy.log('[Task3] Verifying authentication completion...');
 
   // Wait for authentication to complete with multiple indicators
-  return cy.wrap(null).then(() => {
-    // Check for successful login indicators
-    return retryWithBackoff(
-      () => {
-        return cy.isLoggedIn({ thorough: true }).then((loggedIn) => {
-          if (!loggedIn) {
-            throw new Error('Authentication verification failed');
-          }
-          return loggedIn;
-        });
-      },
-      {
-        maxAttempts: 5,
-        initialDelay: 1000,
-        description: 'authentication completion verification'
-      }
-    );
-  })
-  .then(() => {
-    cy.log('✅ [Task3] Authentication verified successfully');
-    return cy.wrap(true);
-  });
+  return cy
+    .wrap(null)
+    .then(() => {
+      // Check for successful login indicators
+      return retryWithBackoff(
+        () => {
+          return cy.isLoggedIn({ thorough: true }).then((loggedIn) => {
+            if (!loggedIn) {
+              throw new Error('Authentication verification failed');
+            }
+            return loggedIn;
+          });
+        },
+        {
+          maxAttempts: 5,
+          initialDelay: 1000,
+          description: 'authentication completion verification',
+        }
+      );
+    })
+    .then(() => {
+      cy.log('✅ [Task3] Authentication verified successfully');
+      return cy.wrap(true);
+    });
 });

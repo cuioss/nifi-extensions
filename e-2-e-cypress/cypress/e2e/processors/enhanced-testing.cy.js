@@ -103,7 +103,7 @@ describe('Enhanced Custom Processor Testing', () => {
         cy.configureProcessor(processorId, {
           name: 'Enhanced Test JWT Processor',
           properties: {
-            'JWKS Type': 'Server', 
+            'JWKS Type': 'Server',
             'JWKS URL': URLS.KEYCLOAK_JWKS_URL,
             'Token Header Name': 'Authorization',
             'Clock Skew': '60 seconds',

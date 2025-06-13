@@ -4,8 +4,8 @@
  * this file implements alternative approaches
  */
 
-import { SELECTORS, TIMEOUTS } from '../constants.js';
-import { waitForVisible, waitForDialog } from '../wait-utils.js';
+import { SELECTORS, TIMEOUTS } from '../../constants.js';
+import { waitForVisible, waitForDialog } from '../../wait-utils.js';
 
 /**
  * Try to add processor using toolbar button approach
