@@ -43,10 +43,10 @@
 }
 
 .metrics-chart {
-    margin-top: 20px;
     height: 300px;
-    background-color: #fff;
-    border: 1px solid #ddd;
-    border-radius: 5px;
     padding: 10px;
+    border: 1px solid #ddd;
+    margin-top: 20px;
+    background-color: #fff;
+    border-radius: 5px;
 }

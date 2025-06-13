@@ -1178,3 +1178,145 @@ The implemented system provides **real-time standards compliance feedback**:
 **Task 5 Status: 68% Complete** - Major infrastructure completed with systematic improvements remaining.
 
 The **CUI Standards Compliance Framework** is now operational and enforcing standards across the entire codebase. The foundation is solid for completing the remaining warning cleanup and extending to CSS standards.
+
+### 22. Microservice Architecture Migration (Status: 📋 Planned)
+**Goal**: Migrate the monolithic NiFi processor architecture to a microservice-based design for better scalability and maintainability
+- [ ] **Architecture Analysis**: Analyze current monolithic structure and identify service boundaries
+  - [ ] Map processor dependencies and interactions
+  - [ ] Identify service interfaces and data contracts
+  - [ ] Design service communication patterns (HTTP, messaging, events)
+  - [ ] Plan data partitioning and service boundaries
+- [ ] **Service Extraction**: Extract individual processors into standalone microservices
+  - [ ] Create service templates with standardized structure
+  - [ ] Implement health checks and monitoring endpoints
+  - [ ] Add service discovery and registration mechanisms
+  - [ ] Design inter-service communication protocols
+- [ ] **Container Orchestration**: Implement Docker-based deployment with Kubernetes support
+  - [ ] Create Docker images for each microservice
+  - [ ] Design Kubernetes deployment manifests
+  - [ ] Implement service mesh for communication (Istio/Linkerd)
+  - [ ] Add container orchestration monitoring and logging
+- [ ] **API Gateway Integration**: Implement centralized API management
+  - [ ] Design API gateway routing and load balancing
+  - [ ] Add authentication and authorization layers
+  - [ ] Implement rate limiting and throttling
+  - [ ] Create API documentation and versioning strategy
+- [ ] **Data Management Migration**: Migrate from shared storage to service-specific data stores
+  - [ ] Design data partitioning strategy
+  - [ ] Implement distributed transaction patterns
+  - [ ] Add data consistency and synchronization mechanisms
+  - [ ] Create backup and disaster recovery procedures
+- [ ] **Testing Framework Migration**: Adapt testing to microservice architecture
+  - [ ] Update Cypress tests for distributed services
+  - [ ] Implement contract testing between services
+  - [ ] Add end-to-end testing orchestration
+  - [ ] Create service integration test suites
+
+**Current Architecture**: 
+- **Deployment**: Single NAR file with all processors
+- **Communication**: In-process method calls
+- **Data Storage**: Shared NiFi repositories
+- **Configuration**: Centralized NiFi configuration
+
+**Target Architecture**:
+- **Deployment**: Individual Docker containers per service
+- **Communication**: REST APIs with event-driven patterns
+- **Data Storage**: Service-specific databases with event sourcing
+- **Configuration**: Distributed configuration management
+
+**Implementation Strategy**:
+1. **Pilot Service**: Extract one processor as proof-of-concept
+2. **Progressive Migration**: Gradual extraction of remaining processors  
+3. **Dual-Mode Operation**: Support both monolithic and microservice deployment
+4. **Performance Validation**: Ensure microservice architecture meets performance requirements
+
+**Completion Steps:**
+- [ ] Complete architecture analysis and service boundary design
+- [ ] Implement pilot microservice with full functionality
+- [ ] Create deployment automation and orchestration
+- [ ] Migrate all processors to microservice architecture
+- [ ] Update documentation and deployment guides
+- [ ] Run full integration testing across all services
+- [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
+- [ ] Git commit with descriptive message
+
+### 23. GraphQL API Implementation (Status: 📋 Planned)
+**Goal**: Implement a comprehensive GraphQL API layer for enhanced data querying and real-time updates across the NiFi processor ecosystem
+- [ ] **GraphQL Schema Design**: Create comprehensive schema for all processor data and operations
+  - [ ] Design type definitions for processors, configurations, and metadata
+  - [ ] Create query operations for data retrieval and filtering
+  - [ ] Implement mutation operations for processor management
+  - [ ] Add subscription support for real-time updates
+- [ ] **Server Implementation**: Build GraphQL server with advanced features
+  - [ ] Implement GraphQL server using Apollo Server or equivalent
+  - [ ] Add authentication and authorization middleware
+  - [ ] Implement dataloader patterns for efficient database queries
+  - [ ] Create resolver functions for all schema operations
+- [ ] **Real-time Capabilities**: Add subscription support for live data updates
+  - [ ] Implement WebSocket connections for real-time subscriptions
+  - [ ] Create event-driven updates for processor state changes
+  - [ ] Add real-time monitoring and alerting capabilities
+  - [ ] Design efficient event broadcasting mechanisms
+- [ ] **Advanced Query Features**: Implement sophisticated querying capabilities
+  - [ ] Add support for complex filtering and sorting
+  - [ ] Implement pagination for large datasets
+  - [ ] Create aggregation and analytics queries
+  - [ ] Add search functionality with full-text indexing
+- [ ] **Integration Layer**: Connect GraphQL API with existing NiFi infrastructure
+  - [ ] Create adapters for NiFi REST APIs
+  - [ ] Implement data synchronization with NiFi repositories
+  - [ ] Add caching layer for improved performance
+  - [ ] Design error handling and resilience patterns
+- [ ] **Developer Experience**: Create tools and documentation for GraphQL adoption
+  - [ ] Generate interactive GraphQL playground/explorer
+  - [ ] Create comprehensive API documentation
+  - [ ] Implement GraphQL Code Generator for client libraries
+  - [ ] Add development tools and debugging utilities
+- [ ] **Testing Infrastructure**: Build comprehensive testing for GraphQL implementation
+  - [ ] Create unit tests for all resolvers and schema operations
+  - [ ] Implement integration tests with NiFi backend
+  - [ ] Add performance testing for query optimization
+  - [ ] Create end-to-end tests with Cypress GraphQL integration
+
+**Current API Architecture**:
+- **Interface**: NiFi REST APIs with limited querying capabilities
+- **Data Format**: JSON with fixed response structures
+- **Real-time**: Polling-based updates with significant latency
+- **Client Integration**: Manual API client implementation required
+
+**Target GraphQL Architecture**:
+- **Interface**: Single GraphQL endpoint with flexible querying
+- **Data Format**: Strongly-typed schema with client-controlled responses
+- **Real-time**: WebSocket subscriptions for instant updates
+- **Client Integration**: Generated client libraries and type definitions
+
+**Key Benefits**:
+- **Flexible Querying**: Clients request exactly the data they need
+- **Real-time Updates**: Instant notifications of processor state changes
+- **Type Safety**: Strongly-typed schema prevents runtime errors
+- **Developer Experience**: Self-documenting API with exploration tools
+- **Performance**: Reduced over-fetching and optimized data loading
+
+**Implementation Strategy**:
+1. **Schema First**: Design complete GraphQL schema based on use cases
+2. **Incremental Implementation**: Build resolvers progressively
+3. **Parallel Development**: Maintain REST API compatibility during transition
+4. **Performance Focus**: Optimize queries and implement efficient data loading
+
+**GraphQL Tools Stack**:
+- **Server**: Apollo Server with Express integration
+- **Schema**: GraphQL Schema Definition Language (SDL)
+- **Real-time**: GraphQL Subscriptions with WebSocket transport
+- **Testing**: GraphQL Testing Library with Jest integration
+- **Documentation**: GraphQL Playground with introspection
+
+**Completion Steps:**
+- [ ] Design comprehensive GraphQL schema for all processor operations
+- [ ] Implement GraphQL server with authentication and optimization
+- [ ] Add real-time subscription capabilities for live updates
+- [ ] Create integration layer with existing NiFi infrastructure
+- [ ] Build developer tools and comprehensive documentation
+- [ ] Update Cypress tests to include GraphQL API testing
+- [ ] Run full integration testing with GraphQL and REST APIs
+- [ ] Update `e-2-e-cypress/doc/tasks-and-next-steps.md` with completion status
+- [ ] Git commit with descriptive message

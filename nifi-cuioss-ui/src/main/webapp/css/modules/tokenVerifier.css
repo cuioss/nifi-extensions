@@ -27,9 +27,9 @@
 
 .verify-token-button {
     padding: 8px 15px;
-    background-color: var(--primary-color);
-    color: var(--container-background);
     border: none;
+    color: var(--container-background);
+    background-color: var(--primary-color);
     border-radius: 3px;
     cursor: pointer;
 }
@@ -47,9 +47,9 @@
 
 .clear-token-button {
     padding: 8px 15px;
-    background-color: #6c757d;
-    color: white;
     border: none;
+    color: #fff;
+    background-color: #6c757d;
     border-radius: 3px;
     cursor: pointer;
     font-size: 14px;
@@ -73,28 +73,28 @@
 }
 
 .token-valid {
+    padding: 5px;
     color: var(--success-color);
     font-weight: bold;
-    padding: 5px;
     margin-bottom: 10px;
 }
 
 .token-invalid {
+    padding: 5px;
     color: var(--error-color);
     font-weight: bold;
-    padding: 5px;
     margin-bottom: 10px;
 }
 
 .token-error {
-    color: var(--error-color);
     padding: 5px;
+    color: var(--error-color);
 }
 
 .token-loading {
-    color: var(--primary-color);
-    padding: 5px;
     display: flex;
+    padding: 5px;
+    color: var(--primary-color);
     align-items: center;
     gap: 8px;
 }
@@ -110,11 +110,11 @@
 }
 
 .token-claims-table th {
-    text-align: left;
-    padding: 8px;
-    background-color: var(--background-color);
-    border: 1px solid var(--border-color);
     width: 30%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    text-align: left;
+    background-color: var(--background-color);
 }
 
 .token-claims-table td {
