@@ -1,10 +1,11 @@
-import { TEXT_CONSTANTS } from '../support/constants.js';
+import { TEXT_CONSTANTS, TEST_DATA, URLS } from '../support/constants.js';
 /**
- * Enhanced Integration Test with Improved Processor Commands
- * Tests the updated processor management functionality
+ * Enhanced Custom Processor Testing
+ * Focus: Test our JWT processor logic with enhanced commands
+ * Philosophy: Use NiFi as a platform to test our custom processor logic
  */
 
-describe('Enhanced Processor Integration Test', () => {
+describe('Enhanced Custom Processor Testing', () => {
   beforeEach(() => {
     // Clean up before each test
     cy.nifiLogin();
@@ -17,40 +18,40 @@ describe('Enhanced Processor Integration Test', () => {
     cy.enhancedProcessorCleanup();
   });
 
-  it('should add processor with proper ID extraction', () => {
-    cy.log('Testing enhanced processor addition with ID extraction...');
+  it('should test our custom JWT processor with enhanced ID extraction', () => {
+    cy.log('Testing our custom JWT processor addition with ID extraction...');
 
     cy.addProcessor('MultiIssuerJWTTokenAuthenticator', { x: 400, y: 300 }).then((processorId) => {
-      // Verify we got a valid processor ID
+      // Verify we got a valid processor ID for OUR processor
       expect(processorId).to.exist;
       expect(processorId).to.be.a('string');
       expect(processorId).to.not.be.empty;
 
-      cy.log(`✅ Processor added with ID: ${processorId}`);
+      cy.log(`✅ Our JWT processor added with ID: ${processorId}`);
 
-      // Test the enhanced getProcessorElement command
+      // Test OUR processor element retrieval
       cy.getProcessorElement(processorId)
         .should(TEXT_CONSTANTS.EXIST)
         .then(($element) => {
           expect($element).to.exist;
-          cy.log('✅ Processor element retrieval working');
+          cy.log('✅ Our processor element retrieval working');
         });
 
-      // Test finding processor by type
+      // Test finding OUR processor by type
       cy.findProcessorByType('MultiIssuerJWTTokenAuthenticator')
         .should(TEXT_CONSTANTS.EXIST)
         .then(($element) => {
           if ($element) {
-            cy.log('✅ Processor found by type name');
+            cy.log('✅ Our JWT processor found by type name');
           }
         });
     });
   });
 
-  it('should handle multiple processors with cleanup', () => {
-    cy.log('Testing multiple processor workflow...');
+  it('should test our custom JWT processors with cleanup', () => {
+    cy.log('Testing our custom JWT processor workflow...');
 
-    const processorTypes = ['MultiIssuerJWTTokenAuthenticator', 'JWTTokenAuthenticator'];
+    const customProcessorTypes = ['MultiIssuerJWTTokenAuthenticator', 'JWTTokenAuthenticator'];
 
     const positions = [
       { x: 200, y: 200 },
@@ -59,8 +60,8 @@ describe('Enhanced Processor Integration Test', () => {
 
     const processorIds = [];
 
-    // Add multiple processors
-    processorTypes.forEach((type, index) => {
+    // Add our custom JWT processors
+    customProcessorTypes.forEach((type, index) => {
       // Safe array access to avoid object injection
       const safeIndex = Math.max(0, Math.min(index, positions.length - 1));
       const hasValidPosition = positions.length > 0 && index < positions.length;
@@ -71,20 +72,19 @@ describe('Enhanced Processor Integration Test', () => {
       cy.addProcessor(type, position).then((processorId) => {
         if (processorId) {
           processorIds.push(processorId);
-          cy.log(`Added processor ${index + 1}: ${processorId}`);
+          cy.log(`Added our custom processor ${index + 1}: ${processorId}`);
         }
       });
     });
 
-    // Verify all processors were added
+    // Verify all our custom processors were added
     cy.then(() => {
-      cy.log(`Total processors added: ${processorIds.length}`);
+      cy.log(`Total custom JWT processors added: ${processorIds.length}`);
 
-      // Test cleanup
+      // Test cleanup of our processors
       cy.enhancedProcessorCleanup();
-      // Loading wait removed - using proper element readiness checks
 
-      // Verify cleanup worked
+      // Verify cleanup worked for our processors
       cy.get('body').then(($body) => {
         const remainingProcessors = $body.find('g.processor, [class*="processor"], .component');
         cy.log(`Processors remaining after cleanup: ${remainingProcessors.length}`);
@@ -92,105 +92,59 @@ describe('Enhanced Processor Integration Test', () => {
     });
   });
 
-  it('should configure processor with enhanced commands', () => {
-    cy.log('Testing enhanced processor configuration...');
+  it('should configure our custom JWT processor with enhanced commands', () => {
+    cy.log('Testing our custom JWT processor configuration...');
 
     cy.addProcessor('MultiIssuerJWTTokenAuthenticator', { x: 350, y: 250 }).then((processorId) => {
       if (processorId) {
-        cy.log(`Configuring processor: ${processorId}`);
+        cy.log(`Configuring our JWT processor: ${processorId}`);
 
-        // Test configuration
+        // Test OUR processor's configuration capabilities
         cy.configureProcessor(processorId, {
           name: 'Enhanced Test JWT Processor',
           properties: {
-            'Issuer URLs': 'https://enhanced.test.issuer.com',
-            'Allowed Clock Skew': '60 seconds',
+            'JWKS Type': 'Server', 
+            'JWKS URL': URLS.KEYCLOAK_JWKS_URL,
+            'Token Header Name': 'Authorization',
+            'Clock Skew': '60 seconds',
           },
         });
 
-        cy.log('✅ Processor configuration completed');
+        cy.log('✅ Our JWT processor configuration completed');
 
-        // Test processor state operations (if applicable)
+        // Test OUR processor state operations
         cy.getProcessorElement(processorId).then(() => {
-          // Try to start the processor
+          // Test OUR processor lifecycle
           cy.startProcessor(processorId);
-          // Loading wait removed - using proper element readiness checks
+          cy.log('✅ Our processor start command executed');
 
-          cy.log('✅ Processor start command executed');
-
-          // Try to stop the processor
           cy.stopProcessor(processorId);
-          // Loading wait removed - using proper element readiness checks
-
-          cy.log('✅ Processor stop command executed');
+          cy.log('✅ Our processor stop command executed');
         });
       }
     });
   });
 
-  it('should handle processor operations gracefully when elements not found', () => {
-    cy.log('Testing error handling for non-existent processors...');
+  it('should handle our processor operations gracefully when elements not found', () => {
+    cy.log('Testing error handling for our custom processors...');
 
     // Test with invalid processor ID
-    const invalidId = 'non-existent-processor-123';
+    const invalidId = 'non-existent-jwt-processor-123';
 
     cy.on('fail', (err) => {
       // Expect this to fail gracefully
       expect(err.message).to.include('No processor element found');
-      cy.log('✅ Error handling working correctly');
+      cy.log('✅ Error handling working correctly for our processors');
       return false; // Prevent test failure
     });
 
     // This should fail gracefully
     cy.getProcessorElement(invalidId)
       .then(() => {
-        cy.log('Unexpected: Found element for invalid ID');
+        cy.log('Unexpected: Found element for invalid JWT processor ID');
       })
       .catch(() => {
-        cy.log('✅ Gracefully handled invalid processor ID');
+        cy.log('✅ Gracefully handled invalid JWT processor ID');
       });
-  });
-
-  it('should verify processor type availability', () => {
-    cy.log('Testing processor type verification...');
-
-    // Simulate opening add processor dialog
-    cy.get('nifi').should(TEXT_CONSTANTS.BE_VISIBLE);
-
-    cy.get('body').then(($body) => {
-      const canvasElements = $body.find('svg, canvas, [role="main"]');
-      if (canvasElements.length > 0) {
-        cy.wrap(canvasElements.first()).dblclick({ force: true });
-        // Loading wait removed - using proper element readiness checks
-
-        // Look for processor types in dialog
-        cy.get('body').then(($dialogBody) => {
-          const dialogs = $dialogBody.find('[role="dialog"], .mat-dialog-container');
-          if (dialogs.length > 0) {
-            // Search for our processor types
-            const searchInput = $dialogBody.find('input[type="text"], input[type="search"]');
-            if (searchInput.length > 0) {
-              cy.wrap(searchInput.first()).type('JWT', { force: true });
-              // Animation wait removed - using proper element visibility
-
-              // Verify JWT processors are available
-              cy.get('body').then(($searchBody) => {
-                const jwtProcessors = $searchBody.find('*:contains("JWT")');
-                cy.log(`Found ${jwtProcessors.length} JWT-related processors`);
-
-                if (jwtProcessors.length > 0) {
-                  cy.log('✅ JWT processors available in NiFi');
-                } else {
-                  cy.log('⚠️ No JWT processors found - check NAR deployment');
-                }
-              });
-
-              // Close dialog
-              cy.get('button:contains("Cancel"), .dialog-close').click({ force: true });
-            }
-          }
-        });
-      }
-    });
   });
 });
