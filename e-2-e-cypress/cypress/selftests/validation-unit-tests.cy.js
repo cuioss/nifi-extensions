@@ -43,7 +43,7 @@ describe('JWT Validation Integration Tests', () => {
 
           // Wait for configuration dialog
           cy.get('.processor-configuration, .dialog-content', { timeout: 10000 }).should(
-            'be.visible'
+            TEXT_CONSTANTS.BE_VISIBLE
           );
 
           // Check if JWT validation properties are available
@@ -56,9 +56,9 @@ describe('JWT Validation Integration Tests', () => {
             if (hasProperties) {
               // Verify JWT-related configuration options exist
               cy.get('.property-editor')
-                .should('contain.text', 'issuer')
-                .or('contain.text', 'audience')
-                .or('contain.text', 'algorithm');
+                .should(TEXT_CONSTANTS.CONTAIN_TEXT, 'issuer')
+                .or(TEXT_CONSTANTS.CONTAIN_TEXT, 'audience')
+                .or(TEXT_CONSTANTS.CONTAIN_TEXT, 'algorithm');
               cy.log('JWT validation properties found in processor configuration');
             } else {
               cy.log('JWT validation properties not visible in current view');
@@ -133,7 +133,7 @@ describe('JWT Validation Integration Tests', () => {
 
           // Wait for configuration dialog
           cy.get('.processor-configuration, .dialog-content', { timeout: 10000 }).should(
-            'be.visible'
+            TEXT_CONSTANTS.BE_VISIBLE
           );
 
           // Test JWKS URL validation (mock validation since we don't have real JWKS)
@@ -200,7 +200,7 @@ describe('JWT Validation Integration Tests', () => {
 
           // Wait for configuration dialog
           cy.get('.processor-configuration, .dialog-content', { timeout: 10000 }).should(
-            'be.visible'
+            TEXT_CONSTANTS.BE_VISIBLE
           );
 
           // Verify processor has configurable properties
@@ -223,7 +223,9 @@ describe('JWT Validation Integration Tests', () => {
       cy.addProcessor('MultiIssuerJWTTokenAuthenticator', { x: 700, y: 300 }).then(
         (processorId) => {
           // Verify processor shows validation state
-          cy.get(`[data-testid="${processorId}"], g[id="${processorId}"]`).should('be.visible');
+          cy.get(`[data-testid="${processorId}"], g[id="${processorId}"]`).should(
+            TEXT_CONSTANTS.BE_VISIBLE
+          );
 
           // Check if processor shows any validation indicators
           cy.get(`[data-testid="${processorId}"], g[id="${processorId}"]`).then(($processor) => {
@@ -253,7 +255,9 @@ describe('JWT Validation Integration Tests', () => {
       cy.addProcessor('MultiIssuerJWTTokenAuthenticator', { x: 300, y: 400 }).then(
         (processorId) => {
           // Verify processor is ready for token validation
-          cy.get(`[data-testid="${processorId}"], g[id="${processorId}"]`).should('be.visible');
+          cy.get(`[data-testid="${processorId}"], g[id="${processorId}"]`).should(
+            TEXT_CONSTANTS.BE_VISIBLE
+          );
 
           // Mock token validation workflow
           const mockValidationWorkflow = {

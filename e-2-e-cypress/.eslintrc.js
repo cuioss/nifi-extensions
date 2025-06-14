@@ -119,17 +119,26 @@ module.exports = {
         "jsdoc/require-returns-description": "off",
         "jsdoc/require-example": "off",
         "jsdoc/no-defaults": "off",      // Allow JSDoc parameter defaults
-        "jsdoc/check-types": "off"       // Less strict type checking
+        "jsdoc/check-types": "off",      // Less strict type checking
+        "security/detect-object-injection": "warn", // Cypress commands often need dynamic property access
+        "cypress/unsafe-to-chain-command": "warn", // Allow chaining but warn
+        "cypress/no-unnecessary-waiting": "warn"    // Allow waits but warn
       }
     },
     {
-      files: ["**/*debug*.js", "**/*debug*.cy.js"],
+      files: ["cypress/selftests/**/*.cy.js"],
       rules: {
-        // Allow console statements in debug files
-        "no-console": "off",
-        "cypress/no-unnecessary-waiting": "warn", // Still warn about waits but allow for debugging
-        "max-lines-per-function": "off" // Debug functions can be very large
+        // Test files can be very large and complex
+        "max-lines-per-function": "off",
+        "complexity": "off",
+        "sonarjs/cognitive-complexity": "off",
+        "jsdoc/require-jsdoc": "off",
+        "jsdoc/require-description": "off",
+        "jsdoc/require-param-description": "off",
+        "jsdoc/require-returns-description": "off",
+        "jsdoc/require-example": "off",
+        "no-unused-vars": "warn"
       }
-    }
+    },
   ]
 };

@@ -8,6 +8,8 @@
  * - MultiIssuerJWTTokenAuthenticator processor must be available
  */
 
+import { TEXT_CONSTANTS } from '../support/constants.js';
+
 describe('Core Command Integration Tests', () => {
   const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'http://localhost:9094/nifi';
 
@@ -138,7 +140,7 @@ describe('Core Command Integration Tests', () => {
       cy.verifyCanvasAccessible();
 
       // Verify main UI elements are present
-      cy.get('nifi').should('be.visible');
+      cy.get('nifi').should(TEXT_CONSTANTS.BE_VISIBLE);
 
       // Look for canvas or main flow area - use flexible selectors
       cy.get('body').then(($body) => {
@@ -146,7 +148,7 @@ describe('Core Command Integration Tests', () => {
           'svg, canvas, [role="main"], .flow-canvas, .nifi-canvas, .canvas-container, #canvas'
         );
         if (canvasElements.length > 0) {
-          cy.wrap(canvasElements.first()).should('be.visible');
+          cy.wrap(canvasElements.first()).should(TEXT_CONSTANTS.BE_VISIBLE);
         } else {
           // Fallback: verify we have interactive content within nifi component
           cy.get('nifi').should(($el) => {
@@ -237,7 +239,7 @@ describe('Core Command Integration Tests', () => {
                 `[data-testid="${processorId}"], g[id="${processorId}"], [id="${processorId}"], [data-processor-id="${processorId}"]`
               );
               if (processorElements.length > 0) {
-                cy.wrap(processorElements.first()).should('be.visible');
+                cy.wrap(processorElements.first()).should(TEXT_CONSTANTS.BE_VISIBLE);
               } else {
                 // Fallback: check for any processor with the type name
                 const typeElements = $body.find('*:contains("MultiIssuerJWTTokenAuthenticator")');
@@ -253,7 +255,7 @@ describe('Core Command Integration Tests', () => {
 
     it('should verify processor is available in processor types', () => {
       // Try to open processor addition dialog
-      cy.get('nifi').should('be.visible');
+      cy.get('nifi').should(TEXT_CONSTANTS.BE_VISIBLE);
 
       // Try double-clicking to open add processor dialog
       cy.get('nifi').dblclick(300, 300, { force: true });
@@ -312,7 +314,7 @@ describe('Core Command Integration Tests', () => {
           // Verify each processor exists
           cy.get(`[data-testid="${processorId}"], g[id="${processorId}"]`)
             .should('exist')
-            .and('be.visible');
+            .and(TEXT_CONSTANTS.BE_VISIBLE);
         });
       });
 
@@ -389,7 +391,7 @@ describe('Core Command Integration Tests', () => {
       cy.verifyLoggedIn();
 
       // All operations should complete successfully - verify main UI
-      cy.get('nifi').should('be.visible');
+      cy.get('nifi').should(TEXT_CONSTANTS.BE_VISIBLE);
     });
   });
 });

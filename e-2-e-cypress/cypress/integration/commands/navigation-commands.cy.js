@@ -1,4 +1,4 @@
-import { TEXT_CONSTANTS, COMMON_STRINGS } from '../../support/constants.js';
+import { TEXT_CONSTANTS, COMMON_STRINGS, SELECTORS } from '../../support/constants.js';
 
 /**
  * Self-verification tests for navigation commands
@@ -16,7 +16,7 @@ describe('Navigation Commands Self-Verification', () => {
     cy.navigateToCanvas();
 
     // Verify we're on the canvas
-    cy.get(COMMON_STRINGS.CANVAS_CONTAINER_SELECTOR).should('be.visible');
+    cy.get(COMMON_STRINGS.CANVAS_CONTAINER_SELECTOR).should(TEXT_CONSTANTS.BE_VISIBLE);
     cy.url().should('include', TEXT_CONSTANTS.NIFI);
   });
 
@@ -25,11 +25,11 @@ describe('Navigation Commands Self-Verification', () => {
     cy.navigateToControllerServices();
 
     // Verify controller services dialog is open
-    cy.get('.settings-dialog').should('be.visible');
-    cy.get('.controller-services-tab').should('be.visible');
+    cy.get(SELECTORS.SETTINGS_DIALOG).should(TEXT_CONSTANTS.BE_VISIBLE);
+    cy.get('.controller-services-tab').should(TEXT_CONSTANTS.BE_VISIBLE);
 
     // Close the dialog for cleanup
-    cy.get('.settings-dialog').find('button').contains('Close').click();
+    cy.get(SELECTORS.SETTINGS_DIALOG).find('button').contains('Close').click();
   });
 
   it('should handle navigation to processor configuration', () => {
@@ -42,7 +42,7 @@ describe('Navigation Commands Self-Verification', () => {
       cy.navigateToProcessorConfig(processorId);
 
       // Verify configuration dialog is open
-      cy.get('.configuration-dialog').should('be.visible');
+      cy.get('.configuration-dialog').should(TEXT_CONSTANTS.BE_VISIBLE);
 
       // Close the dialog for cleanup
       cy.get('.configuration-dialog').find('button').contains('Cancel').click();
@@ -52,15 +52,15 @@ describe('Navigation Commands Self-Verification', () => {
   it('should maintain UI state during navigation', () => {
     // Navigate to canvas
     cy.navigateToCanvas();
-    cy.get(COMMON_STRINGS.CANVAS_CONTAINER_SELECTOR).should('be.visible');
+    cy.get(COMMON_STRINGS.CANVAS_CONTAINER_SELECTOR).should(TEXT_CONSTANTS.BE_VISIBLE);
 
     // Open controller services
     cy.navigateToControllerServices();
-    cy.get('.settings-dialog').should('be.visible');
+    cy.get(SELECTORS.SETTINGS_DIALOG).should(TEXT_CONSTANTS.BE_VISIBLE);
 
     // Close dialog and verify we're back on canvas
-    cy.get('.settings-dialog').find('button').contains('Close').click();
-    cy.get(COMMON_STRINGS.CANVAS_CONTAINER_SELECTOR).should('be.visible');
+    cy.get(SELECTORS.SETTINGS_DIALOG).find('button').contains('Close').click();
+    cy.get(COMMON_STRINGS.CANVAS_CONTAINER_SELECTOR).should(TEXT_CONSTANTS.BE_VISIBLE);
   });
 
   it('should handle browser back/forward navigation', () => {
@@ -69,12 +69,12 @@ describe('Navigation Commands Self-Verification', () => {
 
     // Navigate to a different part of NiFi
     cy.visit('/nifi/summary');
-    cy.get('.summary-container').should('be.visible');
+    cy.get('.summary-container').should(TEXT_CONSTANTS.BE_VISIBLE);
 
     // Use browser back
     cy.go('back');
 
     // Should be back on canvas
-    cy.get(COMMON_STRINGS.CANVAS_CONTAINER_SELECTOR).should('be.visible');
+    cy.get(COMMON_STRINGS.CANVAS_CONTAINER_SELECTOR).should(TEXT_CONSTANTS.BE_VISIBLE);
   });
 });

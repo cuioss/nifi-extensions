@@ -20,7 +20,7 @@ describe('Login Commands Self-Verification', () => {
     cy.verifyLoggedIn();
 
     // Verify we can see the canvas
-    cy.get(COMMON_STRINGS.CANVAS_CONTAINER_SELECTOR).should('be.visible');
+    cy.get(COMMON_STRINGS.CANVAS_CONTAINER_SELECTOR).should(TEXT_CONSTANTS.BE_VISIBLE);
   });
 
   it('should handle invalid login credentials gracefully', () => {
@@ -28,7 +28,7 @@ describe('Login Commands Self-Verification', () => {
     cy.visit('/');
 
     // Wait for login form
-    cy.get(SELECTORS.USERNAME_ID_SELECTOR).should('be.visible');
+    cy.get(SELECTORS.USERNAME_ID_SELECTOR).should(TEXT_CONSTANTS.BE_VISIBLE);
 
     // Try to login with invalid credentials
     cy.get(SELECTORS.USERNAME_ID_SELECTOR).clear();
@@ -70,7 +70,7 @@ describe('Login Commands Self-Verification', () => {
     cy.keycloakLogin('testUser', 'drowssap');
 
     // Verify we're logged into Keycloak
-    cy.get('.kc-dropdown, .account-welcome').should('be.visible');
+    cy.get('.kc-dropdown, .account-welcome').should(TEXT_CONSTANTS.BE_VISIBLE);
   });
 
   it('should maintain session state across navigation', () => {

@@ -110,12 +110,12 @@ describe('Error Handling E2E Tests', () => {
         .select('In-Memory');
 
       cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
-        .contains('JWKS Content')
+        .contains(TEXT_CONSTANTS.JWKS_CONTENT)
         .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('textarea')
         .clear();
       cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
-        .contains('JWKS Content')
+        .contains(TEXT_CONSTANTS.JWKS_CONTENT)
         .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('textarea')
         .type(malformedJson);

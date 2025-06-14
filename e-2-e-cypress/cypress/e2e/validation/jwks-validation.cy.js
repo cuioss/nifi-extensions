@@ -35,7 +35,7 @@ describe('JWKS Validation E2E Tests', () => {
 
       // Configure processor with invalid JWKS URL
       cy.navigateToProcessorConfig(processorId);
-      cy.get('.processor-configuration-tab').contains(TEXT_CONSTANTS.PROPERTIES).click();
+      cy.get(SELECTORS.PROCESSOR_CONFIG_TAB).contains(TEXT_CONSTANTS.PROPERTIES).click();
 
       cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
         .contains(TEXT_CONSTANTS.JWKS_TYPE)
@@ -94,7 +94,7 @@ describe('JWKS Validation E2E Tests', () => {
         const config = {
           properties: {
             [TEXT_CONSTANTS.JWKS_TYPE]: 'In-Memory',
-            'JWKS Content': JSON.stringify(jwksData, null, 2),
+            [TEXT_CONSTANTS.JWKS_CONTENT]: JSON.stringify(jwksData, null, 2),
           },
         };
 
@@ -102,10 +102,10 @@ describe('JWKS Validation E2E Tests', () => {
 
         // Verify the JWKS content was properly configured
         cy.navigateToProcessorConfig(processorId);
-        cy.get('.processor-configuration-tab').contains(TEXT_CONSTANTS.PROPERTIES).click();
+        cy.get(SELECTORS.PROCESSOR_CONFIG_TAB).contains(TEXT_CONSTANTS.PROPERTIES).click();
 
         cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
-          .contains('JWKS Content')
+          .contains(TEXT_CONSTANTS.JWKS_CONTENT)
           .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
           .find('textarea')
           .should('contain.value', '"keys"');
@@ -121,7 +121,7 @@ describe('JWKS Validation E2E Tests', () => {
 
       // Configure processor with invalid JWKS content
       cy.navigateToProcessorConfig(processorId);
-      cy.get('.processor-configuration-tab').contains(TEXT_CONSTANTS.PROPERTIES).click();
+      cy.get(SELECTORS.PROCESSOR_CONFIG_TAB).contains(TEXT_CONSTANTS.PROPERTIES).click();
 
       cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
         .contains(TEXT_CONSTANTS.JWKS_TYPE)
@@ -130,12 +130,12 @@ describe('JWKS Validation E2E Tests', () => {
         .select('In-Memory');
 
       cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
-        .contains('JWKS Content')
+        .contains(TEXT_CONSTANTS.JWKS_CONTENT)
         .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('textarea')
         .clear();
       cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
-        .contains('JWKS Content')
+        .contains(TEXT_CONSTANTS.JWKS_CONTENT)
         .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('textarea')
         .type(invalidJwksContent);

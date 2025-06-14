@@ -2,7 +2,7 @@
  * End-to-End tests for JWT token validation
  */
 
-import { URLS, TEXT_CONSTANTS, COMMON_STRINGS } from '../../support/constants.js';
+import { URLS, TEXT_CONSTANTS, COMMON_STRINGS, TEST_DATA } from '../../support/constants.js';
 
 describe('Token Validation E2E Tests', () => {
   beforeEach(() => {
@@ -17,7 +17,7 @@ describe('Token Validation E2E Tests', () => {
       const config = {
         properties: {
           [TEXT_CONSTANTS.JWKS_TYPE]: COMMON_STRINGS.SERVER_TYPE,
-          [TEXT_CONSTANTS.JWKS_URL]: 'TEST_DATA.KEYCLOAK_JWKS_URL',
+          [TEXT_CONSTANTS.JWKS_URL]: TEST_DATA.KEYCLOAK_JWKS_URL,
         },
       };
 
@@ -37,7 +37,7 @@ describe('Token Validation E2E Tests', () => {
       const config = {
         properties: {
           [TEXT_CONSTANTS.JWKS_TYPE]: COMMON_STRINGS.SERVER_TYPE,
-          [TEXT_CONSTANTS.JWKS_URL]: 'TEST_DATA.KEYCLOAK_JWKS_URL',
+          [TEXT_CONSTANTS.JWKS_URL]: TEST_DATA.KEYCLOAK_JWKS_URL,
         },
       };
 
@@ -58,7 +58,7 @@ describe('Token Validation E2E Tests', () => {
       const config = {
         properties: {
           [TEXT_CONSTANTS.JWKS_TYPE]: COMMON_STRINGS.SERVER_TYPE,
-          [TEXT_CONSTANTS.JWKS_URL]: 'TEST_DATA.KEYCLOAK_JWKS_URL',
+          [TEXT_CONSTANTS.JWKS_URL]: TEST_DATA.KEYCLOAK_JWKS_URL,
           'Issuer Validation': 'true',
           'Expected Issuer': URLS.KEYCLOAK_ISSUER_URL,
         },
@@ -81,7 +81,7 @@ describe('Token Validation E2E Tests', () => {
       const config = {
         properties: {
           [TEXT_CONSTANTS.JWKS_TYPE]: COMMON_STRINGS.SERVER_TYPE,
-          [TEXT_CONSTANTS.JWKS_URL]: 'TEST_DATA.KEYCLOAK_JWKS_URL',
+          [TEXT_CONSTANTS.JWKS_URL]: TEST_DATA.KEYCLOAK_JWKS_URL,
         },
       };
 
@@ -111,7 +111,7 @@ describe('Token Validation E2E Tests', () => {
       const config = {
         properties: {
           [TEXT_CONSTANTS.JWKS_TYPE]: COMMON_STRINGS.SERVER_TYPE,
-          [TEXT_CONSTANTS.JWKS_URL]: 'TEST_DATA.KEYCLOAK_JWKS_URL',
+          [TEXT_CONSTANTS.JWKS_URL]: TEST_DATA.KEYCLOAK_JWKS_URL,
           'Required Claims': 'scope,role',
           'Claim Validation': 'true',
         },

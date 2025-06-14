@@ -12,6 +12,7 @@ export const SELECTORS = {
   DIALOG:
     '[role="dialog"], .mat-dialog-container, .dialog, .add-component-dialog, .processor-dialog',
   CONFIGURATION_DIALOG: '.configuration-dialog',
+  SETTINGS_DIALOG: '.settings-dialog',
   PROPERTIES_SECTION: '.properties-section',
 
   // Processor selectors
@@ -95,6 +96,7 @@ export const TEXT_CONSTANTS = {
   JWKS_TYPE: 'JWKS Type',
   JWKS_SOURCE_TYPE: 'JWKS Source Type',
   JWKS_FILE_PATH: 'JWKS File Path',
+  JWKS_CONTENT: TEXT_CONSTANTS.JWKS_CONTENT,
   TOKEN_AUDIENCE: 'Token Audience',
   DEFAULT_ISSUER: 'Default Issuer',
   JWKS_SERVER_URL: 'JWKS Server URL',
@@ -326,6 +328,8 @@ export const COMMON_STRINGS = {
 
   // Common URLs and paths
   LOCALHOST_8443: 'https://localhost:8443',
+  LOCALHOST_8443_OAUTH_JWKS:
+    'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs',
   OPENID_CONNECT_CERTS: '/protocol/openid-connect/certs',
   JWKS_JSON_EXTENSION: '/jwks.json',
   TEST_EXAMPLE_COM: 'https://test.example.com',
@@ -372,7 +376,6 @@ export const COMMON_STRINGS = {
   CANVAS_CONTAINER_SELECTOR: '#canvas-container',
   CONTEXT_MENU_SELECTOR: '.context-menu',
   MAT_MENU_PANEL_SELECTOR: '.mat-menu-panel',
-  PROCESSOR_PROPERTY_ROW_SELECTOR: '.processor-property-row',
 
   // Status text constants
   PROCESSED_COLON: 'Processed:',

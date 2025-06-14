@@ -429,7 +429,7 @@ Cypress.Commands.add('configureProcessorForTesting', (processorId) => {
       },
     ],
   });
-  cy.setProcessorProperty('JWKS Content', testJWKS);
+  cy.setProcessorProperty(TEXT_CONSTANTS.JWKS_CONTENT, testJWKS);
 
   cy.clickApplyButton();
   cy.closeDialog();

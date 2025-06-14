@@ -19,11 +19,10 @@ describe('Processor Configuration E2E Tests', () => {
         name: 'JWT Token Authenticator',
         properties: {
           'JWKS Type': COMMON_STRINGS.SERVER_TYPE,
-          'JWKS URL':
-            'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs',
-          'Token Header Name': 'Authorization',
-          'Token Prefix': 'Bearer ',
-          'Clock Skew': '30 seconds',
+          'JWKS URL': COMMON_STRINGS.LOCALHOST_8443_OAUTH_JWKS,
+          'Token Header Name': COMMON_STRINGS.AUTHORIZATION_HEADER_NAME,
+          'Token Prefix': COMMON_STRINGS.BEARER_PREFIX,
+          'Clock Skew': COMMON_STRINGS.THIRTY_SECONDS,
         },
       };
 
@@ -39,8 +38,7 @@ describe('Processor Configuration E2E Tests', () => {
       const config = {
         properties: {
           'JWKS Type': COMMON_STRINGS.SERVER_TYPE,
-          'JWKS URL':
-            'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs',
+          'JWKS URL': COMMON_STRINGS.LOCALHOST_8443_OAUTH_JWKS,
         },
       };
 
@@ -71,7 +69,7 @@ describe('Processor Configuration E2E Tests', () => {
         const config = {
           properties: {
             'JWKS Type': 'In-Memory',
-            'JWKS Content': JSON.stringify(jwksData),
+            [TEXT_CONSTANTS.JWKS_CONTENT]: JSON.stringify(jwksData),
           },
         };
 
@@ -115,8 +113,7 @@ describe('Processor Configuration E2E Tests', () => {
       const config = {
         properties: {
           'JWKS Type': COMMON_STRINGS.SERVER_TYPE,
-          'JWKS URL':
-            'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs',
+          'JWKS URL': COMMON_STRINGS.LOCALHOST_8443_OAUTH_JWKS,
           'Additional Issuers': 'https://issuer1.example.com,https://issuer2.example.com',
           'Issuer Validation': 'true',
         },

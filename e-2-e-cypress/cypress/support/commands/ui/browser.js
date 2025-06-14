@@ -664,7 +664,7 @@ Cypress.Commands.add('configureProcessorWithLargeDataset', (processorId) => {
   }
 
   cy.setProcessorProperty('JWKS Source Type', 'IN_MEMORY');
-  cy.setProcessorProperty('JWKS Content', JSON.stringify(largeJWKS));
+  cy.setProcessorProperty(TEXT_CONSTANTS.JWKS_CONTENT, JSON.stringify(largeJWKS));
   cy.setProcessorProperty('Token Audience', 'test-audience');
   cy.setProcessorProperty('Default Issuer', TEXT_CONSTANTS.TEST_ISSUER_VALUE);
 

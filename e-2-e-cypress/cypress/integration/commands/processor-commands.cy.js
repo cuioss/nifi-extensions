@@ -3,7 +3,7 @@
  * These tests verify that the custom processor commands work correctly
  */
 
-import { SELECTORS, TEXT_CONSTANTS } from '../support/constants.js';
+import { SELECTORS, TEXT_CONSTANTS } from '../../support/constants.js';
 
 describe('Processor Commands Self-Verification', () => {
   beforeEach(() => {
@@ -20,7 +20,7 @@ describe('Processor Commands Self-Verification', () => {
       cy.get(`g[id="${processorId}"]`).should('exist');
 
       // Verify processor is visible on canvas
-      cy.get(`g[id="${processorId}"]`).should('be.visible');
+      cy.get(`g[id="${processorId}"]`).should(TEXT_CONSTANTS.BE_VISIBLE);
     });
   });
 
@@ -64,17 +64,17 @@ describe('Processor Commands Self-Verification', () => {
     cy.addProcessor(TEXT_CONSTANTS.GENERATE_FLOW_FILE).then((processorId) => {
       // Open configuration dialog
       cy.navigateToProcessorConfig(processorId);
-      cy.get('.configuration-dialog').should('be.visible');
+      cy.get(SELECTORS.CONFIGURATION_DIALOG).should(TEXT_CONSTANTS.BE_VISIBLE);
 
       // Close dialog with Cancel
       cy.get('button').contains('Cancel').click();
-      cy.get('.configuration-dialog').should('not.exist');
+      cy.get(SELECTORS.CONFIGURATION_DIALOG).should('not.exist');
 
       // Open again and close with Apply
       cy.navigateToProcessorConfig(processorId);
-      cy.get('.configuration-dialog').should('be.visible');
+      cy.get(SELECTORS.CONFIGURATION_DIALOG).should(TEXT_CONSTANTS.BE_VISIBLE);
       cy.get('button').contains(TEXT_CONSTANTS.APPLY).click();
-      cy.get('.configuration-dialog').should('not.exist');
+      cy.get(SELECTORS.CONFIGURATION_DIALOG).should('not.exist');
     });
   });
 
@@ -121,7 +121,7 @@ describe('Processor Commands Self-Verification', () => {
       // Should show validation error or keep dialog open
       cy.get('body').then(($body) => {
         const hasError = $body.find('.validation-error, .error-message').length > 0;
-        const dialogStillOpen = $body.find('.configuration-dialog').length > 0;
+        const dialogStillOpen = $body.find(SELECTORS.CONFIGURATION_DIALOG).length > 0;
 
         expect(hasError || dialogStillOpen).to.be.true;
 
