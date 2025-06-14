@@ -33,16 +33,17 @@ module.exports = {
     // CUI Standards - Code Quality Rules
     "prettier/prettier": "error",
     
-    // CUI Standards - Cypress Rules
-    "cypress/no-unnecessary-waiting": "warn",
-    "cypress/unsafe-to-chain-command": "warn",
-    "cypress/no-assigning-return-values": "error",
+    // CUI Standards - Cypress Rules (Adapted for Best Practices)
+    "cypress/no-unnecessary-waiting": "warn",        // Keep as warning to encourage better practices
+    "cypress/unsafe-to-chain-command": "off",        // Allow chaining for common Cypress patterns
+    "cypress/no-assigning-return-values": "error",   // Keep as error - important for async handling
     
-    // CUI Standards - JSDoc Documentation Requirements
+    // CUI Standards - JSDoc Documentation Requirements (Cypress-adapted)
     "jsdoc/require-description": "error",
     "jsdoc/require-param-description": "error", 
     "jsdoc/require-returns-description": "error",
     "jsdoc/require-example": "warn",
+    "jsdoc/no-undefined-types": "off",           // Turn off for Cypress - JQuery types are external
     "jsdoc/require-jsdoc": [
       "error",
       {
@@ -81,8 +82,8 @@ module.exports = {
     
     // CUI Standards - Code Quality from SonarJS (Cypress-adapted)
     "sonarjs/cognitive-complexity": ["warn", 25], // Increased for Cypress test complexity
-    "sonarjs/no-duplicate-string": "warn",
-    "sonarjs/no-identical-functions": "warn", // Changed to warn for similar test patterns
+    "sonarjs/no-duplicate-string": "off",          // Turn off - too noisy for Cypress tests with many selectors
+    "sonarjs/no-identical-functions": "warn",      // Changed to warn for similar test patterns
     
     // CUI Standards - Additional Quality Rules
     "unicorn/filename-case": ["error", { "case": "kebabCase" }],
@@ -98,11 +99,15 @@ module.exports = {
         "max-lines-per-function": "off", // Cypress tests can have very large functions
         "complexity": "off",             // Cypress tests can be complex
         "sonarjs/cognitive-complexity": "off", // Cypress tests naturally complex
+        "sonarjs/no-duplicate-string": "off",  // Allow duplicate strings in test files
         "jsdoc/require-jsdoc": "off",    // Don't require JSDoc for test functions
         "jsdoc/require-description": "off",
         "jsdoc/require-param-description": "off",
         "jsdoc/require-returns-description": "off",
         "jsdoc/require-example": "off",
+        "jsdoc/no-undefined-types": "off",     // Allow undefined types in tests
+        "cypress/unsafe-to-chain-command": "off", // Allow chaining in tests  
+        "cypress/no-unnecessary-waiting": "off",  // Allow waits in tests
         "no-unused-vars": "warn"         // Keep as warning for cleanup
       }
     },
@@ -120,9 +125,11 @@ module.exports = {
         "jsdoc/require-example": "off",
         "jsdoc/no-defaults": "off",      // Allow JSDoc parameter defaults
         "jsdoc/check-types": "off",      // Less strict type checking
+        "jsdoc/no-undefined-types": "off", // Allow undefined types for Cypress/jQuery
         "security/detect-object-injection": "off", // Cypress commands often need dynamic property access
-        "cypress/unsafe-to-chain-command": "warn", // Allow chaining but warn
-        "cypress/no-unnecessary-waiting": "warn"    // Allow waits but warn
+        "cypress/unsafe-to-chain-command": "off",  // Allow chaining in support files
+        "cypress/no-unnecessary-waiting": "off",   // Allow necessary waits in support files
+        "sonarjs/no-duplicate-string": "off"       // Allow duplicate strings in support files
       }
     },
     {
@@ -132,11 +139,15 @@ module.exports = {
         "max-lines-per-function": "off",
         "complexity": "off",
         "sonarjs/cognitive-complexity": "off",
+        "sonarjs/no-duplicate-string": "off",  // Allow duplicate strings in test files
         "jsdoc/require-jsdoc": "off",
         "jsdoc/require-description": "off",
         "jsdoc/require-param-description": "off",
         "jsdoc/require-returns-description": "off",
         "jsdoc/require-example": "off",
+        "jsdoc/no-undefined-types": "off",     // Allow undefined types in tests
+        "cypress/unsafe-to-chain-command": "off", // Allow chaining in tests
+        "cypress/no-unnecessary-waiting": "off",  // Allow waits in tests
         "no-unused-vars": "warn"
       }
     },
