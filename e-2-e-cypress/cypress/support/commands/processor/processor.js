@@ -8,7 +8,7 @@
 // Import enhanced processor commands with robust patterns
 require('./enhanced-processor');
 
-import { SELECTORS, _TIMEOUTS } from '../../constants.js';
+import { SELECTORS, TEXT_CONSTANTS, _TIMEOUTS } from '../../constants.js';
 import {
   _waitForVisible,
   _waitForDialog,
@@ -49,7 +49,7 @@ Cypress.Commands.add('addProcessor', (type, position = { x: 300, y: 300 }) => {
   cy.verifyLoggedIn();
 
   // Wait for UI to be ready - use proper wait for element
-  cy.get('nifi').should('be.visible');
+  cy.get(TEXT_CONSTANTS.NIFI_ELEMENT).should('be.visible');
 
   // Count existing processors before adding new one
   return cy.get('body').then(($body) => {
@@ -88,7 +88,7 @@ Cypress.Commands.add('addProcessor', (type, position = { x: 300, y: 300 }) => {
  */
 Cypress.Commands.add('verifyCanvasAccessible', () => {
   cy.verifyLoggedIn();
-  cy.get('nifi').should('be.visible');
+  cy.get(TEXT_CONSTANTS.NIFI_ELEMENT).should('be.visible');
 
   // Simple verification that we have interactive content ready for testing
   cy.get('body').should(($body) => {
@@ -427,7 +427,8 @@ Cypress.Commands.add('waitForProcessorState', (processorId, expectedState, timeo
   const startTime = Date.now();
 
   /**
-   *
+   * Check processor state
+   * @returns {Cypress.Chainable} Cypress command chain
    * @example
    */
   const checkState = () => {
@@ -497,7 +498,7 @@ Cypress.Commands.add('isProcessorConfigured', (processorId, expectedConfig = {})
 
 /**
  * Check processor name (extracted helper)
- * @param {JQuery} $element - Processor element
+ * @param {Object} $element - Processor element
  * @param {string} expectedName - Expected name
  * @returns {boolean} - True if name matches
  */
@@ -512,7 +513,7 @@ Cypress.Commands.add('checkProcessorName', ($element, expectedName) => {
 
 /**
  * Check processor state (extracted helper)
- * @param {JQuery} $element - Processor element
+ * @param {Object} $element - Processor element
  * @param {string} expectedState - Expected state
  * @returns {boolean} - True if state matches
  */
@@ -590,7 +591,7 @@ Cypress.Commands.add('extractPropertiesFromDialog', () => {
 
 /**
  * Navigate to Properties tab (extracted helper)
- * @param {JQuery} $body - Body element
+ * @param {Object} $body - Body element
  */
 Cypress.Commands.add('navigateToPropertiesTab', ($body) => {
   const propertyTabs = $body.find('*:contains("Properties"), *:contains("PROPERTIES")');
@@ -602,7 +603,7 @@ Cypress.Commands.add('navigateToPropertiesTab', ($body) => {
 
 /**
  * Extract property values from dialog (extracted helper)
- * @param {JQuery} $body - Body element
+ * @param {Object} $body - Body element
  * @returns {object} - Property key-value pairs
  */
 Cypress.Commands.add('extractPropertyValues', ($body) => {
@@ -683,7 +684,7 @@ Cypress.Commands.add('compareProcessorPropertiesSync', (currentProperties, expec
 /**
  * Get processor state from DOM element (optimized)
  * Reduced cognitive complexity by extracting helper functions
- * @param {JQuery} $element - The processor DOM element
+ * @param {Object} $element - The processor DOM element
  * @returns {string} - Processor state
  */
 Cypress.Commands.add('getProcessorStateFromElement', (_$element) => {
@@ -707,7 +708,7 @@ Cypress.Commands.add('getProcessorStateFromElement', (_$element) => {
 
 /**
  * Extract state from text elements
- * @param {JQuery} $element - Processor element
+ * @param {Object} $element - Processor element
  * @returns {string} - State or 'UNKNOWN'
  */
 Cypress.Commands.add('getStateFromText', ($element) => {
@@ -727,7 +728,7 @@ Cypress.Commands.add('getStateFromText', ($element) => {
 
 /**
  * Extract state from CSS classes
- * @param {JQuery} $element - Processor element
+ * @param {Object} $element - Processor element
  * @returns {string} - State or 'UNKNOWN'
  */
 Cypress.Commands.add('getStateFromClasses', ($element) => {
@@ -743,7 +744,7 @@ Cypress.Commands.add('getStateFromClasses', ($element) => {
 
 /**
  * Extract state from visual indicators
- * @param {JQuery} $element - Processor element
+ * @param {Object} $element - Processor element
  * @returns {string} - State or 'UNKNOWN'
  */
 Cypress.Commands.add('getStateFromVisualIndicators', ($element) => {
@@ -757,7 +758,7 @@ Cypress.Commands.add('getStateFromVisualIndicators', ($element) => {
 /**
  * Detect if processor has required setup/configuration (optimized)
  * Removed unused variables and simplified logic
- * @param {JQuery} $element - The processor DOM element
+ * @param {Object} $element - The processor DOM element
  * @returns {boolean} - True if processor has required setup
  */
 Cypress.Commands.add('detectProcessorSetupFromElement', ($element) => {
@@ -894,7 +895,7 @@ Cypress.Commands.add('findProcessorElement', (processorId) => {
 /**
  * Find processor by type strategy (extracted for clarity)
  * @param {string} processorId - Processor ID that might contain type info
- * @param {JQuery} $body - Body element to search
+ * @param {Object} $body - Body element to search
  * @returns {Cypress.Chainable|null} - Element or null
  */
 Cypress.Commands.add('findProcessorByTypeStrategy', (processorId, $body) => {
@@ -919,7 +920,7 @@ Cypress.Commands.add('findProcessorByTypeStrategy', (processorId, $body) => {
 /**
  * Functional processor fallback (extracted for clarity)
  * @param {string} processorId - Original processor ID
- * @param {JQuery} $body - Body element to search
+ * @param {Object} $body - Body element to search
  * @returns {Cypress.Chainable} - Element or error
  */
 Cypress.Commands.add('getFunctionalProcessorFallback', (processorId, $body) => {
@@ -980,7 +981,7 @@ Cypress.Commands.add('getAnyWorkingProcessorId', (processorType = null) => {
 
 /**
  * Find processors by type (extracted helper)
- * @param {JQuery} $body - Body element to search
+ * @param {Object} $body - Body element to search
  * @param {string} processorType - Type to filter by
  * @returns {JQuery} - Found processors
  */
@@ -997,7 +998,7 @@ Cypress.Commands.add('findProcessorsByType', ($body, processorType) => {
 
 /**
  * Extract working ID from processor element (extracted helper)
- * @param {JQuery} element - Processor element
+ * @param {Object} element - Processor element
  * @returns {string} - Working ID
  */
 Cypress.Commands.add('extractWorkingId', (element) => {
@@ -1227,7 +1228,7 @@ Cypress.Commands.add('enhancedProcessorCleanup', () => {
 
 /**
  * Count all processors across different selectors (extracted helper)
- * @param {JQuery} $body - Body element
+ * @param {Object} $body - Body element
  * @param {Array<string>} targets - Selector targets
  * @returns {number} - Total count
  */
@@ -1267,7 +1268,7 @@ Cypress.Commands.add('cleanupProcessorsByTarget', (target) => {
 
 /**
  * Attempt context menu delete for processor element
- * @param {JQuery} $el - Processor element
+ * @param {Object} $el - Processor element
  */
 Cypress.Commands.add('attemptContextMenuDelete', ($el) => {
   // Try right-click context menu

@@ -113,6 +113,7 @@ export function waitForStableElement(selector, options = {}) {
  * Smart element selector with multiple fallback strategies
  * @param {Array|string} selectors - Primary and fallback selectors
  * @param {Object} options - Selection options
+ * @returns {Promise} Promise that resolves to found element or null
  */
 export function robustElementSelect(selectors, options = {}) {
   const { description = 'element', required = true } = options;
@@ -164,6 +165,7 @@ export function robustElementSelect(selectors, options = {}) {
 
 /**
  * Environment health check before test execution
+ * @returns {Promise} Promise that resolves when environment is verified
  */
 export function verifyTestEnvironment() {
   cy.log('[HealthCheck] Verifying test environment...');
@@ -212,6 +214,7 @@ export function verifyTestEnvironment() {
  * Safe operation wrapper with error boundary
  * @param {Function} operation - Operation to execute safely
  * @param {Object} options - Safety options
+ * @returns {Promise} Promise that resolves with operation result or fallback
  */
 export function safeOperation(operation, options = {}) {
   const { fallback = null, description = 'operation', logErrors = true } = options;
@@ -236,6 +239,7 @@ export function safeOperation(operation, options = {}) {
 
 /**
  * Test isolation - clean state between tests
+ * @returns {Cypress.Chainable} Cypress command chain
  */
 export function ensureTestIsolation() {
   cy.log('[TestIsolation] Ensuring clean test state...');
@@ -249,7 +253,10 @@ export function ensureTestIsolation() {
         win.sessionStorage.clear();
         cy.log('[TestIsolation] Browser storage cleared');
       } catch (error) {
-        cy.log('[TestIsolation] Warning: Could not clear storage');
+        cy.log(
+          `[TestIsolation] Warning: Could not clear storage - ${error.message || 'Unknown error'}`
+        );
+        // Continue execution as this is not critical
       }
     })
     .then(() => {
@@ -271,6 +278,7 @@ export function ensureTestIsolation() {
  * Measure and log test performance
  * @param {string} testName - Name of the test
  * @param {Function} testOperation - Test to measure
+ * @returns {Cypress.Chainable} Result of the test operation
  */
 export function measureTestPerformance(testName, testOperation) {
   const startTime = Date.now();

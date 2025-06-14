@@ -5,7 +5,7 @@
 
 /**
  * Extract processor ID from element
- * @param {JQuery} $element - Processor element
+ * @param {Object} $element - Processor element (jQuery-like object)
  * @returns {string} Extracted processor ID
  */
 export function extractProcessorId($element) {
@@ -76,9 +76,9 @@ export function buildTypeSelectors(processorType) {
 
 /**
  * Find element using selector array with early return optimization
- * @param {JQuery} $body - Body element to search within
+ * @param {Object} $body - Body element to search within (jQuery-like object)
  * @param {Array<string>} selectors - Array of selectors to try
- * @returns {JQuery|null} Found element or null
+ * @returns {Object|null} Found element or null (jQuery-like object)
  */
 export function findElementWithSelectors($body, selectors) {
   for (const selector of selectors) {
@@ -92,7 +92,7 @@ export function findElementWithSelectors($body, selectors) {
 
 /**
  * Get processor state from element
- * @param {JQuery} $element - Processor element
+ * @param {Object} $element - Processor element (jQuery-like object)
  * @returns {string} Processor state (RUNNING, STOPPED, etc.)
  */
 export function getProcessorState($element) {

@@ -88,10 +88,10 @@ Cypress.Commands.add('robustLoginStateCheck', (options = {}) => {
 /**
  * Execute login strategy with error handling
  * Task 3: Extracted to reduce nesting
- * @param strategyIndex
- * @param strategies
- * @param resolve
- * @param reject
+ * @param {number} strategyIndex - Current strategy index
+ * @param {Array} strategies - Array of login strategies
+ * @param {Function} resolve - Promise resolve function
+ * @param {Function} reject - Promise reject function
  */
 function executeLoginStrategy(strategyIndex, strategies, resolve, reject) {
   if (strategyIndex >= strategies.length) {
@@ -116,8 +116,9 @@ function executeLoginStrategy(strategyIndex, strategies, resolve, reject) {
 /**
  * Create login strategies for different UI states
  * Task 3: Extracted to reduce complexity
- * @param username
- * @param password
+ * @param {string} username - Username for login
+ * @param {string} password - Password for login
+ * @returns {Array<Function>} Array of login strategy functions
  */
 function createLoginStrategies(username, password) {
   return [

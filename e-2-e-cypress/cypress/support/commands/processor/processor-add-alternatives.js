@@ -4,14 +4,14 @@
  * this file implements alternative approaches
  */
 
-import { SELECTORS, TIMEOUTS } from '../../constants.js';
+import { SELECTORS, TIMEOUTS, TEXT_CONSTANTS } from '../../constants.js';
 import { _waitForVisible, _waitForDialog } from '../../wait-utils.js';
 
 /**
  * Try to add processor using toolbar button approach
  * @param {string} type - The processor type to add
- * @param {object} position - Position where to add processor
- * @param _position
+ * @param {Object} _position - Position where to add processor (unused in this implementation)
+ * @returns {void}
  */
 function tryToolbarAddProcessor(type, _position = { x: 300, y: 300 }) {
   cy.log('🔧 Trying toolbar approach for adding processor');
@@ -55,7 +55,8 @@ function tryToolbarAddProcessor(type, _position = { x: 300, y: 300 }) {
 /**
  * Try to add processor using right-click context menu
  * @param {string} type - The processor type to add
- * @param {object} position - Position where to add processor
+ * @param {Object} position - Position where to add processor
+ * @returns {boolean} Success status of the operation
  */
 function tryRightClickAddProcessor(type, position = { x: 300, y: 300 }) {
   cy.log('🖱️ Trying right-click context menu approach');
@@ -89,8 +90,8 @@ function tryRightClickAddProcessor(type, position = { x: 300, y: 300 }) {
 /**
  * Try to add processor using drag-and-drop from component palette
  * @param {string} type - The processor type to add
- * @param {object} position - Position where to add processor
- * @param _position
+ * @param {Object} _position - Position where to add processor (unused in this implementation)
+ * @returns {boolean} Success status of the operation
  */
 function tryDragDropAddProcessor(type, _position = { x: 300, y: 300 }) {
   cy.log('🎯 Trying drag-and-drop from palette approach');
@@ -136,8 +137,8 @@ function tryDragDropAddProcessor(type, _position = { x: 300, y: 300 }) {
 
 /**
  * Try to add processor using menu navigation
- * @param {string} type - The processor type to add
- * @param _type
+ * @param {string} _type - The processor type to add (unused in this implementation)
+ * @returns {boolean} Success status of the operation
  */
 function tryMenuAddProcessor(_type) {
   cy.log('📋 Trying menu navigation approach');
@@ -180,7 +181,7 @@ Cypress.Commands.add('addProcessorAlternative', (type, options = {}) => {
 
   // Ensure we're logged in and ready
   cy.verifyLoggedIn();
-  cy.get('nifi').should('be.visible');
+  cy.get(TEXT_CONSTANTS.NIFI_ELEMENT).should('be.visible');
 
   // Method 1: Try toolbar approach
   cy.get('body').then((_$body) => {

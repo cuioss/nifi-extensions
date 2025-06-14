@@ -1,7 +1,8 @@
 /**
  * Shared constants for CUI standards compliance
  * Eliminates duplicate strings across the codebase
- * @typedef {object} JQuery - jQuery object type for JSDoc
+ * @typedef {Object} JQuery - jQuery object type for JSDoc compatibility
+ * @typedef {Object} Element - DOM Element type for JSDoc
  * @property {string} selector - CSS selector string
  */
 
@@ -312,18 +313,78 @@ export const COMMON_STRINGS = {
   RUNNING: 'Running',
   INVALID: 'Invalid',
 
+  // Common JWT/Processor strings
+  JWT_TOKEN_AUTHENTICATOR: 'JWTTokenAuthenticator',
+  MULTI_ISSUER_JWT: 'MultiIssuerJWTTokenAuthenticator',
+  BEARER_PREFIX: 'Bearer ',
+  AUTHORIZATION_HEADER: 'Authorization',
+  THIRTY_SECONDS: '30 seconds',
+  SERVER_TYPE: 'Server',
+
+  // Common URLs and paths
+  LOCALHOST_8443: 'https://localhost:8443',
+  OPENID_CONNECT_CERTS: '/protocol/openid-connect/certs',
+  JWKS_JSON_EXTENSION: '/jwks.json',
+  TEST_EXAMPLE_COM: 'https://test.example.com',
+
+  // Common test strings
+  INVALID_URL_FORMAT: 'invalid-url',
+  MALFORMED_JSON_STRING: '{"malformed": json}',
+  TEST_ISSUER_PREFIX: 'test-issuer',
+
+  // Common property names
+  JWKS_TYPE_PROP: 'JWKS Type',
+  JWKS_URL_PROP: 'JWKS URL',
+  TOKEN_HEADER_NAME_PROP: 'Token Header Name',
+  CLOCK_SKEW_PROP: 'Clock Skew',
+  ISSUER_NAME_PROP: 'Issuer 1 Name',
+  ISSUER_URL_PROP: 'Issuer 1 URL',
+
   // CSS classes
   PROCESSOR_CLASS: 'processor',
   ERROR_CLASS: 'error',
   DIALOG_CLASS: 'dialog',
+  CONTEXT_MENU_CLASS: 'context-menu',
+  MAT_MENU_PANEL_CLASS: 'mat-menu-panel',
 
   // Accessibility strings
   ROLE_DIALOG: 'dialog',
   ROLE_BUTTON: 'button',
   ROLE_MENUBAR: 'menubar',
+  ROLE_MENU: 'menu',
 
   // Cypress test helpers
   FORCE_TRUE: { force: true },
   TIMEOUT_5000: { timeout: 5000 },
   TIMEOUT_10000: { timeout: 10000 },
+
+  // NiFi UI element selector
+  NIFI_ELEMENT: 'nifi',
+
+  // Common duplicate strings found in tests
+  PROCESSOR_PROPERTY_ROW_SELECTOR: '.processor-property-row',
+  INVALID_JWKS_PATH_LITERAL: '/nonexistent/path/to/jwks.json',
+
+  // Common duplicate strings from various files
+  CANVAS_CONTAINER_SELECTOR: '#canvas-container',
+  CONTEXT_MENU_SELECTOR: '.context-menu',
+  MAT_MENU_PANEL_SELECTOR: '.mat-menu-panel',
+
+  // Status text constants
+  PROCESSED_COLON: 'Processed:',
+  VALID_COLON: 'Valid:',
+  INVALID_COLON: 'Invalid:',
+
+  // Common UI text patterns
+  VALID_TOKENS_TEXT: 'Valid Tokens',
+  INVALID_TOKENS_TEXT: 'Invalid Tokens',
+
+  // Property row selectors
+  PROPERTY_ROW_SELECTOR: '.property-row',
+
+  // Element state classes
+  DISABLED_CLASS: 'disabled',
+  ENABLED_CLASS: 'enabled',
+  VISIBLE_CLASS: 'visible',
+  HIDDEN_CLASS: 'hidden',
 };
