@@ -5,14 +5,15 @@
  */
 
 import { SELECTORS, TIMEOUTS } from '../../constants.js';
-import { waitForVisible, waitForDialog } from '../../wait-utils.js';
+import { _waitForVisible, _waitForDialog } from '../../wait-utils.js';
 
 /**
  * Try to add processor using toolbar button approach
  * @param {string} type - The processor type to add
  * @param {object} position - Position where to add processor
+ * @param _position
  */
-function tryToolbarAddProcessor(type, position = { x: 300, y: 300 }) {
+function tryToolbarAddProcessor(type, _position = { x: 300, y: 300 }) {
   cy.log('🔧 Trying toolbar approach for adding processor');
 
   // Look for common toolbar selectors that might contain "Add Processor" button
@@ -89,8 +90,9 @@ function tryRightClickAddProcessor(type, position = { x: 300, y: 300 }) {
  * Try to add processor using drag-and-drop from component palette
  * @param {string} type - The processor type to add
  * @param {object} position - Position where to add processor
+ * @param _position
  */
-function tryDragDropAddProcessor(type, position = { x: 300, y: 300 }) {
+function tryDragDropAddProcessor(type, _position = { x: 300, y: 300 }) {
   cy.log('🎯 Trying drag-and-drop from palette approach');
 
   // Look for component palette or processor list
@@ -135,8 +137,9 @@ function tryDragDropAddProcessor(type, position = { x: 300, y: 300 }) {
 /**
  * Try to add processor using menu navigation
  * @param {string} type - The processor type to add
+ * @param _type
  */
-function tryMenuAddProcessor(type) {
+function tryMenuAddProcessor(_type) {
   cy.log('📋 Trying menu navigation approach');
 
   // Look for main menu options
@@ -180,7 +183,7 @@ Cypress.Commands.add('addProcessorAlternative', (type, options = {}) => {
   cy.get('nifi').should('be.visible');
 
   // Method 1: Try toolbar approach
-  cy.get('body').then(($body) => {
+  cy.get('body').then((_$body) => {
     // Try toolbar first
     if (tryToolbarAddProcessor(type, position)) {
       cy.log('✅ Toolbar method successful');

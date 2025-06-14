@@ -16,8 +16,8 @@ const {
   waitForStableElement,
   robustElementSelect,
   verifyTestEnvironment,
-  ensureTestIsolation,
-  measureTestPerformance,
+  _ensureTestIsolation,
+  _measureTestPerformance,
 } = require('../../utils/test-stability');
 
 /**
@@ -238,7 +238,7 @@ Cypress.Commands.add('selectProcessorDirectly', (processorType) => {
  * @param {number} existingCount - Count before addition
  * @param {string} processorType - Expected processor type
  */
-Cypress.Commands.add('verifyProcessorAddition', (existingCount, processorType) => {
+Cypress.Commands.add('verifyProcessorAddition', (existingCount, _processorType) => {
   return cy.get('body').then(($body) => {
     const checkAddition = () => {
       const currentProcessors = $body.find('g.processor, [class*="processor"], .component');
@@ -288,7 +288,7 @@ Cypress.Commands.add('robustConfigureProcessor', (processorId, config) => {
     return cy
       .robustGetProcessorElement(processorId)
       .then(($element) => waitForStableElement($element[0], 1000))
-      .then(($element) => {
+      .then((_$element) => {
         // Open configuration with navigation command
         return cy.navigateToProcessorConfig(processorId);
       })
@@ -359,7 +359,7 @@ Cypress.Commands.add('robustGetProcessorElement', (processorId) => {
 Cypress.Commands.add('robustApplyConfiguration', (config) => {
   return cy
     .get('body')
-    .then(($body) => {
+    .then((_$body) => {
       // Apply name if provided
       if (config.name) {
         return cy.robustSetProcessorName(config.name).then(() => {
@@ -496,7 +496,7 @@ Cypress.Commands.add('robustApplyPropertyValue', (propertyValue) => {
  * @param {string} processorId - Processor ID
  * @param {object} expectedConfig - Expected configuration
  */
-Cypress.Commands.add('robustVerifyConfiguration', (processorId, expectedConfig) => {
+Cypress.Commands.add('robustVerifyConfiguration', (processorId, _expectedConfig) => {
   return cy.robustGetProcessorElement(processorId).then(($element) => {
     // Basic verification - check processor is not in error state
     const hasErrors = $element.find('.error, .invalid, [class*="error"]').length > 0;

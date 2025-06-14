@@ -18,8 +18,7 @@ export function extractProcessorId($element) {
   );
 }
 
-import { SELECTORS, TIMEOUTS } from '../../constants.js';
-import { waitForVisible, waitForDialog } from '../../wait-utils.js';
+// Removed unused imports
 
 /**
  * Safe string conversion for template literals

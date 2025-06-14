@@ -2,7 +2,7 @@
  * Shared constants for CUI standards compliance
  * Eliminates duplicate strings across the codebase
  * @typedef {object} JQuery - jQuery object type for JSDoc
- * @property
+ * @property {string} selector - CSS selector string
  */
 
 // Common UI Selectors
@@ -288,4 +288,42 @@ export const REGEX_PATTERNS = {
   EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
   PASSWORD: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/,
   USERNAME: /^[a-zA-Z0-9_-]{3,20}$/,
+};
+
+// Common strings to reduce duplication warnings
+export const COMMON_STRINGS = {
+  // Processor dialog strings
+  ADD_PROCESSOR: 'Add Processor',
+  PROCESSOR_CONFIGURATION: 'Processor Configuration',
+  PROPERTIES: 'Properties',
+  SETTINGS: 'Settings',
+
+  // Button text
+  ADD: 'Add',
+  APPLY: 'Apply',
+  OK: 'OK',
+  CANCEL: 'Cancel',
+  DELETE: 'Delete',
+  SAVE: 'Save',
+
+  // Status messages
+  STARTED: 'Started',
+  STOPPED: 'Stopped',
+  RUNNING: 'Running',
+  INVALID: 'Invalid',
+
+  // CSS classes
+  PROCESSOR_CLASS: 'processor',
+  ERROR_CLASS: 'error',
+  DIALOG_CLASS: 'dialog',
+
+  // Accessibility strings
+  ROLE_DIALOG: 'dialog',
+  ROLE_BUTTON: 'button',
+  ROLE_MENUBAR: 'menubar',
+
+  // Cypress test helpers
+  FORCE_TRUE: { force: true },
+  TIMEOUT_5000: { timeout: 5000 },
+  TIMEOUT_10000: { timeout: 10000 },
 };

@@ -163,7 +163,7 @@ Cypress.Commands.add('verifyPropertyLabel', (expectedLabel, languageCode, fallba
  * @param {string} propertyName - Name/key of the property
  * @param {string} languageCode - Language code for verification
  */
-Cypress.Commands.add('verifyPropertyDescription', (propertyName, languageCode) => {
+Cypress.Commands.add('verifyPropertyDescription', (propertyName, _languageCode) => {
   // Find the property row and check its description
   cy.contains('.property-name, .property-label', propertyName)
     .closest('.property-row, .property-item')
@@ -230,7 +230,7 @@ Cypress.Commands.add('verifyProcessorStatusMessage', (processorId, languageCode)
  * @param {string} processorId - Processor ID
  * @param {string} languageCode - Expected language
  */
-Cypress.Commands.add('verifyRuntimeErrorMessage', (processorId, languageCode) => {
+Cypress.Commands.add('verifyRuntimeErrorMessage', (processorId, _languageCode) => {
   // Check processor for error indicators
   cy.getProcessorElement(processorId)
     .should('have.class', 'error')
@@ -252,7 +252,7 @@ Cypress.Commands.add('verifyRuntimeErrorMessage', (processorId, languageCode) =>
  * Verify that dynamically loaded content is properly translated
  * @param {string} languageCode - Expected language
  */
-Cypress.Commands.add('verifyDynamicContentTranslation', (languageCode) => {
+Cypress.Commands.add('verifyDynamicContentTranslation', (_languageCode) => {
   // Check tabs in the configuration dialog
   cy.get('.tab, .tab-label').should('have.length.greaterThan', 0);
 
@@ -357,7 +357,7 @@ Cypress.Commands.add('verifyPluralizedMessage', (languageCode, messageType, coun
  * Verify date and number formatting according to locale
  * @param {string} languageCode - Language/locale code
  */
-Cypress.Commands.add('verifyDateFormatting', (languageCode) => {
+Cypress.Commands.add('verifyDateFormatting', (_languageCode) => {
   // Look for date/time displays in the UI
   cy.get('.timestamp, .date, .time').should('exist');
 
@@ -372,7 +372,7 @@ Cypress.Commands.add('verifyDateFormatting', (languageCode) => {
  * Verify number formatting according to locale
  * @param {string} languageCode - Language/locale code
  */
-Cypress.Commands.add('verifyNumberFormatting', (languageCode) => {
+Cypress.Commands.add('verifyNumberFormatting', (_languageCode) => {
   // Look for numeric displays (metrics, counts, etc.)
   cy.get('.number, .count, .metric-value').should('exist');
 

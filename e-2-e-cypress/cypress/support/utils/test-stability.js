@@ -9,6 +9,7 @@
  * Retry an operation with exponential backoff
  * @param {Function} operation - The operation to retry
  * @param {Object} options - Retry configuration
+ * @returns {Promise} Promise that resolves with operation result
  */
 export function retryWithBackoff(operation, options = {}) {
   const {
@@ -49,6 +50,7 @@ export function retryWithBackoff(operation, options = {}) {
  * Wait for stable element state (not just existence)
  * @param {string} selector - Element selector
  * @param {Object} options - Stability options
+ * @returns {Promise} Promise that resolves when element is stable
  */
 export function waitForStableElement(selector, options = {}) {
   const { timeout = 10000, stabilityDuration = 500, maxChecks = 20 } = options;
@@ -113,7 +115,7 @@ export function waitForStableElement(selector, options = {}) {
  * @param {Object} options - Selection options
  */
 export function robustElementSelect(selectors, options = {}) {
-  const { timeout = 10000, description = 'element', required = true } = options;
+  const { description = 'element', required = true } = options;
 
   const selectorArray = Array.isArray(selectors) ? selectors : [selectors];
 

@@ -148,7 +148,8 @@ export function smartWait(selector, options = {}) {
   const { timeout = TIMEOUTS.LONG, text, attribute, value } = options;
 
   // Build the chain of assertions without assignment
-  cy.get(selector, { timeout })
+  return cy
+    .get(selector, { timeout })
     .should('be.visible')
     .then(($el) => {
       if (text) {

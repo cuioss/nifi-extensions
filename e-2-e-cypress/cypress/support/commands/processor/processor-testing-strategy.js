@@ -11,7 +11,7 @@
  */
 
 import { SELECTORS, TIMEOUTS } from '../../constants.js';
-import { waitForVisible } from '../../wait-utils.js';
+import { _waitForVisible } from '../../wait-utils.js';
 
 /**
  * Smart processor testing command that works with existing processors

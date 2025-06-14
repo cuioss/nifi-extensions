@@ -148,7 +148,7 @@ Cypress.Commands.add('ensureAuthenticatedAndReady', (options = {}) => {
  * Task 3: Enhanced login process with graceful degradation
  */
 Cypress.Commands.add('performRobustLogin', (options = {}) => {
-  const { username, password, maxRetries, timeout } = options;
+  const { username, password, maxRetries } = options;
 
   // Multiple login strategies for different UI states
   const loginStrategies = [

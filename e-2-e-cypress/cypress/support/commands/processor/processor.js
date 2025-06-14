@@ -8,29 +8,29 @@
 // Import enhanced processor commands with robust patterns
 require('./enhanced-processor');
 
-import { SELECTORS, TIMEOUTS } from '../../constants.js';
+import { SELECTORS, _TIMEOUTS } from '../../constants.js';
 import {
-  waitForVisible,
-  waitForDialog,
-  waitForProcessors,
-  waitForMinElementCount,
+  _waitForVisible,
+  _waitForDialog,
+  _waitForProcessors,
+  _waitForMinElementCount,
 } from '../../wait-utils.js';
 import {
   safeString,
   buildProcessorSelectors,
   buildTypeSelectors,
-  extractProcessorId,
-  getProcessorState,
-  verifyProcessorState,
+  _extractProcessorId,
+  _getProcessorState,
+  _verifyProcessorState,
   findElementWithSelectors,
 } from './processor-utils.js';
 import {
-  navigateToPropertiesTab,
-  extractPropertyValues,
-  setProcessorProperty,
-  validatePropertiesMatch,
-  closeConfigurationDialog,
-  openProcessorConfigDialog,
+  _navigateToPropertiesTab,
+  _extractPropertyValues,
+  _setProcessorProperty,
+  _validatePropertiesMatch,
+  _closeConfigurationDialog,
+  _openProcessorConfigDialog,
 } from './processor-config.js';
 
 // Import alternative processor addition methods
@@ -1099,7 +1099,7 @@ Cypress.Commands.add('createEnhancedProcessorReference', (processorType, config 
  * @returns {object} - Enhanced reference object
  */
 Cypress.Commands.add('buildEnhancedReference', (processorType, finalConfig, existingCount) => {
-  const safeType = safeString(processorType);
+  const _safeType = safeString(processorType);
 
   return {
     type: processorType,
@@ -1604,7 +1604,7 @@ Cypress.Commands.add('testJWTValidationBackend', (processorId) => {
   cy.log(`[Task 4] Testing JWT validation backend for: ${safeString(processorId)}`);
 
   // Test if processor can handle JWT validation configuration
-  const testJWT =
+  const _testJWT =
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
 
   // Configure processor with JWT test data

@@ -15,6 +15,8 @@ import {
 /**
  * Helper function to check login indicators
  * Task 3: Extracted from main function to reduce nesting
+ * @param {Object} checks - Login state checks configuration
+ * @returns {boolean} Whether user appears to be logged in
  */
 function evaluateLoginIndicators(checks) {
   // Multiple strategies to determine login state
@@ -37,6 +39,9 @@ function evaluateLoginIndicators(checks) {
 /**
  * Helper function to gather login state indicators
  * Task 3: Extracted to reduce complexity
+ * @param {Object} $body - jQuery body element
+ * @param {boolean} thorough - Whether to perform thorough checks
+ * @returns {Object} Object containing login state indicators
  */
 function gatherLoginIndicators($body, thorough = false) {
   const primaryChecks = {
@@ -83,6 +88,10 @@ Cypress.Commands.add('robustLoginStateCheck', (options = {}) => {
 /**
  * Execute login strategy with error handling
  * Task 3: Extracted to reduce nesting
+ * @param strategyIndex
+ * @param strategies
+ * @param resolve
+ * @param reject
  */
 function executeLoginStrategy(strategyIndex, strategies, resolve, reject) {
   if (strategyIndex >= strategies.length) {
@@ -107,6 +116,8 @@ function executeLoginStrategy(strategyIndex, strategies, resolve, reject) {
 /**
  * Create login strategies for different UI states
  * Task 3: Extracted to reduce complexity
+ * @param username
+ * @param password
  */
 function createLoginStrategies(username, password) {
   return [

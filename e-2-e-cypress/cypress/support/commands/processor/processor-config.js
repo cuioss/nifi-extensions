@@ -3,8 +3,8 @@
  * CUI Standards Compliant - Configuration dialog operations
  */
 
-import { SELECTORS, TEXT_CONSTANTS, TIMEOUTS } from '../../constants.js';
-import { waitForVisible, waitForDialog } from '../../wait-utils.js';
+import { SELECTORS, TEXT_CONSTANTS } from '../../constants.js';
+import { waitForDialog } from '../../wait-utils.js';
 import { safeString, buildProcessorSelectors } from './processor-utils.js';
 
 /**
