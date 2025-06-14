@@ -33,6 +33,7 @@ describe('JWT Validation Integration Tests', () => {
       cy.navigateToCanvas();
     });
 
+    // eslint-disable-next-line max-lines-per-function
     it('should validate JWT token format against processor configuration', () => {
       // Add a MultiIssuerJWTTokenAuthenticator processor
       cy.addProcessor('MultiIssuerJWTTokenAuthenticator', { x: 400, y: 300 }).then(

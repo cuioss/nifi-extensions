@@ -2,7 +2,7 @@
  * End-to-End tests for JWT token validation
  */
 
-import { URLS } from '../../support/constants.js';
+import { URLS, TEXT_CONSTANTS, COMMON_STRINGS } from '../../support/constants.js';
 
 describe('Token Validation E2E Tests', () => {
   beforeEach(() => {
@@ -12,12 +12,12 @@ describe('Token Validation E2E Tests', () => {
   });
 
   it('should validate a valid JWT token', () => {
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR).then((processorId) => {
       // Configure processor for token validation
       const config = {
         properties: {
-          'JWKS Type': 'Server',
-          'JWKS URL': 'TEST_DATA.KEYCLOAK_JWKS_URL',
+          [TEXT_CONSTANTS.JWKS_TYPE]: COMMON_STRINGS.SERVER_TYPE,
+          [TEXT_CONSTANTS.JWKS_URL]: 'TEST_DATA.KEYCLOAK_JWKS_URL',
         },
       };
 
@@ -32,12 +32,12 @@ describe('Token Validation E2E Tests', () => {
   });
 
   it('should reject an expired token', () => {
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR).then((processorId) => {
       // Configure processor
       const config = {
         properties: {
-          'JWKS Type': 'Server',
-          'JWKS URL': 'TEST_DATA.KEYCLOAK_JWKS_URL',
+          [TEXT_CONSTANTS.JWKS_TYPE]: COMMON_STRINGS.SERVER_TYPE,
+          [TEXT_CONSTANTS.JWKS_URL]: 'TEST_DATA.KEYCLOAK_JWKS_URL',
         },
       };
 
@@ -53,12 +53,12 @@ describe('Token Validation E2E Tests', () => {
   });
 
   it('should reject token with invalid issuer', () => {
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR).then((processorId) => {
       // Configure processor with issuer validation
       const config = {
         properties: {
-          'JWKS Type': 'Server',
-          'JWKS URL': 'TEST_DATA.KEYCLOAK_JWKS_URL',
+          [TEXT_CONSTANTS.JWKS_TYPE]: COMMON_STRINGS.SERVER_TYPE,
+          [TEXT_CONSTANTS.JWKS_URL]: 'TEST_DATA.KEYCLOAK_JWKS_URL',
           'Issuer Validation': 'true',
           'Expected Issuer': URLS.KEYCLOAK_ISSUER_URL,
         },
@@ -76,12 +76,12 @@ describe('Token Validation E2E Tests', () => {
   });
 
   it('should handle malformed tokens gracefully', () => {
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR).then((processorId) => {
       // Configure processor
       const config = {
         properties: {
-          'JWKS Type': 'Server',
-          'JWKS URL': 'TEST_DATA.KEYCLOAK_JWKS_URL',
+          [TEXT_CONSTANTS.JWKS_TYPE]: COMMON_STRINGS.SERVER_TYPE,
+          [TEXT_CONSTANTS.JWKS_URL]: 'TEST_DATA.KEYCLOAK_JWKS_URL',
         },
       };
 
@@ -106,12 +106,12 @@ describe('Token Validation E2E Tests', () => {
   });
 
   it('should validate token with custom claims', () => {
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR).then((processorId) => {
       // Configure processor
       const config = {
         properties: {
-          'JWKS Type': 'Server',
-          'JWKS URL': 'TEST_DATA.KEYCLOAK_JWKS_URL',
+          [TEXT_CONSTANTS.JWKS_TYPE]: COMMON_STRINGS.SERVER_TYPE,
+          [TEXT_CONSTANTS.JWKS_URL]: 'TEST_DATA.KEYCLOAK_JWKS_URL',
           'Required Claims': 'scope,role',
           'Claim Validation': 'true',
         },

@@ -35,7 +35,9 @@ export const SELECTORS = {
   // Generic login form selectors
   USERNAME_FIELD_SELECTOR:
     'input[type="text"], input[type="email"], input[name*="user"], input[placeholder*="user"], input[id*="user"]',
+  USERNAME_ID_SELECTOR: 'input[id$="username"]',
   PASSWORD_FIELD_SELECTOR: 'input[type="password"]',
+  PASSWORD_ID_SELECTOR: 'input[id$="password"]',
 
   // Navigation elements
   MENU_ITEMS: '.menu-item',
@@ -101,6 +103,7 @@ export const TEXT_CONSTANTS = {
 
   // High-frequency processor names
   MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR: 'MultiIssuerJWTTokenAuthenticator',
+  JWT_TOKEN_AUTHENTICATOR: 'JWTTokenAuthenticator',
   GENERATE_FLOW_FILE: 'GenerateFlowFile',
   NIFI: 'nifi',
   ADMIN: 'admin',
@@ -369,6 +372,7 @@ export const COMMON_STRINGS = {
   CANVAS_CONTAINER_SELECTOR: '#canvas-container',
   CONTEXT_MENU_SELECTOR: '.context-menu',
   MAT_MENU_PANEL_SELECTOR: '.mat-menu-panel',
+  PROCESSOR_PROPERTY_ROW_SELECTOR: '.processor-property-row',
 
   // Status text constants
   PROCESSED_COLON: 'Processed:',
@@ -387,4 +391,30 @@ export const COMMON_STRINGS = {
   ENABLED_CLASS: 'enabled',
   VISIBLE_CLASS: 'visible',
   HIDDEN_CLASS: 'hidden',
+
+  // Common CSS selectors found in duplicate string warnings
+  PROCESSOR_SELECTOR_ALT: 'g.processor',
+  AUTHORIZATION_HEADER_NAME: 'Authorization',
+  BEARER_TOKEN_PREFIX: 'Bearer ',
+  STANDARD_TIMEOUT: '5000',
+
+  // Common test data URLs
+  TEST_ISSUER_EXAMPLE_URL: 'https://issuer1.example.com',
+  JWKS_JSON_PATH: '/jwks.json',
+  WELL_KNOWN_JWKS_PATH: '/.well-known/jwks.json',
+
+  // Common validation messages
+  VALIDATION_ERROR_MESSAGE: 'Validation error',
+  REQUIRED_FIELD_MESSAGE: 'This field is required',
+  INVALID_URL_MESSAGE: 'Invalid URL format',
+
+  // Common assertion patterns
+  SHOULD_BE_VISIBLE: 'should be visible',
+  SHOULD_CONTAIN: 'should contain',
+  SHOULD_EXIST: 'should exist',
+
+  // Cypress command timeouts
+  DEFAULT_COMMAND_TIMEOUT: 4000,
+  EXTENDED_COMMAND_TIMEOUT: 8000,
+  MAX_COMMAND_TIMEOUT: 15000,
 };

@@ -14,7 +14,7 @@ describe('Processor Commands Self-Verification', () => {
 
   it('should add a processor to the canvas', () => {
     // Test the addProcessor command
-    cy.addProcessor('GenerateFlowFile', { x: 300, y: 300 }).then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.GENERATE_FLOW_FILE, { x: 300, y: 300 }).then((processorId) => {
       // Verify processor was added
       expect(processorId).to.not.be.undefined;
       cy.get(`g[id="${processorId}"]`).should('exist');
@@ -26,7 +26,7 @@ describe('Processor Commands Self-Verification', () => {
 
   it('should configure processor properties', () => {
     // Add a processor first
-    cy.addProcessor('GenerateFlowFile').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.GENERATE_FLOW_FILE).then((processorId) => {
       const testConfig = {
         name: 'Test Generate FlowFile',
         properties: {
@@ -45,7 +45,7 @@ describe('Processor Commands Self-Verification', () => {
 
   it('should verify processor properties correctly', () => {
     // Add and configure a processor
-    cy.addProcessor('GenerateFlowFile').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.GENERATE_FLOW_FILE).then((processorId) => {
       const testProperties = {
         'File Size': '2048B',
         'Batch Size': '10',
@@ -61,7 +61,7 @@ describe('Processor Commands Self-Verification', () => {
 
   it('should handle processor configuration dialog lifecycle', () => {
     // Add a processor
-    cy.addProcessor('GenerateFlowFile').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.GENERATE_FLOW_FILE).then((processorId) => {
       // Open configuration dialog
       cy.navigateToProcessorConfig(processorId);
       cy.get('.configuration-dialog').should('be.visible');
@@ -79,7 +79,7 @@ describe('Processor Commands Self-Verification', () => {
   });
 
   it('should handle multiple processors on canvas', () => {
-    const processors = ['GenerateFlowFile', 'LogAttribute', 'UpdateAttribute'];
+    const processors = [TEXT_CONSTANTS.GENERATE_FLOW_FILE, 'LogAttribute', 'UpdateAttribute'];
     const processorIds = [];
 
     // Add multiple processors
@@ -98,7 +98,7 @@ describe('Processor Commands Self-Verification', () => {
 
   it('should handle processor property validation', () => {
     // Add a processor that has validation requirements
-    cy.addProcessor('GenerateFlowFile').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.GENERATE_FLOW_FILE).then((processorId) => {
       // Configure with invalid property value
       cy.navigateToProcessorConfig(processorId);
       cy.get('.processor-configuration-tab').contains('Properties').click();

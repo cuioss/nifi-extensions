@@ -74,7 +74,7 @@ describe('Error Handling E2E Tests', () => {
         .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('input')
         .clear();
-      cy.get('.processor-property-name')
+      cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
         .contains(TEXT_CONSTANTS.JWKS_FILE_PATH)
         .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('input')
@@ -103,18 +103,18 @@ describe('Error Handling E2E Tests', () => {
       cy.navigateToProcessorConfig(processorId);
       cy.get(SELECTORS.PROCESSOR_CONFIG_TAB).contains(TEXT_CONSTANTS.PROPERTIES).click();
 
-      cy.get('.processor-property-name')
+      cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
         .contains('JWKS Type')
         .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('select')
         .select('In-Memory');
 
-      cy.get('.processor-property-name')
+      cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
         .contains('JWKS Content')
         .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('textarea')
         .clear();
-      cy.get('.processor-property-name')
+      cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
         .contains('JWKS Content')
         .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('textarea')

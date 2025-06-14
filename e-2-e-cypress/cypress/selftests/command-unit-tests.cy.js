@@ -24,6 +24,7 @@ describe('Core Command Integration Tests', () => {
     });
   });
   describe('Login Command Integration', () => {
+    // eslint-disable-next-line max-lines-per-function
     it('should successfully login to real NiFi instance', () => {
       // Clear any existing sessions
       cy.clearCookies();
@@ -81,8 +82,10 @@ describe('Core Command Integration Tests', () => {
         );
 
         if (usernameInputs.length > 0 && passwordInputs.length > 0) {
-          cy.wrap(usernameInputs.first()).clear().type('invalid');
-          cy.wrap(passwordInputs.first()).clear().type('invalid');
+          cy.wrap(usernameInputs.first()).clear();
+          cy.wrap(usernameInputs.first()).type('invalid');
+          cy.wrap(passwordInputs.first()).clear();
+          cy.wrap(passwordInputs.first()).type('invalid');
 
           // Look for login/submit button
           const submitButtons = $body.find(

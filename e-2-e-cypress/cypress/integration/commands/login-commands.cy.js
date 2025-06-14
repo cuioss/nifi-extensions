@@ -3,6 +3,8 @@
  * These tests verify that the custom login commands work correctly
  */
 
+import { TEXT_CONSTANTS, COMMON_STRINGS, SELECTORS } from '../../support/constants.js';
+
 describe('Login Commands Self-Verification', () => {
   beforeEach(() => {
     // Clear any existing sessions before each test
@@ -12,13 +14,13 @@ describe('Login Commands Self-Verification', () => {
 
   it('should login to NiFi UI successfully with valid credentials', () => {
     // Test the nifiLogin command with valid credentials
-    cy.nifiLogin('admin', 'adminadminadmin');
+    cy.nifiLogin(TEXT_CONSTANTS.ADMIN, TEXT_CONSTANTS.ADMIN_PASSWORD);
 
     // Verify login was successful
     cy.verifyLoggedIn();
 
     // Verify we can see the canvas
-    cy.get('#canvas-container').should('be.visible');
+    cy.get(COMMON_STRINGS.CANVAS_CONTAINER_SELECTOR).should('be.visible');
   });
 
   it('should handle invalid login credentials gracefully', () => {
@@ -26,20 +28,20 @@ describe('Login Commands Self-Verification', () => {
     cy.visit('/');
 
     // Wait for login form
-    cy.get('input[id$="username"]').should('be.visible');
+    cy.get(SELECTORS.USERNAME_ID_SELECTOR).should('be.visible');
 
     // Try to login with invalid credentials
-    cy.get('input[id$="username"]').clear();
-    cy.get('input[id$="username"]').type('invalid');
-    cy.get('input[id$="password"]').clear();
-    cy.get('input[id$="password"]').type('invalid');
+    cy.get(SELECTORS.USERNAME_ID_SELECTOR).clear();
+    cy.get(SELECTORS.USERNAME_ID_SELECTOR).type('invalid');
+    cy.get(SELECTORS.PASSWORD_ID_SELECTOR).clear();
+    cy.get(SELECTORS.PASSWORD_ID_SELECTOR).type('invalid');
     cy.get('input[value="Login"]').click();
 
     // Should remain on login page or show error
     cy.get('body').then(($body) => {
       // Either we see an error message or we're still on the login page
       const hasError = $body.find('.login-error, .error-message').length > 0;
-      const hasLoginForm = $body.find('input[id$="username"]').length > 0;
+      const hasLoginForm = $body.find(SELECTORS.USERNAME_ID_SELECTOR).length > 0;
 
       expect(hasError || hasLoginForm).to.be.true;
     });
@@ -47,13 +49,13 @@ describe('Login Commands Self-Verification', () => {
 
   it('should verify login state correctly', () => {
     // Login first
-    cy.nifiLogin('admin', 'adminadminadmin');
+    cy.nifiLogin(TEXT_CONSTANTS.ADMIN, TEXT_CONSTANTS.ADMIN_PASSWORD);
 
     // Test the verifyLoggedIn command
     cy.verifyLoggedIn();
 
     // Additional verification that specific elements exist
-    cy.get('#canvas-container').should('exist');
+    cy.get(COMMON_STRINGS.CANVAS_CONTAINER_SELECTOR).should('exist');
     cy.get('#user-logout-link').should('exist');
   });
 
@@ -73,7 +75,7 @@ describe('Login Commands Self-Verification', () => {
 
   it('should maintain session state across navigation', () => {
     // Login to NiFi
-    cy.nifiLogin('admin', 'adminadminadmin');
+    cy.nifiLogin(TEXT_CONSTANTS.ADMIN, TEXT_CONSTANTS.ADMIN_PASSWORD);
     cy.verifyLoggedIn();
 
     // Navigate to different parts of the UI

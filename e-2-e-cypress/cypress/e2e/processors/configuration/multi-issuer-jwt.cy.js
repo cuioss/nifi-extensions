@@ -2,7 +2,7 @@
  * End-to-End tests for MultiIssuerJWTTokenAuthenticator processor configuration
  */
 
-import { SELECTORS, TEXT_CONSTANTS } from '../../support/constants.js';
+import { SELECTORS, TEXT_CONSTANTS, COMMON_STRINGS } from '../../support/constants.js';
 
 describe('Processor Configuration E2E Tests', () => {
   beforeEach(() => {
@@ -13,12 +13,12 @@ describe('Processor Configuration E2E Tests', () => {
 
   it('should add and configure MultiIssuerJWTTokenAuthenticator processor', () => {
     // Add the processor to the canvas
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR).then((processorId) => {
       // Configure basic properties
       const config = {
         name: 'JWT Token Authenticator',
         properties: {
-          'JWKS Type': 'Server',
+          'JWKS Type': COMMON_STRINGS.SERVER_TYPE,
           'JWKS URL':
             'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs',
           'Token Header Name': 'Authorization',
@@ -35,10 +35,10 @@ describe('Processor Configuration E2E Tests', () => {
   });
 
   it('should validate JWKS server configuration', () => {
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR).then((processorId) => {
       const config = {
         properties: {
-          'JWKS Type': 'Server',
+          'JWKS Type': COMMON_STRINGS.SERVER_TYPE,
           'JWKS URL':
             'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs',
         },
@@ -52,7 +52,7 @@ describe('Processor Configuration E2E Tests', () => {
   });
 
   it('should handle file-based JWKS configuration', () => {
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR).then((processorId) => {
       const config = {
         properties: {
           'JWKS Type': 'File',
@@ -67,7 +67,7 @@ describe('Processor Configuration E2E Tests', () => {
 
   it('should handle in-memory JWKS configuration', () => {
     cy.fixture('jwks/test-jwks.json').then((jwksData) => {
-      cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+      cy.addProcessor(TEXT_CONSTANTS.MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR).then((processorId) => {
         const config = {
           properties: {
             'JWKS Type': 'In-Memory',
@@ -82,7 +82,7 @@ describe('Processor Configuration E2E Tests', () => {
   });
 
   it('should validate processor configuration with validation errors', () => {
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR).then((processorId) => {
       // Configure with invalid settings
       cy.navigateToProcessorConfig(processorId);
       cy.get(SELECTORS.PROCESSOR_CONFIG_TAB).contains(TEXT_CONSTANTS.PROPERTIES).click();
@@ -111,10 +111,10 @@ describe('Processor Configuration E2E Tests', () => {
   });
 
   it('should support multiple issuer configurations', () => {
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR).then((processorId) => {
       const config = {
         properties: {
-          'JWKS Type': 'Server',
+          'JWKS Type': COMMON_STRINGS.SERVER_TYPE,
           'JWKS URL':
             'https://localhost:8443/auth/realms/oauth_integration_tests/protocol/openid-connect/certs',
           'Additional Issuers': 'https://issuer1.example.com,https://issuer2.example.com',

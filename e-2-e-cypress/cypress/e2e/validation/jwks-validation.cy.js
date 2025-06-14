@@ -12,12 +12,12 @@ describe('JWKS Validation E2E Tests', () => {
   });
 
   it('should validate JWKS server endpoint', () => {
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR).then((processorId) => {
       const jwksUrl = URLS.KEYCLOAK_JWKS_URL;
 
       const config = {
         properties: {
-          'JWKS Type': TEST_DATA.SERVER,
+          [TEXT_CONSTANTS.JWKS_TYPE]: TEST_DATA.SERVER,
           'JWKS URL': jwksUrl,
         },
       };
@@ -30,7 +30,7 @@ describe('JWKS Validation E2E Tests', () => {
   });
 
   it('should handle JWKS server connection failures', () => {
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR).then((processorId) => {
       const invalidJwksUrl = 'https://invalid-jwks-server.com/jwks';
 
       // Configure processor with invalid JWKS URL
@@ -38,7 +38,7 @@ describe('JWKS Validation E2E Tests', () => {
       cy.get('.processor-configuration-tab').contains(TEXT_CONSTANTS.PROPERTIES).click();
 
       cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
-        .contains('JWKS Type')
+        .contains(TEXT_CONSTANTS.JWKS_TYPE)
         .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('select')
         .select(TEST_DATA.SERVER);
@@ -74,10 +74,10 @@ describe('JWKS Validation E2E Tests', () => {
 
   it('should validate file-based JWKS configuration', () => {
     cy.fixture('jwks/test-jwks.json').then(() => {
-      cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+      cy.addProcessor(TEXT_CONSTANTS.MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR).then((processorId) => {
         const config = {
           properties: {
-            'JWKS Type': 'File',
+            [TEXT_CONSTANTS.JWKS_TYPE]: 'File',
             'JWKS File Path': '/tmp/test-jwks.json',
           },
         };
@@ -90,10 +90,10 @@ describe('JWKS Validation E2E Tests', () => {
 
   it('should validate in-memory JWKS configuration', () => {
     cy.fixture('jwks/test-jwks.json').then((jwksData) => {
-      cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+      cy.addProcessor(TEXT_CONSTANTS.MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR).then((processorId) => {
         const config = {
           properties: {
-            'JWKS Type': 'In-Memory',
+            [TEXT_CONSTANTS.JWKS_TYPE]: 'In-Memory',
             'JWKS Content': JSON.stringify(jwksData, null, 2),
           },
         };
@@ -116,7 +116,7 @@ describe('JWKS Validation E2E Tests', () => {
   });
 
   it('should handle invalid JWKS content gracefully', () => {
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR).then((processorId) => {
       const invalidJwksContent = '{"invalid": "jwks", "format": true}';
 
       // Configure processor with invalid JWKS content
@@ -124,7 +124,7 @@ describe('JWKS Validation E2E Tests', () => {
       cy.get('.processor-configuration-tab').contains(TEXT_CONSTANTS.PROPERTIES).click();
 
       cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
-        .contains('JWKS Type')
+        .contains(TEXT_CONSTANTS.JWKS_TYPE)
         .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
         .find('select')
         .select('In-Memory');
@@ -161,10 +161,10 @@ describe('JWKS Validation E2E Tests', () => {
   });
 
   it('should support JWKS refresh intervals for server type', () => {
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR).then((processorId) => {
       const config = {
         properties: {
-          'JWKS Type': 'Server',
+          [TEXT_CONSTANTS.JWKS_TYPE]: 'Server',
           'JWKS URL': URLS.KEYCLOAK_JWKS_URL,
           'JWKS Refresh Interval': '300 seconds',
           'JWKS Cache Size': '100',
@@ -177,10 +177,10 @@ describe('JWKS Validation E2E Tests', () => {
   });
 
   it('should validate multiple JWKS sources configuration', () => {
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
+    cy.addProcessor(TEXT_CONSTANTS.MULTI_ISSUER_JWT_TOKEN_AUTHENTICATOR).then((processorId) => {
       const config = {
         properties: {
-          'JWKS Type': 'Server',
+          [TEXT_CONSTANTS.JWKS_TYPE]: 'Server',
           'JWKS URL': URLS.KEYCLOAK_JWKS_URL,
           'Additional JWKS URLs':
             'https://another-issuer.com/.well-known/jwks.json,https://third-issuer.com/jwks',

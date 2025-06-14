@@ -1,3 +1,5 @@
+import { TEXT_CONSTANTS, COMMON_STRINGS } from '../../support/constants.js';
+
 /**
  * Self-verification tests for navigation commands
  * These tests verify that the custom navigation commands work correctly
@@ -6,7 +8,7 @@
 describe('Navigation Commands Self-Verification', () => {
   beforeEach(() => {
     // Login before each test
-    cy.nifiLogin('admin', 'adminadminadmin');
+    cy.nifiLogin(TEXT_CONSTANTS.ADMIN, TEXT_CONSTANTS.ADMIN_PASSWORD);
   });
 
   it('should navigate to canvas successfully', () => {
@@ -14,8 +16,8 @@ describe('Navigation Commands Self-Verification', () => {
     cy.navigateToCanvas();
 
     // Verify we're on the canvas
-    cy.get('#canvas-container').should('be.visible');
-    cy.url().should('include', '/nifi');
+    cy.get(COMMON_STRINGS.CANVAS_CONTAINER_SELECTOR).should('be.visible');
+    cy.url().should('include', TEXT_CONSTANTS.NIFI);
   });
 
   it('should navigate to controller services', () => {
@@ -50,7 +52,7 @@ describe('Navigation Commands Self-Verification', () => {
   it('should maintain UI state during navigation', () => {
     // Navigate to canvas
     cy.navigateToCanvas();
-    cy.get('#canvas-container').should('be.visible');
+    cy.get(COMMON_STRINGS.CANVAS_CONTAINER_SELECTOR).should('be.visible');
 
     // Open controller services
     cy.navigateToControllerServices();
@@ -58,7 +60,7 @@ describe('Navigation Commands Self-Verification', () => {
 
     // Close dialog and verify we're back on canvas
     cy.get('.settings-dialog').find('button').contains('Close').click();
-    cy.get('#canvas-container').should('be.visible');
+    cy.get(COMMON_STRINGS.CANVAS_CONTAINER_SELECTOR).should('be.visible');
   });
 
   it('should handle browser back/forward navigation', () => {
@@ -73,6 +75,6 @@ describe('Navigation Commands Self-Verification', () => {
     cy.go('back');
 
     // Should be back on canvas
-    cy.get('#canvas-container').should('be.visible');
+    cy.get(COMMON_STRINGS.CANVAS_CONTAINER_SELECTOR).should('be.visible');
   });
 });
