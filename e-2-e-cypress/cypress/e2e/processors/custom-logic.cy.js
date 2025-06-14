@@ -5,7 +5,7 @@
  * Philosophy: Use NiFi as a platform to test our custom processor logic
  */
 
-import { TEST_DATA, URLS } from '../support/constants.js';
+import { TEST_DATA, URLS } from '../../support/constants.js';
 
 describe('Custom Processor Logic Focus', () => {
   beforeEach(() => {
