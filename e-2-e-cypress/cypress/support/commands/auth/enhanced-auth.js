@@ -146,12 +146,14 @@ function createLoginStrategies(username, password) {
       return robustElementSelect(usernameSelectors, { description: 'username field' }).then(
         ($username) => {
           if (!$username) return false;
-          cy.wrap($username).clear().type(username);
+          cy.wrap($username).clear();
+          cy.wrap($username).type(username);
 
           return robustElementSelect(passwordSelectors, { description: 'password field' }).then(
             ($password) => {
               if (!$password) return false;
-              cy.wrap($password).clear().type(password);
+              cy.wrap($password).clear();
+              cy.wrap($password).type(password);
 
               return robustElementSelect(buttonSelectors, { description: 'login button' }).then(
                 ($button) => {

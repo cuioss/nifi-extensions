@@ -55,9 +55,9 @@ Cypress.Commands.add('visualSnapshot', (name, options = {}) => {
     cy.wrap(config.element).screenshot(filename, {
       capture: 'runner',
       /**
-       *
-       * @param $el
-       * @param props
+       * Callback function executed after visual snapshot is taken
+       * @param {JQuery} $el - The jQuery element that was captured
+       * @param {Object} props - Screenshot properties including path
        * @example
        */
       onAfterScreenshot: ($el, props) => {
@@ -70,9 +70,9 @@ Cypress.Commands.add('visualSnapshot', (name, options = {}) => {
     cy.screenshot(filename, {
       capture: config.capture,
       /**
-       *
-       * @param $el
-       * @param props
+       * Callback function executed after visual comparison snapshot is taken
+       * @param {JQuery} $el - The jQuery element that was captured
+       * @param {Object} props - Screenshot properties including path
        * @example
        */
       onAfterScreenshot: ($el, props) => {
@@ -437,7 +437,8 @@ Cypress.Commands.add('enableDarkTheme', () => {
     win.document.body.setAttribute('data-theme', 'dark');
   });
 
-  cy.wait(300); // Allow for theme transition
+  // Allow for theme transition with proper waiting
+  cy.get('body[data-theme="dark"]').should('exist');
 });
 
 /**
@@ -449,7 +450,8 @@ Cypress.Commands.add('disableDarkTheme', () => {
     win.document.body.removeAttribute('data-theme');
   });
 
-  cy.wait(300);
+  // Allow for theme removal with proper waiting
+  cy.get('body').should('not.have.attr', 'data-theme', 'dark');
 });
 
 /**
@@ -461,7 +463,8 @@ Cypress.Commands.add('enableHighContrastTheme', () => {
     win.document.body.setAttribute('data-theme', 'high-contrast');
   });
 
-  cy.wait(300);
+  // Allow for theme transition with proper waiting
+  cy.get('body[data-theme="high-contrast"]').should('exist');
 });
 
 /**
@@ -473,7 +476,8 @@ Cypress.Commands.add('disableHighContrastTheme', () => {
     win.document.body.removeAttribute('data-theme');
   });
 
-  cy.wait(300);
+  // Allow for theme removal with proper waiting
+  cy.get('body').should('not.have.attr', 'data-theme', 'high-contrast');
 });
 
 // Resolution and Zoom Commands
@@ -549,7 +553,8 @@ Cypress.Commands.add('setZoomLevel', (zoomLevel) => {
     win.document.body.style.zoom = `${zoomLevel}%`;
   });
 
-  cy.wait(300); // Allow for zoom adjustment
+  // Allow for zoom adjustment with proper waiting
+  cy.get('body').should('have.css', 'zoom');
 });
 
 /**
@@ -560,7 +565,8 @@ Cypress.Commands.add('resetZoomLevel', () => {
     win.document.body.style.zoom = '100%';
   });
 
-  cy.wait(300);
+  // Allow for zoom reset with proper waiting
+  cy.get('body').should('have.css', 'zoom', '100%');
 });
 
 /**

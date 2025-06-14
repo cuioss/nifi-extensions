@@ -5,7 +5,7 @@
  * including language switching, translation verification, and locale-specific formatting.
  */
 
-import { TEXT_CONSTANTS } from '../../constants.js';
+import { TEXT_CONSTANTS, COMMON_STRINGS } from '../../constants.js';
 
 // Language Detection and Switching Commands
 
@@ -123,13 +123,13 @@ Cypress.Commands.add('verifyTranslationFallback', (primaryLang, fallbackLang) =>
  */
 Cypress.Commands.add('verifyGracefulTranslationError', () => {
   // The UI should still be functional even if translations fail to load
-  cy.get('body').should('be.visible');
+  cy.get(COMMON_STRINGS.BODY_STRING).should('be.visible');
 
   // Core functionality should still work
-  cy.get('.canvas').should('be.visible');
+  cy.get(COMMON_STRINGS.CANVAS_STRING).should('be.visible');
 
   // At minimum, fallback text or keys should be displayed
-  cy.get('body').should('not.be.empty');
+  cy.get(COMMON_STRINGS.BODY_STRING).should('not.be.empty');
 });
 
 // Processor Property Label Commands

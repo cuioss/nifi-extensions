@@ -20,6 +20,9 @@ const {
   _measureTestPerformance,
 } = require('../../utils/test-stability');
 
+// Import constants
+const { TEXT_CONSTANTS } = require('../../constants');
+
 /**
  * Enhanced processor addition with robust patterns
  * @param {string} processorType - Type of processor to add
@@ -38,7 +41,7 @@ Cypress.Commands.add('robustAddProcessor', (processorType, options = {}) => {
 
   const performProcessorAddition = () => {
     return cy.get('body').then(($body) => {
-      const existingCount = $body.find('g.processor, [class*="processor"], .component').length;
+      const existingCount = $body.find(TEXT_CONSTANTS.PROCESSOR_SELECTOR).length;
 
       // Multiple strategies for opening add processor dialog
       const executeDoubleClick = () =>
@@ -109,7 +112,11 @@ Cypress.Commands.add('robustContextMenuAction', (x, y) => {
   return cy
     .get('body')
     .trigger('contextmenu', x, y)
-    .then(() => cy.wait(500))
+    .then(() =>
+      cy
+        .get(TEXT_CONSTANTS.CONTEXT_MENU_SELECTOR, { timeout: 2000 })
+        .should(TEXT_CONSTANTS.BE_VISIBLE)
+    )
     .then(() => robustElementSelect(['*:contains("Add")', '.add-processor']));
 });
 
@@ -165,7 +172,7 @@ Cypress.Commands.add('searchAndSelectProcessor', (processorType) => {
 
   const applyCategory = ($category) => {
     cy.wrap($category).click({ force: true });
-    return cy.wait(1000);
+    return cy.get('.processor-list, .processor-grid').should('be.visible');
   };
 
   const executeSearch = (strategyIndex = 0) => {
@@ -241,7 +248,7 @@ Cypress.Commands.add('selectProcessorDirectly', (processorType) => {
 Cypress.Commands.add('verifyProcessorAddition', (existingCount, _processorType) => {
   return cy.get('body').then(($body) => {
     const checkAddition = () => {
-      const currentProcessors = $body.find('g.processor, [class*="processor"], .component');
+      const currentProcessors = $body.find(TEXT_CONSTANTS.PROCESSOR_SELECTOR);
 
       if (currentProcessors.length > existingCount) {
         const newestProcessor = currentProcessors.last();
@@ -328,9 +335,9 @@ Cypress.Commands.add('robustGetProcessorElement', (processorId) => {
     () => cy.get(`[data-processor-id="${processorId}"]`),
     () =>
       cy
-        .get('g.processor')
+        .get(TEXT_CONSTANTS.PROCESSOR_GROUP_SELECTOR)
         .filter((index, element) => element.getAttribute('id')?.includes(processorId)),
-    () => cy.get('g.processor').first(), // Fallback
+    () => cy.get(TEXT_CONSTANTS.PROCESSOR_GROUP_SELECTOR).first(), // Fallback
   ];
 
   const tryStrategy = (strategyIndex = 0) => {
@@ -519,7 +526,7 @@ Cypress.Commands.add('robustCleanupProcessors', () => {
 
   const performCleanup = () => {
     return cy.get('body').then(($body) => {
-      const processors = $body.find('g.processor, [class*="processor"], .component');
+      const processors = $body.find(TEXT_CONSTANTS.PROCESSOR_SELECTOR);
 
       if (processors.length === 0) {
         cy.log('No processors to clean up');

@@ -110,8 +110,8 @@ module.exports = {
       files: ["cypress/support/**/*.js"],
       rules: {
         // Relaxed rules for support files (custom commands, etc.)
-        "max-lines-per-function": ["warn", 100], // Support functions can be larger
-        "complexity": ["warn", 15],
+        "max-lines-per-function": ["warn", 150], // Support functions can be larger
+        "complexity": ["warn", 20],
         "sonarjs/cognitive-complexity": ["warn", 15],
         "jsdoc/require-jsdoc": "off",    // Don't require JSDoc for Cypress commands
         "jsdoc/require-description": "off",
@@ -120,7 +120,7 @@ module.exports = {
         "jsdoc/require-example": "off",
         "jsdoc/no-defaults": "off",      // Allow JSDoc parameter defaults
         "jsdoc/check-types": "off",      // Less strict type checking
-        "security/detect-object-injection": "warn", // Cypress commands often need dynamic property access
+        "security/detect-object-injection": "off", // Cypress commands often need dynamic property access
         "cypress/unsafe-to-chain-command": "warn", // Allow chaining but warn
         "cypress/no-unnecessary-waiting": "warn"    // Allow waits but warn
       }

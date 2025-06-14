@@ -69,7 +69,9 @@ function tryRightClickAddProcessor(type, position = { x: 300, y: 300 }) {
       cy.wrap(canvasElements.first()).rightclick(position.x, position.y, { force: true });
 
       // Look for context menu
-      cy.wait(1000);
+      cy.get('.context-menu, .mat-menu-panel, [role="menu"]', { timeout: 2000 }).should(
+        TEXT_CONSTANTS.BE_VISIBLE
+      );
       cy.get('body').then(($contextCheck) => {
         const contextMenus = $contextCheck.find('.context-menu, .mat-menu-panel, [role="menu"]');
         if (contextMenus.length > 0) {
@@ -230,7 +232,7 @@ Cypress.Commands.add('selectProcessorFromDialog', (type) => {
     .type(type, { force: true });
 
   // Wait for filtered results
-  cy.wait(1000);
+  cy.get('.processor-list, .processor-results').should('be.visible');
 
   // Click on the matching processor type
   cy.get('body').contains(type, { timeout: TIMEOUTS.MEDIUM }).click({ force: true });

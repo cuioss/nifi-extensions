@@ -166,8 +166,8 @@ Cypress.Commands.add('checkCSSFeatureSupport', (feature) => {
  */
 Cypress.Commands.add('verifyUIRenderingConsistency', () => {
   // Check that essential UI elements are properly rendered
-  cy.get('.canvas').should('be.visible');
-  cy.get('.toolbar, .header').should('be.visible');
+  cy.get('.canvas').should(TEXT_CONSTANTS.BE_VISIBLE);
+  cy.get('.toolbar, .header').should(TEXT_CONSTANTS.BE_VISIBLE);
 
   // Verify no layout issues
   cy.get('body').should('not.have.css', 'overflow-x', 'scroll');
@@ -210,7 +210,9 @@ Cypress.Commands.add('verifyNoOverflowingElements', () => {
  */
 Cypress.Commands.add('verifyConfigurationDialogBehavior', (browserFamily) => {
   // Verify dialog is properly displayed
-  cy.get('.configuration-dialog, .processor-configuration').should('be.visible');
+  cy.get(`${TEXT_CONSTANTS.CONFIGURATION_DIALOG}, .processor-configuration`).should(
+    TEXT_CONSTANTS.BE_VISIBLE
+  );
 
   // Test browser-specific dialog behaviors
   switch (browserFamily) {
@@ -229,7 +231,7 @@ Cypress.Commands.add('verifyConfigurationDialogBehavior', (browserFamily) => {
   }
 
   // Verify common dialog functionality
-  cy.get('.tab, .property-input').should('be.visible');
+  cy.get('.tab, .property-input').should(TEXT_CONSTANTS.BE_VISIBLE);
   cy.get('.apply-button, .ok-button').should('be.enabled');
 });
 
@@ -241,7 +243,7 @@ Cypress.Commands.add('verifyChromiumDialogBehavior', () => {
   cy.log('Verifying Chromium dialog behavior');
 
   // Verify scrollbar behavior
-  cy.get('.configuration-dialog').then(($dialog) => {
+  cy.get(TEXT_CONSTANTS.CONFIGURATION_DIALOG).then(($dialog) => {
     const hasScrollbar = $dialog[0].scrollHeight > $dialog[0].clientHeight;
     if (hasScrollbar) {
       cy.log('Dialog has scrollbar - testing scroll behavior');
@@ -257,7 +259,7 @@ Cypress.Commands.add('verifyFirefoxDialogBehavior', () => {
   cy.log('Verifying Firefox dialog behavior');
 
   // Firefox may handle focus differently
-  cy.get('.configuration-dialog').should('be.visible');
+  cy.get(TEXT_CONSTANTS.CONFIGURATION_DIALOG).should(TEXT_CONSTANTS.BE_VISIBLE);
 });
 
 /**
@@ -268,7 +270,7 @@ Cypress.Commands.add('verifyWebKitDialogBehavior', () => {
   cy.log('Verifying WebKit dialog behavior');
 
   // WebKit may have different scrolling behavior
-  cy.get('.configuration-dialog').should('be.visible');
+  cy.get(TEXT_CONSTANTS.CONFIGURATION_DIALOG).should(TEXT_CONSTANTS.BE_VISIBLE);
 });
 
 // Responsive Design Testing Commands
@@ -293,7 +295,7 @@ Cypress.Commands.add('verifyResponsiveDesign', (viewport) => {
  */
 Cypress.Commands.add('verifyMobileLayout', () => {
   // Check mobile-specific UI adaptations
-  cy.get('.canvas').should('be.visible');
+  cy.get('.canvas').should(TEXT_CONSTANTS.BE_VISIBLE);
 
   // Verify touch-friendly elements
   cy.get('button, .clickable').each(($el) => {
@@ -307,8 +309,8 @@ Cypress.Commands.add('verifyMobileLayout', () => {
  */
 Cypress.Commands.add('verifyDesktopLayout', () => {
   // Check desktop-specific UI features
-  cy.get('.canvas').should('be.visible');
-  cy.get('.toolbar').should('be.visible');
+  cy.get('.canvas').should(TEXT_CONSTANTS.BE_VISIBLE);
+  cy.get('.toolbar').should(TEXT_CONSTANTS.BE_VISIBLE);
 });
 
 // JavaScript Compatibility Testing Commands
@@ -509,7 +511,7 @@ Cypress.Commands.add('testEventHandlingCompatibility', () => {
  */
 Cypress.Commands.add('verifyEventHandlingConsistency', (processorId) => {
   // Verify processor responds to events consistently
-  cy.getProcessorElement(processorId).should('be.visible');
+  cy.getProcessorElement(processorId).should(TEXT_CONSTANTS.BE_VISIBLE);
 
   // Test hover effects
   cy.getProcessorElement(processorId).trigger('mouseenter');
@@ -561,8 +563,8 @@ Cypress.Commands.add('measureRenderingPerformance', () => {
 
     // Measure configuration dialog rendering
     const dialogStart = win.performance.now();
-    cy.get('.configuration-dialog')
-      .should('be.visible')
+    cy.get(TEXT_CONSTANTS.CONFIGURATION_DIALOG)
+      .should(TEXT_CONSTANTS.BE_VISIBLE)
       .then(() => {
         metrics.configDialogRender = win.performance.now() - dialogStart;
       });
@@ -570,7 +572,7 @@ Cypress.Commands.add('measureRenderingPerformance', () => {
     // Measure property list rendering
     const listStart = win.performance.now();
     cy.get('.property-list, .properties-table')
-      .should('be.visible')
+      .should(TEXT_CONSTANTS.BE_VISIBLE)
       .then(() => {
         metrics.propertyListRender = win.performance.now() - listStart;
       });
@@ -687,9 +689,9 @@ Cypress.Commands.add('takeScreenshotForComparison', (processorId, screenshotName
   cy.screenshot(filename, {
     capture: 'viewport',
     /**
-     *
-     * @param $el
-     * @param props
+     * Callback function executed after screenshot is taken
+     * @param {JQuery} $el - The jQuery element that was captured
+     * @param {Object} props - Screenshot properties including path
      * @example
      */
     onAfterScreenshot: ($el, props) => {
@@ -703,7 +705,7 @@ Cypress.Commands.add('takeScreenshotForComparison', (processorId, screenshotName
  */
 Cypress.Commands.add('verifyLayoutConsistency', () => {
   // Check that major layout elements have expected dimensions
-  cy.get('.configuration-dialog').then(($dialog) => {
+  cy.get(TEXT_CONSTANTS.CONFIGURATION_DIALOG).then(($dialog) => {
     const rect = $dialog[0].getBoundingClientRect();
 
     // Verify dialog has reasonable dimensions

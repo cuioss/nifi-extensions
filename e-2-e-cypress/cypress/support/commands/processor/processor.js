@@ -403,9 +403,7 @@ Cypress.Commands.add('findProcessorByType', (processorType) => {
     const elements = $body.find(`*:contains("${safeType}")`);
     if (elements.length > 0) {
       // Find the closest processor-like element
-      const processorElement = elements
-        .closest('g.processor, [class*="processor"], .component')
-        .first();
+      const processorElement = elements.closest(TEXT_CONSTANTS.PROCESSOR_SELECTOR).first();
       if (processorElement.length > 0) {
         return cy.wrap(processorElement);
       }
@@ -782,7 +780,7 @@ Cypress.Commands.add('createProcessorReference', (processorType, position = { x:
 
   // Count existing processors before adding
   return cy.get('body').then(($body) => {
-    const existingCount = $body.find('g.processor, [class*="processor"], .component').length;
+    const existingCount = $body.find(TEXT_CONSTANTS.PROCESSOR_SELECTOR).length;
 
     // Add processor using existing command
     return cy.addProcessor(processorType, position).then((processorId) => {
@@ -905,7 +903,7 @@ Cypress.Commands.add('findProcessorByTypeStrategy', (processorId, $body) => {
     const typeBasedProcessors = $body.find('*:contains("TokenAuthenticator"), *:contains("JWT")');
     if (typeBasedProcessors.length > 0) {
       const processorElement = typeBasedProcessors
-        .closest('g.processor, [class*="processor"], .component')
+        .closest(TEXT_CONSTANTS.PROCESSOR_SELECTOR)
         .first();
       if (processorElement.length > 0) {
         cy.log('Found processor by type-based identification');
@@ -925,7 +923,7 @@ Cypress.Commands.add('findProcessorByTypeStrategy', (processorId, $body) => {
  */
 Cypress.Commands.add('getFunctionalProcessorFallback', (processorId, $body) => {
   const safeId = safeString(processorId);
-  const allProcessors = $body.find('g.processor, [class*="processor"], .component');
+  const allProcessors = $body.find(TEXT_CONSTANTS.PROCESSOR_SELECTOR);
 
   if (allProcessors.length > 0) {
     // If ID is numeric, try to find by index
@@ -935,13 +933,13 @@ Cypress.Commands.add('getFunctionalProcessorFallback', (processorId, $body) => {
       const index = parseInt(idMatch[0]);
       if (allProcessors.length > index) {
         cy.log(`Found processor by index-based approach: ${index}`);
-        return cy.get('g.processor, [class*="processor"], .component').eq(index);
+        return cy.get(TEXT_CONSTANTS.PROCESSOR_SELECTOR).eq(index);
       }
     }
 
     // Last resort: return first available processor for testing
     cy.log('Using first available processor as functional fallback');
-    return cy.get('g.processor, [class*="processor"], .component').first();
+    return cy.get(TEXT_CONSTANTS.PROCESSOR_SELECTOR).first();
   }
 
   throw new Error(`No processor element found for ID: ${safeId}`);
@@ -983,17 +981,15 @@ Cypress.Commands.add('getAnyWorkingProcessorId', (processorType = null) => {
  * Find processors by type (extracted helper)
  * @param {Object} $body - Body element to search
  * @param {string} processorType - Type to filter by
- * @returns {JQuery} - Found processors
+ * @returns {Object} - Found processors
  */
 Cypress.Commands.add('findProcessorsByType', ($body, processorType) => {
   if (processorType) {
     const safeType = safeString(processorType);
-    return $body
-      .find(`*:contains("${safeType}")`)
-      .closest('g.processor, [class*="processor"], .component');
+    return $body.find(`*:contains("${safeType}")`).closest(TEXT_CONSTANTS.PROCESSOR_SELECTOR);
   }
 
-  return $body.find('g.processor, [class*="processor"], .component');
+  return $body.find(TEXT_CONSTANTS.PROCESSOR_SELECTOR);
 });
 
 /**
@@ -1026,9 +1022,7 @@ Cypress.Commands.add('findProcessorByTypeEnhanced', (processorType) => {
     for (const selector of typeSelectors) {
       const elements = $body.find(selector);
       if (elements.length > 0) {
-        const processorElement = elements
-          .closest('g.processor, [class*="processor"], .component')
-          .first();
+        const processorElement = elements.closest(TEXT_CONSTANTS.PROCESSOR_SELECTOR).first();
         if (processorElement.length > 0) {
           cy.log(`Found processor by type using selector: ${selector}`);
           return cy.wrap(processorElement);
@@ -1061,7 +1055,7 @@ Cypress.Commands.add('createEnhancedProcessorReference', (processorType, config 
   const finalConfig = { ...defaultConfig, ...config };
 
   return cy.get('body').then(($body) => {
-    const existingCount = $body.find('g.processor, [class*="processor"], .component').length;
+    const existingCount = $body.find(TEXT_CONSTANTS.PROCESSOR_SELECTOR).length;
 
     // Create comprehensive reference with enhanced strategies
     const enhancedReference = {
@@ -1179,9 +1173,7 @@ Cypress.Commands.add('getProcessorByEnhancedReference', (enhancedRef) => {
     const element = findElementWithSelectors($body, selectorArray);
 
     if (element) {
-      const processorElement = element
-        .closest('g.processor, [class*="processor"], .component')
-        .first();
+      const processorElement = element.closest(TEXT_CONSTANTS.PROCESSOR_SELECTOR).first();
       if (processorElement.length > 0) {
         cy.log('Found processor using enhanced reference');
         return cy.wrap(processorElement);
@@ -2043,7 +2035,7 @@ Cypress.Commands.add('testProcessorDisplayVerification', () => {
 
   // Minimal verification approach - just check display works
   cy.get('body').then(($body) => {
-    const processors = $body.find('g.processor, [class*="processor"], .component');
+    const processors = $body.find(TEXT_CONSTANTS.PROCESSOR_SELECTOR);
 
     if (processors.length > 0) {
       cy.log(`✅ Found ${processors.length} processor display elements`);

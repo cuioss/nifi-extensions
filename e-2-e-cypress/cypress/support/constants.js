@@ -113,10 +113,10 @@ export const TEXT_CONSTANTS = {
 
   // Test data
   TEST_ISSUER: 'test-issuer',
+  TEST_AUDIENCE: 'test-audience',
   ID_ATTR: 'id',
 
   // Common test values
-  TEST_ISSUER_VALUE: 'test-issuer',
   TEST_EXAMPLE_URL: 'https://test.example.com',
   TEST_JWKS_JSON_URL: 'https://test.example.com/jwks.json',
   SERVER_TYPE: 'server',
@@ -124,6 +124,11 @@ export const TEXT_CONSTANTS = {
   // Language codes
   ENGLISH: 'en',
   GERMAN: 'de',
+
+  // JWT validation property names
+  JWT_ISSUER: 'issuer',
+  JWT_AUDIENCE: 'audience',
+  JWT_ALGORITHM: 'algorithm',
 
   // Common element states and assertions
   BE_VISIBLE: 'be.visible',
@@ -139,6 +144,17 @@ export const TEXT_CONSTANTS = {
   HAVE_ATTR: 'have.attr',
 
   // Common processor selectors for duplicate strings
+  PROCESSOR_SELECTOR: 'g.processor, [class*="processor"], .component',
+  PROCESSOR_GROUP_SELECTOR: 'g.processor',
+
+  // Common UI selectors
+  CONFIGURATION_DIALOG: '.configuration-dialog',
+  PROPERTY_EDITOR: '.property-editor',
+  CANVAS_SELECTOR: '.canvas',
+  TOOLBAR_SELECTOR: '.toolbar',
+  CONTEXT_MENU_SELECTOR: '.context-menu, .mat-menu-panel, [role="menu"]',
+
+  // Browser and testing selectors
   PROCESSOR_DETAILS_PANE: '[data-testid="processor-details-pane"]',
   CONFIRM_RESET_DIALOG: '[data-testid="confirm-reset-dialog"]',
   CANVAS_CONTAINER: '#canvas-container',
@@ -381,6 +397,41 @@ export const COMMON_STRINGS = {
   PROCESSED_COLON: 'Processed:',
   VALID_COLON: 'Valid:',
   INVALID_COLON: 'Invalid:',
+
+  // Very common duplicate strings found in linting
+  CANVAS_SELECTOR: '.canvas',
+  PROCESSOR_LIST_SELECTOR: '.processor-list, .processor-grid',
+  PROCESSOR_RESULTS_SELECTOR: '.processor-list, .processor-results',
+  NOTIFICATION_SELECTOR: '.notification, .toast, .alert',
+  POPUP_MENU_SELECTOR: '.context-menu, .popup-menu',
+  ERROR_INVALID_VALIDATION_SELECTOR: '.error, .invalid, .validation-error',
+  TOOLBAR_SIDEBAR_SELECTOR: '.toolbar, .sidebar',
+  PROCESSOR_CONFIGURATION_DIALOG_SELECTOR: '.processor-configuration-dialog',
+
+  // Common duplication warnings - strings
+  VALID_TOKENS_STRING: 'Valid Tokens',
+  INVALID_TOKENS_STRING: 'Invalid Tokens',
+  ADD_PROCESSOR_STRING: 'Add Processor',
+  PROPERTIES_STRING: 'Properties',
+  SETTINGS_STRING: 'Settings',
+
+  // Common duplicate strings from validation tests
+  TEST_SUBJECT_STRING: 'test-subject',
+
+  // Common selectors causing duplicates
+  PROPERTY_EDITOR_SELECTOR: '.property-editor',
+  CONFIGURATION_TAB_SELECTOR: '.configuration-tab',
+
+  // Common strings from i18n tests
+  BODY_SELECTOR: 'body',
+
+  // Most frequent duplicate strings from linting warnings
+  CANVAS_STRING: '.canvas',
+  BODY_STRING: 'body',
+
+  // Common accessibility test strings
+  HAVE_FOCUS_STRING: 'have.focus',
+  BE_FOCUSED_STRING: 'be.focused',
 
   // Common UI text patterns
   VALID_TOKENS_TEXT: 'Valid Tokens',

@@ -8,7 +8,7 @@
  * - MultiIssuerJWTTokenAuthenticator processor must be available
  */
 
-import { TEXT_CONSTANTS } from '../support/constants.js';
+import { TEXT_CONSTANTS, COMMON_STRINGS } from '../support/constants.js';
 
 describe('JWT Validation Integration Tests', () => {
   const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'http://localhost:9094/nifi';
@@ -55,10 +55,10 @@ describe('JWT Validation Integration Tests', () => {
 
             if (hasProperties) {
               // Verify JWT-related configuration options exist
-              cy.get('.property-editor')
-                .should(TEXT_CONSTANTS.CONTAIN_TEXT, 'issuer')
-                .or(TEXT_CONSTANTS.CONTAIN_TEXT, 'audience')
-                .or(TEXT_CONSTANTS.CONTAIN_TEXT, 'algorithm');
+              cy.get(COMMON_STRINGS.PROPERTY_EDITOR_SELECTOR)
+                .should(TEXT_CONSTANTS.CONTAIN_TEXT, TEXT_CONSTANTS.JWT_ISSUER)
+                .or(TEXT_CONSTANTS.CONTAIN_TEXT, TEXT_CONSTANTS.JWT_AUDIENCE)
+                .or(TEXT_CONSTANTS.CONTAIN_TEXT, TEXT_CONSTANTS.JWT_ALGORITHM);
               cy.log('JWT validation properties found in processor configuration');
             } else {
               cy.log('JWT validation properties not visible in current view');
@@ -74,11 +74,11 @@ describe('JWT Validation Integration Tests', () => {
     it('should handle JWT token with valid structure', () => {
       // Create a mock valid JWT token structure
       const validJwtPayload = {
-        iss: TEXT_CONSTANTS.TEST_ISSUER_VALUE,
-        aud: 'test-audience',
+        iss: TEXT_CONSTANTS.TEST_ISSUER,
+        aud: TEXT_CONSTANTS.TEST_AUDIENCE,
         exp: Math.floor(Date.now() / 1000) + 3600, // Expires in 1 hour
         iat: Math.floor(Date.now() / 1000),
-        sub: 'test-subject',
+        sub: COMMON_STRINGS.TEST_SUBJECT_STRING,
       };
 
       // Verify the token structure meets JWT standards

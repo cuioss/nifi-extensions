@@ -7,6 +7,7 @@
 
 // Import cypress-axe for automated accessibility testing
 import 'cypress-axe';
+import { TEXT_CONSTANTS } from '../../constants.js';
 
 // Configuration and Setup Commands
 
@@ -67,7 +68,7 @@ Cypress.Commands.add('testTabNavigation', () => {
     // Tab through each element and verify focus
     for (let i = 0; i < $elements.length; i++) {
       cy.focused().tab();
-      cy.focused().should('be.visible');
+      cy.focused().should(TEXT_CONSTANTS.BE_VISIBLE);
     }
   });
 });

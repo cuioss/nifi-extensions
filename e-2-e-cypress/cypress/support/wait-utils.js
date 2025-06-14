@@ -3,7 +3,7 @@
  * Replaces arbitrary cy.wait() calls with proper condition-based waits
  */
 
-import { SELECTORS, TIMEOUTS } from './constants.js';
+import { SELECTORS, TIMEOUTS, TEXT_CONSTANTS } from './constants.js';
 
 /**
  * Wait for element to be visible with proper timeout
@@ -12,7 +12,7 @@ import { SELECTORS, TIMEOUTS } from './constants.js';
  * @returns {Cypress.Chainable} Cypress chainable element
  */
 export function waitForVisible(selector, timeout = TIMEOUTS.LONG) {
-  return cy.get(selector, { timeout }).should('be.visible');
+  return cy.get(selector, { timeout }).should(TEXT_CONSTANTS.BE_VISIBLE);
 }
 
 /**

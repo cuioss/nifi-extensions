@@ -10,7 +10,7 @@
  * 3. Provide manual setup instructions for comprehensive testing
  */
 
-import { SELECTORS, TIMEOUTS } from '../../constants.js';
+import { SELECTORS, TIMEOUTS, TEXT_CONSTANTS } from '../../constants.js';
 import { _waitForVisible } from '../../wait-utils.js';
 
 /**
@@ -69,16 +69,17 @@ Cypress.Commands.add('testFirstAvailableProcessor', () => {
       cy.log(`Testing processor: ${processorId}`);
 
       // Basic processor interaction tests
-      cy.wrap($processor).should('be.visible');
+      cy.wrap($processor).should(TEXT_CONSTANTS.BE_VISIBLE);
 
       // Try to right-click for context menu
       cy.wrap($processor).rightclick({ force: true });
 
-      cy.wait(1000);
-
       // Check if context menu appeared
+      cy.get(TEXT_CONSTANTS.CONTEXT_MENU_SELECTOR, { timeout: 2000 }).should(
+        TEXT_CONSTANTS.BE_VISIBLE
+      );
       cy.get('body').then(($body) => {
-        const contextMenus = $body.find('.context-menu, .mat-menu-panel, [role="menu"]');
+        const contextMenus = $body.find(TEXT_CONSTANTS.CONTEXT_MENU_SELECTOR);
         if (contextMenus.length > 0) {
           cy.log('✅ Processor context menu works');
 
@@ -185,7 +186,7 @@ Cypress.Commands.add('testProcessorElement', ($processor, expectedType = 'unknow
 
   // Try to open configuration if possible
   cy.wrap($processor).rightclick({ force: true });
-  cy.wait(500);
+  cy.get('.context-menu, .mat-menu-panel, [role="menu"]', { timeout: 1000 }).should('be.visible');
 
   return cy.get('body').then(($body) => {
     const contextMenus = $body.find('.context-menu, .mat-menu-panel, [role="menu"]');
