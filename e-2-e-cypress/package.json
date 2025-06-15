@@ -4,6 +4,7 @@
   "description": "End-to-End Cypress tests for NiFi Extensions - Implements centralized JavaScript/ESLint standards",
   "scripts": {
     "cypress:selftests": "cypress run --config-file cypress.selftests.config.js",
+    "cypress:selftests-safe": "node scripts/check-nifi-and-run-selftests.js",
     "cypress:run": "cypress run",
     "cypress:open": "cypress open",
     "lint": "eslint 'cypress/**/*.js'",

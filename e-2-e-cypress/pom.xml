@@ -57,31 +57,17 @@
                             <skip>false</skip>
                         </configuration>
                     </execution>
-                    <!-- Run self-verification tests (integration tests for core commands) -->
+                    <!-- Run self-verification tests (integration tests for core commands) during verify phase -->
+                    <!-- These will gracefully skip if NiFi is not available -->
                     <execution>
                         <id>cypress-selftests</id>
                         <goals>
                             <goal>npm</goal>
                         </goals>
-                        <phase>integration-test</phase>
+                        <phase>verify</phase>
                         <configuration>
-                            <arguments>run cypress:selftests</arguments>
-                            <skip>true</skip>
-                            <environmentVariables>
-                                <CYPRESS_BASE_URL>https://localhost:9095/nifi</CYPRESS_BASE_URL>
-                                <CYPRESS_KEYCLOAK_URL>https://localhost:9085/auth</CYPRESS_KEYCLOAK_URL>
-                            </environmentVariables>
-                        </configuration>
-                    </execution>
-                    <!-- Run actual E2E tests only if self-tests pass (requires containers to be running) -->
-                    <execution>
-                        <id>cypress-e2e</id>
-                        <goals>
-                            <goal>npm</goal>
-                        </goals>
-                        <phase>integration-test</phase>
-                        <configuration>
-                            <arguments>run cypress:run</arguments>
+                            <arguments>run cypress:selftests-safe</arguments>
+                            <skip>${skipTests}</skip>
                             <environmentVariables>
                                 <CYPRESS_BASE_URL>https://localhost:9095/nifi</CYPRESS_BASE_URL>
                                 <CYPRESS_KEYCLOAK_URL>https://localhost:9085/auth</CYPRESS_KEYCLOAK_URL>
@@ -94,6 +80,37 @@
     </build>
 
     <profiles>
+        <!-- Profile for running UI tests (requires containers to be running) -->
+        <profile>
+            <id>ui-tests</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.eirslett</groupId>
+                        <artifactId>frontend-maven-plugin</artifactId>
+                        <version>${frontend.maven.plugin.version}</version>
+                        <executions>
+                            <!-- Run actual E2E tests (requires containers to be running) -->
+                            <execution>
+                                <id>ui-tests-cypress-e2e</id>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <phase>integration-test</phase>
+                                <configuration>
+                                    <arguments>run cypress:run</arguments>
+                                    <environmentVariables>
+                                        <CYPRESS_BASE_URL>https://localhost:9095/nifi</CYPRESS_BASE_URL>
+                                        <CYPRESS_KEYCLOAK_URL>https://localhost:9085/auth</CYPRESS_KEYCLOAK_URL>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- Legacy profile for local integration tests (both selftests and ui tests) -->
         <profile>
             <id>local-integration-tests</id>
             <activation>
