@@ -17,7 +17,7 @@ require('./processor-advanced-automation');
 // Import workflow helper commands for advanced testing
 require('./processor-workflow-helpers');
 
-import { SELECTORS, TEXT_CONSTANTS, _TIMEOUTS } from '../../constants.js';
+import { SELECTORS, TEXT_CONSTANTS, TIMEOUTS } from '../../constants.js';
 import {
   _waitForVisible,
   _waitForDialog,
@@ -58,7 +58,7 @@ Cypress.Commands.add('addProcessor', (type, position = { x: 300, y: 300 }) => {
   cy.verifyLoggedIn();
 
   // Wait for UI to be ready - use proper wait for element
-  cy.get(TEXT_CONSTANTS.NIFI_ELEMENT).should('be.visible');
+  cy.get(TEXT_CONSTANTS.NIFI).should('be.visible');
 
   // Count existing processors before adding new one
   return cy.get('body').then(($body) => {
@@ -97,7 +97,7 @@ Cypress.Commands.add('addProcessor', (type, position = { x: 300, y: 300 }) => {
  */
 Cypress.Commands.add('verifyCanvasAccessible', () => {
   cy.verifyLoggedIn();
-  cy.get(TEXT_CONSTANTS.NIFI_ELEMENT).should('be.visible');
+  cy.get(TEXT_CONSTANTS.NIFI).should('be.visible');
 
   // Simple verification that we have interactive content ready for testing
   cy.get('body').should(($body) => {

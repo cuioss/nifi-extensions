@@ -9,41 +9,71 @@
  * Retry an operation with exponential backoff
  * @param {Function} operation - The operation to retry
  * @param {Object} options - Retry configuration
- * @returns {Promise} Promise that resolves with operation result
+ * @returns {Cypress.Chainable} Cypress chainable that resolves with operation result
  */
 export function retryWithBackoff(operation, options = {}) {
   const {
     maxAttempts = 3,
+    maxRetries = maxAttempts, // Support both naming conventions
     initialDelay = 1000,
+    baseDelay = initialDelay, // Support both naming conventions
     backoffMultiplier = 2,
+    backoffFactor = backoffMultiplier, // Support both naming conventions
+    maxDelay = 30000,
     description = 'operation',
   } = options;
 
-  return cy.wrap(null).then(() => {
-    return new Cypress.Promise((resolve, reject) => {
-      let attempt = 1;
+  const finalMaxAttempts = Math.max(maxAttempts, maxRetries || 3);
+  const finalBaseDelay = Math.max(baseDelay, initialDelay || 1000);
+  const finalBackoffMultiplier = Math.max(backoffFactor, backoffMultiplier || 2);
 
-      function tryOperation() {
-        cy.log(`[Retry] Attempting ${description} (${attempt}/${maxAttempts})`);
+  let attempt = 1;
 
-        operation()
-          .then(resolve)
-          .catch((error) => {
-            if (attempt >= maxAttempts) {
-              cy.log(`[Retry] Failed after ${maxAttempts} attempts: ${error.message}`);
-              reject(error);
-            } else {
-              const delay = initialDelay * Math.pow(backoffMultiplier, attempt - 1);
-              cy.log(`[Retry] Attempt ${attempt} failed, retrying in ${delay}ms`);
-              attempt++;
-              setTimeout(tryOperation, delay);
-            }
-          });
+  function tryOperation() {
+    cy.log(`[Retry] Attempting ${description} (${attempt}/${finalMaxAttempts})`);
+
+    // Wrap the operation to handle both Cypress commands and promises
+    return cy.wrap(null).then(() => {
+      try {
+        const result = operation();
+        
+        // If it's a Cypress chainable, return it directly
+        if (result && typeof result.then === 'function') {
+          return result;
+        }
+        
+        // If it's not a chainable, wrap it
+        return cy.wrap(result);
+      } catch (error) {
+        // If the operation throws synchronously, convert to a failed promise
+        return cy.wrap(null).then(() => {
+          throw error;
+        });
       }
+    }).then(
+      (success) => {
+        cy.log(`[Retry] Operation succeeded on attempt ${attempt}`);
+        return success;
+      },
+      (error) => {
+        if (attempt >= finalMaxAttempts) {
+          cy.log(`[Retry] Failed after ${finalMaxAttempts} attempts: ${error.message}`);
+          throw error;
+        } else {
+          const delay = Math.min(
+            finalBaseDelay * Math.pow(finalBackoffMultiplier, attempt - 1),
+            maxDelay
+          );
+          cy.log(`[Retry] Attempt ${attempt} failed, retrying in ${delay}ms`);
+          attempt++;
+          
+          return cy.wait(delay).then(() => tryOperation());
+        }
+      }
+    );
+  }
 
-      tryOperation();
-    });
-  });
+  return tryOperation();
 }
 
 /**
@@ -113,54 +143,43 @@ export function waitForStableElement(selector, options = {}) {
  * Smart element selector with multiple fallback strategies
  * @param {Array|string} selectors - Primary and fallback selectors
  * @param {Object} options - Selection options
- * @returns {Promise} Promise that resolves to found element or null
+ * @returns {Cypress.Chainable} Cypress chainable that resolves to found element
  */
 export function robustElementSelect(selectors, options = {}) {
-  const { description = 'element', required = true } = options;
+  const { description = 'element', required = true, timeout = 10000 } = options;
 
   const selectorArray = Array.isArray(selectors) ? selectors : [selectors];
 
-  return cy.wrap(null).then(() => {
-    return new Cypress.Promise((resolve, reject) => {
-      let currentIndex = 0;
-
-      function trySelector() {
-        if (currentIndex >= selectorArray.length) {
-          const error = `[RobustSelect] All selectors failed for ${description}`;
-          if (required) {
-            reject(new Error(error));
-          } else {
-            cy.log(error);
-            resolve(null);
-          }
-          return;
-        }
-
-        const selector = selectorArray[currentIndex];
-        cy.log(
-          `[RobustSelect] Trying selector ${currentIndex + 1}/${selectorArray.length}: ${selector}`
-        );
-
-        cy.get('body', { timeout: 1000 })
-          .find(selector)
-          .then(($elements) => {
-            if ($elements.length > 0) {
-              cy.log(`[RobustSelect] Success with selector: ${selector}`);
-              resolve($elements);
-            } else {
-              currentIndex++;
-              trySelector();
-            }
-          })
-          .catch(() => {
-            currentIndex++;
-            trySelector();
-          });
+  function trySelectors(index = 0) {
+    if (index >= selectorArray.length) {
+      const error = `[RobustSelect] All selectors failed for ${description}`;
+      if (required) {
+        throw new Error(error);
+      } else {
+        cy.log(error);
+        return cy.wrap(null);
       }
+    }
 
-      trySelector();
+    const selector = selectorArray[index];
+    cy.log(
+      `[RobustSelect] Trying selector ${index + 1}/${selectorArray.length}: ${selector}`
+    );
+
+    return cy.get('body', { timeout: Math.min(timeout / selectorArray.length, 3000) }).then(($body) => {
+      const $elements = $body.find(selector);
+      if ($elements.length > 0) {
+        cy.log(`[RobustSelect] Success with selector: ${selector}`);
+        return cy.wrap($elements);
+      } else {
+        return trySelectors(index + 1);
+      }
+    }).catch(() => {
+      return trySelectors(index + 1);
     });
-  });
+  }
+
+  return trySelectors();
 }
 
 /**

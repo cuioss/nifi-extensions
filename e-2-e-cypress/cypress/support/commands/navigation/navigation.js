@@ -44,7 +44,7 @@ Cypress.Commands.add('navigateToCanvas', () => {
           .then(() => robustElementSelect(['nifi', '[ng-app]', 'body'], { timeout: 30000 }))
           .then(() => {
             // Wait for stable state before proceeding
-            return waitForStableElement('body', 2000);
+            return waitForStableElement('body', { stabilityDuration: 2000 });
           })
           .then(() => {
             cy.verifyCanvasAccessible();

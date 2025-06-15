@@ -216,14 +216,14 @@ export const TIMEOUTS = {
 // Common URLs and endpoints
 export const URLS = {
   // NiFi base configuration - uses Cypress baseUrl with fallback
-  NIFI_BASE: Cypress.config('baseUrl') || 'http://localhost:9094/nifi',
+  NIFI_BASE: (typeof Cypress !== 'undefined' ? Cypress.config('baseUrl') : null) || 'http://localhost:9094/nifi',
 
   // Keycloak configuration - uses environment variables with fallbacks
   // Note: The hardcoded URLs were using port 8443, but current config uses 9085
   // Using environment-configurable approach to support both
   KEYCLOAK_BASE:
-    Cypress.env('KEYCLOAK_URL') || Cypress.env('keycloakUrl') || 'https://localhost:9085',
-  KEYCLOAK_REALM: `/auth/realms/${Cypress.env('keycloakRealm') || 'oauth_integration_tests'}`,
+    (typeof Cypress !== 'undefined' ? Cypress.env('KEYCLOAK_URL') || Cypress.env('keycloakUrl') : null) || 'https://localhost:9085',
+  KEYCLOAK_REALM: `/auth/realms/${(typeof Cypress !== 'undefined' ? Cypress.env('keycloakRealm') : null) || 'oauth_integration_tests'}`,
   KEYCLOAK_JWKS_ENDPOINT: '/protocol/openid-connect/certs',
 
   // Computed URLs for convenience
@@ -399,9 +399,6 @@ export const COMMON_STRINGS = {
   FORCE_TRUE: { force: true },
   TIMEOUT_5000: { timeout: 5000 },
   TIMEOUT_10000: { timeout: 10000 },
-
-  // NiFi UI element selector
-  NIFI_ELEMENT: 'nifi',
 
   // Common duplicate strings found in tests
   PROCESSOR_PROPERTY_ROW_SELECTOR: '.processor-property-row',

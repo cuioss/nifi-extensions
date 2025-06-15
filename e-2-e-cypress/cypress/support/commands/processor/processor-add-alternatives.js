@@ -183,7 +183,7 @@ Cypress.Commands.add('addProcessorAlternative', (type, options = {}) => {
 
   // Ensure we're logged in and ready
   cy.verifyLoggedIn();
-  cy.get(TEXT_CONSTANTS.NIFI_ELEMENT).should('be.visible');
+  cy.get(TEXT_CONSTANTS.NIFI).should('be.visible');
 
   // Method 1: Try toolbar approach
   cy.get('body').then((_$body) => {
@@ -259,7 +259,20 @@ Cypress.Commands.add('addProcessorViaAPI', (type, position) => {
 
   // Get the process group ID (root is usually the canvas)
   cy.request('GET', '/nifi-api/flow/process-groups/root').then((response) => {
-    const processGroupId = response.body.processGroupFlow.id;
+    cy.log('API Response:', response.body);
+    
+    // Handle different possible response structures
+    let processGroupId;
+    if (response.body?.processGroupFlow?.id) {
+      processGroupId = response.body.processGroupFlow.id;
+    } else if (response.body?.id) {
+      processGroupId = response.body.id;
+    } else {
+      cy.log('⚠️  Cannot determine process group ID from API response');
+      processGroupId = 'root'; // fallback to root
+    }
+
+    cy.log(`Using process group ID: ${processGroupId}`);
 
     // Create processor via API
     const processorData = {
@@ -275,8 +288,13 @@ Cypress.Commands.add('addProcessorViaAPI', (type, position) => {
       },
     };
 
-    cy.request('POST', `/nifi-api/process-groups/${processGroupId}/processors`, processorData).then(
-      (createResponse) => {
+    cy.request({
+      method: 'POST',
+      url: `/nifi-api/process-groups/${processGroupId}/processors`,
+      body: processorData,
+      failOnStatusCode: false
+    }).then((createResponse) => {
+      if (createResponse.status === 201 && createResponse.body?.id) {
         const processorId = createResponse.body.id;
         cy.log(`✅ Processor created via API with ID: ${processorId}`);
 
@@ -285,8 +303,11 @@ Cypress.Commands.add('addProcessorViaAPI', (type, position) => {
         cy.nifiLogin('admin', 'adminadminadmin');
 
         return cy.wrap(processorId);
+      } else {
+        cy.log('⚠️  API processor creation failed:', createResponse);
+        throw new Error(`Failed to create processor via API: ${createResponse.status}`);
       }
-    );
+    });
   });
 });
 
