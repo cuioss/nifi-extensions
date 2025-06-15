@@ -8,6 +8,15 @@
 // Import enhanced processor commands with robust patterns
 require('./enhanced-processor');
 
+// Import advanced UI commands for Task 2 implementation
+require('./processor-advanced-ui');
+
+// Import advanced automation commands for Task 3 implementation
+require('./processor-advanced-automation');
+
+// Import workflow helper commands for advanced testing
+require('./processor-workflow-helpers');
+
 import { SELECTORS, TEXT_CONSTANTS, _TIMEOUTS } from '../../constants.js';
 import {
   _waitForVisible,

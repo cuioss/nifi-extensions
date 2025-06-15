@@ -69,6 +69,25 @@ export const SELECTORS = {
   METRICS_TAB: '[data-tab="metrics"]',
   PROPERTIES_TAB: '[data-tab="properties"]',
   SETTINGS_TAB: '[data-tab="settings"]',
+
+  // Advanced UI selectors for Task 2 implementation
+  CUSTOM_TABS: '.custom-tabs',
+  CUSTOM_TABS_NAVIGATION: '.custom-tabs-navigation',
+  CUSTOM_TAB: '.custom-tab',
+  TAB_NAV_ITEM: '.tab-nav-item',
+  JWT_VALIDATOR_TABS: '#jwt-validator-tabs',
+  ADVANCED_CONFIGURATION_DIALOG: '.advanced-configuration-dialog',
+
+  // Context menu selectors
+  CONTEXT_MENU_ADVANCED: '*:contains("Advanced")',
+  CONTEXT_MENU_CUSTOM_UI: '*:contains("Custom UI")',
+
+  // Tab content selectors
+  VALIDATION_SECTION: '.validation-section',
+  TEST_TOKEN_INPUT: '.test-token',
+  VERIFY_BUTTON: '.verify-button',
+  METRICS_SECTION: '.metrics-section',
+  PERFORMANCE_METRICS_SECTION: '.performance-metrics',
 };
 
 // Common text constants
