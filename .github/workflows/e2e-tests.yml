@@ -1,245 +1,80 @@
+# This workflow will run end-to-end tests for the NiFi extensions project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
+
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
 name: End-to-End Tests
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ main, develop, feature/end-to-end-testing ]
-    paths:
-      - 'e-2-e-cypress/**'
-      - 'nifi-cuioss-processors/**'
-      - 'nifi-cuioss-ui/**'
-      - 'integration-testing/**'
-      - 'pom.xml'
+    tags: [ 'v*' ]
   pull_request:
-    branches: [ main, develop ]
-    paths:
-      - 'e-2-e-cypress/**'
-      - 'nifi-cuioss-processors/**'
-      - 'nifi-cuioss-ui/**'
-      - 'integration-testing/**'
-      - 'pom.xml'
+    branches: [ "main" ]
+    types: [ closed ]
 
 jobs:
-  frontend-quality-checks:
-    name: Frontend Quality Checks
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Set up Java 21
-      uses: actions/setup-java@v4
-      with:
-        java-version: '21'
-        distribution: 'temurin'
-    
-    - name: Set up Node.js 20
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20.12.2'
-        cache: 'npm'
-        cache-dependency-path: |
-          e-2-e-cypress/package-lock.json
-          nifi-cuioss-ui/package-lock.json
-    
-    - name: Cache Maven dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~/.m2
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-        restore-keys: ${{ runner.os }}-m2
-    
-    - name: Run frontend quality checks
-      run: |
-        # Run linting and unit tests for both frontend modules
-        ./mvnw clean test -pl :nifi-cuioss-ui,:e-2-e-cypress
-    
-    - name: Upload frontend test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: frontend-test-results
-        path: |
-          nifi-cuioss-ui/coverage/
-          e-2-e-cypress/tests-report/
-        retention-days: 7
-
   e2e-tests:
-    name: End-to-End Integration Tests
-    runs-on: ubuntu-latest
-    needs: frontend-quality-checks
-    
-    services:
-      docker:
-        image: docker:dind
-        options: --privileged
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Set up Java 21
-      uses: actions/setup-java@v4
-      with:
-        java-version: '21'
-        distribution: 'temurin'
-    
-    - name: Set up Node.js 20
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20.12.2'
-        cache: 'npm'
-        cache-dependency-path: e-2-e-cypress/package-lock.json
-    
-    - name: Cache Maven dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~/.m2
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-        restore-keys: ${{ runner.os }}-m2
-    
-    - name: Build and deploy NAR package
-      working-directory: integration-testing/src/main/docker
-      run: |
-        # Build NAR and copy to deployment location
-        ./copy-deployment.sh
-        
-        # Verify NAR deployment
-        echo "Checking NAR deployment..."
-        ls -la ../../../target/nifi-deploy/ || echo "NAR deployment directory not found"
-        
-        # Show Docker environment info
-        echo "Docker environment info:"
-        docker --version
-        docker compose version
-    
-    - name: Install E2E test dependencies
-      working-directory: e-2-e-cypress
-      run: npm ci
-    
-    - name: Start test environment
-      working-directory: integration-testing/src/main/docker
-      run: |
-        # Start the test containers
-        ./run-test-container.sh
-        
-        echo "Waiting for containers to be healthy..."
-        
-        # Wait for containers to be healthy using Docker Compose health checks
-        # NiFi can take 3-5 minutes to fully start up
-        timeout 600 bash -c '
-          until docker compose ps --format "table {{.Name}}\t{{.Status}}" | grep -E "(healthy|Up.*healthy).*nifi"; do 
-            echo "Waiting for NiFi to be healthy..."
-            docker compose ps
-            sleep 10
-          done
-        '
-        
-        timeout 300 bash -c '
-          until docker compose ps --format "table {{.Name}}\t{{.Status}}" | grep -E "(healthy|Up.*healthy).*keycloak"; do 
-            echo "Waiting for Keycloak to be healthy..."
-            docker compose ps
-            sleep 10
-          done
-        '
-        
-        echo "All containers are healthy. Verifying connectivity..."
-        
-        # Final connectivity verification with detailed error output
-        echo "Testing NiFi connectivity..."
-        timeout 60 bash -c '
-          until curl -f -v http://localhost:9094/nifi/; do 
-            echo "NiFi not ready yet, retrying in 10 seconds..."
-            sleep 10
-          done
-        '
-        
-        echo "Testing Keycloak connectivity..."
-        timeout 60 bash -c '
-          until curl -k -f -v https://localhost:9085/; do 
-            echo "Keycloak not ready yet, retrying in 10 seconds..."
-            sleep 10
-          done
-        '
-        
-        echo "Both services are ready for testing!"
-    
-    - name: Run self-verification tests
-      working-directory: e-2-e-cypress
-      run: npm run cypress:selftests
-      env:
-        CYPRESS_BASE_URL: http://localhost:9094/nifi
-        CYPRESS_KEYCLOAK_URL: https://localhost:9085
-    
-    - name: Run E2E tests
-      working-directory: e-2-e-cypress
-      run: npm run cypress:run
-      env:
-        CYPRESS_BASE_URL: http://localhost:9094/nifi
-        CYPRESS_KEYCLOAK_URL: https://localhost:9085
-    
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: e2e-test-results
-        path: |
-          e-2-e-cypress/tests-report/
-          e-2-e-cypress/cypress/videos/
-          e-2-e-cypress/cypress/screenshots/
-        retention-days: 30
-    
-    - name: Upload test reports
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-reports
-        path: e-2-e-cypress/tests-report/*.xml
-    
-    - name: Collect container logs
-      if: always()
-      working-directory: integration-testing/src/main/docker
-      run: |
-        echo "Collecting container logs for debugging..."
-        mkdir -p ../../../container-logs
-        
-        # Get container status
-        echo "Container status:"
-        docker compose ps
-        
-        # Collect NiFi logs
-        echo "Collecting NiFi logs..."
-        docker compose logs nifi > ../../../container-logs/nifi.log 2>&1 || echo "Failed to collect NiFi logs"
-        
-        # Collect Keycloak logs  
-        echo "Collecting Keycloak logs..."
-        docker compose logs keycloak > ../../../container-logs/keycloak.log 2>&1 || echo "Failed to collect Keycloak logs"
-        
-        # Show recent logs
-        echo "Recent NiFi logs (last 50 lines):"
-        tail -50 ../../../container-logs/nifi.log || echo "No NiFi logs available"
-        
-        echo "Recent Keycloak logs (last 50 lines):"
-        tail -50 ../../../container-logs/keycloak.log || echo "No Keycloak logs available"
-    
-    - name: Upload container logs
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: container-logs
-        path: container-logs/
-        retention-days: 30
-    
-    - name: Stop test environment
-      if: always()
-      working-directory: integration-testing/src/main/docker
-      run: ./stop-test-container.sh
 
-    - name: Analyze console errors
-      if: failure()
-      working-directory: e-2-e-cypress
-      run: |
-        echo "Checking for console errors in test results..."
-        if [ -d "tests-report" ]; then
-          grep -r "console.*error" tests-report/ || echo "No console errors found"
-        fi
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || (github.event.pull_request.merged == true)
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Frontend Quality Checks
+        run: ./mvnw -B --no-transfer-progress clean test -pl :nifi-cuioss-ui,:e-2-e-cypress
+
+      - name: Run E2E Integration Tests
+        run: ./mvnw -B --no-transfer-progress integration-test -Plocal-integration-tests -Dintegration.test.local=true
+        env:
+          CYPRESS_BASE_URL: http://localhost:9094/nifi
+          CYPRESS_KEYCLOAK_URL: https://localhost:9085
+
+      - name: Generate E2E Analysis Reports
+        run: |
+          cd e-2-e-cypress
+          node scripts/enhanced-log-analyzer.js latest || echo "Log analysis completed with warnings"
+          # Create a simple site structure for deployment
+          mkdir -p ../target/site/e2e-reports
+          cp -r tests-report/* ../target/site/e2e-reports/ 2>/dev/null || true
+          cp -r cypress/videos ../target/site/e2e-reports/ 2>/dev/null || true
+          cp -r cypress/screenshots ../target/site/e2e-reports/ 2>/dev/null || true
+          cp -r cypress/reports/enhanced-analysis/comprehensive-report.html ../target/site/e2e-reports/index.html 2>/dev/null || true
+          cp -r cypress/reports ../target/site/e2e-reports/ 2>/dev/null || true
+          cp -r ../integration-testing/src/main/docker/logs ../target/site/e2e-reports/container-logs 2>/dev/null || true
+        if: always()
+
+      - name: Deploy E2E Reports to cuioss.github.io 🚀
+        uses: JamesIves/github-pages-deploy-action@6c2d9db40f9296374acc17b90404b6e8864128c8 # v4.7.3
+        if: always() && (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/'))
+        with:
+          folder: target/site/e2e-reports
+          repository-name: cuioss/cuioss.github.io
+          target-folder: nifi-extensions/e2e-reports/${{ github.run_number }}
+          branch: main
+          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}

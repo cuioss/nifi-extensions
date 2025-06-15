@@ -210,9 +210,94 @@ mvn test -pl :e-2-e-cypress
 * Environment variable handling
 * Error simulation testing
 
-== Maven Integration
+== Maven Integration & E2E Deployment
 
-The module integrates with Maven through the unified `frontend-maven-plugin` configuration:
+The module integrates with Maven through the unified `frontend-maven-plugin` configuration and provides comprehensive test result deployment:
+
+=== Auto-Start Configuration (Production Ready)
+
+The Maven build automatically manages NiFi containers:
+
+[source,bash]
+----
+# Auto-start build - starts NiFi automatically and runs selftests
+mvn clean verify
+
+# Fast build without any tests
+mvn clean verify -DskipTests=true
+
+# Full UI testing (requires containers)
+mvn clean integration-test -Pui-tests
+
+# Legacy safe mode (skip if no NiFi)
+mvn clean verify -Psafe-selftests
+----
+
+**Auto-Start Process:**
+1. 🔍 Check HTTPS NiFi (port 9095)
+2. 🔄 Check HTTP NiFi (port 9094) if HTTPS fails  
+3. 🚀 Start containers if neither accessible
+4. ⏳ Wait for ready with health checks (up to 5 minutes)
+5. 🧪 Run selftests with correct URL
+6. ✅ Report results
+
+=== E2E Test Results Deployment
+
+**GitHub Pages Deployment (Primary Method)**
+
+✅ Professional presentation and permanent access:
+- Deploys to `https://cuioss.github.io/nifi-extensions/e2e-reports/{run-number}/`
+- Comprehensive HTML reports with enhanced analysis as main dashboard
+- Test videos, screenshots, and container logs included
+- Permanent URLs that don't expire
+- No GitHub login required for stakeholders
+- Available for manual runs and tagged releases
+
+=== Log Analysis Tools Available
+
+**Enhanced Log Analyzer (Primary Tool)**
+- Multi-dimensional analysis: Console errors + performance + network + trends
+- Interactive HTML reports with recommendations
+- Historical trend tracking over time
+- Automated recommendations based on analysis
+
+[source,bash]
+----
+cd e-2-e-cypress
+node scripts/enhanced-log-analyzer.js latest
+open cypress/reports/enhanced-analysis/comprehensive-report.html
+----
+
+**Console Error Analyzer (Specialized)**
+- Console log parsing with pattern recognition
+- Allowlist management for acceptable warnings (edit `cypress/support/console-warnings-allowlist.js`)
+- Error categorization (critical vs warnings)
+
+**Infrastructure Tools**
+- NiFi Health Checker: Service availability verification
+- Auto-start Integration: Complete environment lifecycle management
+- Dependency Validation: WebJar version checking
+
+=== Access Methods for Test Results
+
+**For Stakeholders (Primary Access Method)**  
+🌐 **GitHub Pages**: `https://cuioss.github.io/nifi-extensions/e2e-reports/{run-number}/`
+- Professional presentation with comprehensive analysis dashboard
+- All test artifacts included (videos, screenshots, container logs)
+- Permanent access, no GitHub login required
+- Available for manual workflow runs and tagged releases
+
+**For Local Development**
+💻 **Local Analysis**:
+[source,bash]
+----
+# Run enhanced log analysis manually
+cd e-2-e-cypress
+node scripts/enhanced-log-analyzer.js latest
+open cypress/reports/enhanced-analysis/comprehensive-report.html
+----
+
+=== Maven Build Commands
 
 [source,bash]
 ----

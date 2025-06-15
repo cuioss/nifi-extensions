@@ -115,7 +115,7 @@ export const TEXT_CONSTANTS = {
   JWKS_TYPE: 'JWKS Type',
   JWKS_SOURCE_TYPE: 'JWKS Source Type',
   JWKS_FILE_PATH: 'JWKS File Path',
-  JWKS_CONTENT: TEXT_CONSTANTS.JWKS_CONTENT,
+  JWKS_CONTENT: 'JWKS Content',
   TOKEN_AUDIENCE: 'Token Audience',
   DEFAULT_ISSUER: 'Default Issuer',
   JWKS_SERVER_URL: 'JWKS Server URL',

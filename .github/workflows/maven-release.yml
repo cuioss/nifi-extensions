@@ -51,11 +51,11 @@ jobs:
       - name: Maven release ${{steps.metadata.outputs.current-version}}
         run: |
           git checkout -b release
-          ./mvnw -B -Prelease release:clean release:prepare -DreleaseVersion=${{steps.metadata.outputs.current-version}} -DdevelopmentVersion=${{steps.metadata.outputs.next-version}}
-          ./mvnw -B -Prelease javadoc:aggregate site:site site:stage
-          git checkout ${{vars.GITHUB_BASE_REF}}
+          ./mvnw -B --no-transfer-progress -Prelease release:clean release:prepare -DreleaseVersion=${{steps.metadata.outputs.current-version}} -DdevelopmentVersion=${{steps.metadata.outputs.next-version}}
+          ./mvnw -B --no-transfer-progress -Prelease javadoc:aggregate site:site site:stage
+          git checkout ${{github.base_ref}}
           git rebase release
-          ./mvnw -B -Prelease release:perform -DskipTests
+          ./mvnw -B --no-transfer-progress -Prelease release:perform -DskipTests
         env:
           MAVEN_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSS_SONATYPE_PASSWORD }}
