@@ -294,15 +294,32 @@ Cypress.Commands.add('addProcessorViaAPI', (type, position) => {
       body: processorData,
       failOnStatusCode: false
     }).then((createResponse) => {
-      if (createResponse.status === 201 && createResponse.body?.id) {
-        const processorId = createResponse.body.id;
-        cy.log(`✅ Processor created via API with ID: ${processorId}`);
+      cy.log('Create processor API response status:', createResponse.status);
+      cy.log('Create processor API response body:', createResponse.body);
+      
+      if (createResponse.status === 201 || createResponse.status === 200) {
+        // Handle different possible response structures
+        let processorId;
+        if (createResponse.body?.id) {
+          processorId = createResponse.body.id;
+        } else if (createResponse.body?.component?.id) {
+          processorId = createResponse.body.component.id;
+        } else if (createResponse.body?.processor?.id) {
+          processorId = createResponse.body.processor.id;
+        }
+        
+        if (processorId) {
+          cy.log(`✅ Processor created via API with ID: ${processorId}`);
 
-        // Refresh the UI to show the new processor
-        cy.reload();
-        cy.nifiLogin('admin', 'adminadminadmin');
+          // Refresh the UI to show the new processor
+          cy.reload();
+          cy.nifiLogin('admin', 'adminadminadmin');
 
-        return cy.wrap(processorId);
+          return cy.wrap(processorId);
+        } else {
+          cy.log('⚠️  Could not extract processor ID from response:', createResponse.body);
+          throw new Error('Could not extract processor ID from API response');
+        }
       } else {
         cy.log('⚠️  API processor creation failed:', createResponse);
         throw new Error(`Failed to create processor via API: ${createResponse.status}`);
