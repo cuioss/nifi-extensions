@@ -9,6 +9,7 @@
     "lint": "eslint 'cypress/**/*.js'",
     "lint:fix": "eslint 'cypress/**/*.js' --fix",
     "lint:check": "eslint 'cypress/**/*.js' --max-warnings 0",
+    "lint:strict": "eslint 'cypress/**/*.js' --max-warnings 0 --report-unused-disable-directives",
     "format": "prettier --write 'cypress/**/*.js'",
     "format:check": "prettier --check 'cypress/**/*.js'",
     "analyze-console-errors": "node scripts/analyze-console-errors.js"

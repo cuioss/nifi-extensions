@@ -26,7 +26,6 @@ describe('Core Command Integration Tests', () => {
     });
   });
   describe('Login Command Integration', () => {
-    // eslint-disable-next-line max-lines-per-function
     it('should successfully login to real NiFi instance', () => {
       // Clear any existing sessions
       cy.clearCookies();
