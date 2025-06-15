@@ -1,48 +1,80 @@
-= MultiIssuerJWTTokenAuthenticator JavaScript Testing
-:toc:
-:toclevels: 3
-:toc-title: Table of Contents
-:sectnums:
+# JavaScript Testing Implementation Guide
 
-link:../Specification.adoc[Back to Main Specification]
+This guide covers JavaScript testing implementation for the MultiIssuerJWTTokenAuthenticator processor UI components, including practical examples, testing strategies, and integration patterns.
 
-== JavaScript Testing Overview
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-16[NIFI-AUTH-16: Testing]_
+## Requirements and Specifications
 
-This document outlines the testing strategy for JavaScript components in the MultiIssuerJWTTokenAuthenticator, focusing on interactive UI components like the JWKS Endpoint Test Button and Token Verification Interface.
+### JavaScript Testing Requirements
+_Based on Requirement NIFI-AUTH-16: Testing_
 
-== UI JavaScript Components
+This implementation addresses the requirements for JavaScript component testing in the MultiIssuerJWTTokenAuthenticator processor, focusing on interactive UI components that require comprehensive testing coverage.
 
-=== Custom UI Components
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
+#### UI Components Requiring Testing
 
-The processor includes the following JavaScript-based UI components that require comprehensive testing:
+The processor includes JavaScript-based UI components that must be tested:
 
-1. **JWKS Endpoint Test Button** - Validates connectivity to a JWKS endpoint
-2. **Token Verification Interface** - Tests JWT tokens against the current processor configuration
+1. **JWKS Endpoint Test Button** - Validates connectivity to JWKS endpoints
+2. **Token Verification Interface** - Tests JWT tokens against processor configuration  
 3. **Metrics Display** - Shows security event metrics and statistics in real-time
 
-For more information on these UI components, see link:configuration-ui.adoc[UI Configuration].
+#### Testing Coverage Requirements
 
-== Testing Tools and Framework
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-16.4[NIFI-AUTH-16.4: JavaScript Testing]_
+JavaScript testing must provide:
 
-=== Core Technologies
+* **Unit Test Coverage** ≥ 90% for all JavaScript components
+* **Integration Test Coverage** for component interactions and API flows
+* **Security Testing** including XSS prevention and input validation
+* **Internationalization Testing** for multi-language UI support
+* **Error Handling Testing** for all failure scenarios
+
+#### Code Quality Requirements
+
+JavaScript testing must adhere to:
+
+* **Centralized ESLint Standards** - Following organization coding standards
+* **Zero-Warning Policy** - All code must pass linting without warnings
+* **Security-First Testing** - Comprehensive security vulnerability testing
+* **Performance Standards** - Efficient test execution and minimal resource usage
+
+#### Security Testing Requirements
+
+All JavaScript components must be tested for:
+
+1. **Cross-Site Scripting (XSS) Prevention** - Input sanitization and output encoding
+2. **Input Validation** - Proper validation of all user inputs
+3. **Token Security** - Secure handling of sensitive JWT token data
+4. **Content Security Policy Compliance** - Adherence to CSP restrictions
+
+#### Internationalization Testing Requirements
+
+JavaScript components must be tested for:
+
+* **Multi-Language Support** - All UI strings externalized and translatable
+* **Locale-Specific Rendering** - Proper display across different languages
+* **RTL Language Support** - Right-to-left language compatibility where applicable
+* **Format Localization** - Dates, numbers, and currencies formatted per locale
+
+## Overview
+
+The JavaScript testing infrastructure supports comprehensive testing of UI components like the JWKS Endpoint Test Button and Token Verification Interface, ensuring robust functionality and security compliance.
+
+## Testing Tools and Framework
+
+### Core Technologies
 
 The JavaScript testing infrastructure uses modern, industry-standard tools:
 
 * **Jest** - JavaScript testing framework for running tests and providing assertions
 * **Testing Library** - DOM testing utilities for simulating user interactions
 * **Mock Service Worker (MSW)** - API mocking for simulating backend responses
-* **ESLint** - JavaScript linting tool with security-focused rules
+* **ESLint** - JavaScript linting tool with security-focused rules (see centralized standards)
 * **Istanbul** - Code coverage reporting tool integrated with Jest
 
-=== Maven Integration
+### Maven Integration
 
 JavaScript testing is fully integrated into the Maven build process using the `frontend-maven-plugin`:
 
-[source,xml]
-----
+```xml
 <plugin>
     <groupId>com.github.eirslett</groupId>
     <artifactId>frontend-maven-plugin</artifactId>
@@ -79,14 +111,13 @@ JavaScript testing is fully integrated into the Maven build process using the `f
         </execution>
     </executions>
 </plugin>
-----
+```
 
 The Maven integration ensures JavaScript tests are executed as part of regular build cycles and gated CI/CD pipelines.
 
-== Test Structure
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-16.4[NIFI-AUTH-16.4: JavaScript Testing]_
+## Test Structure and Organization
 
-=== Directory Organization
+### Directory Organization
 
 JavaScript tests follow a structured organization pattern:
 
@@ -114,9 +145,9 @@ src/test/js/
 
 This organization ensures tests are positioned logically beside their corresponding implementation files.
 
-=== Test Types
+### Test Types
 
-==== Unit Tests
+#### Unit Tests
 
 Unit tests focus on isolating JavaScript functions and components:
 
@@ -125,7 +156,7 @@ Unit tests focus on isolating JavaScript functions and components:
 * Mock external dependencies (API calls, DOM API)
 * Test UI feedback for different scenarios
 
-==== Integration Tests
+#### Integration Tests
 
 Integration tests verify component interactions and API integrations:
 
@@ -133,7 +164,7 @@ Integration tests verify component interactions and API integrations:
 * Test API request/response flows with mock server
 * Verify handling of various response statuses and payloads
 
-==== End-to-End Tests
+#### End-to-End Tests
 
 Limited end-to-end tests verify critical user flows:
 
@@ -141,12 +172,11 @@ Limited end-to-end tests verify critical user flows:
 * JWKS verification flow from URL input to connectivity verification
 * Error handling and recovery paths
 
-=== Code Coverage
+### Code Coverage Standards
 
 Rigorous code coverage standards ensure thorough testing:
 
-[source,javascript]
-----
+```javascript
 // jest.config.js
 module.exports = {
   collectCoverage: true,
@@ -161,16 +191,15 @@ module.exports = {
     }
   }
 };
-----
+```
 
 Coverage reports are generated in multiple formats for integration with CI tools and dashboards.
 
-== Component-Specific Testing
+## Component-Specific Testing
 
-=== JWKS Endpoint Test Button
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: JWKS Verification]_
+### JWKS Endpoint Test Button
 
-==== Testing Strategy
+#### Testing Strategy
 
 The JWKS Test Button component is tested for:
 
@@ -180,10 +209,9 @@ The JWKS Test Button component is tested for:
 4. Error state display with detailed error messages
 5. Edge cases like network failures, timeouts, and CORS issues
 
-==== Key Test Cases
+#### Key Test Cases
 
-[source,javascript]
-----
+```javascript
 /**
  * JWKS Endpoint Test Button test suite
  */
@@ -255,9 +283,9 @@ describe('JwksEndpointTestButton', () => {
     });
   });
 });
-----
+```
 
-==== API Mocking
+#### API Mocking
 
 API responses are mocked for different scenarios:
 
@@ -283,10 +311,9 @@ const mockErrorResponse = {
 };
 ```
 
-=== Token Verification Interface
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
+### Token Verification Interface
 
-==== Testing Strategy
+#### Testing Strategy
 
 The Token Verification Interface is tested for:
 
@@ -296,10 +323,9 @@ The Token Verification Interface is tested for:
 4. Error handling for invalid, expired, and malformed tokens
 5. Handling of various token formats and structures
 
-==== Key Test Cases
+#### Key Test Cases
 
-[source,javascript]
-----
+```javascript
 /**
  * Token Verification Interface test suite
  */
@@ -394,9 +420,9 @@ describe('TokenVerificationInterface', () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 });
-----
+```
 
-==== Test Data
+#### Test Data
 
 Test data includes a variety of token formats:
 
@@ -406,59 +432,9 @@ Test data includes a variety of token formats:
 * Tokens with missing required claims
 * Malformed tokens with syntax errors
 
-== Integration with CI/CD
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-16.5[NIFI-AUTH-16.5: CI/CD Integration]_
+## Internationalization Testing
 
-=== Build Pipeline Integration
-
-JavaScript tests are fully integrated into the Maven build process using the `frontend-maven-plugin`:
-
-[source,xml]
-----
-<plugin>
-    <groupId>com.github.eirslett</groupId>
-    <artifactId>frontend-maven-plugin</artifactId>
-    <version>${version.frontend-maven-plugin}</version>
-    <configuration>
-        <nodeVersion>${version.nodejs}</nodeVersion>
-        <installDirectory>target</installDirectory>
-    </configuration>
-    <executions>
-        <execution>
-            <id>install-node-and-npm</id>
-            <goals>
-                <goal>install-node-and-npm</goal>
-            </goals>
-        </execution>
-        <execution>
-            <id>npm-install</id>
-            <goals>
-                <goal>npm</goal>
-            </goals>
-            <configuration>
-                <arguments>install</arguments>
-            </configuration>
-        </execution>
-        <execution>
-            <id>npm-test</id>
-            <goals>
-                <goal>npm</goal>
-            </goals>
-            <phase>test</phase>
-            <configuration>
-                <arguments>test</arguments>
-            </configuration>
-        </execution>
-    </executions>
-</plugin>
-----
-
-This ensures JavaScript tests are executed as part of regular Maven build cycles and CI/CD pipelines, without requiring a separate GitHub Action for JavaScript testing.
-
-== Internationalization Testing
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
-
-=== I18n Test Strategy
+### I18n Test Strategy
 
 JavaScript components are tested for proper internationalization support:
 
@@ -467,8 +443,7 @@ JavaScript components are tested for proper internationalization support:
 3. Verify proper handling of right-to-left languages
 4. Test formatting of dates, numbers, and currencies
 
-[source,javascript]
-----
+```javascript
 /**
  * Internationalization test suite
  */
@@ -507,14 +482,11 @@ describe('Internationalization', () => {
     expect(container.querySelector('.token-input').getAttribute('placeholder')).toBe('JWT-Token hier einfügen');
   });
 });
-----
+```
 
-For more information on internationalization, see link:internationalization.adoc[Internationalization].
+## Security Testing
 
-== Security Testing
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
-
-=== Security-Focused Tests
+### Security-Focused Tests
 
 JavaScript components undergo specific security-focused testing:
 
@@ -523,10 +495,9 @@ JavaScript components undergo specific security-focused testing:
 3. **Token Handling**: Test secure handling of sensitive token data
 4. **Content Security Policy**: Verify compliance with CSP restrictions
 
-==== XSS Prevention Test Examples
+#### XSS Prevention Test Examples
 
-[source,javascript]
-----
+```javascript
 /**
  * Security testing suite
  */
@@ -566,16 +537,129 @@ describe('Security Tests', () => {
     });
   });
 });
-----
+```
 
-For more information on security considerations, see link:security.adoc[Security].
+## Code Quality Standards
 
-== See Also
+This project implements the centralized JavaScript testing and ESLint standards defined in the organization's coding standards repository.
 
-* link:testing.adoc[Testing]
-* link:configuration-ui.adoc[UI Configuration]
-* link:token-validation.adoc[Token Validation]
-* link:security.adoc[Security]
-* link:internationalization.adoc[Internationalization]
-* link:../Requirements.adoc#NIFI-AUTH-16[Testing Requirements]
-* link:../Specification.adoc[Back to Main Specification]
+### Standards References
+
+For complete configuration details and guidelines:
+
+* **Cypress E2E Standards**: `/standards/javascript/cypress-e2e-testing-standards.adoc`
+* **JavaScript Linting Standards**: `/standards/javascript/linting-standards.adoc`
+
+### Implementation Summary
+
+The testing framework successfully implements centralized standards with:
+
+* **Zero-Warning Achievement**: Complete elimination of linting issues
+* **Production-Ready Setup**: Robust `.eslintrc.js` configuration
+* **Constants Architecture**: Centralized string and selector management
+* **Maven Integration**: Build validation with zero-warning enforcement
+* **Security Focus**: Comprehensive security testing patterns
+
+### Best Practices
+
+**1. Prefer Assertions Over Waits**:
+```javascript
+// Avoid: Arbitrary waiting
+cy.wait(1000);
+
+// Prefer: Element-based assertions  
+cy.get(SELECTORS.PROCESSOR).should(TEXT_CONSTANTS.BE_VISIBLE);
+```
+
+**2. Use Constants for Repeated Elements**:
+```javascript
+// Centralize commonly used selectors and text
+import { SELECTORS, TEXT_CONSTANTS } from '../support/constants';
+```
+
+**3. Document Support Functions**:
+```javascript
+/**
+ * Custom Cypress command for processor operations
+ * @param {string} processorType - The type of processor to add
+ * @returns {Cypress.Chainable<string>} The processor ID
+ */
+Cypress.Commands.add('addProcessor', (processorType) => {
+  // Implementation
+});
+```
+
+**4. Handle Complex Test Logic**:
+- Break large tests into focused functions
+- Use helper functions in support files
+- Leverage data fixtures for test data
+- Consider page object patterns for UI interactions
+
+## Integration with CI/CD
+
+JavaScript tests are fully integrated into the Maven build process, ensuring execution as part of regular build cycles and CI/CD pipelines without requiring separate GitHub Actions for JavaScript testing.
+
+The Maven integration provides:
+- Automated dependency installation
+- Test execution in validate phase
+- Coverage reporting
+- Build failure on test failures
+- Integration with existing Java build processes
+
+## Compliance and Verification
+
+### Quality Assurance
+
+JavaScript testing implementation must demonstrate:
+
+* ✅ **Coverage Standards Met** - Minimum coverage thresholds achieved (≥90%)
+* ✅ **Security Tests Pass** - All security tests pass without exceptions
+* ✅ **Standards Compliance** - Zero-warning ESLint compliance
+* ✅ **CI/CD Integration** - Seamless build pipeline integration
+* ✅ **Documentation Complete** - All required documentation provided
+
+### Verification Methods
+
+Compliance verification through:
+* Automated coverage reporting via Jest and Istanbul
+* Security vulnerability scanning with ESLint security plugins
+* Code quality gate enforcement in Maven builds
+* Build pipeline validation in CI/CD
+* Documentation review and approval processes
+
+### Technology Requirements Compliance
+
+Implementation uses the required technology stack:
+
+* ✅ **Jest Framework** - For test execution and assertions
+* ✅ **Testing Library** - For DOM interaction simulation
+* ✅ **Mock Service Worker** - For API response mocking
+* ✅ **ESLint Integration** - Following centralized coding standards
+* ✅ **Coverage Tools** - Integrated coverage reporting
+
+### Build Integration Compliance
+
+Testing integrates with required build systems:
+
+* ✅ **Maven Frontend Plugin** - Automated Node.js and NPM management
+* ✅ **Build Lifecycle** - Test execution in appropriate Maven phases
+* ✅ **Failure Handling** - Build failure on test failures or quality gate violations
+* ✅ **Artifact Generation** - Test reports and coverage artifacts for CI/CD
+
+## See Also
+
+### Related Documentation
+* [Overview](overview.md) - Project overview and context
+* [Implementation Guide](implementation-guide.md) - General implementation patterns
+* [CI/CD Integration](ci-cd-integration.md) - Build pipeline integration
+* [Recipes and How-To](recipes-and-howto.md) - Practical examples and patterns
+
+### External References
+* Testing Specification (Requirements NIFI-AUTH-16)
+* Security Specification (Requirements NIFI-AUTH-8) 
+* Internationalization Requirements (NIFI-AUTH-17)
+* Centralized Standards Repository: `/standards/javascript/`
+
+---
+
+*This guide focuses on JavaScript testing implementation. For high-level testing requirements and specifications, see the main project specification documents.*

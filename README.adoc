@@ -84,6 +84,17 @@ Run the complete integration test suite locally with automated container managem
 
 See link:e-2-e-cypress/doc/local-integration-testing.md[Local Integration Testing Guide] for detailed instructions.
 
+=== Code Quality Standards
+
+This project implements centralized coding standards defined in the organization's standards repository:
+
+* **JavaScript/ESLint Standards**: `/standards/javascript/` - Complete linting configuration and best practices
+* **Java Standards**: `/standards/java/` - Java coding standards and conventions  
+* **Testing Standards**: `/standards/testing/` - Comprehensive testing guidelines
+* **Documentation Standards**: `/standards/documentation/` - Documentation structure and requirements
+
+The project achieves **zero-warning builds** through strategic implementation of these centralized standards.
+
 === Frontend Configuration
 
 The project uses unified frontend configuration across modules:
@@ -91,7 +102,7 @@ The project uses unified frontend configuration across modules:
 * Node.js v20.12.2
 * NPM 10.5.0  
 * Frontend Maven Plugin 1.15.1
-* ESLint 8.57.1 with zero-warning policy
+* ESLint 8.57.1 with zero-warning policy (following centralized standards)
 * Prettier 3.4.2 for code formatting
 * Cypress 14.4.1 for E2E testing
 

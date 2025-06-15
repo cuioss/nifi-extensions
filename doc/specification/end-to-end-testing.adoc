@@ -1509,10 +1509,31 @@ The implementation of this end-to-end testing plan will significantly improve th
 == See Also
 
 * link:testing.adoc[Testing]
-* link:javascript-testing.adoc[JavaScript Testing]
+* link:../../e-2-e-cypress/doc/javascript-testing-guide.md[JavaScript Testing Implementation Guide]
 * link:configuration-ui.adoc[UI Configuration]
 * link:token-validation.adoc[Token Validation]
 * link:../Requirements.adoc#NIFI-AUTH-16[Testing Requirements]
 * link:../library/cui-test-keycloak-integration/README.adoc[Keycloak Integration Testing]
 * link:../integration-testing/README.adoc[Integration Testing Environment]
 * link:../Specification.adoc[Back to Main Specification]
+
+== Code Quality Standards
+
+The Cypress end-to-end testing framework follows the centralized JavaScript and ESLint standards defined in the organization's coding standards repository. 
+
+[NOTE]
+====
+For complete ESLint configuration details, rule explanations, and implementation guidelines, see the centralized standards at `/standards/javascript/cypress-e2e-testing-standards.adoc` and `/standards/javascript/linting-standards.adoc`.
+====
+
+=== Local Implementation
+
+This project implements the centralized standards with:
+
+* **Zero-warning ESLint configuration** achieving 98 warnings → 0 warnings
+* **Production-ready `.eslintrc.js`** with Cypress-optimized rules
+* **Constants-based architecture** for duplicate string management
+* **Maven integration** with validation in the build lifecycle
+* **Comprehensive file-specific overrides** for different test scenarios
+
+See the working configuration in `.eslintrc.js` and `cypress/support/constants.js` for the successful implementation of the centralized standards.

@@ -37,6 +37,18 @@ This directory contains comprehensive documentation for the NiFi 2.4.0 UI integr
 
 **Who should read**: Developers setting up the testing environment, new team members
 
+### 🧪 [JavaScript Testing Guide](./javascript-testing-guide.md)
+**Purpose**: Comprehensive JavaScript testing implementation for UI components  
+**Contents**:
+- JavaScript testing tools and framework setup (Jest, Testing Library, MSW)
+- Component-specific testing strategies (JWKS validation, token verification)
+- Security testing patterns and XSS prevention
+- Internationalization testing approaches
+- Code quality standards and best practices
+- CI/CD integration with Maven build process
+
+**Who should read**: Developers working on JavaScript UI components, testing JavaScript functionality
+
 ### 🍳 [Testing Recipes and Patterns](./recipes-and-howto.md)
 **Purpose**: Practical, copy-paste ready code examples and patterns  
 **Contents**:

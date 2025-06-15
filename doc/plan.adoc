@@ -400,7 +400,7 @@ _Sub-tasks:_
 ** [ ] Test in Edge
 
 _Specification Reference:_
-- link:specification/javascript-testing.adoc[JavaScript Testing]
+- link:../e-2-e-cypress/doc/javascript-testing-guide.md[JavaScript Testing Implementation Guide]
 
 _Postconditions for each step:_
 
