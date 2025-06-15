@@ -102,6 +102,27 @@ This directory contains comprehensive documentation for the NiFi 2.4.0 UI integr
 
 **Who should read**: DevOps engineers, CI/CD administrators
 
+### 🏗️ [Maven Test Configuration](./maven-test-configuration.md)
+**Purpose**: Maven build configuration with auto-starting NiFi containers  
+**Contents**:
+- Auto-start functionality for NiFi containers during verify phase
+- Profile-based test execution (selftests vs UI tests)
+- Container management and health checking
+- Developer workflow examples and CI/CD integration
+- Legacy safe mode configuration
+
+**Who should read**: Developers, DevOps engineers, build configuration maintainers
+
+### 🔧 [Lint Build Failure Setup](./lint-build-failure-setup.md)
+**Purpose**: ESLint configuration ensuring build failures on code quality issues  
+**Contents**:
+- Strict linting configuration with zero warnings tolerance
+- Maven integration with build lifecycle phases
+- ESLint disable directive reporting
+- Verification procedures and usage examples
+
+**Who should read**: Developers, code quality maintainers, build engineers
+
 ## MCP Tool Integration Documentation
 
 ### ✅ **Verification Complete** 
@@ -144,17 +165,20 @@ This directory contains comprehensive documentation for the NiFi 2.4.0 UI integr
 ### For New Team Members
 1. **Start here**: [Project Overview](./overview.md) → Core Philosophy
 2. **Setup**: [Implementation Guide](./implementation-guide.md) → Environment Setup
-3. **First tests**: [Testing Recipes](./recipes-and-howto.md) → Getting Started
+3. **Build configuration**: [Maven Test Configuration](./maven-test-configuration.md) → Auto-start setup
+4. **First tests**: [Testing Recipes](./recipes-and-howto.md) → Getting Started
 
 ### For Troubleshooting
 1. **Common issues**: [Testing Recipes](./recipes-and-howto.md) → Troubleshooting Guide
 2. **Technical details**: [Current Status](./current-status.md) → Performance Metrics
 3. **Setup problems**: [Implementation Guide](./implementation-guide.md) → Debugging
+4. **Build failures**: [Lint Build Failure Setup](./lint-build-failure-setup.md) → Code quality issues
 
 ### For Planning Work
 1. **Current priorities**: [Next Steps](./tasks-and-next-steps.md) → Immediate Action Items
 2. **Architecture guidance**: [Technical Findings](./findings-and-analysis.md) → Recommendations
 3. **Implementation patterns**: [Testing Recipes](./recipes-and-howto.md) → Best Practices
+4. **Maven configuration**: [Maven Test Configuration](./maven-test-configuration.md) → Build optimization
 
 ## 📊 Current Project Status
 
