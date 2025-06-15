@@ -5,6 +5,7 @@
   "scripts": {
     "cypress:selftests": "cypress run --config-file cypress.selftests.config.js",
     "cypress:selftests-safe": "node scripts/check-nifi-and-run-selftests.js",
+    "cypress:selftests-auto": "node scripts/auto-start-nifi-and-run-selftests.js",
     "cypress:run": "cypress run",
     "cypress:open": "cypress open",
     "lint": "eslint 'cypress/**/*.js'",

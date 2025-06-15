@@ -15,6 +15,10 @@
     <name>NiFi Extensions :: End-to-End Cypress Tests</name>
     <description>End-to-End Cypress tests for NiFi Extensions</description>
 
+    <properties>
+        <autoStartNiFi>true</autoStartNiFi>
+    </properties>
+
     <build>
         <plugins>
             <plugin>
@@ -58,7 +62,7 @@
                         </configuration>
                     </execution>
                     <!-- Run self-verification tests (integration tests for core commands) during verify phase -->
-                    <!-- These will gracefully skip if NiFi is not available -->
+                    <!-- These will automatically start NiFi containers if needed -->
                     <execution>
                         <id>cypress-selftests</id>
                         <goals>
@@ -66,7 +70,7 @@
                         </goals>
                         <phase>verify</phase>
                         <configuration>
-                            <arguments>run cypress:selftests-safe</arguments>
+                            <arguments>run cypress:selftests-auto</arguments>
                             <skip>${skipTests}</skip>
                             <environmentVariables>
                                 <CYPRESS_BASE_URL>https://localhost:9095/nifi</CYPRESS_BASE_URL>
@@ -110,14 +114,13 @@
                 </plugins>
             </build>
         </profile>
-        <!-- Legacy profile for local integration tests (both selftests and ui tests) -->
+        
+        <!-- Profile for safe selftests that skip gracefully if NiFi is not available -->
         <profile>
-            <id>local-integration-tests</id>
-            <activation>
-                <property>
-                    <name>integration.test.local</name>
-                </property>
-            </activation>
+            <id>safe-selftests</id>
+            <properties>
+                <autoStartNiFi>false</autoStartNiFi>
+            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -125,65 +128,16 @@
                         <artifactId>frontend-maven-plugin</artifactId>
                         <version>${frontend.maven.plugin.version}</version>
                         <executions>
-                            <!-- Install Node and NPM -->
+                            <!-- Override default selftest execution with safe version -->
                             <execution>
-                                <id>local-install-node-and-npm</id>
-                                <goals>
-                                    <goal>install-node-and-npm</goal>
-                                </goals>
-                                <phase>pre-integration-test</phase>
-                                <configuration>
-                                    <nodeVersion>${frontend.node.version}</nodeVersion>
-                                    <npmVersion>${frontend.npm.version}</npmVersion>
-                                </configuration>
-                            </execution>
-                            <!-- Install dependencies -->
-                            <execution>
-                                <id>local-npm-install</id>
+                                <id>cypress-selftests</id>
                                 <goals>
                                     <goal>npm</goal>
                                 </goals>
-                                <phase>pre-integration-test</phase>
+                                <phase>verify</phase>
                                 <configuration>
-                                    <arguments>install</arguments>
-                                </configuration>
-                            </execution>
-                            <!-- Run linting to check code quality -->
-                            <execution>
-                                <id>local-npm-lint</id>
-                                <goals>
-                                    <goal>npm</goal>
-                                </goals>
-                                <phase>integration-test</phase>
-                                <configuration>
-                                    <arguments>run lint:strict</arguments>
-                                    <skip>false</skip>
-                                </configuration>
-                            </execution>
-                            <!-- Run self-verification tests (integration tests for core commands) -->
-                            <execution>
-                                <id>local-cypress-selftests</id>
-                                <goals>
-                                    <goal>npm</goal>
-                                </goals>
-                                <phase>integration-test</phase>
-                                <configuration>
-                                    <arguments>run cypress:selftests</arguments>
-                                    <environmentVariables>
-                                        <CYPRESS_BASE_URL>https://localhost:9095/nifi</CYPRESS_BASE_URL>
-                                        <CYPRESS_KEYCLOAK_URL>https://localhost:9085/auth</CYPRESS_KEYCLOAK_URL>
-                                    </environmentVariables>
-                                </configuration>
-                            </execution>
-                            <!-- Run actual E2E tests -->
-                            <execution>
-                                <id>local-cypress-e2e</id>
-                                <goals>
-                                    <goal>npm</goal>
-                                </goals>
-                                <phase>integration-test</phase>
-                                <configuration>
-                                    <arguments>run cypress:run</arguments>
+                                    <arguments>run cypress:selftests-safe</arguments>
+                                    <skip>${skipTests}</skip>
                                     <environmentVariables>
                                         <CYPRESS_BASE_URL>https://localhost:9095/nifi</CYPRESS_BASE_URL>
                                         <CYPRESS_KEYCLOAK_URL>https://localhost:9085/auth</CYPRESS_KEYCLOAK_URL>
