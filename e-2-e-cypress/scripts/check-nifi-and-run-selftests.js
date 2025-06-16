@@ -6,9 +6,10 @@
  */
 
 const https = require('https');
+const http = require('http');
 const { spawn } = require('child_process');
 
-const NIFI_URL = process.env.CYPRESS_BASE_URL || 'https://localhost:9095/nifi';
+const NIFI_URL = process.env.CYPRESS_BASE_URL || 'http://localhost:9094/nifi';
 const CHECK_TIMEOUT = 5000; // 5 seconds
 
 /**
@@ -30,7 +31,10 @@ function checkNiFiAvailability() {
 
     let resolved = false;
     
-    const req = https.request(options, (res) => {
+    // Use HTTP or HTTPS based on the URL protocol
+    const client = url.protocol === 'https:' ? https : http;
+    
+    const req = client.request(options, (res) => {
       if (!resolved) {
         resolved = true;
         console.log(`✓ NiFi is accessible at ${NIFI_URL} (status: ${res.statusCode})`);

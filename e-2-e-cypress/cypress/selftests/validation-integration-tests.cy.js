@@ -10,12 +10,12 @@
 import { TEXT_CONSTANTS, TEST_DATA } from '../support/constants.js';
 
 describe('JWT Validation Integration Tests', () => {
-  const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'http://localhost:9094/nifi';
+  const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'http://localhost:9094/nifi/';
 
   before(() => {
     // Verify NiFi is accessible
     cy.request({
-      url: `${baseUrl}/`,
+      url: baseUrl,
       failOnStatusCode: false,
       timeout: 10000,
     }).then((response) => {
@@ -181,8 +181,8 @@ describe('JWT Validation Integration Tests', () => {
 
       invalidTokens.forEach((invalidToken) => {
         cy.wrap(invalidToken).then((token) => {
-          if (token === '') {
-            expect(token).to.be.empty;
+          if (token === '' || token === null || token === undefined) {
+            expect(Boolean(token)).to.be.false;
           } else {
             const parts = token.split('.');
             expect(parts.length !== 3).to.be.true;

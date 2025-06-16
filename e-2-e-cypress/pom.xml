@@ -17,10 +17,90 @@
 
     <properties>
         <autoStartNiFi>true</autoStartNiFi>
+        <docker.script.dir>${project.basedir}/../integration-testing/src/main/docker</docker.script.dir>
+        <nifi.base.url>http://localhost:9094/nifi/</nifi.base.url>
+        <keycloak.url>http://localhost:9080</keycloak.url>
     </properties>
 
     <build>
         <plugins>
+            <!-- Docker NiFi lifecycle management -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <!-- Start NiFi containers before tests -->
+                    <execution>
+                        <id>start-nifi-containers</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>bash</executable>
+                            <workingDirectory>${docker.script.dir}</workingDirectory>
+                            <arguments>
+                                <argument>-c</argument>
+                                <argument>
+                                    if [ "${autoStartNiFi}" = "true" ]; then
+                                        echo "Starting NiFi containers for testing...";
+                                        ./start-nifi.sh;
+                                        echo "Verifying NiFi service is ready...";
+                                        
+                                        # Check only NiFi health, allow Keycloak failures
+                                        COUNTER=0
+                                        MAX_ATTEMPTS=30
+                                        while [ $COUNTER -lt $MAX_ATTEMPTS ]; do
+                                            if curl -f http://localhost:9094/nifi/ &gt; /dev/null 2&gt;&amp;1; then
+                                                echo "✅ NiFi is ready for testing!";
+                                                break;
+                                            fi
+                                            echo "Waiting for NiFi... (attempt $((COUNTER + 1))/$MAX_ATTEMPTS)";
+                                            sleep 2;
+                                            COUNTER=$((COUNTER + 1));
+                                        done
+                                        
+                                        if [ $COUNTER -ge $MAX_ATTEMPTS ]; then
+                                            echo "❌ NiFi failed to start within timeout";
+                                            docker compose logs --tail=50 nifi;
+                                            exit 1;
+                                        fi
+                                        
+                                        echo "🚀 NiFi is ready! Keycloak status will be checked by tests if needed.";
+                                    else
+                                        echo "Skipping NiFi container startup (autoStartNiFi=false)";
+                                    fi
+                                </argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <!-- Stop NiFi containers after tests -->
+                    <execution>
+                        <id>stop-nifi-containers</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>bash</executable>
+                            <workingDirectory>${docker.script.dir}</workingDirectory>
+                            <arguments>
+                                <argument>-c</argument>
+                                <argument>
+                                    if [ "${autoStartNiFi}" = "true" ]; then
+                                        echo "Stopping NiFi containers after testing...";
+                                        ./stop-test-container.sh;
+                                    else
+                                        echo "Skipping NiFi container shutdown (autoStartNiFi=false)";
+                                    fi
+                                </argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            
             <plugin>
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>
@@ -73,8 +153,8 @@
                             <arguments>run cypress:selftests-auto</arguments>
                             <skip>${skipTests}</skip>
                             <environmentVariables>
-                                <CYPRESS_BASE_URL>https://localhost:9095/nifi</CYPRESS_BASE_URL>
-                                <CYPRESS_KEYCLOAK_URL>https://localhost:9085/auth</CYPRESS_KEYCLOAK_URL>
+                                <CYPRESS_BASE_URL>${nifi.base.url}</CYPRESS_BASE_URL>
+                                <CYPRESS_KEYCLOAK_URL>${keycloak.url}</CYPRESS_KEYCLOAK_URL>
                             </environmentVariables>
                         </configuration>
                     </execution>
@@ -103,9 +183,46 @@
                                 <phase>integration-test</phase>
                                 <configuration>
                                     <arguments>run cypress:run</arguments>
+                                    <failOnError>true</failOnError> <!-- Fail Maven build on test failures -->
                                     <environmentVariables>
-                                        <CYPRESS_BASE_URL>https://localhost:9095/nifi</CYPRESS_BASE_URL>
-                                        <CYPRESS_KEYCLOAK_URL>https://localhost:9085/auth</CYPRESS_KEYCLOAK_URL>
+                                        <CYPRESS_BASE_URL>${nifi.base.url}</CYPRESS_BASE_URL>
+                                        <CYPRESS_KEYCLOAK_URL>${keycloak.url}</CYPRESS_KEYCLOAK_URL>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        
+        <!-- Profile for running full integration tests with Docker lifecycle management -->
+        <profile>
+            <id>integration-tests</id>
+            <properties>
+                <autoStartNiFi>true</autoStartNiFi>
+            </properties>
+            <build>
+                <plugins>
+                    <!-- Use the Docker lifecycle management from the main build -->
+                    <plugin>
+                        <groupId>com.github.eirslett</groupId>
+                        <artifactId>frontend-maven-plugin</artifactId>
+                        <version>${frontend.maven.plugin.version}</version>
+                        <executions>
+                            <!-- Run full E2E tests with Docker containers -->
+                            <execution>
+                                <id>integration-tests-cypress-e2e</id>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <phase>integration-test</phase>
+                                <configuration>
+                                    <arguments>run cypress:run</arguments>
+                                    <failOnError>true</failOnError> <!-- Fail Maven build on test failures -->
+                                    <environmentVariables>
+                                        <CYPRESS_BASE_URL>${nifi.base.url}</CYPRESS_BASE_URL>
+                                        <CYPRESS_KEYCLOAK_URL>${keycloak.url}</CYPRESS_KEYCLOAK_URL>
                                     </environmentVariables>
                                 </configuration>
                             </execution>
@@ -139,8 +256,8 @@
                                     <arguments>run cypress:selftests-safe</arguments>
                                     <skip>${skipTests}</skip>
                                     <environmentVariables>
-                                        <CYPRESS_BASE_URL>https://localhost:9095/nifi</CYPRESS_BASE_URL>
-                                        <CYPRESS_KEYCLOAK_URL>https://localhost:9085/auth</CYPRESS_KEYCLOAK_URL>
+                                        <CYPRESS_BASE_URL>${nifi.base.url}</CYPRESS_BASE_URL>
+                                        <CYPRESS_KEYCLOAK_URL>${keycloak.url}</CYPRESS_KEYCLOAK_URL>
                                     </environmentVariables>
                                 </configuration>
                             </execution>

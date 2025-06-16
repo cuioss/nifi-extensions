@@ -8,16 +8,23 @@
  * No authentication required - just ensure NiFi Angular app loads
  */
 Cypress.Commands.add('nifiLogin', () => {
-  cy.visit('/nifi');
+  cy.log('🚀 Starting NiFi access...');
 
-  // Wait for Angular app to load - this is the only requirement
-  cy.get('nifi', { timeout: 30000 }).should('exist');
+  // Use visit with optimized settings for slow-loading NiFi
+  cy.visit('/nifi', {
+    failOnStatusCode: false,
+    timeout: 180000, // 3 minutes for slow startup
+  });
 
-  // Wait for app initialization
-  cy.get('body', { timeout: 10000 }).should('exist');
+  // Use a more patient wait strategy
+  cy.log('⏳ Waiting for NiFi Angular app to load...');
+  cy.get('nifi', { timeout: 120000 }).should('exist');
 
-  // Verify main UI is ready
+  // Verify we have a functional page
+  cy.log('✅ NiFi app element found, verifying page functionality...');
   cy.get('body').should('be.visible');
+
+  cy.log('🎉 NiFi access complete!');
 });
 
 /**

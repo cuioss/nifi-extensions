@@ -9,10 +9,11 @@ const http = require('http');
 const { spawn } = require('child_process');
 const path = require('path');
 
-const NIFI_URL = process.env.CYPRESS_BASE_URL || 'https://localhost:9095/nifi';
-const NIFI_HTTP_URL = 'http://localhost:9094/nifi'; // Alternative HTTP endpoint
+const NIFI_URL = process.env.CYPRESS_BASE_URL || 'https://localhost:9095/nifi/';
+const NIFI_HTTP_URL = 'http://localhost:9094/nifi/'; // Alternative HTTP endpoint (note trailing slash)
 const CHECK_TIMEOUT = 5000; // 5 seconds
-const STARTUP_TIMEOUT = 300000; // 5 minutes for NiFi startup
+const CONTAINER_STARTUP_TIMEOUT = 180000; // 3 minutes to start containers (Docker can be slow)
+const NIFI_READY_TIMEOUT = 600000; // 10 minutes for NiFi to become ready
 
 /**
  * Check if NiFi is accessible at a given URL
@@ -39,9 +40,15 @@ function checkNiFiAvailability(url) {
     const req = client.request(options, (res) => {
       if (!resolved) {
         resolved = true;
-        console.log(`✓ NiFi is accessible at ${url} (status: ${res.statusCode})`);
+        // Accept any 2xx or 3xx response as "available"
+        const isOk = res.statusCode >= 200 && res.statusCode < 400;
+        if (isOk) {
+          console.log(`✓ NiFi is accessible at ${url} (status: ${res.statusCode})`);
+        } else {
+          console.log(`⚠️  NiFi responded with status ${res.statusCode}`);
+        }
         req.destroy();
-        resolve(true);
+        resolve(isOk);
       }
     });
 
@@ -89,7 +96,21 @@ function startNiFiContainers() {
       cwd: path.dirname(scriptPath)
     });
 
+    // Set a timeout for the container startup process (not NiFi readiness)
+    const timeoutId = setTimeout(() => {
+      console.error('⏰ Container startup timeout reached');
+      startProcess.kill('SIGTERM');
+      setTimeout(() => {
+        if (!startProcess.killed) {
+          console.error('❌ Process still alive, forcing kill');
+          startProcess.kill('SIGKILL');
+        }
+      }, 5000); // Give 5 seconds for graceful shutdown
+      resolve(false);
+    }, CONTAINER_STARTUP_TIMEOUT);
+
     startProcess.on('close', (code) => {
+      clearTimeout(timeoutId);
       if (code === 0) {
         console.log('✅ NiFi containers started successfully');
         resolve(true);
@@ -100,16 +121,10 @@ function startNiFiContainers() {
     });
 
     startProcess.on('error', (error) => {
+      clearTimeout(timeoutId);
       console.error(`❌ Failed to start NiFi containers: ${error.message}`);
       resolve(false);
     });
-
-    // Set a timeout for the startup process
-    setTimeout(() => {
-      console.log('⏰ NiFi startup timeout reached');
-      startProcess.kill('SIGTERM');
-      resolve(false);
-    }, STARTUP_TIMEOUT);
   });
 }
 
@@ -120,21 +135,26 @@ function startNiFiContainers() {
  * @param {number} retryDelay - Delay between retries in ms
  * @returns {Promise<boolean>} true if NiFi becomes available, false otherwise
  */
-async function waitForNiFi(url, maxRetries = 60, retryDelay = 5000) {
+async function waitForNiFi(url, maxRetries = 120, retryDelay = 5000) {
   console.log(`⏳ Waiting for NiFi to become available at ${url}...`);
+  console.log(`⏱️  Will retry for up to ${(maxRetries * retryDelay) / 60000} minutes`);
   
   for (let i = 0; i < maxRetries; i++) {
     const isAvailable = await checkNiFiAvailability(url);
     if (isAvailable) {
+      console.log(`✅ NiFi became available after ${i + 1} attempts (${((i + 1) * retryDelay) / 1000}s)`);
       return true;
     }
     
     if (i < maxRetries - 1) {
-      console.log(`⏳ Attempt ${i + 1}/${maxRetries} - waiting ${retryDelay/1000}s...`);
+      const elapsed = ((i + 1) * retryDelay) / 1000;
+      const remaining = ((maxRetries - i - 1) * retryDelay) / 1000;
+      console.log(`⏳ Attempt ${i + 1}/${maxRetries} - NiFi not ready yet (${elapsed}s elapsed, ${remaining}s remaining)`);
       await new Promise(resolve => setTimeout(resolve, retryDelay));
     }
   }
   
+  console.log(`❌ NiFi did not become available after ${maxRetries} attempts (${(maxRetries * retryDelay) / 60000} minutes)`);
   return false;
 }
 
@@ -156,7 +176,15 @@ function runSelftests(nifiUrl) {
       }
     });
 
+    // Set a timeout to prevent hanging indefinitely
+    const timeout = setTimeout(() => {
+      console.log('⏰ Test timeout reached - killing Cypress process');
+      cypress.kill('SIGTERM');
+      resolve(1);
+    }, 600000); // 10 minutes timeout
+
     cypress.on('close', (code) => {
+      clearTimeout(timeout);
       if (code === 0) {
         console.log('✅ Selftests completed successfully');
       } else {
@@ -166,6 +194,7 @@ function runSelftests(nifiUrl) {
     });
 
     cypress.on('error', (error) => {
+      clearTimeout(timeout);
       console.error(`❌ Failed to start selftests: ${error.message}`);
       resolve(1);
     });
@@ -200,6 +229,12 @@ async function main() {
     const startupSuccess = await startNiFiContainers();
     if (!startupSuccess) {
       console.error('❌ Failed to start NiFi containers');
+      console.error('❌ This could be due to:');
+      console.error('   - Docker not running');
+      console.error('   - Network connectivity issues');
+      console.error('   - Container startup timeout (3 minutes exceeded)');
+      console.error('   - Missing Docker Compose files');
+      console.error('❌ Build failed due to container startup failure');
       process.exit(1);
     }
     

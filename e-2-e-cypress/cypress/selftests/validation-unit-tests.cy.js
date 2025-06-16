@@ -11,12 +11,12 @@
 import { TEXT_CONSTANTS, COMMON_STRINGS } from '../support/constants.js';
 
 describe('JWT Validation Integration Tests', () => {
-  const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'http://localhost:9094/nifi';
+  const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'http://localhost:9094/nifi/';
 
   before(() => {
     // Verify NiFi is accessible before running tests
     cy.request({
-      url: `${baseUrl}/`,
+      url: baseUrl,
       failOnStatusCode: false,
       timeout: 10000,
     }).then((response) => {
@@ -105,11 +105,12 @@ describe('JWT Validation Integration Tests', () => {
 
       invalidTokens.forEach((invalidToken, index) => {
         // Verify each invalid token fails validation
-        const isValid =
+        const isValid = Boolean(
           invalidToken.iss &&
-          invalidToken.aud &&
-          invalidToken.exp &&
-          invalidToken.exp > Math.floor(Date.now() / 1000);
+            invalidToken.aud &&
+            invalidToken.exp &&
+            invalidToken.exp > Math.floor(Date.now() / 1000)
+        );
 
         expect(isValid).to.be.false;
         cy.log(`Invalid token ${index + 1} correctly identified as invalid`);
@@ -293,7 +294,14 @@ describe('JWT Validation Integration Tests', () => {
       mockFailureScenarios.forEach((scenario, index) => {
         // Verify each failure scenario is handled
         expect(scenario).to.be.a('string');
-        expect(scenario).to.include.oneOf(['Invalid', 'failed', 'expired', 'Missing']);
+
+        // Check if scenario contains one of the expected error types
+        const expectedErrorTypes = ['Invalid', 'failed', 'expired', 'Missing'];
+        const containsExpectedType = expectedErrorTypes.some((errorType) =>
+          scenario.includes(errorType)
+        );
+        expect(containsExpectedType).to.be.true;
+
         cy.log(`Failure scenario ${index + 1}: ${scenario}`);
       });
 

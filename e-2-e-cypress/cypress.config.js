@@ -20,11 +20,22 @@ module.exports = defineConfig({
         },
         logBackendGap(gapData) {
           console.log('🔍 Backend Integration Gap Detected:');
-          console.log(`  Component: ${gapData.component}`);
-          console.log(`  Expected: ${gapData.expected}`);
-          console.log(`  Actual: ${gapData.actual}`);
-          console.log(`  Impact: ${gapData.impact}`);
+          console.log(`  Type: ${gapData.type}`);
+          console.log(`  Description: ${gapData.description}`);
           console.log(`  Timestamp: ${gapData.timestamp}`);
+          return null;
+        },
+        logPerformance(perfData) {
+          console.log('📊 Performance Metric:');
+          console.log(`  Test: ${perfData.testName}`);
+          console.log(`  Duration: ${perfData.duration}ms`);
+          console.log(`  Success: ${perfData.success}`);
+          return null;
+        },
+        logReport(report) {
+          console.log('📋 Test Report Generated:');
+          console.log(`  Timestamp: ${report.timestamp}`);
+          console.log(`  Gaps: ${report.gaps ? report.gaps.length : 0}`);
           return null;
         }
       });

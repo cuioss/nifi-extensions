@@ -20,6 +20,7 @@ import './commands/processor/processor-testing-strategy';
 import './commands/processor/processor-config';
 import './commands/processor/processor-utils';
 import './commands/processor/enhanced-processor';
+import './commands/processor/missing-commands';
 
 // Validation commands
 import './commands/validation/validation';

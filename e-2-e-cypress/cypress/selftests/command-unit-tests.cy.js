@@ -11,12 +11,12 @@
 import { TEXT_CONSTANTS } from '../support/constants.js';
 
 describe('Core Command Integration Tests', () => {
-  const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'http://localhost:9094/nifi';
+  const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'http://localhost:9094/nifi/';
 
   before(() => {
     // Verify NiFi is accessible before running tests
     cy.request({
-      url: `${baseUrl}/`,
+      url: baseUrl,
       failOnStatusCode: false,
       timeout: 10000,
     }).then((response) => {

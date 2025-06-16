@@ -260,7 +260,7 @@ Cypress.Commands.add('addProcessorViaAPI', (type, position) => {
   // Get the process group ID (root is usually the canvas)
   cy.request('GET', '/nifi-api/flow/process-groups/root').then((response) => {
     cy.log('API Response:', response.body);
-    
+
     // Handle different possible response structures
     let processGroupId;
     if (response.body?.processGroupFlow?.id) {
@@ -292,34 +292,26 @@ Cypress.Commands.add('addProcessorViaAPI', (type, position) => {
       method: 'POST',
       url: `/nifi-api/process-groups/${processGroupId}/processors`,
       body: processorData,
-      failOnStatusCode: false
+      failOnStatusCode: false,
     }).then((createResponse) => {
       cy.log('Create processor API response status:', createResponse.status);
       cy.log('Create processor API response body:', createResponse.body);
-      
+
       if (createResponse.status === 201 || createResponse.status === 200) {
-        // Handle different possible response structures
-        let processorId;
-        if (createResponse.body?.id) {
-          processorId = createResponse.body.id;
-        } else if (createResponse.body?.component?.id) {
-          processorId = createResponse.body.component.id;
-        } else if (createResponse.body?.processor?.id) {
-          processorId = createResponse.body.processor.id;
-        }
-        
-        if (processorId) {
-          cy.log(`✅ Processor created via API with ID: ${processorId}`);
+        return cy.extractProcessorIdFromResponse(createResponse).then((processorId) => {
+          if (processorId) {
+            cy.log(`✅ Processor created via API with ID: ${processorId}`);
 
-          // Refresh the UI to show the new processor
-          cy.reload();
-          cy.nifiLogin('admin', 'adminadminadmin');
+            // Refresh the UI to show the new processor
+            cy.reload();
+            cy.nifiLogin('admin', 'adminadminadmin');
 
-          return cy.wrap(processorId);
-        } else {
-          cy.log('⚠️  Could not extract processor ID from response:', createResponse.body);
-          throw new Error('Could not extract processor ID from API response');
-        }
+            return cy.wrap(processorId);
+          } else {
+            cy.log('⚠️  Could not extract processor ID from response:', createResponse.body);
+            throw new Error('Could not extract processor ID from API response');
+          }
+        });
       } else {
         cy.log('⚠️  API processor creation failed:', createResponse);
         throw new Error(`Failed to create processor via API: ${createResponse.status}`);
@@ -327,6 +319,58 @@ Cypress.Commands.add('addProcessorViaAPI', (type, position) => {
     });
   });
 });
+
+/**
+ * Extract processor ID from NiFi API response
+ * @param {object} createResponse - The API response object
+ * @returns {string|null} - Extracted processor ID or null
+ */
+Cypress.Commands.add('extractProcessorIdFromResponse', (createResponse) => {
+  // Log the full response structure for debugging
+  cy.log('Response body type:', typeof createResponse.body);
+  cy.log('Response body keys:', Object.keys(createResponse.body || {}));
+
+  // Try different possible response structures
+  const idPaths = [
+    'id',
+    'component.id',
+    'processor.id',
+    'revision.component.id',
+    'entity.id',
+    'entity.component.id',
+  ];
+
+  for (const path of idPaths) {
+    const id = getNestedProperty(createResponse.body, path);
+    if (id) {
+      return cy.wrap(id);
+    }
+  }
+
+  // Handle string response
+  if (typeof createResponse.body === 'string' && createResponse.body.includes('-')) {
+    return cy.wrap(createResponse.body);
+  }
+
+  // Last resort: search for any ID in JSON
+  const bodyStr = JSON.stringify(createResponse.body);
+  const idMatch = bodyStr.match(/"id"\s*:\s*"([^"]+)"/);
+  if (idMatch) {
+    return cy.wrap(idMatch[1]);
+  }
+
+  return cy.wrap(null);
+});
+
+/**
+ * Get nested property from object using dot notation (helper function)
+ * @param {object} obj - Object to search
+ * @param {string} path - Dot notation path
+ * @returns {any} - Property value or null
+ */
+function getNestedProperty(obj, path) {
+  return path.split('.').reduce((current, key) => current && current[key], obj) || null;
+}
 
 /**
  * Get the ID of the most recently added processor

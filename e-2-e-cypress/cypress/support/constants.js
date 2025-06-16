@@ -132,6 +132,7 @@ export const TEXT_CONSTANTS = {
 
   // Test data
   TEST_ISSUER: 'test-issuer',
+  TEST_ISSUER_VALUE: 'test-issuer-value',
   TEST_AUDIENCE: 'test-audience',
   ID_ATTR: 'id',
 
@@ -216,13 +217,17 @@ export const TIMEOUTS = {
 // Common URLs and endpoints
 export const URLS = {
   // NiFi base configuration - uses Cypress baseUrl with fallback
-  NIFI_BASE: (typeof Cypress !== 'undefined' ? Cypress.config('baseUrl') : null) || 'http://localhost:9094/nifi',
+  NIFI_BASE:
+    (typeof Cypress !== 'undefined' ? Cypress.config('baseUrl') : null) ||
+    'http://localhost:9094/nifi',
 
   // Keycloak configuration - uses environment variables with fallbacks
   // Note: The hardcoded URLs were using port 8443, but current config uses 9085
   // Using environment-configurable approach to support both
   KEYCLOAK_BASE:
-    (typeof Cypress !== 'undefined' ? Cypress.env('KEYCLOAK_URL') || Cypress.env('keycloakUrl') : null) || 'https://localhost:9085',
+    (typeof Cypress !== 'undefined'
+      ? Cypress.env('KEYCLOAK_URL') || Cypress.env('keycloakUrl')
+      : null) || 'https://localhost:9085',
   KEYCLOAK_REALM: `/auth/realms/${(typeof Cypress !== 'undefined' ? Cypress.env('keycloakRealm') : null) || 'oauth_integration_tests'}`,
   KEYCLOAK_JWKS_ENDPOINT: '/protocol/openid-connect/certs',
 
