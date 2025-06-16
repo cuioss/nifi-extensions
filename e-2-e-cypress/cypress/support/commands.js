@@ -13,14 +13,15 @@ import './commands/auth/enhanced-auth';
 // Navigation commands
 import './commands/navigation/navigation';
 
-// Processor commands
-import './commands/processor/processor';
+// Processor commands - use clean implementation
+import './commands/processor/processor-clean';
 import './commands/processor/processor-add-alternatives';
 import './commands/processor/processor-testing-strategy';
 import './commands/processor/processor-config';
 import './commands/processor/processor-utils';
 import './commands/processor/enhanced-processor';
 import './commands/processor/missing-commands';
+import './commands/processor/task4-commands';
 
 // Validation commands
 import './commands/validation/validation';

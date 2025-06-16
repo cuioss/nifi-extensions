@@ -8,9 +8,17 @@ module.exports = defineConfig({
     viewportWidth: 1280,
     viewportHeight: 720,
     chromeWebSecurity: false,
+    // Fail-fast configuration
     defaultCommandTimeout: 10000,
+    requestTimeout: 15000,
+    responseTimeout: 15000,
+    pageLoadTimeout: 30000,
+    experimentalRunAllSpecs: false, // Run specs individually to fail fast
+    stopSpecOnFirstFailure: true, // Fail fast within a spec
+    // Media settings for faster execution
     videoCompression: 15,
     screenshotOnRunFailure: true,
+    video: false, // Disable video recording for faster execution
     setupNodeEvents(on, config) {
       // Register tasks for logging and backend gap detection
       on('task', {

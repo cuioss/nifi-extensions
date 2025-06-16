@@ -1,5 +1,0 @@
-type(value, { force: true });
-      }
-    }
-  });
-});
