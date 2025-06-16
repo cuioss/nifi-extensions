@@ -53,27 +53,24 @@ export function retryWithBackoff(operation, options = {}) {
           });
         }
       })
-      .then(
-        (success) => {
-          cy.log(`[Retry] Operation succeeded on attempt ${attempt}`);
-          return success;
-        },
-        (error) => {
-          if (attempt >= finalMaxAttempts) {
-            cy.log(`[Retry] Failed after ${finalMaxAttempts} attempts: ${error.message}`);
-            throw error;
-          } else {
-            const delay = Math.min(
-              finalBaseDelay * Math.pow(finalBackoffMultiplier, attempt - 1),
-              maxDelay
-            );
-            cy.log(`[Retry] Attempt ${attempt} failed, retrying in ${delay}ms`);
-            attempt++;
-
-            return cy.wait(delay).then(() => tryOperation());
-          }
+      .then((success) => {
+        cy.log(`[Retry] Operation succeeded on attempt ${attempt}`);
+        return success;
+      })
+      .then(null, (error) => {
+        if (attempt >= finalMaxAttempts) {
+          cy.log(`[Retry] Failed after ${finalMaxAttempts} attempts: ${error.message}`);
+          throw error;
+        } else {
+          const delay = Math.min(
+            finalBaseDelay * Math.pow(finalBackoffMultiplier, attempt - 1),
+            maxDelay
+          );
+          cy.log(`[Retry] Attempt ${attempt} failed, retrying in ${delay}ms`);
+          attempt++;
+          return cy.wait(delay).then(() => tryOperation());
         }
-      );
+      });
   }
 
   return tryOperation();

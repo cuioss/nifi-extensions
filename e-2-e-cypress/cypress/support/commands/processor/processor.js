@@ -17,7 +17,8 @@ require('./processor-advanced-automation');
 // Import workflow helper commands for advanced testing
 require('./processor-workflow-helpers');
 
-import { SELECTORS, TEXT_CONSTANTS } from '../../constants.js';
+import { SELECTORS } from '../../constants.js';
+import { TEXT_CONSTANTS } from '../../constants.js';
 import {
   _waitForVisible,
   _waitForDialog,

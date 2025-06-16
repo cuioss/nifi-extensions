@@ -22,6 +22,8 @@ import './commands/processor/processor-utils';
 import './commands/processor/enhanced-processor';
 import './commands/processor/missing-commands';
 import './commands/processor/task4-commands';
+import './commands/processor/task4-ui-commands';
+import './commands/processor/task4-additional-commands';
 
 // Validation commands
 import './commands/validation/validation';

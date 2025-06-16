@@ -1,4 +1,4 @@
-import { TEXT_CONSTANTS } from '../support/constants.js';
+import { TEXT_CONSTANTS } from '../../support/constants.js';
 /**
  * Task 4: Custom Processor Testing Focus
  * Tests custom JWT processor UI components and basic functionality
