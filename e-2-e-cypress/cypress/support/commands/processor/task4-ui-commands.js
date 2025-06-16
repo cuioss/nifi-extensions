@@ -11,14 +11,16 @@ Cypress.Commands.add('testCustomProcessorCatalogVisibility', () => {
 
   // Check for processor catalog dialog
   cy.get('body').then(($body) => {
-    const catalogElements = $body.find('[role="dialog"], .processor-catalog, .add-processor-dialog');
-    
+    const catalogElements = $body.find(
+      '[role="dialog"], .processor-catalog, .add-processor-dialog'
+    );
+
     if (catalogElements.length > 0) {
       cy.log('✅ Processor catalog is visible');
-      
+
       // Check for custom JWT processors
       const customProcessors = ['MultiIssuerJWTTokenAuthenticator', 'JWTTokenAuthenticator'];
-      customProcessors.forEach(processorType => {
+      customProcessors.forEach((processorType) => {
         cy.get('body').then(($catalogBody) => {
           if ($catalogBody.find(`*:contains("${processorType}")`).length > 0) {
             cy.log(`✅ Found custom processor: ${processorType}`);
@@ -41,18 +43,22 @@ Cypress.Commands.add('testProcessorConfigurationDialog', (processorId) => {
 
   // Try to open configuration dialog
   cy.get('body').then(($body) => {
-    const processorElement = $body.find(`[id="${processorId}"], [data-processor-id="${processorId}"]`).first();
-    
+    const processorElement = $body
+      .find(`[id="${processorId}"], [data-processor-id="${processorId}"]`)
+      .first();
+
     if (processorElement.length > 0) {
       cy.wrap(processorElement).dblclick({ force: true });
-      
+
       // Check if dialog opened
       cy.get('body').then(($dialogBody) => {
-        const configDialog = $dialogBody.find('[role="dialog"], .configuration-dialog, .processor-config-dialog');
-        
+        const configDialog = $dialogBody.find(
+          '[role="dialog"], .configuration-dialog, .processor-config-dialog'
+        );
+
         if (configDialog.length > 0) {
           cy.log('✅ Configuration dialog opened successfully');
-          
+
           // Close dialog for cleanup
           cy.get('button').contains('Cancel').click({ force: true });
         } else {
@@ -76,8 +82,10 @@ Cypress.Commands.add('testProcessorPropertyUIComponents', (processorId) => {
 
   // Test property UI elements
   cy.get('body').then(($body) => {
-    const propertyElements = $body.find('.property-row, .processor-property-row, input, textarea, select');
-    
+    const propertyElements = $body.find(
+      '.property-row, .processor-property-row, input, textarea, select'
+    );
+
     if (propertyElements.length > 0) {
       cy.log(`✅ Found ${propertyElements.length} property UI elements`);
     } else {
@@ -98,7 +106,7 @@ Cypress.Commands.add('testConfigurationDialogClosing', () => {
   // Test Cancel button
   cy.get('body').then(($body) => {
     const cancelButton = $body.find('button:contains("Cancel")');
-    
+
     if (cancelButton.length > 0) {
       cy.log('✅ Cancel button found');
       cy.wrap(cancelButton.first()).click({ force: true });
@@ -121,10 +129,10 @@ Cypress.Commands.add('testPropertyInputFields', (processorId) => {
   // Test input field interactions
   cy.get('body').then(($body) => {
     const inputs = $body.find('input, textarea');
-    
+
     if (inputs.length > 0) {
       cy.log(`✅ Found ${inputs.length} input fields`);
-      
+
       // Test typing in first input field
       cy.wrap(inputs.first()).clear().type('test-value', { force: true });
       cy.log('✅ Input field interaction test completed');
@@ -179,8 +187,10 @@ Cypress.Commands.add('testProcessorStateUI', (processorId) => {
 
   // Check for state indicators on the processor element
   cy.get('body').then(($body) => {
-    const processorElement = $body.find(`[id="${processorId}"], [data-processor-id="${processorId}"]`).first();
-    
+    const processorElement = $body
+      .find(`[id="${processorId}"], [data-processor-id="${processorId}"]`)
+      .first();
+
     if (processorElement.length > 0) {
       const stateIndicators = processorElement.find('.state, .status, .running, .stopped');
       cy.log(`Found ${stateIndicators.length} state indicators`);
@@ -196,16 +206,20 @@ Cypress.Commands.add('testProcessorControlsUI', (processorId) => {
 
   // Test right-click context menu for start/stop options
   cy.get('body').then(($body) => {
-    const processorElement = $body.find(`[id="${processorId}"], [data-processor-id="${processorId}"]`).first();
-    
+    const processorElement = $body
+      .find(`[id="${processorId}"], [data-processor-id="${processorId}"]`)
+      .first();
+
     if (processorElement.length > 0) {
       cy.wrap(processorElement).rightclick({ force: true });
-      
+
       // Check for control options
       cy.get('body').then(($menuBody) => {
-        const controlOptions = $menuBody.find('*:contains("Start"), *:contains("Stop"), *:contains("Enable"), *:contains("Disable")');
+        const controlOptions = $menuBody.find(
+          '*:contains("Start"), *:contains("Stop"), *:contains("Enable"), *:contains("Disable")'
+        );
         cy.log(`Found ${controlOptions.length} control options`);
-        
+
         // Close context menu
         cy.get('body').click();
       });
@@ -221,10 +235,14 @@ Cypress.Commands.add('testConfigurationStateUI', (processorId) => {
 
   // Check for configuration state indicators
   cy.get('body').then(($body) => {
-    const processorElement = $body.find(`[id="${processorId}"], [data-processor-id="${processorId}"]`).first();
-    
+    const processorElement = $body
+      .find(`[id="${processorId}"], [data-processor-id="${processorId}"]`)
+      .first();
+
     if (processorElement.length > 0) {
-      const configIndicators = processorElement.find('.configured, .unconfigured, .invalid, .valid');
+      const configIndicators = processorElement.find(
+        '.configured, .unconfigured, .invalid, .valid'
+      );
       cy.log(`Found ${configIndicators.length} configuration state indicators`);
     }
   });
@@ -237,11 +255,13 @@ Cypress.Commands.add('testProcessorCanvasDisplay', (processorId, processorType) 
   cy.log(`🎨 Testing processor canvas display for ${processorId} (${processorType})`);
 
   cy.get('body').then(($body) => {
-    const processorElement = $body.find(`[id="${processorId}"], [data-processor-id="${processorId}"]`).first();
-    
+    const processorElement = $body
+      .find(`[id="${processorId}"], [data-processor-id="${processorId}"]`)
+      .first();
+
     if (processorElement.length > 0) {
       cy.log('✅ Processor visible on canvas');
-      
+
       // Test processor type display
       if (processorElement.text().includes(processorType)) {
         cy.log('✅ Processor type correctly displayed');
@@ -264,8 +284,10 @@ Cypress.Commands.add('testMultiProcessorUICoordination', (processorIds) => {
   processorIds.forEach((processorId, index) => {
     if (processorId) {
       cy.get('body').then(($body) => {
-        const processorElement = $body.find(`[id="${processorId}"], [data-processor-id="${processorId}"]`).first();
-        
+        const processorElement = $body
+          .find(`[id="${processorId}"], [data-processor-id="${processorId}"]`)
+          .first();
+
         if (processorElement.length > 0) {
           cy.log(`✅ Processor ${index + 1} (${processorId}) is visible`);
         } else {
@@ -285,10 +307,10 @@ Cypress.Commands.add('enhancedProcessorCleanup', () => {
   // Use existing cleanup command if available, otherwise implement basic cleanup
   cy.get('body').then(($body) => {
     const processors = $body.find('g.processor, [class*="processor"], .component');
-    
+
     if (processors.length > 0) {
       cy.log(`Found ${processors.length} processors to cleanup`);
-      
+
       // Try to use existing cleanup command first
       if (Cypress.Commands._commands.cleanupAllProcessors) {
         cy.cleanupAllProcessors();
@@ -298,7 +320,7 @@ Cypress.Commands.add('enhancedProcessorCleanup', () => {
           try {
             cy.wrap(element).rightclick({ force: true });
             cy.get('*:contains("Delete")').first().click({ force: true });
-            
+
             // Handle confirmation dialog
             cy.get('body').then(($confirmBody) => {
               const confirmDialog = $confirmBody.find('.confirmation-dialog, .delete-dialog');
@@ -322,12 +344,16 @@ Cypress.Commands.add('enhancedProcessorCleanup', () => {
  */
 Cypress.Commands.add('documentBackendGap', (gapType, description) => {
   cy.log(`📋 Documenting backend gap: ${gapType}`);
-  
-  cy.task('logBackendGap', {
-    type: gapType,
-    description: description,
-    timestamp: new Date().toISOString()
-  }, { failOnStatusCode: false });
+
+  cy.task(
+    'logBackendGap',
+    {
+      type: gapType,
+      description: description,
+      timestamp: new Date().toISOString(),
+    },
+    { failOnStatusCode: false }
+  );
 });
 
 /**

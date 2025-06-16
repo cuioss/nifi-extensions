@@ -4,6 +4,8 @@
  * to avoid UI timeout issues during Maven builds.
  */
 
+import { TEXT_CONSTANTS } from '../support/constants.js';
+
 describe('Core Command Integration Tests', () => {
   const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'http://localhost:9094/nifi/';
 
@@ -24,7 +26,7 @@ describe('Core Command Integration Tests', () => {
     it('should successfully access NiFi instance', () => {
       cy.clearCookies();
       cy.clearLocalStorage();
-
+      
       // Use lightweight access method
       cy.accessNiFi();
       cy.get('nifi').should('exist');
@@ -86,20 +88,11 @@ describe('Core Command Integration Tests', () => {
     });
 
     it('should maintain session across requests', () => {
-      // Use only HTTP requests to test session persistence, avoid UI page loads
-      cy.request({
-        url: baseUrl,
-        timeout: 10000,
-      }).then((response) => {
-        expect(response.status).to.equal(200);
-      });
-
-      cy.request({
-        url: baseUrl,
-        timeout: 10000,
-      }).then((response) => {
-        expect(response.status).to.equal(200);
-      });
+      cy.accessNiFi();
+      cy.get('nifi').should('exist');
+      
+      cy.accessNiFi();
+      cy.get('nifi').should('exist');
     });
   });
 
@@ -110,8 +103,7 @@ describe('Core Command Integration Tests', () => {
         failOnStatusCode: false,
         timeout: 10000,
       }).then((response) => {
-        // NiFi might return 200 for some invalid endpoints, so allow broader range
-        expect(response.status).to.be.oneOf([200, 400, 401, 403, 404, 405, 500]);
+        expect(response.status).to.be.oneOf([400, 401, 403, 404, 405, 500]);
       });
     });
   });

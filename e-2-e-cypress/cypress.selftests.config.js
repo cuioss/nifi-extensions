@@ -3,21 +3,19 @@ const { defineConfig } = require('cypress');
 module.exports = defineConfig({
   e2e: {
     specPattern: 'cypress/selftests/**/*.cy.js',
+    excludeSpecPattern: 'cypress/selftests/backup/**/*.cy.js',
     supportFile: 'cypress/support/e2e.js',
     // Configure base URL for integration tests
     baseUrl: process.env.CYPRESS_BASE_URL || 'http://localhost:9094/nifi/',
-    // Set timeouts to fail fast instead of hanging
-    defaultCommandTimeout: 10000, // 10s for commands
-    requestTimeout: 15000, // 15s for network requests
-    pageLoadTimeout: 30000, // 30s for page loads (fail fast)
-    responseTimeout: 15000, // 15s for responses
-    visitTimeout: 30000, // 30s for visits (fail fast)
-    taskTimeout: 30000, // 30s for tasks
-    execTimeout: 30000, // 30s for exec commands
-    // Fail fast settings
-    exitOnFail: true, // Exit on first failure
-    stopSpecOnFirstFailure: true, // Fail fast within a spec
-    experimentalRunAllSpecs: false, // Run specs individually
+    // Set timeouts appropriate for NiFi startup and Angular loading
+    defaultCommandTimeout: 30000, // 30s for commands (NiFi can be slow)
+    requestTimeout: 30000, // 30s for network requests
+    pageLoadTimeout: 180000, // 3 minutes for page loads (NiFi startup)
+    responseTimeout: 30000, // 30s for responses
+    visitTimeout: 180000, // 3 minutes for visits (NiFi startup)
+    taskTimeout: 60000, // 60s for tasks
+    execTimeout: 60000, // 60s for exec commands
+    // Enable better error reporting
     video: false, // Disable video for faster execution
     // Generate a separate report for self-tests
     reporter: 'junit',
