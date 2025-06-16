@@ -4,8 +4,6 @@
  * to avoid UI timeout issues during Maven builds.
  */
 
-import { TEXT_CONSTANTS } from '../support/constants.js';
-
 describe('Core Command Integration Tests', () => {
   const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'http://localhost:9094/nifi/';
 
@@ -26,7 +24,7 @@ describe('Core Command Integration Tests', () => {
     it('should successfully access NiFi instance', () => {
       cy.clearCookies();
       cy.clearLocalStorage();
-      
+
       // Use lightweight access method
       cy.accessNiFi();
       cy.get('nifi').should('exist');
@@ -90,7 +88,7 @@ describe('Core Command Integration Tests', () => {
     it('should maintain session across requests', () => {
       cy.accessNiFi();
       cy.get('nifi').should('exist');
-      
+
       cy.accessNiFi();
       cy.get('nifi').should('exist');
     });

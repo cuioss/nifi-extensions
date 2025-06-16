@@ -142,7 +142,7 @@ cd ../integration-testing
 cd ../e-2-e-cypress
 
 # Run setup verification
-./verify-setup.sh
+./scripts/verification/verify-setup.sh
 
 # Check NAR deployment
 ls -la ../target/nifi-deploy/nifi-cuioss-nar-1.0-SNAPSHOT.nar
@@ -470,7 +470,7 @@ kill -9 <PID>
 ### Test Environment Health Check
 ```bash
 # Comprehensive environment verification
-./verify-setup.sh
+./scripts/verification/verify-setup.sh
 
 # Manual health checks
 curl -k https://localhost:9095/nifi/ | grep -o "nifi"

@@ -100,7 +100,7 @@ npx cypress run --spec "cypress/e2e/*processor*.cy.js"
 ### Test Environment Verification
 ```bash
 # Verify setup
-./verify-setup.sh
+./scripts/verification/verify-setup.sh
 
 # Check Docker containers
 docker ps | grep -E "(nifi|keycloak)"
