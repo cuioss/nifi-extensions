@@ -1,0 +1,43 @@
+{
+  "console": {
+    "summary": {
+      "totalErrors": 0,
+      "totalUnexpectedWarnings": 0,
+      "totalAllowedWarnings": 0,
+      "runDate": "2025-06-16T21:07:28.991Z",
+      "runId": "latest",
+      "logFileFound": false
+    },
+    "errors": [],
+    "unexpectedWarnings": [],
+    "allowedWarningsByPattern": {}
+  },
+  "runId": "latest",
+  "timestamp": "2025-06-16T21:07:28.991Z",
+  "mode": "enhanced",
+  "performance": {
+    "totalTests": 0,
+    "totalDuration": 0,
+    "avgTestDuration": 0,
+    "slowestTests": [],
+    "fastestTests": [],
+    "failureRate": 0,
+    "retryRate": 0
+  },
+  "network": {
+    "totalRequests": 0,
+    "failedRequests": 0,
+    "slowRequests": [],
+    "errorPatterns": {},
+    "requestsByType": {
+      "GET": 0,
+      "POST": 0,
+      "PUT": 0,
+      "DELETE": 0,
+      "OTHER": 0
+    }
+  },
+  "trends": {
+    "message": "Insufficient data for trend analysis"
+  }
+}

@@ -56,12 +56,13 @@ After analyzing all scripts in the e-2-e-cypress project, I've identified severa
   - `--quick` (tests only, assume containers running)
   - `--build-only` (build without tests)
 
-#### 3. **Log Analysis Scripts Consolidation**
+#### 3. **Log Analysis Scripts Consolidation** ✅
 **Target**: `analyze-console-errors.js` + `enhanced-log-analyzer.js`
 - **Issue**: Enhanced analyzer imports basic analyzer but duplicates functionality
 - **Action**: Merge into single `scripts/log-analyzer.js` with options:
   - `--basic` (console errors only)
   - `--enhanced` (full analysis with performance metrics)
+- **Status**: ✅ **COMPLETED** - Unified log analyzer created with both modes
 
 ### 🗂️ Scripts to Reorganize
 
@@ -102,31 +103,31 @@ After analyzing all scripts in the e-2-e-cypress project, I've identified severa
 
 ### Phase 1: Consolidation
 #### Task 1.1: Create Unified NiFi Manager
-- [ ] Create `scripts/nifi-manager.js`
-- [ ] Implement unified NiFi checking and starting logic
-- [ ] Add command-line argument parsing
-- [ ] Update package.json scripts to use new manager
-- [ ] Test all execution modes
-- [ ] **Maven Build**: `cd /Users/oliver/git/nifi-extensions/e-2-e-cypress && mvn clean verify`
-- [ ] **Git Commit**: "Consolidate NiFi management scripts into unified manager"
+- [x] Create `scripts/nifi-manager.js`
+- [x] Implement unified NiFi checking and starting logic
+- [x] Add command-line argument parsing
+- [x] Update package.json scripts to use new manager
+- [x] Test all execution modes
+- [x] **Maven Build**: `cd /Users/oliver/git/nifi-extensions/e-2-e-cypress && mvn clean verify`
+- [x] **Git Commit**: "Consolidate NiFi management scripts into unified manager"
 
-#### Task 1.2: Create Unified Test Runner
-- [ ] Create `scripts/test-runner.sh`
-- [ ] Merge functionality from both existing runners
-- [ ] Add comprehensive option parsing
-- [ ] Implement colored output and progress indicators
-- [ ] Update documentation
-- [ ] **Maven Build**: `cd /Users/oliver/git/nifi-extensions/e-2-e-cypress && mvn clean verify`
-- [ ] **Git Commit**: "Consolidate test runner scripts with unified interface"
+#### Task 1.2: Create Unified Test Runner ✅
+- [x] Create `scripts/test-runner.sh`
+- [x] Merge functionality from both existing runners
+- [x] Add comprehensive option parsing
+- [x] Implement colored output and progress indicators
+- [x] Update documentation
+- [x] **Maven Build**: `cd /Users/oliver/git/nifi-extensions/e-2-e-cypress && mvn clean verify`
+- [x] **Git Commit**: "Consolidate test runner scripts with unified interface"
 
-#### Task 1.3: Merge Log Analyzers
-- [ ] Create `scripts/log-analyzer.js`
-- [ ] Merge console error and enhanced analysis features
-- [ ] Implement modular analysis modes
-- [ ] Add HTML report generation
-- [ ] Update NPM scripts
-- [ ] **Maven Build**: `cd /Users/oliver/git/nifi-extensions/e-2-e-cypress && mvn clean verify`
-- [ ] **Git Commit**: "Merge log analysis scripts into unified analyzer"
+#### Task 1.3: Merge Log Analyzers ✅
+- [x] Create `scripts/log-analyzer.js`
+- [x] Merge console error and enhanced analysis features
+- [x] Implement modular analysis modes
+- [x] Add HTML report generation
+- [x] Update NPM scripts
+- [x] **Maven Build**: `cd /Users/oliver/git/nifi-extensions/e-2-e-cypress && mvn clean verify`
+- [x] **Git Commit**: "Merge log analysis scripts into unified analyzer"
 
 ### Phase 2: Reorganization
 #### Task 2.1: Restructure Scripts Directory
@@ -148,31 +149,31 @@ After analyzing all scripts in the e-2-e-cypress project, I've identified severa
 - [ ] **Git Commit**: "Extract shared utilities for script consistency"
 
 ### Phase 3: Cleanup and Optimization
-#### Task 3.1: Remove Obsolete Scripts
-- [ ] Remove `scripts/check-nifi-and-run-selftests.js`
-- [ ] Remove `scripts/auto-start-nifi-and-run-selftests.js`
-- [ ] Remove `scripts/run-integration-tests.sh`
-- [ ] Remove `scripts/run-tests-quick.sh`
-- [ ] Remove `scripts/analyze-console-errors.js`
-- [ ] Remove `scripts/enhanced-log-analyzer.js`
-- [ ] **Maven Build**: `cd /Users/oliver/git/nifi-extensions/e-2-e-cypress && mvn clean verify`
-- [ ] **Git Commit**: "Remove obsolete scripts after consolidation"
+#### Task 3.1: Remove Obsolete Scripts ✅
+- [x] Remove `scripts/check-nifi-and-run-selftests.js`
+- [x] Remove `scripts/auto-start-nifi-and-run-selftests.js`
+- [x] Remove `scripts/run-integration-tests.sh`
+- [x] Remove `scripts/run-tests-quick.sh`
+- [x] Remove `scripts/analyze-console-errors.js`
+- [x] Remove `scripts/enhanced-log-analyzer.js`
+- [x] **Maven Build**: `cd /Users/oliver/git/nifi-extensions/e-2-e-cypress && mvn clean verify`
+- [x] **Git Commit**: "Remove obsolete scripts after consolidation"
 
-#### Task 3.2: Clean Up Package Configuration
-- [ ] Thoroughly clean up `package.json`:
+#### Task 3.2: Clean Up Package Configuration ✅
+- [x] Thoroughly clean up `package.json`:
   - Remove obsolete script references (`cypress:selftests-safe`, `cypress:selftests-auto`)
   - Update scripts to use new consolidated script names
   - Review and consolidate linting scripts
   - Verify all dependencies are still needed
   - Clean up script descriptions and organization
-- [ ] Update `package-lock.json`:
+- [x] Update `package-lock.json`:
   - Run `npm install` to regenerate package-lock.json after package.json changes
   - Verify no dependency conflicts or security vulnerabilities
   - Ensure lock file is consistent with updated package.json
-- [ ] Update Maven pom.xml references to new script names
-- [ ] Document all changes in this todo.md file only
-- [ ] **Maven Build**: `cd /Users/oliver/git/nifi-extensions/e-2-e-cypress && mvn clean verify`
-- [ ] **Git Commit**: "Clean up package.json and regenerate package-lock.json for consolidated scripts"
+- [x] Update Maven pom.xml references to new script names
+- [x] Document all changes in this todo.md file only
+- [x] **Maven Build**: `cd /Users/oliver/git/nifi-extensions/e-2-e-cypress && mvn clean verify`
+- [x] **Git Commit**: "Clean up package.json and regenerate package-lock.json for consolidated scripts"
 
 ### Phase 4: Enhancement and Standardization
 #### Task 4.1: Implement Environment Manager

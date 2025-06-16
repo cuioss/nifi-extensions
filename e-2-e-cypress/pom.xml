@@ -155,7 +155,7 @@
                         </goals>
                         <phase>verify</phase>
                         <configuration>
-                            <arguments>run cypress:selftests-auto</arguments>
+                            <arguments>run nifi:start</arguments>
                             <skip>${skipTests}</skip>
                             <failOnError>true</failOnError>
                             <timeout>${cypress.timeout}</timeout>

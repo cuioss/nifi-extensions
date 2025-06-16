@@ -1,0 +1,13 @@
+{
+  "summary": {
+    "totalErrors": 0,
+    "totalUnexpectedWarnings": 0,
+    "totalAllowedWarnings": 0,
+    "runDate": "2025-06-16T21:11:41.727Z",
+    "runId": "latest",
+    "logFileFound": false
+  },
+  "errors": [],
+  "unexpectedWarnings": [],
+  "allowedWarningsByPattern": {}
+}
