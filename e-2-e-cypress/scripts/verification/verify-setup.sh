@@ -1,37 +1,50 @@
 #!/bin/bash
 
 # Quick verification script for e-2-e-cypress setup
-echo "🔍 Verifying e-2-e-cypress setup..."
+
+# Import shared utilities
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/../utils/shell-common.sh" ]; then
+    source "$SCRIPT_DIR/../utils/shell-common.sh"
+else
+    # Fallback if utilities not available
+    print_status() { echo "🔍 $1"; }
+    print_success() { echo "✅ $1"; }
+    print_warning() { echo "⚠️  $1"; }
+    print_error() { echo "❌ $1"; }
+fi
+
+print_status "Verifying e-2-e-cypress setup..."
 
 # Check if we're in the right directory
-if [ ! -f "package.json" ]; then
-    echo "❌ Error: package.json not found. Run from e-2-e-cypress directory."
+if ! check_project_directory 2>/dev/null; then
+    print_error "package.json not found. Run from e-2-e-cypress directory."
     exit 1
 fi
 
-echo "✅ Package.json found"
+print_success "Package.json found"
 
 # Check if node_modules exists
 if [ ! -d "node_modules" ]; then
-    echo "⚠️  Warning: node_modules not found. Running npm install..."
+    print_warning "node_modules not found. Running npm install..."
     npm install
 else
-    echo "✅ Node modules installed"
+    print_success "Node modules installed"
 fi
 
 # Check Cypress binary
-echo "🔍 Checking Cypress binary..."
+print_status "Checking Cypress binary..."
 if npx cypress --version > /dev/null 2>&1; then
-    echo "✅ Cypress binary working"
+    print_success "Cypress binary working"
     npx cypress --version
 else
-    echo "❌ Error: Cypress binary not working"
+    print_error "Cypress binary not working"
     echo "Try: npx cypress install"
     exit 1
 fi
 
 # List test files
-echo "🔍 Test files found:"
+print_status "Test files found:"
 echo "📁 Self-tests:"
 find cypress/selftests -name "*.cy.js" 2>/dev/null | sed 's/^/  /' || echo "  No self-test files found"
 
@@ -42,14 +55,14 @@ echo "📁 Support files:"
 find cypress/support -name "*.js" 2>/dev/null | sed 's/^/  /' || echo "  No support files found"
 
 # Check configuration files
-echo "🔍 Configuration files:"
+print_status "Configuration files:"
 [ -f "cypress.config.js" ] && echo "  ✅ cypress.config.js" || echo "  ❌ cypress.config.js missing"
 [ -f "cypress.selftests.config.js" ] && echo "  ✅ cypress.selftests.config.js" || echo "  ❌ cypress.selftests.config.js missing"
 [ -f ".eslintrc.js" ] && echo "  ✅ .eslintrc.js" || echo "  ❌ .eslintrc.js missing"
 [ -f ".prettierrc" ] && echo "  ✅ .prettierrc" || echo "  ❌ .prettierrc missing"
 
 echo ""
-echo "🎉 Setup verification complete!"
+print_success "Setup verification complete!"
 echo ""
 echo "📝 Testing Strategy:"
 echo "• Self-tests = REAL integration tests against live NiFi instance"
