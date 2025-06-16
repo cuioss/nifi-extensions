@@ -147,21 +147,28 @@ get_maven_command() {
 check_container_status() {
     print_step "Checking container status..."
     
-    if command -v docker &> /dev/null; then
-        local running_containers
-        running_containers=$(docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "(nifi|keycloak)" | wc -l || echo "0")
-        
-        if [ "$running_containers" -gt 0 ]; then
-            print_success "Found $running_containers running containers"
-            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "(nifi|keycloak)" | sed 's/^/  /'
-            return 0
+    if [ -f "$SCRIPT_DIR/environment-manager.sh" ]; then
+        # Use environment manager for status check
+        "$SCRIPT_DIR/environment-manager.sh" status --quiet
+        return $?
+    else
+        # Fallback to direct Docker commands
+        if command -v docker &> /dev/null; then
+            local running_containers
+            running_containers=$(docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "(nifi|keycloak)" | wc -l || echo "0")
+            
+            if [ "$running_containers" -gt 0 ]; then
+                print_success "Found $running_containers running containers"
+                docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "(nifi|keycloak)" | sed 's/^/  /'
+                return 0
+            else
+                print_warning "No NiFi/Keycloak containers are running"
+                return 1
+            fi
         else
-            print_warning "No NiFi/Keycloak containers are running"
+            print_warning "Docker not available - cannot check container status"
             return 1
         fi
-    else
-        print_warning "Docker not available - cannot check container status"
-        return 1
     fi
 }
 
@@ -191,14 +198,25 @@ show_environment_status() {
     echo "===================="
     echo ""
     
-    # Check Docker
-    if command -v docker &> /dev/null; then
-        print_success "Docker: Available ($(docker --version))"
+    if [ -f "$SCRIPT_DIR/environment-manager.sh" ]; then
+        # Use environment manager for comprehensive status
+        "$SCRIPT_DIR/environment-manager.sh" status
     else
-        print_error "Docker: Not available"
+        # Fallback to basic status checks
+        # Check Docker
+        if command -v docker &> /dev/null; then
+            print_success "Docker: Available ($(docker --version))"
+        else
+            print_error "Docker: Not available"
+        fi
+        
+        # Check containers
+        check_container_status
+        
+        # Check NiFi
+        check_nifi_availability
     fi
-    
-    # Check containers
+}
     check_container_status || true
     echo ""
     
@@ -229,55 +247,82 @@ show_environment_status() {
 
 # Function to setup containers
 setup_containers() {
-    if [ "$RESTART_CONTAINERS" = true ]; then
-        print_step "Force restarting containers..."
-        cd integration-testing/src/main/docker
-        docker compose down -v 2>/dev/null || true
-        docker compose up -d
-        cd "$PROJECT_ROOT"
+    if [ -f "$SCRIPT_DIR/environment-manager.sh" ]; then
+        # Use environment manager for container operations
+        if [ "$RESTART_CONTAINERS" = true ]; then
+            print_step "Force restarting containers using environment manager..."
+            "$SCRIPT_DIR/environment-manager.sh" restart
+        else
+            # Check if containers are running, start if needed
+            if ! "$SCRIPT_DIR/environment-manager.sh" health --quiet >/dev/null 2>&1; then
+                print_step "Starting containers using environment manager..."
+                "$SCRIPT_DIR/environment-manager.sh" start
+            else
+                print_success "Containers are already running and healthy"
+            fi
+        fi
     else
-        check_container_status || {
-            print_step "Starting containers..."
+        # Fallback to direct Docker commands
+        if [ "$RESTART_CONTAINERS" = true ]; then
+            print_step "Force restarting containers..."
             cd integration-testing/src/main/docker
+            docker compose down -v 2>/dev/null || true
             docker compose up -d
             cd "$PROJECT_ROOT"
-        }
+        else
+            check_container_status || {
+                print_step "Starting containers..."
+                cd integration-testing/src/main/docker
+                docker compose up -d
+                cd "$PROJECT_ROOT"
+            }
+        fi
+        
+        # Wait for NiFi to be ready
+        print_step "Waiting for NiFi to become ready..."
+        local max_attempts=60
+        local attempt=1
+        
+        while [ $attempt -le $max_attempts ]; do
+            if check_nifi_availability >/dev/null 2>&1; then
+                print_success "NiFi is ready after $attempt attempts"
+                break
+            fi
+            
+            if [ $attempt -eq $max_attempts ]; then
+                print_error "NiFi did not become ready after $max_attempts attempts"
+                return 1
+            fi
+            
+            print_status "Waiting for NiFi... (attempt $attempt/$max_attempts)"
+            sleep 5
+            ((attempt++))
+        done
     fi
-    
-    # Wait for NiFi to be ready
-    print_step "Waiting for NiFi to become ready..."
-    local max_attempts=60
-    local attempt=1
-    
-    while [ $attempt -le $max_attempts ]; do
-        if check_nifi_availability >/dev/null 2>&1; then
-            print_success "NiFi is ready after $attempt attempts"
-            break
-        fi
-        
-        if [ $attempt -eq $max_attempts ]; then
-            print_error "NiFi did not become ready after $max_attempts attempts"
-            return 1
-        fi
-        
-        print_status "Waiting for NiFi... (attempt $attempt/$max_attempts)"
-        sleep 5
-        ((attempt++))
-    done
+}
 }
 
 # Function to cleanup containers
 cleanup_containers() {
     if [ "$KEEP_CONTAINERS" = false ]; then
-        print_step "Cleaning up containers..."
-        cd integration-testing/src/main/docker
-        docker compose down -v 2>/dev/null || true
-        cd "$PROJECT_ROOT"
-        print_success "Containers stopped and cleaned up"
+        if [ -f "$SCRIPT_DIR/environment-manager.sh" ]; then
+            print_step "Cleaning up containers using environment manager..."
+            "$SCRIPT_DIR/environment-manager.sh" stop
+        else
+            print_step "Cleaning up containers..."
+            cd integration-testing/src/main/docker
+            docker compose down -v 2>/dev/null || true
+            cd "$PROJECT_ROOT"
+            print_success "Containers stopped and cleaned up"
+        fi
     else
         print_warning "Containers left running as requested"
-        print_status "To stop containers manually:"
-        print_status "  cd integration-testing/src/main/docker && docker compose down -v"
+        if [ -f "$SCRIPT_DIR/environment-manager.sh" ]; then
+            print_status "To stop containers manually: scripts/environment-manager.sh stop"
+        else
+            print_status "To stop containers manually:"
+            print_status "  cd integration-testing/src/main/docker && docker compose down -v"
+        fi
     fi
 }
 

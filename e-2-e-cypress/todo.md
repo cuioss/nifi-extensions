@@ -236,13 +236,14 @@ After analyzing all scripts in the e-2-e-cypress project, I've identified severa
 - [x] **Maven Build**: `cd /Users/oliver/git/nifi-extensions/e-2-e-cypress && mvn clean verify`
 - [x] **Git Commit**: "Reorganize scripts into logical directory structure"
 
-#### Task 2.2: Create Shared Utilities
-- [ ] Create `scripts/utils/common.js` with shared functions
-- [ ] Create `scripts/utils/logger.js` for consistent logging
-- [ ] Create `scripts/utils/docker.js` for container operations
-- [ ] Update all scripts to use shared utilities
-- [ ] **Maven Build**: `cd /Users/oliver/git/nifi-extensions/e-2-e-cypress && mvn clean verify`
-- [ ] **Git Commit**: "Extract shared utilities for script consistency"
+#### Task 2.2: Create Shared Utilities ✅
+- [x] Create `scripts/utils/common.js` with shared functions
+- [x] Create `scripts/utils/logger.js` for consistent logging
+- [x] Create `scripts/utils/docker.js` for container operations
+- [x] Create `scripts/utils/shell-common.sh` for shell script utilities
+- [x] Update all scripts to use shared utilities
+- [x] **Maven Build**: `cd /Users/oliver/git/nifi-extensions/e-2-e-cypress && mvn clean verify`
+- [x] **Git Commit**: "Extract shared utilities for script consistency"
 
 ### Phase 3: Cleanup and Optimization
 #### Task 3.1: Remove Obsolete Scripts ✅
