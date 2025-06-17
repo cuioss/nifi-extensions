@@ -9,6 +9,7 @@ const https = require('https');
 const http = require('http');
 const { createLogger } = require('./logger');
 const { sleep } = require('./common');
+const { EXIT_CODES, ErrorFactory, RetryManager } = require('./error-handling');
 
 const logger = createLogger({ context: 'docker' });
 
@@ -24,6 +25,11 @@ const DEFAULT_CONFIG = {
 class DockerManager {
   constructor(config = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.retryManager = new RetryManager({
+      maxAttempts: 3,
+      initialDelay: 2000,
+      logger: logger
+    });
   }
 
   /**
@@ -146,11 +152,27 @@ class DockerManager {
   }
 
   /**
-   * Check if NiFi is healthy/accessible
+   * Check if NiFi is healthy/accessible with retry logic
    * @returns {Promise<boolean>} true if NiFi is accessible
    */
   async checkNiFiHealth() {
-    return new Promise((resolve) => {
+    try {
+      return await this.retryManager.execute(async () => {
+        return await this._performHealthCheck();
+      });
+    } catch (error) {
+      logger.debug(`Health check failed after retries: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Perform a single health check attempt
+   * @returns {Promise<boolean>} true if NiFi is accessible
+   * @private
+   */
+  async _performHealthCheck() {
+    return new Promise((resolve, reject) => {
       const url = new URL(this.config.nifiUrl);
       
       const options = {
@@ -175,10 +197,11 @@ class DockerManager {
         }
       });
 
-      req.on('error', () => {
+      req.on('error', (error) => {
         if (!resolved) {
           resolved = true;
-          resolve(false);
+          const networkError = ErrorFactory.network(`Health check failed: ${error.message}`);
+          reject(networkError);
         }
       });
 
@@ -186,7 +209,8 @@ class DockerManager {
         if (!resolved) {
           resolved = true;
           req.destroy();
-          resolve(false);
+          const timeoutError = ErrorFactory.timeout('Health check request timed out');
+          reject(timeoutError);
         }
       });
 

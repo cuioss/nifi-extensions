@@ -14,6 +14,7 @@
 const { createLogger } = require('./utils/logger');
 const { createDockerManager } = require('./utils/docker');
 const { parseCommandLineArgs, hasFlag, getOption, ensureProjectDirectory } = require('./utils/common');
+const { EXIT_CODES, ErrorFactory, ErrorHandler, ExitHandler } = require('./utils/error-handling');
 const { spawn } = require('child_process');
 
 // Configuration
@@ -341,18 +342,26 @@ async function main() {
     }
 
   } catch (error) {
-    console.error('❌ Unexpected error:', error.message);
-    return 1;
+    const standardError = ErrorFactory.system(`NiFi Manager execution failed: ${error.message}`);
+    ErrorHandler.handle(standardError);
+    return standardError.code;
   }
 }
+
+// Set up graceful shutdown
+const exitHandler = new ExitHandler(createLogger({ context: 'nifi-manager-exit' }));
+exitHandler.onCleanup(async () => {
+  // Any cleanup needed on exit
+});
 
 // Run if this file is executed directly
 if (require.main === module) {
   main()
-    .then(exitCode => process.exit(exitCode))
+    .then(exitCode => exitHandler.exit(exitCode))
     .catch(error => {
-      console.error('❌ Fatal error:', error);
-      process.exit(1);
+      const standardError = ErrorFactory.system(`Fatal NiFi Manager error: ${error.message}`);
+      ErrorHandler.handle(standardError);
+      exitHandler.exit(standardError.code);
     });
 }
 

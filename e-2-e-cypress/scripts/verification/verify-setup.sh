@@ -14,12 +14,18 @@ else
     print_error() { echo "❌ $1"; }
 fi
 
+# Standardized exit codes
+readonly EXIT_SUCCESS=0
+readonly EXIT_CONFIGURATION_ERROR=130
+readonly EXIT_DEPENDENCY_ERROR=133
+readonly EXIT_SYSTEM_ERROR=141
+
 print_status "Verifying e-2-e-cypress setup..."
 
 # Check if we're in the right directory
 if ! check_project_directory 2>/dev/null; then
     print_error "package.json not found. Run from e-2-e-cypress directory."
-    exit 1
+    exit $EXIT_CONFIGURATION_ERROR
 fi
 
 print_success "Package.json found"
@@ -78,6 +84,8 @@ echo "1. Start integration test environment:"
 echo "   cd ../integration-testing/src/main/docker && ./start-test-containers.sh"
 echo "2. Wait for services to be ready (NiFi takes 3-5 minutes)"
 echo "3. Run integration self-tests: npm run cypress:selftests"
+
+exit $EXIT_SUCCESS
 echo "4. Run full E2E tests: npm run cypress:run"
 echo "5. Interactive mode: npm run cypress:open"
 echo ""

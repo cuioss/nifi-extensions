@@ -18,6 +18,12 @@ else
     print_progress() { echo "⏳ $1"; }
 fi
 
+# Standardized exit codes
+readonly EXIT_SUCCESS=0
+readonly EXIT_CONFIGURATION_ERROR=130
+readonly EXIT_DEPENDENCY_ERROR=133
+readonly EXIT_SYSTEM_ERROR=141
+
 echo "🧪 Testing Maven Configuration for e-2-e-cypress (Auto-Start Mode)"
 echo "=================================================================="
 echo
@@ -45,7 +51,7 @@ if [ $? -eq 0 ]; then
     print_success "PASS: Build with skipTests completed successfully"
 else
     print_error "FAIL: Build with skipTests failed"
-    exit 1
+    exit $EXIT_SYSTEM_ERROR
 fi
 echo
 
@@ -59,7 +65,7 @@ if [ $? -eq 0 ]; then
     print_success "PASS: Safe selftests profile completed successfully (graceful skip)"
 else
     print_error "FAIL: Safe selftests profile failed"
-    exit 1
+    exit $EXIT_SYSTEM_ERROR
 fi
 echo
 
@@ -80,7 +86,7 @@ if [ $? -eq 0 ]; then
     print_success "PASS: Validate phase completed successfully (linting passed)"
 else
     print_error "FAIL: Validate phase failed"
-    exit 1
+    exit $EXIT_SYSTEM_ERROR
 fi
 echo
 
@@ -101,3 +107,5 @@ echo "  ✓ Linting runs during validate phase"
 echo "  ✓ Auto-start script works independently"
 echo ""
 echo "🚀 **NEW FEATURE**: Normal builds now automatically start NiFi for testing!"
+
+exit $EXIT_SUCCESS

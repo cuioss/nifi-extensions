@@ -5,6 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { EXIT_CODES, ErrorFactory } = require('./error-handling');
 
 /**
  * Check if we're in the correct e-2-e-cypress directory
@@ -19,8 +20,8 @@ function checkProjectDirectory() {
  */
 function ensureProjectDirectory() {
   if (!checkProjectDirectory()) {
-    console.error('❌ Error: Not in e-2-e-cypress directory. Please run from the correct location.');
-    process.exit(1);
+    const error = ErrorFactory.configuration('Not in e-2-e-cypress directory. Please run from the correct location.');
+    throw error;
   }
 }
 

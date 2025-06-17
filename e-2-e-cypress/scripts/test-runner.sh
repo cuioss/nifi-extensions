@@ -27,16 +27,27 @@
 
 set -e
 
+# Load shared utilities  
+source "$(dirname "$0")/utils/shell-common.sh" || {
+    echo "Error: Cannot load shared utilities"
+    exit 141
+}
+
+# Standardized exit codes (following error-handling.js conventions)
+readonly EXIT_SUCCESS=0
+readonly EXIT_GENERAL_ERROR=1
+readonly EXIT_CONFIGURATION_ERROR=130
+readonly EXIT_NETWORK_ERROR=131
+readonly EXIT_TIMEOUT_ERROR=132
+readonly EXIT_DEPENDENCY_ERROR=133
+readonly EXIT_SYSTEM_ERROR=141
 # Navigate to project root (two levels up from e-2-e-cypress/scripts/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$PROJECT_ROOT"
 
-# Import shared utilities if available
-if [ -f "e-2-e-cypress/scripts/utils/shell-common.sh" ]; then
-    source "e-2-e-cypress/scripts/utils/shell-common.sh"
-else
-    # Fallback color definitions
+# Fallback color definitions if shell-common.sh not available
+if ! command -v print_status >/dev/null 2>&1; then
     RED='\033[0;31m'
     GREEN='\033[0;32m'
     YELLOW='\033[1;33m'
@@ -127,7 +138,7 @@ check_prerequisites() {
     if [ ${#missing_tools[@]} -gt 0 ]; then
         print_error "Missing required tools: ${missing_tools[*]}"
         print_error "Please install missing tools and try again"
-        return 1
+        return $EXIT_DEPENDENCY_ERROR
     fi
 
     print_success "All prerequisites satisfied"
@@ -251,12 +262,12 @@ setup_containers() {
         # Use environment manager for container operations
         if [ "$RESTART_CONTAINERS" = true ]; then
             print_step "Force restarting containers using environment manager..."
-            "$SCRIPT_DIR/environment-manager.sh" restart
+            "$SCRIPT_DIR/environment-manager.sh" restart || return $EXIT_SYSTEM_ERROR
         else
             # Check if containers are running, start if needed
             if ! "$SCRIPT_DIR/environment-manager.sh" health --quiet >/dev/null 2>&1; then
                 print_step "Starting containers using environment manager..."
-                "$SCRIPT_DIR/environment-manager.sh" start
+                "$SCRIPT_DIR/environment-manager.sh" start || return $EXIT_SYSTEM_ERROR
             else
                 print_success "Containers are already running and healthy"
             fi
@@ -267,13 +278,13 @@ setup_containers() {
             print_step "Force restarting containers..."
             cd integration-testing/src/main/docker
             docker compose down -v 2>/dev/null || true
-            docker compose up -d
+            docker compose up -d || { cd "$PROJECT_ROOT"; return $EXIT_SYSTEM_ERROR; }
             cd "$PROJECT_ROOT"
         else
             check_container_status || {
                 print_step "Starting containers..."
                 cd integration-testing/src/main/docker
-                docker compose up -d
+                docker compose up -d || { cd "$PROJECT_ROOT"; return $EXIT_SYSTEM_ERROR; }
                 cd "$PROJECT_ROOT"
             }
         fi
@@ -291,7 +302,7 @@ setup_containers() {
             
             if [ $attempt -eq $max_attempts ]; then
                 print_error "NiFi did not become ready after $max_attempts attempts"
-                return 1
+                return $EXIT_TIMEOUT_ERROR
             fi
             
             print_status "Waiting for NiFi... (attempt $attempt/$max_attempts)"
@@ -338,10 +349,10 @@ run_build() {
     
     if [ "$CLEAN_BUILD" = true ]; then
         print_step "Running clean build..."
-        $mvn_cmd clean package -DskipTests
+        $mvn_cmd clean package -DskipTests || return $EXIT_SYSTEM_ERROR
     else
         print_step "Running build..."
-        $mvn_cmd package -DskipTests
+        $mvn_cmd package -DskipTests || return $EXIT_SYSTEM_ERROR
     fi
     
     print_success "Build completed"
@@ -349,7 +360,7 @@ run_build() {
 
 # Function to run tests
 run_tests() {
-    cd e-2-e-cypress
+    cd e-2-e-cypress || return $EXIT_SYSTEM_ERROR
     
     # Prepare Cypress arguments
     local cypress_cmd="cypress"
@@ -369,38 +380,50 @@ run_tests() {
     fi
     
     # Run appropriate test suite
+    local test_exit_code=0
     case "$TEST_TYPE" in
         "selftests")
             print_step "Running selftests (command validation)..."
             if [ "$OPEN_CYPRESS" = true ]; then
-                npm run cypress:open -- --config-file cypress.selftests.config.js "${CYPRESS_ARGS[@]}"
+                npm run cypress:open -- --config-file cypress.selftests.config.js "${CYPRESS_ARGS[@]}" || test_exit_code=$?
             else
-                npm run cypress:selftests -- "${CYPRESS_ARGS[@]}"
+                npm run cypress:selftests -- "${CYPRESS_ARGS[@]}" || test_exit_code=$?
             fi
             ;;
         "e2e")
             print_step "Running full E2E tests..."
             if [ "$OPEN_CYPRESS" = true ]; then
-                npm run cypress:open -- "${CYPRESS_ARGS[@]}"
+                npm run cypress:open -- "${CYPRESS_ARGS[@]}" || test_exit_code=$?
             else
-                npm run cypress:run -- "${CYPRESS_ARGS[@]}"
+                npm run cypress:run -- "${CYPRESS_ARGS[@]}" || test_exit_code=$?
             fi
             ;;
         "all")
             print_step "Running complete test suite..."
             print_status "Phase 1: Self-tests"
-            npm run cypress:selftests -- "${CYPRESS_ARGS[@]}"
+            npm run cypress:selftests -- "${CYPRESS_ARGS[@]}" || test_exit_code=$?
             
-            print_status "Phase 2: E2E tests"
-            if [ "$OPEN_CYPRESS" = true ]; then
-                npm run cypress:open -- "${CYPRESS_ARGS[@]}"
+            if [ $test_exit_code -eq 0 ]; then
+                print_status "Phase 2: E2E tests"
+                if [ "$OPEN_CYPRESS" = true ]; then
+                    npm run cypress:open -- "${CYPRESS_ARGS[@]}" || test_exit_code=$?
+                else
+                    npm run cypress:run -- "${CYPRESS_ARGS[@]}" || test_exit_code=$?
+                fi
             else
-                npm run cypress:run -- "${CYPRESS_ARGS[@]}"
+                print_error "Selftests failed, skipping E2E tests"
             fi
             ;;
     esac
     
-    cd "$PROJECT_ROOT"
+    cd "$PROJECT_ROOT" || return $EXIT_SYSTEM_ERROR
+    
+    if [ $test_exit_code -ne 0 ]; then
+        print_error "Tests failed with exit code $test_exit_code"
+        return $test_exit_code
+    fi
+    
+    return 0
 }
 
 # Parse command line arguments
@@ -460,7 +483,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --help|-h)
             show_usage
-            exit 0
+            exit $EXIT_SUCCESS
             ;;
         --)
             shift
@@ -470,7 +493,7 @@ while [[ $# -gt 0 ]]; do
         *)
             print_error "Unknown option: $1"
             echo "Use --help for usage information"
-            exit 1
+            exit $EXIT_CONFIGURATION_ERROR
             ;;
     esac
 done
@@ -484,13 +507,13 @@ fi
 case "$MODE" in
     "status")
         show_environment_status
-        exit 0
+        exit $EXIT_SUCCESS
         ;;
     "build-only")
         print_header "🔨 Build-Only Mode"
         echo "=================="
-        check_prerequisites
-        run_build
+        check_prerequisites || exit $?
+        run_build || exit $?
         print_success "Build completed successfully!"
         ;;
     "quick")
@@ -500,18 +523,18 @@ case "$MODE" in
             print_error "NiFi not accessible. Start containers first:"
             print_status "  ./e-2-e-cypress/scripts/test-runner.sh --full"
             print_status "  OR: cd integration-testing/src/main/docker && docker compose up -d"
-            exit 1
+            exit $EXIT_NETWORK_ERROR
         }
-        run_tests
+        run_tests || exit $?
         print_success "Quick tests completed successfully!"
         ;;
     "full")
         print_header "🚀 Full Integration Test Suite"
         echo "==============================="
-        check_prerequisites
-        run_build
-        setup_containers
-        run_tests
+        check_prerequisites || exit $?
+        run_build || exit $?
+        setup_containers || exit $?
+        run_tests || exit $?
         print_success "Full integration test suite completed successfully!"
         
         echo ""

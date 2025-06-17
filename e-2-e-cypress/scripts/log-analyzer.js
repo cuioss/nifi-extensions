@@ -17,8 +17,15 @@
  * 
  * Usage:
  *   node scripts/log-analyzer.js                 # Enhanced analysis of latest run
- *   node scripts/log-analyzer.js run-123         # Enhanced analysis of specific run
- *   node scripts/log-analyzer.js --basic         # Basic console error analysis only
+ *   node scripts/log-analyzer.js run-123         # Enhanced analysis of specific ru      // Exit with error code if console errors or unexpected warnings found
+      if (results.console.summary.totalErrors > 0 || results.console.summary.totalUnexpectedWarnings > 0) {
+        const errorMsg = `Console issues detected: ${results.console.summary.totalErrors} errors, ${results.console.summary.totalUnexpectedWarnings} unexpected warnings`;
+        const error = ErrorFactory.data(errorMsg);
+        this.logger.failure(error.message);
+        throw error;
+      } else {
+        this.logger.success('No critical console issues found');
+      }node scripts/log-analyzer.js --basic         # Basic console error analysis only
  *   node scripts/log-analyzer.js --verbose       # Enhanced with detailed logging
  */
 
@@ -26,6 +33,7 @@ const fs = require('fs');
 const path = require('path');
 const { getTimestamp } = require('./utils/common');
 const { createLogger } = require('./utils/logger');
+const { EXIT_CODES, ErrorFactory, ErrorHandler, ExitHandler } = require('./utils/error-handling');
 
 // Import allowlist for console warnings
 const allowedWarnings = require('../cypress/support/console-warnings-allowlist');
@@ -807,7 +815,7 @@ Examples:
   node scripts/log-analyzer.js --basic                 # Basic console error analysis only
   node scripts/log-analyzer.js --verbose --no-html     # Enhanced with detailed logging, no HTML
 `);
-        process.exit(0);
+        process.exit(EXIT_CODES.SUCCESS);
         break;
       default:
         if (!arg.startsWith('--')) {
@@ -819,11 +827,22 @@ Examples:
     }
   }
 
+  // Set up graceful shutdown
+  const exitHandler = new ExitHandler();
+
   // Run analysis
   const analyzer = new UnifiedLogAnalyzer(options);
   analyzer.analyze(runId).catch(error => {
-    console.error('Analysis failed:', error.message);
-    process.exit(1);
+    if (error.code && error.category) {
+      // This is a StandardError
+      ErrorHandler.handle(error);
+      exitHandler.exit(error.code);
+    } else {
+      // Legacy error handling
+      const standardError = ErrorFactory.system(`Log analysis failed: ${error.message}`);
+      ErrorHandler.handle(standardError);
+      exitHandler.exit(standardError.code);
+    }
   });
 }
 
