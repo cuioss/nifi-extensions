@@ -1,53 +1,69 @@
-# MCP Playwright Tool Integration Guide
+# MCP Playwright Integration
+
+This guide covers MCP Playwright tool setup and integration for enhanced development workflows with the NiFi testing environment.
 
 ## Overview
 
-The MCP Playwright tool provides browser automation and local application understanding capabilities for the NiFi extensions project. This guide covers setup, configuration, and usage patterns for effective development and testing workflows.
+The MCP Playwright tool provides browser automation and application analysis capabilities that enhance the development and testing process. It enables:
 
-## ✅ Verification Status: COMPLETE + SIMPLIFIED
+- **Application Analysis**: Deep inspection of NiFi UI components
+- **Element Discovery**: Identification of robust selectors for testing
+- **Workflow Automation**: Enhanced development task automation
+- **Testing Support**: Integration with existing Cypress test workflows
 
-**MCP Playwright tool successfully verified and authentication simplified** based on analysis showing NiFi runs in anonymous access mode.
-
-## 🔍 Authentication Analysis Results
-
-### Key Discovery: **Anonymous Access Mode**
-- **API Analysis**: `curl http://localhost:9094/nifi-api/flow/current-user` returns `"anonymous":true`
-- **No Login Required**: NiFi UI loads directly without authentication forms
-- **Simplified Access**: Both Cypress and Playwright can access NiFi directly
-
-## Benefits for MCP Playwright
-
-1. **No SSL Issues**: HTTP access eliminates certificate problems
-2. **No Authentication Complexity**: Direct access to application
-3. **Fast Analysis**: No login wait times or authentication delays
-4. **Reliable**: No authentication state management needed
-5. **Simple Integration**: Single function call for access
-6. **100% Reliable**: No authentication failures or session timeouts
-
-## Quick Setup
+## Setup and Configuration
 
 ### Prerequisites
-- VS Code with MCP extension configured
+- VS Code with MCP extension
 - Docker running locally
-- NiFi integration testing environment
+- NiFi integration testing environment active
 
-### Start NiFi Environment
-
+### Environment Setup
 ```bash
-cd integration-testing/src/main/docker
-./start-nifi.sh
+# Start NiFi testing environment
+cd integration-testing
+./run-test-container.sh
+
+# Verify services are running
+docker ps | grep -E "(nifi|keycloak)"
 ```
 
-This starts:
-- **NiFi HTTP**: `http://localhost:9094/nifi` (MCP-compatible)
-- **Keycloak HTTP**: `http://localhost:9080` (admin interface)
-- **Keycloak HTTPS**: `https://localhost:9085` (secure authentication)
-
 ### Access Points
-- **NiFi UI**: http://localhost:9094/nifi (admin/adminadminadmin)
-- **Keycloak Admin**: http://localhost:9080/admin (admin/admin)
+- **NiFi UI**: `http://localhost:9094/nifi/`
+- **NiFi API**: `http://localhost:9094/nifi-api/`
+- **Keycloak**: `http://localhost:9080/`
 
 ## MCP Playwright Configuration
+
+### VS Code Settings
+```json
+{
+  "mcp.playwright": {
+    "enabled": true,
+    "baseUrl": "http://localhost:9094",
+    "timeout": 30000,
+    "headless": false
+  }
+}
+```
+
+### Tool Configuration
+The MCP Playwright tool can be configured to work with the NiFi environment:
+
+```javascript
+// MCP Playwright configuration
+const config = {
+  baseURL: 'http://localhost:9094/nifi/',
+  timeout: 30000,
+  viewport: { width: 1280, height: 720 },
+  ignoreHTTPSErrors: true,
+  
+  // NiFi-specific settings
+  waitForLoadState: 'networkidle',
+  screenshots: true,
+  trace: 'retain-on-failure'
+};
+```
 
 ### VS Code Settings
 ```json
@@ -444,44 +460,141 @@ async function generateCypressTests(page) {
 }
 ```
 
-## Troubleshooting and Best Practices
+## Usage Patterns
+
+### Application Analysis
+Use MCP Playwright to analyze NiFi UI components and identify testing targets:
+
+```javascript
+// Analyze processor components
+await page.goto('http://localhost:9094/nifi/');
+
+// Discover processor selectors
+const processors = await page.locator('[data-testid*="processor"]').all();
+console.log(`Found ${processors.length} processors`);
+
+// Analyze dialog structures
+const addProcessorButton = await page.locator('button:has-text("Add Processor")');
+await addProcessorButton.click();
+
+// Extract dialog selectors for Cypress tests
+const dialogSelectors = await page.locator('[role="dialog"] *[data-testid]').all();
+```
+
+### Element Discovery
+Identify robust selectors for Cypress test implementation:
+
+```javascript
+// Discover data-testid attributes
+const testIds = await page.evaluate(() => {
+  return Array.from(document.querySelectorAll('[data-testid]'))
+    .map(el => el.getAttribute('data-testid'));
+});
+
+// Find fallback selectors
+const fallbackSelectors = await page.evaluate(() => {
+  return Array.from(document.querySelectorAll('[aria-label], [role]'))
+    .map(el => ({
+      'aria-label': el.getAttribute('aria-label'),
+      'role': el.getAttribute('role'),
+      'tagName': el.tagName.toLowerCase()
+    }));
+});
+```
+
+### Integration with Cypress
+Generate Cypress test code from MCP Playwright analysis:
+
+```javascript
+// Generate Cypress selectors from Playwright analysis
+function generateCypressSelectors(elements) {
+  return elements.map(el => {
+    const strategies = [
+      el.testId ? `[data-testid="${el.testId}"]` : null,
+      el.ariaLabel ? `[aria-label="${el.ariaLabel}"]` : null,
+      el.role ? `[role="${el.role}"]` : null
+    ].filter(Boolean);
+    
+    return {
+      primary: strategies[0],
+      fallbacks: strategies.slice(1)
+    };
+  });
+}
+```
+
+## Development Workflow Integration
+
+### Test Development Process
+1. **Analyze with MCP Playwright**: Discover UI structure and selectors
+2. **Generate Cypress Commands**: Create robust test commands
+3. **Implement Tests**: Use discovered selectors in Cypress tests
+4. **Validate**: Verify tests work with MCP Playwright insights
+
+### Debugging Support
+Use MCP Playwright for debugging test failures:
+
+```javascript
+// Debug Cypress selector issues
+await page.goto('http://localhost:9094/nifi/');
+
+// Test selector reliability
+const selector = '[data-testid="add-processor"]';
+const element = await page.locator(selector);
+const isVisible = await element.isVisible();
+const isEnabled = await element.isEnabled();
+
+console.log(`Selector ${selector}: visible=${isVisible}, enabled=${isEnabled}`);
+```
+
+## Best Practices
+
+### Selector Discovery
+- **Prefer data-testid**: Look for existing data-testid attributes first
+- **Use semantic selectors**: Leverage ARIA labels and roles
+- **Create fallback strategies**: Multiple selector options for reliability
+- **Validate cross-browser**: Test selectors in different environments
 
 ### Performance Optimization
-```javascript
-// Optimized access pattern for repeated analysis
-class NiFiAnalyzer {
-  constructor() {
-    this.page = null;
-    this.isInitialized = false;
-  }
-  
-  async initialize(page) {
-    this.page = page;
-    await accessNiFi(page);
-    this.isInitialized = true;
-  }
-  
-  async analyze(analysisFunction) {
-    if (!this.isInitialized) {
-      throw new Error('Analyzer not initialized');
-    }
-    
-    return await analysisFunction(this.page);
-  }
-  
-  async cleanup() {
-    if (this.page) {
-      await this.page.close();
-    }
-  }
-}
+- **Use specific selectors**: Avoid broad CSS selectors
+- **Minimize network requests**: Cache analysis results
+- **Batch operations**: Group multiple analysis tasks
+- **Focus on test-relevant elements**: Don't analyze entire application
 
-// Usage
-const analyzer = new NiFiAnalyzer();
-await analyzer.initialize(page);
-const results = await analyzer.analyze(analyzeNiFiUI);
-await analyzer.cleanup();
+### Integration Guidelines
+- **Share findings**: Document discovered selectors for team use
+- **Update Cypress tests**: Apply insights to improve test reliability
+- **Maintain selector libraries**: Keep reusable selector collections
+- **Version control**: Track selector changes over time
+
+## Troubleshooting
+
+### Common Issues
+
+#### Connection Problems
+```bash
+# Verify NiFi is accessible
+curl -f http://localhost:9094/nifi-api/system-diagnostics
+
+# Check Docker containers
+docker ps | grep nifi
 ```
+
+#### Element Discovery Issues
+- **Timing problems**: Wait for page load complete
+- **Dynamic content**: Handle Angular component loading
+- **Selector specificity**: Use more specific selectors
+
+#### Integration Challenges
+- **Selector translation**: Map Playwright selectors to Cypress format
+- **Environment differences**: Account for test vs development environments
+- **State management**: Handle application state changes
+
+### Performance Tips
+- **Selective analysis**: Focus on specific UI areas
+- **Caching**: Store analysis results for reuse
+- **Parallel operations**: Use concurrent analysis where possible
+- **Resource management**: Clean up browser instances
 
 ---
 
