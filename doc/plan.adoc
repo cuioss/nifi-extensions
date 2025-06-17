@@ -23,38 +23,22 @@ _Current Status:_ Basic processor structure implemented with property descriptor
 
 _Sub-tasks:_
 
-* [x] Create processor class with basic structure
-* [x] Define property descriptors and relationships
-* [x] Implement token extraction from different sources
 * [~] Integrate with cui-jwt-validation library
-** [x] Initialize TokenValidator
 ** [~] Complete issuer configuration creation
-*** [x] Extract issuer properties from dynamic properties
 *** [ ] Create valid IssuerConfig objects (waiting for stable cui-jwt-validation library)
 ** [~] Implement token validation pipeline
-*** [x] Set up validation method structure
 *** [ ] Complete validation implementation (waiting for stable cui-jwt-validation library)
 * [~] Implement dynamic property handling for issuers
-** [x] Define dynamic property descriptor support
-** [x] Parse issuer configurations from dynamic properties
-** [x] Support runtime configuration changes
-*** [x] Detect configuration changes with hash
-*** [x] Recreate TokenValidator when configuration changes
-*** [x] Implement full configuration reload mechanism
-* [x] Implement attribute output for validated tokens
-** [x] Extract and map token claims to attributes
-** [x] Add validation metadata
-** [x] Add additional token metadata (e.g., roles, scopes)
+** [~] Support runtime configuration changes
 * [~] Implement standardized error handling
 ** [~] Define error codes and categories
-*** [x] Define basic error codes (AUTH-001, AUTH-002, AUTH-999)
-*** [x] Define basic error categories (EXTRACTION_ERROR, PROCESSING_ERROR)
 *** [~] Define comprehensive error code system
-**** [x] Add token size validation error code (AUTH-003)
-**** [x] Add malformed token error code (AUTH-004)
-**** [x] Add specific validation error codes (AUTH-005 to AUTH-008)
 **** [ ] Add more specific error codes for other validation scenarios
-** [x] Map validation exceptions to error attributes
+* [ ] Implement end-to-end integration tests
+** [ ] Test complete token validation flow
+** [ ] Test error handling scenarios
+** [ ] Test multiple issuer configurations
+** [ ] Test processor integration with NiFi
 
 _Specification Reference:_
 - link:specification/technical-components.adoc#_multiissuerjwttokenauthenticator[Technical Components: MultiIssuerJWTTokenAuthenticator]
@@ -78,28 +62,7 @@ _Current Status:_ Configuration support fully implemented including UI configura
 
 _Sub-tasks:_
 
-* [x] Implement dynamic property support
-** [x] Define property descriptors
-** [x] Add support for dynamic property registration
-** [x] Implement property validation
-* [x] Implement UI configuration
-** [x] Create custom UI components for issuer configuration
-** [x] Implement validation feedback
-** [x] Add help text and tooltips
-* [x] Implement static configuration file support
-** [x] Define configuration file format
-** [x] Implement file loading and parsing
-** [x] Handle file errors gracefully
-* [x] Implement environment variable support
-** [x] Define environment variable naming convention
-** [x] Implement environment variable loading
-* [x] Implement configuration precedence
-** [x] Define precedence order
-** [x] Implement override logic
-* [x] Implement configuration reload
-** [x] Detect configuration changes
-** [x] Implement safe reload mechanism
-** [x] Maintain state during reload
+All configuration support tasks are completed.
 
 _Specification Reference:_
 - link:specification/configuration-ui.adoc[UI Configuration]
@@ -149,6 +112,12 @@ _Sub-tasks:_
 ** [ ] Create OpenAPI/Swagger documentation
 ** [ ] Document request/response formats
 ** [ ] Document error responses
+* [ ] Implement end-to-end integration tests
+** [ ] Test REST API endpoints with UI components
+** [ ] Test JWKS validation workflow
+** [ ] Test token verification workflow
+** [ ] Test issuer configuration management workflow
+** [ ] Test error handling and user feedback
 
 _Specification Reference:_
 - link:specification/configuration-ui.adoc#_backend_integration_rest_call[UI Configuration: Backend Integration]
@@ -161,7 +130,7 @@ _Postconditions for each step:_
 * Verify that custom UI components can communicate with the REST API endpoints
 * GIT commit each verified step
 
-==== S1. Security &amp; Performance
+==== S1. Security & Performance
 
 INFO: Implement tasks from this section only when explicitly asked
 
@@ -176,23 +145,17 @@ _Current Status:_ Security features partially implemented. Algorithm validation 
 _Sub-tasks:_
 
 * [~] Enforce secure algorithms
-** [x] Restrict to approved JWT algorithms (RS256, ES256)
-** [x] Implement algorithm validation
-** [x] Reject tokens with weak algorithms
+** [ ] Implement certificate validation
+** [ ] Support custom trust stores
 * [ ] Implement secure key management
 ** [ ] Support secure JWKS retrieval
 ** [ ] Implement key rotation
 ** [ ] Add key caching with expiration
 * [~] Enforce HTTPS for external endpoints
-** [x] Require TLS for JWKS endpoints
 ** [ ] Implement certificate validation
 ** [ ] Support custom trust stores
 * [~] Implement performance limits
-** [x] Add token size limits
-** [x] Add payload size limits
 * [~] Integrate security event monitoring
-** [x] Track validation failures
-** [x] Log security events
 ** [ ] Expose security metrics
 
 _Specification Reference:_
@@ -216,30 +179,7 @@ _Current Status:_ Internationalization infrastructure implemented with resource 
 
 _Sub-tasks:_
 
-* [x] Set up i18n infrastructure
-** [x] Create resource bundle structure
-** [x] Implement resource loading mechanism
-** [x] Add fallback handling
-* [x] Internationalize processor properties
-** [x] Translate property names
-** [x] Translate property descriptions
-** [x] Translate validation messages
-* [x] Internationalize error messages
-** [x] Create message catalog for error codes
-** [x] Translate error messages
-** [x] Implement message formatting with parameters
-* [x] Internationalize UI components
-** [x] Translate UI labels
-** [x] Translate help text
-** [x] Implement RTL support if needed
-* [x] Provide language bundles
-** [x] Create English (default) bundle
-** [x] Create German bundle
-** [x] Add documentation for adding new languages
-* [x] Implement language selection
-** [x] Add language preference setting
-** [x] Implement language detection
-** [x] Support browser language preference
+All internationalization tasks are completed.
 
 _Specification Reference:_
 - link:specification/internationalization.adoc[Internationalization]
@@ -250,7 +190,7 @@ _Postconditions for each step:_
 * Verify with a Maven build: `./mvnw -Prewrite rewrite:run clean install javadoc:javadoc` (fix all Javadoc errors/warnings, all tests must pass)
 * GIT commit each verified step
 
-== Testing
+=== Testing
 _See link:specification/testing.adoc[Testing Specification]_
 
 ==== T1. Unit Testing
@@ -264,40 +204,20 @@ _Current Status:_ Basic unit tests implemented for token extraction and processo
 
 _Sub-tasks:_
 
-* [x] Set up testing infrastructure
-** [x] Configure JUnit 5
-** [x] Set up test utilities
-* [x] Implement basic processor tests
-** [x] Test processor initialization
-** [x] Test property validation
-** [x] Test relationship routing
-* [x] Implement token extraction tests
-** [x] Test extraction from headers
-** [x] Test extraction from content
-** [x] Test handling of missing tokens
 * [~] Implement token validation tests
 ** [~] Test validation of valid tokens
-*** [x] Set up test structure
 *** [ ] Complete validation tests (waiting for stable cui-jwt-validation library)
 ** [~] Test validation of invalid tokens
-*** [x] Set up test structure
 *** [ ] Complete validation tests (waiting for stable cui-jwt-validation library)
 ** [ ] Test validation of expired tokens (waiting for stable cui-jwt-validation library)
 ** [ ] Test validation with different issuers (waiting for stable cui-jwt-validation library)
 * [~] Implement configuration tests
-** [x] Test dynamic property handling
 ** [~] Test configuration reload
-*** [x] Test configuration hash changes
 *** [ ] Test full reload mechanism
 ** [ ] Test configuration precedence (waiting for precedence implementation)
 * [~] Implement error handling tests
-** [x] Test error attribute generation
 ** [~] Test error routing
-*** [x] Test routing to AUTHENTICATION_FAILED relationship
-*** [x] Test specific error codes and categories
 * [~] Implement internationalization tests
-** [x] Test internationalized error messages
-** [x] Test locale-specific formatting
 ** [ ] Test UI internationalization
 * [ ] Achieve code coverage targets
 ** [ ] Reach 80% line coverage
@@ -322,9 +242,6 @@ _Current Status:_ Initial test setup completed. Mock server configuration in pro
 
 _Sub-tasks:_
 
-* [x] Set up integration testing infrastructure
-** [x] Configure test dependencies
-** [x] Set up test utilities
 * [ ] Implement mock JWKS endpoint tests
 ** [ ] Configure MockWebServer
 ** [ ] Create JWKS test fixtures
@@ -347,6 +264,12 @@ _Sub-tasks:_
 ** [ ] Test network failures
 ** [ ] Test service unavailability
 ** [ ] Test recovery behavior
+* [ ] Implement end-to-end integration tests
+** [ ] Test complete processor workflow in NiFi
+** [ ] Test UI integration with backend
+** [ ] Test configuration management through UI
+** [ ] Test token validation with real JWT providers
+** [ ] Test error scenarios and recovery
 
 _Specification Reference:_
 - link:specification/testing.adoc#_integration_testing[Testing: Integration Testing]
@@ -369,18 +292,8 @@ _Current Status:_ JavaScript testing infrastructure set up with Jest. Unit tests
 
 _Sub-tasks:_
 
-* [x] Set up JavaScript testing infrastructure
-** [x] Configure Jest or similar test framework
-** [x] Set up test utilities
-** [x] Configure code coverage reporting
-* [x] Implement unit tests for UI components
-** [x] Test form validation
-** [x] Test UI state management
-** [x] Test error handling
 * [~] Implement integration tests for UI
 ** [ ] Test form submission
-** [x] Test API interactions
-** [x] Test error display
 * [ ] Implement end-to-end UI tests
 ** [ ] Test complete configuration workflow
 ** [ ] Test token verification workflow
@@ -398,6 +311,12 @@ _Sub-tasks:_
 ** [ ] Test in Chrome
 ** [ ] Test in Firefox
 ** [ ] Test in Edge
+* [ ] Implement end-to-end integration tests
+** [ ] Test complete UI workflows in NiFi
+** [ ] Test processor configuration through UI
+** [ ] Test token validation feedback
+** [ ] Test JWKS validation in real environment
+** [ ] Test error handling and recovery flows
 
 _Specification Reference:_
 - link:../e-2-e-cypress/doc/javascript-testing-guide.md[JavaScript Testing Implementation Guide]
@@ -407,45 +326,7 @@ _Postconditions for each step:_
 * Verify with a Maven build: `./mvnw -Prewrite rewrite:run clean install javadoc:javadoc` (fix all Javadoc errors/warnings, all tests must pass)
 * GIT commit each verified step
 
-==== T4. Docker Test Environment
-[x] _Priority:_ Medium
-
-_Description:_ Create a Docker-based test environment for the MultiIssuerJWTTokenAuthenticator processor to facilitate testing and validation in a containerized NiFi instance.
-
-_Rationale:_ A Docker test environment allows for easy testing of the processor in a realistic NiFi environment without requiring a full NiFi installation.
-
-_Current Status:_ Docker test environment fully implemented with a Dockerfile, docker-compose.yml, helper scripts, and documentation.
-
-_Sub-tasks:_
-
-* [x] Create Docker configuration
-** [x] Create Dockerfile for NiFi with the processor
-** [x] Create docker-compose.yml for easy deployment
-** [x] Configure NiFi with a default user
-** [x] Set up volume mount for the NAR file
-* [x] Create helper scripts
-** [x] Create script to build NAR and start container
-** [x] Create script to stop and clean up container
-** [x] Make scripts executable
-* [x] Create documentation
-** [x] Document Docker setup and configuration
-** [x] Document how to use the test environment
-** [x] Document troubleshooting steps
-** [x] Add references to related documentation
-* [x] Organize test files
-** [x] Place all Docker files in src/test/docker
-** [x] Create documentation in integration-testing/README.adoc
-
-_Specification Reference:_
-- link:../integration-testing/README.adoc[Docker Test Environment]
-- link:specification/testing.adoc[Testing Specification]
-
-_Postconditions for each step:_
-
-* Verify with a Maven build: `./mvnw -Prewrite rewrite:run clean install javadoc:javadoc` (fix all Javadoc errors/warnings, all tests must pass)
-* GIT commit each verified step
-
-== Documentation
+=== Documentation
 _See Requirements NIFI-AUTH-13_
 
 ==== DOC1. Documentation
@@ -459,14 +340,7 @@ _Current Status:_ Initial documentation structure in place. Plan document update
 
 _Sub-tasks:_
 
-* [x] Set up documentation structure
-** [x] Create AsciiDoc files for specifications
-** [x] Set up cross-references
-** [x] Create initial PlantUML diagrams
 * [~] Maintain implementation plan
-** [x] Create high-level task structure
-** [x] Add detailed sub-tasks
-** [x] Update task status
 ** [~] Keep plan synchronized with implementation progress
 * [~] Update technical specifications
 ** [~] Update component specifications
@@ -478,7 +352,6 @@ _Sub-tasks:_
 * [~] Create user documentation
 ** [ ] Write installation guide
 ** [~] Write configuration guide
-** [x] Write Docker test environment guide
 ** [ ] Write troubleshooting guide
 * [ ] Update diagrams
 ** [ ] Update architecture diagrams
@@ -498,10 +371,10 @@ _Postconditions for each step:_
 * Verify with a Maven build: `./mvnw -Prewrite rewrite:run clean install javadoc:javadoc` (fix all Javadoc errors/warnings, all tests must pass)
 * GIT commit each verified step
 
-== Observability &amp; Metrics
+=== Observability & Metrics
 _See Requirements NIFI-AUTH-18 in link:Requirements.adoc[Requirements]_
 
-==== O1. Observability &amp; Metrics
+==== O1. Observability & Metrics
 [ ] _Priority:_ Medium
 
 _Description:_ Expose processor metrics in NiFi UI, integrate with NiFi metrics system, and expose Prometheus-compatible metrics.
@@ -513,8 +386,6 @@ _Current Status:_ Basic metrics collection implemented. Integration with NiFi me
 _Sub-tasks:_
 
 * [~] Implement metrics collection
-** [x] Define key metrics
-** [x] Implement counters for token processing
 ** [ ] Implement histograms for processing time
 * [ ] Expose metrics in NiFi UI
 ** [ ] Add processor status metrics
@@ -545,7 +416,7 @@ _Postconditions for each step:_
 * Verify with a Maven build: `./mvnw -Prewrite rewrite:run clean install javadoc:javadoc` (fix all Javadoc errors/warnings, all tests must pass)
 * GIT commit each verified step
 
-== Security
+=== Security
 _See Requirements NIFI-AUTH-8_
 
 ==== S2. Security
@@ -559,12 +430,7 @@ _Current Status:_ Basic security measures implemented. Logging standards fixed t
 
 _Sub-tasks:_
 
-* [x] Implement secure logging practices
-** [x] Use proper logging placeholders (%s instead of {})
-** [x] Ensure no sensitive data is logged
-** [x] Follow CUI logging standards
 * [~] Implement input validation
-** [x] Validate property values
 ** [ ] Validate token format
 ** [ ] Implement size limits
 ** [ ] Add input sanitization
