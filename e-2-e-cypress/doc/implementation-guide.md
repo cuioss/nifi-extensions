@@ -108,6 +108,57 @@ docker --version && docker-compose --version
 lsof -i :9095 -i :9085  # Should be empty (ports available)
 ```
 
+## Test Environment Architecture
+
+### Docker Infrastructure
+
+The end-to-end testing environment uses a containerized architecture for consistent, reproducible testing:
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Cypress       │    │   NiFi 2.4.0    │    │   Keycloak      │
+│   Test Runner   │◄──►│   HTTPS:9095    │◄──►│   HTTP:9080     │
+│                 │    │   Custom NAR    │    │   HTTPS:9085    │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+**🚀 Environment Components**:
+- **NiFi Instance**: Custom processor deployment, admin authentication
+- **Keycloak Server**: OAuth integration testing, pre-configured realm
+- **Test Data Management**: Automated generation, validation, cleanup
+- **Certificate Infrastructure**: Self-signed certificates for HTTPS testing
+
+**📋 Environment Management**:
+```bash
+# Start test environment
+./integration-testing/src/main/docker/run-test-container.sh
+
+# Stop and cleanup
+./integration-testing/src/main/docker/stop-test-container.sh
+
+# Full cleanup (reset state)
+./integration-testing/src/main/docker/cleanup-test-environment.sh
+```
+
+### MCP Playwright Integration for Analysis
+
+For advanced UI analysis and exploration of the NiFi interface, this environment supports MCP Playwright integration:
+
+**🔍 Analysis Capabilities**:
+- UI discovery and element identification for testing
+- Processor catalog analysis and documentation extraction  
+- Test case generation from UI analysis patterns
+- Performance monitoring and responsiveness analysis
+- Reliable selector identification for dynamic elements
+
+**⚡ Key Benefits**:
+- Direct HTTP access (no SSL complexity)
+- Anonymous access mode (no authentication overhead)
+- Fast analysis (~3 seconds vs 7-8 seconds for auth)
+- Consistent UI state for reliable analysis
+
+**📖 Usage**: See [MCP Playwright Guide](mcp-playwright-guide.md) for detailed patterns and workflows.
+
 ## Environment Setup
 
 ### 1. Clone and Navigate
