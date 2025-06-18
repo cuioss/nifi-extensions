@@ -25,6 +25,8 @@
         <maven.build.timeout>120</maven.build.timeout> <!-- 2 minutes max -->
         <nifi.startup.timeout>60</nifi.startup.timeout> <!-- 1 minute for NiFi startup -->
         <cypress.timeout>120</cypress.timeout> <!-- 2 minutes for Cypress tests -->
+        <!-- Exclude this module from SonarQube analysis -->
+        <sonar.skip>true</sonar.skip>
     </properties>
 
     <build>
