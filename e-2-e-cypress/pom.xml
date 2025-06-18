@@ -110,6 +110,11 @@
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>
                 <version>${frontend.maven.plugin.version}</version>
+                <configuration>
+                    <nodeVersion>${frontend.node.version}</nodeVersion>
+                    <npmVersion>${frontend.npm.version}</npmVersion>
+                    <installDirectory>target</installDirectory>
+                </configuration>
                 <executions>
                     <!-- Install Node and NPM -->
                     <execution>
@@ -118,10 +123,6 @@
                             <goal>install-node-and-npm</goal>
                         </goals>
                         <phase>initialize</phase>
-                        <configuration>
-                            <nodeVersion>${frontend.node.version}</nodeVersion>
-                            <npmVersion>${frontend.npm.version}</npmVersion>
-                        </configuration>
                     </execution>
                     <!-- Install dependencies -->
                     <execution>
@@ -140,7 +141,7 @@
                         <goals>
                             <goal>npm</goal>
                         </goals>
-                        <phase>validate</phase>
+                        <phase>compile</phase>
                         <configuration>
                             <arguments>run lint:strict</arguments>
                             <skip>false</skip>
@@ -181,6 +182,11 @@
                         <groupId>com.github.eirslett</groupId>
                         <artifactId>frontend-maven-plugin</artifactId>
                         <version>${frontend.maven.plugin.version}</version>
+                        <configuration>
+                            <nodeVersion>${frontend.node.version}</nodeVersion>
+                            <npmVersion>${frontend.npm.version}</npmVersion>
+                            <installDirectory>target</installDirectory>
+                        </configuration>
                         <executions>
                             <!-- Run actual E2E tests (requires containers to be running) -->
                             <execution>
@@ -217,6 +223,11 @@
                         <groupId>com.github.eirslett</groupId>
                         <artifactId>frontend-maven-plugin</artifactId>
                         <version>${frontend.maven.plugin.version}</version>
+                        <configuration>
+                            <nodeVersion>${frontend.node.version}</nodeVersion>
+                            <npmVersion>${frontend.npm.version}</npmVersion>
+                            <installDirectory>target</installDirectory>
+                        </configuration>
                         <executions>
                             <!-- Run full E2E tests with Docker containers -->
                             <execution>
@@ -252,6 +263,11 @@
                         <groupId>com.github.eirslett</groupId>
                         <artifactId>frontend-maven-plugin</artifactId>
                         <version>${frontend.maven.plugin.version}</version>
+                        <configuration>
+                            <nodeVersion>${frontend.node.version}</nodeVersion>
+                            <npmVersion>${frontend.npm.version}</npmVersion>
+                            <installDirectory>target</installDirectory>
+                        </configuration>
                         <executions>
                             <!-- Override default selftest execution with safe version -->
                             <execution>
