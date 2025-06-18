@@ -41,6 +41,9 @@
         <!-- Sonar related-->
         <sonar.organization>cuioss-github</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <!-- Exclude e-2-e-cypress module from SonarQube analysis -->
+        <sonar.exclusions>e-2-e-cypress/**</sonar.exclusions>
+        <sonar.skip>false</sonar.skip>
         <!-- Core -->
         <maven.compiler.plugin.version>3.14.0</maven.compiler.plugin.version>
         <maven.gpg.plugin.version>3.2.7</maven.gpg.plugin.version>
@@ -381,6 +384,13 @@
     <profiles>
         <profile>
             <id>sonar</id>
+            <modules>
+                <module>nifi-cuioss-processors</module>
+                <module>nifi-cuioss-ui</module>
+                <module>nifi-cuioss-nar</module>
+                <module>integration-testing</module>
+                <!-- e-2-e-cypress module excluded from sonar analysis -->
+            </modules>
             <build>
                 <plugins>
                     <plugin>
