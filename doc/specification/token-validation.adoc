@@ -291,7 +291,7 @@ To use the cui-jwt-validation library in the NiFi processor, add the following d
 [source,xml]
 ----
 <dependency>
-    <groupId>de.cuioss</groupId>
+    <groupId>de.cuioss.jwt</groupId>
     <artifactId>cui-jwt-validation</artifactId>
     <version>${version.cui-jwt-validation}</version>
 </dependency>

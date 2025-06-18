@@ -213,7 +213,7 @@
                 <scope>test</scope>
             </dependency>
             <dependency>
-                <groupId>de.cuioss</groupId>
+                <groupId>de.cuioss.jwt</groupId>
                 <artifactId>cui-jwt-validation</artifactId>
                 <version>${version.cui-jwt-validation}</version>
                 <scope>compile</scope>
@@ -222,7 +222,7 @@
                 <groupId>de.cuioss</groupId>
                 <artifactId>cui-jwt-validation</artifactId>
                 <version>${version.cui-jwt-validation}</version>
-                <classifier>test</classifier>
+                <classifier>generators</classifier>
                 <scope>test</scope>
             </dependency>
             <!-- Implementation of jakarta.json-api: Used for cui-jwt-validation-->
