@@ -24,6 +24,8 @@
         <maven.build.timeout>180</maven.build.timeout> <!-- 3 minutes max -->
         <nifi.startup.timeout>120</nifi.startup.timeout> <!-- 2 minutes for NiFi startup -->
         <cypress.timeout>120</cypress.timeout> <!-- 2 minutes for Cypress tests -->
+        <!-- Code quality configuration -->
+        <skip.lint>false</skip.lint> <!-- Run linting by default, skip only for integration tests -->
         <!-- Exclude this module from SonarQube analysis -->
         <sonar.skip>true</sonar.skip>
     </properties>
@@ -69,7 +71,7 @@
                         <phase>compile</phase>
                         <configuration>
                             <arguments>run lint:strict</arguments>
-                            <skip>false</skip>
+                            <skip>${skip.lint}</skip>
                         </configuration>
                     </execution>
                     <!-- Run self-verification tests during verify phase -->
@@ -140,6 +142,7 @@
             <properties>
                 <skipTests>false</skipTests>
                 <maven.test.skip>false</maven.test.skip>
+                <skip.lint>true</skip.lint> <!-- Skip linting during integration tests -->
             </properties>
             <build>
                 <plugins>
