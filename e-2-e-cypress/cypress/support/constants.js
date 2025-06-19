@@ -219,7 +219,7 @@ export const URLS = {
   // NiFi base configuration - uses Cypress baseUrl with fallback
   NIFI_BASE:
     (typeof Cypress !== 'undefined' ? Cypress.config('baseUrl') : null) ||
-    'http://localhost:9094/nifi',
+    'https://localhost:9095/nifi',
 
   // Keycloak configuration - uses environment variables with fallbacks
   // Note: The hardcoded URLs were using port 8443, but current config uses 9085

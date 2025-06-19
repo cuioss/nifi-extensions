@@ -3,7 +3,7 @@
  * These tests verify JWT token validation against an actual NiFi instance
  *
  * Prerequisites:
- * - NiFi must be running on http://localhost:9094/nifi
+ * - NiFi must be running on https://localhost:9095/nifi
  * - Default credentials: admin/adminadminadmin
  * - MultiIssuerJWTTokenAuthenticator processor must be available
  */

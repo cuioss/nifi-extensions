@@ -40,7 +40,7 @@ docker ps | grep -E "(nifi|keycloak)"
 {
   "mcp.playwright": {
     "enabled": true,
-    "baseUrl": "http://localhost:9094",
+    "baseUrl": "https://localhost:9095",
     "timeout": 30000,
     "headless": false
   }
@@ -53,7 +53,7 @@ The MCP Playwright tool can be configured to work with the NiFi environment:
 ```javascript
 // MCP Playwright configuration
 const config = {
-  baseURL: 'http://localhost:9094/nifi/',
+  baseURL: 'https://localhost:9095/nifi/',
   timeout: 30000,
   viewport: { width: 1280, height: 720 },
   ignoreHTTPSErrors: true,
@@ -94,7 +94,7 @@ const config = {
 // Simplified NiFi access for MCP Playwright
 async function accessNiFi(page) {
   // Navigate directly to NiFi - no authentication required
-  await page.goto('http://localhost:9094/nifi');
+  await page.goto('https://localhost:9095/nifi');
   
   // Wait for Angular app to load
   await page.waitForSelector('nifi', { timeout: 30000 });
@@ -297,7 +297,7 @@ The MCP Playwright tool runs in a Docker container with these capabilities:
 
 ### Development Workflow
 1. **Start Environment**: Use `./start-nifi.sh` for HTTP setup
-2. **Verify Access**: Ensure NiFi loads at http://localhost:9094/nifi
+2. **Verify Access**: Ensure NiFi loads at https://localhost:9095/nifi
 3. **Use MCP Tool**: Analyze pages and generate tests as needed
 4. **Integration**: Incorporate findings into Cypress test suite
 
@@ -328,7 +328,7 @@ docker restart <container-id>
 **Cannot Access NiFi**
 ```bash
 # Check NiFi is running on HTTP
-curl http://localhost:9094/nifi
+curl -k https://localhost:9095/nifi
 # Restart environment if needed
 ./start-nifi.sh
 ```
@@ -467,7 +467,7 @@ Use MCP Playwright to analyze NiFi UI components and identify testing targets:
 
 ```javascript
 // Analyze processor components
-await page.goto('http://localhost:9094/nifi/');
+await page.goto('https://localhost:9095/nifi/');
 
 // Discover processor selectors
 const processors = await page.locator('[data-testid*="processor"]').all();
@@ -536,7 +536,7 @@ Use MCP Playwright for debugging test failures:
 
 ```javascript
 // Debug Cypress selector issues
-await page.goto('http://localhost:9094/nifi/');
+await page.goto('https://localhost:9095/nifi/');
 
 // Test selector reliability
 const selector = '[data-testid="add-processor"]';
@@ -574,7 +574,7 @@ console.log(`Selector ${selector}: visible=${isVisible}, enabled=${isEnabled}`);
 #### Connection Problems
 ```bash
 # Verify NiFi is accessible
-curl -f http://localhost:9094/nifi-api/system-diagnostics
+curl -k -f https://localhost:9095/nifi-api/system-diagnostics
 
 # Check Docker containers
 docker ps | grep nifi
