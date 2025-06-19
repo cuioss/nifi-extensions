@@ -53,7 +53,7 @@ npm install
 [source,bash]
 ----
 # CUI-compliant: Maven manages containers and runs tests
-mvn clean verify -P integration-tests
+./mvnw clean verify -P integration-tests
 
 # Or run tests with containers already started
 npm run cypress:run
@@ -64,7 +64,7 @@ npm run cypress:run
 [source,bash]
 ----
 # Start containers via Maven (in separate terminal)
-mvn clean pre-integration-test -P integration-tests
+./mvnw clean pre-integration-test -P integration-tests
 
 # Run specific tests
 npm run cypress:run
@@ -163,7 +163,7 @@ The module includes comprehensive unit tests that verify command functionality w
 npm run cypress:selftests
 
 # Run via Maven
-mvn test -pl :e-2-e-cypress
+./mvnw test -pl :e-2-e-cypress
 ----
 
 *Command Unit Tests (14 tests):*
@@ -193,16 +193,16 @@ The Maven build follows CUI standards for container lifecycle management:
 [source,bash]
 ----
 # Integration tests - Maven manages containers via exec-maven-plugin
-mvn clean verify -P integration-tests
+./mvnw clean verify -P integration-tests
 
 # Fast build without any tests
-mvn clean verify -DskipTests=true
+./mvnw clean verify -DskipTests=true
 
 # Full UI testing (requires containers to be started separately)
-mvn clean integration-test -P ui-tests
+./mvnw clean integration-test -P ui-tests
 
 # Legacy safe mode (skip if no containers)
-mvn clean verify -P safe-selftests
+./mvnw clean verify -P safe-selftests
 ----
 
 **CUI-Compliant Process:**
@@ -274,13 +274,13 @@ open cypress/reports/enhanced-analysis/comprehensive-report.html
 [source,bash]
 ----
 # Run through Maven (includes linting + unit tests)
-mvn clean test
+./mvnw clean test
 
 # Run only self-tests (unit tests)
-mvn clean pre-integration-test
+./mvnw clean pre-integration-test
 
 # Run full test suite including E2E tests
-mvn clean integration-test
+./mvnw clean integration-test
 
 # Check code formatting
 npm run format:check

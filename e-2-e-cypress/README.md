@@ -14,7 +14,7 @@ cd e-2-e-cypress
 npm install
 
 # Run integration tests (starts containers, runs tests, stops containers)
-mvn clean test -Pintegration-tests
+./mvnw clean test -Pintegration-tests
 
 # Or run only Cypress tests (requires containers to be started externally)
 npm run cypress:run
