@@ -292,5 +292,62 @@
                 </plugins>
             </build>
         </profile>
+        
+        <!-- Profile for sonar build - skip all tests and Docker operations -->
+        <profile>
+            <id>sonar</id>
+            <properties>
+                <!-- Skip all tests and executions for sonar analysis -->
+                <skipTests>true</skipTests>
+                <maven.test.skip>true</maven.test.skip>
+                <autoStartNiFi>false</autoStartNiFi>
+            </properties>
+            <build>
+                <plugins>
+                    <!-- Override frontend plugin to skip all executions -->
+                    <plugin>
+                        <groupId>com.github.eirslett</groupId>
+                        <artifactId>frontend-maven-plugin</artifactId>
+                        <version>${frontend.maven.plugin.version}</version>
+                        <executions>
+                            <!-- Override all frontend executions to skip them -->
+                            <execution>
+                                <id>install-node-and-npm</id>
+                                <phase>none</phase>
+                            </execution>
+                            <execution>
+                                <id>npm-install</id>
+                                <phase>none</phase>
+                            </execution>
+                            <execution>
+                                <id>npm-lint</id>
+                                <phase>none</phase>
+                            </execution>
+                            <execution>
+                                <id>cypress-selftests</id>
+                                <phase>none</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- Override exec plugin to skip all Docker operations -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <!-- Override all exec executions to skip them -->
+                            <execution>
+                                <id>start-nifi-containers</id>
+                                <phase>none</phase>
+                            </execution>
+                            <execution>
+                                <id>stop-nifi-containers</id>
+                                <phase>none</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 </project>
