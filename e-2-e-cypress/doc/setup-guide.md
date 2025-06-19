@@ -126,16 +126,33 @@ mvn verify -Pui-tests
 mvn clean install -Pui-tests
 ```
 
-### Auto-Start Configuration
-The Maven configuration can automatically start containers:
+### Maven Profile Configuration
+The integration tests use Maven profiles for container management:
 
 ```xml
-<!-- Auto-start containers during verify phase -->
+<!-- CUI-compliant container lifecycle management -->
 <profile>
-  <id>ui-tests</id>
-  <properties>
-    <cypress.auto.start>true</cypress.auto.start>
-  </properties>
+  <id>integration-tests</id>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>start-containers</id>
+            <phase>pre-integration-test</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>./scripts/start-integration-containers.sh</executable>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </profile>
 ```
 

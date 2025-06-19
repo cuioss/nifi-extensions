@@ -48,22 +48,25 @@ cd e-2-e-cypress
 npm install
 ----
 
-. Start the test environment:
+. Start the test environment and run tests:
 +
 [source,bash]
 ----
-# Start the complete test environment
-npm run env:start
+# CUI-compliant: Maven manages containers and runs tests
+mvn clean verify -P integration-tests
 
-# Or start NiFi only
-npm run nifi:start
+# Or run tests with containers already started
+npm run cypress:run
 ----
 
-. Run tests:
+. Run tests in development:
 +
 [source,bash]
 ----
-# Run all tests
+# Start containers via Maven (in separate terminal)
+mvn clean pre-integration-test -P integration-tests
+
+# Run specific tests
 npm run cypress:run
 
 # Run self-verification tests
@@ -72,7 +75,7 @@ npm run cypress:selftests
 # Run specific processor tests
 npx cypress run --spec "cypress/e2e/*processor*.cy.js"
 
-# Interactive mode
+# Interactive mode for development
 npm run cypress:open
 ----
 
@@ -183,31 +186,31 @@ mvn test -pl :e-2-e-cypress
 
 The module integrates with Maven through the unified `frontend-maven-plugin` configuration and provides comprehensive test result deployment:
 
-=== Auto-Start Configuration (Production Ready)
+=== CUI-Compliant Integration (Production Ready)
 
-The Maven build automatically manages NiFi containers:
+The Maven build follows CUI standards for container lifecycle management:
 
 [source,bash]
 ----
-# Auto-start build - starts NiFi automatically and runs selftests
-mvn clean verify
+# Integration tests - Maven manages containers via exec-maven-plugin
+mvn clean verify -P integration-tests
 
 # Fast build without any tests
 mvn clean verify -DskipTests=true
 
-# Full UI testing (requires containers)
-mvn clean integration-test -Pui-tests
+# Full UI testing (requires containers to be started separately)
+mvn clean integration-test -P ui-tests
 
-# Legacy safe mode (skip if no NiFi)
-mvn clean verify -Psafe-selftests
+# Legacy safe mode (skip if no containers)
+mvn clean verify -P safe-selftests
 ----
 
-**Auto-Start Process:**
-1. 🔍 Check HTTPS NiFi (port 9095)
-2. 🔄 Check HTTP NiFi (port 9094) if HTTPS fails  
-3. 🚀 Start containers if neither accessible
-4. ⏳ Wait for ready with health checks (up to 5 minutes)
-5. 🧪 Run selftests with correct URL
+**CUI-Compliant Process:**
+1. � Maven exec-maven-plugin calls container start script
+2. 🚀 Start containers via `scripts/start-integration-containers.sh`
+3. ⏳ Wait for readiness with health checks (up to 2 minutes fail-fast)
+4. 🧪 Run tests with correct configuration
+5. 🛑 Stop containers via `scripts/stop-integration-containers.sh` (post-integration-test)
 6. ✅ Report results
 
 === E2E Test Results Deployment
@@ -243,8 +246,8 @@ open cypress/reports/enhanced-analysis/comprehensive-report.html
 - Error categorization (critical vs warnings)
 
 **Infrastructure Tools**
-- NiFi Health Checker: Service availability verification
-- Auto-start Integration: Complete environment lifecycle management
+- Container Health Checker: Service availability verification
+- Maven Integration: Complete environment lifecycle management via exec-maven-plugin
 - Dependency Validation: WebJar version checking
 
 === Access Methods for Test Results

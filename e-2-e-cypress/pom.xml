@@ -16,7 +16,6 @@
     <description>End-to-End Cypress tests for NiFi Extensions</description>
 
     <properties>
-        <autoStartNiFi>true</autoStartNiFi>
         <docker.script.dir>${project.basedir}/../integration-testing/src/main/docker</docker.script.dir>
         <nifi.base.url>http://localhost:9094/nifi/</nifi.base.url>
         <keycloak.url>http://localhost:9080</keycloak.url>
@@ -31,91 +30,7 @@
 
     <build>
         <plugins>
-            <!-- Docker NiFi lifecycle management -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.1.0</version>
-                <executions>
-                    <!-- Start NiFi containers before tests -->
-                    <execution>
-                        <id>start-nifi-containers</id>
-                        <phase>pre-integration-test</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>bash</executable>
-                            <workingDirectory>${docker.script.dir}</workingDirectory>
-                            <arguments>
-                                <argument>-c</argument>
-                                <argument>
-                                    if [ "${autoStartNiFi}" = "true" ]; then
-                                        echo "Starting NiFi containers for testing...";
-                                        ./start-nifi.sh;
-                                        echo "Verifying NiFi service is ready with fail-fast timeout...";
-                                        
-                                        # Fail-fast health check with 2-minute timeout
-                                        COUNTER=0
-                                        MAX_ATTEMPTS=${nifi.startup.timeout}
-                                        INTERVAL=2
-                                        while [ $COUNTER -lt $MAX_ATTEMPTS ]; do
-                                            if curl --fail --max-time 3 --silent http://localhost:9094/nifi/ &gt; /dev/null 2&gt;&amp;1; then
-                                                echo "✅ NiFi is ready for testing! (Started in $((COUNTER * INTERVAL)) seconds)";
-                                                # Additional short wait for full initialization
-                                                sleep 5;
-                                                break;
-                                            fi
-                                            echo "⏳ Waiting for NiFi... (attempt $((COUNTER + 1))/$MAX_ATTEMPTS) - $((COUNTER * INTERVAL))s elapsed";
-                                            sleep $INTERVAL;
-                                            COUNTER=$((COUNTER + 1));
-                                        done
-                                        
-                                        if [ $COUNTER -ge $MAX_ATTEMPTS ]; then
-                                            echo "❌ NiFi failed to start within $((MAX_ATTEMPTS * INTERVAL)) seconds timeout";
-                                            echo "=== Container Status ===";
-                                            docker compose ps;
-                                            echo "=== NiFi Logs (last 50 lines) ===";
-                                            docker compose logs --tail=50 nifi;
-                                            echo "=== System Resources ===";
-                                            docker stats --no-stream;
-                                            exit 1;
-                                        fi
-                                        
-                                        echo "🚀 NiFi is ready! Keycloak status will be checked by tests if needed.";
-                                    else
-                                        echo "Skipping NiFi container startup (autoStartNiFi=false)";
-                                    fi
-                                </argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <!-- Stop NiFi containers after tests -->
-                    <execution>
-                        <id>stop-nifi-containers</id>
-                        <phase>post-integration-test</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>bash</executable>
-                            <workingDirectory>${docker.script.dir}</workingDirectory>
-                            <arguments>
-                                <argument>-c</argument>
-                                <argument>
-                                    if [ "${autoStartNiFi}" = "true" ]; then
-                                        echo "Stopping NiFi containers after testing...";
-                                        ./stop-test-container.sh;
-                                    else
-                                        echo "Skipping NiFi container shutdown (autoStartNiFi=false)";
-                                    fi
-                                </argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            
+            <!-- Node.js and npm management -->
             <plugin>
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>
@@ -223,7 +138,6 @@
         <profile>
             <id>integration-tests</id>
             <properties>
-                <autoStartNiFi>true</autoStartNiFi>
                 <skipTests>false</skipTests>
                 <maven.test.skip>false</maven.test.skip>
             </properties>
@@ -294,12 +208,9 @@
             </build>
         </profile>
         
-        <!-- Profile for safe selftests that skip gracefully if NiFi is not available -->
+        <!-- Profile for safe selftests that skip gracefully if containers are not available -->
         <profile>
             <id>safe-selftests</id>
-            <properties>
-                <autoStartNiFi>false</autoStartNiFi>
-            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -341,7 +252,6 @@
                 <!-- Skip all tests and executions for sonar analysis -->
                 <skipTests>true</skipTests>
                 <maven.test.skip>true</maven.test.skip>
-                <autoStartNiFi>false</autoStartNiFi>
             </properties>
             <build>
                 <plugins>
@@ -399,7 +309,6 @@
                 <skipTests>true</skipTests>
                 <maven.test.skip>true</maven.test.skip>
                 <maven.integration.test.skip>true</maven.integration.test.skip>
-                <autoStartNiFi>false</autoStartNiFi>
             </properties>
             <build>
                 <plugins>
@@ -457,7 +366,6 @@
                 <skipTests>true</skipTests>
                 <maven.test.skip>true</maven.test.skip>
                 <maven.integration.test.skip>true</maven.integration.test.skip>
-                <autoStartNiFi>false</autoStartNiFi>
             </properties>
             <build>
                 <plugins>
