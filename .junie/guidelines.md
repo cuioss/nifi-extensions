@@ -27,38 +27,38 @@ This file provides guidance to Junie when working with code in this repository.
 - Standards Overview: `standards/README.md`
 
 ### JavaScript and CSS Standards:
-- JavaScript Standards: `/Users/oliver/git/cui-llm-rules/standards/javascript/`
-- CSS Standards: `/Users/oliver/git/cui-llm-rules/standards/css/`
+- JavaScript Standards: `standards/javascript/`
+- CSS Standards: `standards/css/`
 
 ### Java Standards
-- Java Code Standards: `/Users/oliver/git/cui-llm-rules/standards/java/java-code-standards.adoc`
-- DSL-Style Constants: `/Users/oliver/git/cui-llm-rules/standards/java/dsl-style-constants.adoc`
-- Java README: `/Users/oliver/git/cui-llm-rules/standards/java/README.adoc`
+- Java Code Standards: `standards/java/java-code-standards.adoc`
+- DSL-Style Constants: `standards/java/dsl-style-constants.adoc`
+- Java README: `standards/java/README.adoc`
 
 ### Documentation Standards
-- General Documentation: `/Users/oliver/git/cui-llm-rules/standards/documentation/general-standard.adoc`
-- Javadoc Standards: `/Users/oliver/git/cui-llm-rules/standards/documentation/javadoc-standards.adoc`
-- Javadoc Maintenance: `/Users/oliver/git/cui-llm-rules/standards/documentation/javadoc-maintenance.adoc`
-- README Structure: `/Users/oliver/git/cui-llm-rules/standards/documentation/readme-structure.adoc`
-- Documentation README: `/Users/oliver/git/cui-llm-rules/standards/documentation/README.adoc`
+- General Documentation: `standards/documentation/general-standard.adoc`
+- Javadoc Standards: `standards/documentation/javadoc-standards.adoc`
+- Javadoc Maintenance: `standards/documentation/javadoc-maintenance.adoc`
+- README Structure: `standards/documentation/readme-structure.adoc`
+- Documentation README: `standards/documentation/README.adoc`
 
 ### Logging Standards
-- Logging Core Standards: `/Users/oliver/git/cui-llm-rules/standards/logging/core-standards.adoc`
-- Logging Implementation Guide: `/Users/oliver/git/cui-llm-rules/standards/logging/implementation-guide.adoc`
-- Logging Testing Guide: `/Users/oliver/git/cui-llm-rules/standards/logging/testing-guide.adoc`
-- Logging README: `/Users/oliver/git/cui-llm-rules/standards/logging/README.adoc`
+- Logging Core Standards: `standards/logging/core-standards.adoc`
+- Logging Implementation Guide: `standards/logging/implementation-guide.adoc`
+- Logging Testing Guide: `standards/logging/testing-guide.adoc`
+- Logging README: `standards/logging/README.adoc`
 
 ### Testing Standards
-- Testing Core Standards: `/Users/oliver/git/cui-llm-rules/standards/testing/core-standards.adoc`
-- Quality Standards: `/Users/oliver/git/cui-llm-rules/standards/testing/quality-standards.adoc`
-- Testing README: `/Users/oliver/git/cui-llm-rules/standards/testing/README.adoc`
+- Testing Core Standards: `standards/testing/core-standards.adoc`
+- Quality Standards: `standards/testing/quality-standards.adoc`
+- Testing README: `standards/testing/README.adoc`
 
 ### Requirements Standards
-- Requirements Documents: `/Users/oliver/git/cui-llm-rules/standards/requirements/requirements-document.adoc`
-- Specification Documents: `/Users/oliver/git/cui-llm-rules/standards/requirements/specification-documents.adoc`
-- New Project Guide: `/Users/oliver/git/cui-llm-rules/standards/requirements/new-project-guide.adoc`
-- Planning: `/Users/oliver/git/cui-llm-rules/standards/requirements/planning.adoc`
-- Requirements README: `/Users/oliver/git/cui-llm-rules/standards/requirements/README.adoc`
+- Requirements Documents: `standards/requirements/requirements-document.adoc`
+- Specification Documents: `standards/requirements/specification-documents.adoc`
+- New Project Guide: `standards/requirements/new-project-guide.adoc`
+- Planning: `standards/requirements/planning.adoc`
+- Requirements README: `standards/requirements/README.adoc`
 
 ## Code Style Guidelines
 - Follow package structure: reverse domain name notation (de.cuioss.jwt.validation)
