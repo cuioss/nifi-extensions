@@ -225,10 +225,44 @@
             <id>integration-tests</id>
             <properties>
                 <autoStartNiFi>true</autoStartNiFi>
+                <skipTests>false</skipTests>
+                <maven.test.skip>false</maven.test.skip>
             </properties>
             <build>
                 <plugins>
-                    <!-- Use the Docker lifecycle management from the main build -->
+                    <!-- Container lifecycle management using exec plugin -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <!-- Start containers before integration tests -->
+                            <execution>
+                                <id>start-integration-containers</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>${project.basedir}/scripts/start-integration-containers.sh</executable>
+                                    <workingDirectory>${project.basedir}</workingDirectory>
+                                </configuration>
+                            </execution>
+                            <!-- Stop containers after integration tests -->
+                            <execution>
+                                <id>stop-integration-containers</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>${project.basedir}/scripts/stop-integration-containers.sh</executable>
+                                    <workingDirectory>${project.basedir}</workingDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- Frontend plugin for running Cypress tests -->
                     <plugin>
                         <groupId>com.github.eirslett</groupId>
                         <artifactId>frontend-maven-plugin</artifactId>
@@ -239,7 +273,7 @@
                             <installDirectory>target</installDirectory>
                         </configuration>
                         <executions>
-                            <!-- Run full E2E tests with Docker containers -->
+                            <!-- Run E2E integration tests -->
                             <execution>
                                 <id>integration-tests-cypress-e2e</id>
                                 <goals>
@@ -248,7 +282,7 @@
                                 <phase>integration-test</phase>
                                 <configuration>
                                     <arguments>run cypress:run</arguments>
-                                    <failOnError>true</failOnError> <!-- Fail Maven build on test failures -->
+                                    <failOnError>true</failOnError>
                                     <environmentVariables>
                                         <CYPRESS_BASE_URL>${nifi.base.url}</CYPRESS_BASE_URL>
                                         <CYPRESS_KEYCLOAK_URL>${keycloak.url}</CYPRESS_KEYCLOAK_URL>

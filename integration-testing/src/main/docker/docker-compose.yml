@@ -77,6 +77,7 @@ services:
       - ./keycloak:/opt/keycloak/data/import
     command: 
       - start-dev
+      - --import-realm
     healthcheck:
       test: ["CMD-SHELL", "curl --fail http://localhost:8080/realms/master || exit 1"]
       interval: 20s
