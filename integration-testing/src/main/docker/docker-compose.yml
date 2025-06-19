@@ -4,12 +4,13 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "9094:9094"
+      - "9095:8443"
     environment:
-      - NIFI_WEB_HTTP_PORT=9094
-      - NIFI_WEB_HTTP_HOST=0.0.0.0
-      - NIFI_WEB_HTTPS_PORT=
-      - NIFI_WEB_HTTPS_HOST=
+      - NIFI_WEB_HTTP_PORT=
+      - NIFI_WEB_HTTP_HOST=
+      - NIFI_WEB_HTTPS_PORT=8443
+      - NIFI_WEB_HTTPS_HOST=0.0.0.0
+      - NIFI_WEB_PROXY_HOST=localhost:9095
       - NIFI_REMOTE_INPUT_SECURE=false
       - NIFI_REMOTE_INPUT_HTTP_ENABLED=false
       - NIFI_CLUSTER_PROTOCOL_IS_SECURE=false
@@ -17,11 +18,15 @@ services:
       - NIFI_LOG_DIR=/opt/nifi/nifi-current/logs
       - NIFI_BOOTSTRAP_CONF=/opt/nifi/nifi-current/conf/bootstrap.conf
       - NIFI_CONF_DIR=/opt/nifi/nifi-current/conf
+      - NIFI_SECURITY_USER_AUTHORIZER=
+      - NIFI_SECURITY_ALLOW_ANONYMOUS_AUTHENTICATION=true
+      - NIFI_SECURITY_USER_LOGIN_IDENTITY_PROVIDER=
+      - NIFI_SECURITY_KEYSTORE=
+      - NIFI_SECURITY_TRUSTSTORE=
     volumes:
       - ../../../target/nifi-deploy:/opt/nifi/nifi-current/nar_extensions
-      - ./nifi/conf:/opt/nifi/nifi-current/conf
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail --max-time 3 http://localhost:9094/nifi/ || exit 1"]
+      test: ["CMD-SHELL", "curl -k --fail --max-time 3 https://localhost:8443/nifi/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 12

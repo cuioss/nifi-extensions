@@ -28,7 +28,7 @@ MAX_WAIT=120  # 2 minutes
 # Check NiFi
 echo "🔍 Checking NiFi service..."
 for i in $(seq 1 $MAX_WAIT); do
-    if curl -s -f "http://localhost:9094/nifi/" > /dev/null 2>&1; then
+    if curl -k -s -f "https://localhost:9095/nifi/" > /dev/null 2>&1; then
         NIFI_TIME=$(date +%s)
         NIFI_ELAPSED=$((NIFI_TIME - START_TIME))
         echo "✅ NiFi is ready! (${NIFI_ELAPSED}s)"

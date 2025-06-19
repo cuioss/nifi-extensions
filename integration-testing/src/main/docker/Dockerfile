@@ -15,6 +15,9 @@ RUN mkdir -p /opt/nifi/nifi-current/extensions && \
     chown -R nifi:nifi /opt/nifi/nifi-current/extensions && \
     chown -R nifi:nifi /opt/nifi/nifi-current/nar_extensions
 
+# Copy custom configuration files and set proper ownership
+COPY --chown=nifi:nifi nifi/conf/ /opt/nifi/nifi-current/conf/
+
 # Expose both HTTP and HTTPS ports
 EXPOSE 9094 9095
 
