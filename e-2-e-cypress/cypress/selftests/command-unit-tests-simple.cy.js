@@ -5,7 +5,7 @@
  */
 
 describe('Core Command Integration Tests', () => {
-  const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'http://localhost:9094/nifi/';
+  const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'https://localhost:9095/nifi/';
 
   before(() => {
     // Verify NiFi is accessible before running tests
