@@ -4,6 +4,8 @@ This module provides comprehensive end-to-end testing for the MultiIssuerJWTToke
 
 *📚 For complete documentation, see link:doc/README.md[Documentation Index]*
 
+**💡 Important: Always use `./mvnw` (Maven Wrapper) instead of `mvn` to ensure consistent Maven versions across all environments.**
+
 == ✅ Implementation Status: PRODUCTION READY
 
 The e-2-e-cypress module is *production-ready* with 71% test success rate (10/14 tests passing):
