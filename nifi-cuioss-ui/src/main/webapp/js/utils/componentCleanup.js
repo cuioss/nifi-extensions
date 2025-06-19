@@ -59,6 +59,7 @@ export class ComponentLifecycle {
             }
             this.initialized = true;
         } catch (error) {
+            // eslint-disable-next-line no-console
             console.debug(error);
         }
     }
@@ -131,6 +132,7 @@ export const cleanupComponent = (componentId) => {
             try {
                 fn();
             } catch (error) {
+                // eslint-disable-next-line no-console
                 console.debug(error);
             }
         });
@@ -148,6 +150,7 @@ export const cleanupAll = () => {
             try {
                 fn();
             } catch (error) {
+                // eslint-disable-next-line no-console
                 console.debug(error);
             }
         });

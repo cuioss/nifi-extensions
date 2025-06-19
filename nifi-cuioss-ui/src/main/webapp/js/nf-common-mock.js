@@ -24,6 +24,7 @@ export const registerCustomUiComponent = function (id, component, options) {
                 // Component initialized callback
             });
         } catch (e) {
+            // eslint-disable-next-line no-console
             console.warn('Failed to initialize component:', id, e.message);
         }
     }
@@ -90,6 +91,7 @@ export const registerCustomUiTab = function (id, component) {
                 // Tab initialized callback
             });
         } catch (e) {
+            // eslint-disable-next-line no-console
             console.warn('Failed to initialize tab:', id, e.message);
         }
     }

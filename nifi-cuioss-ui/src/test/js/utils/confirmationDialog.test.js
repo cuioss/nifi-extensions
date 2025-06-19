@@ -309,6 +309,7 @@ describe('confirmationDialog', () => {
         });
 
         // Skip this test for now as it's causing timeout issues
+        // eslint-disable-next-line jest/no-disabled-tests
         it.skip('should handle keyboard events', async () => {
             const options = {
                 title: 'Test Title',
