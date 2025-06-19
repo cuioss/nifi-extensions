@@ -63,9 +63,9 @@ npm install
 ## Configuration
 
 ### Test Environment URLs
-- **NiFi UI**: `http://localhost:9094/nifi/`
+- **NiFi UI**: `https://localhost:9095/nifi/`
 - **Keycloak**: `http://localhost:9080/`
-- **Health Check**: `http://localhost:9094/nifi-api/system-diagnostics`
+- **Health Check**: `https://localhost:9095/nifi-api/system-diagnostics`
 
 ### Authentication
 - **Username**: `admin`
@@ -164,7 +164,7 @@ The integration tests use Maven profiles for container management:
 npm run status
 
 # Verify NiFi API availability
-curl -f http://localhost:9094/nifi-api/system-diagnostics
+curl -k -f https://localhost:9095/nifi-api/system-diagnostics
 
 # Check authentication
 curl -f http://localhost:9080/realms/nifi
@@ -293,7 +293,7 @@ export CYPRESS_DEFAULT_TIMEOUT=10000
 export DEBUG=cypress:*
 
 # Custom base URL
-export CYPRESS_BASE_URL=http://localhost:9094
+export CYPRESS_BASE_URL=https://localhost:9095
 ```
 
 ### CI/CD Variables

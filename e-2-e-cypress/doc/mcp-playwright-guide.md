@@ -29,8 +29,8 @@ docker ps | grep -E "(nifi|keycloak)"
 ```
 
 ### Access Points
-- **NiFi UI**: `http://localhost:9094/nifi/`
-- **NiFi API**: `http://localhost:9094/nifi-api/`
+- **NiFi UI**: `https://localhost:9095/nifi/`
+- **NiFi API**: `https://localhost:9095/nifi-api/`
 - **Keycloak**: `http://localhost:9080/`
 
 ## MCP Playwright Configuration

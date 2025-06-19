@@ -58,10 +58,10 @@ services:
 ```
 
 ### Network Configuration
-- **NiFi UI**: `http://localhost:9094/nifi/`
+- **NiFi UI**: `https://localhost:9095/nifi/`
 - **NiFi API**: `http://localhost:9085/nifi-api/`
 - **Keycloak**: `http://localhost:9080/`
-- **Health Check**: `http://localhost:9094/nifi-api/system-diagnostics`
+- **Health Check**: `https://localhost:9095/nifi-api/system-diagnostics`
 
 ### Authentication Flow
 ```

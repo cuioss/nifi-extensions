@@ -416,7 +416,7 @@ describe('JWT Validation Suite', () => {
 ```javascript
 // Environment-specific configurations
 const configs = {
-  local: { baseUrl: 'http://localhost:9094' },
+  local: { baseUrl: 'https://localhost:9095' },
   staging: { baseUrl: 'https://staging-nifi.example.com' },
   production: { baseUrl: 'https://nifi.example.com' }
 };

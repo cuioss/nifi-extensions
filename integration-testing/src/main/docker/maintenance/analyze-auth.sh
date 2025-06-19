@@ -5,7 +5,7 @@
 # for both Cypress and Playwright testing
 
 # Configuration
-NIFI_BASE_URL="http://localhost:9094"
+NIFI_BASE_URL="https://localhost:9095"
 NIFI_UI_URL="$NIFI_BASE_URL/nifi"
 NIFI_API_URL="$NIFI_BASE_URL/nifi-api"
 
@@ -146,7 +146,7 @@ generate_playwright_code() {
         cat << 'EOF'
 // Simplified Playwright login for anonymous access
 async function nifiLogin(page) {
-  await page.goto('http://localhost:9094/nifi');
+  await page.goto('https://localhost:9095/nifi');
   
   // Wait for Angular app to load
   await page.waitForSelector('nifi', { timeout: 30000 });
@@ -164,7 +164,7 @@ EOF
         cat << 'EOF'
 // Simplified Playwright login for authenticated access
 async function nifiLogin(page, username = 'admin', password = 'adminadminadmin') {
-  await page.goto('http://localhost:9094/nifi');
+  await page.goto('https://localhost:9095/nifi');
   
   // Wait for Angular app to load
   await page.waitForSelector('nifi', { timeout: 30000 });

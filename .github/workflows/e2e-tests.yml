@@ -60,7 +60,7 @@ jobs:
         # 3. post-integration-test: Stop containers via stop-integration-containers.sh
         run: ./mvnw -B --no-transfer-progress clean verify -pl e-2-e-cypress -Pintegration-tests
         env:
-          CYPRESS_BASE_URL: http://localhost:9094/nifi
+          CYPRESS_BASE_URL: https://localhost:9095/nifi
           CYPRESS_KEYCLOAK_URL: http://localhost:9080/auth
         timeout-minutes: 12
 

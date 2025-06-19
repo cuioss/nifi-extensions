@@ -186,13 +186,13 @@ are_containers_running() {
 
 # Check if NiFi is healthy
 check_nifi_health() {
-    local nifi_url="${1:-http://localhost:9094/nifi}"
+    local nifi_url="${1:-https://localhost:9095/nifi}"
     local timeout="${2:-5}"
     
     if command_exists curl; then
-        curl -s --max-time "$timeout" --fail "$nifi_url" >/dev/null 2>&1
+        curl -k -s --max-time "$timeout" --fail "$nifi_url" >/dev/null 2>&1
     elif command_exists wget; then
-        wget -q --timeout="$timeout" --tries=1 "$nifi_url" -O /dev/null >/dev/null 2>&1
+        wget -q --timeout="$timeout" --tries=1 --no-check-certificate "$nifi_url" -O /dev/null >/dev/null 2>&1
     else
         print_warning "Neither curl nor wget available for health check"
         return 1

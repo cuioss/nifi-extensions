@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Start NiFi HTTP instance for testing and MCP Playwright
-echo "Starting NiFi HTTP instance on port 9094..."
+# Start NiFi HTTPS instance for testing and MCP Playwright
+echo "Starting NiFi HTTPS instance on port 9095..."
 
 docker compose up -d
 
 echo "Waiting for NiFi to be ready..."
-echo "NiFi will be available at: http://localhost:9094/nifi"
+echo "NiFi will be available at: https://localhost:9095/nifi"
 echo "Keycloak HTTPS will be available at: https://localhost:9085"
 echo "Keycloak HTTP admin will be available at: http://localhost:9080"
 
@@ -16,7 +16,7 @@ COUNTER=0
 MAX_ATTEMPTS=60  # 2 minutes with 2-second intervals
 INTERVAL=2
 while [ $COUNTER -lt $MAX_ATTEMPTS ]; do
-    if curl --fail --max-time 3 --silent http://localhost:9094/nifi/ > /dev/null 2>&1; then
+    if curl -k --fail --max-time 3 --silent https://localhost:9095/nifi/ > /dev/null 2>&1; then
         echo "✅ NiFi is ready! (Started in $((COUNTER * INTERVAL)) seconds)"
         break
     fi
@@ -27,7 +27,7 @@ done
 
 if [ $COUNTER -lt $MAX_ATTEMPTS ]; then
     echo "✅ NiFi is ready!"
-    echo "🌐 Access NiFi at: http://localhost:9094/nifi"
+    echo "🌐 Access NiFi at: https://localhost:9095/nifi"
     echo "🔒 Keycloak HTTPS: https://localhost:9085"
     echo "🔑 Keycloak HTTP Admin: http://localhost:9080"
     echo ""
