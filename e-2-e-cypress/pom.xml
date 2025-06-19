@@ -158,7 +158,6 @@
                         </configuration>
                     </execution>
                     <!-- Run self-verification tests during verify phase -->
-                    <!-- These require containers to be manually started externally -->
                     <execution>
                         <id>cypress-selftests</id>
                         <goals>

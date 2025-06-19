@@ -13,13 +13,11 @@ This module provides comprehensive end-to-end testing for the MultiIssuerJWTToke
 cd e-2-e-cypress
 npm install
 
-# Start test environment
-cd ../integration-testing
-./run-test-container.sh
+# Run integration tests (starts containers, runs tests, stops containers)
+mvn clean test -Pintegration-tests
 
-# Run tests
-cd ../e-2-e-cypress
-npm test
+# Or run only Cypress tests (requires containers to be started externally)
+npm run cypress:run
 ```
 
 ## Status: Production Ready - Optimized Implementation
