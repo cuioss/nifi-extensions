@@ -84,8 +84,6 @@
                         <configuration>
                             <arguments>run cypress:selftests</arguments>
                             <skip>${skipTests}</skip>
-                            <failOnError>false</failOnError>
-                            <timeout>${cypress.timeout}</timeout>
                             <environmentVariables>
                                 <CYPRESS_BASE_URL>${nifi.base.url}</CYPRESS_BASE_URL>
                                 <CYPRESS_KEYCLOAK_URL>${keycloak.url}</CYPRESS_KEYCLOAK_URL>
@@ -198,7 +196,6 @@
                                 <phase>integration-test</phase>
                                 <configuration>
                                     <arguments>run cypress:run</arguments>
-                                    <failOnError>true</failOnError>
                                     <environmentVariables>
                                         <CYPRESS_BASE_URL>${nifi.base.url}</CYPRESS_BASE_URL>
                                         <CYPRESS_KEYCLOAK_URL>${keycloak.url}</CYPRESS_KEYCLOAK_URL>
