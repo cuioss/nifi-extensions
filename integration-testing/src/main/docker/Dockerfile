@@ -23,4 +23,4 @@ EXPOSE 9094 9095
 
 # Add health check
 HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=12 \
-  CMD curl --fail --max-time 3 http://localhost:9094/nifi/ || exit 1
+  CMD curl -k --fail --max-time 3 https://localhost:9095/nifi/ || exit 1

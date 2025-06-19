@@ -43,7 +43,7 @@ echo ""
 
 echo "=== Port Checks ==="
 echo "Checking port 9094 (NiFi HTTP):"
-if curl --fail --max-time 3 --silent http://localhost:9094/nifi/ > /dev/null 2>&1; then
+if curl -k --fail --max-time 3 --silent https://localhost:9095/nifi/ > /dev/null 2>&1; then
     echo "✅ NiFi HTTP (9094) is accessible"
 else
     echo "❌ NiFi HTTP (9094) is not accessible"

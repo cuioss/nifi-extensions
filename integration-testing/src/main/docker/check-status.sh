@@ -17,7 +17,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-NIFI_URL="http://localhost:9094"
+NIFI_URL="https://localhost:9095"
 KEYCLOAK_URL="http://localhost:9080"
 TIMEOUT_SECONDS=2
 CHECK_INTERVAL=1
@@ -34,7 +34,7 @@ usage() {
     echo "  -h, --help              Show this help"
     echo ""
     echo "Environment Variables:"
-    echo "  NIFI_URL                NiFi base URL (default: http://localhost:9094)"
+    echo "  NIFI_URL                NiFi base URL (default: https://localhost:9095)"
     echo "  KEYCLOAK_URL            Keycloak base URL (default: http://localhost:9080)"
     echo ""
     echo "Examples:"
@@ -78,7 +78,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Override URLs from environment if set
-NIFI_URL="${NIFI_URL:-http://localhost:9094}"
+NIFI_URL="${NIFI_URL:-https://localhost:9095}"
 KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:9080}"
 
 # Logging functions

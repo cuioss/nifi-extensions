@@ -6,7 +6,7 @@ module.exports = defineConfig({
     excludeSpecPattern: 'cypress/selftests/backup/**/*.cy.js',
     supportFile: 'cypress/support/e2e.js',
     // Configure base URL for integration tests
-    baseUrl: process.env.CYPRESS_BASE_URL || 'http://localhost:9094/nifi/',
+    baseUrl: process.env.CYPRESS_BASE_URL || 'https://localhost:9095/nifi/',
     // Set timeouts appropriate for NiFi startup and Angular loading
     defaultCommandTimeout: 30000, // 30s for commands (NiFi can be slow)
     requestTimeout: 30000, // 30s for network requests
