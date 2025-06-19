@@ -51,7 +51,11 @@ jobs:
         run: ./mvnw -B --no-transfer-progress clean package -DskipTests
         
       - name: Run E2E Integration Tests with Maven-managed Containers
-        run: ./mvnw -B --no-transfer-progress clean test -pl e-2-e-cypress -Pintegration-tests
+        # This runs the full E2E test suite (16 tests) with Maven managing container lifecycle:
+        # 1. pre-integration-test: Start containers via start-integration-containers.sh
+        # 2. integration-test: Run cypress:run (all 16 E2E tests)  
+        # 3. post-integration-test: Stop containers via stop-integration-containers.sh
+        run: ./mvnw -B --no-transfer-progress clean verify -pl e-2-e-cypress -Pintegration-tests
         env:
           CYPRESS_BASE_URL: http://localhost:9094/nifi
           CYPRESS_KEYCLOAK_URL: http://localhost:9080/auth
