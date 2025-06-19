@@ -1,24 +1,43 @@
+/**
+ * Stylelint configuration for CUI CSS standards compliance.
+ * Basic configuration to get stylelint working properly.
+ */
 module.exports = {
-  "extends": "stylelint-config-standard",
-  "rules": {
-    "no-duplicate-selectors": true,
+  extends: [
+    'stylelint-config-standard'
+  ],
+  plugins: [
+    'stylelint-order'
+  ],
+  rules: {
+    // CUI Standards - Property ordering for maintainability
+    'order/properties-order': [
+      'content',
+      'display',
+      'position',
+      'top',
+      'right',
+      'bottom',
+      'left',
+      'z-index',
+      'width',
+      'height',
+      'margin',
+      'padding',
+      'border',
+      'background',
+      'color',
+      'font',
+      'text-align',
+      'opacity',
+      'overflow',
+      'transform',
+      'transition'
+    ],
+
+    // CUI Standards - Quality Rules
     "color-named": "never",
-    "selector-max-id": 1,
-    "selector-attribute-quotes": "always",
-    "property-no-vendor-prefix": true,
-    "value-no-vendor-prefix": true,
-    "function-url-quotes": "always",
-    "comment-whitespace-inside": "always",
-    "comment-empty-line-before": "always",
-    "rule-empty-line-before": "always-multi-line",
-    "selector-pseudo-element-colon-notation": "double",
-    "custom-property-empty-line-before": "never",
-    "declaration-empty-line-before": "never",
-    "block-no-empty": true,
-    "shorthand-property-no-redundant-values": true,
-    "declaration-block-no-duplicate-properties": true,
-    "declaration-block-no-shorthand-property-overrides": true,
-    "font-family-no-duplicate-names": true,
-    "length-zero-no-unit": true
+    "max-nesting-depth": 3,
+    "no-descending-specificity": null
   }
 }

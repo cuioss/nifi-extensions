@@ -9,6 +9,7 @@ Custom extensions for https://nifi.apache.org/[Apache NiFi] developed by CUI-OSS
 == Status
 
 image:https://github.com/cuioss/nifi-extensions/actions/workflows/maven.yml/badge.svg[Java CI with Maven,link=https://github.com/cuioss/nifi-extensions/actions/workflows/maven.yml]
+image:https://github.com/cuioss/nifi-extensions/actions/workflows/e2e-tests.yml/badge.svg[End-to-End Tests,link=https://github.com/cuioss/nifi-extensions/actions/workflows/e2e-tests.yml]
 image:http://img.shields.io/:license-apache-blue.svg[License,link=http://www.apache.org/licenses/LICENSE-2.0.html]
 image:https://img.shields.io/maven-central/v/de.cuioss.nifi/nifi-extensions.svg?label=Maven%20Central["Maven Central", link="https://search.maven.org/artifact/de.cuioss.nifi/nifi-extensions"]
 https://sonarcloud.io/summary/new_code?id=cuioss_nifi-extensions[image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-extensions&metric=alert_status[Quality Gate Status]]
@@ -22,12 +23,27 @@ image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-exten
 * link:doc/Specification.adoc[Specification]
 * link:nifi-cuioss-processors/README.md[NiFi CUI-OSS Processors]
 * link:integration-testing/README.adoc[Integration Testing Environment]
+* link:docs/local-integration-testing.md[Local Integration Testing Guide]
 
 == Components
 
 === MultiIssuerJWTTokenAuthenticator
 
 A NiFi processor that authenticates JWT tokens from multiple issuers.
+
+=== End-to-End Testing
+
+Complete Cypress-based end-to-end testing framework with:
+
+* 15+ custom Cypress commands for NiFi UI automation
+* Self-verification unit tests (24 tests) 
+* Comprehensive E2E test suites for processor configuration and token validation
+* Console error monitoring with allowlist management
+* **Complete CI/CD integration** with GitHub Actions
+* Docker-based test environment with NiFi and Keycloak
+* **Local integration testing** with automated container management
+
+See link:e-2-e-cypress/README.adoc[E2E Testing Documentation] for details.
 
 === Maven Coordinates
 
@@ -50,3 +66,44 @@ To skip tests:
 ```bash
 ./mvnw clean install -DskipTests
 ```
+
+=== Local Integration Testing
+
+Run the complete integration test suite locally with automated container management:
+
+```bash
+# Full integration test suite with Maven
+./mvnw integration-test -Plocal-integration-tests -Dintegration.test.local=true
+
+# Quick test run using existing containers
+cd e-2-e-cypress && npm run cypress:run
+
+# Interactive test development
+cd e-2-e-cypress && npm run cypress:open
+```
+
+See link:e-2-e-cypress/doc/local-integration-testing.md[Local Integration Testing Guide] for detailed instructions.
+
+=== Code Quality Standards
+
+This project implements centralized coding standards defined in the organization's standards repository:
+
+* **JavaScript/ESLint Standards**: `/standards/javascript/` - Complete linting configuration and best practices
+* **Java Standards**: `/standards/java/` - Java coding standards and conventions  
+* **Testing Standards**: `/standards/testing/` - Comprehensive testing guidelines
+* **Documentation Standards**: `/standards/documentation/` - Documentation structure and requirements
+
+The project achieves **zero-warning builds** through strategic implementation of these centralized standards.
+
+=== Frontend Configuration
+
+The project uses unified frontend configuration across modules:
+
+* Node.js v20.12.2
+* NPM 10.5.0  
+* Frontend Maven Plugin 1.15.1
+* ESLint 8.57.1 with zero-warning policy (following centralized standards)
+* Prettier 3.4.2 for code formatting
+* Cypress 14.4.1 for E2E testing
+
+All frontend configuration is centralized in the root POM properties.

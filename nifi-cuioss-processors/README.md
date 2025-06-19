@@ -15,62 +15,45 @@ This project includes JavaScript components for the MultiIssuerJWTTokenAuthentic
 
 ### Development Tools
 
-#### ESLint
+This project follows the centralized JavaScript and ESLint standards defined in the organization's coding standards repository.
 
-This project uses ESLint for JavaScript code linting. ESLint helps maintain code quality and consistency by enforcing coding standards and best practices.
+[NOTE]
+====
+For complete ESLint configuration, rules, and implementation guidelines, see:
+* **JavaScript Standards**: `/standards/javascript/`
+* **JavaScript Linting Standards**: `/standards/javascript/linting-standards.adoc`
+====
 
-##### ESLint Configuration
+#### JavaScript Development
 
-The ESLint configuration is defined in `.eslintrc.js` and includes:
+The project uses:
+- **ESLint** for code quality and standards enforcement
+- **Jest** for JavaScript testing and coverage
+- **Prettier** for code formatting
+- **Babel** for modern JavaScript transpilation
 
-- Support for AMD pattern with define()
-- Support for jQuery
-- Support for Jest testing
-- Code style rules for consistent formatting
-- Best practices for JavaScript development
-
-Files and directories to be ignored by ESLint are specified in `.eslintignore`.
-
-##### ESLint Commands
-
-The following npm scripts are available for linting:
+#### Available Commands
 
 ```bash
-# Run ESLint on all JavaScript files
+# Run ESLint checks
 npm run lint
 
-# Run ESLint and automatically fix issues where possible
+# Run ESLint with automatic fixes
 npm run lint:fix
 
-# Run ESLint in watch mode
-npm run lint:watch
-```
-
-#### Jest Testing
-
-This project uses Jest for JavaScript testing. Test files are located in the `src/test/js` directory.
-
-##### Jest Commands
-
-```bash
-# Run all tests
+# Run JavaScript tests
 npm test
 
-# Run tests in watch mode
-npm run test:watch
-
-# Run tests with coverage report
+# Run tests with coverage
 npm run test:coverage
 ```
 
 ### Development Workflow
 
-1. Write code following the ESLint rules
-2. Run `npm run lint` to check for issues
-3. Run `npm run lint:fix` to automatically fix simple issues
-4. Write tests for your code
-5. Run `npm test` to ensure all tests pass
-6. Run `npm run test:coverage` to check test coverage
+1. Follow centralized JavaScript coding standards
+2. Write tests for your code using Jest
+3. Run linting and tests before committing
+4. Ensure all quality gates pass
 
 ## Building the Project
 

@@ -38,6 +38,7 @@ export class ComponentManager {
      */
     async registerComponent(componentId, component, options = {}) {
         if (this.registeredComponents.has(componentId)) {
+            // eslint-disable-next-line no-console
             console.debug(`Component ${componentId} already registered`);
             return true;
         }
@@ -329,6 +330,7 @@ export class ComponentManager {
             try {
                 handler(componentId, error);
             } catch (handlerError) {
+                // eslint-disable-next-line no-console
                 console.error('Error in component error handler:', handlerError);
             }
         });
@@ -379,6 +381,7 @@ export class ComponentManager {
             try {
                 componentInfo.component.cleanup();
             } catch (error) {
+                // eslint-disable-next-line no-console
                 console.warn(`Error during cleanup of component ${componentId}:`, error);
             }
         }

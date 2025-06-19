@@ -247,7 +247,11 @@ const _createValidTokenHtml = (response, isSimulated, i18n, CSS) => {
                 ${scopesRow}
             </table>
             <h4>${i18n['processor.jwt.allClaims'] || 'All Claims'}</h4>
-            <pre class="${CSS.TOKEN_VERIFIER.TOKEN_RAW_CLAIMS}">${JSON.stringify(response.claims, null, 2)}</pre>
+            <pre class="${CSS.TOKEN_VERIFIER.TOKEN_RAW_CLAIMS}">${JSON.stringify(
+    response.claims,
+    null,
+    2
+)}</pre>
         </div>
     `;
 };
@@ -302,6 +306,7 @@ const _extractErrorMessageFromXHR = (jqXHR) => {
                 const errorJson = JSON.parse(jqXHR.responseText);
                 errorMessage = errorJson?.message || errorMessage;
             } catch (e) {
+                // eslint-disable-next-line no-console
                 console.debug('Failed to parse responseText as JSON:', e);
                 // Keep the original error message if JSON parsing fails
             }
@@ -371,6 +376,7 @@ const _createSampleTokenResponse = () => {
 const _handleTokenVerificationAjaxError = (jqXHR, $resultsContent, i18n, displayValidTokenFunc) => {
     // Extract and sanitize error message for potential future use
     const errorMessage = _extractErrorMessageFromXHR(jqXHR);
+    // eslint-disable-next-line no-console
     console.debug('Extracted error message:', errorMessage);
 
     if (getIsLocalhost()) {
@@ -396,6 +402,7 @@ const _handleTokenVerificationSyncException = (
 ) => {
     // Sanitize exception message for potential future use
     const sanitizedMessage = _sanitizeErrorMessage(exception.message, i18n);
+    // eslint-disable-next-line no-console
     console.debug('Sanitized error message:', sanitizedMessage);
 
     if (getIsLocalhost()) {

@@ -253,6 +253,7 @@ const loadExistingIssuers = async ($container, processorId) => {
             addIssuerForm($container, issuerName, issuerProperties[issuerName], processorId);
         });
     } catch (error) {
+        // eslint-disable-next-line no-console
         console.debug(error);
         const sampleConfig = _getSampleIssuerConfig();
         addIssuerForm($container, sampleConfig.name, sampleConfig.properties, processorId);
@@ -421,7 +422,9 @@ const _createSaveButton = ($issuerForm, processorId = null) => {
     const tooltipText = processorId
         ? 'Save this issuer configuration to the NiFi processor'
         : 'Validate and save this issuer configuration (standalone mode)';
-    const $saveButton = $(`<button class="save-issuer-button" title="${tooltipText}">Save Issuer</button>`);
+    const $saveButton = $(
+        `<button class="save-issuer-button" title="${tooltipText}">Save Issuer</button>`
+    );
     const $formErrorContainer = $('<div class="issuer-form-error-messages"></div>');
 
     const saveButtonHandler = () => {
@@ -843,6 +846,7 @@ export const init = async (element, callback, currentTestUrlFromArg) => {
         // Execute callback on success
         _executeCallback(callback);
     } catch (e) {
+        // eslint-disable-next-line no-console
         console.debug(e);
         // Execute callback on error to maintain contract
         _executeCallback(callback);

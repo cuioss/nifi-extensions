@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>de.cuioss.nifi</groupId>
+        <artifactId>nifi-extensions</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>e-2-e-cypress</artifactId>
+    <packaging>pom</packaging>
+
+    <name>NiFi Extensions :: End-to-End Cypress Tests</name>
+    <description>End-to-End Cypress tests for NiFi Extensions</description>
+
+    <properties>
+        <autoStartNiFi>true</autoStartNiFi>
+        <docker.script.dir>${project.basedir}/../integration-testing/src/main/docker</docker.script.dir>
+        <nifi.base.url>http://localhost:9094/nifi/</nifi.base.url>
+        <keycloak.url>http://localhost:9080</keycloak.url>
+        <!-- Fail-fast configuration -->
+        <maven.test.failure.ignore>false</maven.test.failure.ignore>
+        <maven.build.timeout>120</maven.build.timeout> <!-- 2 minutes max -->
+        <nifi.startup.timeout>60</nifi.startup.timeout> <!-- 1 minute for NiFi startup -->
+        <cypress.timeout>120</cypress.timeout> <!-- 2 minutes for Cypress tests -->
+        <!-- Exclude this module from SonarQube analysis -->
+        <sonar.skip>true</sonar.skip>
+    </properties>
+
+    <build>
+        <plugins>
+            <!-- Docker NiFi lifecycle management -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <!-- Start NiFi containers before tests -->
+                    <execution>
+                        <id>start-nifi-containers</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>bash</executable>
+                            <workingDirectory>${docker.script.dir}</workingDirectory>
+                            <arguments>
+                                <argument>-c</argument>
+                                <argument>
+                                    if [ "${autoStartNiFi}" = "true" ]; then
+                                        echo "Starting NiFi containers for testing...";
+                                        ./start-nifi.sh;
+                                        echo "Verifying NiFi service is ready...";
+                                        
+                                        # Check only NiFi health, allow Keycloak failures
+                                        COUNTER=0
+                                        MAX_ATTEMPTS=${nifi.startup.timeout}
+                                        while [ $COUNTER -lt $MAX_ATTEMPTS ]; do
+                                            if curl -f -m 5 http://localhost:9094/nifi/ &gt; /dev/null 2&gt;&amp;1; then
+                                                echo "✅ NiFi is ready for testing!";
+                                                break;
+                                            fi
+                                            echo "Waiting for NiFi... (attempt $((COUNTER + 1))/$MAX_ATTEMPTS)";
+                                            sleep 1;
+                                            COUNTER=$((COUNTER + 1));
+                                        done
+                                        
+                                        if [ $COUNTER -ge $MAX_ATTEMPTS ]; then
+                                            echo "❌ NiFi failed to start within timeout";
+                                            docker compose logs --tail=50 nifi;
+                                            exit 1;
+                                        fi
+                                        
+                                        echo "🚀 NiFi is ready! Keycloak status will be checked by tests if needed.";
+                                    else
+                                        echo "Skipping NiFi container startup (autoStartNiFi=false)";
+                                    fi
+                                </argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <!-- Stop NiFi containers after tests -->
+                    <execution>
+                        <id>stop-nifi-containers</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>bash</executable>
+                            <workingDirectory>${docker.script.dir}</workingDirectory>
+                            <arguments>
+                                <argument>-c</argument>
+                                <argument>
+                                    if [ "${autoStartNiFi}" = "true" ]; then
+                                        echo "Stopping NiFi containers after testing...";
+                                        ./stop-test-container.sh;
+                                    else
+                                        echo "Skipping NiFi container shutdown (autoStartNiFi=false)";
+                                    fi
+                                </argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>${frontend.maven.plugin.version}</version>
+                <configuration>
+                    <nodeVersion>${frontend.node.version}</nodeVersion>
+                    <npmVersion>${frontend.npm.version}</npmVersion>
+                    <installDirectory>target</installDirectory>
+                </configuration>
+                <executions>
+                    <!-- Install Node and NPM -->
+                    <execution>
+                        <id>install-node-and-npm</id>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                    </execution>
+                    <!-- Install dependencies -->
+                    <execution>
+                        <id>npm-install</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                        <configuration>
+                            <arguments>install</arguments>
+                        </configuration>
+                    </execution>
+                    <!-- Run linting to check code quality -->
+                    <execution>
+                        <id>npm-lint</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>compile</phase>
+                        <configuration>
+                            <arguments>run lint:strict</arguments>
+                            <skip>false</skip>
+                        </configuration>
+                    </execution>
+                    <!-- Run self-verification tests (integration tests for core commands) during verify phase -->
+                    <!-- These will automatically start NiFi containers if needed -->
+                    <execution>
+                        <id>cypress-selftests</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>verify</phase>
+                        <configuration>
+                            <arguments>run nifi:start</arguments>
+                            <skip>${skipTests}</skip>
+                            <failOnError>true</failOnError>
+                            <timeout>${cypress.timeout}</timeout>
+                            <environmentVariables>
+                                <CYPRESS_BASE_URL>${nifi.base.url}</CYPRESS_BASE_URL>
+                                <CYPRESS_KEYCLOAK_URL>${keycloak.url}</CYPRESS_KEYCLOAK_URL>
+                                <CYPRESS_FAIL_FAST>true</CYPRESS_FAIL_FAST>
+                            </environmentVariables>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- Profile for running UI tests (requires containers to be running) -->
+        <profile>
+            <id>ui-tests</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.eirslett</groupId>
+                        <artifactId>frontend-maven-plugin</artifactId>
+                        <version>${frontend.maven.plugin.version}</version>
+                        <configuration>
+                            <nodeVersion>${frontend.node.version}</nodeVersion>
+                            <npmVersion>${frontend.npm.version}</npmVersion>
+                            <installDirectory>target</installDirectory>
+                        </configuration>
+                        <executions>
+                            <!-- Run actual E2E tests (requires containers to be running) -->
+                            <execution>
+                                <id>ui-tests-cypress-e2e</id>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <phase>integration-test</phase>
+                                <configuration>
+                                    <arguments>run cypress:run</arguments>
+                                    <failOnError>true</failOnError> <!-- Fail Maven build on test failures -->
+                                    <environmentVariables>
+                                        <CYPRESS_BASE_URL>${nifi.base.url}</CYPRESS_BASE_URL>
+                                        <CYPRESS_KEYCLOAK_URL>${keycloak.url}</CYPRESS_KEYCLOAK_URL>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        
+        <!-- Profile for running full integration tests with Docker lifecycle management -->
+        <profile>
+            <id>integration-tests</id>
+            <properties>
+                <autoStartNiFi>true</autoStartNiFi>
+            </properties>
+            <build>
+                <plugins>
+                    <!-- Use the Docker lifecycle management from the main build -->
+                    <plugin>
+                        <groupId>com.github.eirslett</groupId>
+                        <artifactId>frontend-maven-plugin</artifactId>
+                        <version>${frontend.maven.plugin.version}</version>
+                        <configuration>
+                            <nodeVersion>${frontend.node.version}</nodeVersion>
+                            <npmVersion>${frontend.npm.version}</npmVersion>
+                            <installDirectory>target</installDirectory>
+                        </configuration>
+                        <executions>
+                            <!-- Run full E2E tests with Docker containers -->
+                            <execution>
+                                <id>integration-tests-cypress-e2e</id>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <phase>integration-test</phase>
+                                <configuration>
+                                    <arguments>run cypress:run</arguments>
+                                    <failOnError>true</failOnError> <!-- Fail Maven build on test failures -->
+                                    <environmentVariables>
+                                        <CYPRESS_BASE_URL>${nifi.base.url}</CYPRESS_BASE_URL>
+                                        <CYPRESS_KEYCLOAK_URL>${keycloak.url}</CYPRESS_KEYCLOAK_URL>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        
+        <!-- Profile for safe selftests that skip gracefully if NiFi is not available -->
+        <profile>
+            <id>safe-selftests</id>
+            <properties>
+                <autoStartNiFi>false</autoStartNiFi>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.eirslett</groupId>
+                        <artifactId>frontend-maven-plugin</artifactId>
+                        <version>${frontend.maven.plugin.version}</version>
+                        <configuration>
+                            <nodeVersion>${frontend.node.version}</nodeVersion>
+                            <npmVersion>${frontend.npm.version}</npmVersion>
+                            <installDirectory>target</installDirectory>
+                        </configuration>
+                        <executions>
+                            <!-- Override default selftest execution with safe version -->
+                            <execution>
+                                <id>cypress-selftests</id>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <phase>verify</phase>
+                                <configuration>
+                                    <arguments>run cypress:selftests-safe</arguments>
+                                    <skip>${skipTests}</skip>
+                                    <environmentVariables>
+                                        <CYPRESS_BASE_URL>${nifi.base.url}</CYPRESS_BASE_URL>
+                                        <CYPRESS_KEYCLOAK_URL>${keycloak.url}</CYPRESS_KEYCLOAK_URL>
+                                    </environmentVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        
+        <!-- Profile for sonar build - skip all tests and Docker operations -->
+        <profile>
+            <id>sonar</id>
+            <properties>
+                <!-- Skip all tests and executions for sonar analysis -->
+                <skipTests>true</skipTests>
+                <maven.test.skip>true</maven.test.skip>
+                <autoStartNiFi>false</autoStartNiFi>
+            </properties>
+            <build>
+                <plugins>
+                    <!-- Override frontend plugin to skip all executions -->
+                    <plugin>
+                        <groupId>com.github.eirslett</groupId>
+                        <artifactId>frontend-maven-plugin</artifactId>
+                        <version>${frontend.maven.plugin.version}</version>
+                        <executions>
+                            <!-- Override all frontend executions to skip them -->
+                            <execution>
+                                <id>install-node-and-npm</id>
+                                <phase>none</phase>
+                            </execution>
+                            <execution>
+                                <id>npm-install</id>
+                                <phase>none</phase>
+                            </execution>
+                            <execution>
+                                <id>npm-lint</id>
+                                <phase>none</phase>
+                            </execution>
+                            <execution>
+                                <id>cypress-selftests</id>
+                                <phase>none</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- Override exec plugin to skip all Docker operations -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <!-- Override all exec executions to skip them -->
+                            <execution>
+                                <id>start-nifi-containers</id>
+                                <phase>none</phase>
+                            </execution>
+                            <execution>
+                                <id>stop-nifi-containers</id>
+                                <phase>none</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

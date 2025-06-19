@@ -53,12 +53,12 @@
     "prettier": "^3.3.2",
     "stylelint": "^16.6.1",
     "stylelint-config-standard": "^38.0.0",
+    "stylelint-declaration-strict-value": "^1.10.11",
+    "stylelint-order": "^7.0.0",
     "tippy.js": "^6.3.7",
     "webpack": "^5.92.1",
     "webpack-cli": "^6.0.1",
     "whatwg-fetch": "^3.6.20"
-  },
-  "dependencies": {
   },
   "jest": {
     "verbose": false,

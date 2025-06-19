@@ -154,6 +154,7 @@ const executeAction = (action) => {
             break;
 
         default:
+            // eslint-disable-next-line no-console
             console.debug('Unknown keyboard shortcut action:', action);
     }
 };

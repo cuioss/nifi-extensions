@@ -68,7 +68,9 @@ Object.entries(dependencyMapping).forEach(([npmName, webjarName]) => {
     if (npmVersion && pomVersion) {
         if (npmVersion !== pomVersion) {
             // eslint-disable-next-line no-console
-            console.error(`❌ Version mismatch for ${npmName}: npm=${npmVersion}, pom=${pomVersion}`);
+            console.error(
+                `❌ Version mismatch for ${npmName}: npm=${npmVersion}, pom=${pomVersion}`
+            );
             mismatchFound = true;
         } else {
             // eslint-disable-next-line no-console

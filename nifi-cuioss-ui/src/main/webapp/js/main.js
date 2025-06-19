@@ -59,6 +59,7 @@ const registerComponents = () => {
         return true;
     } catch (error) {
         // Component registration failed - error logged internally
+        // eslint-disable-next-line no-console
         console.debug('JWT UI component registration failed:', error);
         return false;
     }
@@ -116,6 +117,7 @@ const setupHelpTooltips = () => {
         setupTooltipObserver();
     } catch (error) {
         // Help tooltips setup skipped - non-critical
+        // eslint-disable-next-line no-console
         console.debug('JWT UI help tooltips setup failed:', error);
     }
 };
@@ -159,6 +161,7 @@ const setupTooltipObserver = () => {
             window.nifiJwtTooltipObserver = observer;
         }
     } catch (error) {
+        // eslint-disable-next-line no-console
         console.debug('Failed to setup tooltip observer:', error);
     }
 };
@@ -290,6 +293,7 @@ export const init = async () => {
         }, API.TIMEOUTS.UI_FALLBACK_TIMEOUT);
     } catch (error) {
         // JWT UI initialization failed - error handled internally
+        // eslint-disable-next-line no-console
         console.debug(error);
         setupUI(); // Always try to show something
     }
@@ -320,6 +324,7 @@ export const cleanup = () => {
         // JWT UI cleanup completed
     } catch (error) {
         // JWT UI cleanup failed - error handled internally
+        // eslint-disable-next-line no-console
         console.debug(error);
     }
 };

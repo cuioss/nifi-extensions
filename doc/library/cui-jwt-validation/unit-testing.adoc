@@ -21,10 +21,10 @@ To use the test utilities in your project, add the following dependency to your 
 [source,xml]
 ----
 <dependency>
-    <groupId>de.cuioss</groupId>
+    <groupId>de.cuioss.jwt</groupId>
     <artifactId>cui-jwt-validation</artifactId>
     <version>${version}</version>
-    <classifier>test</classifier>
+    <classifier>generators</classifier>
     <scope>test</scope>
 </dependency>
 ----

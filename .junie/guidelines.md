@@ -26,6 +26,10 @@ This file provides guidance to Junie when working with code in this repository.
 ## CUI Standards Documentation
 - Standards Overview: `doc/library/standards/README.adoc`
 
+### JavaScript and CSS Standards:
+- JavaScript Standards: `doc/library/standards/javascript/`
+- CSS Standards: `doc/library/standards/css/`
+
 ### Java Standards
 - Java Code Standards: `doc/library/standards/java/java-code-standards.adoc`
 - DSL-Style Constants: `doc/library/standards/java/dsl-style-constants.adoc`

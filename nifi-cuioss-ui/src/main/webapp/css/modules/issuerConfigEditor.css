@@ -49,18 +49,18 @@
 }
 
 .issuer-name {
-    margin-left: 10px;
+    width: 200px;
     padding: 5px;
     border: 1px solid var(--border-color);
+    margin-left: 10px;
     border-radius: 3px;
-    width: 200px;
 }
 
 .remove-issuer-button {
     padding: 5px 10px;
-    background-color: var(--error-color);
-    color: var(--container-background);
     border: none;
+    color: var(--container-background);
+    background-color: var(--error-color);
     border-radius: 3px;
     cursor: pointer;
 }
@@ -98,9 +98,9 @@
 
 .add-issuer-button {
     padding: 8px 15px;
-    background-color: var(--primary-color);
-    color: var(--container-background);
     border: none;
+    color: var(--container-background);
+    background-color: var(--primary-color);
     border-radius: 3px;
     cursor: pointer;
 }
@@ -111,9 +111,9 @@
 
 .save-issuer-button {
     padding: 8px 15px;
-    background-color: var(--success-color);
-    color: var(--container-background);
     border: none;
+    color: var(--container-background);
+    background-color: var(--success-color);
     border-radius: 3px;
     cursor: pointer;
 }

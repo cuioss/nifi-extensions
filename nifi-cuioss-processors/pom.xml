@@ -35,7 +35,7 @@
             <artifactId>cui-java-tools</artifactId>
         </dependency>
         <dependency>
-            <groupId>de.cuioss</groupId>
+            <groupId>de.cuioss.jwt</groupId>
             <artifactId>cui-jwt-validation</artifactId>
             <scope>compile</scope>
         </dependency>
