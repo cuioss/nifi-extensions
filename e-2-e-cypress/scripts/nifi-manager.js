@@ -150,12 +150,17 @@ class NiFiManager {
   /**
    * Execute check-only mode
    */
-  async executeCheckOnly() {
+  async executeCheckOnly(noStart = false) {
     this.logger.info('Running in check-only mode');
 
     const nifiStatus = await this.checkNiFiAvailability();
 
     if (!nifiStatus.available) {
+      if (noStart) {
+        this.logger.info('NiFi is not available - containers must be started externally');
+        this.logger.info('💡 Use Maven integration-tests profile to start containers and run tests');
+        return 0; // Exit successfully in no-start mode
+      }
       this.logger.warning('NiFi is not available - skipping selftests (this is normal for builds without running containers)');
       this.logger.info('💡 To run selftests, start NiFi containers first or use auto-start mode');
       return 0; // Exit successfully
@@ -255,29 +260,32 @@ Usage: node nifi-manager.js [options]
 
 Modes:
   --check-only          Check NiFi availability and run tests if available (default)
-  --auto-start          Automatically start NiFi if not available, then run tests
-  --force-start         Force restart NiFi containers, then run tests
-  --no-tests            Only manage containers, don't run tests
+  --auto-start          Automatically start NiFi if not available, then run tests [DEPRECATED]
+  --force-start         Force restart NiFi containers, then run tests [DEPRECATED]
+  --no-tests            Only manage containers, don't run tests [DEPRECATED]
   --status              Show NiFi and container status
 
-Container Management:
-  --start               Start NiFi containers (use with --no-tests)
-  --stop                Stop NiFi containers (use with --no-tests)  
-  --restart             Restart NiFi containers (use with --no-tests)
-
 Options:
+  --no-start            Never start containers (containers must be started externally)
   --nifi-url <url>      Override NiFi base URL
   --keycloak-url <url>  Override Keycloak URL
   --timeout <ms>        Test timeout in milliseconds (default: 600000)
   --help                Show this help message
 
+Container Management (DEPRECATED - use Maven integration-tests profile instead):
+  --start               Start NiFi containers (use with --no-tests)
+  --stop                Stop NiFi containers (use with --no-tests)  
+  --restart             Restart NiFi containers (use with --no-tests)
+
 Examples:
   node nifi-manager.js                    # Check-only mode (safe for builds)
+  node nifi-manager.js --check-only --no-start # Only check, never start containers
+  node nifi-manager.js --status           # Show system status
+  
+DEPRECATED (use Maven integration-tests profile instead):
   node nifi-manager.js --auto-start       # Auto-start mode (for development)
   node nifi-manager.js --force-start      # Force restart and test
-  node nifi-manager.js --status           # Show system status
   node nifi-manager.js --no-tests --start # Just start containers
-  node nifi-manager.js --no-tests --stop  # Just stop containers
 `);
 }
 
@@ -317,8 +325,11 @@ async function main() {
       return 0;
     }
 
-    // Handle container-only modes
+    // Handle container-only modes (DEPRECATED)
     if (hasFlag(args, 'no-tests')) {
+      console.warn('⚠️  WARNING: Container management via JavaScript is deprecated.');
+      console.warn('    Use Maven integration-tests profile instead: mvn test -Pintegration-tests');
+      
       if (hasFlag(args, 'start')) {
         return await manager.executeContainerOnly('start');
       } else if (hasFlag(args, 'stop')) {
@@ -332,13 +343,27 @@ async function main() {
     }
 
     // Handle test execution modes
+    const noStart = hasFlag(args, 'no-start');
+    
     if (hasFlag(args, 'force-start')) {
+      if (noStart) {
+        console.error('❌ Cannot use --force-start with --no-start');
+        return 1;
+      }
+      console.warn('⚠️  WARNING: Auto-starting containers from JavaScript is deprecated.');
+      console.warn('    Use Maven integration-tests profile instead: mvn test -Pintegration-tests');
       return await manager.executeForceStart();
     } else if (hasFlag(args, 'auto-start')) {
+      if (noStart) {
+        console.error('❌ Cannot use --auto-start with --no-start');
+        return 1;
+      }
+      console.warn('⚠️  WARNING: Auto-starting containers from JavaScript is deprecated.');
+      console.warn('    Use Maven integration-tests profile instead: mvn test -Pintegration-tests');
       return await manager.executeAutoStart();
     } else {
       // Default to check-only mode
-      return await manager.executeCheckOnly();
+      return await manager.executeCheckOnly(noStart);
     }
 
   } catch (error) {

@@ -4,6 +4,21 @@
  * Handles NiFi container management and health checks
  */
 
+/**
+ * ⚠️  DEPRECATION NOTICE ⚠️
+ * 
+ * This Docker utility and its container management functions are DEPRECATED.
+ * Container lifecycle should be managed externally by Maven profiles using exec-maven-plugin,
+ * following the CUI standard pattern.
+ * 
+ * Preferred approach:
+ * - Use Maven integration-tests profile: `mvn test -Pintegration-tests`
+ * - Container start/stop handled by scripts/start-integration-containers.sh and scripts/stop-integration-containers.sh
+ * - JavaScript/Cypress code should NEVER start containers
+ * 
+ * This file is kept for backward compatibility but should not be used for new development.
+ */
+
 const { spawn } = require('child_process');
 const https = require('https');
 const http = require('http');
