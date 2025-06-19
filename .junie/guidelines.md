@@ -24,7 +24,7 @@ This file provides guidance to Junie when working with code in this repository.
 - Log messages: `doc/LogMessage.md`
 
 ## CUI Standards Documentation
-- Standards Overview: `/Users/oliver/git/cui-llm-rules/standards/README.md`
+- Standards Overview: `standards/README.md`
 
 ### JavaScript and CSS Standards:
 - JavaScript Standards: `/Users/oliver/git/cui-llm-rules/standards/javascript/`
