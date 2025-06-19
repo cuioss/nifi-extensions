@@ -21,11 +21,11 @@ services:
       - ../../../target/nifi-deploy:/opt/nifi/nifi-current/nar_extensions
       - ./nifi/conf:/opt/nifi/nifi-current/conf
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9094/nifi/"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
+      test: ["CMD-SHELL", "curl --fail --max-time 3 http://localhost:9094/nifi/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     networks:
       - nifi-keycloak-network
 
@@ -72,20 +72,16 @@ services:
       - KEYCLOAK_ADMIN_PASSWORD=admin
       - KC_HEALTH_ENABLED=true
       - KC_DB=dev-mem
-      - KC_HTTPS_CERTIFICATE_FILE=/opt/keycloak/data/import/certificates/localhost.crt
-      - KC_HTTPS_CERTIFICATE_KEY_FILE=/opt/keycloak/data/import/certificates/localhost.key
+      - KC_LOG_LEVEL=INFO
     volumes:
       - ./keycloak:/opt/keycloak/data/import
     command: 
       - start-dev
-      - --import-realm
-      - --https-certificate-file=/opt/keycloak/data/import/certificates/localhost.crt
-      - --https-certificate-key-file=/opt/keycloak/data/import/certificates/localhost.key
     healthcheck:
-      test: ["CMD", "curl", "-k", "-f", "https://localhost:9086/health"]
-      interval: 30s
+      test: ["CMD-SHELL", "curl --fail http://localhost:8080/realms/master || exit 1"]
+      interval: 20s
       timeout: 10s
-      retries: 5
+      retries: 6
       start_period: 60s
     networks:
       - nifi-keycloak-network

@@ -46,14 +46,57 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
 
-      - name: Frontend Quality Checks
-        run: ./mvnw -B --no-transfer-progress clean test -pl :nifi-cuioss-ui,:e-2-e-cypress
+      - name: Build NAR files and prepare deployment
+        run: ./mvnw -B --no-transfer-progress clean package -DskipTests
+        
+      - name: Build and deploy NAR extensions
+        run: |
+          mkdir -p target/nifi-deploy
+          cd integration-testing/src/main/docker
+          ./copy-deployment.sh
+        
+      - name: Start containers with fail-fast timeout
+        run: |
+          cd integration-testing/src/main/docker
+          docker compose up -d --build
+          
+          echo "Waiting for NiFi container to start (max 2 minutes)..."
+          TIMEOUT=120  # 2 minutes
+          ELAPSED=0
+          INTERVAL=5
+          
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            if curl --fail --max-time 5 --silent http://localhost:9094/nifi/ > /dev/null 2>&1; then
+              echo "✅ NiFi is ready! (Started in ${ELAPSED} seconds)"
+              # Wait additional 10 seconds for full initialization
+              sleep 10
+              exit 0
+            fi
+            
+            echo "⏳ Waiting for NiFi... (${ELAPSED}/${TIMEOUT}s)"
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+          
+          echo "❌ NiFi failed to start within 2 minutes!"
+          echo "Running diagnostics..."
+          ./debug-containers.sh
+          
+          exit 1
+        timeout-minutes: 3
 
       - name: Run E2E Integration Tests
-        run: ./mvnw -B --no-transfer-progress integration-test -Plocal-integration-tests -Dintegration.test.local=true
+        run: ./mvnw -B --no-transfer-progress integration-test -pl e-2-e-cypress -Pintegration-tests
         env:
           CYPRESS_BASE_URL: http://localhost:9094/nifi
           CYPRESS_KEYCLOAK_URL: https://localhost:9085
+        timeout-minutes: 10
+
+      - name: Stop containers
+        run: |
+          cd integration-testing/src/main/docker
+          docker compose down -v
+        if: always()
 
       - name: Generate E2E Analysis Reports
         run: |

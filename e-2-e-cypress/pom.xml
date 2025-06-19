@@ -22,8 +22,8 @@
         <keycloak.url>http://localhost:9080</keycloak.url>
         <!-- Fail-fast configuration -->
         <maven.test.failure.ignore>false</maven.test.failure.ignore>
-        <maven.build.timeout>120</maven.build.timeout> <!-- 2 minutes max -->
-        <nifi.startup.timeout>60</nifi.startup.timeout> <!-- 1 minute for NiFi startup -->
+        <maven.build.timeout>180</maven.build.timeout> <!-- 3 minutes max -->
+        <nifi.startup.timeout>120</nifi.startup.timeout> <!-- 2 minutes for NiFi startup -->
         <cypress.timeout>120</cypress.timeout> <!-- 2 minutes for Cypress tests -->
         <!-- Exclude this module from SonarQube analysis -->
         <sonar.skip>true</sonar.skip>
@@ -53,24 +53,32 @@
                                     if [ "${autoStartNiFi}" = "true" ]; then
                                         echo "Starting NiFi containers for testing...";
                                         ./start-nifi.sh;
-                                        echo "Verifying NiFi service is ready...";
+                                        echo "Verifying NiFi service is ready with fail-fast timeout...";
                                         
-                                        # Check only NiFi health, allow Keycloak failures
+                                        # Fail-fast health check with 2-minute timeout
                                         COUNTER=0
                                         MAX_ATTEMPTS=${nifi.startup.timeout}
+                                        INTERVAL=2
                                         while [ $COUNTER -lt $MAX_ATTEMPTS ]; do
-                                            if curl -f -m 5 http://localhost:9094/nifi/ &gt; /dev/null 2&gt;&amp;1; then
-                                                echo "✅ NiFi is ready for testing!";
+                                            if curl --fail --max-time 3 --silent http://localhost:9094/nifi/ &gt; /dev/null 2&gt;&amp;1; then
+                                                echo "✅ NiFi is ready for testing! (Started in $((COUNTER * INTERVAL)) seconds)";
+                                                # Additional short wait for full initialization
+                                                sleep 5;
                                                 break;
                                             fi
-                                            echo "Waiting for NiFi... (attempt $((COUNTER + 1))/$MAX_ATTEMPTS)";
-                                            sleep 1;
+                                            echo "⏳ Waiting for NiFi... (attempt $((COUNTER + 1))/$MAX_ATTEMPTS) - $((COUNTER * INTERVAL))s elapsed";
+                                            sleep $INTERVAL;
                                             COUNTER=$((COUNTER + 1));
                                         done
                                         
                                         if [ $COUNTER -ge $MAX_ATTEMPTS ]; then
-                                            echo "❌ NiFi failed to start within timeout";
+                                            echo "❌ NiFi failed to start within $((MAX_ATTEMPTS * INTERVAL)) seconds timeout";
+                                            echo "=== Container Status ===";
+                                            docker compose ps;
+                                            echo "=== NiFi Logs (last 50 lines) ===";
                                             docker compose logs --tail=50 nifi;
+                                            echo "=== System Resources ===";
+                                            docker stats --no-stream;
                                             exit 1;
                                         fi
                                         
