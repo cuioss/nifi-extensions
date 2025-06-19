@@ -4,7 +4,7 @@
  * Multi-processor workflows, error scenarios, performance monitoring, and compatibility testing
  */
 
-import { SELECTORS, _TEXT_CONSTANTS } from '../../../support/constants.js';
+import { SELECTORS } from '../../../support/constants.js';
 
 describe('Advanced Test Automation', () => {
   let testProcessors = [];

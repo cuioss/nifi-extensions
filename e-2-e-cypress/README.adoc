@@ -48,19 +48,15 @@ cd e-2-e-cypress
 npm install
 ----
 
-. Verify setup:
-+
-[source,bash]
-----
-./verify-setup.sh
-----
-
 . Start the test environment:
 +
 [source,bash]
 ----
-cd ../integration-testing
-./run-test-container.sh
+# Start the complete test environment
+npm run env:start
+
+# Or start NiFi only
+npm run nifi:start
 ----
 
 . Run tests:
@@ -68,7 +64,10 @@ cd ../integration-testing
 [source,bash]
 ----
 # Run all tests
-npm test
+npm run cypress:run
+
+# Run self-verification tests
+npm run cypress:selftests
 
 # Run specific processor tests
 npx cypress run --spec "cypress/e2e/*processor*.cy.js"
@@ -97,36 +96,6 @@ For detailed information, see the link:doc/README.md[Documentation Index] which 
 ---
 
 *This module is production-ready and supports the core goal of testing custom JWT processor logic using NiFi as a platform. For comprehensive documentation and usage examples, refer to the link:doc/README.md[Documentation Index].*
-----
-
-. Verify setup:
-+
-[source,bash]
-----
-./verify-setup.sh
-----
-
-. Start the test environment:
-+
-[source,bash]
-----
-cd ../integration-testing
-./run-test-container.sh
-----
-
-. Run tests:
-+
-[source,bash]
-----
-# Self-verification tests (test the commands themselves)
-npm run cypress:selftests
-
-# Full end-to-end tests
-npm run cypress:run
-
-# Interactive mode
-npm run cypress:open
-----
 
 == Test Structure
 

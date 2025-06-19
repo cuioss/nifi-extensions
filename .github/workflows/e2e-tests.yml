@@ -58,7 +58,7 @@ jobs:
       - name: Generate E2E Analysis Reports
         run: |
           cd e-2-e-cypress
-          node scripts/enhanced-log-analyzer.js latest || echo "Log analysis completed with warnings"
+          node scripts/log-analyzer.js latest || echo "Log analysis completed with warnings"
           # Create a simple site structure for deployment
           mkdir -p ../target/site/e2e-reports
           cp -r tests-report/* ../target/site/e2e-reports/ 2>/dev/null || true

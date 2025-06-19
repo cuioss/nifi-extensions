@@ -22,7 +22,8 @@ Cypress.Commands.add('testCustomProcessorCatalogVisibility', () => {
       const customProcessors = ['MultiIssuerJWTTokenAuthenticator', 'JWTTokenAuthenticator'];
       customProcessors.forEach((processorType) => {
         cy.get('body').then(($catalogBody) => {
-          if ($catalogBody.find(`*:contains("${processorType}")`).length > 0) {
+          // Use a more specific selector, e.g., a data attribute or known class for processor items
+          if ($catalogBody.find(`[data-processor-type="${processorType}"]`).length > 0) {
             cy.log(`✅ Found custom processor: ${processorType}`);
           } else {
             cy.log(`⚠️ Custom processor not found: ${processorType}`);
@@ -299,51 +300,10 @@ Cypress.Commands.add('testMultiProcessorUICoordination', (processorIds) => {
 });
 
 /**
- * Enhanced processor cleanup
- */
-Cypress.Commands.add('enhancedProcessorCleanup', () => {
-  cy.log('🧹 Enhanced processor cleanup');
-
-  // Use existing cleanup command if available, otherwise implement basic cleanup
-  cy.get('body').then(($body) => {
-    const processors = $body.find('g.processor, [class*="processor"], .component');
-
-    if (processors.length > 0) {
-      cy.log(`Found ${processors.length} processors to cleanup`);
-
-      // Try to use existing cleanup command first
-      if (Cypress.Commands._commands.cleanupAllProcessors) {
-        cy.cleanupAllProcessors();
-      } else {
-        // Basic cleanup implementation
-        processors.each((index, element) => {
-          try {
-            cy.wrap(element).rightclick({ force: true });
-            cy.get('*:contains("Delete")').first().click({ force: true });
-
-            // Handle confirmation dialog
-            cy.get('body').then(($confirmBody) => {
-              const confirmDialog = $confirmBody.find('.confirmation-dialog, .delete-dialog');
-              if (confirmDialog.length > 0) {
-                cy.get('button:contains("Delete")').click({ force: true });
-              }
-            });
-          } catch (error) {
-            cy.log(`⚠️ Could not delete processor: ${error.message}`);
-          }
-        });
-      }
-    } else {
-      cy.log('✅ No processors found to cleanup');
-    }
-  });
-});
-
-/**
  * Document backend gap
  */
 Cypress.Commands.add('documentBackendGap', (gapType, description) => {
-  cy.log(`📋 Documenting backend gap: ${gapType}`);
+  cy.log(`📋 Documenting backend gap: ${JSON.stringify(gapType)}`);
 
   cy.task(
     'logBackendGap',
@@ -360,7 +320,7 @@ Cypress.Commands.add('documentBackendGap', (gapType, description) => {
  * Test configuration persistence UI
  */
 Cypress.Commands.add('testConfigurationPersistenceUI', (processorId, testConfig) => {
-  cy.log(`💾 Testing configuration persistence UI for ${processorId}`);
+  cy.log(`💾 Testing configuration persistence UI for ${JSON.stringify(processorId)}`);
 
   // Verify configuration was applied by reopening dialog
   cy.navigateToProcessorConfig(processorId);
@@ -384,7 +344,7 @@ Cypress.Commands.add('testConfigurationPersistenceUI', (processorId, testConfig)
  * Test configuration reload UI
  */
 Cypress.Commands.add('testConfigurationReloadUI', (processorId) => {
-  cy.log(`🔄 Testing configuration reload UI for ${processorId}`);
+  cy.log(`🔄 Testing configuration reload UI for ${JSON.stringify(processorId)}`);
 
   // Open and close configuration dialog multiple times
   for (let i = 0; i < 2; i++) {

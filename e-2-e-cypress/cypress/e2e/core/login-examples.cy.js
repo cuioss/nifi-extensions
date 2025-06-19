@@ -1,4 +1,4 @@
-import { TEXT_CONSTANTS } from '../support/constants.js';
+import { TEXT_CONSTANTS } from '../../support/constants.js';
 /**
  * Robust Login Pattern Example Test
  *

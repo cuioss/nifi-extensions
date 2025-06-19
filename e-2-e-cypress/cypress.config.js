@@ -7,7 +7,7 @@ module.exports = defineConfig({
     supportFile: 'cypress/support/e2e.js',
     viewportWidth: 1280,
     viewportHeight: 720,
-    chromeWebSecurity: false,
+    chromeWebSecurity: false, // Required for NiFi's iframe-based architecture and cross-origin requests
     // Fail-fast configuration
     defaultCommandTimeout: 10000,
     requestTimeout: 15000,

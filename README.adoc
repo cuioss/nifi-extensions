@@ -72,14 +72,14 @@ To skip tests:
 Run the complete integration test suite locally with automated container management:
 
 ```bash
-# Full integration test suite with container lifecycle
-./e-2-e-cypress/scripts/run-integration-tests.sh
-
-# Quick test run (containers already running)
-./e-2-e-cypress/scripts/run-tests-quick.sh
-
-# Maven profile directly
+# Full integration test suite with Maven
 ./mvnw integration-test -Plocal-integration-tests -Dintegration.test.local=true
+
+# Quick test run using existing containers
+cd e-2-e-cypress && npm run cypress:run
+
+# Interactive test development
+cd e-2-e-cypress && npm run cypress:open
 ```
 
 See link:e-2-e-cypress/doc/local-integration-testing.md[Local Integration Testing Guide] for detailed instructions.
