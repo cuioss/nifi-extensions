@@ -415,4 +415,67 @@ describe('NiFi Advanced Settings Test', () => {
       }
     });
   });
+
+  it('should test advanced dialog navigation', () => {
+    cy.log('Testing advanced dialog navigation and tab system');
+    
+    cy.get('body').then($body => {
+      const hasProcessors = $body.find('g.processor').length > 0;
+      
+      if (hasProcessors) {
+        cy.get('g.processor').first().then($processor => {
+          const processorId = $processor.attr('id');
+          
+          // Test opening advanced dialog
+          cy.openProcessorAdvancedDialog(processorId);
+          
+          // Test cross-tab navigation with different naming conventions
+          cy.testCrossTabNavigation(['tab1', 'tab2', 'tab3']);
+          
+          // Test mixed naming convention navigation
+          cy.testMixedTabNavigation(['properties', 'tab2', 'metrics']);
+          
+          // Test tab alternatives
+          cy.testTabAlternatives();
+          
+          // Close dialog
+          cy.closeAdvancedDialog();
+        });
+      } else {
+        cy.log('No processors available for advanced navigation testing');
+      }
+    });
+  });
+
+  it('should verify tab content validation', () => {
+    cy.log('Testing tab content validation');
+    
+    cy.get('body').then($body => {
+      const hasProcessors = $body.find('g.processor').length > 0;
+      
+      if (hasProcessors) {
+        cy.get('g.processor').first().then($processor => {
+          const processorId = $processor.attr('id');
+          
+          // Open advanced dialog
+          cy.openProcessorAdvancedDialog(processorId);
+          
+          // Test each tab type validation
+          cy.navigateToCustomUITab('properties');
+          cy.verifyTabContent('properties');
+          
+          cy.navigateToCustomUITab('validation');
+          cy.verifyTabContent('validation');
+          
+          cy.navigateToCustomUITab('advanced');
+          cy.verifyTabContent('advanced');
+          
+          // Close dialog
+          cy.closeAdvancedDialog();
+        });
+      } else {
+        cy.log('No processors available for tab content validation testing');
+      }
+    });
+  });
 });

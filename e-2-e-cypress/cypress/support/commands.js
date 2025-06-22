@@ -40,6 +40,7 @@ import './commands/ui/i18n';
 import './commands/ui/browser';
 import './commands/ui/accessibility';
 import './commands/ui/visual';
+import './commands/ui/advanced-navigation-commands';
 
 // Advanced settings commands
 import './commands/processor/advanced-settings-commands';
