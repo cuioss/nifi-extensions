@@ -43,26 +43,64 @@ MCP Playwright tool setup for enhanced development workflows.
 
 ## Quick Start
 
+**Primary Testing Command**: All development and verification uses a single Maven command for consistency:
+
 ```bash
-# Start test environment
+# Stepwise verification command (used for every implementation step)
+./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
+```
+
+**Development Workflow**:
+1. Make changes to tests/commands
+2. Verify with Maven command above
+3. Fix any failures immediately (fail-fast principle)
+4. Commit only after successful verification
+
+**Legacy Commands** (for reference only):
+```bash
+# Start test environment manually (if needed)
 cd ../integration-testing
 ./run-test-container.sh
 
-# Run tests
+# Run tests via npm (not used in stepwise workflow)
 cd ../e-2-e-cypress
 npm test
 
-# Run specific test patterns
+# Run specific test patterns (debugging only)
 npx cypress run --spec "cypress/e2e/*processor*.cy.js"
 ```
 
+**Important**: The Maven command automatically handles:
+- Docker container startup (NiFi + Keycloak)
+- Dependency installation
+- Test execution
+- Container cleanup
+- Build verification
+
 ## Key Achievements
 
-- **Production-Ready Framework**: 15+ custom Cypress commands
-- **Angular UI Compatibility**: Successfully migrated from legacy NiFi UI
-- **Zero-Warning ESLint Implementation**: 98 warnings → 0 warnings
-- **Advanced Testing Capabilities**: Multi-processor workflows, performance benchmarking
-- **Full CI/CD Integration**: Automated testing pipeline
+- **Production-Ready Framework**: 25+ tests with comprehensive custom Cypress commands
+- **Stepwise Development Approach**: Fail-fast verification using single Maven command
+- **Advanced Testing Capabilities**: JWT validation, JWKS endpoints, error handling, multi-issuer configuration
+- **Zero-Warning ESLint Implementation**: Clean, maintainable codebase
+- **Full Maven Integration**: Automated Docker lifecycle and test execution
+- **Comprehensive Test Coverage**: Self-tests, functional tests, and advanced processor testing
+
+## Current Test Suite Status
+
+**Test Coverage**:
+- **01-self-test.cy.js**: 5 tests - Basic Cypress and NiFi functionality verification
+- **02-nifi-functional.cy.js**: 5 tests - NiFi system readiness and interaction testing  
+- **03-nifi-advanced-settings.cy.js**: 15 tests - Advanced JWT processor configuration and validation
+
+**Total**: 25 tests passing consistently with 100% success rate
+
+**Test Categories**:
+- ✅ JWT Token Validation (generate, validate, test various scenarios)
+- ✅ JWKS Endpoint Validation (URL validation, Keycloak integration)
+- ✅ Error Handling (network timeouts, missing properties, malformed JSON)
+- ✅ Multi-issuer Configuration (multiple issuers, property validation)
+- ✅ Advanced UI Navigation (three-tab system, flexible naming conventions)
 
 ## Standards and References
 
@@ -86,10 +124,18 @@ This project implements centralized coding standards:
 
 ## Contributing
 
-1. Follow patterns in [Testing Patterns](./testing-patterns.md)
-2. Use existing custom commands from `/cypress/support/commands/`
-3. Focus on testing custom processor logic, not NiFi mechanics
-4. Ensure zero ESLint warnings following centralized standards
+**Stepwise Development Process**:
+1. Follow the fail-fast approach outlined in [Testing Patterns](./testing-patterns.md) → Stepwise Development section
+2. Make incremental changes to tests or commands
+3. **Always verify each change** with: `./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests`
+4. Fix any failures immediately before proceeding
+5. Commit only after successful Maven verification
+6. Follow patterns in [Testing Patterns](./testing-patterns.md)
+7. Use existing custom commands from `/cypress/support/commands/`
+8. Focus on testing custom processor logic, not NiFi mechanics
+9. Ensure zero ESLint warnings following centralized standards
+
+**Critical Rule**: Never modify or add parameters to the Maven verification command. All changes must work with the exact command as specified.
 
 ---
 

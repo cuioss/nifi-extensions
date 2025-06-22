@@ -14,6 +14,41 @@ Practical code examples and patterns for testing custom processor logic using Ni
 - ❌ Don't test NiFi's navigation mechanics
 - ❌ Don't test NiFi's processor framework
 
+## Stepwise Development Approach
+
+**Critical Rule**: All development follows a fail-fast, stepwise verification approach.
+
+### Verification Command
+
+**Every implementation step must be verified using this exact command**:
+```bash
+./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
+```
+
+### Development Workflow
+
+1. **Make small incremental changes** (add one test, one command, one feature)
+2. **Immediately verify** with the Maven command above
+3. **Fix any failures immediately** - never accumulate issues
+4. **Commit successful changes** with descriptive messages
+5. **Repeat** for the next small change
+
+### Implementation Steps Completed
+
+- ✅ **Step 1**: JWT Token Validation (15 tests passing)
+- ✅ **Step 2**: JWKS Endpoint Validation (16 tests passing)  
+- ✅ **Step 3**: Error Handling Scenarios (20 tests passing)
+- ✅ **Step 4**: Multi-issuer Configuration (23 tests passing)
+- ✅ **Step 5**: Advanced UI Navigation (25 tests passing)
+
+### Why This Approach Works
+
+- **Immediate feedback**: Know exactly what broke and when
+- **Smaller debug scope**: Issues are isolated to recent changes
+- **Reliable builds**: Never merge broken code
+- **Team confidence**: Everyone knows the current state is working
+- **CI/CD ready**: Tests are always in a deployable state
+
 ## Testing Patterns
 
 ### 1. Minimal NiFi Interaction Pattern

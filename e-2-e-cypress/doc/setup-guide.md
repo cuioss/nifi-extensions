@@ -82,35 +82,63 @@ ls -la ../target/nifi-deploy/
 
 ## Test Execution
 
-### Running All Tests
+**Primary Testing Method**: All testing is done using a single Maven command for consistency and reliability.
+
+### Stepwise Verification Command
+
+**The only command needed for all testing scenarios**:
 ```bash
-# Full test suite
+./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
+```
+
+**What this command does**:
+1. **Clean Build**: Removes previous build artifacts
+2. **Dependency Management**: Auto-installs Node.js 20.x and npm dependencies
+3. **Docker Lifecycle**: Starts NiFi + Keycloak containers
+4. **Service Readiness**: Waits for services to be ready (max 2 minutes)
+5. **Test Execution**: Runs all Cypress tests in headless mode
+6. **Cleanup**: Stops and removes Docker containers
+7. **Verification**: Reports build SUCCESS/FAILURE
+
+**Service URLs** (available during test execution):
+- **NiFi UI**: `https://localhost:9095/nifi/`
+- **Keycloak**: `http://localhost:9080/`
+- **NiFi API**: `https://localhost:9095/nifi-api/`
+
+### Development Workflow
+
+**For implementing new tests or commands**:
+1. Make your changes (add tests, commands, etc.)
+2. Run: `./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests`
+3. If tests fail: Fix immediately (fail-fast principle)
+4. If tests pass: Commit your changes
+5. Repeat for next change
+
+### Legacy Methods (Not Used in Current Workflow)
+
+**Manual environment startup** (for debugging only):
+```bash
+# Start containers manually
+cd ../integration-testing
+./run-test-container.sh
+
+# Run tests directly via npm
+cd ../e-2-e-cypress
 npm test
 
-# Maven integration
-mvn verify -Pui-tests
+# Run specific test patterns
+npx cypress run --spec "cypress/e2e/*processor*.cy.js"
+
+# Stop containers manually
+cd ../integration-testing
+./stop-test-container.sh
 ```
 
-### Running Specific Tests
-```bash
-# Authentication tests only
-npx cypress run --spec "cypress/e2e/auth/*.cy.js"
-
-# Processor tests only
-npx cypress run --spec "cypress/e2e/processors/*.cy.js"
-
-# Single test file
-npx cypress run --spec "cypress/e2e/auth/login.cy.js"
-```
-
-### Interactive Mode
-```bash
-# Open Cypress Test Runner
-npx cypress open
-
-# Open with specific configuration
-npx cypress open --config-file cypress.config.js
-```
+**Important**: The Maven command is the primary method because it:
+- Ensures consistent environment setup
+- Provides reliable container lifecycle management
+- Integrates with CI/CD pipelines
+- Enforces fail-fast development principles
 
 ## Build Integration
 
