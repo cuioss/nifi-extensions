@@ -24,7 +24,7 @@ services:
       - NIFI_SECURITY_KEYSTORE=
       - NIFI_SECURITY_TRUSTSTORE=
     volumes:
-      - ../../../target/nifi-deploy:/opt/nifi/nifi-current/nar_extensions
+      - ../../../../target/nifi-deploy:/opt/nifi/nifi-current/nar_extensions
     healthcheck:
       test: ["CMD-SHELL", "curl -k --fail --max-time 3 https://localhost:8443/nifi/ || exit 1"]
       interval: 10s

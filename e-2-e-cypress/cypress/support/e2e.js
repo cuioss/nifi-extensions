@@ -9,6 +9,9 @@
 // Import commands.js using ES2015 syntax:
 import './commands';
 
+// Import processor deployment commands
+import './commands/processor/deployment-commands';
+
 // Import console error tracking
 import './console-error-tracking';
 
