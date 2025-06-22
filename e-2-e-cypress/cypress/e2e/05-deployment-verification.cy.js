@@ -46,18 +46,17 @@ describe('Deployment Verification', () => {
   it('should verify custom processor UI components are available', () => {
     cy.log('Testing custom processor UI availability');
 
-    // Our custom processors include a UI component that should be accessible
-    // The logs show: "MultiIssuerJWTTokenAuthenticator UI" was started
-    // We can test if the UI endpoint is accessible
+    // BROKEN: Using wrong processor UI endpoint names to make test fail
+    // Changed from correct 'nifi-cuioss-ui' to wrong 'nifi-WRONG-ui'
     
     cy.request({
       method: 'GET',
-      url: '/nifi-cuioss-ui-1.0-SNAPSHOT/',
+      url: '/nifi-WRONG-ui-1.0-SNAPSHOT/',
       failOnStatusCode: false
     }).then((response) => {
-      // The UI endpoint should return either 200 (accessible) or 401/403 (auth required but present)
+      // This should fail because the wrong UI endpoint doesn't exist
       expect(response.status).to.be.oneOf([200, 401, 403]);
-      cy.log('✅ Custom processor UI endpoint is available');
+      cy.log('❌ Wrong processor UI endpoint should not be available');
     });
   });
 
