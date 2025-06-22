@@ -196,4 +196,41 @@ describe('NiFi Advanced Settings Test', () => {
       // Token validation would normally detect this as invalid
     });
   });
+  
+  it('should validate JWKS endpoint configuration', () => {
+    // Test JWKS endpoint validation functionality
+    cy.log('Testing JWKS endpoint validation');
+    
+    // Test with Keycloak JWKS endpoint (available in integration environment)
+    const keycloakJwksUrl = 'http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/certs';
+    
+    // Validate JWKS URL format
+    cy.validateJwksUrlFormat(keycloakJwksUrl);
+    
+    // Test JWKS endpoint accessibility
+    cy.verifyJwksEndpoint(keycloakJwksUrl);
+    
+    // Test processor JWKS configuration
+    cy.get('body').then($body => {
+      const hasProcessors = $body.find('g.processor, [class*="processor"], .component').length > 0;
+      
+      if (hasProcessors) {
+        cy.get('g.processor, [class*="processor"], .component').first().then($processor => {
+          const processorId = $processor.attr('id') || 'test-processor';
+          
+          // Test different JWKS configuration types
+          cy.testJwksConfiguration(processorId, 'url', keycloakJwksUrl);
+        });
+      } else {
+        cy.log('No processors available for JWKS configuration test');
+      }
+    });
+    
+    // Create test JWKS configuration
+    cy.createTestJwksConfig().then((testJwks) => {
+      cy.log('Test JWKS configuration created successfully');
+      expect(testJwks).to.have.property('keys');
+      expect(testJwks.keys).to.be.an('array');
+    });
+  });
 });
