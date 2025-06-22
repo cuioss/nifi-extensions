@@ -81,42 +81,6 @@
     </build>
 
     <profiles>
-        <!-- Profile for running UI tests (requires containers to be running) -->
-        <profile>
-            <id>ui-tests</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>com.github.eirslett</groupId>
-                        <artifactId>frontend-maven-plugin</artifactId>
-                        <version>${frontend.maven.plugin.version}</version>
-                        <configuration>
-                            <nodeVersion>${frontend.node.version}</nodeVersion>
-                            <npmVersion>${frontend.npm.version}</npmVersion>
-                            <installDirectory>target</installDirectory>
-                        </configuration>
-                        <executions>
-                            <!-- Run actual E2E tests (requires containers to be running) -->
-                            <execution>
-                                <id>ui-tests-cypress-e2e</id>
-                                <goals>
-                                    <goal>npm</goal>
-                                </goals>
-                                <phase>integration-test</phase>
-                                <configuration>
-                                    <arguments>run cypress:run</arguments>
-                                    <environmentVariables>
-                                        <CYPRESS_BASE_URL>${nifi.base.url}</CYPRESS_BASE_URL>
-                                        <CYPRESS_KEYCLOAK_URL>${keycloak.url}</CYPRESS_KEYCLOAK_URL>
-                                    </environmentVariables>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        
         <!-- Minimal Integration Tests Profile -->
         <profile>
             <id>integration-tests</id>
@@ -141,8 +105,8 @@
                                     <goal>exec</goal>
                                 </goals>
                                 <configuration>
-                                    <executable>${project.basedir}/scripts/start-integration-containers.sh</executable>
-                                    <workingDirectory>${project.basedir}</workingDirectory>
+                                    <executable>${project.basedir}/../integration-testing/src/main/docker/run-test-container.sh</executable>
+                                    <workingDirectory>${project.basedir}/../integration-testing/src/main/docker</workingDirectory>
                                 </configuration>
                             </execution>
                             <!-- Stop containers -->
@@ -153,8 +117,8 @@
                                     <goal>exec</goal>
                                 </goals>
                                 <configuration>
-                                    <executable>${project.basedir}/scripts/stop-integration-containers.sh</executable>
-                                    <workingDirectory>${project.basedir}</workingDirectory>
+                                    <executable>${project.basedir}/../integration-testing/src/main/docker/stop-test-container.sh</executable>
+                                    <workingDirectory>${project.basedir}/../integration-testing/src/main/docker</workingDirectory>
                                 </configuration>
                             </execution>
                         </executions>
@@ -188,176 +152,6 @@
                             <!-- Skip default selftests when profile is active -->
                             <execution>
                                 <id>cypress-selftests</id>
-                                <phase>none</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        
-        <!-- Profile for sonar build - skip all tests and Docker operations -->
-        <profile>
-            <id>sonar</id>
-            <properties>
-                <!-- Skip all tests and executions for sonar analysis -->
-                <skipTests>true</skipTests>
-                <maven.test.skip>true</maven.test.skip>
-            </properties>
-            <build>
-                <plugins>
-                    <!-- Override frontend plugin to skip all executions -->
-                    <plugin>
-                        <groupId>com.github.eirslett</groupId>
-                        <artifactId>frontend-maven-plugin</artifactId>
-                        <version>${frontend.maven.plugin.version}</version>
-                        <executions>
-                            <!-- Override all frontend executions to skip them -->
-                            <execution>
-                                <id>install-node-and-npm</id>
-                                <phase>none</phase>
-                            </execution>
-                            <execution>
-                                <id>npm-install</id>
-                                <phase>none</phase>
-                            </execution>
-                            <execution>
-                                <id>npm-lint</id>
-                                <phase>none</phase>
-                            </execution>
-                            <execution>
-                                <id>cypress-selftests</id>
-                                <phase>none</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <!-- Override exec plugin to skip all Docker operations -->
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <version>3.1.0</version>
-                        <executions>
-                            <!-- Override all exec executions to skip them -->
-                            <execution>
-                                <id>start-nifi-containers</id>
-                                <phase>none</phase>
-                            </execution>
-                            <execution>
-                                <id>stop-nifi-containers</id>
-                                <phase>none</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        
-        <!-- Profile for release-snapshot - skip all tests and Docker operations -->
-        <profile>
-            <id>release-snapshot</id>
-            <properties>
-                <!-- Skip all tests and executions for snapshot release -->
-                <skipTests>true</skipTests>
-                <maven.test.skip>true</maven.test.skip>
-                <maven.integration.test.skip>true</maven.integration.test.skip>
-            </properties>
-            <build>
-                <plugins>
-                    <!-- Override frontend plugin to skip all executions -->
-                    <plugin>
-                        <groupId>com.github.eirslett</groupId>
-                        <artifactId>frontend-maven-plugin</artifactId>
-                        <version>${frontend.maven.plugin.version}</version>
-                        <executions>
-                            <!-- Override all frontend executions to skip them -->
-                            <execution>
-                                <id>install-node-and-npm</id>
-                                <phase>none</phase>
-                            </execution>
-                            <execution>
-                                <id>npm-install</id>
-                                <phase>none</phase>
-                            </execution>
-                            <execution>
-                                <id>npm-lint</id>
-                                <phase>none</phase>
-                            </execution>
-                            <execution>
-                                <id>cypress-selftests</id>
-                                <phase>none</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <!-- Override exec plugin to skip all Docker operations -->
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <version>3.1.0</version>
-                        <executions>
-                            <!-- Override all exec executions to skip them -->
-                            <execution>
-                                <id>start-nifi-containers</id>
-                                <phase>none</phase>
-                            </execution>
-                            <execution>
-                                <id>stop-nifi-containers</id>
-                                <phase>none</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        
-        <!-- Profile for release - skip all tests and Docker operations -->
-        <profile>
-            <id>release</id>
-            <properties>
-                <!-- Skip all tests and executions for release -->
-                <skipTests>true</skipTests>
-                <maven.test.skip>true</maven.test.skip>
-                <maven.integration.test.skip>true</maven.integration.test.skip>
-            </properties>
-            <build>
-                <plugins>
-                    <!-- Override frontend plugin to skip all executions -->
-                    <plugin>
-                        <groupId>com.github.eirslett</groupId>
-                        <artifactId>frontend-maven-plugin</artifactId>
-                        <version>${frontend.maven.plugin.version}</version>
-                        <executions>
-                            <!-- Override all frontend executions to skip them -->
-                            <execution>
-                                <id>install-node-and-npm</id>
-                                <phase>none</phase>
-                            </execution>
-                            <execution>
-                                <id>npm-install</id>
-                                <phase>none</phase>
-                            </execution>
-                            <execution>
-                                <id>npm-lint</id>
-                                <phase>none</phase>
-                            </execution>
-                            <execution>
-                                <id>cypress-selftests</id>
-                                <phase>none</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <!-- Override exec plugin to skip all Docker operations -->
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <version>3.1.0</version>
-                        <executions>
-                            <!-- Override all exec executions to skip them -->
-                            <execution>
-                                <id>start-nifi-containers</id>
-                                <phase>none</phase>
-                            </execution>
-                            <execution>
-                                <id>stop-nifi-containers</id>
                                 <phase>none</phase>
                             </execution>
                         </executions>
