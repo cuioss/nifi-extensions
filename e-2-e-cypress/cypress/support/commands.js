@@ -30,6 +30,7 @@ import './commands/processor/task4-additional-commands';
 
 // Validation commands
 import './commands/validation/validation';
+import './commands/validation/jwt-token-commands';
 
 // UI commands
 import './commands/ui/i18n';
