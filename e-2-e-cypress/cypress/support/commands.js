@@ -5,6 +5,9 @@
 
 // Import all command files to ensure they're registered
 
+// Fail-fast commands
+import './commands/fail-fast/timeout';
+
 // Authentication commands
 import './commands/auth/login';
 import './commands/auth/simplified-login';

@@ -11,17 +11,21 @@ Cypress.Commands.add('nifiLogin', () => {
   cy.log('🚀 Starting NiFi access...');
 
   // Use visit with optimized settings for slow-loading NiFi
-  cy.visit('/nifi', {
+  cy.visit('/', {
     failOnStatusCode: false,
-    timeout: 180000, // 3 minutes for slow startup
+    timeout: 60000,
   });
 
-  // Use a more patient wait strategy
-  cy.log('⏳ Waiting for NiFi Angular app to load...');
-  cy.get('nifi', { timeout: 120000 }).should('exist');
+  // Wait for the basic elements to load
+  cy.log('⏳ Waiting for NiFi element...');
+  cy.get('nifi', { timeout: 30000 }).should('exist');
+
+  // Wait for Angular app to initialize by checking for child elements
+  cy.log('⏳ Waiting for NiFi Angular app to initialize...');
+  cy.get('nifi').children().should('have.length.gt', 0);
 
   // Verify we have a functional page
-  cy.log('✅ NiFi app element found, verifying page functionality...');
+  cy.log('✅ NiFi app loaded successfully');
   cy.get('body').should('be.visible');
 
   cy.log('🎉 NiFi access complete!');
@@ -33,6 +37,7 @@ Cypress.Commands.add('nifiLogin', () => {
  */
 Cypress.Commands.add('verifyLoggedIn', () => {
   cy.get('nifi').should('exist');
+  cy.get('nifi').children().should('have.length.gt', 0);
   cy.url().should('include', '/nifi');
 });
 
@@ -48,6 +53,7 @@ Cypress.Commands.add('ensureAuthenticatedAndReady', () => {
     } else {
       // Just verify the app is still accessible
       cy.get('nifi').should('exist');
+      cy.get('nifi').children().should('have.length.gt', 0);
     }
   });
 });
@@ -56,8 +62,51 @@ Cypress.Commands.add('ensureAuthenticatedAndReady', () => {
  * Alternative minimal login command that just verifies access
  */
 Cypress.Commands.add('accessNiFi', () => {
-  cy.visit('/nifi');
+  cy.visit('/');
   cy.get('nifi', { timeout: 30000 }).should('exist');
+  cy.get('nifi').children().should('have.length.gt', 0);
+});
+
+/**
+ * Quick login check - optimized version for anonymous access
+ */
+Cypress.Commands.add('quickLoginCheck', () => {
+  cy.log('🔍 Quick login check for anonymous access...');
+
+  // Just check if we're already on NiFi and the app element exists
+  cy.url().then((url) => {
+    if (!url.includes('/nifi')) {
+      cy.nifiLogin();
+    } else {
+      // Quick verification that NiFi is still accessible
+      cy.get('nifi', { timeout: 10000 }).should('exist');
+      cy.get('nifi').children().should('have.length.gt', 0);
+      cy.log('✅ Quick login check passed - NiFi accessible');
+    }
+  });
+});
+
+/**
+ * Verify anonymous access is working
+ */
+Cypress.Commands.add('verifyAnonymousAccess', () => {
+  cy.log('🔓 Verifying anonymous access...');
+
+  // Navigate to NiFi and verify no login prompt appears
+  cy.visit('/', {
+    failOnStatusCode: false,
+    timeout: 60000,
+  });
+
+  // Should be able to access NiFi directly without authentication
+  cy.get('nifi', { timeout: 30000 }).should('exist');
+  cy.get('nifi').children().should('have.length.gt', 0);
+
+  // Verify we're not redirected to a login page
+  cy.url().should('include', '/nifi');
+  cy.url().should('not.include', 'login');
+
+  cy.log('✅ Anonymous access verified');
 });
 
 module.exports = {

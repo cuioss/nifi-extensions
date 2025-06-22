@@ -1,4 +1,4 @@
-import { TEXT_CONSTANTS, URLS } from '../support/constants.js';
+import { TEXT_CONSTANTS, URLS } from '../../support/constants.js';
 /**
  * Enhanced Custom Processor Testing
  * Focus: Test our JWT processor logic with enhanced commands

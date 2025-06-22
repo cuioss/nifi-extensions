@@ -1,4 +1,4 @@
-import { TEXT_CONSTANTS } from '../support/constants.js';
+import { TEXT_CONSTANTS } from '../../support/constants.js';
 /**
  * Demonstration of Working NiFi Integration Test Capabilities
  * This test showcases the successfully updated commands for NiFi 2.4.0 Angular UI

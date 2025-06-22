@@ -2,7 +2,7 @@
  * End-to-End tests for MultiIssuerJWTTokenAuthenticator processor configuration
  */
 
-import { SELECTORS, TEXT_CONSTANTS, COMMON_STRINGS } from '../../support/constants.js';
+import { SELECTORS, TEXT_CONSTANTS, COMMON_STRINGS } from '../../../support/constants.js';
 
 describe('Processor Configuration E2E Tests', () => {
   beforeEach(() => {
