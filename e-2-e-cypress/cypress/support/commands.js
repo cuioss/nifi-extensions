@@ -33,6 +33,7 @@ import './commands/validation/validation';
 import './commands/validation/jwt-token-commands';
 import './commands/validation/jwks-commands';
 import './commands/validation/error-handling-commands';
+import './commands/validation/multi-issuer-commands';
 
 // UI commands
 import './commands/ui/i18n';

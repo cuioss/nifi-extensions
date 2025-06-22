@@ -331,4 +331,88 @@ describe('NiFi Advanced Settings Test', () => {
       }
     });
   });
+
+  it('should support multiple issuer configurations', () => {
+    cy.log('Testing multi-issuer JWT configuration');
+    
+    cy.get('body').then($body => {
+      const hasProcessors = $body.find('g.processor').length > 0;
+      
+      if (hasProcessors) {
+        cy.get('g.processor').first().then($processor => {
+          const processorId = $processor.attr('id');
+          
+          // Test multiple issuers configuration
+          const testIssuers = [
+            'https://issuer1.example.com',
+            'https://issuer2.example.com',
+            'https://auth.example.org'
+          ];
+          
+          cy.configureMultipleIssuers(processorId, testIssuers);
+          
+          // Validate issuer list format
+          cy.validateIssuerListFormat(testIssuers.join(','));
+          
+          // Test issuer validation settings
+          cy.testIssuerValidation(processorId, true);
+        });
+      } else {
+        cy.log('No processors available for multi-issuer testing');
+      }
+    });
+  });
+
+  it('should validate multi-issuer property configurations', () => {
+    cy.log('Testing multi-issuer property validation');
+    
+    cy.get('body').then($body => {
+      const hasProcessors = $body.find('g.processor').length > 0;
+      
+      if (hasProcessors) {
+        cy.get('g.processor').first().then($processor => {
+          const processorId = $processor.attr('id');
+          cy.testMultiIssuerPropertyValidation(processorId);
+        });
+      } else {
+        cy.log('No processors available for property validation testing');
+      }
+    });
+  });
+
+  it('should handle different JWKS configuration types for multi-issuer', () => {
+    cy.log('Testing different JWKS configuration types');
+    
+    cy.get('body').then($body => {
+      const hasProcessors = $body.find('g.processor').length > 0;
+      
+      if (hasProcessors) {
+        cy.get('g.processor').first().then($processor => {
+          const processorId = $processor.attr('id');
+          
+          // Test server-based JWKS
+          cy.testMultiIssuerJwksConfig(processorId, 'server', 'http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/certs');
+          
+          // Test file-based JWKS
+          cy.testMultiIssuerJwksConfig(processorId, 'file', '/path/to/test/jwks.json');
+          
+          // Test in-memory JWKS with simple test data
+          const testJwks = {
+            keys: [
+              {
+                kty: 'RSA',
+                use: 'sig',
+                kid: 'test-key-id',
+                n: 'test-modulus',
+                e: 'AQAB'
+              }
+            ]
+          };
+          cy.testMultiIssuerJwksConfig(processorId, 'memory', testJwks);
+        });
+      } else {
+        cy.log('No processors available for JWKS configuration testing');
+      }
+    });
+  });
 });
