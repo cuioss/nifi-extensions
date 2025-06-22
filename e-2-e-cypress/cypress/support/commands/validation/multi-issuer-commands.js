@@ -10,19 +10,26 @@ import { SELECTORS, TEXT_CONSTANTS } from '../../constants.js';
  * @param {Array<string>} issuers - Array of issuer URLs
  * @param {string} jwksUrl - Primary JWKS URL
  */
-Cypress.Commands.add('configureMultipleIssuers', (processorId, issuers, jwksUrl = 'https://localhost:8443/auth/realms/test/protocol/openid_connect/certs') => {
-  const config = {
-    properties: {
-      'JWKS Type': 'Server',
-      'JWKS URL': jwksUrl,
-      'Additional Issuers': issuers.join(','),
-      'Issuer Validation': 'true',
-    },
-  };
+Cypress.Commands.add(
+  'configureMultipleIssuers',
+  (
+    processorId,
+    issuers,
+    jwksUrl = 'https://localhost:8443/auth/realms/test/protocol/openid_connect/certs'
+  ) => {
+    const config = {
+      properties: {
+        'JWKS Type': 'Server',
+        'JWKS URL': jwksUrl,
+        'Additional Issuers': issuers.join(','),
+        'Issuer Validation': 'true',
+      },
+    };
 
-  cy.configureProcessor(processorId, config);
-  cy.verifyProcessorProperties(processorId, config.properties);
-});
+    cy.configureProcessor(processorId, config);
+    cy.verifyProcessorProperties(processorId, config.properties);
+  }
+);
 
 /**
  * Test issuer validation configuration
@@ -67,23 +74,24 @@ Cypress.Commands.add('testIssuerValidation', (processorId, enableValidation = tr
  * @param {string} issuerList - Comma-separated issuer URLs
  */
 Cypress.Commands.add('validateIssuerListFormat', (issuerList) => {
-  const issuers = issuerList.split(',').map(url => url.trim());
-  
+  const issuers = issuerList.split(',').map((url) => url.trim());
+
   issuers.forEach((issuer, index) => {
     // Basic URL validation
     expect(issuer).to.match(/^https?:\/\/.+/, `Issuer ${index + 1} should be a valid URL`);
-    
+
     // Check for common issuer URL patterns
-    const isValidIssuer = issuer.includes('oauth') || 
-                         issuer.includes('auth') || 
-                         issuer.includes('openid') ||
-                         issuer.includes('realms') ||
-                         issuer.includes('.com') ||
-                         issuer.includes('.org');
-    
+    const isValidIssuer =
+      issuer.includes('oauth') ||
+      issuer.includes('auth') ||
+      issuer.includes('openid') ||
+      issuer.includes('realms') ||
+      issuer.includes('.com') ||
+      issuer.includes('.org');
+
     expect(isValidIssuer).to.be.true;
   });
-  
+
   cy.log(`✅ Validated ${issuers.length} issuer URLs`);
 });
 
@@ -138,8 +146,8 @@ Cypress.Commands.add('testMultiIssuerJwksConfig', (processorId, configType, conf
         .find('select')
         .select('In-Memory');
 
-      const jwksContent = typeof configValue === 'object' ? 
-        JSON.stringify(configValue) : configValue;
+      const jwksContent =
+        typeof configValue === 'object' ? JSON.stringify(configValue) : configValue;
 
       cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
         .contains('JWKS Content')
@@ -177,7 +185,7 @@ Cypress.Commands.add('testMultiIssuerJwksConfig', (processorId, configType, conf
 Cypress.Commands.add('validateMultiIssuerTokens', (processorId, tokens) => {
   tokens.forEach((tokenInfo, index) => {
     cy.log(`Testing token ${index + 1} from issuer: ${tokenInfo.issuer}`);
-    
+
     // Generate token for specific issuer
     cy.generateTestToken(tokenInfo.issuer, tokenInfo.payload || {}).then((token) => {
       // Verify token validation with multi-issuer processor
@@ -194,9 +202,9 @@ Cypress.Commands.add('testConcurrentMultiIssuerProcessors', (processorConfigs) =
   const processorIds = [];
 
   processorConfigs.forEach((config, index) => {
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator', { 
-      x: 200 + index * 150, 
-      y: 300 
+    cy.addProcessor('MultiIssuerJWTTokenAuthenticator', {
+      x: 200 + index * 150,
+      y: 300,
     }).then((processorId) => {
       processorIds.push(processorId);
 
@@ -215,7 +223,7 @@ Cypress.Commands.add('testConcurrentMultiIssuerProcessors', (processorConfigs) =
 
   // Verify all processors exist and are configured
   cy.get('g.processor').should('have.length.at.least', processorConfigs.length);
-  
+
   // Return processor IDs for cleanup
   cy.wrap(processorIds);
 });
@@ -229,23 +237,23 @@ Cypress.Commands.add('testMultiIssuerPropertyValidation', (processorId) => {
     {
       name: 'Empty JWKS URL',
       properties: { 'JWKS URL': '' },
-      shouldFail: true
+      shouldFail: true,
     },
     {
       name: 'Invalid issuer format',
       properties: { 'Additional Issuers': 'not-a-url,another-invalid' },
-      shouldFail: true
+      shouldFail: true,
     },
     {
       name: 'Mixed valid and invalid issuers',
       properties: { 'Additional Issuers': 'https://valid.com,invalid-url' },
-      shouldFail: true
-    }
+      shouldFail: true,
+    },
   ];
 
   invalidConfigurations.forEach((testCase) => {
     cy.log(`Testing: ${testCase.name}`);
-    
+
     cy.navigateToProcessorConfig(processorId);
     cy.get(SELECTORS.PROCESSOR_CONFIG_TAB).contains(TEXT_CONSTANTS.PROPERTIES).click();
 

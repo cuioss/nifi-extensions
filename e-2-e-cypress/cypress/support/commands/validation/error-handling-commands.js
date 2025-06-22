@@ -27,11 +27,11 @@ Cypress.Commands.add('testMissingRequiredProperty', (processorId, propertyName) 
   cy.get('body').then(($body) => {
     const hasError = $body.find(SELECTORS.VALIDATION_ERROR + ', .error-message').length > 0;
     const dialogOpen = $body.find(SELECTORS.CONFIGURATION_DIALOG).length > 0;
-    
+
     if (hasError) {
       cy.log('Validation error detected as expected');
     }
-    
+
     if (dialogOpen) {
       cy.get('button').contains(TEXT_CONSTANTS.CANCEL).click();
     }
@@ -43,127 +43,139 @@ Cypress.Commands.add('testMissingRequiredProperty', (processorId, propertyName) 
  * @param {string} processorId - The processor ID
  * @param {string} timeoutUrl - URL that will cause timeout
  */
-Cypress.Commands.add('testNetworkTimeout', (processorId, timeoutUrl = 'https://httpbin.org/delay/30') => {
-  const config = {
-    properties: {
+Cypress.Commands.add(
+  'testNetworkTimeout',
+  (processorId, timeoutUrl = 'https://httpbin.org/delay/30') => {
+    const config = {
+      properties: {
+        'JWKS Type': 'Server',
+        'JWKS URL': timeoutUrl,
+        'Connection Timeout': '5 seconds',
+        'Read Timeout': '5 seconds',
+      },
+    };
+
+    cy.configureProcessor(processorId, config);
+
+    // Verify configuration was accepted (runtime errors will occur later)
+    cy.verifyProcessorProperties(processorId, {
       'JWKS Type': 'Server',
       'JWKS URL': timeoutUrl,
-      'Connection Timeout': '5 seconds',
-      'Read Timeout': '5 seconds',
-    },
-  };
-
-  cy.configureProcessor(processorId, config);
-  
-  // Verify configuration was accepted (runtime errors will occur later)
-  cy.verifyProcessorProperties(processorId, {
-    'JWKS Type': 'Server',
-    'JWKS URL': timeoutUrl,
-  });
-});
+    });
+  }
+);
 
 /**
  * Test invalid file path handling for JWKS file type
  * @param {string} processorId - The processor ID
  * @param {string} invalidPath - Invalid file path to test
  */
-Cypress.Commands.add('testInvalidFilePath', (processorId, invalidPath = '/nonexistent/path/jwks.json') => {
-  cy.navigateToProcessorConfig(processorId);
-  cy.get(SELECTORS.PROCESSOR_CONFIG_TAB).contains(TEXT_CONSTANTS.PROPERTIES).click();
+Cypress.Commands.add(
+  'testInvalidFilePath',
+  (processorId, invalidPath = '/nonexistent/path/jwks.json') => {
+    cy.navigateToProcessorConfig(processorId);
+    cy.get(SELECTORS.PROCESSOR_CONFIG_TAB).contains(TEXT_CONSTANTS.PROPERTIES).click();
 
-  // Set JWKS Type to File
-  cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
-    .contains('JWKS Type')
-    .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
-    .find('select')
-    .select('File');
+    // Set JWKS Type to File
+    cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
+      .contains('JWKS Type')
+      .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
+      .find('select')
+      .select('File');
 
-  // Set invalid file path
-  cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
-    .contains('JWKS File Path')
-    .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
-    .find('input')
-    .clear()
-    .type(invalidPath);
+    // Set invalid file path
+    cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
+      .contains('JWKS File Path')
+      .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
+      .find('input')
+      .clear()
+      .type(invalidPath);
 
-  // Apply configuration
-  cy.get('button').contains(TEXT_CONSTANTS.APPLY).click();
+    // Apply configuration
+    cy.get('button').contains(TEXT_CONSTANTS.APPLY).click();
 
-  // Handle potential validation errors
-  cy.get('body').then(($body) => {
-    const dialogClosed = $body.find(SELECTORS.CONFIGURATION_DIALOG).length === 0;
-    const hasError = $body.find('.validation-error, .error-message').length > 0;
+    // Handle potential validation errors
+    cy.get('body').then(($body) => {
+      const dialogClosed = $body.find(SELECTORS.CONFIGURATION_DIALOG).length === 0;
+      const hasError = $body.find('.validation-error, .error-message').length > 0;
 
-    if (!dialogClosed && hasError) {
-      cy.get('button').contains(TEXT_CONSTANTS.CANCEL).click();
-    }
-  });
-});
+      if (!dialogClosed && hasError) {
+        cy.get('button').contains(TEXT_CONSTANTS.CANCEL).click();
+      }
+    });
+  }
+);
 
 /**
  * Test malformed JSON handling in JWKS content
  * @param {string} processorId - The processor ID
  * @param {string} malformedJson - Malformed JSON string to test
  */
-Cypress.Commands.add('testMalformedJson', (processorId, malformedJson = '{"keys": [invalid json}') => {
-  cy.navigateToProcessorConfig(processorId);
-  cy.get(SELECTORS.PROCESSOR_CONFIG_TAB).contains(TEXT_CONSTANTS.PROPERTIES).click();
+Cypress.Commands.add(
+  'testMalformedJson',
+  (processorId, malformedJson = '{"keys": [invalid json}') => {
+    cy.navigateToProcessorConfig(processorId);
+    cy.get(SELECTORS.PROCESSOR_CONFIG_TAB).contains(TEXT_CONSTANTS.PROPERTIES).click();
 
-  // Set JWKS Type to In-Memory
-  cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
-    .contains('JWKS Type')
-    .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
-    .find('select')
-    .select('In-Memory');
+    // Set JWKS Type to In-Memory
+    cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
+      .contains('JWKS Type')
+      .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
+      .find('select')
+      .select('In-Memory');
 
-  // Set malformed JSON content
-  cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
-    .contains('JWKS Content')
-    .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
-    .find('textarea')
-    .clear()
-    .type(malformedJson);
+    // Set malformed JSON content
+    cy.get(SELECTORS.PROCESSOR_PROPERTY_NAME)
+      .contains('JWKS Content')
+      .parents(SELECTORS.PROCESSOR_PROPERTY_ROW)
+      .find('textarea')
+      .clear()
+      .type(malformedJson);
 
-  // Apply configuration
-  cy.get('button').contains(TEXT_CONSTANTS.APPLY).click();
+    // Apply configuration
+    cy.get('button').contains(TEXT_CONSTANTS.APPLY).click();
 
-  // Should show JSON validation error
-  cy.get('body').then(($body) => {
-    const hasValidationError = $body.find('.validation-error, .error-message').length > 0;
-    const dialogStillOpen = $body.find(SELECTORS.CONFIGURATION_DIALOG).length > 0;
+    // Should show JSON validation error
+    cy.get('body').then(($body) => {
+      const hasValidationError = $body.find('.validation-error, .error-message').length > 0;
+      const dialogStillOpen = $body.find(SELECTORS.CONFIGURATION_DIALOG).length > 0;
 
-    if (hasValidationError) {
-      cy.log('JSON validation error detected as expected');
-    }
+      if (hasValidationError) {
+        cy.log('JSON validation error detected as expected');
+      }
 
-    if (dialogStillOpen) {
-      cy.get('button').contains(TEXT_CONSTANTS.CANCEL).click();
-    }
-  });
-});
+      if (dialogStillOpen) {
+        cy.get('button').contains(TEXT_CONSTANTS.CANCEL).click();
+      }
+    });
+  }
+);
 
 /**
  * Test SSL certificate error handling
  * @param {string} processorId - The processor ID
  * @param {string} sslUrl - URL with invalid SSL certificate
  */
-Cypress.Commands.add('testSslCertificateError', (processorId, sslUrl = 'https://self-signed.badssl.com/jwks.json') => {
-  const config = {
-    properties: {
+Cypress.Commands.add(
+  'testSslCertificateError',
+  (processorId, sslUrl = 'https://self-signed.badssl.com/jwks.json') => {
+    const config = {
+      properties: {
+        'JWKS Type': 'Server',
+        'JWKS URL': sslUrl,
+        'SSL Verification': 'true',
+      },
+    };
+
+    cy.configureProcessor(processorId, config);
+
+    // Configuration should be accepted, but runtime will have SSL errors
+    cy.verifyProcessorProperties(processorId, {
       'JWKS Type': 'Server',
       'JWKS URL': sslUrl,
-      'SSL Verification': 'true',
-    },
-  };
-
-  cy.configureProcessor(processorId, config);
-
-  // Configuration should be accepted, but runtime will have SSL errors
-  cy.verifyProcessorProperties(processorId, {
-    'JWKS Type': 'Server',
-    'JWKS URL': sslUrl,
-  });
-});
+    });
+  }
+);
 
 /**
  * Test processor state transitions during errors
