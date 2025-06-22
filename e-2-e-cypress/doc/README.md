@@ -21,6 +21,23 @@ This documentation covers the complete end-to-end testing implementation for the
 **Infrastructure**: Fully operational Docker environment  
 **Implementation**: Complete with advanced testing capabilities
 
+## ⚠️ Critical Verification Requirements
+
+**Before committing any changes, both Maven commands MUST pass:**
+
+```bash
+# 1. Full build verification (required)
+./mvnw clean verify
+
+# 2. Integration tests (required)  
+./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
+```
+
+**No exceptions.** All code changes must be verified with both commands to ensure:
+- ✅ Full build integrity (lint, unit tests, artifacts)
+- ✅ End-to-end integration functionality
+- ✅ No regressions in the complete pipeline
+
 ## Documentation Structure
 
 ### 📖 [Setup and Configuration](./setup-guide.md)
@@ -43,18 +60,21 @@ MCP Playwright tool setup for enhanced development workflows.
 
 ## Quick Start
 
-**Primary Testing Command**: All development and verification uses a single Maven command for consistency:
+**Primary Testing Commands**: All development and verification uses two essential Maven commands for comprehensive validation:
 
 ```bash
-# Stepwise verification command (used for every implementation step)
+# 1. Full build verification (used for every implementation step)
+./mvnw clean verify
+
+# 2. Integration tests with Docker environment
 ./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
 ```
 
 **Development Workflow**:
 1. Make changes to tests/commands
-2. Verify with Maven command above
+2. Verify with both Maven commands above
 3. Fix any failures immediately (fail-fast principle)
-4. Commit only after successful verification
+4. **Commit only after both commands pass successfully**
 
 **Legacy Commands** (for reference only):
 ```bash
@@ -127,15 +147,17 @@ This project implements centralized coding standards:
 **Stepwise Development Process**:
 1. Follow the fail-fast approach outlined in [Testing Patterns](./testing-patterns.md) → Stepwise Development section
 2. Make incremental changes to tests or commands
-3. **Always verify each change** with: `./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests`
+3. **Always verify each change** with both Maven commands:
+   - `./mvnw clean verify` (full build verification)
+   - `./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests` (integration tests)
 4. Fix any failures immediately before proceeding
-5. Commit only after successful Maven verification
+5. **Commit only after both Maven commands pass successfully**
 6. Follow patterns in [Testing Patterns](./testing-patterns.md)
 7. Use existing custom commands from `/cypress/support/commands/`
 8. Focus on testing custom processor logic, not NiFi mechanics
 9. Ensure zero ESLint warnings following centralized standards
 
-**Critical Rule**: Never modify or add parameters to the Maven verification command. All changes must work with the exact command as specified.
+**Critical Rule**: Never modify or add parameters to either Maven verification command. All changes must work with both exact commands as specified.
 
 ---
 

@@ -82,16 +82,23 @@ ls -la ../target/nifi-deploy/
 
 ## Test Execution
 
-**Primary Testing Method**: All testing is done using a single Maven command for consistency and reliability.
+**Primary Testing Method**: All testing requires verification with two essential Maven commands for comprehensive validation.
 
-### Stepwise Verification Command
+### Required Verification Commands
 
-**The only command needed for all testing scenarios**:
-```bash
-./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
-```
+**Both commands must pass before committing changes**:
 
-**What this command does**:
+1. **Full Build Verification** (lint, unit tests, build artifacts):
+   ```bash
+   ./mvnw clean verify
+   ```
+
+2. **Integration Tests** (E2E tests with Docker environment):
+   ```bash
+   ./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
+   ```
+
+**What the integration test command does**:
 1. **Clean Build**: Removes previous build artifacts
 2. **Dependency Management**: Auto-installs Node.js 20.x and npm dependencies
 3. **Docker Lifecycle**: Starts NiFi + Keycloak containers
@@ -127,9 +134,11 @@ ls -la ../target/nifi-deploy/
 
 **For implementing new tests or commands**:
 1. Make your changes (add tests, commands, etc.)
-2. Run: `./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests`
-3. If tests fail: Fix immediately (fail-fast principle)
-4. If tests pass: Commit your changes
+2. **Verify with both required commands**:
+   - `./mvnw clean verify` (full build verification)
+   - `./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests` (integration tests)
+3. If either command fails: Fix immediately (fail-fast principle)
+4. **Commit only after both commands pass successfully**
 5. Repeat for next change
 
 ### Legacy Methods (Not Used in Current Workflow)

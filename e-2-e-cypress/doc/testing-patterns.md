@@ -18,19 +18,26 @@ Practical code examples and patterns for testing custom processor logic using Ni
 
 **Critical Rule**: All development follows a fail-fast, stepwise verification approach.
 
-### Verification Command
+### Verification Commands
 
-**Every implementation step must be verified using this exact command**:
+**Every implementation step must be verified using both of these exact commands**:
+
 ```bash
+# 1. Full build verification (all modules, lint checks, unit tests)
+./mvnw clean verify
+
+# 2. Integration tests with Docker environment
 ./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
 ```
+
+**Both commands must pass before committing any changes.**
 
 ### Development Workflow
 
 1. **Make small incremental changes** (add one test, one command, one feature)
-2. **Immediately verify** with the Maven command above
+2. **Immediately verify** with both Maven commands above
 3. **Fix any failures immediately** - never accumulate issues
-4. **Commit successful changes** with descriptive messages
+4. **Commit successful changes** only after both commands pass
 5. **Repeat** for the next small change
 
 ### Implementation Steps Completed
