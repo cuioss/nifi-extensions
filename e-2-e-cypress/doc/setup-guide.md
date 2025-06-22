@@ -96,10 +96,9 @@ ls -la ../target/nifi-deploy/
 2. **Dependency Management**: Auto-installs Node.js 20.x and npm dependencies
 3. **Docker Lifecycle**: Starts NiFi + Keycloak containers
 4. **Service Readiness**: Waits for services to be ready (max 2 minutes)
-5. **Self-Tests**: Runs Cypress selftests first (basic validation)
-6. **E2E Tests**: Runs all Cypress E2E tests in headless mode
-7. **Cleanup**: Stops and removes Docker containers
-8. **Verification**: Reports build SUCCESS/FAILURE
+5. **E2E Tests**: Runs all Cypress E2E tests (including self-tests) in headless mode
+6. **Cleanup**: Stops and removes Docker containers
+7. **Verification**: Reports build SUCCESS/FAILURE
 
 **Service URLs** (available during test execution):
 - **NiFi UI**: `https://localhost:9095/nifi/`
@@ -123,7 +122,7 @@ ls -la ../target/nifi-deploy/
    ./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
    ```
    - Manages complete Docker environment lifecycle
-   - Runs selftests + all E2E tests
+   - Runs all E2E tests (including self-tests and functional tests)
    - Full automated testing pipeline
 
 **For implementing new tests or commands**:
@@ -166,7 +165,7 @@ cd ../integration-testing
 # Run lint check only (safe mode - no tests)
 ./mvnw clean verify -pl e-2-e-cypress
 
-# Run integration tests with containers (includes selftests + E2E tests)
+# Run integration tests with containers (includes all E2E tests)
 ./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
 
 # Run UI tests (requires manually started containers)

@@ -3,8 +3,6 @@
   "version": "1.0.0",
   "description": "End-to-End Cypress tests for NiFi Extensions - Implements centralized JavaScript/ESLint standards",
   "scripts": {
-    "cypress:selftests": "cypress run --config-file cypress.selftests.config.js",
-    "cypress:selftests:failfast": "cypress run --config-file cypress.selftests.config.js --reporter spec",
     "cypress:run": "cypress run",
     "cypress:run:failfast": "cypress run --reporter spec",
     "cypress:run:headed": "cypress run --headed --reporter spec",
