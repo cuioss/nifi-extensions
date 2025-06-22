@@ -74,23 +74,7 @@
                             <skip>${skip.lint}</skip>
                         </configuration>
                     </execution>
-                    <!-- Run self-verification tests during test phase (standard lifecycle) -->
-                    <execution>
-                        <id>cypress-selftests</id>
-                        <goals>
-                            <goal>npm</goal>
-                        </goals>
-                        <phase>test</phase>
-                        <configuration>
-                            <arguments>run cypress:selftests</arguments>
-                            <skip>${skipTests}</skip>
-                            <environmentVariables>
-                                <CYPRESS_BASE_URL>${nifi.base.url}</CYPRESS_BASE_URL>
-                                <CYPRESS_KEYCLOAK_URL>${keycloak.url}</CYPRESS_KEYCLOAK_URL>
-                                <CYPRESS_FAIL_FAST>true</CYPRESS_FAIL_FAST>
-                            </environmentVariables>
-                        </configuration>
-                    </execution>
+
                 </executions>
             </plugin>
         </plugins>
@@ -205,6 +189,22 @@
                             <execution>
                                 <id>cypress-selftests</id>
                                 <phase>none</phase>
+                            </execution>
+                            <!-- Run self-verification tests first in integration profile -->
+                            <execution>
+                                <id>cypress-selftests-integration</id>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <phase>integration-test</phase>
+                                <configuration>
+                                    <arguments>run cypress:selftests</arguments>
+                                    <environmentVariables>
+                                        <CYPRESS_BASE_URL>${nifi.base.url}</CYPRESS_BASE_URL>
+                                        <CYPRESS_KEYCLOAK_URL>${keycloak.url}</CYPRESS_KEYCLOAK_URL>
+                                        <CYPRESS_FAIL_FAST>true</CYPRESS_FAIL_FAST>
+                                    </environmentVariables>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>
