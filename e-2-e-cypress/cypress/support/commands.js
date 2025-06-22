@@ -32,6 +32,7 @@ import './commands/processor/task4-additional-commands';
 import './commands/validation/validation';
 import './commands/validation/jwt-token-commands';
 import './commands/validation/jwks-commands';
+import './commands/validation/error-handling-commands';
 
 // UI commands
 import './commands/ui/i18n';

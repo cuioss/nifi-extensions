@@ -233,4 +233,102 @@ describe('NiFi Advanced Settings Test', () => {
       expect(testJwks.keys).to.be.an('array');
     });
   });
+
+  it('should handle missing required processor properties', () => {
+    cy.log('Testing missing required property error handling');
+    
+    // Try to add a processor for testing
+    cy.get('body').then($body => {
+      const hasAddButton = $body.find('button, [class*="add"], [class*="toolbar"]').filter((i, el) => {
+        const text = Cypress.$(el).text().toLowerCase();
+        return text.includes('add') || text.includes('processor');
+      }).length > 0;
+      
+      if (hasAddButton) {
+        // Add a processor and test missing required properties
+        cy.get('button, [class*="add"], [class*="toolbar"]').contains(/add|processor/i).first().click({ force: true });
+        cy.wait(1000);
+        
+        cy.get('body').then($bodyWithDialog => {
+          const hasProcessorList = $bodyWithDialog.find('*').filter((i, el) => {
+            const text = Cypress.$(el).text();
+            return text.includes('MultiIssuer') || text.includes('JWT');
+          }).length > 0;
+          
+          if (hasProcessorList) {
+            cy.get('*').contains(/MultiIssuer.*JWT/i).first().click({ force: true });
+            cy.get('button').contains(/(ok|add|apply)/i).first().click({ force: true });
+            cy.wait(1000);
+            
+            cy.get('g.processor').first().then($processor => {
+              const processorId = $processor.attr('id');
+              cy.testMissingRequiredProperty(processorId, 'JWKS Type');
+            });
+          }
+        });
+      } else {
+        cy.log('No add button found - testing with existing processors if available');
+        cy.get('body').then($bodyCheck => {
+          const hasProcessors = $bodyCheck.find('g.processor').length > 0;
+          if (hasProcessors) {
+            cy.get('g.processor').first().then($processor => {
+              const processorId = $processor.attr('id');
+              cy.testMissingRequiredProperty(processorId, 'JWKS Type');
+            });
+          }
+        });
+      }
+    });
+  });
+
+  it('should handle network timeout scenarios', () => {
+    cy.log('Testing network timeout error handling');
+    
+    cy.get('body').then($body => {
+      const hasProcessors = $body.find('g.processor').length > 0;
+      
+      if (hasProcessors) {
+        cy.get('g.processor').first().then($processor => {
+          const processorId = $processor.attr('id');
+          cy.testNetworkTimeout(processorId);
+        });
+      } else {
+        cy.log('No processors available for timeout testing');
+      }
+    });
+  });
+
+  it('should handle invalid file paths', () => {
+    cy.log('Testing invalid file path error handling');
+    
+    cy.get('body').then($body => {
+      const hasProcessors = $body.find('g.processor').length > 0;
+      
+      if (hasProcessors) {
+        cy.get('g.processor').first().then($processor => {
+          const processorId = $processor.attr('id');
+          cy.testInvalidFilePath(processorId);
+        });
+      } else {
+        cy.log('No processors available for file path testing');
+      }
+    });
+  });
+
+  it('should handle malformed JSON in JWKS content', () => {
+    cy.log('Testing malformed JSON error handling');
+    
+    cy.get('body').then($body => {
+      const hasProcessors = $body.find('g.processor').length > 0;
+      
+      if (hasProcessors) {
+        cy.get('g.processor').first().then($processor => {
+          const processorId = $processor.attr('id');
+          cy.testMalformedJson(processorId);
+        });
+      } else {
+        cy.log('No processors available for JSON testing');
+      }
+    });
+  });
 });
