@@ -36,3 +36,6 @@ import './commands/ui/i18n';
 import './commands/ui/browser';
 import './commands/ui/accessibility';
 import './commands/ui/visual';
+
+// Advanced settings commands
+import './commands/processor/advanced-settings-commands';

@@ -10,6 +10,7 @@ module.exports = defineConfig({
     chromeWebSecurity: false, // Required for NiFi's iframe-based architecture and cross-origin requests
     modifyObstructiveCode: false, // Prevent Cypress from modifying NiFi's code
     experimentalWebKitSupport: false,
+    
     // Fail-fast configuration - aggressive timeouts to prevent hanging
     defaultCommandTimeout: 15000,  // Reduced from 30s - fail faster on stuck commands
     requestTimeout: 20000,          // Reduced from 30s - fail faster on network issues
@@ -40,6 +41,26 @@ module.exports = defineConfig({
       // Import and setup fail-fast plugin
       const failFastPlugin = require('./cypress/plugins/fail-fast');
       config = failFastPlugin(on, config);
+      
+      // Handle browser launch arguments to fix certificate warnings
+      on('before:browser:launch', (browser, launchOptions) => {
+        if (browser && browser.name === 'chrome') {
+          launchOptions.args.push('--disable-web-security');
+          launchOptions.args.push('--ignore-certificate-errors');
+          launchOptions.args.push('--ignore-ssl-errors');
+          launchOptions.args.push('--allow-running-insecure-content');
+          launchOptions.args.push('--disable-extensions-file-access-check');
+          launchOptions.args.push('--disable-extensions-http-throttling');
+        }
+        
+        if (browser && browser.name === 'electron') {
+          launchOptions.args.push('--ignore-certificate-errors');
+          launchOptions.args.push('--ignore-ssl-errors');
+          launchOptions.args.push('--allow-running-insecure-content');
+        }
+        
+        return launchOptions;
+      });
       
       // Register tasks for logging and backend gap detection
       on('task', {

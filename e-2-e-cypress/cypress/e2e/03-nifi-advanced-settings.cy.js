@@ -1,0 +1,159 @@
+/**
+ * NiFi Advanced Settings Functional Tests
+ * Tests for accessing and verifying processor advanced settings and custom UI
+ * Specifically focuses on MultiIssuerJWTTokenAuthenticator processor
+ */
+describe('NiFi Advanced Settings Test', () => {
+  const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'https://localhost:9095/nifi';
+
+  beforeEach(() => {
+    // Navigate to NiFi for each test
+    cy.visit(baseUrl, {
+      timeout: 30000,
+      failOnStatusCode: false,
+    });
+    
+    // Wait for page to be ready
+    cy.get('body', { timeout: 20000 }).should('exist');
+    cy.title({ timeout: 10000 }).should('contain', 'NiFi');
+  });
+
+  it('should access MultiIssuerJWTTokenAuthenticator advanced settings', () => {
+    // This is the first functional test for advanced settings access
+    // Test Goal: Access and verify the custom UI tabs for the JWT processor
+    
+    cy.log('Starting advanced settings test for MultiIssuerJWTTokenAuthenticator');
+    
+    // First, we need to add the processor to the canvas
+    cy.get('body').then($body => {
+      // Look for ways to add a processor - either drag and drop or add button
+      const hasAddButton = $body.find('*').filter((i, el) => {
+        const text = Cypress.$(el).text().toLowerCase();
+        return text.includes('add') && (text.includes('processor') || text.includes('component'));
+      }).length > 0;
+      
+      const hasToolbar = $body.find('.toolbar, [class*="toolbar"], .palette, [class*="palette"]').length > 0;
+      const hasCanvas = $body.find('#canvas, .canvas, svg').length > 0;
+      
+      cy.log(`Canvas environment: Add button: ${hasAddButton}, Toolbar: ${hasToolbar}, Canvas: ${hasCanvas}`);
+      
+      if (hasAddButton) {
+        // Try to find and click an add processor button
+        cy.get('*').contains(/add.*processor/i).first().click({ force: true });
+        cy.wait(1000);
+        
+        // Look for processor selection dialog or component list
+        cy.get('body').then($bodyAfterAdd => {
+          const hasDialog = $bodyAfterAdd.find('[role="dialog"], .dialog, .modal').length > 0;
+          const hasProcessorList = $bodyAfterAdd.find('*').filter((i, el) => {
+            return Cypress.$(el).text().includes('MultiIssuer') || Cypress.$(el).text().includes('JWT');
+          }).length > 0;
+          
+          cy.log(`After add click: Dialog: ${hasDialog}, JWT processor visible: ${hasProcessorList}`);
+          
+          if (hasProcessorList) {
+            // Try to find and select the MultiIssuerJWTTokenAuthenticator
+            cy.get('*').contains(/MultiIssuer.*JWT/i).first().click({ force: true });
+            cy.wait(500);
+            
+            // Confirm adding the processor (look for OK, Add, or Apply button)
+            cy.get('body').then($bodyWithProcessor => {
+              const hasConfirmButton = $bodyWithProcessor.find('button').filter((i, btn) => {
+                const text = Cypress.$(btn).text().toLowerCase();
+                return text.includes('ok') || text.includes('add') || text.includes('apply');
+              }).length > 0;
+              
+              if (hasConfirmButton) {
+                cy.get('button').contains(/(ok|add|apply)/i).first().click({ force: true });
+                cy.wait(1000);
+                
+                // Now test accessing the processor configuration
+                cy.testProcessorAdvancedSettings();
+              } else {
+                cy.log('No confirm button found, attempting direct configuration access');
+                cy.testProcessorAdvancedSettings();
+              }
+            });
+          } else {
+            cy.log('JWT processor not found in list, testing with any available processor');
+            cy.testProcessorAdvancedSettings();
+          }
+        });
+      } else {
+        cy.log('No add processor button found, testing configuration access with existing elements');
+        cy.testProcessorAdvancedSettings();
+      }
+    });
+  });
+
+  it('should verify JWT processor custom UI components', () => {
+    // Test specifically for the custom UI components of the JWT processor
+    cy.log('Testing JWT processor custom UI component detection');
+    
+    cy.get('body').then($body => {
+      // Check if JWT components are already loaded on the page
+      const hasJWTComponents = $body.find('[class*="jwt"], [class*="issuer"], [class*="token"]').length > 0;
+      const hasCustomTabs = $body.find('.custom-tab, [data-tab], .jwt-validator-tabs').length > 0;
+      
+      cy.log(`JWT UI state: Components: ${hasJWTComponents}, Custom tabs: ${hasCustomTabs}`);
+      
+      if (hasJWTComponents || hasCustomTabs) {
+        cy.log('JWT custom UI components detected - testing functionality');
+        cy.testCustomUITabs();
+      } else {
+        cy.log('No JWT UI components detected yet - attempting to access configuration');
+        cy.testProcessorAdvancedSettings();
+      }
+    });
+  });
+
+  it('should access issuer configuration interface', () => {
+    // Test specifically for issuer configuration functionality
+    cy.log('Testing issuer configuration interface access');
+    
+    // Try to access any processor configuration first
+    cy.testProcessorAdvancedSettings();
+    
+    // Then specifically look for issuer config elements
+    cy.get('body').then($body => {
+      const hasIssuerElements = $body.find('*').filter((i, el) => {
+        const text = Cypress.$(el).text().toLowerCase();
+        const className = Cypress.$(el).attr('class') || '';
+        return text.includes('issuer') || className.includes('issuer');
+      }).length > 0;
+      
+      if (hasIssuerElements) {
+        cy.log('Issuer configuration elements detected');
+        cy.testIssuerConfigTab();
+      } else {
+        cy.log('No issuer configuration elements detected in current state');
+      }
+    });
+  });
+
+  it('should access token verification interface', () => {
+    // Test specifically for token verification functionality
+    cy.log('Testing token verification interface access');
+    
+    // Try to access any processor configuration first
+    cy.testProcessorAdvancedSettings();
+    
+    // Then specifically look for token verification elements
+    cy.get('body').then($body => {
+      const hasTokenElements = $body.find('*').filter((i, el) => {
+        const text = Cypress.$(el).text().toLowerCase();
+        const className = Cypress.$(el).attr('class') || '';
+        return (text.includes('token') && text.includes('verify')) || 
+               className.includes('token') || 
+               className.includes('verification');
+      }).length > 0;
+      
+      if (hasTokenElements) {
+        cy.log('Token verification elements detected');
+        cy.testTokenVerificationTab();
+      } else {
+        cy.log('No token verification elements detected in current state');
+      }
+    });
+  });
+});

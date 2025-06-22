@@ -33,9 +33,9 @@ This document outlines a streamlined approach to execute end-to-end Cypress test
 ```
 
 **Expected Results**:
-- [ ] Docker containers start successfully (NiFi + Keycloak).
-- [ ] Services become ready quickly.
-- [ ] No Cypress tests executed.
+- [x] Docker containers start successfully (NiFi + Keycloak).
+- [x] Services become ready quickly.
+- [x] No Cypress tests executed.
 
 **Success Criteria**:
 - [x] Command executes without errors.
@@ -58,8 +58,8 @@ This document outlines a streamlined approach to execute end-to-end Cypress test
 ```
 
 **Expected Results**:
-- [ ] Single test executes successfully.
-- [ ] Execution time: < 5 seconds.
+- [x] Single test executes successfully.
+- [x] Execution time: < 5 seconds.
 
 **Success Criteria**:
 - [x] Command executes without errors.
@@ -79,8 +79,8 @@ This document outlines a streamlined approach to execute end-to-end Cypress test
 ```
 
 **Expected Results**:
-- [ ] Navigation test executes successfully.
-- [ ] Execution time: < 10 seconds.
+- [x] Navigation test executes successfully.
+- [x] Execution time: < 10 seconds.
 
 **Success Criteria**:
 - [x] Command executes without errors.
@@ -96,8 +96,8 @@ This document outlines a streamlined approach to execute end-to-end Cypress test
 ```
 
 **Expected Results**:
-- [ ] Elements test executes successfully.
-- [ ] Execution time: < 10 seconds.
+- [x] Elements test executes successfully.
+- [x] Execution time: < 10 seconds.
 
 **Success Criteria**:
 - [x] Command executes without errors.
@@ -113,8 +113,8 @@ This document outlines a streamlined approach to execute end-to-end Cypress test
 ```
 
 **Expected Results**:
-- [ ] Interaction test executes successfully.
-- [ ] Execution time: < 15 seconds.
+- [x] Interaction test executes successfully.
+- [x] Execution time: < 15 seconds.
 
 **Success Criteria**:
 - [x] Command executes without errors.

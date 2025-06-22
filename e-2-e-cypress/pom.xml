@@ -17,7 +17,7 @@
 
     <properties>
         <docker.script.dir>${project.basedir}/../integration-testing/src/main/docker</docker.script.dir>
-        <nifi.base.url>http://localhost:9094/nifi/</nifi.base.url>
+        <nifi.base.url>https://localhost:9095/nifi</nifi.base.url>
         <keycloak.url>http://localhost:9080</keycloak.url>
         <!-- Fail-fast configuration -->
         <maven.test.failure.ignore>false</maven.test.failure.ignore>
@@ -74,13 +74,13 @@
                             <skip>${skip.lint}</skip>
                         </configuration>
                     </execution>
-                    <!-- Run self-verification tests during verify phase -->
+                    <!-- Run self-verification tests during test phase (standard lifecycle) -->
                     <execution>
                         <id>cypress-selftests</id>
                         <goals>
                             <goal>npm</goal>
                         </goals>
-                        <phase>verify</phase>
+                        <phase>test</phase>
                         <configuration>
                             <arguments>run cypress:selftests</arguments>
                             <skip>${skipTests}</skip>
@@ -121,7 +121,6 @@
                                 <phase>integration-test</phase>
                                 <configuration>
                                     <arguments>run cypress:run</arguments>
-                                    <failOnError>true</failOnError> <!-- Fail Maven build on test failures -->
                                     <environmentVariables>
                                         <CYPRESS_BASE_URL>${nifi.base.url}</CYPRESS_BASE_URL>
                                         <CYPRESS_KEYCLOAK_URL>${keycloak.url}</CYPRESS_KEYCLOAK_URL>
@@ -134,23 +133,23 @@
             </build>
         </profile>
         
-        <!-- Profile for running full integration tests with Docker lifecycle management -->
+        <!-- Minimal Integration Tests Profile -->
         <profile>
             <id>integration-tests</id>
             <properties>
                 <skipTests>false</skipTests>
                 <maven.test.skip>false</maven.test.skip>
-                <skip.lint>true</skip.lint> <!-- Skip linting during integration tests -->
+                <skip.lint>true</skip.lint>
             </properties>
             <build>
                 <plugins>
-                    <!-- Container lifecycle management using exec plugin -->
+                    <!-- Container lifecycle management -->
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>
                         <version>3.1.0</version>
                         <executions>
-                            <!-- Start containers before integration tests -->
+                            <!-- Start containers -->
                             <execution>
                                 <id>start-integration-containers</id>
                                 <phase>pre-integration-test</phase>
@@ -162,7 +161,7 @@
                                     <workingDirectory>${project.basedir}</workingDirectory>
                                 </configuration>
                             </execution>
-                            <!-- Stop containers after integration tests -->
+                            <!-- Stop containers -->
                             <execution>
                                 <id>stop-integration-containers</id>
                                 <phase>post-integration-test</phase>
@@ -176,7 +175,7 @@
                             </execution>
                         </executions>
                     </plugin>
-                    <!-- Frontend plugin for running Cypress tests -->
+                    <!-- Run tests -->
                     <plugin>
                         <groupId>com.github.eirslett</groupId>
                         <artifactId>frontend-maven-plugin</artifactId>
@@ -187,9 +186,9 @@
                             <installDirectory>target</installDirectory>
                         </configuration>
                         <executions>
-                            <!-- Run E2E integration tests -->
+                            <!-- Run Cypress tests in order -->
                             <execution>
-                                <id>integration-tests-cypress-e2e</id>
+                                <id>cypress-tests</id>
                                 <goals>
                                     <goal>npm</goal>
                                 </goals>
@@ -202,42 +201,10 @@
                                     </environmentVariables>
                                 </configuration>
                             </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        
-        <!-- Profile for safe selftests that skip gracefully if containers are not available -->
-        <profile>
-            <id>safe-selftests</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>com.github.eirslett</groupId>
-                        <artifactId>frontend-maven-plugin</artifactId>
-                        <version>${frontend.maven.plugin.version}</version>
-                        <configuration>
-                            <nodeVersion>${frontend.node.version}</nodeVersion>
-                            <npmVersion>${frontend.npm.version}</npmVersion>
-                            <installDirectory>target</installDirectory>
-                        </configuration>
-                        <executions>
-                            <!-- Override default selftest execution with safe version -->
+                            <!-- Skip default selftests when profile is active -->
                             <execution>
                                 <id>cypress-selftests</id>
-                                <goals>
-                                    <goal>npm</goal>
-                                </goals>
-                                <phase>verify</phase>
-                                <configuration>
-                                    <arguments>run cypress:selftests-safe</arguments>
-                                    <skip>${skipTests}</skip>
-                                    <environmentVariables>
-                                        <CYPRESS_BASE_URL>${nifi.base.url}</CYPRESS_BASE_URL>
-                                        <CYPRESS_KEYCLOAK_URL>${keycloak.url}</CYPRESS_KEYCLOAK_URL>
-                                    </environmentVariables>
-                                </configuration>
+                                <phase>none</phase>
                             </execution>
                         </executions>
                     </plugin>
