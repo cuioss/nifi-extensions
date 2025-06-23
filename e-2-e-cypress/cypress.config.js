@@ -36,7 +36,7 @@ module.exports = defineConfig({
     // Media settings for faster execution
     videoCompression: 15,
     screenshotOnRunFailure: true,
-    video: false, // Disable video recording for faster execution
+    video: process.env.CYPRESS_VIDEO === 'true', // Enable video recording via environment variable
     setupNodeEvents(on, config) {
       // Import and setup fail-fast plugin
       const failFastPlugin = require('./cypress/plugins/fail-fast');

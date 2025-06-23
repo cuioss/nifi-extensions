@@ -141,6 +141,33 @@ ls -la ../target/nifi-deploy/
 4. **Commit only after both commands pass successfully**
 5. Repeat for next change
 
+### Video Recording
+
+**Enable video recording for test documentation and debugging**:
+
+```bash
+# Run integration tests with video recording enabled
+CYPRESS_VIDEO=true ./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
+
+# Run specific test with video recording
+CYPRESS_VIDEO=true npx cypress run --spec "cypress/e2e/07-processor-functional-single-issuer.cy.js"
+
+# Use npm script for video recording
+npm run cypress:run:video --spec="cypress/e2e/07-processor-functional-single-issuer.cy.js"
+```
+
+**Video configuration**:
+- **Location**: `cypress/videos/` (created automatically)
+- **Format**: MP4 with H.264 encoding
+- **Compression**: 15 CRF (configurable in `cypress.config.js`)
+- **Naming**: Follows test file name (e.g., `07-processor-functional-single-issuer.cy.js.mp4`)
+
+**Video recording notes**:
+- Only enabled when `CYPRESS_VIDEO=true` environment variable is set
+- Requires NiFi server to be running for actual functional test recordings
+- Videos are automatically cleaned up between test runs
+- Useful for debugging test failures and creating documentation
+
 ### Legacy Methods (Not Used in Current Workflow)
 
 **Manual environment startup** (for debugging only):

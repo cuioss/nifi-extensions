@@ -6,6 +6,7 @@
     "cypress:run": "cypress run",
     "cypress:run:failfast": "cypress run --reporter spec",
     "cypress:run:headed": "cypress run --headed --reporter spec",
+    "cypress:run:video": "CYPRESS_VIDEO=true cypress run",
     "cypress:open": "cypress open",
     "test:failfast": "cypress run --reporter spec --quiet",
     "analyze:console": "node scripts/log-analyzer.js --basic",
