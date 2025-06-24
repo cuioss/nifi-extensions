@@ -101,8 +101,8 @@ describe('Processor Deployment Test', () => {
   it('should FAIL if advanced UI does not load properly (STRICT TEST)', () => {
     cy.log('🔥 STRICT FAILURE TEST: This test MUST fail if advanced UI does not load');
 
-    // Add processor to canvas first
-    cy.addMultiIssuerProcessorToCanvas();
+    // Add processor to canvas first and verify it was added successfully
+    cy.addMultiIssuerProcessorToCanvasWithVerification();
     cy.wait(2000);
 
     // Test advanced UI access with strict requirements
@@ -212,6 +212,59 @@ Cypress.Commands.add('confirmProcessorAddition', () => {
         .first()
         .click({ force: true });
       cy.wait(1000);
+    }
+  });
+});
+
+Cypress.Commands.add('clickAddProcessorButtonWithVerification', () => {
+  cy.get('*')
+    .contains(/add.*processor/i)
+    .first()
+    .click({ force: true });
+  cy.wait(1000);
+  cy.selectMultiIssuerProcessorWithVerification();
+});
+
+Cypress.Commands.add('selectMultiIssuerProcessorWithVerification', () => {
+  cy.get('body').then(($body) => {
+    const hasMultiIssuerProcessor =
+      $body.find('*').filter((i, el) => {
+        const text = Cypress.$(el).text();
+        return text.includes('MultiIssuerJWTTokenAuthenticator') || text.includes('MultiIssuer');
+      }).length > 0;
+
+    if (hasMultiIssuerProcessor) {
+      cy.log('✅ MultiIssuerJWTTokenAuthenticator found in processor catalog');
+      cy.get('*')
+        .contains(/MultiIssuer.*JWT/i)
+        .first()
+        .click({ force: true });
+      cy.wait(500);
+      cy.confirmProcessorAdditionWithVerification();
+    } else {
+      cy.fail(
+        'STRICT FAILURE: MultiIssuerJWTTokenAuthenticator not found in processor catalog - processor not deployed'
+      );
+    }
+  });
+});
+
+Cypress.Commands.add('confirmProcessorAdditionWithVerification', () => {
+  cy.get('body').then(($body) => {
+    const hasConfirmButton =
+      $body.find('button').filter((i, btn) => {
+        const text = Cypress.$(btn).text().toLowerCase();
+        return text.includes('ok') || text.includes('add') || text.includes('apply');
+      }).length > 0;
+
+    if (hasConfirmButton) {
+      cy.get('button')
+        .contains(/(ok|add|apply)/i)
+        .first()
+        .click({ force: true });
+      cy.wait(1000);
+    } else {
+      cy.fail('STRICT FAILURE: No confirmation button found for processor addition');
     }
   });
 });
@@ -897,5 +950,42 @@ Cypress.Commands.add('validateAdvancedUIStrictly', () => {
     }
 
     cy.log('✅ STRICT VALIDATION PASSED: Advanced UI appears to be loaded and functional');
+  });
+});
+
+// Enhanced version that ensures processor addition is successful for strict tests
+Cypress.Commands.add('addMultiIssuerProcessorToCanvasWithVerification', () => {
+  cy.log('Adding MultiIssuerJWTTokenAuthenticator to canvas with verification');
+
+  cy.get('body').then(($body) => {
+    const hasAddButton =
+      $body.find('*').filter((i, el) => {
+        const text = Cypress.$(el).text().toLowerCase();
+        return text.includes('add') && (text.includes('processor') || text.includes('component'));
+      }).length > 0;
+
+    if (hasAddButton) {
+      cy.log('✅ Add processor button found, attempting to use it');
+      cy.clickAddProcessorButtonWithVerification();
+
+      // Wait and verify processor was actually added
+      cy.wait(2000);
+      cy.get('body').then(($bodyAfterAdd) => {
+        const hasProcessors =
+          $bodyAfterAdd.find('g.processor, [class*="processor"], .component').length > 0;
+
+        if (!hasProcessors) {
+          cy.fail(
+            'STRICT FAILURE: Processor addition failed - no processors found on canvas after addition attempt'
+          );
+        }
+
+        cy.log('✅ Processor successfully added to canvas');
+      });
+    } else {
+      cy.fail(
+        'STRICT FAILURE: Cannot find add processor button - UI structure may have changed or permissions missing'
+      );
+    }
   });
 });

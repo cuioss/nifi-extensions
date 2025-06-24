@@ -4,3 +4,6 @@ debug.out
 *.temp.*
 *.backup
 *.old
+
+# Browser logs directory
+browser-logs/

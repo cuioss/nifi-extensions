@@ -87,6 +87,27 @@ module.exports = defineConfig({
           console.log(`  Timestamp: ${report.timestamp}`);
           console.log(`  Gaps: ${report.gaps ? report.gaps.length : 0}`);
           return null;
+        },
+        saveBrowserLogs(logs) {
+          const fs = require('fs');
+          const path = require('path');
+          
+          // Create browser-logs directory if it doesn't exist
+          const logsDir = path.join(__dirname, 'browser-logs');
+          if (!fs.existsSync(logsDir)) {
+            fs.mkdirSync(logsDir, { recursive: true });
+          }
+          
+          // Generate filename with timestamp
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const filename = `browser-logs-${timestamp}.json`;
+          const filepath = path.join(logsDir, filename);
+          
+          // Save logs to file
+          fs.writeFileSync(filepath, JSON.stringify(logs, null, 2));
+          console.log(`🗒️ Browser logs saved to: ${filepath}`);
+          
+          return null;
         }
       });
       

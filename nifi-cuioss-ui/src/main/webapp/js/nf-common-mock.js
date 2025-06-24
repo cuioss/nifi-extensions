@@ -37,15 +37,27 @@ export const registerCustomUiComponent = function (id, component, options) {
  * @param {object} component - The tab component
  */
 export const registerCustomUiTab = function (id, component) {
+    console.log('registerCustomUiTab called with ID:', id);
+    
+    // Ensure DOM is ready and required elements exist
+    const containerElement = document.getElementById('jwt-validator-container');
+    if (!containerElement) {
+        console.error('jwt-validator-container not found! Cannot register tab:', id);
+        console.log('Available elements with jwt-validator in ID:', 
+            Array.from(document.querySelectorAll('[id*="jwt-validator"]')).map(el => el.id));
+        return;
+    }
+    
     // Create a tab container
     let tabContainer = document.getElementById('jwt-validator-tabs');
     let tabNavigation;
 
     if (!tabContainer) {
+        console.log('Creating jwt-validator-tabs container');
         tabContainer = document.createElement('div');
         tabContainer.id = 'jwt-validator-tabs';
         tabContainer.className = 'custom-tabs';
-        document.getElementById('jwt-validator-container').appendChild(tabContainer);
+        containerElement.appendChild(tabContainer);
 
         // Create tab navigation container
         tabNavigation = document.createElement('div');
@@ -53,6 +65,7 @@ export const registerCustomUiTab = function (id, component) {
         tabNavigation.id = 'custom-tabs-navigation';
         tabContainer.appendChild(tabNavigation);
     } else {
+        console.log('jwt-validator-tabs container already exists');
         // Get tab navigation container
         tabNavigation = document.getElementById('custom-tabs-navigation');
     }

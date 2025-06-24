@@ -60,7 +60,7 @@ const registerComponents = () => {
     } catch (error) {
         // Component registration failed - error logged internally
         // eslint-disable-next-line no-console
-        console.debug('JWT UI component registration failed:', error);
+        console.error('JWT UI component registration failed:', error);
         return false;
     }
 };
@@ -177,20 +177,60 @@ const setupTooltipObserver = () => {
  * setupUI(); // Hides loading, shows main UI
  */
 const setupUI = () => {
-    // Hide loading indicator (set display: none for test compatibility)
-    const loadingIndicator = document.getElementById(CSS.IDS.LOADING_INDICATOR);
-    if (loadingIndicator) {
-        loadingIndicator.style.display = 'none';
-    }
+    try {
+        // Hide loading indicator with multiple strategies for robustness
+        const loadingIndicator = document.getElementById(CSS.IDS.LOADING_INDICATOR);
+        if (loadingIndicator) {
+            // Use multiple methods to ensure hiding works
+            loadingIndicator.style.display = 'none';
+            loadingIndicator.style.visibility = 'hidden';
+            loadingIndicator.setAttribute('aria-hidden', 'true');
+            
+            // Add CSS class to hide it
+            loadingIndicator.classList.add('hidden');
+            
+            // Remove any potential inline styles that might override our hiding
+            if (loadingIndicator.style.removeProperty) {
+                loadingIndicator.style.removeProperty('display');
+                loadingIndicator.style.display = 'none';
+            }
+            
+            console.log('Loading indicator successfully hidden');
+        } else {
+            // Try alternative selectors as fallback
+            const altLoadingIndicator = document.querySelector('#loading-indicator, .loading-indicator, [id*="loading"]');
+            if (altLoadingIndicator) {
+                altLoadingIndicator.style.display = 'none';
+                altLoadingIndicator.style.visibility = 'hidden';
+            }
+        }
 
-    // Show main UI
-    const tabs = document.getElementById(CSS.IDS.JWT_VALIDATOR_TABS);
-    if (tabs) {
-        tabs.style.display = '';
-    }
+        // Show main UI
+        const tabs = document.getElementById(CSS.IDS.JWT_VALIDATOR_TABS);
+        if (tabs) {
+            tabs.style.display = '';
+            tabs.style.visibility = 'visible';
+        }
+        // Note: If tabs not found, this is expected if tabs haven't been created by registerComponents yet
 
-    // Update translations
-    updateTranslations();
+        // Update translations
+        updateTranslations();
+        
+        // Set a flag to indicate UI setup is complete
+        window.jwtUISetupComplete = true;
+        
+    } catch (error) {
+        console.error('Error in setupUI():', error);
+        // Fallback: try basic hiding without additional logic
+        try {
+            const basicLoadingIndicator = document.getElementById('loading-indicator');
+            if (basicLoadingIndicator) {
+                basicLoadingIndicator.style.display = 'none';
+            }
+        } catch (fallbackError) {
+            console.error('Even fallback setupUI failed:', fallbackError);
+        }
+    }
 };
 
 /**
@@ -270,32 +310,104 @@ const setupDialogHandlers = () => {
  */
 export const init = async () => {
     try {
+        // Prevent double initialization
+        if (window.jwtInitializationInProgress || window.jwtUISetupComplete) {
+            return;
+        }
+        
+        window.jwtInitializationInProgress = true;
+        
+        // Ensure DOM is ready
+        if (document.readyState === 'loading') {
+            await new Promise(resolve => {
+                document.addEventListener('DOMContentLoaded', resolve, { once: true });
+            });
+        }
+        
+        // Immediately hide loading indicator as first priority
+        hideLoadingIndicatorRobust();
+        
         // Register components
         const success = registerComponents();
 
         if (success) {
+            console.log('Component registration successful, setting up UI...');
             // Setup UI elements
             setupUI();
             setupHelpTooltips();
             setupDialogHandlers();
             initKeyboardShortcuts();
 
-            // JWT UI initialization completed
+            console.log('JWT UI initialization completed successfully');
         } else {
+            console.warn('Component registration failed, using fallback...');
             // Fallback - just hide loading and show basic UI
             setupUI();
             initKeyboardShortcuts();
         }
 
+        // Ensure loading indicator is hidden after a short delay
+        setTimeout(() => {
+            console.log('Secondary check: ensuring loading indicator is hidden');
+            hideLoadingIndicatorRobust();
+        }, 100);
+
         // Add timeout fallback for test compatibility
         setTimeout(() => {
+            console.log('Fallback timeout triggered, ensuring UI is visible');
             setupUI();
+            hideLoadingIndicatorRobust();
         }, API.TIMEOUTS.UI_FALLBACK_TIMEOUT);
+        
+        window.jwtInitializationInProgress = false;
+        
     } catch (error) {
         // JWT UI initialization failed - error handled internally
-        // eslint-disable-next-line no-console
-        console.debug(error);
+        console.error('JWT UI initialization failed:', error);
+        hideLoadingIndicatorRobust(); // Always try to hide loading indicator
         setupUI(); // Always try to show something
+        window.jwtInitializationInProgress = false;
+    }
+};
+
+/**
+ * Robustly hides the loading indicator using multiple strategies.
+ * This function is called multiple times as a safety measure.
+ */
+const hideLoadingIndicatorRobust = () => {
+    try {
+        // Strategy 1: Use the standard ID
+        const loadingIndicator = document.getElementById(CSS.IDS.LOADING_INDICATOR);
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'none';
+            loadingIndicator.style.visibility = 'hidden';
+            loadingIndicator.setAttribute('aria-hidden', 'true');
+            loadingIndicator.classList.add('hidden');
+            console.log('Loading indicator hidden via standard ID');
+        }
+        
+        // Strategy 2: Use querySelector as fallback
+        const altIndicators = document.querySelectorAll('#loading-indicator, .loading-indicator, [id*="loading"]');
+        altIndicators.forEach(indicator => {
+            indicator.style.display = 'none';
+            indicator.style.visibility = 'hidden';
+            indicator.setAttribute('aria-hidden', 'true');
+            indicator.classList.add('hidden');
+        });
+        
+        // Strategy 3: Look for text content containing "Loading JWT"
+        const textElements = document.querySelectorAll('*');
+        textElements.forEach(element => {
+            if (element.textContent?.includes('Loading JWT')) {
+                element.style.display = 'none';
+                element.style.visibility = 'hidden';
+                element.setAttribute('aria-hidden', 'true');
+                element.classList.add('hidden');
+            }
+        });
+        
+    } catch (error) {
+        console.warn('Error in hideLoadingIndicatorRobust:', error);
     }
 };
 

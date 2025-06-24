@@ -9,11 +9,14 @@ Cypress.on('window:before:load', (win) => {
   const originalConsole = {
     error: win.console.error,
     warn: win.console.warn,
+    info: win.console.info,
+    log: win.console.log
   };
 
-  // Collection of console errors/warnings
+  // Collection of console errors/warnings/info
   win.consoleErrors = [];
   win.consoleWarnings = [];
+  win.consoleInfos = [];
 
   // Override console.error
   /**
@@ -53,6 +56,41 @@ Cypress.on('window:before:load', (win) => {
       win.consoleWarnings.push(message);
     }
   };
+
+  // Override console.info and console.log for comprehensive logging
+  /**
+   *
+   * @param {...any} args
+   * @example
+   */
+  win.console.info = (...args) => {
+    // Call original console.info
+    originalConsole.info(...args);
+
+    // Store the info message
+    const message = args
+      .map((arg) => (typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)))
+      .join(' ');
+
+    win.consoleInfos.push({ type: 'info', message, timestamp: new Date().toISOString() });
+  };
+
+  /**
+   *
+   * @param {...any} args
+   * @example
+   */
+  win.console.log = (...args) => {
+    // Call original console.log
+    originalConsole.log(...args);
+
+    // Store the log message
+    const message = args
+      .map((arg) => (typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)))
+      .join(' ');
+
+    win.consoleInfos.push({ type: 'log', message, timestamp: new Date().toISOString() });
+  };
 });
 
 /**
@@ -88,5 +126,26 @@ Cypress.Commands.add('verifyNoUnexpectedWarnings', () => {
         `${warnings.length} unexpected console warning(s) detected:\n${warningMessages}`
       );
     }
+  });
+});
+
+/**
+ * Collect and save all browser logs (errors, warnings, info) for persistent storage
+ */
+Cypress.Commands.add('saveBrowserLogs', () => {
+  cy.window().then((win) => {
+    const logs = {
+      timestamp: new Date().toISOString(),
+      testName: Cypress.currentTest?.title || 'unknown',
+      specName: Cypress.spec?.name || 'unknown',
+      errors: win.consoleErrors || [],
+      warnings: win.consoleWarnings || [],
+      info: win.consoleInfos || [],
+      url: win.location.href,
+      userAgent: win.navigator.userAgent
+    };
+
+    // Save logs using the Cypress task
+    cy.task('saveBrowserLogs', logs);
   });
 });

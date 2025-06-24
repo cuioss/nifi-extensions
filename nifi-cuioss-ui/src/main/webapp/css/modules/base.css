@@ -34,6 +34,15 @@ body {
     font-size: 18px;
 }
 
+/* Hidden state for loading indicator and other elements */
+.hidden,
+#loading-indicator.hidden,
+[aria-hidden="true"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
 /* Enhanced loading spinner animation */
 @keyframes spin {
     0% { transform: rotate(0deg); }

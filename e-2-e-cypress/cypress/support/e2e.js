@@ -51,6 +51,9 @@ afterEach(() => {
   // End test timer
   cy.endTestTimer();
 
+  // Save browser logs for persistent storage (always, regardless of test outcome)
+  cy.saveBrowserLogs();
+
   // These verifications will fail fast if issues are detected
   cy.verifyNoConsoleErrors();
   cy.verifyNoUnexpectedWarnings();
