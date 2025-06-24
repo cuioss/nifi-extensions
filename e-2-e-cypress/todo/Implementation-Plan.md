@@ -1,52 +1,52 @@
-# E2E Test Structure Refactoring Plan
+# Complete E2E Test Structure Refactoring Plan
 
-## 🎯 Overview
+## 🎯 Executive Summary
 
-This plan outlines a complete makeover of the current E2E test structure to align with the requirements defined in `Requirements.md`. The refactoring will create a robust, maintainable, and comprehensive test suite that validates all aspects of the NiFi JWT authentication extension.
+This comprehensive plan outlines the complete makeover of the current E2E test structure for the NiFi JWT authentication extension. The refactoring will transform the current ad-hoc test structure into a robust, maintainable, and comprehensive test suite that systematically validates all requirements defined in `Requirements.md`.
 
-## 📋 Current State Analysis
+## 📊 Current State Assessment
 
-### Existing Test Structure:
-- `01-self-test.cy.js` - Basic Cypress functionality
-- `02-nifi-functional.cy.js` - Basic NiFi connectivity
-- `03-nifi-advanced-settings.cy.js` - MultiIssuer processor testing (comprehensive)
-- `04-processor-deployment.cy.js` - Deployment and some UI testing
-- `05-deployment-verification.cy.js` - Basic deployment verification
-- `07-processor-functional-single-issuer.cy.js` - Single issuer testing (basic)
+### ✅ Completed Foundation Work
+- ✅ **Login Issue Resolution**: Fixed Cypress authentication to enable UI access (96% test pass rate)
+- ✅ **Console Error Analysis**: Captured and documented specific UI errors in Advanced settings
+- ✅ **Requirements Definition**: Comprehensive requirements documented in `Requirements.md`
+- ✅ **Foundation Utilities**: Created enhanced utility framework in `/cypress/support/utils/`
+- ✅ **Page Object Model**: Established base page object pattern in `/cypress/support/page-objects/`
 
-### Issues Identified:
-1. **Inconsistent Test Coverage**: Some processors well-tested, others minimal
-2. **Login Test Gap**: Shallow tests that give false positives
-3. **Scattered Functionality**: Related tests spread across multiple files
-4. **Missing Requirements**: No systematic coverage of all requirement categories
-5. **Inconsistent Patterns**: Different approaches across test files
+### 🔄 Current Test Structure (To Be Refactored)
+```
+cypress/e2e/
+├── 01-self-test.cy.js                    # Basic Cypress functionality ➜ KEEP & ENHANCE
+├── 02-nifi-functional.cy.js              # Basic NiFi connectivity ➜ REFACTOR
+├── 03-nifi-advanced-settings.cy.js       # MultiIssuer comprehensive (15 tests) ➜ MIGRATE
+├── 04-processor-deployment.cy.js         # Mixed deployment/UI testing ➜ SPLIT & REFACTOR
+├── 05-deployment-verification.cy.js      # Basic deployment verification ➜ MERGE & ENHANCE
+└── 07-processor-functional-single-issuer.cy.js # Single issuer basic ➜ ENHANCE
+```
 
-## 🏗️ Target Architecture
-
-### New Test Structure (Aligned with Requirements.md):
-
+### � Target Architecture
 ```
 cypress/e2e/
 ├── auth/
-│   ├── 01-authentication-flow.cy.js          # Authentication & Login Tests
-│   └── 02-session-management.cy.js           # Session persistence & state
+│   ├── 01-authentication-flow.cy.js          # 🔐 Authentication & Login Tests
+│   └── 02-session-management.cy.js           # 🔒 Session persistence & state
 ├── deployment/
-│   ├── 03-processor-deployment.cy.js         # Processor Deployment Tests
-│   └── 04-nar-validation.cy.js               # NAR deployment validation
+│   ├── 03-processor-deployment.cy.js         # 🔧 Processor Deployment Tests
+│   └── 04-nar-validation.cy.js               # 📦 NAR deployment validation
 ├── configuration/
-│   ├── 05-advanced-settings-multi.cy.js      # Advanced Settings Tests (Multi-issuer)
-│   ├── 06-advanced-settings-single.cy.js     # Advanced Settings Tests (Single-issuer)
-│   └── 07-configuration-persistence.cy.js    # Configuration management
+│   ├── 05-advanced-settings-multi.cy.js      # ⚙️ Advanced Settings (Multi-issuer)
+│   ├── 06-advanced-settings-single.cy.js     # ⚙️ Advanced Settings (Single-issuer)
+│   └── 07-configuration-persistence.cy.js    # 💾 Configuration management
 ├── functional/
-│   ├── 08-jwt-validation-multi.cy.js         # Functional Validation Tests (Multi-issuer)
-│   ├── 09-jwt-validation-single.cy.js        # Functional Validation Tests (Single-issuer)
-│   └── 10-error-scenarios.cy.js              # Error handling scenarios
+│   ├── 08-jwt-validation-multi.cy.js         # 🔍 Functional Validation (Multi-issuer)
+│   ├── 09-jwt-validation-single.cy.js        # 🔍 Functional Validation (Single-issuer)
+│   └── 10-error-scenarios.cy.js              # 🚨 Error handling scenarios
 ├── integration/
-│   ├── 11-end-to-end-workflows.cy.js         # Integration & System Tests
-│   └── 12-performance-validation.cy.js       # Performance testing
+│   ├── 11-end-to-end-workflows.cy.js         # 🏗️ Integration & System Tests
+│   └── 12-performance-validation.cy.js       # ⚡ Performance testing
 └── monitoring/
-    ├── 13-error-detection.cy.js              # Error Detection & Recovery Tests
-    └── 14-console-monitoring.cy.js           # Console error monitoring
+    ├── 13-error-detection.cy.js              # 🔍 Error Detection & Recovery
+    └── 14-console-monitoring.cy.js           # 📊 Console error monitoring
 ```
 
 ## 📋 Phase-by-Phase Implementation Plan
