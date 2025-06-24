@@ -4,7 +4,7 @@
       "totalErrors": 0,
       "totalUnexpectedWarnings": 0,
       "totalAllowedWarnings": 0,
-      "runDate": "2025-06-16T21:07:28.991Z",
+      "runDate": "2025-06-24T19:26:27.991Z",
       "runId": "latest",
       "logFileFound": false
     },
@@ -13,7 +13,7 @@
     "allowedWarningsByPattern": {}
   },
   "runId": "latest",
-  "timestamp": "2025-06-16T21:07:28.991Z",
+  "timestamp": "2025-06-24T19:26:27.991Z",
   "mode": "enhanced",
   "performance": {
     "totalTests": 0,
@@ -38,6 +38,9 @@
     }
   },
   "trends": {
-    "message": "Insufficient data for trend analysis"
+    "performanceTrend": "stable",
+    "failureRateTrend": "stable",
+    "errorCountTrend": "stable",
+    "dataPoints": 2
   }
 }

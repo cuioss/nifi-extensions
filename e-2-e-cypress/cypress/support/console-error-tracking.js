@@ -10,7 +10,7 @@ Cypress.on('window:before:load', (win) => {
     error: win.console.error,
     warn: win.console.warn,
     info: win.console.info,
-    log: win.console.log
+    log: win.console.log,
   };
 
   // Collection of console errors/warnings/info
@@ -142,7 +142,7 @@ Cypress.Commands.add('saveBrowserLogs', () => {
       warnings: win.consoleWarnings || [],
       info: win.consoleInfos || [],
       url: win.location.href,
-      userAgent: win.navigator.userAgent
+      userAgent: win.navigator.userAgent,
     };
 
     // Save logs using the Cypress task
