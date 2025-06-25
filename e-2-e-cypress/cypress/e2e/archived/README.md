@@ -14,10 +14,15 @@ This directory contains Cypress E2E tests that have been archived as part of the
 
 ### Support Components
 - `support/` - Archived Cypress support components (custom commands, utilities, page objects)
+- `integration/` - Unit tests for archived custom commands (command verification tests)
 
 ## Why Archived?
 
-These tests were archived as part of a simplification effort to focus only on basic authentication testing. These tests contained complex authentication logic, redundant login procedures, and advanced features that were not essential for the core authentication validation.
+These components were archived as part of a simplification effort to focus only on essential authentication and processor availability testing:
+
+- **Test files**: Contained complex authentication logic, redundant login procedures, and advanced features not essential for core validation
+- **Support components**: Custom commands and utilities that were not being used by the current minimal test suite  
+- **Integration tests**: Unit tests for the archived custom commands (no longer needed with direct Cypress commands approach)
 
 ## Restoration
 
