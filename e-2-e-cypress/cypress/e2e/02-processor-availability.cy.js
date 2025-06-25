@@ -8,7 +8,7 @@ describe('02 - Processor Availability Verification', () => {
   const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'https://localhost:9095/nifi';
 
   beforeEach(() => {
-    // Navigate to NiFi directly (like the working archived test)
+    // Navigate to NiFi and handle authentication
     cy.visit(baseUrl, {
       timeout: 30000,
       failOnStatusCode: false,
@@ -16,6 +16,34 @@ describe('02 - Processor Availability Verification', () => {
 
     // Wait for page to be ready
     cy.get('body', { timeout: 20000 }).should('exist');
+
+    // Check if we're on login page and authenticate if needed
+    cy.url().then((url) => {
+      if (url.includes('/login') || url.includes('login')) {
+        cy.log('🔑 Login page detected - authenticating...');
+        
+        // Perform login
+        cy.get('[data-testid="username"], input[type="text"], input[id*="username"]', {
+          timeout: 10000,
+        })
+          .should('be.visible')
+          .clear()
+          .type('admin');
+
+        cy.get('[data-testid="password"], input[type="password"], input[id*="password"]')
+          .should('be.visible')
+          .clear()
+          .type('adminadminadmin');
+
+        cy.get('[data-testid="login-button"], input[value="Login"], button[type="submit"]').click();
+
+        // Wait for successful login
+        cy.url({ timeout: 15000 }).should('not.contain', '/login');
+        cy.log('✅ Authentication successful');
+      }
+    });
+
+    // Ensure we have a working NiFi page
     cy.title({ timeout: 10000 }).should('contain', 'NiFi');
   });
 
