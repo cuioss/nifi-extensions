@@ -4,12 +4,16 @@ This directory contains Cypress E2E tests that have been archived as part of the
 
 ## Archived Files
 
+### Test Files
 - `01-self-test.cy.js` - Basic self-test functionality
 - `02-nifi-functional.cy.js` - NiFi functional tests
 - `03-nifi-advanced-settings.cy.js` - Advanced NiFi settings tests
 - `04-processor-deployment.py.js` - Processor deployment tests
 - `05-deployment-verification.cy.js` - Deployment verification tests
 - `07-processor-functional-single-issuer.cy.js` - Single issuer processor tests
+
+### Support Components
+- `support/` - Archived Cypress support components (custom commands, utilities, page objects)
 
 ## Why Archived?
 
@@ -21,8 +25,9 @@ If any of these tests are needed in the future, they can be moved back to the `c
 
 ## Current Active Tests
 
-Only the following test remains active:
-- `cypress/e2e/auth/01-basic-auth-and-session.cy.js` - Basic authentication, session handling, and logout
+Only the following tests remain active:
+- `cypress/e2e/01-basic-auth-and-session.cy.js` - Basic authentication, session handling, and logout
+- `cypress/e2e/02-processor-availability.cy.js` - Processor availability verification
 
 ## Date Archived
 

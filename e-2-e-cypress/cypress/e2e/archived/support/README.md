@@ -2,9 +2,11 @@
 
 This directory contains Cypress support components that were not being used by the current minimal test suite and have been archived for future reference.
 
+**Location**: `/cypress/e2e/archived/support/` (consolidated with other archived test components)
+
 ## Current Active Support Files
 
-The minimal test suite uses only these support files:
+The minimal test suite uses only these support files in `/cypress/support/`:
 
 - `commands.js` - Empty placeholder (all custom commands archived)
 - `console-error-tracking.js` - Provides `saveBrowserLogs`, `verifyNoConsoleErrors`, `verifyNoUnexpectedWarnings`
@@ -48,8 +50,8 @@ The active test suite (`01-basic-auth-and-session.cy.js` and `02-processor-avail
 
 If future tests need custom commands, they can be restored from this archive:
 
-1. Copy needed command files back to `cypress/support/commands/`
-2. Add imports to `cypress/support/commands.js`
+1. Copy needed command files back to `/cypress/support/commands/`
+2. Add imports to `/cypress/support/commands.js`
 3. Test that imports work correctly
 
 ## Benefits of Current Approach
