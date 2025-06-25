@@ -8,6 +8,10 @@
 // Fail-fast commands
 import './commands/fail-fast/timeout';
 
+// Fail-fast navigation and processor commands
+import './commands/navigation/fail-fast-navigation';
+import './commands/processor/fail-fast-processor';
+
 // Authentication commands
 import './commands/auth/login';
 import './commands/auth/simplified-login';
