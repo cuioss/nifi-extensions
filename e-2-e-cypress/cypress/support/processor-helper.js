@@ -31,7 +31,7 @@
  * JWT Processor type constants - these match the actual processor classes
  */
 const JWT_PROCESSORS = {
-  SINGLE_ISSUER: {
+  JWT_AUTHENTICATOR: {
     className: 'de.cuioss.nifi.processors.auth.JWTTokenAuthenticator',
     displayName: 'JWTTokenAuthenticator',
     shortName: 'JWT Token Authenticator',
@@ -116,7 +116,7 @@ Cypress.Commands.add('getJWTProcessorTypes', () => {
  * @returns {Cypress.Chainable<ProcessorReference|null>} Processor reference or null if not found
  * @example
  * // Find single issuer JWT processor
- * cy.findProcessorOnCanvas('SINGLE_ISSUER').then((processor) => {
+ * cy.findProcessorOnCanvas('JWT_AUTHENTICATOR').then((processor) => {
  *   if (processor) {
  *     cy.log(`Found processor: ${processor.name} at ${processor.position.x}, ${processor.position.y}`);
  *   }
@@ -215,7 +215,7 @@ Cypress.Commands.add('findProcessorOnCanvas', (processorType, options = {}) => {
  * @returns {Cypress.Chainable<ProcessorReference>} Added processor reference
  * @example
  * // Add single issuer JWT processor
- * cy.addProcessorToCanvas('SINGLE_ISSUER', {
+ * cy.addProcessorToCanvas('JWT_AUTHENTICATOR', {
  *   position: { x: 400, y: 300 },
  *   skipIfExists: false
  * }).then((processor) => {
@@ -264,7 +264,7 @@ Cypress.Commands.add('addProcessorToCanvas', (processorType, options = {}) => {
  * @returns {Cypress.Chainable<boolean>} Success status
  * @example
  * // Remove processor by type
- * cy.removeProcessorFromCanvas('SINGLE_ISSUER');
+ * cy.removeProcessorFromCanvas('JWT_AUTHENTICATOR');
  * 
  * // Remove processor by reference
  * cy.findProcessorOnCanvas('MULTI_ISSUER').then((processor) => {
@@ -312,16 +312,16 @@ Cypress.Commands.add('getAllJWTProcessorsOnCanvas', (options = {}) => {
   return cy.getPageContext().then((context) => {
     if (context.pageType !== 'MAIN_CANVAS') {
       cy.log(`⚠️ Not on main canvas (current: ${context.pageType}), returning empty array`);
-      return [];
+      return cy.wrap([]);
     }
     
     return cy.getJWTProcessorTypes().then((types) => {
       const foundProcessors = [];
       
-      // Search for SINGLE_ISSUER
-      return cy.findProcessorOnCanvas('SINGLE_ISSUER', { timeout }).then((singleIssuerProcessor) => {
-        if (singleIssuerProcessor !== null && singleIssuerProcessor !== undefined) {
-          foundProcessors.push(singleIssuerProcessor);
+      // Search for JWT_AUTHENTICATOR
+      return cy.findProcessorOnCanvas('JWT_AUTHENTICATOR', { timeout }).then((jwtAuthProcessor) => {
+        if (jwtAuthProcessor !== null && jwtAuthProcessor !== undefined) {
+          foundProcessors.push(jwtAuthProcessor);
         }
         
         // Search for MULTI_ISSUER
@@ -331,7 +331,7 @@ Cypress.Commands.add('getAllJWTProcessorsOnCanvas', (options = {}) => {
           }
           
           cy.log(`✅ Found ${foundProcessors.length} JWT processors on canvas`);
-          return foundProcessors;
+          return cy.wrap(foundProcessors);
         });
       });
     });
@@ -421,7 +421,7 @@ function performProcessorAddition(processorDef, position, timeout) {
     })
     .then(() => {
       // Verify the processor was added and return reference
-      return cy.findProcessorOnCanvas(processorDef.type || 'SINGLE_ISSUER', { timeout: 2000 }).then((addedProcessor) => {
+      return cy.findProcessorOnCanvas(processorDef.type || 'JWT_AUTHENTICATOR', { timeout: 2000 }).then((addedProcessor) => {
         if (addedProcessor) {
           cy.log(`✅ Successfully added ${processorDef.displayName}`);
           return addedProcessor;

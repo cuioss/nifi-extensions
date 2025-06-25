@@ -18,20 +18,20 @@ describe('03 - JWT Processor Availability Verification', () => {
 
     // Verify processor type constants are available
     cy.getJWTProcessorTypes().then((types) => {
-      expect(types).to.have.property('SINGLE_ISSUER');
+      expect(types).to.have.property('JWT_AUTHENTICATOR');
       expect(types).to.have.property('MULTI_ISSUER');
       
       // Verify processor definitions are complete
-      expect(types.SINGLE_ISSUER).to.have.property('className');
-      expect(types.SINGLE_ISSUER).to.have.property('displayName');
-      expect(types.SINGLE_ISSUER.className).to.equal('de.cuioss.nifi.processors.auth.JWTTokenAuthenticator');
+      expect(types.JWT_AUTHENTICATOR).to.have.property('className');
+      expect(types.JWT_AUTHENTICATOR).to.have.property('displayName');
+      expect(types.JWT_AUTHENTICATOR.className).to.equal('de.cuioss.nifi.processors.auth.JWTTokenAuthenticator');
       
       expect(types.MULTI_ISSUER).to.have.property('className');
       expect(types.MULTI_ISSUER).to.have.property('displayName');
       expect(types.MULTI_ISSUER.className).to.equal('de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator');
       
       cy.log('✅ JWT processor types are properly defined');
-      cy.log(`Single Issuer: ${types.SINGLE_ISSUER.displayName}`);
+      cy.log(`JWT Authenticator: ${types.JWT_AUTHENTICATOR.displayName}`);
       cy.log(`Multi Issuer: ${types.MULTI_ISSUER.displayName}`);
     });
   });
@@ -67,7 +67,7 @@ describe('03 - JWT Processor Availability Verification', () => {
     cy.log('Testing processor search functionality');
 
     // Test that we can search for each processor type without errors
-    cy.findProcessorOnCanvas('SINGLE_ISSUER').then((processor) => {
+    cy.findProcessorOnCanvas('JWT_AUTHENTICATOR').then((processor) => {
       // Should return null since we haven't added any processors yet
       expect(processor).to.be.null;
       cy.log('✅ Single issuer search completed (correctly returns null)');
