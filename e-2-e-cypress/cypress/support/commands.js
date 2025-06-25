@@ -3,17 +3,30 @@
 // which will be processed before the test files
 // ***********************************************
 
-// Current implementation uses direct Cypress commands in tests
-// All custom commands have been archived to cypress/support/archived/commands/
-// 
-// The active test suite (01-basic-auth-and-session.cy.js and 02-processor-availability.cy.js)
-// uses only built-in Cypress commands like:
-// - cy.visit(), cy.get(), cy.log(), cy.url(), cy.clearCookies(), etc.
-//
+// Import authentication helper with cy.session() based login/logout
+import './auth-helper';
+
+// Import navigation helper with advanced "Where Am I" patterns
+import './navigation-helper';
+
 // Console error tracking commands (saveBrowserLogs, verifyNoConsoleErrors, verifyNoUnexpectedWarnings)
 // are defined in console-error-tracking.js and imported via e2e.js
 //
-// If additional custom commands are needed for future tests, they can be restored from
-// the archived directory and imported here.
+// The active test suite now uses stateful authentication helpers:
+// - cy.loginNiFi() - Login using cached session
+// - cy.logoutNiFi() - Logout and clear session
+// - cy.getSessionContext() - Get session information  
+// - cy.ensureNiFiReady() - One-stop login + validation
+//
+// And advanced navigation helpers:
+// - cy.getPageContext() - Comprehensive "Where Am I" analysis
+// - cy.navigateToPage() - Navigate with verification and retry logic
+// - cy.verifyPageType() - Verify current page type
+// - cy.waitForPageType() - Wait for specific page type
+// - cy.navigateWithAuth() - Navigate with authentication check
+//
+// These commands use cy.session() for optimal performance and follow
+// Cypress best practices for 2024 test isolation while avoiding redundant logins.
 
-// No custom command imports needed for current minimal test suite
+// All archived custom commands are available in cypress/support/archived/commands/
+// and can be restored if needed for future tests.
