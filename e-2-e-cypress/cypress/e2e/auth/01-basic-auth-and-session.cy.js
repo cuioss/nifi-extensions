@@ -1,31 +1,28 @@
 /**
- * @fileoverview Basic Authentication test implementation for NiFi JWT extension
+ * @file Basic Authentication test implementation for NiFi JWT extension
  * Simple login, logout, and basic session validation
  * Following requirements from Requirements.md
- * 
- * @requirements R-AUTH-001, R-AUTH-002
- * @author E2E Test Refactoring Initiative  
+ * @author E2E Test Refactoring Initiative
  * @version 1.0.0
  */
 
-import { 
-  loginWithCredentials, 
-  verifyLoginState, 
-  logout, 
-  clearAllAuthenticationData
+import {
+  loginWithCredentials,
+  verifyLoginState,
+  logout,
+  clearAllAuthenticationData,
 } from '../../support/utils/auth-helpers.js';
-import { 
-  validateRequiredElements, 
-  validateErrorState
+import {
+  validateRequiredElements,
+  validateErrorState,
 } from '../../support/utils/validation-helpers.js';
-import { 
-  trackTestFailure, 
-  logTestStep, 
-  captureDebugInfo 
+import {
+  trackTestFailure,
+  logTestStep,
+  captureDebugInfo,
 } from '../../support/utils/error-tracking.js';
 
 describe('01 - Basic Authentication', () => {
-  
   beforeEach(() => {
     logTestStep('01-basic-auth', 'Starting basic authentication test');
     clearAllAuthenticationData();
@@ -34,10 +31,10 @@ describe('01 - Basic Authentication', () => {
   afterEach(() => {
     captureDebugInfo('01-basic-auth');
   });
-    
+
   it('R-AUTH-001: Should login successfully with valid admin credentials', () => {
     logTestStep('01-basic-auth', 'Attempting login with valid admin credentials');
-    
+
     loginWithCredentials('admin', 'adminadminadmin')
       .then(() => {
         logTestStep('01-basic-auth', 'Verifying successful login state');
@@ -46,12 +43,12 @@ describe('01 - Basic Authentication', () => {
       .then((loginState) => {
         expect(loginState.isLoggedIn).to.be.true;
         expect(loginState.authMethod).to.exist;
-        
+
         logTestStep('01-basic-auth', 'Validating authenticated UI elements');
         return validateRequiredElements([
           '[data-testid="canvas-container"], #canvas-container',
           '[data-testid="user-menu"], #user-logout-link, .user-menu',
-          '[data-testid="toolbar"], .toolbar, .header'
+          '[data-testid="toolbar"], .toolbar, .header',
         ]);
       })
       .then(() => {
@@ -65,22 +62,23 @@ describe('01 - Basic Authentication', () => {
 
   it('R-AUTH-001: Should handle invalid credentials gracefully', () => {
     logTestStep('01-basic-auth', 'Testing invalid credentials handling');
-    
+
     cy.visit('/');
-    
+
     // Attempt login with invalid credentials
-    cy.get('[data-testid="username"], input[type="text"], input[id*="username"]', { timeout: 10000 })
+    cy.get('[data-testid="username"], input[type="text"], input[id*="username"]', {
+      timeout: 10000,
+    })
       .should('be.visible')
       .clear()
       .type('invalid-user');
-      
+
     cy.get('[data-testid="password"], input[type="password"], input[id*="password"]')
       .should('be.visible')
       .clear()
       .type('invalid-password');
-      
-    cy.get('[data-testid="login-button"], input[value="Login"], button[type="submit"]')
-      .click();
+
+    cy.get('[data-testid="login-button"], input[value="Login"], button[type="submit"]').click();
 
     // Verify error handling
     validateErrorState()
@@ -96,7 +94,7 @@ describe('01 - Basic Authentication', () => {
 
   it('R-AUTH-002: Should logout successfully and clear session', () => {
     logTestStep('01-basic-auth', 'Testing logout functionality');
-    
+
     // First login
     loginWithCredentials('admin', 'adminadminadmin')
       .then(() => {
@@ -109,10 +107,10 @@ describe('01 - Basic Authentication', () => {
       })
       .then((loginState) => {
         expect(loginState.isLoggedIn).to.be.false;
-        
+
         // Verify we're redirected to login page
         cy.url().should('not.contain', '/nifi/canvas');
-        
+
         logTestStep('01-basic-auth', 'Logout completed successfully');
       })
       .catch((error) => {

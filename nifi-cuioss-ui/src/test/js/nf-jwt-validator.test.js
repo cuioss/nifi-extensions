@@ -20,7 +20,7 @@ global.console = {
 
 // Default mock for 'js/main'. (remains the same)
 const mockMainDefault = {
-    init: jest.fn()
+    init: jest.fn().mockResolvedValue(true) // Return a resolved Promise
 };
 jest.mock('js/main', () => mockMainDefault, { virtual: true });
 
@@ -73,7 +73,7 @@ describe('nf-jwt-validator.js', () => {
     });
 
     describe('When components are already registered', () => {
-        const mockMainWhenRegistered = { init: jest.fn() };
+        const mockMainWhenRegistered = { init: jest.fn().mockResolvedValue(true) }; // Return a resolved Promise
         beforeEach(() => {
             global.window.jwtComponentsRegistered = true;
             jest.resetModules();
@@ -124,6 +124,66 @@ describe('nf-jwt-validator.js', () => {
             // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
             // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Main module imported');
             // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete');
+        });
+    });
+
+    describe('Branch coverage tests', () => {
+        beforeEach(() => {
+            jest.resetModules();
+            // Clear global state
+            delete window.jwtComponentsRegistered;
+            delete window.jwtInitializationInProgress;
+            delete window.jwtLoadingIndicatorHidden;
+        });
+
+        it('should handle main.init returning non-Promise gracefully', () => {
+            const mockMainNonPromise = {
+                init: jest.fn().mockReturnValue('not a promise')
+            };
+
+            jest.doMock('js/main', () => mockMainNonPromise, { virtual: true });
+
+            // Should not throw an error
+            expect(() => {
+                require('../../main/webapp/js/nf-jwt-validator.js');
+            }).not.toThrow();
+
+            expect(mockMainNonPromise.init).toHaveBeenCalled();
+        });
+
+        it('should skip initialization when jwtComponentsRegistered is true', () => {
+            window.jwtComponentsRegistered = true;
+
+            const freshMockMain = { init: jest.fn().mockResolvedValue(true) };
+            jest.doMock('js/main', () => freshMockMain, { virtual: true });
+
+            require('../../main/webapp/js/nf-jwt-validator.js');
+
+            expect(freshMockMain.init).not.toHaveBeenCalled();
+        });
+
+        it('should skip initialization when jwtInitializationInProgress is true', () => {
+            window.jwtInitializationInProgress = true;
+
+            const freshMockMain = { init: jest.fn().mockResolvedValue(true) };
+            jest.doMock('js/main', () => freshMockMain, { virtual: true });
+
+            require('../../main/webapp/js/nf-jwt-validator.js');
+
+            expect(freshMockMain.init).not.toHaveBeenCalled();
+        });
+
+        it('should handle strategy execution with no elements to hide', () => {
+            // Set up DOM with no loading indicators
+            document.body.innerHTML = '<div>Normal content</div>';
+
+            const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+            require('../../main/webapp/js/nf-jwt-validator.js');
+
+            expect(consoleWarnSpy).toHaveBeenCalledWith('No loading indicators found to hide');
+
+            consoleWarnSpy.mockRestore();
         });
     });
 });

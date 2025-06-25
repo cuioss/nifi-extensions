@@ -8,7 +8,7 @@
  */
 export const PROCESSOR_TYPES = {
   MULTI_ISSUER: 'MultiIssuerJWTTokenAuthenticator',
-  SINGLE_ISSUER: 'JWTTokenAuthenticator'
+  SINGLE_ISSUER: 'JWTTokenAuthenticator',
 };
 
 /**
@@ -21,11 +21,7 @@ export const PROCESSOR_TYPES = {
  * @returns {Cypress.Chainable} Cypress chainable with processor element
  */
 export function addProcessorToCanvas(processorType, options = {}) {
-  const {
-    timeout = 30000,
-    validateAfterAdd = true,
-    position = { x: 400, y: 300 }
-  } = options;
+  const { timeout = 30000, validateAfterAdd = true, position = { x: 400, y: 300 } } = options;
 
   cy.log(`🔧 Adding processor: ${processorType}`);
 
@@ -51,7 +47,10 @@ export function addProcessorToCanvas(processorType, options = {}) {
 
   cy.log(`✅ Successfully added processor: ${processorType}`);
 
-  return cy.get(`[data-processor-type*="${processorType}"], .processor-component:contains("${processorType}")`)
+  return cy
+    .get(
+      `[data-processor-type*="${processorType}"], .processor-component:contains("${processorType}")`
+    )
     .first();
 }
 
@@ -66,20 +65,17 @@ function openProcessorDialog(timeout) {
     '#toolbar button[title*="processor"]',
     '.add-processor',
     'button[aria-label*="processor"]',
-    '.toolbar-action[title*="Processor"]'
+    '.toolbar-action[title*="Processor"]',
   ];
 
   cy.log('🔍 Looking for add processor button');
 
   let found = false;
   for (const selector of addProcessorSelectors) {
-    cy.get('body').then($body => {
+    cy.get('body').then(($body) => {
       if ($body.find(selector).length > 0 && !found) {
         found = true;
-        cy.get(selector, { timeout })
-          .should('be.visible')
-          .and('not.be.disabled')
-          .click();
+        cy.get(selector, { timeout }).should('be.visible').and('not.be.disabled').click();
       }
     });
   }
@@ -87,8 +83,7 @@ function openProcessorDialog(timeout) {
   // Alternative: right-click on canvas to open context menu
   if (!found) {
     cy.log('🔄 Trying canvas right-click approach');
-    cy.get('#canvas-container')
-      .rightclick({ force: true });
+    cy.get('#canvas-container').rightclick({ force: true });
 
     cy.get('#context-menu, .context-menu')
       .should('be.visible')
@@ -97,8 +92,9 @@ function openProcessorDialog(timeout) {
   }
 
   // Wait for processor dialog to appear
-  cy.get('.processor-dialog, #processor-dialog, .add-processor-dialog', { timeout })
-    .should('be.visible');
+  cy.get('.processor-dialog, #processor-dialog, .add-processor-dialog', { timeout }).should(
+    'be.visible'
+  );
 }
 
 /**
@@ -114,15 +110,13 @@ function searchAndSelectProcessor(processorType, timeout) {
     'input[placeholder*="search"], input[placeholder*="filter"]',
     '.processor-search input',
     '#processor-search',
-    'input[type="search"]'
+    'input[type="search"]',
   ];
 
-  searchSelectors.forEach(selector => {
-    cy.get('body').then($body => {
+  searchSelectors.forEach((selector) => {
+    cy.get('body').then(($body) => {
       if ($body.find(selector).length > 0) {
-        cy.get(selector)
-          .clear()
-          .type(processorType);
+        cy.get(selector).clear().type(processorType);
       }
     });
   });
@@ -134,10 +128,9 @@ function searchAndSelectProcessor(processorType, timeout) {
     .click();
 
   // Confirm selection if needed
-  cy.get('body').then($body => {
+  cy.get('body').then(($body) => {
     if ($body.find('button:contains("Add"), .confirm-button, .ok-button').length > 0) {
-      cy.get('button:contains("Add"), .confirm-button, .ok-button')
-        .click();
+      cy.get('button:contains("Add"), .confirm-button, .ok-button').click();
     }
   });
 }
@@ -150,8 +143,7 @@ function positionProcessorOnCanvas(position) {
   cy.log(`📍 Positioning processor at: ${position.x}, ${position.y}`);
 
   // Click on canvas at specified position
-  cy.get('#canvas-container')
-    .click(position.x, position.y);
+  cy.get('#canvas-container').click(position.x, position.y);
 }
 
 /**
@@ -163,7 +155,10 @@ function validateProcessorOnCanvas(processorType, timeout) {
   cy.log(`✅ Validating processor on canvas: ${processorType}`);
 
   // Look for processor on canvas
-  cy.get(`[data-processor-type*="${processorType}"], .processor-component:contains("${processorType}")`, { timeout })
+  cy.get(
+    `[data-processor-type*="${processorType}"], .processor-component:contains("${processorType}")`,
+    { timeout }
+  )
     .should('be.visible')
     .and('have.length.greaterThan', 0);
 
@@ -182,23 +177,26 @@ export function openProcessorConfiguration(processorType, options = {}) {
   cy.log(`⚙️ Opening configuration for processor: ${processorType}`);
 
   // Find processor on canvas and double-click or right-click to configure
-  cy.get(`[data-processor-type*="${processorType}"], .processor-component:contains("${processorType}")`)
+  cy.get(
+    `[data-processor-type*="${processorType}"], .processor-component:contains("${processorType}")`
+  )
     .first()
     .should('be.visible')
     .dblclick({ force: true });
 
   // Wait for configuration dialog
-  cy.get('.processor-configuration, #processor-configuration, .component-configuration', { timeout })
-    .should('be.visible');
+  cy.get('.processor-configuration, #processor-configuration, .component-configuration', {
+    timeout,
+  }).should('be.visible');
 
   // Verify configuration tabs are present
-  cy.get('.tab, .tab-button, .configuration-tab')
-    .should('have.length.greaterThan', 0);
+  cy.get('.tab, .tab-button, .configuration-tab').should('have.length.greaterThan', 0);
 
   if (expectAdvancedSettings) {
     // Check for advanced/properties tab
-    cy.get('.tab:contains("Properties"), .tab:contains("Advanced"), .tab-button:contains("Properties")')
-      .should('be.visible');
+    cy.get(
+      '.tab:contains("Properties"), .tab:contains("Advanced"), .tab-button:contains("Properties")'
+    ).should('be.visible');
   }
 
   cy.log(`✅ Configuration dialog opened for: ${processorType}`);
@@ -220,29 +218,27 @@ export function navigateToAdvancedSettings(options = {}) {
     '.tab:contains("Properties")',
     '.tab:contains("Advanced")',
     '.tab-button:contains("Properties")',
-    '.configuration-tab:contains("Properties")'
+    '.configuration-tab:contains("Properties")',
   ];
 
   let tabClicked = false;
-  advancedTabSelectors.forEach(selector => {
-    cy.get('body').then($body => {
+  advancedTabSelectors.forEach((selector) => {
+    cy.get('body').then(($body) => {
       if ($body.find(selector).length > 0 && !tabClicked) {
         tabClicked = true;
-        cy.get(selector)
-          .should('be.visible')
-          .click();
+        cy.get(selector).should('be.visible').click();
       }
     });
   });
 
   // Wait for advanced settings to load
-  cy.get('.properties-panel, .advanced-panel, .configuration-properties', { timeout })
-    .should('be.visible');
+  cy.get('.properties-panel, .advanced-panel, .configuration-properties', { timeout }).should(
+    'be.visible'
+  );
 
   if (expectCustomUI) {
     // Wait for custom UI to load (specific to JWT processors)
-    cy.get('.jwt-configuration, .custom-ui, iframe', { timeout })
-      .should('be.visible');
+    cy.get('.jwt-configuration, .custom-ui, iframe', { timeout }).should('be.visible');
 
     // Check that loading message is not stuck
     cy.get('body').should('not.contain', 'Loading JWT Validator UI...');
@@ -266,19 +262,18 @@ export function verifyProcessorInCatalog(processorType, options = {}) {
   }
 
   // Search for processor
-  cy.get('input[placeholder*="search"], input[placeholder*="filter"]')
-    .clear()
-    .type(processorType);
+  cy.get('input[placeholder*="search"], input[placeholder*="filter"]').clear().type(processorType);
 
   // Verify processor appears in results
-  cy.get('.processor-list, .processor-item, .component-item', { timeout })
-    .should('contain', processorType);
+  cy.get('.processor-list, .processor-item, .component-item', { timeout }).should(
+    'contain',
+    processorType
+  );
 
   cy.log(`✅ Processor ${processorType} found in catalog`);
 
   // Close dialog
-  cy.get('.close-button, .cancel-button, button:contains("Cancel")')
-    .click();
+  cy.get('.close-button, .cancel-button, button:contains("Cancel")').click();
 }
 
 /**
@@ -299,8 +294,7 @@ export function verifyProcessorDeployment(processorType) {
   openProcessorConfiguration(processorType);
 
   // Close configuration dialog
-  cy.get('.close-button, .cancel-button, button:contains("Cancel")')
-    .click();
+  cy.get('.close-button, .cancel-button, button:contains("Cancel")').click();
 
   // Clean up test processor
   cleanupTestProcessor(processorType);
@@ -315,7 +309,9 @@ export function verifyProcessorDeployment(processorType) {
 function cleanupTestProcessor(processorType) {
   cy.log(`🧹 Cleaning up test processor: ${processorType}`);
 
-  cy.get(`[data-processor-type*="${processorType}"], .processor-component:contains("${processorType}")`)
+  cy.get(
+    `[data-processor-type*="${processorType}"], .processor-component:contains("${processorType}")`
+  )
     .first()
     .rightclick({ force: true });
 
@@ -325,10 +321,9 @@ function cleanupTestProcessor(processorType) {
     .click();
 
   // Confirm deletion if needed
-  cy.get('body').then($body => {
+  cy.get('body').then(($body) => {
     if ($body.find('button:contains("Delete"), .confirm-button').length > 0) {
-      cy.get('button:contains("Delete"), .confirm-button')
-        .click();
+      cy.get('button:contains("Delete"), .confirm-button').click();
     }
   });
 
@@ -356,13 +351,10 @@ export function verifyProcessorCustomUI(processorType, options = {}) {
 
   if (expectIframe) {
     // For iframe-based custom UI
-    cy.get('iframe', { timeout })
-      .should('be.visible')
-      .and('have.attr', 'src');
+    cy.get('iframe', { timeout }).should('be.visible').and('have.attr', 'src');
   } else {
     // For embedded custom UI
-    cy.get('.jwt-configuration, .custom-ui', { timeout })
-      .should('be.visible');
+    cy.get('.jwt-configuration, .custom-ui', { timeout }).should('be.visible');
   }
 
   // Verify no loading hang

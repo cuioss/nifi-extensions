@@ -13,20 +13,13 @@
  * @returns {Cypress.Chainable} Cypress chainable with element
  */
 export function waitForElement(selector, options = {}) {
-  const {
-    timeout = 15000,
-    visible = true
-  } = options;
-
-  const chainable = cy.get(selector, { timeout });
+  const { timeout = 15000, visible = true } = options;
 
   if (visible) {
-    return chainable
-      .should('be.visible')
-      .should('exist');
+    return cy.get(selector, { timeout }).should('be.visible').should('exist');
   }
 
-  return chainable.should('exist');
+  return cy.get(selector, { timeout }).should('exist');
 }
 
 /**
@@ -43,7 +36,7 @@ export function safeClick(selector, options = {}) {
     timeout = 10000,
     retries = 3,
     force = false,
-    errorContext = 'Safe click operation'
+    errorContext = 'Safe click operation',
   } = options;
 
   cy.log(`🖱️ ${errorContext}: clicking ${selector}`);
@@ -55,13 +48,15 @@ export function safeClick(selector, options = {}) {
   let attempt = 0;
   const performClick = () => {
     attempt++;
-    cy.get(selector).then($el => {
+    cy.get(selector).then(($el) => {
       if ($el.length === 0) {
         if (attempt <= retries) {
           cy.wait(1000);
           performClick();
         } else {
-          throw new Error(`${errorContext}: Element ${selector} not found after ${retries} retries`);
+          throw new Error(
+            `${errorContext}: Element ${selector} not found after ${retries} retries`
+          );
         }
       } else {
         cy.wrap($el).click({ force });
@@ -85,7 +80,7 @@ export function navigateToTab(tabName, options = {}) {
   const {
     timeout = 10000,
     validateContent = true,
-    expectedContent = '.tab-content, .tab-panel'
+    expectedContent = '.tab-content, .tab-panel',
   } = options;
 
   cy.log(`📑 Navigating to tab: ${tabName}`);
@@ -96,12 +91,12 @@ export function navigateToTab(tabName, options = {}) {
     `.tab-button:contains("${tabName}")`,
     `.nav-tab:contains("${tabName}")`,
     `[role="tab"]:contains("${tabName}")`,
-    `.configuration-tab:contains("${tabName}")`
+    `.configuration-tab:contains("${tabName}")`,
   ];
 
   let tabFound = false;
-  tabSelectors.forEach(selector => {
-    cy.get('body').then($body => {
+  tabSelectors.forEach((selector) => {
+    cy.get('body').then(($body) => {
       if ($body.find(selector).length > 0 && !tabFound) {
         tabFound = true;
         safeClick(selector, { timeout, errorContext: `Tab navigation to ${tabName}` });
@@ -118,10 +113,9 @@ export function navigateToTab(tabName, options = {}) {
     waitForElement(expectedContent, { timeout });
 
     // Wait for any loading spinners to disappear
-    cy.get('body').then($body => {
+    cy.get('body').then(($body) => {
       if ($body.find('.loading, .spinner, .loading-spinner').length > 0) {
-        cy.get('.loading, .spinner, .loading-spinner', { timeout })
-          .should('not.exist');
+        cy.get('.loading, .spinner, .loading-spinner', { timeout }).should('not.exist');
       }
     });
   }
@@ -138,11 +132,7 @@ export function navigateToTab(tabName, options = {}) {
  * @param {boolean} options.validateAfterFill - Whether to validate values after filling (default: true)
  */
 export function fillForm(formData, options = {}) {
-  const {
-    timeout = 5000,
-    clearFirst = true,
-    validateAfterFill = true
-  } = options;
+  const { timeout = 5000, clearFirst = true, validateAfterFill = true } = options;
 
   cy.log('📝 Filling form fields');
 
@@ -153,16 +143,15 @@ export function fillForm(formData, options = {}) {
       `[data-field="${fieldName}"]`,
       `input[aria-label*="${fieldName}"]`,
       `textarea[name="${fieldName}"]`,
-      `select[name="${fieldName}"]`
+      `select[name="${fieldName}"]`,
     ];
 
     let fieldFound = false;
-    fieldSelectors.forEach(selector => {
-      cy.get('body').then($body => {
+    fieldSelectors.forEach((selector) => {
+      cy.get('body').then(($body) => {
         if ($body.find(selector).length > 0 && !fieldFound) {
           fieldFound = true;
-          cy.get(selector, { timeout })
-            .should('be.visible');
+          cy.get(selector, { timeout }).should('be.visible');
 
           if (clearFirst) {
             cy.get(selector).clear();
@@ -199,15 +188,13 @@ export function validateUIAccessibility(selectors, options = {}) {
 
   cy.log('♿ Validating UI accessibility');
 
-  selectors.forEach(selector => {
-    cy.get(selector, { timeout })
-      .should('be.visible')
-      .should('exist');
+  selectors.forEach((selector) => {
+    cy.get(selector, { timeout }).should('be.visible').should('exist');
 
     if (checkInteractivity) {
-      cy.get(selector).then($el => {
+      cy.get(selector).then(($el) => {
         const tagName = $el.prop('tagName').toLowerCase();
-        
+
         if (['button', 'input', 'select', 'textarea'].includes(tagName)) {
           cy.wrap($el).should('not.be.disabled');
         }
@@ -240,10 +227,10 @@ export function waitForDialog(options = {}) {
       '.overlay-dialog',
       '.configuration-dialog',
       '.processor-dialog',
-      '#dialog'
+      '#dialog',
     ],
     timeout = 15000,
-    validateButtons = true
+    validateButtons = true,
   } = options;
 
   cy.log('🔲 Waiting for dialog to appear');
@@ -251,13 +238,12 @@ export function waitForDialog(options = {}) {
   let dialogFound = false;
   let dialogElement = null;
 
-  selectors.forEach(selector => {
-    cy.get('body').then($body => {
+  selectors.forEach((selector) => {
+    cy.get('body').then(($body) => {
       if ($body.find(selector).length > 0 && !dialogFound) {
         dialogFound = true;
         dialogElement = selector;
-        cy.get(selector, { timeout })
-          .should('be.visible');
+        cy.get(selector, { timeout }).should('be.visible');
       }
     });
   });
@@ -267,8 +253,10 @@ export function waitForDialog(options = {}) {
   }
 
   if (validateButtons) {
-    cy.get(`${dialogElement} button, ${dialogElement} .button`)
-      .should('have.length.greaterThan', 0);
+    cy.get(`${dialogElement} button, ${dialogElement} .button`).should(
+      'have.length.greaterThan',
+      0
+    );
   }
 
   cy.log('✅ Dialog appeared and validated');
@@ -291,17 +279,17 @@ export function closeDialog(options = {}) {
       'button:contains("Cancel")',
       'button:contains("OK")',
       '.dialog-close',
-      '.modal-close'
+      '.modal-close',
     ],
     useEscape = true,
-    timeout = 5000
+    timeout = 5000,
   } = options;
 
   cy.log('❌ Closing dialog');
 
   let closed = false;
-  closeSelectors.forEach(selector => {
-    cy.get('body').then($body => {
+  closeSelectors.forEach((selector) => {
+    cy.get('body').then(($body) => {
       if ($body.find(selector).length > 0 && !closed) {
         closed = true;
         safeClick(selector, { timeout, errorContext: 'Dialog close' });
@@ -315,8 +303,7 @@ export function closeDialog(options = {}) {
   }
 
   // Verify dialog is closed
-  cy.get('.dialog, .modal, .popup', { timeout })
-    .should('not.exist');
+  cy.get('.dialog, .modal, .popup', { timeout }).should('not.exist');
 
   cy.log('✅ Dialog closed successfully');
 }
@@ -333,13 +320,10 @@ export function scrollIntoView(selector, options = {}) {
 
   cy.log(`📜 Scrolling element into view: ${selector}`);
 
-  cy.get(selector, { timeout })
-    .should('exist')
-    .scrollIntoView({ position });
+  cy.get(selector, { timeout }).should('exist').scrollIntoView({ position });
 
   // Verify element is now visible
-  cy.get(selector)
-    .should('be.visible');
+  cy.get(selector).should('be.visible');
 
   cy.log(`✅ Element scrolled into view: ${selector}`);
 }
@@ -356,24 +340,20 @@ export function validateTooltip(triggerSelector, options = {}) {
   const {
     expectedText,
     timeout = 3000,
-    tooltipSelector = '.tooltip, .help-tooltip, .info-tooltip, [role="tooltip"]'
+    tooltipSelector = '.tooltip, .help-tooltip, .info-tooltip, [role="tooltip"]',
   } = options;
 
   cy.log(`💡 Validating tooltip for: ${triggerSelector}`);
 
   // Hover over trigger element
-  cy.get(triggerSelector)
-    .should('be.visible')
-    .trigger('mouseover');
+  cy.get(triggerSelector).should('be.visible').trigger('mouseover');
 
   // Wait for tooltip to appear
-  cy.get(tooltipSelector, { timeout })
-    .should('be.visible');
+  cy.get(tooltipSelector, { timeout }).should('be.visible');
 
   // Validate tooltip content if specified
   if (expectedText) {
-    cy.get(tooltipSelector)
-      .should('contain', expectedText);
+    cy.get(tooltipSelector).should('contain', expectedText);
   }
 
   // Move mouse away to hide tooltip
@@ -397,17 +377,16 @@ export function waitForLoadingComplete(options = {}) {
       '.loading-spinner',
       '.progress',
       '.loading-indicator',
-      '[data-loading="true"]'
-    ]
+      '[data-loading="true"]',
+    ],
   } = options;
 
   cy.log('⏳ Waiting for all loading states to complete');
 
-  loadingSelectors.forEach(selector => {
-    cy.get('body').then($body => {
+  loadingSelectors.forEach((selector) => {
+    cy.get('body').then(($body) => {
       if ($body.find(selector).length > 0) {
-        cy.get(selector, { timeout })
-          .should('not.exist');
+        cy.get(selector, { timeout }).should('not.exist');
       }
     });
   });
@@ -417,10 +396,10 @@ export function waitForLoadingComplete(options = {}) {
     'Loading...',
     'Loading JWT Validator UI...',
     'Please wait...',
-    'Initializing...'
+    'Initializing...',
   ];
 
-  loadingTexts.forEach(text => {
+  loadingTexts.forEach((text) => {
     cy.get('body').should('not.contain', text);
   });
 

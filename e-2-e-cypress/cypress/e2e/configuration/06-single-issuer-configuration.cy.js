@@ -1,10 +1,9 @@
 /**
  * Single-Issuer JWT Processor Configuration Tests
- * 
+ *
  * Test suite for single-issuer JWT processor configuration interface,
  * simplified UI components, and single-issuer specific functionality
- * 
- * @fileoverview Single-issuer JWT processor configuration tests
+ * @file Single-issuer JWT processor configuration tests
  * @requires cypress/support/utils/auth-helpers.js
  * @requires cypress/support/utils/processor-helpers.js
  * @requires cypress/support/utils/ui-helpers.js
@@ -12,55 +11,51 @@
  * @requires cypress/support/utils/error-tracking.js
  */
 
-import { 
-  loginWithCredentials, 
+import {
+  loginWithCredentials,
   verifyLoginState,
-  clearAllAuthenticationData
+  clearAllAuthenticationData,
 } from '../../support/utils/auth-helpers.js';
-import { 
+import {
   createProcessorInstance,
   validateProcessorConfiguration,
   openProcessorSettings,
   getProcessorProperties,
   setProcessorProperty,
   saveProcessorConfiguration,
-  validateProcessorAvailability
+  validateProcessorAvailability,
 } from '../../support/utils/processor-helpers.js';
-import { 
-  waitForUIElement, 
+import {
+  waitForUIElement,
   navigateToPage,
-  clickElement,
-  fillFormField,
   selectDropdownOption,
-  validateTabNavigation
+  validateTabNavigation,
 } from '../../support/utils/ui-helpers.js';
-import { 
-  validateRequiredElements, 
+import {
+  validateRequiredElements,
   validateFormValidation,
   validateConfigurationPersistence,
-  validateHelpSystem
+  validateHelpSystem,
 } from '../../support/utils/validation-helpers.js';
-import { 
-  trackTestFailure, 
-  logTestStep, 
-  captureDebugInfo 
+import {
+  trackTestFailure,
+  logTestStep,
+  captureDebugInfo,
 } from '../../support/utils/error-tracking.js';
 
 describe('06 - Single-Issuer JWT Processor Configuration', () => {
-  
   let processorId = null;
-  
+
   beforeEach(() => {
     logTestStep('06-single-issuer-config', 'Starting single-issuer configuration test');
     clearAllAuthenticationData();
     loginWithCredentials('admin', 'adminadminadmin');
     verifyLoginState();
-    
+
     // Navigate to canvas
-    navigateToPage('/nifi')
-      .then(() => {
-        return waitForUIElement('[data-testid="canvas-container"], #canvas-container', 10000);
-      });
+    navigateToPage('/nifi').then(() => {
+      return waitForUIElement('[data-testid="canvas-container"], #canvas-container', 10000);
+    });
   });
 
   afterEach(() => {
@@ -75,10 +70,9 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
   });
 
   context('Single-Issuer Processor Creation and Access', () => {
-    
     it('R-CONFIG-009: Should create single-issuer JWT processor and access configuration', () => {
       logTestStep('06-single-issuer-config', 'Creating single-issuer JWT processor');
-      
+
       validateProcessorAvailability('SingleIssuer')
         .then((availability) => {
           if (availability.isAvailable) {
@@ -94,7 +88,10 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
             if (result.isAvailable) {
               return createProcessorInstance('JWKS', { x: 200, y: 200 });
             } else {
-              logTestStep('06-single-issuer-config', 'No single-issuer processor available - skipping configuration tests');
+              logTestStep(
+                '06-single-issuer-config',
+                'No single-issuer processor available - skipping configuration tests'
+              );
               cy.skip('Single-issuer JWT processor not available');
             }
           } else {
@@ -105,18 +102,24 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
         .then((creationResult) => {
           expect(creationResult.created).to.be.true;
           expect(creationResult.processorId).to.exist;
-          
+
           processorId = creationResult.processorId;
-          logTestStep('06-single-issuer-config', `Single-issuer processor created with ID: ${processorId}`);
-          
+          logTestStep(
+            '06-single-issuer-config',
+            `Single-issuer processor created with ID: ${processorId}`
+          );
+
           // Access processor configuration
           return openProcessorSettings(processorId);
         })
         .then((settingsResult) => {
           expect(settingsResult.dialogOpened).to.be.true;
           expect(settingsResult.hasConfigurationTabs).to.be.true;
-          
-          logTestStep('06-single-issuer-config', 'Single-issuer processor configuration dialog opened successfully');
+
+          logTestStep(
+            '06-single-issuer-config',
+            'Single-issuer processor configuration dialog opened successfully'
+          );
         })
         .catch((error) => {
           trackTestFailure('06-single-issuer-config', 'processor-creation-access', error);
@@ -126,7 +129,7 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
 
     it('R-CONFIG-009: Should validate single-issuer processor configuration interface', () => {
       logTestStep('06-single-issuer-config', 'Validating single-issuer configuration interface');
-      
+
       createProcessorInstance('JWKS', { x: 250, y: 250 })
         .then((creationResult) => {
           processorId = creationResult.processorId;
@@ -139,8 +142,11 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
           expect(configValidation.hasConfigDialog).to.be.true;
           expect(configValidation.hasProperties).to.be.true;
           expect(configValidation.canEditProperties).to.be.true;
-          
-          logTestStep('06-single-issuer-config', 'Single-issuer processor configuration interface validated');
+
+          logTestStep(
+            '06-single-issuer-config',
+            'Single-issuer processor configuration interface validated'
+          );
         })
         .catch((error) => {
           if (!error.message.includes('not available')) {
@@ -152,10 +158,9 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
   });
 
   context('Single-Issuer UI Components', () => {
-    
     it('R-CONFIG-010: Should validate single-issuer specific UI components', () => {
       logTestStep('06-single-issuer-config', 'Validating single-issuer specific UI components');
-      
+
       createProcessorInstance('JWKS', { x: 300, y: 300 })
         .then((creationResult) => {
           processorId = creationResult.processorId;
@@ -166,7 +171,7 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
           return validateRequiredElements([
             '[data-testid="jwks-url"], input[name*="jwks"], [placeholder*="jwks"]',
             '[data-testid="issuer-url"], input[name*="issuer"], [placeholder*="issuer"]',
-            '[data-testid="algorithm-select"], select[name*="algorithm"]'
+            '[data-testid="algorithm-select"], select[name*="algorithm"]',
           ]);
         })
         .then(() => {
@@ -182,7 +187,7 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
 
     it('R-CONFIG-010: Should validate simplified configuration interface', () => {
       logTestStep('06-single-issuer-config', 'Testing simplified configuration interface');
-      
+
       createProcessorInstance('JWKS', { x: 350, y: 350 })
         .then((creationResult) => {
           processorId = creationResult.processorId;
@@ -190,21 +195,16 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
         })
         .then(() => {
           // Single-issuer should have fewer tabs than multi-issuer
-          const expectedTabs = [
-            'Properties',
-            'Settings', 
-            'Scheduling',
-            'Comments'
-          ];
-          
+          const expectedTabs = ['Properties', 'Settings', 'Scheduling', 'Comments'];
+
           return validateTabNavigation(expectedTabs);
         })
         .then((tabValidation) => {
           expect(tabValidation.allTabsAccessible).to.be.true;
-          
+
           // Should have fewer custom tabs than multi-issuer
           expect(tabValidation.customTabsFound.length).to.be.lessThan(3);
-          
+
           logTestStep('06-single-issuer-config', 'Simplified configuration interface validated');
         })
         .catch((error) => {
@@ -217,10 +217,9 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
   });
 
   context('Single-Issuer Configuration Options', () => {
-    
     it('R-CONFIG-011: Should validate single-issuer configuration fields', () => {
       logTestStep('06-single-issuer-config', 'Testing single-issuer configuration fields');
-      
+
       createProcessorInstance('JWKS', { x: 400, y: 400 })
         .then((creationResult) => {
           processorId = creationResult.processorId;
@@ -231,22 +230,20 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
         })
         .then((properties) => {
           expect(properties).to.exist;
-          
+
           // Expected single-issuer properties
-          const expectedProperties = [
-            'JWKS URL',
-            'Issuer URL', 
-            'Algorithm',
-            'Clock Skew'
-          ];
-          
-          const foundProperties = expectedProperties.filter(prop => 
-            properties.some(p => p.name.includes(prop) || p.displayName.includes(prop))
+          const expectedProperties = ['JWKS URL', 'Issuer URL', 'Algorithm', 'Clock Skew'];
+
+          const foundProperties = expectedProperties.filter((prop) =>
+            properties.some((p) => p.name.includes(prop) || p.displayName.includes(prop))
           );
-          
+
           expect(foundProperties.length).to.be.at.least(1);
-          
-          logTestStep('06-single-issuer-config', `Found ${foundProperties.length} expected single-issuer properties`);
+
+          logTestStep(
+            '06-single-issuer-config',
+            `Found ${foundProperties.length} expected single-issuer properties`
+          );
         })
         .catch((error) => {
           if (!error.message.includes('not available')) {
@@ -258,7 +255,7 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
 
     it('R-CONFIG-011: Should validate JWKS URL configuration', () => {
       logTestStep('06-single-issuer-config', 'Testing JWKS URL configuration');
-      
+
       createProcessorInstance('JWKS', { x: 450, y: 450 })
         .then((creationResult) => {
           processorId = creationResult.processorId;
@@ -267,12 +264,12 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
         .then(() => {
           // Test setting JWKS URL
           const testJWKSURL = 'https://issuer.example.com/.well-known/jwks.json';
-          
+
           return setProcessorProperty(processorId, 'JWKS URL', testJWKSURL);
         })
         .then((setResult) => {
           expect(setResult.success).to.be.true;
-          
+
           logTestStep('06-single-issuer-config', 'JWKS URL configuration validated');
         })
         .catch((error) => {
@@ -285,7 +282,7 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
 
     it('R-CONFIG-012: Should validate single-issuer form validation rules', () => {
       logTestStep('06-single-issuer-config', 'Testing single-issuer form validation rules');
-      
+
       createProcessorInstance('JWKS', { x: 500, y: 500 })
         .then((creationResult) => {
           processorId = creationResult.processorId;
@@ -296,14 +293,17 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
           return validateFormValidation(processorId, {
             'JWKS URL': 'invalid-url',
             'Issuer URL': 'not-a-url',
-            'Clock Skew': 'invalid-number'
+            'Clock Skew': 'invalid-number',
           });
         })
         .then((validationResult) => {
           expect(validationResult.hasValidation).to.be.true;
           expect(validationResult.validationErrors.length).to.be.at.least(1);
-          
-          logTestStep('06-single-issuer-config', 'Single-issuer form validation rules working correctly');
+
+          logTestStep(
+            '06-single-issuer-config',
+            'Single-issuer form validation rules working correctly'
+          );
         })
         .catch((error) => {
           if (!error.message.includes('not available')) {
@@ -315,10 +315,9 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
   });
 
   context('Single-Issuer Help and Documentation', () => {
-    
     it('R-CONFIG-013: Should validate single-issuer specific help content', () => {
       logTestStep('06-single-issuer-config', 'Testing single-issuer specific help content');
-      
+
       createProcessorInstance('JWKS', { x: 550, y: 550 })
         .then((creationResult) => {
           processorId = creationResult.processorId;
@@ -330,20 +329,27 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
         .then((helpValidation) => {
           expect(helpValidation.hasHelpElements).to.be.true;
           expect(helpValidation.tooltipsAccessible).to.be.true;
-          
+
           // Look for single-issuer specific help content
           return cy.get('body').then(($body) => {
             const helpText = $body.text().toLowerCase();
-            const hasSingleIssuerHelp = helpText.includes('single') || 
-                                       helpText.includes('jwks') || 
-                                       helpText.includes('one issuer');
-            
+            const hasSingleIssuerHelp =
+              helpText.includes('single') ||
+              helpText.includes('jwks') ||
+              helpText.includes('one issuer');
+
             if (hasSingleIssuerHelp) {
-              logTestStep('06-single-issuer-config', 'Single-issuer specific help content detected');
+              logTestStep(
+                '06-single-issuer-config',
+                'Single-issuer specific help content detected'
+              );
             } else {
-              logTestStep('06-single-issuer-config', 'No single-issuer specific help content detected - using generic help');
+              logTestStep(
+                '06-single-issuer-config',
+                'No single-issuer specific help content detected - using generic help'
+              );
             }
-            
+
             return cy.wrap(hasSingleIssuerHelp);
           });
         })
@@ -360,7 +366,7 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
 
     it('R-CONFIG-013: Should validate documentation links for single-issuer', () => {
       logTestStep('06-single-issuer-config', 'Testing documentation links for single-issuer');
-      
+
       createProcessorInstance('JWKS', { x: 600, y: 600 })
         .then((creationResult) => {
           processorId = creationResult.processorId;
@@ -370,7 +376,7 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
           // Look for documentation links
           return validateRequiredElements([
             '[data-testid="help-link"], .help-link, [aria-label*="help"]',
-            '[data-testid="documentation"], .documentation, [aria-label*="docs"]'
+            '[data-testid="documentation"], .documentation, [aria-label*="docs"]',
           ]);
         })
         .then(() => {
@@ -386,10 +392,9 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
   });
 
   context('Single-Issuer Configuration Persistence', () => {
-    
     it('R-CONFIG-014: Should validate single-issuer configuration persistence', () => {
       logTestStep('06-single-issuer-config', 'Testing single-issuer configuration persistence');
-      
+
       createProcessorInstance('JWKS', { x: 650, y: 650 })
         .then((creationResult) => {
           processorId = creationResult.processorId;
@@ -400,9 +405,9 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
           const testConfig = {
             'JWKS URL': 'https://issuer.example.com/.well-known/jwks.json',
             'Issuer URL': 'https://issuer.example.com',
-            'Algorithm': 'RS256'
+            Algorithm: 'RS256',
           };
-          
+
           return setProcessorProperty(processorId, 'JWKS URL', testConfig['JWKS URL']);
         })
         .then(() => {
@@ -413,25 +418,29 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
         })
         .then((saveResult) => {
           expect(saveResult.success).to.be.true;
-          
+
           // Close and reopen to test persistence
-          cy.get('[data-testid="close-dialog"], .close-btn, [aria-label="close"]')
-            .click({ force: true });
-          
+          cy.get('[data-testid="close-dialog"], .close-btn, [aria-label="close"]').click({
+            force: true,
+          });
+
           cy.wait(1000);
-          
+
           return openProcessorSettings(processorId);
         })
         .then(() => {
           return validateConfigurationPersistence(processorId, {
             'JWKS URL': 'https://issuer.example.com/.well-known/jwks.json',
-            'Issuer URL': 'https://issuer.example.com'
+            'Issuer URL': 'https://issuer.example.com',
           });
         })
         .then((persistenceResult) => {
           expect(persistenceResult.valuesMatch).to.be.true;
-          
-          logTestStep('06-single-issuer-config', 'Single-issuer configuration persistence validated');
+
+          logTestStep(
+            '06-single-issuer-config',
+            'Single-issuer configuration persistence validated'
+          );
         })
         .catch((error) => {
           if (!error.message.includes('not available')) {
@@ -443,7 +452,7 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
 
     it('R-CONFIG-015: Should validate single-issuer error handling', () => {
       logTestStep('06-single-issuer-config', 'Testing single-issuer error handling');
-      
+
       createProcessorInstance('JWKS', { x: 700, y: 700 })
         .then((creationResult) => {
           processorId = creationResult.processorId;
@@ -463,7 +472,7 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
         .then((saveResult) => {
           // Should either fail to save or show validation errors
           expect(saveResult.hasError || saveResult.hasValidationErrors).to.be.true;
-          
+
           logTestStep('06-single-issuer-config', 'Single-issuer error handling validated');
         })
         .catch((error) => {
@@ -476,7 +485,7 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
 
     it('R-CONFIG-016: Should validate algorithm selection for single-issuer', () => {
       logTestStep('06-single-issuer-config', 'Testing algorithm selection for single-issuer');
-      
+
       createProcessorInstance('JWKS', { x: 750, y: 750 })
         .then((creationResult) => {
           processorId = creationResult.processorId;
@@ -484,17 +493,23 @@ describe('06 - Single-Issuer JWT Processor Configuration', () => {
         })
         .then(() => {
           // Test algorithm dropdown functionality
-          return selectDropdownOption('[data-testid="algorithm-select"], select[name*="algorithm"]', 'RS256');
+          return selectDropdownOption(
+            '[data-testid="algorithm-select"], select[name*="algorithm"]',
+            'RS256'
+          );
         })
         .then((selectionResult) => {
           expect(selectionResult.success).to.be.true;
-          
+
           // Test another algorithm
-          return selectDropdownOption('[data-testid="algorithm-select"], select[name*="algorithm"]', 'ES256');
+          return selectDropdownOption(
+            '[data-testid="algorithm-select"], select[name*="algorithm"]',
+            'ES256'
+          );
         })
         .then((selectionResult2) => {
           expect(selectionResult2.success).to.be.true;
-          
+
           logTestStep('06-single-issuer-config', 'Algorithm selection functionality validated');
         })
         .catch((error) => {

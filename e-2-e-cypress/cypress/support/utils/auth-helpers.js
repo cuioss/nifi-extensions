@@ -12,14 +12,10 @@
  * @returns {Cypress.Chainable} Cypress chainable for further commands
  */
 export function performLogin(options = {}) {
-  const {
-    verifyFullWorkflow = true,
-    timeout = 30000,
-    failOnConsoleErrors = true
-  } = options;
+  const { verifyFullWorkflow = true, timeout = 30000, failOnConsoleErrors = true } = options;
 
   cy.log('🔐 Starting enhanced login process');
-  
+
   // Clear any existing console errors
   if (failOnConsoleErrors) {
     cy.clearConsoleErrors();
@@ -52,9 +48,7 @@ export function verifyCompleteLoginWorkflow() {
   cy.verifyLoggedIn();
 
   // Verify canvas accessibility and interaction
-  cy.get('#canvas-container', { timeout: 15000 })
-    .should('be.visible')
-    .and('be.enabled');
+  cy.get('#canvas-container', { timeout: 15000 }).should('be.visible').and('be.enabled');
 
   // Verify toolbar accessibility
   cy.get('#toolbar', { timeout: 10000 })
@@ -63,12 +57,10 @@ export function verifyCompleteLoginWorkflow() {
     .should('have.length.greaterThan', 0);
 
   // Verify right-click context menu functionality (quick canvas interaction test)
-  cy.get('#canvas-container')
-    .rightclick({ force: true });
+  cy.get('#canvas-container').rightclick({ force: true });
 
   // Verify context menu appears (actual UI interaction)
-  cy.get('#context-menu, .context-menu', { timeout: 5000 })
-    .should('be.visible');
+  cy.get('#context-menu, .context-menu', { timeout: 5000 }).should('be.visible');
 
   // Close context menu
   cy.get('body').click();
@@ -93,8 +85,7 @@ export function verifyAnonymousAccess(options = {}) {
   }
 
   // Verify canvas is accessible
-  cy.get('#canvas-container', { timeout: 15000 })
-    .should('be.visible');
+  cy.get('#canvas-container', { timeout: 15000 }).should('be.visible');
 
   cy.log('✅ Anonymous access verified');
 }
@@ -104,7 +95,7 @@ export function verifyAnonymousAccess(options = {}) {
  * @returns {Cypress.Chainable<string>} Authentication state: 'logged-in', 'logged-out', 'anonymous'
  */
 export function detectAuthState() {
-  return cy.get('body').then($body => {
+  return cy.get('body').then(($body) => {
     // Check for login form elements
     if ($body.find('input[name="username"], input[name="password"]').length > 0) {
       return 'logged-out';
@@ -139,9 +130,7 @@ export function verifyProcessorPermissions(options = {}) {
     .and('not.be.disabled');
 
   // Test ability to interact with canvas
-  cy.get('#canvas-container')
-    .should('be.visible')
-    .should('not.have.class', 'disabled');
+  cy.get('#canvas-container').should('be.visible').should('not.have.class', 'disabled');
 
   cy.log('✅ Processor configuration permissions verified');
 }
@@ -157,7 +146,7 @@ export function verifySessionPersistence(targetUrl, options = {}) {
   cy.log(`🔄 Verifying session persistence during navigation to: ${targetUrl}`);
 
   // Store current auth state
-  detectAuthState().then(initialState => {
+  detectAuthState().then((initialState) => {
     // Navigate to target URL
     cy.visit(targetUrl);
 
@@ -165,9 +154,12 @@ export function verifySessionPersistence(targetUrl, options = {}) {
     cy.get('body', { timeout }).should('be.visible');
 
     // Verify auth state is maintained
-    detectAuthState().then(newState => {
+    detectAuthState().then((newState) => {
       if (expectMaintainAuth) {
-        expect(newState).to.equal(initialState, 'Authentication state should persist across navigation');
+        expect(newState).to.equal(
+          initialState,
+          'Authentication state should persist across navigation'
+        );
       }
     });
   });
@@ -181,7 +173,7 @@ export function verifySessionPersistence(targetUrl, options = {}) {
 export function testSessionRefreshPersistence() {
   cy.log('🔄 Testing session persistence across browser refresh');
 
-  detectAuthState().then(initialState => {
+  detectAuthState().then((initialState) => {
     // Perform browser refresh
     cy.reload();
 
@@ -189,8 +181,11 @@ export function testSessionRefreshPersistence() {
     cy.get('body', { timeout: 20000 }).should('be.visible');
 
     // Verify auth state is maintained
-    detectAuthState().then(newState => {
-      expect(newState).to.equal(initialState, 'Authentication state should persist across browser refresh');
+    detectAuthState().then((newState) => {
+      expect(newState).to.equal(
+        initialState,
+        'Authentication state should persist across browser refresh'
+      );
     });
   });
 
@@ -208,7 +203,7 @@ export function clearAuthState() {
   cy.clearLocalStorage();
 
   // Clear any authentication headers
-  cy.window().then(win => {
+  cy.window().then((win) => {
     if (win.localStorage) {
       win.localStorage.clear();
     }

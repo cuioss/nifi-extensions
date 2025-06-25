@@ -10,7 +10,7 @@ let errorTracker = {
   errors: [],
   warnings: [],
   startTime: null,
-  isTracking: false
+  isTracking: false,
 };
 
 /**
@@ -21,11 +21,7 @@ let errorTracker = {
  * @param {Array<string>} options.ignoredWarnings - Array of warning patterns to ignore
  */
 export function startErrorTracking(options = {}) {
-  const {
-    includeWarnings = true,
-    ignoredErrors = [],
-    ignoredWarnings = []
-  } = options;
+  const { includeWarnings = true, ignoredErrors = [], ignoredWarnings = [] } = options;
 
   cy.log('🔍 Starting error tracking session');
 
@@ -36,25 +32,25 @@ export function startErrorTracking(options = {}) {
     isTracking: true,
     includeWarnings,
     ignoredErrors,
-    ignoredWarnings
+    ignoredWarnings,
   };
 
   // Set up console error capture
-  cy.window().then(win => {
+  cy.window().then((win) => {
     // Capture console.error
     const originalError = win.console.error;
     win.console.error = (...args) => {
       const errorMessage = args.join(' ');
-      
+
       if (!shouldIgnoreError(errorMessage, ignoredErrors)) {
         errorTracker.errors.push({
           message: errorMessage,
           timestamp: Date.now(),
           type: 'console.error',
-          stack: new Error().stack
+          stack: new Error().stack,
         });
       }
-      
+
       originalError.apply(win.console, args);
     };
 
@@ -63,16 +59,16 @@ export function startErrorTracking(options = {}) {
       const originalWarn = win.console.warn;
       win.console.warn = (...args) => {
         const warningMessage = args.join(' ');
-        
+
         if (!shouldIgnoreError(warningMessage, ignoredWarnings)) {
           errorTracker.warnings.push({
             message: warningMessage,
             timestamp: Date.now(),
             type: 'console.warn',
-            stack: new Error().stack
+            stack: new Error().stack,
           });
         }
-        
+
         originalWarn.apply(win.console, args);
       };
     }
@@ -80,7 +76,7 @@ export function startErrorTracking(options = {}) {
     // Capture window errors
     win.addEventListener('error', (event) => {
       const errorMessage = `${event.message} at ${event.filename}:${event.lineno}:${event.colno}`;
-      
+
       if (!shouldIgnoreError(errorMessage, ignoredErrors)) {
         errorTracker.errors.push({
           message: errorMessage,
@@ -89,7 +85,7 @@ export function startErrorTracking(options = {}) {
           filename: event.filename,
           lineno: event.lineno,
           colno: event.colno,
-          stack: event.error ? event.error.stack : null
+          stack: event.error ? event.error.stack : null,
         });
       }
     });
@@ -97,14 +93,14 @@ export function startErrorTracking(options = {}) {
     // Capture unhandled promise rejections
     win.addEventListener('unhandledrejection', (event) => {
       const errorMessage = `Unhandled Promise Rejection: ${event.reason}`;
-      
+
       if (!shouldIgnoreError(errorMessage, ignoredErrors)) {
         errorTracker.errors.push({
           message: errorMessage,
           timestamp: Date.now(),
           type: 'unhandled.rejection',
           reason: event.reason,
-          stack: event.reason && event.reason.stack ? event.reason.stack : null
+          stack: event.reason && event.reason.stack ? event.reason.stack : null,
         });
       }
     });
@@ -122,13 +118,13 @@ export function stopErrorTracking() {
 
   errorTracker.isTracking = false;
   const endTime = Date.now();
-  
+
   const results = {
     errors: [...errorTracker.errors],
     warnings: [...errorTracker.warnings],
     duration: endTime - errorTracker.startTime,
     totalErrors: errorTracker.errors.length,
-    totalWarnings: errorTracker.warnings.length
+    totalWarnings: errorTracker.warnings.length,
   };
 
   // Reset tracker
@@ -136,10 +132,12 @@ export function stopErrorTracking() {
     errors: [],
     warnings: [],
     startTime: null,
-    isTracking: false
+    isTracking: false,
   };
 
-  cy.log(`📊 Error tracking complete: ${results.totalErrors} errors, ${results.totalWarnings} warnings`);
+  cy.log(
+    `📊 Error tracking complete: ${results.totalErrors} errors, ${results.totalWarnings} warnings`
+  );
   return results;
 }
 
@@ -154,7 +152,7 @@ export function getErrorTrackingResults() {
     warnings: [...errorTracker.warnings],
     totalErrors: errorTracker.errors.length,
     totalWarnings: errorTracker.warnings.length,
-    duration: errorTracker.startTime ? Date.now() - errorTracker.startTime : 0
+    duration: errorTracker.startTime ? Date.now() - errorTracker.startTime : 0,
   };
 }
 
@@ -163,10 +161,10 @@ export function getErrorTrackingResults() {
  */
 export function clearErrorTracking() {
   cy.log('🧹 Clearing error tracking data');
-  
+
   errorTracker.errors = [];
   errorTracker.warnings = [];
-  
+
   cy.log('✅ Error tracking data cleared');
 }
 
@@ -179,36 +177,34 @@ export function clearErrorTracking() {
  * @param {boolean} options.stopTracking - Whether to stop tracking after assertion (default: false)
  */
 export function assertNoErrors(operationDescription, options = {}) {
-  const {
-    allowWarnings = true,
-    allowedErrors = [],
-    stopTracking = false
-  } = options;
+  const { allowWarnings = true, allowedErrors = [], stopTracking = false } = options;
 
   cy.log(`🔍 Asserting no errors for: ${operationDescription}`);
 
   cy.then(() => {
     const results = getErrorTrackingResults();
-    
+
     // Filter out allowed errors
-    const significantErrors = results.errors.filter(error => 
-      !shouldIgnoreError(error.message, allowedErrors)
+    const significantErrors = results.errors.filter(
+      (error) => !shouldIgnoreError(error.message, allowedErrors)
     );
 
     if (significantErrors.length > 0) {
-      const errorReport = significantErrors.map(error => 
-        `[${error.type}] ${error.message}`
-      ).join('\n');
-      
+      const errorReport = significantErrors
+        .map((error) => `[${error.type}] ${error.message}`)
+        .join('\n');
+
       throw new Error(`Console errors detected during ${operationDescription}:\n${errorReport}`);
     }
 
     if (!allowWarnings && results.warnings.length > 0) {
-      const warningReport = results.warnings.map(warning => 
-        `[${warning.type}] ${warning.message}`
-      ).join('\n');
-      
-      throw new Error(`Console warnings detected during ${operationDescription}:\n${warningReport}`);
+      const warningReport = results.warnings
+        .map((warning) => `[${warning.type}] ${warning.message}`)
+        .join('\n');
+
+      throw new Error(
+        `Console warnings detected during ${operationDescription}:\n${warningReport}`
+      );
     }
 
     if (stopTracking) {
@@ -226,7 +222,7 @@ export function assertNoErrors(operationDescription, options = {}) {
  * @returns {boolean} True if error should be ignored
  */
 function shouldIgnoreError(errorMessage, ignorePatterns = []) {
-  return ignorePatterns.some(pattern => {
+  return ignorePatterns.some((pattern) => {
     if (pattern instanceof RegExp) {
       return pattern.test(errorMessage);
     }
@@ -243,28 +239,36 @@ function shouldIgnoreError(errorMessage, ignorePatterns = []) {
  */
 export function generateErrorReport(options = {}) {
   const { includeStackTraces = false, format = 'text' } = options;
-  
+
   const results = getErrorTrackingResults();
-  
+
   if (format === 'json') {
-    return JSON.stringify({
-      summary: {
-        totalErrors: results.totalErrors,
-        totalWarnings: results.totalWarnings,
-        duration: results.duration,
-        isTracking: results.isTracking
+    return JSON.stringify(
+      {
+        summary: {
+          totalErrors: results.totalErrors,
+          totalWarnings: results.totalWarnings,
+          duration: results.duration,
+          isTracking: results.isTracking,
+        },
+        errors: includeStackTraces
+          ? results.errors
+          : results.errors.map((e) => ({
+              message: e.message,
+              timestamp: e.timestamp,
+              type: e.type,
+            })),
+        warnings: includeStackTraces
+          ? results.warnings
+          : results.warnings.map((w) => ({
+              message: w.message,
+              timestamp: w.timestamp,
+              type: w.type,
+            })),
       },
-      errors: includeStackTraces ? results.errors : results.errors.map(e => ({
-        message: e.message,
-        timestamp: e.timestamp,
-        type: e.type
-      })),
-      warnings: includeStackTraces ? results.warnings : results.warnings.map(w => ({
-        message: w.message,
-        timestamp: w.timestamp,
-        type: w.type
-      }))
-    }, null, 2);
+      null,
+      2
+    );
   }
 
   // Text format
@@ -309,7 +313,7 @@ export function generateErrorReport(options = {}) {
  */
 export function saveErrorReport(filename, options = {}) {
   const report = generateErrorReport(options);
-  
+
   cy.writeFile(`cypress/reports/error-reports/${filename}`, report);
   cy.log(`📄 Error report saved to: cypress/reports/error-reports/${filename}`);
 }
@@ -325,7 +329,7 @@ export function monitorOperation(operation, operationName, options = {}) {
     allowWarnings = true,
     allowedErrors = [],
     saveReport = false,
-    reportFilename = `${operationName}-${Date.now()}.txt`
+    reportFilename = `${operationName}-${Date.now()}.txt`,
   } = options;
 
   cy.log(`🔍 Monitoring operation: ${operationName}`);
@@ -339,13 +343,15 @@ export function monitorOperation(operation, operationName, options = {}) {
   // Assert no errors and optionally save report
   cy.then(() => {
     assertNoErrors(operationName, { allowWarnings, allowedErrors });
-    
+
     if (saveReport) {
       saveErrorReport(reportFilename, options);
     }
-    
+
     const results = stopErrorTracking();
-    cy.log(`✅ Operation monitoring complete: ${operationName} - ${results.totalErrors} errors, ${results.totalWarnings} warnings`);
+    cy.log(
+      `✅ Operation monitoring complete: ${operationName} - ${results.totalErrors} errors, ${results.totalWarnings} warnings`
+    );
   });
 }
 
@@ -363,25 +369,25 @@ export function setupGlobalErrorMonitoring(options = {}) {
     ignoredWarnings = [
       'Deprecated',
       // Add more common warnings to ignore
-    ]
+    ],
   } = options;
 
   before(() => {
-    startErrorTracking({ 
-      ignoredErrors, 
+    startErrorTracking({
+      ignoredErrors,
       ignoredWarnings,
-      includeWarnings: true
+      includeWarnings: true,
     });
   });
 
   after(() => {
     const results = stopErrorTracking();
-    
+
     if (results.totalErrors > 0) {
       cy.log(`⚠️ Test completed with ${results.totalErrors} console errors`);
       saveErrorReport(`test-suite-errors-${Date.now()}.txt`, {
         includeStackTraces: true,
-        format: 'text'
+        format: 'text',
       });
     }
   });

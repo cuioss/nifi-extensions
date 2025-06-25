@@ -17,16 +17,16 @@ export const PROCESSOR_TEST_DATA = {
           {
             name: 'issuer1',
             jwksUrl: 'https://example.com/.well-known/jwks.json',
-            algorithm: 'RS256'
+            algorithm: 'RS256',
           },
           {
-            name: 'issuer2', 
+            name: 'issuer2',
             jwksUrl: 'https://auth.example.com/.well-known/jwks.json',
-            algorithm: 'ES256'
-          }
-        ]
-      }
-    ]
+            algorithm: 'ES256',
+          },
+        ],
+      },
+    ],
   },
   SINGLE_ISSUER: {
     type: 'JWTTokenAuthenticator',
@@ -36,10 +36,10 @@ export const PROCESSOR_TEST_DATA = {
         name: 'Basic Single-Issuer Config',
         jwksUrl: 'https://example.com/.well-known/jwks.json',
         algorithm: 'RS256',
-        issuer: 'https://example.com'
-      }
-    ]
-  }
+        issuer: 'https://example.com',
+      },
+    ],
+  },
 };
 
 /**
@@ -49,37 +49,41 @@ export const JWT_TEST_TOKENS = {
   VALID_TOKENS: [
     {
       description: 'Valid RS256 token',
-      token: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.EkN-DOsnsuRjRO6BxXemmJDm3HbxrbRzXglbN2S4sOkopdU4IsDxTI8jO19W_A4K8ZPJijNLis4EZsHeY559a4DFOd50_OqgHs3UiO1JQB3VH5v3XY7VcE8qVmj2tR7',
+      token:
+        'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.EkN-DOsnsuRjRO6BxXemmJDm3HbxrbRzXglbN2S4sOkopdU4IsDxTI8jO19W_A4K8ZPJijNLis4EZsHeY559a4DFOd50_OqgHs3UiO1JQB3VH5v3XY7VcE8qVmj2tR7',
       shouldBeValid: true,
-      algorithm: 'RS256'
+      algorithm: 'RS256',
     },
     {
       description: 'Valid ES256 token',
-      token: 'eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.tyh-VfuzIxCyGYDlkBA7DfyjrqmSHu6pQ2hoZuFqUSLPNY2N0mpHb3nk5K17HWP_3cYHBw7AhHale5wky6-sVA',
+      token:
+        'eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.tyh-VfuzIxCyGYDlkBA7DfyjrqmSHu6pQ2hoZuFqUSLPNY2N0mpHb3nk5K17HWP_3cYHBw7AhHale5wky6-sVA',
       shouldBeValid: true,
-      algorithm: 'ES256'
-    }
+      algorithm: 'ES256',
+    },
   ],
   INVALID_TOKENS: [
     {
       description: 'Malformed token',
       token: 'invalid.token.format',
       shouldBeValid: false,
-      expectedError: 'Invalid token format'
+      expectedError: 'Invalid token format',
     },
     {
       description: 'Expired token',
-      token: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiZXhwIjoxNTE2MjM5MDIyfQ.invalid',
+      token:
+        'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiZXhwIjoxNTE2MjM5MDIyfQ.invalid',
       shouldBeValid: false,
-      expectedError: 'Token expired'
+      expectedError: 'Token expired',
     },
     {
       description: 'Invalid signature',
-      token: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.invalid_signature',
+      token:
+        'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.invalid_signature',
       shouldBeValid: false,
-      expectedError: 'Invalid signature'
-    }
-  ]
+      expectedError: 'Invalid signature',
+    },
+  ],
 };
 
 /**
@@ -91,29 +95,29 @@ export const JWKS_TEST_ENDPOINTS = {
       description: 'Standard JWKS endpoint',
       endpoint: 'https://example.com/.well-known/jwks.json',
       shouldConnect: true,
-      expectedKeys: ['key1', 'key2']
-    }
+      expectedKeys: ['key1', 'key2'],
+    },
   ],
   INVALID_ENDPOINTS: [
     {
       description: 'Non-existent endpoint',
       endpoint: 'https://nonexistent.example.com/.well-known/jwks.json',
       shouldConnect: false,
-      expectedError: 'Connection failed'
+      expectedError: 'Connection failed',
     },
     {
       description: 'Invalid URL format',
       endpoint: 'not-a-url',
       shouldConnect: false,
-      expectedError: 'Invalid URL'
+      expectedError: 'Invalid URL',
     },
     {
       description: 'Timeout endpoint',
       endpoint: 'https://httpstat.us/200?sleep=30000',
       shouldConnect: false,
-      expectedError: 'Timeout'
-    }
-  ]
+      expectedError: 'Timeout',
+    },
+  ],
 };
 
 /**
@@ -124,20 +128,20 @@ export const FORM_VALIDATION_TESTS = {
     { value: 'https://example.com/.well-known/jwks.json', shouldBeValid: true },
     { value: 'http://example.com/jwks', shouldBeValid: true },
     { value: 'not-a-url', shouldBeValid: false, expectedError: 'Invalid URL format' },
-    { value: '', shouldBeValid: false, expectedError: 'JWKS URL is required' }
+    { value: '', shouldBeValid: false, expectedError: 'JWKS URL is required' },
   ],
   issuerName: [
     { value: 'valid-issuer', shouldBeValid: true },
     { value: 'issuer with spaces', shouldBeValid: true },
     { value: '', shouldBeValid: false, expectedError: 'Issuer name is required' },
-    { value: 'a'.repeat(256), shouldBeValid: false, expectedError: 'Issuer name too long' }
+    { value: 'a'.repeat(256), shouldBeValid: false, expectedError: 'Issuer name too long' },
   ],
   algorithm: [
     { value: 'RS256', shouldBeValid: true },
     { value: 'ES256', shouldBeValid: true },
     { value: 'HS256', shouldBeValid: true },
-    { value: 'INVALID', shouldBeValid: false, expectedError: 'Unsupported algorithm' }
-  ]
+    { value: 'INVALID', shouldBeValid: false, expectedError: 'Unsupported algorithm' },
+  ],
 };
 
 /**
@@ -150,7 +154,7 @@ export const ERROR_SCENARIOS = {
       trigger: {
         type: 'invalid_input',
         selector: 'input[name="jwks-uri"]',
-        value: 'invalid-url'
+        value: 'invalid-url',
       },
       expectedErrorMessage: 'Invalid URL format',
       shouldRecover: true,
@@ -158,15 +162,15 @@ export const ERROR_SCENARIOS = {
         type: 'input',
         selector: 'input[name="jwks-uri"]',
         value: 'https://example.com/.well-known/jwks.json',
-        description: 'Enter valid JWKS URL'
-      }
+        description: 'Enter valid JWKS URL',
+      },
     },
     {
       description: 'Empty required field',
       trigger: {
         type: 'invalid_input',
         selector: 'input[name="issuer-name"]',
-        value: ''
+        value: '',
       },
       expectedErrorMessage: 'Issuer name is required',
       shouldRecover: true,
@@ -174,9 +178,9 @@ export const ERROR_SCENARIOS = {
         type: 'input',
         selector: 'input[name="issuer-name"]',
         value: 'test-issuer',
-        description: 'Enter issuer name'
-      }
-    }
+        description: 'Enter issuer name',
+      },
+    },
   ],
   NETWORK_ERRORS: [
     {
@@ -187,11 +191,11 @@ export const ERROR_SCENARIOS = {
         url: '**/jwks.json',
         selector: 'button:contains("Test Connection")',
         statusCode: 500,
-        errorBody: 'Internal Server Error'
+        errorBody: 'Internal Server Error',
       },
       expectedErrorMessage: 'Failed to connect to JWKS endpoint',
       shouldRecover: false,
-      allowedConsoleErrors: ['Failed to fetch', 'Network Error']
+      allowedConsoleErrors: ['Failed to fetch', 'Network Error'],
     },
     {
       description: 'JWKS endpoint timeout',
@@ -201,13 +205,13 @@ export const ERROR_SCENARIOS = {
         url: '**/jwks.json',
         selector: 'button:contains("Test Connection")',
         statusCode: 408,
-        errorBody: 'Request Timeout'
+        errorBody: 'Request Timeout',
       },
       expectedErrorMessage: 'Connection timeout',
       shouldRecover: false,
-      allowedConsoleErrors: ['Timeout', 'Request failed']
-    }
-  ]
+      allowedConsoleErrors: ['Timeout', 'Request failed'],
+    },
+  ],
 };
 
 /**
@@ -219,11 +223,11 @@ export const PERFORMANCE_TESTS = {
       operation: {
         type: 'load_ui',
         url: '/',
-        loadedSelector: '#canvas-container'
+        loadedSelector: '#canvas-container',
       },
       maxDuration: 5000,
       description: 'NiFi UI initial load',
-      iterations: 3
+      iterations: 3,
     },
     {
       operation: {
@@ -231,13 +235,13 @@ export const PERFORMANCE_TESTS = {
         steps: [
           { selector: '#toolbar .fa-plus', waitFor: '.processor-dialog' },
           { selector: 'input[placeholder*="search"]', timeout: 2000 },
-          { selector: '.close-button' }
-        ]
+          { selector: '.close-button' },
+        ],
       },
       maxDuration: 3000,
       description: 'Processor dialog open/close',
-      iterations: 2
-    }
+      iterations: 2,
+    },
   ],
   PROCESSOR_OPERATIONS: [
     {
@@ -246,14 +250,14 @@ export const PERFORMANCE_TESTS = {
         steps: [
           { selector: '.processor-component', waitFor: '.processor-configuration' },
           { selector: '.tab:contains("Properties")', waitFor: '.properties-panel' },
-          { selector: '.close-button' }
-        ]
+          { selector: '.close-button' },
+        ],
       },
       maxDuration: 4000,
       description: 'Processor configuration access',
-      iterations: 2
-    }
-  ]
+      iterations: 2,
+    },
+  ],
 };
 
 /**
@@ -263,18 +267,18 @@ export const HELP_SYSTEM_TESTS = [
   {
     element: 'input[name="jwks-uri"]',
     expectedHelpContent: 'URL to the JWKS endpoint',
-    helpType: 'tooltip'
+    helpType: 'tooltip',
   },
   {
     element: '.issuer-configuration',
     expectedHelpContent: 'Configure JWT issuer settings',
-    helpType: 'help_button'
+    helpType: 'help_button',
   },
   {
     element: 'select[name="algorithm"]',
     expectedHelpContent: 'JWT signing algorithm',
-    helpType: 'tooltip'
-  }
+    helpType: 'tooltip',
+  },
 ];
 
 /**
@@ -285,7 +289,7 @@ export const CANVAS_POSITIONS = {
   TOP_RIGHT: { x: 700, y: 100 },
   CENTER: { x: 400, y: 300 },
   BOTTOM_LEFT: { x: 100, y: 500 },
-  BOTTOM_RIGHT: { x: 700, y: 500 }
+  BOTTOM_RIGHT: { x: 700, y: 500 },
 };
 
 /**
@@ -298,8 +302,8 @@ export const TEST_ENVIRONMENTS = {
     timeouts: {
       pageLoad: 30000,
       elementWait: 15000,
-      apiRequest: 10000
-    }
+      apiRequest: 10000,
+    },
   },
   CI: {
     nifiUrl: 'http://nifi:8080/nifi',
@@ -307,9 +311,9 @@ export const TEST_ENVIRONMENTS = {
     timeouts: {
       pageLoad: 60000,
       elementWait: 30000,
-      apiRequest: 20000
-    }
-  }
+      apiRequest: 20000,
+    },
+  },
 };
 
 /**

@@ -1,46 +1,36 @@
 /**
- * @fileoverview Error Scenarios test implementation for NiFi JWT extension
+ * @file Error Scenarios test implementation for NiFi JWT extension
  * Comprehensive error handling and edge case testing
  * Following requirements from Requirements.md and Specification.adoc
- * 
- * @requirements R-ERR-001, R-ERR-002, R-ERR-003, R-ERR-004, R-ERR-005
- * @author E2E Test Refactoring Initiative  
+ * @author E2E Test Refactoring Initiative
  * @version 1.0.0
  */
 
 // Import test utilities and helpers
-import {
-  authenticateUser,
-  cleanupSession
-} from '../../support/utils/auth-helpers.js';
+import { authenticateUser, cleanupSession } from '../../support/utils/auth-helpers.js';
 
 import {
   validateProcessorAvailability,
   createProcessorInstance,
   configureProcessorProperty,
-  cleanupProcessors
+  cleanupProcessors,
 } from '../../support/utils/processor-helpers.js';
 
-import {
-  navigateToNiFiCanvas,
-  waitForPageLoad
-} from '../../support/utils/ui-helpers.js';
+import { navigateToNiFiCanvas, waitForPageLoad } from '../../support/utils/ui-helpers.js';
 
 import {
   validateJWTTokenProcessing,
   validateJWKSConfiguration,
-  validateNoConsoleErrors
+  validateNoConsoleErrors,
 } from '../../support/utils/validation-helpers.js';
 
 import {
   logTestStep,
   trackTestFailure,
-  captureDebugInfo
+  captureDebugInfo,
 } from '../../support/utils/error-tracking.js';
 
-import {
-  getTestJWTTokens
-} from '../../support/utils/test-data.js';
+import { getTestJWTTokens } from '../../support/utils/test-data.js';
 
 // Test constants
 const TEST_TIMEOUT = 30000;
@@ -51,89 +41,90 @@ const MALFORMED_TOKENS = [
   {
     token: '',
     description: 'Empty token',
-    expectedError: 'empty token'
+    expectedError: 'empty token',
   },
   {
     token: 'not-a-jwt',
     description: 'Plain text instead of JWT',
-    expectedError: 'invalid format'
+    expectedError: 'invalid format',
   },
   {
     token: 'one.part',
     description: 'JWT with only two parts',
-    expectedError: 'invalid format'
+    expectedError: 'invalid format',
   },
   {
     token: 'one.two.three.four',
     description: 'JWT with four parts',
-    expectedError: 'invalid format'
+    expectedError: 'invalid format',
   },
   {
     token: 'invalid-base64.invalid-base64.invalid-base64',
     description: 'JWT with invalid base64 encoding',
-    expectedError: 'base64 decoding failed'
-  }
+    expectedError: 'base64 decoding failed',
+  },
 ];
 
 const NETWORK_ERROR_SCENARIOS = [
   {
     endpoint: 'https://nonexistent-domain-12345.com/.well-known/jwks.json',
     description: 'DNS resolution failure',
-    expectedError: 'DNS resolution failed'
+    expectedError: 'DNS resolution failed',
   },
   {
     endpoint: 'https://httpstat.us/500',
     description: 'Server internal error',
-    expectedError: 'server error'
+    expectedError: 'server error',
   },
   {
     endpoint: 'https://httpstat.us/404',
     description: 'JWKS endpoint not found',
-    expectedError: 'not found'
+    expectedError: 'not found',
   },
   {
     endpoint: 'https://httpstat.us/timeout',
     description: 'Connection timeout',
-    expectedError: 'timeout'
+    expectedError: 'timeout',
   },
   {
     endpoint: 'https://httpstat.us/429',
     description: 'Rate limit exceeded',
-    expectedError: 'rate limit'
-  }
+    expectedError: 'rate limit',
+  },
 ];
 
 // Helper functions for error testing
-function testMalformedTokens(processorType) {
-  return MALFORMED_TOKENS.map(tokenTest => ({
+function testMalformedTokens(_processorType) {
+  return MALFORMED_TOKENS.map((tokenTest) => ({
     token: tokenTest.token,
     shouldBeValid: false,
     description: tokenTest.description,
-    expectedResult: tokenTest.expectedError
+    expectedResult: tokenTest.expectedError,
   }));
 }
 
 function testNetworkFailures(scenarios) {
-  return scenarios.map(scenario => ({
+  return scenarios.map((scenario) => ({
     endpoint: scenario.endpoint,
     shouldConnect: false,
     description: scenario.description,
-    expectedError: scenario.expectedError
+    expectedError: scenario.expectedError,
   }));
 }
 
 function validateInvalidConfigurations(processorId, invalidConfigs) {
   invalidConfigs.forEach((config) => {
-    cy.wrap(configureProcessorProperty(processorId, config.property, config.value))
-      .then((result) => {
+    cy.wrap(configureProcessorProperty(processorId, config.property, config.value)).then(
+      (result) => {
         expect(result.success).to.be.false;
         expect(result.error).to.contain(config.expectedError);
         logTestStep('10-error-scenarios', `Invalid config rejected: ${config.property}`);
-      });
+      }
+    );
   });
 }
 
-function validateConfigurationConflicts(processorId, conflictingConfigs) {
+function _validateConfigurationConflicts(processorId, conflictingConfigs) {
   conflictingConfigs.forEach((conflictTest) => {
     // Apply all configurations
     conflictTest.configs.forEach((config) => {
@@ -145,7 +136,10 @@ function validateConfigurationConflicts(processorId, conflictingConfigs) {
       .should('be.visible')
       .should('contain', conflictTest.expectedError);
 
-    logTestStep('10-error-scenarios', `Configuration conflict detected: ${conflictTest.expectedError}`);
+    logTestStep(
+      '10-error-scenarios',
+      `Configuration conflict detected: ${conflictTest.expectedError}`
+    );
   });
 }
 
@@ -177,12 +171,14 @@ describe('10 - Error Scenarios and Edge Cases', () => {
       logTestStep('10-error-scenarios', 'Testing malformed token handling');
 
       const malformedTests = testMalformedTokens('MultiIssuerJWTTokenAuthenticator');
-      
-      cy.wrap(validateJWTTokenProcessing(malformedTests, {
-        timeout: TEST_TIMEOUT,
-        processorType: 'MultiIssuerJWTTokenAuthenticator',
-        expectFailure: true
-      }))
+
+      cy.wrap(
+        validateJWTTokenProcessing(malformedTests, {
+          timeout: TEST_TIMEOUT,
+          processorType: 'MultiIssuerJWTTokenAuthenticator',
+          expectFailure: true,
+        })
+      )
         .then(() => {
           logTestStep('10-error-scenarios', 'Malformed token handling validated');
         })
@@ -192,7 +188,7 @@ describe('10 - Error Scenarios and Edge Cases', () => {
         });
 
       validateNoConsoleErrors('Malformed token handling', {
-        allowedErrors: ['empty token', 'invalid format', 'base64 decoding failed']
+        allowedErrors: ['empty token', 'invalid format', 'base64 decoding failed'],
       });
     });
 
@@ -204,21 +200,23 @@ describe('10 - Error Scenarios and Edge Cases', () => {
           token: 'a'.repeat(100000), // 100KB token
           shouldBeValid: false,
           description: 'Extremely large token (100KB)',
-          expectedResult: 'token too large'
+          expectedResult: 'token too large',
         },
         {
-          token: 'a'.repeat(1000000), // 1MB token  
+          token: 'a'.repeat(1000000), // 1MB token
           shouldBeValid: false,
           description: 'Extremely large token (1MB)',
-          expectedResult: 'token too large'
-        }
+          expectedResult: 'token too large',
+        },
       ];
 
-      cy.wrap(validateJWTTokenProcessing(largeTokenTests, {
-        timeout: TEST_TIMEOUT,
-        processorType: 'MultiIssuerJWTTokenAuthenticator',
-        expectFailure: true
-      }))
+      cy.wrap(
+        validateJWTTokenProcessing(largeTokenTests, {
+          timeout: TEST_TIMEOUT,
+          processorType: 'MultiIssuerJWTTokenAuthenticator',
+          expectFailure: true,
+        })
+      )
         .then(() => {
           logTestStep('10-error-scenarios', 'Large token handling validated');
         })
@@ -228,7 +226,7 @@ describe('10 - Error Scenarios and Edge Cases', () => {
         });
 
       validateNoConsoleErrors('Large token handling', {
-        allowedErrors: ['token too large']
+        allowedErrors: ['token too large'],
       });
     });
 
@@ -240,27 +238,29 @@ describe('10 - Error Scenarios and Edge Cases', () => {
           token: 'token.with.🚀.emoji',
           shouldBeValid: false,
           description: 'Token with emoji characters',
-          expectedResult: 'invalid characters'
+          expectedResult: 'invalid characters',
         },
         {
           token: 'token.with.\u0000null\u0001control.chars',
           shouldBeValid: false,
           description: 'Token with null and control characters',
-          expectedResult: 'invalid characters'
+          expectedResult: 'invalid characters',
         },
         {
           token: 'token.with.\\..backslashes',
           shouldBeValid: false,
           description: 'Token with backslashes',
-          expectedResult: 'invalid format'
-        }
+          expectedResult: 'invalid format',
+        },
       ];
 
-      cy.wrap(validateJWTTokenProcessing(specialCharacterTests, {
-        timeout: TEST_TIMEOUT,
-        processorType: 'MultiIssuerJWTTokenAuthenticator',
-        expectFailure: true
-      }))
+      cy.wrap(
+        validateJWTTokenProcessing(specialCharacterTests, {
+          timeout: TEST_TIMEOUT,
+          processorType: 'MultiIssuerJWTTokenAuthenticator',
+          expectFailure: true,
+        })
+      )
         .then(() => {
           logTestStep('10-error-scenarios', 'Special character handling validated');
         })
@@ -270,7 +270,7 @@ describe('10 - Error Scenarios and Edge Cases', () => {
         });
 
       validateNoConsoleErrors('Special character handling', {
-        allowedErrors: ['invalid characters', 'invalid format']
+        allowedErrors: ['invalid characters', 'invalid format'],
       });
     });
   });
@@ -291,11 +291,13 @@ describe('10 - Error Scenarios and Edge Cases', () => {
       logTestStep('10-error-scenarios', 'Testing JWKS network failure handling');
 
       const networkFailureTests = testNetworkFailures(NETWORK_ERROR_SCENARIOS);
-      
-      cy.wrap(validateJWKSConfiguration(networkFailureTests, {
-        timeout: TEST_TIMEOUT,
-        expectFailure: true
-      }))
+
+      cy.wrap(
+        validateJWKSConfiguration(networkFailureTests, {
+          timeout: TEST_TIMEOUT,
+          expectFailure: true,
+        })
+      )
         .then(() => {
           logTestStep('10-error-scenarios', 'JWKS network failure handling validated');
         })
@@ -305,7 +307,13 @@ describe('10 - Error Scenarios and Edge Cases', () => {
         });
 
       validateNoConsoleErrors('JWKS network failure handling', {
-        allowedErrors: ['DNS resolution failed', 'server error', 'not found', 'timeout', 'rate limit']
+        allowedErrors: [
+          'DNS resolution failed',
+          'server error',
+          'not found',
+          'timeout',
+          'rate limit',
+        ],
       });
     });
 
@@ -317,26 +325,28 @@ describe('10 - Error Scenarios and Edge Cases', () => {
           endpoint: 'https://httpbin.org/json', // Returns valid JSON but not JWKS format
           shouldConnect: false,
           description: 'Valid JSON but invalid JWKS format',
-          expectedError: 'invalid JWKS format'
+          expectedError: 'invalid JWKS format',
         },
         {
           endpoint: 'https://httpbin.org/html', // Returns HTML instead of JSON
           shouldConnect: false,
           description: 'HTML response instead of JSON',
-          expectedError: 'invalid JSON'
+          expectedError: 'invalid JSON',
         },
         {
           endpoint: 'https://httpbin.org/xml', // Returns XML instead of JSON
           shouldConnect: false,
           description: 'XML response instead of JSON',
-          expectedError: 'invalid JSON'
-        }
+          expectedError: 'invalid JSON',
+        },
       ];
 
-      cy.wrap(validateJWKSConfiguration(formatErrorTests, {
-        timeout: TEST_TIMEOUT,
-        expectFailure: true
-      }))
+      cy.wrap(
+        validateJWKSConfiguration(formatErrorTests, {
+          timeout: TEST_TIMEOUT,
+          expectFailure: true,
+        })
+      )
         .then(() => {
           logTestStep('10-error-scenarios', 'JWKS format error handling validated');
         })
@@ -346,7 +356,7 @@ describe('10 - Error Scenarios and Edge Cases', () => {
         });
 
       validateNoConsoleErrors('JWKS format error handling', {
-        allowedErrors: ['invalid JWKS format', 'invalid JSON']
+        allowedErrors: ['invalid JWKS format', 'invalid JSON'],
       });
     });
 
@@ -357,34 +367,46 @@ describe('10 - Error Scenarios and Edge Cases', () => {
       const recoveryTest = {
         endpoint: 'https://httpstat.us/503', // Initially fails
         recoveryEndpoint: 'https://httpstat.us/200', // Then succeeds
-        description: 'Connection recovery after failure'
+        description: 'Connection recovery after failure',
       };
 
       // First test failure
-      cy.wrap(validateJWKSConfiguration([{
-        endpoint: recoveryTest.endpoint,
-        shouldConnect: false,
-        description: 'Initial connection failure',
-        expectedError: 'service unavailable'
-      }], {
-        timeout: TEST_TIMEOUT,
-        expectFailure: true
-      }))
+      cy.wrap(
+        validateJWKSConfiguration(
+          [
+            {
+              endpoint: recoveryTest.endpoint,
+              shouldConnect: false,
+              description: 'Initial connection failure',
+              expectedError: 'service unavailable',
+            },
+          ],
+          {
+            timeout: TEST_TIMEOUT,
+            expectFailure: true,
+          }
+        )
+      )
         .then(() => {
           logTestStep('10-error-scenarios', 'Initial failure confirmed');
-          
+
           // Wait for recovery period
           cy.wait(ERROR_RECOVERY_TIMEOUT);
-          
+
           // Test recovery (mock by using successful endpoint)
-          return validateJWKSConfiguration([{
-            endpoint: recoveryTest.recoveryEndpoint,
-            shouldConnect: true,
-            description: 'Connection recovery test',
-            expectedKeys: []
-          }], {
-            timeout: TEST_TIMEOUT
-          });
+          return validateJWKSConfiguration(
+            [
+              {
+                endpoint: recoveryTest.recoveryEndpoint,
+                shouldConnect: true,
+                description: 'Connection recovery test',
+                expectedKeys: [],
+              },
+            ],
+            {
+              timeout: TEST_TIMEOUT,
+            }
+          );
         })
         .then(() => {
           logTestStep('10-error-scenarios', 'Connection recovery validated');
@@ -395,7 +417,7 @@ describe('10 - Error Scenarios and Edge Cases', () => {
         });
 
       validateNoConsoleErrors('Connection recovery testing', {
-        allowedErrors: ['service unavailable']
+        allowedErrors: ['service unavailable'],
       });
     });
   });
@@ -416,7 +438,7 @@ describe('10 - Error Scenarios and Edge Cases', () => {
       logTestStep('10-error-scenarios', 'Testing invalid configuration handling');
 
       const processorType = 'MultiIssuerJWTTokenAuthenticator';
-      
+
       cy.wrap(validateProcessorAvailability(processorType))
         .then((result) => {
           expect(result.isAvailable).to.be.true;
@@ -425,10 +447,18 @@ describe('10 - Error Scenarios and Edge Cases', () => {
         .then((processorId) => {
           const invalidConfigs = [
             { property: 'issuer.1.jwks-uri', value: 'invalid-url', expectedError: 'invalid URL' },
-            { property: 'issuer.1.algorithm', value: 'INVALID', expectedError: 'unsupported algorithm' },
+            {
+              property: 'issuer.1.algorithm',
+              value: 'INVALID',
+              expectedError: 'unsupported algorithm',
+            },
             { property: 'issuer.1.audience', value: '', expectedError: 'required field' },
             { property: 'issuer.1.cache-duration', value: '-1', expectedError: 'invalid duration' },
-            { property: 'issuer.1.timeout', value: 'not-a-number', expectedError: 'invalid number' }
+            {
+              property: 'issuer.1.timeout',
+              value: 'not-a-number',
+              expectedError: 'invalid number',
+            },
           ];
 
           // Test each invalid configuration using helper function
@@ -440,7 +470,13 @@ describe('10 - Error Scenarios and Edge Cases', () => {
         });
 
       validateNoConsoleErrors('Invalid configuration handling', {
-        allowedErrors: ['invalid URL', 'unsupported algorithm', 'required field', 'invalid duration', 'invalid number']
+        allowedErrors: [
+          'invalid URL',
+          'unsupported algorithm',
+          'required field',
+          'invalid duration',
+          'invalid number',
+        ],
       });
     });
 
@@ -448,7 +484,7 @@ describe('10 - Error Scenarios and Edge Cases', () => {
       logTestStep('10-error-scenarios', 'Testing configuration conflict handling');
 
       const processorType = 'MultiIssuerJWTTokenAuthenticator';
-      
+
       cy.wrap(validateProcessorAvailability(processorType))
         .then((result) => {
           expect(result.isAvailable).to.be.true;
@@ -459,17 +495,23 @@ describe('10 - Error Scenarios and Edge Cases', () => {
             {
               configs: [
                 { property: 'issuer.1.name', value: 'duplicate-name' },
-                { property: 'issuer.2.name', value: 'duplicate-name' }
+                { property: 'issuer.2.name', value: 'duplicate-name' },
               ],
-              expectedError: 'duplicate issuer names'
+              expectedError: 'duplicate issuer names',
             },
             {
               configs: [
-                { property: 'issuer.1.jwks-uri', value: 'https://same-endpoint.com/.well-known/jwks.json' },
-                { property: 'issuer.2.jwks-uri', value: 'https://same-endpoint.com/.well-known/jwks.json' }
+                {
+                  property: 'issuer.1.jwks-uri',
+                  value: 'https://same-endpoint.com/.well-known/jwks.json',
+                },
+                {
+                  property: 'issuer.2.jwks-uri',
+                  value: 'https://same-endpoint.com/.well-known/jwks.json',
+                },
               ],
-              expectedError: 'duplicate JWKS endpoints'
-            }
+              expectedError: 'duplicate JWKS endpoints',
+            },
           ];
 
           conflictingConfigs.forEach((conflictTest) => {
@@ -483,7 +525,10 @@ describe('10 - Error Scenarios and Edge Cases', () => {
               .should('be.visible')
               .should('contain', conflictTest.expectedError);
 
-            logTestStep('10-error-scenarios', `Configuration conflict detected: ${conflictTest.expectedError}`);
+            logTestStep(
+              '10-error-scenarios',
+              `Configuration conflict detected: ${conflictTest.expectedError}`
+            );
           });
         })
         .catch((error) => {
@@ -492,7 +537,7 @@ describe('10 - Error Scenarios and Edge Cases', () => {
         });
 
       validateNoConsoleErrors('Configuration conflict handling', {
-        allowedErrors: ['duplicate issuer names', 'duplicate JWKS endpoints']
+        allowedErrors: ['duplicate issuer names', 'duplicate JWKS endpoints'],
       });
     });
   });
@@ -519,16 +564,18 @@ describe('10 - Error Scenarios and Edge Cases', () => {
           token: 'x'.repeat(10000), // 10KB each
           shouldBeValid: false,
           description: `Large token ${i + 1}`,
-          expectedResult: 'processed'
+          expectedResult: 'processed',
         });
       }
 
-      cy.wrap(validateJWTTokenProcessing(largeTokens, {
-        timeout: TEST_TIMEOUT * 2,
-        processorType: 'MultiIssuerJWTTokenAuthenticator',
-        concurrent: true,
-        expectFailure: false // Should handle gracefully, not fail
-      }))
+      cy.wrap(
+        validateJWTTokenProcessing(largeTokens, {
+          timeout: TEST_TIMEOUT * 2,
+          processorType: 'MultiIssuerJWTTokenAuthenticator',
+          concurrent: true,
+          expectFailure: false, // Should handle gracefully, not fail
+        })
+      )
         .then(() => {
           logTestStep('10-error-scenarios', 'Memory pressure handling validated');
         })
@@ -538,7 +585,7 @@ describe('10 - Error Scenarios and Edge Cases', () => {
         });
 
       validateNoConsoleErrors('Memory pressure handling', {
-        allowedErrors: ['memory warning', 'garbage collection']
+        allowedErrors: ['memory warning', 'garbage collection'],
       });
     });
 
@@ -552,24 +599,28 @@ describe('10 - Error Scenarios and Edge Cases', () => {
           token: getTestJWTTokens('valid')[0].token,
           shouldBeValid: true,
           description: `Concurrent validation ${i + 1}`,
-          expectedResult: 'valid'
+          expectedResult: 'valid',
         });
       }
 
       const startTime = Date.now();
-      
-      cy.wrap(Promise.all(concurrentTests.map(test => 
-        validateJWTTokenProcessing([test], {
-          timeout: TEST_TIMEOUT,
-          processorType: 'MultiIssuerJWTTokenAuthenticator'
-        })
-      )))
+
+      cy.wrap(
+        Promise.all(
+          concurrentTests.map((test) =>
+            validateJWTTokenProcessing([test], {
+              timeout: TEST_TIMEOUT,
+              processorType: 'MultiIssuerJWTTokenAuthenticator',
+            })
+          )
+        )
+      )
         .then(() => {
           const endTime = Date.now();
           const totalTime = endTime - startTime;
-          
+
           logTestStep('10-error-scenarios', `High concurrency handled in ${totalTime}ms`);
-          
+
           // Should complete in reasonable time despite high concurrency
           expect(totalTime).to.be.lessThan(60000); // 60 seconds max
         })
@@ -579,7 +630,7 @@ describe('10 - Error Scenarios and Edge Cases', () => {
         });
 
       validateNoConsoleErrors('High concurrency handling', {
-        allowedErrors: ['thread pool warning', 'queue full']
+        allowedErrors: ['thread pool warning', 'queue full'],
       });
     });
   });
@@ -601,22 +652,29 @@ describe('10 - Error Scenarios and Edge Cases', () => {
 
       const degradationTest = {
         endpoint: 'https://httpstat.us/503', // Unavailable JWKS endpoint
-        description: 'JWKS endpoint unavailable - should use cached keys or fail gracefully'
+        description: 'JWKS endpoint unavailable - should use cached keys or fail gracefully',
       };
 
-      cy.wrap(validateJWKSConfiguration([{
-        endpoint: degradationTest.endpoint,
-        shouldConnect: false,
-        description: degradationTest.description,
-        expectedError: 'service unavailable'
-      }], {
-        timeout: TEST_TIMEOUT,
-        expectFailure: true,
-        gracefulDegradation: true
-      }))
+      cy.wrap(
+        validateJWKSConfiguration(
+          [
+            {
+              endpoint: degradationTest.endpoint,
+              shouldConnect: false,
+              description: degradationTest.description,
+              expectedError: 'service unavailable',
+            },
+          ],
+          {
+            timeout: TEST_TIMEOUT,
+            expectFailure: true,
+            gracefulDegradation: true,
+          }
+        )
+      )
         .then(() => {
           logTestStep('10-error-scenarios', 'Graceful degradation validated');
-          
+
           // System should still be responsive for other operations
           return navigateToNiFiCanvas();
         })
@@ -629,7 +687,7 @@ describe('10 - Error Scenarios and Edge Cases', () => {
         });
 
       validateNoConsoleErrors('Graceful degradation', {
-        allowedErrors: ['service unavailable', 'degraded mode']
+        allowedErrors: ['service unavailable', 'degraded mode'],
       });
     });
   });

@@ -1,49 +1,41 @@
 /**
- * @fileoverview Single-Issuer JWT Validation test implementation for NiFi JWT extension
- * Comprehensive JWT token validation functionality testing for single-issuer scenarios
+ * @file Single-Issuer JWT Validation test implementation for NiFi JWT extension
+ * Focused JWT token validation functionality testing for single-issuer scenarios
  * Following requirements from Requirements.md and Specification.adoc
- * 
- * @requirements R-JWT-010, R-JWT-011, R-JWT-012, R-JWT-013, R-JWT-014
- * @author E2E Test Refactoring Initiative  
+ * @author E2E Test Refactoring Initiative
  * @version 1.0.0
  */
 
 // Import test utilities and helpers
-import {
-  authenticateUser,
-  cleanupSession
-} from '../../support/utils/auth-helpers.js';
+import { authenticateUser, cleanupSession } from '../../support/utils/auth-helpers.js';
 
 import {
   validateProcessorAvailability,
   createProcessorInstance,
   configureProcessorProperty,
   validateProcessorConfiguration,
-  cleanupProcessors
+  cleanupProcessors,
 } from '../../support/utils/processor-helpers.js';
 
-import {
-  navigateToNiFiCanvas,
-  waitForPageLoad
-} from '../../support/utils/ui-helpers.js';
+import { navigateToNiFiCanvas, waitForPageLoad } from '../../support/utils/ui-helpers.js';
 
 import {
   validateJWTTokenProcessing,
   validateJWKSConfiguration,
   validateNoConsoleErrors,
-  validatePerformanceMetrics
+  validatePerformanceMetrics,
 } from '../../support/utils/validation-helpers.js';
 
 import {
   logTestStep,
   trackTestFailure,
-  captureDebugInfo
+  captureDebugInfo,
 } from '../../support/utils/error-tracking.js';
 
 import {
   getTestJWTTokens,
   getTestJWKSEndpoints,
-  getSingleIssuerTestData
+  getSingleIssuerTestData,
 } from '../../support/utils/test-data.js';
 
 // Test constants
@@ -57,7 +49,7 @@ const TEST_ISSUER = {
   jwksUrl: 'https://test-single-issuer.com/.well-known/jwks.json',
   algorithm: 'RS256',
   audience: 'test-single-audience',
-  issuer: 'https://test-single-issuer.com'
+  issuer: 'https://test-single-issuer.com',
 };
 
 // Helper function to configure single issuer
@@ -67,14 +59,13 @@ function configureSingleIssuer(processorId, issuerConfig = TEST_ISSUER) {
     { property: 'issuer.jwks-uri', value: issuerConfig.jwksUrl },
     { property: 'issuer.algorithm', value: issuerConfig.algorithm },
     { property: 'issuer.audience', value: issuerConfig.audience },
-    { property: 'issuer.issuer', value: issuerConfig.issuer }
+    { property: 'issuer.issuer', value: issuerConfig.issuer },
   ];
 
   configs.forEach((config) => {
-    cy.wrap(configureProcessorProperty(processorId, config.property, config.value))
-      .then(() => {
-        logTestStep('09-jwt-single', `Configured ${config.property}: ${config.value}`);
-      });
+    cy.wrap(configureProcessorProperty(processorId, config.property, config.value)).then(() => {
+      logTestStep('09-jwt-single', `Configured ${config.property}: ${config.value}`);
+    });
   });
 }
 
@@ -83,36 +74,38 @@ function validateCachingPerformance(cacheTests) {
   const startTime = Date.now();
   return validateJWTTokenProcessing([cacheTests[0]], {
     timeout: TEST_TIMEOUT,
-    processorType: PROCESSOR_TYPE
-  })
-    .then(() => {
-      const firstValidationTime = Date.now() - startTime;
-      logTestStep('09-jwt-single', `First validation time (cache miss): ${firstValidationTime}ms`);
-      
-      // Test subsequent token validation (cache hit)
-      const cacheStartTime = Date.now();
-      return validateJWTTokenProcessing([cacheTests[0]], {
-        timeout: TEST_TIMEOUT,
-        processorType: PROCESSOR_TYPE
-      })
-        .then(() => {
-          const cacheValidationTime = Date.now() - cacheStartTime;
-          logTestStep('09-jwt-single', `Cached validation time (cache hit): ${cacheValidationTime}ms`);
-          
-          // Cache hit should be significantly faster
-          expect(cacheValidationTime).to.be.lessThan(firstValidationTime * 0.5);
-        });
+    processorType: PROCESSOR_TYPE,
+  }).then(() => {
+    const firstValidationTime = Date.now() - startTime;
+    logTestStep('09-jwt-single', `First validation time (cache miss): ${firstValidationTime}ms`);
+
+    // Test subsequent token validation (cache hit)
+    const cacheStartTime = Date.now();
+    return validateJWTTokenProcessing([cacheTests[0]], {
+      timeout: TEST_TIMEOUT,
+      processorType: PROCESSOR_TYPE,
+    }).then(() => {
+      const cacheValidationTime = Date.now() - cacheStartTime;
+      logTestStep('09-jwt-single', `Cached validation time (cache hit): ${cacheValidationTime}ms`);
+
+      // Cache hit should be significantly faster
+      expect(cacheValidationTime).to.be.lessThan(firstValidationTime * 0.5);
     });
+  });
 }
 
 function validateInvalidConfigurations(processorId, invalidConfigs) {
   invalidConfigs.forEach((config) => {
-    cy.wrap(configureProcessorProperty(processorId, config.property, config.value))
-      .then((result) => {
+    cy.wrap(configureProcessorProperty(processorId, config.property, config.value)).then(
+      (result) => {
         expect(result.success).to.be.false;
         expect(result.error).to.contain(config.expectedError);
-        logTestStep('09-jwt-single', `Invalid config rejected: ${config.property} = ${config.value}`);
-      });
+        logTestStep(
+          '09-jwt-single',
+          `Invalid config rejected: ${config.property} = ${config.value}`
+        );
+      }
+    );
   });
 }
 
@@ -144,11 +137,10 @@ describe('09 - Single-Issuer JWT Validation', () => {
       logTestStep('09-jwt-single', 'Testing single-issuer JWT token validation');
 
       // Verify processor availability
-      cy.wrap(validateProcessorAvailability(PROCESSOR_TYPE))
-        .then((result) => {
-          expect(result.isAvailable).to.be.true;
-          logTestStep('09-jwt-single', `${PROCESSOR_TYPE} processor available`);
-        });
+      cy.wrap(validateProcessorAvailability(PROCESSOR_TYPE)).then((result) => {
+        expect(result.isAvailable).to.be.true;
+        logTestStep('09-jwt-single', `${PROCESSOR_TYPE} processor available`);
+      });
 
       // Create processor instance
       cy.wrap(createProcessorInstance(PROCESSOR_TYPE, { x: 300, y: 300 }))
@@ -178,11 +170,13 @@ describe('09 - Single-Issuer JWT Validation', () => {
       logTestStep('09-jwt-single', 'Testing valid token processing');
 
       const tokenTests = getTestJWTTokens('single-issuer-valid');
-      
-      cy.wrap(validateJWTTokenProcessing(tokenTests, {
-        timeout: TEST_TIMEOUT,
-        processorType: PROCESSOR_TYPE
-      }))
+
+      cy.wrap(
+        validateJWTTokenProcessing(tokenTests, {
+          timeout: TEST_TIMEOUT,
+          processorType: PROCESSOR_TYPE,
+        })
+      )
         .then(() => {
           logTestStep('09-jwt-single', 'Valid single-issuer token processing completed');
         })
@@ -202,38 +196,43 @@ describe('09 - Single-Issuer JWT Validation', () => {
           token: 'invalid.jwt.token',
           shouldBeValid: false,
           description: 'Malformed JWT token',
-          expectedResult: 'invalid format'
+          expectedResult: 'invalid format',
         },
         {
           token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.invalid.signature',
           shouldBeValid: false,
           description: 'JWT with invalid signature',
-          expectedResult: 'signature verification failed'
+          expectedResult: 'signature verification failed',
         },
         {
-          token: 'eyJhbGciOiJub25lIn0.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.',
+          token:
+            'eyJhbGciOiJub25lIn0.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.',
           shouldBeValid: false,
           description: 'JWT with none algorithm',
-          expectedResult: 'algorithm not allowed'
+          expectedResult: 'algorithm not allowed',
         },
         {
-          token: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMiwiYXVkIjoid3JvbmctYXVkaWVuY2UifQ.wrong-signature',
+          token:
+            'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMiwiYXVkIjoid3JvbmctYXVkaWVuY2UifQ.wrong-signature',
           shouldBeValid: false,
           description: 'JWT with wrong audience',
-          expectedResult: 'audience mismatch'
+          expectedResult: 'audience mismatch',
         },
         {
-          token: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjoxNTE2MjM5MDIxfQ.expired-token',
+          token:
+            'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjoxNTE2MjM5MDIxfQ.expired-token',
           shouldBeValid: false,
           description: 'Expired JWT token',
-          expectedResult: 'token expired'
-        }
+          expectedResult: 'token expired',
+        },
       ];
 
-      cy.wrap(validateJWTTokenProcessing(invalidTokenTests, {
-        timeout: TEST_TIMEOUT,
-        processorType: PROCESSOR_TYPE
-      }))
+      cy.wrap(
+        validateJWTTokenProcessing(invalidTokenTests, {
+          timeout: TEST_TIMEOUT,
+          processorType: PROCESSOR_TYPE,
+        })
+      )
         .then(() => {
           logTestStep('09-jwt-single', 'Invalid token rejection validation completed');
         })
@@ -248,30 +247,37 @@ describe('09 - Single-Issuer JWT Validation', () => {
     it('R-JWT-013: Should support algorithm configuration', () => {
       logTestStep('09-jwt-single', 'Testing algorithm configuration');
 
-      const algorithms = ['RS256', 'RS384', 'RS512', 'ES256', 'ES384', 'ES512', 'PS256', 'PS384', 'PS512'];
-      
+      const algorithms = [
+        'RS256',
+        'RS384',
+        'RS512',
+        'ES256',
+        'ES384',
+        'ES512',
+        'PS256',
+        'PS384',
+        'PS512',
+      ];
+
       algorithms.forEach((algorithm) => {
         cy.log(`🔧 Testing algorithm: ${algorithm}`);
-        
+
         // Configure processor for specific algorithm
         cy.get('.processor-component').first().dblclick({ force: true });
-        
+
         cy.get('input[name="algorithm"], select[name="algorithm"]', { timeout: 10000 })
           .clear()
           .type(algorithm);
-        
+
         // Apply configuration
-        cy.get('button:contains("Apply"), .apply-button')
-          .click();
-        
+        cy.get('button:contains("Apply"), .apply-button').click();
+
         // Verify algorithm was set
         cy.get('.processor-component').first().dblclick({ force: true });
-        cy.get('input[name="algorithm"], select[name="algorithm"]')
-          .should('have.value', algorithm);
-        
-        cy.get('button:contains("Apply"), .apply-button')
-          .click();
-        
+        cy.get('input[name="algorithm"], select[name="algorithm"]').should('have.value', algorithm);
+
+        cy.get('button:contains("Apply"), .apply-button').click();
+
         logTestStep('09-jwt-single', `Algorithm ${algorithm} configured successfully`);
       });
 
@@ -282,10 +288,12 @@ describe('09 - Single-Issuer JWT Validation', () => {
       logTestStep('09-jwt-single', 'Testing JWKS integration');
 
       const jwksTests = getTestJWKSEndpoints('single-issuer');
-      
-      cy.wrap(validateJWKSConfiguration(jwksTests, {
-        timeout: TEST_TIMEOUT
-      }))
+
+      cy.wrap(
+        validateJWKSConfiguration(jwksTests, {
+          timeout: TEST_TIMEOUT,
+        })
+      )
         .then(() => {
           logTestStep('09-jwt-single', 'Single-issuer JWKS validation completed');
         })
@@ -314,18 +322,23 @@ describe('09 - Single-Issuer JWT Validation', () => {
       logTestStep('09-jwt-single', 'Testing JWT validation performance');
 
       const performanceTests = getSingleIssuerTestData('performance');
-      
-      cy.wrap(validatePerformanceMetrics(performanceTests, {
-        maxResponseTime: PERFORMANCE_THRESHOLD,
-        concurrent: false,
-        iterations: 50
-      }))
+
+      cy.wrap(
+        validatePerformanceMetrics(performanceTests, {
+          maxResponseTime: PERFORMANCE_THRESHOLD,
+          concurrent: false,
+          iterations: 50,
+        })
+      )
         .then((metrics) => {
           expect(metrics.averageResponseTime).to.be.lessThan(PERFORMANCE_THRESHOLD);
           expect(metrics.maxResponseTime).to.be.lessThan(PERFORMANCE_THRESHOLD * 1.5);
           expect(metrics.successRate).to.be.at.least(0.98);
-          
-          logTestStep('09-jwt-single', `Performance validated: avg=${metrics.averageResponseTime}ms, max=${metrics.maxResponseTime}ms, success=${metrics.successRate * 100}%`);
+
+          logTestStep(
+            '09-jwt-single',
+            `Performance validated: avg=${metrics.averageResponseTime}ms, max=${metrics.maxResponseTime}ms, success=${metrics.successRate * 100}%`
+          );
         })
         .catch((error) => {
           trackTestFailure('09-jwt-single', 'performance-validation', error);
@@ -339,12 +352,11 @@ describe('09 - Single-Issuer JWT Validation', () => {
       logTestStep('09-jwt-single', 'Testing single-issuer token caching optimization');
 
       const cacheTests = getSingleIssuerTestData('caching');
-      
-      cy.wrap(validateCachingPerformance(cacheTests))
-        .catch((error) => {
-          trackTestFailure('09-jwt-single', 'caching-optimization', error);
-          throw error;
-        });
+
+      cy.wrap(validateCachingPerformance(cacheTests)).catch((error) => {
+        trackTestFailure('09-jwt-single', 'caching-optimization', error);
+        throw error;
+      });
 
       validateNoConsoleErrors('Caching optimization testing');
     });
@@ -370,26 +382,28 @@ describe('09 - Single-Issuer JWT Validation', () => {
           endpoint: 'https://nonexistent-single-issuer.com/.well-known/jwks.json',
           shouldConnect: false,
           description: 'Non-existent JWKS endpoint',
-          expectedError: 'connection failed'
+          expectedError: 'connection failed',
         },
         {
           endpoint: 'https://httpstat.us/503',
           shouldConnect: false,
           description: 'JWKS endpoint returning 503 error',
-          expectedError: 'service unavailable'
+          expectedError: 'service unavailable',
         },
         {
           endpoint: 'invalid-url-format',
           shouldConnect: false,
           description: 'Invalid JWKS URL format',
-          expectedError: 'invalid URL'
-        }
+          expectedError: 'invalid URL',
+        },
       ];
 
-      cy.wrap(validateJWKSConfiguration(failureTests, {
-        timeout: TEST_TIMEOUT,
-        expectFailure: true
-      }))
+      cy.wrap(
+        validateJWKSConfiguration(failureTests, {
+          timeout: TEST_TIMEOUT,
+          expectFailure: true,
+        })
+      )
         .then(() => {
           logTestStep('09-jwt-single', 'JWKS failure handling validated');
         })
@@ -399,7 +413,7 @@ describe('09 - Single-Issuer JWT Validation', () => {
         });
 
       validateNoConsoleErrors('JWKS failure handling', {
-        allowedErrors: ['connection failed', 'service unavailable', 'invalid URL']
+        allowedErrors: ['connection failed', 'service unavailable', 'invalid URL'],
       });
     });
 
@@ -409,10 +423,14 @@ describe('09 - Single-Issuer JWT Validation', () => {
       // Test with invalid configuration values
       const invalidConfigs = [
         { property: 'issuer.jwks-uri', value: 'not-a-url', expectedError: 'invalid URL format' },
-        { property: 'issuer.algorithm', value: 'INVALID_ALG', expectedError: 'unsupported algorithm' },
+        {
+          property: 'issuer.algorithm',
+          value: 'INVALID_ALG',
+          expectedError: 'unsupported algorithm',
+        },
         { property: 'issuer.audience', value: '', expectedError: 'audience required' },
         { property: 'issuer.issuer', value: '', expectedError: 'issuer required' },
-        { property: 'issuer.name', value: '', expectedError: 'name required' }
+        { property: 'issuer.name', value: '', expectedError: 'name required' },
       ];
 
       cy.wrap(validateProcessorAvailability(PROCESSOR_TYPE))
@@ -430,7 +448,13 @@ describe('09 - Single-Issuer JWT Validation', () => {
         });
 
       validateNoConsoleErrors('Malformed configuration handling', {
-        allowedErrors: ['invalid URL format', 'unsupported algorithm', 'audience required', 'issuer required', 'name required']
+        allowedErrors: [
+          'invalid URL format',
+          'unsupported algorithm',
+          'audience required',
+          'issuer required',
+          'name required',
+        ],
       });
     });
 
@@ -442,26 +466,28 @@ describe('09 - Single-Issuer JWT Validation', () => {
           token: getSingleIssuerTestData('expired-token')[0].token,
           shouldBeValid: false,
           description: 'Expired JWT token',
-          expectedResult: 'token expired'
+          expectedResult: 'token expired',
         },
         {
           token: getSingleIssuerTestData('not-yet-valid')[0].token,
           shouldBeValid: false,
           description: 'JWT token not yet valid (nbf claim)',
-          expectedResult: 'token not yet valid'
+          expectedResult: 'token not yet valid',
         },
         {
           token: getSingleIssuerTestData('valid-token')[0].token,
           shouldBeValid: true,
           description: 'Valid JWT token',
-          expectedResult: 'valid'
-        }
+          expectedResult: 'valid',
+        },
       ];
 
-      cy.wrap(validateJWTTokenProcessing(expirationTests, {
-        timeout: TEST_TIMEOUT,
-        processorType: PROCESSOR_TYPE
-      }))
+      cy.wrap(
+        validateJWTTokenProcessing(expirationTests, {
+          timeout: TEST_TIMEOUT,
+          processorType: PROCESSOR_TYPE,
+        })
+      )
         .then(() => {
           logTestStep('09-jwt-single', 'Token expiration handling validated');
         })

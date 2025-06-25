@@ -12,7 +12,7 @@ jest.mock('nf.Common', () => ({
     getI18n: jest.fn().mockReturnValue({}) // Mock i18n if used by nfCommon during init
 }), { virtual: true });
 
-const mockMainDefault = { init: jest.fn() };
+const mockMainDefault = { init: jest.fn().mockResolvedValue(true) }; // Return a resolved Promise
 jest.mock('js/main', () => mockMainDefault, { virtual: true }); // Default mock for js/main
 
 // Mock console and window
@@ -62,7 +62,7 @@ describe('bundle.js', () => {
     });
 
     describe('When components are already registered', () => {
-        const mockMainWhenRegistered = { init: jest.fn() };
+        const mockMainWhenRegistered = { init: jest.fn().mockResolvedValue(true) }; // Return a resolved Promise
         beforeEach(() => {
             global.window.jwtComponentsRegistered = true;
             // Specific mock for 'js/main' for this context
@@ -105,6 +105,107 @@ describe('bundle.js', () => {
             expect(mockMainDefault.init).not.toHaveBeenCalled();
             // expect(console.error).toHaveBeenCalledWith('[DEBUG_LOG] Main module not available or missing init function'); // Log removed from source
             // expect(console.log).toHaveBeenCalledWith('[DEBUG_LOG] Bundle init method called');
+        });
+    });
+
+    describe('Branch coverage tests', () => {
+        beforeEach(() => {
+            // Clean up global state
+            delete window.jwtComponentsRegistered;
+            delete window.jwtInitializationInProgress;
+        });
+
+        it('should check for jwtComponentsRegistered before calling main.init', () => {
+            // Set the global flag
+            window.jwtComponentsRegistered = true;
+
+            // Use a fresh mock and module instance
+            const freshMockMain = { init: jest.fn().mockResolvedValue(true) };
+            jest.doMock('js/main', () => freshMockMain, { virtual: true });
+            const freshBundleModule = require('../../main/webapp/js/bundle');
+
+            freshBundleModule.init();
+
+            expect(freshMockMain.init).not.toHaveBeenCalled();
+        });
+
+        it('should check for jwtInitializationInProgress before calling main.init', () => {
+            // Set the global flag
+            window.jwtInitializationInProgress = true;
+
+            // Use a fresh mock and module instance
+            const freshMockMain = { init: jest.fn().mockResolvedValue(true) };
+            jest.doMock('js/main', () => freshMockMain, { virtual: true });
+            const freshBundleModule = require('../../main/webapp/js/bundle');
+
+            freshBundleModule.init();
+
+            expect(freshMockMain.init).not.toHaveBeenCalled();
+        });
+
+        it('should hide loading indicators by text content', () => {
+            document.body.innerHTML = `
+                <div class="test-element">Loading JWT Validator...</div>
+                <div class="other-element">Some other content</div>
+            `;
+
+            // Import hideLoadingIndicatorImmediate separately
+            const { hideLoadingIndicatorImmediate } = require('../../main/webapp/js/bundle');
+            hideLoadingIndicatorImmediate();
+
+            const testElement = document.querySelector('.test-element');
+            expect(testElement.style.display).toBe('none');
+            expect(testElement.style.visibility).toBe('hidden');
+            expect(testElement.getAttribute('aria-hidden')).toBe('true');
+            expect(testElement.classList.contains('hidden')).toBe(true);
+        });
+
+        it('should handle elements without classList property', () => {
+            // Create element without classList
+            const mockElement = {
+                style: { display: '', visibility: '' },
+                setAttribute: jest.fn(),
+                textContent: 'Loading JWT'
+            };
+
+            // Mock querySelectorAll to return our mock element
+            const mockQuerySelectorAll = jest.fn();
+            mockQuerySelectorAll.mockReturnValueOnce([mockElement]); // For loading indicators
+            mockQuerySelectorAll.mockReturnValueOnce([mockElement]); // For all elements
+
+            const originalQuerySelectorAll = document.querySelectorAll;
+            document.querySelectorAll = mockQuerySelectorAll;
+
+            // Import hideLoadingIndicatorImmediate separately
+            const { hideLoadingIndicatorImmediate } = require('../../main/webapp/js/bundle');
+            hideLoadingIndicatorImmediate();
+
+            expect(mockElement.style.display).toBe('none');
+            expect(mockElement.style.visibility).toBe('hidden');
+            expect(mockElement.setAttribute).toHaveBeenCalledWith('aria-hidden', 'true');
+
+            // Restore original method
+            document.querySelectorAll = originalQuerySelectorAll;
+        });
+
+        it('should handle errors in hideLoadingIndicatorImmediate gracefully', () => {
+            const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+            // Mock querySelectorAll to throw an error
+            const originalQuerySelectorAll = document.querySelectorAll;
+            document.querySelectorAll = jest.fn().mockImplementation(() => {
+                throw new Error('DOM access failed');
+            });
+
+            // Import hideLoadingIndicatorImmediate separately
+            const { hideLoadingIndicatorImmediate } = require('../../main/webapp/js/bundle');
+            hideLoadingIndicatorImmediate();
+
+            expect(consoleWarnSpy).toHaveBeenCalledWith('Error hiding loading indicator in bundle.js:', expect.any(Error));
+
+            // Restore mocks
+            document.querySelectorAll = originalQuerySelectorAll;
+            consoleWarnSpy.mockRestore();
         });
     });
 });

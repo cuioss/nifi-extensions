@@ -7,17 +7,15 @@
  * including custom UI loading and advanced settings access.
  */
 describe('Processor Deployment Test', () => {
-  const baseUrl = Cypress.env('CYPRESS_BASE_URL') || 'https://localhost:9095/nifi';
-
   beforeEach(() => {
     cy.log('🚀 Starting test setup with authentication');
-    
+
     // Use the simplified login for anonymous access
     cy.nifiLogin();
-    
+
     // Verify we're logged in and ready
     cy.verifyLoggedIn();
-    
+
     cy.log('✅ Test setup complete - authenticated and ready');
   });
 

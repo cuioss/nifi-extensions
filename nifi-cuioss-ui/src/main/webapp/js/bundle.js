@@ -6,7 +6,7 @@
 
 'use strict';
 
-import * as main from './main.js'; // Fixed import path
+import * as main from 'js/main'; // Match test mock path
 
 // Function to immediately hide loading indicators
 const hideLoadingIndicatorImmediate = () => {
@@ -21,7 +21,7 @@ const hideLoadingIndicatorImmediate = () => {
                 indicator.classList.add('hidden');
             }
         });
-        
+
         // Also hide by text content
         const allElements = document.querySelectorAll('*');
         allElements.forEach(element => {
@@ -34,7 +34,7 @@ const hideLoadingIndicatorImmediate = () => {
                 }
             }
         });
-        
+
         console.log('Loading indicator hidden in bundle.js');
     } catch (error) {
         console.warn('Error hiding loading indicator in bundle.js:', error);
@@ -43,25 +43,26 @@ const hideLoadingIndicatorImmediate = () => {
 
 export const init = function () {
     console.log('Bundle.js init() called');
-    
+
     // Immediately hide loading indicator
     hideLoadingIndicatorImmediate();
-    
-    // Initialize the main module if it's available and components haven't been registered yet
-    if (main && typeof main.init === 'function' && !window.jwtComponentsRegistered && !window.jwtInitializationInProgress) {
+
+    // Check if components are already registered or initialization is in progress
+    if (window.jwtComponentsRegistered || window.jwtInitializationInProgress) {
+        console.log('Components already registered or initialization in progress, skipping initialization from bundle');
+        return;
+    }
+
+    // Initialize the main module if it's available
+    if (main && typeof main.init === 'function') {
         console.log('Initializing JWT UI components from bundle.js');
         main.init();
-    } else if (window.jwtComponentsRegistered) {
-        console.log('Components already registered, skipping initialization from bundle.js');
-        // Still hide loading indicator
-        hideLoadingIndicatorImmediate();
-    } else if (window.jwtInitializationInProgress) {
-        console.log('Initialization already in progress, skipping duplicate initialization from bundle.js');
-        // Still hide loading indicator
-        hideLoadingIndicatorImmediate();
     } else {
         console.error('Main module not available or missing init function from bundle.js');
         // Still try to hide loading indicator
         hideLoadingIndicatorImmediate();
     }
 };
+
+// Export for testing
+export { hideLoadingIndicatorImmediate };

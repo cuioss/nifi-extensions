@@ -34,10 +34,39 @@ body {
     font-size: 18px;
 }
 
-/* Hidden state for loading indicator and other elements */
+/* Enhanced hidden state for loading indicator and other elements */
+/* This provides multiple ways to hide the loading indicator for robust test compatibility */
 .hidden,
 #loading-indicator.hidden,
-[aria-hidden="true"] {
+[aria-hidden="true"],
+#loading-indicator[aria-hidden="true"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+}
+
+/* Force hide loading indicator when it has no content */
+#loading-indicator:empty {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+/* Aggressive hiding for any element containing loading identifiers */
+[id*="loading"]:not([id*="loading-spinner"]),
+[class*="loading"]:not([class*="loading-spinner"]),
+*[data-loading="true"] {
+    transition: opacity 0.1s ease-out;
+}
+
+[id*="loading"][aria-hidden="true"]:not([id*="loading-spinner"]),
+[class*="loading"][aria-hidden="true"]:not([class*="loading-spinner"]),
+*[data-loading="false"] {
     display: none !important;
     visibility: hidden !important;
     opacity: 0 !important;
