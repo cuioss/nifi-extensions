@@ -216,18 +216,17 @@ export function clearAuthState() {
 }
 
 /**
- * Simple login with credentials
+ * Simple login with credentials - optimized for session reuse
  * @param {string} username - Username
  * @param {string} password - Password
- * @returns {Cypress.Chainable} Promise that resolves when login is complete
  */
 export function loginWithCredentials(username, password) {
   cy.log(`🔑 Logging in with username: ${username}`);
-  
+
   // Visit the base URL (should redirect to login if not authenticated)
   cy.visit('/');
-  
-  // Wait for login form to be visible
+
+  // Wait for login form to be visible and perform login
   cy.get('[data-testid="username"], input[type="text"], input[id*="username"]', {
     timeout: 10000,
   })
@@ -245,7 +244,7 @@ export function loginWithCredentials(username, password) {
   // Wait for login to complete (either redirect to canvas or error)
   cy.url({ timeout: 15000 }).should('not.contain', '/login');
 
-  return cy.wrap(null);
+  cy.log('✅ Login completed successfully');
 }
 
 /**
@@ -256,21 +255,23 @@ export function verifyLoginState() {
   return cy.url().then((url) => {
     const isLoggedIn = !url.includes('/login') && !url.includes('/error');
     
-    return {
+    const loginState = {
       isLoggedIn,
       authMethod: isLoggedIn ? 'basic' : null,
       url,
     };
+
+    // Don't call cy.log inside .then() - causes async/sync mixing
+    return loginState;
   });
 }
 
 /**
  * Logout from the application
- * @returns {Cypress.Chainable} Promise that resolves when logout is complete
  */
 export function logout() {
   cy.log('🚪 Logging out');
-  
+
   // Look for logout link/button with various selectors
   cy.get('[data-testid="user-menu"], #user-logout-link, .user-menu', { timeout: 10000 })
     .should('be.visible')
@@ -279,7 +280,7 @@ export function logout() {
   // Wait for logout to complete (redirect to login page)
   cy.url({ timeout: 10000 }).should('contain', '/login');
 
-  return cy.wrap(null);
+  cy.log('✅ Logout completed successfully');
 }
 
 /**
@@ -287,15 +288,15 @@ export function logout() {
  */
 export function clearAllAuthenticationData() {
   cy.log('🧹 Clearing all authentication data');
-  
+
   // Clear localStorage, sessionStorage, and cookies
   cy.clearLocalStorage();
   cy.clearCookies();
-  
+
   // Clear session storage
   cy.window().then((win) => {
     win.sessionStorage.clear();
   });
 
-  return cy.wrap(null);
+  cy.log('✅ Authentication data cleared');
 }

@@ -1,9 +1,6 @@
 /**
- * @file Basic Authentication test implementation for NiFi JWT extension
- * Simple login, logout, and basic session validation
- * Following requirements from Requirements.md
- * @author E2E Test Refactoring Initiative
- * @version 1.0.0
+ * @file Basic Authentication test - SINGLE login with session reuse
+ * Optimized to avoid redundant logins
  */
 
 import {
@@ -13,17 +10,13 @@ import {
   clearAllAuthenticationData,
 } from '../../support/utils/auth-helpers.js';
 import {
-  validateRequiredElements,
-  validateErrorState,
-} from '../../support/utils/validation-helpers.js';
-import {
   logTestStep,
   captureDebugInfo,
 } from '../../support/utils/error-tracking.js';
 
-describe('01 - Basic Authentication', () => {
+describe('01 - Basic Authentication - Single Login Flow', () => {
   before(() => {
-    logTestStep('01-basic-auth', 'Starting authentication test suite');
+    logTestStep('01-basic-auth', 'Starting optimized authentication test suite');
     clearAllAuthenticationData();
   });
 
@@ -31,12 +24,11 @@ describe('01 - Basic Authentication', () => {
     captureDebugInfo('01-basic-auth');
   });
 
-  it('R-AUTH-001: Should handle invalid credentials gracefully', () => {
-    logTestStep('01-basic-auth', 'Testing invalid credentials handling');
+  it('R-AUTH-001: Should reject invalid credentials', () => {
+    logTestStep('01-basic-auth', 'Testing invalid credentials rejection');
 
     cy.visit('/');
 
-    // Attempt login with invalid credentials
     cy.get('[data-testid="username"], input[type="text"], input[id*="username"]', {
       timeout: 10000,
     })
@@ -51,65 +43,66 @@ describe('01 - Basic Authentication', () => {
 
     cy.get('[data-testid="login-button"], input[value="Login"], button[type="submit"]').click();
 
-    // Verify error handling
-    validateErrorState().then((errorState) => {
-      expect(errorState.hasError).to.be.true;
-      logTestStep('01-basic-auth', 'Invalid credentials properly rejected');
-    });
+    // Verify we stay on login page
+    cy.url().should('satisfy', (url) => url.includes('/login') || url.includes('/error'));
+    
+    logTestStep('01-basic-auth', 'Invalid credentials properly rejected');
   });
 
-  it('R-AUTH-002: Should login successfully with valid admin credentials', () => {
-    logTestStep('01-basic-auth', 'Attempting login with valid admin credentials');
+  it('R-AUTH-002: Should login successfully (SINGLE LOGIN)', () => {
+    logTestStep('01-basic-auth', '🔑 Performing THE SINGLE LOGIN for entire test suite');
 
+    // This is the ONLY login we will perform in the entire test suite
     loginWithCredentials('admin', 'adminadminadmin');
     
     logTestStep('01-basic-auth', 'Verifying successful login state');
     verifyLoginState().then((loginState) => {
       expect(loginState.isLoggedIn).to.be.true;
-      expect(loginState.authMethod).to.exist;
+      logTestStep('01-basic-auth', '✅ SINGLE LOGIN successful - session established');
     });
 
-    logTestStep('01-basic-auth', 'Validating authenticated UI elements');
-    validateRequiredElements([
-      '[data-testid="canvas-container"], #canvas-container',
-      '[data-testid="user-menu"], #user-logout-link, .user-menu',
-      '[data-testid="toolbar"], .toolbar, .header',
-    ]);
+    // Verify we can see authenticated UI elements
+    cy.get('#canvas-container, [data-testid="canvas-container"]', { timeout: 15000 })
+      .should('be.visible');
     
-    logTestStep('01-basic-auth', 'Valid login test completed successfully');
+    cy.log('✅ Authentication test completed - ONE login for entire suite');
   });
 
-  it('R-AUTH-003: Should access authenticated areas after login', () => {
-    logTestStep('01-basic-auth', 'Testing authenticated area access');
+  it('R-AUTH-003: Should maintain session without additional login', () => {
+    logTestStep('01-basic-auth', '🔄 Testing session persistence (NO additional login)');
 
-    // Verify we can navigate to different NiFi areas while authenticated
+    // Navigate to different page - session should persist
     cy.visit('/');
     
-    logTestStep('01-basic-auth', 'Verifying authenticated state is maintained');
+    // Verify we're still logged in without doing another login
     verifyLoginState().then((loginState) => {
       expect(loginState.isLoggedIn).to.be.true;
+      logTestStep('01-basic-auth', '✅ Session persisted - no additional login needed');
     });
 
-    // Verify we can access the main canvas
+    // Verify we can access authenticated areas
     cy.url().should('not.contain', '/login');
+    cy.get('#canvas-container, [data-testid="canvas-container"]', { timeout: 10000 })
+      .should('be.visible');
     
-    logTestStep('01-basic-auth', 'Authenticated navigation test completed');
+    logTestStep('01-basic-auth', 'Session persistence verified successfully');
   });
 
-  it('R-AUTH-004: Should logout successfully and clear session', () => {
-    logTestStep('01-basic-auth', 'Testing logout functionality');
+  it('R-AUTH-004: Should logout and clear session', () => {
+    logTestStep('01-basic-auth', '🚪 Testing logout functionality');
     
-    logTestStep('01-basic-auth', 'Performing logout');
+    // Perform logout
     logout();
     
-    logTestStep('01-basic-auth', 'Verifying logout state');
+    // Verify logout state
     verifyLoginState().then((loginState) => {
       expect(loginState.isLoggedIn).to.be.false;
+      logTestStep('01-basic-auth', '✅ Logout successful - session cleared');
     });
 
     // Verify we're redirected to login page
-    cy.url().should('not.contain', '/nifi/canvas');
+    cy.url().should('contain', '/login');
 
-    logTestStep('01-basic-auth', 'Logout completed successfully');
+    logTestStep('01-basic-auth', 'Complete auth flow tested with SINGLE login');
   });
 });

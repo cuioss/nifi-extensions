@@ -405,7 +405,7 @@ export function setupGlobalErrorMonitoring(options = {}) {
 export function logTestStep(testName, stepDescription) {
   const timestamp = new Date().toISOString();
   cy.log(`📝 [${testName}] ${timestamp}: ${stepDescription}`);
-  
+
   // Also log to console for debugging
   cy.task('log', `[${testName}] ${timestamp}: ${stepDescription}`);
 }
@@ -416,9 +416,9 @@ export function logTestStep(testName, stepDescription) {
  */
 export function captureDebugInfo(testName) {
   cy.log(`🔍 Capturing debug info for: ${testName}`);
-  
+
   // Capture console logs
-  cy.window().then((win) => {
+  cy.window().then((_win) => {
     // Get any console errors from browser
     cy.task('log', `Debug info captured for ${testName} at ${new Date().toISOString()}`);
   });
@@ -439,10 +439,10 @@ export function trackTestFailure(testName, errorMessage, options = {}) {
     url: options.url || '',
     screenshot: options.screenshot || false,
   };
-  
+
   cy.log(`❌ Test failure tracked: ${testName} - ${errorMessage}`);
   cy.task('log', `FAILURE: ${JSON.stringify(failureInfo, null, 2)}`);
-  
+
   // Optionally take screenshot
   if (options.screenshot !== false) {
     cy.screenshot(`failure-${testName}-${Date.now()}`);

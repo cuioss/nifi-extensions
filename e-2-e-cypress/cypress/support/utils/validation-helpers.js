@@ -427,13 +427,15 @@ export function validateRequiredElements(selectors, options = {}) {
     const selectorList = selector.split(',').map((s) => s.trim());
 
     // Check if any of the selectors match
-    let found = false;
+    let _found = false;
     selectorList.forEach((singleSelector) => {
       try {
-        cy.get(singleSelector, { timeout }).should('exist').then(() => {
-          found = true;
-          cy.log(`✅ Found element: ${singleSelector}`);
-        });
+        cy.get(singleSelector, { timeout })
+          .should('exist')
+          .then(() => {
+            _found = true;
+            cy.log(`✅ Found element: ${singleSelector}`);
+          });
       } catch (e) {
         // Continue to next selector
       }
@@ -456,7 +458,8 @@ export function validateErrorState(options = {}) {
 
   return cy.get('body', { timeout }).then(($body) => {
     // Check for various error indicators
-    const hasErrorMessage = $body.find('.error, .alert-danger, .error-message, .flash.error').length > 0;
+    const hasErrorMessage =
+      $body.find('.error, .alert-danger, .error-message, .flash.error').length > 0;
     const hasLoginError = $body.find('.login-error, .authentication-error').length > 0;
     const isLoginPage = $body.find('input[type="password"], .login-form').length > 0;
 
