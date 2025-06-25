@@ -34,23 +34,19 @@ Cypress.on('uncaught:exception', (err) => {
   return !shouldIgnore;
 });
 
-// Global fail-fast configuration
+// Global fail-fast configuration is handled by cypress.config.js
+// Timeouts, retries, and exit behavior are set there
+
 beforeEach(() => {
   // Set shorter timeout for individual commands within tests
   Cypress.config('defaultCommandTimeout', 10000);
 
   // Fail fast on viewport issues
   cy.viewport(1280, 720);
-
-  // Start test timer for fail-fast behavior
-  cy.startTestTimer();
 });
 
-// After each test, verify and fail fast on console issues
+// After each test, save logs and verify no console issues
 afterEach(() => {
-  // End test timer
-  cy.endTestTimer();
-
   // Save browser logs for persistent storage (always, regardless of test outcome)
   cy.saveBrowserLogs();
 

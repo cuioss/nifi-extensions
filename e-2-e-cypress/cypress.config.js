@@ -39,9 +39,8 @@ module.exports = defineConfig({
     screenshotOnRunFailure: true,
     video: process.env.CYPRESS_VIDEO === 'true', // Enable video recording via environment variable
     setupNodeEvents(on, config) {
-      // Import and setup fail-fast plugin
-      const failFastPlugin = require('./cypress/plugins/fail-fast');
-      config = failFastPlugin(on, config);
+      // Fail-fast behavior is implemented via cypress.config.js settings above
+      // No additional plugins needed
       
       // Handle browser launch arguments to fix certificate warnings
       on('before:browser:launch', (browser, launchOptions) => {

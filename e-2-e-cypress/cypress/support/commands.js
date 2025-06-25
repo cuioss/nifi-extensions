@@ -5,12 +5,7 @@
 
 // Import all command files to ensure they're registered
 
-// Fail-fast commands
-import './commands/fail-fast/timeout';
-
-// Fail-fast navigation and processor commands
-import './commands/navigation/fail-fast-navigation';
-import './commands/processor/fail-fast-processor';
+// Note: Fail-fast behavior is implemented via cypress.config.js settings
 
 // Authentication commands
 import './commands/auth/login';
