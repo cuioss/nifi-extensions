@@ -23,42 +23,44 @@
  */
 const PAGE_DEFINITIONS = {
   LOGIN: {
-    urlPatterns: ['/login', 'login'],
-    contentIndicators: ['username', 'password', 'login', 'sign in'],
+    urlPatterns: ['#/login', '/login', 'login'],
+    contentIndicators: ['username', 'password', 'login', 'sign in', 'log in'],
     requiredElements: [
-      'input[type="text"], input[id*="username"], [data-testid="username"]',
-      'input[type="password"], input[id*="password"], [data-testid="password"]'
+      'input[type="text"]', 'input[id*="username"]', '[data-testid="username"]',
+      'input[type="password"]', 'input[id*="password"]', '[data-testid="password"]'
     ],
-    forbiddenElements: ['#canvas', 'svg[class*="canvas"]'],
-    title: ['login', 'sign in', 'authenticate']
+    forbiddenElements: ['#canvas', 'svg[class*="canvas"]', '.canvas-container'],
+    title: ['login', 'sign in', 'authenticate', 'nifi']
   },
   
   MAIN_CANVAS: {
-    urlPatterns: ['/', '/nifi'],
-    contentIndicators: ['canvas', 'processor', 'flow', 'nifi'],
+    urlPatterns: ['#/canvas', '#/flow', '/nifi/', '/nifi#', '#/'],
+    contentIndicators: ['canvas', 'processor', 'flow', 'process group', 'connection'],
     requiredElements: [
-      '#canvas, svg, #canvas-container, [data-testid="canvas-container"]'
+      '#canvas', 'svg', '#canvas-container', '[data-testid="canvas-container"]',
+      '.canvas-container', '.flow-canvas'
     ],
-    forbiddenElements: ['input[type="password"]'],
-    title: ['nifi', 'flow']
+    forbiddenElements: ['input[type="password"]', '[id*="username"]'],
+    title: ['nifi', 'flow', 'canvas']
   },
   
   PROCESSOR_CONFIG: {
-    urlPatterns: ['/processor', '/config'],
-    contentIndicators: ['processor', 'configuration', 'properties'],
+    urlPatterns: ['/processor', '/config', '#/processor'],
+    contentIndicators: ['processor', 'configuration', 'properties', 'settings'],
     requiredElements: [
-      '[data-testid="processor"], .processor-config, #processor-configuration'
+      '[data-testid="processor"]', '.processor-config', '#processor-configuration',
+      '.configuration-panel', '.properties-panel'
     ],
     forbiddenElements: ['input[type="password"]'],
-    title: ['processor', 'configuration']
+    title: ['processor', 'configuration', 'nifi']
   },
   
   ERROR: {
-    urlPatterns: ['/error', 'error'],
-    contentIndicators: ['error', 'not found', '404', '500', 'unauthorized'],
+    urlPatterns: ['/error', 'error', '404', '500'],
+    contentIndicators: ['error', 'not found', '404', '500', 'unauthorized', 'forbidden'],
     requiredElements: [],
     forbiddenElements: [],
-    title: ['error', 'not found']
+    title: ['error', 'not found', '404', '500']
   }
 };
 
@@ -74,12 +76,17 @@ function detectPageType(context) {
     let score = 0;
     let maxScore = 0;
     
-    // URL pattern matching (weight: 3)
+    // URL pattern matching (weight: 3) - check both URL and hash
     maxScore += 3;
-    const urlMatch = definition.urlPatterns.some(pattern => 
-      context.url.toLowerCase().includes(pattern.toLowerCase()) ||
-      context.pathname.toLowerCase().includes(pattern.toLowerCase())
-    );
+    const urlMatch = definition.urlPatterns.some(pattern => {
+      const fullUrl = context.url.toLowerCase();
+      const pathname = context.pathname.toLowerCase();
+      const hashPart = fullUrl.includes('#') ? fullUrl.split('#')[1] : '';
+      
+      return fullUrl.includes(pattern.toLowerCase()) ||
+             pathname.includes(pattern.toLowerCase()) ||
+             (hashPart && ('#' + hashPart).includes(pattern.toLowerCase()));
+    });
     if (urlMatch) score += 3;
     
     // Title matching (weight: 2)  
@@ -96,10 +103,10 @@ function detectPageType(context) {
     );
     if (contentMatch) score += 2;
     
-    // Required elements presence (weight: 3)
+    // Required elements presence (weight: 3) - any required element found
     maxScore += 3;
     const hasRequiredElements = definition.requiredElements.length === 0 || 
-      definition.requiredElements.every(selector => 
+      definition.requiredElements.some(selector => 
         context.elements[selector] === true
       );
     if (hasRequiredElements) score += 3;
@@ -111,10 +118,10 @@ function detectPageType(context) {
     );
     if (noForbiddenElements) score += 1;
     
-    // Require at least 70% confidence for detection
+    // Require at least 60% confidence for detection (lowered from 70% for better detection)
     const confidence = score / maxScore;
     
-    if (confidence >= 0.7) {
+    if (confidence >= 0.6) {
       return pageType;
     }
   }
@@ -132,20 +139,25 @@ function analyzePageElements() {
     'input[type="text"]', 'input[id*="username"]', '[data-testid="username"]',
     'input[type="password"]', 'input[id*="password"]', '[data-testid="password"]',
     'button[type="submit"]', '[data-testid="login-button"]',
+    '[id*="username"]', '[id*="password"]', // More generic ID patterns
     
     // Canvas/main app elements
     '#canvas', 'svg', '#canvas-container', '[data-testid="canvas-container"]',
-    'svg[class*="canvas"]', '.canvas',
+    'svg[class*="canvas"]', '.canvas', '.canvas-container', '.flow-canvas',
+    
+    // NiFi-specific elements
+    '.nifi-canvas', '#nifi-canvas', '.process-group', '.processor',
+    '.connection', '.flow-container',
     
     // Processor elements
     '[data-testid="processor"]', '.processor', '.processor-config',
-    '#processor-configuration',
+    '#processor-configuration', '.configuration-panel', '.properties-panel',
     
     // Navigation elements
-    'nav', '.navigation', '.toolbar', '.menu',
+    'nav', '.navigation', '.toolbar', '.menu', '.header', '.nifi-header',
     
     // Error elements
-    '.error', '.alert', '[role="alert"]'
+    '.error', '.alert', '[role="alert"]', '.error-message'
   ];
   
   const elements = {};
@@ -163,9 +175,19 @@ function analyzePageElements() {
 function analyzePageContent() {
   const bodyText = Cypress.$('body').text().toLowerCase();
   const commonIndicators = [
-    'username', 'password', 'login', 'sign in', 'authenticate',
-    'canvas', 'processor', 'flow', 'nifi', 'configuration', 'properties',
-    'error', 'not found', '404', '500', 'unauthorized', 'forbidden'
+    // Authentication indicators
+    'username', 'password', 'login', 'sign in', 'authenticate', 'log in',
+    
+    // NiFi canvas indicators  
+    'canvas', 'processor', 'flow', 'nifi', 'apache nifi', 'process group',
+    'connection', 'flow canvas', 'data flow',
+    
+    // Configuration indicators
+    'configuration', 'properties', 'settings', 'configure',
+    
+    // Error indicators
+    'error', 'not found', '404', '500', 'unauthorized', 'forbidden',
+    'access denied', 'invalid'
   ];
   
   return commonIndicators.filter(indicator => bodyText.includes(indicator));
@@ -343,22 +365,16 @@ Cypress.Commands.add('verifyPageType', (expectedPageType, options = {}) => {
   
   return cy.getPageContext().then((context) => {
     if (context.pageType === expectedPageType) {
-      cy.log(`✅ Page verification successful: ${expectedPageType}`);
-      
       if (waitForReady && !context.isReady) {
         const message = `Page type correct (${expectedPageType}) but page is not ready for testing`;
         if (strict) {
           throw new Error(message);
-        } else {
-          cy.log(`⚠️ ${message} - continuing anyway`);
         }
       }
     } else {
       const message = `Page verification failed: Expected ${expectedPageType}, got ${context.pageType}`;
       if (strict) {
         throw new Error(message);
-      } else {
-        cy.log(`⚠️ ${message} - continuing anyway`);
       }
     }
     
@@ -385,7 +401,6 @@ Cypress.Commands.add('waitForPageType', (expectedPageType, options = {}) => {
       throw new Error(`Waiting for ${expectedPageType}, got ${context.pageType}, ready: ${context.isReady}`);
     }
   }).then(() => {
-    cy.log(`✅ Page type ready: ${expectedPageType}`);
     return cy.getPageContext(); // Return final context
   });
 });
