@@ -3,43 +3,17 @@
 // which will be processed before the test files
 // ***********************************************
 
-// Import all command files to ensure they're registered
+// Current implementation uses direct Cypress commands in tests
+// All custom commands have been archived to cypress/support/archived/commands/
+// 
+// The active test suite (01-basic-auth-and-session.cy.js and 02-processor-availability.cy.js)
+// uses only built-in Cypress commands like:
+// - cy.visit(), cy.get(), cy.log(), cy.url(), cy.clearCookies(), etc.
+//
+// Console error tracking commands (saveBrowserLogs, verifyNoConsoleErrors, verifyNoUnexpectedWarnings)
+// are defined in console-error-tracking.js and imported via e2e.js
+//
+// If additional custom commands are needed for future tests, they can be restored from
+// the archived directory and imported here.
 
-// Note: Fail-fast behavior is implemented via cypress.config.js settings
-
-// Authentication commands
-import './commands/auth/login';
-import './commands/auth/simplified-login';
-import './commands/auth/enhanced-auth';
-
-// Navigation commands
-import './commands/navigation/navigation';
-
-// Processor commands - use clean implementation
-import './commands/processor/processor-clean';
-import './commands/processor/processor-add-alternatives';
-import './commands/processor/processor-testing-strategy';
-import './commands/processor/processor-config';
-import './commands/processor/processor-utils';
-import './commands/processor/enhanced-processor';
-import './commands/processor/missing-commands';
-import './commands/processor/task4-commands';
-import './commands/processor/task4-ui-commands';
-import './commands/processor/task4-additional-commands';
-
-// Validation commands
-import './commands/validation/validation';
-import './commands/validation/jwt-token-commands';
-import './commands/validation/jwks-commands';
-import './commands/validation/error-handling-commands';
-import './commands/validation/multi-issuer-commands';
-
-// UI commands
-import './commands/ui/i18n';
-import './commands/ui/browser';
-import './commands/ui/accessibility';
-import './commands/ui/visual';
-import './commands/ui/advanced-navigation-commands';
-
-// Advanced settings commands
-import './commands/processor/advanced-settings-commands';
+// No custom command imports needed for current minimal test suite

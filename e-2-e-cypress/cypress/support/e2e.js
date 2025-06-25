@@ -9,10 +9,7 @@
 // Import commands.js using ES2015 syntax:
 import './commands';
 
-// Import processor deployment commands
-import './commands/processor/deployment-commands';
-
-// Import console error tracking
+// Console error tracking provides saveBrowserLogs, verifyNoConsoleErrors, verifyNoUnexpectedWarnings
 import './console-error-tracking';
 
 // Set uncaught exception behavior with fail-fast
