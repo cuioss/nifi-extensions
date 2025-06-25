@@ -35,7 +35,7 @@ export function validateErrorState() {
 /**
  * Validate required UI elements are present
  * @param {Array} selectors - Array of CSS selectors to check
- * @param timeout
+ * @param {number} timeout - Maximum time to wait for elements
  * @returns {Cypress.Chainable}
  */
 export function validateRequiredElements(selectors, timeout = 10000) {

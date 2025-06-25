@@ -10,21 +10,23 @@
  */
 Cypress.Commands.add('verifyProcessorAvailable', (processorName) => {
   cy.log(`🔍 Verifying processor availability: ${processorName}`);
-  
+
   cy.startTestTimer(`verify-processor-${processorName}`);
-  
+
   // First, check if processor already exists on canvas
   cy.get('body', { timeout: 5000 }).then(($body) => {
-    const existingProcessor = $body.find(`[title*="${processorName}"], *:contains("${processorName}")`);
-    
+    const existingProcessor = $body.find(
+      `[title*="${processorName}"], *:contains("${processorName}")`
+    );
+
     if (existingProcessor.length > 0) {
       cy.log(`✅ Processor ${processorName} already available on canvas`);
       cy.endTestTimer(`verify-processor-${processorName}`);
       return;
     }
-    
+
     cy.log(`⚠️ Processor ${processorName} not found on canvas - attempting to add`);
-    
+
     // Try to add the processor with fail-fast approach
     cy.addProcessorFast(processorName).then((success) => {
       if (success) {
@@ -44,18 +46,21 @@ Cypress.Commands.add('verifyProcessorAvailable', (processorName) => {
  */
 Cypress.Commands.add('addProcessorFast', (processorName) => {
   cy.log(`🚀 Fast processor addition: ${processorName}`);
-  
+
   return cy.get('body').then(($body) => {
     // Look for canvas area to double-click
-    const canvasElements = $body.find('#canvas, #canvas-container, .canvas-container, .canvas, svg, .flow-canvas');
-    
+    const canvasElements = $body.find(
+      '#canvas, #canvas-container, .canvas-container, .canvas, svg, .flow-canvas'
+    );
+
     if (canvasElements.length === 0) {
       cy.log('❌ No canvas element found for processor addition');
       return cy.wrap(false);
     }
-    
+
     // Double-click on canvas to open processor dialog
-    return cy.wrap(canvasElements.first())
+    return cy
+      .wrap(canvasElements.first())
       .dblclick({ timeout: 5000, force: true })
       .then(() => {
         // Wait for processor selection dialog with tight timeout
@@ -65,19 +70,19 @@ Cypress.Commands.add('addProcessorFast', (processorName) => {
           '.add-processor-dialog',
           '*:contains("Add Processor")',
           'mat-dialog-container',
-          '.dialog'
+          '.dialog',
         ];
-        
+
         return cy.get('body', { timeout: 8000 }).then(($checkBody) => {
           const dialog = $checkBody.find(dialogSelectors.join(', '));
-          
+
           if (dialog.length === 0) {
             cy.log('❌ Processor dialog did not appear');
             return cy.wrap(false);
           }
-          
+
           cy.log('✅ Processor dialog opened');
-          
+
           // Search for the specific processor
           return cy.searchAndSelectProcessor(processorName);
         });
@@ -92,22 +97,23 @@ Cypress.Commands.add('addProcessorFast', (processorName) => {
  */
 Cypress.Commands.add('searchAndSelectProcessor', (processorName) => {
   cy.log(`🔍 Searching for processor: ${processorName}`);
-  
+
   // Look for search input
   const searchSelectors = [
     'input[placeholder*="Search"]',
     'input[placeholder*="search"]',
     'input[type="search"]',
     '.search-input',
-    '[data-testid="search"]'
+    '[data-testid="search"]',
   ];
-  
+
   return cy.get('body').then(($body) => {
     const searchInput = $body.find(searchSelectors.join(', '));
-    
+
     if (searchInput.length > 0) {
       // Use search functionality
-      return cy.wrap(searchInput.first())
+      return cy
+        .wrap(searchInput.first())
         .clear({ timeout: 3000 })
         .type(processorName, { timeout: 3000 })
         .then(() => {
@@ -128,7 +134,7 @@ Cypress.Commands.add('searchAndSelectProcessor', (processorName) => {
  */
 Cypress.Commands.add('selectProcessorFromResults', (processorName) => {
   cy.log(`🎯 Selecting processor from results: ${processorName}`);
-  
+
   // Look for processor in various possible formats
   const processorSelectors = [
     `*:contains("${processorName}")`,
@@ -137,19 +143,20 @@ Cypress.Commands.add('selectProcessorFromResults', (processorName) => {
     `.processor-type:contains("${processorName}")`,
     `li:contains("${processorName}")`,
     `tr:contains("${processorName}")`,
-    `.list-item:contains("${processorName}")`
+    `.list-item:contains("${processorName}")`,
   ];
-  
+
   return cy.get('body', { timeout: 8000 }).then(($body) => {
     const processorElement = $body.find(processorSelectors.join(', '));
-    
+
     if (processorElement.length === 0) {
       cy.log(`❌ Processor ${processorName} not found in results`);
       return cy.wrap(false);
     }
-    
+
     // Click on the processor
-    return cy.wrap(processorElement.first())
+    return cy
+      .wrap(processorElement.first())
       .click({ timeout: 3000, force: true })
       .then(() => {
         // Look for and click Add/OK button
@@ -170,22 +177,23 @@ Cypress.Commands.add('clickAddProcessorButton', () => {
     '[data-testid="add-button"]',
     '[data-testid="ok-button"]',
     '.add-button',
-    '.ok-button'
+    '.ok-button',
   ];
-  
+
   return cy.get('body', { timeout: 5000 }).then(($body) => {
     const addButton = $body.find(buttonSelectors.join(', '));
-    
+
     if (addButton.length === 0) {
       cy.log('❌ Add button not found');
       return cy.wrap(false);
     }
-    
-    return cy.wrap(addButton.first())
+
+    return cy
+      .wrap(addButton.first())
       .click({ timeout: 3000, force: true })
       .then(() => {
         cy.log('✅ Processor addition confirmed');
-        
+
         // Wait a moment for processor to appear on canvas
         cy.wait(2000);
         return cy.wrap(true);
@@ -199,9 +207,9 @@ Cypress.Commands.add('clickAddProcessorButton', () => {
  */
 Cypress.Commands.add('verifyProcessorsAccessible', () => {
   cy.log('🔍 Quick verification of processor accessibility');
-  
+
   cy.startTestTimer('verify-processors-accessible');
-  
+
   // Check if we can access processor-related UI elements
   cy.get('body', { timeout: 8000 }).then(($body) => {
     const indicators = [
@@ -210,11 +218,11 @@ Cypress.Commands.add('verifyProcessorsAccessible', () => {
       $body.find('.canvas-container').length > 0,
       $body.find('.canvas').length > 0,
       $body.find('svg').length > 0,
-      $body.find('[role="main"]').length > 0
+      $body.find('[role="main"]').length > 0,
     ];
-    
-    const hasCanvasIndicators = indicators.some(indicator => indicator);
-    
+
+    const hasCanvasIndicators = indicators.some((indicator) => indicator);
+
     if (hasCanvasIndicators) {
       cy.log('✅ Processor canvas is accessible');
       cy.endTestTimer('verify-processors-accessible');

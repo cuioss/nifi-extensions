@@ -10,10 +10,10 @@
  */
 export function loginWithCredentials(username, password) {
   cy.log(`🔑 Logging in with username: ${username}`);
-  
+
   // Visit the base URL (should redirect to login if not authenticated)
   cy.visit('/');
-  
+
   // Wait for login form to be visible and perform login
   cy.get('[data-testid="username"], input[type="text"], input[id*="username"]', {
     timeout: 10000,
@@ -42,7 +42,7 @@ export function loginWithCredentials(username, password) {
 export function verifyLoginState() {
   return cy.url().then((url) => {
     const isLoggedIn = !url.includes('/login') && !url.includes('/error');
-    
+
     const loginState = {
       isLoggedIn,
       authMethod: isLoggedIn ? 'basic' : null,
@@ -59,7 +59,7 @@ export function verifyLoginState() {
  */
 export function logout() {
   cy.log('🚪 Logging out');
-  
+
   // Look for logout link/button with various selectors
   cy.get('[data-testid="user-menu"], #user-logout-link, .user-menu', { timeout: 10000 })
     .should('be.visible')
@@ -76,11 +76,11 @@ export function logout() {
  */
 export function clearAllAuthenticationData() {
   cy.log('🧹 Clearing all authentication data');
-  
+
   // Clear localStorage, sessionStorage, and cookies
   cy.clearLocalStorage();
   cy.clearCookies();
-  
+
   // Clear session storage
   cy.window().then((win) => {
     win.sessionStorage.clear();

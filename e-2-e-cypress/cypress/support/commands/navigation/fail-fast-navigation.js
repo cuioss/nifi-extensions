@@ -9,16 +9,16 @@
  */
 Cypress.Commands.add('navigateToMainPage', () => {
   cy.log('🚀 Navigating to main NiFi page (fail-fast mode)');
-  
+
   // Start timer for fail-fast
   cy.startTestTimer('navigate-to-main');
-  
+
   // Visit the main page - should use existing session
   cy.visit('/', { timeout: 8000 });
-  
+
   // Verify we're not redirected to login (fail-fast)
   cy.url({ timeout: 5000 }).should('not.contain', '/login');
-  
+
   // Wait for canvas container with aggressive timeout
   const canvasSelectors = [
     '#canvas',
@@ -27,9 +27,9 @@ Cypress.Commands.add('navigateToMainPage', () => {
     '.canvas-container',
     '.canvas',
     'svg',
-    '.flow-canvas'
+    '.flow-canvas',
   ];
-  
+
   cy.get(canvasSelectors.join(', '), { timeout: 10000 })
     .should('be.visible')
     .then(() => {
@@ -43,9 +43,9 @@ Cypress.Commands.add('navigateToMainPage', () => {
  */
 Cypress.Commands.add('navigateToCanvasFast', () => {
   cy.log('🎯 Fast navigation to canvas');
-  
+
   cy.startTestTimer('navigate-to-canvas');
-  
+
   // Try multiple navigation strategies with fail-fast
   cy.get('body').then(($body) => {
     if ($body.find('#canvas-container').length > 0) {
@@ -53,10 +53,10 @@ Cypress.Commands.add('navigateToCanvasFast', () => {
       cy.endTestTimer('navigate-to-canvas');
       return;
     }
-    
+
     // Navigate to NiFi main page
     cy.visit('/nifi', { timeout: 8000 });
-    
+
     // Wait for any canvas indicator with tight timeout
     const canvasSelectors = [
       '#canvas',
@@ -65,9 +65,9 @@ Cypress.Commands.add('navigateToCanvasFast', () => {
       '.canvas-container',
       '.canvas',
       'svg',
-      '.flow-canvas'
+      '.flow-canvas',
     ];
-    
+
     cy.get(canvasSelectors.join(', '), { timeout: 10000 })
       .should('be.visible')
       .then(() => {
