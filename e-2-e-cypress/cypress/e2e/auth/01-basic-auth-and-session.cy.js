@@ -9,10 +9,7 @@ import {
   logout,
   clearAllAuthenticationData,
 } from '../../support/utils/auth-helpers.js';
-import {
-  logTestStep,
-  captureDebugInfo,
-} from '../../support/utils/error-tracking.js';
+import { logTestStep, captureDebugInfo } from '../../support/utils/error-tracking.js';
 
 describe('01 - Basic Authentication - Single Login Flow', () => {
   before(() => {
@@ -45,7 +42,7 @@ describe('01 - Basic Authentication - Single Login Flow', () => {
 
     // Verify we stay on login page
     cy.url().should('satisfy', (url) => url.includes('/login') || url.includes('/error'));
-    
+
     logTestStep('01-basic-auth', 'Invalid credentials properly rejected');
   });
 
@@ -54,7 +51,7 @@ describe('01 - Basic Authentication - Single Login Flow', () => {
 
     // This is the ONLY login we will perform in the entire test suite
     loginWithCredentials('admin', 'adminadminadmin');
-    
+
     logTestStep('01-basic-auth', 'Verifying successful login state');
     verifyLoginState().then((loginState) => {
       expect(loginState.isLoggedIn).to.be.true;
@@ -62,9 +59,10 @@ describe('01 - Basic Authentication - Single Login Flow', () => {
     });
 
     // Verify we can see authenticated UI elements
-    cy.get('#canvas-container, [data-testid="canvas-container"]', { timeout: 15000 })
-      .should('be.visible');
-    
+    cy.get('#canvas-container, [data-testid="canvas-container"]', { timeout: 15000 }).should(
+      'be.visible'
+    );
+
     cy.log('✅ Authentication test completed - ONE login for entire suite');
   });
 
@@ -73,7 +71,7 @@ describe('01 - Basic Authentication - Single Login Flow', () => {
 
     // Navigate to different page - session should persist
     cy.visit('/');
-    
+
     // Verify we're still logged in without doing another login
     verifyLoginState().then((loginState) => {
       expect(loginState.isLoggedIn).to.be.true;
@@ -82,18 +80,19 @@ describe('01 - Basic Authentication - Single Login Flow', () => {
 
     // Verify we can access authenticated areas
     cy.url().should('not.contain', '/login');
-    cy.get('#canvas-container, [data-testid="canvas-container"]', { timeout: 10000 })
-      .should('be.visible');
-    
+    cy.get('#canvas-container, [data-testid="canvas-container"]', { timeout: 10000 }).should(
+      'be.visible'
+    );
+
     logTestStep('01-basic-auth', 'Session persistence verified successfully');
   });
 
   it('R-AUTH-004: Should logout and clear session', () => {
     logTestStep('01-basic-auth', '🚪 Testing logout functionality');
-    
+
     // Perform logout
     logout();
-    
+
     // Verify logout state
     verifyLoginState().then((loginState) => {
       expect(loginState.isLoggedIn).to.be.false;
