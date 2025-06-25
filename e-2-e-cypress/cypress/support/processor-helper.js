@@ -476,6 +476,7 @@ function tryOpenAddProcessorDialog(timeout) {
       const elements = $body.find(selector);
       if (elements.length > 0) {
         return cy.get(selector)
+          .first()  // Only target the first element to avoid multiple element error
           .rightclick(400, 300)
           .then(() => {
             // Look for context menu with "Add Processor" option
@@ -491,6 +492,7 @@ function tryOpenAddProcessorDialog(timeout) {
               // Strategy 3: Try double-click on canvas  
               cy.log('🖱️ Trying double-click on canvas approach');
               return cy.get(selector)
+                .first()  // Only target the first element
                 .dblclick(400, 300)
                 .then(() => {
                   return cy.get(PROCESSOR_SELECTORS.ADD_PROCESSOR_DIALOG, { timeout: 2000 });
