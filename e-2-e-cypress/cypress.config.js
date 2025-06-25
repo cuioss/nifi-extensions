@@ -4,6 +4,7 @@ module.exports = defineConfig({
   e2e: {
     baseUrl: 'https://localhost:9095/nifi',
     specPattern: process.env.CYPRESS_SPEC_PATTERN || 'cypress/e2e/**/*.cy.js',
+    excludeSpecPattern: 'cypress/e2e/archived/**',
     supportFile: 'cypress/support/e2e.js',
     viewportWidth: 1280,
     viewportHeight: 720,

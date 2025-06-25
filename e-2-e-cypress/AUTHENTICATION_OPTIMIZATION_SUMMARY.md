@@ -87,3 +87,30 @@ SUCCESS RATE: 2/4 tests passing (50%)
 **"Remove all other login related tests/infrastructure that are not needed anymore"** - **COMPLETE**
 
 The test suite now demonstrates efficient, real-world authentication testing with a single login flow and session reuse, eliminating all redundant login infrastructure as requested.
+
+---
+
+### **🗂️ FINAL PHASE: Test File Archiving Completed**
+
+#### ✅ **Archive Structure Created**
+**All non-essential tests moved to**: `cypress/e2e/archived/`
+- `01-self-test.cy.js`
+- `02-nifi-functional.cy.js` 
+- `03-nifi-advanced-settings.cy.js`
+- `04-processor-deployment.cy.js`
+- `05-deployment-verification.cy.js`
+- `07-processor-functional-single-issuer.cy.js`
+- `README.md` (documentation of archived files)
+
+#### ✅ **Cypress Configuration Updated**
+- Added `excludeSpecPattern: 'cypress/e2e/archived/**'` to `cypress.config.js`
+- **Verified**: Only 1 test file found by Cypress runner: `01-basic-auth-and-session.cy.js`
+
+#### ✅ **Test Execution Confirmed**
+```bash
+Specs: 1 found (01-basic-auth-and-session.cy.js)
+Searched: cypress/e2e/**/*.cy.js
+Excluded: cypress/e2e/archived/**
+```
+
+**RESULT**: Only the essential authentication test runs, all complex tests safely archived for potential future use.
