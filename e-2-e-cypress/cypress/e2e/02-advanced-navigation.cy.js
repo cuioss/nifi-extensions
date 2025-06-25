@@ -1,10 +1,10 @@
 /**
- * @file 03 - Advanced Navigation and Page Verification 
+ * @file 02 - Advanced Navigation and Page Verification 
  * Demonstrates the comprehensive "Where Am I" pattern implementation
  * Tests the new navigation helpers and page verification commands
  */
 
-describe('03 - Advanced Navigation and Page Verification', () => {
+describe('02 - Advanced Navigation and Page Verification', () => {
   beforeEach(() => {
     cy.log('Setting up test with enhanced navigation helpers');
   });

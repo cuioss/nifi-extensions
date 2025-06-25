@@ -1,10 +1,10 @@
 /**
- * @file 02 - Processor Availability Verification
+ * @file 03 - Processor Availability Verification
  * Tests that JWT processors are available and accessible on the NiFi canvas
  * Each test is self-sufficient using cy.session() for stateful authentication
  */
 
-describe('02 - Processor Availability Verification', () => {
+describe('03 - Processor Availability Verification', () => {
   beforeEach(() => {
     // Each test is self-sufficient - login with cached session if needed
     cy.ensureNiFiReady();
