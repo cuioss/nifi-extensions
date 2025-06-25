@@ -22,34 +22,13 @@ import {
 } from '../../support/utils/error-tracking.js';
 
 describe('01 - Basic Authentication', () => {
-  beforeEach(() => {
-    logTestStep('01-basic-auth', 'Starting basic authentication test');
+  before(() => {
+    logTestStep('01-basic-auth', 'Starting authentication test suite');
     clearAllAuthenticationData();
   });
 
   afterEach(() => {
     captureDebugInfo('01-basic-auth');
-  });
-
-  it('R-AUTH-001: Should login successfully with valid admin credentials', () => {
-    logTestStep('01-basic-auth', 'Attempting login with valid admin credentials');
-
-    loginWithCredentials('admin', 'adminadminadmin');
-    
-    logTestStep('01-basic-auth', 'Verifying successful login state');
-    verifyLoginState().then((loginState) => {
-      expect(loginState.isLoggedIn).to.be.true;
-      expect(loginState.authMethod).to.exist;
-    });
-
-    logTestStep('01-basic-auth', 'Validating authenticated UI elements');
-    validateRequiredElements([
-      '[data-testid="canvas-container"], #canvas-container',
-      '[data-testid="user-menu"], #user-logout-link, .user-menu',
-      '[data-testid="toolbar"], .toolbar, .header',
-    ]);
-    
-    logTestStep('01-basic-auth', 'Valid login test completed successfully');
   });
 
   it('R-AUTH-001: Should handle invalid credentials gracefully', () => {
@@ -79,11 +58,46 @@ describe('01 - Basic Authentication', () => {
     });
   });
 
-  it('R-AUTH-002: Should logout successfully and clear session', () => {
-    logTestStep('01-basic-auth', 'Testing logout functionality');
+  it('R-AUTH-002: Should login successfully with valid admin credentials', () => {
+    logTestStep('01-basic-auth', 'Attempting login with valid admin credentials');
 
-    // First login
     loginWithCredentials('admin', 'adminadminadmin');
+    
+    logTestStep('01-basic-auth', 'Verifying successful login state');
+    verifyLoginState().then((loginState) => {
+      expect(loginState.isLoggedIn).to.be.true;
+      expect(loginState.authMethod).to.exist;
+    });
+
+    logTestStep('01-basic-auth', 'Validating authenticated UI elements');
+    validateRequiredElements([
+      '[data-testid="canvas-container"], #canvas-container',
+      '[data-testid="user-menu"], #user-logout-link, .user-menu',
+      '[data-testid="toolbar"], .toolbar, .header',
+    ]);
+    
+    logTestStep('01-basic-auth', 'Valid login test completed successfully');
+  });
+
+  it('R-AUTH-003: Should access authenticated areas after login', () => {
+    logTestStep('01-basic-auth', 'Testing authenticated area access');
+
+    // Verify we can navigate to different NiFi areas while authenticated
+    cy.visit('/');
+    
+    logTestStep('01-basic-auth', 'Verifying authenticated state is maintained');
+    verifyLoginState().then((loginState) => {
+      expect(loginState.isLoggedIn).to.be.true;
+    });
+
+    // Verify we can access the main canvas
+    cy.url().should('not.contain', '/login');
+    
+    logTestStep('01-basic-auth', 'Authenticated navigation test completed');
+  });
+
+  it('R-AUTH-004: Should logout successfully and clear session', () => {
+    logTestStep('01-basic-auth', 'Testing logout functionality');
     
     logTestStep('01-basic-auth', 'Performing logout');
     logout();
