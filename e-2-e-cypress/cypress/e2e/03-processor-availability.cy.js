@@ -1,76 +1,88 @@
 /**
- * @file 03 - Processor Availability Verification
- * Tests that JWT processors are available and accessible on the NiFi canvas
- * This test focuses on processor-specific functionality while leveraging navigation helpers
- * to avoid duplication of basic page/canvas verification logic.
+ * @file 03 - JWT Processor Availability Verification
+ * Tests that the two specific JWT processors are available and can be managed on the NiFi canvas
+ * - JWTTokenAuthenticator (Single Issuer)
+ * - MultiIssuerJWTTokenAuthenticator (Multi Issuer)
+ * 
+ * Each test is self-sufficient and uses the processor helper to interact with actual processors
  */
 
-describe('03 - Processor Availability Verification', () => {
+describe('03 - JWT Processor Availability Verification', () => {
   beforeEach(() => {
-    // Each test is self-sufficient - login with cached session if needed
+    // Each test is self-sufficient - login and ensure canvas is ready
     cy.ensureNiFiReady();
   });
 
-  it('R-PROC-001: Should verify canvas is ready for processor operations', () => {
-    cy.log('Testing canvas readiness for processor operations using navigation helpers');
+  it('R-PROC-001: Should verify JWT processor types are available in the system', () => {
+    cy.log('Testing availability of JWT processor types');
 
-    // Use page context to verify we're on the main canvas and ready
+    // Verify processor type constants are available
+    cy.getJWTProcessorTypes().then((types) => {
+      expect(types).to.have.property('SINGLE_ISSUER');
+      expect(types).to.have.property('MULTI_ISSUER');
+      
+      // Verify processor definitions are complete
+      expect(types.SINGLE_ISSUER).to.have.property('className');
+      expect(types.SINGLE_ISSUER).to.have.property('displayName');
+      expect(types.SINGLE_ISSUER.className).to.equal('de.cuioss.nifi.processors.auth.JWTTokenAuthenticator');
+      
+      expect(types.MULTI_ISSUER).to.have.property('className');
+      expect(types.MULTI_ISSUER).to.have.property('displayName');
+      expect(types.MULTI_ISSUER.className).to.equal('de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator');
+      
+      cy.log('✅ JWT processor types are properly defined');
+      cy.log(`Single Issuer: ${types.SINGLE_ISSUER.displayName}`);
+      cy.log(`Multi Issuer: ${types.MULTI_ISSUER.displayName}`);
+    });
+  });
+
+  it('R-PROC-002: Should verify canvas is ready for processor operations', () => {
+    cy.log('Testing canvas readiness for processor operations');
+
+    // Verify we're on the main canvas and ready for processor operations
     cy.getPageContext().then((context) => {
       expect(context.pageType).to.equal('MAIN_CANVAS');
       expect(context.isReady).to.be.true;
       expect(context.isAuthenticated).to.be.true;
       
-      cy.log(`✅ Canvas verified for processor operations (page: ${context.pageType})`);
-    });
-  });
-
-  it('R-PROC-002: Should verify canvas interaction capabilities', () => {
-    cy.log('Testing canvas interaction capabilities for processor addition');
-
-    // Verify we can interact with the canvas element
-    cy.get('#canvas, svg').first().should('exist').then(($canvas) => {
-      // Verify canvas is interactive by checking dimensions
-      const rect = $canvas[0].getBoundingClientRect();
-      expect(rect.width).to.be.greaterThan(0);
-      expect(rect.height).to.be.greaterThan(0);
-
-      cy.log(`✅ Canvas is interactive (${rect.width}x${rect.height})`);
-    });
-  });
-
-  it('R-PROC-003: Should verify NiFi processor environment capabilities', () => {
-    cy.log('Verifying NiFi processor environment using page context');
-
-    // Use page context to get comprehensive environment verification
-    cy.getPageContext().then((context) => {
-      // Verify this is a functioning NiFi processor environment
-      expect(context.isAuthenticated).to.be.true;
-      expect(context.pageType).to.equal('MAIN_CANVAS');
-      expect(context.isReady).to.be.true;
-      
-      // Verify canvas elements are available for processor operations
-      const hasCanvas = context.elements['#canvas'] || context.elements['svg'];
-      expect(hasCanvas).to.be.true;
-
-      cy.log('✅ NiFi processor environment verified and ready');
-    });
-  });
-
-  it('R-PROC-004: Should verify JWT processor types can be accessed', () => {
-    cy.log('Verifying access to JWT processor types');
-
-    // Since we're on the main canvas and authenticated, the environment supports processors
-    // This test leverages the fact that we've already verified canvas readiness above
-    cy.getPageContext().then((context) => {
-      // If we're authenticated and on main canvas, processor functionality is available
-      expect(context.isAuthenticated).to.be.true;
-      expect(context.pageType).to.equal('MAIN_CANVAS');
-      
-      // Canvas presence indicates processor capability
+      // Verify canvas elements are present for processor operations
       const hasCanvas = context.elements['#canvas'] || context.elements['svg'];
       expect(hasCanvas).to.be.true;
       
-      cy.log('✅ JWT processor types are accessible - canvas ready and authenticated');
+      cy.log('✅ Canvas is ready for processor operations');
     });
   });
+
+  it('R-PROC-003: Should verify no JWT processors exist initially', () => {
+    cy.log('Testing initial state - no JWT processors on canvas');
+
+    // Verify canvas starts clean
+    cy.getAllJWTProcessorsOnCanvas().then((processors) => {
+      expect(processors).to.have.length(0);
+      cy.log('✅ Canvas starts clean - no JWT processors found');
+    });
+  });
+
+  it('R-PROC-004: Should be able to search for processors (even if not found)', () => {
+    cy.log('Testing processor search functionality');
+
+    // Test that we can search for each processor type without errors
+    cy.findProcessorOnCanvas('SINGLE_ISSUER').then((processor) => {
+      // Should return null since we haven't added any processors yet
+      expect(processor).to.be.null;
+      cy.log('✅ Single issuer search completed (correctly returns null)');
+    });
+
+    cy.findProcessorOnCanvas('MULTI_ISSUER').then((processor) => {
+      // Should return null since we haven't added any processors yet  
+      expect(processor).to.be.null;
+      cy.log('✅ Multi issuer search completed (correctly returns null)');
+    });
+
+    cy.log('✅ Processor search functionality is working');
+  });
+
+  // Note: Processor addition/removal tests will be added once we verify 
+  // the basic functionality works and understand how NiFi's UI handles 
+  // processor addition in this specific environment
 });

@@ -9,6 +9,9 @@ import './auth-helper';
 // Import navigation helper with advanced "Where Am I" patterns
 import './navigation-helper';
 
+// Import processor helper for JWT processor management
+import './processor-helper';
+
 // Console error tracking commands (saveBrowserLogs, verifyNoConsoleErrors, verifyNoUnexpectedWarnings)
 // are defined in console-error-tracking.js and imported via e2e.js
 //
