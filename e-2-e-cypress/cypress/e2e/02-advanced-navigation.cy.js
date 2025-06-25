@@ -12,8 +12,8 @@ describe('02 - Advanced Navigation and Page Verification', () => {
   it('R-NAV-001: Should demonstrate comprehensive page context analysis', () => {
     cy.log('🔍 Testing comprehensive page context analysis');
 
-    // Start with a fresh login page visit  
-    cy.visit('/');
+    // Start with a fresh page visit using navigation helper
+    cy.navigateToPage('/');
 
     // Get page context without any assumptions
     cy.getPageContext().then((context) => {
@@ -37,8 +37,8 @@ describe('02 - Advanced Navigation and Page Verification', () => {
   it('R-NAV-002: Should navigate with verification and page type detection', () => {
     cy.log('🧭 Testing navigation with automatic page type detection');
 
-    // Navigate to main page using simple visit first
-    cy.visit('/');
+    // Navigate to main page using navigation helper
+    cy.navigateToPage('/');
 
     // Get page context and see what we actually detect
     cy.getPageContext().then((context) => {
@@ -160,8 +160,8 @@ describe('02 - Advanced Navigation and Page Verification', () => {
   it('R-NAV-006: Should demonstrate "Where Am I" content verification', () => {
     cy.log('🎯 Testing deep content verification beyond URL checks');
 
-    // Start by visiting the page and see what we actually get
-    cy.visit('/');
+    // Start by visiting the page using navigation helper
+    cy.navigateToPage('/');
     
     // Get comprehensive page context first
     cy.getPageContext().then((context) => {

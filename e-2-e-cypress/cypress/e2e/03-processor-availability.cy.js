@@ -18,12 +18,13 @@ describe('03 - Processor Availability Verification', () => {
       .should('exist')
       .and('be.visible');
 
-    // Get session context to verify everything is ready
-    cy.getSessionContext().then((context) => {
-      cy.log(`Canvas elements: Canvas: ${context.hasCanvas}, Container: ${context.hasCanvasContainer}`);
+    // Get page context to verify everything is ready
+    cy.getPageContext().then((context) => {
+      cy.log(`Canvas elements: Canvas: ${context.elements['#canvas']}, Container: ${context.elements['#canvas-container']}`);
       
       // Verify at least one canvas element exists
-      expect(context.hasCanvas || context.hasCanvasContainer).to.be.true;
+      const hasCanvas = context.elements['#canvas'] || context.elements['#canvas-container'] || context.elements['svg'];
+      expect(hasCanvas).to.be.true;
       expect(context.isReady).to.be.true;
 
       cy.log('✅ Canvas is accessible for processor operations');
@@ -36,13 +37,14 @@ describe('03 - Processor Availability Verification', () => {
     // Verify basic UI elements exist (more flexible approach)
     cy.get('body').should('exist');
 
-    // Get comprehensive session context (don't require specific canvas elements)
-    cy.getSessionContext().then((context) => {
+    // Get comprehensive page context (don't require specific canvas elements)
+    cy.getPageContext().then((context) => {
       // Debug logging
-      cy.log('Session context:', JSON.stringify(context, null, 2));
+      cy.log('Page context:', JSON.stringify(context, null, 2));
       
       // Just verify we're not on login page - that's enough for this test
       expect(context.url).to.not.contain('/login');
+      expect(context.pageType).to.not.equal('LOGIN');
       cy.log('✅ Processor-related UI capabilities detected - not on login page');
     });
   });
@@ -84,13 +86,15 @@ describe('03 - Processor Availability Verification', () => {
       expect(hasNiFiIndicators).to.be.true;
     });
 
-    // Use session context for comprehensive verification
-    cy.getSessionContext().then((context) => {
-      cy.log(`System State: Ready: ${context.isReady}, Canvas: ${context.hasCanvas}, Page: ${context.isNiFiPage}`);
+    // Use page context for comprehensive verification
+    cy.getPageContext().then((context) => {
+      cy.log(`System State: Ready: ${context.isReady}, Page Type: ${context.pageType}, Authenticated: ${context.isAuthenticated}`);
       
       // Verify this is a functioning NiFi instance
-      expect(context.isNiFiPage).to.be.true;
-      expect(context.hasCanvas || context.hasCanvasContainer).to.be.true;
+      expect(context.isAuthenticated).to.be.true;
+      expect(context.pageType).to.not.equal('LOGIN');
+      const hasCanvas = context.elements['#canvas'] || context.elements['#canvas-container'] || context.elements['svg'];
+      expect(hasCanvas).to.be.true;
       expect(context.isReady).to.be.true;
 
       cy.log('✅ JWT processor environment verified - system supports processor operations');
