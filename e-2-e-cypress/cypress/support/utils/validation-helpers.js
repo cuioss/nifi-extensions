@@ -409,3 +409,64 @@ export function validateHelpSystem(helpTests, options = {}) {
 
   cy.log('✅ Help system integration validated');
 }
+
+/**
+ * Validate that required elements are present on the page
+ * @param {Array<string>} selectors - Array of CSS selectors to validate
+ * @param {Object} options - Validation options
+ * @param {number} options.timeout - Timeout for element validation (default: 10000)
+ * @returns {Cypress.Chainable} Promise that resolves when all elements are validated
+ */
+export function validateRequiredElements(selectors, options = {}) {
+  const { timeout = 10000 } = options;
+
+  cy.log(`🔍 Validating required elements: ${selectors.join(', ')}`);
+
+  selectors.forEach((selector) => {
+    // Try multiple selectors separated by commas
+    const selectorList = selector.split(',').map((s) => s.trim());
+
+    // Check if any of the selectors match
+    let found = false;
+    selectorList.forEach((singleSelector) => {
+      try {
+        cy.get(singleSelector, { timeout }).should('exist').then(() => {
+          found = true;
+          cy.log(`✅ Found element: ${singleSelector}`);
+        });
+      } catch (e) {
+        // Continue to next selector
+      }
+    });
+  });
+
+  return cy.wrap(null);
+}
+
+/**
+ * Validate error state on the page
+ * @param {Object} options - Validation options
+ * @param {number} options.timeout - Timeout for error detection (default: 5000)
+ * @returns {Cypress.Chainable} Promise that resolves with error state object
+ */
+export function validateErrorState(options = {}) {
+  const { timeout = 5000 } = options;
+
+  cy.log('🔍 Validating error state');
+
+  return cy.get('body', { timeout }).then(($body) => {
+    // Check for various error indicators
+    const hasErrorMessage = $body.find('.error, .alert-danger, .error-message, .flash.error').length > 0;
+    const hasLoginError = $body.find('.login-error, .authentication-error').length > 0;
+    const isLoginPage = $body.find('input[type="password"], .login-form').length > 0;
+
+    const errorState = {
+      hasError: hasErrorMessage || hasLoginError,
+      isLoginPage,
+      errorType: hasLoginError ? 'authentication' : hasErrorMessage ? 'general' : null,
+    };
+
+    cy.log(`Error state: ${JSON.stringify(errorState)}`);
+    return errorState;
+  });
+}

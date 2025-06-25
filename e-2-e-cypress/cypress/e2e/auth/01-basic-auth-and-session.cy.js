@@ -17,7 +17,6 @@ import {
   validateErrorState,
 } from '../../support/utils/validation-helpers.js';
 import {
-  trackTestFailure,
   logTestStep,
   captureDebugInfo,
 } from '../../support/utils/error-tracking.js';
@@ -35,29 +34,22 @@ describe('01 - Basic Authentication', () => {
   it('R-AUTH-001: Should login successfully with valid admin credentials', () => {
     logTestStep('01-basic-auth', 'Attempting login with valid admin credentials');
 
-    loginWithCredentials('admin', 'adminadminadmin')
-      .then(() => {
-        logTestStep('01-basic-auth', 'Verifying successful login state');
-        return verifyLoginState();
-      })
-      .then((loginState) => {
-        expect(loginState.isLoggedIn).to.be.true;
-        expect(loginState.authMethod).to.exist;
+    loginWithCredentials('admin', 'adminadminadmin');
+    
+    logTestStep('01-basic-auth', 'Verifying successful login state');
+    verifyLoginState().then((loginState) => {
+      expect(loginState.isLoggedIn).to.be.true;
+      expect(loginState.authMethod).to.exist;
+    });
 
-        logTestStep('01-basic-auth', 'Validating authenticated UI elements');
-        return validateRequiredElements([
-          '[data-testid="canvas-container"], #canvas-container',
-          '[data-testid="user-menu"], #user-logout-link, .user-menu',
-          '[data-testid="toolbar"], .toolbar, .header',
-        ]);
-      })
-      .then(() => {
-        logTestStep('01-basic-auth', 'Valid login test completed successfully');
-      })
-      .catch((error) => {
-        trackTestFailure('01-basic-auth', 'valid-admin-login', error);
-        throw error;
-      });
+    logTestStep('01-basic-auth', 'Validating authenticated UI elements');
+    validateRequiredElements([
+      '[data-testid="canvas-container"], #canvas-container',
+      '[data-testid="user-menu"], #user-logout-link, .user-menu',
+      '[data-testid="toolbar"], .toolbar, .header',
+    ]);
+    
+    logTestStep('01-basic-auth', 'Valid login test completed successfully');
   });
 
   it('R-AUTH-001: Should handle invalid credentials gracefully', () => {
@@ -81,41 +73,29 @@ describe('01 - Basic Authentication', () => {
     cy.get('[data-testid="login-button"], input[value="Login"], button[type="submit"]').click();
 
     // Verify error handling
-    validateErrorState()
-      .then((errorState) => {
-        expect(errorState.hasError).to.be.true;
-        logTestStep('01-basic-auth', 'Invalid credentials properly rejected');
-      })
-      .catch((error) => {
-        trackTestFailure('01-basic-auth', 'invalid-credentials', error);
-        throw error;
-      });
+    validateErrorState().then((errorState) => {
+      expect(errorState.hasError).to.be.true;
+      logTestStep('01-basic-auth', 'Invalid credentials properly rejected');
+    });
   });
 
   it('R-AUTH-002: Should logout successfully and clear session', () => {
     logTestStep('01-basic-auth', 'Testing logout functionality');
 
     // First login
-    loginWithCredentials('admin', 'adminadminadmin')
-      .then(() => {
-        logTestStep('01-basic-auth', 'Performing logout');
-        return logout();
-      })
-      .then(() => {
-        logTestStep('01-basic-auth', 'Verifying logout state');
-        return verifyLoginState();
-      })
-      .then((loginState) => {
-        expect(loginState.isLoggedIn).to.be.false;
+    loginWithCredentials('admin', 'adminadminadmin');
+    
+    logTestStep('01-basic-auth', 'Performing logout');
+    logout();
+    
+    logTestStep('01-basic-auth', 'Verifying logout state');
+    verifyLoginState().then((loginState) => {
+      expect(loginState.isLoggedIn).to.be.false;
+    });
 
-        // Verify we're redirected to login page
-        cy.url().should('not.contain', '/nifi/canvas');
+    // Verify we're redirected to login page
+    cy.url().should('not.contain', '/nifi/canvas');
 
-        logTestStep('01-basic-auth', 'Logout completed successfully');
-      })
-      .catch((error) => {
-        trackTestFailure('01-basic-auth', 'logout-flow', error);
-        throw error;
-      });
+    logTestStep('01-basic-auth', 'Logout completed successfully');
   });
 });

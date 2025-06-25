@@ -396,3 +396,55 @@ export function setupGlobalErrorMonitoring(options = {}) {
     clearErrorTracking();
   });
 }
+
+/**
+ * Log a test step for debugging purposes
+ * @param {string} testName - Name of the test
+ * @param {string} stepDescription - Description of the step
+ */
+export function logTestStep(testName, stepDescription) {
+  const timestamp = new Date().toISOString();
+  cy.log(`📝 [${testName}] ${timestamp}: ${stepDescription}`);
+  
+  // Also log to console for debugging
+  cy.task('log', `[${testName}] ${timestamp}: ${stepDescription}`);
+}
+
+/**
+ * Capture debug information for a test
+ * @param {string} testName - Name of the test
+ */
+export function captureDebugInfo(testName) {
+  cy.log(`🔍 Capturing debug info for: ${testName}`);
+  
+  // Capture console logs
+  cy.window().then((win) => {
+    // Get any console errors from browser
+    cy.task('log', `Debug info captured for ${testName} at ${new Date().toISOString()}`);
+  });
+}
+
+/**
+ * Track a test failure
+ * @param {string} testName - Name of the test
+ * @param {string} errorMessage - Error message
+ * @param {Object} options - Additional tracking options
+ */
+export function trackTestFailure(testName, errorMessage, options = {}) {
+  const timestamp = new Date().toISOString();
+  const failureInfo = {
+    testName,
+    errorMessage,
+    timestamp,
+    url: options.url || '',
+    screenshot: options.screenshot || false,
+  };
+  
+  cy.log(`❌ Test failure tracked: ${testName} - ${errorMessage}`);
+  cy.task('log', `FAILURE: ${JSON.stringify(failureInfo, null, 2)}`);
+  
+  // Optionally take screenshot
+  if (options.screenshot !== false) {
+    cy.screenshot(`failure-${testName}-${Date.now()}`);
+  }
+}
