@@ -12,6 +12,11 @@ module.exports = defineConfig({
     modifyObstructiveCode: false, // Prevent Cypress from modifying NiFi's code
     experimentalWebKitSupport: false,
 
+    // Configure temporary directories to be under target/
+    screenshotsFolder: 'target/cypress/screenshots',
+    videosFolder: 'target/cypress/videos',
+    downloadsFolder: 'target/cypress/downloads',
+
     // Timeout configuration - more generous to handle slow responses
     defaultCommandTimeout: 10000,  // Increased timeout for commands
     requestTimeout: 10000,         // Increased timeout for requests
@@ -93,7 +98,7 @@ module.exports = defineConfig({
           const path = require('path');
 
           // Create browser-logs directory if it doesn't exist
-          const logsDir = path.join(__dirname, 'browser-logs');
+          const logsDir = path.join(__dirname, 'target/browser-logs');
           if (!fs.existsSync(logsDir)) {
             fs.mkdirSync(logsDir, { recursive: true });
           }
@@ -117,7 +122,7 @@ module.exports = defineConfig({
     reporterOptions: {
       reporterEnabled: 'mochawesome',
       mochawesomeReporterOptions: {
-        reportDir: 'tests-report',
+        reportDir: 'target/tests-report',
         overwrite: false,
         html: true,
         json: true

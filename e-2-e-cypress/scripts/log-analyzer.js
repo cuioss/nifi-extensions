@@ -3,18 +3,18 @@
 /**
  * Unified Log Analysis Tool
  * Consolidates analyze-console-errors.js + enhanced-log-analyzer.js functionality
- * 
+ *
  * Modes:
  *   --basic       : Console errors only (original analyze-console-errors functionality)
  *   --enhanced    : Full analysis with performance metrics (default)
  *   --console-only: Alias for --basic
  *   --full        : Alias for --enhanced
- * 
+ *
  * Options:
  *   --json        : Output JSON format instead of HTML
  *   --verbose     : Detailed logging
  *   --no-html     : Skip HTML report generation
- * 
+ *
  * Usage:
  *   node scripts/log-analyzer.js                 # Enhanced analysis of latest run
  *   node scripts/log-analyzer.js run-123         # Enhanced analysis of specific ru      // Exit with error code if console errors or unexpected warnings found
@@ -51,14 +51,14 @@ class UnifiedLogAnalyzer {
       ...options
     };
 
-    this.resultsDir = path.join(__dirname, '..', 'cypress', 'reports', 'log-analysis');
+    this.resultsDir = path.join(__dirname, '..', 'target', 'cypress', 'reports', 'log-analysis');
     this.consoleAnalysisDir = path.join(this.resultsDir, 'console-analysis');
     this.enhancedAnalysisDir = path.join(this.resultsDir, 'enhanced-analysis');
     this.trendsDir = path.join(this.enhancedAnalysisDir, 'trends');
-    
+
     this.ensureDirectoryExists(this.resultsDir);
     this.ensureDirectoryExists(this.consoleAnalysisDir);
-    
+
     if (this.options.mode === 'enhanced') {
       this.ensureDirectoryExists(this.enhancedAnalysisDir);
       this.ensureDirectoryExists(this.trendsDir);
@@ -79,14 +79,14 @@ class UnifiedLogAnalyzer {
    */
   analyzeConsoleErrors(runId) {
     this.logger.step(`Analyzing console errors for run: ${runId}`);
-    
+
     const logPath = path.join(__dirname, '..', 'cypress', 'logs', `run-${runId}.json`);
-    
+
     // Check if log file exists
     if (!fs.existsSync(logPath)) {
       this.logger.warning(`Log file not found: ${logPath}`);
       this.logger.warning('Console error analysis requires Cypress to generate log files.');
-      
+
       return {
         summary: {
           totalErrors: 0,
@@ -118,7 +118,7 @@ class UnifiedLogAnalyzer {
           testName: log.testName
         });
       } else if (log.type === 'warning') {
-        const isAllowed = allowedWarnings.some(pattern => 
+        const isAllowed = allowedWarnings.some(pattern =>
           log.message.includes(pattern)
         );
 
@@ -165,14 +165,14 @@ class UnifiedLogAnalyzer {
    */
   groupByPattern(allowedWarningInstances) {
     const grouped = {};
-    
+
     allowedWarningInstances.forEach(warning => {
       if (!grouped[warning.pattern]) {
         grouped[warning.pattern] = [];
       }
       grouped[warning.pattern].push(warning);
     });
-    
+
     return grouped;
   }
 
@@ -181,7 +181,7 @@ class UnifiedLogAnalyzer {
    */
   analyzePerformance(testResults) {
     this.logger.step('Analyzing test performance metrics');
-    
+
     const performanceMetrics = {
       totalTests: 0,
       totalDuration: 0,
@@ -199,11 +199,11 @@ class UnifiedLogAnalyzer {
 
     const tests = testResults.tests;
     performanceMetrics.totalTests = tests.length;
-    
+
     const durations = tests.map(test => test.duration || 0);
     performanceMetrics.totalDuration = durations.reduce((sum, d) => sum + d, 0);
     performanceMetrics.avgTestDuration = performanceMetrics.totalDuration / tests.length;
-    
+
     // Sort by duration to find slowest/fastest
     const sortedTests = tests.sort((a, b) => (b.duration || 0) - (a.duration || 0));
     performanceMetrics.slowestTests = sortedTests.slice(0, 5).map(test => ({
@@ -220,7 +220,7 @@ class UnifiedLogAnalyzer {
     // Calculate failure and retry rates
     const failures = tests.filter(test => test.state === 'failed').length;
     const retries = tests.filter(test => test.attempts && test.attempts.length > 1).length;
-    
+
     performanceMetrics.failureRate = (failures / tests.length) * 100;
     performanceMetrics.retryRate = (retries / tests.length) * 100;
 
@@ -233,7 +233,7 @@ class UnifiedLogAnalyzer {
    */
   analyzeNetworkRequests(logs) {
     this.logger.step('Analyzing network request patterns');
-    
+
     const networkAnalysis = {
       totalRequests: 0,
       failedRequests: 0,
@@ -255,7 +255,7 @@ class UnifiedLogAnalyzer {
     logs.forEach(log => {
       if (log.message && log.message.includes('network')) {
         networkAnalysis.totalRequests++;
-        
+
         // Analyze HTTP methods
         const methods = ['GET', 'POST', 'PUT', 'DELETE'];
         const method = methods.find(m => log.message.includes(m));
@@ -268,7 +268,7 @@ class UnifiedLogAnalyzer {
         // Check for failures
         if (log.message.includes('failed') || log.message.includes('error') || log.message.includes('timeout')) {
           networkAnalysis.failedRequests++;
-          
+
           // Pattern analysis for errors
           const errorType = this.extractErrorPattern(log.message);
           networkAnalysis.errorPatterns[errorType] = (networkAnalysis.errorPatterns[errorType] || 0) + 1;
@@ -308,10 +308,10 @@ class UnifiedLogAnalyzer {
     }
 
     this.logger.step('Analyzing historical trends');
-    
+
     const trendsFile = path.join(this.trendsDir, 'historical-data.json');
     let historicalData = [];
-    
+
     if (fs.existsSync(trendsFile)) {
       try {
         historicalData = JSON.parse(fs.readFileSync(trendsFile, 'utf8'));
@@ -319,7 +319,7 @@ class UnifiedLogAnalyzer {
         this.logger.warning(`Error reading trends file: ${error.message}`);
       }
     }
-    
+
     // Add current results to historical data
     const dataPoint = {
       timestamp: new Date().toISOString(),
@@ -327,20 +327,20 @@ class UnifiedLogAnalyzer {
       console: currentResults.console ? currentResults.console.summary : null,
       network: currentResults.network
     };
-    
+
     historicalData.push(dataPoint);
-    
+
     // Keep only last 30 runs
     if (historicalData.length > 30) {
       historicalData = historicalData.slice(-30);
     }
-    
+
     // Save updated historical data
     fs.writeFileSync(trendsFile, JSON.stringify(historicalData, null, 2));
-    
+
     // Calculate trends
     const trends = this.calculateTrends(historicalData);
-    
+
     this.logger.info(`Trend analysis complete: ${historicalData.length} data points`);
     return trends;
   }
@@ -364,15 +364,15 @@ class UnifiedLogAnalyzer {
 
   calculateTrend(values) {
     if (values.length < 2) return 'stable';
-    
+
     const recent = values.slice(-5); // Last 5 values
     const older = values.slice(-10, -5); // Previous 5 values
-    
+
     const recentAvg = recent.reduce((sum, v) => sum + v, 0) / recent.length;
     const olderAvg = older.length > 0 ? older.reduce((sum, v) => sum + v, 0) / older.length : recentAvg;
-    
+
     const change = ((recentAvg - olderAvg) / olderAvg) * 100;
-    
+
     if (change > 10) return 'increasing';
     if (change < -10) return 'decreasing';
     return 'stable';
@@ -410,7 +410,7 @@ class UnifiedLogAnalyzer {
             <h1>🔍 Console Error Analysis Report</h1>
             <p>Run ID: ${runId} | Generated: ${new Date().toISOString()}</p>
         </div>
-        
+
         <div class="summary">
             <div class="metric">
                 <div class="metric-value">${report.summary.totalErrors}</div>
@@ -426,7 +426,7 @@ class UnifiedLogAnalyzer {
             </div>
         </div>
 
-        ${report.summary.totalErrors === 0 && report.summary.totalUnexpectedWarnings === 0 ? 
+        ${report.summary.totalErrors === 0 && report.summary.totalUnexpectedWarnings === 0 ?
             '<div class="no-issues">✅ No console issues detected!</div>' : ''}
 
         ${report.errors.length > 0 ? `
@@ -435,8 +435,8 @@ class UnifiedLogAnalyzer {
             <div class="error">
                 <div class="message">${this.escapeHtml(error.message)}</div>
                 <div class="meta">
-                    Source: ${error.source || 'Unknown'} | 
-                    Test: ${error.testName || 'Unknown'} | 
+                    Source: ${error.source || 'Unknown'} |
+                    Test: ${error.testName || 'Unknown'} |
                     Time: ${error.timestamp || 'Unknown'}
                 </div>
             </div>
@@ -449,8 +449,8 @@ class UnifiedLogAnalyzer {
             <div class="warning">
                 <div class="message">${this.escapeHtml(warning.message)}</div>
                 <div class="meta">
-                    Source: ${warning.source || 'Unknown'} | 
-                    Test: ${warning.testName || 'Unknown'} | 
+                    Source: ${warning.source || 'Unknown'} |
+                    Test: ${warning.testName || 'Unknown'} |
                     Time: ${warning.timestamp || 'Unknown'}
                 </div>
             </div>
@@ -524,7 +524,7 @@ class UnifiedLogAnalyzer {
             <h1>🚀 Enhanced Log Analysis Report</h1>
             <p>Run ID: ${runId} | Generated: ${new Date().toISOString()}</p>
         </div>
-        
+
         <div class="grid">
             <div class="card">
                 <h2>📊 Performance Metrics</h2>
@@ -532,17 +532,17 @@ class UnifiedLogAnalyzer {
                     ${this.renderPerformanceMetrics(analysisResults.performance)}
                 </div>
             </div>
-            
+
             <div class="card">
                 <h2>🔍 Console Analysis</h2>
                 ${this.renderConsoleAnalysis(analysisResults.console)}
             </div>
-            
-            <div class="card">   
+
+            <div class="card">
                 <h2>🌐 Network Requests</h2>
                 ${this.renderNetworkAnalysis(analysisResults.network)}
             </div>
-            
+
             ${analysisResults.trends ? `
             <div class="card">
                 <h2>📈 Trend Analysis</h2>
@@ -550,7 +550,7 @@ class UnifiedLogAnalyzer {
             </div>
             ` : ''}
         </div>
-        
+
         <div class="card recommendations">
             <h2>💡 Recommendations</h2>
             ${this.generateRecommendations(analysisResults)}
@@ -567,7 +567,7 @@ class UnifiedLogAnalyzer {
 
   renderPerformanceMetrics(performance) {
     if (!performance) return '<p>No performance data available</p>';
-    
+
     return `
         <div class="metric"><div class="metric-value">${performance.totalTests}</div><div class="metric-label">Total Tests</div></div>
         <div class="metric"><div class="metric-value">${(performance.avgTestDuration || 0).toFixed(0)}ms</div><div class="metric-label">Avg Duration</div></div>
@@ -578,20 +578,20 @@ class UnifiedLogAnalyzer {
 
   renderConsoleAnalysis(console) {
     if (!console) return '<p>No console data available</p>';
-    
+
     return `
         <div class="metrics">
             <div class="metric"><div class="metric-value">${console.summary.totalErrors}</div><div class="metric-label">Errors</div></div>
             <div class="metric"><div class="metric-value">${console.summary.totalUnexpectedWarnings}</div><div class="metric-label">Warnings</div></div>
         </div>
-        ${console.summary.totalErrors === 0 && console.summary.totalUnexpectedWarnings === 0 ? 
+        ${console.summary.totalErrors === 0 && console.summary.totalUnexpectedWarnings === 0 ?
             '<p style="color: #38a169; text-align: center; margin-top: 15px;">✅ No console issues detected!</p>' : ''}
     `;
   }
 
   renderNetworkAnalysis(network) {
     if (!network) return '<p>No network data available</p>';
-    
+
     return `
         <div class="metrics">
             <div class="metric"><div class="metric-value">${network.totalRequests}</div><div class="metric-label">Total Requests</div></div>
@@ -607,7 +607,7 @@ class UnifiedLogAnalyzer {
     if (!trends || trends.message) {
       return '<p>Insufficient data for trend analysis</p>';
     }
-    
+
     return `
         <div class="metrics">
             <div class="metric">
@@ -628,27 +628,27 @@ class UnifiedLogAnalyzer {
 
   generateRecommendations(results) {
     const recommendations = [];
-    
+
     if (results.performance?.failureRate > 5) {
       recommendations.push('⚠️ High failure rate detected. Review failed test logs and consider test stability improvements.');
     }
-    
+
     if (results.performance?.avgTestDuration > 30000) {
       recommendations.push('🐌 Tests are running slowly. Consider optimizing test setup or adding more focused test cases.');
     }
-    
+
     if (results.console?.summary?.totalErrors > 0) {
       recommendations.push('🔍 Console errors detected. Review error logs and fix application issues.');
     }
-    
+
     if (results.network?.failedRequests > (results.network?.totalRequests || 0) * 0.1) {
       recommendations.push('🌐 High network request failure rate. Check service availability and network configuration.');
     }
-    
+
     if (recommendations.length === 0) {
       recommendations.push('✅ All metrics look healthy. Great job!');
     }
-    
+
     return `<ul>${recommendations.map(r => `<li>${r}</li>`).join('')}</ul>`;
   }
 
@@ -683,11 +683,11 @@ class UnifiedLogAnalyzer {
    */
   async analyze(runId = 'latest') {
     this.logger.info(`🔍 Starting ${this.options.mode} log analysis for run: ${runId}`);
-    
+
     try {
       // Always start with console analysis
       const consoleAnalysis = this.analyzeConsoleErrors(runId);
-      
+
       let results = {
         console: consoleAnalysis,
         runId,
@@ -723,13 +723,13 @@ class UnifiedLogAnalyzer {
 
       // Summary output
       this.logger.success(`${this.options.mode} log analysis completed successfully!`);
-      
+
       if (this.options.verbose) {
         this.logger.info('Analysis Summary:');
         this.logger.info(`  Mode: ${this.options.mode}`);
         this.logger.info(`  Console Errors: ${results.console.summary.totalErrors}`);
         this.logger.info(`  Unexpected Warnings: ${results.console.summary.totalUnexpectedWarnings}`);
-        
+
         if (this.options.mode === 'enhanced') {
           this.logger.info(`  Total Tests: ${results.performance?.totalTests || 0}`);
           this.logger.info(`  Avg Duration: ${(results.performance?.avgTestDuration || 0).toFixed(0)}ms`);
@@ -744,7 +744,7 @@ class UnifiedLogAnalyzer {
       } else {
         this.logger.success('No console issues detected.');
       }
-      
+
       return results;
 
     } catch (error) {
@@ -760,7 +760,7 @@ class UnifiedLogAnalyzer {
 // CLI usage
 if (require.main === module) {
   const args = process.argv.slice(2);
-  
+
   // Parse arguments
   let runId = 'latest';
   const options = {
@@ -772,7 +772,7 @@ if (require.main === module) {
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    
+
     switch (arg) {
       case '--basic':
       case '--console-only':
