@@ -50,8 +50,7 @@ describe('03 - JWT Processor Availability Verification', () => {
       expect(context.isAuthenticated).to.be.true;
 
       // Verify canvas elements are present for processor operations
-      const hasCanvas = context.elements['#canvas'] || context.elements['svg'];
-      expect(hasCanvas).to.be.true;
+      expect(context.elements.hasCanvasElements).to.be.true;
 
       cy.log('✅ Canvas is ready for processor operations');
     });
