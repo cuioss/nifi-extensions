@@ -26,6 +26,8 @@
         <cypress.timeout>120</cypress.timeout> <!-- 2 minutes for Cypress tests -->
         <!-- Code quality configuration -->
         <skip.lint>false</skip.lint> <!-- Run linting by default, skip only for integration tests -->
+        <!-- Cypress tests configuration -->
+        <skipCypressTests>true</skipCypressTests> <!-- Skip Cypress tests by default, run only in integration-tests profile -->
         <!-- Exclude this module from SonarQube analysis -->
         <sonar.skip>true</sonar.skip>
     </properties>
@@ -36,10 +38,10 @@
             <plugin>
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>
-                <version>${frontend.maven.plugin.version}</version>
+                <version>1.15.1</version>
                 <configuration>
-                    <nodeVersion>${frontend.node.version}</nodeVersion>
-                    <npmVersion>${frontend.npm.version}</npmVersion>
+                    <nodeVersion>v20.19.2</nodeVersion>
+                    <npmVersion>10.5.0</npmVersion>
                     <installDirectory>target</installDirectory>
                 </configuration>
                 <executions>
@@ -74,7 +76,22 @@
                             <skip>${skip.lint}</skip>
                         </configuration>
                     </execution>
-
+                    <!-- Run Cypress tests (only active when integration-tests profile is enabled) -->
+                    <execution>
+                        <id>cypress-tests</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>integration-test</phase>
+                        <configuration>
+                            <arguments>run cypress:run</arguments>
+                            <environmentVariables>
+                                <CYPRESS_BASE_URL>${nifi.base.url}</CYPRESS_BASE_URL>
+                                <CYPRESS_KEYCLOAK_URL>${keycloak.url}</CYPRESS_KEYCLOAK_URL>
+                            </environmentVariables>
+                            <skip>${skipCypressTests}</skip>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>
@@ -88,6 +105,7 @@
                 <skipTests>false</skipTests>
                 <maven.test.skip>false</maven.test.skip>
                 <skip.lint>true</skip.lint>
+                <skipCypressTests>false</skipCypressTests> <!-- Enable Cypress tests in integration-tests profile -->
             </properties>
             <build>
                 <plugins>
@@ -127,14 +145,33 @@
                     <plugin>
                         <groupId>com.github.eirslett</groupId>
                         <artifactId>frontend-maven-plugin</artifactId>
-                        <version>${frontend.maven.plugin.version}</version>
+                        <version>1.15.1</version>
                         <configuration>
-                            <nodeVersion>${frontend.node.version}</nodeVersion>
-                            <npmVersion>${frontend.npm.version}</npmVersion>
+                            <nodeVersion>v20.19.2</nodeVersion>
+                            <npmVersion>10.5.0</npmVersion>
                             <installDirectory>target</installDirectory>
                         </configuration>
                         <executions>
-                            <!-- Run Cypress tests in order -->
+                            <!-- Install Node and NPM for integration tests -->
+                            <execution>
+                                <id>install-node-and-npm-integration</id>
+                                <goals>
+                                    <goal>install-node-and-npm</goal>
+                                </goals>
+                                <phase>pre-integration-test</phase>
+                            </execution>
+                            <!-- Install dependencies for integration tests -->
+                            <execution>
+                                <id>npm-install-integration</id>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <phase>pre-integration-test</phase>
+                                <configuration>
+                                    <arguments>install</arguments>
+                                </configuration>
+                            </execution>
+                            <!-- Run Cypress tests -->
                             <execution>
                                 <id>cypress-tests</id>
                                 <goals>
@@ -149,12 +186,15 @@
                                     </environmentVariables>
                                 </configuration>
                             </execution>
-                            <!-- Skip default selftests when profile is active -->
-                            <execution>
-                                <id>cypress-selftests</id>
-                                <phase>none</phase>
-                            </execution>
                         </executions>
+                    </plugin>
+                    <!-- Configure failsafe plugin to skip Java tests since we're running Cypress tests -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <skipTests>true</skipTests>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>

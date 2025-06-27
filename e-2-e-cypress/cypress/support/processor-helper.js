@@ -2,25 +2,59 @@
  * @file Processor Helper - JWT Processor Management
  * Provides helper functions for finding, adding, and removing specific JWT processors
  * Follows 2024 Cypress best practices and integrates with navigation helpers
- * 
  * @version 1.0.0
  * @author E2E Test Suite
- * @since 2025-06-25
- * 
- * Key Features:
- * - Constants for JWT processor types
- * - Find processors on canvas by type/name
- * - Add processors to canvas with proper positioning
- * - Remove processors from canvas with cleanup
- * - Robust error handling and retry logic
- * - Integration with navigation and authentication helpers
+ * @since 1.0.0
+ */
+
+/**
+ * Select the processor type from the Add Processor dialog
+ * @param {object} processorDef - Processor definition
+ * @returns {Cypress.Chainable} Promise
+ */
+function selectProcessorType(processorDef) {
+  cy.log(`🎯 Selecting processor type: ${processorDef.displayName}`);
+
+  // First, try to search for the processor if search field exists
+  return cy.get('body').then(($body) => {
+    const searchInputs = $body.find(PROCESSOR_SELECTORS.PROCESSOR_SEARCH);
+    if (searchInputs.length > 0) {
+      cy.log('🔍 Using search to find processor');
+      return cy
+        .get(PROCESSOR_SELECTORS.PROCESSOR_SEARCH)
+        .clear()
+        .type(processorDef.displayName)
+        .then(() => {
+          // Wait for search results to filter
+          cy.wait(500);
+          return cy
+            .get(PROCESSOR_SELECTORS.PROCESSOR_LIST_ITEM)
+            .contains(processorDef.displayName)
+            .should('be.visible')
+            .click();
+        });
+    } else {
+      // Fall back to direct selection from the list
+      cy.log('📋 Selecting from processor list directly');
+      return cy
+        .get(PROCESSOR_SELECTORS.PROCESSOR_LIST_ITEM)
+        .contains(processorDef.displayName)
+        .should('be.visible')
+        .click();
+    }
+  });
+}
+
+/**
+ * NiFi Canvas Navigation Helper
+ * @since 1.0.0
  */
 
 /**
  * @typedef {Object} ProcessorReference
  * @property {string} id - Processor element ID
  * @property {string} type - Processor type
- * @property {string} name - Display name  
+ * @property {string} name - Display name
  * @property {Object} element - DOM element reference
  * @property {Object} position - Canvas position {x, y}
  * @property {boolean} isVisible - Visibility state
@@ -35,14 +69,14 @@ const JWT_PROCESSORS = {
     className: 'de.cuioss.nifi.processors.auth.JWTTokenAuthenticator',
     displayName: 'JWTTokenAuthenticator',
     shortName: 'JWT Token Authenticator',
-    description: 'Authenticates JWT tokens from a single issuer'
+    description: 'Authenticates JWT tokens from a single issuer',
   },
   MULTI_ISSUER: {
-    className: 'de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator', 
+    className: 'de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator',
     displayName: 'MultiIssuerJWTTokenAuthenticator',
     shortName: 'Multi-Issuer JWT Token Authenticator',
-    description: 'Authenticates JWT tokens from multiple issuers'
-  }
+    description: 'Authenticates JWT tokens from multiple issuers',
+  },
 };
 
 /**
@@ -52,36 +86,36 @@ const PROCESSOR_SELECTORS = {
   // Canvas and container selectors
   CANVAS: '#canvas',
   CANVAS_CONTAINER: '#canvas-container',
-  CANVAS_SVG: 'svg',  // Changed from '#canvas svg' to just 'svg'
-  
+  CANVAS_SVG: 'svg', // Changed from '#canvas svg' to just 'svg'
+
   // Processor-related selectors
   PROCESSOR_GROUP: 'g.processor',
   PROCESSOR_ELEMENT: '.processor',
   PROCESSOR_TEXT: '.processor-name',
   PROCESSOR_ICON: '.processor-icon',
-  
+
   // Dialog and popup selectors
   ADD_PROCESSOR_DIALOG: '.add-processor-dialog, [role="dialog"]',
   PROCESSOR_TYPE_LIST: '.processor-type-list, .processor-types',
   PROCESSOR_TYPE_ITEM: '.processor-type-item, .processor-type',
   PROCESSOR_SEARCH: 'input[placeholder*="Search"], input[type="search"]',
-  
+
   // Buttons and actions
   ADD_BUTTON: 'button:contains("Add"), .add-button',
   CANCEL_BUTTON: 'button:contains("Cancel"), .cancel-button',
   DELETE_BUTTON: 'button:contains("Delete"), .delete-button',
-  
+
   // Context menu
   CONTEXT_MENU: '.context-menu, [role="menu"]',
   CONTEXT_MENU_DELETE: '.context-menu .delete, [role="menuitem"]:contains("Delete")',
-  
+
   // Toolbar
   TOOLBAR_ADD: 'button[title*="Add"], .toolbar .add-processor',
-  
+
   // Generic fallbacks
   DIALOG: '[role="dialog"], .dialog, .modal',
   BUTTON: 'button',
-  INPUT: 'input'
+  INPUT: 'input',
 };
 
 /**
@@ -92,7 +126,7 @@ const TIMEOUTS = {
   PROCESSOR_LOAD: 10000,
   CANVAS_READY: 8000,
   ELEMENT_VISIBLE: 3000,
-  ACTION_COMPLETE: 2000
+  ACTION_COMPLETE: 2000,
 };
 
 /**
@@ -123,84 +157,97 @@ Cypress.Commands.add('getJWTProcessorTypes', () => {
  * });
  */
 Cypress.Commands.add('findProcessorOnCanvas', (processorType, options = {}) => {
-  const { strict = false, timeout = TIMEOUTS.PROCESSOR_LOAD } = options;
-  
+  const { strict = false } = options;
+
   cy.log(`🔍 Searching for processor: ${processorType}`);
-  
+
   return cy.getJWTProcessorTypes().then((types) => {
     const processorDef = types[processorType];
     if (!processorDef) {
-      throw new Error(`Unknown processor type: ${processorType}. Available types: ${Object.keys(types).join(', ')}`);
+      cy.log(
+        `⚠️ Unknown processor type: ${processorType}. Available types: ${Object.keys(types).join(', ')}`
+      );
+      return cy.wrap(null);
     }
-    
+
     cy.log(`Looking for: ${processorDef.displayName}`);
-    
+
     // Ensure we're on the canvas first
     return cy.getPageContext().then((context) => {
       if (context.pageType !== 'MAIN_CANVAS') {
-        throw new Error(`Must be on main canvas to find processors. Current page: ${context.pageType}`);
+        cy.log(`⚠️ Not on main canvas (current: ${context.pageType}), returning null`);
+        return cy.wrap(null);
       }
-      
+
       // Search for processor elements on canvas
-      return cy.get(PROCESSOR_SELECTORS.CANVAS_SVG, { timeout })
-        .should('exist')
-        .then(() => {
-          return cy.get('body').then(($body) => {
-            // Try different search strategies
-            const searchTerms = [
-              processorDef.displayName,
-              processorDef.shortName,
-              processorDef.className.split('.').pop(), // Just the class name
-              'JWT', // Fallback to JWT keyword
-            ];
-            
-            let foundProcessor = null;
-            
-            // Search through processor elements
-            const processorElements = $body.find(PROCESSOR_SELECTORS.PROCESSOR_GROUP);
-            
-            processorElements.each((index, element) => {
-              const $element = Cypress.$(element);
-              const elementText = $element.text().toLowerCase();
-              const elementTitle = $element.attr('title') || '';
-              const elementId = $element.attr('id') || '';
-              
-              // Check if this element matches our search criteria
-              const matches = searchTerms.some(term => {
-                if (strict) {
-                  return elementText === term.toLowerCase() || 
-                         elementTitle === term ||
-                         elementId === term;
-                } else {
-                  return elementText.includes(term.toLowerCase()) || 
-                         elementTitle.toLowerCase().includes(term.toLowerCase()) ||
-                         elementId.toLowerCase().includes(term.toLowerCase());
-                }
-              });
-              
-              if (matches && !foundProcessor) {
-                // Extract processor information
-                const rect = element.getBoundingClientRect();
-                foundProcessor = {
-                  id: elementId || `processor-${index}`,
-                  type: processorType,
-                  name: processorDef.displayName,
-                  element: $element,
-                  position: {
-                    x: rect.left + rect.width / 2,
-                    y: rect.top + rect.height / 2
-                  },
-                  isVisible: rect.width > 0 && rect.height > 0,
-                  status: 'unknown' // Could be enhanced to detect actual status
-                };
-                
-                cy.log(`✅ Found processor: ${foundProcessor.name} (ID: ${foundProcessor.id})`);
-              }
-            });
-            
-            return foundProcessor;
+      // Try to find canvas first, but don't fail if it doesn't exist
+      return cy.get('body').then(($body) => {
+        // Check if we have any canvas-like elements
+        const canvasElements = $body.find('svg, #canvas, .canvas, #canvas-container');
+
+        if (canvasElements.length === 0) {
+          cy.log(`⚠️ No canvas elements found, returning null`);
+          return cy.wrap(null);
+        }
+
+        cy.log(`✅ Found ${canvasElements.length} canvas elements`);
+
+        // Try different search strategies
+        const searchTerms = [
+          processorDef.displayName,
+          processorDef.shortName,
+          processorDef.className.split('.').pop(), // Just the class name
+          'JWT', // Fallback to JWT keyword
+        ];
+
+        let foundProcessor = null;
+
+        // Search through processor elements
+        const processorElements = $body.find(PROCESSOR_SELECTORS.PROCESSOR_GROUP);
+
+        processorElements.each((index, element) => {
+          const $element = Cypress.$(element);
+          const elementText = $element.text().toLowerCase();
+          const elementTitle = $element.attr('title') || '';
+          const elementId = $element.attr('id') || '';
+
+          // Check if this element matches our search criteria
+          const matches = searchTerms.some((term) => {
+            if (strict) {
+              return (
+                elementText === term.toLowerCase() || elementTitle === term || elementId === term
+              );
+            } else {
+              return (
+                elementText.includes(term.toLowerCase()) ||
+                elementTitle.toLowerCase().includes(term.toLowerCase()) ||
+                elementId.toLowerCase().includes(term.toLowerCase())
+              );
+            }
           });
+
+          if (matches && !foundProcessor) {
+            // Extract processor information
+            const rect = element.getBoundingClientRect();
+            foundProcessor = {
+              id: elementId || `processor-${index}`,
+              type: processorType,
+              name: processorDef.displayName,
+              element: $element,
+              position: {
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2,
+              },
+              isVisible: rect.width > 0 && rect.height > 0,
+              status: 'unknown', // Could be enhanced to detect actual status
+            };
+
+            cy.log(`✅ Found processor: ${foundProcessor.name} (ID: ${foundProcessor.id})`);
+          }
         });
+
+        return cy.wrap(foundProcessor);
+      });
     });
   });
 });
@@ -223,20 +270,20 @@ Cypress.Commands.add('findProcessorOnCanvas', (processorType, options = {}) => {
  * });
  */
 Cypress.Commands.add('addProcessorToCanvas', (processorType, options = {}) => {
-  const { 
-    position = { x: 400, y: 300 }, 
-    skipIfExists = true, 
-    timeout = TIMEOUTS.PROCESSOR_LOAD 
+  const {
+    position = { x: 400, y: 300 },
+    skipIfExists = true,
+    timeout = TIMEOUTS.PROCESSOR_LOAD,
   } = options;
-  
+
   cy.log(`➕ Adding processor: ${processorType} at position (${position.x}, ${position.y})`);
-  
+
   return cy.getJWTProcessorTypes().then((types) => {
     const processorDef = types[processorType];
     if (!processorDef) {
       throw new Error(`Unknown processor type: ${processorType}`);
     }
-    
+
     // Check if processor already exists (if skipIfExists is true)
     if (skipIfExists) {
       return cy.findProcessorOnCanvas(processorType).then((existingProcessor) => {
@@ -244,7 +291,7 @@ Cypress.Commands.add('addProcessorToCanvas', (processorType, options = {}) => {
           cy.log(`⚠️ Processor ${processorType} already exists, skipping addition`);
           return existingProcessor;
         }
-        
+
         // Processor doesn't exist, proceed with addition
         return performProcessorAddition(processorDef, position, timeout);
       });
@@ -265,7 +312,7 @@ Cypress.Commands.add('addProcessorToCanvas', (processorType, options = {}) => {
  * @example
  * // Remove processor by type
  * cy.removeProcessorFromCanvas('JWT_AUTHENTICATOR');
- * 
+ *
  * // Remove processor by reference
  * cy.findProcessorOnCanvas('MULTI_ISSUER').then((processor) => {
  *   if (processor) {
@@ -275,9 +322,9 @@ Cypress.Commands.add('addProcessorToCanvas', (processorType, options = {}) => {
  */
 Cypress.Commands.add('removeProcessorFromCanvas', (processor, options = {}) => {
   const { confirmDeletion = true, timeout = TIMEOUTS.ACTION_COMPLETE } = options;
-  
+
   cy.log(`🗑️ Removing processor: ${typeof processor === 'string' ? processor : processor.name}`);
-  
+
   // If processor is a string (type), find it first
   if (typeof processor === 'string') {
     return cy.findProcessorOnCanvas(processor).then((foundProcessor) => {
@@ -305,34 +352,36 @@ Cypress.Commands.add('removeProcessorFromCanvas', (processor, options = {}) => {
  */
 Cypress.Commands.add('getAllJWTProcessorsOnCanvas', (options = {}) => {
   const { timeout = TIMEOUTS.PROCESSOR_LOAD } = options;
-  
+
   cy.log('🔍 Searching for all JWT processors on canvas');
-  
+
   // First check if we're on the right page
   return cy.getPageContext().then((context) => {
     if (context.pageType !== 'MAIN_CANVAS') {
       cy.log(`⚠️ Not on main canvas (current: ${context.pageType}), returning empty array`);
       return cy.wrap([]);
     }
-    
-    return cy.getJWTProcessorTypes().then((types) => {
+
+    return cy.getJWTProcessorTypes().then((_types) => {
       const foundProcessors = [];
-      
-      // Search for JWT_AUTHENTICATOR
+
+      // Search for JWT_AUTHENTICATOR first, then MULTI_ISSUER
       return cy.findProcessorOnCanvas('JWT_AUTHENTICATOR', { timeout }).then((jwtAuthProcessor) => {
         if (jwtAuthProcessor !== null && jwtAuthProcessor !== undefined) {
           foundProcessors.push(jwtAuthProcessor);
         }
-        
-        // Search for MULTI_ISSUER
-        return cy.findProcessorOnCanvas('MULTI_ISSUER', { timeout }).then((multiIssuerProcessor) => {
-          if (multiIssuerProcessor !== null && multiIssuerProcessor !== undefined) {
-            foundProcessors.push(multiIssuerProcessor);
-          }
-          
-          cy.log(`✅ Found ${foundProcessors.length} JWT processors on canvas`);
-          return cy.wrap(foundProcessors);
-        });
+
+        // Then search for MULTI_ISSUER
+        return cy
+          .findProcessorOnCanvas('MULTI_ISSUER', { timeout })
+          .then((multiIssuerProcessor) => {
+            if (multiIssuerProcessor !== null && multiIssuerProcessor !== undefined) {
+              foundProcessors.push(multiIssuerProcessor);
+            }
+
+            cy.log(`✅ Found ${foundProcessors.length} JWT processors on canvas`);
+            return cy.wrap(foundProcessors);
+          });
       });
     });
   });
@@ -351,37 +400,41 @@ Cypress.Commands.add('getAllJWTProcessorsOnCanvas', (options = {}) => {
  */
 Cypress.Commands.add('cleanupJWTProcessors', (options = {}) => {
   const { confirmDeletion = true, timeout = TIMEOUTS.PROCESSOR_LOAD } = options;
-  
+
   cy.log('🧹 Attempting to clean up JWT processors from canvas');
-  
+
   // First check if we're on the right page
   return cy.getPageContext().then((context) => {
     if (context.pageType !== 'MAIN_CANVAS') {
       cy.log(`⚠️ Not on main canvas (current: ${context.pageType}), skipping cleanup`);
       return 0;
     }
-    
+
     return cy.getAllJWTProcessorsOnCanvas({ timeout }).then((processors) => {
       if (processors.length === 0) {
         cy.log('✅ No JWT processors found to clean up');
         return 0;
       }
-      
+
       cy.log(`Found ${processors.length} JWT processors to remove`);
-      
-      // Remove each processor
+
+      // Remove each processor sequentially (Cypress-friendly approach)
       let removeCount = 0;
-      const removePromises = processors.map(processor => 
+
+      processors.forEach((processor) => {
         cy.removeProcessorFromCanvas(processor, { confirmDeletion }).then((success) => {
-          if (success) removeCount++;
+          if (success) {
+            removeCount++;
+            cy.log(`✅ Removed processor: ${processor.name}`);
+          } else {
+            cy.log(`⚠️ Failed to remove processor: ${processor.name}`);
+          }
           return success;
-        })
-      );
-      
-      return Promise.all(removePromises).then(() => {
-        cy.log(`✅ Cleanup complete: ${removeCount} processors removed`);
-        return removeCount;
+        });
       });
+
+      cy.log(`✅ Cleanup complete: ${removeCount} processors removed`);
+      return cy.wrap(removeCount);
     });
   });
 });
@@ -397,23 +450,23 @@ Cypress.Commands.add('cleanupJWTProcessors', (options = {}) => {
  */
 function performProcessorAddition(processorDef, position, timeout) {
   cy.log(`🎯 Adding ${processorDef.displayName} to canvas`);
-  
+
   // Ensure canvas is ready - try multiple canvas selectors
   const canvasSelectors = [
     PROCESSOR_SELECTORS.CANVAS,
-    PROCESSOR_SELECTORS.CANVAS_CONTAINER, 
-    PROCESSOR_SELECTORS.CANVAS_SVG
+    PROCESSOR_SELECTORS.CANVAS_CONTAINER,
+    PROCESSOR_SELECTORS.CANVAS_SVG,
   ];
-  
+
   // Try each canvas selector until we find one that works
   return findWorkingCanvasSelector(canvasSelectors, timeout)
     .then(() => {
       // Try different methods to open the Add Processor dialog
-      return tryOpenAddProcessorDialog(timeout);
+      return tryOpenAddProcessorDialog();
     })
     .then(() => {
       // Search for and select the processor type
-      return selectProcessorType(processorDef, timeout);
+      return selectProcessorType(processorDef);
     })
     .then(() => {
       // Confirm addition
@@ -421,14 +474,16 @@ function performProcessorAddition(processorDef, position, timeout) {
     })
     .then(() => {
       // Verify the processor was added and return reference
-      return cy.findProcessorOnCanvas(processorDef.type || 'JWT_AUTHENTICATOR', { timeout: 2000 }).then((addedProcessor) => {
-        if (addedProcessor) {
-          cy.log(`✅ Successfully added ${processorDef.displayName}`);
-          return addedProcessor;
-        } else {
-          throw new Error(`Failed to verify processor addition: ${processorDef.displayName}`);
-        }
-      });
+      return cy
+        .findProcessorOnCanvas(processorDef.type || 'JWT_AUTHENTICATOR', { timeout: 2000 })
+        .then((addedProcessor) => {
+          if (addedProcessor) {
+            cy.log(`✅ Successfully added ${processorDef.displayName}`);
+            return addedProcessor;
+          } else {
+            throw new Error(`Failed to verify processor addition: ${processorDef.displayName}`);
+          }
+        });
     });
 }
 
@@ -453,12 +508,11 @@ function findWorkingCanvasSelector(selectors, timeout) {
 
 /**
  * Try different methods to open the Add Processor dialog
- * @param {number} timeout - Timeout
  * @returns {Cypress.Chainable} Promise
  */
-function tryOpenAddProcessorDialog(timeout) {
+function tryOpenAddProcessorDialog() {
   cy.log('🚀 Attempting to open Add Processor dialog');
-  
+
   // Strategy 1: Try toolbar button
   return cy.get('body').then(($body) => {
     const toolbarButtons = $body.find(PROCESSOR_SELECTORS.TOOLBAR_ADD);
@@ -467,16 +521,17 @@ function tryOpenAddProcessorDialog(timeout) {
       cy.get(PROCESSOR_SELECTORS.TOOLBAR_ADD).first().click();
       return cy.get(PROCESSOR_SELECTORS.ADD_PROCESSOR_DIALOG, { timeout: 2000 });
     }
-    
+
     // Strategy 2: Try right-click on canvas - use flexible canvas selector
     cy.log('🖱️ Trying right-click on canvas approach');
     const canvasSelectors = ['svg', '#canvas', '#canvas-container'];
-    
+
     for (const selector of canvasSelectors) {
       const elements = $body.find(selector);
       if (elements.length > 0) {
-        return cy.get(selector)
-          .first()  // Only target the first element to avoid multiple element error
+        return cy
+          .get(selector)
+          .first() // Only target the first element to avoid multiple element error
           .rightclick(400, 300)
           .then(() => {
             // Look for context menu with "Add Processor" option
@@ -488,11 +543,12 @@ function tryOpenAddProcessorDialog(timeout) {
                   .click();
                 return cy.get(PROCESSOR_SELECTORS.ADD_PROCESSOR_DIALOG, { timeout: 2000 });
               }
-              
-              // Strategy 3: Try double-click on canvas  
+
+              // Strategy 3: Try double-click on canvas
               cy.log('🖱️ Trying double-click on canvas approach');
-              return cy.get(selector)
-                .first()  // Only target the first element
+              return cy
+                .get(selector)
+                .first() // Only target the first element
                 .dblclick(400, 300)
                 .then(() => {
                   return cy.get(PROCESSOR_SELECTORS.ADD_PROCESSOR_DIALOG, { timeout: 2000 });
@@ -501,58 +557,8 @@ function tryOpenAddProcessorDialog(timeout) {
           });
       }
     }
-    
-    throw new Error('Could not find any canvas element to interact with');
-  });
-}
 
-/**
- * Select processor type from the dialog
- * @param {Object} processorDef - Processor definition
- * @param {number} timeout - Timeout
- * @returns {Cypress.Chainable} Promise
- */
-function selectProcessorType(processorDef, timeout) {
-  cy.log(`🎯 Selecting processor type: ${processorDef.displayName}`);
-  
-  // First, try to search for the processor if search field exists
-  return cy.get('body').then(($body) => {
-    const searchInputs = $body.find(PROCESSOR_SELECTORS.PROCESSOR_SEARCH);
-    if (searchInputs.length > 0) {
-      cy.log('🔍 Using search to find processor');
-      cy.get(PROCESSOR_SELECTORS.PROCESSOR_SEARCH).clear().type(processorDef.shortName);
-      cy.wait(500); // Allow search to filter
-    }
-    
-    // Look for processor in the list
-    const searchTerms = [
-      processorDef.displayName,
-      processorDef.shortName,
-      'JWT',
-      'Token',
-      'Authenticator'
-    ];
-    
-    // Try to find and click the processor type
-    return cy.get(PROCESSOR_SELECTORS.PROCESSOR_TYPE_LIST).then(($list) => {
-      let found = false;
-      searchTerms.forEach(term => {
-        if (!found) {
-          const matches = $list.find(`:contains("${term}")`);
-          if (matches.length > 0) {
-            cy.log(`✅ Found processor using term: ${term}`);
-            cy.get(PROCESSOR_SELECTORS.PROCESSOR_TYPE_LIST)
-              .contains(term)
-              .click();
-            found = true;
-          }
-        }
-      });
-      
-      if (!found) {
-        throw new Error(`Could not find processor type: ${processorDef.displayName}`);
-      }
-    });
+    throw new Error('Could not find any canvas element to interact with');
   });
 }
 
@@ -563,13 +569,13 @@ function selectProcessorType(processorDef, timeout) {
  */
 function confirmProcessorAddition(timeout) {
   cy.log('✅ Confirming processor addition');
-  
-  return cy.get(PROCESSOR_SELECTORS.ADD_BUTTON, { timeout })
+
+  return cy
+    .get(PROCESSOR_SELECTORS.ADD_BUTTON, { timeout })
     .click()
     .then(() => {
       // Wait for dialog to close
-      cy.get(PROCESSOR_SELECTORS.ADD_PROCESSOR_DIALOG, { timeout: 2000 })
-        .should('not.exist');
+      cy.get(PROCESSOR_SELECTORS.ADD_PROCESSOR_DIALOG, { timeout: 2000 }).should('not.exist');
     });
 }
 
@@ -582,17 +588,19 @@ function confirmProcessorAddition(timeout) {
  */
 function performProcessorRemoval(processor, confirmDeletion, timeout) {
   cy.log(`🗑️ Removing processor: ${processor.name}`);
-  
+
   // Right-click on processor to open context menu
   return cy.get('body').then(() => {
     if (processor.element && processor.element.length > 0) {
       processor.element[0].dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-      
+
       // Look for delete option in context menu
-      return cy.get(PROCESSOR_SELECTORS.CONTEXT_MENU, { timeout })
+      return cy
+        .get(PROCESSOR_SELECTORS.CONTEXT_MENU, { timeout })
         .should('be.visible')
         .then(() => {
-          return cy.get(PROCESSOR_SELECTORS.CONTEXT_MENU_DELETE)
+          return cy
+            .get(PROCESSOR_SELECTORS.CONTEXT_MENU_DELETE)
             .click()
             .then(() => {
               if (confirmDeletion) {

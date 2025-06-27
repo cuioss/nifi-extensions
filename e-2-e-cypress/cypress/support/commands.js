@@ -18,7 +18,7 @@ import './processor-helper';
 // The active test suite now uses stateful authentication helpers:
 // - cy.loginNiFi() - Login using cached session
 // - cy.logoutNiFi() - Logout and clear session
-// - cy.getSessionContext() - Get session information  
+// - cy.getSessionContext() - Get session information
 // - cy.ensureNiFiReady() - One-stop login + validation
 //
 // And advanced navigation helpers:

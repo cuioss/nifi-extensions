@@ -49,7 +49,9 @@ The framework underwent comprehensive optimization with outstanding results:
 
 [NOTE]
 ====
-**Code Standards**: This project implements the centralized JavaScript and ESLint standards. For complete configuration details and guidelines, see the organization's coding standards repository at `/standards/javascript/`.
+**Code Standards**: This project implements the centralized JavaScript and ESLint standards. For complete configuration details and guidelines, see the organization's coding standards repository:
+* [JavaScript Standards](https://github.com/cuioss/cui-llm-rules/tree/main/standards/javascript)
+* [Cypress Best Practices](https://github.com/cuioss/cui-llm-rules/blob/main/standards/javascript/cypress-best-practices.adoc)
 ====
 
 **Technical Details**: See [Implementation Guide](./doc/implementation-guide.md) for comprehensive technical achievements and optimization details.

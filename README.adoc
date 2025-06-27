@@ -1,4 +1,5 @@
 = NiFi Extensions
+
 :toc:
 :toclevels: 2
 
@@ -88,10 +89,10 @@ See link:e-2-e-cypress/doc/local-integration-testing.md[Local Integration Testin
 
 This project implements centralized coding standards defined in the organization's standards repository:
 
-* **JavaScript/ESLint Standards**: `/standards/javascript/` - Complete linting configuration and best practices
-* **Java Standards**: `/standards/java/` - Java coding standards and conventions  
-* **Testing Standards**: `/standards/testing/` - Comprehensive testing guidelines
-* **Documentation Standards**: `/standards/documentation/` - Documentation structure and requirements
+* **JavaScript/ESLint Standards**: https://github.com/cuioss/cui-llm-rules/tree/main/standards/javascript[JavaScript Standards] - Complete linting configuration and best practices
+* **Java Standards**: https://github.com/cuioss/cui-llm-rules/tree/main/standards/java[Java Standards] - Java coding standards and conventions  
+* **Testing Standards**: https://github.com/cuioss/cui-llm-rules/tree/main/standards/testing[Testing Standards] - Comprehensive testing guidelines
+* **Documentation Standards**: https://github.com/cuioss/cui-llm-rules/tree/main/standards/documentation[Documentation Standards] - Documentation structure and requirements
 
 The project achieves **zero-warning builds** through strategic implementation of these centralized standards.
 
@@ -107,3 +108,10 @@ The project uses unified frontend configuration across modules:
 * Cypress 14.4.1 for E2E testing
 
 All frontend configuration is centralized in the root POM properties.
+
+[IMPORTANT]
+====
+All contributors and AI tools (including GitHub Copilot, Claude, and others) **must follow the AI Development Guidelines in** link:doc/ai-rules.md[doc/ai-rules.md].
+
+These rules are mandatory for all code, documentation, and configuration changes. See the file for process, code style, testing, logging, and documentation standards.
+====

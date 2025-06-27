@@ -12,96 +12,151 @@ describe('01 - Basic Authentication - Modern Session Management', () => {
   it('R-AUTH-001: Should reject invalid credentials', () => {
     cy.log('Testing invalid credentials rejection');
 
-    // Clear any existing sessions first - including Cypress session cache
-    cy.session('nifi-session', () => {}, { validate: () => false }); // Clear session cache
-    cy.clearCookies();
-    cy.clearLocalStorage();
-    
-    // Navigate to login page
-    cy.visit('/');
+    // Use new clearSession method for guaranteed clean state
+    cy.clearSession();
 
-    // Check what page we actually land on and adapt the test accordingly
-    cy.getPageContext().then((context) => {
-      cy.log('Initial page context:', context.pageType);
-      
-      if (context.pageType === 'LOGIN') {
-        // We're on login page - test invalid credentials
-        cy.log('Testing invalid credentials on login page');
-        
-        cy.get('[data-testid="username"], input[type="text"], input[id*="username"]', {
-          timeout: 10000,
-        })
-          .should('be.visible')
-          .clear()
-          .type('invalid-user');
-
-        cy.get('[data-testid="password"], input[type="password"], input[id*="password"]')
-          .should('be.visible')
-          .clear()
-          .type('invalid-password');
-
-        cy.get('[data-testid="login-button"], input[value="Login"], button[type="submit"]').click();
-
-        // Verify we stay on login page or get error
-        cy.url().should('satisfy', (url) => url.includes('/login') || url.includes('/error'));
-        
-      } else {
-        // NiFi might not have authentication enabled - just verify this behavior
-        cy.log('⚠️ NiFi appears to not require authentication or auto-login is configured');
-        expect(context.pageType).to.not.equal('ERROR');
-      }
-
-      cy.log('✅ Invalid credentials handling verified');
+    // Navigate to login page using navigation helper
+    cy.navigateToPage('LOGIN', {
+      timeout: 30000,
+      waitForReady: true,
     });
+
+    // Wait for login form elements to be visible
+    cy.get('input[type="text"], input[id*="username"], [data-testid="username"]', {
+      timeout: 5000,
+    }).should('be.visible');
+
+    // Enter invalid credentials
+    cy.get('[data-testid="username"], input[type="text"], input[id*="username"]', {
+      timeout: 5000,
+    })
+      .should('be.visible')
+      .clear()
+      .type('invalid-user');
+
+    cy.get('[data-testid="password"], input[type="password"], input[id*="password"]')
+      .should('be.visible')
+      .clear()
+      .type('invalid-password');
+
+    // Submit login form
+    cy.get('[data-testid="login-button"], input[value="Login"], button[type="submit"]').click();
+
+    // Assert that login fails using navigation helper's page type detection
+    cy.getPageContext().should((context) => {
+      // Invalid credentials should keep us on the login page
+      // (Most secure practice - don't redirect away from login on auth failure)
+      expect(context.pageType).to.equal('LOGIN');
+
+      // Ensure we're definitely not on the main canvas (no successful auth)
+      expect(context.pageType).to.not.equal('MAIN_CANVAS');
+    });
+
+    // Assert we're not authenticated using auth helper
+    cy.getSessionContext().should((context) => {
+      expect(context.isLoggedIn).to.be.false;
+    });
+
+    cy.log('✅ Invalid credentials properly rejected');
   });
 
   it('R-AUTH-002: Should login successfully using session helper', () => {
     cy.log('🔑 Testing successful login with session caching');
 
-    // Use the new authentication helper
-    cy.loginNiFi('admin', 'adminadminadmin');
+    // Force a fresh login to ensure we're testing the login process
+    cy.clearSession();
 
-    // Verify login state using session context
-    cy.getSessionContext().then((context) => {
-      // Debug logging
-      cy.log('Session context:', JSON.stringify(context, null, 2));
-      
-      // Check basic authentication success - just verify we're not on login page
-      expect(context.url).to.not.contain('/login');
-      cy.log('✅ Login successful - not on login page');
-    });
-    
-    cy.log('✅ Login successful with session caching');
+    // Use the new retrieveSession method for intelligent session management
+    cy.retrieveSession('admin', 'adminadminadmin', { forceLogin: true });
+
+    cy.log('✅ Auth helper confirmed login successful');
+
+    // Navigate to main NiFi UI to verify login using navigation helper
+    cy.navigateWithAuth('MAIN_CANVAS', { waitForReady: true });
+
+    // Verify we're on the main canvas using navigation helper
+    cy.verifyPageType('MAIN_CANVAS');
+
+    cy.log('✅ Login successful with session caching via auth helper');
+  });
+
+  it('R-AUTH-002B: Should access main NiFi UI after successful login', () => {
+    cy.log('🎯 Testing post-login access to main NiFi UI using auth helper');
+
+    // Use the new retrieveSession method (should reuse existing session from previous test)
+    cy.retrieveSession('admin', 'adminadminadmin');
+
+    cy.log('✅ Auth helper confirmed successful login and page access');
+
+    // Navigate to main NiFi canvas using navigation helper
+    cy.navigateWithAuth('MAIN_CANVAS', { waitForReady: true });
+
+    // Verify we're on the main canvas using navigation helper
+    cy.verifyPageType('MAIN_CANVAS');
+
+    cy.log('✅ Main NiFi UI accessible after login via auth helper');
   });
 
   it('R-AUTH-003: Should maintain session without additional login', () => {
-    cy.log('🔄 Testing session persistence');
+    cy.log('🔄 Testing session persistence via auth helper');
 
-    // This should use the cached session from the previous test
-    cy.ensureNiFiReady();
+    // Use retrieveSession to test session persistence (should reuse existing session)
+    cy.retrieveSession('admin', 'adminadminadmin', { validateSession: true });
 
-    // Verify session state
-    cy.getSessionContext().then((context) => {
-      expect(context.isLoggedIn).to.be.true;
-      expect(context.isNiFiPage).to.be.true;
-      // Don't require isReady here - just verify session persisted
-    });
-    
-    cy.log('✅ Session persisted successfully - no additional login needed');
+    cy.log('✅ Auth helper confirmed session persisted');
+
+    // Navigate to main canvas to verify session is maintained using navigation helper
+    cy.navigateWithAuth('MAIN_CANVAS', { waitForReady: true });
+
+    // Verify we're on the main canvas using navigation helper
+    cy.verifyPageType('MAIN_CANVAS');
+
+    cy.log('✅ Session persisted successfully via auth helper - no additional login needed');
   });
 
-  it('R-AUTH-004: Should logout and clear session', () => {
+  it('R-AUTH-004: Should verify unauthenticated access is blocked', () => {
+    cy.log('🚫 Testing that unauthenticated access shows canvas but user is not authenticated');
+
+    // Use new clearSession method for guaranteed clean state
+    cy.clearSession();
+
+    // Try to access main NiFi UI without authentication - using navigation helper
+    cy.navigateToPage('MAIN_CANVAS', {
+      timeout: 30000,
+      waitForReady: false, // Don't wait for ready since it requires authentication
+    });
+
+    // Verify we can access the canvas page (NiFi allows this)
+    cy.getPageContext().should((context) => {
+      expect(context.pageType).to.equal('MAIN_CANVAS');
+    });
+
+    // But verify we're not authenticated using auth helper
+    cy.getSessionContext().should((context) => {
+      expect(context.isLoggedIn).to.be.false;
+    });
+
+    // Verify the canvas is not fully functional (not ready for authenticated operations)
+    cy.getPageContext().should((context) => {
+      expect(context.isReady).to.be.false; // Should not be ready without authentication
+    });
+
+    cy.log('✅ Unauthenticated access shows canvas but user is properly not authenticated');
+  });
+
+  it('R-AUTH-005: Should logout and clear session', () => {
     cy.log('🚪 Testing logout functionality');
 
-    // First ensure we're logged in
-    cy.ensureNiFiReady();
+    // First ensure we're logged in using retrieveSession
+    cy.retrieveSession('admin', 'adminadminadmin');
 
     // Perform logout using helper
     cy.logoutNiFi();
 
-    // Verify logout state - should be redirected to login page
-    cy.url({ timeout: 10000 }).should('contain', '/login');
-    
+    // Verify logout state using navigation helper - should be on login page
+    cy.waitForPageType('LOGIN');
+    cy.verifyPageType('LOGIN');
+
     cy.log('✅ Logout successful - session cleared');
   });
 });

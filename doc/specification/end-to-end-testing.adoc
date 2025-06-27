@@ -1523,7 +1523,10 @@ The Cypress end-to-end testing framework follows the centralized JavaScript and 
 
 [NOTE]
 ====
-For complete ESLint configuration details, rule explanations, and implementation guidelines, see the centralized standards at `/standards/javascript/cypress-e2e-testing-standards.adoc` and `/standards/javascript/linting-standards.adoc`.
+For complete ESLint configuration details, rule explanations, and implementation guidelines, see the centralized standards at:
+* [Cypress E2E Testing Standards](https://github.com/cuioss/cui-llm-rules/blob/main/standards/javascript/cypress-e2e-testing-standards.adoc)
+* [Cypress Best Practices](https://github.com/cuioss/cui-llm-rules/blob/main/standards/javascript/cypress-best-practices.adoc) 
+* [JavaScript Linting Standards](https://github.com/cuioss/cui-llm-rules/blob/main/standards/javascript/linting-standards.adoc)
 ====
 
 === Local Implementation

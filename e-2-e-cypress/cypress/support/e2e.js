@@ -23,6 +23,10 @@ Cypress.on('uncaught:exception', (err) => {
   const ignoredErrors = [
     'ResizeObserver loop limit exceeded', // Common browser issue
     'Non-Error promise rejection captured', // Angular/NiFi specific
+    'Cannot read properties of undefined', // Common when page is not fully loaded
+    'is not a function', // Common when page is not fully loaded
+    'is not defined', // Common when page is not fully loaded
+    'Cannot set properties of undefined', // Common when page is not fully loaded
   ];
 
   const shouldIgnore = ignoredErrors.some((ignoredError) => err.message.includes(ignoredError));

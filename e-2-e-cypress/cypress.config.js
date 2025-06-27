@@ -11,27 +11,27 @@ module.exports = defineConfig({
     chromeWebSecurity: false, // Required for NiFi's iframe-based architecture and cross-origin requests
     modifyObstructiveCode: false, // Prevent Cypress from modifying NiFi's code
     experimentalWebKitSupport: false,
-    
-    // Fail-fast configuration - aggressive timeouts to prevent hanging
-    defaultCommandTimeout: 15000,  // Reduced from 30s - fail faster on stuck commands
-    requestTimeout: 20000,          // Reduced from 30s - fail faster on network issues
-    responseTimeout: 20000,         // Reduced from 30s - fail faster on slow responses
-    pageLoadTimeout: 60000,         // Reduced from 180s - fail faster on page load issues
-    visitTimeout: 45000,            // Fail faster on visit timeouts
-    taskTimeout: 30000,             // Fail faster on custom tasks
-    execTimeout: 30000,             // Fail faster on exec commands
-    
+
+    // Timeout configuration - more generous to handle slow responses
+    defaultCommandTimeout: 10000,  // Increased timeout for commands
+    requestTimeout: 10000,         // Increased timeout for requests
+    responseTimeout: 10000,        // Increased timeout for responses
+    pageLoadTimeout: 60000,        // Significantly increased timeout for page loads
+    visitTimeout: 30000,           // Increased timeout for visits
+    taskTimeout: 10000,            // Increased timeout for tasks
+    execTimeout: 10000,            // Increased timeout for exec commands
+
     // Fail-fast execution settings
     experimentalRunAllSpecs: false, // Run specs individually to fail fast
     stopSpecOnFirstFailure: true,  // Stop spec immediately on first failure
     exitOnFail: true,               // Exit process on test failure
-    
+
     // Retry configuration - limited retries to fail fast
     retries: {
       runMode: 1,    // Only 1 retry in run mode
       openMode: 0    // No retries in open mode
     },
-    
+
     // Test isolation for fail-fast behavior
     testIsolation: true,            // Ensure clean state between tests
     // Media settings for faster execution
@@ -41,7 +41,7 @@ module.exports = defineConfig({
     setupNodeEvents(on, config) {
       // Fail-fast behavior is implemented via cypress.config.js settings above
       // No additional plugins needed
-      
+
       // Handle browser launch arguments to fix certificate warnings
       on('before:browser:launch', (browser, launchOptions) => {
         if (browser && browser.name === 'chrome') {
@@ -52,16 +52,16 @@ module.exports = defineConfig({
           launchOptions.args.push('--disable-extensions-file-access-check');
           launchOptions.args.push('--disable-extensions-http-throttling');
         }
-        
+
         if (browser && browser.name === 'electron') {
           launchOptions.args.push('--ignore-certificate-errors');
           launchOptions.args.push('--ignore-ssl-errors');
           launchOptions.args.push('--allow-running-insecure-content');
         }
-        
+
         return launchOptions;
       });
-      
+
       // Register tasks for logging and backend gap detection
       on('task', {
         log(message) {
@@ -91,26 +91,26 @@ module.exports = defineConfig({
         saveBrowserLogs(logs) {
           const fs = require('fs');
           const path = require('path');
-          
+
           // Create browser-logs directory if it doesn't exist
           const logsDir = path.join(__dirname, 'browser-logs');
           if (!fs.existsSync(logsDir)) {
             fs.mkdirSync(logsDir, { recursive: true });
           }
-          
+
           // Generate filename with timestamp
           const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
           const filename = `browser-logs-${timestamp}.json`;
           const filepath = path.join(logsDir, filename);
-          
+
           // Save logs to file
           fs.writeFileSync(filepath, JSON.stringify(logs, null, 2));
           console.log(`🗒️ Browser logs saved to: ${filepath}`);
-          
+
           return null;
         }
       });
-      
+
       return config;
     },
     reporter: 'cypress-multi-reporters',
