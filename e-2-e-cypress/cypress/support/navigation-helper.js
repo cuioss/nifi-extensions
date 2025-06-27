@@ -495,20 +495,39 @@ Cypress.Commands.add('getPageContext', () => {
           const elements = analyzePageElements();
           const foundIndicators = analyzePageContent();
 
-          // Build context object with relaxed authentication detection
-          const urlIndicatesLoggedIn =
-            !currentUrl.includes('/login') && !currentUrl.includes('login');
+          // Build context object with more accurate authentication detection
+          // Check for actual authentication indicators (cookies, session storage, etc.)
+          let isAuthenticated = false;
 
-          // Check for canvas elements with more robust approach
-          const hasCanvas =
-            elements['#canvas'] ||
-            elements['svg'] ||
-            elements['#canvas-container'] ||
-            elements['[data-testid="canvas-container"]'];
+          // First check if we're definitely on login page
+          const isOnLoginPage = currentUrl.includes('/login') || currentUrl.includes('login');
 
-          // Consider authenticated if either URL indicates it or canvas elements are present
-          // This is more lenient to handle cases where canvas might not be immediately visible
-          const isAuthenticated = urlIndicatesLoggedIn || hasCanvas;
+          if (!isOnLoginPage) {
+            // Check for canvas elements as primary indicator
+            const hasCanvas =
+              elements['#canvas'] ||
+              elements['svg'] ||
+              elements['#canvas-container'] ||
+              elements['[data-testid="canvas-container"]'];
+
+            // Check if session was explicitly cleared
+            let sessionWasCleared = false;
+            try {
+              sessionWasCleared =
+                window.sessionStorage.getItem('cypress-session-cleared') === 'true';
+            } catch (error) {
+              // Ignore errors accessing sessionStorage
+            }
+
+            // If session was explicitly cleared, consider unauthenticated even with canvas
+            if (sessionWasCleared) {
+              isAuthenticated = false;
+            } else {
+              // Simple approach: if we have canvas elements and we're not on login page,
+              // consider it authenticated. The auth-helper will handle more detailed session validation.
+              isAuthenticated = hasCanvas;
+            }
+          }
 
           // Build the context object
           const context = {

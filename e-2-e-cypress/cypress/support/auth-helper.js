@@ -1,7 +1,8 @@
 /**
- * @file Authentication Helper - NiFi Session Management
- * Provides stateful login/logout functionality using cy.session()
- * Following Cypress best practices for 2024
+ * @file Authentication Helper - Simplified NiFi Session Management
+ * Provides reliable login functionality using cy.session() and navigation-helper
+ * Simplified and optimized for reliable NiFi processor testing
+ * @version 2.0.0
  */
 
 /**
@@ -22,96 +23,107 @@ Cypress.Commands.add('loginNiFi', (username = 'admin', password = 'adminadminadm
   cy.session(
     sessionId,
     () => {
-      // Setup function - only runs when session doesn't exist or is invalid
       cy.log(`🔑 Creating new session for user: ${username}`);
 
-      // Start by visiting the login page directly
-      cy.visit('#/login', {
-        timeout: 30000,
-        failOnStatusCode: false,
+      // Navigate to login page using navigation helper
+      cy.navigateToPage('LOGIN');
+
+      // Verify we're on the login page
+      cy.verifyPageType('LOGIN');
+
+      // Perform login with robust selectors
+      cy.get(
+        '[data-testid="username"], input[type="text"], input[id*="username"], input[name="username"]'
+      )
+        .should('be.visible')
+        .clear()
+        .type(username);
+
+      cy.get(
+        '[data-testid="password"], input[type="password"], input[id*="password"], input[name="password"]'
+      )
+        .should('be.visible')
+        .clear()
+        .type(password);
+
+      cy.get(
+        '[data-testid="login-button"], input[value="Login"], button[type="submit"], button:contains("Login")'
+      ).click();
+
+      // Wait for form submission and page redirect
+      cy.wait(1000);
+
+      // Wait for successful login and verify we're on the main canvas
+      cy.waitForPageType('MAIN_CANVAS');
+
+      // Clear the session cleared flag since we're now authenticated
+      cy.window().then((win) => {
+        win.sessionStorage.removeItem('cypress-session-cleared');
       });
 
-      // Wait for page to be ready
-      cy.get('body', { timeout: 10000 }).should('exist');
-
-      // Check if we're actually on the login page or already logged in
-      cy.url().then((url) => {
-        cy.log(`Current URL after visit: ${url}`);
-
-        if (url.includes('/login') || url.includes('login')) {
-          cy.log('On login page - performing authentication...');
-
-          // Perform login with reliable selectors
-          cy.get(
-            '[data-testid="username"], input[type="text"], input[id*="username"], input[name="username"]',
-            {
-              timeout: 10000,
-            }
-          )
-            .should('be.visible')
-            .clear()
-            .type(username);
-
-          cy.get(
-            '[data-testid="password"], input[type="password"], input[id*="password"], input[name="password"]'
-          )
-            .should('be.visible')
-            .clear()
-            .type(password);
-
-          cy.get(
-            '[data-testid="login-button"], input[value="Login"], button[type="submit"], button:contains("Login")'
-          ).click();
-
-          // Wait for successful login
-          cy.url({ timeout: 15000 }).should('not.contain', '/login');
-          cy.log('✅ Login successful - redirected away from login page');
-        } else {
-          cy.log('Not on login page - checking if already logged in...');
-
-          // Try to navigate to canvas to verify we're logged in
-          cy.visit('#/canvas', {
-            timeout: 30000,
-            failOnStatusCode: false,
-          });
-        }
-      });
-
-      // Final verification - ensure we can access the canvas
-      cy.visit('#/canvas', {
-        timeout: 30000,
-        failOnStatusCode: false,
-      });
-
-      // Verify we're on the canvas page (more lenient than checking for specific elements)
-      cy.url({ timeout: 5000 }).should('contain', '#/canvas');
-      cy.url({ timeout: 5000 }).should('not.contain', '/login');
-
-      cy.log('✅ Session created and validated');
+      cy.log('✅ Login successful - session created');
     },
     {
-      // Validation function - ensures session is still valid
       validate() {
         cy.log('🔍 Validating existing session...');
 
-        // Visit the main canvas page to check if we're still logged in
-        cy.visit('#/canvas', {
-          timeout: 30000,
-          failOnStatusCode: false,
+        // Use navigation helper to check if we're authenticated
+        cy.getPageContext().then((context) => {
+          if (!context.isAuthenticated || context.pageType === 'LOGIN') {
+            throw new Error('Session validation failed - not authenticated');
+          }
         });
-
-        // Verify we're not redirected to login page
-        cy.url({ timeout: 5000 }).should('not.contain', '/login');
-
-        // More lenient validation - just check that we're on the canvas page
-        cy.url({ timeout: 5000 }).should('contain', '#/canvas');
 
         cy.log('✅ Session validation successful');
       },
-      // Cache session across all specs for maximum efficiency
       cacheAcrossSpecs: true,
     }
   );
+});
+
+/**
+ * Ensure NiFi is ready for testing
+ * Combines login and readiness checks in one command
+ * This is the main function used by tests
+ * @param {string} [username='admin'] - Username for authentication
+ * @param {string} [password='adminadminadmin'] - Password for authentication
+ * @example
+ * // Use in beforeEach for self-sufficient tests
+ * beforeEach(() => {
+ *   cy.ensureNiFiReady();
+ * });
+ */
+Cypress.Commands.add('ensureNiFiReady', (username = 'admin', password = 'adminadminadmin') => {
+  cy.log('🚀 Ensuring NiFi is ready for testing...');
+
+  // First, try to get current page context
+  cy.getPageContext().then((context) => {
+    if (context.isAuthenticated && context.pageType === 'MAIN_CANVAS' && context.isReady) {
+      cy.log('✅ Already authenticated and on main canvas - ready for testing');
+      return;
+    }
+
+    if (context.pageType === 'LOGIN') {
+      cy.log('🔑 On login page - performing authentication');
+      cy.loginNiFi(username, password);
+      return;
+    }
+
+    // If we're authenticated but not on main canvas, navigate there
+    if (context.isAuthenticated && context.pageType !== 'MAIN_CANVAS') {
+      cy.log('🧭 Authenticated but not on main canvas - navigating');
+      cy.navigateToPage('MAIN_CANVAS');
+      return;
+    }
+
+    // If we're not authenticated, perform login
+    cy.log('🔑 Not authenticated - performing login');
+    cy.loginNiFi(username, password);
+  });
+
+  // Final verification - ensure we're ready for testing
+  cy.verifyPageType('MAIN_CANVAS', { waitForReady: true });
+  cy.log('✅ NiFi is ready for testing');
 });
 
 /**
@@ -123,253 +135,17 @@ Cypress.Commands.add('loginNiFi', (username = 'admin', password = 'adminadminadm
 Cypress.Commands.add('logoutNiFi', () => {
   cy.log('🚪 Performing logout...');
 
-  // Try to find and click logout button
-  cy.get('body').then(($body) => {
-    const logoutSelectors = [
-      'button:contains("Logout")',
-      'a:contains("Logout")',
-      '[data-testid="logout"]',
-      '.logout',
-      '#logout',
-    ];
-
-    let logoutFound = false;
-    logoutSelectors.forEach((selector) => {
-      if ($body.find(selector).length > 0) {
-        cy.get(selector).first().click();
-        logoutFound = true;
-        return false; // break
-      }
-    });
-
-    if (!logoutFound) {
-      cy.log('No logout button found - clearing session manually');
-    }
-  });
-
   // Clear all session data
   cy.clearCookies();
   cy.clearLocalStorage();
   cy.clearAllSessionStorage();
 
-  // Verify logout - should redirect to login
-  cy.visit('/#/canvas', { timeout: 5000, failOnStatusCode: false });
-  cy.url({ timeout: 3000 }).should('contain', 'login');
+  // Navigate to login page to verify logout
+  cy.navigateToPage('LOGIN');
+  cy.verifyPageType('LOGIN');
 
   cy.log('✅ Logout successful - session cleared');
 });
-
-/**
- * Get current session context information
- * Useful for debugging and test verification
- * @returns {Object} Session context object
- * @returns {string} returns.url - Current page URL
- * @returns {string} returns.title - Page title
- * @returns {boolean} returns.isLoggedIn - Whether user is logged in
- * @returns {boolean} returns.isNiFiPage - Whether we're on a NiFi page
- * @returns {boolean} returns.hasCanvas - Whether canvas element exists
- * @returns {boolean} returns.hasCanvasContainer - Whether canvas container exists
- * @returns {boolean} returns.isReady - Whether NiFi is ready for testing
- * @returns {string} returns.timestamp - ISO timestamp
- * @example
- * cy.getSessionContext().then((context) => {
- *   expect(context.isReady).to.be.true;
- *   cy.log('Session state:', context);
- * });
- */
-Cypress.Commands.add('getSessionContext', () => {
-  cy.log('📋 Getting session context...');
-
-  return cy.url().then((currentUrl) => {
-    return cy.title().then((pageTitle) => {
-      // Use cy.get('body') to ensure the body element is available
-      return cy.get('body', { log: false }).then(($body) => {
-        // Check for canvas elements in the DOM
-        const hasCanvas = $body.find('#canvas, svg').length > 0;
-        const hasCanvasContainer =
-          $body.find('#canvas-container, [data-testid="canvas-container"]').length > 0;
-
-        // More conservative authentication detection
-        // Only consider logged in if we have strong evidence of authentication
-        const urlIndicatesNotLogin =
-          !currentUrl.includes('/login') &&
-          !currentUrl.includes('login') &&
-          !currentUrl.includes('#/login');
-        const hasCanvasElements = hasCanvas && hasCanvasContainer; // Both must be present
-
-        // Check for authentication-specific indicators (this is a simplified check)
-        // In a real scenario, you might check for auth tokens, user info, etc.
-        const hasAuthIndicators = urlIndicatesNotLogin && hasCanvasElements;
-
-        // Be more conservative - only consider logged in if we have clear auth indicators
-        // AND we're not on a login page AND we have functional canvas elements
-        const isLoggedIn =
-          hasAuthIndicators && urlIndicatesNotLogin && !currentUrl.includes('about:blank');
-        const isNiFiPage =
-          pageTitle.includes('NiFi') ||
-          pageTitle.includes('nifi') ||
-          pageTitle.toLowerCase().includes('apache');
-
-        const sessionContext = {
-          url: currentUrl,
-          title: pageTitle,
-          isLoggedIn: isLoggedIn,
-          isNiFiPage: isNiFiPage,
-          hasCanvas: hasCanvas,
-          hasCanvasContainer: hasCanvasContainer,
-          isReady: isLoggedIn && isNiFiPage,
-          timestamp: new Date().toISOString(),
-          toString() {
-            return `SessionContext{url: ${this.url}, isLoggedIn: ${this.isLoggedIn}, isReady: ${this.isReady}, hasCanvas: ${this.hasCanvas}, timestamp: ${this.timestamp}}`;
-          }
-        };
-
-        // Log the context for debugging (removed console.log to fix linting)
-
-        // Return the context wrapped in cy.wrap to maintain Cypress chain
-        return cy.wrap(sessionContext);
-      });
-    });
-  });
-});
-
-/**
- * Ensure NiFi is ready for testing
- * Combines login and readiness checks in one command
- * @param {string} [username='admin'] - Username for authentication
- * @param {string} [password='adminadminadmin'] - Password for authentication
- * @param {Object} [options={}] - Additional options
- * @param {boolean} [options.forceLogin=false] - Force new login even if session exists
- * @example
- * // Use in beforeEach for self-sufficient tests
- * beforeEach(() => {
- *   cy.ensureNiFiReady();
- * });
- *
- * // Use with custom credentials
- * cy.ensureNiFiReady('testuser', 'testpass');
- *
- * // Force fresh login
- * cy.ensureNiFiReady('admin', 'adminadminadmin', { forceLogin: true });
- */
-Cypress.Commands.add(
-  'ensureNiFiReady',
-  (username = 'admin', password = 'adminadminadmin', options = {}) => {
-    cy.log('🚀 Ensuring NiFi is ready for testing...');
-
-    // Use retrieveSession for intelligent session management
-    return cy.retrieveSession(username, password, options).then((context) => {
-      // Log the context for debugging first
-      cy.log(
-        `Session context: URL=${context.url}, isLoggedIn=${context.isLoggedIn}, hasCanvas=${context.hasCanvas}, title=${context.title}`
-      );
-
-      // If URL is about:blank, navigate to the main canvas
-      if (context.url === 'about:blank') {
-        cy.log('⚠️ URL is about:blank - navigating to main canvas');
-        cy.visit('#/canvas', {
-          timeout: 30000,
-          failOnStatusCode: false,
-        });
-
-        // Wait for the page to load and verify we're on the canvas
-        cy.url({ timeout: 10000 }).should('contain', '#/canvas');
-        cy.url({ timeout: 5000 }).should('not.contain', '/login');
-
-        // Get updated context after navigation
-        return cy.getSessionContext().then((updatedContext) => {
-          cy.log(
-            `Updated context: URL=${updatedContext.url}, pageType=${updatedContext.isLoggedIn}`
-          );
-          return cy.wrap(updatedContext);
-        });
-      } else {
-        // If we have a real URL, make sure it's not the login page
-        expect(context.url).to.not.contain('/login');
-        cy.log('✅ NiFi is ready for testing');
-        return cy.wrap(context);
-      }
-    });
-  }
-);
-
-/**
- * Retrieve existing session or create new one if needed
- * This method intelligently checks for existing valid sessions before attempting login
- * @param {string} [username='admin'] - Username for authentication
- * @param {string} [password='adminadminadmin'] - Password for authentication
- * @param {Object} [options={}] - Additional options
- * @param {boolean} [options.forceLogin=false] - Force new login even if session exists
- * @param {boolean} [options.validateSession=true] - Validate existing session before using
- * @returns {Cypress.Chainable<Object>} Session context object
- * @example
- * // Retrieve existing session or login if needed
- * cy.retrieveSession().then((context) => {
- *   expect(context.isLoggedIn).to.be.true;
- * });
- *
- * // Force new login session
- * cy.retrieveSession('admin', 'password', { forceLogin: true });
- *
- * // Retrieve session without validation (faster but less reliable)
- * cy.retrieveSession('admin', 'password', { validateSession: false });
- */
-Cypress.Commands.add(
-  'retrieveSession',
-  (username = 'admin', password = 'adminadminadmin', options = {}) => {
-    const { forceLogin = false, validateSession = true } = options;
-
-    cy.log(`🔍 Retrieving session for user: ${username}`, { forceLogin, validateSession });
-
-    if (forceLogin) {
-      cy.log('🔄 Force login requested - clearing session and logging in');
-      cy.clearSession(username);
-      cy.loginNiFi(username, password);
-      return cy.getSessionContext();
-    }
-
-    // Try to get current session context first
-    return cy
-      .getSessionContext()
-      .then((context) => {
-        // Use the improved isLoggedIn property that checks both URL and UI elements
-        if (context.isLoggedIn && !validateSession) {
-          cy.log('✅ Existing session detected (no validation requested)');
-          return context;
-        }
-
-        if (context.isLoggedIn && validateSession) {
-          cy.log('🔍 Existing session detected - validating...');
-
-          // More thorough validation using the session context
-          if (context.hasCanvas && context.isNiFiPage && context.isReady) {
-            cy.log('✅ Session validation passed - using existing session');
-            return context;
-          } else {
-            cy.log('⚠️ Session validation failed - performing fresh login');
-            // Need to break out of this chain to avoid async/sync mixing
-            return null; // Signal that we need to login
-          }
-        } else {
-          cy.log('🚪 No existing session detected - performing login');
-          // Need to break out of this chain to avoid async/sync mixing
-          return null; // Signal that we need to login
-        }
-      })
-      .then((context) => {
-        // If context is null, we need to perform login
-        if (context === null) {
-          // Chain the login and session context retrieval properly
-          return cy.loginNiFi(username, password).then(() => {
-            return cy.getSessionContext();
-          });
-        } else {
-          // Return the existing valid context
-          return cy.wrap(context);
-        }
-      });
-  }
-);
 
 /**
  * Force clear all sessions and authentication state
@@ -378,59 +154,105 @@ Cypress.Commands.add(
  * @example
  * // Clear all authentication state
  * cy.clearSession();
- *
- * // Clear specific user session
- * cy.clearSession('testuser');
  */
 Cypress.Commands.add('clearSession', (username = 'admin') => {
   cy.log(`🧹 Force clearing session for user: ${username}`);
+
+  // Clear all saved Cypress sessions
+  cy.wrap(null).then(() => {
+    if (Cypress.session && Cypress.session.clearAllSavedSessions) {
+      Cypress.session.clearAllSavedSessions();
+    }
+  });
 
   // Clear all browser storage
   cy.clearCookies();
   cy.clearLocalStorage();
   cy.clearAllSessionStorage();
 
-  // Visit canvas to clear any in-memory state and force redirect to login
-  cy.visit('/#/canvas', {
-    timeout: 30000,
-    failOnStatusCode: false,
+  // Set a flag to indicate session was explicitly cleared
+  cy.window().then((win) => {
+    win.sessionStorage.setItem('cypress-session-cleared', 'true');
   });
 
-  // Verify we're on the login page
-  cy.url({ timeout: 3000 }).then((url) => {
-    if (!url.includes('/login') && !url.includes('login')) {
-      cy.log('⚠️ Not on login page after clearing session - forcing logout');
-
-      // Try to find and click logout button
-      cy.get('body').then(($body) => {
-        const logoutSelectors = [
-          'button:contains("Logout")',
-          'a:contains("Logout")',
-          '[data-testid="logout"]',
-          '.logout',
-          '#logout',
-        ];
-
-        let logoutFound = false;
-        logoutSelectors.forEach((selector) => {
-          if ($body.find(selector).length > 0) {
-            cy.get(selector).first().click();
-            logoutFound = true;
-            return false; // break
-          }
-        });
-
-        if (!logoutFound) {
-          cy.log('No logout button found - trying to force redirect to login');
-          // Force redirect to login page using hash routing
-          cy.visit('/#/login', { timeout: 30000, failOnStatusCode: false });
-        }
-      });
-
-      // Verify we're now on the login page
-      cy.url({ timeout: 3000 }).should('include', '#/login');
-    }
-  });
+  // Navigate to login page to force logout
+  cy.navigateToPage('LOGIN');
+  cy.verifyPageType('LOGIN');
 
   cy.log('✅ Session cleared completely');
 });
+
+/**
+ * Get current session context and authentication state
+ * @returns {Object} Session context with authentication information
+ * @example
+ * // Check current session state
+ * cy.getSessionContext().then((session) => {
+ *   if (session.isLoggedIn) {
+ *     cy.log('User is authenticated');
+ *   }
+ * });
+ */
+Cypress.Commands.add('getSessionContext', () => {
+  return cy.getPageContext().then((pageContext) => {
+    return {
+      isLoggedIn: pageContext.isAuthenticated,
+      pageType: pageContext.pageType,
+      isReady: pageContext.isReady,
+      timestamp: new Date().toISOString(),
+    };
+  });
+});
+
+/**
+ * Intelligent session retrieval with options for session management
+ * @param {string} [username='admin'] - Username for authentication
+ * @param {string} [password='adminadminadmin'] - Password for authentication
+ * @param {Object} [options={}] - Session management options
+ * @param {boolean} [options.forceLogin=false] - Force a fresh login even if session exists
+ * @param {boolean} [options.validateSession=false] - Validate existing session before proceeding
+ * @example
+ * // Force a fresh login
+ * cy.retrieveSession('admin', 'adminadminadmin', { forceLogin: true });
+ *
+ * // Reuse existing session if available
+ * cy.retrieveSession('admin', 'adminadminadmin');
+ *
+ * // Validate session persistence
+ * cy.retrieveSession('admin', 'adminadminadmin', { validateSession: true });
+ */
+Cypress.Commands.add(
+  'retrieveSession',
+  (username = 'admin', password = 'adminadminadmin', options = {}) => {
+    const { forceLogin = false, validateSession = false } = options;
+
+    cy.log(`🔄 Retrieving session for user: ${username}`);
+    cy.log(`   Options: forceLogin=${forceLogin}, validateSession=${validateSession}`);
+
+    if (forceLogin) {
+      cy.log('🔄 Force login requested - clearing existing session');
+      cy.clearSession(username);
+      cy.loginNiFi(username, password);
+      cy.ensureNiFiReady(username, password);
+      return;
+    }
+
+    if (validateSession) {
+      cy.log('🔍 Validating existing session...');
+      cy.getSessionContext().then((session) => {
+        if (session.isLoggedIn && session.pageType === 'MAIN_CANVAS' && session.isReady) {
+          cy.log('✅ Session validation successful - session is active and ready');
+        } else {
+          cy.log('⚠️ Session validation failed - performing fresh login');
+          cy.loginNiFi(username, password);
+        }
+      });
+      cy.ensureNiFiReady(username, password);
+      return;
+    }
+
+    // Default behavior: use existing session if available, otherwise login
+    cy.log('🔄 Using intelligent session management');
+    cy.ensureNiFiReady(username, password);
+  }
+);
