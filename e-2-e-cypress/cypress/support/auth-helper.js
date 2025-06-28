@@ -5,6 +5,8 @@
  * @version 2.0.0
  */
 
+import { SELECTORS, PAGE_TYPES, DEFAULT_CREDENTIALS } from './constants';
+
 /**
  * Login helper using cy.session() for optimal performance
  * This creates a cached session that persists across tests
@@ -17,69 +19,60 @@
  * // Login with custom credentials
  * cy.loginNiFi('testuser', 'testpass');
  */
-Cypress.Commands.add('loginNiFi', (username = 'admin', password = 'adminadminadmin') => {
-  const sessionId = `nifi-session-${username}`;
+Cypress.Commands.add(
+  'loginNiFi',
+  (username = DEFAULT_CREDENTIALS.USERNAME, password = DEFAULT_CREDENTIALS.PASSWORD) => {
+    const sessionId = `nifi-session-${username}`;
 
-  cy.session(
-    sessionId,
-    () => {
-      cy.log(`🔑 Creating new session for user: ${username}`);
+    cy.session(
+      sessionId,
+      () => {
+        cy.log(`🔑 Creating new session for user: ${username}`);
 
-      // Navigate to login page using navigation helper
-      cy.navigateToPage('LOGIN');
+        // Navigate to login page using navigation helper
+        cy.navigateToPage(PAGE_TYPES.LOGIN);
 
-      // Verify we're on the login page
-      cy.verifyPageType('LOGIN');
+        // Verify we're on the login page
+        cy.verifyPageType(PAGE_TYPES.LOGIN);
 
-      // Perform login with robust selectors
-      cy.get(
-        '[data-testid="username"], input[type="text"], input[id*="username"], input[name="username"]'
-      )
-        .should('be.visible')
-        .clear()
-        .type(username);
+        // Perform login with robust selectors
+        cy.get(SELECTORS.USERNAME_INPUT).should('be.visible').clear().type(username);
 
-      cy.get(
-        '[data-testid="password"], input[type="password"], input[id*="password"], input[name="password"]'
-      )
-        .should('be.visible')
-        .clear()
-        .type(password);
+        cy.get(SELECTORS.PASSWORD_INPUT).should('be.visible').clear().type(password);
 
-      cy.get(
-        '[data-testid="login-button"], input[value="Login"], button[type="submit"], button:contains("Login")'
-      ).click();
+        cy.get(SELECTORS.LOGIN_BUTTON).click();
 
-      // Wait for form submission and page redirect
-      cy.wait(1000);
+        // Wait for form submission and page redirect
+        cy.wait(1000);
 
-      // Wait for successful login and verify we're on the main canvas
-      cy.waitForPageType('MAIN_CANVAS');
+        // Wait for successful login and verify we're on the main canvas
+        cy.waitForPageType(PAGE_TYPES.MAIN_CANVAS);
 
-      // Clear the session cleared flag since we're now authenticated
-      cy.window().then((win) => {
-        win.sessionStorage.removeItem('cypress-session-cleared');
-      });
-
-      cy.log('✅ Login successful - session created');
-    },
-    {
-      validate() {
-        cy.log('🔍 Validating existing session...');
-
-        // Use navigation helper to check if we're authenticated
-        cy.getPageContext().then((context) => {
-          if (!context.isAuthenticated || context.pageType === 'LOGIN') {
-            throw new Error('Session validation failed - not authenticated');
-          }
+        // Clear the session cleared flag since we're now authenticated
+        cy.window().then((win) => {
+          win.sessionStorage.removeItem('cypress-session-cleared');
         });
 
-        cy.log('✅ Session validation successful');
+        cy.log('✅ Login successful - session created');
       },
-      cacheAcrossSpecs: true,
-    }
-  );
-});
+      {
+        validate() {
+          cy.log('🔍 Validating existing session...');
+
+          // Use navigation helper to check if we're authenticated
+          cy.getPageContext().then((context) => {
+            if (!context.isAuthenticated || context.pageType === PAGE_TYPES.LOGIN) {
+              throw new Error('Session validation failed - not authenticated');
+            }
+          });
+
+          cy.log('✅ Session validation successful');
+        },
+        cacheAcrossSpecs: true,
+      }
+    );
+  }
+);
 
 /**
  * Ensure NiFi is ready for testing
@@ -93,38 +86,45 @@ Cypress.Commands.add('loginNiFi', (username = 'admin', password = 'adminadminadm
  *   cy.ensureNiFiReady();
  * });
  */
-Cypress.Commands.add('ensureNiFiReady', (username = 'admin', password = 'adminadminadmin') => {
-  cy.log('🚀 Ensuring NiFi is ready for testing...');
+Cypress.Commands.add(
+  'ensureNiFiReady',
+  (username = DEFAULT_CREDENTIALS.USERNAME, password = DEFAULT_CREDENTIALS.PASSWORD) => {
+    cy.log('🚀 Ensuring NiFi is ready for testing...');
 
-  // First, try to get current page context
-  cy.getPageContext().then((context) => {
-    if (context.isAuthenticated && context.pageType === 'MAIN_CANVAS' && context.isReady) {
-      cy.log('✅ Already authenticated and on main canvas - ready for testing');
-      return;
-    }
+    // First, try to get current page context
+    cy.getPageContext().then((context) => {
+      if (
+        context.isAuthenticated &&
+        context.pageType === PAGE_TYPES.MAIN_CANVAS &&
+        context.isReady
+      ) {
+        cy.log('✅ Already authenticated and on main canvas - ready for testing');
+        return;
+      }
 
-    if (context.pageType === 'LOGIN') {
-      cy.log('🔑 On login page - performing authentication');
+      if (context.pageType === PAGE_TYPES.LOGIN) {
+        cy.log('🔑 On login page - performing authentication');
+        cy.loginNiFi(username, password);
+        return;
+      }
+
+      // If we're authenticated but not on main canvas, navigate there
+      if (context.isAuthenticated && context.pageType !== PAGE_TYPES.MAIN_CANVAS) {
+        cy.log('🧭 Authenticated but not on main canvas - navigating');
+        cy.navigateToPage(PAGE_TYPES.MAIN_CANVAS);
+        return;
+      }
+
+      // If we're not authenticated, perform login
+      cy.log('🔑 Not authenticated - performing login');
       cy.loginNiFi(username, password);
-      return;
-    }
+    });
 
-    // If we're authenticated but not on main canvas, navigate there
-    if (context.isAuthenticated && context.pageType !== 'MAIN_CANVAS') {
-      cy.log('🧭 Authenticated but not on main canvas - navigating');
-      cy.navigateToPage('MAIN_CANVAS');
-      return;
-    }
-
-    // If we're not authenticated, perform login
-    cy.log('🔑 Not authenticated - performing login');
-    cy.loginNiFi(username, password);
-  });
-
-  // Final verification - ensure we're ready for testing
-  cy.verifyPageType('MAIN_CANVAS', { waitForReady: true });
-  cy.log('✅ NiFi is ready for testing');
-});
+    // Final verification - ensure we're ready for testing
+    cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS, { waitForReady: true });
+    cy.log('✅ NiFi is ready for testing');
+  }
+);
 
 /**
  * Logout helper - clears the current session
@@ -141,8 +141,8 @@ Cypress.Commands.add('logoutNiFi', () => {
   cy.clearAllSessionStorage();
 
   // Navigate to login page to verify logout
-  cy.navigateToPage('LOGIN');
-  cy.verifyPageType('LOGIN');
+  cy.navigateToPage(PAGE_TYPES.LOGIN);
+  cy.verifyPageType(PAGE_TYPES.LOGIN);
 
   cy.log('✅ Logout successful - session cleared');
 });
@@ -155,7 +155,7 @@ Cypress.Commands.add('logoutNiFi', () => {
  * // Clear all authentication state
  * cy.clearSession();
  */
-Cypress.Commands.add('clearSession', (username = 'admin') => {
+Cypress.Commands.add('clearSession', (username = DEFAULT_CREDENTIALS.USERNAME) => {
   cy.log(`🧹 Force clearing session for user: ${username}`);
 
   // Clear all saved Cypress sessions
@@ -176,8 +176,8 @@ Cypress.Commands.add('clearSession', (username = 'admin') => {
   });
 
   // Navigate to login page to force logout
-  cy.navigateToPage('LOGIN');
-  cy.verifyPageType('LOGIN');
+  cy.navigateToPage(PAGE_TYPES.LOGIN);
+  cy.verifyPageType(PAGE_TYPES.LOGIN);
 
   cy.log('✅ Session cleared completely');
 });
@@ -223,7 +223,11 @@ Cypress.Commands.add('getSessionContext', () => {
  */
 Cypress.Commands.add(
   'retrieveSession',
-  (username = 'admin', password = 'adminadminadmin', options = {}) => {
+  (
+    username = DEFAULT_CREDENTIALS.USERNAME,
+    password = DEFAULT_CREDENTIALS.PASSWORD,
+    options = {}
+  ) => {
     const { forceLogin = false, validateSession = false } = options;
 
     cy.log(`🔄 Retrieving session for user: ${username}`);
@@ -240,7 +244,7 @@ Cypress.Commands.add(
     if (validateSession) {
       cy.log('🔍 Validating existing session...');
       cy.getSessionContext().then((session) => {
-        if (session.isLoggedIn && session.pageType === 'MAIN_CANVAS' && session.isReady) {
+        if (session.isLoggedIn && session.pageType === PAGE_TYPES.MAIN_CANVAS && session.isReady) {
           cy.log('✅ Session validation successful - session is active and ready');
         } else {
           cy.log('⚠️ Session validation failed - performing fresh login');

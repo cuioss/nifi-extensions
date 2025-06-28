@@ -6,6 +6,9 @@
 // that modifies Cypress.
 // ***********************************************************
 
+// Import shared constants
+import { IGNORED_ERROR_PATTERNS } from './constants';
+
 // Import commands.js using ES2015 syntax:
 import './commands';
 
@@ -20,16 +23,9 @@ Cypress.on('uncaught:exception', (err) => {
 
   // For fail-fast behavior, we can be more selective about which errors to ignore
   // Only ignore specific known issues, fail on everything else
-  const ignoredErrors = [
-    'ResizeObserver loop limit exceeded', // Common browser issue
-    'Non-Error promise rejection captured', // Angular/NiFi specific
-    'Cannot read properties of undefined', // Common when page is not fully loaded
-    'is not a function', // Common when page is not fully loaded
-    'is not defined', // Common when page is not fully loaded
-    'Cannot set properties of undefined', // Common when page is not fully loaded
-  ];
-
-  const shouldIgnore = ignoredErrors.some((ignoredError) => err.message.includes(ignoredError));
+  const shouldIgnore = IGNORED_ERROR_PATTERNS.some((ignoredError) =>
+    err.message.includes(ignoredError)
+  );
 
   // Return false to ignore known issues, true to fail fast on unexpected errors
   return !shouldIgnore;

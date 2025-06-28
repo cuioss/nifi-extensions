@@ -5,6 +5,8 @@
  * @version 4.0.0
  */
 
+import { PAGE_TYPES, PAGE_DEFINITIONS } from './constants';
+
 /**
  * @typedef {Object} PageContext
  * @property {string} url - Current page URL
@@ -24,15 +26,15 @@ function detectPageType(url) {
 
   // Single login URL pattern as specified in requirements
   if (normalizedUrl.includes('#/login')) {
-    return 'LOGIN';
+    return PAGE_TYPES.LOGIN;
   }
 
   // Main canvas detection - if not login and has canvas indicators
   if (normalizedUrl.includes('#/canvas') || normalizedUrl.includes('/nifi')) {
-    return 'MAIN_CANVAS';
+    return PAGE_TYPES.MAIN_CANVAS;
   }
 
-  return 'UNKNOWN';
+  return PAGE_TYPES.UNKNOWN;
 }
 
 /**
@@ -62,7 +64,7 @@ function populateIndicators(context) {
   if (context.isAuthenticated) {
     context.indicators.push('authenticated');
   }
-  if (context.pageType !== 'UNKNOWN') {
+  if (context.pageType !== PAGE_TYPES.UNKNOWN) {
     context.indicators.push(`page-type-${context.pageType.toLowerCase()}`);
   }
   if (context.url.includes('nifi')) {
@@ -120,10 +122,10 @@ Cypress.Commands.add('getPageContext', () => {
 
           // Determine ready state - simplified logic
           context.isReady =
-            context.pageType !== 'UNKNOWN' &&
-            (context.pageType === 'LOGIN'
+            context.pageType !== PAGE_TYPES.UNKNOWN &&
+            (context.pageType === PAGE_TYPES.LOGIN
               ? context.elements.hasLoginElements
-              : context.pageType === 'MAIN_CANVAS'
+              : context.pageType === PAGE_TYPES.MAIN_CANVAS
                 ? context.elements.hasCanvasElements && context.isAuthenticated
                 : false);
 
@@ -154,12 +156,12 @@ Cypress.Commands.add('navigateToPage', (pathOrPageType, options = {}) => {
   let actualPath = pathOrPageType;
   let expectedType = expectedPageType;
 
-  if (pathOrPageType === 'LOGIN') {
+  if (pathOrPageType === PAGE_TYPES.LOGIN) {
     actualPath = '/#/login';
-    expectedType = expectedType || 'LOGIN';
-  } else if (pathOrPageType === 'MAIN_CANVAS') {
+    expectedType = expectedType || PAGE_TYPES.LOGIN;
+  } else if (pathOrPageType === PAGE_TYPES.MAIN_CANVAS) {
     actualPath = '/';
-    expectedType = expectedType || 'MAIN_CANVAS';
+    expectedType = expectedType || PAGE_TYPES.MAIN_CANVAS;
   }
 
   cy.log(`🧭 Navigating to: ${actualPath} (expecting: ${expectedType || 'any'})`);
@@ -173,7 +175,7 @@ Cypress.Commands.add('navigateToPage', (pathOrPageType, options = {}) => {
   // Verify if expected type is specified
   if (expectedType) {
     // For LOGIN page, wait for elements to appear before checking readiness
-    if (expectedType === 'LOGIN') {
+    if (expectedType === PAGE_TYPES.LOGIN) {
       cy.get('input[type="password"], input[type="text"]', { timeout: 10000 }).should('be.visible');
     }
 
@@ -203,7 +205,7 @@ Cypress.Commands.add('verifyPageType', (expectedPageType, options = {}) => {
   cy.log(`🔍 Verifying page type: ${expectedPageType}`);
 
   // For LOGIN page, wait for elements to appear before checking readiness
-  if (expectedPageType === 'LOGIN') {
+  if (expectedPageType === PAGE_TYPES.LOGIN) {
     cy.get('input[type="password"], input[type="text"]', { timeout: 10000 }).should('be.visible');
   }
 
@@ -273,24 +275,7 @@ Cypress.Commands.add('navigateWithAuth', (path, options = {}) => {
  * @returns {Object} Page type definitions
  */
 Cypress.Commands.add('getAvailablePageTypes', () => {
-  const pageDefinitions = {
-    LOGIN: {
-      path: '/#/login',
-      description: 'NiFi Login Page',
-      elements: ['input[type="password"]'],
-    },
-    MAIN_CANVAS: {
-      path: '/',
-      description: 'NiFi Main Canvas',
-      elements: ['#canvas', 'svg'],
-    },
-    UNKNOWN: {
-      path: null,
-      description: 'Unknown Page Type',
-      elements: [],
-    },
-  };
-  return cy.wrap(pageDefinitions);
+  return cy.wrap(PAGE_DEFINITIONS);
 });
 
 /**
