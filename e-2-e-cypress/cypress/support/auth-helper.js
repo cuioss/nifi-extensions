@@ -6,6 +6,7 @@
  */
 
 import { SELECTORS, PAGE_TYPES, DEFAULT_CREDENTIALS } from './constants';
+import { logMessage, safeElementInteraction } from './utils';
 
 /**
  * Login helper using cy.session() for optimal performance
@@ -27,7 +28,7 @@ Cypress.Commands.add(
     cy.session(
       sessionId,
       () => {
-        cy.log(`🔑 Creating new session for user: ${username}`);
+        logMessage('info', `🔑 Creating new session for user: ${username}`);
 
         // Navigate to login page using navigation helper
         cy.navigateToPage(PAGE_TYPES.LOGIN);
@@ -36,11 +37,9 @@ Cypress.Commands.add(
         cy.verifyPageType(PAGE_TYPES.LOGIN);
 
         // Perform login with robust selectors
-        cy.get(SELECTORS.USERNAME_INPUT).should('be.visible').clear().type(username);
-
-        cy.get(SELECTORS.PASSWORD_INPUT).should('be.visible').clear().type(password);
-
-        cy.get(SELECTORS.LOGIN_BUTTON).click();
+        safeElementInteraction(SELECTORS.USERNAME_INPUT, 'type', username);
+        safeElementInteraction(SELECTORS.PASSWORD_INPUT, 'type', password);
+        safeElementInteraction(SELECTORS.LOGIN_BUTTON, 'click');
 
         // Wait for form submission and page redirect
         cy.wait(1000);
@@ -53,11 +52,11 @@ Cypress.Commands.add(
           win.sessionStorage.removeItem('cypress-session-cleared');
         });
 
-        cy.log('✅ Login successful - session created');
+        logMessage('success', 'Login successful - session created');
       },
       {
         validate() {
-          cy.log('🔍 Validating existing session...');
+          logMessage('info', 'Validating existing session...');
 
           // Use navigation helper to check if we're authenticated
           cy.getPageContext().then((context) => {
@@ -66,7 +65,7 @@ Cypress.Commands.add(
             }
           });
 
-          cy.log('✅ Session validation successful');
+          logMessage('success', 'Session validation successful');
         },
         cacheAcrossSpecs: true,
       }
@@ -89,7 +88,7 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   'ensureNiFiReady',
   (username = DEFAULT_CREDENTIALS.USERNAME, password = DEFAULT_CREDENTIALS.PASSWORD) => {
-    cy.log('🚀 Ensuring NiFi is ready for testing...');
+    logMessage('info', 'Ensuring NiFi is ready for testing...');
 
     // First, try to get current page context
     cy.getPageContext().then((context) => {
@@ -98,31 +97,31 @@ Cypress.Commands.add(
         context.pageType === PAGE_TYPES.MAIN_CANVAS &&
         context.isReady
       ) {
-        cy.log('✅ Already authenticated and on main canvas - ready for testing');
+        logMessage('success', 'Already authenticated and on main canvas - ready for testing');
         return;
       }
 
       if (context.pageType === PAGE_TYPES.LOGIN) {
-        cy.log('🔑 On login page - performing authentication');
+        logMessage('info', 'On login page - performing authentication');
         cy.loginNiFi(username, password);
         return;
       }
 
       // If we're authenticated but not on main canvas, navigate there
       if (context.isAuthenticated && context.pageType !== PAGE_TYPES.MAIN_CANVAS) {
-        cy.log('🧭 Authenticated but not on main canvas - navigating');
+        logMessage('info', 'Authenticated but not on main canvas - navigating');
         cy.navigateToPage(PAGE_TYPES.MAIN_CANVAS);
         return;
       }
 
       // If we're not authenticated, perform login
-      cy.log('🔑 Not authenticated - performing login');
+      logMessage('info', 'Not authenticated - performing login');
       cy.loginNiFi(username, password);
     });
 
     // Final verification - ensure we're ready for testing
     cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS, { waitForReady: true });
-    cy.log('✅ NiFi is ready for testing');
+    logMessage('success', 'NiFi is ready for testing');
   }
 );
 
@@ -133,7 +132,7 @@ Cypress.Commands.add(
  * cy.logoutNiFi();
  */
 Cypress.Commands.add('logoutNiFi', () => {
-  cy.log('🚪 Performing logout...');
+  logMessage('info', 'Performing logout...');
 
   // Clear all session data
   cy.clearCookies();
@@ -144,7 +143,7 @@ Cypress.Commands.add('logoutNiFi', () => {
   cy.navigateToPage(PAGE_TYPES.LOGIN);
   cy.verifyPageType(PAGE_TYPES.LOGIN);
 
-  cy.log('✅ Logout successful - session cleared');
+  logMessage('success', 'Logout successful - session cleared');
 });
 
 /**
@@ -156,7 +155,7 @@ Cypress.Commands.add('logoutNiFi', () => {
  * cy.clearSession();
  */
 Cypress.Commands.add('clearSession', (username = DEFAULT_CREDENTIALS.USERNAME) => {
-  cy.log(`🧹 Force clearing session for user: ${username}`);
+  logMessage('cleanup', `Force clearing session for user: ${username}`);
 
   // Clear all saved Cypress sessions
   cy.wrap(null).then(() => {
@@ -179,7 +178,7 @@ Cypress.Commands.add('clearSession', (username = DEFAULT_CREDENTIALS.USERNAME) =
   cy.navigateToPage(PAGE_TYPES.LOGIN);
   cy.verifyPageType(PAGE_TYPES.LOGIN);
 
-  cy.log('✅ Session cleared completely');
+  logMessage('success', 'Session cleared completely');
 });
 
 /**
@@ -230,11 +229,11 @@ Cypress.Commands.add(
   ) => {
     const { forceLogin = false, validateSession = false } = options;
 
-    cy.log(`🔄 Retrieving session for user: ${username}`);
-    cy.log(`   Options: forceLogin=${forceLogin}, validateSession=${validateSession}`);
+    logMessage('info', `Retrieving session for user: ${username}`);
+    logMessage('info', `Options: forceLogin=${forceLogin}, validateSession=${validateSession}`);
 
     if (forceLogin) {
-      cy.log('🔄 Force login requested - clearing existing session');
+      logMessage('info', 'Force login requested - clearing existing session');
       cy.clearSession(username);
       cy.loginNiFi(username, password);
       cy.ensureNiFiReady(username, password);
@@ -242,12 +241,12 @@ Cypress.Commands.add(
     }
 
     if (validateSession) {
-      cy.log('🔍 Validating existing session...');
+      logMessage('info', 'Validating existing session...');
       cy.getSessionContext().then((session) => {
         if (session.isLoggedIn && session.pageType === PAGE_TYPES.MAIN_CANVAS && session.isReady) {
-          cy.log('✅ Session validation successful - session is active and ready');
+          logMessage('success', 'Session validation successful - session is active and ready');
         } else {
-          cy.log('⚠️ Session validation failed - performing fresh login');
+          logMessage('warn', 'Session validation failed - performing fresh login');
           cy.loginNiFi(username, password);
         }
       });
@@ -256,7 +255,7 @@ Cypress.Commands.add(
     }
 
     // Default behavior: use existing session if available, otherwise login
-    cy.log('🔄 Using intelligent session management');
+    logMessage('info', 'Using intelligent session management');
     cy.ensureNiFiReady(username, password);
   }
 );

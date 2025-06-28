@@ -32,7 +32,7 @@ export function findWorkingCanvas(timeout = TIMEOUTS.CANVAS_READY) {
     for (const selector of selectors) {
       const elements = $body.find(selector);
       if (elements.length > 0) {
-        cy.log(`✅ Found canvas using selector: ${selector}`);
+        logMessage('success', `Found canvas using selector: ${selector}`);
         return cy.get(selector, { timeout }).should('be.visible');
       }
     }
@@ -48,7 +48,7 @@ export function findWorkingCanvas(timeout = TIMEOUTS.CANVAS_READY) {
 export function ensureMainCanvas(operation = 'operation') {
   return cy.getPageContext().then((context) => {
     if (context.pageType !== PAGE_TYPES.MAIN_CANVAS) {
-      cy.log(`⚠️ Not on main canvas for ${operation} (current: ${context.pageType})`);
+      logMessage('warn', `Not on main canvas for ${operation} (current: ${context.pageType})`);
       return false;
     }
     return true;
@@ -90,7 +90,7 @@ export function retryOperation(operation, options = {}) {
     return operation().catch((error) => {
       if (retryCount < maxRetries) {
         const delay = baseDelay * Math.pow(2, retryCount);
-        cy.log(`🔄 Retry ${retryCount + 1}/${maxRetries} after ${delay}ms: ${error.message}`);
+        logMessage('info', `Retry ${retryCount + 1}/${maxRetries} after ${delay}ms: ${error.message}`);
         return cy.wait(delay).then(() => attempt(retryCount + 1));
       }
       throw error;
@@ -98,6 +98,17 @@ export function retryOperation(operation, options = {}) {
   }
 
   return attempt();
+}
+
+/**
+ * Format console arguments for logging
+ * @param {...any} args - Console arguments
+ * @returns {string} Formatted message
+ */
+export function formatConsoleArgs(...args) {
+  return args
+    .map((arg) => (typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)))
+    .join(' ');
 }
 
 /**
@@ -118,7 +129,7 @@ export function safeElementInteraction(selector, action, value = null, options =
       if (required) {
         throw new Error(`Required element not found: ${selector}`);
       }
-      cy.log(`⚠️ Optional element not found: ${selector}`);
+      logMessage('warn', `Optional element not found: ${selector}`);
       return cy.wrap(null);
     }
 

@@ -1,4 +1,5 @@
 const allowedWarnings = require('./console-warnings-allowlist');
+const { formatConsoleArgs } = require('./utils');
 
 /**
  * Tracks console errors during test execution and reports them as test failures
@@ -29,9 +30,7 @@ Cypress.on('window:before:load', (win) => {
     originalConsole.error(...args);
 
     // Store the error message
-    const message = args
-      .map((arg) => (typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)))
-      .join(' ');
+    const message = formatConsoleArgs(...args);
 
     win.consoleErrors.push(message);
   };
@@ -47,9 +46,7 @@ Cypress.on('window:before:load', (win) => {
     originalConsole.warn(...args);
 
     // Store the warning message
-    const message = args
-      .map((arg) => (typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)))
-      .join(' ');
+    const message = formatConsoleArgs(...args);
 
     // Only track warnings not in the allowlist
     if (!allowedWarnings.some((allowedMsg) => message.includes(allowedMsg))) {
@@ -68,9 +65,7 @@ Cypress.on('window:before:load', (win) => {
     originalConsole.info(...args);
 
     // Store the info message
-    const message = args
-      .map((arg) => (typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)))
-      .join(' ');
+    const message = formatConsoleArgs(...args);
 
     win.consoleInfos.push({ type: 'info', message, timestamp: new Date().toISOString() });
   };
@@ -85,9 +80,7 @@ Cypress.on('window:before:load', (win) => {
     originalConsole.log(...args);
 
     // Store the log message
-    const message = args
-      .map((arg) => (typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)))
-      .join(' ');
+    const message = formatConsoleArgs(...args);
 
     win.consoleInfos.push({ type: 'log', message, timestamp: new Date().toISOString() });
   };
