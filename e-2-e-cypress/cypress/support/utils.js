@@ -90,7 +90,10 @@ export function retryOperation(operation, options = {}) {
     return operation().catch((error) => {
       if (retryCount < maxRetries) {
         const delay = baseDelay * Math.pow(2, retryCount);
-        logMessage('info', `Retry ${retryCount + 1}/${maxRetries} after ${delay}ms: ${error.message}`);
+        logMessage(
+          'info',
+          `Retry ${retryCount + 1}/${maxRetries} after ${delay}ms: ${error.message}`
+        );
         return cy.wait(delay).then(() => attempt(retryCount + 1));
       }
       throw error;
