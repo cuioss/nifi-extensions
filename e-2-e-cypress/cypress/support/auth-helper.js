@@ -2,7 +2,7 @@
  * @file Authentication Helper - Simplified NiFi Session Management
  * Provides reliable login functionality using cy.session() and navigation-helper
  * Simplified and optimized for reliable NiFi processor testing
- * @version 2.0.0
+ * @version 1.0.0
  */
 
 import { SELECTORS, PAGE_TYPES, DEFAULT_CREDENTIALS } from './constants';

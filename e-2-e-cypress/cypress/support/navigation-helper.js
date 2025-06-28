@@ -2,10 +2,11 @@
  * @file Navigation Helper - Simplified NiFi Navigation for Processor Testing
  * Provides reliable navigation and page verification focused on NiFi login functionality
  * Minimized variants for detecting login URL as requested
- * @version 4.0.0
+ * @version 1.0.0
  */
 
 import { PAGE_TYPES, PAGE_DEFINITIONS } from './constants';
+import { findCanvasElements, logMessage } from './utils';
 
 /**
  * @typedef {Object} PageContext
@@ -43,10 +44,11 @@ function detectPageType(url) {
  */
 function analyzePageElements() {
   const $body = Cypress.$('body');
+  const canvasAnalysis = findCanvasElements($body);
 
   return {
     hasLoginElements: $body.find('input[type="password"]').length > 0,
-    hasCanvasElements: $body.find('#canvas, svg').length > 0,
+    hasCanvasElements: canvasAnalysis.hasCanvas,
   };
 }
 
@@ -130,8 +132,9 @@ Cypress.Commands.add('getPageContext', () => {
                 : false);
 
           // Simple logging
-          cy.log(
-            `📍 Page: ${context.pageType} | Auth: ${context.isAuthenticated} | Ready: ${context.isReady}`
+          logMessage(
+            'info',
+            `Page: ${context.pageType} | Auth: ${context.isAuthenticated} | Ready: ${context.isReady}`
           );
 
           return cy.wrap(context);
@@ -164,7 +167,7 @@ Cypress.Commands.add('navigateToPage', (pathOrPageType, options = {}) => {
     expectedType = expectedType || PAGE_TYPES.MAIN_CANVAS;
   }
 
-  cy.log(`🧭 Navigating to: ${actualPath} (expecting: ${expectedType || 'any'})`);
+  logMessage('info', `Navigating to: ${actualPath} (expecting: ${expectedType || 'any'})`);
 
   // Simple navigation
   cy.visit(actualPath, {
@@ -202,7 +205,7 @@ Cypress.Commands.add('navigateToPage', (pathOrPageType, options = {}) => {
 Cypress.Commands.add('verifyPageType', (expectedPageType, options = {}) => {
   const { strict = true, waitForReady = true } = options;
 
-  cy.log(`🔍 Verifying page type: ${expectedPageType}`);
+  logMessage('search', `Verifying page type: ${expectedPageType}`);
 
   // For LOGIN page, wait for elements to appear before checking readiness
   if (expectedPageType === PAGE_TYPES.LOGIN) {
@@ -215,7 +218,7 @@ Cypress.Commands.add('verifyPageType', (expectedPageType, options = {}) => {
       if (strict) {
         throw new Error(message);
       } else {
-        cy.log(`⚠️ ${message}`);
+        logMessage('warn', message);
       }
     }
 
@@ -224,7 +227,7 @@ Cypress.Commands.add('verifyPageType', (expectedPageType, options = {}) => {
       if (strict) {
         throw new Error(message);
       } else {
-        cy.log(`⚠️ ${message}`);
+        logMessage('warn', message);
       }
     }
   });
@@ -239,7 +242,7 @@ Cypress.Commands.add('verifyPageType', (expectedPageType, options = {}) => {
 Cypress.Commands.add('waitForPageType', (expectedPageType, options = {}) => {
   const { timeout = 10000 } = options;
 
-  cy.log(`⏳ Waiting for page type: ${expectedPageType}`);
+  logMessage('info', `Waiting for page type: ${expectedPageType}`);
 
   return cy
     .getPageContext({ timeout })
@@ -261,7 +264,7 @@ Cypress.Commands.add('waitForPageType', (expectedPageType, options = {}) => {
  * @param {Object} options - Navigation options
  */
 Cypress.Commands.add('navigateWithAuth', (path, options = {}) => {
-  cy.log(`🔐 Navigating with auth check to: ${path}`);
+  logMessage('info', `Navigating with auth check to: ${path}`);
 
   // Ensure authentication first (from auth-helper)
   cy.ensureNiFiReady();
@@ -283,18 +286,18 @@ Cypress.Commands.add('getAvailablePageTypes', () => {
  * @param {Array<Object>} navigationPaths - Array of navigation test cases
  */
 Cypress.Commands.add('testNavigationPaths', (navigationPaths) => {
-  cy.log(`🗺️ Testing ${navigationPaths.length} navigation paths`);
+  logMessage('info', `Testing ${navigationPaths.length} navigation paths`);
 
   navigationPaths.forEach((navPath, index) => {
     const { path, expectedPageType, description = `Navigation ${index + 1}` } = navPath;
 
-    cy.log(`📍 Testing: ${description} (${path} → ${expectedPageType})`);
+    logMessage('info', `Testing: ${description} (${path} → ${expectedPageType})`);
 
     cy.navigateToPage(path, { expectedPageType }).then((context) => {
       expect(context.pageType).to.equal(expectedPageType);
-      cy.log(`✅ ${description}: ${context.pageType}`);
+      logMessage('success', `${description}: ${context.pageType}`);
     });
   });
 
-  cy.log('🎯 All navigation paths tested successfully');
+  logMessage('success', 'All navigation paths tested successfully');
 });
