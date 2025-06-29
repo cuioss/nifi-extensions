@@ -4,9 +4,9 @@
  * @version 1.0.0
  */
 
-import { setupNiFiAPIMocks, createMockProcessor, verifyMockAPICalls } from '../mocks/nifi-api-mocks';
-import { JWT_PROCESSORS } from '../constants';
-import { logMessage } from '../utils';
+import { setupNiFiAPIMocks, createMockProcessor, verifyMockAPICalls } from './nifi-api-mocks';
+import { JWT_PROCESSORS } from '../cypress/support/constants';
+import { logMessage } from '../cypress/support/utils';
 
 /**
  * Set up mocked NiFi environment for testing

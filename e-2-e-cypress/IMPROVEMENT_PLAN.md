@@ -60,7 +60,7 @@ docker compose -f integration-testing/src/main/docker/docker-compose.yml logs ke
 
 ---
 
-## Current State Analysis - Critical Findings from CURRENT_STATE_DOCUMENTATION.md
+## Current State Analysis - Critical Findings from todo/CURRENT_STATE_DOCUMENTATION.md
 
 ### 🚨 **FUNDAMENTAL PROBLEM: No Real NiFi UI Knowledge**
 
@@ -91,7 +91,7 @@ This is the root cause of all other issues:
 - ❌ **Integration Tests**: Impossible without correct NiFi UI knowledge
 
 ### Current Reality Check
-**See CURRENT_STATE_DOCUMENTATION.md for complete analysis**
+**See todo/CURRENT_STATE_DOCUMENTATION.md for complete analysis**
 - Framework has solid infrastructure but **ZERO working core functionality**
 - Neither mocked nor integration tests work reliably
 - **NOT READY FOR PRODUCTION USE** - requires complete rework of core operations

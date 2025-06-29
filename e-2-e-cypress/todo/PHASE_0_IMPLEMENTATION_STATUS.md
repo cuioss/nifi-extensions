@@ -15,14 +15,14 @@
 - **Verification**: ✅ curl -k -I https://localhost:9095/nifi returns HTTP/2 301
 
 ### 2. Phase 0 Analysis Documentation ✅
-- **File**: `e-2-e-cypress/PHASE_0_NIFI_DOM_ANALYSIS.md`
+- **File**: `e-2-e-cypress/todo/PHASE_0_NIFI_DOM_ANALYSIS.md`
 - **Content**: Comprehensive step-by-step manual analysis guide
 - **Sections**: Canvas, Toolbar, Dialogs, Processors, Removal, Timing
 - **Templates**: Ready-to-fill documentation templates for real selectors
 - **Validation**: Complete checklist to verify Phase 0 completion
 
 ### 3. Proof of Necessity ✅
-- **File**: `e-2-e-cypress/cypress/e2e/phase0/00-demonstrate-phase0-necessity.cy.js`
+- **File**: `e-2-e-cypress/todo/00-demonstrate-phase0-necessity.cy.js`
 - **Test Results**: 4/5 tests FAILED as expected (proving the point)
 - **Failures Demonstrated**:
   - ❌ Canvas selectors (`#canvas svg`) - NOT FOUND in real NiFi
@@ -39,7 +39,7 @@
 - **Evidence-Based Approach**: Emphasized throughout
 
 ### 5. Current State Documentation ✅
-- **File**: `e-2-e-cypress/CURRENT_STATE_DOCUMENTATION.md`
+- **File**: `e-2-e-cypress/todo/CURRENT_STATE_DOCUMENTATION.md`
 - **Honest Assessment**: Framework NOT READY FOR PRODUCTION USE
 - **Root Cause**: No real NiFi UI knowledge - all assumptions
 - **Impact**: Zero working core functionality despite good infrastructure
@@ -53,7 +53,7 @@
 1. **Open Browser**: Navigate to https://localhost:9095/nifi
 2. **Login**: Use testUser / drowssap
 3. **Open Dev Tools**: Press F12 to open browser developer tools
-4. **Follow Guide**: Use `e-2-e-cypress/PHASE_0_NIFI_DOM_ANALYSIS.md`
+4. **Follow Guide**: Use `e-2-e-cypress/todo/PHASE_0_NIFI_DOM_ANALYSIS.md`
 5. **Document Everything**: Fill in ALL templates with REAL selectors
 6. **Verify Completeness**: Check off ALL items in validation checklist
 

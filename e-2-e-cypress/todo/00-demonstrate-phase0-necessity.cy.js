@@ -182,7 +182,7 @@ describe('Phase 0 Necessity Demonstration - Expected Failures', () => {
     cy.log('❌ Dialog opening methods may not work with real NiFi');
     cy.log('');
     cy.log('✅ SOLUTION: Complete Phase 0 DOM Analysis');
-    cy.log('📖 Follow: e-2-e-cypress/PHASE_0_NIFI_DOM_ANALYSIS.md');
+    cy.log('📖 Follow: e-2-e-cypress/todo/PHASE_0_NIFI_DOM_ANALYSIS.md');
     cy.log('🔍 Inspect: https://localhost:9095/nifi with browser dev tools');
     cy.log('📝 Document: REAL selectors and interaction patterns');
     cy.log('');

@@ -4,7 +4,7 @@
  * Demonstrates the hybrid testing approach - same functionality, no server dependency
  */
 
-import '../../../cypress/support/commands/mock-commands';
+import './mock-commands';
 
 describe('JWT Processor Add/Remove Operations (Mocked)', () => {
   // Setup mocked environment before each test

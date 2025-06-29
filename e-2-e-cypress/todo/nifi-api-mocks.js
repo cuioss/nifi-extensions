@@ -4,7 +4,7 @@
  * @version 1.0.0
  */
 
-import { JWT_PROCESSORS } from '../constants';
+import { JWT_PROCESSORS } from '../cypress/support/constants';
 
 /**
  * Mock NiFi API responses and data
