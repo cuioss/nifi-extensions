@@ -121,11 +121,11 @@ export const PAGE_DEFINITIONS = {
 };
 
 /**
- * Default credentials
+ * Default credentials - Updated with correct test container credentials
  */
 export const DEFAULT_CREDENTIALS = {
-  USERNAME: 'admin',
-  PASSWORD: 'adminadminadmin',
+  USERNAME: 'testUser',
+  PASSWORD: 'drowssap',
 };
 
 /**

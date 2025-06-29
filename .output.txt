@@ -1,0 +1,342 @@
+Calling copy-deployment.sh to build and copy the NAR file...
+Building NAR file...
+[INFO] Scanning for projects...
+[INFO] Inspecting build with total of 5 modules...
+[INFO] Installing Nexus Staging features:
+[INFO]   ... total of 5 executions of maven-deploy-plugin replaced with nexus-staging-maven-plugin
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO]
+[INFO] Apache Nifi extensions                                             [pom]
+[INFO] nifi-cuioss-processors                                             [jar]
+[INFO] nifi-cuioss-ui                                                     [war]
+[INFO] nifi-cuioss-nar                                                    [nar]
+[INFO] Integration Testing                                                [jar]
+[INFO]
+[INFO] -------------------< de.cuioss.nifi:nifi-extensions >-------------------
+[INFO] Building Apache Nifi extensions 1.0-SNAPSHOT                       [1/5]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO]
+[INFO] --- enforcer:3.5.0:enforce (enforce-maven-version) @ nifi-extensions ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.RequireSameVersions passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[INFO] Rule 3: org.apache.maven.enforcer.rules.dependency.RequireReleaseDeps passed
+[INFO] Rule 4: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- enforcer:3.5.0:enforce (enforce-java-version) @ nifi-extensions ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.version.RequireJavaVersion passed
+[INFO]
+[INFO] --- remote-resources:3.2.0:process (process-resource-bundles) @ nifi-extensions ---
+[INFO] Preparing remote bundle org.apache.apache.resources:apache-jar-resource-bundle:1.5
+[INFO] Copying 3 resources from 1 bundle.
+[INFO]
+[INFO] ---------------< de.cuioss.nifi:nifi-cuioss-processors >----------------
+[INFO] Building nifi-cuioss-processors 1.0-SNAPSHOT                       [2/5]
+[INFO]   from nifi-cuioss-processors/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- enforcer:3.5.0:enforce (enforce-maven-version) @ nifi-cuioss-processors ---
+[INFO] Skipping Rule Enforcement.
+[INFO]
+[INFO] --- enforcer:3.5.0:enforce (enforce-java-version) @ nifi-cuioss-processors ---
+[INFO] Skipping Rule Enforcement.
+[INFO]
+[INFO] --- remote-resources:3.2.0:process (process-resource-bundles) @ nifi-cuioss-processors ---
+[INFO] Preparing remote bundle org.apache.apache.resources:apache-jar-resource-bundle:1.5
+[INFO] Copying 3 resources from 1 bundle.
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ nifi-cuioss-processors ---
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] Copying 3 resources from target/maven-shared-archive-resources to target/classes
+[INFO]
+[INFO] --- compiler:3.14.0:compile (default-compile) @ nifi-cuioss-processors ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ nifi-cuioss-processors ---
+[INFO] skip non existing resourceDirectory /Users/oliver/git/nifi-extensions/nifi-cuioss-processors/src/test/resources
+[INFO] Copying 3 resources from target/maven-shared-archive-resources to target/test-classes
+[INFO]
+[INFO] --- compiler:3.14.0:testCompile (default-testCompile) @ nifi-cuioss-processors ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO]
+[INFO] --- surefire:3.5.1:test (default-test) @ nifi-cuioss-processors ---
+[INFO] Tests are skipped.
+[INFO]
+[INFO] --- jar:3.4.2:jar (default-jar) @ nifi-cuioss-processors ---
+[INFO]
+[INFO] -------------------< de.cuioss.nifi:nifi-cuioss-ui >--------------------
+[INFO] Building nifi-cuioss-ui 1.0-SNAPSHOT                               [3/5]
+[INFO]   from nifi-cuioss-ui/pom.xml
+[INFO] --------------------------------[ war ]---------------------------------
+[INFO]
+[INFO] --- enforcer:3.5.0:enforce (enforce-maven-version) @ nifi-cuioss-ui ---
+[INFO] Skipping Rule Enforcement.
+[INFO]
+[INFO] --- enforcer:3.5.0:enforce (enforce-java-version) @ nifi-cuioss-ui ---
+[INFO] Skipping Rule Enforcement.
+[INFO]
+[INFO] --- remote-resources:3.2.0:process (process-resource-bundles) @ nifi-cuioss-ui ---
+[INFO] Preparing remote bundle org.apache.apache.resources:apache-jar-resource-bundle:1.5
+[INFO] Copying 3 resources from 1 bundle.
+[INFO]
+[INFO] --- frontend:1.15.1:install-node-and-npm (install-node-and-npm) @ nifi-cuioss-ui ---
+[INFO] Node v20.19.2 is already installed.
+[INFO] NPM 10.5.0 is already installed.
+[INFO]
+[INFO] --- frontend:1.15.1:npm (npm-install) @ nifi-cuioss-ui ---
+[INFO] Running 'npm install' in /Users/oliver/git/nifi-extensions/nifi-cuioss-ui
+[INFO]
+[INFO] up to date, audited 764 packages in 1s
+[INFO]
+[INFO] 180 packages are looking for funding
+[INFO]   run `npm fund` for details
+[INFO]
+[INFO] 1 low severity vulnerability
+[INFO]
+[INFO] To address all issues, run:
+[INFO]   npm audit fix
+[INFO]
+[INFO] Run `npm audit` for details.
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ nifi-cuioss-ui ---
+[INFO] skip non existing resourceDirectory /Users/oliver/git/nifi-extensions/nifi-cuioss-ui/src/main/resources
+[INFO] Copying 3 resources from target/maven-shared-archive-resources to target/classes
+[INFO]
+[INFO] --- compiler:3.14.0:compile (default-compile) @ nifi-cuioss-ui ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- frontend:1.15.1:npm (npm-build) @ nifi-cuioss-ui ---
+[INFO] Running 'npm run build' in /Users/oliver/git/nifi-extensions/nifi-cuioss-ui
+[INFO]
+[INFO] > nifi-cuioss-ui@1.0.0 build
+[INFO] > webpack --mode production
+[INFO]
+[INFO] asset bundle.webpack.js 729 KiB [compared for emit] [big] (name: main)
+[INFO] orphan modules 204 KiB [orphan] 14 modules
+[INFO] runtime modules 1.13 KiB 5 modules
+[INFO] built modules 231 KiB [built]
+[INFO]   cacheable modules 231 KiB
+[INFO]     ./src/main/webapp/js/main.js + 13 modules 226 KiB [built] [code generated]
+[INFO]     ./src/test/js/mocks/nf-common.js 5.21 KiB [built] [code generated]
+[INFO]   external "cash" 42 bytes [built] [code generated]
+[INFO]   external "tippy" 42 bytes [built] [code generated]
+[INFO]
+[INFO] WARNING in asset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
+[INFO] This can impact web performance.
+[INFO] Assets:
+[INFO]   bundle.webpack.js (729 KiB)
+[INFO]
+[INFO] WARNING in entrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (244 KiB). This can impact web performance.
+[INFO] Entrypoints:
+[INFO]   main (729 KiB)
+[INFO]       bundle.webpack.js
+[INFO]
+[INFO] WARNING in webpack performance recommendations:
+[INFO] You can limit the size of your bundles by using import() or require.ensure to lazy load some parts of your application.
+[INFO] For more info visit https://webpack.js.org/guides/code-splitting/
+[INFO]
+[INFO] webpack 5.99.9 compiled with 3 warnings in 1148 ms
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ nifi-cuioss-ui ---
+[INFO] skip non existing resourceDirectory /Users/oliver/git/nifi-extensions/nifi-cuioss-ui/src/test/resources
+[INFO] Copying 3 resources from target/maven-shared-archive-resources to target/test-classes
+[INFO]
+[INFO] --- compiler:3.14.0:testCompile (default-testCompile) @ nifi-cuioss-ui ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.1:test (default-test) @ nifi-cuioss-ui ---
+[INFO] Tests are skipped.
+[INFO]
+[INFO] --- frontend:1.15.1:npm (npm-test) @ nifi-cuioss-ui ---
+[INFO] Skipping execution.
+[INFO]
+[INFO] --- war:3.4.0:war (default-war) @ nifi-cuioss-ui ---
+[INFO] Packaging webapp
+[INFO] Assembling webapp [nifi-cuioss-ui] in [/Users/oliver/git/nifi-extensions/nifi-cuioss-ui/target/nifi-cuioss-ui-1.0-SNAPSHOT]
+[INFO] Processing war project
+[INFO] Copying webapp resources [/Users/oliver/git/nifi-extensions/nifi-cuioss-ui/src/main/webapp]
+[INFO] Processing overlay [ id org.webjars:requirejs]
+[INFO] Processing overlay [ id org.webjars.npm:cash-dom]
+[INFO] Processing overlay [ id org.webjars.npm:tippy.js]
+[INFO] Processing overlay [ id org.webjars.npm:popperjs__core]
+[INFO] Building war: /Users/oliver/git/nifi-extensions/nifi-cuioss-ui/target/nifi-cuioss-ui-1.0-SNAPSHOT.war
+[INFO] Packaging classes
+[INFO] Building jar: /Users/oliver/git/nifi-extensions/nifi-cuioss-ui/target/nifi-cuioss-ui-1.0-SNAPSHOT-classes.jar
+[INFO]
+[INFO] -------------------< de.cuioss.nifi:nifi-cuioss-nar >-------------------
+[INFO] Building nifi-cuioss-nar 1.0-SNAPSHOT                              [4/5]
+[INFO]   from nifi-cuioss-nar/pom.xml
+[INFO] --------------------------------[ nar ]---------------------------------
+[INFO]
+[INFO] --- enforcer:3.5.0:enforce (enforce-maven-version) @ nifi-cuioss-nar ---
+[INFO] Skipping Rule Enforcement.
+[INFO]
+[INFO] --- enforcer:3.5.0:enforce (enforce-java-version) @ nifi-cuioss-nar ---
+[INFO] Skipping Rule Enforcement.
+[INFO]
+[INFO] --- remote-resources:3.2.0:process (process-resource-bundles) @ nifi-cuioss-nar ---
+[INFO] Preparing remote bundle org.apache.apache.resources:apache-jar-resource-bundle:1.5
+[INFO] Copying 3 resources from 1 bundle.
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ nifi-cuioss-nar ---
+[INFO] skip non existing resourceDirectory /Users/oliver/git/nifi-extensions/nifi-cuioss-nar/src/main/resources
+[INFO] Copying 3 resources from target/maven-shared-archive-resources to target/classes
+[INFO]
+[INFO] --- compiler:3.14.0:compile (default-compile) @ nifi-cuioss-nar ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ nifi-cuioss-nar ---
+[INFO] skip non existing resourceDirectory /Users/oliver/git/nifi-extensions/nifi-cuioss-nar/src/test/resources
+[INFO] Copying 3 resources from target/maven-shared-archive-resources to target/test-classes
+[INFO]
+[INFO] --- compiler:3.14.0:testCompile (default-testCompile) @ nifi-cuioss-nar ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.1:test (default-test) @ nifi-cuioss-nar ---
+[INFO] Tests are skipped.
+[INFO]
+[INFO] --- nifi-nar:2.1.0:nar (default-nar) @ nifi-cuioss-nar ---
+[INFO] Copying nifi-cuioss-ui-1.0-SNAPSHOT.war to /Users/oliver/git/nifi-extensions/nifi-cuioss-nar/target/classes/META-INF/bundled-dependencies/nifi-cuioss-ui-1.0-SNAPSHOT.war
+[INFO] Generating documentation for NiFi extensions in the NAR...
+[INFO] Found NAR dependency of org.apache.nifi:nifi-standard-services-api-nar:nar:2.4.0:compile
+[INFO] Found a dependency on version 2.1.0 of NiFi API
+[WARNING] The POM for org.eclipse.jetty.tests:jetty-test-multipart:jar:12.0.19 is missing, no dependency information available
+Juni 29, 2025 6:30:31 PM de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator init
+INFORMATION: Initializing MultiIssuerJWTTokenAuthenticator processor
+Juni 29, 2025 6:30:31 PM de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator init
+INFORMATION: MultiIssuerJWTTokenAuthenticator processor initialized with 10 property descriptors
+[INFO] Building jar: /Users/oliver/git/nifi-extensions/nifi-cuioss-nar/target/nifi-cuioss-nar-1.0-SNAPSHOT.nar
+[INFO]
+[INFO] -----------------< de.cuioss.nifi:integration-testing >-----------------
+[INFO] Building Integration Testing 1.0-SNAPSHOT                          [5/5]
+[INFO]   from integration-testing/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- enforcer:3.5.0:enforce (enforce-maven-version) @ integration-testing ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.RequireSameVersions passed
+[INFO] Rule 3: org.apache.maven.enforcer.rules.dependency.RequireReleaseDeps passed
+[INFO] Rule 4: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO]
+[INFO] --- enforcer:3.5.0:enforce (enforce-java-version) @ integration-testing ---
+[INFO]
+[INFO] --- remote-resources:3.2.0:process (process-resource-bundles) @ integration-testing ---
+[INFO] Preparing remote bundle org.apache.apache.resources:apache-jar-resource-bundle:1.5
+[INFO] Copying 3 resources from 1 bundle.
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ integration-testing ---
+[INFO] skip non existing resourceDirectory /Users/oliver/git/nifi-extensions/integration-testing/src/main/resources
+[INFO] Copying 3 resources from target/maven-shared-archive-resources to target/classes
+[INFO]
+[INFO] --- compiler:3.14.0:compile (default-compile) @ integration-testing ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ integration-testing ---
+[INFO] skip non existing resourceDirectory /Users/oliver/git/nifi-extensions/integration-testing/src/test/resources
+[INFO] Copying 3 resources from target/maven-shared-archive-resources to target/test-classes
+[INFO]
+[INFO] --- compiler:3.14.0:testCompile (default-testCompile) @ integration-testing ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.1:test (default-test) @ integration-testing ---
+[INFO] Tests are skipped.
+[INFO]
+[INFO] --- jar:3.4.2:jar (default-jar) @ integration-testing ---
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for Apache Nifi extensions 1.0-SNAPSHOT:
+[INFO]
+[INFO] Apache Nifi extensions ............................. SUCCESS [  0.513 s]
+[INFO] nifi-cuioss-processors ............................. SUCCESS [  0.361 s]
+[INFO] nifi-cuioss-ui ..................................... SUCCESS [  4.015 s]
+[INFO] nifi-cuioss-nar .................................... SUCCESS [  2.677 s]
+[INFO] Integration Testing ................................ SUCCESS [  0.060 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  8.574 s
+[INFO] Finished at: 2025-06-29T18:30:32+02:00
+[INFO] ------------------------------------------------------------------------
+Copying NAR file to target directory...
+NAR file has been built and copied to the deployment location.
+Starting NiFi environment...
+Starting NiFi HTTPS instance on port 9095...
+no configuration file provided: not found
+Waiting for NiFi to be ready...
+NiFi will be available at: https://localhost:9095/nifi
+Keycloak HTTPS will be available at: https://localhost:9085
+Keycloak HTTP admin will be available at: http://localhost:9080
+Checking health status with 2-minute timeout...
+⏳ Waiting... (attempt 1/60) - 0s elapsed
+⏳ Waiting... (attempt 2/60) - 2s elapsed
+⏳ Waiting... (attempt 3/60) - 4s elapsed
+⏳ Waiting... (attempt 4/60) - 6s elapsed
+⏳ Waiting... (attempt 5/60) - 8s elapsed
+⏳ Waiting... (attempt 6/60) - 10s elapsed
+⏳ Waiting... (attempt 7/60) - 12s elapsed
+⏳ Waiting... (attempt 8/60) - 14s elapsed
+⏳ Waiting... (attempt 9/60) - 16s elapsed
+⏳ Waiting... (attempt 10/60) - 18s elapsed
+⏳ Waiting... (attempt 11/60) - 20s elapsed
+⏳ Waiting... (attempt 12/60) - 22s elapsed
+⏳ Waiting... (attempt 13/60) - 24s elapsed
+⏳ Waiting... (attempt 14/60) - 26s elapsed
+⏳ Waiting... (attempt 15/60) - 28s elapsed
+⏳ Waiting... (attempt 16/60) - 30s elapsed
+⏳ Waiting... (attempt 17/60) - 32s elapsed
+⏳ Waiting... (attempt 18/60) - 34s elapsed
+⏳ Waiting... (attempt 19/60) - 36s elapsed
+⏳ Waiting... (attempt 20/60) - 38s elapsed
+⏳ Waiting... (attempt 21/60) - 40s elapsed
+⏳ Waiting... (attempt 22/60) - 42s elapsed
+⏳ Waiting... (attempt 23/60) - 44s elapsed
+⏳ Waiting... (attempt 24/60) - 46s elapsed
+⏳ Waiting... (attempt 25/60) - 48s elapsed
+⏳ Waiting... (attempt 26/60) - 50s elapsed
+⏳ Waiting... (attempt 27/60) - 52s elapsed
+⏳ Waiting... (attempt 28/60) - 54s elapsed
+⏳ Waiting... (attempt 29/60) - 56s elapsed
+⏳ Waiting... (attempt 30/60) - 58s elapsed
+⏳ Waiting... (attempt 31/60) - 60s elapsed
+⏳ Waiting... (attempt 32/60) - 62s elapsed
+⏳ Waiting... (attempt 33/60) - 64s elapsed
+⏳ Waiting... (attempt 34/60) - 66s elapsed
+⏳ Waiting... (attempt 35/60) - 68s elapsed
+⏳ Waiting... (attempt 36/60) - 70s elapsed
+⏳ Waiting... (attempt 37/60) - 72s elapsed
+⏳ Waiting... (attempt 38/60) - 74s elapsed
+⏳ Waiting... (attempt 39/60) - 76s elapsed
+⏳ Waiting... (attempt 40/60) - 78s elapsed
+⏳ Waiting... (attempt 41/60) - 80s elapsed
+⏳ Waiting... (attempt 42/60) - 82s elapsed
+⏳ Waiting... (attempt 43/60) - 84s elapsed
+⏳ Waiting... (attempt 44/60) - 86s elapsed
+⏳ Waiting... (attempt 45/60) - 88s elapsed
+⏳ Waiting... (attempt 46/60) - 90s elapsed
+⏳ Waiting... (attempt 47/60) - 92s elapsed
+⏳ Waiting... (attempt 48/60) - 94s elapsed
+⏳ Waiting... (attempt 49/60) - 96s elapsed
+⏳ Waiting... (attempt 50/60) - 98s elapsed
+⏳ Waiting... (attempt 51/60) - 100s elapsed
+⏳ Waiting... (attempt 52/60) - 102s elapsed
+⏳ Waiting... (attempt 53/60) - 104s elapsed
+⏳ Waiting... (attempt 54/60) - 106s elapsed
+⏳ Waiting... (attempt 55/60) - 108s elapsed
+⏳ Waiting... (attempt 56/60) - 110s elapsed
+⏳ Waiting... (attempt 57/60) - 112s elapsed
+⏳ Waiting... (attempt 58/60) - 114s elapsed
+⏳ Waiting... (attempt 59/60) - 116s elapsed
+⏳ Waiting... (attempt 60/60) - 118s elapsed
+❌ NiFi failed to start within 120 seconds
+=== Container Status ===
+no configuration file provided: not found
+=== NiFi Logs ===
+no configuration file provided: not found
+=== System Resources ===
+CONTAINER ID   NAME                                                            CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O        PIDS
+244e1c18ffd2   cui-jwt-quarkus-integration-tests-cui-jwt-integration-tests-1   0.00%     0B / 0B               0.00%     0B / 0B           0B / 0B          0
+1ac2d62c58bc   cui-jwt-quarkus-integration-tests-keycloak-1                    0.15%     457MiB / 7.751GiB     5.76%     96kB / 2.51kB     3.25MB / 284MB   64
+283f6a80daaf   xenodochial_hertz                                               0.00%     64.28MiB / 7.751GiB   0.81%     232kB / 16kB      29.8MB / 176kB   4
+4e468f971e14   brave_wozniak                                                   0.00%     7.148MiB / 7.751GiB   0.09%     305kB / 24.6kB    39MB / 61.9MB    4
+258fa0c80055   buildx_buildkit_multiarch0                                      0.02%     131.3MiB / 7.751GiB   1.65%     1.77GB / 12.9MB   304MB / 10.2GB   43

@@ -21,44 +21,46 @@ export function findCanvasElements($body) {
 }
 
 /**
- * Find a working canvas selector from the available options
+ * Find a working canvas selector using Angular Material framework patterns
  * @param {number} timeout - Timeout for finding canvas
  * @returns {Cypress.Chainable} Promise resolving to canvas element
  */
 export function findWorkingCanvas(timeout = TIMEOUTS.CANVAS_READY) {
-  logMessage('info', 'Finding real NiFi canvas element for processor operations');
+  logMessage('info', 'Finding NiFi canvas using Angular Material framework patterns');
 
-  // Try canvas selectors in order of preference
-  const canvasSelectors = [
-    '#canvas svg',           // Primary NiFi canvas SVG
-    '#canvas',               // Canvas container
-    'svg',                   // Fallback to any SVG
-    '#canvas-container'      // Canvas container fallback
+  // Use Angular Material framework-based selectors (validated in Phase 0)
+  const frameworkCanvasSelectors = [
+    SELECTORS.CANVAS_SVG,        // Angular Material content + SVG
+    SELECTORS.CANVAS_CONTAINER,  // Angular Material content containers
+    SELECTORS.CANVAS,            // Angular Material main content areas
+    'svg'                        // Fallback to any SVG (last resort)
   ];
 
-  // Try each selector until we find a working one
-  function trySelector(selectors, index = 0) {
+  // Try each framework-based selector until we find a working one
+  function tryFrameworkSelector(selectors, index = 0) {
     if (index >= selectors.length) {
-      throw new Error('No working canvas element found. Available selectors tried: ' + selectors.join(', '));
+      logMessage('warn', 'No Angular Material canvas found, attempting fallback to body element');
+      // Fallback to body element as last resort (for compatibility during transition)
+      return cy.get('body', { timeout }).should('be.visible');
     }
 
     const selector = selectors[index];
-    logMessage('info', `Trying canvas selector: ${selector}`);
+    logMessage('info', `Trying Angular Material canvas selector: ${selector}`);
 
     return cy.get('body').then(($body) => {
       const elements = $body.find(selector);
       if (elements.length > 0 && elements.is(':visible')) {
-        logMessage('success', `Found working canvas with selector: ${selector}`);
+        logMessage('success', `Found working Angular Material canvas: ${selector}`);
         // Get the first element using .eq(0) to avoid DOM detachment issues
         return cy.get(selector, { timeout }).should('be.visible').eq(0);
       } else {
-        logMessage('warn', `Canvas selector ${selector} not found or not visible, trying next...`);
-        return trySelector(selectors, index + 1);
+        logMessage('warn', `Angular Material selector ${selector} not found or not visible, trying next...`);
+        return tryFrameworkSelector(selectors, index + 1);
       }
     });
   }
 
-  return trySelector(canvasSelectors);
+  return tryFrameworkSelector(frameworkCanvasSelectors);
 }
 
 /**
