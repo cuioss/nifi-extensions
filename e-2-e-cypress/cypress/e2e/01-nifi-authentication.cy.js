@@ -5,65 +5,41 @@
  */
 
 import { SELECTORS } from '../support/constants.js';
+import { testSetup, verifyAuthenticationState } from '../support/test-helpers.js';
 
 describe('NiFi Authentication', () => {
-  beforeEach(() => {
-    cy.log('Setting up authentication test');
-  });
-
   it('Should login successfully and maintain session', () => {
-    cy.log('🔑 Testing reliable NiFi login for processor testing');
+    testSetup('Testing reliable NiFi login for processor testing');
 
     // Use the auth helper for reliable login
     cy.ensureNiFiReady();
 
     // Verify we're authenticated and on the main canvas
-    cy.getPageContext().then((context) => {
-      expect(context.pageType).to.equal('MAIN_CANVAS');
-      expect(context.isAuthenticated).to.be.true;
-      expect(context.isReady).to.be.true;
-    });
-
-    cy.log('✅ NiFi login successful and ready for processor testing');
+    verifyAuthenticationState(true, 'MAIN_CANVAS');
   });
 
   it('Should reject invalid credentials', () => {
-    cy.log('🚫 Testing invalid credentials rejection');
+    testSetup('Testing invalid credentials rejection');
 
-    // Clear any existing session
+    // Clear any existing session and navigate to login
     cy.clearSession();
-
-    // Navigate to login page
     cy.navigateToPage('LOGIN');
 
-    // Try invalid credentials
+    // Try invalid credentials using consolidated approach
     cy.get(SELECTORS.USERNAME_INPUT).should('be.visible').clear().type('invalid-user');
-
     cy.get(SELECTORS.PASSWORD_INPUT).should('be.visible').clear().type('invalid-password');
-
     cy.get(SELECTORS.LOGIN_BUTTON).click();
 
-    // Should remain on login page
-    cy.getPageContext().should((context) => {
-      expect(context.pageType).to.equal('LOGIN');
-      expect(context.isAuthenticated).to.be.false;
-    });
-
-    cy.log('✅ Invalid credentials properly rejected');
+    // Verify rejection
+    verifyAuthenticationState(false, 'LOGIN');
   });
 
   it('Should logout and clear session', () => {
-    cy.log('🚪 Testing logout functionality');
+    testSetup('Testing logout functionality');
 
-    // First ensure we're logged in
+    // Ensure logged in, then logout and verify
     cy.ensureNiFiReady();
-
-    // Perform logout
     cy.logoutNiFi();
-
-    // Verify we're on login page
     cy.verifyPageType('LOGIN');
-
-    cy.log('✅ Logout successful');
   });
 });

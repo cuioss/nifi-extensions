@@ -5,7 +5,7 @@
  * @version 1.0.0
  */
 
-import { PAGE_TYPES, PAGE_DEFINITIONS } from './constants';
+import { PAGE_TYPES } from './constants';
 import { findCanvasElements, logMessage } from './utils';
 
 /**
@@ -257,4 +257,3 @@ Cypress.Commands.add('waitForPageType', (expectedPageType, options = {}) => {
       return cy.getPageContext();
     });
 });
-

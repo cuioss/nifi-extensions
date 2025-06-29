@@ -361,26 +361,25 @@ Cypress.Commands.add('cleanupJWTProcessors', (options = {}) => {
       logMessage('info', `Found ${processors.length} JWT processors to remove`);
 
       // Remove each processor sequentially using proper Cypress chaining
-      let removePromise = cy.wrap(0);
+      function removeProcessorsSequentially(processorList, index = 0, removedCount = 0) {
+        if (index >= processorList.length) {
+          logMessage('success', `Cleanup complete: ${removedCount} processors removed`);
+          return cy.wrap(removedCount);
+        }
 
-      processors.forEach((processor) => {
-        removePromise = removePromise.then((currentCount) => {
-          return cy.removeProcessorFromCanvas(processor, { confirmDeletion }).then((success) => {
-            if (success) {
-              logMessage('success', `Removed processor: ${processor.name}`);
-              return currentCount + 1;
-            } else {
-              logMessage('warn', `Failed to remove processor: ${processor.name}`);
-              return currentCount;
-            }
-          });
+        const processor = processorList[index];
+        return cy.removeProcessorFromCanvas(processor, { confirmDeletion }).then((success) => {
+          const newCount = success ? removedCount + 1 : removedCount;
+          if (success) {
+            logMessage('success', `Removed processor: ${processor.name}`);
+          } else {
+            logMessage('warn', `Failed to remove processor: ${processor.name}`);
+          }
+          return removeProcessorsSequentially(processorList, index + 1, newCount);
         });
-      });
+      }
 
-      return removePromise.then((finalCount) => {
-        logMessage('success', `Cleanup complete: ${finalCount} processors removed`);
-        return finalCount;
-      });
+      return removeProcessorsSequentially(processors);
     });
   });
 });

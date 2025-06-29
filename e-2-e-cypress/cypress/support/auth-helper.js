@@ -202,4 +202,3 @@ Cypress.Commands.add('getSessionContext', () => {
     };
   });
 });
-
