@@ -299,9 +299,173 @@ function performProcessorRemoval(processor, confirmDeletion, timeout) {
     .then(() => {
       logMessage('success', `Processor ${processor.name} removed successfully`);
       return true;
-    })
-    .catch((error) => {
+    }, (error) => {
       logMessage('error', `Failed to remove processor ${processor.name}: ${error.message}`);
       return false;
     });
 }
+
+/**
+ * Clean up all processors from the canvas
+ * @param {Object} options - Cleanup options
+ * @param {boolean} [options.confirmDeletion=true] - Confirm each deletion
+ * @param {number} [options.timeout=10000] - Total timeout for cleanup
+ * @returns {Cypress.Chainable<number>} Number of processors removed
+ */
+Cypress.Commands.add('cleanupCanvasProcessors', (options = {}) => {
+  const { confirmDeletion = true, timeout = TIMEOUTS.PROCESSOR_LOAD } = options;
+
+  logMessage('cleanup', 'Attempting to clean up processors from canvas');
+
+  // First check if we're on the right page
+  return ensureMainCanvas('processor cleanup').then((isOnCanvas) => {
+    if (!isOnCanvas) {
+      logMessage('warn', 'Not on main canvas, skipping cleanup');
+      return cy.wrap(0);
+    }
+
+    return cy.get('body').then(($body) => {
+      const processorElements = $body.find(SELECTORS.PROCESSOR_GROUP);
+
+      if (processorElements.length === 0) {
+        logMessage('success', 'No processors found to clean up');
+        return cy.wrap(0);
+      }
+
+      logMessage('info', `Found ${processorElements.length} processors to remove`);
+
+      let removedCount = 0;
+
+      // Remove each processor sequentially
+      function removeProcessorsSequentially(index = 0) {
+        if (index >= processorElements.length) {
+          logMessage('success', `Cleanup complete: ${removedCount} processors removed`);
+          return cy.wrap(removedCount);
+        }
+
+        const element = processorElements[index];
+        const $element = Cypress.$(element);
+        const elementText = $element.text() || '';
+        const elementTitle = $element.attr('title') || '';
+        const elementId = $element.attr('id') || `processor-${index}`;
+
+        const processor = {
+          id: elementId,
+          name: elementTitle || elementText || `Processor ${index + 1}`,
+          element: $element
+        };
+
+        return cy.removeProcessorFromCanvas(processor, { confirmDeletion, timeout }).then((success) => {
+          if (success) {
+            removedCount++;
+            logMessage('success', `Removed processor: ${processor.name}`);
+          } else {
+            logMessage('warn', `Failed to remove processor: ${processor.name}`);
+          }
+          return removeProcessorsSequentially(index + 1);
+        });
+      }
+
+      return removeProcessorsSequentially();
+    });
+  });
+});
+
+/**
+ * Add a test processor to the canvas for testing purposes
+ * @param {string} [processorType='GenerateFlowFile'] - Type of processor to add
+ * @param {Object} options - Addition options
+ * @param {Object} [options.position] - Canvas position {x, y}
+ * @param {number} [options.timeout=10000] - Operation timeout
+ * @returns {Cypress.Chainable<boolean>} Success status
+ */
+Cypress.Commands.add('addTestProcessor', (processorType = 'GenerateFlowFile', options = {}) => {
+  const {
+    position = { x: 400, y: 300 },
+    timeout = TIMEOUTS.PROCESSOR_LOAD,
+  } = options;
+
+  logMessage('action', `Adding test processor: ${processorType}`);
+
+  // Ensure we're on the main canvas
+  return ensureMainCanvas('add test processor').then((isOnCanvas) => {
+    if (!isOnCanvas) {
+      logMessage('warn', 'Not on main canvas, cannot add test processor');
+      return cy.wrap(false);
+    }
+
+    // Try to add the processor using the existing addProcessorToCanvas command
+    return cy.addProcessorToCanvas(processorType, { position, timeout, skipIfExists: false })
+      .then((processor) => {
+        if (processor) {
+          logMessage('success', `Test processor added successfully: ${processor.name}`);
+          return cy.wrap(true);
+        } else {
+          logMessage('warn', `Failed to add test processor: ${processorType}`);
+          return cy.wrap(false);
+        }
+      }, (error) => {
+        logMessage('warn', `Error adding test processor: ${error.message}`);
+        return cy.wrap(false);
+      });
+  });
+});
+
+/**
+ * Get all processors currently on the canvas
+ * @param {Object} options - Search options
+ * @param {number} [options.timeout=5000] - Search timeout
+ * @returns {Cypress.Chainable<Array<ProcessorReference>>} Array of found processors
+ */
+Cypress.Commands.add('getAllProcessorsOnCanvas', (options = {}) => {
+  const { timeout = TIMEOUTS.PROCESSOR_LOAD } = options;
+
+  logMessage('search', 'Searching for all processors on canvas');
+
+  // First check if we're on the right page
+  return ensureMainCanvas('processor search').then((isOnCanvas) => {
+    if (!isOnCanvas) {
+      logMessage('warn', 'Not on main canvas, returning empty array');
+      return cy.wrap([]);
+    }
+
+    return cy.get('body').then(($body) => {
+      const canvasAnalysis = findCanvasElements($body);
+
+      if (!canvasAnalysis.hasCanvas) {
+        logMessage('warn', 'No canvas elements found, returning empty array');
+        return cy.wrap([]);
+      }
+
+      const foundProcessors = [];
+      const processorElements = $body.find(SELECTORS.PROCESSOR_GROUP);
+
+      processorElements.each((index, element) => {
+        const $element = Cypress.$(element);
+        const elementText = $element.text() || '';
+        const elementTitle = $element.attr('title') || '';
+        const elementId = $element.attr('id') || `processor-${index}`;
+
+        // Extract processor information
+        const rect = element.getBoundingClientRect();
+        const processor = {
+          id: elementId,
+          type: 'Unknown',
+          name: elementTitle || elementText || `Processor ${index + 1}`,
+          element: $element,
+          position: {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+          },
+          isVisible: rect.width > 0 && rect.height > 0,
+          status: 'unknown',
+        };
+
+        foundProcessors.push(processor);
+      });
+
+      logMessage('success', `Found ${foundProcessors.length} processors on canvas`);
+      return cy.wrap(foundProcessors);
+    });
+  });
+});

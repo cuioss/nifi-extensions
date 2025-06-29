@@ -138,7 +138,7 @@ Building NAR file...
 [INFO] --- frontend:1.15.1:npm (npm-install) @ nifi-cuioss-ui ---
 [INFO] Running 'npm install' in /Users/oliver/git/nifi-extensions/nifi-cuioss-ui
 [INFO]
-[INFO] up to date, audited 764 packages in 2s
+[INFO] up to date, audited 764 packages in 1s
 [INFO]
 [INFO] 180 packages are looking for funding
 [INFO]   run `npm fund` for details
@@ -187,7 +187,7 @@ Building NAR file...
 [INFO] You can limit the size of your bundles by using import() or require.ensure to lazy load some parts of your application.
 [INFO] For more info visit https://webpack.js.org/guides/code-splitting/
 [INFO]
-[INFO] webpack 5.99.9 compiled with 3 warnings in 1494 ms
+[INFO] webpack 5.99.9 compiled with 3 warnings in 1288 ms
 [INFO]
 [INFO] --- resources:3.3.1:testResources (default-testResources) @ nifi-cuioss-ui ---
 [INFO] skip non existing resourceDirectory /Users/oliver/git/nifi-extensions/nifi-cuioss-ui/src/test/resources
@@ -253,9 +253,9 @@ Building NAR file...
 [INFO] Found NAR dependency of org.apache.nifi:nifi-standard-services-api-nar:nar:2.4.0:compile
 [INFO] Found a dependency on version 2.1.0 of NiFi API
 [WARNING] The POM for org.eclipse.jetty.tests:jetty-test-multipart:jar:12.0.19 is missing, no dependency information available
-Juni 29, 2025 10:59:00 PM de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator init
+Juni 29, 2025 11:45:01 PM de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator init
 INFORMATION: Initializing MultiIssuerJWTTokenAuthenticator processor
-Juni 29, 2025 10:59:00 PM de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator init
+Juni 29, 2025 11:45:01 PM de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator init
 INFORMATION: MultiIssuerJWTTokenAuthenticator processor initialized with 10 property descriptors
 [INFO] Building jar: /Users/oliver/git/nifi-extensions/nifi-cuioss-nar/target/nifi-cuioss-nar-1.0-SNAPSHOT.nar
 [INFO]
@@ -297,16 +297,16 @@ INFORMATION: MultiIssuerJWTTokenAuthenticator processor initialized with 10 prop
 [INFO] ------------------------------------------------------------------------
 [INFO] Reactor Summary for Apache Nifi extensions 1.0-SNAPSHOT:
 [INFO]
-[INFO] Apache Nifi extensions ............................. SUCCESS [  1.064 s]
-[INFO] nifi-cuioss-processors ............................. SUCCESS [  0.855 s]
-[INFO] nifi-cuioss-ui ..................................... SUCCESS [  5.069 s]
-[INFO] nifi-cuioss-nar .................................... SUCCESS [  3.282 s]
-[INFO] Integration Testing ................................ SUCCESS [  0.187 s]
+[INFO] Apache Nifi extensions ............................. SUCCESS [  1.012 s]
+[INFO] nifi-cuioss-processors ............................. SUCCESS [  0.602 s]
+[INFO] nifi-cuioss-ui ..................................... SUCCESS [  4.841 s]
+[INFO] nifi-cuioss-nar .................................... SUCCESS [  3.646 s]
+[INFO] Integration Testing ................................ SUCCESS [  0.062 s]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  11.877 s
-[INFO] Finished at: 2025-06-29T22:59:01+02:00
+[INFO] Total time:  11.472 s
+[INFO] Finished at: 2025-06-29T23:45:02+02:00
 [INFO] ------------------------------------------------------------------------
 Copying NAR file to target directory...
 NAR file has been built and copied to the deployment location.
@@ -340,7 +340,7 @@ Test client: test_client, secret: yTKslWLtf4giJcWCaoVJ20H8sy6STexM
 [INFO] --- frontend:1.15.1:npm (npm-install-integration) @ e-2-e-cypress ---
 [INFO] Running 'npm install' in /Users/oliver/git/nifi-extensions/e-2-e-cypress
 [INFO]
-[INFO] up to date, audited 655 packages in 913ms
+[INFO] up to date, audited 655 packages in 906ms
 [INFO]
 [INFO] 98 packages are looking for funding
 [INFO]   run `npm fund` for details
@@ -354,7 +354,7 @@ Test client: test_client, secret: yTKslWLtf4giJcWCaoVJ20H8sy6STexM
 [INFO] > cypress run
 [INFO]
 [INFO]
-[INFO] DevTools listening on ws://127.0.0.1:59220/devtools/browser/add9188d-0018-4b5f-9e56-faf1b21ddced
+[INFO] DevTools listening on ws://127.0.0.1:61848/devtools/browser/7c6c1212-dbd6-49f1-a10a-f983b84dfb84
 [INFO]
 [INFO] ================================================================================
 [INFO]
@@ -364,8 +364,8 @@ Test client: test_client, secret: yTKslWLtf4giJcWCaoVJ20H8sy6STexM
 [INFO]   │ Cypress:        14.5.0                                                                         │
 [INFO]   │ Browser:        Electron 130 (headless)                                                        │
 [INFO]   │ Node Version:   v20.19.2 (/Users/oliver/git/nifi-extensions/e-2-e-cypress/target/node/node)    │
-[INFO]   │ Specs:          3 found (01-nifi-authentication.cy.js, 02-processor-testing.cy.js, 03-processo │
-[INFO]   │                 r-add-remove.cy.js)                                                            │
+[INFO]   │ Specs:          3 found (01-nifi-authentication.cy.js, 02-nifi-navigation.cy.js, 03-processor- │
+[INFO]   │                 add-remove.cy.js)                                                              │
 [INFO]   │ Searched:       cypress/e2e/**/*.cy.js                                                         │
 [INFO]   └────────────────────────────────────────────────────────────────────────────────────────────────┘
 [INFO]
@@ -376,17 +376,17 @@ Test client: test_client, secret: yTKslWLtf4giJcWCaoVJ20H8sy6STexM
 [INFO] Warning: The following browser launch options were provided but are not supported by electron
 [INFO]
 [INFO]  - args
-[INFO] [96480:0629/225906.727996:ERROR:trust_store_mac.cc(821)] Error parsing certificate:
+[INFO] [20342:0629/234506.849565:ERROR:trust_store_mac.cc(821)] Error parsing certificate:
 [INFO] ERROR: Failed parsing extensions
 [INFO]
 [INFO]
 [INFO]
 [INFO]   NiFi Authentication
-[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T20-59-09-972Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-45-09-506Z.json
 [INFO]     ✓ Should login successfully and maintain session
-[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T20-59-11-069Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-45-10-601Z.json
 [INFO]     ✓ Should reject invalid credentials
-[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T20-59-11-265Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-45-10-798Z.json
 [INFO]     ✓ Should logout and clear session
 [INFO]
 [INFO]
@@ -414,49 +414,62 @@ Test client: test_client, secret: yTKslWLtf4giJcWCaoVJ20H8sy6STexM
 [INFO]
 [INFO] ────────────────────────────────────────────────────────────────────────────────────────────────────
 [INFO]
-[INFO]   Running:  02-processor-testing.cy.js                                                      (2 of 3)
+[INFO]   Running:  02-nifi-navigation.cy.js                                                        (2 of 3)
 [INFO] Warning: The following browser launch options were provided but are not supported by electron
 [INFO]
 [INFO]  - args
 [INFO]
 [INFO]
-[INFO]   JWT Processor Testing
-[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T20-59-13-388Z.json
-[INFO]     1) Should verify JWT processor types are available
-[INFO]     2) "after each" hook for "Should verify JWT processor types are available"
-[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T20-59-14-005Z.json
+[INFO]   NiFi Navigation Tests
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-45-24-523Z.json
+[INFO]     1) Should navigate from login to main canvas
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-45-36-945Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-45-47-322Z.json
+[INFO]     2) Should verify canvas is accessible and ready for operations
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-45-57-818Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-45-58-129Z.json
+[INFO]     ✓ Should handle page refresh and maintain session
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-46-08-454Z.json
+[INFO]     3) Should navigate between different NiFi sections
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-46-18-883Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-46-19-105Z.json
+[INFO]     ✓ Should handle logout and return to login page
 [INFO]
 [INFO]
-[INFO]   0 passing (2s)
-[INFO]   2 failing
+[INFO]   2 passing (1m)
+[INFO]   3 failing
 [INFO]
-[INFO]   1) JWT Processor Testing
-[INFO]        Should verify JWT processor types are available:
-[INFO]      TypeError: cy.getJWTProcessorTypes is not a function
-[INFO]       at verifyProcessorDefinition (webpack://e-2-e-cypress/./cypress/support/test-helpers.js:37:12)
-[INFO]       at eval (webpack://e-2-e-cypress/./cypress/e2e/02-processor-testing.cy.js:29:32)
-[INFO]       at Array.forEach (<anonymous>)
-[INFO]       at Context.eval (webpack://e-2-e-cypress/./cypress/e2e/02-processor-testing.cy.js:28:64)
-[INFO]       at runnable.fn (https://localhost:9095/__cypress/runner/cypress_runner.js:141791:19)
-[INFO]       at callFn (https://localhost:9095/__cypress/runner/cypress_runner.js:160869:21)
-[INFO]       at Runnable.run (https://localhost:9095/__cypress/runner/cypress_runner.js:160856:7)
-[INFO]       at <unknown> (https://localhost:9095/__cypress/runner/cypress_runner.js:166946:30)
-[INFO]       at PassThroughHandlerContext.finallyHandler (https://localhost:9095/__cypress/runner/cypress_runner.js:4042:23)
+[INFO]   1) NiFi Navigation Tests
+[INFO]        Should navigate from login to main canvas:
+[INFO]      Error: Timed out retrying after 10000ms: Waiting for MAIN_CANVAS, got LOGIN, ready: true
 [INFO]
-[INFO]   2) JWT Processor Testing
-[INFO]        "after each" hook for "Should verify JWT processor types are available":
-[INFO]      TypeError: cy.cleanupJWTProcessors is not a function
+[INFO] This error occurred while creating the session. Because the session setup failed, we failed the test.
+[INFO]       at Context.eval (webpack://e-2-e-cypress/./cypress/support/navigation-helper.js:251:14)
+[INFO]       at <unknown> (https://localhost:9095/__cypress/runner/cypress_runner.js:120365:17)
+[INFO]       at tryCatcher (https://localhost:9095/__cypress/runner/cypress_runner.js:1777:23)
+[INFO]       at Promise.attempt.Promise.try (https://localhost:9095/__cypress/runner/cypress_runner.js:4285:29)
+[INFO]       at Context.shouldFnWithCallback (https://localhost:9095/__cypress/runner/cypress_runner.js:120362:66)
+[INFO]       at Context.shouldFn (https://localhost:9095/__cypress/runner/cypress_runner.js:120405:37)
+[INFO]       at Context.should (https://localhost:9095/__cypress/runner/cypress_runner.js:120524:23)
+[INFO]       at <unknown> (https://localhost:9095/__cypress/runner/cypress_runner.js:146450:39)
+[INFO]       at assertions (https://localhost:9095/__cypress/runner/cypress_runner.js:146698:16)
+[INFO]       at tryCatcher (https://localhost:9095/__cypress/runner/cypress_runner.js:1777:23)
 [INFO]
-[INFO] Because this error occurred during a `after each` hook we are skipping the remaining tests in the current suite: `JWT Processor Testing`
-[INFO]       at Context.eval (webpack://e-2-e-cypress/./cypress/e2e/02-processor-testing.cy.js:23:7)
-[INFO]       at runnable.fn (https://localhost:9095/__cypress/runner/cypress_runner.js:141791:19)
-[INFO]       at callFn (https://localhost:9095/__cypress/runner/cypress_runner.js:160869:21)
-[INFO]       at Runnable.run (https://localhost:9095/__cypress/runner/cypress_runner.js:160856:7)
-[INFO]       at <unknown> (https://localhost:9095/__cypress/runner/cypress_runner.js:166946:30)
-[INFO]       at PassThroughHandlerContext.finallyHandler (https://localhost:9095/__cypress/runner/cypress_runner.js:4042:23)
-[INFO]       at PassThroughHandlerContext.tryCatcher (https://localhost:9095/__cypress/runner/cypress_runner.js:1777:23)
-[INFO]       at Promise._settlePromiseFromHandler (https://localhost:9095/__cypress/runner/cypress_runner.js:1489:31)
-[INFO]       at Promise._settlePromise (https://localhost:9095/__cypress/runner/cypress_runner.js:1546:18)
+[INFO]   2) NiFi Navigation Tests
+[INFO]        Should verify canvas is accessible and ready for operations:
+[INFO]      AssertionError: Timed out retrying after 10000ms: Expected to find element: `mat-sidenav-content, .mat-drawer-content`, but never found it.
+[INFO]       at Context.eval (webpack://e-2-e-cypress/./cypress/e2e/02-nifi-navigation.cy.js:48:7)
+[INFO]
+[INFO]   3) NiFi Navigation Tests
+[INFO]        Should navigate between different NiFi sections:
+[INFO]      AssertionError: Timed out retrying after 10000ms: Expected to find element: `mat-sidenav-content, .mat-drawer-content`, but never found it.
+[INFO]       at Context.eval (webpack://e-2-e-cypress/./cypress/e2e/02-nifi-navigation.cy.js:138:11)
+[INFO]       at getRet (https://localhost:9095/__cypress/runner/cypress_runner.js:120941:20)
+[INFO]       at tryCatcher (https://localhost:9095/__cypress/runner/cypress_runner.js:1777:23)
+[INFO]       at Promise.attempt.Promise.try (https://localhost:9095/__cypress/runner/cypress_runner.js:4285:29)
+[INFO]       at Context.thenFn (https://localhost:9095/__cypress/runner/cypress_runner.js:120952:66)
+[INFO]       at Context.then (https://localhost:9095/__cypress/runner/cypress_runner.js:121203:21)
+[INFO]       at wrapped (https://localhost:9095/__cypress/runner/cypress_runner.js:141524:19)
 [INFO]
 [INFO]
 [INFO]
@@ -468,32 +481,38 @@ Test client: test_client, secret: yTKslWLtf4giJcWCaoVJ20H8sy6STexM
 [INFO]   (Results)
 [INFO]
 [INFO]   ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
-[INFO]   │ Tests:        4                                                                                │
-[INFO]   │ Passing:      0                                                                                │
-[INFO]   │ Failing:      1                                                                                │
+[INFO]   │ Tests:        5                                                                                │
+[INFO]   │ Passing:      2                                                                                │
+[INFO]   │ Failing:      3                                                                                │
 [INFO]   │ Pending:      0                                                                                │
-[INFO]   │ Skipped:      3                                                                                │
-[INFO]   │ Screenshots:  4                                                                                │
+[INFO]   │ Skipped:      0                                                                                │
+[INFO]   │ Screenshots:  6                                                                                │
 [INFO]   │ Video:        false                                                                            │
-[INFO]   │ Duration:     1 second                                                                         │
-[INFO]   │ Spec Ran:     02-processor-testing.cy.js                                                       │
+[INFO]   │ Duration:     1 minute, 7 seconds                                                              │
+[INFO]   │ Spec Ran:     02-nifi-navigation.cy.js                                                         │
 [INFO]   └────────────────────────────────────────────────────────────────────────────────────────────────┘
 [INFO]
 [INFO]
 [INFO]   (Screenshots)
 [INFO]
-[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/02-pr    (2560x1440)
-[INFO]      ocessor-testing.cy.js/JWT Processor Testing -- Should verify JWT processor types
-[INFO]       are available (failed).png
-[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/02-pr    (2560x1440)
-[INFO]      ocessor-testing.cy.js/JWT Processor Testing -- Should verify JWT processor types
-[INFO]       are available -- after each hook (failed).png
-[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/02-pr    (2560x1440)
-[INFO]      ocessor-testing.cy.js/JWT Processor Testing -- Should verify JWT processor types
-[INFO]       are available (failed) (attempt 2).png
-[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/02-pr    (2560x1440)
-[INFO]      ocessor-testing.cy.js/JWT Processor Testing -- Should verify JWT processor types
-[INFO]       are available -- after each hook (failed) (attempt 2).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/02-ni    (2560x1440)
+[INFO]      fi-navigation.cy.js/NiFi Navigation Tests -- Should navigate from login to main
+[INFO]      canvas (failed).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/02-ni    (2560x1440)
+[INFO]      fi-navigation.cy.js/NiFi Navigation Tests -- Should navigate from login to main
+[INFO]      canvas (failed) (attempt 2).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/02-ni    (2560x1440)
+[INFO]      fi-navigation.cy.js/NiFi Navigation Tests -- Should verify canvas is accessible
+[INFO]      and ready for operations (failed).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/02-ni    (2560x1440)
+[INFO]      fi-navigation.cy.js/NiFi Navigation Tests -- Should verify canvas is accessible
+[INFO]      and ready for operations (failed) (attempt 2).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/02-ni    (2560x1440)
+[INFO]      fi-navigation.cy.js/NiFi Navigation Tests -- Should navigate between different N
+[INFO]      iFi sections (failed).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/02-ni    (2560x1440)
+[INFO]      fi-navigation.cy.js/NiFi Navigation Tests -- Should navigate between different N
+[INFO]      iFi sections (failed) (attempt 2).png
 [INFO]
 [INFO]
 [INFO] ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -503,60 +522,125 @@ Test client: test_client, secret: yTKslWLtf4giJcWCaoVJ20H8sy6STexM
 [INFO]
 [INFO]  - args
 [INFO]
-[INFO] Oops...we found an error preparing this test file:
 [INFO]
-[INFO]   > cypress/e2e/03-processor-add-remove.cy.js
+[INFO]   Processor Add/Remove Tests
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-46-30-835Z.json
+[INFO]     1) Should add a processor to the canvas
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-46-41-270Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-46-51-673Z.json
+[INFO]     2) Should remove a processor from the canvas
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-47-02-107Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-47-12-542Z.json
+[INFO]     3) Should handle multiple processor operations
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-47-22-994Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-47-33-413Z.json
+[INFO]     4) Should handle processor selection and properties
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-47-43-938Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-47-54-355Z.json
+[INFO]     5) Should verify canvas state after processor operations
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T21-48-04-919Z.json
 [INFO]
-[INFO] The error was:
 [INFO]
-[INFO] Error: Webpack Compilation Error
-[INFO] Module not found: Error: Can't resolve '../../support/test-helpers.js' in '/Users/oliver/git/nifi-extensions/e-2-e-cypress/cypress/e2e'
-[INFO]     at handle (/Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/packages/server/node_modules/@cypress/webpack-preprocessor/dist/index.js:296:23)
-[INFO]     at finalCallback (/Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/webpack/lib/Compiler.js:500:32)
-[INFO]     at /Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/webpack/lib/Compiler.js:578:17
-[INFO]     at /Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/webpack/lib/HookWebpackError.js:67:2
-[INFO]     at Hook.eval [as callAsync] (eval at create (/Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/tapable/lib/HookCodeFactory.js:33:10), <anonymous>:6:1)
-[INFO]     at Hook.CALL_ASYNC_DELEGATE [as _callAsync] (/Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/tapable/lib/Hook.js:18:14)
-[INFO]     at Cache.storeBuildDependencies (/Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/webpack/lib/Cache.js:126:37)
-[INFO]     at /Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/webpack/lib/Compiler.js:574:19
-[INFO]     at Hook.eval [as callAsync] (eval at create (/Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/tapable/lib/HookCodeFactory.js:33:10), <anonymous>:6:1)
-[INFO]     at Hook.CALL_ASYNC_DELEGATE [as _callAsync] (/Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/tapable/lib/Hook.js:18:14)
-[INFO]     at /Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/webpack/lib/Compiler.js:570:23
-[INFO]     at Compiler.emitRecords (/Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/webpack/lib/Compiler.js:1046:4)
-[INFO]     at /Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/webpack/lib/Compiler.js:560:11
-[INFO]     at /Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/webpack/lib/Compiler.js:1009:14
-[INFO]     at Hook.eval [as callAsync] (eval at create (/Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/tapable/lib/HookCodeFactory.js:33:10), <anonymous>:6:1)
-[INFO]     at Hook.CALL_ASYNC_DELEGATE [as _callAsync] (/Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/tapable/lib/Hook.js:18:14)
-[INFO]     at /Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/webpack/lib/Compiler.js:1006:27
-[INFO]     at /Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/neo-async/async.js:2818:7
-[INFO]     at done (/Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/neo-async/async.js:3522:9)
-[INFO]     at alreadyWritten (/Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/webpack/lib/Compiler.js:811:8)
-[INFO]     at /Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/webpack/lib/Compiler.js:922:17
-[INFO]     at /Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/node_modules/graceful-fs/graceful-fs.js:123:16
-[INFO]     at /Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/packages/server/node_modules/graceful-fs/graceful-fs.js:123:16
-[INFO]     at /Users/oliver/Library/Caches/Cypress/14.5.0/Cypress.app/Contents/Resources/app/packages/server/node_modules/graceful-fs/graceful-fs.js:123:16
-[INFO]     at FSReqCallback.readFileAfterClose [as oncomplete] (node:internal/fs/read/context:68:3)
+[INFO]   0 passing (2m)
+[INFO]   5 failing
 [INFO]
-[INFO] This occurred while Cypress was compiling and bundling your test code. This is usually caused by:
+[INFO]   1) Processor Add/Remove Tests
+[INFO]        Should add a processor to the canvas:
+[INFO]      AssertionError: Timed out retrying after 10000ms: Expected to find element: `mat-sidenav-content, .mat-drawer-content`, but never found it.
+[INFO]       at Context.eval (webpack://e-2-e-cypress/./cypress/e2e/03-processor-add-remove.cy.js:29:7)
 [INFO]
-[INFO] - A missing file or dependency
-[INFO] - A syntax error in the file or one of its dependencies
+[INFO]   2) Processor Add/Remove Tests
+[INFO]        Should remove a processor from the canvas:
+[INFO]      AssertionError: Timed out retrying after 10000ms: Expected to find element: `#nf-header, .nf-header, .toolbar, [role="toolbar"], .header, .top-bar`, but never found it.
+[INFO]       at Context.eval (webpack://e-2-e-cypress/./cypress/support/processor-helper.js:178:50)
+[INFO]       at getRet (https://localhost:9095/__cypress/runner/cypress_runner.js:120941:20)
+[INFO]       at tryCatcher (https://localhost:9095/__cypress/runner/cypress_runner.js:1777:23)
+[INFO]       at Promise.attempt.Promise.try (https://localhost:9095/__cypress/runner/cypress_runner.js:4285:29)
+[INFO]       at Context.thenFn (https://localhost:9095/__cypress/runner/cypress_runner.js:120952:66)
+[INFO]       at Context.then (https://localhost:9095/__cypress/runner/cypress_runner.js:121203:21)
+[INFO]       at wrapped (https://localhost:9095/__cypress/runner/cypress_runner.js:141524:19)
 [INFO]
-[INFO] Fix the error in your code and re-run your tests.
+[INFO]   3) Processor Add/Remove Tests
+[INFO]        Should handle multiple processor operations:
+[INFO]      AssertionError: Timed out retrying after 10000ms: Expected to find element: `#nf-header, .nf-header, .toolbar, [role="toolbar"], .header, .top-bar`, but never found it.
+[INFO]       at Context.eval (webpack://e-2-e-cypress/./cypress/support/processor-helper.js:178:50)
+[INFO]       at getRet (https://localhost:9095/__cypress/runner/cypress_runner.js:120941:20)
+[INFO]       at tryCatcher (https://localhost:9095/__cypress/runner/cypress_runner.js:1777:23)
+[INFO]       at Promise.attempt.Promise.try (https://localhost:9095/__cypress/runner/cypress_runner.js:4285:29)
+[INFO]       at Context.thenFn (https://localhost:9095/__cypress/runner/cypress_runner.js:120952:66)
+[INFO]       at Context.then (https://localhost:9095/__cypress/runner/cypress_runner.js:121203:21)
+[INFO]       at wrapped (https://localhost:9095/__cypress/runner/cypress_runner.js:141524:19)
+[INFO]
+[INFO]   4) Processor Add/Remove Tests
+[INFO]        Should handle processor selection and properties:
+[INFO]      AssertionError: Timed out retrying after 10000ms: Expected to find element: `#nf-header, .nf-header, .toolbar, [role="toolbar"], .header, .top-bar`, but never found it.
+[INFO]       at Context.eval (webpack://e-2-e-cypress/./cypress/support/processor-helper.js:178:50)
+[INFO]       at getRet (https://localhost:9095/__cypress/runner/cypress_runner.js:120941:20)
+[INFO]       at tryCatcher (https://localhost:9095/__cypress/runner/cypress_runner.js:1777:23)
+[INFO]       at Promise.attempt.Promise.try (https://localhost:9095/__cypress/runner/cypress_runner.js:4285:29)
+[INFO]       at Context.thenFn (https://localhost:9095/__cypress/runner/cypress_runner.js:120952:66)
+[INFO]       at Context.then (https://localhost:9095/__cypress/runner/cypress_runner.js:121203:21)
+[INFO]       at wrapped (https://localhost:9095/__cypress/runner/cypress_runner.js:141524:19)
+[INFO]
+[INFO]   5) Processor Add/Remove Tests
+[INFO]        Should verify canvas state after processor operations:
+[INFO]      AssertionError: Timed out retrying after 10000ms: Expected to find element: `mat-sidenav-content, .mat-drawer-content`, but never found it.
+[INFO]       at Context.eval (webpack://e-2-e-cypress/./cypress/e2e/03-processor-add-remove.cy.js:285:7)
+[INFO]
+[INFO]
+[INFO]
+[INFO] [mochawesome] Report JSON saved to /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/tests-report/mochawesome_002.json
+[INFO]
+[INFO] [mochawesome] Report HTML saved to /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/tests-report/mochawesome_002.html
+[INFO]
 [INFO]
 [INFO]   (Results)
 [INFO]
 [INFO]   ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
-[INFO]   │ Tests:        0                                                                                │
+[INFO]   │ Tests:        5                                                                                │
 [INFO]   │ Passing:      0                                                                                │
-[INFO]   │ Failing:      1                                                                                │
+[INFO]   │ Failing:      5                                                                                │
 [INFO]   │ Pending:      0                                                                                │
 [INFO]   │ Skipped:      0                                                                                │
-[INFO]   │ Screenshots:  0                                                                                │
+[INFO]   │ Screenshots:  10                                                                               │
 [INFO]   │ Video:        false                                                                            │
-[INFO]   │ Duration:     0 seconds                                                                        │
+[INFO]   │ Duration:     1 minute, 44 seconds                                                             │
 [INFO]   │ Spec Ran:     03-processor-add-remove.cy.js                                                    │
 [INFO]   └────────────────────────────────────────────────────────────────────────────────────────────────┘
+[INFO]
+[INFO]
+[INFO]   (Screenshots)
+[INFO]
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/03-pr    (2560x1440)
+[INFO]      ocessor-add-remove.cy.js/Processor AddRemove Tests -- Should add a processor to
+[INFO]      the canvas (failed).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/03-pr    (2560x1440)
+[INFO]      ocessor-add-remove.cy.js/Processor AddRemove Tests -- Should add a processor to
+[INFO]      the canvas (failed) (attempt 2).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/03-pr    (2560x1440)
+[INFO]      ocessor-add-remove.cy.js/Processor AddRemove Tests -- Should remove a processor
+[INFO]      from the canvas (failed).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/03-pr    (2560x1440)
+[INFO]      ocessor-add-remove.cy.js/Processor AddRemove Tests -- Should remove a processor
+[INFO]      from the canvas (failed) (attempt 2).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/03-pr    (2560x1440)
+[INFO]      ocessor-add-remove.cy.js/Processor AddRemove Tests -- Should handle multiple pro
+[INFO]      cessor operations (failed).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/03-pr    (2560x1440)
+[INFO]      ocessor-add-remove.cy.js/Processor AddRemove Tests -- Should handle multiple pro
+[INFO]      cessor operations (failed) (attempt 2).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/03-pr    (2560x1440)
+[INFO]      ocessor-add-remove.cy.js/Processor AddRemove Tests -- Should handle processor se
+[INFO]      lection and properties (failed).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/03-pr    (2560x1440)
+[INFO]      ocessor-add-remove.cy.js/Processor AddRemove Tests -- Should handle processor se
+[INFO]      lection and properties (failed) (attempt 2).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/03-pr    (2560x1440)
+[INFO]      ocessor-add-remove.cy.js/Processor AddRemove Tests -- Should verify canvas state
+[INFO]       after processor operations (failed).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/03-pr    (2560x1440)
+[INFO]      ocessor-add-remove.cy.js/Processor AddRemove Tests -- Should verify canvas state
+[INFO]       after processor operations (failed) (attempt 2).png
 [INFO]
 [INFO]
 [INFO] ================================================================================
@@ -568,19 +652,19 @@ Test client: test_client, secret: yTKslWLtf4giJcWCaoVJ20H8sy6STexM
 [INFO]   ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
 [INFO]   │ ✔  01-nifi-authentication.cy.js             00:01        3        3        -        -        - │
 [INFO]   ├────────────────────────────────────────────────────────────────────────────────────────────────┤
-[INFO]   │ ✖  02-processor-testing.cy.js               00:01        4        -        1        -        3 │
+[INFO]   │ ✖  02-nifi-navigation.cy.js                 01:07        5        2        3        -        - │
 [INFO]   ├────────────────────────────────────────────────────────────────────────────────────────────────┤
-[INFO]   │ ✖  03-processor-add-remove.cy.js              0ms        -        -        1        -        - │
+[INFO]   │ ✖  03-processor-add-remove.cy.js            01:44        5        -        5        -        - │
 [INFO]   └────────────────────────────────────────────────────────────────────────────────────────────────┘
-[INFO]     ✖  2 of 3 failed (67%)                      00:03        7        3        2        -        3
+[INFO]     ✖  2 of 3 failed (67%)                      02:53       13        5        8        -        -
 [INFO]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD FAILURE
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  38.829 s
-[INFO] Finished at: 2025-06-29T22:59:16+02:00
+[INFO] Total time:  03:23 min
+[INFO] Finished at: 2025-06-29T23:48:05+02:00
 [INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal com.github.eirslett:frontend-maven-plugin:1.15.1:npm (cypress-tests) on project e-2-e-cypress: Failed to run task: 'npm run cypress:run' failed. org.apache.commons.exec.ExecuteException: Process exited with an error: 2 (Exit value: 2) -> [Help 1]
+[ERROR] Failed to execute goal com.github.eirslett:frontend-maven-plugin:1.15.1:npm (cypress-tests) on project e-2-e-cypress: Failed to run task: 'npm run cypress:run' failed. org.apache.commons.exec.ExecuteException: Process exited with an error: 8 (Exit value: 8) -> [Help 1]
 [ERROR]
 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
