@@ -434,45 +434,36 @@ function tryOpenAddProcessorDialog() {
     const toolbarButtons = $body.find(SELECTORS.TOOLBAR_ADD);
     if (toolbarButtons.length > 0) {
       logMessage('info', 'Trying toolbar button approach');
-      cy.get(SELECTORS.TOOLBAR_ADD).first().click();
-      return cy.get(SELECTORS.ADD_PROCESSOR_DIALOG, { timeout: 2000 });
+      return cy
+        .get(SELECTORS.TOOLBAR_ADD)
+        .first()
+        .click()
+        .then(() => cy.get(SELECTORS.ADD_PROCESSOR_DIALOG, { timeout: 2000 }));
     }
 
-    // Strategy 2: Try right-click on canvas - use flexible canvas selector
+    // Strategy 2: Try right-click on canvas using findWorkingCanvas utility
     logMessage('info', 'Trying right-click on canvas approach');
-    const canvasSelectors = ['svg', '#canvas', '#canvas-container'];
+    return findWorkingCanvas()
+      .rightclick(400, 300)
+      .then(() => {
+        // Look for context menu with "Add Processor" option
+        return cy.get('body').then(($contextBody) => {
+          const contextMenus = $contextBody.find(SELECTORS.CONTEXT_MENU);
+          if (contextMenus.length > 0) {
+            return cy
+              .get(SELECTORS.CONTEXT_MENU)
+              .contains('Add', { matchCase: false })
+              .click()
+              .then(() => cy.get(SELECTORS.ADD_PROCESSOR_DIALOG, { timeout: 2000 }));
+          }
 
-    for (const selector of canvasSelectors) {
-      const elements = $body.find(selector);
-      if (elements.length > 0) {
-        return cy
-          .get(selector)
-          .first() // Only target the first element to avoid multiple element error
-          .rightclick(400, 300)
-          .then(() => {
-            // Look for context menu with "Add Processor" option
-            return cy.get('body').then(($contextBody) => {
-              const contextMenus = $contextBody.find(SELECTORS.CONTEXT_MENU);
-              if (contextMenus.length > 0) {
-                cy.get(SELECTORS.CONTEXT_MENU).contains('Add', { matchCase: false }).click();
-                return cy.get(SELECTORS.ADD_PROCESSOR_DIALOG, { timeout: 2000 });
-              }
-
-              // Strategy 3: Try double-click on canvas
-              logMessage('info', 'Trying double-click on canvas approach');
-              return cy
-                .get(selector)
-                .first() // Only target the first element
-                .dblclick(400, 300)
-                .then(() => {
-                  return cy.get(SELECTORS.ADD_PROCESSOR_DIALOG, { timeout: 2000 });
-                });
-            });
-          });
-      }
-    }
-
-    throw new Error('Could not find any canvas element to interact with');
+          // Strategy 3: Try double-click on canvas
+          logMessage('info', 'Trying double-click on canvas approach');
+          return findWorkingCanvas()
+            .dblclick(400, 300)
+            .then(() => cy.get(SELECTORS.ADD_PROCESSOR_DIALOG, { timeout: 2000 }));
+        });
+      });
   });
 }
 

@@ -1,5 +1,5 @@
-const allowedWarnings = require('./console-warnings-allowlist');
-const { formatConsoleArgs } = require('./utils');
+import allowedWarnings from './console-warnings-allowlist.js';
+import { formatConsoleArgs } from './utils.js';
 
 /**
  * Tracks console errors during test execution and reports them as test failures

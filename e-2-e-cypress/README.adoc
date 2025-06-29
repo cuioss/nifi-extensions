@@ -238,7 +238,7 @@ The Maven build follows CUI standards for container lifecycle management:
 [source,bash]
 ----
 cd e-2-e-cypress
-node scripts/enhanced-log-analyzer.js latest
+node scripts/log-analyzer.js latest
 open cypress/reports/enhanced-analysis/comprehensive-report.html
 ----
 
@@ -267,7 +267,7 @@ open cypress/reports/enhanced-analysis/comprehensive-report.html
 ----
 # Run enhanced log analysis manually
 cd e-2-e-cypress
-node scripts/enhanced-log-analyzer.js latest
+node scripts/log-analyzer.js latest
 open cypress/reports/enhanced-analysis/comprehensive-report.html
 ----
 

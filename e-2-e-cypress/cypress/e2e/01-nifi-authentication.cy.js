@@ -4,6 +4,8 @@
  * Consolidates authentication functionality from multiple previous test files
  */
 
+import { SELECTORS } from '../support/constants.js';
+
 describe('NiFi Authentication', () => {
   beforeEach(() => {
     cy.log('Setting up authentication test');
@@ -35,17 +37,11 @@ describe('NiFi Authentication', () => {
     cy.navigateToPage('LOGIN');
 
     // Try invalid credentials
-    cy.get('[data-testid="username"], input[type="text"], input[id*="username"]')
-      .should('be.visible')
-      .clear()
-      .type('invalid-user');
+    cy.get(SELECTORS.USERNAME_INPUT).should('be.visible').clear().type('invalid-user');
 
-    cy.get('[data-testid="password"], input[type="password"], input[id*="password"]')
-      .should('be.visible')
-      .clear()
-      .type('invalid-password');
+    cy.get(SELECTORS.PASSWORD_INPUT).should('be.visible').clear().type('invalid-password');
 
-    cy.get('[data-testid="login-button"], input[value="Login"], button[type="submit"]').click();
+    cy.get(SELECTORS.LOGIN_BUTTON).click();
 
     // Should remain on login page
     cy.getPageContext().should((context) => {
