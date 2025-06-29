@@ -1,0 +1,596 @@
+diff --git a/e-2-e-cypress/README.adoc b/e-2-e-cypress/README.adoc
+index 66b4def..82b8486 100644
+--- a/e-2-e-cypress/README.adoc
++++ b/e-2-e-cypress/README.adoc
+@@ -208,11 +208,11 @@ The Maven build follows CUI standards for container lifecycle management:
+ ----
+
+ **CUI-Compliant Process:**
+-1. � Maven exec-maven-plugin calls container start script
+-2. 🚀 Start containers via `scripts/start-integration-containers.sh`
++1. � Maven exec-maven-plugin manages container lifecycle
++2. 🚀 Start containers via Docker Compose integration
+ 3. ⏳ Wait for readiness with health checks (up to 2 minutes fail-fast)
+ 4. 🧪 Run tests with correct configuration
+-5. 🛑 Stop containers via `scripts/stop-integration-containers.sh` (post-integration-test)
++5. 🛑 Stop containers automatically (post-integration-test)
+ 6. ✅ Report results
+
+ === E2E Test Results Deployment
+diff --git a/e-2-e-cypress/doc/setup-guide.md b/e-2-e-cypress/doc/setup-guide.md
+index cc09735..ffe1a12 100644
+--- a/e-2-e-cypress/doc/setup-guide.md
++++ b/e-2-e-cypress/doc/setup-guide.md
+@@ -257,11 +257,11 @@ curl -f http://localhost:9080/realms/nifi
+
+ ### Test Environment Validation
+ ```bash
+-# Run verification script
+-./scripts/verification/verify-setup.sh
++# Check system status
++npm run status
+
+-# Verify processor deployment
+-./scripts/verification/verify-processors.sh
++# Verify test execution
++npm run cypress:run --spec "cypress/e2e/01-nifi-authentication.cy.js"
+ ```
+
+ ## Troubleshooting
+diff --git a/e-2-e-cypress/scripts/utils/shell-common.sh b/e-2-e-cypress/scripts/utils/shell-common.sh
+deleted file mode 100755
+index 7f8d53f..0000000
+--- a/e-2-e-cypress/scripts/utils/shell-common.sh
++++ /dev/null
+@@ -1,336 +0,0 @@
+-#!/bin/bash
+-#
+-# Shared shell utilities for e-2-e-cypress scripts
+-# Provides common functions for logging, error handling, and utility operations
+-#
+-
+-# ANSI color codes for console output
+-RED='\033[0;31m'
+-GREEN='\033[0;32m'
+-YELLOW='\033[1;33m'
+-BLUE='\033[0;34m'
+-MAGENTA='\033[0;35m'
+-CYAN='\033[0;36m'
+-WHITE='\033[1;37m'
+-BOLD='\033[1m'
+-DIM='\033[2m'
+-NC='\033[0m' # No Color
+-
+-# Check if we should use colors (TTY and not in CI)
+-USE_COLORS=true
+-if [ ! -t 1 ] || [ "${CI}" = "true" ] || [ "${NO_COLOR}" = "1" ]; then
+-    USE_COLORS=false
+-fi
+-
+-#
+-# Logging functions with consistent formatting
+-#
+-
+-# Print colored message if colors are enabled
+-print_colored() {
+-    local color="$1"
+-    local message="$2"
+-
+-    if [ "$USE_COLORS" = "true" ]; then
+-        echo -e "${color}${message}${NC}"
+-    else
+-        echo "$message"
+-    fi
+-}
+-
+-# Print timestamp
+-get_timestamp() {
+-    date '+%Y-%m-%d %H:%M:%S'
+-}
+-
+-# Print formatted log message with timestamp
+-log_message() {
+-    local level="$1"
+-    local color="$2"
+-    local message="$3"
+-    local timestamp
+-    timestamp=$(get_timestamp)
+-
+-    print_colored "$color" "[${timestamp}] [${level}] ${message}"
+-}
+-
+-# Log functions
+-print_status() {
+-    log_message "INFO" "$CYAN" "🔍 $1"
+-}
+-
+-print_success() {
+-    log_message "SUCCESS" "$GREEN" "✅ $1"
+-}
+-
+-print_warning() {
+-    log_message "WARNING" "$YELLOW" "⚠️  $1"
+-}
+-
+-print_error() {
+-    log_message "ERROR" "$RED" "❌ $1"
+-}
+-
+-print_progress() {
+-    log_message "PROGRESS" "$MAGENTA" "⏳ $1"
+-}
+-
+-print_step() {
+-    log_message "STEP" "$BLUE" "$1"
+-}
+-
+-print_debug() {
+-    if [ "${DEBUG:-}" = "true" ] || [ "${VERBOSE:-}" = "true" ]; then
+-        log_message "DEBUG" "$DIM" "$1"
+-    fi
+-}
+-
+-#
+-# Utility functions
+-#
+-
+-# Check if command exists
+-command_exists() {
+-    command -v "$1" >/dev/null 2>&1
+-}
+-
+-# Check if file exists
+-file_exists() {
+-    [ -f "$1" ]
+-}
+-
+-# Check if directory exists
+-directory_exists() {
+-    [ -d "$1" ]
+-}
+-
+-# Ensure directory exists
+-ensure_directory() {
+-    local dir_path="$1"
+-    if [ ! -d "$dir_path" ]; then
+-        mkdir -p "$dir_path"
+-        print_debug "Created directory: $dir_path"
+-    fi
+-}
+-
+-# Get project root (assumes we're in scripts/ or scripts/utils/)
+-get_project_root() {
+-    local script_dir
+-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+-
+-    # If we're in scripts/utils/, go up two levels
+-    if [[ "$script_dir" == */scripts/utils ]]; then
+-        echo "$(cd "$script_dir/../.." && pwd)"
+-    # If we're in scripts/, go up one level
+-    elif [[ "$script_dir" == */scripts ]]; then
+-        echo "$(cd "$script_dir/.." && pwd)"
+-    else
+-        # Fallback: assume current directory
+-        pwd
+-    fi
+-}
+-
+-# Check if we're in the correct e-2-e-cypress directory
+-check_project_directory() {
+-    if [ ! -f "package.json" ] || [ ! -f "cypress.config.js" ]; then
+-        print_error "Not in e-2-e-cypress directory. Please run from the correct location."
+-        return 1
+-    fi
+-    return 0
+-}
+-
+-# Ensure we're in the correct directory or exit
+-ensure_project_directory() {
+-    if ! check_project_directory; then
+-        exit 1
+-    fi
+-}
+-
+-#
+-# Docker utilities
+-#
+-
+-# Check if Docker is available
+-is_docker_available() {
+-    if command_exists docker && command_exists docker-compose; then
+-        return 0
+-    elif command_exists docker && docker compose version >/dev/null 2>&1; then
+-        return 0
+-    else
+-        return 1
+-    fi
+-}
+-
+-# Get docker compose command (handling both docker-compose and docker compose)
+-get_docker_compose_cmd() {
+-    if command_exists docker-compose; then
+-        echo "docker-compose"
+-    elif command_exists docker && docker compose version >/dev/null 2>&1; then
+-        echo "docker compose"
+-    else
+-        print_error "Neither docker-compose nor 'docker compose' is available"
+-        return 1
+-    fi
+-}
+-
+-# Check if containers are running
+-are_containers_running() {
+-    local docker_cmd
+-    docker_cmd=$(get_docker_compose_cmd) || return 1
+-
+-    local running_count
+-    running_count=$($docker_cmd ps -q | wc -l 2>/dev/null) || return 1
+-
+-    [ "$running_count" -gt 0 ]
+-}
+-
+-# Check if NiFi is healthy
+-check_nifi_health() {
+-    local nifi_url="${1:-https://localhost:9095/nifi}"
+-    local timeout="${2:-5}"
+-
+-    if command_exists curl; then
+-        curl -k -s --max-time "$timeout" --fail "$nifi_url" >/dev/null 2>&1
+-    elif command_exists wget; then
+-        wget -q --timeout="$timeout" --tries=1 --no-check-certificate "$nifi_url" -O /dev/null >/dev/null 2>&1
+-    else
+-        print_warning "Neither curl nor wget available for health check"
+-        return 1
+-    fi
+-}
+-
+-#
+-# Test utilities
+-#
+-
+-# Parse command line arguments into arrays
+-parse_args() {
+-    ARGS_FLAGS=()
+-    ARGS_OPTIONS=()
+-    ARGS_POSITIONAL=()
+-
+-    while [ $# -gt 0 ]; do
+-        case $1 in
+-            --*=*)
+-                # Handle --key=value format
+-                local key="${1#--}"
+-                key="${key%%=*}"
+-                local value="${1#*=}"
+-                ARGS_OPTIONS+=("$key:$value")
+-                ;;
+-            --*)
+-                # Check if next argument is a value (doesn't start with -)
+-                if [ $# -gt 1 ] && [[ ! "$2" =~ ^- ]]; then
+-                    ARGS_OPTIONS+=("${1#--}:$2")
+-                    shift
+-                else
+-                    ARGS_FLAGS+=("${1#--}")
+-                fi
+-                ;;
+-            -*)
+-                ARGS_FLAGS+=("${1#-}")
+-                ;;
+-            *)
+-                ARGS_POSITIONAL+=("$1")
+-                ;;
+-        esac
+-        shift
+-    done
+-}
+-
+-# Check if flag is present
+-has_flag() {
+-    local flag="$1"
+-    local f
+-    for f in "${ARGS_FLAGS[@]}"; do
+-        if [ "$f" = "$flag" ]; then
+-            return 0
+-        fi
+-    done
+-    return 1
+-}
+-
+-# Get option value
+-get_option() {
+-    local key="$1"
+-    local default_value="${2:-}"
+-    local opt
+-
+-    for opt in "${ARGS_OPTIONS[@]}"; do
+-        if [[ "$opt" =~ ^"$key": ]]; then
+-            echo "${opt#*:}"
+-            return 0
+-        fi
+-    done
+-
+-    echo "$default_value"
+-}
+-
+-#
+-# Error handling
+-#
+-
+-# Exit with error message
+-die() {
+-    print_error "$1"
+-    exit "${2:-1}"
+-}
+-
+-# Execute command with error handling
+-safe_execute() {
+-    local cmd="$1"
+-    local error_msg="${2:-Command failed}"
+-
+-    print_debug "Executing: $cmd"
+-
+-    if ! eval "$cmd"; then
+-        die "$error_msg" $?
+-    fi
+-}
+-
+-# Execute command silently
+-execute_silent() {
+-    local cmd="$1"
+-    eval "$cmd" >/dev/null 2>&1
+-}
+-
+-# Cleanup function to be called on script exit
+-cleanup() {
+-    print_debug "Performing cleanup..."
+-}
+-
+-# Set up trap for cleanup
+-setup_cleanup() {
+-    trap cleanup EXIT
+-}
+-
+-#
+-# Version and environment info
+-#
+-
+-# Print environment information
+-print_env_info() {
+-    print_status "Environment Information:"
+-    echo "  OS: $(uname -s) $(uname -r)"
+-    echo "  Shell: ${SHELL:-unknown}"
+-    echo "  Node: $(command_exists node && node --version || echo 'not found')"
+-    echo "  NPM: $(command_exists npm && npm --version || echo 'not found')"
+-    echo "  Docker: $(command_exists docker && docker --version || echo 'not found')"
+-    echo "  Docker Compose: $(get_docker_compose_cmd >/dev/null && get_docker_compose_cmd --version || echo 'not found')"
+-    echo "  PWD: $(pwd)"
+-}
+-
+-# Export all functions for use in other scripts
+-export -f print_colored get_timestamp log_message
+-export -f print_status print_success print_warning print_error print_progress print_step print_debug
+-export -f command_exists file_exists directory_exists ensure_directory
+-export -f get_project_root check_project_directory ensure_project_directory
+-export -f is_docker_available get_docker_compose_cmd are_containers_running check_nifi_health
+-export -f parse_args has_flag get_option
+-export -f die safe_execute execute_silent cleanup setup_cleanup
+-export -f print_env_info
+-
+-# Export color variables
+-export RED GREEN YELLOW BLUE MAGENTA CYAN WHITE BOLD DIM NC USE_COLORS
+-
+-print_debug "Loaded shell-common.sh utilities"
+diff --git a/e-2-e-cypress/scripts/verification/verify-maven-config.sh b/e-2-e-cypress/scripts/verification/verify-maven-config.sh
+deleted file mode 100755
+index 093c98a..0000000
+--- a/e-2-e-cypress/scripts/verification/verify-maven-config.sh
++++ /dev/null
+@@ -1,111 +0,0 @@
+-#!/bin/bash
+-# Comprehensive verification of the Maven integration test configuration
+-# Tests CUI-compliant Maven-driven container lifecycle management
+-
+-set -e
+-
+-# Import shared utilities
+-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+-if [ -f "$SCRIPT_DIR/../utils/shell-common.sh" ]; then
+-    source "$SCRIPT_DIR/../utils/shell-common.sh"
+-else
+-    # Fallback if utilities not available
+-    print_status() { echo "🔍 $1"; }
+-    print_success() { echo "✅ $1"; }
+-    print_warning() { echo "⚠️  $1"; }
+-    print_error() { echo "❌ $1"; }
+-    print_step() { echo "📋 $1"; }
+-    print_progress() { echo "⏳ $1"; }
+-fi
+-
+-# Standardized exit codes
+-readonly EXIT_SUCCESS=0
+-readonly EXIT_CONFIGURATION_ERROR=130
+-readonly EXIT_DEPENDENCY_ERROR=133
+-readonly EXIT_SYSTEM_ERROR=141
+-
+-echo "🧪 Testing Maven Configuration for e-2-e-cypress (CUI-Compliant Mode)"
+-echo "======================================================================"
+-echo
+-
+-cd /Users/oliver/git/nifi-extensions/e-2-e-cypress
+-
+-print_step "Test 1: Stopping containers first"
+-echo "------------------------------------"
+-cd ../integration-testing/src/main/docker && docker compose down >/dev/null 2>&1 || true
+-cd - >/dev/null
+-print_success "DONE: Containers stopped"
+-echo
+-
+-print_step "Test 2: Maven integration-tests profile - should start containers and run tests"
+-echo "------------------------------------------------------------------------------"
+-print_progress "This may take a few minutes as containers need to start..."
+-mvn clean verify -P integration-tests -q 2>/dev/null || echo "Build completed (may have test failures, that's expected)"
+-print_success "PASS: Maven integration-tests completed (containers managed by Maven)"
+-echo
+-
+-print_step "Test 3: Build with skipTests=true - should skip all tests"
+-echo "-----------------------------------------------------------"
+-mvn clean verify -DskipTests=true -q
+-if [ $? -eq 0 ]; then
+-    print_success "PASS: Build with skipTests completed successfully"
+-else
+-    print_error "FAIL: Build with skipTests failed"
+-    exit $EXIT_SYSTEM_ERROR
+-fi
+-echo
+-
+-print_step "Test 4: Safe selftests profile - should run without containers"
+-echo "--------------------------------------------------------------"
+-# First stop containers to test safe mode
+-cd ../integration-testing/src/main/docker && docker compose down >/dev/null 2>&1 || true
+-cd - >/dev/null
+-mvn clean verify -P safe-selftests -q
+-if [ $? -eq 0 ]; then
+-    print_success "PASS: Safe selftests profile completed successfully (no containers needed)"
+-else
+-    print_error "FAIL: Safe selftests profile failed"
+-    exit $EXIT_SYSTEM_ERROR
+-fi
+-echo
+-
+-print_step "Test 5: UI tests profile - should try to run real tests"
+-echo "---------------------------------------------------------"
+-mvn clean integration-test -P ui-tests -q 2>/dev/null
+-if [ $? -ne 0 ]; then
+-    print_success "PASS: UI tests profile failed as expected (containers not running)"
+-else
+-    print_warning "UI tests profile succeeded unexpectedly"
+-fi
+-echo
+-
+-print_step "Test 6: Validate phase only - should run linting"
+-echo "--------------------------------------------------"
+-mvn clean validate -q
+-if [ $? -eq 0 ]; then
+-    print_success "PASS: Validate phase completed successfully (linting passed)"
+-else
+-    print_error "FAIL: Validate phase failed"
+-    exit $EXIT_SYSTEM_ERROR
+-fi
+-echo
+-
+-print_step "Test 7: Test npm scripts directly (test execution only)"
+-echo "-------------------------------------------------------"
+-echo "Testing test execution scripts..."
+-npm run cypress:selftests >/dev/null 2>&1 || echo "Test script completed (expected to fail without containers)"
+-print_success "PASS: Test execution script works correctly"
+-echo
+-
+-print_success "All tests passed! CUI-compliant Maven configuration is working correctly:"
+-echo "  ✓ Container lifecycle managed exclusively by Maven profiles"
+-echo "  ✓ Integration tests start containers via exec-maven-plugin"
+-echo "  ✓ npm scripts only handle test execution, not infrastructure"
+-echo "  ✓ skipTests=true works to skip all tests"
+-echo "  ✓ Safe selftests profile works without containers"
+-echo "  ✓ Linting runs during validate phase"
+-echo "  ✓ Test execution scripts work independently"
+-echo ""
+-echo "🚀 **CUI-COMPLIANT**: All container management handled by Maven profiles only!"
+-
+-exit $EXIT_SUCCESS
+diff --git a/e-2-e-cypress/scripts/verification/verify-setup.sh b/e-2-e-cypress/scripts/verification/verify-setup.sh
+deleted file mode 100755
+index 94b5d8b..0000000
+--- a/e-2-e-cypress/scripts/verification/verify-setup.sh
++++ /dev/null
+@@ -1,92 +0,0 @@
+-#!/bin/bash
+-
+-# Quick verification script for e-2-e-cypress setup
+-
+-# Import shared utilities
+-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+-if [ -f "$SCRIPT_DIR/../utils/shell-common.sh" ]; then
+-    source "$SCRIPT_DIR/../utils/shell-common.sh"
+-else
+-    # Fallback if utilities not available
+-    print_status() { echo "🔍 $1"; }
+-    print_success() { echo "✅ $1"; }
+-    print_warning() { echo "⚠️  $1"; }
+-    print_error() { echo "❌ $1"; }
+-fi
+-
+-# Standardized exit codes
+-readonly EXIT_SUCCESS=0
+-readonly EXIT_CONFIGURATION_ERROR=130
+-readonly EXIT_DEPENDENCY_ERROR=133
+-readonly EXIT_SYSTEM_ERROR=141
+-
+-print_status "Verifying e-2-e-cypress setup..."
+-
+-# Check if we're in the right directory
+-if ! check_project_directory 2>/dev/null; then
+-    print_error "package.json not found. Run from e-2-e-cypress directory."
+-    exit $EXIT_CONFIGURATION_ERROR
+-fi
+-
+-print_success "Package.json found"
+-
+-# Check if node_modules exists
+-if [ ! -d "node_modules" ]; then
+-    print_warning "node_modules not found. Running npm install..."
+-    npm install
+-else
+-    print_success "Node modules installed"
+-fi
+-
+-# Check Cypress binary
+-print_status "Checking Cypress binary..."
+-if npx cypress --version > /dev/null 2>&1; then
+-    print_success "Cypress binary working"
+-    npx cypress --version
+-else
+-    print_error "Cypress binary not working"
+-    echo "Try: npx cypress install"
+-    exit 1
+-fi
+-
+-# List test files
+-print_status "Test files found:"
+-echo "📁 Self-tests:"
+-find cypress/selftests -name "*.cy.js" 2>/dev/null | sed 's/^/  /' || echo "  No self-test files found"
+-
+-echo "📁 E2E tests:"
+-find cypress/e2e -name "*.cy.js" 2>/dev/null | sed 's/^/  /' || echo "  No E2E test files found"
+-
+-echo "📁 Support files:"
+-find cypress/support -name "*.js" 2>/dev/null | sed 's/^/  /' || echo "  No support files found"
+-
+-# Check configuration files
+-print_status "Configuration files:"
+-[ -f "cypress.config.js" ] && echo "  ✅ cypress.config.js" || echo "  ❌ cypress.config.js missing"
+-[ -f "cypress.selftests.config.js" ] && echo "  ✅ cypress.selftests.config.js" || echo "  ❌ cypress.selftests.config.js missing"
+-[ -f ".eslintrc.js" ] && echo "  ✅ .eslintrc.js" || echo "  ❌ .eslintrc.js missing"
+-[ -f ".prettierrc" ] && echo "  ✅ .prettierrc" || echo "  ❌ .prettierrc missing"
+-
+-echo ""
+-print_success "Setup verification complete!"
+-echo ""
+-echo "📝 Testing Strategy:"
+-echo "• Self-tests = REAL integration tests against live NiFi instance"
+-echo "• E2E tests = Full end-to-end testing with complete scenarios"
+-echo ""
+-echo "📋 Prerequisites for self-tests:"
+-echo "• NiFi running on https://localhost:9095/nifi"
+-echo "• Default credentials: admin/adminadminadmin"
+-echo "• MultiIssuerJWTTokenAuthenticator processor available"
+-echo ""
+-echo "🚀 Next steps:"
+-echo "1. Start integration test environment:"
+-echo "   cd ../integration-testing/src/main/docker && ./start-test-containers.sh"
+-echo "2. Wait for services to be ready (NiFi takes 3-5 minutes)"
+-echo "3. Run integration self-tests: npm run cypress:selftests"
+-
+-exit $EXIT_SUCCESS
+-echo "4. Run full E2E tests: npm run cypress:run"
+-echo "5. Interactive mode: npm run cypress:open"
+-echo ""
+-echo "⚠️  Note: Self-tests now require actual NiFi instance (not mocks)"

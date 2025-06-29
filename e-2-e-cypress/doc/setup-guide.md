@@ -257,11 +257,11 @@ curl -f http://localhost:9080/realms/nifi
 
 ### Test Environment Validation
 ```bash
-# Run verification script
-./scripts/verification/verify-setup.sh
+# Check system status
+npm run status
 
-# Verify processor deployment
-./scripts/verification/verify-processors.sh
+# Verify test execution
+npm run cypress:run --spec "cypress/e2e/01-nifi-authentication.cy.js"
 ```
 
 ## Troubleshooting

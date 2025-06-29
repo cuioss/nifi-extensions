@@ -208,11 +208,11 @@ The Maven build follows CUI standards for container lifecycle management:
 ----
 
 **CUI-Compliant Process:**
-1. � Maven exec-maven-plugin calls container start script
-2. 🚀 Start containers via `scripts/start-integration-containers.sh`
+1. � Maven exec-maven-plugin manages container lifecycle
+2. 🚀 Start containers via Docker Compose integration
 3. ⏳ Wait for readiness with health checks (up to 2 minutes fail-fast)
 4. 🧪 Run tests with correct configuration
-5. 🛑 Stop containers via `scripts/stop-integration-containers.sh` (post-integration-test)
+5. 🛑 Stop containers automatically (post-integration-test)
 6. ✅ Report results
 
 === E2E Test Results Deployment
