@@ -4,6 +4,62 @@
 
 The current e2e Cypress testing framework is in a preliminary state with significant gaps that prevent it from being an effective base framework for testing NiFi components. This plan outlines the necessary improvements to create a robust, reliable testing foundation.
 
+## 🚀 **IMPORTANT: Container Startup Workflow**
+
+### **Step 1: Start the Test Container Environment**
+
+**The `integration-testing/src/main/docker/run-test-container.sh` script is the primary way to start the test container environment.**
+
+```bash
+# From the project root directory
+./integration-testing/src/main/docker/run-test-container.sh
+```
+
+**What this script does:**
+- Builds and copies the NAR file via `copy-deployment.sh`
+- Generates SSL certificates if needed for HTTPS mode
+- Starts NiFi and Keycloak containers via `start-nifi.sh`
+- Provides test credentials:
+  - **Keycloak realm**: `oauth_integration_tests`
+  - **Test user**: `testUser` / password: `drowssap`
+  - **Test client**: `test_client` / secret: `yTKslWLtf4giJcWCaoVJ20H8sy6STexM`
+
+### **Step 2: Run Cypress Tests**
+
+**After the container environment is running, you can run Cypress tests directly:**
+
+```bash
+# Navigate to the e2e test directory
+cd e-2-e-cypress
+
+# Run tests in headless mode
+npx cypress run
+
+# Or open Cypress UI for interactive testing
+npx cypress open
+
+# Run specific test files
+npx cypress run --spec "cypress/e2e/integration/01-nifi-authentication.cy.js"
+npx cypress run --spec "cypress/e2e/mocked/01-processor-add-remove-mocked.cy.js"
+```
+
+### **Container Management**
+
+```bash
+# Stop the test environment
+./integration-testing/src/main/docker/stop-test-container.sh
+
+# View container logs
+docker compose -f integration-testing/src/main/docker/docker-compose.yml logs nifi
+docker compose -f integration-testing/src/main/docker/docker-compose.yml logs keycloak
+```
+
+### **Test Environment URLs**
+- **NiFi**: https://localhost:9095/nifi
+- **Keycloak**: https://localhost:9085/auth
+
+---
+
 ## Current State Analysis
 
 ### What Works
