@@ -4,7 +4,7 @@
  * Conditions of Satisfaction: We must be able to simply add/remove processors for later tests
  */
 
-import { ProcessorTestPatterns } from '../support/test-helpers.js';
+import { ProcessorTestPatterns } from '../../support/test-helpers.js';
 
 describe('JWT Processor Add/Remove Operations', () => {
   // Common test setup

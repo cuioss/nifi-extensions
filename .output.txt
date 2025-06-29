@@ -33,7 +33,7 @@
 [INFO] --- frontend:1.15.1:npm (npm-install) @ e-2-e-cypress ---
 [INFO] Running 'npm install' in /Users/oliver/git/nifi-extensions/e-2-e-cypress
 [INFO]
-[INFO] up to date, audited 655 packages in 906ms
+[INFO] up to date, audited 655 packages in 918ms
 [INFO]
 [INFO] 98 packages are looking for funding
 [INFO]   run `npm fund` for details
@@ -187,7 +187,7 @@ Building NAR file...
 [INFO] You can limit the size of your bundles by using import() or require.ensure to lazy load some parts of your application.
 [INFO] For more info visit https://webpack.js.org/guides/code-splitting/
 [INFO]
-[INFO] webpack 5.99.9 compiled with 3 warnings in 1126 ms
+[INFO] webpack 5.99.9 compiled with 3 warnings in 1279 ms
 [INFO]
 [INFO] --- resources:3.3.1:testResources (default-testResources) @ nifi-cuioss-ui ---
 [INFO] skip non existing resourceDirectory /Users/oliver/git/nifi-extensions/nifi-cuioss-ui/src/test/resources
@@ -253,9 +253,9 @@ Building NAR file...
 [INFO] Found NAR dependency of org.apache.nifi:nifi-standard-services-api-nar:nar:2.4.0:compile
 [INFO] Found a dependency on version 2.1.0 of NiFi API
 [WARNING] The POM for org.eclipse.jetty.tests:jetty-test-multipart:jar:12.0.19 is missing, no dependency information available
-Juni 29, 2025 11:45:12 AM de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator init
+Juni 29, 2025 4:51:52 PM de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator init
 INFORMATION: Initializing MultiIssuerJWTTokenAuthenticator processor
-Juni 29, 2025 11:45:12 AM de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator init
+Juni 29, 2025 4:51:52 PM de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator init
 INFORMATION: MultiIssuerJWTTokenAuthenticator processor initialized with 10 property descriptors
 [INFO] Building jar: /Users/oliver/git/nifi-extensions/nifi-cuioss-nar/target/nifi-cuioss-nar-1.0-SNAPSHOT.nar
 [INFO]
@@ -297,45 +297,29 @@ INFORMATION: MultiIssuerJWTTokenAuthenticator processor initialized with 10 prop
 [INFO] ------------------------------------------------------------------------
 [INFO] Reactor Summary for Apache Nifi extensions 1.0-SNAPSHOT:
 [INFO]
-[INFO] Apache Nifi extensions ............................. SUCCESS [  0.528 s]
-[INFO] nifi-cuioss-processors ............................. SUCCESS [  0.362 s]
-[INFO] nifi-cuioss-ui ..................................... SUCCESS [  4.029 s]
-[INFO] nifi-cuioss-nar .................................... SUCCESS [  3.076 s]
-[INFO] Integration Testing ................................ SUCCESS [  0.060 s]
+[INFO] Apache Nifi extensions ............................. SUCCESS [  0.685 s]
+[INFO] nifi-cuioss-processors ............................. SUCCESS [  0.478 s]
+[INFO] nifi-cuioss-ui ..................................... SUCCESS [  4.475 s]
+[INFO] nifi-cuioss-nar .................................... SUCCESS [  3.563 s]
+[INFO] Integration Testing ................................ SUCCESS [  0.068 s]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  9.165 s
-[INFO] Finished at: 2025-06-29T11:45:12+02:00
+[INFO] Total time:  10.378 s
+[INFO] Finished at: 2025-06-29T16:51:52+02:00
 [INFO] ------------------------------------------------------------------------
-Creating target directory for NAR file...
 Copying NAR file to target directory...
 NAR file has been built and copied to the deployment location.
 Starting NiFi environment...
 Starting NiFi HTTPS instance on port 9095...
- Network docker_nifi-keycloak-network  Creating
- Network docker_nifi-keycloak-network  Created
- Container docker-nifi-1  Creating
- Container docker-keycloak-1  Creating
- Container docker-keycloak-1  Created
- Container docker-nifi-1  Created
- Container docker-nifi-1  Starting
- Container docker-keycloak-1  Starting
- Container docker-nifi-1  Started
- Container docker-keycloak-1  Started
+ Container docker-nifi-1  Running
+ Container docker-keycloak-1  Running
 Waiting for NiFi to be ready...
 NiFi will be available at: https://localhost:9095/nifi
 Keycloak HTTPS will be available at: https://localhost:9085
 Keycloak HTTP admin will be available at: http://localhost:9080
 Checking health status with 2-minute timeout...
-⏳ Waiting... (attempt 1/60) - 0s elapsed
-⏳ Waiting... (attempt 2/60) - 2s elapsed
-⏳ Waiting... (attempt 3/60) - 4s elapsed
-⏳ Waiting... (attempt 4/60) - 6s elapsed
-⏳ Waiting... (attempt 5/60) - 8s elapsed
-⏳ Waiting... (attempt 6/60) - 10s elapsed
-⏳ Waiting... (attempt 7/60) - 12s elapsed
-✅ NiFi is ready! (Started in 14 seconds)
+✅ NiFi is ready! (Started in 0 seconds)
 ✅ NiFi is ready!
 🌐 Access NiFi at: https://localhost:9095/nifi
 🔒 Keycloak HTTPS: https://localhost:9085
@@ -356,7 +340,7 @@ Test client: test_client, secret: yTKslWLtf4giJcWCaoVJ20H8sy6STexM
 [INFO] --- frontend:1.15.1:npm (npm-install-integration) @ e-2-e-cypress ---
 [INFO] Running 'npm install' in /Users/oliver/git/nifi-extensions/e-2-e-cypress
 [INFO]
-[INFO] up to date, audited 655 packages in 949ms
+[INFO] up to date, audited 655 packages in 887ms
 [INFO]
 [INFO] 98 packages are looking for funding
 [INFO]   run `npm fund` for details
@@ -370,7 +354,7 @@ Test client: test_client, secret: yTKslWLtf4giJcWCaoVJ20H8sy6STexM
 [INFO] > cypress run
 [INFO]
 [INFO]
-[INFO] DevTools listening on ws://127.0.0.1:64052/devtools/browser/75fe61c8-b45b-4c59-9730-ae02358c7087
+[INFO] DevTools listening on ws://127.0.0.1:59442/devtools/browser/e64b22fe-7014-4141-8f6d-41dde6c40a89
 [INFO]
 [INFO] ================================================================================
 [INFO]
@@ -380,28 +364,29 @@ Test client: test_client, secret: yTKslWLtf4giJcWCaoVJ20H8sy6STexM
 [INFO]   │ Cypress:        14.5.0                                                                         │
 [INFO]   │ Browser:        Electron 130 (headless)                                                        │
 [INFO]   │ Node Version:   v20.19.2 (/Users/oliver/git/nifi-extensions/e-2-e-cypress/target/node/node)    │
-[INFO]   │ Specs:          2 found (01-nifi-authentication.cy.js, 02-processor-testing.cy.js)             │
+[INFO]   │ Specs:          4 found (01-nifi-authentication.cy.js, 02-processor-testing.cy.js, integration │
+[INFO]   │                 /03-processor-add-remove.cy.js, mocked/01-processor-add-remove-mocked.cy.js)   │
 [INFO]   │ Searched:       cypress/e2e/**/*.cy.js                                                         │
 [INFO]   └────────────────────────────────────────────────────────────────────────────────────────────────┘
 [INFO]
 [INFO]
 [INFO] ────────────────────────────────────────────────────────────────────────────────────────────────────
 [INFO]
-[INFO]   Running:  01-nifi-authentication.cy.js                                                    (1 of 2)
+[INFO]   Running:  01-nifi-authentication.cy.js                                                    (1 of 4)
 [INFO] Warning: The following browser launch options were provided but are not supported by electron
 [INFO]
 [INFO]  - args
-[INFO] [34796:0629/114539.253755:ERROR:trust_store_mac.cc(821)] Error parsing certificate:
+[INFO] [34619:0629/165157.311461:ERROR:trust_store_mac.cc(821)] Error parsing certificate:
 [INFO] ERROR: Failed parsing extensions
 [INFO]
 [INFO]
 [INFO]
 [INFO]   NiFi Authentication
-[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T09-45-41-897Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-52-00-286Z.json
 [INFO]     ✓ Should login successfully and maintain session
-[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T09-45-43-170Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-52-01-457Z.json
 [INFO]     ✓ Should reject invalid credentials
-[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T09-45-43-508Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-52-01-674Z.json
 [INFO]     ✓ Should logout and clear session
 [INFO]
 [INFO]
@@ -422,27 +407,27 @@ Test client: test_client, secret: yTKslWLtf4giJcWCaoVJ20H8sy6STexM
 [INFO]   │ Skipped:      0                                                                                │
 [INFO]   │ Screenshots:  0                                                                                │
 [INFO]   │ Video:        false                                                                            │
-[INFO]   │ Duration:     2 seconds                                                                        │
+[INFO]   │ Duration:     1 second                                                                         │
 [INFO]   │ Spec Ran:     01-nifi-authentication.cy.js                                                     │
 [INFO]   └────────────────────────────────────────────────────────────────────────────────────────────────┘
 [INFO]
 [INFO]
 [INFO] ────────────────────────────────────────────────────────────────────────────────────────────────────
 [INFO]
-[INFO]   Running:  02-processor-testing.cy.js                                                      (2 of 2)
+[INFO]   Running:  02-processor-testing.cy.js                                                      (2 of 4)
 [INFO] Warning: The following browser launch options were provided but are not supported by electron
 [INFO]
 [INFO]  - args
 [INFO]
 [INFO]
 [INFO]   JWT Processor Testing
-[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T09-45-45-140Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-52-03-306Z.json
 [INFO]     ✓ Should verify JWT processor types are available
-[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T09-45-45-487Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-52-03-547Z.json
 [INFO]     ✓ Should verify canvas is ready for processor operations
-[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T09-45-45-694Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-52-03-766Z.json
 [INFO]     ✓ Should verify processor search functionality works
-[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T09-45-45-894Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-52-03-968Z.json
 [INFO]     ✓ Should verify processor helper infrastructure is robust
 [INFO]
 [INFO]
@@ -468,6 +453,230 @@ Test client: test_client, secret: yTKslWLtf4giJcWCaoVJ20H8sy6STexM
 [INFO]   └────────────────────────────────────────────────────────────────────────────────────────────────┘
 [INFO]
 [INFO]
+[INFO] ────────────────────────────────────────────────────────────────────────────────────────────────────
+[INFO]
+[INFO]   Running:  integration/03-processor-add-remove.cy.js                                       (3 of 4)
+[INFO] Warning: The following browser launch options were provided but are not supported by electron
+[INFO]
+[INFO]  - args
+[INFO]
+[INFO]
+[INFO]   JWT Processor Add/Remove Operations
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-52-15-809Z.json
+[INFO]     1) Should add JWT_AUTHENTICATOR processor to canvas
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-52-26-395Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-52-36-893Z.json
+[INFO]     2) Should add MULTI_ISSUER processor to canvas
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-52-47-379Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-52-47-649Z.json
+[INFO]     ✓ Should test JWT processor infrastructure comprehensively
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-52-57-979Z.json
+[INFO]     3) Should add and remove JWT_AUTHENTICATOR processor
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-53-08-480Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-53-19-060Z.json
+[INFO]     4) Should add and remove MULTI_ISSUER processor
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-53-29-592Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-53-40-019Z.json
+[INFO]     5) Should test complete processor lifecycle with both processors
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-53-50-615Z.json
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-53-50-917Z.json
+[INFO]     ✓ Should test processor addition options infrastructure
+[INFO]
+[INFO]
+[INFO]   2 passing (2m)
+[INFO]   5 failing
+[INFO]
+[INFO]   1) JWT Processor Add/Remove Operations
+[INFO]        Should add JWT_AUTHENTICATOR processor to canvas:
+[INFO]      AssertionError: Timed out retrying after 10000ms: Expected to find element: `svg:first`, but never found it.
+[INFO]       at Context.eval (webpack://e-2-e-cypress/./cypress/support/utils.js:54:50)
+[INFO]       at getRet (https://localhost:9095/__cypress/runner/cypress_runner.js:120941:20)
+[INFO]       at tryCatcher (https://localhost:9095/__cypress/runner/cypress_runner.js:1777:23)
+[INFO]       at Promise.attempt.Promise.try (https://localhost:9095/__cypress/runner/cypress_runner.js:4285:29)
+[INFO]       at Context.thenFn (https://localhost:9095/__cypress/runner/cypress_runner.js:120952:66)
+[INFO]       at Context.then (https://localhost:9095/__cypress/runner/cypress_runner.js:121203:21)
+[INFO]       at wrapped (https://localhost:9095/__cypress/runner/cypress_runner.js:141524:19)
+[INFO]
+[INFO]   2) JWT Processor Add/Remove Operations
+[INFO]        Should add MULTI_ISSUER processor to canvas:
+[INFO]      AssertionError: Timed out retrying after 10000ms: Expected to find element: `svg:first`, but never found it.
+[INFO]       at Context.eval (webpack://e-2-e-cypress/./cypress/support/utils.js:54:50)
+[INFO]       at getRet (https://localhost:9095/__cypress/runner/cypress_runner.js:120941:20)
+[INFO]       at tryCatcher (https://localhost:9095/__cypress/runner/cypress_runner.js:1777:23)
+[INFO]       at Promise.attempt.Promise.try (https://localhost:9095/__cypress/runner/cypress_runner.js:4285:29)
+[INFO]       at Context.thenFn (https://localhost:9095/__cypress/runner/cypress_runner.js:120952:66)
+[INFO]       at Context.then (https://localhost:9095/__cypress/runner/cypress_runner.js:121203:21)
+[INFO]       at wrapped (https://localhost:9095/__cypress/runner/cypress_runner.js:141524:19)
+[INFO]
+[INFO]   3) JWT Processor Add/Remove Operations
+[INFO]        Should add and remove JWT_AUTHENTICATOR processor:
+[INFO]      AssertionError: Timed out retrying after 10000ms: Expected to find element: `svg:first`, but never found it.
+[INFO]       at Context.eval (webpack://e-2-e-cypress/./cypress/support/utils.js:54:50)
+[INFO]       at getRet (https://localhost:9095/__cypress/runner/cypress_runner.js:120941:20)
+[INFO]       at tryCatcher (https://localhost:9095/__cypress/runner/cypress_runner.js:1777:23)
+[INFO]       at Promise.attempt.Promise.try (https://localhost:9095/__cypress/runner/cypress_runner.js:4285:29)
+[INFO]       at Context.thenFn (https://localhost:9095/__cypress/runner/cypress_runner.js:120952:66)
+[INFO]       at Context.then (https://localhost:9095/__cypress/runner/cypress_runner.js:121203:21)
+[INFO]       at wrapped (https://localhost:9095/__cypress/runner/cypress_runner.js:141524:19)
+[INFO]
+[INFO]   4) JWT Processor Add/Remove Operations
+[INFO]        Should add and remove MULTI_ISSUER processor:
+[INFO]      AssertionError: Timed out retrying after 10000ms: Expected to find element: `svg:first`, but never found it.
+[INFO]       at Context.eval (webpack://e-2-e-cypress/./cypress/support/utils.js:54:50)
+[INFO]       at getRet (https://localhost:9095/__cypress/runner/cypress_runner.js:120941:20)
+[INFO]       at tryCatcher (https://localhost:9095/__cypress/runner/cypress_runner.js:1777:23)
+[INFO]       at Promise.attempt.Promise.try (https://localhost:9095/__cypress/runner/cypress_runner.js:4285:29)
+[INFO]       at Context.thenFn (https://localhost:9095/__cypress/runner/cypress_runner.js:120952:66)
+[INFO]       at Context.then (https://localhost:9095/__cypress/runner/cypress_runner.js:121203:21)
+[INFO]       at wrapped (https://localhost:9095/__cypress/runner/cypress_runner.js:141524:19)
+[INFO]
+[INFO]   5) JWT Processor Add/Remove Operations
+[INFO]        Should test complete processor lifecycle with both processors:
+[INFO]      AssertionError: Timed out retrying after 10000ms: Expected to find element: `svg:first`, but never found it.
+[INFO]       at Context.eval (webpack://e-2-e-cypress/./cypress/support/utils.js:54:50)
+[INFO]       at getRet (https://localhost:9095/__cypress/runner/cypress_runner.js:120941:20)
+[INFO]       at tryCatcher (https://localhost:9095/__cypress/runner/cypress_runner.js:1777:23)
+[INFO]       at Promise.attempt.Promise.try (https://localhost:9095/__cypress/runner/cypress_runner.js:4285:29)
+[INFO]       at Context.thenFn (https://localhost:9095/__cypress/runner/cypress_runner.js:120952:66)
+[INFO]       at Context.then (https://localhost:9095/__cypress/runner/cypress_runner.js:121203:21)
+[INFO]       at wrapped (https://localhost:9095/__cypress/runner/cypress_runner.js:141524:19)
+[INFO]
+[INFO]
+[INFO]
+[INFO] [mochawesome] Report JSON saved to /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/tests-report/mochawesome_002.json
+[INFO]
+[INFO] [mochawesome] Report HTML saved to /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/tests-report/mochawesome_002.html
+[INFO]
+[INFO]
+[INFO]   (Results)
+[INFO]
+[INFO]   ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+[INFO]   │ Tests:        7                                                                                │
+[INFO]   │ Passing:      2                                                                                │
+[INFO]   │ Failing:      5                                                                                │
+[INFO]   │ Pending:      0                                                                                │
+[INFO]   │ Skipped:      0                                                                                │
+[INFO]   │ Screenshots:  10                                                                               │
+[INFO]   │ Video:        false                                                                            │
+[INFO]   │ Duration:     1 minute, 45 seconds                                                             │
+[INFO]   │ Spec Ran:     integration/03-processor-add-remove.cy.js                                        │
+[INFO]   └────────────────────────────────────────────────────────────────────────────────────────────────┘
+[INFO]
+[INFO]
+[INFO]   (Screenshots)
+[INFO]
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/integ    (2560x1440)
+[INFO]      ration/03-processor-add-remove.cy.js/JWT Processor AddRemove Operations -- Shoul
+[INFO]      d add JWT_AUTHENTICATOR processor to canvas (failed).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/integ    (2560x1440)
+[INFO]      ration/03-processor-add-remove.cy.js/JWT Processor AddRemove Operations -- Shoul
+[INFO]      d add JWT_AUTHENTICATOR processor to canvas (failed) (attempt 2).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/integ    (2560x1440)
+[INFO]      ration/03-processor-add-remove.cy.js/JWT Processor AddRemove Operations -- Shoul
+[INFO]      d add MULTI_ISSUER processor to canvas (failed).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/integ    (2560x1440)
+[INFO]      ration/03-processor-add-remove.cy.js/JWT Processor AddRemove Operations -- Shoul
+[INFO]      d add MULTI_ISSUER processor to canvas (failed) (attempt 2).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/integ    (2560x1440)
+[INFO]      ration/03-processor-add-remove.cy.js/JWT Processor AddRemove Operations -- Shoul
+[INFO]      d add and remove JWT_AUTHENTICATOR processor (failed).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/integ    (2560x1440)
+[INFO]      ration/03-processor-add-remove.cy.js/JWT Processor AddRemove Operations -- Shoul
+[INFO]      d add and remove JWT_AUTHENTICATOR processor (failed) (attempt 2).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/integ    (2560x1440)
+[INFO]      ration/03-processor-add-remove.cy.js/JWT Processor AddRemove Operations -- Shoul
+[INFO]      d add and remove MULTI_ISSUER processor (failed).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/integ    (2560x1440)
+[INFO]      ration/03-processor-add-remove.cy.js/JWT Processor AddRemove Operations -- Shoul
+[INFO]      d add and remove MULTI_ISSUER processor (failed) (attempt 2).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/integ    (2560x1440)
+[INFO]      ration/03-processor-add-remove.cy.js/JWT Processor AddRemove Operations -- Shoul
+[INFO]      d test complete processor lifecycle with both processors (failed).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/integ    (2560x1440)
+[INFO]      ration/03-processor-add-remove.cy.js/JWT Processor AddRemove Operations -- Shoul
+[INFO]      d test complete processor lifecycle with both processors (failed) (attempt 2).pn
+[INFO]      g
+[INFO]
+[INFO]
+[INFO] ────────────────────────────────────────────────────────────────────────────────────────────────────
+[INFO]
+[INFO]   Running:  mocked/01-processor-add-remove-mocked.cy.js                                     (4 of 4)
+[INFO] Warning: The following browser launch options were provided but are not supported by electron
+[INFO]
+[INFO]  - args
+[INFO]
+[INFO]
+[INFO]   JWT Processor Add/Remove Operations (Mocked)
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-53-52-570Z.json
+[INFO]     1) "after each" hook for "Should add JWT_AUTHENTICATOR processor to mocked canvas"
+[INFO] 🗒️ Browser logs saved to: /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/browser-logs/browser-logs-2025-06-29T14-53-52-956Z.json
+[INFO]
+[INFO]
+[INFO]   0 passing (739ms)
+[INFO]   1 failing
+[INFO]
+[INFO]   1) JWT Processor Add/Remove Operations (Mocked)
+[INFO]        "after each" hook for "Should add JWT_AUTHENTICATOR processor to mocked canvas":
+[INFO]      CypressError: `cy.then()` failed because you are mixing up async and sync code.
+[INFO]
+[INFO] In your callback function you invoked 1 or more cy commands but then returned a synchronous value.
+[INFO]
+[INFO] Cypress commands are asynchronous and it doesn't make sense to queue cy commands and yet return a synchronous value.
+[INFO]
+[INFO] You likely forgot to properly chain the cy commands using another `cy.then()`.
+[INFO]
+[INFO] The value you synchronously returned was: `true`
+[INFO]
+[INFO] Because this error occurred during a `after each` hook we are skipping the remaining tests in the current suite: `JWT Processor Add/Remove Op...`
+[INFO]       at getRet (https://localhost:9095/__cypress/runner/cypress_runner.js:120943:70)
+[INFO]       at tryCatcher (https://localhost:9095/__cypress/runner/cypress_runner.js:1777:23)
+[INFO]       at Promise.attempt.Promise.try (https://localhost:9095/__cypress/runner/cypress_runner.js:4285:29)
+[INFO]       at Context.thenFn (https://localhost:9095/__cypress/runner/cypress_runner.js:120952:66)
+[INFO]       at Context.then (https://localhost:9095/__cypress/runner/cypress_runner.js:121203:21)
+[INFO]       at wrapped (https://localhost:9095/__cypress/runner/cypress_runner.js:141524:19)
+[INFO]   From Your Spec Code:
+[INFO]       at Context.eval (webpack://e-2-e-cypress/./cypress/e2e/mocked/01-processor-add-remove-mocked.cy.js:43:6)
+[INFO]       at getRet (https://localhost:9095/__cypress/runner/cypress_runner.js:120941:20)
+[INFO]       at tryCatcher (https://localhost:9095/__cypress/runner/cypress_runner.js:1777:23)
+[INFO]       at Promise.attempt.Promise.try (https://localhost:9095/__cypress/runner/cypress_runner.js:4285:29)
+[INFO]       at Context.thenFn (https://localhost:9095/__cypress/runner/cypress_runner.js:120952:66)
+[INFO]       at Context.then (https://localhost:9095/__cypress/runner/cypress_runner.js:121203:21)
+[INFO]       at wrapped (https://localhost:9095/__cypress/runner/cypress_runner.js:141524:19)
+[INFO]
+[INFO]
+[INFO]
+[INFO] [mochawesome] Report JSON saved to /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/tests-report/mochawesome_003.json
+[INFO]
+[INFO] [mochawesome] Report HTML saved to /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/tests-report/mochawesome_003.html
+[INFO]
+[INFO]
+[INFO]   (Results)
+[INFO]
+[INFO]   ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+[INFO]   │ Tests:        7                                                                                │
+[INFO]   │ Passing:      0                                                                                │
+[INFO]   │ Failing:      1                                                                                │
+[INFO]   │ Pending:      0                                                                                │
+[INFO]   │ Skipped:      6                                                                                │
+[INFO]   │ Screenshots:  2                                                                                │
+[INFO]   │ Video:        false                                                                            │
+[INFO]   │ Duration:     0 seconds                                                                        │
+[INFO]   │ Spec Ran:     mocked/01-processor-add-remove-mocked.cy.js                                      │
+[INFO]   └────────────────────────────────────────────────────────────────────────────────────────────────┘
+[INFO]
+[INFO]
+[INFO]   (Screenshots)
+[INFO]
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/mocke    (2560x1440)
+[INFO]      d/01-processor-add-remove-mocked.cy.js/JWT Processor AddRemove Operations (Mocke
+[INFO]      d) -- Should add JWT_AUTHENTICATOR processor to mocked canvas -- after each hook
+[INFO]       (failed).png
+[INFO]   -  /Users/oliver/git/nifi-extensions/e-2-e-cypress/target/cypress/screenshots/mocke    (2560x1440)
+[INFO]      d/01-processor-add-remove-mocked.cy.js/JWT Processor AddRemove Operations (Mocke
+[INFO]      d) -- Should add JWT_AUTHENTICATOR processor to mocked canvas -- after each hook
+[INFO]       (failed) (attempt 2).png
+[INFO]
+[INFO]
 [INFO] ================================================================================
 [INFO]
 [INFO]   (Run Finished)
@@ -475,35 +684,28 @@ Test client: test_client, secret: yTKslWLtf4giJcWCaoVJ20H8sy6STexM
 [INFO]
 [INFO]        Spec                                              Tests  Passing  Failing  Pending  Skipped
 [INFO]   ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
-[INFO]   │ ✔  01-nifi-authentication.cy.js             00:02        3        3        -        -        - │
+[INFO]   │ ✔  01-nifi-authentication.cy.js             00:01        3        3        -        -        - │
 [INFO]   ├────────────────────────────────────────────────────────────────────────────────────────────────┤
 [INFO]   │ ✔  02-processor-testing.cy.js               00:01        4        4        -        -        - │
+[INFO]   ├────────────────────────────────────────────────────────────────────────────────────────────────┤
+[INFO]   │ ✖  integration/03-processor-add-remove      01:45        7        2        5        -        - │
+[INFO]   │    .cy.js                                                                                      │
+[INFO]   ├────────────────────────────────────────────────────────────────────────────────────────────────┤
+[INFO]   │ ✖  mocked/01-processor-add-remove-mock      741ms        7        -        1        -        6 │
+[INFO]   │    ed.cy.js                                                                                    │
 [INFO]   └────────────────────────────────────────────────────────────────────────────────────────────────┘
-[INFO]     ✔  All specs passed!                        00:03        7        7        -        -        -
+[INFO]     ✖  2 of 4 failed (50%)                      01:49       21        9        6        -        6
 [INFO]
-[INFO]
-[INFO] --- failsafe:3.5.1:integration-test (default) @ e-2-e-cypress ---
-[INFO] Tests are skipped.
-[INFO]
-[INFO] --- exec:3.1.0:exec (stop-integration-containers) @ e-2-e-cypress ---
-Stopping NiFi and Keycloak test containers...
- Container docker-keycloak-1  Stopping
- Container docker-nifi-1  Stopping
- Container docker-keycloak-1  Stopped
- Container docker-keycloak-1  Removing
- Container docker-keycloak-1  Removed
- Container docker-nifi-1  Stopped
- Container docker-nifi-1  Removing
- Container docker-nifi-1  Removed
- Network docker_nifi-keycloak-network  Removing
- Network docker_nifi-keycloak-network  Removed
-NiFi and Keycloak test containers stopped.
-[INFO]
-[INFO] --- failsafe:3.5.1:verify (default) @ e-2-e-cypress ---
-[INFO] Tests are skipped.
 [INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
+[INFO] BUILD FAILURE
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  52.746 s
-[INFO] Finished at: 2025-06-29T11:45:48+02:00
+[INFO] Total time:  02:18 min
+[INFO] Finished at: 2025-06-29T16:53:53+02:00
 [INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal com.github.eirslett:frontend-maven-plugin:1.15.1:npm (cypress-tests) on project e-2-e-cypress: Failed to run task: 'npm run cypress:run' failed. org.apache.commons.exec.ExecuteException: Process exited with an error: 6 (Exit value: 6) -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

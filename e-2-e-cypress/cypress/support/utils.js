@@ -49,7 +49,8 @@ export function findWorkingCanvas(timeout = TIMEOUTS.CANVAS_READY) {
       const elements = $body.find(selector);
       if (elements.length > 0 && elements.is(':visible')) {
         logMessage('success', `Found working canvas with selector: ${selector}`);
-        return cy.get(selector, { timeout }).should('be.visible');
+        // Get the first element using .eq(0) to avoid DOM detachment issues
+        return cy.get(selector, { timeout }).should('be.visible').eq(0);
       } else {
         logMessage('warn', `Canvas selector ${selector} not found or not visible, trying next...`);
         return trySelector(selectors, index + 1);
