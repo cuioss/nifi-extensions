@@ -4,7 +4,7 @@
  * Demonstrates the hybrid testing approach - same functionality, no server dependency
  */
 
-import './mock-commands';
+import '../../support/mock-commands';
 
 describe('JWT Processor Add/Remove Operations (Mocked)', () => {
   // Setup mocked environment before each test
