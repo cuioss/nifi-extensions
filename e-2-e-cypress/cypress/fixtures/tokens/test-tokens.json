@@ -9,8 +9,8 @@
       "iss": "https://localhost:8443/auth/realms/oauth_integration_tests",
       "sub": "test-user",
       "aud": "test_client",
-      "exp": 1735689600,
-      "iat": 1735686000,
+      "exp": 1767225600,
+      "iat": 1767222000,
       "jti": "test-token-id",
       "scope": "openid profile email"
     }
@@ -41,8 +41,8 @@
       "iss": "https://malicious-issuer.com",
       "sub": "test-user",
       "aud": "test_client",
-      "exp": 1735689600,
-      "iat": 1735686000,
+      "exp": 1767225600,
+      "iat": 1767222000,
       "jti": "invalid-issuer-token-id",
       "scope": "openid profile email"
     }
