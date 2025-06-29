@@ -12,8 +12,8 @@ import { IGNORED_ERROR_PATTERNS } from './constants';
 // Import commands.js using ES2015 syntax:
 import './commands';
 
-// Import mock commands for mocked testing
-import '../todo/mock-commands';
+// Import mock commands for mocked testing (commented out for Phase 0 analysis)
+// import '../todo/mock-commands';
 
 // Console error tracking provides saveBrowserLogs, verifyNoConsoleErrors, verifyNoUnexpectedWarnings
 import './console-error-tracking';
