@@ -11,39 +11,48 @@ export const PAGE_TYPES = {
 };
 
 /**
- * Canvas and UI selectors - consolidated from multiple files
+ * Canvas and UI selectors - UPDATED with Angular Material framework-based patterns
+ * Based on Phase 0 analysis: NiFi uses Angular Material SPA framework
  */
 export const SELECTORS = {
-  // Canvas selectors
-  CANVAS: '#canvas',
-  CANVAS_CONTAINER: '#canvas-container',
-  CANVAS_SVG: 'svg',
-  CANVAS_ELEMENTS: '#canvas, svg, .canvas, #canvas-container',
+  // ❌ OLD SELECTORS (PROVEN WRONG by Phase 0 analysis) - kept for reference
+  CANVAS_OLD: '#canvas',
+  CANVAS_CONTAINER_OLD: '#canvas-container',
+  CANVAS_SVG_OLD: 'svg',
+  CANVAS_ELEMENTS_OLD: '#canvas, svg, .canvas, #canvas-container',
 
-  // Processor selectors
-  PROCESSOR_GROUP: 'g.processor',
-  PROCESSOR_ELEMENT: '.processor',
-  PROCESSOR_TEXT: '.processor-name',
-  PROCESSOR_ICON: '.processor-icon',
+  // ✅ NEW ANGULAR MATERIAL FRAMEWORK-BASED SELECTORS
+  // Canvas selectors - based on Angular Material SPA patterns
+  CANVAS: 'mat-sidenav-content, .mat-drawer-content, router-outlet + *, main',
+  CANVAS_CONTAINER: 'mat-sidenav-content, .mat-drawer-content',
+  CANVAS_SVG: 'mat-sidenav-content svg, .mat-drawer-content svg, router-outlet svg, main svg',
+  CANVAS_ELEMENTS: 'mat-sidenav-content, .mat-drawer-content, router-outlet, main, svg',
 
-  // Dialog selectors
-  ADD_PROCESSOR_DIALOG: '.add-processor-dialog, [role="dialog"]',
-  PROCESSOR_TYPE_LIST: '.processor-type-list, .processor-types',
-  PROCESSOR_TYPE_ITEM: '.processor-type-item, .processor-type',
-  PROCESSOR_SEARCH: 'input[placeholder*="Search"], input[type="search"]',
-  PROCESSOR_LIST_ITEM: '.processor-type-item, .processor-type',
+  // Processor selectors - Angular Material + SVG patterns
+  PROCESSOR_GROUP: 'svg g[class*="processor"], svg g[data-type*="processor"], svg .component',
+  PROCESSOR_ELEMENT: '.processor, [class*="processor"], .component, .flow-component',
+  PROCESSOR_TEXT: '.processor-name, .component-name, text[class*="name"], .label',
+  PROCESSOR_ICON: '.processor-icon, .component-icon, .icon, image',
 
-  // Button selectors
-  ADD_BUTTON: 'button:contains("Add"), .add-button',
-  CANCEL_BUTTON: 'button:contains("Cancel"), .cancel-button',
-  DELETE_BUTTON: 'button:contains("Delete"), .delete-button',
+  // Dialog selectors - Angular Material dialog patterns
+  ADD_PROCESSOR_DIALOG: 'mat-dialog-container, .mat-dialog-container, [role="dialog"]',
+  PROCESSOR_TYPE_LIST: 'mat-list, .mat-list, mat-selection-list, .processor-types',
+  PROCESSOR_TYPE_ITEM: 'mat-list-item, .mat-list-item, mat-list-option, .processor-type',
+  PROCESSOR_SEARCH: 'mat-form-field input, input[matInput], input[placeholder*="Search"], input[type="search"]',
+  PROCESSOR_LIST_ITEM: 'mat-list-item, .mat-list-item, mat-list-option, .processor-type',
 
-  // Context menu selectors
-  CONTEXT_MENU: '.context-menu, [role="menu"]',
-  CONTEXT_MENU_DELETE: '.context-menu .delete, [role="menuitem"]:contains("Delete")',
+  // Button selectors - Angular Material button patterns
+  ADD_BUTTON: 'button[mat-raised-button], button[mat-button], button:contains("Add"), .mat-raised-button',
+  CANCEL_BUTTON: 'button:contains("Cancel"), .mat-button:contains("Cancel")',
+  DELETE_BUTTON: 'button:contains("Delete"), .mat-button:contains("Delete")',
 
-  // Toolbar selectors
-  TOOLBAR_ADD: 'button[title*="Add"], .toolbar .add-processor',
+  // Context menu selectors - Angular Material menu patterns
+  CONTEXT_MENU: 'mat-menu, .mat-menu-panel, [role="menu"]',
+  CONTEXT_MENU_DELETE: 'mat-menu-item:contains("Delete"), .mat-menu-item:contains("Delete"), [role="menuitem"]:contains("Delete")',
+
+  // Toolbar selectors - Angular Material toolbar patterns
+  TOOLBAR: 'mat-toolbar, .mat-toolbar',
+  TOOLBAR_ADD: 'mat-toolbar button[aria-label*="Add"], mat-toolbar button[title*="Add"], .mat-toolbar button',
 
   // Login selectors
   USERNAME_INPUT:
