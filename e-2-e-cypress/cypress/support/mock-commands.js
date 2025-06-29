@@ -69,7 +69,7 @@ Cypress.Commands.add('addMockedProcessorToCanvas', (processorType, options = {})
       return cy.findMockedProcessorOnCanvas(processorType).then((existingProcessor) => {
         if (existingProcessor) {
           logMessage('warn', `Mocked processor ${processorType} already exists, skipping addition`);
-          return existingProcessor;
+          return cy.wrap(existingProcessor);
         }
         return performMockedProcessorAddition(processorType, processorDef, position);
       });

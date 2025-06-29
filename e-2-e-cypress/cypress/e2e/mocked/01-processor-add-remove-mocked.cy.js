@@ -197,8 +197,9 @@ describe('JWT Processor Add/Remove Operations (Mocked)', () => {
       skipIfExists: false
     }).then((processor1) => {
       expect(processor1).to.not.be.null;
-      cy.log(`✅ First JWT_AUTHENTICATOR added: ${processor1.name}`);
     });
+
+    cy.log('✅ First JWT_AUTHENTICATOR added');
 
     // Try to add same processor with skipIfExists=true (should skip)
     cy.addMockedProcessorToCanvas('JWT_AUTHENTICATOR', {
@@ -208,14 +209,16 @@ describe('JWT Processor Add/Remove Operations (Mocked)', () => {
       expect(processor2).to.not.be.null;
       // Should return the existing processor
       expect(processor2.position.x).to.equal(400); // Original position
-      cy.log('✅ Second addition skipped existing processor as expected');
     });
+
+    cy.log('✅ Second addition skipped existing processor as expected');
 
     // Verify only one processor exists
     cy.getAllMockedJWTProcessorsOnCanvas().then((processors) => {
       expect(processors.length).to.equal(1);
-      cy.log('✅ Only one processor exists as expected');
     });
+
+    cy.log('✅ Only one processor exists as expected');
   });
 
   it('Should demonstrate fast execution time for mocked tests', () => {

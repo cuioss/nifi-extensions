@@ -111,7 +111,7 @@ export const PAGE_DEFINITIONS = {
   [PAGE_TYPES.MAIN_CANVAS]: {
     path: '/',
     description: 'NiFi Main Canvas',
-    elements: ['#canvas', 'svg'],
+    elements: ['mat-sidenav-content', 'router-outlet', 'svg'],
   },
   [PAGE_TYPES.UNKNOWN]: {
     path: null,
