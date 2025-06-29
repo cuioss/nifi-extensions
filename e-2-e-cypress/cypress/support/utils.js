@@ -26,10 +26,38 @@ export function findCanvasElements($body) {
  * @returns {Cypress.Chainable} Promise resolving to canvas element
  */
 export function findWorkingCanvas(timeout = TIMEOUTS.CANVAS_READY) {
-  // Simplified approach - use body as the canvas for now
-  // This allows right-click and double-click operations to work
-  logMessage('info', 'Using body as canvas element for processor operations');
-  return cy.get('body', { timeout }).should('be.visible');
+  logMessage('info', 'Finding real NiFi canvas element for processor operations');
+
+  // Try canvas selectors in order of preference
+  const canvasSelectors = [
+    '#canvas svg',           // Primary NiFi canvas SVG
+    '#canvas',               // Canvas container
+    'svg',                   // Fallback to any SVG
+    '#canvas-container'      // Canvas container fallback
+  ];
+
+  // Try each selector until we find a working one
+  function trySelector(selectors, index = 0) {
+    if (index >= selectors.length) {
+      throw new Error('No working canvas element found. Available selectors tried: ' + selectors.join(', '));
+    }
+
+    const selector = selectors[index];
+    logMessage('info', `Trying canvas selector: ${selector}`);
+
+    return cy.get('body').then(($body) => {
+      const elements = $body.find(selector);
+      if (elements.length > 0 && elements.is(':visible')) {
+        logMessage('success', `Found working canvas with selector: ${selector}`);
+        return cy.get(selector, { timeout }).should('be.visible');
+      } else {
+        logMessage('warn', `Canvas selector ${selector} not found or not visible, trying next...`);
+        return trySelector(selectors, index + 1);
+      }
+    });
+  }
+
+  return trySelector(canvasSelectors);
 }
 
 /**

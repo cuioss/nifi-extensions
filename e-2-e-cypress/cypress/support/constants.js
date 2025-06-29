@@ -120,13 +120,10 @@ export const DEFAULT_CREDENTIALS = {
 };
 
 /**
- * Error patterns that should be ignored - moved from e2e.js
+ * Error patterns that should be ignored - only specific NiFi-related errors
+ * Generic JavaScript errors have been removed to avoid masking real issues
  */
 export const IGNORED_ERROR_PATTERNS = [
-  'ResizeObserver loop limit exceeded',
-  'Non-Error promise rejection captured',
-  'Cannot read properties of undefined',
-  'is not a function',
-  'is not defined',
-  'Cannot set properties of undefined',
+  'ResizeObserver loop limit exceeded',        // Browser-specific, safe to ignore
+  'Non-Error promise rejection captured',      // NiFi-specific promise handling
 ];

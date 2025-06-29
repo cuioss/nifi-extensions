@@ -17,45 +17,61 @@ describe('JWT Processor Add/Remove Operations', () => {
     cy.cleanupJWTProcessors();
   });
 
-  it('Should test JWT_AUTHENTICATOR processor addition infrastructure', () => {
-    cy.log('🧪 Testing JWT_AUTHENTICATOR processor addition infrastructure');
+  it('Should add JWT_AUTHENTICATOR processor to canvas', () => {
+    cy.log('🧪 Adding JWT_AUTHENTICATOR processor to canvas');
 
-    // Test that the processor addition infrastructure is working
-    // This tests the helper functions without requiring actual processor addition
-    cy.getJWTProcessorTypes().then((types) => {
-      expect(types).to.have.property('JWT_AUTHENTICATOR');
-      const processor = types.JWT_AUTHENTICATOR;
-      expect(processor).to.have.property('className');
-      expect(processor).to.have.property('displayName');
-      cy.log(`✅ JWT_AUTHENTICATOR processor definition verified: ${processor.displayName}`);
-    });
-
-    // Test canvas readiness
+    // Verify canvas is ready
     cy.getPageContext().should((context) => {
       expect(context.pageType).to.equal('MAIN_CANVAS');
       expect(context.isReady).to.be.true;
-    }).then(() => {
-      cy.log('✅ Canvas is ready for processor operations');
+    });
+
+    // Add the processor to canvas
+    cy.addProcessorToCanvas('JWT_AUTHENTICATOR', {
+      position: { x: 400, y: 300 },
+      skipIfExists: false
+    }).then((addedProcessor) => {
+      expect(addedProcessor).to.not.be.null;
+      expect(addedProcessor).to.have.property('name');
+      expect(addedProcessor).to.have.property('type');
+      expect(addedProcessor.type).to.equal('JWT_AUTHENTICATOR');
+      cy.log(`✅ JWT_AUTHENTICATOR processor successfully added: ${addedProcessor.name}`);
+    });
+
+    // Verify processor is on canvas
+    cy.findProcessorOnCanvas('JWT_AUTHENTICATOR').then((processor) => {
+      expect(processor).to.not.be.null;
+      expect(processor).to.have.property('name');
+      cy.log('✅ JWT_AUTHENTICATOR processor verified on canvas');
     });
   });
 
-  it('Should test MULTI_ISSUER processor addition infrastructure', () => {
-    cy.log('🧪 Testing MULTI_ISSUER processor addition infrastructure');
+  it('Should add MULTI_ISSUER processor to canvas', () => {
+    cy.log('🧪 Adding MULTI_ISSUER processor to canvas');
 
-    // Test that the processor addition infrastructure is working
-    cy.getJWTProcessorTypes().then((types) => {
-      expect(types).to.have.property('MULTI_ISSUER');
-      const processor = types.MULTI_ISSUER;
-      expect(processor).to.have.property('className');
-      expect(processor).to.have.property('displayName');
-      cy.log(`✅ MULTI_ISSUER processor definition verified: ${processor.displayName}`);
+    // Verify canvas is ready
+    cy.getPageContext().should((context) => {
+      expect(context.pageType).to.equal('MAIN_CANVAS');
+      expect(context.isReady).to.be.true;
     });
 
-    // Test processor search functionality
+    // Add the processor to canvas
+    cy.addProcessorToCanvas('MULTI_ISSUER', {
+      position: { x: 600, y: 300 },
+      skipIfExists: false
+    }).then((addedProcessor) => {
+      expect(addedProcessor).to.not.be.null;
+      expect(addedProcessor).to.have.property('name');
+      expect(addedProcessor).to.have.property('type');
+      expect(addedProcessor.type).to.equal('MULTI_ISSUER');
+      cy.log(`✅ MULTI_ISSUER processor successfully added: ${addedProcessor.name}`);
+    });
+
+    // Verify processor is on canvas
     cy.findProcessorOnCanvas('MULTI_ISSUER').then((processor) => {
-      // Should return null on clean canvas (expected behavior)
-      expect(processor).to.satisfy((p) => p === null || (p && typeof p.name === 'string'));
-      cy.log('✅ MULTI_ISSUER processor search functionality working');
+      expect(processor).to.not.be.null;
+      expect(processor).to.have.property('name');
+      cy.log('✅ MULTI_ISSUER processor verified on canvas');
     });
   });
 
@@ -86,77 +102,119 @@ describe('JWT Processor Add/Remove Operations', () => {
     });
   });
 
-  it('Should test JWT_AUTHENTICATOR processor removal infrastructure', () => {
-    cy.log('🧪 Testing JWT_AUTHENTICATOR processor removal infrastructure');
+  it('Should add and remove JWT_AUTHENTICATOR processor', () => {
+    cy.log('🧪 Testing JWT_AUTHENTICATOR processor add and remove cycle');
 
-    // Test that removal helper functions exist and are callable
-    expect(cy.removeProcessorFromCanvas).to.be.a('function');
-    expect(cy.findProcessorOnCanvas).to.be.a('function');
+    // First add the processor
+    cy.addProcessorToCanvas('JWT_AUTHENTICATOR', {
+      position: { x: 400, y: 300 },
+      skipIfExists: false
+    }).then((addedProcessor) => {
+      expect(addedProcessor).to.not.be.null;
+      expect(addedProcessor).to.have.property('name');
+      cy.log(`✅ JWT_AUTHENTICATOR processor added: ${addedProcessor.name}`);
+    });
 
-    // Test processor search returns null on clean canvas (expected)
+    // Verify processor is on canvas
+    cy.findProcessorOnCanvas('JWT_AUTHENTICATOR').then((processor) => {
+      expect(processor).to.not.be.null;
+      cy.log('✅ JWT_AUTHENTICATOR processor verified on canvas');
+    });
+
+    // Now remove the processor
+    cy.removeProcessorFromCanvas('JWT_AUTHENTICATOR', {
+      confirmDeletion: true
+    }).then((success) => {
+      expect(success).to.be.true;
+      cy.log('✅ JWT_AUTHENTICATOR processor successfully removed');
+    });
+
+    // Verify processor is no longer on canvas
     cy.findProcessorOnCanvas('JWT_AUTHENTICATOR').then((processor) => {
       expect(processor).to.be.null;
-      cy.log('✅ JWT_AUTHENTICATOR not found on clean canvas (expected)');
-    });
-
-    // Test that the processor definition exists for removal operations
-    cy.getJWTProcessorTypes().then((types) => {
-      expect(types.JWT_AUTHENTICATOR).to.have.property('displayName');
-      cy.log('✅ JWT_AUTHENTICATOR processor removal infrastructure verified');
+      cy.log('✅ JWT_AUTHENTICATOR processor confirmed removed from canvas');
     });
   });
 
-  it('Should test MULTI_ISSUER processor removal infrastructure', () => {
-    cy.log('🧪 Testing MULTI_ISSUER processor removal infrastructure');
+  it('Should add and remove MULTI_ISSUER processor', () => {
+    cy.log('🧪 Testing MULTI_ISSUER processor add and remove cycle');
 
-    // Test that removal helper functions exist and are callable
-    expect(cy.removeProcessorFromCanvas).to.be.a('function');
-    expect(cy.findProcessorOnCanvas).to.be.a('function');
+    // First add the processor
+    cy.addProcessorToCanvas('MULTI_ISSUER', {
+      position: { x: 600, y: 300 },
+      skipIfExists: false
+    }).then((addedProcessor) => {
+      expect(addedProcessor).to.not.be.null;
+      expect(addedProcessor).to.have.property('name');
+      cy.log(`✅ MULTI_ISSUER processor added: ${addedProcessor.name}`);
+    });
 
-    // Test processor search returns null on clean canvas (expected)
+    // Verify processor is on canvas
+    cy.findProcessorOnCanvas('MULTI_ISSUER').then((processor) => {
+      expect(processor).to.not.be.null;
+      cy.log('✅ MULTI_ISSUER processor verified on canvas');
+    });
+
+    // Now remove the processor
+    cy.removeProcessorFromCanvas('MULTI_ISSUER', {
+      confirmDeletion: true
+    }).then((success) => {
+      expect(success).to.be.true;
+      cy.log('✅ MULTI_ISSUER processor successfully removed');
+    });
+
+    // Verify processor is no longer on canvas
     cy.findProcessorOnCanvas('MULTI_ISSUER').then((processor) => {
       expect(processor).to.be.null;
-      cy.log('✅ MULTI_ISSUER not found on clean canvas (expected)');
-    });
-
-    // Test that the processor definition exists for removal operations
-    cy.getJWTProcessorTypes().then((types) => {
-      expect(types.MULTI_ISSUER).to.have.property('displayName');
-      cy.log('✅ MULTI_ISSUER processor removal infrastructure verified');
+      cy.log('✅ MULTI_ISSUER processor confirmed removed from canvas');
     });
   });
 
-  it('Should test complete processor lifecycle infrastructure', () => {
-    cy.log('🧪 Testing complete processor lifecycle infrastructure');
+  it('Should test complete processor lifecycle with both processors', () => {
+    cy.log('🧪 Testing complete processor lifecycle with both JWT processors');
 
-    // Test that all required helper functions exist
-    expect(cy.addProcessorToCanvas).to.be.a('function');
-    expect(cy.removeProcessorFromCanvas).to.be.a('function');
-    expect(cy.getAllJWTProcessorsOnCanvas).to.be.a('function');
-    expect(cy.findProcessorOnCanvas).to.be.a('function');
-    expect(cy.cleanupJWTProcessors).to.be.a('function');
-
-    // Test processor type definitions are complete
-    cy.getJWTProcessorTypes().then((types) => {
-      expect(types).to.have.property('JWT_AUTHENTICATOR');
-      expect(types).to.have.property('MULTI_ISSUER');
-
-      // Verify both processor definitions have all required properties
-      ['JWT_AUTHENTICATOR', 'MULTI_ISSUER'].forEach((processorType) => {
-        const processor = types[processorType];
-        expect(processor).to.have.property('className');
-        expect(processor).to.have.property('displayName');
-        expect(processor).to.have.property('shortName');
-        expect(processor).to.have.property('description');
-      });
-
-      cy.log('✅ Complete processor lifecycle infrastructure verified');
+    // Add both processors to canvas
+    cy.addProcessorToCanvas('JWT_AUTHENTICATOR', {
+      position: { x: 300, y: 200 },
+      skipIfExists: false
+    }).then((processor1) => {
+      expect(processor1).to.not.be.null;
+      cy.log(`✅ JWT_AUTHENTICATOR added: ${processor1.name}`);
     });
 
-    // Test canvas state management
+    cy.addProcessorToCanvas('MULTI_ISSUER', {
+      position: { x: 500, y: 200 },
+      skipIfExists: false
+    }).then((processor2) => {
+      expect(processor2).to.not.be.null;
+      cy.log(`✅ MULTI_ISSUER added: ${processor2.name}`);
+    });
+
+    // Verify both processors are on canvas
     cy.getAllJWTProcessorsOnCanvas().then((processors) => {
       expect(processors).to.be.an('array');
-      cy.log(`✅ Canvas state management working: ${processors.length} processors found`);
+      expect(processors.length).to.equal(2);
+      cy.log(`✅ Both processors verified on canvas: ${processors.length} found`);
+
+      // Verify each processor has expected properties
+      processors.forEach((processor) => {
+        expect(processor).to.have.property('name');
+        expect(processor).to.have.property('type');
+        expect(['JWT_AUTHENTICATOR', 'MULTI_ISSUER']).to.include(processor.type);
+      });
+    });
+
+    // Test cleanup functionality
+    cy.cleanupJWTProcessors().then((removedCount) => {
+      expect(removedCount).to.equal(2);
+      cy.log(`✅ Cleanup successful: ${removedCount} processors removed`);
+    });
+
+    // Verify canvas is clean
+    cy.getAllJWTProcessorsOnCanvas().then((processors) => {
+      expect(processors).to.be.an('array');
+      expect(processors.length).to.equal(0);
+      cy.log('✅ Canvas confirmed clean after cleanup');
     });
   });
 
