@@ -1,4 +1,4 @@
-= NiFi UI Structure
+= NiFi UI Testing Structure Guide
 :toc: left
 :toclevels: 3
 :sectnums:
@@ -15,273 +15,286 @@
 
 This provides direct access to the complete Angular Material-based UI implementation for automated analysis and development workflows.
 
-== What is the NiFi UI Like
+== Testing Focus: Four Key Operations
 
-Apache NiFi's user interface is a modern Angular Material-based Single Page Application (SPA) with SVG-based canvas for flow diagram visualization. **VERIFIED BY SOURCE CODE ANALYSIS**: NiFi 2.4.0 uses Angular 19.2.14 with Angular Material 19.2.14, built as an Nx monorepo with TypeScript, and features a sophisticated component architecture with NgRx state management.
+This document focuses on the specific testing requirements for NiFi UI automation:
 
-== Framework and Architecture
+1. **How to reliably Login**
+2. **How to Navigate to the main-canvas**
+3. **How to Add and remove a processor**
+4. **How to Access "Advanced" Settings of a processor**
 
-=== Verified Technology Stack (Source Code Analysis)
-* **Framework**: Angular 19.2.14 with Angular Material 19.2.14
-* **Architecture**: Nx monorepo with multiple applications (nifi, nifi-jolt-transform-ui, standard-content-viewer, update-attribute)
-* **State Management**: NgRx 19.0.1 (store, effects, router-store, store-devtools)
-* **Styling**: Tailwind CSS + Angular Material + SCSS
-* **Root Component**: `<nifi></nifi>` with `mat-app-background mat-typography` classes
-* **Canvas**: D3.js 7.8.5 for data visualization within Angular Material containers
-* **Build System**: Nx workspace with Jest testing and ESLint
-* **Additional Libraries**: CodeMirror, Clipboard.js, Marked (Markdown), PrismJS (syntax highlighting)
+== 1. How to Reliably Login
 
-=== Authentication System
-* **Login URL**: `https://localhost:9095/nifi/#/login`
-* **Form Type**: Angular Material login form with Material Design components
-* **Navigation**: Angular SPA routing system with hash-based URLs
-* **Integration**: Keycloak OAuth integration for authentication
-
-== Source Code Structure
-
-=== Repository Organization
-The NiFi UI source code is located at:
-```
-nifi-frontend/src/main/frontend/
-├── apps/
-│   ├── nifi/                    # Main NiFi application
-│   ├── nifi-jolt-transform-ui/  # Jolt transformation UI
-│   ├── standard-content-viewer/ # Content viewer
-│   └── update-attribute/        # Update attribute processor UI
-├── libs/                        # Shared libraries
-├── package.json                 # Dependencies (Angular 19.2.14, Material 19.2.14)
-├── nx.json                      # Nx workspace configuration
-└── tsconfig.base.json          # TypeScript configuration
-```
-
-=== Main Application Structure
-The core NiFi application (`apps/nifi/src/app/`) follows Angular best practices:
-```
-app/
-├── pages/
-│   ├── flow-designer/           # Main canvas and flow design
-│   │   └── ui/canvas/          # Canvas component with mat-sidenav-content
-│   ├── login/                   # Authentication pages
-│   ├── settings/                # Configuration pages
-│   ├── users/                   # User management
-│   └── [other pages]/
-├── service/                     # Angular services
-├── state/                       # NgRx state management
-├── ui/                          # Shared UI components
-├── app.component.html           # Root template with router-outlet
-└── app-routing.module.ts        # Application routing
-```
-
-=== Key Component Files
-* **Root Component**: `apps/nifi/src/index.html` - Contains `<nifi></nifi>` with `mat-app-background`
-* **Canvas Component**: `pages/flow-designer/ui/canvas/canvas.component.html` - Main canvas with `#canvas-container`
-* **App Component**: `app.component.html` - Router outlet with mat-spinner loading
-* **Package Dependencies**: `package.json` - Angular Material 19.2.14, D3.js 7.8.5, NgRx 19.0.1
-
-== DOM Structure
-
-=== Actual DOM Structure (From Source Code Analysis)
-Based on source code analysis of `canvas.component.html` and `index.html`, NiFi UI follows this Angular Material structure:
-
-[source,html]
-----
-<body class="mat-app-background mat-typography text-base">
-  <nifi>
-    <router-outlet>
-      <!-- Flow Designer Canvas Component -->
-      <div class="flex flex-col h-full">
-        <fd-header></fd-header>
-        <div class="flex-1">
-          <mat-sidenav-container class="h-full">
-            <mat-sidenav mode="side" position="end">
-              <flow-analysis-drawer></flow-analysis-drawer>
-            </mat-sidenav>
-            <mat-sidenav-content>
-              <graph-controls></graph-controls>
-              <div id="canvas-container" 
-                   class="canvas-background select-none h-full w-full">
-                <!-- D3.js canvas content rendered here -->
-              </div>
-            </mat-sidenav-content>
-          </mat-sidenav-container>
-        </div>
-        <fd-footer></fd-footer>
-      </div>
-    </router-outlet>
-  </nifi>
-</body>
-----
-
-=== Key UI Components
-
-==== Canvas Area
-* **Container**: Uses `#canvas-container` or `.canvas-container` classes
-* **Canvas SVG**: `#canvas` or `svg[id*="canvas"]` selectors
-* **Drawing Surface**: SVG-based canvas for flow diagram visualization
-
-==== Toolbar
-* **Main Toolbar**: Uses `#nf-header` or `.nf-header` classes
-* **Buttons**: Standard button elements with title/aria-label attributes
-
-==== Dialogs
-* **Dialog Container**: Uses `.dialog`, `[role="dialog"]`, or `.modal` classes
-* **Add Processor Dialog**: Standard modal dialogs for processor configuration
-
-== Selector Patterns
-
-=== Verified Selectors (From Source Code Analysis)
-These selectors are confirmed by source code analysis of NiFi 2.4.0:
+=== Login Implementation
+Based on the current implementation in `cypress/support/auth-helper.js`:
 
 [source,javascript]
 ----
-// Canvas operations (from canvas.component.html)
+// Login using cy.session() for optimal performance
+cy.loginNiFi(username, password);
+
+// Or ensure NiFi is ready for testing
+cy.ensureNiFiReady();
+----
+
+=== Login Structure (Source Code Analysis)
+* **Login URL**: `https://localhost:9095/nifi/#/login`
+* **Framework**: Angular Material login form with Material Design components
+* **Authentication**: Keycloak OAuth integration
+* **Credentials**: `testUser` / `drowssap` (for test environment)
+
+=== Login Selectors
+[source,javascript]
+----
+USERNAME_INPUT: '[data-testid="username"], input[type="text"], input[id*="username"]'
+PASSWORD_INPUT: '[data-testid="password"], input[type="password"], input[id*="password"]'
+LOGIN_BUTTON: '[data-testid="login-button"], input[value="Login"], button[type="submit"]'
+----
+
+=== Login Verification
+[source,javascript]
+----
+// Verify successful login by checking page context
+cy.getPageContext().then((context) => {
+  expect(context.pageType).to.equal('MAIN_CANVAS');
+  expect(context.isAuthenticated).to.be.true;
+});
+----
+
+== 2. How to Navigate to the Main Canvas
+
+=== Navigation Implementation
+Based on `cypress/support/navigation-helper.js`:
+
+[source,javascript]
+----
+// Navigate to main canvas
+cy.navigateToPage('MAIN_CANVAS');
+
+// Verify we're on the main canvas
+cy.verifyPageType('MAIN_CANVAS');
+
+// Wait for specific page type
+cy.waitForPageType('MAIN_CANVAS');
+----
+
+=== Canvas Structure (Source Code Analysis)
+From `nifi-frontend/src/main/frontend/apps/nifi/src/app/pages/flow-designer/ui/canvas/canvas.component.html`:
+
+[source,html]
+----
+<mat-sidenav-content>
+  <graph-controls></graph-controls>
+  <div id="canvas-container" 
+       class="canvas-background select-none h-full w-full">
+    <!-- D3.js canvas content rendered here -->
+  </div>
+</mat-sidenav-content>
+----
+
+=== Canvas Selectors
+[source,javascript]
+----
+// Primary canvas selectors (verified from source code)
 CANVAS_CONTAINER: '#canvas-container'                    // Primary canvas container
 CANVAS_SIDENAV: 'mat-sidenav-content'                   // Angular Material container
 CANVAS_SIDENAV_CONTAINER: 'mat-sidenav-container'       // Full sidenav layout
 
-// Component selectors (from source code structure)
-HEADER: 'fd-header'                                      // Flow designer header
-FOOTER: 'fd-footer'                                      // Flow designer footer
-GRAPH_CONTROLS: 'graph-controls'                        // Canvas controls
-FLOW_ANALYSIS_DRAWER: 'flow-analysis-drawer'            // Side panel
-
-// Angular Material components (confirmed in package.json)
-MAT_SPINNER: 'mat-spinner'                              // Loading spinner
-MAT_SIDENAV: 'mat-sidenav'                              // Side navigation
-ROUTER_OUTLET: 'router-outlet'                          // Angular routing
-
-// Root application (from index.html)
-ROOT_COMPONENT: 'nifi'                                  // Main application component
-BODY_CLASSES: '.mat-app-background.mat-typography'      // Body styling classes
+// Canvas verification
+cy.get('mat-sidenav-content', { timeout: 10000 }).should('be.visible');
+cy.get('#canvas-container').should('be.visible');
 ----
 
-=== Verified Angular Material Selectors
-**CURL ANALYSIS CONFIRMS**: These Angular Material selectors DO work with NiFi 2.4.0:
+== 3. How to Add and Remove a Processor
 
-[source,css]
-----
-mat-sidenav-content
-.mat-drawer-content
-mat-toolbar
-mat-dialog-container
-----
-
-*Verification Results (from actual NiFi HTML):*
-* Angular Material CSS classes: `mat-app-background mat-typography` found in body
-* Material Design CSS variables: `--mat-sys-*`, `--mdc-*`, `--mat-sidenav-*` extensively used
-* Angular component: `<nifi></nifi>` root component confirmed
-* SPA architecture: ES modules with `type="module"` scripts
-
-== Cypress Testing Best Practices
-
-=== Progressive Enhancement Strategy
-Use multiple selector strategies for robustness:
+=== Add Processor Implementation
+Based on `cypress/support/processor-helper.js`:
 
 [source,javascript]
 ----
-// Try multiple selector strategies
-function findCanvas() {
-  const selectors = [
-    '#canvas',
-    'svg[id*="canvas"]', 
-    '.canvas svg',
-    'svg',
-    '[role="img"]'
-  ];
+// Add processor to canvas
+cy.addProcessorToCanvas('GenerateFlowFile', {
+  position: { x: 400, y: 300 },
+  skipIfExists: false
+});
 
-  for (const selector of selectors) {
-    const element = Cypress.$(selector);
-    if (element.length > 0) {
-      return selector;
-    }
+// Open Add Processor dialog
+cy.openAddProcessorDialog();
+
+// Select processor type
+cy.selectProcessorType('GenerateFlowFile');
+
+// Confirm addition
+cy.confirmProcessorAddition();
+----
+
+=== Remove Processor Implementation
+[source,javascript]
+----
+// Remove processor by reference
+cy.findProcessorOnCanvas('GenerateFlowFile').then((processor) => {
+  if (processor) {
+    cy.removeProcessorFromCanvas(processor);
   }
-  throw new Error('Canvas not found with any selector');
-}
+});
+
+// Clean up all processors
+cy.cleanupCanvasProcessors();
 ----
 
-=== Wait Strategies
-NiFi UI loads asynchronously, so use proper waits:
-
-[source,javascript]
-----
-// Wait for canvas to be ready
-cy.get('svg', { timeout: 15000 }).should('be.visible')
-cy.get('svg').should('have.attr', 'width')
-cy.get('svg').should('have.attr', 'height')
-----
-
-=== Interaction Patterns
-NiFi uses specific interaction patterns:
-
+=== Processor Interaction Patterns
 [source,javascript]
 ----
 // Right-click for context menu
-cy.get('svg').rightclick(400, 300)
+cy.get('.processor').rightclick();
 
-// Double-click to add processor
-cy.get('svg').dblclick(400, 300)
+// Look for context menu and delete option
+cy.get('[role="menu"]').should('be.visible');
+cy.get('[role="menuitem"]:contains("Delete")').click();
 
-// Drag and drop for connections
-cy.get('.processor').trigger('mousedown')
-cy.get('svg').trigger('mousemove', { clientX: 500, clientY: 400 })
-cy.get('svg').trigger('mouseup')
+// Confirm deletion if dialog appears
+cy.get('button:contains("Delete")').click();
 ----
 
-=== Error Handling
-Robust element finding with fallbacks:
+=== Processor Selectors
+[source,javascript]
+----
+// Processor elements (SVG-based)
+PROCESSOR_GROUP: 'svg g[class*="processor"], svg g[data-type*="processor"], svg .component'
+PROCESSOR_ELEMENT: '.processor, [class*="processor"], .component, .flow-component'
+
+// Dialog selectors
+ADD_PROCESSOR_DIALOG: '[role="dialog"], .dialog, .modal, .popup'
+PROCESSOR_TYPE_LIST: '.processor-types, .component-list, ul, ol'
+PROCESSOR_TYPE_ITEM: '.processor-type, .component-item, li, .list-item'
+
+// Button selectors
+ADD_BUTTON: 'button:contains("Add"), input[value*="Add"], .add-button'
+DELETE_BUTTON: 'button:contains("Delete"), input[value*="Delete"], .delete-button'
+----
+
+== 4. How to Access "Advanced" Settings of a Processor
+
+=== Processor Configuration Access
+Based on NiFi UI patterns and source code structure:
 
 [source,javascript]
 ----
-// Robust element finding
-cy.get('body').then(($body) => {
-  if ($body.find('#canvas').length > 0) {
-    // Use #canvas
-  } else if ($body.find('svg').length > 0) {
-    // Use svg fallback
-  } else {
-    throw new Error('No canvas found');
-  }
+// Double-click to open processor properties
+cy.findProcessorOnCanvas('GenerateFlowFile').then((processor) => {
+  cy.wrap(processor.element).dblclick();
+});
+
+// Alternative: Right-click and select "Configure"
+cy.get('.processor').rightclick();
+cy.get('[role="menuitem"]:contains("Configure")').click();
+----
+
+=== Properties Dialog Structure
+From NiFi source code analysis, processor configuration uses Angular Material dialogs:
+
+[source,html]
+----
+<mat-dialog-container>
+  <mat-tab-group>
+    <mat-tab label="Settings">
+      <!-- Basic processor settings -->
+    </mat-tab>
+    <mat-tab label="Properties">
+      <!-- Processor properties configuration -->
+    </mat-tab>
+    <mat-tab label="Relationships">
+      <!-- Processor relationships -->
+    </mat-tab>
+    <mat-tab label="Comments">
+      <!-- Processor comments -->
+    </mat-tab>
+  </mat-tab-group>
+</mat-dialog-container>
+----
+
+=== Advanced Settings Selectors
+[source,javascript]
+----
+// Properties dialog
+PROPERTIES_DIALOG: 'mat-dialog-container, .mat-dialog-container, [role="dialog"]'
+
+// Tab navigation
+PROPERTIES_TAB: 'mat-tab:contains("Properties"), .mat-tab:contains("Properties")'
+SETTINGS_TAB: 'mat-tab:contains("Settings"), .mat-tab:contains("Settings")'
+
+// Property fields
+PROPERTY_INPUT: 'mat-form-field input, input[matInput], .property-input'
+PROPERTY_TEXTAREA: 'mat-form-field textarea, textarea[matInput], .property-textarea'
+
+// Dialog actions
+APPLY_BUTTON: 'button:contains("Apply"), .mat-button:contains("Apply")'
+CANCEL_BUTTON: 'button:contains("Cancel"), .mat-button:contains("Cancel")'
+OK_BUTTON: 'button:contains("OK"), .mat-button:contains("OK")'
+----
+
+=== Advanced Settings Workflow
+[source,javascript]
+----
+// Complete workflow to access advanced settings
+cy.findProcessorOnCanvas('GenerateFlowFile').then((processor) => {
+  // Open processor configuration
+  cy.wrap(processor.element).dblclick();
+
+  // Wait for properties dialog
+  cy.get('mat-dialog-container').should('be.visible');
+
+  // Navigate to Properties tab for advanced settings
+  cy.get('mat-tab:contains("Properties")').click();
+
+  // Modify properties
+  cy.get('mat-form-field input[placeholder*="Property Name"]')
+    .clear()
+    .type('New Value');
+
+  // Apply changes
+  cy.get('button:contains("Apply")').click();
+
+  // Verify dialog closes
+  cy.get('mat-dialog-container').should('not.exist');
 });
 ----
 
-== UI Characteristics
+== Framework Architecture Summary
 
-=== Angular Material Architecture
-* **Material Design Components**: UI built with Angular Material components and Material Design CSS
-* **Component-Based Selectors**: Reliable Angular Material selectors (`mat-*` classes)
-* **SVG Canvas**: Flow diagram rendered in SVG within Angular Material containers
+=== Technology Stack (Verified)
+* **Framework**: Angular 19.2.14 with Angular Material 19.2.14
+* **Architecture**: Nx monorepo with multiple applications
+* **State Management**: NgRx 19.0.1
+* **Canvas**: D3.js 7.8.5 for data visualization
+* **Styling**: Tailwind CSS + Angular Material + SCSS
 
-=== Navigation Model
-* **Hash-Based URLs**: URLs use hash-based routing (e.g., `#/login`)
-* **Angular SPA Navigation**: Single Page Application routing patterns
-* **Material Layout**: Angular Material layout system with sidenav containers
+=== Key Testing Patterns
+* **Use Angular Material selectors**: `mat-sidenav-content`, `mat-dialog-container`, `mat-tab`
+* **Progressive enhancement**: Multiple selector fallbacks for robustness
+* **Proper wait strategies**: Account for Angular component loading
+* **Component-based testing**: Target specific Angular components
+* **State-aware testing**: Consider NgRx state management
 
-=== Visual Design
-* **Custom Styling**: Custom CSS styling for NiFi-specific appearance
-* **Dark Theme**: Default dark mode appearance
-* **Responsive Elements**: Canvas and UI elements adapt to screen size
+=== Reliable Selector Strategy
+[source,javascript]
+----
+// Primary selectors (from source code analysis)
+const RELIABLE_SELECTORS = {
+  CANVAS: '#canvas-container',
+  CANVAS_CONTAINER: 'mat-sidenav-content',
+  DIALOG: 'mat-dialog-container',
+  TABS: 'mat-tab-group',
+  BUTTONS: 'button[mat-button], button[mat-raised-button]',
+  INPUTS: 'mat-form-field input, input[matInput]'
+};
 
-== Source Code Analysis Summary
-
-=== Comprehensive Findings
-Through direct analysis of the NiFi 2.4.0 source code at `nifi-frontend/src/main/frontend/`, we have confirmed:
-
-1. **Modern Angular Architecture**: Angular 19.2.14 with Angular Material 19.2.14 in an Nx monorepo
-2. **Sophisticated State Management**: NgRx 19.0.1 for application state with effects and router integration
-3. **Advanced Styling**: Combination of Tailwind CSS, Angular Material, and SCSS for comprehensive theming
-4. **Multiple Applications**: Modular architecture with separate apps for different UI components
-5. **D3.js Integration**: D3.js 7.8.5 for advanced data visualization within Angular Material containers
-
-=== Key Component Structure
-* **Root**: `<nifi></nifi>` component with `mat-app-background mat-typography` classes
-* **Routing**: Angular router with `<router-outlet>` for SPA navigation
-* **Canvas**: `#canvas-container` within `mat-sidenav-content` for the main flow design area
-* **Layout**: Flexbox layout with `fd-header`, `mat-sidenav-container`, and `fd-footer`
-* **Controls**: `graph-controls` and `flow-analysis-drawer` for canvas interaction
-
-=== Testing Strategy Implications
-* **Use Verified Selectors**: `#canvas-container`, `mat-sidenav-content`, `fd-header`, `graph-controls`
-* **Angular Material Patterns**: Leverage `mat-spinner`, `mat-sidenav`, and Material Design components
-* **Component-Based Testing**: Target specific Angular components rather than generic DOM elements
-* **State-Aware Testing**: Consider NgRx state management in test scenarios
-* **Multi-App Architecture**: Tests may need to handle different applications within the monorepo
+// Fallback selectors for robustness
+const FALLBACK_SELECTORS = {
+  CANVAS: 'svg, [role="img"], .canvas',
+  DIALOG: '[role="dialog"], .dialog, .modal',
+  BUTTONS: 'button, input[type="button"]',
+  INPUTS: 'input, textarea'
+};
+----
