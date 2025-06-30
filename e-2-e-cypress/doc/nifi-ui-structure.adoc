@@ -7,106 +7,195 @@
 
 == What is the NiFi UI Like
 
-Apache NiFi's user interface is a modern Angular Material-based Single Page Application (SPA) that differs significantly from traditional HTML-based web applications.
+Apache NiFi's user interface uses traditional web technologies with SVG-based canvas for flow diagram visualization. Based on Cypress testing research, NiFi does NOT use Angular Material framework as initially assumed.
 
 == Framework and Architecture
 
-=== Angular Material Foundation
-* **Framework**: Angular Material framework with Material Design components
-* **Architecture**: Single Page Application (SPA) with router-outlet navigation
-* **Theme**: Dark mode enabled by default
-* **Technology**: Modern Angular web framework, not legacy HTML
+=== Actual Technology Stack
+* **Framework**: Traditional web technologies (likely jQuery-based or vanilla JavaScript)
+* **Canvas**: SVG-based drawing surface for flow diagrams
+* **Layout**: Traditional HTML/CSS layout structure
+* **Technology**: Standard web technologies, not Angular Material
 
 === Authentication System
 * **Login URL**: `https://localhost:9095/nifi/#/login`
-* **Form Type**: Angular Material login form with username/password fields
-* **Navigation**: SPA-based routing system
+* **Form Type**: Standard HTML login form with username/password fields
+* **Navigation**: Hash-based routing system
 * **Integration**: Keycloak OAuth integration for authentication
 
 == DOM Structure
 
-=== Overall Layout Structure
-The NiFi UI follows this Angular Material structure:
+=== Actual Layout Structure
+Based on research findings, NiFi UI follows this traditional structure:
 
 [source,html]
 ----
-<div class="mat-app-background">
-  <mat-sidenav-container class="mat-drawer-container">
-    <mat-sidenav-content class="mat-drawer-content">
-      <router-outlet></router-outlet>
-      <div class="nifi-canvas-container">
-        <svg width="1200" height="800" class="nifi-canvas-svg">
-          <g class="processors-layer"></g>
-        </svg>
-      </div>
-    </mat-sidenav-content>
-  </mat-sidenav-container>
-</div>
+<body>
+  <div id="nf-header">
+    <!-- Header/toolbar content -->
+  </div>
+  <div id="canvas-container">
+    <svg id="canvas">
+      <!-- Flow diagram content -->
+    </svg>
+  </div>
+  <div id="nf-footer">
+    <!-- Footer content -->
+  </div>
+</body>
 ----
 
 === Key UI Components
 
 ==== Canvas Area
-* **Container**: Uses `mat-sidenav-content` or `.mat-drawer-content` classes
-* **Canvas SVG**: Located within the sidenav content area
+* **Container**: Uses `#canvas-container` or `.canvas-container` classes
+* **Canvas SVG**: `#canvas` or `svg[id*="canvas"]` selectors
 * **Drawing Surface**: SVG-based canvas for flow diagram visualization
 
 ==== Toolbar
-* **Main Toolbar**: Uses `mat-toolbar` or `.mat-toolbar` classes
-* **Material Design**: Follows Angular Material toolbar patterns
+* **Main Toolbar**: Uses `#nf-header` or `.nf-header` classes
+* **Buttons**: Standard button elements with title/aria-label attributes
 
 ==== Dialogs
-* **Dialog Container**: Uses `mat-dialog-container` or `.mat-dialog-container` classes
-* **Add Processor Dialog**: Modal dialogs for processor configuration
+* **Dialog Container**: Uses `.dialog`, `[role="dialog"]`, or `.modal` classes
+* **Add Processor Dialog**: Standard modal dialogs for processor configuration
 
 == Selector Patterns
 
 === Working Selectors
-These selectors are proven to work with the NiFi UI:
+These selectors are proven to work with the actual NiFi UI:
 
 [source,javascript]
 ----
 // Canvas operations
-CANVAS_CONTAINER: 'mat-sidenav-content, .mat-drawer-content'
-CANVAS_SVG: 'mat-sidenav-content svg, .mat-drawer-content svg'
+CANVAS_CONTAINER: '#canvas-container, .canvas-container, [id*="canvas"]'
+CANVAS_SVG: '#canvas, svg[id*="canvas"], .canvas svg'
 
 // Toolbar operations
-TOOLBAR: 'mat-toolbar, .mat-toolbar'
+TOOLBAR: '#nf-header, .nf-header, .toolbar, [role="toolbar"]'
+ADD_PROCESSOR_BUTTON: 'button[title*="Add"], button[aria-label*="Add"], .add-processor'
 
 // Dialog operations
-ADD_PROCESSOR_DIALOG: 'mat-dialog-container, .mat-dialog-container'
+DIALOG: '.dialog, [role="dialog"], .modal, .popup'
+PROCESSOR_DIALOG: '.processor-dialog, [id*="processor"], [class*="processor"]'
 ----
 
-=== Incorrect Assumptions
-These traditional selectors do NOT work with NiFi:
+=== Incorrect Assumptions (Angular Material)
+These Angular Material selectors do NOT work with NiFi:
 
 [source,css]
 ----
-#canvas svg
-#canvas
-svg
-#canvas-container
+mat-sidenav-content
+.mat-drawer-content
+mat-toolbar
+mat-dialog-container
 ----
 
-*Results:*
-* `#canvas svg` - NOT FOUND
-* `#canvas` - NOT FOUND
-* `svg` - NOT FOUND (on login page)
-* `#canvas-container` - NOT FOUND
+*Research Results:*
+* `mat-sidenav-content` - NOT FOUND
+* `.mat-drawer-content` - NOT FOUND
+* `mat-toolbar` - NOT FOUND
+* `mat-dialog-container` - NOT FOUND
+
+== Cypress Testing Best Practices
+
+=== Progressive Enhancement Strategy
+Use multiple selector strategies for robustness:
+
+[source,javascript]
+----
+// Try multiple selector strategies
+function findCanvas() {
+  const selectors = [
+    '#canvas',
+    'svg[id*="canvas"]', 
+    '.canvas svg',
+    'svg',
+    '[role="img"]'
+  ];
+
+  for (const selector of selectors) {
+    const element = Cypress.$(selector);
+    if (element.length > 0) {
+      return selector;
+    }
+  }
+  throw new Error('Canvas not found with any selector');
+}
+----
+
+=== Wait Strategies
+NiFi UI loads asynchronously, so use proper waits:
+
+[source,javascript]
+----
+// Wait for canvas to be ready
+cy.get('svg', { timeout: 15000 }).should('be.visible')
+cy.get('svg').should('have.attr', 'width')
+cy.get('svg').should('have.attr', 'height')
+----
+
+=== Interaction Patterns
+NiFi uses specific interaction patterns:
+
+[source,javascript]
+----
+// Right-click for context menu
+cy.get('svg').rightclick(400, 300)
+
+// Double-click to add processor
+cy.get('svg').dblclick(400, 300)
+
+// Drag and drop for connections
+cy.get('.processor').trigger('mousedown')
+cy.get('svg').trigger('mousemove', { clientX: 500, clientY: 400 })
+cy.get('svg').trigger('mouseup')
+----
+
+=== Error Handling
+Robust element finding with fallbacks:
+
+[source,javascript]
+----
+// Robust element finding
+cy.get('body').then(($body) => {
+  if ($body.find('#canvas').length > 0) {
+    // Use #canvas
+  } else if ($body.find('svg').length > 0) {
+    // Use svg fallback
+  } else {
+    throw new Error('No canvas found');
+  }
+});
+----
 
 == UI Characteristics
 
-=== Component-Based Architecture
-* **Angular Material Components**: UI built with reusable Material Design components
-* **Framework Selectors**: Reliable component-based selectors instead of generic DOM queries
-* **Consistent Patterns**: Follows Angular Material design patterns throughout
+=== Traditional Web Architecture
+* **Standard HTML Elements**: UI built with traditional HTML elements and CSS
+* **ID-Based Selectors**: Reliable ID-based selectors for main components
+* **SVG Canvas**: Flow diagram rendered in SVG for interactive manipulation
 
 === Navigation Model
-* **Single Page Application**: No traditional page reloads
-* **Router-Based**: Uses Angular router for navigation
 * **Hash-Based URLs**: URLs use hash-based routing (e.g., `#/login`)
+* **Standard Navigation**: Traditional web navigation patterns
+* **Page Sections**: Distinct sections for header, canvas, and footer
 
 === Visual Design
-* **Material Design**: Follows Google's Material Design principles
+* **Custom Styling**: Custom CSS styling for NiFi-specific appearance
 * **Dark Theme**: Default dark mode appearance
-* **Responsive Layout**: Adapts to different screen sizes using Angular Material layout system
+* **Responsive Elements**: Canvas and UI elements adapt to screen size
+
+== Research Findings Summary
+
+=== Key Discoveries
+1. **Angular Material Assumption Wrong**: NiFi does not use Angular Material framework
+2. **Traditional Web Technologies**: Uses standard HTML/CSS/JavaScript approach
+3. **SVG-Based Canvas**: Flow diagrams rendered in SVG elements
+4. **ID-Based Selectors**: Primary components use ID-based selectors
+
+=== Testing Implications
+* Use traditional web selectors instead of Angular Material patterns
+* Implement progressive enhancement with multiple selector fallbacks
+* Focus on SVG interaction patterns for canvas operations
+* Use proper wait strategies for asynchronous UI loading
