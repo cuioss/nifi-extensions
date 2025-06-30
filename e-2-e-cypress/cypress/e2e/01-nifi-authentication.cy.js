@@ -11,22 +11,17 @@ describe('NiFi Authentication', () => {
   it('Should login successfully and maintain session', () => {
     testSetup('Testing reliable NiFi login for processor testing');
 
-    // Navigate to login page directly (like the working simple test)
-    cy.visit('/#/login', { failOnStatusCode: false });
+    // Navigate to login page using navigation helper
+    cy.navigateToPage('LOGIN');
 
-    // Wait for login form to be visible
-    cy.get('input[type="password"], input[type="text"]', { timeout: 15000 }).should('be.visible');
+    // Login using auth helper with default credentials
+    cy.loginNiFi('testUser', 'drowssap');
 
-    // Fill in credentials
-    cy.get(SELECTORS.USERNAME_INPUT).should('be.visible').clear().type('testUser');
-    cy.get(SELECTORS.PASSWORD_INPUT).should('be.visible').clear().type('drowssap');
-    cy.get(SELECTORS.LOGIN_BUTTON).should('be.visible').click();
-
-    // Wait for redirect and verify we're on main canvas
-    cy.url({ timeout: 15000 }).should('not.include', '/login');
-
-    // Verify we're authenticated and on the main canvas
-    verifyAuthenticationState(true, 'MAIN_CANVAS');
+    // Verify we're authenticated and on the main canvas using session context
+    cy.getSessionContext().then((session) => {
+      expect(session.isLoggedIn).to.be.true;
+      expect(session.pageType).to.equal('MAIN_CANVAS');
+    });
   });
 
   it('Should reject invalid credentials', () => {
@@ -34,30 +29,41 @@ describe('NiFi Authentication', () => {
 
     // Clear any existing session and navigate to login
     cy.clearSession();
+
+    // Try invalid credentials using auth helper
     cy.navigateToPage('LOGIN');
 
-    // Try invalid credentials using consolidated approach
+    // Manually attempt login with invalid credentials to test rejection
     cy.get(SELECTORS.USERNAME_INPUT).should('be.visible').clear().type('invalid-user');
     cy.get(SELECTORS.PASSWORD_INPUT).should('be.visible').clear().type('invalid-password');
     cy.get(SELECTORS.LOGIN_BUTTON).click();
 
-    // Verify rejection
-    verifyAuthenticationState(false, 'LOGIN');
+    // Verify rejection using session context
+    cy.getSessionContext().then((session) => {
+      expect(session.isLoggedIn).to.be.false;
+      expect(session.pageType).to.equal('LOGIN');
+    });
   });
 
   it('Should logout and clear session', () => {
     testSetup('Testing logout functionality');
 
-    // First login using the working approach
-    cy.visit('/#/login', { failOnStatusCode: false });
-    cy.get('input[type="password"], input[type="text"]', { timeout: 15000 }).should('be.visible');
-    cy.get(SELECTORS.USERNAME_INPUT).should('be.visible').clear().type('testUser');
-    cy.get(SELECTORS.PASSWORD_INPUT).should('be.visible').clear().type('drowssap');
-    cy.get(SELECTORS.LOGIN_BUTTON).should('be.visible').click();
-    cy.url({ timeout: 15000 }).should('not.include', '/login');
+    // Ensure NiFi is ready for testing (handles login automatically)
+    cy.ensureNiFiReady('testUser', 'drowssap');
+
+    // Verify we're authenticated before logout
+    cy.getSessionContext().then((session) => {
+      expect(session.isLoggedIn).to.be.true;
+      expect(session.pageType).to.equal('MAIN_CANVAS');
+    });
 
     // Then logout and verify
     cy.logoutNiFi();
-    cy.verifyPageType('LOGIN');
+
+    // Verify logout using session context
+    cy.getSessionContext().then((session) => {
+      expect(session.isLoggedIn).to.be.false;
+      expect(session.pageType).to.equal('LOGIN');
+    });
   });
 });
