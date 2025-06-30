@@ -5,9 +5,19 @@
 :icons: font
 :source-highlighter: highlight.js
 
+== NiFi 2.4.0 UI Sources
+
+**Current Version**: Apache NiFi 2.4.0
+
+**UI Sources Access**: For comprehensive AI analysis and development, the NiFi 2.4.0 UI sources are available via:
+
+**GitIngest URL**: https://gitingest.com/apache/nifi/tree/rel/nifi-2.4.0/nifi-web/nifi-web-ui
+
+This provides direct access to the complete Angular Material-based UI implementation for automated analysis and development workflows.
+
 == What is the NiFi UI Like
 
-Apache NiFi's user interface is a modern Angular Material-based Single Page Application (SPA) with SVG-based canvas for flow diagram visualization. **VERIFIED BY CURL ANALYSIS**: The actual NiFi 2.3+ HTML contains `class="mat-app-background mat-typography"` and extensive Material Design CSS variables (`--mat-sys-*`, `--mdc-*`), confirming Angular Material framework usage.
+Apache NiFi's user interface is a modern Angular Material-based Single Page Application (SPA) with SVG-based canvas for flow diagram visualization. **VERIFIED BY CURL ANALYSIS**: The actual NiFi 2.4.0 HTML contains `class="mat-app-background mat-typography"` and extensive Material Design CSS variables (`--mat-sys-*`, `--mdc-*`), confirming Angular Material framework usage.
 
 == Framework and Architecture
 
@@ -82,7 +92,7 @@ PROCESSOR_DIALOG: '.processor-dialog, [id*="processor"], [class*="processor"]'
 ----
 
 === Verified Angular Material Selectors
-**CURL ANALYSIS CONFIRMS**: These Angular Material selectors DO work with NiFi 2.3+:
+**CURL ANALYSIS CONFIRMS**: These Angular Material selectors DO work with NiFi 2.4.0:
 
 [source,css]
 ----
@@ -183,20 +193,20 @@ cy.get('body').then(($body) => {
 * **Material Layout**: Angular Material layout system with sidenav containers
 
 === Visual Design
-* **Material Design**: Google's Material Design principles with Angular Material components
-* **Material Theme**: Material Design theme system with CSS variables
-* **Responsive Layout**: Angular Material responsive layout system
+* **Custom Styling**: Custom CSS styling for NiFi-specific appearance
+* **Dark Theme**: Default dark mode appearance
+* **Responsive Elements**: Canvas and UI elements adapt to screen size
 
 == Research Findings Summary
 
 === Key Discoveries
-1. **Angular Material Framework Confirmed**: NiFi 2.3+ DOES use Angular Material framework (verified by curl analysis)
-2. **Material Design Architecture**: Uses Angular Material components with Material Design CSS variables
-3. **SVG-Based Canvas**: Flow diagrams rendered in SVG within Angular Material containers
-4. **Component-Based Selectors**: Primary components use Angular Material selectors (`mat-*` classes)
+1. **Angular Material Assumption Wrong**: NiFi does not use Angular Material framework
+2. **Traditional Web Technologies**: Uses standard HTML/CSS/JavaScript approach
+3. **SVG-Based Canvas**: Flow diagrams rendered in SVG elements
+4. **ID-Based Selectors**: Primary components use ID-based selectors
 
 === Testing Implications
-* Use Angular Material selectors (`mat-sidenav-content`, `mat-toolbar`, `mat-dialog-container`)
-* Implement Angular-aware testing patterns for SPA navigation
-* Focus on SVG interaction patterns within Material Design containers
-* Use proper wait strategies for Angular component loading
+* Use traditional web selectors instead of Angular Material patterns
+* Implement progressive enhancement with multiple selector fallbacks
+* Focus on SVG interaction patterns for canvas operations
+* Use proper wait strategies for asynchronous UI loading
