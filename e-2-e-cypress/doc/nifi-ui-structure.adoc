@@ -17,16 +17,19 @@ This provides direct access to the complete Angular Material-based UI implementa
 
 == What is the NiFi UI Like
 
-Apache NiFi's user interface is a modern Angular Material-based Single Page Application (SPA) with SVG-based canvas for flow diagram visualization. **VERIFIED BY CURL ANALYSIS**: The actual NiFi 2.4.0 HTML contains `class="mat-app-background mat-typography"` and extensive Material Design CSS variables (`--mat-sys-*`, `--mdc-*`), confirming Angular Material framework usage.
+Apache NiFi's user interface is a modern Angular Material-based Single Page Application (SPA) with SVG-based canvas for flow diagram visualization. **VERIFIED BY SOURCE CODE ANALYSIS**: NiFi 2.4.0 uses Angular 19.2.14 with Angular Material 19.2.14, built as an Nx monorepo with TypeScript, and features a sophisticated component architecture with NgRx state management.
 
 == Framework and Architecture
 
-=== Verified Technology Stack
-* **Framework**: Angular Material framework with Material Design components
-* **Architecture**: Single Page Application (SPA) with `<nifi></nifi>` root component
-* **Canvas**: SVG-based drawing surface within Angular Material containers
-* **Layout**: Angular Material layout system (`mat-app-background`, `mat-typography`)
-* **CSS**: Material Design CSS variables (`--mat-sys-*`, `--mdc-*`, `--mat-sidenav-*`)
+=== Verified Technology Stack (Source Code Analysis)
+* **Framework**: Angular 19.2.14 with Angular Material 19.2.14
+* **Architecture**: Nx monorepo with multiple applications (nifi, nifi-jolt-transform-ui, standard-content-viewer, update-attribute)
+* **State Management**: NgRx 19.0.1 (store, effects, router-store, store-devtools)
+* **Styling**: Tailwind CSS + Angular Material + SCSS
+* **Root Component**: `<nifi></nifi>` with `mat-app-background mat-typography` classes
+* **Canvas**: D3.js 7.8.5 for data visualization within Angular Material containers
+* **Build System**: Nx workspace with Jest testing and ESLint
+* **Additional Libraries**: CodeMirror, Clipboard.js, Marked (Markdown), PrismJS (syntax highlighting)
 
 === Authentication System
 * **Login URL**: `https://localhost:9095/nifi/#/login`
@@ -34,25 +37,78 @@ Apache NiFi's user interface is a modern Angular Material-based Single Page Appl
 * **Navigation**: Angular SPA routing system with hash-based URLs
 * **Integration**: Keycloak OAuth integration for authentication
 
+== Source Code Structure
+
+=== Repository Organization
+The NiFi UI source code is located at:
+```
+nifi-frontend/src/main/frontend/
+├── apps/
+│   ├── nifi/                    # Main NiFi application
+│   ├── nifi-jolt-transform-ui/  # Jolt transformation UI
+│   ├── standard-content-viewer/ # Content viewer
+│   └── update-attribute/        # Update attribute processor UI
+├── libs/                        # Shared libraries
+├── package.json                 # Dependencies (Angular 19.2.14, Material 19.2.14)
+├── nx.json                      # Nx workspace configuration
+└── tsconfig.base.json          # TypeScript configuration
+```
+
+=== Main Application Structure
+The core NiFi application (`apps/nifi/src/app/`) follows Angular best practices:
+```
+app/
+├── pages/
+│   ├── flow-designer/           # Main canvas and flow design
+│   │   └── ui/canvas/          # Canvas component with mat-sidenav-content
+│   ├── login/                   # Authentication pages
+│   ├── settings/                # Configuration pages
+│   ├── users/                   # User management
+│   └── [other pages]/
+├── service/                     # Angular services
+├── state/                       # NgRx state management
+├── ui/                          # Shared UI components
+├── app.component.html           # Root template with router-outlet
+└── app-routing.module.ts        # Application routing
+```
+
+=== Key Component Files
+* **Root Component**: `apps/nifi/src/index.html` - Contains `<nifi></nifi>` with `mat-app-background`
+* **Canvas Component**: `pages/flow-designer/ui/canvas/canvas.component.html` - Main canvas with `#canvas-container`
+* **App Component**: `app.component.html` - Router outlet with mat-spinner loading
+* **Package Dependencies**: `package.json` - Angular Material 19.2.14, D3.js 7.8.5, NgRx 19.0.1
+
 == DOM Structure
 
-=== Actual Layout Structure
-Based on research findings, NiFi UI follows this traditional structure:
+=== Actual DOM Structure (From Source Code Analysis)
+Based on source code analysis of `canvas.component.html` and `index.html`, NiFi UI follows this Angular Material structure:
 
 [source,html]
 ----
-<body>
-  <div id="nf-header">
-    <!-- Header/toolbar content -->
-  </div>
-  <div id="canvas-container">
-    <svg id="canvas">
-      <!-- Flow diagram content -->
-    </svg>
-  </div>
-  <div id="nf-footer">
-    <!-- Footer content -->
-  </div>
+<body class="mat-app-background mat-typography text-base">
+  <nifi>
+    <router-outlet>
+      <!-- Flow Designer Canvas Component -->
+      <div class="flex flex-col h-full">
+        <fd-header></fd-header>
+        <div class="flex-1">
+          <mat-sidenav-container class="h-full">
+            <mat-sidenav mode="side" position="end">
+              <flow-analysis-drawer></flow-analysis-drawer>
+            </mat-sidenav>
+            <mat-sidenav-content>
+              <graph-controls></graph-controls>
+              <div id="canvas-container" 
+                   class="canvas-background select-none h-full w-full">
+                <!-- D3.js canvas content rendered here -->
+              </div>
+            </mat-sidenav-content>
+          </mat-sidenav-container>
+        </div>
+        <fd-footer></fd-footer>
+      </div>
+    </router-outlet>
+  </nifi>
 </body>
 ----
 
@@ -73,22 +129,30 @@ Based on research findings, NiFi UI follows this traditional structure:
 
 == Selector Patterns
 
-=== Working Selectors
-These selectors are proven to work with the actual NiFi UI:
+=== Verified Selectors (From Source Code Analysis)
+These selectors are confirmed by source code analysis of NiFi 2.4.0:
 
 [source,javascript]
 ----
-// Canvas operations
-CANVAS_CONTAINER: '#canvas-container, .canvas-container, [id*="canvas"]'
-CANVAS_SVG: '#canvas, svg[id*="canvas"], .canvas svg'
+// Canvas operations (from canvas.component.html)
+CANVAS_CONTAINER: '#canvas-container'                    // Primary canvas container
+CANVAS_SIDENAV: 'mat-sidenav-content'                   // Angular Material container
+CANVAS_SIDENAV_CONTAINER: 'mat-sidenav-container'       // Full sidenav layout
 
-// Toolbar operations
-TOOLBAR: '#nf-header, .nf-header, .toolbar, [role="toolbar"]'
-ADD_PROCESSOR_BUTTON: 'button[title*="Add"], button[aria-label*="Add"], .add-processor'
+// Component selectors (from source code structure)
+HEADER: 'fd-header'                                      // Flow designer header
+FOOTER: 'fd-footer'                                      // Flow designer footer
+GRAPH_CONTROLS: 'graph-controls'                        // Canvas controls
+FLOW_ANALYSIS_DRAWER: 'flow-analysis-drawer'            // Side panel
 
-// Dialog operations
-DIALOG: '.dialog, [role="dialog"], .modal, .popup'
-PROCESSOR_DIALOG: '.processor-dialog, [id*="processor"], [class*="processor"]'
+// Angular Material components (confirmed in package.json)
+MAT_SPINNER: 'mat-spinner'                              // Loading spinner
+MAT_SIDENAV: 'mat-sidenav'                              // Side navigation
+ROUTER_OUTLET: 'router-outlet'                          // Angular routing
+
+// Root application (from index.html)
+ROOT_COMPONENT: 'nifi'                                  // Main application component
+BODY_CLASSES: '.mat-app-background.mat-typography'      // Body styling classes
 ----
 
 === Verified Angular Material Selectors
@@ -197,16 +261,27 @@ cy.get('body').then(($body) => {
 * **Dark Theme**: Default dark mode appearance
 * **Responsive Elements**: Canvas and UI elements adapt to screen size
 
-== Research Findings Summary
+== Source Code Analysis Summary
 
-=== Key Discoveries
-1. **Angular Material Assumption Wrong**: NiFi does not use Angular Material framework
-2. **Traditional Web Technologies**: Uses standard HTML/CSS/JavaScript approach
-3. **SVG-Based Canvas**: Flow diagrams rendered in SVG elements
-4. **ID-Based Selectors**: Primary components use ID-based selectors
+=== Comprehensive Findings
+Through direct analysis of the NiFi 2.4.0 source code at `nifi-frontend/src/main/frontend/`, we have confirmed:
 
-=== Testing Implications
-* Use traditional web selectors instead of Angular Material patterns
-* Implement progressive enhancement with multiple selector fallbacks
-* Focus on SVG interaction patterns for canvas operations
-* Use proper wait strategies for asynchronous UI loading
+1. **Modern Angular Architecture**: Angular 19.2.14 with Angular Material 19.2.14 in an Nx monorepo
+2. **Sophisticated State Management**: NgRx 19.0.1 for application state with effects and router integration
+3. **Advanced Styling**: Combination of Tailwind CSS, Angular Material, and SCSS for comprehensive theming
+4. **Multiple Applications**: Modular architecture with separate apps for different UI components
+5. **D3.js Integration**: D3.js 7.8.5 for advanced data visualization within Angular Material containers
+
+=== Key Component Structure
+* **Root**: `<nifi></nifi>` component with `mat-app-background mat-typography` classes
+* **Routing**: Angular router with `<router-outlet>` for SPA navigation
+* **Canvas**: `#canvas-container` within `mat-sidenav-content` for the main flow design area
+* **Layout**: Flexbox layout with `fd-header`, `mat-sidenav-container`, and `fd-footer`
+* **Controls**: `graph-controls` and `flow-analysis-drawer` for canvas interaction
+
+=== Testing Strategy Implications
+* **Use Verified Selectors**: `#canvas-container`, `mat-sidenav-content`, `fd-header`, `graph-controls`
+* **Angular Material Patterns**: Leverage `mat-spinner`, `mat-sidenav`, and Material Design components
+* **Component-Based Testing**: Target specific Angular components rather than generic DOM elements
+* **State-Aware Testing**: Consider NgRx state management in test scenarios
+* **Multi-App Architecture**: Tests may need to handle different applications within the monorepo
