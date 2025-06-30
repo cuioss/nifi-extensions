@@ -5,8 +5,92 @@
  * @version 1.0.0
  */
 
-import { SELECTORS, PAGE_TYPES, DEFAULT_CREDENTIALS } from './constants';
+import { SELECTORS, PAGE_TYPES, DEFAULT_CREDENTIALS, SERVICE_URLS } from './constants';
 import { logMessage, safeElementInteraction } from './utils';
+
+/**
+ * Check if NiFi service is accessible
+ * @param {number} [timeout=5000] - Timeout for the check
+ * @returns {Cypress.Chainable<boolean>} Promise resolving to accessibility status
+ */
+function checkNiFiAccessibility(timeout = 5000) {
+  logMessage('info', 'Checking NiFi accessibility...');
+
+  return cy.request({
+    method: 'GET',
+    url: SERVICE_URLS.NIFI_SYSTEM_DIAGNOSTICS,
+    timeout: timeout,
+    failOnStatusCode: false,
+    retryOnStatusCodeFailure: false,
+    retryOnNetworkFailure: false
+  }).then((response) => {
+    const isAccessible = response && response.status >= 200 && response.status < 400;
+    if (isAccessible) {
+      logMessage('success', 'NiFi service is accessible');
+    } else {
+      logMessage('error', `NiFi service not accessible - Status: ${response ? response.status : 'unknown'}`);
+    }
+    return cy.wrap(isAccessible);
+  }, (error) => {
+    logMessage('error', `NiFi service not accessible - Network Error: ${error.message || 'Connection failed'}`);
+    return cy.wrap(false);
+  });
+}
+
+/**
+ * Check if Keycloak service is accessible
+ * @param {number} [timeout=5000] - Timeout for the check
+ * @returns {Cypress.Chainable<boolean>} Promise resolving to accessibility status
+ */
+function checkKeycloakAccessibility(timeout = 5000) {
+  logMessage('info', 'Checking Keycloak accessibility...');
+
+  // Try to access Keycloak health endpoint or realm info
+  return cy.request({
+    method: 'GET',
+    url: SERVICE_URLS.KEYCLOAK_HEALTH,
+    timeout: timeout,
+    failOnStatusCode: false,
+    retryOnStatusCodeFailure: false,
+    retryOnNetworkFailure: false
+  }).then((response) => {
+    const isAccessible = response && response.status >= 200 && response.status < 400;
+    if (isAccessible) {
+      logMessage('success', 'Keycloak service is accessible');
+    } else {
+      logMessage('error', `Keycloak service not accessible - Status: ${response ? response.status : 'unknown'}`);
+    }
+    return cy.wrap(isAccessible);
+  }, (error) => {
+    logMessage('error', `Keycloak service not accessible - Network Error: ${error.message || 'Connection failed'}`);
+    return cy.wrap(false);
+  });
+}
+
+/**
+ * Verify that both NiFi and Keycloak services are accessible
+ * Fails fast if either service is not accessible
+ * @param {number} [timeout=5000] - Timeout for each service check
+ * @returns {Cypress.Chainable} Promise that resolves if both services are accessible
+ */
+function verifyServicesAccessibility(timeout = 5000) {
+  logMessage('info', 'Verifying NiFi and Keycloak services accessibility...');
+
+  return checkNiFiAccessibility(timeout).then((nifiAccessible) => {
+    if (!nifiAccessible) {
+      throw new Error('NiFi service is not accessible. Please ensure NiFi container is running and healthy.');
+    }
+
+    return checkKeycloakAccessibility(timeout).then((keycloakAccessible) => {
+      if (!keycloakAccessible) {
+        throw new Error('Keycloak service is not accessible. Please ensure Keycloak container is running and healthy.');
+      }
+
+      logMessage('success', 'Both NiFi and Keycloak services are accessible');
+      return cy.wrap(true);
+    });
+  });
+}
 
 /**
  * Login helper using cy.session() for optimal performance
@@ -77,6 +161,7 @@ Cypress.Commands.add(
  * Ensure NiFi is ready for testing
  * Combines login and readiness checks in one command
  * This is the main function used by tests
+ * Verifies NiFi and Keycloak accessibility first and fails fast if they are not accessible
  * @param {string} [username='admin'] - Username for authentication
  * @param {string} [password='adminadminadmin'] - Password for authentication
  * @example
@@ -90,38 +175,62 @@ Cypress.Commands.add(
   (username = DEFAULT_CREDENTIALS.USERNAME, password = DEFAULT_CREDENTIALS.PASSWORD) => {
     logMessage('info', 'Ensuring NiFi is ready for testing...');
 
-    // First, try to get current page context
-    cy.getPageContext().then((context) => {
-      if (
-        context.isAuthenticated &&
-        context.pageType === PAGE_TYPES.MAIN_CANVAS &&
-        context.isReady
-      ) {
-        logMessage('success', 'Already authenticated and on main canvas - ready for testing');
-        return;
-      }
+    // First, verify that both NiFi and Keycloak services are accessible - fail fast if not
+    verifyServicesAccessibility().then(() => {
+      // Services are accessible, proceed with authentication checks
+      cy.getPageContext().then((context) => {
+        if (
+          context.isAuthenticated &&
+          context.pageType === PAGE_TYPES.MAIN_CANVAS &&
+          context.isReady
+        ) {
+          logMessage('success', 'Already authenticated and on main canvas - ready for testing');
+          return;
+        }
 
-      if (context.pageType === PAGE_TYPES.LOGIN) {
-        logMessage('info', 'On login page - performing authentication');
-        cy.loginNiFi(username, password);
-        return;
-      }
+        if (context.pageType === PAGE_TYPES.LOGIN) {
+          logMessage('info', 'On login page - performing authentication');
+          cy.loginNiFi(username, password).then(() => {
+            // After login completes, verify we're ready for testing
+            cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS, { waitForReady: true });
+            logMessage('success', 'NiFi is ready for testing');
+          });
+          return;
+        }
 
-      // If we're authenticated but not on main canvas, navigate there
-      if (context.isAuthenticated && context.pageType !== PAGE_TYPES.MAIN_CANVAS) {
-        logMessage('info', 'Authenticated but not on main canvas - navigating');
-        cy.navigateToPage(PAGE_TYPES.MAIN_CANVAS);
-        return;
-      }
+        // If we're authenticated but not on main canvas, navigate there
+        if (context.isAuthenticated && context.pageType !== PAGE_TYPES.MAIN_CANVAS) {
+          logMessage('info', 'Authenticated but not on main canvas - navigating');
+          cy.navigateToPage(PAGE_TYPES.MAIN_CANVAS).then(() => {
+            // After navigation completes, verify we're ready for testing
+            cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS, { waitForReady: true });
+            logMessage('success', 'NiFi is ready for testing');
+          });
+          return;
+        }
 
-      // If we're not authenticated, perform login
-      logMessage('info', 'Not authenticated - performing login');
-      cy.loginNiFi(username, password);
+        // If page type is unknown (e.g., about:blank), navigate to login page first
+        if (context.pageType === PAGE_TYPES.UNKNOWN) {
+          logMessage('info', 'Unknown page type - navigating to login page');
+          cy.navigateToPage(PAGE_TYPES.LOGIN).then(() => {
+            cy.loginNiFi(username, password).then(() => {
+              // After login completes, verify we're ready for testing
+              cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS, { waitForReady: true });
+              logMessage('success', 'NiFi is ready for testing');
+            });
+          });
+          return;
+        }
+
+        // If we're not authenticated, perform login
+        logMessage('info', 'Not authenticated - performing login');
+        cy.loginNiFi(username, password).then(() => {
+          // After login completes, verify we're ready for testing
+          cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS, { waitForReady: true });
+          logMessage('success', 'NiFi is ready for testing');
+        });
+      });
     });
-
-    // Final verification - ensure we're ready for testing
-    cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS, { waitForReady: true });
-    logMessage('success', 'NiFi is ready for testing');
   }
 );
 

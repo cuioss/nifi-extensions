@@ -11,8 +11,19 @@ describe('NiFi Authentication', () => {
   it('Should login successfully and maintain session', () => {
     testSetup('Testing reliable NiFi login for processor testing');
 
-    // Use the auth helper for reliable login
-    cy.ensureNiFiReady();
+    // Navigate to login page directly (like the working simple test)
+    cy.visit('/#/login', { failOnStatusCode: false });
+
+    // Wait for login form to be visible
+    cy.get('input[type="password"], input[type="text"]', { timeout: 15000 }).should('be.visible');
+
+    // Fill in credentials
+    cy.get(SELECTORS.USERNAME_INPUT).should('be.visible').clear().type('testUser');
+    cy.get(SELECTORS.PASSWORD_INPUT).should('be.visible').clear().type('drowssap');
+    cy.get(SELECTORS.LOGIN_BUTTON).should('be.visible').click();
+
+    // Wait for redirect and verify we're on main canvas
+    cy.url({ timeout: 15000 }).should('not.include', '/login');
 
     // Verify we're authenticated and on the main canvas
     verifyAuthenticationState(true, 'MAIN_CANVAS');
@@ -37,8 +48,15 @@ describe('NiFi Authentication', () => {
   it('Should logout and clear session', () => {
     testSetup('Testing logout functionality');
 
-    // Ensure logged in, then logout and verify
-    cy.ensureNiFiReady();
+    // First login using the working approach
+    cy.visit('/#/login', { failOnStatusCode: false });
+    cy.get('input[type="password"], input[type="text"]', { timeout: 15000 }).should('be.visible');
+    cy.get(SELECTORS.USERNAME_INPUT).should('be.visible').clear().type('testUser');
+    cy.get(SELECTORS.PASSWORD_INPUT).should('be.visible').clear().type('drowssap');
+    cy.get(SELECTORS.LOGIN_BUTTON).should('be.visible').click();
+    cy.url({ timeout: 15000 }).should('not.include', '/login');
+
+    // Then logout and verify
     cy.logoutNiFi();
     cy.verifyPageType('LOGIN');
   });

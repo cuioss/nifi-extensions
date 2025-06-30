@@ -19,7 +19,7 @@ services:
       - NIFI_BOOTSTRAP_CONF=/opt/nifi/nifi-current/conf/bootstrap.conf
       - NIFI_CONF_DIR=/opt/nifi/nifi-current/conf
       - NIFI_SECURITY_USER_AUTHORIZER=
-      - NIFI_SECURITY_ALLOW_ANONYMOUS_AUTHENTICATION=true
+      - NIFI_SECURITY_ALLOW_ANONYMOUS_AUTHENTICATION=false
       - NIFI_SECURITY_USER_LOGIN_IDENTITY_PROVIDER=
       - NIFI_SECURITY_KEYSTORE=
       - NIFI_SECURITY_TRUSTSTORE=
@@ -67,7 +67,7 @@ services:
   #     - nifi-keycloak-network
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.0.1
+    image: quay.io/keycloak/keycloak:26.2.5
     ports:
       - "9080:8080"
       - "9085:8443"
@@ -84,7 +84,7 @@ services:
       - start-dev
       - --import-realm
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail http://localhost:8080/realms/master || exit 1"]
+      test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/localhost/8080' || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 6

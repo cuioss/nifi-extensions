@@ -298,3 +298,102 @@ const FALLBACK_SELECTORS = {
   INPUTS: 'input, textarea'
 };
 ----
+
+== Current Testing Environment Status
+
+=== Authentication Configuration
+* **Test Credentials**: `testUser` / `drowssap`
+* **Authentication Method**: SingleUserLoginIdentityProvider
+* **OAuth Integration**: Keycloak backend
+* **Login URL**: `https://localhost:9095/nifi/#/login`
+
+=== Infrastructure Status
+* **NiFi Container**: Healthy and operational
+* **Keycloak Container**: Healthy and operational  
+* **Network Connectivity**: Services can communicate
+* **Configuration Consistency**: Aligned between docker-compose.yml and NiFi config files
+
+=== Page Detection Patterns
+NiFi uses specific URL patterns for different pages:
+
+[source,javascript]
+----
+// Main canvas URL patterns (verified from browser logs)
+'/#/process-groups/[process-group-id]'  // Primary canvas pattern
+'/#/canvas'                             // Alternative canvas pattern
+'/#/login'                              // Login page pattern
+----
+
+=== Authentication Flow Analysis
+Based on HAR file analysis and browser logs:
+
+[source,javascript]
+----
+// Successful authentication flow
+POST /nifi-api/access/token
+Content-Type: application/x-www-form-urlencoded
+Body: username=testUser&password=drowssap
+
+// Expected response
+HTTP 201 Created
+Set-Cookie: __Secure-Authorization-Bearer=[JWT-Token]
+Response: [JWT Token Body]
+
+// Follow-up request
+GET /nifi-api/flow/current-user
+Cookie: __Secure-Authorization-Bearer=[JWT-Token]
+----
+
+=== JWT Token Structure
+[source,json]
+----
+{
+  "sub": "testUser",
+  "aud": "https://localhost:9095",
+  "preferred_username": "testUser", 
+  "groups": [],
+  "exp": [expiration-timestamp],
+  "iat": [issued-timestamp]
+}
+----
+
+=== Page Detection Logic
+Updated page detection to handle NiFi's actual URL patterns:
+
+[source,javascript]
+----
+// Enhanced page detection for NiFi URLs
+function detectPageType(url) {
+  const normalizedUrl = url.toLowerCase();
+
+  if (normalizedUrl.includes('#/process-groups') || 
+      normalizedUrl.includes('#/canvas') || 
+      (normalizedUrl.includes('/nifi') && !normalizedUrl.includes('#/login'))) {
+    return 'MAIN_CANVAS';
+  }
+
+  if (normalizedUrl.includes('#/login')) {
+    return 'LOGIN';
+  }
+
+  return 'UNKNOWN';
+}
+----
+
+=== Container Health Check Configuration
+[source,yaml]
+----
+# Keycloak health check (working configuration)
+healthcheck:
+  test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/localhost/8080' || exit 1"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 60s
+----
+
+=== Test Environment URLs
+* **NiFi UI**: `https://localhost:9095/nifi/`
+* **NiFi API**: `https://localhost:9095/nifi-api/`
+* **Keycloak**: `http://localhost:9080/`
+* **Keycloak Health**: `http://localhost:9086/health`

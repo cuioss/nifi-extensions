@@ -18,7 +18,8 @@ import { findCanvasElements, logMessage } from './utils';
 
 /**
  * Minimal page type detection - single URL pattern for login as specified
- * NiFi provides only one URL for login: https://localhost:9095/nifi/#/login
+ * NiFi login URL structure is defined in SERVICE_URLS.NIFI_LOGIN constant
+ * Updated to recognize actual NiFi main canvas URL patterns including process-groups
  * @param {string} url - Current page URL
  * @returns {string} Detected page type
  */
@@ -30,8 +31,11 @@ function detectPageType(url) {
     return PAGE_TYPES.LOGIN;
   }
 
-  // Main canvas detection - if not login and has canvas indicators
-  if (normalizedUrl.includes('#/canvas') || normalizedUrl.includes('/nifi')) {
+  // Main canvas detection - recognize actual NiFi URL patterns
+  // NiFi main canvas can be: #/process-groups/[id], #/canvas, or /nifi (but not login)
+  if (normalizedUrl.includes('#/process-groups') ||
+      normalizedUrl.includes('#/canvas') ||
+      (normalizedUrl.includes('/nifi') && !normalizedUrl.includes('#/login'))) {
     return PAGE_TYPES.MAIN_CANVAS;
   }
 

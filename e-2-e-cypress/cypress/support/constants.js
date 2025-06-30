@@ -11,47 +11,55 @@ export const PAGE_TYPES = {
 };
 
 /**
- * Canvas and UI selectors - UPDATED with research-based patterns for real NiFi UI
- * Based on test failures: NiFi uses traditional web technologies, not Angular Material
+ * Canvas and UI selectors - UPDATED with verified Angular Material patterns from NiFi 2.4.0 source code analysis
+ * Based on nifi-ui-structure.adoc: NiFi uses Angular 19.2.14 with Angular Material 19.2.14
  */
 export const SELECTORS = {
-  // ❌ ANGULAR MATERIAL SELECTORS (PROVEN WRONG by integration tests) - kept for reference
-  CANVAS_ANGULAR_OLD: 'mat-sidenav-content, .mat-drawer-content',
-  TOOLBAR_ANGULAR_OLD: 'mat-toolbar, .mat-toolbar',
-  DIALOG_ANGULAR_OLD: 'mat-dialog-container, .mat-dialog-container',
+  // ✅ VERIFIED ANGULAR MATERIAL SELECTORS (from NiFi 2.4.0 source code analysis)
+  // Canvas selectors - Angular Material patterns with progressive fallbacks
+  CANVAS: '#canvas-container',
+  CANVAS_CONTAINER: 'mat-sidenav-content',
+  CANVAS_SIDENAV_CONTAINER: 'mat-sidenav-container',
+  CANVAS_SVG: 'mat-sidenav-content svg, #canvas-container svg',
+  CANVAS_ELEMENTS: 'mat-sidenav-content, #canvas-container',
 
-  // ✅ RESEARCH-BASED SELECTORS FOR REAL NIFI UI
-  // Canvas selectors - traditional NiFi patterns with progressive fallbacks
-  CANVAS: '#canvas-container, .canvas-container, [id*="canvas"], main, .main-content',
-  CANVAS_CONTAINER: '#canvas-container, .canvas-container, [id*="canvas"], .flow-canvas-container',
-  CANVAS_SVG: '#canvas, svg[id*="canvas"], .canvas svg, svg, [role="img"]',
-  CANVAS_ELEMENTS: '#canvas, #canvas-container, svg, .canvas, .flow-canvas',
-
-  // Processor selectors - SVG-based patterns for flow elements
-  PROCESSOR_GROUP: 'svg g[class*="processor"], svg g[data-type*="processor"], svg .component, svg g.component',
-  PROCESSOR_ELEMENT: '.processor, [class*="processor"], .component, .flow-component, g.processor',
+  // Processor selectors - SVG-based patterns within Angular Material containers
+  PROCESSOR_GROUP: 'svg g[class*="processor"], svg g[data-type*="processor"], svg .component',
+  PROCESSOR_ELEMENT: '.processor, [class*="processor"], .component, .flow-component',
   PROCESSOR_TEXT: '.processor-name, .component-name, text[class*="name"], .label, text',
   PROCESSOR_ICON: '.processor-icon, .component-icon, .icon, image, rect',
 
-  // Dialog selectors - traditional web dialog patterns
-  ADD_PROCESSOR_DIALOG: '[role="dialog"], .dialog, .modal, .popup, .processor-dialog, [id*="dialog"]',
-  PROCESSOR_TYPE_LIST: '.processor-types, .component-list, ul, ol, .list',
-  PROCESSOR_TYPE_ITEM: '.processor-type, .component-item, li, .list-item, .option',
-  PROCESSOR_SEARCH: 'input[placeholder*="Search"], input[type="search"], input[name*="search"], .search input',
-  PROCESSOR_LIST_ITEM: '.processor-type, .component-item, li, .list-item, .option',
+  // Dialog selectors - Angular Material dialog patterns
+  ADD_PROCESSOR_DIALOG: 'mat-dialog-container, .mat-dialog-container, [role="dialog"]',
+  PROPERTIES_DIALOG: 'mat-dialog-container, .mat-dialog-container, [role="dialog"]',
+  PROCESSOR_TYPE_LIST: 'mat-list, .mat-list, mat-selection-list, .processor-types',
+  PROCESSOR_TYPE_ITEM: 'mat-list-item, .mat-list-item, mat-list-option, .processor-type',
+  PROCESSOR_SEARCH: 'mat-form-field input, input[matInput], input[placeholder*="Search"]',
+  PROCESSOR_LIST_ITEM: 'mat-list-item, .mat-list-item, mat-list-option, .processor-type',
 
-  // Button selectors - traditional web button patterns
-  ADD_BUTTON: 'button:contains("Add"), input[value*="Add"], .add-button, [title*="Add"], [aria-label*="Add"]',
-  CANCEL_BUTTON: 'button:contains("Cancel"), input[value*="Cancel"], .cancel-button',
-  DELETE_BUTTON: 'button:contains("Delete"), input[value*="Delete"], .delete-button',
+  // Tab selectors - Angular Material tab patterns
+  PROPERTIES_TAB: 'mat-tab:contains("Properties"), .mat-tab:contains("Properties")',
+  SETTINGS_TAB: 'mat-tab:contains("Settings"), .mat-tab:contains("Settings")',
+  TAB_GROUP: 'mat-tab-group',
 
-  // Context menu selectors - traditional web menu patterns
-  CONTEXT_MENU: '[role="menu"], .context-menu, .menu, .popup-menu, ul.menu',
-  CONTEXT_MENU_DELETE: '[role="menuitem"]:contains("Delete"), .menu-item:contains("Delete"), li:contains("Delete")',
+  // Form selectors - Angular Material form patterns
+  PROPERTY_INPUT: 'mat-form-field input, input[matInput], .property-input',
+  PROPERTY_TEXTAREA: 'mat-form-field textarea, textarea[matInput], .property-textarea',
 
-  // Toolbar selectors - traditional web toolbar patterns
-  TOOLBAR: '#nf-header, .nf-header, .toolbar, [role="toolbar"], .header, .top-bar',
-  TOOLBAR_ADD: 'button[title*="Add"], button[aria-label*="Add"], .add-processor, .toolbar button',
+  // Button selectors - Angular Material button patterns
+  ADD_BUTTON: 'button[mat-button], button[mat-raised-button], button:contains("Add")',
+  APPLY_BUTTON: 'button:contains("Apply"), .mat-button:contains("Apply")',
+  CANCEL_BUTTON: 'button:contains("Cancel"), .mat-button:contains("Cancel")',
+  DELETE_BUTTON: 'button:contains("Delete"), .mat-button:contains("Delete")',
+  OK_BUTTON: 'button:contains("OK"), .mat-button:contains("OK")',
+
+  // Context menu selectors - Angular Material menu patterns
+  CONTEXT_MENU: 'mat-menu, .mat-menu-panel, [role="menu"]',
+  CONTEXT_MENU_DELETE: 'mat-menu-item:contains("Delete"), .mat-menu-item:contains("Delete")',
+
+  // Toolbar selectors - Angular Material toolbar patterns
+  TOOLBAR: 'mat-toolbar, .mat-toolbar',
+  TOOLBAR_ADD: 'mat-toolbar button[aria-label*="Add"], mat-toolbar button[title*="Add"]',
 
   // Login selectors
   USERNAME_INPUT:
@@ -82,18 +90,38 @@ export const TIMEOUTS = {
 
 
 /**
- * Page type definitions for navigation
+ * Service URLs - Centralized URL constants for all services
+ */
+// Define base URLs first
+const KEYCLOAK_BASE_URL = 'https://localhost:9085';
+const NIFI_BASE_URL = 'https://localhost:9095';
+
+export const SERVICE_URLS = {
+  // NiFi service URLs
+  NIFI_BASE: NIFI_BASE_URL,
+  NIFI_API_BASE: '/nifi-api',
+  NIFI_LOGIN: '/#/login',
+  NIFI_CANVAS: '/',
+  NIFI_SYSTEM_DIAGNOSTICS: '/nifi-api/system-diagnostics',
+
+  // Keycloak service URLs
+  KEYCLOAK_BASE: KEYCLOAK_BASE_URL,
+  KEYCLOAK_HEALTH: `http://localhost:9086/health`,
+};
+
+/**
+ * Page type definitions for navigation - Updated with verified Angular Material patterns
  */
 export const PAGE_DEFINITIONS = {
   [PAGE_TYPES.LOGIN]: {
-    path: '/#/login',
+    path: SERVICE_URLS.NIFI_LOGIN,
     description: 'NiFi Login Page',
     elements: ['input[type="password"]'],
   },
   [PAGE_TYPES.MAIN_CANVAS]: {
-    path: '/',
+    path: SERVICE_URLS.NIFI_CANVAS,
     description: 'NiFi Main Canvas',
-    elements: ['mat-sidenav-content', 'router-outlet', 'svg'],
+    elements: ['mat-sidenav-content', '#canvas-container'],
   },
   [PAGE_TYPES.UNKNOWN]: {
     path: null,
