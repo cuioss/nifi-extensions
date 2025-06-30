@@ -6,63 +6,42 @@
 
 describe('NiFi Navigation Tests', () => {
   beforeEach(() => {
-    // Clear any previous session state
-    cy.clearCookies();
-    cy.clearLocalStorage();
-    try {
-      window.sessionStorage.clear();
-    } catch (e) {
-      // Ignore if sessionStorage is not available
-    }
+    // Clear any previous session state using helper
+    cy.clearSession();
+
+    // Ensure NiFi is ready for testing
+    cy.ensureNiFiReady('testUser', 'drowssap');
   });
 
   it('Should navigate from login to main canvas', () => {
     cy.log('🧭 Testing navigation from login to main canvas');
 
-    // Navigate to login page directly
-    cy.visit('/#/login', { failOnStatusCode: false });
-
-    // Wait for login form to be visible
-    cy.get('input[type="password"], input[type="text"]', { timeout: 15000 }).should('be.visible');
-    cy.log('✅ Successfully navigated to login page');
-
-    // Perform login using working approach
-    cy.get('input[type="text"], input[id*="username"], input[name="username"]')
-      .should('be.visible').clear().type('testUser');
-    cy.get('input[type="password"], input[id*="password"], input[name="password"]')
-      .should('be.visible').clear().type('drowssap');
-    cy.get('button[type="submit"], button:contains("Login"), input[value="Login"]')
-      .should('be.visible').click();
-
-    // Wait for redirect and verify we're on main canvas
-    cy.url({ timeout: 15000 }).should('not.include', '/login');
-
-    // Verify we're now on the main canvas
+    // Verify we're already authenticated and on main canvas (from beforeEach)
     cy.getPageContext().then((context) => {
       expect(context.pageType).to.equal('MAIN_CANVAS');
       expect(context.isAuthenticated).to.be.true;
       cy.log('✅ Successfully navigated to main canvas after login');
     });
+
+    // Test navigation to login page and back
+    cy.navigateToPage('LOGIN');
+    cy.verifyPageType('LOGIN');
+
+    // Navigate back to main canvas
+    cy.navigateToPage('MAIN_CANVAS');
+    cy.verifyPageType('MAIN_CANVAS');
   });
 
   it('Should verify canvas is accessible and ready for operations', () => {
     cy.log('🎯 Testing canvas accessibility and readiness');
 
-    // Login and navigate to canvas using working approach
-    cy.visit('/#/login', { failOnStatusCode: false });
-    cy.get('input[type="password"], input[type="text"]', { timeout: 15000 }).should('be.visible');
-    cy.get('input[type="text"], input[id*="username"], input[name="username"]')
-      .should('be.visible').clear().type('testUser');
-    cy.get('input[type="password"], input[id*="password"], input[name="password"]')
-      .should('be.visible').clear().type('drowssap');
-    cy.get('button[type="submit"], button:contains("Login"), input[value="Login"]')
-      .should('be.visible').click();
-    cy.url({ timeout: 15000 }).should('not.include', '/login');
+    // Verify we're on the main canvas page (from beforeEach)
+    cy.verifyPageType('MAIN_CANVAS', { waitForReady: true });
 
-    // Verify we're on the main canvas page
     cy.getPageContext().then((context) => {
       expect(context.pageType).to.equal('MAIN_CANVAS');
       expect(context.isAuthenticated).to.be.true;
+      expect(context.isReady).to.be.true;
       cy.log('✅ Canvas is accessible and ready for operations');
     });
 
@@ -80,18 +59,7 @@ describe('NiFi Navigation Tests', () => {
   it('Should handle page refresh and maintain session', () => {
     cy.log('🔄 Testing page refresh and session persistence');
 
-    // Login first using working approach
-    cy.visit('/#/login', { failOnStatusCode: false });
-    cy.get('input[type="password"], input[type="text"]', { timeout: 15000 }).should('be.visible');
-    cy.get('input[type="text"], input[id*="username"], input[name="username"]')
-      .should('be.visible').clear().type('testUser');
-    cy.get('input[type="password"], input[id*="password"], input[name="password"]')
-      .should('be.visible').clear().type('drowssap');
-    cy.get('button[type="submit"], button:contains("Login"), input[value="Login"]')
-      .should('be.visible').click();
-    cy.url({ timeout: 15000 }).should('not.include', '/login');
-
-    // Verify we're on main canvas
+    // Verify we're on main canvas (from beforeEach)
     cy.verifyPageType('MAIN_CANVAS');
 
     // Refresh the page
@@ -115,18 +83,7 @@ describe('NiFi Navigation Tests', () => {
   it('Should navigate between different NiFi sections', () => {
     cy.log('🗺️ Testing navigation between NiFi sections');
 
-    // Login to get to main canvas using working approach
-    cy.visit('/#/login', { failOnStatusCode: false });
-    cy.get('input[type="password"], input[type="text"]', { timeout: 15000 }).should('be.visible');
-    cy.get('input[type="text"], input[id*="username"], input[name="username"]')
-      .should('be.visible').clear().type('testUser');
-    cy.get('input[type="password"], input[id*="password"], input[name="password"]')
-      .should('be.visible').clear().type('drowssap');
-    cy.get('button[type="submit"], button:contains("Login"), input[value="Login"]')
-      .should('be.visible').click();
-    cy.url({ timeout: 15000 }).should('not.include', '/login');
-
-    // Verify we start on main canvas
+    // Verify we start on main canvas (from beforeEach)
     cy.verifyPageType('MAIN_CANVAS');
 
     // Test basic page interaction instead of specific navigation
@@ -145,7 +102,7 @@ describe('NiFi Navigation Tests', () => {
         cy.log('✅ Page is interactive and ready');
       });
 
-      // Verify we're still on a valid page
+      // Verify we're still on a valid page using helper
       cy.getPageContext().then((context) => {
         expect(context.pageType).to.equal('MAIN_CANVAS');
         cy.log(`✅ Navigation test successful, current page: ${context.pageType}`);
@@ -156,63 +113,23 @@ describe('NiFi Navigation Tests', () => {
   it('Should handle logout and return to login page', () => {
     cy.log('🚪 Testing logout functionality');
 
-    // Login first using working approach
-    cy.visit('/#/login', { failOnStatusCode: false });
-    cy.get('input[type="password"], input[type="text"]', { timeout: 15000 }).should('be.visible');
-    cy.get('input[type="text"], input[id*="username"], input[name="username"]')
-      .should('be.visible').clear().type('testUser');
-    cy.get('input[type="password"], input[id*="password"], input[name="password"]')
-      .should('be.visible').clear().type('drowssap');
-    cy.get('button[type="submit"], button:contains("Login"), input[value="Login"]')
-      .should('be.visible').click();
-    cy.url({ timeout: 15000 }).should('not.include', '/login');
+    // Verify we start on main canvas (from beforeEach)
     cy.verifyPageType('MAIN_CANVAS');
 
-    // Look for logout button or user menu
-    cy.get('body').then(($body) => {
-      // Look for common logout patterns
-      const logoutSelectors = [
-        'button:contains("Logout")',
-        'button:contains("Sign Out")',
-        'mat-menu-item:contains("Logout")',
-        '.mat-menu-item:contains("Logout")',
-        '[aria-label*="logout"]',
-        '[title*="logout"]'
-      ];
+    // Verify we're authenticated before logout
+    cy.getPageContext().then((context) => {
+      expect(context.isAuthenticated).to.be.true;
+      expect(context.pageType).to.equal('MAIN_CANVAS');
+    });
 
-      let logoutFound = false;
+    // Use helper function to logout
+    cy.logoutNiFi();
 
-      for (const selector of logoutSelectors) {
-        const elements = $body.find(selector);
-        if (elements.length > 0) {
-          cy.log(`✅ Found logout element with selector: ${selector}`);
-          cy.get(selector).first().click();
-          logoutFound = true;
-          break;
-        }
-      }
-
-      if (!logoutFound) {
-        cy.log('ℹ️ No logout button found, clearing session manually');
-        cy.clearCookies();
-        cy.clearLocalStorage();
-        cy.window().then((win) => {
-          try {
-            win.sessionStorage.clear();
-            win.sessionStorage.setItem('cypress-session-cleared', 'true');
-          } catch (e) {
-            // Ignore if sessionStorage is not available
-          }
-        });
-        cy.visit('/#/login');
-      }
-
-      // Verify we're back at login page
-      cy.getPageContext().then((context) => {
-        expect(context.pageType).to.equal('LOGIN');
-        expect(context.isAuthenticated).to.be.false;
-        cy.log('✅ Successfully logged out and returned to login page');
-      });
+    // Verify we're back at login page using helper
+    cy.getPageContext().then((context) => {
+      expect(context.pageType).to.equal('LOGIN');
+      expect(context.isAuthenticated).to.be.false;
+      cy.log('✅ Successfully logged out and returned to login page');
     });
   });
 });
