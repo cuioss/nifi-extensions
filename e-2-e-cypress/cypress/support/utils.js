@@ -30,10 +30,10 @@ export function findWorkingCanvas(timeout = TIMEOUTS.CANVAS_READY) {
 
   // Use Angular Material framework-based selectors (validated in Phase 0)
   const frameworkCanvasSelectors = [
-    SELECTORS.CANVAS_SVG,        // Angular Material content + SVG
-    SELECTORS.CANVAS_CONTAINER,  // Angular Material content containers
-    SELECTORS.CANVAS,            // Angular Material main content areas
-    'svg'                        // Fallback to any SVG (last resort)
+    SELECTORS.CANVAS_SVG, // Angular Material content + SVG
+    SELECTORS.CANVAS_CONTAINER, // Angular Material content containers
+    SELECTORS.CANVAS, // Angular Material main content areas
+    'svg', // Fallback to any SVG (last resort)
   ];
 
   // Try each framework-based selector until we find a working one
@@ -54,7 +54,10 @@ export function findWorkingCanvas(timeout = TIMEOUTS.CANVAS_READY) {
         // Get the first element using .eq(0) to avoid DOM detachment issues
         return cy.get(selector, { timeout }).should('be.visible').eq(0);
       } else {
-        logMessage('warn', `Angular Material selector ${selector} not found or not visible, trying next...`);
+        logMessage(
+          'warn',
+          `Angular Material selector ${selector} not found or not visible, trying next...`
+        );
         return tryFrameworkSelector(selectors, index + 1);
       }
     });

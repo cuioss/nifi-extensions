@@ -16,25 +16,36 @@ import { logMessage, safeElementInteraction } from './utils';
 function checkNiFiAccessibility(timeout = 5000) {
   logMessage('info', 'Checking NiFi accessibility...');
 
-  return cy.request({
-    method: 'GET',
-    url: SERVICE_URLS.NIFI_SYSTEM_DIAGNOSTICS,
-    timeout: timeout,
-    failOnStatusCode: false,
-    retryOnStatusCodeFailure: false,
-    retryOnNetworkFailure: false
-  }).then((response) => {
-    const isAccessible = response && response.status >= 200 && response.status < 400;
-    if (isAccessible) {
-      logMessage('success', 'NiFi service is accessible');
-    } else {
-      logMessage('error', `NiFi service not accessible - Status: ${response ? response.status : 'unknown'}`);
-    }
-    return cy.wrap(isAccessible);
-  }, (error) => {
-    logMessage('error', `NiFi service not accessible - Network Error: ${error.message || 'Connection failed'}`);
-    return cy.wrap(false);
-  });
+  return cy
+    .request({
+      method: 'GET',
+      url: SERVICE_URLS.NIFI_SYSTEM_DIAGNOSTICS,
+      timeout: timeout,
+      failOnStatusCode: false,
+      retryOnStatusCodeFailure: false,
+      retryOnNetworkFailure: false,
+    })
+    .then(
+      (response) => {
+        const isAccessible = response && response.status >= 200 && response.status < 400;
+        if (isAccessible) {
+          logMessage('success', 'NiFi service is accessible');
+        } else {
+          logMessage(
+            'error',
+            `NiFi service not accessible - Status: ${response ? response.status : 'unknown'}`
+          );
+        }
+        return cy.wrap(isAccessible);
+      },
+      (error) => {
+        logMessage(
+          'error',
+          `NiFi service not accessible - Network Error: ${error.message || 'Connection failed'}`
+        );
+        return cy.wrap(false);
+      }
+    );
 }
 
 /**
@@ -46,25 +57,36 @@ function checkKeycloakAccessibility(timeout = 5000) {
   logMessage('info', 'Checking Keycloak accessibility...');
 
   // Try to access Keycloak health endpoint or realm info
-  return cy.request({
-    method: 'GET',
-    url: SERVICE_URLS.KEYCLOAK_HEALTH,
-    timeout: timeout,
-    failOnStatusCode: false,
-    retryOnStatusCodeFailure: false,
-    retryOnNetworkFailure: false
-  }).then((response) => {
-    const isAccessible = response && response.status >= 200 && response.status < 400;
-    if (isAccessible) {
-      logMessage('success', 'Keycloak service is accessible');
-    } else {
-      logMessage('error', `Keycloak service not accessible - Status: ${response ? response.status : 'unknown'}`);
-    }
-    return cy.wrap(isAccessible);
-  }, (error) => {
-    logMessage('error', `Keycloak service not accessible - Network Error: ${error.message || 'Connection failed'}`);
-    return cy.wrap(false);
-  });
+  return cy
+    .request({
+      method: 'GET',
+      url: SERVICE_URLS.KEYCLOAK_HEALTH,
+      timeout: timeout,
+      failOnStatusCode: false,
+      retryOnStatusCodeFailure: false,
+      retryOnNetworkFailure: false,
+    })
+    .then(
+      (response) => {
+        const isAccessible = response && response.status >= 200 && response.status < 400;
+        if (isAccessible) {
+          logMessage('success', 'Keycloak service is accessible');
+        } else {
+          logMessage(
+            'error',
+            `Keycloak service not accessible - Status: ${response ? response.status : 'unknown'}`
+          );
+        }
+        return cy.wrap(isAccessible);
+      },
+      (error) => {
+        logMessage(
+          'error',
+          `Keycloak service not accessible - Network Error: ${error.message || 'Connection failed'}`
+        );
+        return cy.wrap(false);
+      }
+    );
 }
 
 /**
@@ -78,12 +100,16 @@ function verifyServicesAccessibility(timeout = 5000) {
 
   return checkNiFiAccessibility(timeout).then((nifiAccessible) => {
     if (!nifiAccessible) {
-      throw new Error('NiFi service is not accessible. Please ensure NiFi container is running and healthy.');
+      throw new Error(
+        'NiFi service is not accessible. Please ensure NiFi container is running and healthy.'
+      );
     }
 
     return checkKeycloakAccessibility(timeout).then((keycloakAccessible) => {
       if (!keycloakAccessible) {
-        throw new Error('Keycloak service is not accessible. Please ensure Keycloak container is running and healthy.');
+        throw new Error(
+          'Keycloak service is not accessible. Please ensure Keycloak container is running and healthy.'
+        );
       }
 
       logMessage('success', 'Both NiFi and Keycloak services are accessible');

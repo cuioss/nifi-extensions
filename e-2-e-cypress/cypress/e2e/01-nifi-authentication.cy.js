@@ -5,7 +5,7 @@
  */
 
 import { SELECTORS } from '../support/constants.js';
-import { testSetup, verifyAuthenticationState } from '../support/test-helpers.js';
+import { testSetup } from '../support/test-helpers.js';
 
 describe('NiFi Authentication', () => {
   it('Should login successfully and maintain session', () => {

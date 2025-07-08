@@ -33,9 +33,11 @@ function detectPageType(url) {
 
   // Main canvas detection - recognize actual NiFi URL patterns
   // NiFi main canvas can be: #/process-groups/[id], #/canvas, or /nifi (but not login)
-  if (normalizedUrl.includes('#/process-groups') ||
-      normalizedUrl.includes('#/canvas') ||
-      (normalizedUrl.includes('/nifi') && !normalizedUrl.includes('#/login'))) {
+  if (
+    normalizedUrl.includes('#/process-groups') ||
+    normalizedUrl.includes('#/canvas') ||
+    (normalizedUrl.includes('/nifi') && !normalizedUrl.includes('#/login'))
+  ) {
     return PAGE_TYPES.MAIN_CANVAS;
   }
 

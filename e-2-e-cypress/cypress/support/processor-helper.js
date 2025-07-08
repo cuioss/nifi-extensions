@@ -6,7 +6,7 @@
  */
 
 import { SELECTORS, TIMEOUTS } from './constants';
-import { findCanvasElements, findWorkingCanvas, ensureMainCanvas, logMessage } from './utils';
+import { findCanvasElements, ensureMainCanvas, logMessage } from './utils';
 
 /**
  * @typedef {Object} ProcessorReference
@@ -28,7 +28,7 @@ import { findCanvasElements, findWorkingCanvas, ensureMainCanvas, logMessage } f
  * @returns {Cypress.Chainable<ProcessorReference|null>} Processor reference or null if not found
  */
 Cypress.Commands.add('findProcessorOnCanvas', (processorName, options = {}) => {
-  const { strict = false, timeout = TIMEOUTS.PROCESSOR_LOAD } = options;
+  const { strict = false, timeout: _timeout = TIMEOUTS.PROCESSOR_LOAD } = options;
 
   logMessage('search', `Searching for processor: ${processorName}`);
 
@@ -85,7 +85,10 @@ Cypress.Commands.add('findProcessorOnCanvas', (processorName, options = {}) => {
             status: 'unknown',
           };
 
-          logMessage('success', `Found processor: ${foundProcessor.name} (ID: ${foundProcessor.id})`);
+          logMessage(
+            'success',
+            `Found processor: ${foundProcessor.name} (ID: ${foundProcessor.id})`
+          );
         }
       });
 
@@ -110,7 +113,10 @@ Cypress.Commands.add('addProcessorToCanvas', (processorType, options = {}) => {
     timeout = TIMEOUTS.PROCESSOR_LOAD,
   } = options;
 
-  logMessage('action', `Adding processor: ${processorType} at position (${position.x}, ${position.y})`);
+  logMessage(
+    'action',
+    `Adding processor: ${processorType} at position (${position.x}, ${position.y})`
+  );
 
   // Check if processor already exists (if skipIfExists is true)
   if (skipIfExists) {
@@ -140,7 +146,10 @@ Cypress.Commands.add('addProcessorToCanvas', (processorType, options = {}) => {
 Cypress.Commands.add('removeProcessorFromCanvas', (processor, options = {}) => {
   const { confirmDeletion = true, timeout = TIMEOUTS.ACTION_COMPLETE } = options;
 
-  logMessage('action', `Removing processor: ${typeof processor === 'string' ? processor : processor.name}`);
+  logMessage(
+    'action',
+    `Removing processor: ${typeof processor === 'string' ? processor : processor.name}`
+  );
 
   // If processor is a string (type), find it first
   if (typeof processor === 'string') {
@@ -188,13 +197,17 @@ Cypress.Commands.add('openAddProcessorDialog', (options = {}) => {
       }
 
       // Try to find and click the Add Processor button using Angular Material toolbar patterns
-      return cy.get(SELECTORS.TOOLBAR, { timeout }).should('be.visible').then(() => {
-        // Look for Add button in toolbar
-        return cy.get(SELECTORS.TOOLBAR_ADD, { timeout }).should('be.visible').click();
-      }).then(() => {
-        // Wait for the Angular Material dialog to appear
-        return cy.get(SELECTORS.ADD_PROCESSOR_DIALOG, { timeout }).should('be.visible');
-      });
+      return cy
+        .get(SELECTORS.TOOLBAR, { timeout })
+        .should('be.visible')
+        .then(() => {
+          // Look for Add button in toolbar
+          return cy.get(SELECTORS.TOOLBAR_ADD, { timeout }).should('be.visible').click();
+        })
+        .then(() => {
+          // Wait for the Angular Material dialog to appear
+          return cy.get(SELECTORS.ADD_PROCESSOR_DIALOG, { timeout }).should('be.visible');
+        });
     });
   });
 });
@@ -253,10 +266,14 @@ Cypress.Commands.add('confirmProcessorAddition', (options = {}) => {
   logMessage('action', 'Confirming processor addition');
 
   // Click the Add button in the Angular Material dialog
-  return cy.get(SELECTORS.ADD_BUTTON, { timeout }).should('be.visible').click().then(() => {
-    // Wait for dialog to close
-    return cy.get(SELECTORS.ADD_PROCESSOR_DIALOG, { timeout: 1000 }).should('not.exist');
-  });
+  return cy
+    .get(SELECTORS.ADD_BUTTON, { timeout })
+    .should('be.visible')
+    .click()
+    .then(() => {
+      // Wait for dialog to close
+      return cy.get(SELECTORS.ADD_PROCESSOR_DIALOG, { timeout: 1000 }).should('not.exist');
+    });
 });
 
 // Helper functions (internal)
@@ -269,8 +286,8 @@ Cypress.Commands.add('confirmProcessorAddition', (options = {}) => {
  * @returns {Cypress.Chainable<ProcessorReference>} Added processor reference
  */
 function performProcessorAddition(processorType, position, timeout) {
-  return cy.openAddProcessorDialog({ timeout })
-    .then((dialogResult) => {
+  return cy.openAddProcessorDialog({ timeout }).then(
+    (dialogResult) => {
       // Check if dialog was opened successfully
       if (dialogResult === null) {
         logMessage('warn', `Cannot add processor ${processorType}: toolbar not available`);
@@ -278,7 +295,8 @@ function performProcessorAddition(processorType, position, timeout) {
       }
 
       // Continue with processor addition workflow
-      return cy.selectProcessorType(processorType, { timeout })
+      return cy
+        .selectProcessorType(processorType, { timeout })
         .then(() => cy.confirmProcessorAddition({ timeout }))
         .then(() => {
           // Wait a moment for the processor to appear on canvas
@@ -286,11 +304,13 @@ function performProcessorAddition(processorType, position, timeout) {
           // Find and return the newly added processor
           return cy.findProcessorOnCanvas(processorType, { timeout });
         });
-    }, (error) => {
+    },
+    (error) => {
       // Handle other errors gracefully
       logMessage('warn', `Cannot add processor ${processorType}: ${error.message}`);
       return null;
-    });
+    }
+  );
 }
 
 /**
@@ -302,7 +322,8 @@ function performProcessorAddition(processorType, position, timeout) {
  */
 function performProcessorRemoval(processor, confirmDeletion, timeout) {
   // Right-click on the processor to open context menu
-  return cy.wrap(processor.element)
+  return cy
+    .wrap(processor.element)
     .rightclick()
     .then(() => {
       // Wait for context menu to appear
@@ -323,13 +344,16 @@ function performProcessorRemoval(processor, confirmDeletion, timeout) {
         });
       }
     })
-    .then(() => {
-      logMessage('success', `Processor ${processor.name} removed successfully`);
-      return true;
-    }, (error) => {
-      logMessage('error', `Failed to remove processor ${processor.name}: ${error.message}`);
-      return false;
-    });
+    .then(
+      () => {
+        logMessage('success', `Processor ${processor.name} removed successfully`);
+        return true;
+      },
+      (error) => {
+        logMessage('error', `Failed to remove processor ${processor.name}: ${error.message}`);
+        return false;
+      }
+    );
 }
 
 /**
@@ -370,7 +394,10 @@ Cypress.Commands.add('cleanupCanvasProcessors', (options = {}) => {
         return cy.wrap(0);
       }
 
-      logMessage('info', `Found ${visibleProcessors.length} visible processors to remove (${processorElements.length} total found)`);
+      logMessage(
+        'info',
+        `Found ${visibleProcessors.length} visible processors to remove (${processorElements.length} total found)`
+      );
 
       let removedCount = 0;
 
@@ -390,18 +417,20 @@ Cypress.Commands.add('cleanupCanvasProcessors', (options = {}) => {
         const processor = {
           id: elementId,
           name: elementTitle || elementText || `Processor ${index + 1}`,
-          element: $element
+          element: $element,
         };
 
-        return cy.removeProcessorFromCanvas(processor, { confirmDeletion, timeout }).then((success) => {
-          if (success) {
-            removedCount++;
-            logMessage('success', `Removed processor: ${processor.name}`);
-          } else {
-            logMessage('warn', `Failed to remove processor: ${processor.name}`);
-          }
-          return removeProcessorsSequentially(index + 1);
-        });
+        return cy
+          .removeProcessorFromCanvas(processor, { confirmDeletion, timeout })
+          .then((success) => {
+            if (success) {
+              removedCount++;
+              logMessage('success', `Removed processor: ${processor.name}`);
+            } else {
+              logMessage('warn', `Failed to remove processor: ${processor.name}`);
+            }
+            return removeProcessorsSequentially(index + 1);
+          });
       }
 
       return removeProcessorsSequentially();
@@ -418,10 +447,7 @@ Cypress.Commands.add('cleanupCanvasProcessors', (options = {}) => {
  * @returns {Cypress.Chainable<boolean>} Success status
  */
 Cypress.Commands.add('addTestProcessor', (processorType = 'GenerateFlowFile', options = {}) => {
-  const {
-    position = { x: 400, y: 300 },
-    timeout = TIMEOUTS.PROCESSOR_LOAD,
-  } = options;
+  const { position = { x: 400, y: 300 }, timeout = TIMEOUTS.PROCESSOR_LOAD } = options;
 
   logMessage('action', `Adding test processor: ${processorType}`);
 
@@ -433,8 +459,8 @@ Cypress.Commands.add('addTestProcessor', (processorType = 'GenerateFlowFile', op
     }
 
     // Try to add the processor using the existing addProcessorToCanvas command
-    return cy.addProcessorToCanvas(processorType, { position, timeout, skipIfExists: false })
-      .then((processor) => {
+    return cy.addProcessorToCanvas(processorType, { position, timeout, skipIfExists: false }).then(
+      (processor) => {
         if (processor) {
           logMessage('success', `Test processor added successfully: ${processor.name}`);
           return cy.wrap(true);
@@ -442,10 +468,12 @@ Cypress.Commands.add('addTestProcessor', (processorType = 'GenerateFlowFile', op
           logMessage('warn', `Failed to add test processor: ${processorType}`);
           return cy.wrap(false);
         }
-      }, (error) => {
+      },
+      (error) => {
         logMessage('warn', `Error adding test processor: ${error.message}`);
         return cy.wrap(false);
-      });
+      }
+    );
   });
 });
 
@@ -456,7 +484,7 @@ Cypress.Commands.add('addTestProcessor', (processorType = 'GenerateFlowFile', op
  * @returns {Cypress.Chainable<Array<ProcessorReference>>} Array of found processors
  */
 Cypress.Commands.add('getAllProcessorsOnCanvas', (options = {}) => {
-  const { timeout = TIMEOUTS.PROCESSOR_LOAD } = options;
+  const { timeout: _timeout = TIMEOUTS.PROCESSOR_LOAD } = options;
 
   logMessage('search', 'Searching for all processors on canvas');
 

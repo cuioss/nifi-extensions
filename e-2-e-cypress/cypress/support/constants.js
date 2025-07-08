@@ -88,7 +88,6 @@ export const TIMEOUTS = {
   PAGE_LOAD: 10000,
 };
 
-
 /**
  * Service URLs - Centralized URL constants for all services
  */
@@ -138,12 +137,11 @@ export const DEFAULT_CREDENTIALS = {
   PASSWORD: 'drowssap',
 };
 
-
 /**
  * Error patterns that should be ignored - only specific NiFi-related errors
  * Generic JavaScript errors have been removed to avoid masking real issues
  */
 export const IGNORED_ERROR_PATTERNS = [
-  'ResizeObserver loop limit exceeded',        // Browser-specific, safe to ignore
-  'Non-Error promise rejection captured',      // NiFi-specific promise handling
+  'ResizeObserver loop limit exceeded', // Browser-specific, safe to ignore
+  'Non-Error promise rejection captured', // NiFi-specific promise handling
 ];

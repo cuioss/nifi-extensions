@@ -30,7 +30,7 @@ describe('Processor Add/Remove Tests', () => {
     // Try to add a processor using helper function
     cy.addProcessorToCanvas('TestProcessor', {
       position: { x: 400, y: 300 },
-      skipIfExists: false
+      skipIfExists: false,
     }).then((processor) => {
       if (processor) {
         cy.log('✅ Processor added successfully using helper function');
@@ -57,7 +57,7 @@ describe('Processor Add/Remove Tests', () => {
     // First, add a processor to ensure we have something to remove
     cy.addProcessorToCanvas('TestProcessor', {
       position: { x: 400, y: 300 },
-      skipIfExists: false
+      skipIfExists: false,
     }).then((processor) => {
       if (processor) {
         cy.log('✅ Test processor added successfully, now testing removal');
@@ -92,14 +92,14 @@ describe('Processor Add/Remove Tests', () => {
 
     // Test adding multiple processors using helper function
     const processorTypes = ['GenerateFlowFile', 'LogAttribute', 'UpdateAttribute'];
-    let addedProcessors = [];
+    const addedProcessors = [];
 
     processorTypes.forEach((processorType, index) => {
       cy.log(`➕ Attempting to add processor ${index + 1}: ${processorType}`);
 
       cy.addProcessorToCanvas(processorType, {
-        position: { x: 300 + (index * 100), y: 300 },
-        skipIfExists: false
+        position: { x: 300 + index * 100, y: 300 },
+        skipIfExists: false,
       }).then((processor) => {
         if (processor) {
           addedProcessors.push(processorType);
@@ -139,7 +139,7 @@ describe('Processor Add/Remove Tests', () => {
     // Add a test processor using helper function
     cy.addProcessorToCanvas('TestProcessor', {
       position: { x: 400, y: 300 },
-      skipIfExists: false
+      skipIfExists: false,
     }).then((processor) => {
       if (processor) {
         cy.log('✅ Test processor added for properties testing');
@@ -159,11 +159,16 @@ describe('Processor Add/Remove Tests', () => {
 
             // Look for properties dialog and close if it appears
             cy.get('body', { timeout: 3000 }).then(($body) => {
-              const propertiesDialogs = $body.find('mat-dialog-container, .mat-dialog-container, [role="dialog"]');
+              const propertiesDialogs = $body.find(
+                'mat-dialog-container, .mat-dialog-container, [role="dialog"]'
+              );
 
               if (propertiesDialogs.length > 0) {
                 cy.log('✅ Properties dialog opened');
-                cy.get('button:contains("Cancel"), button:contains("Close"), .mat-button:contains("Cancel"), .mat-button:contains("Close")', { timeout: 2000 })
+                cy.get(
+                  'button:contains("Cancel"), button:contains("Close"), .mat-button:contains("Cancel"), .mat-button:contains("Close")',
+                  { timeout: 2000 }
+                )
                   .first()
                   .click();
                 cy.log('✅ Properties dialog closed');
@@ -226,13 +231,17 @@ describe('Processor Add/Remove Tests', () => {
       if (toolbarElements.length > 0) {
         cy.log('✅ Toolbar remains accessible');
       } else {
-        cy.log('ℹ️ Toolbar not found - advanced functionality not available in current environment');
+        cy.log(
+          'ℹ️ Toolbar not found - advanced functionality not available in current environment'
+        );
       }
     });
 
     // Count any processors on canvas
     cy.get('body').then(($body) => {
-      const processorElements = $body.find('svg g[class*="processor"], svg g[data-type*="processor"], svg .component');
+      const processorElements = $body.find(
+        'svg g[class*="processor"], svg g[data-type*="processor"], svg .component'
+      );
       cy.log(`✅ Canvas state verified: ${processorElements.length} processor(s) present`);
     });
   });

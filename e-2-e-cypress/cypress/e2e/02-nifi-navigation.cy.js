@@ -46,14 +46,16 @@ describe('NiFi Navigation Tests', () => {
     });
 
     // Check for basic page elements (more flexible)
-    cy.get('body').should('be.visible').then(($body) => {
-      const hasCanvas = $body.find('mat-sidenav-content, #canvas-container, svg').length > 0;
-      if (hasCanvas) {
-        cy.log('✅ Canvas elements found');
-      } else {
-        cy.log('ℹ️ Specific canvas elements not found, but page is accessible');
-      }
-    });
+    cy.get('body')
+      .should('be.visible')
+      .then(($body) => {
+        const hasCanvas = $body.find('mat-sidenav-content, #canvas-container, svg').length > 0;
+        if (hasCanvas) {
+          cy.log('✅ Canvas elements found');
+        } else {
+          cy.log('ℹ️ Specific canvas elements not found, but page is accessible');
+        }
+      });
   });
 
   it('Should handle page refresh and maintain session', () => {
@@ -98,9 +100,11 @@ describe('NiFi Navigation Tests', () => {
       }
 
       // Test basic page interaction - just verify we can interact with the page
-      cy.get('body').should('be.visible').then(() => {
-        cy.log('✅ Page is interactive and ready');
-      });
+      cy.get('body')
+        .should('be.visible')
+        .then(() => {
+          cy.log('✅ Page is interactive and ready');
+        });
 
       // Verify we're still on a valid page using helper
       cy.getPageContext().then((context) => {
