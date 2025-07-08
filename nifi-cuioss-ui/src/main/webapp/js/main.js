@@ -18,6 +18,7 @@
  * @since 1.0.0
  */
 import $ from 'cash-dom';
+import { createLogger } from './utils/logger.js';
 import * as nfCommon from 'nf.Common';
 import * as tokenVerifier from './components/tokenVerifier.js';
 import * as issuerConfigEditor from './components/issuerConfigEditor.js';
@@ -25,6 +26,8 @@ import * as i18n from './utils/i18n.js';
 import { initTooltips } from './utils/tooltip.js';
 import { initKeyboardShortcuts, cleanup as cleanupKeyboardShortcuts } from './utils/keyboardShortcuts.js';
 import { API, CSS, NIFI, UI_TEXT } from './utils/constants.js';
+
+const logger = createLogger('NiFi-Main');
 
 /**
  * Registers JWT validation components with the NiFi UI framework.
@@ -120,8 +123,7 @@ const setupHelpTooltips = () => {
         setupContinuousLoadingMonitoring();
     } catch (error) {
         // Help tooltips setup skipped - non-critical
-        // eslint-disable-next-line no-console
-        console.debug('JWT UI help tooltips setup failed:', error);
+        logger.debug('JWT UI help tooltips setup failed:', error);
     }
 };
 
@@ -151,7 +153,7 @@ const setupContinuousLoadingMonitoring = () => {
             });
 
             if (needsHiding) {
-                console.log('MutationObserver detected loading message, hiding immediately');
+                logger.debug('MutationObserver detected loading message, hiding immediately');
                 hideLoadingIndicatorRobust();
             }
         });
@@ -170,7 +172,7 @@ const setupContinuousLoadingMonitoring = () => {
     const periodicCheck = setInterval(() => {
         const hasLoadingMessage = document.querySelector('*')?.innerText?.includes('Loading JWT Validator UI');
         if (hasLoadingMessage) {
-            console.log('Periodic check detected loading message, hiding immediately');
+            logger.debug('Periodic check detected loading message, hiding immediately');
             hideLoadingIndicatorRobust();
         }
     }, 100); // Check every 100ms
@@ -178,10 +180,10 @@ const setupContinuousLoadingMonitoring = () => {
     // Clear periodic check after 10 seconds (should be sufficient)
     setTimeout(() => {
         clearInterval(periodicCheck);
-        console.log('Periodic loading check completed');
+        logger.debug('Periodic loading check completed');
     }, 10000);
 
-    console.log('Continuous loading monitoring set up successfully');
+    logger.debug('Continuous loading monitoring set up successfully');
 };
 
 /**
@@ -257,7 +259,7 @@ const setupUI = () => {
                 loadingIndicator.style.display = 'none';
             }
 
-            console.log('Loading indicator successfully hidden');
+            logger.debug('Loading indicator successfully hidden');
         } else {
             // Try alternative selectors as fallback
             const altLoadingIndicator = document.querySelector('#loading-indicator, .loading-indicator, [id*="loading"]');
@@ -373,11 +375,11 @@ const setupDialogHandlers = () => {
 export const init = () => {
     return new Promise((resolve) => {
         try {
-            console.log('JWT UI initialization starting...');
+            logger.debug('JWT UI initialization starting...');
 
             // Prevent double initialization
             if (window.jwtInitializationInProgress || window.jwtUISetupComplete) {
-                console.log('Initialization already in progress or complete, skipping');
+                logger.debug('Initialization already in progress or complete, skipping');
                 resolve(true);
                 return;
             }
@@ -385,20 +387,20 @@ export const init = () => {
             window.jwtInitializationInProgress = true;
 
             // CRITICAL: Hide loading indicator immediately as first action
-            console.log('PRIORITY: Hiding loading indicator immediately');
+            logger.info('PRIORITY: Hiding loading indicator immediately');
             hideLoadingIndicatorRobust();
 
             // Register components synchronously
-            console.log('Registering JWT UI components...');
+            logger.debug('Registering JWT UI components...');
             const success = registerComponents();
 
             if (success) {
-                console.log('Component registration successful, setting up UI...');
+                logger.debug('Component registration successful, setting up UI...');
                 setupUI();
                 registerHelpTooltips();
                 setupDialogHandlers();
                 initKeyboardShortcuts();
-                console.log('JWT UI initialization completed successfully');
+                logger.info('JWT UI initialization completed successfully');
             } else {
                 console.warn('Component registration failed, using fallback...');
                 setupUI();
@@ -408,18 +410,18 @@ export const init = () => {
 
             // Multiple safety checks to ensure loading indicator is hidden
             setTimeout(() => {
-                console.log('100ms safety check: ensuring loading indicator is hidden');
+                logger.debug('100ms safety check: ensuring loading indicator is hidden');
                 hideLoadingIndicatorRobust();
             }, 100);
 
             setTimeout(() => {
-                console.log('500ms safety check: ensuring loading indicator is hidden');
+                logger.debug('500ms safety check: ensuring loading indicator is hidden');
                 hideLoadingIndicatorRobust();
             }, 500);
 
             // Final fallback timeout
             setTimeout(() => {
-                console.log('Final 1s fallback: ensuring UI is visible and loading hidden');
+                logger.debug('Final 1s fallback: ensuring UI is visible and loading hidden');
                 setupUI();
                 hideLoadingIndicatorRobust();
                 updateTranslations();
@@ -447,7 +449,7 @@ export const init = () => {
  */
 const hideLoadingIndicatorRobust = () => {
     try {
-        console.log('hideLoadingIndicatorRobust: Starting comprehensive loading indicator removal');
+        logger.debug('hideLoadingIndicatorRobust: Starting comprehensive loading indicator removal');
 
         // Strategy 1: Hide by standard ID
         hideLoadingByStandardId();
@@ -463,7 +465,7 @@ const hideLoadingIndicatorRobust = () => {
 
         // Expose hiding function for test access
         window.jwtHideLoadingIndicator = hideLoadingIndicatorRobust;
-        console.log('hideLoadingIndicatorRobust: Comprehensive loading indicator removal completed');
+        logger.debug('hideLoadingIndicatorRobust: Comprehensive loading indicator removal completed');
     } catch (error) {
         console.warn('Error in hideLoadingIndicatorRobust:', error);
         emergencyFallbackHideLoading();
@@ -489,7 +491,7 @@ const hideLoadingByStandardId = () => {
         loadingIndicator.textContent = '';
         loadingIndicator.innerHTML = '';
 
-        console.log(`Loading indicator hidden via standard ID (was: "${originalText}")`);
+        logger.debug(`Loading indicator hidden via standard ID (was: "${originalText}")`);
     }
 };
 
@@ -529,19 +531,19 @@ const hideLoadingByTextContent = () => {
     const loadingTexts = ['Loading JWT Validator UI', 'Loading JWT', 'Loading'];
 
     let hiddenCount = 0;
-    console.log('hideLoadingByTextContent: Starting scan of', allElements.length, 'elements');
+    logger.debug('hideLoadingByTextContent: Starting scan of', allElements.length, 'elements');
 
     for (const element of allElements) {
         const textContent = element.textContent?.trim() || '';
         const hasLoadingText = loadingTexts.some(text => textContent.includes(text));
 
         if (hasLoadingText) {
-            console.log('Found element with loading text:', textContent, 'on element:', element.tagName, element.id, element.className);
+            logger.debug('Found element with loading text:', textContent, 'on element:', element.tagName, element.id, element.className);
             if (shouldHideElement(textContent)) {
                 hideElement(element, textContent);
                 hiddenCount++;
             } else {
-                console.log('Element not hidden because shouldHideElement returned false');
+                logger.debug('Element not hidden because shouldHideElement returned false');
             }
         }
     }
@@ -551,7 +553,7 @@ const hideLoadingByTextContent = () => {
     loadingIds.forEach(id => {
         const element = document.getElementById(id);
         if (element) {
-            console.log(`Found element with ID ${id}:`, element.textContent?.trim());
+            logger.debug(`Found element with ID ${id}:`, element.textContent?.trim());
             if (element.textContent?.trim().includes('Loading')) {
                 hideElement(element, element.textContent.trim());
                 hiddenCount++;
@@ -559,19 +561,19 @@ const hideLoadingByTextContent = () => {
         }
     });
 
-    console.log(`hideLoadingByTextContent: Hidden ${hiddenCount} loading indicators`);
+    logger.debug(`hideLoadingByTextContent: Hidden ${hiddenCount} loading indicators`);
 };
 
 /**
  * Determine if element should be hidden based on text content
  */
 const shouldHideElement = (textContent) => {
-    console.log('shouldHideElement checking:', textContent);
+    logger.debug('shouldHideElement checking:', textContent);
     const shouldHide = textContent.length < 100 &&
            (textContent === 'Loading JWT Validator UI...' ||
             textContent.startsWith('Loading JWT') ||
             textContent.startsWith('Loading'));
-    console.log('shouldHideElement result:', shouldHide);
+    logger.debug('shouldHideElement result:', shouldHide);
     return shouldHide;
 };
 
@@ -590,7 +592,7 @@ const hideElement = (element, textContent) => {
         element.textContent = '';
     }
 
-    console.log(`Hidden element with loading text: "${textContent}"`);
+    logger.debug(`Hidden element with loading text: "${textContent}"`);
 };
 
 /**
@@ -601,7 +603,7 @@ const emergencyFallbackHideLoading = () => {
         const basicIndicator = document.getElementById('loading-indicator');
         if (basicIndicator) {
             basicIndicator.style.display = 'none';
-            console.log('Emergency fallback: basic loading indicator hidden');
+            logger.debug('Emergency fallback: basic loading indicator hidden');
         }
     } catch (fallbackError) {
         console.error('Even emergency fallback failed:', fallbackError);

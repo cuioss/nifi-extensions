@@ -201,7 +201,12 @@ describe('bundle.js', () => {
             const { hideLoadingIndicatorImmediate } = require('../../main/webapp/js/bundle');
             hideLoadingIndicatorImmediate();
 
-            expect(consoleWarnSpy).toHaveBeenCalledWith('Error hiding loading indicator in bundle.js:', expect.any(Error));
+            // Check that console.warn was called with a structured log message
+            expect(consoleWarnSpy).toHaveBeenCalled();
+            const callArgs = consoleWarnSpy.mock.calls[0];
+            expect(callArgs[0]).toMatch(/\[WARN\] bundle:/);
+            expect(callArgs[1]).toBe('Error hiding loading indicator in bundle.js:');
+            expect(callArgs[2]).toEqual(expect.any(Error));
 
             // Restore mocks
             document.querySelectorAll = originalQuerySelectorAll;

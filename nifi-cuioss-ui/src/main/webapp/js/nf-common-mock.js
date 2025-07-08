@@ -1,5 +1,9 @@
 'use strict';
 
+import { createLogger } from './utils/logger.js';
+
+const logger = createLogger('nf-common-mock');
+
 /**
  * Mock implementation of nf.Common for standalone testing.
  * This provides the minimum functionality needed by the JWT Validator UI components.
@@ -37,13 +41,13 @@ export const registerCustomUiComponent = function (id, component, options) {
  * @param {object} component - The tab component
  */
 export const registerCustomUiTab = function (id, component) {
-    console.log('registerCustomUiTab called with ID:', id);
+    logger.debug('registerCustomUiTab called with ID:', id);
 
     // Ensure DOM is ready and required elements exist
     const containerElement = document.getElementById('jwt-validator-container');
     if (!containerElement) {
         console.error('jwt-validator-container not found! Cannot register tab:', id);
-        console.log('Available elements with jwt-validator in ID:',
+        logger.debug('Available elements with jwt-validator in ID:',
             Array.from(document.querySelectorAll('[id*="jwt-validator"]')).map(el => el.id));
         return;
     }
@@ -53,7 +57,7 @@ export const registerCustomUiTab = function (id, component) {
     let tabNavigation;
 
     if (!tabContainer) {
-        console.log('Creating jwt-validator-tabs container');
+        logger.debug('Creating jwt-validator-tabs container');
         tabContainer = document.createElement('div');
         tabContainer.id = 'jwt-validator-tabs';
         tabContainer.className = 'custom-tabs';
@@ -65,7 +69,7 @@ export const registerCustomUiTab = function (id, component) {
         tabNavigation.id = 'custom-tabs-navigation';
         tabContainer.appendChild(tabNavigation);
     } else {
-        console.log('jwt-validator-tabs container already exists');
+        logger.debug('jwt-validator-tabs container already exists');
         // Get tab navigation container
         tabNavigation = document.getElementById('custom-tabs-navigation');
     }

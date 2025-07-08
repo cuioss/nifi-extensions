@@ -7,6 +7,9 @@
 'use strict';
 
 import * as main from 'js/main'; // Match test mock path
+import { createLogger } from './utils/logger.js';
+
+const logger = createLogger('bundle');
 
 // Function to immediately hide loading indicators
 const hideLoadingIndicatorImmediate = () => {
@@ -35,30 +38,30 @@ const hideLoadingIndicatorImmediate = () => {
             }
         });
 
-        console.log('Loading indicator hidden in bundle.js');
+        logger.info('Loading indicator hidden in bundle.js');
     } catch (error) {
-        console.warn('Error hiding loading indicator in bundle.js:', error);
+        logger.warn('Error hiding loading indicator in bundle.js:', error);
     }
 };
 
 export const init = function () {
-    console.log('Bundle.js init() called');
+    logger.debug('Bundle.js init() called');
 
     // Immediately hide loading indicator
     hideLoadingIndicatorImmediate();
 
     // Check if components are already registered or initialization is in progress
     if (window.jwtComponentsRegistered || window.jwtInitializationInProgress) {
-        console.log('Components already registered or initialization in progress, skipping initialization from bundle');
+        logger.debug('Components already registered or initialization in progress, skipping initialization from bundle');
         return;
     }
 
     // Initialize the main module if it's available
     if (main && typeof main.init === 'function') {
-        console.log('Initializing JWT UI components from bundle.js');
+        logger.debug('Initializing JWT UI components from bundle.js');
         main.init();
     } else {
-        console.error('Main module not available or missing init function from bundle.js');
+        logger.error('Main module not available or missing init function from bundle.js');
         // Still try to hide loading indicator
         hideLoadingIndicatorImmediate();
     }

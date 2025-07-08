@@ -7,12 +7,15 @@
 
 'use strict';
 import * as main from 'js/main'; // Match test mock path
+import { createLogger } from './utils/logger.js';
+
+const logger = createLogger('nf-jwt-validator');
 
 // Function to robustly hide loading indicator immediately
 // This implements the roundtrip testing requirement for immediate UI feedback
 const hideLoadingImmediately = () => {
     try {
-        console.log('nf-jwt-validator.js: Starting immediate loading indicator removal');
+        logger.debug('Starting immediate loading indicator removal');
 
         // Comprehensive approach: multiple selectors and strategies
         const strategies = [
@@ -26,7 +29,7 @@ const hideLoadingImmediately = () => {
                     element.setAttribute('aria-hidden', 'true');
                     element.classList.add('hidden');
                     element.textContent = '';
-                    console.log('Standard ID loading indicator hidden');
+                    logger.debug('Standard ID loading indicator hidden');
                     return true;
                 }
                 return false;
@@ -48,7 +51,7 @@ const hideLoadingImmediately = () => {
                     });
                 });
                 if (hiddenCount > 0) {
-                    console.log(`Selector-based: ${hiddenCount} loading indicators hidden`);
+                    logger.debug(`Selector-based: ${hiddenCount} loading indicators hidden`);
                     return true;
                 }
                 return false;
@@ -93,7 +96,8 @@ const hideLoadingImmediately = () => {
                 });
 
                 if (hiddenCount > 0) {
-                    console.log(`Text-based: ${hiddenCount} loading indicators hidden (including simulated)`);
+                    const message = `Text-based: ${hiddenCount} indicators hidden (with simulated)`;
+                    logger.debug(message);
                     return true;
                 }
                 return false;
@@ -113,7 +117,7 @@ const hideLoadingImmediately = () => {
         });
 
         if (anySuccess) {
-            console.log('Loading indicator successfully hidden by nf-jwt-validator.js');
+            logger.debug('Loading indicator successfully hidden by nf-jwt-validator.js');
         } else {
             console.warn('No loading indicators found to hide');
         }
@@ -128,7 +132,7 @@ const hideLoadingImmediately = () => {
             const emergency = document.getElementById('loading-indicator');
             if (emergency) {
                 emergency.style.display = 'none';
-                console.log('Emergency fallback: loading indicator hidden');
+                logger.debug('Emergency fallback: loading indicator hidden');
             }
         } catch (emergencyError) {
             console.error('Emergency fallback also failed:', emergencyError);
@@ -137,7 +141,7 @@ const hideLoadingImmediately = () => {
 };
 
 // Hide loading immediately when script loads - this is critical for roundtrip testing
-console.log('nf-jwt-validator.js: Script loaded, hiding loading indicator immediately');
+logger.debug('nf-jwt-validator.js: Script loaded, hiding loading indicator immediately');
 hideLoadingImmediately();
 
 // Track if initialization has already been attempted in this module
@@ -145,27 +149,27 @@ let initializationAttempted = false;
 
 // Initialize when the document is ready
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOMContentLoaded event fired in nf-jwt-validator.js');
+    logger.debug('DOMContentLoaded event fired in nf-jwt-validator.js');
 
     // Hide loading indicator again on DOM ready - ensure it's gone
     hideLoadingImmediately();
 
     // Check if components are already registered or initialization is in progress
     if (window.jwtComponentsRegistered || window.jwtInitializationInProgress) {
-        console.log('Components already registered or initialization in progress, skipping initialization');
+        logger.debug('Components already registered or initialization in progress, skipping initialization');
         return;
     }
 
     // Initialize the main module if it's available and not yet attempted
     if (main && typeof main.init === 'function' && !initializationAttempted) {
         initializationAttempted = true;
-        console.log('Initializing JWT UI components from nf-jwt-validator.js');
+        logger.debug('Initializing JWT UI components from nf-jwt-validator.js');
         const initResult = main.init();
 
         // Handle both Promise and non-Promise return values
         if (initResult && typeof initResult.then === 'function') {
             initResult.then(() => {
-                console.log('JWT UI initialization completed from nf-jwt-validator.js');
+                logger.info('JWT UI initialization completed from nf-jwt-validator.js');
                 // Final safety check
                 hideLoadingImmediately();
             }).catch(error => {
@@ -174,14 +178,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 hideLoadingImmediately();
             });
         } else {
-            console.log('JWT UI initialization completed synchronously from nf-jwt-validator.js');
+            logger.info('JWT UI initialization completed synchronously from nf-jwt-validator.js');
             hideLoadingImmediately();
         }
     } else {
         if (!main || typeof main.init !== 'function') {
             console.error('Main module not available or missing init function');
         } else {
-            console.log('JWT UI initialization already attempted, skipping');
+            logger.debug('JWT UI initialization already attempted, skipping');
         }
         hideLoadingImmediately();
     }
@@ -189,28 +193,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Also initialize immediately if DOM is already ready
 if (document.readyState !== 'loading') {
-    console.log('DOM already ready, initializing immediately');
+    logger.debug('DOM already ready, initializing immediately');
     hideLoadingImmediately();
 
     // Check if components are already registered or initialization is in progress
     if (window.jwtComponentsRegistered || window.jwtInitializationInProgress) {
-        console.log('Components already registered or initialization in progress, skipping immediate initialization');
+        logger.debug('Components already registered or initialization in progress, skipping immediate initialization');
     } else if (main && typeof main.init === 'function' && !initializationAttempted) {
         initializationAttempted = true;
-        console.log('Initializing JWT UI components immediately');
+        logger.debug('Initializing JWT UI components immediately');
         const initResult = main.init();
 
         // Handle both Promise and non-Promise return values
         if (initResult && typeof initResult.then === 'function') {
             initResult.then(() => {
-                console.log('Immediate JWT UI initialization completed');
+                logger.info('Immediate JWT UI initialization completed');
                 hideLoadingImmediately();
             }).catch(error => {
                 console.error('Immediate JWT UI initialization failed:', error);
                 hideLoadingImmediately();
             });
         } else {
-            console.log('Immediate JWT UI initialization completed synchronously');
+            logger.info('Immediate JWT UI initialization completed synchronously');
             hideLoadingImmediately();
         }
     }
@@ -224,5 +228,5 @@ const safetyInterval = setInterval(() => {
 
 setTimeout(() => {
     clearInterval(safetyInterval);
-    console.log('Safety interval cleared - loading indicator should be permanently hidden');
+    logger.debug('Safety interval cleared - loading indicator should be permanently hidden');
 }, 2000);
