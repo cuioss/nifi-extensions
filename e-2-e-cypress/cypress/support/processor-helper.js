@@ -545,3 +545,178 @@ Cypress.Commands.add('getAllProcessorsOnCanvas', (options = {}) => {
     });
   });
 });
+
+/**
+ * Open processor configuration dialog
+ * @param {string|ProcessorReference} processor - Processor type/name or processor reference
+ * @param {Object} options - Configuration options
+ * @param {boolean} [options.advanced=false] - Open advanced configuration if available
+ * @param {number} [options.timeout=5000] - Operation timeout
+ * @returns {Cypress.Chainable<boolean>} Success status
+ */
+Cypress.Commands.add('openProcessorConfiguration', (processor, options = {}) => {
+  const { advanced = false, timeout = TIMEOUTS.DIALOG_APPEAR } = options;
+
+  logMessage(
+    'action',
+    `Opening ${advanced ? 'advanced ' : ''}configuration for: ${typeof processor === 'string' ? processor : processor.name}`
+  );
+
+  // Ensure we're authenticated
+  return cy.getSessionContext().then((session) => {
+    if (!session.isLoggedIn) {
+      throw new Error('Cannot open processor configuration: not authenticated');
+    }
+
+    // If processor is a string, find it first
+    if (typeof processor === 'string') {
+      return cy.findProcessorOnCanvas(processor).then((foundProcessor) => {
+        if (!foundProcessor) {
+          logMessage('warn', `Processor ${processor} not found on canvas`);
+          return false;
+        }
+        return performConfigurationOpen(foundProcessor, advanced, timeout);
+      });
+    } else {
+      // Processor is already a reference object
+      return performConfigurationOpen(processor, advanced, timeout);
+    }
+  });
+});
+
+/**
+ * Perform the actual configuration dialog opening
+ * @param {ProcessorReference} processor - Processor reference
+ * @param {boolean} advanced - Whether to open advanced configuration
+ * @param {number} timeout - Operation timeout
+ * @returns {Cypress.Chainable<boolean>} Success status
+ */
+function performConfigurationOpen(processor, advanced, timeout) {
+  logMessage('action', `Opening configuration for processor: ${processor.name}`);
+
+  // Right-click on the processor to open context menu
+  return cy
+    .wrap(processor.element)
+    .rightclick()
+    .then(() => {
+      // Wait for context menu to appear
+      return cy.get(SELECTORS.CONTEXT_MENU, { timeout }).should('be.visible');
+    })
+    .then(() => {
+      // Look for configuration/properties option in context menu
+      return cy.get('body').then(($body) => {
+        // Try different possible selectors for configuration option
+        const configSelectors = [
+          'mat-menu-item:contains("Configure")',
+          'mat-menu-item:contains("Properties")',
+          'button:contains("Configure")',
+          'button:contains("Properties")',
+          '[role="menuitem"]:contains("Configure")',
+          '[role="menuitem"]:contains("Properties")'
+        ];
+
+        let configOptionFound = false;
+        
+        for (const selector of configSelectors) {
+          const elements = $body.find(selector);
+          if (elements.length > 0) {
+            cy.get(selector, { timeout }).first().click();
+            configOptionFound = true;
+            logMessage('success', `Found and clicked configuration option: ${selector}`);
+            break;
+          }
+        }
+
+        if (!configOptionFound) {
+          logMessage('warn', 'No configuration option found in context menu');
+          return false;
+        }
+
+        // Wait for configuration dialog to appear
+        return cy.get('body').then(($body) => {
+          const dialogSelectors = [
+            'mat-dialog-container',
+            '.mat-dialog-container',
+            '[role="dialog"]',
+            '.processor-properties-dialog',
+            '.configuration-dialog'
+          ];
+
+          let dialogFound = false;
+
+          for (const selector of dialogSelectors) {
+            const dialogs = $body.find(selector);
+            if (dialogs.length > 0) {
+              cy.get(selector, { timeout }).should('be.visible');
+              dialogFound = true;
+              logMessage('success', `Configuration dialog opened: ${selector}`);
+              
+              // If advanced configuration is requested, look for advanced tab/button
+              if (advanced) {
+                return openAdvancedTab(timeout);
+              }
+              break;
+            }
+          }
+
+          if (!dialogFound) {
+            logMessage('warn', 'Configuration dialog did not appear');
+            return false;
+          }
+
+          return true;
+        });
+      });
+    })
+    .then(
+      (result) => {
+        if (result) {
+          logMessage('success', `Configuration dialog opened successfully for ${processor.name}`);
+        }
+        return result;
+      },
+      (error) => {
+        logMessage('error', `Failed to open configuration for ${processor.name}: ${error.message}`);
+        return false;
+      }
+    );
+}
+
+/**
+ * Open advanced configuration tab if available
+ * @param {number} timeout - Operation timeout
+ * @returns {Cypress.Chainable<boolean>} Success status
+ */
+function openAdvancedTab(timeout) {
+  logMessage('action', 'Looking for advanced configuration tab');
+
+  return cy.get('body').then(($body) => {
+    // Look for advanced tab or button
+    const advancedSelectors = [
+      'mat-tab[aria-label*="Advanced"]',
+      'mat-tab:contains("Advanced")',
+      '.mat-tab:contains("Advanced")',
+      'button:contains("Advanced")',
+      '[role="tab"]:contains("Advanced")',
+      '.tab:contains("Advanced")'
+    ];
+
+    let advancedFound = false;
+
+    for (const selector of advancedSelectors) {
+      const elements = $body.find(selector);
+      if (elements.length > 0) {
+        cy.get(selector, { timeout }).first().click();
+        advancedFound = true;
+        logMessage('success', `Opened advanced configuration tab: ${selector}`);
+        break;
+      }
+    }
+
+    if (!advancedFound) {
+      logMessage('info', 'No advanced tab found - may already be in advanced view or not available');
+    }
+
+    return advancedFound;
+  });
+}
