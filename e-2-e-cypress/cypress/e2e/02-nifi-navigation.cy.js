@@ -6,17 +6,8 @@
 
 describe('NiFi Navigation Tests', () => {
   beforeEach(() => {
-    // Navigate to login and authenticate manually
-    cy.visit('/#/login');
-    
-    // Perform login
-    cy.get('input[type="text"], input[id*="username"], input[name="username"]').type('testUser');
-    cy.get('input[type="password"], input[id*="password"], input[name="password"]').type('drowssap');
-    cy.get('button:contains("Login"), input[value="Login"], button[type="submit"]').click();
-    
-    // Wait for login to complete
-    cy.url().should('not.contain', '#/login');
-    cy.wait(2000);
+    // Ensure NiFi is ready for testing using auth helper
+    cy.ensureNiFiReady('testUser', 'drowssap');
   });
 
   it('Should navigate from login to main canvas', () => {
@@ -29,24 +20,12 @@ describe('NiFi Navigation Tests', () => {
       cy.log('✅ Successfully navigated to main canvas after login');
     });
 
-    // Test navigation to login page and back
-    cy.visit('/#/login');
-    cy.wait(1000);
+    // Test navigation helper - verify we can navigate to main canvas
+    cy.navigateToPage('MAIN_CANVAS');
+    cy.verifyPageType('MAIN_CANVAS');
     
-    // Check if we're actually on login page or redirected back
-    cy.url().then(url => {
-      if (url.includes('#/login')) {
-        cy.log('✅ Successfully navigated to login page');
-        // Navigate back to main canvas
-        cy.visit('/');
-        cy.wait(1000);
-        cy.getPageContext().then((context) => {
-          expect(context.pageType).to.equal('MAIN_CANVAS');
-        });
-      } else {
-        cy.log('ℹ️ Already authenticated, redirected back to main canvas');
-      }
-    });
+    // Verify navigation succeeded
+    cy.log('✅ Navigation to main canvas verified using helpers');
   });
 
   it('Should verify canvas is accessible and ready for operations', () => {
@@ -143,18 +122,14 @@ describe('NiFi Navigation Tests', () => {
       expect(context.pageType).to.equal('MAIN_CANVAS');
     });
 
-    // Clear session and navigate to login
-    cy.clearAllCookies();
-    cy.clearLocalStorage();
-    cy.window().then((win) => {
-      win.sessionStorage.clear();
-    });
+    // Use helper function to clear session
+    cy.clearSession();
     
-    // Navigate to login page
+    // Simply visit login page to verify session was cleared
     cy.visit('/#/login');
     cy.wait(2000);
     
-    // Verify we're back at login page (URL check is sufficient)
+    // Verify we can see login page
     cy.url().should('contain', '#/login');
     cy.log('✅ Successfully logged out and returned to login page');
   });

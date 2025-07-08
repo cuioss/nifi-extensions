@@ -6,17 +6,8 @@
 
 describe('Processor Add/Remove Tests', () => {
   beforeEach(() => {
-    // Navigate to login and authenticate manually
-    cy.visit('/#/login');
-    
-    // Perform login
-    cy.get('input[type="text"], input[id*="username"], input[name="username"]').type('testUser');
-    cy.get('input[type="password"], input[id*="password"], input[name="password"]').type('drowssap');
-    cy.get('button:contains("Login"), input[value="Login"], button[type="submit"]').click();
-    
-    // Wait for login to complete
-    cy.url().should('not.contain', '#/login');
-    cy.wait(2000);
+    // Ensure NiFi is ready for testing using auth helper
+    cy.ensureNiFiReady('testUser', 'drowssap');
 
     // Clean up any existing processors from previous tests
     cy.cleanupCanvasProcessors();

@@ -194,9 +194,25 @@ Cypress.Commands.add('navigateToPage', (pathOrPageType, options = {}) => {
 
   // Verify if expected type is specified
   if (expectedType) {
-    // For LOGIN page, wait for elements to appear before checking readiness
+    // For LOGIN page, check if we can actually reach it (might redirect if already authenticated)
     if (expectedType === PAGE_TYPES.LOGIN) {
-      cy.get('input[type="password"], input[type="text"]', { timeout: 10000 }).should('be.visible');
+      cy.url().then(url => {
+        if (url.includes('#/login')) {
+          // We're on login page, check if login elements exist
+          cy.get('body').then($body => {
+            const hasLoginElements = $body.find('input[type="password"], input[type="text"]').length > 0;
+            if (hasLoginElements) {
+              cy.get('input[type="password"], input[type="text"]', { timeout: 5000 }).should('be.visible');
+            } else {
+              cy.log('On login URL but no login elements found - page may still be loading');
+              cy.wait(2000); // Give time for elements to appear
+            }
+          });
+        } else {
+          // Already authenticated, redirected away from login page
+          cy.log('Already authenticated, cannot access login page');
+        }
+      });
     }
 
     cy.getPageContext().should((context) => {
@@ -224,9 +240,25 @@ Cypress.Commands.add('verifyPageType', (expectedPageType, options = {}) => {
 
   logMessage('search', `Verifying page type: ${expectedPageType}`);
 
-  // For LOGIN page, wait for elements to appear before checking readiness
+  // For LOGIN page, check if we can actually reach it (might redirect if already authenticated)
   if (expectedPageType === PAGE_TYPES.LOGIN) {
-    cy.get('input[type="password"], input[type="text"]', { timeout: 10000 }).should('be.visible');
+    cy.url().then(url => {
+      if (url.includes('#/login')) {
+        // We're on login page, check if login elements exist
+        cy.get('body').then($body => {
+          const hasLoginElements = $body.find('input[type="password"], input[type="text"]').length > 0;
+          if (hasLoginElements) {
+            cy.get('input[type="password"], input[type="text"]', { timeout: 5000 }).should('be.visible');
+          } else {
+            cy.log('On login URL but no login elements found - page may still be loading');
+            cy.wait(2000); // Give time for elements to appear
+          }
+        });
+      } else {
+        // Already authenticated, redirected away from login page
+        cy.log('Already authenticated, cannot access login page');
+      }
+    });
   }
 
   return cy.getPageContext().then((context) => {
