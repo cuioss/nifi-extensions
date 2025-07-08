@@ -1,9 +1,13 @@
 = NiFi UI Testing Structure Guide
 :toc: left
 :toclevels: 3
+:toc-title: Table of Contents
 :sectnums:
-:icons: font
 :source-highlighter: highlight.js
+
+== Purpose
+
+This document provides comprehensive guidance for NiFi UI automation testing, focusing on the specific operations required for reliable testing of the MultiIssuerJWTTokenAuthenticator processor.
 
 == NiFi 2.4.0 UI Sources
 
@@ -15,18 +19,19 @@
 
 This provides direct access to the complete Angular Material-based UI implementation for automated analysis and development workflows.
 
-== Testing Focus: Four Key Operations
+== Core Testing Operations
 
 This document focuses on the specific testing requirements for NiFi UI automation:
 
-1. **How to reliably Login**
-2. **How to Navigate to the main-canvas**
-3. **How to Add and remove a processor**
-4. **How to Access "Advanced" Settings of a processor**
+1. **Login Implementation** - Reliable authentication for test environments
+2. **Canvas Navigation** - Navigation to the main canvas for processor management
+3. **Processor Management** - Adding and removing processors from the canvas
+4. **Advanced Configuration** - Accessing processor advanced settings and properties
 
-== 1. How to Reliably Login
+== Login Implementation
 
-=== Login Implementation
+=== Authentication Commands
+
 Based on the current implementation in `cypress/support/auth-helper.js`:
 
 [source,javascript]
@@ -38,7 +43,10 @@ cy.loginNiFi(username, password);
 cy.ensureNiFiReady();
 ----
 
-=== Login Structure (Source Code Analysis)
+=== Login Structure
+
+From source code analysis:
+
 * **Login URL**: `https://localhost:9095/nifi/#/login`
 * **Framework**: Angular Material login form with Material Design components
 * **Authentication**: Keycloak OAuth integration
@@ -62,9 +70,10 @@ cy.getPageContext().then((context) => {
 });
 ----
 
-== 2. How to Navigate to the Main Canvas
+== Canvas Navigation
 
 === Navigation Implementation
+
 Based on `cypress/support/navigation-helper.js`:
 
 [source,javascript]
@@ -79,7 +88,8 @@ cy.verifyPageType('MAIN_CANVAS');
 cy.waitForPageType('MAIN_CANVAS');
 ----
 
-=== Canvas Structure (Source Code Analysis)
+=== Canvas Structure
+
 From `nifi-frontend/src/main/frontend/apps/nifi/src/app/pages/flow-designer/ui/canvas/canvas.component.html`:
 
 [source,html]
@@ -106,9 +116,10 @@ cy.get('mat-sidenav-content', { timeout: 10000 }).should('be.visible');
 cy.get('#canvas-container').should('be.visible');
 ----
 
-== 3. How to Add and Remove a Processor
+== Processor Management
 
 === Add Processor Implementation
+
 Based on `cypress/support/processor-helper.js`:
 
 [source,javascript]
@@ -130,6 +141,7 @@ cy.confirmProcessorAddition();
 ----
 
 === Remove Processor Implementation
+
 [source,javascript]
 ----
 // Remove processor by reference
@@ -174,9 +186,10 @@ ADD_BUTTON: 'button:contains("Add"), input[value*="Add"], .add-button'
 DELETE_BUTTON: 'button:contains("Delete"), input[value*="Delete"], .delete-button'
 ----
 
-== 4. How to Access "Advanced" Settings of a Processor
+== Advanced Configuration Access
 
 === Processor Configuration Access
+
 Based on NiFi UI patterns and source code structure:
 
 [source,javascript]
@@ -299,15 +312,17 @@ const FALLBACK_SELECTORS = {
 };
 ----
 
-== Current Testing Environment Status
+== Current Testing Environment
 
 === Authentication Configuration
+
 * **Test Credentials**: `testUser` / `drowssap`
 * **Authentication Method**: SingleUserLoginIdentityProvider
 * **OAuth Integration**: Keycloak backend
 * **Login URL**: `https://localhost:9095/nifi/#/login`
 
-=== Infrastructure Status
+=== Infrastructure Configuration
+
 * **NiFi Container**: Healthy and operational
 * **Keycloak Container**: Healthy and operational  
 * **Network Connectivity**: Services can communicate

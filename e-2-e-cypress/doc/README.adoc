@@ -1,0 +1,165 @@
+= NiFi Integration Testing Documentation
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+
+== Purpose
+
+This documentation covers the complete end-to-end testing implementation for the MultiIssuerJWTTokenAuthenticator processor using Cypress with NiFi 2.4.0.
+
+== Testing Philosophy
+
+*We use NiFi as a platform to test our custom processor logic. We don't test NiFi itself.*
+
+=== Testing Focus
+
+* Test JWT validation logic in custom processors
+* Test multi-issuer configuration handling
+* Test error handling and edge cases
+
+We avoid testing:
+
+* NiFi's authentication system
+* NiFi's navigation mechanics
+* NiFi's processor framework
+
+== Production Status
+
+The testing framework is fully operational with complete Docker environment and comprehensive testing capabilities.
+
+== Critical Verification Requirements
+
+Before committing any changes, both Maven commands MUST pass:
+
+[source,bash]
+----
+# 1. Full build verification (required)
+./mvnw clean verify
+
+# 2. Integration tests (required)
+./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
+----
+
+IMPORTANT: All code changes must be verified with both commands to ensure full build integrity, end-to-end integration functionality, and no regressions in the complete pipeline.
+
+== Documentation Structure
+
+=== Project Overview and Setup
+
+* xref:overview.adoc[Project Overview] - Core philosophy and quick start
+* xref:setup-guide.adoc[Setup Guide] - Complete environment setup, prerequisites, and configuration instructions
+
+=== Testing Implementation
+
+* xref:testing-patterns.adoc[Testing Patterns] - Practical code examples, recipes, and best practices for writing tests
+* xref:javascript-testing.adoc[JavaScript Testing] - JavaScript UI component testing implementation and security patterns
+
+=== Technical Architecture
+
+* xref:architecture.adoc[Technical Architecture] - System architecture, infrastructure details, and technical specifications
+* xref:nifi-ui-structure.adoc[NiFi UI Structure] - NiFi 2.4.0 UI structure analysis and testing focus
+
+=== CI/CD and Integration
+
+* xref:ci-cd-integration.adoc[CI/CD Integration] - Continuous integration setup and automated testing workflows
+* xref:mcp-playwright-guide.adoc[MCP Playwright Integration] - MCP Playwright tool setup for enhanced development workflows
+
+== Quick Start
+
+*Primary Testing Commands*: All development and verification uses two essential Maven commands for comprehensive validation:
+
+[source,bash]
+----
+# 1. Full build verification (used for every implementation step)
+./mvnw clean verify
+
+# 2. Integration tests with Docker environment
+./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
+----
+
+*Development Workflow*:
+
+1. Make changes to tests/commands
+2. Verify with both Maven commands above
+3. Fix any failures immediately (fail-fast principle)
+4. Commit only after both commands pass successfully
+
+The Maven command automatically handles:
+
+* Docker container startup (NiFi + Keycloak)
+* Dependency installation
+* Test execution
+* Container cleanup
+* Build verification
+
+== Implementation Summary
+
+The testing framework provides comprehensive end-to-end testing capabilities:
+
+* Production-ready framework with comprehensive helper-based architecture
+* Helper-based architecture: auth-helper, navigation-helper, processor-helper with cross-integration
+* Zero-warning ESLint implementation: Clean, maintainable codebase
+* Full Maven integration: Automated Docker lifecycle and test execution
+* Comprehensive test coverage: Self-tests, functional tests, and advanced processor testing
+
+== Current Test Suite
+
+*Test Coverage*:
+
+* `01-nifi-authentication.cy.js`: Authentication system testing using auth-helper
+* `02-nifi-navigation.cy.js`: Navigation functionality testing using navigation-helper
+* `03-processor-add-remove.cy.js`: Processor lifecycle testing using processor-helper
+
+*Test Categories*:
+
+* Authentication Testing (login, logout, session management using auth-helper)
+* Navigation Testing (page transitions, canvas access using navigation-helper)
+* Processor Testing (add/remove lifecycle using processor-helper)
+* Helper Integration (cross-helper usage and authentication-aware operations)
+* Session Management (without cy.session for improved reliability)
+
+== Standards and References
+
+This project implements centralized coding standards:
+
+* *JavaScript Standards*: JavaScript and ESLint configuration
+* *Testing Standards*: Testing best practices and quality standards
+* *Documentation Standards*: Documentation structure and maintenance
+
+== Support
+
+=== For New Team Members
+
+1. Start with xref:overview.adoc[Project Overview]
+2. Review xref:setup-guide.adoc[Setup Guide]
+3. Review xref:testing-patterns.adoc[Testing Patterns] for practical examples
+4. Reference xref:architecture.adoc[Technical Architecture] for technical details
+
+=== For Troubleshooting
+
+1. Check xref:testing-patterns.adoc[Testing Patterns] troubleshooting section
+2. Review xref:setup-guide.adoc[Setup Guide] for configuration issues
+3. Reference xref:javascript-testing.adoc[JavaScript Testing] for component-specific problems
+
+== Contributing
+
+When adding new functionality:
+
+1. Make incremental changes to tests or commands
+2. Always verify each change with both Maven commands
+3. Fix any failures immediately before proceeding
+4. Commit only after both Maven commands pass successfully
+5. Follow patterns in xref:testing-patterns.adoc[Testing Patterns]
+6. Use existing custom commands from `/cypress/support/commands/`
+7. Focus on testing custom processor logic, not NiFi mechanics
+8. Ensure zero ESLint warnings following centralized standards
+
+IMPORTANT: Never modify or add parameters to either Maven verification command. All changes must work with both exact commands as specified.
+
+== See Also
+
+* xref:../README.adoc[Main README] - Module overview and quick start
+* xref:overview.adoc[Project Overview] - Detailed project philosophy
+* xref:architecture.adoc[Technical Architecture] - Implementation details

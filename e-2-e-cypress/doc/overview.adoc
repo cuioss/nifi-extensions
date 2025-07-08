@@ -1,0 +1,260 @@
+= Project Overview
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+
+== Purpose
+
+This document provides an overview of the NiFi integration testing framework for custom processor validation using Cypress.
+
+== Core Philosophy
+
+*We use NiFi as a platform to test our custom processor logic. We don't test NiFi itself.*
+
+=== Testing Focus Areas
+
+The framework focuses on testing:
+
+* JWT validation logic in our custom processors
+* Multi-issuer configuration handling
+* Error handling and edge cases in our code
+
+We explicitly avoid testing:
+
+* NiFi's authentication system
+* NiFi's navigation mechanics
+* NiFi's processor framework
+
+== Technology Stack
+
+=== Core Technologies
+
+* *Test Framework*: Cypress 14.4.1 with custom commands
+* *Target Application*: NiFi 2.4.0 with Angular UI
+* *Authentication*: Built-in NiFi authentication
+* *Infrastructure*: Docker with docker-compose
+* *Build System*: Maven with Node.js integration
+* *CI/CD*: GitHub Actions with automated testing
+
+=== Framework Architecture
+
+The testing framework uses a helper-based architecture:
+
+* `auth-helper.js` - Authentication management
+* `navigation-helper.js` - Page navigation and detection
+* `processor-helper.js` - Processor lifecycle operations
+* `constants.js` - Shared selectors and constants
+* `utils.js` - Utility functions
+
+== Current Capabilities
+
+=== Production-Ready Features
+
+* 15+ Custom Cypress commands for NiFi UI automation
+* Complete login reliability using authentication helpers
+* Comprehensive navigation reliability using navigation helpers
+* Angular 2.4.0 UI compatibility
+* Complete Docker environment with NiFi container
+* Custom processor integration (JWTTokenAuthenticator, MultiIssuerJWTTokenAuthenticator)
+* Maven integration with Node.js 20.19.2
+* Full CI/CD pipeline with GitHub Actions
+* Zero-warning ESLint implementation following centralized JavaScript standards
+* Modular architecture with helper-based design
+
+=== Test Coverage
+
+*Authentication Testing*:
+
+* Login and logout functionality
+* Session management
+* Cross-helper authentication awareness
+
+*Navigation Testing*:
+
+* Page transitions
+* Canvas access
+* Page type detection and verification
+
+*Processor Testing*:
+
+* Add and remove processor lifecycle
+* Configuration management
+* Advanced settings access
+
+== Development Approach
+
+=== Verification Strategy
+
+All development follows a fail-fast verification approach using two essential Maven commands:
+
+[source,bash]
+----
+# 1. Full build verification
+./mvnw clean verify
+
+# 2. Integration tests
+./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
+----
+
+Both commands must pass before committing any changes.
+
+=== Implementation Methodology
+
+1. Make small incremental changes
+2. Immediately verify with both Maven commands
+3. Fix any failures immediately
+4. Commit only after both commands pass successfully
+5. Repeat for next change
+
+This approach ensures:
+
+* Immediate feedback on changes
+* Smaller debug scope for issues
+* Reliable builds without broken code
+* Team confidence in current state
+* CI/CD readiness
+
+== Code Quality Standards
+
+=== ESLint Implementation
+
+The framework implements zero-warning ESLint standards:
+
+* Complete elimination of linting issues
+* Production-ready code standards
+* Modular architecture with helper functions
+* Optimized DOM queries and reduced code duplication
+* Enhanced error handling and fallback mechanisms
+
+=== Architecture Principles
+
+* *Command-based approach*: Reusable commands for common operations
+* *Self-verification*: Commands are tested independently
+* *Separation of concerns*: Clear distinction between setup, tests, and utilities
+* *Error resilience*: Graceful handling of failures with detailed reporting
+* *Maintainability*: Clear structure and comprehensive documentation
+
+== Infrastructure
+
+=== Docker Environment
+
+The testing environment uses containerized infrastructure:
+
+* *NiFi Container*: Apache NiFi 2.4.0
+* *NiFi Container*: Apache NiFi 2.4.0 with custom build
+* *Network Configuration*: Local Docker network
+* *Health Checks*: Automated service readiness verification
+
+=== Access Points
+
+* *NiFi UI*: `https://localhost:9095/nifi/`
+* *NiFi API*: `https://localhost:9095/nifi-api/`
+* *NiFi UI*: `https://localhost:9095/nifi/`
+
+=== Test Credentials
+
+* *Username*: `testUser`
+* *Password*: `drowssap`
+
+== Usage Patterns
+
+=== Basic Test Structure
+
+[source,javascript]
+----
+describe('Test Suite', () => {
+  beforeEach(() => {
+    // Ensure NiFi is ready using auth helper
+    cy.ensureNiFiReady('testUser', 'drowssap');
+  });
+
+  it('should perform test action', () => {
+    // Use navigation helper
+    cy.navigateToPage('MAIN_CANVAS');
+    
+    // Use processor helper
+    cy.addProcessorToCanvas('GenerateFlowFile')
+      .then((processorInfo) => {
+        expect(processorInfo).to.have.property('id');
+      });
+  });
+});
+----
+
+=== Helper Integration
+
+The framework demonstrates cross-helper integration:
+
+[source,javascript]
+----
+// Navigation helper detects authentication needs
+cy.navigateToPage('MAIN_CANVAS');
+
+// Auth helper ensures authentication before proceeding
+cy.ensureNiFiReady('testUser', 'drowssap');
+
+// Processor helper uses session context for auth verification
+cy.addProcessorToCanvas('GenerateFlowFile');
+----
+
+== Performance Characteristics
+
+=== Test Execution Times
+
+* *Self-tests*: ~2-3 minutes (fast command verification)
+* *Full E2E tests*: ~10-15 minutes (comprehensive scenarios)
+* *Interactive mode*: Immediate (on-demand execution)
+
+=== Optimization Features
+
+* Efficient element discovery strategies
+* Smart retry mechanisms with exponential backoff
+* Graceful degradation for UI changes
+* Resource management and cleanup
+* Network request optimization
+
+== CI/CD Integration
+
+=== GitHub Actions Workflow
+
+The framework includes complete CI/CD integration:
+
+* Frontend quality checks with linting and unit tests
+* E2E integration tests with Docker environment
+* Automated test result collection and reporting
+* Environment cleanup and resource management
+
+=== Quality Gates
+
+* ESLint zero-warning enforcement
+* Unit test verification before E2E tests
+* Build failure on any quality gate violations
+* Comprehensive artifact collection for debugging
+
+== Documentation Structure
+
+The complete documentation suite includes:
+
+* xref:setup-guide.adoc[Setup Guide] - Environment setup and configuration
+* xref:testing-patterns.adoc[Testing Patterns] - Practical examples and best practices
+* xref:architecture.adoc[Technical Architecture] - System design and implementation
+* xref:javascript-testing.adoc[JavaScript Testing] - UI component testing
+* xref:ci-cd-integration.adoc[CI/CD Integration] - Pipeline configuration
+* xref:mcp-playwright-guide.adoc[MCP Playwright Guide] - Enhanced development tools
+
+== Standards Compliance
+
+This project implements centralized coding standards for:
+
+* JavaScript and ESLint configuration
+* Testing best practices and quality standards
+* Documentation structure and maintenance
+* CI/CD pipeline standards
+
+== See Also
+
+* xref:README.adoc[Documentation Index] - Complete documentation overview
+* xref:setup-guide.adoc[Setup Guide] - Getting started instructions
+* xref:testing-patterns.adoc[Testing Patterns] - Implementation examples

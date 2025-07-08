@@ -1,13 +1,22 @@
-# CI/CD Integration
+= CI/CD Integration
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+
+== Purpose
 
 This document covers continuous integration and deployment setup for the NiFi integration testing framework.
 
-## GitHub Actions Workflow
+== GitHub Actions Workflow
 
-### Main Workflow Configuration
+=== Main Workflow Configuration
+
 The project uses GitHub Actions for automated testing and deployment:
 
-```yaml
+[source,yaml]
+----
 # .github/workflows/e2e-tests.yml
 name: End-to-End Tests
 
@@ -57,7 +66,7 @@ jobs:
         run: |
           cd integration-testing
           docker-compose up -d
-          ./scripts/wait-for-services.sh
+          ./src/main/docker/check-status.sh
           
       - name: Build and test
         run: |
@@ -79,10 +88,12 @@ jobs:
           files: ./e-2-e-cypress/coverage/lcov.info
           flags: e2e-tests
           name: e2e-coverage
-```
+----
 
-### Pull Request Workflow
-```yaml
+=== Pull Request Workflow
+
+[source,yaml]
+----
 # .github/workflows/pr-validation.yml
 name: Pull Request Validation
 
@@ -116,32 +127,33 @@ jobs:
             echo "E2E tests not affected, running selftests only"
             mvn clean install -Pselftests
           fi
-```
-  - `integration-testing/**`
-  - `pom.xml`
+----
 
-## Environment Variables
+== Environment Variables
 
 The CI/CD process uses these environment variables:
 
-- `CYPRESS_BASE_URL`: https://localhost:8443/nifi
-- `CYPRESS_KEYCLOAK_URL`: https://localhost:8443/auth
+* `CYPRESS_BASE_URL`: https://localhost:8443/nifi
+* `CYPRESS_KEYCLOAK_URL`: https://localhost:8443/auth
 
-## Artifacts Collected
+== Artifacts Collected
 
-### Test Results (30-day retention)
-- `e-2-e-cypress/tests-report/` - JUnit XML and HTML reports
-- `e-2-e-cypress/cypress/videos/` - Test execution videos
-- `e-2-e-cypress/cypress/screenshots/` - Failure screenshots
+=== Test Results (30-day retention)
 
-### Frontend Test Results (7-day retention)
-- `nifi-cuioss-ui/coverage/` - Code coverage reports
-- `e-2-e-cypress/tests-report/` - Self-test results
+* `e-2-e-cypress/tests-report/` - JUnit XML and HTML reports
+* `e-2-e-cypress/cypress/videos/` - Test execution videos
+* `e-2-e-cypress/cypress/screenshots/` - Failure screenshots
 
-### Test Reports (for GitHub integration)
-- `e-2-e-cypress/tests-report/*.xml` - JUnit XML for test reporting
+=== Frontend Test Results (7-day retention)
 
-## Console Error Analysis
+* `nifi-cuioss-ui/coverage/` - Code coverage reports
+* `e-2-e-cypress/tests-report/` - Self-test results
+
+=== Test Reports (for GitHub integration)
+
+* `e-2-e-cypress/tests-report/*.xml` - JUnit XML for test reporting
+
+== Console Error Analysis
 
 On test failures, the workflow automatically:
 
@@ -151,43 +163,45 @@ On test failures, the workflow automatically:
 
 Manual console error analysis:
 
-```bash
+[source,bash]
+----
 # Analyze console errors for a specific run
-npm run analyze-console-errors [run-id]
+npm run analyze:console [run-id]
 
 # Example
-npm run analyze-console-errors 2025-06-11T14-30-00
-```
+npm run analyze:console 2025-06-11T14-30-00
+----
 
-## Working with CI/CD
+== Working with CI/CD
 
-### Local Development
+=== Local Development
 
 Before pushing changes:
 
-```bash
+[source,bash]
+----
 # Run quality checks locally
 npm run lint:check
 npm run format:check
 
 # Run self-tests (fast unit tests)
-npm run cypress:selftests
+npm run test:failfast
 
 # Run full E2E tests (requires test environment)
 cd ../integration-testing
 ./run-test-container.sh
 cd ../e-2-e-cypress
 npm run cypress:run
-```
+----
 
-### Debugging CI Failures
+=== Debugging CI Failures
 
-1. **Check workflow logs** in GitHub Actions tab
-2. **Download artifacts** for detailed analysis
-3. **Review console error analysis** if available
-4. **Run locally** to reproduce issues
+1. Check workflow logs in GitHub Actions tab
+2. Download artifacts for detailed analysis
+3. Review console error analysis if available
+4. Run locally to reproduce issues
 
-### Artifact Download
+=== Artifact Download
 
 To download and analyze test artifacts:
 
@@ -195,37 +209,40 @@ To download and analyze test artifacts:
 2. Scroll to "Artifacts" section
 3. Download relevant artifact zip files
 4. Extract and review:
-   - HTML reports for visual test results
-   - Videos to see what happened during tests
-   - Screenshots of failures
-   - JUnit XML for detailed test data
+   * HTML reports for visual test results
+   * Videos to see what happened during tests
+   * Screenshots of failures
+   * JUnit XML for detailed test data
 
-## Performance Considerations
+== Performance Considerations
 
-### Caching Strategy
-- **Maven dependencies**: Cached by POM file hash
-- **NPM dependencies**: Cached by package-lock.json hash
-- **Node.js binaries**: Cached by setup-node action
+=== Caching Strategy
 
-### Parallel Execution
-- Frontend quality checks and E2E tests run sequentially
-- This prevents resource conflicts and ensures quality gates
+* *Maven dependencies*: Cached by POM file hash
+* *NPM dependencies*: Cached by package-lock.json hash
+* *Node.js binaries*: Cached by setup-node action
 
-### Timeout Configuration
-- Service readiness: 5 minutes (300 seconds)
-- Individual test timeouts: Configured in Cypress settings
-- Overall job timeout: GitHub Actions default (6 hours)
+=== Parallel Execution
 
-## Maintenance
+* Frontend quality checks and E2E tests run sequentially
+* This prevents resource conflicts and ensures quality gates
 
-### Regular Tasks
+=== Timeout Configuration
 
-1. **Monitor test stability** - Check for flaky tests
-2. **Update dependencies** - Keep workflow actions current
-3. **Review artifacts retention** - Adjust as needed
-4. **Analyze console errors** - Regular review of allowed warnings
+* Service readiness: 5 minutes (300 seconds)
+* Individual test timeouts: Configured in Cypress settings
+* Overall job timeout: GitHub Actions default (6 hours)
 
-### Updating the Workflow
+== Maintenance
+
+=== Regular Tasks
+
+1. Monitor test stability - Check for flaky tests
+2. Update dependencies - Keep workflow actions current
+3. Review artifacts retention - Adjust as needed
+4. Analyze console errors - Regular review of allowed warnings
+
+=== Updating the Workflow
 
 When modifying `.github/workflows/e2e-tests.yml`:
 
@@ -234,164 +251,56 @@ When modifying `.github/workflows/e2e-tests.yml`:
 3. Check artifact collection works
 4. Update documentation if needed
 
-## Troubleshooting
+== Troubleshooting
 
-### Common Issues
+=== Common Issues
 
-**Docker service startup failures:**
-- Check Docker daemon status
-- Verify sufficient system resources
-- Review container logs in workflow output
+*Docker service startup failures*:
 
-**Environment readiness timeouts:**
-- Services may take longer to start in CI
-- Check service health check endpoints
-- Verify port configurations
+* Check Docker daemon status
+* Verify sufficient system resources
+* Review container logs in workflow output
 
-**Artifact upload failures:**
-- Check path specifications in workflow
-- Ensure artifacts exist before upload
-- Verify retention settings
+*Environment readiness timeouts*:
 
-**Console error analysis missing:**
-- Ensure console logging is configured in Cypress
-- Check that log files are generated
-- Verify script permissions and syntax
+* Services may take longer to start in CI
+* Check service health check endpoints
+* Verify port configurations
 
-### Getting Help
+*Artifact upload failures*:
+
+* Check path specifications in workflow
+* Ensure artifacts exist before upload
+* Verify retention settings
+
+*Console error analysis missing*:
+
+* Ensure console logging is configured in Cypress
+* Check that log files are generated
+* Verify script permissions and syntax
+
+=== Getting Help
 
 1. Check workflow logs for specific error messages
 2. Review this documentation for common solutions
 3. Examine successful runs for comparison
 4. Test locally to isolate CI-specific issues
 
-## Security Considerations
+== Security Considerations
 
-- No sensitive data in workflow logs
-- Environment variables properly scoped
-- Artifacts automatically expire
-- Workflow permissions follow least-privilege principle
+* No sensitive data in workflow logs
+* Environment variables properly scoped
+* Artifacts automatically expire
+* Workflow permissions follow least-privilege principle
 
-## Next Steps and Enhancement Opportunities
+== Maven Integration
 
-### 4. CI/CD Integration Enhancement (Next Priority)
-**Goal**: Optimize continuous integration and deployment workflows  
-**Impact**: High - improves development velocity and deployment reliability  
-**Effort**: 2-3 hours
+=== Profile Configuration
 
-**Implementation Areas**:
-- Pipeline optimization and parallelization
-- Environment-specific test configurations  
-- Automated reporting and notifications
-- Test result analysis and trending
-
-**Success Criteria**:
-- Reduced CI/CD execution time (target: < 15 minutes total)
-- Improved test reliability in automated environments (target: > 95% success rate)
-- Comprehensive test reporting and metrics
-- Automated failure detection and notification
-
-**Technical Tasks**:
-1. **Pipeline Parallelization**:
-   ```yaml
-   # Parallel test execution
-   strategy:
-     matrix:
-       test-group: [auth, processors, ui-validation, error-handling]
-   ```
-
-2. **Environment-Specific Configurations**:
-   ```bash
-   # Separate configs for different environments
-   cypress.config.ci.js    # CI-optimized settings
-   cypress.config.dev.js   # Development settings
-   cypress.config.prod.js  # Production-like testing
-   ```
-
-3. **Enhanced Reporting**:
-   ```yaml
-   # Advanced test reporting
-   - name: Generate Test Report
-     uses: dorny/test-reporter@v1
-     with:
-       name: E2E Test Results
-       path: 'cypress/reports/*.xml'
-       reporter: java-junit
-   ```
-
-4. **Performance Monitoring**:
-   ```yaml
-   # Track test execution metrics
-   - name: Performance Analysis
-     run: |
-       echo "Test Duration: ${{ steps.e2e-tests.outputs.duration }}"
-       echo "Success Rate: ${{ steps.e2e-tests.outputs.success-rate }}"
-   ```
-
-### 5. Test Maintenance and Optimization (Ongoing)
-**Goal**: Establish sustainable test maintenance practices  
-**Impact**: Medium - ensures long-term test reliability and maintainability  
-**Effort**: 2 hours
-
-**Implementation Areas**:
-- Test code refactoring and cleanup
-- Performance optimization and monitoring
-- Legacy test cleanup and modernization
-- Documentation updates and maintenance
-
-**Success Criteria**:
-- Clean, maintainable test codebase
-- Optimized test execution performance (target: < 45 seconds total)
-- Up-to-date comprehensive documentation
-- Established maintenance workflows and practices
-
-**Technical Tasks**:
-1. **Code Quality Monitoring**:
-   ```bash
-   # Automated code quality checks
-   npx eslint cypress/ --max-warnings 0
-   npm audit --audit-level moderate
-   ```
-
-2. **Performance Optimization**:
-   ```javascript
-   // Optimize test execution
-   cy.configureTestOptimization({
-     parallelExecution: true,
-     resourceCleanup: 'aggressive',
-     elementWaitStrategy: 'optimized'
-   });
-   ```
-
-3. **Maintenance Automation**:
-   ```yaml
-   # Scheduled maintenance workflow  
-   on:
-     schedule:
-       - cron: '0 2 * * 1'  # Weekly maintenance
-   ```
-
-## Implementation Roadmap
-
-### Current Status (June 2025)
-- **✅ Phase 1**: Project Cleanup and Restructuring (Complete)
-- **✅ Phase 2**: Custom Processor UI Testing (Complete)  
-- **✅ Phase 3**: Advanced Test Automation (Complete)
-- **🔄 Phase 4**: CI/CD Integration Enhancement (Next Priority)
-- **📋 Phase 5**: Test Maintenance and Optimization (Ongoing)
-
-### Success Metrics
-- **Overall Test Success Rate**: Current 71% → Target 85%+
-- **CI/CD Execution Time**: Current ~20 minutes → Target < 15 minutes
-- **Test Maintenance Effort**: Target < 2 hours/week
-- **Code Quality**: Maintain 0 ESLint warnings/errors
-
-## Maven Integration
-
-### Profile Configuration
 The Maven build integrates testing profiles for different scenarios:
 
-```xml
+[source,xml]
+----
 <!-- pom.xml profiles -->
 <profiles>
   <profile>
@@ -436,10 +345,12 @@ The Maven build integrates testing profiles for different scenarios:
     </build>
   </profile>
 </profiles>
-```
+----
 
-### Build Lifecycle Integration
-```xml
+=== Build Lifecycle Integration
+
+[source,xml]
+----
 <!-- Frontend Maven Plugin for Node.js/Cypress -->
 <plugin>
   <groupId>com.github.eirslett</groupId>
@@ -481,14 +392,16 @@ The Maven build integrates testing profiles for different scenarios:
     </execution>
   </executions>
 </plugin>
-```
+----
 
-## Quality Gates
+== Quality Gates
 
-### ESLint Integration
-Following [CUI JavaScript Standards](https://github.com/cuioss/cui-llm-rules/tree/main/standards/javascript):
+=== ESLint Integration
 
-```yaml
+Following centralized JavaScript standards:
+
+[source,yaml]
+----
 # Quality check step in CI
 - name: Run ESLint
   run: |
@@ -503,10 +416,12 @@ Following [CUI JavaScript Standards](https://github.com/cuioss/cui-llm-rules/tre
     fi
     
     echo "✅ ESLint passed with zero warnings"
-```
+----
 
-### Coverage Thresholds
-```javascript
+=== Coverage Thresholds
+
+[source,javascript]
+----
 // jest.config.js (for JavaScript components)
 module.exports = {
   collectCoverageFrom: [
@@ -523,10 +438,12 @@ module.exports = {
   },
   coverageReporters: ['text', 'lcov', 'html', 'json-summary']
 };
-```
+----
 
-### Performance Budgets
-```yaml
+=== Performance Budgets
+
+[source,yaml]
+----
 # Performance monitoring in CI
 - name: Performance Budget Check
   run: |
@@ -542,12 +459,14 @@ module.exports = {
     fi
     
     echo "✅ Performance budget met: ${AVG_TEST_TIME}ms"
-```
+----
 
-## Test Reporting
+== Test Reporting
 
-### Cypress Dashboard Integration
-```javascript
+=== Cypress Dashboard Integration
+
+[source,javascript]
+----
 // cypress.config.js
 module.exports = {
   projectId: 'nifi-extensions-e2e',
@@ -575,12 +494,14 @@ module.exports = {
     }
   }
 };
-```
+----
 
-## Local Development Integration
+== Local Development Integration
 
-### Pre-commit Hooks
-```bash
+=== Pre-commit Hooks
+
+[source,bash]
+----
 #!/bin/bash
 # .git/hooks/pre-commit
 
@@ -594,18 +515,20 @@ if ! npm run lint; then
 fi
 
 # Quick selftests
-if ! npm run test:selftests; then
+if ! npm run test:failfast; then
   echo "❌ Selftests failed. Fix errors before committing."
   exit 1
 fi
 
 echo "✅ Pre-commit checks passed"
-```
+----
 
-### Development Workflow
-```bash
+=== Development Workflow
+
+[source,bash]
+----
 #!/bin/bash
-# scripts/dev-workflow.sh
+# Development workflow
 
 # Complete development workflow
 echo "🚀 Starting development workflow..."
@@ -614,30 +537,28 @@ echo "🚀 Starting development workflow..."
 echo "1️⃣ Running code quality checks..."
 cd e-2-e-cypress
 npm run lint:fix
-npm run type-check
+npm run format:check
 
-# 2. Unit tests
-echo "2️⃣ Running unit tests..."
-npm run test:unit
+# 2. Run tests
+echo "2️⃣ Running tests..."
+npm run test:failfast
 
-# 3. Selftests (fast)
-echo "3️⃣ Running selftests..."
-npm run test:selftests
-
-# 4. Start containers for integration tests
-echo "4️⃣ Starting test environment..."
+# 3. Start containers for integration tests
+echo "3️⃣ Starting test environment..."
 cd ../integration-testing
 docker-compose up -d
-./scripts/wait-for-services.sh
+./src/main/docker/check-status.sh
 
-# 5. Integration tests
-echo "5️⃣ Running integration tests..."
+# 4. Full integration tests
+echo "4️⃣ Running full test suite..."
 cd ../e-2-e-cypress
-npm run test:integration
+npm run cypress:run
 
 echo "✅ Development workflow completed successfully!"
-```
+----
 
----
+== See Also
 
-*For detailed setup instructions, see [Setup Guide](./setup-guide.md). For testing patterns, see [Testing Patterns](./testing-patterns.md).*
+* xref:setup-guide.adoc[Setup Guide] - Environment setup instructions
+* xref:testing-patterns.adoc[Testing Patterns] - Implementation patterns and examples
+* xref:overview.adoc[Project Overview] - High-level project description

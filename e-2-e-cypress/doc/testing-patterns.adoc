@@ -1,68 +1,73 @@
-# Testing Patterns and Best Practices
+= Testing Patterns and Best Practices
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
 
-Practical code examples and patterns for testing custom processor logic using NiFi as a platform.
+== Purpose
 
-## Core Testing Philosophy
+This document provides practical code examples and patterns for testing custom processor logic using NiFi as a platform.
 
-**We use NiFi as a platform to test our custom processor logic. We don't test NiFi itself.**
+== Core Testing Philosophy
 
-### Focus Areas
-- ✅ Test JWT validation logic in custom processors
-- ✅ Test multi-issuer configuration handling
-- ✅ Test error handling and edge cases
-- ❌ Don't test NiFi's authentication system
-- ❌ Don't test NiFi's navigation mechanics
-- ❌ Don't test NiFi's processor framework
+*We use NiFi as a platform to test our custom processor logic. We don't test NiFi itself.*
 
-## Stepwise Development Approach
+=== Focus Areas
 
-**Critical Rule**: All development follows a fail-fast, stepwise verification approach.
+The framework focuses on testing:
 
-### Verification Commands
+* JWT validation logic in custom processors
+* Multi-issuer configuration handling
+* Error handling and edge cases
 
-**Every implementation step must be verified using both of these exact commands**:
+We avoid testing:
 
-```bash
+* NiFi's authentication system
+* NiFi's navigation mechanics
+* NiFi's processor framework
+
+== Development Approach
+
+=== Verification Strategy
+
+All development follows a fail-fast verification approach using two essential Maven commands:
+
+[source,bash]
+----
 # 1. Full build verification (all modules, lint checks, unit tests)
 ./mvnw clean verify
 
 # 2. Integration tests with Docker environment
 ./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
-```
+----
 
-**Both commands must pass before committing any changes.**
+Both commands must pass before committing any changes.
 
-### Development Workflow
+=== Development Workflow
 
-1. **Make small incremental changes** (add one test, one command, one feature)
-2. **Immediately verify** with both Maven commands above
-3. **Fix any failures immediately** - never accumulate issues
-4. **Commit successful changes** only after both commands pass
-5. **Repeat** for the next small change
+1. Make small incremental changes (add one test, one command, one feature)
+2. Immediately verify with both Maven commands above
+3. Fix any failures immediately - never accumulate issues
+4. Commit successful changes only after both commands pass
+5. Repeat for the next small change
 
-### Implementation Steps Completed
+=== Why This Approach Works
 
-- ✅ **Step 1**: JWT Token Validation (15 tests passing)
-- ✅ **Step 2**: JWKS Endpoint Validation (16 tests passing)  
-- ✅ **Step 3**: Error Handling Scenarios (20 tests passing)
-- ✅ **Step 4**: Multi-issuer Configuration (23 tests passing)
-- ✅ **Step 5**: Advanced UI Navigation (25 tests passing)
+* *Immediate feedback*: Know exactly what broke and when
+* *Smaller debug scope*: Issues are isolated to recent changes
+* *Reliable builds*: Never merge broken code
+* *Team confidence*: Everyone knows the current state is working
+* *CI/CD ready*: Tests are always in a deployable state
 
-### Why This Approach Works
+== Testing Patterns
 
-- **Immediate feedback**: Know exactly what broke and when
-- **Smaller debug scope**: Issues are isolated to recent changes
-- **Reliable builds**: Never merge broken code
-- **Team confidence**: Everyone knows the current state is working
-- **CI/CD ready**: Tests are always in a deployable state
-
-## Testing Patterns
-
-### 1. Helper-Based Testing Pattern
+=== Helper-Based Testing Pattern
 
 The foundation of effective testing is using dedicated helper functions:
 
-```javascript
+[source,javascript]
+----
 describe('NiFi Authentication Tests', () => {
   it('Should login successfully and maintain session', () => {
     // Navigate to login page using navigation helper
@@ -78,13 +83,14 @@ describe('NiFi Authentication Tests', () => {
     });
   });
 });
-```
+----
 
-### 2. Navigation Testing Pattern
+=== Navigation Testing Pattern
 
 Navigation tests use the navigation-helper for page transitions:
 
-```javascript
+[source,javascript]
+----
 describe('NiFi Navigation Tests', () => {
   beforeEach(() => {
     // Ensure NiFi is ready using auth helper
@@ -103,13 +109,14 @@ describe('NiFi Navigation Tests', () => {
     cy.verifyPageType('MAIN_CANVAS');
   });
 });
-```
+----
 
-### 3. Processor Testing Pattern
+=== Processor Testing Pattern
 
 Processor tests use the processor-helper for lifecycle management:
 
-```javascript
+[source,javascript]
+----
 describe('Processor Add/Remove Tests', () => {
   beforeEach(() => {
     // Ensure NiFi is ready using auth helper
@@ -135,13 +142,14 @@ describe('Processor Add/Remove Tests', () => {
       });
   });
 });
-```
+----
 
-### 4. Cross-Helper Integration Pattern
+=== Cross-Helper Integration Pattern
 
 Tests demonstrate how helpers work together:
 
-```javascript
+[source,javascript]
+----
 describe('Helper Integration Tests', () => {
   it('Should demonstrate auth-aware processor operations', () => {
     // Navigation helper detects we need authentication
@@ -175,13 +183,14 @@ describe('Helper Integration Tests', () => {
     });
   });
 });
-```
+----
 
-### 5. Performance Testing Pattern
+=== Performance Testing Pattern
 
 Test custom processor performance characteristics:
 
-```javascript
+[source,javascript]
+----
 describe('JWT Performance', () => {
   it('should validate tokens within performance thresholds', () => {
     const performanceTest = {
@@ -200,13 +209,14 @@ describe('JWT Performance', () => {
       });
   });
 });
-```
+----
 
-## Utility Commands
+== Utility Commands
 
-### Helper Functions Implementation
+=== Helper Functions Implementation
 
-```javascript
+[source,javascript]
+----
 // Auth Helper - Direct login without cy.session
 Cypress.Commands.add('loginNiFi', (username = 'testUser', password = 'drowssap') => {
   cy.log(`🔐 Logging into NiFi as ${username}`);
@@ -241,11 +251,12 @@ Cypress.Commands.add('addProcessorToCanvas', (processorType) => {
     // Implementation continues...
   });
 });
-```
+----
 
-### JWT Testing Utilities
+=== JWT Testing Utilities
 
-```javascript
+[source,javascript]
+----
 // Test JWT validation logic
 Cypress.Commands.add('testJWTValidation', (processorId, tokens) => {
   const results = [];
@@ -281,12 +292,14 @@ Cypress.Commands.add('testMultiIssuerValidation', (processorId, scenarios) => {
     });
   });
 });
-```
+----
 
-## Best Practices
+== Best Practices
 
-### 1. Test Organization
-```javascript
+=== Test Organization
+
+[source,javascript]
+----
 // Group tests by functionality, not by UI navigation
 describe('JWT Token Validation', () => {
   describe('Valid Tokens', () => {
@@ -301,10 +314,12 @@ describe('JWT Token Validation', () => {
     // Tests for multi-issuer functionality
   });
 });
-```
+----
 
-### 2. Data-Driven Testing
-```javascript
+=== Data-Driven Testing
+
+[source,javascript]
+----
 // Use fixtures for test data
 const tokenTestCases = require('../fixtures/jwt-test-cases.json');
 
@@ -314,10 +329,12 @@ tokenTestCases.forEach((testCase) => {
       .should('match', testCase.expectedResult);
   });
 });
-```
+----
 
-### 3. Isolation and Cleanup
-```javascript
+=== Isolation and Cleanup
+
+[source,javascript]
+----
 describe('Processor Tests', () => {
   let processorId;
   
@@ -334,42 +351,50 @@ describe('Processor Tests', () => {
     }
   });
 });
-```
+----
 
-### 4. Error Assertions
-```javascript
+=== Error Assertions
+
+[source,javascript]
+----
 // Specific error checking
 cy.testTokenValidation(processorId, invalidToken)
   .should('have.property', 'relationship', 'authentication-failed')
   .and('have.property', 'errorCode', 'INVALID_SIGNATURE')
   .and('have.property', 'errorMessage')
   .and('match', /signature verification failed/i);
-```
+----
 
-## Troubleshooting Guide
+== Troubleshooting Guide
 
-### Common Issues
+=== Common Issues
 
-#### 1. Processor Not Found
-```javascript
+==== Processor Not Found
+
+[source,javascript]
+----
 // Problem: Can't locate processor on canvas
 // Solution: Use robust selectors with retries
 cy.get('[data-testid^="processor-"]', { timeout: 10000 })
   .should('exist')
   .and('be.visible');
-```
+----
 
-#### 2. Configuration State Detection
-```javascript
+==== Configuration State Detection
+
+[source,javascript]
+----
 // Problem: Can't detect if processor is configured
 // Solution: Check multiple state indicators
 cy.get(`[data-testid="processor-${processorId}"]`)
   .should('have.attr', 'data-state', 'configured')
   .and('not.have.class', 'invalid-state');
-```
+----
 
-#### 3. Timing Issues
-```javascript
+==== Timing Issues
+
+[source,javascript]
+----
 // Problem: Tests fail due to timing
 // Solution: Wait for specific conditions, not fixed delays
 cy.get('[data-testid="processor-status"]')
@@ -377,10 +402,12 @@ cy.get('[data-testid="processor-status"]')
   .then(() => {
     // Proceed with testing
   });
-```
+----
 
-#### 4. Authentication Failures
-```javascript
+==== Authentication Failures
+
+[source,javascript]
+----
 // Problem: Authentication state not preserved
 // Solution: Use cy.session for authentication state
 cy.session('auth', () => {
@@ -392,50 +419,60 @@ cy.session('auth', () => {
     });
   }
 });
-```
+----
 
-### Debugging Techniques
+=== Debugging Techniques
 
-#### 1. Console Logging
-```javascript
+==== Console Logging
+
+[source,javascript]
+----
 // Add debugging information
 cy.get('[data-testid="processor-status"]')
   .then(($el) => {
     console.log('Processor status:', $el.text());
     console.log('Processor classes:', $el.attr('class'));
   });
-```
+----
 
-#### 2. Screenshot on Failure
-```javascript
+==== Screenshot on Failure
+
+[source,javascript]
+----
 // Take screenshots for debugging
 afterEach(function() {
   if (this.currentTest.state === 'failed') {
     cy.screenshot(`failed-${this.currentTest.title}`);
   }
 });
-```
+----
 
-#### 3. Network Request Monitoring
-```javascript
+==== Network Request Monitoring
+
+[source,javascript]
+----
 // Monitor API calls
 cy.intercept('POST', '/nifi-api/processors/*/run-status').as('startProcessor');
 cy.get('[data-testid="start-processor"]').click();
 cy.wait('@startProcessor').its('response.statusCode').should('eq', 200);
-```
+----
 
-## Advanced Patterns
+== Advanced Patterns
 
-### 1. Custom Command Chaining
-```javascript
+=== Custom Command Chaining
+
+[source,javascript]
+----
 cy.ensureAuthenticatedAndReady()
   .ensureProcessorConfigured('JWTTokenAuthenticator', config)
   .testJWTValidation(tokens)
   .validateResults(expectedResults);
-```
+----
 
-### 2. Parallel Test Execution
-```javascript
+=== Parallel Test Execution
+
+[source,javascript]
+----
 // Structure tests for parallel execution
 describe('JWT Validation Suite', () => {
   const testGroups = ['valid-tokens', 'invalid-tokens', 'edge-cases'];
@@ -446,10 +483,12 @@ describe('JWT Validation Suite', () => {
     });
   });
 });
-```
+----
 
-### 3. Cross-Environment Testing
-```javascript
+=== Cross-Environment Testing
+
+[source,javascript]
+----
 // Environment-specific configurations
 const configs = {
   local: { baseUrl: 'https://localhost:9095' },
@@ -459,17 +498,19 @@ const configs = {
 
 const env = Cypress.env('ENVIRONMENT') || 'local';
 const config = configs[env];
-```
+----
 
-## Standards Compliance
+== Standards Compliance
 
-This testing framework follows [CUI Testing Standards](https://github.com/cuioss/cui-llm-rules/tree/main/standards/testing):
+This testing framework follows centralized testing standards:
 
-- **Zero ESLint Warnings**: All code passes linting without warnings
-- **Modular Architecture**: Reusable commands and utilities
-- **Error Resilience**: Graceful handling of failures and retries
-- **Performance Focus**: Efficient selectors and minimal delays
+* *Zero ESLint Warnings*: All code passes linting without warnings
+* *Modular Architecture*: Reusable commands and utilities
+* *Error Resilience*: Graceful handling of failures and retries
+* *Performance Focus*: Efficient selectors and minimal delays
 
----
+== See Also
 
-*For setup instructions, see [Setup Guide](./setup-guide.md). For technical details, see [Technical Architecture](./architecture.md).*
+* xref:setup-guide.adoc[Setup Guide] - Environment setup instructions
+* xref:architecture.adoc[Technical Architecture] - System architecture details
+* xref:overview.adoc[Project Overview] - High-level project description
