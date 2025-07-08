@@ -9,26 +9,6 @@
 
 This documentation covers the complete end-to-end testing implementation for the MultiIssuerJWTTokenAuthenticator processor using Cypress with NiFi 2.4.0.
 
-== Testing Philosophy
-
-*We use NiFi as a platform to test our custom processor logic. We don't test NiFi itself.*
-
-=== Testing Focus
-
-* Test JWT validation logic in custom processors
-* Test multi-issuer configuration handling
-* Test error handling and edge cases
-
-We avoid testing:
-
-* NiFi's authentication system
-* NiFi's navigation mechanics
-* NiFi's processor framework
-
-== Production Status
-
-The testing framework is fully operational with complete Docker environment and comprehensive testing capabilities.
-
 == Critical Verification Requirements
 
 Before committing any changes, both Maven commands MUST pass:
@@ -46,7 +26,52 @@ IMPORTANT: All code changes must be verified with both commands to ensure full b
 
 == Documentation Structure
 
-=== Project Overview and Setup
+=== **Project Overview and Setup**
+
+* xref:overview.adoc[**Project Overview**] - Testing philosophy, approach, and technology stack overview
+* xref:setup-guide.adoc[**Setup Guide**] - Complete environment setup, prerequisites, and configuration instructions
+
+=== **Implementation and Architecture**
+
+* xref:architecture.adoc[**Technical Architecture**] - Infrastructure details, Docker environment, and system architecture  
+* xref:testing-patterns.adoc[**Testing Patterns**] - Practical code examples, patterns, and test implementation guidelines
+* xref:javascript-testing.adoc[**Code Quality and Testing**] - JavaScript standards, ESLint rules, and testing framework details
+
+=== **Specialized Topics**
+
+* xref:nifi-ui-structure.adoc[**NiFi UI Structure**] - Angular UI components, selectors, and testing strategies
+* xref:ci-cd-integration.adoc[**CI/CD Integration**] - Pipeline setup, automation, and continuous integration workflows
+* xref:mcp-playwright-guide.adoc[**MCP Playwright Guide**] - Development tools and workflow integration
+
+== Quick Start
+
+For immediate testing:
+
+[source,bash]
+----
+# Quick test run
+cd e-2-e-cypress
+npm run cypress:run
+
+# Development mode
+npm run cypress:open
+
+# Full integration test
+./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
+----
+
+== Key Features
+
+The testing framework provides:
+
+* ✅ **Production-ready status** with comprehensive test coverage
+* ✅ **Complete Docker environment** for consistent testing
+* ✅ **15+ custom Cypress commands** for NiFi automation
+* ✅ **Zero-warning ESLint implementation** following centralized standards
+* ✅ **Angular 2.4.0 UI compatibility** with reliable selectors
+* ✅ **Maven integration** with automated build processes
+* ✅ **Full CI/CD pipeline** with GitHub Actions
+* ✅ **Comprehensive documentation** with practical examples
 
 * xref:overview.adoc[Project Overview] - Core philosophy and quick start
 * xref:setup-guide.adoc[Setup Guide] - Complete environment setup, prerequisites, and configuration instructions

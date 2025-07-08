@@ -7,538 +7,103 @@
 
 == Purpose
 
-This module provides comprehensive end-to-end testing for the MultiIssuerJWTTokenAuthenticator processor using Cypress.
+This module provides comprehensive end-to-end testing for the MultiIssuerJWTTokenAuthenticator processor using Cypress with NiFi 2.4.0.
 
 IMPORTANT: Always use `./mvnw` (Maven Wrapper) instead of `mvn` to ensure consistent Maven versions across all environments.
 
+== Quick Start
+
+=== Running Tests
+
+[source,bash]
+----
+# Quick test run (headless)
+npm run cypress:run
+
+# Interactive test development
+npm run cypress:open
+
+# Full integration with Docker environment
+./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
+----
+
+=== Before You Start
+
+Read the xref:doc/overview.adoc[Project Overview] to understand our testing philosophy and approach.
+
 == Current Status
 
-The e-2-e-cypress module is production-ready with the following capabilities:
+The e-2-e-cypress module is **production-ready** with:
 
-* 15+ Custom Cypress commands for NiFi UI automation
-* Complete login reliability using authentication helpers
-* Comprehensive navigation reliability using navigation helpers
-* Angular 2.4.0 UI compatibility
-* Complete Docker environment with NiFi container
-* Custom processor integration (JWTTokenAuthenticator, MultiIssuerJWTTokenAuthenticator)
-* Maven integration with Node.js 20.19.2
-* Full CI/CD pipeline with GitHub Actions
-* Comprehensive documentation suite
-* Zero-warning ESLint implementation following centralized JavaScript standards
-* Modular architecture with helper-based design
-* Complete helper integration across authentication, navigation, and processor operations
+* ✅ 15+ Custom Cypress commands for NiFi UI automation
+* ✅ Complete authentication and navigation reliability
+* ✅ Angular 2.4.0 UI compatibility
+* ✅ Complete Docker environment with NiFi container
+* ✅ Custom processor integration (MultiIssuerJWTTokenAuthenticator)
+* ✅ Maven integration with Node.js 20.19.2
+* ✅ Full CI/CD pipeline with GitHub Actions
+* ✅ Zero-warning ESLint implementation
+* ✅ Comprehensive documentation suite
 
-== Testing Philosophy
+== Verification Commands
 
-*We use NiFi as a platform to test our custom processor logic. We don't test NiFi itself.*
-
-=== Testing Focus
-
-* JWT validation logic in our custom processors
-* Multi-issuer configuration handling
-* Error handling and edge cases in our code
-
-We avoid testing:
-
-* NiFi's authentication system
-* NiFi's navigation mechanics
-* NiFi's processor framework
-
-== Prerequisites
-
-* Node.js 20.x or higher (automatically installed via Maven)
-* Maven 3.8.0 or higher
-* Docker with docker-compose (for test environment)
-* Java 11 or higher
-
-== Installation
-
-Install dependencies:
+Before committing any changes, both Maven commands MUST pass:
 
 [source,bash]
 ----
+# 1. Full build verification (required)
+./mvnw clean verify
+
+# 2. Integration tests (required)
+./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
+----
+
+IMPORTANT: All code changes must be verified with both commands to ensure full build integrity and no regressions.
+== Installation and Setup
+
+[source,bash]
+----
+# Install dependencies
 cd e-2-e-cypress
 npm install
-----
 
-Start the test environment and run tests:
-
-[source,bash]
-----
-# CUI-compliant: Maven manages containers and runs tests
+# Start test environment and run tests
 ./mvnw clean verify -P integration-tests
-
-# Or run tests with containers already started
-npm run cypress:run
 ----
 
-Run tests in development:
+For detailed setup instructions, see xref:doc/setup-guide.adoc[Setup Guide].
+
+== Available npm Scripts
 
 [source,bash]
 ----
-# Start containers via Maven (in separate terminal)
-./mvnw clean pre-integration-test -P integration-tests
+# Testing
+npm run cypress:run       # Run all tests headlessly
+npm run cypress:open      # Open Cypress UI for development
+npm run test:failfast     # Run with fail-fast behavior
 
-# Run specific tests
-npm run cypress:run
+# Code Quality
+npm run lint              # Check code quality
+npm run lint:fix          # Auto-fix linting issues
+npm run format            # Format code with Prettier
 
-# Interactive mode for development
-npm run cypress:open
+# Analysis
+npm run analyze:console   # Analyze console errors
+npm run analyze:logs      # Enhanced log analysis
 ----
 
 == Documentation
 
-For detailed information, see the xref:doc/README.adoc[Documentation Index] which includes:
-
-* xref:doc/overview.adoc[Project Overview] - Core philosophy and quick start
-* xref:doc/architecture.adoc[Technical Architecture] - System architecture and implementation details
-* xref:doc/setup-guide.adoc[Setup Guide] - Complete setup and configuration instructions
-* xref:doc/testing-patterns.adoc[Testing Patterns] - Practical code examples and patterns
-* xref:doc/ci-cd-integration.adoc[CI/CD Integration] - Continuous integration setup
-* xref:doc/javascript-testing.adoc[JavaScript Testing] - JavaScript UI component testing
-
-== Code Quality Standards
-
-This project implements centralized JavaScript and ESLint standards:
-
-* Zero-warning ESLint implementation following centralized JavaScript standards
-* Complete elimination of linting issues
-* Modular design with helper-based architecture
-* Optimized DOM queries and reduced code duplication
-* Enhanced error handling and fallback mechanisms
-
-NOTE: This project implements the centralized JavaScript and ESLint standards. For complete configuration details and guidelines, see the organization's coding standards repository.
-
-== Test Structure
-
-=== Current Tests
-
-The module currently contains three main test files:
-
-* `cypress/e2e/01-nifi-authentication.cy.js` - Authentication and login functionality
-* `cypress/e2e/02-nifi-navigation.cy.js` - UI navigation and page detection
-* `cypress/e2e/03-processor-add-remove.cy.js` - Processor management operations
-
-=== Custom Commands
-
-Reusable Cypress helper modules for common operations:
-
-* `cypress/support/auth-helper.js` - Login and authentication commands
-* `cypress/support/navigation-helper.js` - UI navigation commands
-* `cypress/support/processor-helper.js` - Processor management commands
-* `cypress/support/utils.js` - Utility functions and validation commands
-
-==== Available Commands
-
-*Authentication Commands (auth-helper.js):*
-
-* `cy.loginNiFi(username, password)` - Login to NiFi UI with direct form interaction
-* `cy.ensureNiFiReady()` - Main function for test preparation (combines login and readiness checks)
-* `cy.logoutNiFi()` - Logout and clear session data
-* `cy.clearSession()` - Clear all authentication state
-* `cy.getSessionContext()` - Get current session context and authentication state
-
-*Navigation Commands (navigation-helper.js):*
-
-* `cy.navigateToPage(pageType)` - Navigate to specific page types (LOGIN, CANVAS, etc.)
-* `cy.verifyPageType(expectedPageType)` - Verify current page type
-* `cy.getPageContext()` - Get comprehensive page context information
-* `cy.waitForPageReady()` - Wait for page to be fully loaded and ready
-
-*Processor Commands (processor-helper.js):*
-
-* `cy.addProcessorToCanvas(processorType, options)` - Add processor to canvas with position and configuration
-* `cy.removeProcessorFromCanvas(processor)` - Remove processor from canvas
-* `cy.openProcessorConfiguration(processor, options)` - Open processor configuration dialog (including advanced)
-* `cy.isProcessorOnCanvas(processorType)` - Check if processor exists on canvas
-
-=== Unit Tests
-
-The module includes comprehensive tests that verify command functionality:
-
-[source,bash]
-----
-# Run tests
-npm run cypress:run
-
-# Run via Maven
-./mvnw clean test -pl :e-2-e-cypress
-----
-
-== Maven Integration
-
-The module integrates with Maven through the unified `frontend-maven-plugin` configuration:
-
-=== Build Integration
-
-The Maven build follows CUI standards for container lifecycle management:
-
-[source,bash]
-----
-# Integration tests - Maven manages containers via exec-maven-plugin
-./mvnw clean verify -P integration-tests
-
-# Fast build without any tests
-./mvnw clean verify -DskipTests=true
-
-# Full UI testing (requires containers to be started separately)
-./mvnw clean integration-test -P ui-tests
-----
-
-The CUI-compliant process:
-
-1. Maven exec-maven-plugin manages container lifecycle
-2. Start containers via Docker Compose integration
-3. Wait for readiness with health checks (up to 2 minutes fail-fast)
-4. Run tests with correct configuration
-5. Stop containers automatically (post-integration-test)
-6. Report results
-
-=== Test Results Deployment
-
-Test reports are generated and can be deployed to GitHub Pages:
-
-* Comprehensive HTML reports with enhanced analysis
-* Test videos, screenshots, and container logs included
-* Permanent URLs that don't expire
-* No GitHub login required for stakeholders
-* Available for manual runs and tagged releases
-
-=== Log Analysis Tools
-
-*Enhanced Log Analyzer:*
-
-* Multi-dimensional analysis: Console errors + performance + network + trends
-* Interactive HTML reports with recommendations
-* Historical trend tracking over time
-* Automated recommendations based on analysis
-
-[source,bash]
-----
-cd e-2-e-cypress
-node scripts/log-analyzer.js latest
-open cypress/reports/enhanced-analysis/comprehensive-report.html
-----
-
-*Console Error Analyzer:*
-
-* Console log parsing with pattern recognition
-* Allowlist management for acceptable warnings (edit `cypress/support/console-warnings-allowlist.js`)
-* Error categorization (critical vs warnings)
-
-*Infrastructure Tools:*
-
-* Container Health Checker: Service availability verification
-* Maven Integration: Complete environment lifecycle management via exec-maven-plugin
-* Dependency Validation: WebJar version checking
-
-=== Maven Build Commands
-
-[source,bash]
-----
-# Run through Maven (includes linting + unit tests)
-./mvnw clean test
-
-# Run only self-tests (unit tests)
-./mvnw clean pre-integration-test
-
-# Run full test suite including E2E tests
-./mvnw clean integration-test
-
-# Check code formatting
-npm run format:check
-
-# Auto-fix formatting issues
-npm run format
-----
-
-=== Unified Frontend Configuration
-
-This module uses centralized frontend configuration properties defined in the root POM:
-
-* `frontend.maven.plugin.version` - Frontend Maven plugin version (1.15.1)
-* `frontend.node.version` - Node.js version (v20.12.2)
-* `frontend.npm.version` - NPM version (10.5.0)
-
-=== Build Integration & Quality Checks
-
-The Maven build includes automated quality checks:
-
-1. *Test phase*: ESLint runs with `--max-warnings 0` (build fails on any warnings)
-2. *Pre-integration-test phase*: Unit tests verify command functionality
-3. *Integration-test phase*: E2E tests run only if unit tests pass
-
-=== Current Test Structure
-
-[source]
-----
-cypress/
-├── e2e/                    # End-to-end integration tests
-│   ├── 01-nifi-authentication.cy.js    # Authentication tests
-│   ├── 02-nifi-navigation.cy.js        # Navigation tests
-│   └── 03-processor-add-remove.cy.js   # Processor management tests
-├── support/                # Support files and helpers
-│   ├── auth-helper.js      # Authentication commands
-│   ├── navigation-helper.js # Navigation commands
-│   ├── processor-helper.js # Processor commands
-│   ├── constants.js        # Shared constants
-│   ├── commands.js         # Custom command registration
-│   ├── console-error-tracking.js # Console monitoring
-│   ├── utils.js           # Utility functions
-│   └── e2e.js             # Main support configuration
-└── fixtures/              # Test data and fixtures
-    ├── jwks/
-    └── tokens/
-----
-
-== Configuration
-
-=== Environment Variables
-
-* `CYPRESS_BASE_URL` - NiFi base URL (default: https://localhost:9095/nifi)
-* `CYPRESS_SPEC_PATTERN` - Test spec pattern (default: cypress/e2e/**/*.cy.js)
-
-=== Test Configuration
-
-Edit `cypress.config.js` to modify:
-
-* Browser settings
-* Viewport dimensions
-* Timeout values
-* Reporter configuration
-
-=== Self-Test Configuration
-
-Self-tests use a separate configuration (`cypress.selftests.config.js`) with:
-
-* Shorter timeouts (5 seconds)
-* Separate reporting
-* Focus on command reliability
-
-== Console Error Monitoring
-
-The module includes automatic console error monitoring that:
-
-* Tracks all console errors and warnings
-* Allows specific warnings through an allowlist
-* Fails tests if unexpected errors occur
-* Provides detailed error reporting
-
-Edit `cypress/support/console-warnings-allowlist.js` to manage allowed warnings:
-
-[source,javascript]
-----
-module.exports = [
-  'Warning: validateDOMNesting(...): <div> cannot appear as a descendant of <p>.',
-  'DevTools failed to load source map',
-  'Content Security Policy violation for inline script'
-];
-----
-
-== Usage Examples
-
-=== Basic Test Example
-
-[source,javascript]
-----
-describe('Processor Configuration', () => {
-  beforeEach(() => {
-    cy.nifiLogin('admin', 'adminadminadmin');
-    cy.navigateToCanvas();
-  });
-
-  it('should configure MultiIssuerJWTTokenAuthenticator', () => {
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
-      const config = {
-        name: 'JWT Authenticator',
-        properties: {
-          'JWKS Type': 'Server',
-          'JWKS URL': 'https://localhost:9095/example-jwks-endpoint'
-        }
-      };
-
-      cy.configureProcessor(processorId, config);
-      cy.verifyProcessorProperties(processorId, config.properties);
-    });
-  });
-});
-----
-
-=== Token Validation Example
-
-[source,javascript]
-----
-describe('Token Validation', () => {
-  it('should validate JWT tokens', () => {
-    cy.addProcessor('MultiIssuerJWTTokenAuthenticator').then((processorId) => {
-      // Configure processor
-      cy.configureProcessor(processorId, { 
-        properties: { 'JWKS Type': 'Server' } 
-      });
-
-      // Generate and test token
-      cy.generateToken().then((token) => {
-        cy.verifyTokenValidation(processorId, token);
-      });
-    });
-  });
-});
-----
-
-== Troubleshooting
-
-=== Common Issues
-
-*Connection refused errors*: Ensure the test environment is running
-
-[source,bash]
-----
-cd ../integration-testing && ./run-and-deploy.sh
-----
-
-*Login failures*: Check credentials and NiFi availability
-
-* Default: testUser/drowssap
-
-*Timeout errors*: Increase timeout values in configuration
-
-[source,javascript]
-----
-// In cypress.config.js
-defaultCommandTimeout: 10000
-----
-
-*SSL errors*: Verify certificate configuration in test environment
-
-=== Debug Mode
-
-Run with debug output:
-
-[source,bash]
-----
-DEBUG=cypress:* npm run cypress:run
-----
-
-=== Console Error Analysis
-
-Analyze console errors from test runs:
-
-[source,bash]
-----
-# Analyze console errors for a specific run ID
-npm run analyze:console [run-id]
-
-# Example
-npm run analyze:console 2025-06-11T14-30-00
-----
-
-This generates detailed HTML and JSON reports in `cypress/reports/console-analysis/`.
-
-=== Check Setup
-
-Use the verification script to diagnose issues:
-
-[source,bash]
-----
-./verify-setup.sh
-----
-
-== Test Reports
-
-Test reports are generated in the `tests-report/` directory:
-
-* HTML reports with screenshots and detailed test results
-* JUnit XML for CI integration
-* Video recordings of test runs (configurable)
-* Separate self-test reports for command verification
-
-== CI/CD Integration
-
-The module is designed for CI/CD pipelines:
-
-* Self-tests run before main tests to ensure command reliability
-* Proper error handling and reporting
-* Artifact collection for failed tests
-* Configurable through environment variables
-* Complete GitHub Actions workflow with automated testing and reporting
-
-=== GitHub Actions Workflow
-
-The complete CI/CD pipeline is implemented in `.github/workflows/e2e-tests.yml`:
-
-*Frontend Quality Checks Job:*
-
-* Runs linting and unit tests for both frontend modules
-* Uses unified Node.js 20.12.2 and frontend configuration
-* Caches Maven and NPM dependencies for speed
-* Collects test results and coverage reports
-
-*E2E Integration Tests Job:*
-
-* Builds NAR package and starts Docker test environment
-* Runs self-verification tests first to ensure command reliability
-* Executes full E2E test suite with environment variables
-* Collects test results, videos, screenshots, and JUnit reports
-* Performs console error analysis on failures
-* Guaranteed environment cleanup
-
-*Triggers:*
-
-* Push to `main`, `develop`, `feature/end-to-end-testing` branches
-* Pull requests to `main`, `develop` branches
-* Changes to relevant paths (e-2-e-cypress/, processors/, integration-testing/, etc.)
-
-For detailed CI/CD documentation, see xref:doc/ci-cd-integration.adoc[CI/CD Integration Guide].
-
-=== CI Environment Setup
-
-For CI environments, ensure:
-
-1. Test environment is started before test execution
-2. Environment variables are properly set
-3. Sufficient timeouts for slower CI environments
-4. Proper artifact collection for debugging
-
-== Performance
-
-=== Test Execution Times
-
-* Self-tests: ~2-3 minutes (fast command verification)
-* Full E2E tests: ~10-15 minutes (comprehensive scenarios)
-* Interactive mode: Immediate (on-demand execution)
-
-=== Optimization Tips
-
-1. Use `cy.visit()` sparingly - prefer navigation commands
-2. Clear state between tests using `beforeEach()`
-3. Use fixtures for test data instead of generating on-the-fly
-4. Run self-tests first to catch command issues early
-
-== Contributing
-
-When adding new functionality:
-
-1. Create custom commands for reusable operations
-2. Add self-tests for any new commands
-3. Follow ESLint rules and run `npm run lint:fix`
-4. Update documentation for new commands or features
-5. Test thoroughly with both `npm run cypress:open` and `npm run cypress:run`
-
-== Architecture
-
-The module follows these design principles:
-
-* Command-based approach: Reusable commands for common operations
-* Self-verification: Commands are tested independently
-* Separation of concerns: Clear distinction between setup, tests, and utilities
-* Error resilience: Graceful handling of failures with detailed reporting
-* Maintainability: Clear structure and comprehensive documentation
-
-This ensures the test suite remains reliable and easy to maintain as the NiFi processor evolves.
+📚 **Complete documentation available in the xref:doc/README.adoc[Documentation Directory]:**
+
+* xref:doc/overview.adoc[**Project Overview**] - Philosophy, architecture, and approach
+* xref:doc/setup-guide.adoc[**Setup Guide**] - Installation and configuration  
+* xref:doc/testing-patterns.adoc[**Testing Patterns**] - Code examples and best practices
+* xref:doc/architecture.adoc[**Technical Architecture**] - Infrastructure and implementation details
+* xref:doc/javascript-testing.adoc[**Code Quality**] - ESLint, Prettier, and testing standards
+* xref:doc/ci-cd-integration.adoc[**CI/CD Integration**] - Pipeline and automation setup
 
 == See Also
 
-* xref:doc/overview.adoc[Project Overview] - Core philosophy and quick start
-* xref:doc/architecture.adoc[Technical Architecture] - System architecture and implementation details
-* xref:doc/setup-guide.adoc[Setup Guide] - Complete setup and configuration instructions
-* xref:doc/testing-patterns.adoc[Testing Patterns] - Practical code examples and patterns
+* xref:../integration-testing/README.adoc[Integration Testing] - Docker environment setup
+* xref:../nifi-cuioss-processors/README.md[Custom Processors] - Processor implementations being tested

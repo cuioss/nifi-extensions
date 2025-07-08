@@ -9,58 +9,10 @@
 
 This document provides practical code examples and patterns for testing custom processor logic using NiFi as a platform.
 
-== Core Testing Philosophy
+For the testing philosophy and approach, see xref:overview.adoc[Project Overview].
 
-*We use NiFi as a platform to test our custom processor logic. We don't test NiFi itself.*
-
-=== Focus Areas
-
-The framework focuses on testing:
-
-* JWT validation logic in custom processors
-* Multi-issuer configuration handling
-* Error handling and edge cases
-
-We avoid testing:
-
-* NiFi's authentication system
-* NiFi's navigation mechanics
-* NiFi's processor framework
-
-== Development Approach
-
-=== Verification Strategy
-
-All development follows a fail-fast verification approach using two essential Maven commands:
-
-[source,bash]
-----
-# 1. Full build verification (all modules, lint checks, unit tests)
-./mvnw clean verify
-
-# 2. Integration tests with Docker environment
-./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
-----
-
-Both commands must pass before committing any changes.
-
-=== Development Workflow
-
-1. Make small incremental changes (add one test, one command, one feature)
-2. Immediately verify with both Maven commands above
-3. Fix any failures immediately - never accumulate issues
-4. Commit successful changes only after both commands pass
-5. Repeat for the next small change
-
-=== Why This Approach Works
-
-* *Immediate feedback*: Know exactly what broke and when
-* *Smaller debug scope*: Issues are isolated to recent changes
-* *Reliable builds*: Never merge broken code
-* *Team confidence*: Everyone knows the current state is working
-* *CI/CD ready*: Tests are always in a deployable state
-
-== Testing Patterns
+== Practical Testing Patterns
+== Practical Testing Patterns
 
 === Helper-Based Testing Pattern
 
