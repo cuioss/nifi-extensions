@@ -99,9 +99,9 @@ npx cypress run --spec "cypress/e2e/*processor*.cy.js"
 
 ## Key Achievements
 
-- **Production-Ready Framework**: 25+ tests with comprehensive custom Cypress commands
+- **Production-Ready Framework**: 13 tests with comprehensive helper-based architecture
 - **Stepwise Development Approach**: Fail-fast verification using single Maven command
-- **Advanced Testing Capabilities**: JWT validation, JWKS endpoints, error handling, multi-issuer configuration
+- **Helper-Based Architecture**: auth-helper, navigation-helper, processor-helper with cross-integration
 - **Zero-Warning ESLint Implementation**: Clean, maintainable codebase
 - **Full Maven Integration**: Automated Docker lifecycle and test execution
 - **Comprehensive Test Coverage**: Self-tests, functional tests, and advanced processor testing
@@ -109,18 +109,18 @@ npx cypress run --spec "cypress/e2e/*processor*.cy.js"
 ## Current Test Suite Status
 
 **Test Coverage**:
-- **01-self-test.cy.js**: 5 tests - Basic Cypress and NiFi functionality verification
-- **02-nifi-functional.cy.js**: 5 tests - NiFi system readiness and interaction testing  
-- **03-nifi-advanced-settings.cy.js**: 15 tests - Advanced JWT processor configuration and validation
+- **01-nifi-authentication.cy.js**: 3 tests - Authentication system testing using auth-helper
+- **02-nifi-navigation.cy.js**: 5 tests - Navigation functionality testing using navigation-helper
+- **03-processor-add-remove.cy.js**: 5 tests - Processor lifecycle testing using processor-helper
 
-**Total**: 25 tests passing consistently with 100% success rate
+**Total**: 13 tests passing consistently with 100% success rate
 
 **Test Categories**:
-- ✅ JWT Token Validation (generate, validate, test various scenarios)
-- ✅ JWKS Endpoint Validation (URL validation, Keycloak integration)
-- ✅ Error Handling (network timeouts, missing properties, malformed JSON)
-- ✅ Multi-issuer Configuration (multiple issuers, property validation)
-- ✅ Advanced UI Navigation (three-tab system, flexible naming conventions)
+- ✅ Authentication Testing (login, logout, session management using auth-helper)
+- ✅ Navigation Testing (page transitions, canvas access using navigation-helper)
+- ✅ Processor Testing (add/remove lifecycle using processor-helper)
+- ✅ Helper Integration (cross-helper usage and authentication-aware operations)
+- ✅ Session Management (without cy.session for improved reliability)
 
 ## Standards and References
 

@@ -58,125 +58,120 @@ Practical code examples and patterns for testing custom processor logic using Ni
 
 ## Testing Patterns
 
-### 1. Minimal NiFi Interaction Pattern
+### 1. Helper-Based Testing Pattern
 
-The foundation of effective testing is minimal interaction with NiFi mechanics:
+The foundation of effective testing is using dedicated helper functions:
 
 ```javascript
-describe('JWT Processor Testing', () => {
+describe('NiFi Authentication Tests', () => {
+  it('Should login successfully and maintain session', () => {
+    // Navigate to login page using navigation helper
+    cy.navigateToPage('LOGIN');
+
+    // Login using auth helper with default credentials
+    cy.loginNiFi('testUser', 'drowssap');
+
+    // Verify we're authenticated using session context
+    cy.getSessionContext().then((session) => {
+      expect(session.isLoggedIn).to.be.true;
+      expect(session.pageType).to.equal('MAIN_CANVAS');
+    });
+  });
+});
+```
+
+### 2. Navigation Testing Pattern
+
+Navigation tests use the navigation-helper for page transitions:
+
+```javascript
+describe('NiFi Navigation Tests', () => {
   beforeEach(() => {
-    // Minimal setup - just get authenticated and ready
-    cy.ensureAuthenticatedAndReady();
+    // Ensure NiFi is ready using auth helper
+    cy.ensureNiFiReady('testUser', 'drowssap');
   });
 
-  it('should validate JWT tokens correctly', () => {
-    // Focus: Test our JWT validation logic
-    cy.ensureProcessorConfigured('JWTTokenAuthenticator', {
-      'jwks-url': 'http://keycloak:9080/realms/nifi/protocol/openid_connect/certs',
-      'issuer': 'http://keycloak:9080/realms/nifi'
-    })
-    .then((processorId) => {
-      // Test our custom logic, not NiFi mechanics
-      cy.testJWTValidation(processorId, {
-        validToken: 'eyJ0eXAiOiJKV1Q...',
-        invalidToken: 'invalid.token.here',
-        expiredToken: 'expired.token.here'
-      });
+  it('Should navigate from login to main canvas', () => {
+    // Verify we're already authenticated (from beforeEach)
+    cy.getPageContext().then((context) => {
+      expect(context.pageType).to.equal('MAIN_CANVAS');
+      expect(context.isAuthenticated).to.be.true;
     });
+
+    // Test navigation helper functionality
+    cy.navigateToPage('MAIN_CANVAS');
+    cy.verifyPageType('MAIN_CANVAS');
   });
 });
 ```
 
-### 2. Processor Configuration Detection
+### 3. Processor Testing Pattern
 
-Reliable detection of processor state is crucial for testing:
+Processor tests use the processor-helper for lifecycle management:
 
 ```javascript
-// Custom command for robust processor detection
-Cypress.Commands.add('detectProcessorConfiguration', (processorId) => {
-  return cy.get(`[data-testid="processor-${processorId}"]`)
-    .should('exist')
-    .then(($processor) => {
-      // Extract configuration state
-      const config = {
-        name: $processor.find('[data-testid="processor-name"]').text(),
-        state: $processor.attr('data-state'),
-        properties: {}
-      };
-      
-      // Focus on our custom properties, not NiFi internals
-      $processor.find('[data-testid^="property-"]').each((index, el) => {
-        const $el = Cypress.$(el);
-        const key = $el.attr('data-property-name');
-        const value = $el.attr('data-property-value');
-        if (key && key.startsWith('jwt-')) {
-          config.properties[key] = value;
-        }
+describe('Processor Add/Remove Tests', () => {
+  beforeEach(() => {
+    // Ensure NiFi is ready using auth helper
+    cy.ensureNiFiReady('testUser', 'drowssap');
+  });
+
+  it('Should add a processor to canvas', () => {
+    // Use processor helper to add processor
+    cy.addProcessorToCanvas('GenerateFlowFile')
+      .then((processorInfo) => {
+        expect(processorInfo).to.have.property('id');
+        expect(processorInfo).to.have.property('type', 'GenerateFlowFile');
+        cy.log(`✅ Processor added: ${processorInfo.id}`);
       });
-      
-      return config;
-    });
+  });
+
+  it('Should remove processor from canvas', () => {
+    // Add processor then remove it using helper
+    cy.addProcessorToCanvas('GenerateFlowFile')
+      .then((processorInfo) => {
+        cy.removeProcessorFromCanvas(processorInfo.id);
+        cy.log(`✅ Processor removed: ${processorInfo.id}`);
+      });
+  });
 });
 ```
 
-### 3. Custom Processor Testing
+### 4. Cross-Helper Integration Pattern
 
-Focus testing on business logic, not NiFi framework:
+Tests demonstrate how helpers work together:
 
 ```javascript
-describe('MultiIssuer JWT Validation', () => {
-  it('should handle multiple issuers correctly', () => {
-    const multiIssuerConfig = {
-      'issuer-1-jwks-url': 'http://issuer1.example.com/.well-known/jwks.json',
-      'issuer-1-name': 'Primary Issuer',
-      'issuer-2-jwks-url': 'http://issuer2.example.com/.well-known/jwks.json', 
-      'issuer-2-name': 'Secondary Issuer'
-    };
+describe('Helper Integration Tests', () => {
+  it('Should demonstrate auth-aware processor operations', () => {
+    // Navigation helper detects we need authentication
+    cy.navigateToPage('MAIN_CANVAS');
     
-    cy.ensureProcessorConfigured('MultiIssuerJWTTokenAuthenticator', multiIssuerConfig)
-      .then((processorId) => {
-        // Test our multi-issuer logic
-        cy.testMultiIssuerValidation(processorId, [
-          { issuer: 'issuer1', token: 'valid.issuer1.token' },
-          { issuer: 'issuer2', token: 'valid.issuer2.token' },
-          { issuer: 'unknown', token: 'invalid.unknown.token', expectFailure: true }
-        ]);
+    // Auth helper ensures we're authenticated before proceeding
+    cy.ensureNiFiReady('testUser', 'drowssap');
+    
+    // Processor helper uses getSessionContext() for auth verification
+    cy.addProcessorToCanvas('GenerateFlowFile')
+      .then((processorInfo) => {
+        // Processor helper ensures authentication before operations
+        expect(processorInfo).to.have.property('id');
+        cy.log('✅ Cross-helper integration successful');
       });
   });
-});
-```
 
-### 4. Error Handling Patterns
-
-Test edge cases and error scenarios in custom logic:
-
-```javascript
-describe('JWT Error Handling', () => {
-  const errorScenarios = [
-    {
-      name: 'malformed token',
-      token: 'not.a.valid.jwt',
-      expectedError: 'MALFORMED_TOKEN'
-    },
-    {
-      name: 'expired token', 
-      token: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...', // Expired token
-      expectedError: 'EXPIRED_TOKEN'
-    },
-    {
-      name: 'invalid signature',
-      token: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...', // Invalid signature
-      expectedError: 'INVALID_SIGNATURE'
-    }
-  ];
-
-  errorScenarios.forEach((scenario) => {
-    it(`should handle ${scenario.name}`, () => {
-      cy.ensureProcessorConfigured('JWTTokenAuthenticator')
-        .then((processorId) => {
-          cy.testTokenValidation(processorId, scenario.token)
-            .should('have.property', 'errorCode', scenario.expectedError);
-        });
+  it('Should handle session management across helpers', () => {
+    // Clear session using auth helper
+    cy.clearSession();
+    
+    // Navigation helper detects unauthenticated state
+    cy.navigateToPage('LOGIN');
+    
+    // Auth helper handles login
+    cy.loginNiFi('testUser', 'drowssap');
+    
+    // All helpers now recognize authenticated state
+    cy.getSessionContext().then((session) => {
+      expect(session.isLoggedIn).to.be.true;
     });
   });
 });
@@ -209,43 +204,42 @@ describe('JWT Performance', () => {
 
 ## Utility Commands
 
-### Authentication and Setup
+### Helper Functions Implementation
 
 ```javascript
-// Minimal authentication - focus on getting ready to test
-Cypress.Commands.add('ensureAuthenticatedAndReady', () => {
-  cy.session('nifi-auth', () => {
-    cy.visit('/nifi');
-    cy.get('[data-testid="username"]').type('admin');
-    cy.get('[data-testid="password"]').type('ctsBtRBKHRAx69EqUghvvgEvjnaLjFEB');
-    cy.get('[data-testid="login-button"]').click();
-    cy.url().should('include', '/nifi/');
-  });
+// Auth Helper - Direct login without cy.session
+Cypress.Commands.add('loginNiFi', (username = 'testUser', password = 'drowssap') => {
+  cy.log(`🔐 Logging into NiFi as ${username}`);
+  
+  cy.get('input[type="text"], input[id*="username"], input[name="username"]')
+    .should('be.visible')
+    .clear()
+    .type(username);
+    
+  cy.get('input[type="password"], input[id*="password"], input[name="password"]')
+    .should('be.visible')
+    .clear()
+    .type(password);
+    
+  cy.get('button[type="submit"], input[type="submit"], button').contains(/log\s*in/i)
+    .should('be.visible')
+    .click();
+    
+  cy.wait(3000);
+  cy.log('✅ Login completed');
 });
 
-// Processor configuration with focus on custom properties
-Cypress.Commands.add('ensureProcessorConfigured', (processorType, config = {}) => {
-  return cy.get('[data-testid="add-processor"]')
-    .click()
-    .then(() => {
-      cy.get(`[data-testid="processor-${processorType}"]`).click();
-    })
-    .then(() => {
-      // Configure only our custom properties
-      Object.entries(config).forEach(([key, value]) => {
-        if (key.startsWith('jwt-') || key.startsWith('issuer-')) {
-          cy.get(`[data-testid="property-${key}"]`).clear().type(value);
-        }
-      });
-      cy.get('[data-testid="apply-button"]').click();
-    })
-    .then(() => {
-      // Return processor ID for further testing
-      return cy.get('[data-testid^="processor-"]')
-        .last()
-        .invoke('attr', 'data-testid')
-        .then(id => id.replace('processor-', ''));
-    });
+// Processor Helper - Authentication-aware operations
+Cypress.Commands.add('addProcessorToCanvas', (processorType) => {
+  return cy.getSessionContext().then((session) => {
+    if (!session.isLoggedIn) {
+      throw new Error('Cannot add processor: not authenticated');
+    }
+    
+    // Processor addition logic here
+    cy.log(`🔧 Adding processor: ${processorType}`);
+    // Implementation continues...
+  });
 });
 ```
 

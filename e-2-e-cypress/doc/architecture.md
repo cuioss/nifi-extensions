@@ -65,46 +65,34 @@ services:
 
 ### Authentication Flow
 ```
-User → Cypress → NiFi → Keycloak OIDC → Authentication Token → NiFi Access
+User → Cypress → Direct Form Login → NiFi Session → NiFi Access
+(Note: Removed cy.session for improved reliability)
 ```
 
 ## Testing Framework Architecture
 
 ### Core Components
 
-#### 1. Custom Commands Structure
+#### 1. Helper-Based Architecture
 ```
-cypress/support/commands/
-├── auth/
-│   ├── auth-commands.js          # Authentication utilities
-│   └── session-management.js     # Session handling
-├── processor/
-│   ├── processor-management.js   # Processor lifecycle
-│   ├── processor-advanced-ui.js  # Advanced dialog navigation
-│   └── processor-workflow.js     # Multi-processor workflows
-├── navigation/
-│   ├── canvas-navigation.js      # Canvas interaction
-│   └── dialog-management.js      # Dialog utilities
-└── utilities/
-    ├── element-discovery.js      # Robust element finding
-    ├── wait-strategies.js        # Smart waiting
-    └── error-handling.js         # Error recovery
+cypress/support/
+├── auth-helper.js               # Authentication management
+├── navigation-helper.js         # Page navigation and detection
+├── processor-helper.js          # Processor lifecycle operations
+├── constants.js                 # Shared selectors and constants
+├── test-helpers.js              # Common test utilities
+└── utils.js                     # Utility functions
 ```
 
 #### 2. Constants and Configuration
 ```javascript
-// cypress/support/constants.js
+// cypress/support/constants.js - Current Implementation
 export const SELECTORS = {
-  PROCESSOR: {
-    ADD_BUTTON: '[data-testid="add-processor"]',
-    CANVAS: '[data-testid="processor-canvas"]',
-    DIALOG: '[data-testid="processor-dialog"]'
-  },
-  AUTHENTICATION: {
-    USERNAME: '[data-testid="username"]', 
-    PASSWORD: '[data-testid="password"]',
-    LOGIN_BUTTON: '[data-testid="login-submit"]'
-  }
+  USERNAME_INPUT: 'input[type="text"], input[id*="username"], input[name="username"]',
+  PASSWORD_INPUT: 'input[type="password"], input[id*="password"], input[name="password"]',
+  LOGIN_BUTTON: 'button[type="submit"], input[type="submit"], button:contains("Log")',
+  ADD_PROCESSOR_BUTTON: '.icon-drop',
+  CANVAS_AREA: 'g.canvas-background'
 };
 
 export const TIMEOUTS = {
@@ -341,18 +329,22 @@ module.exports = {
 
 ### Authentication Security
 ```javascript
-// Secure credential handling
-const credentials = {
-  username: Cypress.env('TEST_USERNAME') || 'admin',
-  password: Cypress.env('TEST_PASSWORD') || 'test-password'
-};
-
-// Session-based authentication
-cy.session('nifi-auth', () => {
-  cy.visit('/nifi');
-  cy.get('[data-testid="username"]').type(credentials.username);
-  cy.get('[data-testid="password"]').type(credentials.password, { log: false });
-  cy.get('[data-testid="login-button"]').click();
+// Current implementation - Direct form login
+Cypress.Commands.add('loginNiFi', (username = 'testUser', password = 'drowssap') => {
+  cy.log(`🔐 Logging into NiFi as ${username}`);
+  
+  cy.get('input[type="text"], input[id*="username"], input[name="username"]')
+    .should('be.visible')
+    .clear()
+    .type(username);
+    
+  cy.get('input[type="password"], input[id*="password"], input[name="password"]')
+    .should('be.visible')
+    .clear()
+    .type(password, { log: false });
+    
+  cy.get('button[type="submit"], input[type="submit"], button').contains(/log\s*in/i)
+    .click();
 });
 ```
 
