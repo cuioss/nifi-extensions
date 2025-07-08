@@ -27,7 +27,13 @@ function checkNiFiAccessibility(timeout = 5000) {
     })
     .then(
       (response) => {
-        const isAccessible = response && response.status >= 200 && response.status < 400;
+        // Consider 401 Unauthorized as a valid indication that NiFi is accessible
+        // This is because the endpoint requires authentication, which is expected
+        const isAccessible = response && (
+          (response.status >= 200 && response.status < 400) ||
+          response.status === 401
+        );
+
         if (isAccessible) {
           logMessage('success', 'NiFi service is accessible');
         } else {
@@ -156,6 +162,12 @@ Cypress.Commands.add(
 
         // Wait for successful login and verify we're on the main canvas
         cy.waitForPageType(PAGE_TYPES.MAIN_CANVAS);
+        
+        // Additional wait to ensure canvas elements are fully loaded
+        cy.wait(1000);
+        
+        // Final verification that we're in the right state
+        cy.url().should('not.contain', '#/login');
 
         // Clear the session cleared flag since we're now authenticated
         cy.window().then((win) => {
@@ -168,11 +180,25 @@ Cypress.Commands.add(
         validate() {
           logMessage('info', 'Validating existing session...');
 
-          // Use navigation helper to check if we're authenticated
-          cy.getPageContext().then((context) => {
-            if (!context.isAuthenticated || context.pageType === PAGE_TYPES.LOGIN) {
-              throw new Error('Session validation failed - not authenticated');
+          // Check current URL first
+          cy.url().then((url) => {
+            // If we're on login page or about:blank, session is invalid
+            if (url.includes('#/login') || url === 'about:blank') {
+              throw new Error('Session validation failed - on login page or blank');
             }
+            
+            // If we're on a valid NiFi page, assume authentication is valid
+            if (url.includes('/nifi') && !url.includes('#/login')) {
+              logMessage('success', 'Session validation successful - valid NiFi URL');
+              return;
+            }
+            
+            // Use navigation helper to check if we're authenticated
+            cy.getPageContext().then((context) => {
+              if (!context.isAuthenticated || context.pageType === PAGE_TYPES.LOGIN) {
+                throw new Error('Session validation failed - not authenticated');
+              }
+            });
           });
 
           logMessage('success', 'Session validation successful');

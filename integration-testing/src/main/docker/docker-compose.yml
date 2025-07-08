@@ -69,28 +69,35 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.2.5
     ports:
-      - "9080:8080"
-      - "9085:8443"
-      - "9086:9000"
+      - "9080:8080"  # HTTP admin port
+      - "9085:8443"  # HTTPS port
+      - "9086:9000"  # Management port (health checks)
     environment:
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=admin
       - KC_HEALTH_ENABLED=true
+      - KC_METRICS_ENABLED=true
       - KC_DB=dev-mem
       - KC_LOG_LEVEL=INFO
+      # Hostname configuration for well-known discovery endpoint
+      - KC_HOSTNAME_STRICT=false
+      - KC_HTTP_ENABLED=true
+      - KC_HOSTNAME=localhost
     volumes:
-      - ./keycloak:/opt/keycloak/data/import
+      - ./keycloak:/opt/keycloak/data/import:ro
     command: 
       - start-dev
       - --import-realm
     healthcheck:
-      test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/localhost/8080' || exit 1"]
-      interval: 20s
-      timeout: 10s
-      retries: 6
-      start_period: 60s
+      # Use the health/ready endpoint on management port
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/health/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     networks:
       - nifi-keycloak-network
+    restart: unless-stopped
 
 networks:
   nifi-keycloak-network:

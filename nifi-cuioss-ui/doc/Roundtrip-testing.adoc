@@ -71,7 +71,7 @@ Ensure the following test files exist for your UI feature:
 [source,bash]
 ----
 # Start the test container environment
-integration-testing/src/main/docker/run-test-container.sh
+integration-testing/src/main/docker/run-and-deploy.sh
 ----
 
 This command starts:

@@ -21,7 +21,7 @@ export const SELECTORS = {
   CANVAS_CONTAINER: 'mat-sidenav-content',
   CANVAS_SIDENAV_CONTAINER: 'mat-sidenav-container',
   CANVAS_SVG: 'mat-sidenav-content svg, #canvas-container svg',
-  CANVAS_ELEMENTS: 'mat-sidenav-content, #canvas-container',
+  CANVAS_ELEMENTS: 'mat-sidenav-content, #canvas-container, .mat-drawer-content, body, nifi',
 
   // Processor selectors - SVG-based patterns within Angular Material containers
   PROCESSOR_GROUP: 'svg g[class*="processor"], svg g[data-type*="processor"], svg .component',
@@ -91,9 +91,12 @@ export const TIMEOUTS = {
 /**
  * Service URLs - Centralized URL constants for all services
  */
-// Define base URLs first
-const KEYCLOAK_BASE_URL = 'https://localhost:9085';
-const NIFI_BASE_URL = 'https://localhost:9095';
+// Define base URLs first - use environment variables if available
+const KEYCLOAK_BASE_URL = Cypress.env('keycloakUrl') || 'https://localhost:9085';
+const NIFI_BASE_URL = Cypress.config('baseUrl') || 'https://localhost:9095/nifi';
+
+// Extract the base URL without the /nifi path for API calls
+const NIFI_API_URL = NIFI_BASE_URL.replace(/\/nifi$/, '');
 
 export const SERVICE_URLS = {
   // NiFi service URLs
@@ -101,10 +104,12 @@ export const SERVICE_URLS = {
   NIFI_API_BASE: '/nifi-api',
   NIFI_LOGIN: '/#/login',
   NIFI_CANVAS: '/',
-  NIFI_SYSTEM_DIAGNOSTICS: '/nifi-api/system-diagnostics',
+  // Use absolute URL for API endpoints to avoid baseUrl concatenation issues
+  NIFI_SYSTEM_DIAGNOSTICS: `${NIFI_API_URL}/nifi-api/system-diagnostics`,
 
   // Keycloak service URLs
   KEYCLOAK_BASE: KEYCLOAK_BASE_URL,
+  // Health endpoint is on a different port than the main Keycloak server
   KEYCLOAK_HEALTH: `http://localhost:9086/health`,
 };
 

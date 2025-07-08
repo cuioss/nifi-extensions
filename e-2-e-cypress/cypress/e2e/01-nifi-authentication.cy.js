@@ -14,8 +14,14 @@ describe('NiFi Authentication', () => {
     // Navigate to login page using navigation helper
     cy.navigateToPage('LOGIN');
 
-    // Login using auth helper with default credentials
-    cy.loginNiFi('testUser', 'drowssap');
+    // Perform manual login to test the flow
+    cy.get('input[type="text"], input[id*="username"], input[name="username"]').type('testUser');
+    cy.get('input[type="password"], input[id*="password"], input[name="password"]').type('drowssap');
+    cy.get('button:contains("Login"), input[value="Login"], button[type="submit"]').click();
+
+    // Wait for redirect and verify URL is not login page
+    cy.url().should('not.contain', '#/login');
+    cy.wait(2000);
 
     // Verify we're authenticated and on the main canvas using session context
     cy.getSessionContext().then((session) => {

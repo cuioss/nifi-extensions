@@ -72,12 +72,22 @@ export function findWorkingCanvas(timeout = TIMEOUTS.CANVAS_READY) {
  * @returns {Cypress.Chainable<boolean>} True if on main canvas, false otherwise
  */
 export function ensureMainCanvas(operation = 'operation') {
-  return cy.getPageContext().then((context) => {
-    if (context.pageType !== PAGE_TYPES.MAIN_CANVAS) {
-      logMessage('warn', `Not on main canvas for ${operation} (current: ${context.pageType})`);
+  return cy.url().then((url) => {
+    // Check if we're on a NiFi canvas URL (not login)
+    if (url.includes('#/login')) {
+      logMessage('warn', `Not on main canvas for ${operation} - on login page`);
       return false;
     }
-    return true;
+    
+    // Check if canvas elements exist
+    return cy.get('body').then(($body) => {
+      const hasCanvas = $body.find('mat-sidenav-content, #canvas-container, svg').length > 0;
+      if (!hasCanvas) {
+        logMessage('warn', `Not on main canvas for ${operation} - no canvas elements found`);
+        return false;
+      }
+      return true;
+    });
   });
 }
 

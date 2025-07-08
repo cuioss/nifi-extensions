@@ -431,7 +431,7 @@ describe('Token Validation', () => {
 +
 [source,bash]
 ----
-cd ../integration-testing && ./run-test-container.sh
+cd ../integration-testing && ./run-and-deploy.sh
 ----
 
 . *Login failures*: Check credentials and NiFi availability

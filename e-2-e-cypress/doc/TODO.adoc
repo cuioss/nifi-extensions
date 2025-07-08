@@ -1,0 +1,249 @@
+= E2E Cypress Tests Refactoring TODO
+:toc:
+:toclevels: 3
+
+== Overview
+
+This document outlines the technical refactoring tasks for the e-2-e-cypress test suite. The goal is to improve test reliability, maintainability, and consistency by properly utilizing the existing helper libraries.
+
+== NiFi Container Management
+
+You can start and stop NiFi directly using the following scripts:
+
+* **Start NiFi:** `integration-testing/src/main/docker/run-test-container.sh`
+* **Stop NiFi:** `integration-testing/src/main/docker/stop-test-container.sh`
+
+With NiFi running, you can directly run the tests using:
+
+* `node` - Run Node.js commands
+* `npx` - Execute npm packages
+* `cypress` - Run Cypress tests directly
+
+This allows for faster development and testing cycles without needing to rebuild the entire project.
+
+== Current State Analysis
+
+=== Helper Libraries Available
+
+The project has three main helper libraries that should be used consistently:
+
+* `auth-helper.js` - Authentication and session management
+* `navigation-helper.js` - Page navigation and state verification  
+* `processor-helper.js` - Processor management operations
+
+=== Test Files Analysis
+
+==== 01-nifi-authentication.cy.js
+
+*Current Implementation Issues:*
+
+* Mixed usage of helper functions and manual DOM manipulation
+* Some tests use `cy.navigateToPage()` and `verifyAuthenticationState()` while others use manual `cy.visit()`
+* Inconsistent authentication patterns across tests
+* Manual session clearing instead of using `cy.clearSession()`
+
+*Infrastructure Verification Focus:*
+This test verifies the authentication infrastructure including login/logout flows and session management.
+
+==== 02-nifi-navigation.cy.js
+
+*Current Implementation Issues:*
+
+* Massive code duplication - same login sequence repeated in every test
+* Not using `cy.loginNiFi()`, `cy.ensureNiFiReady()`, or `cy.logoutNiFi()` from auth-helper
+* Manual session clearing instead of using `cy.clearSession()`
+* Inconsistent use of navigation helper functions
+* Manual logout detection instead of using helper functions
+
+*Infrastructure Verification Focus:*
+This test verifies the navigation infrastructure including page transitions, canvas access, and UI state management.
+
+==== 03-processor-add-remove.cy.js
+
+*Current Implementation Issues:*
+
+* Duplicated login code in `beforeEach` instead of using `cy.ensureNiFiReady()`
+* Mixed approach between helper functions and manual DOM manipulation
+* Uses some processor-helper functions but also has manual element finding
+* Complex manual context menu handling instead of relying on helper functions
+
+*Infrastructure Verification Focus:*
+This test verifies the processor management infrastructure including adding/removing processors and canvas operations.
+
+== Refactoring Tasks
+
+=== [✓] Task 1: Refactor 01-nifi-authentication.cy.js
+
+*Objective:* Standardize authentication test to use auth-helper.js consistently
+
+*Sub-tasks:*
+
+- [✓] Replace manual `cy.visit('/#/login')` with `cy.navigateToPage('LOGIN')`
+- [✓] Replace manual login sequences with `cy.loginNiFi()`
+- [✓] Replace manual session clearing with `cy.clearSession()`
+- [✓] Use `cy.ensureNiFiReady()` for setup instead of manual authentication
+- [✓] Replace manual logout with `cy.logoutNiFi()`
+- [✓] Use `cy.getSessionContext()` for authentication state verification
+
+*Build and Test Commands:*
+```bash
+./mvnw clean verify
+./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
+```
+
+*Fix all errors and warnings*
+
+*Commit to git:*
+```bash
+git add e-2-e-cypress/cypress/e2e/01-nifi-authentication.cy.js
+git commit -m "refactor: standardize authentication tests to use auth-helper consistently
+
+- Replace manual login/logout with helper functions
+- Use cy.ensureNiFiReady() for test setup
+- Standardize session management with helper functions
+- Improve test reliability and maintainability"
+```
+
+=== [✓] Task 2: Refactor 02-nifi-navigation.cy.js
+
+*Objective:* Eliminate code duplication and use navigation-helper.js and auth-helper.js properly
+
+*Sub-tasks:*
+
+- [✓] Replace duplicated login code in each test with `cy.ensureNiFiReady()` in `beforeEach`
+- [✓] Use `cy.navigateToPage()` for all navigation operations
+- [✓] Replace manual session clearing with `cy.clearSession()`
+- [✓] Use `cy.logoutNiFi()` instead of manual logout detection
+- [✓] Standardize page verification with `cy.verifyPageType()` and `cy.waitForPageType()`
+- [✓] Use `cy.getPageContext()` consistently for page state checks
+
+*Build and Test Commands:*
+```bash
+./mvnw clean verify
+./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
+```
+
+*Fix all errors and warnings*
+
+*Commit to git:*
+```bash
+git add e-2-e-cypress/cypress/e2e/02-nifi-navigation.cy.js
+git commit -m "refactor: eliminate code duplication in navigation tests
+
+- Use cy.ensureNiFiReady() for consistent test setup
+- Replace manual navigation with navigation-helper functions
+- Standardize logout handling with cy.logoutNiFi()
+- Improve test maintainability by removing duplicated code"
+```
+
+=== [✓] Task 3: Refactor 03-processor-add-remove.cy.js
+
+*Objective:* Standardize processor operations to use processor-helper.js consistently
+
+*Sub-tasks:*
+
+- [✓] Replace manual login in `beforeEach` with `cy.ensureNiFiReady()`
+- [✓] Use `cy.addProcessorToCanvas()` instead of manual dialog handling
+- [✓] Use `cy.removeProcessorFromCanvas()` instead of manual context menu operations
+- [✓] Replace manual processor finding with `cy.findProcessorOnCanvas()`
+- [✓] Use `cy.openAddProcessorDialog()` and `cy.selectProcessorType()` consistently
+- [✓] Standardize processor verification using helper functions
+
+*Build and Test Commands:*
+```bash
+./mvnw clean verify
+./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
+```
+
+*Fix all errors and warnings*
+
+*Commit to git:*
+```bash
+git add e-2-e-cypress/cypress/e2e/03-processor-add-remove.cy.js
+git commit -m "refactor: standardize processor tests to use processor-helper consistently
+
+- Use cy.ensureNiFiReady() for test setup
+- Replace manual processor operations with helper functions
+- Standardize processor addition/removal workflows
+- Improve test reliability and reduce manual DOM manipulation"
+```
+
+=== [✓] Task 4: Verify Helper Library Integration
+
+*Objective:* Ensure all tests properly utilize the helper libraries for infrastructure verification
+
+*Sub-tasks:*
+
+- [✓] Verify all authentication operations use auth-helper.js functions
+- [✓] Verify all navigation operations use navigation-helper.js functions  
+- [✓] Verify all processor operations use processor-helper.js functions
+- [✓] Ensure consistent error handling across all tests
+- [✓] Verify infrastructure verification focus is maintained
+
+*Build and Test Commands:*
+```bash
+./mvnw clean verify
+./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
+```
+
+*Fix all errors and warnings*
+
+*Commit to git:*
+```bash
+git add e-2-e-cypress/cypress/e2e/
+git commit -m "verify: ensure consistent helper library integration
+
+- Confirm all tests use appropriate helper functions
+- Verify infrastructure verification focus
+- Ensure consistent error handling patterns
+- Complete refactoring validation"
+```
+
+=== [✓] Task 5: Analyze Support Libraries for Systematic Helper Usage
+
+*Objective:* Analyze whether the support libraries systematically use auth-helper.js, navigation-helper.js and processor-helper.js
+
+*Sub-tasks:*
+
+- [✓] Review auth-helper.js for systematic use of navigation-helper.js functions
+- [✓] Review navigation-helper.js for systematic use of auth-helper.js functions  
+- [✓] Review processor-helper.js for systematic use of auth-helper.js and navigation-helper.js functions
+- [✓] Identify any circular dependencies or inconsistent patterns
+- [✓] Document recommended usage patterns between helper libraries
+- [✓] Ensure helper libraries follow consistent error handling patterns
+- [✓] Verify helper libraries maintain separation of concerns
+
+*Build and Test Commands:*
+```bash
+./mvnw clean verify
+./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
+```
+
+*Fix all errors and warnings*
+
+*Commit to git:*
+```bash
+git add e-2-e-cypress/cypress/support/
+git commit -m "analyze: review systematic helper library usage patterns
+
+- Analyze cross-dependencies between helper libraries
+- Document recommended usage patterns
+- Ensure consistent error handling across helpers
+- Verify separation of concerns is maintained"
+```
+
+== Success Criteria
+
+* All tests use appropriate helper libraries consistently
+* No code duplication across test files
+* Consistent authentication, navigation, and processor management patterns
+* All tests focus on infrastructure verification
+* All build commands pass without errors or warnings
+* All changes committed to git with descriptive messages
+
+== Notes
+
+* These tests are focused on verifying the infrastructure, not functional testing
+* Helper libraries provide the abstraction needed for reliable infrastructure verification
+* Consistent patterns improve maintainability and reduce test flakiness
+* Proper use of helper functions ensures tests are resilient to UI changes

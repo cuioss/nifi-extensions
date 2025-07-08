@@ -174,7 +174,7 @@ To start the test environment:
 [source,bash]
 ----
 # From the project root
-./integration-testing/src/main/docker/run-test-container.sh
+./integration-testing/src/main/docker/run-and-deploy.sh
 ----
 
 This script:
@@ -996,7 +996,7 @@ To run Cypress end-to-end tests locally:
 [source,bash]
 ----
 # From the project root
-./integration-testing/src/main/docker/run-test-container.sh
+./integration-testing/src/main/docker/run-and-deploy.sh
 ----
 
 2. Generate fresh test tokens (optional):
@@ -1115,7 +1115,7 @@ jobs:
           cache-dependency-path: nifi-cuioss-ui/package-lock.json
 
       - name: Start integration testing environment
-        run: ./integration-testing/src/main/docker/run-test-container.sh
+        run: ./integration-testing/src/main/docker/run-and-deploy.sh
 
       - name: Install dependencies
         run: |
