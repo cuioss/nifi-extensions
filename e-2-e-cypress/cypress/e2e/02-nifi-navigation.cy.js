@@ -23,7 +23,7 @@ describe('NiFi Navigation Tests', () => {
     // Test navigation helper - verify we can navigate to main canvas
     cy.navigateToPage('MAIN_CANVAS');
     cy.verifyPageType('MAIN_CANVAS');
-    
+
     // Verify navigation succeeded
     cy.log('✅ Navigation to main canvas verified using helpers');
   });
@@ -124,11 +124,11 @@ describe('NiFi Navigation Tests', () => {
 
     // Use helper function to clear session
     cy.clearSession();
-    
+
     // Simply visit login page to verify session was cleared
     cy.visit('/#/login');
     cy.wait(2000);
-    
+
     // Verify we can see login page
     cy.url().should('contain', '#/login');
     cy.log('✅ Successfully logged out and returned to login page');

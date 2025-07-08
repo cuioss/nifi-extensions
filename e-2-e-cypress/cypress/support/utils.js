@@ -4,7 +4,7 @@
  * @version 1.0.0
  */
 
-import { SELECTORS, PAGE_TYPES, TIMEOUTS } from './constants';
+import { SELECTORS, TIMEOUTS } from './constants';
 
 /**
  * Find canvas elements using consolidated selector logic
@@ -78,7 +78,7 @@ export function ensureMainCanvas(operation = 'operation') {
       logMessage('warn', `Not on main canvas for ${operation} - on login page`);
       return false;
     }
-    
+
     // Check if canvas elements exist
     return cy.get('body').then(($body) => {
       const hasCanvas = $body.find('mat-sidenav-content, #canvas-container, svg').length > 0;

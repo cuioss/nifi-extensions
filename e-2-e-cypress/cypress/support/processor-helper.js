@@ -178,48 +178,52 @@ Cypress.Commands.add('openAddProcessorDialog', (options = {}) => {
   logMessage('action', 'Opening Add Processor dialog');
 
   // Ensure we're on the main canvas and authenticated
-  return ensureMainCanvas('add processor dialog').then((isOnCanvas) => {
-    if (!isOnCanvas) {
-      throw new Error('Cannot open Add Processor dialog: not on main canvas');
-    }
-    
-    // Additional check for authentication state using session context
-    return cy.getSessionContext().then((session) => {
-      if (!session.isLoggedIn) {
-        throw new Error('Cannot open Add Processor dialog: not authenticated');
-      }
-      
-      logMessage('info', 'Canvas and authentication verified for processor operations');
-    });
-  }).then(() => {
-
-    // Check if toolbar exists before trying to interact with it
-    return cy.get('body').then(($body) => {
-      const toolbarElements = $body.find(SELECTORS.TOOLBAR);
-
-      if (toolbarElements.length === 0) {
-        logMessage('warn', 'Angular Material toolbar not found - cannot open Add Processor dialog');
-        // Return a resolved promise instead of throwing an error
-        return cy.wrap(null).then(() => {
-          logMessage('info', 'Skipping Add Processor dialog - toolbar not available');
-          return null;
-        });
+  return ensureMainCanvas('add processor dialog')
+    .then((isOnCanvas) => {
+      if (!isOnCanvas) {
+        throw new Error('Cannot open Add Processor dialog: not on main canvas');
       }
 
-      // Try to find and click the Add Processor button using Angular Material toolbar patterns
-      return cy
-        .get(SELECTORS.TOOLBAR, { timeout })
-        .should('be.visible')
-        .then(() => {
-          // Look for Add button in toolbar
-          return cy.get(SELECTORS.TOOLBAR_ADD, { timeout }).should('be.visible').click();
-        })
-        .then(() => {
-          // Wait for the Angular Material dialog to appear
-          return cy.get(SELECTORS.ADD_PROCESSOR_DIALOG, { timeout }).should('be.visible');
-        });
+      // Additional check for authentication state using session context
+      return cy.getSessionContext().then((session) => {
+        if (!session.isLoggedIn) {
+          throw new Error('Cannot open Add Processor dialog: not authenticated');
+        }
+
+        logMessage('info', 'Canvas and authentication verified for processor operations');
+      });
+    })
+    .then(() => {
+      // Check if toolbar exists before trying to interact with it
+      return cy.get('body').then(($body) => {
+        const toolbarElements = $body.find(SELECTORS.TOOLBAR);
+
+        if (toolbarElements.length === 0) {
+          logMessage(
+            'warn',
+            'Angular Material toolbar not found - cannot open Add Processor dialog'
+          );
+          // Return a resolved promise instead of throwing an error
+          return cy.wrap(null).then(() => {
+            logMessage('info', 'Skipping Add Processor dialog - toolbar not available');
+            return null;
+          });
+        }
+
+        // Try to find and click the Add Processor button using Angular Material toolbar patterns
+        return cy
+          .get(SELECTORS.TOOLBAR, { timeout })
+          .should('be.visible')
+          .then(() => {
+            // Look for Add button in toolbar
+            return cy.get(SELECTORS.TOOLBAR_ADD, { timeout }).should('be.visible').click();
+          })
+          .then(() => {
+            // Wait for the Angular Material dialog to appear
+            return cy.get(SELECTORS.ADD_PROCESSOR_DIALOG, { timeout }).should('be.visible');
+          });
+      });
     });
-  });
 });
 
 /**
@@ -612,11 +616,11 @@ function performConfigurationOpen(processor, advanced, timeout) {
           'button:contains("Configure")',
           'button:contains("Properties")',
           '[role="menuitem"]:contains("Configure")',
-          '[role="menuitem"]:contains("Properties")'
+          '[role="menuitem"]:contains("Properties")',
         ];
 
         let configOptionFound = false;
-        
+
         for (const selector of configSelectors) {
           const elements = $body.find(selector);
           if (elements.length > 0) {
@@ -639,7 +643,7 @@ function performConfigurationOpen(processor, advanced, timeout) {
             '.mat-dialog-container',
             '[role="dialog"]',
             '.processor-properties-dialog',
-            '.configuration-dialog'
+            '.configuration-dialog',
           ];
 
           let dialogFound = false;
@@ -650,7 +654,7 @@ function performConfigurationOpen(processor, advanced, timeout) {
               cy.get(selector, { timeout }).should('be.visible');
               dialogFound = true;
               logMessage('success', `Configuration dialog opened: ${selector}`);
-              
+
               // If advanced configuration is requested, look for advanced tab/button
               if (advanced) {
                 return openAdvancedTab(timeout);
@@ -698,7 +702,7 @@ function openAdvancedTab(timeout) {
       '.mat-tab:contains("Advanced")',
       'button:contains("Advanced")',
       '[role="tab"]:contains("Advanced")',
-      '.tab:contains("Advanced")'
+      '.tab:contains("Advanced")',
     ];
 
     let advancedFound = false;
@@ -714,7 +718,10 @@ function openAdvancedTab(timeout) {
     }
 
     if (!advancedFound) {
-      logMessage('info', 'No advanced tab found - may already be in advanced view or not available');
+      logMessage(
+        'info',
+        'No advanced tab found - may already be in advanced view or not available'
+      );
     }
 
     return advancedFound;

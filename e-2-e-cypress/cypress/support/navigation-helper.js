@@ -48,7 +48,10 @@ function detectPageType(url) {
 
   // If we're on the base URL of NiFi, consider it the main canvas
   // This is a fallback for when the URL doesn't contain any of the expected patterns
-  if (normalizedUrl.match(/https?:\/\/localhost:9095\/?$/) || normalizedUrl.includes('localhost:9095/nifi')) {
+  if (
+    normalizedUrl.match(/https?:\/\/localhost:9095\/?$/) ||
+    normalizedUrl.includes('localhost:9095/nifi')
+  ) {
     return PAGE_TYPES.MAIN_CANVAS;
   }
 
@@ -65,7 +68,10 @@ function analyzePageElements() {
 
   return {
     hasLoginElements: $body.find('input[type="password"]').length > 0,
-    hasCanvasElements: canvasAnalysis.hasCanvas || $body.find('svg').length > 0 || $body.find('mat-sidenav-content').length > 0,
+    hasCanvasElements:
+      canvasAnalysis.hasCanvas ||
+      $body.find('svg').length > 0 ||
+      $body.find('mat-sidenav-content').length > 0,
   };
 }
 
@@ -205,13 +211,16 @@ Cypress.Commands.add('navigateToPage', (pathOrPageType, options = {}) => {
   if (expectedType) {
     // For LOGIN page, check if we can actually reach it (might redirect if already authenticated)
     if (expectedType === PAGE_TYPES.LOGIN) {
-      cy.url().then(url => {
+      cy.url().then((url) => {
         if (url.includes('#/login')) {
           // We're on login page, check if login elements exist
-          cy.get('body').then($body => {
-            const hasLoginElements = $body.find('input[type="password"], input[type="text"]').length > 0;
+          cy.get('body').then(($body) => {
+            const hasLoginElements =
+              $body.find('input[type="password"], input[type="text"]').length > 0;
             if (hasLoginElements) {
-              cy.get('input[type="password"], input[type="text"]', { timeout: 5000 }).should('be.visible');
+              cy.get('input[type="password"], input[type="text"]', { timeout: 5000 }).should(
+                'be.visible'
+              );
             } else {
               cy.log('On login URL but no login elements found - page may still be loading');
               cy.wait(2000); // Give time for elements to appear
@@ -251,13 +260,16 @@ Cypress.Commands.add('verifyPageType', (expectedPageType, options = {}) => {
 
   // For LOGIN page, check if we can actually reach it (might redirect if already authenticated)
   if (expectedPageType === PAGE_TYPES.LOGIN) {
-    cy.url().then(url => {
+    cy.url().then((url) => {
       if (url.includes('#/login')) {
         // We're on login page, check if login elements exist
-        cy.get('body').then($body => {
-          const hasLoginElements = $body.find('input[type="password"], input[type="text"]').length > 0;
+        cy.get('body').then(($body) => {
+          const hasLoginElements =
+            $body.find('input[type="password"], input[type="text"]').length > 0;
           if (hasLoginElements) {
-            cy.get('input[type="password"], input[type="text"]', { timeout: 5000 }).should('be.visible');
+            cy.get('input[type="password"], input[type="text"]', { timeout: 5000 }).should(
+              'be.visible'
+            );
           } else {
             cy.log('On login URL but no login elements found - page may still be loading');
             cy.wait(2000); // Give time for elements to appear

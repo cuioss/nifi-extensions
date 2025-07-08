@@ -5,15 +5,15 @@
  * @version 1.0.0
  */
 
-import { SELECTORS, PAGE_TYPES, DEFAULT_CREDENTIALS, SERVICE_URLS } from './constants';
-import { logMessage, safeElementInteraction } from './utils';
+import { PAGE_TYPES, DEFAULT_CREDENTIALS, SERVICE_URLS } from './constants';
+import { logMessage } from './utils';
 
 /**
  * Check if NiFi service is accessible
  * @param {number} [timeout=5000] - Timeout for the check
  * @returns {Cypress.Chainable<boolean>} Promise resolving to accessibility status
  */
-function checkNiFiAccessibility(timeout = 5000) {
+function _checkNiFiAccessibility(timeout = 5000) {
   logMessage('info', 'Checking NiFi accessibility...');
 
   return cy
@@ -29,10 +29,9 @@ function checkNiFiAccessibility(timeout = 5000) {
       (response) => {
         // Consider 401 Unauthorized as a valid indication that NiFi is accessible
         // This is because the endpoint requires authentication, which is expected
-        const isAccessible = response && (
-          (response.status >= 200 && response.status < 400) ||
-          response.status === 401
-        );
+        const isAccessible =
+          response &&
+          ((response.status >= 200 && response.status < 400) || response.status === 401);
 
         if (isAccessible) {
           logMessage('success', 'NiFi service is accessible');
@@ -59,7 +58,7 @@ function checkNiFiAccessibility(timeout = 5000) {
  * @param {number} [timeout=5000] - Timeout for the check
  * @returns {Cypress.Chainable<boolean>} Promise resolving to accessibility status
  */
-function checkKeycloakAccessibility(timeout = 5000) {
+function _checkKeycloakAccessibility(timeout = 5000) {
   logMessage('info', 'Checking Keycloak accessibility...');
 
   // Try to access Keycloak health endpoint or realm info
@@ -96,35 +95,6 @@ function checkKeycloakAccessibility(timeout = 5000) {
 }
 
 /**
- * Verify that both NiFi and Keycloak services are accessible
- * Fails fast if either service is not accessible
- * @param {number} [timeout=5000] - Timeout for each service check
- * @returns {Cypress.Chainable} Promise that resolves if both services are accessible
- */
-function verifyServicesAccessibility(timeout = 5000) {
-  logMessage('info', 'Verifying NiFi and Keycloak services accessibility...');
-
-  return checkNiFiAccessibility(timeout).then((nifiAccessible) => {
-    if (!nifiAccessible) {
-      throw new Error(
-        'NiFi service is not accessible. Please ensure NiFi container is running and healthy.'
-      );
-    }
-
-    return checkKeycloakAccessibility(timeout).then((keycloakAccessible) => {
-      if (!keycloakAccessible) {
-        throw new Error(
-          'Keycloak service is not accessible. Please ensure Keycloak container is running and healthy.'
-        );
-      }
-
-      logMessage('success', 'Both NiFi and Keycloak services are accessible');
-      return cy.wrap(true);
-    });
-  });
-}
-
-/**
  * Login helper with reliable direct form interaction
  * Performs login without session caching for maximum reliability
  * @param {string} [username='testUser'] - Username for authentication
@@ -149,12 +119,12 @@ Cypress.Commands.add(
       .should('be.visible')
       .clear()
       .type(username);
-    
+
     cy.get('input[type="password"], input[id*="password"], input[name="password"]')
       .should('be.visible')
       .clear()
       .type(password);
-    
+
     cy.get('button:contains("Login"), input[value="Login"], button[type="submit"]')
       .should('be.visible')
       .click();

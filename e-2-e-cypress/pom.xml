@@ -123,7 +123,7 @@
                                     <goal>exec</goal>
                                 </goals>
                                 <configuration>
-                                    <executable>${project.basedir}/../integration-testing/src/main/docker/run-test-container.sh</executable>
+                                    <executable>${project.basedir}/../integration-testing/src/main/docker/run-and-deploy.sh</executable>
                                     <workingDirectory>${project.basedir}/../integration-testing/src/main/docker</workingDirectory>
                                 </configuration>
                             </execution>

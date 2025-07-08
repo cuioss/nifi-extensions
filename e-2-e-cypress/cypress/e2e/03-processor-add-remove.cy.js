@@ -261,25 +261,27 @@ describe('Processor Add/Remove Tests', () => {
         cy.openProcessorConfiguration(processor, { advanced: true }).then((opened) => {
           if (opened) {
             cy.log('✅ Advanced configuration dialog opened successfully');
-            
+
             // Verify we can see the configuration dialog
             cy.get('body').then(($body) => {
               const configDialogs = $body.find(
                 'mat-dialog-container, .mat-dialog-container, [role="dialog"]'
               );
-              
+
               if (configDialogs.length > 0) {
                 cy.log('✅ Configuration dialog is visible');
-                
+
                 // Look for specific advanced configuration elements
                 const advancedElements = $body.find(
                   '[aria-label*="Advanced"], .advanced-config, mat-tab:contains("Advanced")'
                 );
-                
+
                 if (advancedElements.length > 0) {
                   cy.log('✅ Advanced configuration elements found');
                 } else {
-                  cy.log('ℹ️ Advanced configuration elements not found - may already be in advanced view');
+                  cy.log(
+                    'ℹ️ Advanced configuration elements not found - may already be in advanced view'
+                  );
                 }
 
                 // Close the dialog using helper-like approach
@@ -293,17 +295,21 @@ describe('Processor Add/Remove Tests', () => {
                     cy.log('✅ Configuration dialog closed successfully');
                   });
               } else {
-                cy.log('ℹ️ Configuration dialog not found - this may be expected in test environment');
+                cy.log(
+                  'ℹ️ Configuration dialog not found - this may be expected in test environment'
+                );
               }
             });
           } else {
-            cy.log('ℹ️ Could not open advanced configuration - this may be expected in test environment');
+            cy.log(
+              'ℹ️ Could not open advanced configuration - this may be expected in test environment'
+            );
             cy.log('✅ Test passed - processor helper functionality verified');
           }
         });
       } else {
         cy.log('ℹ️ MultiIssuerJWTTokenAuthenticator not available in current environment');
-        
+
         // Test the helper function with a generic processor instead
         cy.addProcessorToCanvas('GenerateFlowFile', {
           position: { x: 400, y: 300 },
@@ -311,14 +317,16 @@ describe('Processor Add/Remove Tests', () => {
         }).then((fallbackProcessor) => {
           if (fallbackProcessor) {
             cy.log('✅ Testing configuration helper with GenerateFlowFile processor');
-            
+
             cy.openProcessorConfiguration(fallbackProcessor, { advanced: false }).then((opened) => {
               if (opened) {
                 cy.log('✅ Configuration dialog opened with helper function');
-                
+
                 // Close any dialog that might have opened
                 cy.get('body').then(($body) => {
-                  const dialogs = $body.find('mat-dialog-container, .mat-dialog-container, [role="dialog"]');
+                  const dialogs = $body.find(
+                    'mat-dialog-container, .mat-dialog-container, [role="dialog"]'
+                  );
                   if (dialogs.length > 0) {
                     cy.get('button:contains("Cancel"), button:contains("Close")', { timeout: 2000 })
                       .first()
