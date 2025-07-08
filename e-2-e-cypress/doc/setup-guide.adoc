@@ -78,16 +78,13 @@ npm install
 
 == Configuration
 
-=== Test Environment URLs
+=== Service Access
 
-* *NiFi UI*: `https://localhost:9095/nifi/`
-* *Keycloak*: `http://localhost:9080/`
-* *Health Check*: `https://localhost:9095/nifi-api/system-diagnostics`
+For complete service URLs, credentials, and network configuration, see xref:architecture.adoc#_network_configuration_and_access_points[Architecture - Network Configuration].
 
-=== Authentication
-
-* *Username*: `admin`
-* *Password*: `ctsBtRBKHRAx69EqUghvvgEvjnaLjFEB`
+**Quick Reference:**
+* NiFi UI: `https://localhost:9095/nifi/`  
+* Test credentials: `testUser` / `drowssap`
 
 === NAR Deployment Verification
 

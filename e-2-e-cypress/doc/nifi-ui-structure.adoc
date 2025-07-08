@@ -48,9 +48,9 @@ cy.ensureNiFiReady();
 From source code analysis:
 
 * **Login URL**: `https://localhost:9095/nifi/#/login`
-* **Framework**: Angular Material login form with Material Design components
+* **Framework**: Angular Material login form with Material Design components  
 * **Authentication**: Keycloak OAuth integration
-* **Credentials**: `testUser` / `drowssap` (for test environment)
+* **Credentials**: See xref:architecture.adoc#_network_configuration_and_access_points[Architecture - Network Configuration] for test credentials
 
 === Login Selectors
 [source,javascript]
@@ -407,8 +407,6 @@ healthcheck:
   start_period: 60s
 ----
 
-=== Test Environment URLs
-* **NiFi UI**: `https://localhost:9095/nifi/`
-* **NiFi API**: `https://localhost:9095/nifi-api/`
-* **Keycloak**: `http://localhost:9080/`
-* **Keycloak Health**: `http://localhost:9086/health`
+=== Test Environment Configuration
+
+For complete service URLs, credentials, and network configuration, see xref:architecture.adoc#_network_configuration_and_access_points[Architecture - Network Configuration].

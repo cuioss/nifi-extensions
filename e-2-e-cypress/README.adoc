@@ -31,19 +31,9 @@ npm run cypress:open
 
 Read the xref:doc/overview.adoc[Project Overview] to understand our testing philosophy and approach.
 
-== Current Status
+## Current Status
 
-The e-2-e-cypress module is **production-ready** with:
-
-* ✅ 15+ Custom Cypress commands for NiFi UI automation
-* ✅ Complete authentication and navigation reliability
-* ✅ Angular 2.4.0 UI compatibility
-* ✅ Complete Docker environment with NiFi container
-* ✅ Custom processor integration (MultiIssuerJWTTokenAuthenticator)
-* ✅ Maven integration with Node.js 20.19.2
-* ✅ Full CI/CD pipeline with GitHub Actions
-* ✅ Zero-warning ESLint implementation
-* ✅ Comprehensive documentation suite
+The e-2-e-cypress module is **production-ready**. See xref:doc/overview.adoc#_current_status[Project Overview - Current Status] for complete capabilities and feature list.
 
 == Verification Commands
 

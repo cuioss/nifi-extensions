@@ -40,9 +40,11 @@ docker ps | grep -E "(nifi|keycloak)"
 
 === Access Points
 
+For complete service URLs and credentials, see xref:architecture.adoc#_network_configuration_and_access_points[Architecture - Network Configuration].
+
+**Development URLs:**
 * **NiFi UI**: `https://localhost:9095/nifi/`
 * **NiFi API**: `https://localhost:9095/nifi-api/`
-* **Keycloak**: `http://localhost:9080/`
 
 == MCP Playwright Configuration
 

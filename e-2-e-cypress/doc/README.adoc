@@ -62,16 +62,13 @@ npm run cypress:open
 
 == Key Features
 
-The testing framework provides:
+The testing framework is **production-ready** and provides comprehensive testing capabilities. For detailed status and complete feature list, see xref:overview.adoc#_current_status[Project Overview - Current Status].
 
-* ✅ **Production-ready status** with comprehensive test coverage
+**Highlights:**
 * ✅ **Complete Docker environment** for consistent testing
 * ✅ **15+ custom Cypress commands** for NiFi automation
 * ✅ **Zero-warning ESLint implementation** following centralized standards
-* ✅ **Angular 2.4.0 UI compatibility** with reliable selectors
-* ✅ **Maven integration** with automated build processes
 * ✅ **Full CI/CD pipeline** with GitHub Actions
-* ✅ **Comprehensive documentation** with practical examples
 
 * xref:overview.adoc[Project Overview] - Core philosophy and quick start
 * xref:setup-guide.adoc[Setup Guide] - Complete environment setup, prerequisites, and configuration instructions
@@ -121,26 +118,21 @@ The Maven command automatically handles:
 
 == Implementation Summary
 
-The testing framework provides comprehensive end-to-end testing capabilities:
-
-* Production-ready framework with comprehensive helper-based architecture
-* Helper-based architecture: auth-helper, navigation-helper, processor-helper with cross-integration
-* Zero-warning ESLint implementation: Clean, maintainable codebase
-* Full Maven integration: Automated Docker lifecycle and test execution
-* Comprehensive test coverage: Self-tests, functional tests, and advanced processor testing
-
 == Current Test Suite
 
-*Test Coverage*:
+**Test Files:**
 
-* `01-nifi-authentication.cy.js`: Authentication system testing using auth-helper
-* `02-nifi-navigation.cy.js`: Navigation functionality testing using navigation-helper
-* `03-processor-add-remove.cy.js`: Processor lifecycle testing using processor-helper
+* `01-nifi-authentication.cy.js` - Authentication system testing
+* `02-nifi-navigation.cy.js` - Navigation functionality testing  
+* `03-processor-add-remove.cy.js` - Processor lifecycle testing
 
-*Test Categories*:
+**Test Categories:**
 
-* Authentication Testing (login, logout, session management using auth-helper)
-* Navigation Testing (page transitions, canvas access using navigation-helper)
+* **Authentication Testing** - Login, logout, session management
+* **Navigation Testing** - Page transitions, canvas access
+* **Processor Testing** - Add/remove processors, configuration management
+
+For detailed testing patterns and code examples, see xref:testing-patterns.adoc[Testing Patterns].
 * Processor Testing (add/remove lifecycle using processor-helper)
 * Helper Integration (cross-helper usage and authentication-aware operations)
 * Session Management (without cy.session for improved reliability)

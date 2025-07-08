@@ -78,12 +78,25 @@ services:
       - KC_HTTP_ENABLED=true
 ----
 
-=== Network Configuration
+=== Network Configuration and Access Points
 
-* *NiFi UI*: `https://localhost:9095/nifi/`
-* *NiFi API*: `https://localhost:9095/nifi-api/`
-* *Keycloak*: `http://localhost:9080/`
-* *Health Check*: `https://localhost:9095/nifi/`
+==== Service URLs
+
+* **NiFi UI**: `https://localhost:9095/nifi/`
+* **NiFi API**: `https://localhost:9095/nifi-api/`
+* **Keycloak**: `http://localhost:9080/`
+* **Keycloak Health**: `http://localhost:9086/health`
+
+==== Test Credentials
+
+* **Username**: `testUser`
+* **Password**: `drowssap`
+
+==== Health Check Endpoints
+
+* **NiFi Health**: `https://localhost:9095/nifi-api/system-diagnostics`
+* **NiFi Status**: `https://localhost:9095/nifi/`
+* **Keycloak Health**: `http://localhost:9080/health`
 
 === Authentication Flow
 
