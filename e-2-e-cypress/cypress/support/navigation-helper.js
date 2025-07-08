@@ -186,6 +186,15 @@ Cypress.Commands.add('navigateToPage', (pathOrPageType, options = {}) => {
 
   logMessage('info', `Navigating to: ${actualPath} (expecting: ${expectedType || 'any'})`);
 
+  // Check authentication state before navigation to protected pages
+  if (expectedType === PAGE_TYPES.MAIN_CANVAS) {
+    cy.getSessionContext().then((session) => {
+      if (!session.isLoggedIn) {
+        logMessage('warn', 'Attempting to navigate to main canvas without authentication');
+      }
+    });
+  }
+
   // Simple navigation
   cy.visit(actualPath, {
     timeout: timeout,

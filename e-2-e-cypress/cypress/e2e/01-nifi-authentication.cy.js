@@ -30,10 +30,12 @@ describe('NiFi Authentication', () => {
     // Clear any existing session and navigate to login
     cy.clearSession();
 
-    // Try invalid credentials using auth helper
+    // Navigate to login page using navigation helper
     cy.navigateToPage('LOGIN');
 
-    // Manually attempt login with invalid credentials to test rejection
+    // Test auth helper with invalid credentials to verify it properly rejects them
+    // Note: Since loginNiFi is designed to succeed, we test manual rejection here
+    // to verify the authentication infrastructure properly handles invalid credentials
     cy.get(SELECTORS.USERNAME_INPUT).should('be.visible').clear().type('invalid-user');
     cy.get(SELECTORS.PASSWORD_INPUT).should('be.visible').clear().type('invalid-password');
     cy.get(SELECTORS.LOGIN_BUTTON).click();

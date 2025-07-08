@@ -177,11 +177,21 @@ Cypress.Commands.add('openAddProcessorDialog', (options = {}) => {
 
   logMessage('action', 'Opening Add Processor dialog');
 
-  // Ensure we're on the main canvas
+  // Ensure we're on the main canvas and authenticated
   return ensureMainCanvas('add processor dialog').then((isOnCanvas) => {
     if (!isOnCanvas) {
       throw new Error('Cannot open Add Processor dialog: not on main canvas');
     }
+    
+    // Additional check for authentication state using session context
+    return cy.getSessionContext().then((session) => {
+      if (!session.isLoggedIn) {
+        throw new Error('Cannot open Add Processor dialog: not authenticated');
+      }
+      
+      logMessage('info', 'Canvas and authentication verified for processor operations');
+    });
+  }).then(() => {
 
     // Check if toolbar exists before trying to interact with it
     return cy.get('body').then(($body) => {
