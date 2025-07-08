@@ -276,12 +276,9 @@ cy.findProcessorOnCanvas('GenerateFlowFile').then((processor) => {
 
 == Framework Architecture Summary
 
-=== Technology Stack (Verified)
-* **Framework**: Angular 19.2.14 with Angular Material 19.2.14
-* **Architecture**: Nx monorepo with multiple applications
-* **State Management**: NgRx 19.0.1
-* **Canvas**: D3.js 7.8.5 for data visualization
-* **Styling**: Tailwind CSS + Angular Material + SCSS
+=== Technology Stack
+
+For complete technology stack details, see xref:overview.adoc#_framework_architecture[Overview - Framework Architecture].
 
 === Key Testing Patterns
 * **Use Angular Material selectors**: `mat-sidenav-content`, `mat-dialog-container`, `mat-tab`

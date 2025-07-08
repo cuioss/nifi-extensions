@@ -31,8 +31,8 @@ This document covers the technical architecture, infrastructure, and implementat
 
 === Component Stack
 
-* *Test Framework*: Cypress 14.4.1 with custom commands
-* *Target Application*: NiFi 2.4.0 with Angular 19.2.14 UI
+For complete technology stack details, see xref:overview.adoc#_framework_architecture[Overview - Framework Architecture].
+
 * *Authentication*: Built-in NiFi authentication
 * *Infrastructure*: Docker with custom Dockerfile
 * *Build System*: Maven with frontend-maven-plugin
