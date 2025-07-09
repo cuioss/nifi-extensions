@@ -170,7 +170,9 @@ describe('JWT Performance', () => {
 [source,javascript]
 ----
 // Auth Helper - Direct login without cy.session
-Cypress.Commands.add('loginNiFi', (username = 'testUser', password = 'drowssap') => {
+Cypress.Commands.add('loginNiFi', () => {
+  const username = 'testUser';
+  const password = 'drowssap';
   cy.log(`🔐 Logging into NiFi as ${username}`);
 
   cy.get('input[type="text"], input[id*="username"], input[name="username"]')

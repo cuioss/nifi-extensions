@@ -68,7 +68,7 @@ services:
       timeout: 5s
       retries: 12
       start_period: 30s
-      
+
   keycloak:
     image: quay.io/keycloak/keycloak:25.0
     ports:
@@ -141,11 +141,11 @@ export const SELECTORS = {
   CANVAS: '#canvas-container',
   CANVAS_CONTAINER: 'mat-sidenav-content',
   CANVAS_SIDENAV_CONTAINER: 'mat-sidenav-container',
-  
+
   // Processor selectors - SVG-based patterns
   PROCESSOR_GROUP: 'svg g[class*="processor"], svg g[data-type*="processor"], svg .component',
   PROCESSOR_ELEMENT: '.processor, [class*="processor"], .component, .flow-component',
-  
+
   // Dialog selectors - Angular Material dialog patterns
   ADD_PROCESSOR_DIALOG: 'mat-dialog-container, .mat-dialog-container, [role="dialog"]',
   PROPERTIES_DIALOG: 'mat-dialog-container, .mat-dialog-container, [role="dialog"]'
@@ -179,13 +179,13 @@ The framework implements a multi-strategy approach for robust element discovery:
 const discoveryStrategies = [
   // Strategy 1: Data attributes (preferred)
   `[data-testid="${targetId}"]`,
-  
+
   // Strategy 2: Semantic selectors
   `[aria-label*="${targetLabel}"]`,
-  
+
   // Strategy 3: Content-based
   `:contains("${targetText}")`,
-  
+
   // Strategy 4: Angular-specific
   `mat-${componentType}[id*="${targetId}"]`
 ];
@@ -213,7 +213,7 @@ function findElementRobustly(selectors, options = {}) {
 Cypress.Commands.add('robustAction', (action, options = {}) => {
   const maxRetries = options.maxRetries || 3;
   const baseDelay = options.baseDelay || 1000;
-  
+
   function attemptAction(attempt = 0) {
     return cy.wrap(null).then(() => {
       try {
@@ -228,7 +228,7 @@ Cypress.Commands.add('robustAction', (action, options = {}) => {
       }
     });
   }
-  
+
   return attemptAction();
 });
 ----
@@ -243,14 +243,14 @@ function navigateWithFallback(primarySelector, fallbackSelectors) {
     if ($body.find(primarySelector).length > 0) {
       return cy.get(primarySelector);
     }
-    
+
     for (const fallback of fallbackSelectors) {
       if ($body.find(fallback).length > 0) {
         cy.log(`Using fallback selector: ${fallback}`);
         return cy.get(fallback);
       }
     }
-    
+
     throw new Error('No working selector found');
   });
 }
@@ -273,7 +273,7 @@ function navigateWithFallback(primarySelector, fallbackSelectors) {
 beforeEach(() => {
   // Set shorter timeout for individual commands within tests
   Cypress.config('defaultCommandTimeout', 10000);
-  
+
   // Fail fast on viewport issues
   cy.viewport(1280, 720);
 });
@@ -281,7 +281,7 @@ beforeEach(() => {
 afterEach(() => {
   // Save browser logs for persistent storage
   cy.task('saveBrowserLogs');
-  
+
   // Verify no unexpected console errors
   cy.verifyNoConsoleErrors();
   cy.verifyNoUnexpectedWarnings();
@@ -304,7 +304,7 @@ Cypress.on('uncaught:exception', (err) => {
 beforeEach(() => {
   // Cache static resources
   cy.intercept('GET', '/nifi-api/system-diagnostics', { fixture: 'system-diagnostics.json' });
-  
+
   // Monitor critical API calls
   cy.intercept('POST', '/nifi-api/processors').as('createProcessor');
   cy.intercept('PUT', '/nifi-api/processors/*').as('updateProcessor');
@@ -436,14 +436,16 @@ module.exports = {
 [source,javascript]
 ----
 // Current implementation - cy.session with direct form login
-Cypress.Commands.add('loginNiFi', (username = 'testUser', password = 'drowssap') => {
+Cypress.Commands.add('loginNiFi', () => {
+  const username = 'testUser';
+  const password = 'drowssap';
   const sessionId = `nifi-login-${username}`;
-  
+
   cy.session(sessionId, () => {
     cy.log(`🔐 Logging into NiFi as ${username}`);
-    
+
     cy.visit(SERVICE_URLS.NIFI_BASE);
-    
+
     // Wait for login form to be ready
     cy.get('input[type="text"], input[id*="username"], input[name="username"]', {
       timeout: TIMEOUTS.AUTHENTICATION
@@ -451,15 +453,15 @@ Cypress.Commands.add('loginNiFi', (username = 'testUser', password = 'drowssap')
       .should('be.visible')
       .clear()
       .type(username);
-      
+
     cy.get('input[type="password"], input[id*="password"], input[name="password"]')
       .should('be.visible')
       .clear()
       .type(password, { log: false });
-      
+
     cy.get('button[type="submit"], input[type="submit"], button').contains(/log\s*in/i)
       .click();
-      
+
     // Verify successful login
     cy.url().should('not.include', '/login');
   });
@@ -475,16 +477,16 @@ Cypress.Commands.add('loginNiFi', (username = 'testUser', password = 'drowssap')
 // Performance monitoring
 Cypress.Commands.add('measurePerformance', (operation) => {
   const startTime = performance.now();
-  
+
   return cy.wrap(operation()).then((result) => {
     const duration = performance.now() - startTime;
-    
+
     cy.task('logMetric', {
       operation: operation.name,
       duration,
       timestamp: new Date().toISOString()
     });
-    
+
     return result;
   });
 });

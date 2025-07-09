@@ -97,18 +97,16 @@ function _checkKeycloakAccessibility(timeout = 5000) {
 /**
  * Login helper with reliable direct form interaction
  * Performs login without session caching for maximum reliability
- * @param {string} [username='testUser'] - Username for authentication
- * @param {string} [password='drowssap'] - Password for authentication
+ * Uses default credentials from constants.js
  * @example
  * // Login with default credentials
  * cy.loginNiFi();
- *
- * // Login with custom credentials
- * cy.loginNiFi('testuser', 'testpass');
  */
 Cypress.Commands.add(
   'loginNiFi',
-  (username = DEFAULT_CREDENTIALS.USERNAME, password = DEFAULT_CREDENTIALS.PASSWORD) => {
+  () => {
+    const username = DEFAULT_CREDENTIALS.USERNAME;
+    const password = DEFAULT_CREDENTIALS.PASSWORD;
     logMessage('info', `🔑 Performing login for user: ${username}`);
 
     // Navigate to login page using navigation helper
@@ -141,8 +139,7 @@ Cypress.Commands.add(
  * Ensure NiFi is ready for testing
  * Combines login and readiness checks in one command
  * This is the main function used by tests
- * @param {string} [username='testUser'] - Username for authentication
- * @param {string} [password='drowssap'] - Password for authentication
+ * Uses default credentials from constants.js
  * @example
  * // Use in beforeEach for self-sufficient tests
  * beforeEach(() => {
@@ -151,7 +148,7 @@ Cypress.Commands.add(
  */
 Cypress.Commands.add(
   'ensureNiFiReady',
-  (username = DEFAULT_CREDENTIALS.USERNAME, password = DEFAULT_CREDENTIALS.PASSWORD) => {
+  () => {
     logMessage('info', 'Ensuring NiFi is ready for testing...');
 
     // Check current URL to determine if we need to login

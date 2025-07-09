@@ -37,7 +37,7 @@ Based on the current implementation in `cypress/support/auth-helper.js`:
 [source,javascript]
 ----
 // Login using cy.session() for optimal performance
-cy.loginNiFi(username, password);
+cy.loginNiFi();
 
 // Or ensure NiFi is ready for testing
 cy.ensureNiFiReady();
