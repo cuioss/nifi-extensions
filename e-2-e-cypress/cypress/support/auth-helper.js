@@ -209,19 +209,9 @@ Cypress.Commands.add('clearSession', () => {
   cy.clearLocalStorage();
   cy.clearAllSessionStorage();
 
-  // Simply visit the login page without strict verification
-  // This is more reliable than using navigateToPage and verifyPageType
-  cy.visit('/#/login', { failOnStatusCode: false });
-  cy.wait(1000); // Short wait to allow page to start loading
-
-  // Mark session as cleared in sessionStorage for detection by other commands
-  cy.window().then((win) => {
-    try {
-      win.sessionStorage.setItem('cypress-session-cleared', 'true');
-    } catch (e) {
-      // Ignore errors if sessionStorage is not available
-    }
-  });
+  // Navigate to login page to verify cleanup
+  cy.navigateToPage(PAGE_TYPES.LOGIN);
+  cy.verifyPageType(PAGE_TYPES.LOGIN);
 
   logMessage('success', 'Session cleared completely');
 });
