@@ -4,7 +4,7 @@
  * Consolidates authentication functionality from multiple previous test files
  */
 
-import { SELECTORS } from '../support/constants.js';
+import { SELECTORS, PAGE_TYPES } from '../support/constants.js';
 import { testSetup } from '../support/test-helpers.js';
 
 describe('NiFi Authentication', () => {
@@ -12,7 +12,7 @@ describe('NiFi Authentication', () => {
     testSetup('Testing reliable NiFi login for processor testing');
 
     // Navigate to login page using navigation helper
-    cy.navigateToPage('LOGIN');
+    cy.navigateToPage(PAGE_TYPES.LOGIN);
 
     // Login using auth helper with default credentials
     cy.loginNiFi('testUser', 'drowssap');
@@ -31,7 +31,7 @@ describe('NiFi Authentication', () => {
     cy.clearSession();
 
     // Navigate to login page using navigation helper
-    cy.navigateToPage('LOGIN');
+    cy.navigateToPage(PAGE_TYPES.LOGIN);
 
     // Test auth helper with invalid credentials to verify it properly rejects them
     // Note: Since loginNiFi is designed to succeed, we test manual rejection here
