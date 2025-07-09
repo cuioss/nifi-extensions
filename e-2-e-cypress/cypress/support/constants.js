@@ -148,14 +148,7 @@ export const DEFAULT_CREDENTIALS = {
 export const PROCESSOR_TYPES = {
   // Authentication processors
   MULTI_ISSUER_JWT_AUTHENTICATOR: 'MultiIssuerJWTTokenAuthenticator',
-
-  // Standard NiFi processors
-  GENERATE_FLOW_FILE: 'GenerateFlowFile',
-  LOG_ATTRIBUTE: 'LogAttribute',
-  UPDATE_ATTRIBUTE: 'UpdateAttribute',
-
-  // Test processors
-  TEST_PROCESSOR: 'TestProcessor',
+  JWT_TOKEN_AUTHENTICATOR: 'JWTTokenAuthenticator',
 };
 
 /**
