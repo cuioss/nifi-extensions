@@ -143,6 +143,22 @@ export const DEFAULT_CREDENTIALS = {
 };
 
 /**
+ * Processor type constants - Used for consistent processor naming across tests
+ */
+export const PROCESSOR_TYPES = {
+  // Authentication processors
+  MULTI_ISSUER_JWT_AUTHENTICATOR: 'MultiIssuerJWTTokenAuthenticator',
+
+  // Standard NiFi processors
+  GENERATE_FLOW_FILE: 'GenerateFlowFile',
+  LOG_ATTRIBUTE: 'LogAttribute',
+  UPDATE_ATTRIBUTE: 'UpdateAttribute',
+
+  // Test processors
+  TEST_PROCESSOR: 'TestProcessor',
+};
+
+/**
  * Error patterns that should be ignored - only specific NiFi-related errors
  * Generic JavaScript errors have been removed to avoid masking real issues
  */

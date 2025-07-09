@@ -4,6 +4,8 @@
  * Uses Angular Material framework patterns discovered during UI analysis
  */
 
+import { PAGE_TYPES, PROCESSOR_TYPES } from '../support/constants';
+
 describe('Processor Add/Remove Tests', () => {
   beforeEach(() => {
     // Ensure NiFi is ready for testing using auth helper
@@ -22,10 +24,10 @@ describe('Processor Add/Remove Tests', () => {
     cy.log('➕ Testing processor addition to canvas');
 
     // Verify canvas is ready using helper
-    cy.verifyPageType('MAIN_CANVAS', { waitForReady: true });
+    cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS, { waitForReady: true });
 
     // Try to add a processor using helper function
-    cy.addProcessorToCanvas('TestProcessor', {
+    cy.addProcessorToCanvas(PROCESSOR_TYPES.TEST_PROCESSOR, {
       position: { x: 400, y: 300 },
       skipIfExists: false,
     }).then((processor) => {
@@ -33,7 +35,7 @@ describe('Processor Add/Remove Tests', () => {
         cy.log('✅ Processor added successfully using helper function');
 
         // Verify processor was added using helper
-        cy.findProcessorOnCanvas('TestProcessor').then((foundProcessor) => {
+        cy.findProcessorOnCanvas(PROCESSOR_TYPES.TEST_PROCESSOR).then((foundProcessor) => {
           expect(foundProcessor).to.not.be.null;
           expect(foundProcessor.isVisible).to.be.true;
           cy.log(`✅ Verified processor on canvas: ${foundProcessor.name}`);
@@ -49,10 +51,10 @@ describe('Processor Add/Remove Tests', () => {
     cy.log('➖ Testing processor removal from canvas');
 
     // Verify canvas is ready using helper
-    cy.verifyPageType('MAIN_CANVAS', { waitForReady: true });
+    cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS, { waitForReady: true });
 
     // First, add a processor to ensure we have something to remove
-    cy.addProcessorToCanvas('TestProcessor', {
+    cy.addProcessorToCanvas(PROCESSOR_TYPES.TEST_PROCESSOR, {
       position: { x: 400, y: 300 },
       skipIfExists: false,
     }).then((processor) => {
@@ -60,12 +62,12 @@ describe('Processor Add/Remove Tests', () => {
         cy.log('✅ Test processor added successfully, now testing removal');
 
         // Remove the processor using helper function
-        cy.removeProcessorFromCanvas('TestProcessor').then((removed) => {
+        cy.removeProcessorFromCanvas(PROCESSOR_TYPES.TEST_PROCESSOR).then((removed) => {
           if (removed) {
             cy.log('✅ Processor removed successfully using helper function');
 
             // Verify processor is no longer on canvas
-            cy.findProcessorOnCanvas('TestProcessor').then((foundAfterRemoval) => {
+            cy.findProcessorOnCanvas(PROCESSOR_TYPES.TEST_PROCESSOR).then((foundAfterRemoval) => {
               expect(foundAfterRemoval).to.be.null;
               cy.log('✅ Verified processor is no longer on canvas');
             });
@@ -85,10 +87,14 @@ describe('Processor Add/Remove Tests', () => {
     cy.log('🔄 Testing multiple processor add/remove operations');
 
     // Verify canvas is ready using helper
-    cy.verifyPageType('MAIN_CANVAS', { waitForReady: true });
+    cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS, { waitForReady: true });
 
     // Test adding multiple processors using helper function
-    const processorTypes = ['GenerateFlowFile', 'LogAttribute', 'UpdateAttribute'];
+    const processorTypes = [
+      PROCESSOR_TYPES.GENERATE_FLOW_FILE,
+      PROCESSOR_TYPES.LOG_ATTRIBUTE,
+      PROCESSOR_TYPES.UPDATE_ATTRIBUTE
+    ];
     const addedProcessors = [];
 
     processorTypes.forEach((processorType, index) => {
@@ -131,10 +137,10 @@ describe('Processor Add/Remove Tests', () => {
     cy.log('⚙️ Testing processor selection and properties');
 
     // Verify canvas is ready using helper
-    cy.verifyPageType('MAIN_CANVAS', { waitForReady: true });
+    cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS, { waitForReady: true });
 
     // Add a test processor using helper function
-    cy.addProcessorToCanvas('TestProcessor', {
+    cy.addProcessorToCanvas(PROCESSOR_TYPES.TEST_PROCESSOR, {
       position: { x: 400, y: 300 },
       skipIfExists: false,
     }).then((processor) => {
@@ -142,7 +148,7 @@ describe('Processor Add/Remove Tests', () => {
         cy.log('✅ Test processor added for properties testing');
 
         // Find and interact with the processor using helper
-        cy.findProcessorOnCanvas('TestProcessor').then((foundProcessor) => {
+        cy.findProcessorOnCanvas(PROCESSOR_TYPES.TEST_PROCESSOR).then((foundProcessor) => {
           if (foundProcessor && foundProcessor.isVisible) {
             cy.log(`✅ Found visible processor: ${foundProcessor.name}`);
 
@@ -188,7 +194,7 @@ describe('Processor Add/Remove Tests', () => {
     cy.log('🔍 Testing canvas state verification after operations');
 
     // Verify canvas is ready using helper
-    cy.verifyPageType('MAIN_CANVAS', { waitForReady: true });
+    cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS, { waitForReady: true });
 
     // Perform a series of operations and verify canvas remains stable
     cy.get('mat-sidenav-content, .mat-drawer-content')
@@ -244,18 +250,18 @@ describe('Processor Add/Remove Tests', () => {
   });
 
   it('Should open advanced configuration for MultiIssuerJWTTokenAuthenticator', () => {
-    cy.log('⚙️ Testing MultiIssuerJWTTokenAuthenticator advanced configuration');
+    cy.log(`⚙️ Testing ${PROCESSOR_TYPES.MULTI_ISSUER_JWT_AUTHENTICATOR} advanced configuration`);
 
     // Verify canvas is ready using helper
-    cy.verifyPageType('MAIN_CANVAS', { waitForReady: true });
+    cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS, { waitForReady: true });
 
     // Try to add the MultiIssuerJWTTokenAuthenticator processor using helper function
-    cy.addProcessorToCanvas('MultiIssuerJWTTokenAuthenticator', {
+    cy.addProcessorToCanvas(PROCESSOR_TYPES.MULTI_ISSUER_JWT_AUTHENTICATOR, {
       position: { x: 400, y: 300 },
       skipIfExists: false,
     }).then((processor) => {
       if (processor) {
-        cy.log('✅ MultiIssuerJWTTokenAuthenticator added successfully');
+        cy.log(`✅ ${PROCESSOR_TYPES.MULTI_ISSUER_JWT_AUTHENTICATOR} added successfully`);
 
         // Use the processor helper to open advanced configuration
         cy.openProcessorConfiguration(processor, { advanced: true }).then((opened) => {
@@ -308,15 +314,15 @@ describe('Processor Add/Remove Tests', () => {
           }
         });
       } else {
-        cy.log('ℹ️ MultiIssuerJWTTokenAuthenticator not available in current environment');
+        cy.log(`ℹ️ ${PROCESSOR_TYPES.MULTI_ISSUER_JWT_AUTHENTICATOR} not available in current environment`);
 
         // Test the helper function with a generic processor instead
-        cy.addProcessorToCanvas('GenerateFlowFile', {
+        cy.addProcessorToCanvas(PROCESSOR_TYPES.GENERATE_FLOW_FILE, {
           position: { x: 400, y: 300 },
           skipIfExists: false,
         }).then((fallbackProcessor) => {
           if (fallbackProcessor) {
-            cy.log('✅ Testing configuration helper with GenerateFlowFile processor');
+            cy.log(`✅ Testing configuration helper with ${PROCESSOR_TYPES.GENERATE_FLOW_FILE} processor`);
 
             cy.openProcessorConfiguration(fallbackProcessor, { advanced: false }).then((opened) => {
               if (opened) {
