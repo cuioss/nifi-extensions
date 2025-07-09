@@ -4,6 +4,8 @@
  * Focuses on page transitions, canvas access, and UI state management
  */
 
+import { PAGE_TYPES } from '../support/constants';
+
 describe('NiFi Navigation Tests', () => {
   beforeEach(() => {
     // Ensure NiFi is ready for testing using auth helper
@@ -15,14 +17,14 @@ describe('NiFi Navigation Tests', () => {
 
     // Verify we're already authenticated and on main canvas (from beforeEach)
     cy.getPageContext().then((context) => {
-      expect(context.pageType).to.equal('MAIN_CANVAS');
+      expect(context.pageType).to.equal(PAGE_TYPES.MAIN_CANVAS);
       expect(context.isAuthenticated).to.be.true;
       cy.log('✅ Successfully navigated to main canvas after login');
     });
 
     // Test navigation helper - verify we can navigate to main canvas
-    cy.navigateToPage('MAIN_CANVAS');
-    cy.verifyPageType('MAIN_CANVAS');
+    cy.navigateToPage(PAGE_TYPES.MAIN_CANVAS);
+    cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS);
 
     // Verify navigation succeeded
     cy.log('✅ Navigation to main canvas verified using helpers');
@@ -32,10 +34,10 @@ describe('NiFi Navigation Tests', () => {
     cy.log('🎯 Testing canvas accessibility and readiness');
 
     // Verify we're on the main canvas page (from beforeEach)
-    cy.verifyPageType('MAIN_CANVAS', { waitForReady: true });
+    cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS, { waitForReady: true });
 
     cy.getPageContext().then((context) => {
-      expect(context.pageType).to.equal('MAIN_CANVAS');
+      expect(context.pageType).to.equal(PAGE_TYPES.MAIN_CANVAS);
       expect(context.isAuthenticated).to.be.true;
       expect(context.isReady).to.be.true;
       cy.log('✅ Canvas is accessible and ready for operations');
@@ -58,7 +60,7 @@ describe('NiFi Navigation Tests', () => {
     cy.log('🔄 Testing page refresh and session persistence');
 
     // Verify we're on main canvas (from beforeEach)
-    cy.verifyPageType('MAIN_CANVAS');
+    cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS);
 
     // Refresh the page
     cy.reload();
@@ -66,9 +68,9 @@ describe('NiFi Navigation Tests', () => {
     // Verify we're still authenticated and on main canvas
     cy.getPageContext().then((context) => {
       // Should either stay on main canvas or redirect to login
-      expect(['MAIN_CANVAS', 'LOGIN']).to.include(context.pageType);
+      expect([PAGE_TYPES.MAIN_CANVAS, PAGE_TYPES.LOGIN]).to.include(context.pageType);
 
-      if (context.pageType === 'LOGIN') {
+      if (context.pageType === PAGE_TYPES.LOGIN) {
         cy.log('ℹ️ Session expired after refresh, redirected to login');
       } else {
         cy.log('✅ Session maintained after refresh');
@@ -82,7 +84,7 @@ describe('NiFi Navigation Tests', () => {
     cy.log('🗺️ Testing navigation between NiFi sections');
 
     // Verify we start on main canvas (from beforeEach)
-    cy.verifyPageType('MAIN_CANVAS');
+    cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS);
 
     // Test basic page interaction instead of specific navigation
     cy.get('body').then(($body) => {
@@ -104,7 +106,7 @@ describe('NiFi Navigation Tests', () => {
 
       // Verify we're still on a valid page using helper
       cy.getPageContext().then((context) => {
-        expect(context.pageType).to.equal('MAIN_CANVAS');
+        expect(context.pageType).to.equal(PAGE_TYPES.MAIN_CANVAS);
         cy.log(`✅ Navigation test successful, current page: ${context.pageType}`);
       });
     });
@@ -114,12 +116,12 @@ describe('NiFi Navigation Tests', () => {
     cy.log('🚪 Testing logout functionality');
 
     // Verify we start on main canvas (from beforeEach)
-    cy.verifyPageType('MAIN_CANVAS');
+    cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS);
 
     // Verify we're authenticated before logout
     cy.getPageContext().then((context) => {
       expect(context.isAuthenticated).to.be.true;
-      expect(context.pageType).to.equal('MAIN_CANVAS');
+      expect(context.pageType).to.equal(PAGE_TYPES.MAIN_CANVAS);
     });
 
     // Use helper function to clear session

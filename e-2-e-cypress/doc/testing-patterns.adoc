@@ -23,7 +23,7 @@ The foundation of effective testing is using dedicated helper functions:
 describe('NiFi Authentication Tests', () => {
   it('Should login successfully and maintain session', () => {
     // Navigate to login page using navigation helper
-    cy.navigateToPage('LOGIN');
+    cy.navigateToPage(PAGE_TYPES.LOGIN);
 
     // Login using auth helper with default credentials
     cy.loginNiFi();
@@ -31,7 +31,7 @@ describe('NiFi Authentication Tests', () => {
     // Verify we're authenticated using session context
     cy.getSessionContext().then((session) => {
       expect(session.isLoggedIn).to.be.true;
-      expect(session.pageType).to.equal('MAIN_CANVAS');
+      expect(session.pageType).to.equal(PAGE_TYPES.MAIN_CANVAS);
     });
   });
 });
@@ -52,13 +52,13 @@ describe('NiFi Navigation Tests', () => {
   it('Should navigate from login to main canvas', () => {
     // Verify we're already authenticated (from beforeEach)
     cy.getPageContext().then((context) => {
-      expect(context.pageType).to.equal('MAIN_CANVAS');
+      expect(context.pageType).to.equal(PAGE_TYPES.MAIN_CANVAS);
       expect(context.isAuthenticated).to.be.true;
     });
 
     // Test navigation helper functionality
-    cy.navigateToPage('MAIN_CANVAS');
-    cy.verifyPageType('MAIN_CANVAS');
+    cy.navigateToPage(PAGE_TYPES.MAIN_CANVAS);
+    cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS);
   });
 });
 ----
@@ -105,7 +105,7 @@ Tests demonstrate how helpers work together:
 describe('Helper Integration Tests', () => {
   it('Should demonstrate auth-aware processor operations', () => {
     // Navigation helper detects we need authentication
-    cy.navigateToPage('MAIN_CANVAS');
+    cy.navigateToPage(PAGE_TYPES.MAIN_CANVAS);
 
     // Auth helper ensures we're authenticated before proceeding
     cy.ensureNiFiReady();
@@ -124,7 +124,7 @@ describe('Helper Integration Tests', () => {
     cy.clearSession();
 
     // Navigation helper detects unauthenticated state
-    cy.navigateToPage('LOGIN');
+    cy.navigateToPage(PAGE_TYPES.LOGIN);
 
     // Auth helper handles login
     cy.loginNiFi();
