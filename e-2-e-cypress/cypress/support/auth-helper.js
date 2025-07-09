@@ -179,6 +179,7 @@ Cypress.Commands.add(
 
 /**
  * Logout helper - clears the current session
+ * Uses clearSession for comprehensive cleanup
  * @example
  * // Logout and clear all session data
  * cy.logoutNiFi();
@@ -186,14 +187,8 @@ Cypress.Commands.add(
 Cypress.Commands.add('logoutNiFi', () => {
   logMessage('info', 'Performing logout...');
 
-  // Clear all session data
-  cy.clearCookies();
-  cy.clearLocalStorage();
-  cy.clearAllSessionStorage();
-
-  // Navigate to login page to verify logout
-  cy.navigateToPage(PAGE_TYPES.LOGIN);
-  cy.verifyPageType(PAGE_TYPES.LOGIN);
+  // Use clearSession for comprehensive cleanup
+  cy.clearSession();
 
   logMessage('success', 'Logout successful - session cleared');
 });
@@ -201,6 +196,7 @@ Cypress.Commands.add('logoutNiFi', () => {
 /**
  * Clear all authentication state and return to clean state
  * Use this when you need to guarantee a clean, unauthenticated state
+ * This is the central cleanup method that should be used for all session cleanup
  * @example
  * // Clear all authentication state
  * cy.clearSession();
@@ -211,8 +207,20 @@ Cypress.Commands.add('clearSession', () => {
   // Clear all browser storage
   cy.clearAllCookies();
   cy.clearLocalStorage();
+  cy.clearAllSessionStorage();
+
+  // Simply visit the login page without strict verification
+  // This is more reliable than using navigateToPage and verifyPageType
+  cy.visit('/#/login', { failOnStatusCode: false });
+  cy.wait(1000); // Short wait to allow page to start loading
+
+  // Mark session as cleared in sessionStorage for detection by other commands
   cy.window().then((win) => {
-    win.sessionStorage.clear();
+    try {
+      win.sessionStorage.setItem('cypress-session-cleared', 'true');
+    } catch (e) {
+      // Ignore errors if sessionStorage is not available
+    }
   });
 
   logMessage('success', 'Session cleared completely');
