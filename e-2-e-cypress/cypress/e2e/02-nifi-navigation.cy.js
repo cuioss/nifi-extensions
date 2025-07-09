@@ -7,7 +7,7 @@
 describe('NiFi Navigation Tests', () => {
   beforeEach(() => {
     // Ensure NiFi is ready for testing using auth helper
-    cy.ensureNiFiReady('testUser', 'drowssap');
+    cy.ensureNiFiReady();
   });
 
   it('Should navigate from login to main canvas', () => {

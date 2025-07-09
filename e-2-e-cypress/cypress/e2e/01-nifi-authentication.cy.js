@@ -15,7 +15,7 @@ describe('NiFi Authentication', () => {
     cy.navigateToPage(PAGE_TYPES.LOGIN);
 
     // Login using auth helper with default credentials
-    cy.loginNiFi('testUser', 'drowssap');
+    cy.loginNiFi();
 
     // Verify we're authenticated and on the main canvas using session context
     cy.getSessionContext().then((session) => {
@@ -51,7 +51,7 @@ describe('NiFi Authentication', () => {
     testSetup('Testing logout functionality');
 
     // Ensure NiFi is ready for testing (handles login automatically)
-    cy.ensureNiFiReady('testUser', 'drowssap');
+    cy.ensureNiFiReady();
 
     // Verify we're authenticated before logout
     cy.getSessionContext().then((session) => {
