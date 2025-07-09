@@ -159,7 +159,7 @@ Cypress.Commands.add(
       if (url.includes('#/login') || url === 'about:blank' || !url.includes('/nifi')) {
         // Need to login
         logMessage('info', 'Authentication required - performing login');
-        cy.loginNiFi(username, password);
+        cy.loginNiFi();
       } else {
         // Already on a NiFi page, verify we can access the canvas
         logMessage('info', 'Already on NiFi page - verifying canvas access');
@@ -168,7 +168,7 @@ Cypress.Commands.add(
           if (!hasCanvas) {
             // No canvas elements found, try to login
             logMessage('info', 'No canvas elements found - performing login');
-            cy.loginNiFi(username, password);
+            cy.loginNiFi();
           } else {
             logMessage('success', 'Canvas elements found - ready for testing');
           }
