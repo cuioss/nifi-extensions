@@ -1,0 +1,101 @@
+= NiFi Extensions End-to-End Playwright Tests
+
+This module contains end-to-end tests for NiFi Extensions using Playwright.
+
+== Overview
+
+The e-2-e-playwright module provides automated end-to-end testing for NiFi Extensions using the Playwright testing framework. These tests validate the functionality of NiFi Extensions in a real NiFi environment.
+
+== Structure
+
+* `tests/` - Contains the Playwright test files
+* `utils/` - Contains helper functions and utilities
+* `scripts/` - Contains scripts for log analysis and other utilities
+
+== Configuration
+
+The Playwright configuration is defined in `playwright.config.js`. It includes settings for:
+
+* Test timeouts
+* Browser configuration
+* Screenshot and video capture
+* Reporting
+
+=== Maven Standard Directory Structure
+
+This module follows the Maven standard directory structure for test artifacts. All temporary files are stored in the `target` directory:
+
+* `target/test-results` - Contains test results and traces
+* `target/playwright-report` - Contains HTML reports
+* `target/screenshots` - Contains screenshots taken during tests
+* `target/videos` - Contains videos recorded during tests
+
+This ensures that all temporary artifacts are properly managed and can be cleaned up with `mvn clean`.
+
+== Test Requirements
+
+The Playwright tests in this module are designed to run against a live NiFi instance. Before running the tests, ensure that:
+
+1. NiFi is running and accessible at the URL specified in `PLAYWRIGHT_BASE_URL` (default: https://localhost:9095/nifi)
+2. Keycloak is running and accessible at the URL specified in `PLAYWRIGHT_KEYCLOAK_URL` (default: http://localhost:9080)
+3. The test user credentials in `utils/constants.js` are valid for the running NiFi instance
+
+The tests will fail if NiFi is not running or not accessible.
+
+== Running Tests
+
+=== Via Maven
+
+To run the tests via Maven:
+
+[source,bash]
+----
+./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests
+----
+
+=== Via npm
+
+To run the tests directly via npm:
+
+[source,bash]
+----
+cd e-2-e-playwright
+npm run playwright:test
+----
+
+For headed mode (with browser UI):
+
+[source,bash]
+----
+npm run playwright:test:headed
+----
+
+For interactive UI mode:
+
+[source,bash]
+----
+npm run playwright:test:ui
+----
+
+== Viewing Reports
+
+After running tests, you can view the HTML report:
+
+[source,bash]
+----
+npm run playwright:report
+----
+
+== Generating Tests
+
+Playwright includes a code generation tool to help create tests:
+
+[source,bash]
+----
+npm run playwright:codegen
+----
+
+== Environment Variables
+
+* `PLAYWRIGHT_BASE_URL` - Base URL for NiFi (default: https://localhost:9095/nifi)
+* `PLAYWRIGHT_KEYCLOAK_URL` - URL for Keycloak (default: http://localhost:9080)

@@ -282,6 +282,7 @@
         <module>nifi-cuioss-nar</module>
         <module>integration-testing</module>
         <module>e-2-e-cypress</module>
+        <module>e-2-e-playwright</module>
     </modules>
     <build>
         <pluginManagement>
