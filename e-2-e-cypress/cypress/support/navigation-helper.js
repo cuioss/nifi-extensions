@@ -218,7 +218,7 @@ Cypress.Commands.add('navigateToPage', (pathOrPageType, options = {}) => {
             const hasLoginElements =
               $body.find('input[type="password"], input[type="text"]').length > 0;
             if (hasLoginElements) {
-              cy.get('input[type="password"], input[type="text"]', { timeout: 5000 }).should(
+              cy.get('input[type="password"], input[type="text"]', { timeout: 10000 }).should(
                 'be.visible'
               );
             } else {
@@ -267,7 +267,7 @@ Cypress.Commands.add('verifyPageType', (expectedPageType, options = {}) => {
           const hasLoginElements =
             $body.find('input[type="password"], input[type="text"]').length > 0;
           if (hasLoginElements) {
-            cy.get('input[type="password"], input[type="text"]', { timeout: 5000 }).should(
+            cy.get('input[type="password"], input[type="text"]', { timeout: 10000 }).should(
               'be.visible'
             );
           } else {

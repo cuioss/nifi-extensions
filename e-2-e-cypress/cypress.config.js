@@ -11,6 +11,7 @@ module.exports = defineConfig({
     chromeWebSecurity: false, // Required for NiFi's iframe-based architecture and cross-origin requests
     modifyObstructiveCode: false, // Prevent Cypress from modifying NiFi's code
     experimentalWebKitSupport: false,
+    experimentalStudio: true, // Enable Cypress Studio for recording tests
 
     // Configure temporary directories to be under target/
     screenshotsFolder: 'target/cypress/screenshots',
@@ -108,9 +109,26 @@ module.exports = defineConfig({
           const filename = `browser-logs-${timestamp}.json`;
           const filepath = path.join(logsDir, filename);
 
+          // Add additional metadata to logs
+          const enhancedLogs = {
+            ...logs,
+            metadata: {
+              captureTime: new Date().toISOString(),
+              cypressVersion: require('cypress/package.json').version,
+              browser: process.env.CYPRESS_BROWSER || 'electron',
+              nodeVersion: process.version,
+            }
+          };
+
           // Save logs to file
-          fs.writeFileSync(filepath, JSON.stringify(logs, null, 2));
+          fs.writeFileSync(filepath, JSON.stringify(enhancedLogs, null, 2));
           console.log(`🗒️ Browser logs saved to: ${filepath}`);
+
+          // Log summary of captured logs
+          console.log(`  - Errors: ${logs.errors?.length || 0}`);
+          console.log(`  - Warnings: ${logs.warnings?.length || 0}`);
+          console.log(`  - Info/Log entries: ${logs.info?.length || 0}`);
+          console.log(`  - Browser Console entries: ${logs.browserConsole?.length || 0}`);
 
           return null;
         }

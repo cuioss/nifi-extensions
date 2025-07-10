@@ -43,17 +43,12 @@ describe('NiFi Navigation Tests', () => {
       cy.log('✅ Canvas is accessible and ready for operations');
     });
 
-    // Check for basic page elements (more flexible)
-    cy.get('body')
-      .should('be.visible')
-      .then(($body) => {
-        const hasCanvas = $body.find('mat-sidenav-content, #canvas-container, svg').length > 0;
-        if (hasCanvas) {
-          cy.log('✅ Canvas elements found');
-        } else {
-          cy.log('ℹ️ Specific canvas elements not found, but page is accessible');
-        }
-      });
+    // Check for basic page elements
+    cy.get('body').should('be.visible');
+
+    // Verify canvas elements exist
+    cy.get('mat-sidenav-content, #canvas-container, svg').should('exist');
+    cy.log('✅ Canvas elements found and verified');
   });
 
   it('Should handle page refresh and maintain session', () => {
@@ -65,18 +60,14 @@ describe('NiFi Navigation Tests', () => {
     // Refresh the page
     cy.reload();
 
-    // Verify we're still authenticated and on main canvas
+    // Verify we're still on a valid page after refresh
     cy.getPageContext().then((context) => {
-      // Should either stay on main canvas or redirect to login
+      // Should either stay on main canvas or redirect to login - both are valid states
       expect([PAGE_TYPES.MAIN_CANVAS, PAGE_TYPES.LOGIN]).to.include(context.pageType);
 
-      if (context.pageType === PAGE_TYPES.LOGIN) {
-        cy.log('ℹ️ Session expired after refresh, redirected to login');
-      } else {
-        cy.log('✅ Session maintained after refresh');
-        // Note: isAuthenticated might be false immediately after refresh but page type is correct
-        cy.log(`Authentication state: ${context.isAuthenticated}`);
-      }
+      // Log the current page and authentication state for information
+      cy.log(`✅ After refresh: Page type is ${context.pageType}`);
+      cy.log(`✅ After refresh: Authentication state is ${context.isAuthenticated}`);
     });
   });
 
@@ -86,29 +77,22 @@ describe('NiFi Navigation Tests', () => {
     // Verify we start on main canvas (from beforeEach)
     cy.verifyPageType(PAGE_TYPES.MAIN_CANVAS);
 
-    // Test basic page interaction instead of specific navigation
-    cy.get('body').then(($body) => {
-      // Look for any clickable elements or just verify page is interactive
-      const hasInteractiveElements = $body.find('button, a, [role="button"]').length > 0;
+    // Verify page is interactive
+    cy.get('body').should('be.visible');
+    cy.log('✅ Page is visible and interactive');
 
-      if (hasInteractiveElements) {
-        cy.log('✅ Found interactive elements on the page');
-      } else {
-        cy.log('ℹ️ No specific interactive elements found');
-      }
+    // Verify interactive elements exist (buttons, links, etc.)
+    cy.get('button, a, [role="button"]').should('exist');
+    cy.log('✅ Interactive elements found on the page');
 
-      // Test basic page interaction - just verify we can interact with the page
-      cy.get('body')
-        .should('be.visible')
-        .then(() => {
-          cy.log('✅ Page is interactive and ready');
-        });
+    // Test basic page interaction
+    cy.get('body').click(100, 100);
+    cy.log('✅ Page interaction successful');
 
-      // Verify we're still on a valid page using helper
-      cy.getPageContext().then((context) => {
-        expect(context.pageType).to.equal(PAGE_TYPES.MAIN_CANVAS);
-        cy.log(`✅ Navigation test successful, current page: ${context.pageType}`);
-      });
+    // Verify we're still on the main canvas
+    cy.getPageContext().then((context) => {
+      expect(context.pageType).to.equal(PAGE_TYPES.MAIN_CANVAS);
+      cy.log(`✅ Navigation test successful, current page: ${context.pageType}`);
     });
   });
 
@@ -125,13 +109,10 @@ describe('NiFi Navigation Tests', () => {
     });
 
     // Use helper function to clear session
+    // This already navigates to login page and verifies it
     cy.clearSession();
 
-    // Simply visit login page to verify session was cleared
-    cy.visit('/#/login');
-    cy.wait(2000);
-
-    // Verify we can see login page
+    // Verify we're on the login page after session is cleared
     cy.url().should('contain', '#/login');
     cy.log('✅ Successfully logged out and returned to login page');
   });

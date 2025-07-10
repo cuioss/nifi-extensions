@@ -29,6 +29,9 @@ export const SELECTORS = {
   PROCESSOR_TEXT: '.processor-name, .component-name, text[class*="name"], .label, text',
   PROCESSOR_ICON: '.processor-icon, .component-icon, .icon, image, rect',
 
+  // Processor button selectors - For drag-and-drop operations
+  PROCESSOR_BUTTON: 'button.cdk-drag.icon-processor, button.cdk-drag, button.icon-processor, button[cdkdrag], button[cdkdragboundary="body"], .icon-processor, button.component-button, button.processor-button, button[title*="Processor"], button[aria-label*="Processor"]',
+
   // Dialog selectors - Angular Material dialog patterns
   ADD_PROCESSOR_DIALOG: 'mat-dialog-container, .mat-dialog-container, [role="dialog"]',
   PROPERTIES_DIALOG: 'mat-dialog-container, .mat-dialog-container, [role="dialog"]',

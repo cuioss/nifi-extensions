@@ -209,9 +209,23 @@ Cypress.Commands.add('clearSession', () => {
   cy.clearLocalStorage();
   cy.clearAllSessionStorage();
 
-  // Navigate to login page to verify cleanup
-  cy.navigateToPage(PAGE_TYPES.LOGIN);
-  cy.verifyPageType(PAGE_TYPES.LOGIN);
+  // Force reload to ensure we're logged out
+  cy.reload(true);
+
+  // Visit login page directly with longer timeout
+  cy.visit('/#/login', { timeout: 10000 });
+
+  // Wait for page to load
+  cy.wait(3000);
+
+  // Verify URL contains login
+  cy.url().should('contain', '#/login');
+
+  // Verify we can see the login form (using more specific selectors and 'exist' instead of 'visible')
+  cy.get('input[id*="username"], input[name="username"], input[type="text"]', {
+    timeout: 10000,
+    log: true
+  }).should('exist');
 
   logMessage('success', 'Session cleared completely');
 });

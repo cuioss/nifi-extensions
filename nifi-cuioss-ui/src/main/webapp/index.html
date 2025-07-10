@@ -59,14 +59,12 @@
 
         // Define a module that returns the global jQuery
         define('jquery-global', ['jquery'], function($) {
-            console.log('[DEBUG_LOG] jQuery global module loaded');
             // Use the already loaded jQuery UI
             return window.jQuery;
         });
 
         // Define jquery-ui-tooltip as a module that returns jQuery UI
         define('jquery-ui-tooltip', [], function() {
-            console.log('[DEBUG_LOG] jQuery UI tooltip module loaded');
             return window.jQuery;
         });
     </script>

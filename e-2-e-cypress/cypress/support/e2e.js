@@ -46,8 +46,18 @@ beforeEach(() => {
 });
 
 // After each test, save logs and verify no console issues
-afterEach(() => {
+afterEach(function() {
+  // Add some test information to the logs
+  cy.window().then((win) => {
+    // Log test result information
+    if (this.currentTest) {
+      win.console.info(`Test completed: ${this.currentTest.title} with state: ${this.currentTest.state}`);
+    }
+  });
+
   // Save browser logs for persistent storage (always, regardless of test outcome)
+  // This captures all browser console entries (console.log, console.error, etc.)
+  // and saves them to a JSON file in target/browser-logs/
   cy.saveBrowserLogs();
 
   // These verifications will fail fast if issues are detected
