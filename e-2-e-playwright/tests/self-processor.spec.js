@@ -10,7 +10,7 @@ import {
     findMultiIssuerJwtAuthenticator,
     interactWithProcessor,
 } from "../utils/processor-tool";
-import { ensureNiFiReady } from "../utils/login-tool";
+import { ensureNiFiReady, logMessage } from "../utils/login-tool";
 import { PAGE_TYPES } from "../utils/constants";
 import { verifyPageType } from "../utils/navigation-tool";
 
@@ -51,7 +51,10 @@ test.describe("Processor Deployment Verification", () => {
         ).toBeTruthy();
 
         // Note: Processor ID may be empty in some NiFi versions - this is acceptable
-        console.log("Processor ID:", verification.details.id || "empty");
+        logMessage(
+            "info",
+            `Processor ID: ${verification.details.id || "empty"}`,
+        );
     });
 
     test("should interact with MultiIssuerJWTTokenAuthenticator processor", async ({
@@ -74,7 +77,7 @@ test.describe("Processor Deployment Verification", () => {
 
         // Note: Configuration dialog may not appear due to UI restrictions
         // The important thing is that the processor was found and is accessible
-        console.log("Interaction result:", interactionResult);
+        logMessage("info", `Interaction result: ${interactionResult}`);
 
         // Verify that we can at least attempt to interact with the processor
         expect(
@@ -116,12 +119,9 @@ test.describe("Processor Deployment Verification", () => {
         ).toBeGreaterThan(0);
 
         // Log processor details for debugging
-        console.log("Processor Details:", {
-            name: processor.name,
-            id: processor.id,
-            className: processor.className,
-            position: processor.position,
-            isVisible: processor.isVisible,
-        });
+        logMessage(
+            "info",
+            `Processor Details: name=${processor.name}, id=${processor.id}, className=${processor.className}, position=${JSON.stringify(processor.position)}, isVisible=${processor.isVisible}`,
+        );
     });
 });

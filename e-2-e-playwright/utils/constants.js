@@ -59,8 +59,9 @@ export const SELECTORS = {
   OK_BUTTON: 'button:contains("OK"), .mat-button:contains("OK")',
 
   // Context menu selectors - Angular Material menu patterns
-  CONTEXT_MENU: 'mat-menu, .mat-menu-panel, [role="menu"]',
-  CONTEXT_MENU_DELETE: 'mat-menu-item:contains("Delete"), .mat-menu-item:contains("Delete")',
+  CONTEXT_MENU: 'menu, .menu, [role="menu"], .context-menu',
+  CONTEXT_MENU_CONFIGURE: 'menuitem, [role="menuitem"]',
+  CONTEXT_MENU_DELETE: 'menuitem, [role="menuitem"]',
 
   // Toolbar selectors - Angular Material toolbar patterns
   TOOLBAR: 'mat-toolbar, .mat-toolbar',
