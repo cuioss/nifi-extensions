@@ -1,9 +1,0 @@
-# Log files and development artifacts
-*.log
-debug.out
-*.temp.*
-*.backup
-*.old
-
-# Browser logs directory
-browser-logs/

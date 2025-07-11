@@ -1,12 +1,27 @@
 = NiFi Extensions End-to-End Playwright Tests
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
 
 This module contains end-to-end tests for NiFi Extensions using Playwright.
+
+== Maven Coordinates
+
+[source,xml]
+----
+<dependency>
+    <groupId>org.apache.nifi</groupId>
+    <artifactId>e-2-e-playwright</artifactId>
+</dependency>
+----
 
 == Overview
 
 The e-2-e-playwright module provides automated end-to-end testing for NiFi Extensions using the Playwright testing framework. These tests validate the functionality of NiFi Extensions in a real NiFi environment.
 
-== Framework Capabilities and Limitations
+== Core Concepts
 
 === ✅ Supported Capabilities
 
@@ -18,6 +33,8 @@ The testing framework is capable of:
 * **Processor Interaction** - Accessing and interacting with deployed processors
 * **Canvas Analysis** - Analyzing the NiFi canvas and its components
 * **Configuration Verification** - Verifying processor configuration and properties
+
+For detailed information about testing scope and capabilities, see xref:docs/Testing-Scope.adoc[Testing Scope and Capabilities].
 
 === ❌ Technical Limitations
 
@@ -39,11 +56,22 @@ The framework is designed to test **deployed processors** rather than processor 
 
 *Note: Processors should be deployed through the standard NiFi deployment process (NAR files) before running tests.*
 
-== Structure
+== Detailed Component Documentation
+
+=== Module Structure
 
 * `tests/` - Contains the Playwright test files
 * `utils/` - Contains helper functions and utilities
 * `scripts/` - Contains scripts for log analysis and other utilities
+
+=== Core Components
+
+* **processor-tool.js** - Utilities for processor discovery and verification
+* **login-tool.js** - Authentication and session management
+* **navigation-tool.js** - Page navigation and verification
+* **constants.js** - Selectors and configuration constants
+
+For detailed information about the NiFi UI structure, see xref:docs/nifi-ui-structure.adoc[NiFi UI Structure Guide].
 
 == Configuration
 
@@ -132,3 +160,83 @@ npm run playwright:codegen
 
 * `PLAYWRIGHT_BASE_URL` - Base URL for NiFi (default: https://localhost:9095/nifi)
 * `PLAYWRIGHT_KEYCLOAK_URL` - URL for Keycloak (default: http://localhost:9080)
+
+== Usage Examples
+
+=== Basic Processor Verification
+
+[source,javascript]
+----
+// Example: Verify a processor is deployed and accessible
+test("should verify processor deployment", async ({ page }) => {
+  // Login to NiFi
+  await loginToNiFi(page);
+
+  // Navigate to canvas
+  await navigateToCanvas(page);
+
+  // Verify processor is deployed and accessible
+  const verification = await verifyProcessorDeployment(page, "MyProcessor");
+
+  expect(verification.found).toBeTruthy();
+  expect(verification.visible).toBeTruthy();
+  expect(verification.details.name).toContain("MyProcessor");
+});
+----
+
+=== Authentication and Navigation
+
+[source,javascript]
+----
+// Example: Login and navigate to different pages
+test("should navigate through NiFi UI", async ({ page }) => {
+  // Login to NiFi
+  await loginToNiFi(page);
+
+  // Verify we're on the main canvas
+  await verifyPageType(page, "MAIN_CANVAS");
+
+  // Take screenshot for documentation
+  await page.screenshot({ path: "target/screenshots/main-canvas.png" });
+});
+----
+
+== Best Practices
+
+* **Pre-deploy processors** - Deploy processors through standard NiFi deployment before testing
+* **Focus on verification** - Test processor functionality rather than UI operations
+* **Use reliable selectors** - Prefer data-testid attributes when available
+* **Handle timeouts** - Set appropriate timeouts for UI operations
+* **Capture screenshots** - Use screenshots for debugging and documentation
+* **Clean up resources** - Ensure tests clean up after themselves
+* **Isolate tests** - Each test should be independent and not rely on other tests
+
+== Technical Details
+
+=== Thread Safety
+
+* Tests run in isolated browser contexts
+* Each test gets a fresh page instance
+* No shared state between tests
+
+=== Performance Considerations
+
+* Authentication is the slowest operation (~3-5 seconds)
+* Page navigation takes ~1-2 seconds
+* Processor verification is relatively fast (~0.5 seconds)
+* Screenshots add minimal overhead
+
+=== Implementation Notes
+
+* Built on Playwright 1.32.0+
+* Uses Jest-compatible assertions
+* Supports parallel test execution
+* Compatible with CI/CD pipelines
+
+== Related Documentation
+
+* xref:docs/Testing-Scope.adoc[Testing Scope and Capabilities] - Detailed testing framework capabilities
+* xref:docs/nifi-ui-structure.adoc[NiFi UI Structure Guide] - NiFi UI structure and selectors
+* xref:docs/mcp-playwright-guide.adoc[MCP Playwright Guide] - MCP Playwright tool integration
+* https://playwright.dev/docs/intro[Playwright Documentation] - Official Playwright documentation
+* https://nifi.apache.org/docs.html[Apache NiFi Documentation] - Official NiFi documentation

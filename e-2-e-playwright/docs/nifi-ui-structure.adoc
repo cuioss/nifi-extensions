@@ -9,6 +9,12 @@
 
 This document provides comprehensive guidance for NiFi UI automation testing, focusing on the specific operations required for reliable testing of the MultiIssuerJWTTokenAuthenticator processor.
 
+== Related Documentation
+
+* xref:Testing-Scope.adoc[Testing Scope and Capabilities] - Detailed testing framework capabilities
+* xref:mcp-playwright-guide.adoc[MCP Playwright Guide] - MCP Playwright tool integration
+* xref:../README.adoc[E2E Playwright Tests] - Main module documentation
+
 == NiFi 2.4.0 UI Sources
 
 **Current Version**: Apache NiFi 2.4.0
@@ -50,7 +56,7 @@ From source code analysis:
 * **Login URL**: `https://localhost:9095/nifi/#/login`
 * **Framework**: Angular Material login form with Material Design components  
 * **Authentication**: Keycloak OAuth integration
-* **Credentials**: See xref:architecture.adoc#_network_configuration_and_access_points[Architecture - Network Configuration] for test credentials
+* **Credentials**: Default test credentials are `testUser` / `drowssap`
 
 === Login Selectors
 [source,javascript]
@@ -278,7 +284,12 @@ cy.findProcessorOnCanvas('GenerateFlowFile').then((processor) => {
 
 === Technology Stack
 
-For complete technology stack details, see xref:overview.adoc#_framework_architecture[Overview - Framework Architecture].
+The framework is built on the following technology stack:
+
+* **Playwright**: Browser automation framework
+* **JavaScript/Node.js**: Core implementation language
+* **Jest**: Test assertion library
+* **Angular Material**: NiFi UI framework
 
 === Key Testing Patterns
 * **Use Angular Material selectors**: `mat-sidenav-content`, `mat-dialog-container`, `mat-tab`
@@ -339,7 +350,7 @@ NiFi uses specific URL patterns for different pages:
 === Authentication Flow Analysis
 Based on HAR file analysis and browser logs:
 
-[source,javascript]
+[source,text]
 ----
 // Successful authentication flow
 POST /nifi-api/access/token
@@ -364,8 +375,8 @@ Cookie: __Secure-Authorization-Bearer=[JWT-Token]
   "aud": "https://localhost:9095",
   "preferred_username": "testUser", 
   "groups": [],
-  "exp": [expiration-timestamp],
-  "iat": [issued-timestamp]
+  "exp": 1234567890,
+  "iat": 1234567890
 }
 ----
 
@@ -406,4 +417,9 @@ healthcheck:
 
 === Test Environment Configuration
 
-For complete service URLs, credentials, and network configuration, see xref:architecture.adoc#_network_configuration_and_access_points[Architecture - Network Configuration].
+The test environment is configured with the following default settings:
+
+* **NiFi URL**: `https://localhost:9095/nifi/`
+* **Keycloak URL**: `http://localhost:9080`
+* **Test User**: `testUser`
+* **Test Password**: `drowssap`
