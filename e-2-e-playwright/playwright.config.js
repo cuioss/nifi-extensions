@@ -43,6 +43,9 @@ module.exports = defineConfig({
   ],
   /* Output directories for test artifacts */
   outputDir: TEST_RESULTS_DIR,
+  /* Screenshot and video directories */
+  screenshotsDir: SCREENSHOTS_DIR,
+  videosDir: VIDEOS_DIR,
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -52,16 +55,10 @@ module.exports = defineConfig({
     trace: 'on-first-retry',
 
     /* Take screenshot on failure */
-    screenshot: {
-      mode: 'only-on-failure',
-      pathTemplate: `${SCREENSHOTS_DIR}/failure-{testFilePath}-{arg}{ext}`
-    },
+    screenshot: 'only-on-failure',
 
     /* Record video on failure */
-    video: {
-      mode: 'on-first-retry',
-      dir: VIDEOS_DIR
-    },
+    video: 'on-first-retry',
 
     /* Ignore HTTPS errors */
     ignoreHTTPSErrors: true,

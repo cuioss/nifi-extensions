@@ -6,10 +6,21 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { PAGE_TYPES, PAGE_DEFINITIONS } from "../utils/constants.js";
+import {
+    PAGE_TYPES,
+    PAGE_DEFINITIONS,
+    PROCESSOR_TYPES,
+} from "../utils/constants.js";
 import { testSetup } from "../utils/test-helper.js";
 import { ensureNiFiReady } from "../utils/login-tool.js";
 import { verifyPageType } from "../utils/navigation-tool.js";
+import {
+    addJwtTokenAuthenticator,
+    addMultiIssuerJwtAuthenticator,
+    removeJwtTokenAuthenticator,
+    removeMultiIssuerJwtAuthenticator,
+    checkJwtProcessorExists,
+} from "../utils/jwt-processor-tool.js";
 import path from "path";
 
 // Define paths for screenshots (following Maven standard)
@@ -67,29 +78,145 @@ test.describe("Processor Tests", () => {
         });
     });
 
-    test("Should open processor dialog", async ({ page }) => {
-        testSetup("Testing processor dialog");
+    test("Should add and remove JWT Token Authenticator processor", async ({
+        page,
+    }) => {
+        testSetup("Testing JWT Token Authenticator processor operations");
 
-        // This is a placeholder test that would need to be implemented
-        // based on how you interact with the NiFi UI to add processors
-
-        // In a real implementation, you would:
-        // 1. Click the "Add Processor" button
-        // 2. Wait for the processor dialog to appear
-        // 3. Verify the dialog is visible
-        // 4. Search for a specific processor type
-        // 5. Select the processor
-        // 6. Verify the processor is added to the canvas
-
-        // For now, we'll just verify the canvas is ready
+        // Verify the canvas is ready
         await verifyPageType(page, PAGE_TYPES.MAIN_CANVAS, {
             waitForReady: true,
         });
 
-        // Log a message indicating this is a placeholder
-        // eslint-disable-next-line no-console
-        console.log(
-            "⚠️ This is a placeholder test for processor dialog interaction",
+        // Step 1: Verify processor doesn't exist initially (fail-fast if detection doesn't work)
+        const initialExists = await checkJwtProcessorExists(
+            page,
+            PROCESSOR_TYPES.JWT_TOKEN_AUTHENTICATOR,
         );
+        if (initialExists) {
+            // If processor exists, remove it first to ensure clean state
+            await removeJwtTokenAuthenticator(page);
+
+            // Verify removal was successful
+            const stillExists = await checkJwtProcessorExists(
+                page,
+                PROCESSOR_TYPES.JWT_TOKEN_AUTHENTICATOR,
+            );
+            expect(
+                stillExists,
+                "Processor should be removed for clean test state",
+            ).toBeFalsy();
+        }
+
+        // Step 2: Add the JWT Token Authenticator processor
+        const processor = await addJwtTokenAuthenticator(page);
+
+        // Step 3: Verify processor was added successfully
+        expect(
+            processor,
+            "JWT Token Authenticator should be added",
+        ).toBeTruthy();
+        expect(processor.type).toBe(PROCESSOR_TYPES.JWT_TOKEN_AUTHENTICATOR);
+        expect(processor.isVisible).toBeTruthy();
+
+        // Step 4: Check if the processor exists on the canvas
+        const exists = await checkJwtProcessorExists(
+            page,
+            PROCESSOR_TYPES.JWT_TOKEN_AUTHENTICATOR,
+        );
+        expect(
+            exists,
+            "JWT Token Authenticator should exist on canvas",
+        ).toBeTruthy();
+
+        // Step 5: Remove the processor
+        const removeSuccess = await removeJwtTokenAuthenticator(page);
+        expect(
+            removeSuccess,
+            "JWT Token Authenticator should be removed",
+        ).toBeTruthy();
+
+        // Step 6: Verify processor was removed
+        const removedExists = await checkJwtProcessorExists(
+            page,
+            PROCESSOR_TYPES.JWT_TOKEN_AUTHENTICATOR,
+        );
+        expect(
+            removedExists,
+            "JWT Token Authenticator should not exist after removal",
+        ).toBeFalsy();
+    });
+
+    test("Should add and remove Multi-Issuer JWT Authenticator processor", async ({
+        page,
+    }) => {
+        testSetup(
+            "Testing Multi-Issuer JWT Authenticator processor operations",
+        );
+
+        // Verify the canvas is ready
+        await verifyPageType(page, PAGE_TYPES.MAIN_CANVAS, {
+            waitForReady: true,
+        });
+
+        // Step 1: Verify processor doesn't exist initially (fail-fast if detection doesn't work)
+        const initialExists = await checkJwtProcessorExists(
+            page,
+            PROCESSOR_TYPES.MULTI_ISSUER_JWT_AUTHENTICATOR,
+        );
+        if (initialExists) {
+            // If processor exists, remove it first to ensure clean state
+            await removeMultiIssuerJwtAuthenticator(page);
+
+            // Verify removal was successful
+            const stillExists = await checkJwtProcessorExists(
+                page,
+                PROCESSOR_TYPES.MULTI_ISSUER_JWT_AUTHENTICATOR,
+            );
+            expect(
+                stillExists,
+                "Processor should be removed for clean test state",
+            ).toBeFalsy();
+        }
+
+        // Step 2: Add the Multi-Issuer JWT Authenticator processor
+        const processor = await addMultiIssuerJwtAuthenticator(page);
+
+        // Step 3: Verify processor was added successfully
+        expect(
+            processor,
+            "Multi-Issuer JWT Authenticator should be added",
+        ).toBeTruthy();
+        expect(processor.type).toBe(
+            PROCESSOR_TYPES.MULTI_ISSUER_JWT_AUTHENTICATOR,
+        );
+        expect(processor.isVisible).toBeTruthy();
+
+        // Step 4: Check if the processor exists on the canvas
+        const exists = await checkJwtProcessorExists(
+            page,
+            PROCESSOR_TYPES.MULTI_ISSUER_JWT_AUTHENTICATOR,
+        );
+        expect(
+            exists,
+            "Multi-Issuer JWT Authenticator should exist on canvas",
+        ).toBeTruthy();
+
+        // Step 5: Remove the processor
+        const removeSuccess = await removeMultiIssuerJwtAuthenticator(page);
+        expect(
+            removeSuccess,
+            "Multi-Issuer JWT Authenticator should be removed",
+        ).toBeTruthy();
+
+        // Step 6: Verify processor was removed
+        const removedExists = await checkJwtProcessorExists(
+            page,
+            PROCESSOR_TYPES.MULTI_ISSUER_JWT_AUTHENTICATOR,
+        );
+        expect(
+            removedExists,
+            "Multi-Issuer JWT Authenticator should not exist after removal",
+        ).toBeFalsy();
     });
 });

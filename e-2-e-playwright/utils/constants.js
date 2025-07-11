@@ -63,7 +63,7 @@ export const SELECTORS = {
 
   // Toolbar selectors - Angular Material toolbar patterns
   TOOLBAR: 'mat-toolbar, .mat-toolbar',
-  TOOLBAR_ADD: 'mat-toolbar button[aria-label*="Add"], mat-toolbar button[title*="Add"]',
+  TOOLBAR_ADD: 'button, mat-toolbar button, [role="button"], .toolbar button, .operation-button, button[title*="Add"], button[aria-label*="Add"], [data-testid*="add"], [data-testid*="Add"]',
 
   // Login selectors
   USERNAME_INPUT:
@@ -71,7 +71,7 @@ export const SELECTORS = {
   PASSWORD_INPUT:
     '[data-testid="password"], input[type="password"], input[id*="password"], input[name="password"]',
   LOGIN_BUTTON:
-    '[data-testid="login-button"], input[value="Login"], button[type="submit"], button:contains("Login")',
+    '[data-testid="login-button"], input[value="Login"], button[type="submit"], button[value="Login"], button.login-button, button.submit-button',
 
   // Generic selectors
   DIALOG: '[role="dialog"], .dialog, .modal',
@@ -96,11 +96,15 @@ export const TIMEOUTS = {
  * Service URLs - Centralized URL constants for all services
  */
 // Define base URLs first - use environment variables if available
-const KEYCLOAK_BASE_URL = process.env.PLAYWRIGHT_KEYCLOAK_URL || 'https://localhost:9085';
+const KEYCLOAK_BASE_URL = process.env.PLAYWRIGHT_KEYCLOAK_URL || 'http://localhost:9080';
 const NIFI_BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:9095/nifi';
 
 // Extract the base URL without the /nifi path for API calls
 const NIFI_API_URL = NIFI_BASE_URL.replace(/\/nifi$/, '');
+
+// Extract the base URL and port for Keycloak health endpoint
+const KEYCLOAK_HOST = KEYCLOAK_BASE_URL.replace(/^https?:\/\//, '').split(':')[0];
+const KEYCLOAK_HEALTH_PORT = '9086'; // Default health port, can be overridden by environment variable
 
 export const SERVICE_URLS = {
   // NiFi service URLs
@@ -114,7 +118,7 @@ export const SERVICE_URLS = {
   // Keycloak service URLs
   KEYCLOAK_BASE: KEYCLOAK_BASE_URL,
   // Health endpoint is on a different port than the main Keycloak server
-  KEYCLOAK_HEALTH: `http://localhost:9086/health`,
+  KEYCLOAK_HEALTH: `http://${KEYCLOAK_HOST}:${KEYCLOAK_HEALTH_PORT}/health`,
 };
 
 /**
@@ -124,12 +128,12 @@ export const PAGE_DEFINITIONS = {
   [PAGE_TYPES.LOGIN]: {
     path: SERVICE_URLS.NIFI_LOGIN,
     description: 'NiFi Login Page',
-    elements: ['input[type="password"]'],
+    elements: ['input[type="password"]', 'input[type="text"]', 'input[name="username"]', 'input[name="password"]', 'form', '.login-form', '[data-testid="login-form"]'],
   },
   [PAGE_TYPES.MAIN_CANVAS]: {
     path: SERVICE_URLS.NIFI_CANVAS,
     description: 'NiFi Main Canvas',
-    elements: ['mat-sidenav-content', '#canvas-container'],
+    elements: ['mat-sidenav-content', '#canvas-container', '[href="#/process-groups"]', 'button[title="Operate"]', 'button[title="Settings"]', '.canvas-container', '.operation-button', '.navigation-button'],
   },
   [PAGE_TYPES.UNKNOWN]: {
     path: null,

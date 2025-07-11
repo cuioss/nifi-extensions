@@ -1,5 +1,5 @@
 /**
- * @file Navigation Tool Selftest
+ * @file Navigation Tool Tests
  * Tests the navigation tool functionality
  * @version 1.0.0
  */
@@ -9,10 +9,10 @@ import {
     navigateToPage,
     verifyPageType,
     waitForPageType,
-} from "../../utils/navigation-tool";
-import { ensureNiFiReady } from "../../utils/login-tool";
-import { PAGE_TYPES } from "../../utils/constants";
-import { getPageContext } from "../../utils/test-helper";
+} from "../utils/navigation-tool";
+import { ensureNiFiReady } from "../utils/login-tool";
+import { PAGE_TYPES } from "../utils/constants";
+import { getPageContext } from "../utils/test-helper";
 
 test.describe("Navigation Tool Tests", () => {
     // Make sure we're logged in before each test

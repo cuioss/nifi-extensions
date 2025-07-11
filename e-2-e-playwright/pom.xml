@@ -28,8 +28,8 @@
         <skip.lint>false</skip.lint> <!-- Run linting by default, skip only for integration tests -->
         <!-- Playwright tests configuration -->
         <skipPlaywrightTests>true</skipPlaywrightTests> <!-- Skip Playwright tests by default, run only in integration-tests profile -->
-        <!-- Exclude this module from SonarQube analysis -->
-        <sonar.skip>true</sonar.skip>
+        <!-- Include this module in SonarQube analysis -->
+        <sonar.skip>false</sonar.skip>
     </properties>
 
     <build>

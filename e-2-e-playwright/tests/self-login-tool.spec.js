@@ -5,9 +5,9 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { login, logout, ensureNiFiReady } from "../../utils/login-tool";
-import { PAGE_TYPES } from "../../utils/constants";
-import { getPageContext } from "../../utils/test-helper";
+import { login, logout, ensureNiFiReady } from "../utils/login-tool";
+import { PAGE_TYPES } from "../utils/constants";
+import { getPageContext } from "../utils/test-helper";
 
 test.describe("Login Tool Tests", () => {
     test("ensureNiFiReady should prepare NiFi for testing", async ({
