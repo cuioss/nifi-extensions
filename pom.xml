@@ -41,8 +41,8 @@
         <!-- Sonar related-->
         <sonar.organization>cuioss-github</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        <!-- Exclude e-2-e-cypress module from SonarQube analysis -->
-        <sonar.exclusions>e-2-e-cypress/**</sonar.exclusions>
+        <!-- Exclude e-2-e-playwright module from SonarQube analysis -->
+        <sonar.exclusions>e-2-e-playwright/**</sonar.exclusions>
         <sonar.skip>false</sonar.skip>
         <!-- Core -->
         <maven.compiler.plugin.version>3.14.0</maven.compiler.plugin.version>
@@ -389,7 +389,7 @@
                 <module>nifi-cuioss-ui</module>
                 <module>nifi-cuioss-nar</module>
                 <module>integration-testing</module>
-                <!-- e-2-e-cypress module excluded from sonar analysis -->
+                <!-- e-2-e-playwright module excluded from sonar analysis -->
             </modules>
             <build>
                 <plugins>
@@ -586,7 +586,7 @@
                 <module>nifi-cuioss-ui</module>
                 <module>nifi-cuioss-nar</module>
                 <module>integration-testing</module>
-                <!-- e-2-e-cypress module excluded from release snapshots -->
+                <!-- e-2-e-playwright module excluded from release snapshots -->
             </modules>
             <build>
                 <plugins>
@@ -616,7 +616,7 @@
                 <module>nifi-cuioss-ui</module>
                 <module>nifi-cuioss-nar</module>
                 <module>integration-testing</module>
-                <!-- e-2-e-cypress module excluded from releases -->
+                <!-- e-2-e-playwright module excluded from releases -->
             </modules>
             <build>
                 <plugins>

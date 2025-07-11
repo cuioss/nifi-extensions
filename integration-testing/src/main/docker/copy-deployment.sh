@@ -14,9 +14,9 @@ DEPLOY_DIR="${PROJECT_ROOT}/target/nifi-deploy"
 # Navigate to the project root to run Maven
 cd "${PROJECT_ROOT}"
 
-# Build the NAR file (excluding e-2-e-cypress to avoid circular dependency)
+# Build the NAR file (excluding e-2-e-playwright to avoid circular dependency)
 echo "Building NAR file..."
-./mvnw package -DskipTests -pl '!e-2-e-cypress'
+./mvnw package -DskipTests -pl '!e-2-e-playwright'
 
 # Ensure the NiFi NAR extensions directory exists in the parent project
 if [ ! -d "${NAR_TARGET_DIR}" ]; then

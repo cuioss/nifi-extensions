@@ -77,7 +77,7 @@ Execute in sequence before ANY commit:
    - All tests must pass
    - Tasks are complete ONLY after this succeeds
 
-3. **Integration Tests**: `./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests`
+3. **Integration Tests**: `./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests`
    - Ensure UI integration tests pass
    - Verify all end-to-end scenarios are covered
 
@@ -98,7 +98,7 @@ Common Maven commands for CUI projects:
 - Run tests: `./mvnw test`
 - Run single test: `./mvnw test -Dtest=ClassName#methodName`
 - Clean-Up Code: `./mvnw -Ppre-commit clean install -DskipTests` -> Check the console after running the command and fix all errors and warnings, verify until they are all corrected
-- Integration-tests: `./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests`: Runs the ui integration-tests
+- Integration-tests: `./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests`: Runs the ui integration-tests
 
 ## Standards Overview
 **Base Reference**: `{STANDARDS_BASE_URL}/standards`

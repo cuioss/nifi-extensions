@@ -12,7 +12,7 @@ This document describes the mechanism for automatically testing and fixing UI mo
 
 Roundtrip testing is an iterative approach that combines:
 
-* **Automated Test Execution**: Using Cypress to simulate user interactions
+* **Automated Test Execution**: Using Playwright to simulate user interactions
 * **Real-time Browser Analysis**: Capturing console logs and browser behavior
 * **Iterative Development**: Making incremental fixes based on test feedback
 * **Comprehensive Validation**: Full build and integration testing after fixes
@@ -23,20 +23,20 @@ Roundtrip testing is an iterative approach that combines:
 
 * Docker environment properly configured
 * NiFi test container available and functional
-* Cypress testing framework installed and configured
+* Playwright testing framework installed and configured
 * Browser logs collection mechanism enabled (automatic in current setup)
 
 === Test Coverage Requirements
 
 [IMPORTANT]
 ====
-**Critical Prerequisite**: There must be a corresponding Cypress test for the feature under test available in the `e-2-e-cypress/cypress/e2e/` directory.
+**Critical Prerequisite**: There must be a corresponding Playwright test for the feature under test available in the `e-2-e-playwright/tests/` directory.
 ====
 
 Ensure the following test files exist for your UI feature:
 
-* `01-self-test.cy.js` - Basic functionality verification
-* `04-processor-deployment.cy.js` - Processor-specific UI testing
+* `self-test.spec.js` - Basic functionality verification
+* `processor-deployment.spec.js` - Processor-specific UI testing
 * Custom test files for specific UI components
 
 === Deployment Workflow Integration
@@ -59,7 +59,7 @@ Ensure the following test files exist for your UI feature:
 
 * After any change to UI files (`nifi-cuioss-ui/src/main/webapp/`)
 * After modifying processor logic or configuration
-* Before running Cypress tests to verify fixes
+* Before running Playwright tests to verify fixes
 * Each iteration of the roundtrip testing cycle
 
 == Roundtrip Testing Process
@@ -90,24 +90,24 @@ Wait for the environment to be fully operational:
 
 === Phase 2: Test Execution and Analysis
 
-==== 3. Execute Targeted Cypress Test
+==== 3. Execute Targeted Playwright Test
 
 [source,bash]
 ----
-# Run specific test for the feature under investigation (from e-2-e-cypress directory)
-cd e-2-e-cypress
-npx cypress run --spec "cypress/e2e/corresponding-test-spec.cy.js"
+# Run specific test for the feature under investigation (from e-2-e-playwright directory)
+cd e-2-e-playwright
+npx playwright test tests/corresponding-test-spec.js
 ----
 
 **Examples of test specifications**:
 
-* `--spec "cypress/e2e/04-processor-deployment.cy.js"` - For processor UI issues
-* `--spec "cypress/e2e/01-self-test.cy.js"` - For basic functionality verification
-* `--spec "cypress/e2e/*processor*.cy.js"` - For all processor-related tests
+* `tests/processor-deployment.spec.js` - For processor UI issues
+* `tests/self-test.spec.js` - For basic functionality verification
+* `tests/*processor*.spec.js` - For all processor-related tests
 
 ==== 4. Analyze Browser Console Logs
 
-**Log Location**: `e-2-e-cypress/browser-logs/`
+**Log Location**: `e-2-e-playwright/target/test-results/`
 
 Browser logs are automatically captured with the following naming pattern:
 [source]
@@ -121,7 +121,7 @@ browser-logs-YYYY-MM-DDTHH-MM-SS-sssZ.json
 +
 [source,bash]
 ----
-ls -la e-2-e-cypress/browser-logs/*.json | tail -1
+ls -la e-2-e-playwright/target/test-results/*.json | tail -1
 ----
 
 2. **Review Log Content**:
@@ -129,7 +129,7 @@ ls -la e-2-e-cypress/browser-logs/*.json | tail -1
 [source,bash]
 ----
 # View the latest log file
-cat e-2-e-cypress/browser-logs/browser-logs-[timestamp].json | jq '.'
+cat e-2-e-playwright/target/test-results/[test-name]/trace.json | jq '.'
 ----
 
 3. **Key Analysis Points**:
@@ -207,9 +207,9 @@ After implementing fixes:
 # Deploy the changes to test environment
 integration-testing/src/main/docker/copy-deployment.sh
 
-# Re-run the same Cypress test (from e-2-e-cypress directory)
-cd e-2-e-cypress
-npx cypress run --spec "cypress/e2e/corresponding-test-spec.cy.js"
+# Re-run the same Playwright test (from e-2-e-playwright directory)
+cd e-2-e-playwright
+npx playwright test tests/corresponding-test-spec.js
 ----
 
 **Continue this cycle until**:
@@ -260,7 +260,7 @@ This command validates:
 [source,bash]
 ----
 # Execute integration tests with Docker environment
-./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests
+./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests
 ----
 
 This command validates:
@@ -282,7 +282,7 @@ This command validates:
 **Success Criteria**:
 
 * ✅ `./mvnw clean verify` exits with code 0
-* ✅ `./mvnw clean verify -pl e-2-e-cypress -Pintegration-tests` exits with code 0
+* ✅ `./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests` exits with code 0
 * ✅ No ESLint warnings or errors
 * ✅ All tests pass consistently
 
