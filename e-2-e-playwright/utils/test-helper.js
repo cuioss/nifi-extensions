@@ -23,67 +23,62 @@ export function testSetup(testName) {
  * @returns {Promise<Object>} Page context object
  */
 export async function getPageContext(page) {
-  try {
-    // Check for specific main canvas elements first (these are more reliable)
-    const logoutLink = await page.$('text="log out"');
-    const processGroupLink = await page.$('[href*="#/process-groups"]');
-    const operateButton = await page.$('button[title="Operate"]');
+  // Check for specific main canvas elements first (these are more reliable)
+  const logoutLink = await page.$('text="log out"');
+  const processGroupLink = await page.$('[href*="#/process-groups"]');
+  const operateButton = await page.$('button[title="Operate"]');
 
-    // If any of these elements are present, we're definitely on the main canvas
-    const hasSpecificCanvasElements = !!(logoutLink || processGroupLink || operateButton);
+  // If any of these elements are present, we're definitely on the main canvas
+  const hasSpecificCanvasElements = !!(logoutLink || processGroupLink || operateButton);
 
-    // Check for login page elements - try all elements in the array
-    let hasLoginElements = false;
-    for (const selector of PAGE_DEFINITIONS[PAGE_TYPES.LOGIN].elements) {
-      if (await page.$(selector) !== null) {
-        hasLoginElements = true;
-        break;
-      }
+  // Check for login page elements - try all elements in the array
+  let hasLoginElements = false;
+  for (const selector of PAGE_DEFINITIONS[PAGE_TYPES.LOGIN].elements) {
+    if (await page.$(selector) !== null) {
+      hasLoginElements = true;
+      break;
     }
-
-    // Check for canvas elements - try all elements in the array
-    let hasCanvasElements = false;
-    for (const selector of PAGE_DEFINITIONS[PAGE_TYPES.MAIN_CANVAS].elements) {
-      if (await page.$(selector) !== null) {
-        hasCanvasElements = true;
-        break;
-      }
-    }
-
-    // Determine page type - prioritize specific canvas elements
-    let pageType = PAGE_TYPES.UNKNOWN;
-    if (hasSpecificCanvasElements) {
-      pageType = PAGE_TYPES.MAIN_CANVAS;
-    } else if (hasLoginElements && !hasCanvasElements) {
-      pageType = PAGE_TYPES.LOGIN;
-    } else if (hasCanvasElements) {
-      pageType = PAGE_TYPES.MAIN_CANVAS;
-    }
-
-    // Determine authentication state
-    const isAuthenticated = pageType === PAGE_TYPES.MAIN_CANVAS;
-
-    // Determine if page is ready
-    let isReady = false;
-    if (pageType === PAGE_TYPES.MAIN_CANVAS) {
-      isReady = hasCanvasElements || hasSpecificCanvasElements;
-    } else if (pageType === PAGE_TYPES.LOGIN) {
-      isReady = hasLoginElements;
-    }
-
-    return {
-      pageType,
-      isAuthenticated,
-      isReady,
-      elements: {
-        hasLoginElements,
-        hasCanvasElements
-      }
-    };
-  } catch (error) {
-    logMessage('error', `Error getting page context: ${error.message}`);
-    throw error;
   }
+
+  // Check for canvas elements - try all elements in the array
+  let hasCanvasElements = false;
+  for (const selector of PAGE_DEFINITIONS[PAGE_TYPES.MAIN_CANVAS].elements) {
+    if (await page.$(selector) !== null) {
+      hasCanvasElements = true;
+      break;
+    }
+  }
+
+  // Determine page type - prioritize specific canvas elements
+  let pageType = PAGE_TYPES.UNKNOWN;
+  if (hasSpecificCanvasElements) {
+    pageType = PAGE_TYPES.MAIN_CANVAS;
+  } else if (hasLoginElements && !hasCanvasElements) {
+    pageType = PAGE_TYPES.LOGIN;
+  } else if (hasCanvasElements) {
+    pageType = PAGE_TYPES.MAIN_CANVAS;
+  }
+
+  // Determine authentication state
+  const isAuthenticated = pageType === PAGE_TYPES.MAIN_CANVAS;
+
+  // Determine if page is ready
+  let isReady = false;
+  if (pageType === PAGE_TYPES.MAIN_CANVAS) {
+    isReady = hasCanvasElements || hasSpecificCanvasElements;
+  } else if (pageType === PAGE_TYPES.LOGIN) {
+    isReady = hasLoginElements;
+  }
+
+  return {
+    pageType,
+    isAuthenticated,
+    isReady,
+    elements: {
+      hasLoginElements,
+      hasCanvasElements
+    }
+  };
 }
 
 /**

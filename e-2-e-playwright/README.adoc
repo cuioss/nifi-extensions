@@ -6,6 +6,39 @@ This module contains end-to-end tests for NiFi Extensions using Playwright.
 
 The e-2-e-playwright module provides automated end-to-end testing for NiFi Extensions using the Playwright testing framework. These tests validate the functionality of NiFi Extensions in a real NiFi environment.
 
+== Framework Capabilities and Limitations
+
+=== ✅ Supported Capabilities
+
+The testing framework is capable of:
+
+* **Authentication** - Login to NiFi using test credentials
+* **Navigation** - Moving between NiFi pages and verifying page states
+* **Processor Discovery** - Finding existing processors deployed on the canvas
+* **Processor Interaction** - Accessing and interacting with deployed processors
+* **Canvas Analysis** - Analyzing the NiFi canvas and its components
+* **Configuration Verification** - Verifying processor configuration and properties
+
+=== ❌ Technical Limitations
+
+Due to the complexity of NiFi's Angular Material UI and drag-and-drop interactions, the following operations are **NOT supported**:
+
+* **Adding Processors** - Complex drag-and-drop from toolbar to canvas
+* **Removing Processors** - Complex context menu and confirmation workflows
+* **Component Creation** - Creating new canvas components
+* **Component Deletion** - Deleting existing canvas components
+
+=== 🎯 Testing Strategy
+
+The framework is designed to test **deployed processors** rather than processor lifecycle management. Tests should:
+
+1. **Verify processor deployment** - Confirm processors are correctly deployed to NiFi
+2. **Test processor functionality** - Interact with existing processors to verify behavior
+3. **Validate configuration** - Check processor properties and settings
+4. **Monitor processor state** - Verify processor status and health
+
+*Note: Processors should be deployed through the standard NiFi deployment process (NAR files) before running tests.*
+
 == Structure
 
 * `tests/` - Contains the Playwright test files

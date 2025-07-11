@@ -44,28 +44,23 @@ export function logMessage(level, message) {
 export async function checkNiFiAccessibility(page, timeout = 5000) {
   logMessage('info', 'Checking NiFi accessibility...');
 
-  try {
-    const response = await page.request.get(SERVICE_URLS.NIFI_SYSTEM_DIAGNOSTICS, {
-      timeout: timeout,
-      failOnStatusCode: false
-    });
+  const response = await page.request.get(SERVICE_URLS.NIFI_SYSTEM_DIAGNOSTICS, {
+    timeout: timeout,
+    failOnStatusCode: false
+  });
 
-    // Consider 401 Unauthorized as a valid indication that NiFi is accessible
-    // This is because the endpoint requires authentication, which is expected
-    const isAccessible = response &&
-      ((response.status() >= 200 && response.status() < 400) || response.status() === 401);
+  // Consider 401 Unauthorized as a valid indication that NiFi is accessible
+  // This is because the endpoint requires authentication, which is expected
+  const isAccessible = response &&
+    ((response.status() >= 200 && response.status() < 400) || response.status() === 401);
 
-    if (isAccessible) {
-      logMessage('success', 'NiFi service is accessible');
-    } else {
-      logMessage('error', `NiFi service not accessible - Status: ${response ? response.status() : 'unknown'}`);
-    }
-
-    return isAccessible;
-  } catch (error) {
-    logMessage('error', `NiFi service not accessible - Network Error: ${error.message || 'Connection failed'}`);
-    return false;
+  if (isAccessible) {
+    logMessage('success', 'NiFi service is accessible');
+  } else {
+    logMessage('error', `NiFi service not accessible - Status: ${response ? response.status() : 'unknown'}`);
   }
+
+  return isAccessible;
 }
 
 /**
@@ -77,25 +72,20 @@ export async function checkNiFiAccessibility(page, timeout = 5000) {
 export async function checkKeycloakAccessibility(page, timeout = 5000) {
   logMessage('info', 'Checking Keycloak accessibility...');
 
-  try {
-    const response = await page.request.get(SERVICE_URLS.KEYCLOAK_HEALTH, {
-      timeout: timeout,
-      failOnStatusCode: false
-    });
+  const response = await page.request.get(SERVICE_URLS.KEYCLOAK_HEALTH, {
+    timeout: timeout,
+    failOnStatusCode: false
+  });
 
-    const isAccessible = response && response.status() >= 200 && response.status() < 400;
+  const isAccessible = response && response.status() >= 200 && response.status() < 400;
 
-    if (isAccessible) {
-      logMessage('success', 'Keycloak service is accessible');
-    } else {
-      logMessage('error', `Keycloak service not accessible - Status: ${response ? response.status() : 'unknown'}`);
-    }
-
-    return isAccessible;
-  } catch (error) {
-    logMessage('error', `Keycloak service not accessible - Network Error: ${error.message || 'Connection failed'}`);
-    return false;
+  if (isAccessible) {
+    logMessage('success', 'Keycloak service is accessible');
+  } else {
+    logMessage('error', `Keycloak service not accessible - Status: ${response ? response.status() : 'unknown'}`);
   }
+
+  return isAccessible;
 }
 
 /**
@@ -112,45 +102,33 @@ export async function loginNiFi(page, credentials = {}) {
 
   logMessage('info', `🔑 Performing login for user: ${username}`);
 
-  try {
-    // Navigate to the login page
-    await page.goto(SERVICE_URLS.NIFI_LOGIN);
+  // Navigate to the login page
+  await page.goto(SERVICE_URLS.NIFI_LOGIN);
 
-    // Wait for the login form to be visible
-    await page.waitForSelector(SELECTORS.USERNAME_INPUT, { timeout: 10000 });
+  // Wait for the login form to be visible
+  await page.waitForSelector(SELECTORS.USERNAME_INPUT, { timeout: 10000 });
 
-    // Fill in the login form
-    await page.fill(SELECTORS.USERNAME_INPUT, username);
-    await page.fill(SELECTORS.PASSWORD_INPUT, password);
+  // Fill in the login form
+  await page.fill(SELECTORS.USERNAME_INPUT, username);
+  await page.fill(SELECTORS.PASSWORD_INPUT, password);
 
-    // Take a screenshot before clicking login (for debugging)
-    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'before-login.png') });
+  // Click the login button
+  await page.click(SELECTORS.LOGIN_BUTTON);
 
-    // Click the login button
-    await page.click(SELECTORS.LOGIN_BUTTON);
+  // Wait for navigation to complete
+  await page.waitForTimeout(2000); // Give time for navigation
 
-    // Wait for navigation to complete
-    await page.waitForNavigation({ timeout: 10000 });
+  // Check if login was successful by looking for canvas elements
+  const canvasElement = await page.$(SELECTORS.CANVAS_ELEMENTS);
+  const loginSuccess = !!canvasElement;
 
-    // Check if login was successful by looking for canvas elements
-    const canvasElement = await page.$(SELECTORS.CANVAS_ELEMENTS);
-    const loginSuccess = !!canvasElement;
-
-    if (loginSuccess) {
-      logMessage('success', `Successfully logged in as ${username}`);
-    } else {
-      logMessage('error', `Failed to log in as ${username}`);
-      // Take a screenshot after failed login (for debugging)
-      await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'login-failed.png') });
-    }
-
-    return loginSuccess;
-  } catch (error) {
-    logMessage('error', `Login error: ${error.message}`);
-    // Take a screenshot on error (for debugging)
-    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, 'login-error.png') });
-    return false;
+  if (loginSuccess) {
+    logMessage('success', `Successfully logged in as ${username}`);
+  } else {
+    logMessage('error', `Failed to log in as ${username}`);
   }
+
+  return loginSuccess;
 }
 
 /**
@@ -169,40 +147,31 @@ export async function navigateToPage(page, pageType) {
 
   logMessage('info', `Navigating to ${pageDefinition.description}`);
 
-  try {
-    // Navigate to the page
-    await page.goto(pageDefinition.path);
+  // Navigate to the page
+  await page.goto(pageDefinition.path);
 
-    // Wait for navigation to complete
-    await page.waitForNavigation({ timeout: 10000 });
+  // Wait for navigation to complete
+  await page.waitForTimeout(2000); // Give time for navigation
 
-    // Check if navigation was successful by looking for page elements
-    const pageElements = pageDefinition.elements;
-    let navigationSuccess = false;
+  // Check if navigation was successful by looking for page elements
+  const pageElements = pageDefinition.elements;
+  let navigationSuccess = false;
 
-    if (pageElements && pageElements.length > 0) {
-      for (const selector of pageElements) {
-        const element = await page.$(selector);
-        if (element) {
-          navigationSuccess = true;
-          break;
-        }
+  if (pageElements && pageElements.length > 0) {
+    for (const selector of pageElements) {
+      const element = await page.$(selector);
+      if (element) {
+        navigationSuccess = true;
+        break;
       }
     }
-
-    if (navigationSuccess) {
-      logMessage('success', `Successfully navigated to ${pageDefinition.description}`);
-    } else {
-      logMessage('error', `Failed to navigate to ${pageDefinition.description}`);
-      // Take a screenshot after failed navigation (for debugging)
-      await page.screenshot({ path: path.join(SCREENSHOTS_DIR, `navigation-failed-${pageType}.png`) });
-    }
-
-    return navigationSuccess;
-  } catch (error) {
-    logMessage('error', `Navigation error: ${error.message}`);
-    // Take a screenshot on error (for debugging)
-    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, `navigation-error-${pageType}.png`) });
-    return false;
   }
+
+  if (navigationSuccess) {
+    logMessage('success', `Successfully navigated to ${pageDefinition.description}`);
+  } else {
+    logMessage('error', `Failed to navigate to ${pageDefinition.description}`);
+  }
+
+  return navigationSuccess;
 }

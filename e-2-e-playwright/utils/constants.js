@@ -16,12 +16,12 @@ export const PAGE_TYPES = {
  * Based on nifi-ui-structure.adoc: NiFi uses Angular 19.2.14 with Angular Material 19.2.14
  */
 export const SELECTORS = {
-  // ✅ VERIFIED ANGULAR MATERIAL SELECTORS (from NiFi 2.4.0 source code analysis)
+  // ✅ VERIFIED ANGULAR MATERIAL SELECTORS (from NiFi 2.4.0 source code analysis + runtime inspection)
   // Canvas selectors - Angular Material patterns with progressive fallbacks
   CANVAS: '#canvas-container',
   CANVAS_CONTAINER: 'mat-sidenav-content',
   CANVAS_SIDENAV_CONTAINER: 'mat-sidenav-container',
-  CANVAS_SVG: 'mat-sidenav-content svg, #canvas-container svg',
+  CANVAS_SVG: 'svg.canvas-svg, mat-sidenav-content svg, #canvas-container svg',
   CANVAS_ELEMENTS: 'mat-sidenav-content, #canvas-container, .mat-drawer-content, body, nifi',
 
   // Processor selectors - SVG-based patterns within Angular Material containers
@@ -30,8 +30,9 @@ export const SELECTORS = {
   PROCESSOR_TEXT: '.processor-name, .component-name, text[class*="name"], .label, text',
   PROCESSOR_ICON: '.processor-icon, .component-icon, .icon, image, rect',
 
-  // Processor button selectors - For drag-and-drop operations
-  PROCESSOR_BUTTON: 'button.cdk-drag.icon-processor, button.cdk-drag, button.icon-processor, button[cdkdrag], button[cdkdragboundary="body"], .icon-processor, button.component-button, button.processor-button, button[title*="Processor"], button[aria-label*="Processor"]',
+  // Processor button selectors - For drag-and-drop operations (Updated from inspection)
+  PROCESSOR_BUTTON: 'button.cdk-drag.icon-processor',
+  PROCESSOR_BUTTON_FALLBACK: 'button.cdk-drag, button.icon-processor, button[cdkdrag], button[cdkdragboundary="body"], .icon-processor, button.component-button, button.processor-button, button[title*="Processor"], button[aria-label*="Processor"]',
 
   // Dialog selectors - Angular Material dialog patterns
   ADD_PROCESSOR_DIALOG: 'mat-dialog-container, .mat-dialog-container, [role="dialog"]',

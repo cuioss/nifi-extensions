@@ -39,26 +39,16 @@ export async function navigateToPage(page, pageType, options = {}) {
 
   logMessage('info', `Navigating to ${pageDefinition.description}`);
 
-  try {
-    // Navigate to the page
-    await page.goto(pageDefinition.path, { timeout });
+  // Navigate to the page and wait for load
+  await page.goto(pageDefinition.path, { 
+    timeout,
+    waitUntil: 'domcontentloaded'
+  });
 
-    // Wait for navigation to complete
-    try {
-      await page.waitForNavigation({ timeout: 5000 });
-    } catch (error) {
-      // Navigation might have already completed, so we can ignore this error
-      logMessage('info', 'Navigation already completed or timed out');
-    }
+  // Verify we're on the expected page
+  await verifyPageType(page, pageType, { waitForReady });
 
-    // Verify we're on the expected page
-    await verifyPageType(page, pageType, { waitForReady });
-
-    logMessage('success', `Successfully navigated to ${pageDefinition.description}`);
-  } catch (error) {
-    logMessage('error', `Navigation error: ${error.message}`);
-    throw error;
-  }
+  logMessage('success', `Successfully navigated to ${pageDefinition.description}`);
 }
 
 /**
@@ -74,47 +64,42 @@ export async function verifyPageType(page, expectedPageType, options = {}) {
 
   logMessage('info', `Verifying page type: ${expectedPageType}`);
 
-  try {
-    // Special handling for LOGIN page
-    if (expectedPageType === PAGE_TYPES.LOGIN) {
-      const url = page.url();
+  // Special handling for LOGIN page
+  if (expectedPageType === PAGE_TYPES.LOGIN) {
+    const url = page.url();
 
-      if (url.includes('#/login')) {
-        // We're on login page, check if login elements exist
-        const usernameInput = await page.$(SELECTORS.USERNAME_INPUT);
+    if (url.includes('#/login')) {
+      // We're on login page, check if login elements exist
+      const usernameInput = await page.$(SELECTORS.USERNAME_INPUT);
 
-        if (!usernameInput) {
-          // Wait a bit for elements to appear
-          await page.waitForTimeout(2000);
-        }
-
-        // Verify login form is visible
-        const usernameInputAfterWait = await page.$(SELECTORS.USERNAME_INPUT);
-        expect(usernameInputAfterWait, 'Login form not visible').toBeTruthy();
-      } else {
-        // Already authenticated, redirected away from login page
-        logMessage('warn', 'Already authenticated, cannot access login page');
+      if (!usernameInput) {
+        // Wait a bit for elements to appear
+        await page.waitForTimeout(2000);
       }
+
+      // Verify login form is visible
+      const usernameInputAfterWait = await page.$(SELECTORS.USERNAME_INPUT);
+      expect(usernameInputAfterWait, 'Login form not visible').toBeTruthy();
+    } else {
+      // Already authenticated, redirected away from login page
+      logMessage('warn', 'Already authenticated, cannot access login page');
     }
-
-    // Get the current page context
-    const context = await getPageContext(page);
-
-    // Verify page type
-    expect(context.pageType, `Expected ${expectedPageType}, got ${context.pageType}`).toBe(expectedPageType);
-
-    // Verify page is ready if required
-    if (waitForReady) {
-      expect(context.isReady, `Page ${expectedPageType} not ready for testing`).toBeTruthy();
-    }
-
-    logMessage('success', `Verified page type: ${expectedPageType}`);
-
-    return context;
-  } catch (error) {
-    logMessage('error', `Error verifying page type: ${error.message}`);
-    throw error;
   }
+
+  // Get the current page context
+  const context = await getPageContext(page);
+
+  // Verify page type
+  expect(context.pageType, `Expected ${expectedPageType}, got ${context.pageType}`).toBe(expectedPageType);
+
+  // Verify page is ready if required
+  if (waitForReady) {
+    expect(context.isReady, `Page ${expectedPageType} not ready for testing`).toBeTruthy();
+  }
+
+  logMessage('success', `Verified page type: ${expectedPageType}`);
+
+  return context;
 }
 
 /**
@@ -130,28 +115,23 @@ export async function waitForPageType(page, expectedPageType, options = {}) {
 
   logMessage('info', `Waiting for page type: ${expectedPageType}`);
 
-  try {
-    // Start time for timeout calculation
-    const startTime = Date.now();
-    let context;
+  // Start time for timeout calculation
+  const startTime = Date.now();
+  let context;
 
-    // Poll until we get the expected page type or timeout
-    while (Date.now() - startTime < timeout) {
-      context = await getPageContext(page);
+  // Poll until we get the expected page type or timeout
+  while (Date.now() - startTime < timeout) {
+    context = await getPageContext(page);
 
-      if (context.pageType === expectedPageType && context.isReady) {
-        logMessage('success', `Page type ${expectedPageType} loaded`);
-        return context;
-      }
-
-      // Wait a bit before checking again
-      await page.waitForTimeout(500);
+    if (context.pageType === expectedPageType && context.isReady) {
+      logMessage('success', `Page type ${expectedPageType} loaded`);
+      return context;
     }
 
-    // If we get here, we timed out
-    throw new Error(`Timeout waiting for page type ${expectedPageType}, got ${context ? context.pageType : 'unknown'}`);
-  } catch (error) {
-    logMessage('error', `Error waiting for page type: ${error.message}`);
-    throw error;
+    // Wait a bit before checking again
+    await page.waitForTimeout(500);
   }
+
+  // If we get here, we timed out
+  throw new Error(`Timeout waiting for page type ${expectedPageType}, got ${context ? context.pageType : 'unknown'}`);
 }
