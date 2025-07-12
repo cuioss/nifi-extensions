@@ -115,12 +115,12 @@ check_docker() {
         log_error "Docker command not found"
         return 1
     fi
-    
+
     if ! docker info &> /dev/null; then
         log_error "Docker daemon not running"
         return 1
     fi
-    
+
     log_verbose "Docker is available"
     return 0
 }
@@ -132,7 +132,7 @@ check_docker_compose() {
         log_error "Docker Compose not available"
         return 1
     fi
-    
+
     log_verbose "Docker Compose is available"
     return 0
 }
@@ -170,9 +170,9 @@ check_http_endpoint() {
     local url="$1"
     local description="$2"
     local timeout="${3:-2}"
-    
+
     log_verbose "Checking HTTP endpoint: $url"
-    
+
     if curl --fail --silent --max-time "$timeout" "$url" > /dev/null 2>&1; then
         log_verbose "$description is responding"
         return 0
@@ -185,68 +185,68 @@ check_http_endpoint() {
 # NiFi specific health checks
 check_nifi_health() {
     local base_url="$1"
-    
+
     # Check basic accessibility
     if ! check_http_endpoint "${base_url}/nifi/" "NiFi Web UI" 2; then
         return 1
     fi
-    
+
     # Check NiFi API system diagnostics
     if ! check_http_endpoint "${base_url}/nifi-api/system-diagnostics" "NiFi API" 2; then
         return 1
     fi
-    
+
     # Check if NiFi is in anonymous mode (common for testing)
     local access_status=$(curl --silent --max-time 2 "${base_url}/nifi-api/access" 2>/dev/null || echo "")
     if [[ "$access_status" == *"anonymous"* ]]; then
         log_verbose "NiFi is running in anonymous access mode"
     fi
-    
+
     return 0
 }
 
 # Keycloak specific health checks
 check_keycloak_health() {
     local base_url="$1"
-    
+
     # Keycloak doesn't have /health endpoint, check admin console
     if check_http_endpoint "${base_url}/admin/" "Keycloak Admin Console" 2; then
         return 0
     fi
-    
+
     # Fallback to root endpoint check
     if check_http_endpoint "${base_url}/" "Keycloak Root" 2; then
         return 0
     fi
-    
+
     return 1
 }
 
-# Check e-2-e-cypress environment
-check_cypress_environment() {
-    # Cypress environment check removed - this script only handles Docker and health URLs
+# Check e-2-e-playwright environment
+check_playwright_environment() {
+    # Playwright environment check removed - this script only handles Docker and health URLs
     return 0
 }
 
 # Main status check function - fail fast
 check_status() {
     log_info "Starting fast Docker health check (max ${TIMEOUT_SECONDS}s)..."
-    
+
     # Initial checks
     if ! check_docker; then
         return 1
     fi
-    
+
     if ! check_docker_compose; then
         return 1
     fi
-    
+
     cd "$SCRIPT_DIR"
-    
+
     # Check if containers are running - fail fast if not
     local nifi_running=false
     local keycloak_running=false
-    
+
     # Check if containers are running
     if is_container_running "nifi" || is_container_running "nifi-http" || is_container_running "nifi-https"; then
         nifi_running=true
@@ -256,7 +256,7 @@ check_status() {
         docker compose ps 2>/dev/null || echo "Could not get container status"
         return 1
     fi
-    
+
     if is_container_running "keycloak"; then
         keycloak_running=true
         log_verbose "Keycloak container is running"
@@ -265,23 +265,23 @@ check_status() {
         docker compose ps 2>/dev/null || echo "Could not get container status"
         return 1
     fi
-    
+
     # Both containers running, check health endpoints quickly
     log_verbose "Containers running, checking health endpoints..."
-    
+
     # Check service health with fail-fast timeouts
     if ! check_nifi_health "$NIFI_URL"; then
         log_error "NiFi health check failed"
         return 1
     fi
-    
+
     if ! check_keycloak_health "$KEYCLOAK_URL"; then
         log_error "Keycloak health check failed"
         return 1
     fi
-    
+
     log_success "All services are healthy and ready!"
-    
+
     # Print service URLs
     if [[ "$QUIET" != true ]]; then
         echo ""
@@ -293,7 +293,7 @@ check_status() {
         echo "  NiFi:     admin / adminadminadmin"
         echo "  Keycloak: testUser / drowssap"
     fi
-    
+
     return 0
 }
 

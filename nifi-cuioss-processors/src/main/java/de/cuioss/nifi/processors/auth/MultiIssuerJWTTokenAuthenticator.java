@@ -724,7 +724,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             // Create issuer configuration using builder pattern
             // Based on the examples in Usage.adoc
             IssuerConfig issuerConfig = IssuerConfig.builder()
-                .issuer(issuer)
+                .issuerIdentifier(issuer)
                 // Configure JWKS URL directly
                 .jwksFilePath(jwksUrl)
                 // Add optional audience if provided

@@ -51,30 +51,32 @@ jobs:
         run: ./mvnw -B --no-transfer-progress clean package -DskipTests
 
       - name: Run Code Quality Checks (Linting)
-        run: ./mvnw -B --no-transfer-progress compile -pl e-2-e-cypress
-        
+        run: ./mvnw -B --no-transfer-progress compile -pl e-2-e-playwright
+
       - name: Run E2E Integration Tests with Maven-managed Containers
-        # This runs the full E2E test suite (16 tests) with Maven managing container lifecycle:
+        # This runs the full E2E test suite with Maven managing container lifecycle:
         # 1. pre-integration-test: Start containers via start-integration-containers.sh
-        # 2. integration-test: Run cypress:run (all 16 E2E tests) - linting skipped for speed
+        # 2. integration-test: Run playwright tests - linting skipped for speed
         # 3. post-integration-test: Stop containers via stop-integration-containers.sh
-        run: ./mvnw -B --no-transfer-progress clean verify -pl e-2-e-cypress -Pintegration-tests
+        run: ./mvnw -B --no-transfer-progress clean verify -pl e-2-e-playwright -Pintegration-tests
         env:
-          CYPRESS_BASE_URL: https://localhost:9095/nifi
-          CYPRESS_KEYCLOAK_URL: http://localhost:9080/auth
+          PLAYWRIGHT_BASE_URL: https://localhost:9095/nifi
+          PLAYWRIGHT_KEYCLOAK_URL: http://localhost:9080
         timeout-minutes: 12
 
       - name: Generate E2E Analysis Reports
         run: |
-          cd e-2-e-cypress
-          node scripts/log-analyzer.js latest || echo "Log analysis completed with warnings"
+          cd e-2-e-playwright
+          # Run log analysis if available
+          npm run analyze:logs || echo "Log analysis completed with warnings"
           # Create a simple site structure for deployment
           mkdir -p ../target/site/e2e-reports
-          cp -r tests-report/* ../target/site/e2e-reports/ 2>/dev/null || true
-          cp -r cypress/videos ../target/site/e2e-reports/ 2>/dev/null || true
-          cp -r cypress/screenshots ../target/site/e2e-reports/ 2>/dev/null || true
-          cp -r cypress/reports/enhanced-analysis/comprehensive-report.html ../target/site/e2e-reports/index.html 2>/dev/null || true
-          cp -r cypress/reports ../target/site/e2e-reports/ 2>/dev/null || true
+          # Copy Playwright reports
+          cp -r target/playwright-report/* ../target/site/e2e-reports/ 2>/dev/null || true
+          cp -r target/videos ../target/site/e2e-reports/ 2>/dev/null || true
+          cp -r target/screenshots ../target/site/e2e-reports/ 2>/dev/null || true
+          cp -r target/test-results ../target/site/e2e-reports/test-results 2>/dev/null || true
+          # Copy container logs if available
           cp -r ../integration-testing/src/main/docker/logs ../target/site/e2e-reports/container-logs 2>/dev/null || true
         if: always()
 

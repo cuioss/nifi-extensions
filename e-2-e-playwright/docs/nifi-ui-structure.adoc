@@ -1,0 +1,420 @@
+= NiFi UI Testing Structure Guide
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+
+== Purpose
+
+This document provides comprehensive guidance for NiFi UI automation testing, focusing on the specific operations required for reliable testing of the MultiIssuerJWTTokenAuthenticator processor.
+
+== Related Documentation
+
+* xref:Testing-Scope.adoc[Testing Scope and Capabilities] - Detailed testing framework capabilities
+* xref:mcp-playwright-guide.adoc[MCP Playwright Guide] - MCP Playwright tool integration
+* xref:../README.adoc[E2E Playwright Tests] - Main module documentation
+
+== NiFi 2.4.0 UI Sources
+
+**Current Version**: Apache NiFi 2.4.0
+
+**UI Sources Access**: For comprehensive AI analysis and development, the NiFi 2.4.0 UI sources are available via:
+
+**GitIngest URL**: https://gitingest.com/apache/nifi/tree/rel/nifi-2.4.0/nifi-web/nifi-web-ui
+
+This provides direct access to the complete Angular Material-based UI implementation for automated analysis and development workflows.
+
+== Core Testing Operations
+
+This document focuses on the specific testing requirements for NiFi UI automation:
+
+1. **Login Implementation** - Reliable authentication for test environments
+2. **Canvas Navigation** - Navigation to the main canvas for processor management
+3. **Processor Management** - Adding and removing processors from the canvas
+4. **Advanced Configuration** - Accessing processor advanced settings and properties
+
+== Login Implementation
+
+=== Authentication Commands
+
+Based on the current implementation in `utils/login-tool.js`:
+
+[source,javascript]
+----
+// Login to NiFi
+await loginToNiFi(page);
+
+// Or ensure NiFi is ready for testing
+await ensureNiFiReady(page);
+----
+
+=== Login Structure
+
+From source code analysis:
+
+* **Login URL**: `https://localhost:9095/nifi/#/login`
+* **Framework**: Angular Material login form with Material Design components  
+* **Authentication**: Keycloak OAuth integration
+* **Credentials**: Default test credentials are `testUser` / `drowssap`
+
+=== Login Selectors
+[source,javascript]
+----
+USERNAME_INPUT: '[data-testid="username"], input[type="text"], input[id*="username"]'
+PASSWORD_INPUT: '[data-testid="password"], input[type="password"], input[id*="password"]'
+LOGIN_BUTTON: '[data-testid="login-button"], input[value="Login"], button[type="submit"]'
+----
+
+=== Login Verification
+[source,javascript]
+----
+// Verify successful login by checking page context
+const pageContext = await getPageContext(page);
+expect(pageContext.pageType).toBe('MAIN_CANVAS');
+expect(pageContext.isAuthenticated).toBe(true);
+----
+
+== Canvas Navigation
+
+=== Navigation Implementation
+
+Based on `utils/navigation-tool.js`:
+
+[source,javascript]
+----
+// Navigate to main canvas
+await navigateToPage(page, 'MAIN_CANVAS');
+
+// Verify we're on the main canvas
+await verifyPageType(page, 'MAIN_CANVAS');
+
+// Wait for specific page type
+await waitForPageType(page, 'MAIN_CANVAS');
+----
+
+=== Canvas Structure
+
+From `nifi-frontend/src/main/frontend/apps/nifi/src/app/pages/flow-designer/ui/canvas/canvas.component.html`:
+
+[source,html]
+----
+<mat-sidenav-content>
+  <graph-controls></graph-controls>
+  <div id="canvas-container" 
+       class="canvas-background select-none h-full w-full">
+    <!-- D3.js canvas content rendered here -->
+  </div>
+</mat-sidenav-content>
+----
+
+=== Canvas Selectors
+[source,javascript]
+----
+// Primary canvas selectors (verified from source code)
+CANVAS_CONTAINER: '#canvas-container'                    // Primary canvas container
+CANVAS_SIDENAV: 'mat-sidenav-content'                   // Angular Material container
+CANVAS_SIDENAV_CONTAINER: 'mat-sidenav-container'       // Full sidenav layout
+
+// Canvas verification
+await page.locator('mat-sidenav-content').waitFor({ timeout: 10000 });
+await expect(page.locator('#canvas-container')).toBeVisible();
+----
+
+== Processor Management
+
+=== Add Processor Implementation
+
+Based on `utils/processor-tool.js`:
+
+[source,javascript]
+----
+// Add processor to canvas
+await addProcessorToCanvas(page, 'GenerateFlowFile', {
+  position: { x: 400, y: 300 },
+  skipIfExists: false
+});
+
+// Open Add Processor dialog
+await openAddProcessorDialog(page);
+
+// Select processor type
+await selectProcessorType(page, 'GenerateFlowFile');
+
+// Confirm addition
+await confirmProcessorAddition(page);
+----
+
+=== Remove Processor Implementation
+
+[source,javascript]
+----
+// Remove processor by reference
+const processor = await findProcessorOnCanvas(page, 'GenerateFlowFile');
+if (processor) {
+  await removeProcessorFromCanvas(page, processor);
+}
+
+// Clean up all processors
+await cleanupCanvasProcessors(page);
+----
+
+=== Processor Interaction Patterns
+[source,javascript]
+----
+// Right-click for context menu
+await page.locator('.processor').click({ button: 'right' });
+
+// Look for context menu and delete option
+await expect(page.locator('[role="menu"]')).toBeVisible();
+await page.locator('[role="menuitem"]:has-text("Delete")').click();
+
+// Confirm deletion if dialog appears
+await page.locator('button:has-text("Delete")').click();
+----
+
+=== Processor Selectors
+[source,javascript]
+----
+// Processor elements (SVG-based)
+PROCESSOR_GROUP: 'svg g[class*="processor"], svg g[data-type*="processor"], svg .component'
+PROCESSOR_ELEMENT: '.processor, [class*="processor"], .component, .flow-component'
+
+// Dialog selectors
+ADD_PROCESSOR_DIALOG: '[role="dialog"], .dialog, .modal, .popup'
+PROCESSOR_TYPE_LIST: '.processor-types, .component-list, ul, ol'
+PROCESSOR_TYPE_ITEM: '.processor-type, .component-item, li, .list-item'
+
+// Button selectors
+ADD_BUTTON: 'button:contains("Add"), input[value*="Add"], .add-button'
+DELETE_BUTTON: 'button:contains("Delete"), input[value*="Delete"], .delete-button'
+----
+
+== Advanced Configuration Access
+
+=== Processor Configuration Access
+
+Based on NiFi UI patterns and source code structure:
+
+[source,javascript]
+----
+// Double-click to open processor properties
+const processor = await findProcessorOnCanvas(page, 'GenerateFlowFile');
+await processor.element.dblclick();
+
+// Alternative: Right-click and select "Configure"
+await page.locator('.processor').click({ button: 'right' });
+await page.locator('[role="menuitem"]:has-text("Configure")').click();
+----
+
+=== Properties Dialog Structure
+From NiFi source code analysis, processor configuration uses Angular Material dialogs:
+
+[source,html]
+----
+<mat-dialog-container>
+  <mat-tab-group>
+    <mat-tab label="Settings">
+      <!-- Basic processor settings -->
+    </mat-tab>
+    <mat-tab label="Properties">
+      <!-- Processor properties configuration -->
+    </mat-tab>
+    <mat-tab label="Relationships">
+      <!-- Processor relationships -->
+    </mat-tab>
+    <mat-tab label="Comments">
+      <!-- Processor comments -->
+    </mat-tab>
+  </mat-tab-group>
+</mat-dialog-container>
+----
+
+=== Advanced Settings Selectors
+[source,javascript]
+----
+// Properties dialog
+PROPERTIES_DIALOG: 'mat-dialog-container, .mat-dialog-container, [role="dialog"]'
+
+// Tab navigation
+PROPERTIES_TAB: 'mat-tab:contains("Properties"), .mat-tab:contains("Properties")'
+SETTINGS_TAB: 'mat-tab:contains("Settings"), .mat-tab:contains("Settings")'
+
+// Property fields
+PROPERTY_INPUT: 'mat-form-field input, input[matInput], .property-input'
+PROPERTY_TEXTAREA: 'mat-form-field textarea, textarea[matInput], .property-textarea'
+
+// Dialog actions
+APPLY_BUTTON: 'button:contains("Apply"), .mat-button:contains("Apply")'
+CANCEL_BUTTON: 'button:contains("Cancel"), .mat-button:contains("Cancel")'
+OK_BUTTON: 'button:contains("OK"), .mat-button:contains("OK")'
+----
+
+=== Advanced Settings Workflow
+[source,javascript]
+----
+// Complete workflow to access advanced settings
+const processor = await findProcessorOnCanvas(page, 'GenerateFlowFile');
+// Open processor configuration
+await processor.element.dblclick();
+
+// Wait for properties dialog
+await expect(page.locator('mat-dialog-container')).toBeVisible();
+
+// Navigate to Properties tab for advanced settings
+await page.locator('mat-tab:has-text("Properties")').click();
+
+// Modify properties
+await page.locator('mat-form-field input[placeholder*="Property Name"]').clear();
+await page.locator('mat-form-field input[placeholder*="Property Name"]').fill('New Value');
+
+// Apply changes
+await page.locator('button:has-text("Apply")').click();
+
+// Verify dialog closes
+await expect(page.locator('mat-dialog-container')).toBeHidden();
+----
+
+== Framework Architecture Summary
+
+=== Technology Stack
+
+The framework is built on the following technology stack:
+
+* **Playwright**: Browser automation framework
+* **JavaScript/Node.js**: Core implementation language
+* **Jest**: Test assertion library
+* **Angular Material**: NiFi UI framework
+
+=== Key Testing Patterns
+* **Use Angular Material selectors**: `mat-sidenav-content`, `mat-dialog-container`, `mat-tab`
+* **Progressive enhancement**: Multiple selector fallbacks for robustness
+* **Proper wait strategies**: Account for Angular component loading
+* **Component-based testing**: Target specific Angular components
+* **State-aware testing**: Consider NgRx state management
+
+=== Reliable Selector Strategy
+[source,javascript]
+----
+// Primary selectors (from source code analysis)
+const RELIABLE_SELECTORS = {
+  CANVAS: '#canvas-container',
+  CANVAS_CONTAINER: 'mat-sidenav-content',
+  DIALOG: 'mat-dialog-container',
+  TABS: 'mat-tab-group',
+  BUTTONS: 'button[mat-button], button[mat-raised-button]',
+  INPUTS: 'mat-form-field input, input[matInput]'
+};
+
+// Fallback selectors for robustness
+const FALLBACK_SELECTORS = {
+  CANVAS: 'svg, [role="img"], .canvas',
+  DIALOG: '[role="dialog"], .dialog, .modal',
+  BUTTONS: 'button, input[type="button"]',
+  INPUTS: 'input, textarea'
+};
+----
+
+== Current Testing Environment
+
+=== Authentication Configuration
+
+* **Test Credentials**: `testUser` / `drowssap`
+* **Authentication Method**: SingleUserLoginIdentityProvider
+* **OAuth Integration**: Keycloak backend
+* **Login URL**: `https://localhost:9095/nifi/#/login`
+
+=== Infrastructure Configuration
+
+* **NiFi Container**: Healthy and operational
+* **Keycloak Container**: Healthy and operational  
+* **Network Connectivity**: Services can communicate
+* **Configuration Consistency**: Aligned between docker-compose.yml and NiFi config files
+
+=== Page Detection Patterns
+NiFi uses specific URL patterns for different pages:
+
+[source,javascript]
+----
+// Main canvas URL patterns (verified from browser logs)
+'/#/process-groups/[process-group-id]'  // Primary canvas pattern
+'/#/canvas'                             // Alternative canvas pattern
+'/#/login'                              // Login page pattern
+----
+
+=== Authentication Flow Analysis
+Based on HAR file analysis and browser logs:
+
+[source,text]
+----
+// Successful authentication flow
+POST /nifi-api/access/token
+Content-Type: application/x-www-form-urlencoded
+Body: username=testUser&password=drowssap
+
+// Expected response
+HTTP 201 Created
+Set-Cookie: __Secure-Authorization-Bearer=[JWT-Token]
+Response: [JWT Token Body]
+
+// Follow-up request
+GET /nifi-api/flow/current-user
+Cookie: __Secure-Authorization-Bearer=[JWT-Token]
+----
+
+=== JWT Token Structure
+[source,json]
+----
+{
+  "sub": "testUser",
+  "aud": "https://localhost:9095",
+  "preferred_username": "testUser", 
+  "groups": [],
+  "exp": 1234567890,
+  "iat": 1234567890
+}
+----
+
+=== Page Detection Logic
+Updated page detection to handle NiFi's actual URL patterns:
+
+[source,javascript]
+----
+// Enhanced page detection for NiFi URLs
+function detectPageType(url) {
+  const normalizedUrl = url.toLowerCase();
+
+  if (normalizedUrl.includes('#/process-groups') || 
+      normalizedUrl.includes('#/canvas') || 
+      (normalizedUrl.includes('/nifi') && !normalizedUrl.includes('#/login'))) {
+    return 'MAIN_CANVAS';
+  }
+
+  if (normalizedUrl.includes('#/login')) {
+    return 'LOGIN';
+  }
+
+  return 'UNKNOWN';
+}
+----
+
+=== Container Health Check Configuration
+[source,yaml]
+----
+# Keycloak health check (working configuration)
+healthcheck:
+  test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/localhost/8080' || exit 1"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 60s
+----
+
+=== Test Environment Configuration
+
+The test environment is configured with the following default settings:
+
+* **NiFi URL**: `https://localhost:9095/nifi/`
+* **Keycloak URL**: `http://localhost:9080`
+* **Test User**: `testUser`
+* **Test Password**: `drowssap`

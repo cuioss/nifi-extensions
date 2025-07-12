@@ -24,8 +24,10 @@ module.exports = {
         'module': 'writable'
     },
     'rules': {
-        // Error prevention
-        'no-console': 'warn',
+        // Error prevention - Allow structured logging methods but fail on console.log
+        'no-console': ['error', {
+            'allow': ['debug', 'info', 'warn', 'error', 'table', 'time', 'timeEnd']
+        }],
         'no-debugger': 'warn',
         'no-alert': 'warn',
         'no-unused-vars': ['warn', { 'argsIgnorePattern': '^_' }],

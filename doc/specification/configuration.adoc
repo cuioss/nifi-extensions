@@ -1,14 +1,15 @@
 = MultiIssuerJWTTokenAuthenticator Configuration
-:toc:
+:toc: left
 :toclevels: 3
 :toc-title: Table of Contents
 :sectnums:
+:source-highlighter: highlight.js
 :imagesdir: ../plantuml
 
-link:../Specification.adoc[Back to Main Specification]
+xref:../Specification.adoc[Back to Main Specification]
 
 == Overview
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuration Requirements]_
+_See Requirement xref:../Requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuration Requirements]_
 
 The MultiIssuerJWTTokenAuthenticator processor provides comprehensive configuration options for validating and processing JWT tokens. This document serves as the central reference for all configuration options.
 
@@ -26,7 +27,7 @@ The processor supports three configuration methods:
 == Configuration Properties
 
 === Core Properties
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Validation Configuration]_
+_See Requirement xref:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Validation Configuration]_
 
 [cols="1,1,3,1"]
 |===
@@ -59,12 +60,12 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Va
 |===
 
 === Authorization Properties
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: Authorization Configuration]_
+_See Requirement xref:../Requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: Authorization Configuration]_
 
 Note: The audience, scopes, and roles authorization settings have been moved to issuer-specific configurations.
 
 === Performance Properties
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Performance Requirements]_
+_See Requirement xref:../Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Performance Requirements]_
 
 [cols="1,1,3,1"]
 |===
@@ -82,7 +83,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Performance 
 |===
 
 === Dynamic Properties (Issuers)
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
+_See Requirement xref:../Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
 
 The processor supports multiple issuers through dynamic properties:
 
@@ -122,7 +123,7 @@ The processor provides a comprehensive user interface for configuration through 
 * JWKS endpoint verification
 * Token validation testing
 
-For detailed information about UI configuration, see link:configuration-ui.adoc[UI Configuration].
+For detailed information about UI configuration, see xref:configuration-ui.adoc[UI Configuration].
 
 === Static Configuration Files
 
@@ -133,7 +134,7 @@ For containerized environments and automated deployments, the processor supports
 
 Static configuration files can be placed in standard locations or specified through system properties and environment variables.
 
-For detailed information about static file configuration, see link:configuration-static.adoc[Static Configuration].
+For detailed information about static file configuration, see xref:configuration-static.adoc[Static Configuration].
 
 === Environment Variables
 
@@ -144,7 +145,7 @@ The configuration precedence order is:
 2. Environment variables
 3. UI configuration
 
-For detailed information about environment variable configuration, see link:configuration-static.adoc#environment-variable-configuration[Environment Variable Configuration].
+For detailed information about environment variable configuration, see xref:configuration-static.adoc#environment-variable-configuration[Environment Variable Configuration].
 
 == Common Configuration Scenarios
 
@@ -188,14 +189,14 @@ jwt.validation.auth.server.testing.enabled = false  # Disabled in production
 == See Also
 
 === Core Documentation
-* link:../Specification.adoc[Main Specification]
-* link:../Requirements.adoc[Requirements]
+* xref:../Specification.adoc[Main Specification]
+* xref:../Requirements.adoc[Requirements]
 
 === Configuration Details
-* link:configuration-ui.adoc[UI Configuration]
-* link:configuration-static.adoc[Static Configuration]
+* xref:configuration-ui.adoc[UI Configuration]
+* xref:configuration-static.adoc[Static Configuration]
 
 === Related Implementation
-* link:token-validation.adoc[Token Validation]
-* link:technical-components.adoc[Technical Components]
-* link:error-handling.adoc[Error Handling]
+* xref:token-validation.adoc[Token Validation]
+* xref:technical-components.adoc[Technical Components]
+* xref:error-handling.adoc[Error Handling]

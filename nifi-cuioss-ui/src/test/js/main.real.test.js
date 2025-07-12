@@ -140,6 +140,8 @@ describe('main.js (real implementation with JSDOM)', () => {
 
         global.nf = { Canvas: { initialized: false } }; // Default to false, tests can override
         global.window.jwtComponentsRegistered = false;
+        global.window.jwtUISetupComplete = false;
+        global.window.jwtInitializationInProgress = false;
 
         mainModule = require('../../main/webapp/js/main');
     });
@@ -148,8 +150,6 @@ describe('main.js (real implementation with JSDOM)', () => {
         consoleErrorSpy.mockRestore();
         consoleLogSpy.mockRestore();
         document.body.innerHTML = '';
-        // global.jQuery.fn.tooltip = originalTooltipFn; // No longer needed, relying on global mock
-        // jest.clearAllMocks(); // Not strictly needed if mocks are cleared in beforeEach
     });
 
     describe('init', () => {
@@ -381,6 +381,103 @@ describe('main.js (real implementation with JSDOM)', () => {
                 expect(mockInitTooltips).not.toHaveBeenCalled(); // Use the imported initTooltips mock
                 // done(); // Removed
             });
+        });
+    });
+
+    describe('Branch coverage tests', () => {
+        test('registerHelpTooltips is available as alias for setupHelpTooltips', () => {
+            expect(typeof mainModule.registerHelpTooltips).toBe('function');
+            expect(mainModule.registerHelpTooltips).toBe(mainModule.setupHelpTooltips);
+        });
+
+        test('emergencyFallbackHideLoading handles basic fallback', async () => {
+            document.body.innerHTML = '<div id="loading-indicator">Loading...</div>';
+
+            mainModule.emergencyFallbackHideLoading();
+
+            const indicator = document.getElementById('loading-indicator');
+            expect(indicator.style.display).toBe('none');
+        });
+
+        test('emergencyFallbackHideLoading handles fallback error gracefully', async () => {
+            // Create a spy for console.error to track fallback failures
+            const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+            // Mock getElementById to throw an error during emergency fallback
+            const originalGetElementById = document.getElementById;
+            document.getElementById = jest.fn().mockImplementation(() => {
+                throw new Error('DOM access failed');
+            });
+
+            mainModule.emergencyFallbackHideLoading();
+
+            expect(consoleSpy).toHaveBeenCalledWith('Even emergency fallback failed:', expect.any(Error));
+
+            // Restore mocks
+            document.getElementById = originalGetElementById;
+            consoleSpy.mockRestore();
+        });
+
+        test('shouldHideElement identifies different loading texts', () => {
+            // Test short loading text
+            expect(mainModule.shouldHideElement('Loading JWT Validator UI...')).toBe(true);
+            expect(mainModule.shouldHideElement('Loading')).toBe(true);
+            expect(mainModule.shouldHideElement('Loading...')).toBe(true);
+
+            // Test long text should not be hidden
+            const longText = 'This is a very long piece of text that is definitely longer than 100 characters and should not be considered a loading indicator because it contains substantial content that users need to see';
+            expect(mainModule.shouldHideElement(longText)).toBe(false);
+
+            // Test non-loading text
+            expect(mainModule.shouldHideElement('Some other content')).toBe(false);
+        });
+
+        test('hideElement clears text content for single text nodes', () => {
+            const element = document.createElement('div');
+            element.textContent = 'Loading...';
+            document.body.appendChild(element);
+
+            mainModule.hideElement(element, 'Loading...');
+
+            expect(element.textContent).toBe('');
+            expect(element.style.display).toBe('none');
+            expect(element.getAttribute('aria-hidden')).toBe('true');
+            expect(element.classList.contains('hidden')).toBe(true);
+        });
+
+        test('cleanup handles tooltip observer cleanup', () => {
+            // Set up a mock tooltip observer
+            const mockObserver = {
+                disconnect: jest.fn()
+            };
+            window.nifiJwtTooltipObserver = mockObserver;
+
+            mainModule.cleanup();
+
+            expect(mockObserver.disconnect).toHaveBeenCalled();
+            expect(window.nifiJwtTooltipObserver).toBeNull();
+        });
+
+        test('cleanup handles missing tooltip observer gracefully', () => {
+            window.nifiJwtTooltipObserver = null;
+
+            expect(() => mainModule.cleanup()).not.toThrow();
+        });
+
+        test('cleanup handles jQuery errors gracefully', () => {
+            // Mock jQuery to throw an error
+            const original$ = global.$;
+            const mockJQuery = jest.fn().mockReturnValue({
+                off: jest.fn().mockImplementation(() => {
+                    throw new Error('jQuery error');
+                })
+            });
+            global.$ = mockJQuery;
+
+            expect(() => mainModule.cleanup()).not.toThrow();
+
+            // Restore original $
+            global.$ = original$;
         });
     });
 });

@@ -20,8 +20,8 @@ This project follows the centralized JavaScript and ESLint standards defined in 
 [NOTE]
 ====
 For complete ESLint configuration, rules, and implementation guidelines, see:
-* **JavaScript Standards**: `/standards/javascript/`
-* **JavaScript Linting Standards**: `/standards/javascript/linting-standards.adoc`
+* **JavaScript Standards**: [JavaScript Standards](https://github.com/cuioss/cui-llm-rules/tree/main/standards/javascript)
+* **JavaScript Linting Standards**: [JavaScript Linting Standards](https://github.com/cuioss/cui-llm-rules/blob/main/standards/javascript/linting-standards.adoc)
 ====
 
 #### JavaScript Development

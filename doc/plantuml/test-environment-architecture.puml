@@ -8,20 +8,20 @@ skinparam {
 }
 
 node "Test Environment" as TE {
-    component "Cypress" as CP
-    
+    component "Playwright" as CP
+
     node "Docker" as D {
         component "NiFi Instance\nHTTPS 9095" as N
         component "Keycloak Server\nHTTP 9080\nHTTPS 9085" as K
-        
+
         database "JWT Tokens" as JWT
         database "JWKS Endpoints" as JWKS
-        
+
         N -- K : "JWT Validation"
         K -- JWT : "Generates"
         K -- JWKS : "Provides"
     }
-    
+
     CP --> N : "UI Testing"
     CP --> K : "Auth Testing"
 }

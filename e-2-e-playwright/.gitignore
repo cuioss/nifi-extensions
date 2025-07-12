@@ -1,0 +1,18 @@
+# Log files and development artifacts
+*.log
+debug.out
+*.temp.*
+*.backup
+*.old
+
+# Playwright specific
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/node_modules/
+/target/
+
+# Screenshot and trace files
+*.png
+*.webm
+*.zip

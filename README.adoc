@@ -1,4 +1,5 @@
 = NiFi Extensions
+
 :toc:
 :toclevels: 2
 
@@ -23,7 +24,7 @@ image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-exten
 * link:doc/Specification.adoc[Specification]
 * link:nifi-cuioss-processors/README.md[NiFi CUI-OSS Processors]
 * link:integration-testing/README.adoc[Integration Testing Environment]
-* link:docs/local-integration-testing.md[Local Integration Testing Guide]
+* link:e-2-e-playwright/README.adoc[End-to-End Testing Documentation]
 
 == Components
 
@@ -33,9 +34,9 @@ A NiFi processor that authenticates JWT tokens from multiple issuers.
 
 === End-to-End Testing
 
-Complete Cypress-based end-to-end testing framework with:
+Complete Playwright-based end-to-end testing framework with:
 
-* 15+ custom Cypress commands for NiFi UI automation
+* Custom Playwright utilities for NiFi UI automation
 * Self-verification unit tests (24 tests) 
 * Comprehensive E2E test suites for processor configuration and token validation
 * Console error monitoring with allowlist management
@@ -43,7 +44,7 @@ Complete Cypress-based end-to-end testing framework with:
 * Docker-based test environment with NiFi and Keycloak
 * **Local integration testing** with automated container management
 
-See link:e-2-e-cypress/README.adoc[E2E Testing Documentation] for details.
+See link:e-2-e-playwright/README.adoc[E2E Testing Documentation] for details.
 
 === Maven Coordinates
 
@@ -76,22 +77,22 @@ Run the complete integration test suite locally with automated container managem
 ./mvnw integration-test -Plocal-integration-tests -Dintegration.test.local=true
 
 # Quick test run using existing containers
-cd e-2-e-cypress && npm run cypress:run
+cd e-2-e-playwright && npm run playwright:test
 
 # Interactive test development
-cd e-2-e-cypress && npm run cypress:open
+cd e-2-e-playwright && npm run playwright:test:ui
 ```
 
-See link:e-2-e-cypress/doc/local-integration-testing.md[Local Integration Testing Guide] for detailed instructions.
+See link:e-2-e-playwright/README.adoc[End-to-End Testing Documentation] for detailed instructions.
 
 === Code Quality Standards
 
 This project implements centralized coding standards defined in the organization's standards repository:
 
-* **JavaScript/ESLint Standards**: `/standards/javascript/` - Complete linting configuration and best practices
-* **Java Standards**: `/standards/java/` - Java coding standards and conventions  
-* **Testing Standards**: `/standards/testing/` - Comprehensive testing guidelines
-* **Documentation Standards**: `/standards/documentation/` - Documentation structure and requirements
+* **JavaScript/ESLint Standards**: https://github.com/cuioss/cui-llm-rules/tree/main/standards/javascript[JavaScript Standards] - Complete linting configuration and best practices
+* **Java Standards**: https://github.com/cuioss/cui-llm-rules/tree/main/standards/java[Java Standards] - Java coding standards and conventions  
+* **Testing Standards**: https://github.com/cuioss/cui-llm-rules/tree/main/standards/testing[Testing Standards] - Comprehensive testing guidelines
+* **Documentation Standards**: https://github.com/cuioss/cui-llm-rules/tree/main/standards/documentation[Documentation Standards] - Documentation structure and requirements
 
 The project achieves **zero-warning builds** through strategic implementation of these centralized standards.
 
@@ -104,6 +105,13 @@ The project uses unified frontend configuration across modules:
 * Frontend Maven Plugin 1.15.1
 * ESLint 8.57.1 with zero-warning policy (following centralized standards)
 * Prettier 3.4.2 for code formatting
-* Cypress 14.4.1 for E2E testing
+* Playwright 1.42.1 for E2E testing
 
 All frontend configuration is centralized in the root POM properties.
+
+[IMPORTANT]
+====
+All contributors and AI tools (including GitHub Copilot, Claude, and others) **must follow the AI Development Guidelines in** link:doc/ai-rules.md[doc/ai-rules.md].
+
+These rules are mandatory for all code, documentation, and configuration changes. See the file for process, code style, testing, logging, and documentation standards.
+====

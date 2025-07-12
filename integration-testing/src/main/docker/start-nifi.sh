@@ -3,7 +3,22 @@
 # Start NiFi HTTPS instance for testing and MCP Playwright
 echo "Starting NiFi HTTPS instance on port 9095..."
 
-docker compose up -d
+# Define script directory
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Change to the script directory to ensure docker-compose finds the yaml file
+cd "$SCRIPT_DIR"
+
+# First ensure Keycloak is ready
+if ! "${SCRIPT_DIR}/start-keycloak.sh"; then
+    echo "❌ Failed to start Keycloak. Aborting NiFi startup."
+    exit 1
+fi
+
+# Now start NiFi
+echo ""
+echo "🚀 Starting NiFi container..."
+docker compose up -d nifi
 
 echo "Waiting for NiFi to be ready..."
 echo "NiFi will be available at: https://localhost:9095/nifi"

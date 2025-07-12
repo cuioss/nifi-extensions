@@ -1,15 +1,16 @@
 = MultiIssuerJWTTokenAuthenticator Static Configuration
-:toc:
+:toc: left
 :toclevels: 3
 :toc-title: Table of Contents
 :sectnums:
+:source-highlighter: highlight.js
 
-link:../Specification.adoc[Back to Main Specification]
+xref:../Specification.adoc[Back to Main Specification]
 
 == Static Configuration Overview
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.7[NIFI-AUTH-7.7: Static Configuration for Container Environments]_
+_See Requirement xref:../Requirements.adoc#NIFI-AUTH-7.7[NIFI-AUTH-7.7: Static Configuration for Container Environments]_
 
-This document covers static configuration options for the MultiIssuerJWTTokenAuthenticator processor, focusing on container environments and automated deployments. For general configuration properties and options, see link:configuration.adoc[Configuration].
+This document covers static configuration options for the MultiIssuerJWTTokenAuthenticator processor, focusing on container environments and automated deployments. For general configuration properties and options, see xref:configuration.adoc[Configuration].
 
 [.text-center]
 image::../plantuml/configuration-properties.png[Configuration Properties Hierarchy, align="center"]
@@ -18,7 +19,7 @@ image::../plantuml/configuration-properties.png[Configuration Properties Hierarc
 
 [NOTE]
 ====
-The authoritative list and description of all configuration properties is maintained in link:configuration.adoc[Configuration].
+The authoritative list and description of all configuration properties is maintained in xref:configuration.adoc[Configuration].
 This document only provides format- and environment-specific examples for static configuration. Refer to the main property table in configuration.adoc for property meanings, defaults, and requirements.
 ====
 
@@ -73,7 +74,7 @@ jwt:
         audience: "my-api" 
         scopes: "read,write"
         roles: "admin,user"
-      
+
       - name: "Secondary Auth Server"
         enabled: false
         id: "secondary-auth"
@@ -156,6 +157,7 @@ The processor handles issuer state changes gracefully:
 2. When a new issuer is added or enabled, it becomes available without requiring a restart
 3. Changes to an enabled issuer's configuration are applied immediately
 
+[#environment-variable-configuration]
 == Environment Variable Configuration
 
 For container environments, configuration can also be provided through environment variables:
@@ -278,7 +280,7 @@ private void handleConfigurationError(FlowFile flowFile, ProcessSession session,
     attributes.put("jwt.config.error.code", errorCode);
     attributes.put("jwt.config.error.reason", message);
     flowFile = session.putAllAttributes(flowFile, attributes);
-    
+
     session.transfer(flowFile, CONFIGURATION_ERROR);
     getLogger().error("Configuration error ({}): {}", errorCode, message);
 }
@@ -310,8 +312,8 @@ Best practices for secure configuration:
 
 == Related Topics
 
-* link:configuration.adoc[Configuration Overview]
-* link:configuration-ui.adoc[UI Configuration]
-* link:token-validation.adoc[Token Validation]
-* link:security.adoc[Security]
-* link:error-handling.adoc[Error Handling]
+* xref:configuration.adoc[Configuration Overview]
+* xref:configuration-ui.adoc[UI Configuration]
+* xref:token-validation.adoc[Token Validation]
+* xref:security.adoc[Security]
+* xref:error-handling.adoc[Error Handling]

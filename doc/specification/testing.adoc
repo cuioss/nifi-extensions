@@ -44,11 +44,11 @@ void shouldValidateTokenWithCorrectSignature() {
     // Arrange
     String validToken = createValidToken();
     TokenValidator validator = createTokenValidator();
-    
+
     try {
         // Act
         AccessTokenContent result = validator.createAccessToken(validToken);
-        
+
         // Assert
         assertNotNull(result, "Valid token should be accepted");
         assertEquals("test-subject", result.getSubject(), "Subject should match");
@@ -62,12 +62,12 @@ void shouldRejectTokenWithInvalidSignature() {
     // Arrange
     String invalidToken = createTokenWithInvalidSignature();
     TokenValidator validator = createTokenValidator();
-    
+
     // Act & Assert
     TokenValidationException exception = assertThrows(TokenValidationException.class, () -> {
         validator.createAccessToken(invalidToken);
     }, "Invalid signature should throw TokenValidationException");
-    
+
     // Verify the exception contains expected information
     assertEquals(SecurityEventCounter.EventType.SIGNATURE_VALIDATION_FAILED, exception.getEventType());
 }
@@ -90,13 +90,13 @@ Unit tests for the processor verify:
 void testProcessWithValidToken() {
     // Set up processor with mock services
     final TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
-    
+
     // Configure processor
     runner.setProperty("token.location", "AUTHORIZATION_HEADER");
     runner.setProperty("token.header", "Authorization");
     runner.setProperty("required.audience", "api://test");
     runner.setProperty("auth-server", "https://auth.example.com/.well-known/jwks.json");
-    
+
     // Mock the TokenValidator
     TokenValidator mockValidator = mock(TokenValidator.class);
     // Configure mock to return a test token instead of throwing exception
@@ -105,21 +105,21 @@ void testProcessWithValidToken() {
     } catch (TokenValidationException e) {
         fail("Mock setup should not throw exception");
     }
-    
+
     // Set the mock validator on the processor using reflection
     FieldUtils.writeField(runner.getProcessor(), "tokenValidator", mockValidator, true);
-    
+
     // Create a test flow file with a token
     Map<String, String> attributes = new HashMap<>();
     attributes.put("http.headers.authorization", "Bearer eyJhbGciOiJS..."); 
     runner.enqueue("test data".getBytes(), attributes);
-    
+
     // Run the processor
     runner.run();
-    
+
     // Verify results
     runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 1);
-    
+
     // Verify output attributes
     MockFlowFile flowFile = runner.getFlowFilesForRelationship(MultiIssuerJWTTokenAuthenticator.SUCCESS).get(0);
     flowFile.assertAttributeExists("jwt.content.sub");
@@ -144,20 +144,20 @@ Integration tests verify multiple components working together:
 void testProcessorWithMultipleIssuersIntegration() {
     // Set up processor
     final TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
-    
+
     // Configure processor with multiple issuers
     runner.setProperty("token.location", "AUTHORIZATION_HEADER");
     runner.setProperty("token.header", "Authorization");
     runner.setProperty("issuer1", getTestJwksUrl("/jwks1.json"));
     runner.setProperty("issuer2", getTestJwksUrl("/jwks2.json"));
-    
-    
+
+
     // Create test flow files with tokens from different issuers
     createFlowFileWithToken(runner, createToken("issuer1"));
-    
+
     // Run the processor
     runner.run(2); // Process 2 flow files
-    
+
     // Verify results
     runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 2);
 }
@@ -214,21 +214,21 @@ Security tests focus on security aspects of the processor:
 void testTokenSizeLimit() {
     // Set up processor
     final TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
-    
+
     // Configure processor with a small token size limit
     runner.setProperty("token.location", "AUTHORIZATION_HEADER");
     runner.setProperty("maximum.token.size", "100");
     runner.setProperty("auth-server", getTestJwksUrl());
-    
+
     // Create a flow file with a token exceeding the size limit
     String oversizedToken = "Bearer " + generateOversizedToken(200); // Generate token > 100 bytes
     Map<String, String> attributes = new HashMap<>();
     attributes.put("http.headers.authorization", oversizedToken);
     runner.enqueue("test data".getBytes(), attributes);
-    
+
     // Run the processor
     runner.run();
-    
+
     // Verify the token was rejected due to size
     runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED, 1);
     MockFlowFile flowFile = runner.getFlowFilesForRelationship(MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED).get(0);
@@ -254,31 +254,31 @@ Performance tests verify the processor under load:
 void testHighThroughputPerformance() {
     // Set up processor
     final TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
-    
+
     // Configure processor
     runner.setProperty("token.location", "AUTHORIZATION_HEADER");
     runner.setProperty("auth-server", getTestJwksUrl());
-    
+
     // Create many flow files with tokens
     for (int i = 0; i < 1000; i++) {
         Map<String, String> attributes = new HashMap<>();
         attributes.put("http.headers.authorization", "Bearer " + createTestToken());
         runner.enqueue("test data".getBytes(), attributes);
     }
-    
+
     // Run the processor with timing
     long startTime = System.currentTimeMillis();
     runner.run(1000);
     long endTime = System.currentTimeMillis();
-    
+
     // Verify throughput
     runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 1000);
-    
+
     // Calculate and log throughput
     long duration = endTime - startTime;
     double throughputPerSecond = (1000.0 / duration) * 1000;
     System.out.println("Throughput: " + throughputPerSecond + " tokens/second");
-    
+
     // Assert minimum throughput requirement
     assertTrue(throughputPerSecond > 100, "Throughput should exceed 100 tokens/second");
 }
@@ -404,7 +404,7 @@ Tests are run automatically as part of the build process:
 * link:configuration.adoc[Configuration]
 * link:security.adoc[Security]
 * link:technical-components.adoc[Technical Components]
-* link:../../e-2-e-cypress/doc/javascript-testing-guide.md[JavaScript Testing Implementation Guide]
+* link:../../e-2-e-playwright/docs/mcp-playwright-guide.adoc[Playwright Testing Implementation Guide]
 * link:../Requirements.adoc#NIFI-AUTH-12[Testing Requirements]
 * link:../Specification.adoc[Back to Main Specification]
 
