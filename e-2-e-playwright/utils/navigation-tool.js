@@ -7,7 +7,7 @@
 import { expect } from '@playwright/test';
 import { PAGE_TYPES, PAGE_DEFINITIONS, SELECTORS } from './constants';
 import { getPageContext } from './test-helper';
-import { logMessage } from './login-tool';
+import { navigationLogger as logMessage } from './shared-logger';
 import path from 'path';
 
 // Define paths for screenshots (following Maven standard)

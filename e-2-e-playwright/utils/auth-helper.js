@@ -6,6 +6,7 @@
 
 import { test, expect } from '@playwright/test';
 import { PAGE_TYPES, DEFAULT_CREDENTIALS, SERVICE_URLS, SELECTORS } from './constants';
+import { authLogger as logMessage } from './shared-logger';
 import path from 'path';
 
 // Define paths for screenshots (following Maven standard)
@@ -18,21 +19,6 @@ if (!fs.existsSync(SCREENSHOTS_DIR)) {
   fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 }
 
-/**
- * Logger function for consistent logging
- * @param {string} level - Log level (info, success, warn, error)
- * @param {string} message - Message to log
- */
-export function logMessage(level, message) {
-  const prefix = {
-    info: '🔵 INFO:',
-    success: '✅ SUCCESS:',
-    warn: '🟠 WARNING:',
-    error: '🔴 ERROR:',
-  }[level] || '🔵 INFO:';
-
-  console.log(`${prefix} ${message}`);
-}
 
 /**
  * Check if NiFi service is accessible

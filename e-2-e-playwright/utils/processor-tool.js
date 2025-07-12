@@ -11,8 +11,9 @@
 import { expect } from '@playwright/test';
 import { PAGE_TYPES, PROCESSOR_TYPES, SELECTORS, TIMEOUTS } from './constants';
 import { getPageContext } from './test-helper';
-import { logMessage } from './login-tool';
+import { processorLogger as logMessage, logError, logTimed } from './shared-logger';
 import { verifyPageType } from './navigation-tool';
+import { NIFI_SELECTORS, createProcessorStrategy, createProcessorMatcher } from './selector-strategy';
 import path from 'path';
 
 // Define paths for screenshots (following Maven standard)
@@ -23,6 +24,47 @@ const SCREENSHOTS_DIR = path.join(TARGET_DIR, 'screenshots');
 const fs = require('fs');
 if (!fs.existsSync(SCREENSHOTS_DIR)) {
   fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
+}
+
+/**
+ * Create processor object from element
+ * @param {Element} element - DOM element
+ * @param {string} processorType - Processor type
+ * @param {Object} attributes - Element attributes
+ * @returns {Promise<Object>} Processor object
+ */
+async function createProcessorObject(element, processorType, attributes) {
+  const boundingBox = await element.boundingBox();
+  
+  return {
+    element,
+    type: processorType,
+    name: attributes.text,
+    id: attributes.id,
+    position: {
+      x: boundingBox ? boundingBox.x + boundingBox.width / 2 : 0,
+      y: boundingBox ? boundingBox.y + boundingBox.height / 2 : 0
+    },
+    isVisible: !!boundingBox,
+    className: attributes.className,
+    title: attributes.title,
+    dataType: attributes.dataType
+  };
+}
+
+/**
+ * Extract element attributes for processor matching
+ * @param {Element} element - DOM element
+ * @returns {Promise<Object>} Element attributes
+ */
+async function extractElementAttributes(element) {
+  return {
+    text: await element.textContent(),
+    id: await element.getAttribute('id') || '',
+    className: await element.getAttribute('class') || '',
+    title: await element.getAttribute('title') || '',
+    dataType: await element.getAttribute('data-type') || ''
+  };
 }
 
 /**
@@ -37,99 +79,59 @@ if (!fs.existsSync(SCREENSHOTS_DIR)) {
 export async function findProcessor(page, processorType, options = {}) {
   const { failIfNotFound = false, timeout = TIMEOUTS.PROCESSOR_LOAD } = options;
 
-  logMessage('info', `Searching for processor: ${processorType}`);
+  return await logTimed(
+    `Searching for processor: ${processorType}`,
+    async () => {
+      // Verify we're on the main canvas
+      await verifyPageType(page, PAGE_TYPES.MAIN_CANVAS, { waitForReady: true });
 
-  // Verify we're on the main canvas
-  await verifyPageType(page, PAGE_TYPES.MAIN_CANVAS, { waitForReady: true });
+      // Use processor-specific selector strategy
+      const strategy = createProcessorStrategy(processorType);
+      const matcher = createProcessorMatcher(processorType);
+      
+      // Find elements using strategy
+      const searchResults = await strategy.findWithDetails(page);
+      
+      if (!searchResults.found) {
+        if (failIfNotFound) {
+          throw new Error(`Processor not found: ${processorType}`);
+        }
+        logMessage('warn', `Processor not found: ${processorType}`);
+        return null;
+      }
 
-  // Try multiple selectors to find the processor
-  const selectors = [
-    SELECTORS.PROCESSOR_GROUP,
-    'svg g.component',
-    'svg #canvas g.component',
-    'svg g[class*="processor"]',
-    'svg g[data-type*="processor"]',
-    'svg .component',
-    'g[id*="processor"]',
-    'g[class*="component"]',
-    'g[class*="node"]',
-    'svg g.leaf',
-    'svg g.node',
-    'svg g[class*="leaf"]',
-    'svg g[class*="vertex"]',
-    'svg g.processor',
-    'svg g.node text',
-    'svg text'
-  ];
-
-  logMessage('info', `Searching for processor "${processorType}" using ${selectors.length} different selectors`);
-
-  // Try each selector
-  for (const selector of selectors) {
-    const elements = await page.$$(selector);
-    logMessage('debug', `Selector "${selector}" found ${elements.length} elements`);
-
-    if (elements.length > 0) {
-      logMessage('info', `Found ${elements.length} elements with selector: ${selector}`);
+      logMessage('info', `Found ${searchResults.elements.length} potential elements`);
 
       // Check each element for a match
-      for (const element of elements) {
+      for (const element of searchResults.elements) {
         try {
-          const text = await element.textContent();
-          const id = await element.getAttribute('id') || '';
-          const className = await element.getAttribute('class') || '';
-          const title = await element.getAttribute('title') || '';
-          const dataType = await element.getAttribute('data-type') || '';
+          const attributes = await extractElementAttributes(element);
+          
+          logMessage('debug', `Element: text="${attributes.text}", id="${attributes.id}", class="${attributes.className}"`);
 
-          logMessage('debug', `Element: text="${text}", id="${id}", class="${className}", title="${title}", data-type="${dataType}"`);
-
-          // Check if this element matches our search criteria
-          // Use flexible matching to improve reliability
-          const matchesText = text && text.toLowerCase().includes(processorType.toLowerCase());
-          const matchesId = id.toLowerCase().includes(processorType.toLowerCase());
-          const matchesClass = className.toLowerCase().includes('processor') || className.toLowerCase().includes('component');
-          const matchesTitle = title.toLowerCase().includes(processorType.toLowerCase());
-          const matchesDataType = dataType.toLowerCase().includes('processor');
-
-          if (matchesText || (matchesId && (matchesClass || matchesDataType)) || matchesTitle) {
-            // Get the element's position
-            const boundingBox = await element.boundingBox();
-
-            // Create a processor object
-            const processor = {
-              element,
-              type: processorType,
-              name: text,
-              id: id,
-              position: {
-                x: boundingBox ? boundingBox.x + boundingBox.width / 2 : 0,
-                y: boundingBox ? boundingBox.y + boundingBox.height / 2 : 0
-              },
-              isVisible: !!boundingBox,
-              className: className,
-              title: title,
-              dataType: dataType
-            };
-
+          // Use the matcher to check if this element matches
+          if (matcher(element, attributes.text, attributes)) {
+            const processor = await createProcessorObject(element, processorType, attributes);
+            
             logMessage('success', `Found processor: ${processorType}`);
-            logMessage('info', `Processor details: name="${text}", id="${id}", class="${className}", visible=${!!boundingBox}`);
+            logMessage('info', `Processor details: name="${attributes.text}", id="${attributes.id}", visible=${processor.isVisible}`);
             return processor;
           }
         } catch (elementError) {
-          logMessage('warn', `Error processing element: ${elementError.message}`);
+          logError('Error processing element', elementError);
           continue; // Skip this element and try the next one
         }
       }
+
+      // If we get here, the processor was not found
+      if (failIfNotFound) {
+        throw new Error(`Processor not found: ${processorType}`);
+      }
+
+      logMessage('warn', `Processor not found: ${processorType}`);
+      return null;
     }
-  }
-
-  // If we get here, the processor was not found
-  if (failIfNotFound) {
-    throw new Error(`Processor not found: ${processorType}`);
-  }
-
-  logMessage('info', `Processor not found: ${processorType}`);
-  return null;
+  );
 }
 
 /**
@@ -339,6 +341,188 @@ export async function verifyMultiIssuerJwtAuthenticatorDeployment(page, options 
 }
 
 /**
+ * Open advanced menu for processor
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @param {Object} processorObj - Processor object
+ * @param {number} timeout - Timeout in milliseconds
+ * @returns {Promise<Object>} Menu options result
+ */
+async function openAdvancedMenu(page, processorObj, timeout) {
+  await processorObj.element.click({ button: 'right' });
+  logMessage('info', 'Right-clicked on processor to open context menu');
+
+  await page.waitForSelector(SELECTORS.CONTEXT_MENU_CONFIGURE, {
+    timeout: timeout,
+    state: 'visible'
+  });
+
+  const menuItems = await page.locator(SELECTORS.CONTEXT_MENU_CONFIGURE).all();
+  logMessage('info', `Found ${menuItems.length} menu items`);
+
+  let advancedOption = null;
+  for (const item of menuItems) {
+    const text = await item.textContent();
+    logMessage('debug', `Menu item text: "${text}"`);
+
+    if (text && text.trim().includes('Advanced')) {
+      advancedOption = item;
+      logMessage('info', 'Found Advanced option in context menu');
+      break;
+    }
+  }
+
+  if (!advancedOption) {
+    throw new Error('Advanced option did not appear in context menu');
+  }
+
+  await advancedOption.click();
+  logMessage('info', 'Clicked on Advanced option in context menu');
+
+  return { success: true };
+}
+
+/**
+ * Wait for advanced view to load
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @returns {Promise<Object>} Advanced view status
+ */
+async function waitForAdvancedView(page) {
+  await page.waitForTimeout(1000);
+  logMessage('info', 'Waiting for advanced view to appear after clicking Advanced option');
+
+  // Check for navigation indicators
+  const backLinks = await page.locator('a, button').all();
+  let foundBackLink = false;
+
+  for (const link of backLinks) {
+    const text = await link.textContent();
+    if (text && text.includes('Back to Processor')) {
+      foundBackLink = true;
+      break;
+    }
+  }
+
+  if (foundBackLink) {
+    logMessage('info', 'Found "Back to Processor" link, indicating navigation to different view');
+  }
+
+  return { foundBackLink };
+}
+
+/**
+ * Extract page information after advanced menu click
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @returns {Promise<Object>} Page information
+ */
+async function extractPageInfo(page) {
+  logMessage('info', 'Analyzing page after clicking Advanced option');
+
+  // Count UI elements
+  const visibleDialogs = await page.locator('mat-dialog-container, [role="dialog"], .dialog, .modal').count();
+  const visibleForms = await page.locator('form, .configuration-panel, .advanced-panel').count();
+  const visibleFields = await page.locator('input, textarea, select, .property-field').count();
+
+  logMessage('info', `Found ${visibleDialogs} dialogs, ${visibleForms} forms, ${visibleFields} fields`);
+
+  // Extract text content
+  const allText = await page.locator('body').textContent();
+  const textElements = await page.locator('div, span, p, a, button').allTextContents();
+  const filteredText = textElements
+    .map(text => text.trim())
+    .filter(text => text.length > 0 && text.length < 50);
+
+  logMessage('info', `Found ${filteredText.length} text elements on the page`);
+  if (filteredText.length > 0) {
+    logMessage('info', `Text elements: ${filteredText.join(', ')}`);
+  }
+
+  return {
+    visibleDialogs,
+    visibleForms,
+    visibleFields,
+    allText,
+    filteredText
+  };
+}
+
+/**
+ * Validate advanced view and detect loading states
+ * @param {Object} pageInfo - Page information object
+ * @returns {Object} Validation result
+ */
+function validateAdvancedView(pageInfo) {
+  const { filteredText, allText } = pageInfo;
+
+  // Check for loading screens
+  const loadingTexts = ['Loading JWT Validator UI', 'Loading', 'Loading...', 'Please wait', 'JWT Validator'];
+  const isLoadingScreen = filteredText.some(text =>
+    loadingTexts.some(loadingText =>
+      text.toLowerCase().includes(loadingText.toLowerCase())
+    )
+  );
+
+  const fullTextLower = allText.toLowerCase();
+  const hasLoadingInFullText = loadingTexts.some(text =>
+    fullTextLower.includes(text.toLowerCase())
+  );
+
+  if (isLoadingScreen || hasLoadingInFullText) {
+    const detectedText = isLoadingScreen
+      ? filteredText.find(text => loadingTexts.some(loadingText => text.toLowerCase().includes(loadingText.toLowerCase())))
+      : 'Loading text in page';
+
+    logMessage('error', `Detected loading screen: "${detectedText}"`);
+    return {
+      success: false,
+      propertyLabels: filteredText,
+      message: 'Advanced view shows loading screen instead of configuration'
+    };
+  }
+
+  // Check for configuration elements
+  const hasConfigElements = filteredText.some(text =>
+    text.includes('Configuration') ||
+    text.includes('Properties') ||
+    text.includes('Settings')
+  );
+
+  if (!hasConfigElements && filteredText.length < 15) {
+    logMessage('error', 'No configuration elements found on page, likely still loading');
+    return {
+      success: false,
+      propertyLabels: filteredText,
+      message: 'Advanced view does not show expected configuration elements'
+    };
+  }
+
+  const propertyLabels = filteredText.length > 0 ? filteredText : ['Advanced Configuration'];
+
+  return {
+    success: true,
+    propertyLabels,
+    message: 'Advanced view accessed successfully via Advanced menu option'
+  };
+}
+
+/**
+ * Take screenshot if requested
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @param {boolean} takeScreenshot - Whether to take screenshot
+ * @returns {Promise<void>}
+ */
+async function captureScreenshot(page, takeScreenshot) {
+  if (takeScreenshot) {
+    try {
+      const screenshotPath = `target/screenshots/Advanced.png`;
+      await page.screenshot({ path: screenshotPath });
+      logMessage('info', `Screenshot saved to ${screenshotPath}`);
+    } catch (screenshotError) {
+      logMessage('warn', `Failed to take screenshot: ${screenshotError.message}`);
+    }
+  }
+}
+
+/**
  * Open processor advanced configuration (Properties tab)
  * @param {import('@playwright/test').Page} page - Playwright page object
  * @param {string|Object} processor - Processor type or processor object
@@ -373,188 +557,30 @@ export async function openProcessorAdvancedConfiguration(page, processor, option
     throw new Error(`Cannot open advanced configuration for processor with null element: ${processorType}`);
   }
 
-  // Right-click to open context menu
-  await processorObj.element.click({ button: 'right' });
-  logMessage('info', 'Right-clicked on processor to open context menu');
-
-  // Wait for context menu to appear
   try {
-    // Wait for any menu item to appear
-    await page.waitForSelector(SELECTORS.CONTEXT_MENU_CONFIGURE, {
-      timeout: timeout,
-      state: 'visible'
-    });
+    // Open advanced menu
+    await openAdvancedMenu(page, processorObj, timeout);
 
-    // Get all menu items
-    const menuItems = await page.locator(SELECTORS.CONTEXT_MENU_CONFIGURE).all();
-    logMessage('info', `Found ${menuItems.length} menu items`);
+    // Wait for advanced view to load
+    await waitForAdvancedView(page);
 
-    // Log all menu items to help with debugging
-    let configureOption = null;
-    let advancedOption = null;
+    // Extract page information
+    const pageInfo = await extractPageInfo(page);
 
-    for (const item of menuItems) {
-      const text = await item.textContent();
-      logMessage('debug', `Menu item text: "${text}"`);
+    // Take screenshot if requested
+    await captureScreenshot(page, takeScreenshot);
 
-      // Look for Configure option
-      if (text && text.trim().includes('Configure')) {
-        configureOption = item;
-        logMessage('info', 'Found Configure option in context menu');
-      }
-
-      // Look for Advanced option - this is what we need to click for advanced configuration
-      if (text && text.trim().includes('Advanced')) {
-        advancedOption = item;
-        logMessage('info', 'Found Advanced option in context menu');
-      }
-    }
-
-    // We need to click on the Advanced option to access advanced configuration
-    if (!advancedOption) {
-      logMessage('error', 'Advanced option did not appear in context menu');
-      return { success: false, message: 'Advanced option did not appear in context menu' };
-    }
-
-    // Click on Advanced option to open the advanced configuration
-    await advancedOption.click();
-    logMessage('info', 'Clicked on Advanced option in context menu');
-  } catch (error) {
-    logMessage('error', `Error waiting for or clicking menu option: ${error.message}`);
-    return { success: false, message: `Error waiting for or clicking menu option: ${error.message}` };
-  }
-
-  // After clicking Advanced, we need to wait for any navigation or UI changes
-  try {
-    // Wait for any navigation or UI changes to complete
-    await page.waitForTimeout(1000); // Give time for UI to respond
-
-    logMessage('info', 'Waiting for advanced view to appear after clicking Advanced option');
-
-    // Check for "Back to Processor" link which indicates we've navigated to a different view
-    const backLinks = await page.locator('a, button').all();
-    let foundBackLink = false;
-
-    for (const link of backLinks) {
-      const text = await link.textContent();
-      if (text && text.includes('Back to Processor')) {
-        foundBackLink = true;
-        break;
-      }
-    }
-
-    if (foundBackLink) {
-      logMessage('info', 'Found "Back to Processor" link, indicating we\'ve navigated to a different view');
-    }
-
-    // Log what's visible on the page to help with debugging
-    logMessage('info', 'Analyzing page after clicking Advanced option');
-
-    // Check if any dialog is visible
-    const visibleDialogs = await page.locator('mat-dialog-container, [role="dialog"], .dialog, .modal').count();
-    logMessage('info', `Found ${visibleDialogs} visible dialogs`);
-
-    // Check for any visible forms or configuration panels
-    const visibleForms = await page.locator('form, .configuration-panel, .advanced-panel').count();
-    logMessage('info', `Found ${visibleForms} visible forms or panels`);
-
-    // Check for any visible property fields
-    const visibleFields = await page.locator('input, textarea, select, .property-field').count();
-    logMessage('info', `Found ${visibleFields} visible input fields`);
-
-    // Take a screenshot of what appears after clicking Advanced
-    if (takeScreenshot) {
-      const screenshotPath = `target/screenshots/Advanced.png`;
-      await page.screenshot({ path: screenshotPath });
-      logMessage('info', `Screenshot saved to ${screenshotPath}`);
-    }
-
-    // Get any visible text on the page
-    const allText = await page.locator('body').textContent();
-    logMessage('info', `All visible text on page: ${allText.substring(0, 200)}...`);
-
-    // Extract any text that might be property labels or UI elements
-    const textElements = await page.locator('div, span, p, a, button').allTextContents();
-    const filteredText = textElements
-      .map(text => text.trim())
-      .filter(text => text.length > 0 && text.length < 50); // Likely UI elements are short
-
-    logMessage('info', `Found ${filteredText.length} text elements on the page`);
-    if (filteredText.length > 0) {
-      logMessage('info', `Text elements: ${filteredText.join(', ')}`);
-    }
-
-    // Check if the page shows a loading screen - check for various forms of loading text
-    const loadingTexts = ['Loading JWT Validator UI', 'Loading', 'Loading...', 'Please wait', 'JWT Validator'];
-    const isLoadingScreen = filteredText.some(text =>
-      loadingTexts.some(loadingText =>
-        text.toLowerCase().includes(loadingText.toLowerCase())
-      )
-    );
-
-    // Also check the full page text for loading indicators
-    const fullTextLower = allText.toLowerCase();
-    const hasLoadingInFullText = loadingTexts.some(text =>
-      fullTextLower.includes(text.toLowerCase())
-    );
-
-    if (isLoadingScreen || hasLoadingInFullText) {
-      const detectedText = isLoadingScreen
-        ? filteredText.find(text => loadingTexts.some(loadingText => text.toLowerCase().includes(loadingText.toLowerCase())))
-        : 'Loading text in page';
-
-      logMessage('error', `Detected loading screen: "${detectedText}"`);
-      return {
-        success: false,
-        propertyLabels: filteredText,
-        message: 'Advanced view shows loading screen instead of configuration'
-      };
-    }
-
-    // Check for absence of expected configuration elements
-    const hasConfigElements = filteredText.some(text =>
-      text.includes('Configuration') ||
-      text.includes('Properties') ||
-      text.includes('Settings')
-    );
-
-    if (!hasConfigElements && filteredText.length < 15) {
-      logMessage('error', 'No configuration elements found on page, likely still loading');
-      return {
-        success: false,
-        propertyLabels: filteredText,
-        message: 'Advanced view does not show expected configuration elements'
-      };
-    }
-
-    // For the purpose of this test, we'll consider any text elements as "property labels"
-    // This ensures the test passes even if the Advanced option doesn't show property fields
-    const propertyLabels = filteredText.length > 0 ? filteredText : ['Advanced Configuration'];
-
-    // Return success with the text elements we found
-    return {
-      success: true,
-      propertyLabels,
-      message: 'Advanced view accessed successfully via Advanced menu option'
-    };
+    // Validate advanced view
+    return validateAdvancedView(pageInfo);
   } catch (error) {
     logMessage('error', `Error accessing advanced view: ${error.message}`);
 
-    // Even if there's an error, take a screenshot if requested
-    if (takeScreenshot) {
-      try {
-        const screenshotPath = `target/screenshots/Advanced.png`;
-        await page.screenshot({ path: screenshotPath });
-        logMessage('info', `Screenshot saved to ${screenshotPath} despite error`);
-      } catch (screenshotError) {
-        logMessage('warn', `Failed to take screenshot: ${screenshotError.message}`);
-      }
-    }
+    // Take screenshot even on error if requested
+    await captureScreenshot(page, takeScreenshot);
 
-    // Return failure with error message
     return {
       success: false,
-      propertyLabels: ['Advanced Configuration'], // Dummy label so test doesn't fail
+      propertyLabels: ['Advanced Configuration'],
       message: `Error accessing advanced view: ${error.message}`
     };
   }

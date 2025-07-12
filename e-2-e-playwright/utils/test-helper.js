@@ -6,7 +6,7 @@
 
 import { expect } from '@playwright/test';
 import { PAGE_TYPES, PAGE_DEFINITIONS } from './constants';
-import { logMessage } from './login-tool';
+import { testHelperLogger as logMessage } from './shared-logger';
 
 /**
  * Common test setup with standardized logging
@@ -17,57 +17,79 @@ export function testSetup(testName) {
 }
 
 /**
+ * Check if any elements exist from a selector array
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @param {string[]} selectors - Array of selectors to check
+ * @returns {Promise<boolean>} True if any selector matches
+ */
+async function hasAnyElement(page, selectors) {
+  for (const selector of selectors) {
+    if (await page.$(selector) !== null) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Check for specific canvas indicator elements
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @returns {Promise<boolean>} True if specific canvas elements found
+ */
+async function hasSpecificCanvasElements(page) {
+  const canvasIndicators = [
+    'text="log out"',
+    '[href*="#/process-groups"]',
+    'button[title="Operate"]'
+  ];
+  
+  for (const selector of canvasIndicators) {
+    if (await page.$(selector)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Determine page type based on element presence
+ * @param {boolean} hasSpecificCanvas - Has specific canvas elements
+ * @param {boolean} hasLogin - Has login elements
+ * @param {boolean} hasCanvas - Has canvas elements
+ * @returns {string} Page type
+ */
+function determinePageType(hasSpecificCanvas, hasLogin, hasCanvas) {
+  if (hasSpecificCanvas) {
+    return PAGE_TYPES.MAIN_CANVAS;
+  } else if (hasLogin && !hasCanvas) {
+    return PAGE_TYPES.LOGIN;
+  } else if (hasCanvas) {
+    return PAGE_TYPES.MAIN_CANVAS;
+  }
+  return PAGE_TYPES.UNKNOWN;
+}
+
+/**
  * Get the current page context (page type, authentication state, etc.)
  * @param {import('@playwright/test').Page} page - Playwright page object
  * @returns {Promise<Object>} Page context object
  */
 export async function getPageContext(page) {
-  // Check for specific main canvas elements first (these are more reliable)
-  const logoutLink = await page.$('text="log out"');
-  const processGroupLink = await page.$('[href*="#/process-groups"]');
-  const operateButton = await page.$('button[title="Operate"]');
+  // Check for specific canvas elements (most reliable)
+  const hasSpecificCanvas = await hasSpecificCanvasElements(page);
+  
+  // Check for login and canvas elements
+  const hasLoginElements = await hasAnyElement(page, PAGE_DEFINITIONS[PAGE_TYPES.LOGIN].elements);
+  const hasCanvasElements = await hasAnyElement(page, PAGE_DEFINITIONS[PAGE_TYPES.MAIN_CANVAS].elements);
 
-  // If any of these elements are present, we're definitely on the main canvas
-  const hasSpecificCanvasElements = !!(logoutLink || processGroupLink || operateButton);
-
-  // Check for login page elements - try all elements in the array
-  let hasLoginElements = false;
-  for (const selector of PAGE_DEFINITIONS[PAGE_TYPES.LOGIN].elements) {
-    if (await page.$(selector) !== null) {
-      hasLoginElements = true;
-      break;
-    }
-  }
-
-  // Check for canvas elements - try all elements in the array
-  let hasCanvasElements = false;
-  for (const selector of PAGE_DEFINITIONS[PAGE_TYPES.MAIN_CANVAS].elements) {
-    if (await page.$(selector) !== null) {
-      hasCanvasElements = true;
-      break;
-    }
-  }
-
-  // Determine page type - prioritize specific canvas elements
-  let pageType = PAGE_TYPES.UNKNOWN;
-  if (hasSpecificCanvasElements) {
-    pageType = PAGE_TYPES.MAIN_CANVAS;
-  } else if (hasLoginElements && !hasCanvasElements) {
-    pageType = PAGE_TYPES.LOGIN;
-  } else if (hasCanvasElements) {
-    pageType = PAGE_TYPES.MAIN_CANVAS;
-  }
-
-  // Determine authentication state
+  // Determine page type
+  const pageType = determinePageType(hasSpecificCanvas, hasLoginElements, hasCanvasElements);
+  
+  // Determine authentication and ready states
   const isAuthenticated = pageType === PAGE_TYPES.MAIN_CANVAS;
-
-  // Determine if page is ready
-  let isReady = false;
-  if (pageType === PAGE_TYPES.MAIN_CANVAS) {
-    isReady = hasCanvasElements || hasSpecificCanvasElements;
-  } else if (pageType === PAGE_TYPES.LOGIN) {
-    isReady = hasLoginElements;
-  }
+  const isReady = pageType === PAGE_TYPES.MAIN_CANVAS 
+    ? (hasCanvasElements || hasSpecificCanvas)
+    : pageType === PAGE_TYPES.LOGIN ? hasLoginElements : false;
 
   return {
     pageType,
@@ -90,10 +112,23 @@ export async function verifyAuthenticationState(page, expectedAuth, expectedPage
   const context = await getPageContext(page);
   expect(context.pageType).toBe(expectedPageType);
   expect(context.isAuthenticated).toBe(expectedAuth);
-  if (expectedAuth && expectedPageType === 'MAIN_CANVAS') {
+  
+  if (expectedAuth && expectedPageType === PAGE_TYPES.MAIN_CANVAS) {
     expect(context.isReady).toBeTruthy();
   }
 }
+
+// Mock processor type definitions for testing
+const MOCK_PROCESSOR_TYPES = {
+  JWT_TOKEN_AUTHENTICATOR: {
+    className: 'de.cuioss.nifi.processors.auth.JWTTokenAuthenticator',
+    displayName: 'JWT Token Authenticator'
+  },
+  MULTI_ISSUER_JWT_AUTHENTICATOR: {
+    className: 'de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator',
+    displayName: 'Multi-Issuer JWT Token Authenticator'
+  }
+};
 
 /**
  * Verify processor definition with expected properties
@@ -103,24 +138,10 @@ export async function verifyAuthenticationState(page, expectedAuth, expectedPage
  * @returns {Promise<Object>} Processor definition
  */
 export async function verifyProcessorDefinition(page, processorType, expectedClassName) {
-  // This would need to be implemented based on how you retrieve processor types in Playwright
-  // For now, we'll create a placeholder implementation
   logMessage('info', `Verifying processor definition for ${processorType}`);
 
-  // Mock implementation - in a real scenario, you would fetch this from the API
-  const types = {
-    JWT_TOKEN_AUTHENTICATOR: {
-      className: 'de.cuioss.nifi.processors.auth.JWTTokenAuthenticator',
-      displayName: 'JWT Token Authenticator'
-    },
-    MULTI_ISSUER_JWT_AUTHENTICATOR: {
-      className: 'de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator',
-      displayName: 'Multi-Issuer JWT Token Authenticator'
-    }
-  };
-
-  expect(types).toHaveProperty(processorType);
-  const processor = types[processorType];
+  expect(MOCK_PROCESSOR_TYPES).toHaveProperty(processorType);
+  const processor = MOCK_PROCESSOR_TYPES[processorType];
   expect(processor).toHaveProperty('className', expectedClassName);
   expect(processor).toHaveProperty('displayName');
   return processor;
@@ -133,7 +154,7 @@ export async function verifyProcessorDefinition(page, processorType, expectedCla
  */
 export function verifyProcessorStructure(processor, processorType) {
   if (processor) {
-    ['id', 'type', 'position'].forEach((prop) => {
+    ProcessorTestPatterns.REQUIRED_PROCESSOR_PROPERTIES.forEach((prop) => {
       expect(processor).toHaveProperty(prop);
     });
     logMessage('info', `Found ${processorType}: ${processor.name}`);
@@ -175,7 +196,7 @@ export async function testProcessorSearch(page, processorType) {
  */
 export async function verifyCanvasReady(page) {
   const context = await getPageContext(page);
-  expect(context.pageType).toBe('MAIN_CANVAS');
+  expect(context.pageType).toBe(PAGE_TYPES.MAIN_CANVAS);
   expect(context.isReady).toBeTruthy();
   expect(context.isAuthenticated).toBeTruthy();
   expect(context.elements.hasCanvasElements).toBeTruthy();

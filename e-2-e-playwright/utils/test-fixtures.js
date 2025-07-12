@@ -9,14 +9,7 @@ import { test as base } from '@playwright/test';
 import { saveTestLogs, saveAllLogs, getTestName, getTestFile } from './log-collector';
 import path from 'path';
 
-// Also export CommonJS module.exports for compatibility with playwright.config.js
-if (typeof module !== 'undefined') {
-  module.exports = {
-    saveAllTestLogs: async () => {
-      return await saveAllLogs();
-    }
-  };
-}
+// Using ES modules only for consistency
 
 /**
  * Enhanced test fixture with log collection

@@ -7,7 +7,7 @@
 import { expect } from '@playwright/test';
 import { PAGE_TYPES, DEFAULT_CREDENTIALS, SERVICE_URLS, SELECTORS } from './constants';
 import { getPageContext } from './test-helper';
-import { addLogEntry } from './log-collector';
+import { authLogger as logMessage, logError, logTimed } from './shared-logger';
 import path from 'path';
 
 // Define paths for screenshots (following Maven standard)
@@ -18,27 +18,6 @@ const SCREENSHOTS_DIR = path.join(TARGET_DIR, 'screenshots');
 const fs = require('fs');
 if (!fs.existsSync(SCREENSHOTS_DIR)) {
   fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
-}
-
-/**
- * Logger function for consistent logging
- * @param {string} level - Log level (info, success, warn, error)
- * @param {string} message - Message to log
- * @param {string} [testName] - Name of the test (optional)
- */
-export function logMessage(level, message, testName = null) {
-  const prefix = {
-    info: '🔵 INFO:',
-    success: '✅ SUCCESS:',
-    warn: '🟠 WARNING:',
-    error: '🔴 ERROR:',
-  }[level] || '🔵 INFO:';
-
-  // Log to console
-  console.log(`${prefix} ${message}`);
-
-  // Add to log collector
-  addLogEntry(level, message, testName);
 }
 
 /**
@@ -75,6 +54,100 @@ export async function checkNiFiAccessibility(page, timeout = 5000) {
 }
 
 /**
+ * Check if user is already authenticated
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @returns {Promise<boolean>} True if authenticated
+ */
+async function isAuthenticated(page) {
+  const authIndicators = [
+    'text="log out"',
+    '[href*="#/process-groups"]',
+    'button[title="Operate"]'
+  ];
+
+  for (const selector of authIndicators) {
+    if (await page.$(selector)) return true;
+  }
+  return false;
+}
+
+/**
+ * Check for login error messages
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @returns {Promise<string|null>} Error message or null
+ */
+async function getLoginErrorMessage(page) {
+  const errorElement = await page.$('.login-error, .error-message, .alert-danger');
+  return errorElement ? await errorElement.textContent() : null;
+}
+
+/**
+ * Perform the actual login form submission
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @param {string} username - Username
+ * @param {string} password - Password
+ */
+async function performLoginForm(page, username, password) {
+  await page.goto(SERVICE_URLS.NIFI_LOGIN);
+  await page.waitForSelector(SELECTORS.USERNAME_INPUT, { timeout: 10000 });
+  
+  await page.fill(SELECTORS.USERNAME_INPUT, username);
+  await page.fill(SELECTORS.PASSWORD_INPUT, password);
+  await page.click(SELECTORS.LOGIN_BUTTON);
+  
+  await page.waitForTimeout(2000); // Allow navigation time
+}
+
+/**
+ * Validate login success and handle failures
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @param {string} username - Username used for login
+ */
+async function validateLoginSuccess(page, username) {
+  // Check if already authenticated
+  if (await isAuthenticated(page)) {
+    logMessage('success', 'Found main canvas elements after login');
+    return true;
+  }
+
+  // Check for error messages
+  const errorText = await getLoginErrorMessage(page);
+  if (errorText) {
+    throw new Error(`Login failed - Error message: ${errorText}`);
+  }
+
+  // Check page context
+  const context = await getPageContext(page);
+  logMessage('info', `Page context after login: ${JSON.stringify(context)}`);
+
+  if (context.pageType === PAGE_TYPES.LOGIN) {
+    if (username !== DEFAULT_CREDENTIALS.USERNAME) {
+      throw new Error(`Login failed - Invalid credentials for user: ${username}`);
+    }
+
+    // Try force navigation for default user
+    logMessage('warn', 'Still on login page, trying force navigation');
+    await page.goto(SERVICE_URLS.NIFI_CANVAS);
+    
+    const newContext = await getPageContext(page);
+    if (newContext.pageType === PAGE_TYPES.MAIN_CANVAS) {
+      logMessage('success', 'Successfully navigated to main canvas after login');
+      return true;
+    }
+    
+    throw new Error('Login failed - Unable to navigate to main canvas');
+  }
+
+  // Check for canvas elements as final validation
+  const canvasElement = await page.$(SELECTORS.CANVAS_ELEMENTS);
+  if (!canvasElement) {
+    throw new Error('Login failed - Canvas elements not found');
+  }
+
+  return true;
+}
+
+/**
  * Login to NiFi with the provided credentials
  * This function includes assertions that will fail the test if login fails
  * @param {import('@playwright/test').Page} page - Playwright page object
@@ -86,92 +159,14 @@ export async function login(page, credentials = {}) {
   const username = credentials.username || DEFAULT_CREDENTIALS.USERNAME;
   const password = credentials.password || DEFAULT_CREDENTIALS.PASSWORD;
 
-  logMessage('info', `🔑 Performing login for user: ${username}`);
-
-  // Navigate to the login page
-  await page.goto(SERVICE_URLS.NIFI_LOGIN);
-
-  // Wait for the login form to be visible
-  await page.waitForSelector(SELECTORS.USERNAME_INPUT, { timeout: 10000 });
-
-  // Fill in the login form
-  await page.fill(SELECTORS.USERNAME_INPUT, username);
-  await page.fill(SELECTORS.PASSWORD_INPUT, password);
-
-  // Click the login button
-  await page.click(SELECTORS.LOGIN_BUTTON);
-
-  // Wait for navigation to complete
-  await page.waitForTimeout(2000); // Give time for navigation
-  logMessage('info', `Navigation completed after login`);
-
-  // Get the page context to check if we're still on the login page
-  const context = await getPageContext(page);
-  logMessage('info', `Page context after login: ${JSON.stringify(context)}`);
-
-  // If we're still on the login page after clicking the login button, the login failed
-  if (context.pageType === PAGE_TYPES.LOGIN) {
-    // For non-default users, this is expected - throw a specific error
-    if (username !== DEFAULT_CREDENTIALS.USERNAME) {
-      throw new Error(`Login failed - Invalid credentials for user: ${username}`);
+  return await logTimed(
+    `Login for user: ${username}`,
+    async () => {
+      await performLoginForm(page, username, password);
+      await validateLoginSuccess(page, username);
+      return true;
     }
-  }
-
-  // Check if we're already on the main canvas by looking for specific elements
-  const logoutLink = await page.$('text="log out"');
-  const processGroupLink = await page.$('[href*="#/process-groups"]');
-  const operateButton = await page.$('button[title="Operate"]');
-
-  if (logoutLink || processGroupLink || operateButton) {
-    logMessage('success', `Found main canvas elements after login`);
-    return true;
-  }
-
-  // If we're still on the login page, check if there's an error message
-  const errorMessage = await page.$('.login-error, .error-message, .alert-danger');
-  if (errorMessage) {
-    const errorText = await errorMessage.textContent();
-    throw new Error(`Login failed - Error message: ${errorText}`);
-  }
-
-  // Check if login was successful by looking for canvas elements
-  const canvasElement = await page.$(SELECTORS.CANVAS_ELEMENTS);
-  if (!canvasElement) {
-    // Get the page context to check if we're still on the login page
-    const context = await getPageContext(page);
-    logMessage('info', `Page context after login: ${JSON.stringify(context)}`);
-
-    if (context.pageType === PAGE_TYPES.LOGIN) {
-      // If we're still on the login page after clicking the login button, the login failed
-      if (username !== DEFAULT_CREDENTIALS.USERNAME) {
-        // For non-default users, this is expected - throw a specific error
-        throw new Error(`Login failed - Invalid credentials for user: ${username}`);
-      } else {
-        // For the default user, this is unexpected - try to force navigation
-        logMessage('warn', `Still on login page after login, trying to force navigation`);
-        await page.goto(SERVICE_URLS.NIFI_CANVAS);
-
-        // Check again after forced navigation
-        const newContext = await getPageContext(page);
-        logMessage('info', `Page context after forced navigation: ${JSON.stringify(newContext)}`);
-
-        if (newContext.pageType === PAGE_TYPES.MAIN_CANVAS) {
-          logMessage('success', `Successfully navigated to main canvas after login`);
-          return true;
-        } else {
-          // If we're still not on the main canvas, the login failed
-          throw new Error(`Login failed - Unable to navigate to main canvas after login`);
-        }
-      }
-    } else {
-      // If we're not on the login page but also don't have canvas elements, something else is wrong
-      throw new Error('Login failed - Canvas elements not found');
-    }
-  }
-
-  // If we got here, we're authenticated and on the main canvas
-  logMessage('success', `Successfully logged in as ${username}`);
-  return true;
+  );
 }
 
 /**

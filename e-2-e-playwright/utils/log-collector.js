@@ -8,8 +8,10 @@
 import path from 'path';
 import fs from 'fs';
 import { BROWSER_ERROR_PATTERNS } from './constants';
+import { processConsoleArgs } from './console-args-processor';
+import { isCriticalError, isEnhancedError, extractErrorDetails, createEnhancedErrorMessage } from './error-detector';
 
-// For CommonJS compatibility, we'll export at the end of the file
+// Using ES modules only for consistency
 
 // Define paths for logs (following Maven standard)
 const TARGET_DIR = path.join(__dirname, '..', 'target');
@@ -93,12 +95,10 @@ export function addBrowserLogEntry(type, text, testName = null) {
   let message = `[BROWSER] ${text}`;
 
   // Check if the message matches any of the critical error patterns
-  const isCriticalError = BROWSER_ERROR_PATTERNS.some(pattern =>
-    text.includes(pattern)
-  );
+  const isMessageCritical = isCriticalError(text);
 
   // If this is a critical error, add a special prefix to make it stand out
-  if (isCriticalError) {
+  if (isMessageCritical) {
     level = 'error'; // Force error level for critical errors
     message = `[BROWSER] [CRITICAL] ${text}`;
 
@@ -361,98 +361,44 @@ export function setupBrowserConsoleListener(page, testName = null) {
   // Store console messages for batch processing to avoid "Target closed" errors
   const consoleMessages = [];
 
-  // Listen for console events with enhanced object serialization
-  page.on('console', async (msg) => {
-    const type = msg.type();
-    let text = msg.text();
-    let enhancedText = text;
-
-    // Get the location information if available
-    let location = '';
+  // Helper function to extract location information
+  function getLocationInfo(msg) {
     try {
       const locationObj = msg.location();
       if (locationObj && locationObj.url) {
-        location = ` (${locationObj.url}${locationObj.lineNumber ? ':' + locationObj.lineNumber : ''}${locationObj.columnNumber ? ':' + locationObj.columnNumber : ''})`;
+        return ` (${locationObj.url}${locationObj.lineNumber ? ':' + locationObj.lineNumber : ''}${locationObj.columnNumber ? ':' + locationObj.columnNumber : ''})`;
       }
     } catch (e) {
       // Ignore location errors
     }
+    return '';
+  }
 
-    // Enhanced handling for complex objects and arrays
+  // Listen for console events with enhanced object serialization
+  page.on('console', async (msg) => {
+    const type = msg.type();
+    const text = msg.text();
+    
     try {
+      // Process console arguments for enhanced text
       const args = msg.args();
-      if (args.length > 0) {
-        // Process all arguments to extract their values
-        const processedArgs = [];
-        
-        for (const arg of args) {
-          try {
-            // Try to get the JSON value first
-            const jsonValue = await arg.jsonValue();
-            
-            // Handle different types of values
-            if (typeof jsonValue === 'object' && jsonValue !== null) {
-              // For objects and arrays, stringify with proper formatting
-              if (Array.isArray(jsonValue)) {
-                processedArgs.push(`[${jsonValue.map(item => 
-                  typeof item === 'object' ? JSON.stringify(item) : String(item)
-                ).join(', ')}]`);
-              } else {
-                processedArgs.push(JSON.stringify(jsonValue, null, 2));
-              }
-            } else {
-              // For primitives, use the value directly
-              processedArgs.push(String(jsonValue));
-            }
-          } catch (jsonError) {
-            // If jsonValue() fails, try to get string representation
-            try {
-              const stringValue = await arg.evaluate(obj => {
-                // Custom serialization for complex objects
-                if (typeof obj === 'function') {
-                  return `[Function: ${obj.name || 'anonymous'}]`;
-                }
-                if (obj instanceof Error) {
-                  return `${obj.name}: ${obj.message}${obj.stack ? '\nStack: ' + obj.stack : ''}`;
-                }
-                if (typeof obj === 'object' && obj !== null) {
-                  try {
-                    return JSON.stringify(obj, null, 2);
-                  } catch (e) {
-                    return `[Object: ${obj.constructor?.name || 'Unknown'}]`;
-                  }
-                }
-                return String(obj);
-              }).catch(() => String(arg));
-              processedArgs.push(stringValue);
-            } catch (evalError) {
-              // Final fallback
-              processedArgs.push(`[Unable to serialize: ${String(arg)}]`);
-            }
-          }
-        }
-        
-        // Join all processed arguments
-        if (processedArgs.length > 0) {
-          enhancedText = processedArgs.join(' ');
-        }
-      }
+      const processedArgs = await processConsoleArgs(args);
+      const enhancedText = processedArgs.length > 0 ? processedArgs.join(' ') : text;
+      
+      // Add location information if available
+      const location = getLocationInfo(msg);
+      const finalText = location ? `${enhancedText}${location}` : enhancedText;
+
+      // Store message for potential batch processing
+      consoleMessages.push({ type, text: finalText, timestamp: new Date() });
+
+      // Add to log buffer immediately for real-time logging
+      addBrowserLogEntry(type, finalText, testName);
     } catch (e) {
-      // If all else fails, use the original text
-      console.warn(`Error processing console message args: ${e.message}`);
-      enhancedText = text;
+      // Fallback to original text if processing fails
+      console.warn(`Error processing console message: ${e.message}`);
+      addBrowserLogEntry(type, text, testName);
     }
-
-    // Add location information to the text if available
-    if (location) {
-      enhancedText = `${enhancedText}${location}`;
-    }
-
-    // Store message for potential batch processing
-    consoleMessages.push({ type, text: enhancedText, timestamp: new Date() });
-
-    // Add to log buffer immediately for real-time logging
-    addBrowserLogEntry(type, enhancedText, testName);
   });
 
   // Listen for page errors
@@ -484,57 +430,21 @@ export function setupBrowserConsoleListener(page, testName = null) {
     if (msg.type() === 'error') {
       const text = msg.text();
       
-      // Handle different types of errors more comprehensively
-      if (text.includes('Uncaught') || text.includes('ReferenceError') || 
-          text.includes('TypeError') || text.includes('SyntaxError') ||
-          text.includes('Mismatched anonymous define')) {
-        
-        // Enhanced stack trace extraction
-        let stackTrace = '';
-        let errorDetails = '';
-        
+      // Handle enhanced error types
+      if (isEnhancedError(text)) {
         try {
           const args = msg.args();
-          if (args.length > 0) {
-            for (const arg of args) {
-              try {
-                // Try to extract detailed error information
-                const errorInfo = await arg.evaluate(obj => {
-                  if (obj instanceof Error) {
-                    return {
-                      name: obj.name,
-                      message: obj.message,
-                      stack: obj.stack,
-                      fileName: obj.fileName,
-                      lineNumber: obj.lineNumber,
-                      columnNumber: obj.columnNumber
-                    };
-                  }
-                  return null;
-                }).catch(() => null);
-                
-                if (errorInfo) {
-                  errorDetails = `\nError Details: ${JSON.stringify(errorInfo, null, 2)}`;
-                  if (errorInfo.stack) {
-                    stackTrace = `\nStack trace: ${errorInfo.stack}`;
-                  }
-                  break;
-                }
-              } catch (e) {
-                // Continue to next argument
-              }
-            }
-          }
+          const errorContext = await extractErrorDetails(args);
+          const enhancedErrorMsg = createEnhancedErrorMessage(text, errorContext);
+          
+          addBrowserLogEntry('error', enhancedErrorMsg, testName);
+          
+          // Also log to console for immediate visibility
+          console.error(`🚨 ENHANCED ERROR CAPTURE: ${text.substring(0, 200)}${text.length > 200 ? '...' : ''}`);
         } catch (e) {
-          // Ignore stack trace errors
+          // Fallback to basic logging
+          addBrowserLogEntry('error', `Critical Error: ${text}`, testName);
         }
-
-        // Log the enhanced error information
-        const enhancedErrorMsg = `Critical Error: ${text}${errorDetails}${stackTrace}`;
-        addBrowserLogEntry('error', enhancedErrorMsg, testName);
-        
-        // Also log to console for immediate visibility
-        console.error(`🚨 ENHANCED ERROR CAPTURE: ${text.substring(0, 200)}${text.length > 200 ? '...' : ''}`);
       }
     }
   });
@@ -656,19 +566,4 @@ export function setupEnhancedConsoleListener(page, testName = null) {
   return cleanup;
 }
 
-// Add CommonJS exports at the end of the file for compatibility
-if (typeof module !== 'undefined') {
-  module.exports = {
-    addLogEntry,
-    addBrowserLogEntry,
-    saveTestLogs,
-    saveAllLogs,
-    saveCriticalErrorsSummary,
-    clearTestLogs,
-    clearAllLogs,
-    getTestName,
-    getTestFile,
-    setupBrowserConsoleListener,
-    setupEnhancedConsoleListener
-  };
-}
+// All functions are exported individually using ES modules above
