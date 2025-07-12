@@ -51,7 +51,11 @@ jobs:
         run: ./mvnw -B --no-transfer-progress clean package -DskipTests
 
       - name: Run Code Quality Checks (Linting)
-        run: ./mvnw -B --no-transfer-progress compile -pl e-2-e-playwright
+        run: |
+          ./mvnw -B --no-transfer-progress compile -pl e-2-e-playwright
+          cd e-2-e-playwright
+          npm ci
+          npm run lint
 
       - name: Run E2E Integration Tests with Maven-managed Containers
         # This runs the full E2E test suite with Maven managing container lifecycle:

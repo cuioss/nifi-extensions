@@ -8,7 +8,7 @@ skinparam {
 }
 
 node "Test Environment" as TE {
-    component "Playwright" as CP
+    component "Playwright" as PW
 
     node "Docker" as D {
         component "NiFi Instance\nHTTPS 9095" as N
@@ -22,11 +22,11 @@ node "Test Environment" as TE {
         K -- JWKS : "Provides"
     }
 
-    CP --> N : "UI Testing"
-    CP --> K : "Auth Testing"
+    PW --> N : "UI Testing"
+    PW --> K : "Auth Testing"
 }
 
 actor "Developer" as DEV
-DEV --> CP : "Runs Tests"
+DEV --> PW : "Runs Tests"
 DEV --> D : "Manages"
 @enduml
