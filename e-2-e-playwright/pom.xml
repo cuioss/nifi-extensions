@@ -30,6 +30,10 @@
         <skipPlaywrightTests>true</skipPlaywrightTests> <!-- Skip Playwright tests by default, run only in integration-tests profile -->
         <!-- Include this module in SonarQube analysis -->
         <sonar.skip>false</sonar.skip>
+        <!-- Frontend Maven Plugin -->
+        <frontend.maven.plugin.version>1.15.1</frontend.maven.plugin.version>
+        <frontend.node.version>v20.19.2</frontend.node.version>
+        <frontend.npm.version>10.5.0</frontend.npm.version>
     </properties>
 
     <build>
@@ -38,10 +42,10 @@
             <plugin>
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>
-                <version>1.15.1</version>
+                <version>${frontend.maven.plugin.version}</version>
                 <configuration>
-                    <nodeVersion>v20.19.2</nodeVersion>
-                    <npmVersion>10.5.0</npmVersion>
+                    <nodeVersion>${frontend.node.version}</nodeVersion>
+                    <npmVersion>${frontend.npm.version}</npmVersion>
                     <installDirectory>target</installDirectory>
                 </configuration>
                 <executions>
