@@ -1,31 +1,32 @@
 = MultiIssuerJWTTokenAuthenticator Specification
-:toc:
+:toc: left
 :toclevels: 3
 :toc-title: Table of Contents
 :sectnums:
+:source-highlighter: highlight.js
 
 == Overview
-_See Requirement link:Requirements.adoc#NIFI-AUTH-1[NIFI-AUTH-1: REST API Support Enhancement]_
+_See Requirement xref:Requirements.adoc#NIFI-AUTH-1[NIFI-AUTH-1: REST API Support Enhancement]_
 
 This document provides the technical specification for implementing the MultiIssuerJWTTokenAuthenticator processor.
-For functional requirements, see link:Requirements.adoc[Requirements Document].
+For functional requirements, see xref:Requirements.adoc[Requirements Document].
 
 The MultiIssuerJWTTokenAuthenticator is compatible with NiFi 2.4.0 and leverages the cui-jwt-validation library for token validation.
 
 == Document Structure
-_See Requirement link:Requirements.adoc#NIFI-AUTH-13[NIFI-AUTH-13: Documentation Requirements]_
+_See Requirement xref:Requirements.adoc#NIFI-AUTH-13[NIFI-AUTH-13: Documentation Requirements]_
 
 This specification is organized into the following documents:
 
-* link:specification/technical-components.adoc[Technical Components] - Core implementation details
-* link:specification/configuration.adoc[Configuration] - Configuration properties and UI
-* link:specification/token-validation.adoc[Token Validation] - Token validation implementation
-* link:specification/error-handling.adoc[Error Handling] - Error handling implementation
-* link:specification/testing.adoc[Testing] - Unit and integration testing
-* link:specification/security.adoc[Security] - Security considerations
-* link:specification/integration-patterns.adoc[Integration Patterns] - Integration examples
-* link:specification/internationalization.adoc[Internationalization] - i18n implementation
-* link:LogMessage.md[Log Messages] - Log message documentation
+* xref:specification/technical-components.adoc[Technical Components] - Core implementation details
+* xref:specification/configuration.adoc[Configuration] - Configuration properties and UI
+* xref:specification/token-validation.adoc[Token Validation] - Token validation implementation
+* xref:specification/error-handling.adoc[Error Handling] - Error handling implementation
+* xref:specification/testing.adoc[Testing] - Unit and integration testing
+* xref:specification/security.adoc[Security] - Security considerations
+* xref:specification/integration-patterns.adoc[Integration Patterns] - Integration examples
+* xref:specification/internationalization.adoc[Internationalization] - i18n implementation
+* xref:LogMessage.md[Log Messages] - Log message documentation
 
 [NOTE]
 ====
@@ -58,7 +59,7 @@ These libraries provide a robust foundation for implementing and testing JWT aut
 The MultiIssuerJWTTokenAuthenticator processor implements the following key technical features:
 
 === Multiple Issuer Support
-_See Requirement link:Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
+_See Requirement xref:Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
 
 The processor supports configuring multiple JWT token issuers, each with its own:
 
@@ -68,7 +69,7 @@ The processor supports configuring multiple JWT token issuers, each with its own
 * Accepted algorithms
 
 === Token Validation
-_See Requirement link:Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
+_See Requirement xref:Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
 The processor validates JWT tokens using the cui-jwt-validation library with:
 
@@ -78,7 +79,7 @@ The processor validates JWT tokens using the cui-jwt-validation library with:
 * Support for all standard JWT algorithms including RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, and ES512
 
 === Static Configuration Support
-_See Requirement link:Requirements.adoc#NIFI-AUTH-7.7[NIFI-AUTH-7.7: Static Configuration for Container Environments]_
+_See Requirement NIFI-AUTH-7.7: Static Configuration for Container Environments in xref:Requirements.adoc[Requirements Document]_
 
 The processor supports static configuration for container deployments:
 
@@ -90,7 +91,7 @@ The processor supports static configuration for container deployments:
 * Comprehensive documentation for container deployment scenarios
 
 === Caching and Performance
-_See Requirement link:Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Performance Requirements]_
+_See Requirement xref:Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Performance Requirements]_
 
 The processor implements efficient caching for:
 
@@ -99,7 +100,7 @@ The processor implements efficient caching for:
 * Rejected tokens with negative caching to prevent DDOS
 
 === Security Features
-_See Requirement link:Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Security Requirements]_
+_See Requirement xref:Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
 
 The processor implements strong security practices:
 
@@ -110,7 +111,7 @@ The processor implements strong security practices:
 * Protection against common JWT attacks (algorithm confusion, replay attacks)
 
 === Error Handling
-_See Requirement link:Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
+_See Requirement xref:Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
 
 The processor provides comprehensive error handling:
 
@@ -120,7 +121,7 @@ The processor provides comprehensive error handling:
 * Meaningful flow file attributes for debugging
 
 === Testing Framework
-_See Requirement link:Requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: Testing Requirements]_
+_See Requirement xref:Requirements.adoc#NIFI-AUTH-14[NIFI-AUTH-14: Unit Testing]_
 
 The processor includes:
 
