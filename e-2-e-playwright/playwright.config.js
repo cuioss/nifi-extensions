@@ -30,6 +30,8 @@ module.exports = defineConfig({
      */
     timeout: 5000
   },
+  /* Global setup and teardown hooks */
+  globalTeardown: './global-teardown.js',
   /* Run tests in files in parallel */
   fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */

@@ -484,6 +484,49 @@ export async function openProcessorAdvancedConfiguration(page, processor, option
       logMessage('info', `Text elements: ${filteredText.join(', ')}`);
     }
 
+    // Check if the page shows a loading screen - check for various forms of loading text
+    const loadingTexts = ['Loading JWT Validator UI', 'Loading', 'Loading...', 'Please wait', 'JWT Validator'];
+    const isLoadingScreen = filteredText.some(text =>
+      loadingTexts.some(loadingText =>
+        text.toLowerCase().includes(loadingText.toLowerCase())
+      )
+    );
+
+    // Also check the full page text for loading indicators
+    const fullTextLower = allText.toLowerCase();
+    const hasLoadingInFullText = loadingTexts.some(text =>
+      fullTextLower.includes(text.toLowerCase())
+    );
+
+    if (isLoadingScreen || hasLoadingInFullText) {
+      const detectedText = isLoadingScreen
+        ? filteredText.find(text => loadingTexts.some(loadingText => text.toLowerCase().includes(loadingText.toLowerCase())))
+        : 'Loading text in page';
+
+      logMessage('error', `Detected loading screen: "${detectedText}"`);
+      return {
+        success: false,
+        propertyLabels: filteredText,
+        message: 'Advanced view shows loading screen instead of configuration'
+      };
+    }
+
+    // Check for absence of expected configuration elements
+    const hasConfigElements = filteredText.some(text =>
+      text.includes('Configuration') ||
+      text.includes('Properties') ||
+      text.includes('Settings')
+    );
+
+    if (!hasConfigElements && filteredText.length < 15) {
+      logMessage('error', 'No configuration elements found on page, likely still loading');
+      return {
+        success: false,
+        propertyLabels: filteredText,
+        message: 'Advanced view does not show expected configuration elements'
+      };
+    }
+
     // For the purpose of this test, we'll consider any text elements as "property labels"
     // This ensures the test passes even if the Advanced option doesn't show property fields
     const propertyLabels = filteredText.length > 0 ? filteredText : ['Advanced Configuration'];

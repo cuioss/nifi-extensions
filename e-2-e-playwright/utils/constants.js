@@ -168,3 +168,15 @@ export const IGNORED_ERROR_PATTERNS = [
   'ResizeObserver loop limit exceeded', // Browser-specific, safe to ignore
   'Non-Error promise rejection captured', // NiFi-specific promise handling
 ];
+
+/**
+ * Browser console error patterns to watch for - these are errors that indicate issues
+ * with the application that should be logged and reported
+ */
+export const BROWSER_ERROR_PATTERNS = [
+  'Uncaught Error: Mismatched anonymous define() module', // RequireJS error
+  'jQuery is not defined', // Missing jQuery dependency
+  'Failed to load resource', // Resource loading failure
+  'Refused to execute script', // MIME type issues
+  'Refused to apply style', // MIME type issues
+];

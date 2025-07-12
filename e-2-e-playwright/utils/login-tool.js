@@ -7,6 +7,7 @@
 import { expect } from '@playwright/test';
 import { PAGE_TYPES, DEFAULT_CREDENTIALS, SERVICE_URLS, SELECTORS } from './constants';
 import { getPageContext } from './test-helper';
+import { addLogEntry } from './log-collector';
 import path from 'path';
 
 // Define paths for screenshots (following Maven standard)
@@ -23,8 +24,9 @@ if (!fs.existsSync(SCREENSHOTS_DIR)) {
  * Logger function for consistent logging
  * @param {string} level - Log level (info, success, warn, error)
  * @param {string} message - Message to log
+ * @param {string} [testName] - Name of the test (optional)
  */
-export function logMessage(level, message) {
+export function logMessage(level, message, testName = null) {
   const prefix = {
     info: '🔵 INFO:',
     success: '✅ SUCCESS:',
@@ -32,7 +34,11 @@ export function logMessage(level, message) {
     error: '🔴 ERROR:',
   }[level] || '🔵 INFO:';
 
+  // Log to console
   console.log(`${prefix} ${message}`);
+
+  // Add to log collector
+  addLogEntry(level, message, testName);
 }
 
 /**
