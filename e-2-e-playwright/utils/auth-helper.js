@@ -1,7 +1,6 @@
 /**
  * @file Authentication Helper - Simplified NiFi Session Management
  * Provides reliable login functionality for Playwright tests
- * Adapted from e-2-e-cypress/cypress/support/auth-helper.js
  * @version 1.0.0
  */
 

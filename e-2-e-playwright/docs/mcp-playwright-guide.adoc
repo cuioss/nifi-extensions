@@ -22,7 +22,7 @@ The MCP Playwright tool provides browser automation and application analysis cap
 * **Application Analysis**: Deep inspection of NiFi UI components
 * **Element Discovery**: Identification of robust selectors for testing
 * **Workflow Automation**: Enhanced development task automation
-* **Testing Support**: Integration with existing Cypress test workflows
+* **Testing Support**: Integration with existing Playwright test workflows
 
 == Setup and Configuration
 
@@ -326,13 +326,13 @@ console.log(`Found ${processors.length} processors`);
 const addProcessorButton = await page.locator('button:has-text("Add Processor")');
 await addProcessorButton.click();
 
-// Extract dialog selectors for Cypress tests
+// Extract dialog selectors for Playwright tests
 const dialogSelectors = await page.locator('[role="dialog"] *[data-testid]').all();
 ----
 
 === Element Discovery
 
-Identify robust selectors for Cypress test implementation:
+Identify robust selectors for Playwright test implementation:
 
 [source,javascript]
 ----
@@ -353,14 +353,14 @@ const fallbackSelectors = await page.evaluate(() => {
 });
 ----
 
-=== Integration with Cypress
+=== Integration with Playwright
 
-Generate Cypress test code from MCP Playwright analysis:
+Generate Playwright test code from MCP Playwright analysis:
 
 [source,javascript]
 ----
-// Generate Cypress selectors from Playwright analysis
-function generateCypressSelectors(elements) {
+// Generate Playwright selectors from Playwright analysis
+function generatePlaywrightSelectors(elements) {
   return elements.map(el => {
     const strategies = [
       el.testId ? `[data-testid="${el.testId}"]` : null,
@@ -383,7 +383,7 @@ function generateCypressSelectors(elements) {
 1. **Start Environment**: Use `./start-nifi.sh` for HTTP setup
 2. **Verify Access**: Ensure NiFi loads at https://localhost:9095/nifi
 3. **Use MCP Tool**: Analyze pages and generate tests as needed
-4. **Integration**: Incorporate findings into Cypress test suite
+4. **Integration**: Incorporate findings into Playwright test suite
 
 === Security Considerations
 
@@ -397,7 +397,7 @@ function generateCypressSelectors(elements) {
 * Use HTTP setup for faster development cycles
 * Switch to HTTPS for security testing when needed
 * Docker container starts quickly for on-demand usage
-* Combine with existing Cypress tests for comprehensive coverage
+* Combine with existing Playwright tests for comprehensive coverage
 
 === Selector Discovery
 
@@ -416,7 +416,7 @@ function generateCypressSelectors(elements) {
 === Integration Guidelines
 
 * **Share findings**: Document discovered selectors for team use
-* **Update Cypress tests**: Apply insights to improve test reliability
+* **Update Playwright tests**: Apply insights to improve test reliability
 * **Maintain selector libraries**: Keep reusable selector collections
 * **Version control**: Track selector changes over time
 
@@ -443,7 +443,7 @@ docker ps | grep nifi
 
 ==== Integration Challenges
 
-* **Selector translation**: Map Playwright selectors to Cypress format
+* **Selector translation**: Map Playwright selectors to appropriate format
 * **Environment differences**: Account for test vs development environments
 * **State management**: Handle application state changes
 
@@ -530,12 +530,12 @@ async function analyzeProcessorCatalog(page) {
 }
 ----
 
-=== Workflow 3: Integration with Cypress Testing
+=== Workflow 3: Integration with Playwright Testing
 
 [source,javascript]
 ----
-// Generate Cypress test cases from MCP analysis
-async function generateCypressTests(page) {
+// Generate Playwright test cases from MCP analysis
+async function generatePlaywrightTests(page) {
   await accessNiFi(page);
 
   // Analyze testable elements
@@ -553,7 +553,7 @@ async function generateCypressTests(page) {
     if (isClickable) {
       testCases.push({
         testId,
-        cypressTest: `cy.get('[data-testid="${testId}"]').should('be.visible').click();`,
+        playwrightTest: `await page.locator('[data-testid="${testId}"]').click();`,
         description: `Test clicking ${testId} element`
       });
     }
@@ -568,8 +568,8 @@ async function generateCypressTests(page) {
 === Test Development Process
 
 1. **Analyze with MCP Playwright**: Discover UI structure and selectors
-2. **Generate Cypress Commands**: Create robust test commands
-3. **Implement Tests**: Use discovered selectors in Cypress tests
+2. **Generate Playwright Commands**: Create robust test commands
+3. **Implement Tests**: Use discovered selectors in Playwright tests
 4. **Validate**: Verify tests work with MCP Playwright insights
 
 === Debugging Support
@@ -578,7 +578,7 @@ Use MCP Playwright for debugging test failures:
 
 [source,javascript]
 ----
-// Debug Cypress selector issues
+// Debug Playwright selector issues
 await page.goto('https://localhost:9095/nifi/');
 
 // Test selector reliability

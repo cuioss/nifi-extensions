@@ -1,7 +1,6 @@
 /**
  * @file Test Helpers - Common test utilities and patterns
  * Provides reusable test functions to reduce duplication across test files
- * Adapted from e-2-e-cypress/cypress/support/test-helpers.js
  * @version 1.0.0
  */
 

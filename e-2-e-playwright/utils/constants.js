@@ -1,5 +1,4 @@
 // Shared constants for Playwright tests
-// Adapted from e-2-e-cypress/cypress/support/constants.js
 
 
 /**

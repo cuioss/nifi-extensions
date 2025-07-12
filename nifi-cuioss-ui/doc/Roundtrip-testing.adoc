@@ -195,7 +195,7 @@ integration-testing/src/main/docker/copy-deployment.sh
 
 * After modifying any file in `nifi-cuioss-ui/src/main/webapp/`
 * After changing processor logic or configuration
-* Before running Cypress tests to verify fixes
+* Before running Playwright tests to verify fixes
 * Each time you want to test production code changes
 
 ==== 7. Repeat Testing Cycle
@@ -360,7 +360,7 @@ The roundtrip testing process integrates with the project's fail-fast developmen
 * ✅ All roundtrip testing cycles completed successfully
 * ✅ Both Maven verification commands pass
 * ✅ Browser logs show no critical errors
-* ✅ UI functionality verified through Cypress tests
+* ✅ UI functionality verified through Playwright tests
 
 == Summary
 

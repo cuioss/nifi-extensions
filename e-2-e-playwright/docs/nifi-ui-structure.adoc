@@ -38,15 +38,15 @@ This document focuses on the specific testing requirements for NiFi UI automatio
 
 === Authentication Commands
 
-Based on the current implementation in `cypress/support/auth-helper.js`:
+Based on the current implementation in `utils/login-tool.js`:
 
 [source,javascript]
 ----
-// Login using cy.session() for optimal performance
-cy.loginNiFi();
+// Login to NiFi
+await loginToNiFi(page);
 
 // Or ensure NiFi is ready for testing
-cy.ensureNiFiReady();
+await ensureNiFiReady(page);
 ----
 
 === Login Structure
@@ -70,28 +70,27 @@ LOGIN_BUTTON: '[data-testid="login-button"], input[value="Login"], button[type="
 [source,javascript]
 ----
 // Verify successful login by checking page context
-cy.getPageContext().then((context) => {
-  expect(context.pageType).to.equal('MAIN_CANVAS');
-  expect(context.isAuthenticated).to.be.true;
-});
+const pageContext = await getPageContext(page);
+expect(pageContext.pageType).toBe('MAIN_CANVAS');
+expect(pageContext.isAuthenticated).toBe(true);
 ----
 
 == Canvas Navigation
 
 === Navigation Implementation
 
-Based on `cypress/support/navigation-helper.js`:
+Based on `utils/navigation-tool.js`:
 
 [source,javascript]
 ----
 // Navigate to main canvas
-cy.navigateToPage('MAIN_CANVAS');
+await navigateToPage(page, 'MAIN_CANVAS');
 
 // Verify we're on the main canvas
-cy.verifyPageType('MAIN_CANVAS');
+await verifyPageType(page, 'MAIN_CANVAS');
 
 // Wait for specific page type
-cy.waitForPageType('MAIN_CANVAS');
+await waitForPageType(page, 'MAIN_CANVAS');
 ----
 
 === Canvas Structure
@@ -118,32 +117,32 @@ CANVAS_SIDENAV: 'mat-sidenav-content'                   // Angular Material cont
 CANVAS_SIDENAV_CONTAINER: 'mat-sidenav-container'       // Full sidenav layout
 
 // Canvas verification
-cy.get('mat-sidenav-content', { timeout: 10000 }).should('be.visible');
-cy.get('#canvas-container').should('be.visible');
+await page.locator('mat-sidenav-content').waitFor({ timeout: 10000 });
+await expect(page.locator('#canvas-container')).toBeVisible();
 ----
 
 == Processor Management
 
 === Add Processor Implementation
 
-Based on `cypress/support/processor-helper.js`:
+Based on `utils/processor-tool.js`:
 
 [source,javascript]
 ----
 // Add processor to canvas
-cy.addProcessorToCanvas('GenerateFlowFile', {
+await addProcessorToCanvas(page, 'GenerateFlowFile', {
   position: { x: 400, y: 300 },
   skipIfExists: false
 });
 
 // Open Add Processor dialog
-cy.openAddProcessorDialog();
+await openAddProcessorDialog(page);
 
 // Select processor type
-cy.selectProcessorType('GenerateFlowFile');
+await selectProcessorType(page, 'GenerateFlowFile');
 
 // Confirm addition
-cy.confirmProcessorAddition();
+await confirmProcessorAddition(page);
 ----
 
 === Remove Processor Implementation
@@ -151,28 +150,27 @@ cy.confirmProcessorAddition();
 [source,javascript]
 ----
 // Remove processor by reference
-cy.findProcessorOnCanvas('GenerateFlowFile').then((processor) => {
-  if (processor) {
-    cy.removeProcessorFromCanvas(processor);
-  }
-});
+const processor = await findProcessorOnCanvas(page, 'GenerateFlowFile');
+if (processor) {
+  await removeProcessorFromCanvas(page, processor);
+}
 
 // Clean up all processors
-cy.cleanupCanvasProcessors();
+await cleanupCanvasProcessors(page);
 ----
 
 === Processor Interaction Patterns
 [source,javascript]
 ----
 // Right-click for context menu
-cy.get('.processor').rightclick();
+await page.locator('.processor').click({ button: 'right' });
 
 // Look for context menu and delete option
-cy.get('[role="menu"]').should('be.visible');
-cy.get('[role="menuitem"]:contains("Delete")').click();
+await expect(page.locator('[role="menu"]')).toBeVisible();
+await page.locator('[role="menuitem"]:has-text("Delete")').click();
 
 // Confirm deletion if dialog appears
-cy.get('button:contains("Delete")').click();
+await page.locator('button:has-text("Delete")').click();
 ----
 
 === Processor Selectors
@@ -201,13 +199,12 @@ Based on NiFi UI patterns and source code structure:
 [source,javascript]
 ----
 // Double-click to open processor properties
-cy.findProcessorOnCanvas('GenerateFlowFile').then((processor) => {
-  cy.wrap(processor.element).dblclick();
-});
+const processor = await findProcessorOnCanvas(page, 'GenerateFlowFile');
+await processor.element.dblclick();
 
 // Alternative: Right-click and select "Configure"
-cy.get('.processor').rightclick();
-cy.get('[role="menuitem"]:contains("Configure")').click();
+await page.locator('.processor').click({ button: 'right' });
+await page.locator('[role="menuitem"]:has-text("Configure")').click();
 ----
 
 === Properties Dialog Structure
@@ -257,27 +254,25 @@ OK_BUTTON: 'button:contains("OK"), .mat-button:contains("OK")'
 [source,javascript]
 ----
 // Complete workflow to access advanced settings
-cy.findProcessorOnCanvas('GenerateFlowFile').then((processor) => {
-  // Open processor configuration
-  cy.wrap(processor.element).dblclick();
+const processor = await findProcessorOnCanvas(page, 'GenerateFlowFile');
+// Open processor configuration
+await processor.element.dblclick();
 
-  // Wait for properties dialog
-  cy.get('mat-dialog-container').should('be.visible');
+// Wait for properties dialog
+await expect(page.locator('mat-dialog-container')).toBeVisible();
 
-  // Navigate to Properties tab for advanced settings
-  cy.get('mat-tab:contains("Properties")').click();
+// Navigate to Properties tab for advanced settings
+await page.locator('mat-tab:has-text("Properties")').click();
 
-  // Modify properties
-  cy.get('mat-form-field input[placeholder*="Property Name"]')
-    .clear()
-    .type('New Value');
+// Modify properties
+await page.locator('mat-form-field input[placeholder*="Property Name"]').clear();
+await page.locator('mat-form-field input[placeholder*="Property Name"]').fill('New Value');
 
-  // Apply changes
-  cy.get('button:contains("Apply")').click();
+// Apply changes
+await page.locator('button:has-text("Apply")').click();
 
-  // Verify dialog closes
-  cy.get('mat-dialog-container').should('not.exist');
-});
+// Verify dialog closes
+await expect(page.locator('mat-dialog-container')).toBeHidden();
 ----
 
 == Framework Architecture Summary

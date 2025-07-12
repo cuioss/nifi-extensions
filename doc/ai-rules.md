@@ -236,7 +236,7 @@ Common Maven commands for CUI projects:
 ## JavaScript Standards
 **References**: 
 - JavaScript Standards: `{STANDARDS_BASE_URL}/standards/javascript`
-- Cypress E2E Testing Standards: `{STANDARDS_BASE_URL}/standards/javascript/cypress-e2e-testing-standards.adoc`
+- Playwright E2E Testing Standards: `{STANDARDS_BASE_URL}/standards/javascript/playwright-e2e-testing-standards.adoc`
 
 ### Core JavaScript Standards
 - Use ES6+ modern JavaScript features
@@ -247,24 +247,6 @@ Common Maven commands for CUI projects:
 - Use JSDoc for comprehensive documentation
 - Use Lit components for web components (Quarkus DevUI context)
 - Maven integration via frontend-maven-plugin
-- Cypress for E2E testing
-
-### Cypress E2E Testing Best Practices
-**Reference**: `{STANDARDS_BASE_URL}/standards/javascript/cypress-e2e-testing-standards.adoc`
-- **No Branching Logic**: Tests must never contain conditional logic (if/else, switch, ternary)
-- **Explicit Assertions**: Use direct assertions without ambiguous conditions
-- **Fail Fast Pattern**: Tests should fail immediately on first error
-- **Clean State Guarantee**: Use dedicated session management methods for test isolation
-- **Navigation Helpers**: Use navigation helpers instead of direct cy.visit() or cy.url() checks
-- **No Silent Failures**: Tests must explicitly validate all expected outcomes
-- **Appropriate Timeouts**: Use specific timeouts for different operations (navigation: 30s, interaction: 15s)
-- **Self-Sufficient Tests**: Each test must be independently executable
-- **Descriptive Test Names**: Use action-based test names with requirement IDs
-- **Use cy.session()**: Leverage Cypress session caching for authentication
-- **Custom Commands**: Create reusable commands for common operations
-- **Avoid Anti-Patterns**: No fixed timeouts, element existence checks, or direct URL manipulation
-- **Performance Optimization**: Reuse valid sessions across tests when possible
-- **Maintenance Guidelines**: Keep helpers updated with application changes
 
 ### General Documentation Standards
 - Use AsciiDoc format with `.adoc` extension
