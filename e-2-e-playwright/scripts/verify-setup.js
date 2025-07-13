@@ -14,10 +14,10 @@ const requiredFiles = [
   '../package.json',
   '../playwright.config.js',
   '../utils/constants.js',
-  '../utils/auth-helper.js',
-  '../utils/test-helper.js',
-  '../tests/01-nifi-authentication.spec.js',
-  '../tests/02-processor.spec.js'
+  '../utils/auth-service.js',
+  '../utils/processor-service.js',
+  '../tests/01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js',
+  '../tests/self-processor.spec.js'
 ];
 
 let allFilesExist = true;
