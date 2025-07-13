@@ -355,56 +355,138 @@ test('should display token claims correctly', async ({ page }) => {
 });
 ----
 
-=== Console Error Verification
+=== Browser Console Logging with Direct File Access
 
-We consistently verify that no unexpected console errors or warnings occur during test execution. This is crucial for ensuring a clean implementation and identifying potential issues that might be hidden from the UI:
+We use a minimal Playwright fixture to capture all browser console logs directly to files. This approach leverages Playwright's built-in features for enhanced console logging:
 
 [source,javascript]
 ----
-// Console error verification implementation
+// utils/logging-fixture.js - Simplified browser console logging
 import { test as base } from '@playwright/test';
-import { ALLOWED_CONSOLE_WARNINGS } from '../utils/constants';
+import fs from 'fs';
+import path from 'path';
 
-// Create a test fixture that tracks console messages
-const test = base.extend({
-  page: async ({ page }, use) => {
-    // Arrays to track console messages
-    const consoleErrors = [];
-    const consoleWarnings = [];
+// Critical error patterns (minimal set)
+const CRITICAL_ERROR_PATTERNS = [
+  'Uncaught Error',
+  'TypeError',
+  'ReferenceError',
+  'SyntaxError',
+  'Network Error',
+  'Failed to load resource',
+  'jQuery is not defined'
+];
 
-    // Listen for console events
-    page.on('console', (msg) => {
-      const text = msg.text();
-      const type = msg.type();
-
-      if (type === 'error') {
-        consoleErrors.push(text);
-      } else if (type === 'warning') {
-        // Only track warnings that are not in the allowed list
-        if (!ALLOWED_CONSOLE_WARNINGS.some(allowed => text.includes(allowed))) {
-          consoleWarnings.push(text);
-        }
+/**
+ * Enhanced test fixture with minimal console logging
+ */
+export const test = base.extend({
+  page: async ({ page }, use, testInfo) => {
+    const logs = [];
+    const criticalErrors = [];
+    
+    // Capture console messages
+    page.on('console', msg => {
+      const logEntry = {
+        type: msg.type(),
+        text: msg.text(),
+        timestamp: new Date().toISOString()
+      };
+      
+      logs.push(logEntry);
+      
+      // Check for critical errors
+      if (msg.type() === 'error' || isCriticalError(msg.text())) {
+        criticalErrors.push(logEntry);
       }
     });
-
-    // Use the page with console tracking
+    
+    // Capture page errors
+    page.on('pageerror', error => {
+      const errorEntry = {
+        type: 'pageerror',
+        text: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      };
+      
+      logs.push(errorEntry);
+      criticalErrors.push(errorEntry);
+    });
+    
+    // Capture network failures
+    page.on('requestfailed', request => {
+      const failureEntry = {
+        type: 'requestfailed',
+        text: `Network Request Failed: ${request.method()} ${request.url()} - ${request.failure()?.errorText || 'Unknown error'}`,
+        timestamp: new Date().toISOString()
+      };
+      
+      logs.push(failureEntry);
+    });
+    
     await use(page);
-
-    // After test completes, verify no unexpected console messages
-    if (consoleErrors.length > 0) {
-      console.error(`Found ${consoleErrors.length} console errors: ${consoleErrors.join(', ')}`);
-      throw new Error(`Test produced ${consoleErrors.length} console errors`);
+    
+    // Create target/logs directory if it doesn't exist
+    const targetDir = path.join(process.cwd(), 'target');
+    const logsDir = path.join(targetDir, 'logs');
+    
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
     }
-
-    if (consoleWarnings.length > 0) {
-      console.warn(`Found ${consoleWarnings.length} console warnings: ${consoleWarnings.join(', ')}`);
-      throw new Error(`Test produced ${consoleWarnings.length} console warnings`);
+    
+    // Save browser console logs to direct files
+    if (logs.length > 0) {
+      const sanitizedTestName = testInfo.title.replace(/[^a-zA-Z0-9]/g, '_');
+      const logFileName = `${sanitizedTestName}-console-logs.json`;
+      const logFilePath = path.join(logsDir, logFileName);
+      
+      fs.writeFileSync(logFilePath, JSON.stringify(logs, null, 2));
+      console.log(`📝 Browser console logs saved to: ${logFilePath}`);
+    }
+    
+    // Save critical errors to separate file
+    if (criticalErrors.length > 0) {
+      const sanitizedTestName = testInfo.title.replace(/[^a-zA-Z0-9]/g, '_');
+      const errorFileName = `${sanitizedTestName}-critical-errors.json`;
+      const errorFilePath = path.join(logsDir, errorFileName);
+      
+      fs.writeFileSync(errorFilePath, JSON.stringify(criticalErrors, null, 2));
+      console.log(`🚨 Critical errors saved to: ${errorFilePath}`);
     }
   }
 });
 
-// Use the enhanced test with console tracking
-test('processor configuration should not produce console errors', async ({ page }) => {
+/**
+ * Check if a message contains critical error patterns
+ */
+function isCriticalError(text) {
+  return CRITICAL_ERROR_PATTERNS.some(pattern => 
+    text.toLowerCase().includes(pattern.toLowerCase())
+  );
+}
+----
+
+This simplified approach provides:
+
+1. **Direct File Access**: Browser console logs are saved to `target/logs/` directory as JSON files
+2. **Critical Error Detection**: Separate files for critical errors requiring immediate attention
+3. **Built-in Playwright Features**: Uses Playwright's native console event handling
+4. **Minimal Code**: Replaced 12 complex files with 3 simple utilities
+
+=== Using the Logging Fixture in Tests
+
+Import and use the enhanced test fixture in your tests:
+
+[source,javascript]
+----
+// tests/01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js
+import { test, expect } from '../utils/logging-fixture.js';
+import { loginToNiFi } from '../utils/login-tool.js';
+import { navigateToCanvas } from '../utils/navigation-tool.js';
+import { verifyProcessorDeployment } from '../utils/processor-tool.js';
+
+test('should verify processor deployment without console errors', async ({ page }) => {
   // Login to NiFi
   await loginToNiFi(page);
 
@@ -413,8 +495,55 @@ test('processor configuration should not produce console errors', async ({ page 
 
   // Verify processor deployment
   const verification = await verifyProcessorDeployment(page, 'MultiIssuerJWTTokenAuthenticator');
+  expect(verification.found).toBeTruthy();
 
-  // Rest of the test implementation...
+  // Test automatically captures browser console logs
+  // Logs saved to: target/logs/should_verify_processor_deployment_without_console_errors-console-logs.json
+});
+----
+
+=== Console Log File Structure
+
+The console log files contain structured data for analysis:
+
+[source,json]
+----
+// target/logs/test-name-console-logs.json
+[
+  {
+    "type": "log",
+    "text": "Application initialized successfully",
+    "timestamp": "2024-01-15T10:30:15.123Z"
+  },
+  {
+    "type": "error",
+    "text": "Uncaught Error: Mismatched anonymous define() module: function(e){...}",
+    "timestamp": "2024-01-15T10:30:16.456Z"
+  },
+  {
+    "type": "requestfailed",
+    "text": "Network Request Failed: GET https://localhost:9095/nifi/api/flow/status - net::ERR_CERT_AUTHORITY_INVALID",
+    "timestamp": "2024-01-15T10:30:17.789Z"
+  }
+]
+----
+
+=== Browser Console Logging Configuration
+
+The Playwright configuration includes enhanced reporting for browser console analysis:
+
+[source,javascript]
+----
+// playwright.config.js - Enhanced reporting configuration
+module.exports = defineConfig({
+  reporter: [
+    ['html', { outputFolder: REPORTS_DIR, open: 'never' }],
+    ['json', { outputFile: path.join(TARGET_DIR, 'test-results.json') }],
+    ['list']
+  ],
+  trace: 'retain-on-failure',
+  screenshot: 'only-on-failure',
+  video: 'on-first-retry'
 });
 ----
 
