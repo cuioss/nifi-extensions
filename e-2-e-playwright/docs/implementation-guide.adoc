@@ -36,15 +36,11 @@ e-2-e-playwright/
 │   ├── self-processor.spec.js         # Processor verification tests
 │   ├── self-utility-tools.spec.js     # Utility services validation
 │   └── comprehensive-framework-demo.spec.js  # Framework demonstration
-├── utils/                              # Modern utility services
-│   ├── auth-service.js                # Consolidated authentication service
-│   ├── processor-service.js           # Unified processor operations
-│   ├── processor-discovery.js         # Processor finding utilities
-│   ├── processor-interaction.js       # Processor interaction utilities
+├── utils/                              # Simplified utility services
+│   ├── auth-service.js                # Streamlined authentication service
+│   ├── processor.js                   # Consolidated processor operations
 │   ├── accessibility-helper.js        # Accessibility testing with axe
-│   ├── test-patterns.js              # Common test patterns
-│   ├── constants.js                   # Modern constants with semantic selectors
-│   └── shared-logger.js              # Centralized logging
+│   └── constants.js                   # Modern constants with semantic selectors
 ├── playwright.config.js               # Enhanced Playwright configuration
 ├── scripts/                           # Utility scripts
 │   ├── selector-inspector.js         # Selector inspection utility
@@ -52,12 +48,13 @@ e-2-e-playwright/
 └── package.json                      # NPM configuration with modern tooling
 ----
 
-This modern architecture provides:
+This simplified architecture provides:
 
 * **Fixtures-based setup/teardown** for better test isolation
-* **Service-oriented utilities** for maintainable test code
-* **Page Object Model** integration with fixtures
+* **Minimal utility services** leveraging Playwright built-ins
+* **Page Object Model** integration with fixtures  
 * **Modern semantic locators** instead of complex CSS selectors
+* **Built-in logging/tracing** instead of custom implementations
 * **Automated accessibility testing** with axe-playwright
 
 == Test File Organization
