@@ -14,7 +14,6 @@ import {
 import { ensureNiFiReady } from "../utils/login-tool";
 import { PAGE_TYPES } from "../utils/constants";
 import { verifyPageType } from "../utils/navigation-tool";
-import { logMessage } from "../utils/shared-logger";
 
 test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     // Make sure we're logged in before each test
@@ -27,16 +26,6 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         // Verify the canvas is ready
         await verifyPageType(page, PAGE_TYPES.MAIN_CANVAS, {
             waitForReady: true,
-        });
-
-        // Generate some browser console logs for testing
-        await page.evaluate(() => {
-            // eslint-disable-next-line no-console
-            console.log("Browser log: Verifying processor deployment");
-            // eslint-disable-next-line no-console
-            console.debug("Browser debug: This is a debug message");
-            // eslint-disable-next-line no-console
-            console.info("Browser info: This is an info message");
         });
 
         // Verify processor deployment
@@ -66,16 +55,6 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
             waitForReady: true,
         });
 
-        // Generate some browser console logs for testing
-        await page.evaluate(() => {
-            // eslint-disable-next-line no-console
-            console.log("Browser log: Opening advanced configuration");
-            // eslint-disable-next-line no-console
-            console.warn("Browser warning: This is a warning message");
-            // eslint-disable-next-line no-console
-            console.error("Browser error: This is an error message");
-        });
-
         // Find the processor
         const processor = await findMultiIssuerJwtAuthenticator(page);
         expect(
@@ -103,12 +82,6 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
             result.propertyLabels.length,
             "Should find property labels",
         ).toBeGreaterThan(0);
-
-        // Log the property labels for debugging
-        logMessage(
-            "info",
-            `Found property labels: ${result.propertyLabels.join(", ")}`,
-        );
     });
 
     test("should open configure dialog for MultiIssuerJWTTokenAuthenticator", async ({
@@ -117,16 +90,6 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         // Verify the canvas is ready
         await verifyPageType(page, PAGE_TYPES.MAIN_CANVAS, {
             waitForReady: true,
-        });
-
-        // Generate some browser console logs for testing
-        await page.evaluate(() => {
-            // eslint-disable-next-line no-console
-            console.log("Browser log: Opening configure dialog");
-            // eslint-disable-next-line no-console
-            console.info("Browser info: Testing configure dialog");
-            // eslint-disable-next-line no-console
-            console.debug("Browser debug: Dialog should open successfully");
         });
 
         // Find the processor
@@ -153,12 +116,6 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
             result.propertyLabels.length,
             "Should find property labels",
         ).toBeGreaterThan(0);
-
-        // Log the property labels for debugging
-        logMessage(
-            "info",
-            `Found property labels in configuration dialog: ${result.propertyLabels.join(", ")}`,
-        );
     });
 
     test("should verify the result of advanced configuration", async ({
@@ -167,44 +124,6 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         // Verify the canvas is ready
         await verifyPageType(page, PAGE_TYPES.MAIN_CANVAS, {
             waitForReady: true,
-        });
-
-        // Generate some browser console logs for testing
-        await page.evaluate(() => {
-            // eslint-disable-next-line no-console
-            console.log("Browser log: Verifying advanced configuration result");
-            // eslint-disable-next-line no-console
-            console.info("Browser info: Checking processor properties");
-
-            // Generate a complex object log to test object serialization
-            // Stringify the object first to ensure it's properly captured
-            const processorObj = {
-                processor: "MultiIssuerJWTTokenAuthenticator",
-                status: "running",
-                properties: {
-                    issuer: "test-issuer",
-                    audience: "test-audience",
-                },
-            };
-
-            // Log the stringified object
-            // eslint-disable-next-line no-console
-            console.log(
-                "Browser object log (stringified):",
-                JSON.stringify(processorObj, null, 2),
-            );
-
-            // Also log the raw object for comparison
-            // eslint-disable-next-line no-console
-            console.log("Browser object log (raw):", processorObj);
-
-            // Log individual properties for better visibility
-            // eslint-disable-next-line no-console
-            console.log("Processor name:", processorObj.processor);
-            // eslint-disable-next-line no-console
-            console.log("Processor status:", processorObj.status);
-            // eslint-disable-next-line no-console
-            console.log("Processor properties:", processorObj.properties);
         });
 
         // Find the processor
@@ -220,13 +139,6 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
             processor.name,
             "Processor name should contain expected text",
         ).toContain("MultiIssuerJWTTokenAuthenticator");
-
-        // Log processor details for verification
-        logMessage("info", "Processor verification complete");
-        logMessage(
-            "info",
-            `Processor details: Name=${processor.name}, ID=${processor.id || "N/A"}`,
-        );
 
         // Take a screenshot of the processor on the canvas
         await page.screenshot({
