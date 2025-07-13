@@ -268,6 +268,8 @@ export async function navigateToPage(page, pageType) {
   return authService.navigateToPage(pageType);
 }
 
-// Legacy function names for compatibility
-export const loginNiFi = login;
-export const ensureNiFiReady = ensureNiFiReady;
+// Additional convenience function for backward compatibility
+export async function loginNiFi(page, credentials = {}) {
+  const authService = new AuthService(page);
+  return authService.login(credentials);
+}

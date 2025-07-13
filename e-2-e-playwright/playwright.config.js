@@ -32,7 +32,7 @@ module.exports = defineConfig({
     timeout: 10000
   },
   /* Global setup and teardown hooks */
-  globalTeardown: './global-teardown.js',
+  globalTeardown: './e-2-e-playwright/global-teardown.js',
   /* Enhanced parallel execution for better performance */
   fullyParallel: true,
   workers: process.env.CI ? 2 : undefined,

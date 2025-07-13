@@ -1,15 +1,25 @@
 /**
  * @fileoverview Consolidated test fixtures for Playwright tests
- * Combines all fixtures with modern 2025 patterns
+ * Combines all fixtures with modern 2025 patterns including global console logging
  */
 
 import { test as authTest } from './auth-fixtures.js';
 import { injectAxe, checkA11y } from 'axe-playwright';
+import { setupBrowserConsoleLogging } from '../utils/console-logger.js';
 
 /**
- * Extended test with all fixtures combined
+ * Extended test with all fixtures combined including global console logging
  */
 export const test = authTest.extend({
+  /**
+   * Page fixture with automatic console logging setup
+   */
+  page: async ({ page }, use, testInfo) => {
+    // Setup global console logging for this page
+    setupBrowserConsoleLogging(page, testInfo);
+    
+    await use(page);
+  },
   /**
    * Accessibility testing fixture using axe-playwright
    */

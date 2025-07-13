@@ -7,6 +7,7 @@
 
 import { test, expect } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
+import { setupBrowserConsoleLogging, saveAllBrowserLogs } from "../utils/console-logger.js";
 import fs from "fs";
 import path from "path";
 
@@ -227,6 +228,56 @@ test.describe("Self-Test: Browser Console Logging", () => {
                 contentType: "application/json",
             });
         }
+    });
+
+    test("should create direct accessible browser console log file", async ({
+        page,
+    }, testInfo) => {
+        // Setup console logging specifically for this test
+        setupBrowserConsoleLogging(page, testInfo);
+        
+        // Navigate and generate console activity
+        await page.goto("/nifi");
+        
+        // Generate specific console messages to verify
+        await page.evaluate(() => {
+            console.log("Direct log test - INFO message");
+            console.warn("Direct log test - WARNING message");
+            console.error("Direct log test - ERROR message");
+            console.info("Direct log test - DETAILED info");
+        });
+        
+        // Wait a moment for logs to be captured
+        await page.waitForTimeout(500);
+        
+        // Save logs to direct accessible file
+        const result = await saveAllBrowserLogs();
+        
+        expect(result).toBeTruthy();
+        expect(result.textLog).toBeTruthy();
+        expect(result.jsonLog).toBeTruthy();
+        expect(result.totalLogs).toBeGreaterThan(0);
+        
+        // Verify files exist and are accessible
+        expect(fs.existsSync(result.textLog)).toBeTruthy();
+        expect(fs.existsSync(result.jsonLog)).toBeTruthy();
+        
+        // Verify content contains our test messages
+        const textContent = fs.readFileSync(result.textLog, 'utf8');
+        expect(textContent).toContain("Direct log test - INFO message");
+        expect(textContent).toContain("Direct log test - WARNING message");
+        expect(textContent).toContain("Direct log test - ERROR message");
+        
+        const jsonContent = JSON.parse(fs.readFileSync(result.jsonLog, 'utf8'));
+        expect(jsonContent.length).toBeGreaterThan(0);
+        
+        const infoMsg = jsonContent.find(log => log.text.includes("Direct log test - INFO"));
+        expect(infoMsg).toBeTruthy();
+        expect(infoMsg.type).toBe("log");
+        
+        console.log(`✅ Direct browser console log files created:`);
+        console.log(`   📄 Text: ${result.textLog}`);
+        console.log(`   📋 JSON: ${result.jsonLog}`);
     });
 
     test("should verify log file cleanup and rotation", async ({
