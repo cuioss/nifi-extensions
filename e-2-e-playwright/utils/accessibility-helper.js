@@ -41,7 +41,7 @@ export class AccessibilityService {
     });
 
     this.isInjected = true;
-    logMessage('success', 'Axe-core injected and configured');
+    console.log('success', 'Axe-core injected and configured');
   }
 
   /**
@@ -78,7 +78,7 @@ export class AccessibilityService {
         }
       });
 
-      logMessage('success', 'Accessibility check passed');
+      console.log('success', 'Accessibility check passed');
       return { passed: true, violations: [] };
     } catch (error) {
       if (failOnViolations) {
@@ -86,7 +86,7 @@ export class AccessibilityService {
       }
 
       // Log accessibility issues as warnings
-      logMessage('warn', `Accessibility violations found: ${error.message}`);
+      console.log('warn', `Accessibility violations found: ${error.message}`);
       return { 
         passed: false, 
         violations: error.violations || [],
@@ -172,7 +172,7 @@ export class AccessibilityService {
       }
     });
 
-    logMessage('info', `Accessibility report generated: ${reportPath}`);
+    console.log('info', `Accessibility report generated: ${reportPath}`);
     return result;
   }
 }

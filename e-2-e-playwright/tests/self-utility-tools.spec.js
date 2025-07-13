@@ -7,7 +7,7 @@
 
 import { test, expect } from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
-import { ProcessorService } from "../utils/processor-service.js";
+import { ProcessorService } from "../utils/processor.js";
 import { AccessibilityService } from "../utils/accessibility-helper.js";
 import { CONSTANTS } from "../utils/constants.js";
 

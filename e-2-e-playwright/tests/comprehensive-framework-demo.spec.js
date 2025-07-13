@@ -8,9 +8,9 @@
 import { test, expect } from "../fixtures/test-fixtures.js";
 import { LoginPage, CanvasPage } from "../pages/index.js";
 import { AuthService } from "../utils/auth-service.js";
-import { ProcessorService } from "../utils/processor-service.js";
+import { ProcessorService } from "../utils/processor.js";
 import { AccessibilityService } from "../utils/accessibility-helper.js";
-import { TestPatterns } from "../utils/test-patterns.js";
+// TestPatterns replaced with direct Playwright patterns
 import { CONSTANTS } from "../utils/constants.js";
 
 test.describe("Framework Demonstration - Modern Patterns", () => {
@@ -39,10 +39,11 @@ test.describe("Framework Demonstration - Modern Patterns", () => {
         // Initialize modern service architecture
         const authService = new AuthService(authenticatedPage);
         const processorService = new ProcessorService(authenticatedPage);
-        const patterns = new TestPatterns(authenticatedPage);
 
-        // Verify authentication state using patterns
-        await patterns.expectAuthenticated();
+        // Verify authentication state using direct Playwright patterns
+        await expect(
+            authenticatedPage.locator(CONSTANTS.SELECTORS.MAIN_CANVAS),
+        ).toBeVisible();
 
         // Demonstrate processor operations with error handling
         const processor = await processorService.find("processor", {
@@ -53,11 +54,11 @@ test.describe("Framework Demonstration - Modern Patterns", () => {
             await processorService.interact(processor, { action: "hover" });
         }
 
-        // Measure operation performance
-        const duration = await patterns.measureOperationTime(
-            () => authService.navigateToPage("MAIN_CANVAS"),
-            30000,
-        );
+        // Measure operation performance using built-in timing
+        const start = Date.now();
+        await authService.navigateToPage("MAIN_CANVAS");
+        const duration = Date.now() - start;
+        expect(duration).toBeLessThan(30000);
 
         // eslint-disable-next-line no-console
         console.log(`Navigation performance: ${duration}ms`);
@@ -95,30 +96,23 @@ test.describe("Framework Demonstration - Modern Patterns", () => {
         testData,
     }) => {
         const authService = new AuthService(page);
-        const patterns = new TestPatterns(page);
 
         // Demonstrate modern error handling with invalid credentials
-        await patterns.testInvalidCredentials(
-            authService,
-            testData.invalidCredentials,
-        );
+        await expect(async () => {
+            await authService.login(testData.invalidCredentials);
+        }).rejects.toThrow(/Login failed/);
 
-        // Demonstrate retry pattern for flaky operations
-        const result = await patterns.retryOperation(
-            async () => {
-                // Simulate potentially flaky operation
-                const isAccessible =
-                    await authService.checkNiFiAccessibility(2000);
-                if (!isAccessible) {
-                    throw new Error("Service not accessible");
-                }
-                return isAccessible;
-            },
-            3, // max retries
-            1000, // retry delay
-        );
+        // Demonstrate built-in retry pattern using Playwright's auto-retry
+        // Playwright locators auto-retry, but for custom operations use expect with timeout
+        await expect(async () => {
+            const isAccessible = await authService.checkNiFiAccessibility(2000);
+            if (!isAccessible) {
+                throw new Error("Service not accessible");
+            }
+            return isAccessible;
+        }).resolves.toBeTruthy();
 
-        expect(result).toBeTruthy();
+        // Test completed - service accessibility verified
     });
 });
 
@@ -127,17 +121,12 @@ test.describe("Framework Demonstration - Accessibility Testing", () => {
         page,
     }) => {
         const accessibilityService = new AccessibilityService(page);
-        const patterns = new TestPatterns(page);
 
         // Navigate to login page
         await page.goto("/nifi");
 
-        // Demonstrate accessibility testing patterns
-        const loginResult = await patterns.testAccessibility(
-            accessibilityService,
-            accessibilityService.checkLoginForm,
-            "login form",
-        );
+        // Demonstrate accessibility testing with direct patterns
+        const loginResult = await accessibilityService.checkLoginForm();
 
         // Log accessibility results for monitoring
         if (!loginResult.passed) {
@@ -183,11 +172,10 @@ test.describe("Framework Demonstration - Integration Testing", () => {
         const accessibilityService = new AccessibilityService(
             authenticatedPage,
         );
-        const patterns = new TestPatterns(authenticatedPage);
 
         // Verify initial state using fixtures
         await pageVerifier.expectAuthenticated();
-        await patterns.waitForStablePage();
+        await authenticatedPage.waitForLoadState("networkidle");
 
         // Test processor operations if available
         const jwtAuthenticator = await processorService.findJwtAuthenticator({
@@ -212,8 +200,11 @@ test.describe("Framework Demonstration - Integration Testing", () => {
             a11yResult.passed ? "PASSED" : "HAS_VIOLATIONS",
         );
 
-        // Take screenshot for documentation
-        await patterns.takeTestScreenshot("integration-demo-complete");
+        // Take screenshot for documentation using built-in method
+        await authenticatedPage.screenshot({
+            path: `target/screenshots/integration-demo-complete-${Date.now()}.png`,
+            fullPage: true,
+        });
 
         // Final verification that everything is still working
         await pageVerifier.expectMainCanvas();

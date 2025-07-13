@@ -5,7 +5,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { ProcessorService } from "../utils/processor-service.js";
+import { ProcessorService } from "../utils/processor.js";
 import { AuthService } from "../utils/auth-service.js";
 import { CONSTANTS } from "../utils/constants.js";
 

@@ -4,8 +4,8 @@
  * @version 2.0.0
  */
 
-import { test, expect } from "../utils/logging-fixture.js";
-import { ProcessorService } from "../utils/processor-service.js";
+import { test, expect } from "@playwright/test";
+import { ProcessorService } from "../utils/processor.js";
 import { AuthService } from "../utils/auth-service.js";
 import { CONSTANTS } from "../utils/constants.js";
 
