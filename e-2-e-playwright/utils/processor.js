@@ -71,6 +71,27 @@ export async function findJwtAuthenticator(page, options = {}) {
 }
 
 /**
+ * Find MultiIssuer JWT Token Authenticator specifically
+ */
+export async function findMultiIssuerJwtAuthenticator(page, options = {}) {
+  return findProcessor(page, 'MultiIssuerJWTTokenAuthenticator', options);
+}
+
+/**
+ * Verify MultiIssuer JWT Token Authenticator deployment
+ */
+export async function verifyMultiIssuerJwtAuthenticator(page, options = {}) {
+  const processor = await findMultiIssuerJwtAuthenticator(page, options);
+  
+  if (processor) {
+    await verifyProcessorDeployment(page, 'MultiIssuerJWTTokenAuthenticator');
+    return { ...processor, name: 'MultiIssuerJWTTokenAuthenticator' };
+  }
+  
+  return null;
+}
+
+/**
  * Interact with processor using modern patterns
  */
 export async function interactWithProcessor(page, processor, options = {}) {
@@ -136,7 +157,7 @@ export async function verifyProcessorDeployment(page, processorType) {
 }
 
 /**
- * Simplified ProcessorService class for backward compatibility
+ * Simplified ProcessorService class
  */
 export class ProcessorService {
   constructor(page) {
@@ -151,11 +172,27 @@ export class ProcessorService {
     return findJwtAuthenticator(this.page, options);
   }
 
+  async findMultiIssuerJwtAuthenticator(options = {}) {
+    return findMultiIssuerJwtAuthenticator(this.page, options);
+  }
+
+  async verifyMultiIssuerJwtAuthenticator(options = {}) {
+    return verifyMultiIssuerJwtAuthenticator(this.page, options);
+  }
+
   async interact(processor, options = {}) {
     return interactWithProcessor(this.page, processor, options);
   }
 
   async configure(processor, options = {}) {
+    return configureProcessor(this.page, processor, options);
+  }
+
+  async openConfiguration(processor, options = {}) {
+    return configureProcessor(this.page, processor, options);
+  }
+
+  async configureMultiIssuerJwtAuthenticator(processor, options = {}) {
     return configureProcessor(this.page, processor, options);
   }
 
