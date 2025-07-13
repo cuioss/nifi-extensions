@@ -10,7 +10,8 @@ import {
     findMultiIssuerJwtAuthenticator,
     interactWithProcessor,
 } from "../utils/processor-tool";
-import { ensureNiFiReady, logMessage } from "../utils/login-tool";
+import { ensureNiFiReady } from "../utils/login-tool";
+import { logMessage } from "../utils/shared-logger";
 import { PAGE_TYPES } from "../utils/constants";
 import { verifyPageType } from "../utils/navigation-tool";
 

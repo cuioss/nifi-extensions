@@ -18,7 +18,7 @@ import {
 import { ensureNiFiReady } from "../utils/login-tool";
 import { PAGE_TYPES } from "../utils/constants";
 import { verifyPageType } from "../utils/navigation-tool";
-import { logMessage } from "../utils/login-tool";
+import { logMessage } from "../utils/shared-logger";
 
 // Get the current test name
 function getCurrentTestName(testInfo) {

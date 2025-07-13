@@ -51,6 +51,7 @@ export const logMessage = createLogger();
 export const authLogger = createLogger('AUTH');
 export const processorLogger = createLogger('PROCESSOR');
 export const navigationLogger = createLogger('NAVIGATION');
+export const testHelperLogger = createLogger('TEST-HELPER');
 
 /**
  * Log an error with additional context
