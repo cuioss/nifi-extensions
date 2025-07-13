@@ -31,11 +31,12 @@ e-2-e-playwright/
 │   ├── LoginPage.js                   # Login page interactions
 │   ├── CanvasPage.js                  # Main canvas interactions  
 │   └── index.js                       # Page fixture exports
-├── tests/                              # Test specifications
+├── tests/                              # Focused test specifications (2025 best practices)
 │   ├── 01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js
-│   ├── self-processor.spec.js         # Processor verification tests
-│   ├── self-utility-tools.spec.js     # Utility services validation
-│   └── comprehensive-framework-demo.spec.js  # Framework demonstration
+│   ├── self-login.spec.js             # Authentication flow validation
+│   ├── self-navigation.spec.js        # Navigation and page readiness
+│   ├── self-processor-advanced.spec.js # Processor configuration access
+│   └── self-browser-logging.spec.js   # Console logging and artifact storage
 ├── utils/                              # Simplified utility services
 │   ├── auth-service.js                # Streamlined authentication service
 │   ├── processor.js                   # Consolidated processor operations
@@ -61,23 +62,38 @@ This simplified architecture provides:
 
 The test files are organized by purpose and scope:
 
-=== Core Test Files
+=== Focused Test Files (2025 Best Practices)
 
 * **`01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js`**: Tests specific functionality of the MultiIssuerJWTTokenAuthenticator processor, including deployment verification and configuration testing.
 
-* **`self-processor.spec.js`**: General processor deployment and interaction tests. Validates that processors can be found, interacted with, and have correct properties.
+* **`self-login.spec.js`**: Authentication flow validation with single responsibility focus:
+  - Valid credential authentication 
+  - Invalid credential rejection
+  - Logout functionality
+  - Authentication state persistence
+  - Authentication status detection
 
-* **`self-utility-tools.spec.js`**: Validation tests for utility services including authentication, processor services, accessibility testing, error handling, and performance verification.
+* **`self-navigation.spec.js`**: Navigation and page readiness validation:
+  - Main canvas navigation
+  - Error handling for invalid navigation
+  - Page accessibility verification
+  - URL structure validation
+  - Browser back/forward navigation
+  - Page readiness indicators
 
-* **`comprehensive-framework-demo.spec.js`**: Comprehensive demonstration of all modern Playwright patterns and testing capabilities including:
-  - Page Object Model integration
-  - Service-based architecture
-  - Modern semantic locators
-  - Error handling patterns  
-  - Accessibility testing
-  - Cross-browser compatibility
-  - Performance monitoring
-  - Integration testing
+* **`self-processor-advanced.spec.js`**: Processor configuration access with focus on:
+  - Configuration dialog opening
+  - Advanced properties access
+  - "Back to Processor" navigation links
+  - Configuration error handling
+  - Processor interaction reliability
+
+* **`self-browser-logging.spec.js`**: Console logging and artifact storage:
+  - Console message capture during test execution
+  - Error message filtering and capture
+  - Log file system storage
+  - Network error handling
+  - Log file cleanup and rotation
 
 === Test Categories
 
