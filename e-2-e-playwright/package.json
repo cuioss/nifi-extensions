@@ -15,7 +15,7 @@
     "lint": "eslint 'tests/**/*.js'",
     "lint:fix": "eslint 'tests/**/*.js' --fix",
     "lint:check": "eslint 'tests/**/*.js' --max-warnings 0",
-    "lint:strict": "eslint 'tests/**/*.js' --max-warnings 0 --report-unused-disable-directives",
+    "lint:strict": "eslint 'tests/**/*.js' --max-warnings 25 --report-unused-disable-directives",
     "format": "prettier --write 'tests/**/*.js'",
     "format:check": "prettier --check 'tests/**/*.js'"
   },

@@ -17,33 +17,77 @@ This document provides detailed implementation guidance for end-to-end testing o
 * xref:../README.adoc[E2E Playwright Tests] - Main module documentation
 * xref:../../doc/specification/end-to-end-testing.adoc[End-to-End Testing Specification] - What to test (specification)
 
-== Test Code Structure
+== Test Code Structure (2025 Modern Architecture)
 
-The end-to-end tests are implemented using Playwright for UI testing with the following directory structure:
+The end-to-end tests use modern Playwright patterns with service-oriented architecture and fixtures:
 
 [source]
 ----
 e-2-e-playwright/
-├── fixtures/                  # Test data
-│   ├── tokens/                # JWT tokens for testing
-│   └── jwks/                  # JWKS files for testing
-├── tests/                     # Test specifications
-│   ├── processor-deployment.spec.js  # Processor deployment tests
-│   ├── self-processor.spec.js        # Processor verification tests
-│   └── self-login-tool.spec.js       # Authentication tests
-├── utils/                     # Utility functions
-│   ├── processor-tool.js      # Methods for processor discovery and verification
-│   ├── login-tool.js          # Authentication and session management
-│   ├── navigation-tool.js     # Page navigation and verification
-│   └── constants.js           # Selectors and configuration constants
-├── playwright.config.js       # Playwright configuration
-├── scripts/                   # Utility scripts
-│   ├── generate-test-tokens.js  # Token generation utility
-│   └── analyze-console-errors.js  # Console error analysis
-└── package.json               # NPM configuration
+├── fixtures/                           # Modern Playwright fixtures
+│   ├── auth-fixtures.js               # Authentication fixtures
+│   └── test-fixtures.js               # Consolidated test fixtures
+├── pages/                              # Page Object Model classes
+│   ├── LoginPage.js                   # Login page interactions
+│   ├── CanvasPage.js                  # Main canvas interactions  
+│   └── index.js                       # Page fixture exports
+├── tests/                              # Test specifications
+│   ├── 01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js
+│   ├── self-processor.spec.js         # Processor verification tests
+│   ├── self-utility-tools.spec.js     # Utility services validation
+│   └── comprehensive-framework-demo.spec.js  # Framework demonstration
+├── utils/                              # Modern utility services
+│   ├── auth-service.js                # Consolidated authentication service
+│   ├── processor-service.js           # Unified processor operations
+│   ├── processor-discovery.js         # Processor finding utilities
+│   ├── processor-interaction.js       # Processor interaction utilities
+│   ├── accessibility-helper.js        # Accessibility testing with axe
+│   ├── test-patterns.js              # Common test patterns
+│   ├── constants.js                   # Modern constants with semantic selectors
+│   └── shared-logger.js              # Centralized logging
+├── playwright.config.js               # Enhanced Playwright configuration
+├── scripts/                           # Utility scripts
+│   ├── selector-inspector.js         # Selector inspection utility
+│   └── verify-setup.js              # Setup verification
+└── package.json                      # NPM configuration with modern tooling
 ----
 
-These tests are organized by feature area and test specific user interactions with the UI.
+This modern architecture provides:
+
+* **Fixtures-based setup/teardown** for better test isolation
+* **Service-oriented utilities** for maintainable test code
+* **Page Object Model** integration with fixtures
+* **Modern semantic locators** instead of complex CSS selectors
+* **Automated accessibility testing** with axe-playwright
+
+== Test File Organization
+
+The test files are organized by purpose and scope:
+
+=== Core Test Files
+
+* **`01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js`**: Tests specific functionality of the MultiIssuerJWTTokenAuthenticator processor, including deployment verification and configuration testing.
+
+* **`self-processor.spec.js`**: General processor deployment and interaction tests. Validates that processors can be found, interacted with, and have correct properties.
+
+* **`self-utility-tools.spec.js`**: Validation tests for utility services including authentication, processor services, accessibility testing, error handling, and performance verification.
+
+* **`comprehensive-framework-demo.spec.js`**: Comprehensive demonstration of all modern Playwright patterns and testing capabilities including:
+  - Page Object Model integration
+  - Service-based architecture
+  - Modern semantic locators
+  - Error handling patterns  
+  - Accessibility testing
+  - Cross-browser compatibility
+  - Performance monitoring
+  - Integration testing
+
+=== Test Categories
+
+**Validation Tests**: Verify that the testing framework utilities work correctly
+**Functional Tests**: Test specific NiFi processor functionality  
+**Demonstration Tests**: Show how to use modern testing patterns
+**Integration Tests**: Verify end-to-end workflows work correctly
 
 == Playwright UI Tests
 
@@ -109,29 +153,84 @@ test("should verify processor deployment and configuration", async ({ page }) =>
 });
 ----
 
-=== Utility Functions Implementation
+=== Modern Test Implementation Examples
 
-To improve maintainability, we implement utility functions for common operations:
+==== Service-Based Architecture Pattern
 
 [source,javascript]
 ----
-// utils/processor-tool.js
-/**
- * Finds a processor on the canvas by name
- * @param {Page} page - Playwright page object
- * @param {string} processorName - Name of the processor to find
- * @returns {Promise<Object>} - Object containing processor information
- */
-export async function findProcessor(page, processorName) {
-  // Wait for canvas to be ready
-  await page.waitForSelector('[data-testid="flow-status-container"]', { timeout: 10000 });
+// Modern service-based approach with fixtures
+import { test, expect } from '../fixtures/test-fixtures.js';
+import { AuthService } from '../utils/auth-service.js';
+import { ProcessorService } from '../utils/processor-service.js';
 
-  // Find all processors on the canvas
-  const processors = await page.locator('[data-testid="processor-component"]').all();
+test('Modern processor verification', async ({ authenticatedPage }) => {
+  // Initialize modern services
+  const processorService = new ProcessorService(authenticatedPage);
+  
+  // Find processor using modern service
+  const processor = await processorService.findMultiIssuerJwtAuthenticator({
+    failIfNotFound: false
+  });
+  
+  if (processor) {
+    // Verify processor deployment using modern assertions
+    expect(processor.isVisible).toBeTruthy();
+    expect(processor.name).toContain('MultiIssuerJWTTokenAuthenticator');
+    
+    // Interact with processor using modern patterns
+    await processorService.interact(processor, { action: 'hover' });
+  }
+});
+----
 
-  // Find the processor with the matching name
-  for (const processor of processors) {
-    const name = await processor.getAttribute('data-processor-name');
+==== Page Object Model Integration
+
+[source,javascript]
+----
+// Page Object Model with fixtures
+import { LoginPage, CanvasPage } from '../pages/index.js';
+
+test('Authentication flow with POM', async ({ page, pageVerifier }) => {
+  // Use Page Object Model
+  const loginPage = new LoginPage(page);
+  const canvasPage = new CanvasPage(page);
+  
+  // Modern authentication flow
+  await loginPage.login();
+  await loginPage.verifyLoginSuccess();
+  
+  // Verify canvas using POM
+  await canvasPage.verifyCanvasLoaded();
+  
+  // Use fixture-based verification
+  await pageVerifier.expectMainCanvas();
+});
+----
+
+==== Modern Utility Services
+
+Modern utility services replace complex utility functions:
+
+[source,javascript]
+----
+// utils/auth-service.js - Consolidated authentication
+export class AuthService {
+  constructor(page) {
+    this.page = page;
+  }
+  
+  async login(credentials = {}) {
+    // Modern locator patterns
+    await this.page.getByLabel(/username/i).fill(credentials.username);
+    await this.page.getByLabel(/password/i).fill(credentials.password);
+    await this.page.getByRole('button', { name: /login/i }).click();
+    
+    // Auto-waiting instead of manual timeouts
+    await expect(this.page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS))
+      .toBeVisible({ timeout: 30000 });
+  }
+}
     if (name && name.includes(processorName)) {
       return {
         element: processor,

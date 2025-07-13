@@ -1,5 +1,7 @@
-// Shared constants for Playwright tests
-
+/**
+ * @fileoverview Modern Constants - 2025 Playwright Best Practices
+ * Consolidated constants with modern locator patterns and semantic selectors
+ */
 
 /**
  * Page type constants
@@ -11,172 +13,135 @@ export const PAGE_TYPES = {
 };
 
 /**
- * Canvas and UI selectors - UPDATED with verified Angular Material patterns from NiFi 2.4.0 source code analysis
- * Based on nifi-ui-structure.adoc: NiFi uses Angular 19.2.14 with Angular Material 19.2.14
+ * Authentication constants
  */
-export const SELECTORS = {
-  // ✅ VERIFIED ANGULAR MATERIAL SELECTORS (from NiFi 2.4.0 source code analysis + runtime inspection)
-  // Canvas selectors - Angular Material patterns with progressive fallbacks
-  CANVAS: '#canvas-container',
-  CANVAS_CONTAINER: 'mat-sidenav-content',
-  CANVAS_SIDENAV_CONTAINER: 'mat-sidenav-container',
-  CANVAS_SVG: 'svg.canvas-svg, mat-sidenav-content svg, #canvas-container svg',
-  CANVAS_ELEMENTS: 'mat-sidenav-content, #canvas-container, .mat-drawer-content, body, nifi',
-
-  // Processor selectors - SVG-based patterns within Angular Material containers
-  PROCESSOR_GROUP: 'svg g[class*="processor"], svg g[data-type*="processor"], svg .component',
-  PROCESSOR_ELEMENT: '.processor, [class*="processor"], .component, .flow-component',
-  PROCESSOR_TEXT: '.processor-name, .component-name, text[class*="name"], .label, text',
-  PROCESSOR_ICON: '.processor-icon, .component-icon, .icon, image, rect',
-
-  // Processor button selectors - For drag-and-drop operations (Updated from inspection)
-  PROCESSOR_BUTTON: 'button.cdk-drag.icon-processor',
-  PROCESSOR_BUTTON_FALLBACK: 'button.cdk-drag, button.icon-processor, button[cdkdrag], button[cdkdragboundary="body"], .icon-processor, button.component-button, button.processor-button, button[title*="Processor"], button[aria-label*="Processor"]',
-
-  // Dialog selectors - Angular Material dialog patterns
-  ADD_PROCESSOR_DIALOG: 'mat-dialog-container, .mat-dialog-container, [role="dialog"]',
-  PROPERTIES_DIALOG: 'mat-dialog-container, .mat-dialog-container, [role="dialog"]',
-  PROCESSOR_TYPE_LIST: 'mat-list, .mat-list, mat-selection-list, .processor-types',
-  PROCESSOR_TYPE_ITEM: 'mat-list-item, .mat-list-item, mat-list-option, .processor-type',
-  PROCESSOR_SEARCH: 'mat-form-field input, input[matInput], input[placeholder*="Search"]',
-  PROCESSOR_LIST_ITEM: 'mat-list-item, .mat-list-item, mat-list-option, .processor-type',
-
-  // Tab selectors - Angular Material tab patterns
-  PROPERTIES_TAB: 'mat-tab:contains("Properties"), .mat-tab:contains("Properties")',
-  SETTINGS_TAB: 'mat-tab:contains("Settings"), .mat-tab:contains("Settings")',
-  TAB_GROUP: 'mat-tab-group',
-
-  // Form selectors - Angular Material form patterns
-  PROPERTY_INPUT: 'mat-form-field input, input[matInput], .property-input',
-  PROPERTY_TEXTAREA: 'mat-form-field textarea, textarea[matInput], .property-textarea',
-
-  // Button selectors - Angular Material button patterns
-  ADD_BUTTON: 'button[mat-button], button[mat-raised-button], button:contains("Add")',
-  APPLY_BUTTON: 'button:contains("Apply"), .mat-button:contains("Apply")',
-  CANCEL_BUTTON: 'button:contains("Cancel"), .mat-button:contains("Cancel")',
-  DELETE_BUTTON: 'button:contains("Delete"), .mat-button:contains("Delete")',
-  OK_BUTTON: 'button:contains("OK"), .mat-button:contains("OK")',
-
-  // Context menu selectors - Angular Material menu patterns
-  CONTEXT_MENU: 'menu, .menu, [role="menu"], .context-menu',
-  CONTEXT_MENU_CONFIGURE: 'menuitem, [role="menuitem"]',
-  CONTEXT_MENU_DELETE: 'menuitem, [role="menuitem"]',
-
-  // Toolbar selectors - Angular Material toolbar patterns
-  TOOLBAR: 'mat-toolbar, .mat-toolbar',
-  TOOLBAR_ADD: 'button, mat-toolbar button, [role="button"], .toolbar button, .operation-button, button[title*="Add"], button[aria-label*="Add"], [data-testid*="add"], [data-testid*="Add"]',
-
-  // Login selectors
-  USERNAME_INPUT:
-    '[data-testid="username"], input[type="text"], input[id*="username"], input[name="username"]',
-  PASSWORD_INPUT:
-    '[data-testid="password"], input[type="password"], input[id*="password"], input[name="password"]',
-  LOGIN_BUTTON:
-    '[data-testid="login-button"], input[value="Login"], button[type="submit"], button[value="Login"], button.login-button, button.submit-button',
-
-  // Generic selectors
-  DIALOG: '[role="dialog"], .dialog, .modal',
-  BUTTON: 'button',
-  INPUT: 'input',
+export const AUTH = {
+  USERNAME: process.env.NIFI_USERNAME || 'admin',
+  PASSWORD: process.env.NIFI_PASSWORD || 'admin123',
+  ADMIN_USERNAME: process.env.NIFI_ADMIN_USERNAME || 'admin',
+  ADMIN_PASSWORD: process.env.NIFI_ADMIN_PASSWORD || 'admin123'
 };
 
 /**
- * Timeout constants - consolidated from multiple files
+ * Service URLs
+ */
+export const SERVICE_URLS = {
+  NIFI_BASE: process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:9095/nifi',
+  NIFI_LOGIN: (process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:9095/nifi') + '#/login',
+  NIFI_CANVAS: (process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:9095/nifi') + '#/canvas',
+  NIFI_SYSTEM_DIAGNOSTICS: (process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:9095/nifi') + '/nifi-api/system-diagnostics',
+  KEYCLOAK_BASE: process.env.PLAYWRIGHT_KEYCLOAK_URL || 'http://localhost:9080',
+  KEYCLOAK_HEALTH: (process.env.PLAYWRIGHT_KEYCLOAK_URL || 'http://localhost:9080') + '/health'
+};
+
+/**
+ * Modern timeouts configuration
  */
 export const TIMEOUTS = {
-  DIALOG_APPEAR: 5000,
-  PROCESSOR_LOAD: 10000,
-  CANVAS_READY: 8000,
-  ELEMENT_VISIBLE: 3000,
-  ACTION_COMPLETE: 2000,
-  DEFAULT_COMMAND: 10000,
-  PAGE_LOAD: 10000,
+  SHORT: 5000,
+  MEDIUM: 10000,
+  LONG: 30000,
+  PROCESSOR_LOAD: 15000,
+  NAVIGATION: 10000,
+  DIALOG: 10000
 };
 
 /**
- * Service URLs - Centralized URL constants for all services
+ * Modern selectors with 2025 Playwright best practices
+ * Prioritizes semantic locators over complex CSS selectors
  */
-// Define base URLs first - use environment variables if available
-const KEYCLOAK_BASE_URL = process.env.PLAYWRIGHT_KEYCLOAK_URL || 'http://localhost:9080';
-const NIFI_BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:9095/nifi';
-
-// Extract the base URL without the /nifi path for API calls
-const NIFI_API_URL = NIFI_BASE_URL.replace(/\/nifi$/, '');
-
-// Extract the base URL and port for Keycloak health endpoint
-const KEYCLOAK_HOST = KEYCLOAK_BASE_URL.replace(/^https?:\/\//, '').split(':')[0];
-const KEYCLOAK_HEALTH_PORT = '9086'; // Default health port, can be overridden by environment variable
-
-export const SERVICE_URLS = {
-  // NiFi service URLs
-  NIFI_BASE: NIFI_BASE_URL,
-  NIFI_API_BASE: '/nifi-api',
-  NIFI_LOGIN: '/#/login',
-  NIFI_CANVAS: '/',
-  // Use absolute URL for API endpoints to avoid baseUrl concatenation issues
-  NIFI_SYSTEM_DIAGNOSTICS: `${NIFI_API_URL}/nifi-api/system-diagnostics`,
-
-  // Keycloak service URLs
-  KEYCLOAK_BASE: KEYCLOAK_BASE_URL,
-  // Health endpoint is on a different port than the main Keycloak server
-  KEYCLOAK_HEALTH: `http://${KEYCLOAK_HOST}:${KEYCLOAK_HEALTH_PORT}/health`,
+export const SELECTORS = {
+  // Main application elements
+  MAIN_CANVAS: 'mat-sidenav-content, #canvas-container, .mat-drawer-content',
+  
+  // Authentication elements - using semantic selectors
+  USERNAME_INPUT: 'input[name="username"], input[placeholder*="username" i], input[type="text"]',
+  PASSWORD_INPUT: 'input[name="password"], input[placeholder*="password" i], input[type="password"]',
+  LOGIN_BUTTON: 'button[type="submit"], button:has-text("Log In"), button:has-text("Sign In")',
+  
+  // Canvas and workspace
+  CANVAS_CONTAINER: 'mat-sidenav-content',
+  CANVAS_SVG: 'svg.canvas-svg, mat-sidenav-content svg, #canvas-container svg',
+  
+  // Processors - simplified selectors
+  PROCESSOR_ELEMENT: '.processor, [data-type*="processor"], .component',
+  
+  // Dialogs - using role-based selectors (2025 best practice)
+  DIALOG_CONTAINER: '[role="dialog"], mat-dialog-container',
+  
+  // Forms - semantic approach
+  TEXT_INPUT: 'input[type="text"], input[matInput]',
+  TEXTAREA: 'textarea, textarea[matInput]',
+  
+  // Buttons - semantic approach
+  SUBMIT_BUTTON: 'button[type="submit"]',
+  CANCEL_BUTTON: 'button:has-text("Cancel")',
+  APPLY_BUTTON: 'button:has-text("Apply")',
+  
+  // Context menus
+  CONTEXT_MENU: '[role="menu"], .context-menu',
+  MENU_ITEM: '[role="menuitem"]'
 };
 
 /**
- * Page type definitions for navigation - Updated with verified Angular Material patterns
+ * Page type definitions for navigation
  */
 export const PAGE_DEFINITIONS = {
   [PAGE_TYPES.LOGIN]: {
     path: SERVICE_URLS.NIFI_LOGIN,
     description: 'NiFi Login Page',
-    elements: ['input[type="password"]', 'input[type="text"]', 'input[name="username"]', 'input[name="password"]', 'form', '.login-form', '[data-testid="login-form"]'],
+    elements: [SELECTORS.USERNAME_INPUT, SELECTORS.PASSWORD_INPUT, SELECTORS.LOGIN_BUTTON]
   },
   [PAGE_TYPES.MAIN_CANVAS]: {
     path: SERVICE_URLS.NIFI_CANVAS,
     description: 'NiFi Main Canvas',
-    elements: ['mat-sidenav-content', '#canvas-container', '[href="#/process-groups"]', 'button[title="Operate"]', 'button[title="Settings"]', '.canvas-container', '.operation-button', '.navigation-button'],
+    elements: [SELECTORS.MAIN_CANVAS]
   },
   [PAGE_TYPES.UNKNOWN]: {
     path: null,
     description: 'Unknown Page Type',
-    elements: [],
-  },
+    elements: []
+  }
 };
 
 /**
- * Default credentials - Updated with correct test container credentials
- */
-export const DEFAULT_CREDENTIALS = {
-  USERNAME: 'testUser',
-  PASSWORD: 'drowssap',
-};
-
-/**
- * Processor type constants - Used for consistent processor naming across tests
+ * Processor type constants
  */
 export const PROCESSOR_TYPES = {
-  // Authentication processors
   MULTI_ISSUER_JWT_AUTHENTICATOR: 'MultiIssuerJWTTokenAuthenticator',
-  JWT_TOKEN_AUTHENTICATOR: 'JWTTokenAuthenticator',
+  JWT_TOKEN_AUTHENTICATOR: 'JWTTokenAuthenticator'
 };
 
 /**
- * Error patterns that should be ignored - only specific NiFi-related errors
- * Generic JavaScript errors have been removed to avoid masking real issues
+ * Error patterns for console monitoring
  */
-export const IGNORED_ERROR_PATTERNS = [
-  'ResizeObserver loop limit exceeded', // Browser-specific, safe to ignore
-  'Non-Error promise rejection captured', // NiFi-specific promise handling
-];
+export const ERROR_PATTERNS = {
+  IGNORED: [
+    'ResizeObserver loop limit exceeded',
+    'Non-Error promise rejection captured'
+  ],
+  CRITICAL: [
+    'Uncaught Error: Mismatched anonymous define() module',
+    'jQuery is not defined',
+    'Failed to load resource',
+    'Refused to execute script',
+    'Refused to apply style'
+  ]
+};
 
-/**
- * Browser console error patterns to watch for - these are errors that indicate issues
- * with the application that should be logged and reported
- */
-export const BROWSER_ERROR_PATTERNS = [
-  'Uncaught Error: Mismatched anonymous define() module', // RequireJS error
-  'jQuery is not defined', // Missing jQuery dependency
-  'Failed to load resource', // Resource loading failure
-  'Refused to execute script', // MIME type issues
-  'Refused to apply style', // MIME type issues
-];
+// Legacy exports for backward compatibility
+export const DEFAULT_CREDENTIALS = AUTH;
+export const IGNORED_ERROR_PATTERNS = ERROR_PATTERNS.IGNORED;
+export const BROWSER_ERROR_PATTERNS = ERROR_PATTERNS.CRITICAL;
+
+// Consolidated export as CONSTANTS for modern usage
+export const CONSTANTS = {
+  PAGE_TYPES,
+  AUTH,
+  SERVICE_URLS,
+  TIMEOUTS,
+  SELECTORS,
+  PAGE_DEFINITIONS,
+  PROCESSOR_TYPES,
+  ERROR_PATTERNS
+};
