@@ -5,6 +5,8 @@
  */
 
 import { test as base } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
 
 // Critical error patterns (minimal set)
 const CRITICAL_ERROR_PATTERNS = [
@@ -67,16 +69,40 @@ export const test = base.extend({
     
     await use(page);
     
-    // Attach logs to test results only if there are logs
+    // Create target/logs directory if it doesn't exist
+    const targetDir = path.join(process.cwd(), 'target');
+    const logsDir = path.join(targetDir, 'logs');
+    
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
+    }
+    
+    // Save browser console logs to direct files
     if (logs.length > 0) {
+      const sanitizedTestName = testInfo.title.replace(/[^a-zA-Z0-9]/g, '_');
+      const logFileName = `${sanitizedTestName}-console-logs.json`;
+      const logFilePath = path.join(logsDir, logFileName);
+      
+      fs.writeFileSync(logFilePath, JSON.stringify(logs, null, 2));
+      console.log(`📝 Browser console logs saved to: ${logFilePath}`);
+      
+      // Also attach to test results for Playwright UI
       await testInfo.attach('console-logs', {
         body: JSON.stringify(logs, null, 2),
         contentType: 'application/json'
       });
     }
     
-    // Attach critical errors separately if any
+    // Save critical errors to separate file
     if (criticalErrors.length > 0) {
+      const sanitizedTestName = testInfo.title.replace(/[^a-zA-Z0-9]/g, '_');
+      const errorFileName = `${sanitizedTestName}-critical-errors.json`;
+      const errorFilePath = path.join(logsDir, errorFileName);
+      
+      fs.writeFileSync(errorFilePath, JSON.stringify(criticalErrors, null, 2));
+      console.log(`🚨 Critical errors saved to: ${errorFilePath}`);
+      
+      // Also attach to test results for Playwright UI
       await testInfo.attach('critical-errors', {
         body: JSON.stringify(criticalErrors, null, 2),
         contentType: 'application/json'
