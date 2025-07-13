@@ -1,49 +1,48 @@
 /**
- * @file Shared Logger - Centralized logging functionality
- * Provides consistent logging across all test utilities
- * @version 1.0.0
+ * @file Simplified Shared Logger
+ * Minimal logging utility for test-specific logging only
+ * Browser console logs are now handled by Playwright's built-in trace viewer
+ * @version 2.0.0
  */
-
-import { addLogEntry } from './log-collector.js';
 
 /**
- * Log level definitions with emoji indicators
+ * Simple logger for test output
+ * @param {string} level - Log level (info, success, warn, error)
+ * @param {string} message - Message to log
  */
-const LOG_LEVELS = {
-    info: '🔵 INFO:',
-    success: '✅ SUCCESS:',
-    warn: '🟠 WARNING:',
-    error: '🔴 ERROR:',
-};
-
-/**
- * Create a logger function with optional prefix
- * @param {string} [prefix=''] - Optional prefix for all log messages
- * @returns {Function} Logger function
- */
-export function createLogger(prefix = '') {
-    const finalPrefix = prefix ? `[${prefix}] ` : '';
-    
-    return (level, message, testName = null) => {
-        const logPrefix = LOG_LEVELS[level] || LOG_LEVELS.info;
-        const fullMessage = `${logPrefix} ${finalPrefix}${message}`;
-        
-        // Log to console
-        console.log(fullMessage);
-        
-        // Add to log collector if available
-        try {
-            addLogEntry(level, `${finalPrefix}${message}`, testName);
-        } catch (error) {
-            // Silently fail if log collector is not available
-        }
-    };
+export function logMessage(level, message) {
+  const timestamp = new Date().toISOString();
+  const prefix = getLogPrefix(level);
+  console.log(`[${timestamp}] ${prefix} ${message}`);
 }
 
 /**
- * Default logger instance
+ * Create a logger with a specific prefix
+ * @param {string} prefix - Prefix for log messages
+ * @returns {Function} Logger function
  */
-export const logMessage = createLogger();
+export function createLogger(prefix = '') {
+  return (level, message) => {
+    const fullMessage = prefix ? `[${prefix}] ${message}` : message;
+    logMessage(level, fullMessage);
+  };
+}
+
+/**
+ * Get log prefix based on level
+ * @param {string} level - Log level
+ * @returns {string} Prefix string
+ */
+function getLogPrefix(level) {
+  const prefixes = {
+    info: '🔵 INFO:',
+    success: '✅ SUCCESS:',
+    warn: '⚠️ WARN:',
+    error: '🔴 ERROR:',
+    debug: '🔍 DEBUG:'
+  };
+  return prefixes[level] || prefixes.info;
+}
 
 /**
  * Specialized loggers for different modules
@@ -54,40 +53,35 @@ export const navigationLogger = createLogger('NAVIGATION');
 export const testHelperLogger = createLogger('TEST-HELPER');
 
 /**
- * Log an error with additional context
- * @param {string} message - Error message
- * @param {Error} error - Error object
- * @param {string} [testName] - Test name
+ * Timed operation logger
+ * @param {string} operation - Operation description
+ * @param {Function} fn - Function to execute
+ * @returns {Promise<any>} Result of the function
  */
-export function logError(message, error, testName = null) {
-    const errorMessage = `${message}: ${error.message}`;
-    logMessage('error', errorMessage, testName);
-    
-    // Log stack trace if available
-    if (error.stack) {
-        logMessage('error', `Stack trace: ${error.stack}`, testName);
-    }
+export async function logTimed(operation, fn) {
+  const start = Date.now();
+  logMessage('info', `Starting ${operation}...`);
+  
+  try {
+    const result = await fn();
+    const duration = Date.now() - start;
+    logMessage('success', `${operation} completed in ${duration}ms`);
+    return result;
+  } catch (error) {
+    const duration = Date.now() - start;
+    logMessage('error', `${operation} failed after ${duration}ms: ${error.message}`);
+    throw error;
+  }
 }
 
 /**
- * Log with timing information
- * @param {string} operation - Operation name
- * @param {Function} fn - Function to execute and time
- * @param {string} [testName] - Test name
- * @returns {Promise<any>} Result of the function
+ * Log an error with stack trace
+ * @param {string} message - Error message
+ * @param {Error} error - Error object
  */
-export async function logTimed(operation, fn, testName = null) {
-    const startTime = Date.now();
-    logMessage('info', `Starting ${operation}...`, testName);
-    
-    try {
-        const result = await fn();
-        const duration = Date.now() - startTime;
-        logMessage('success', `${operation} completed in ${duration}ms`, testName);
-        return result;
-    } catch (error) {
-        const duration = Date.now() - startTime;
-        logError(`${operation} failed after ${duration}ms`, error, testName);
-        throw error;
-    }
+export function logError(message, error) {
+  logMessage('error', message);
+  if (error?.stack) {
+    logMessage('error', `Stack trace: ${error.stack}`);
+  }
 }

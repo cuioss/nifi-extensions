@@ -4,11 +4,7 @@
  * @version 1.0.0
  */
 
-import { test, expect } from "@playwright/test";
-import {
-    saveTestLogs,
-    setupEnhancedConsoleListener,
-} from "../utils/log-collector";
+import { test, expect } from "../utils/logging-fixture.js";
 import {
     verifyMultiIssuerJwtAuthenticatorDeployment,
     findMultiIssuerJwtAuthenticator,
@@ -20,39 +16,11 @@ import { PAGE_TYPES } from "../utils/constants";
 import { verifyPageType } from "../utils/navigation-tool";
 import { logMessage } from "../utils/shared-logger";
 
-// Get the current test name
-function getCurrentTestName(testInfo) {
-    return testInfo.title;
-}
-
 test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     // Make sure we're logged in before each test
-    test.beforeEach(async ({ page }, testInfo) => {
-        // Set up enhanced browser console listener for better error capture
-        const testName = getCurrentTestName(testInfo);
-        setupEnhancedConsoleListener(page, testName);
-
-        // Ensure NiFi is ready
+    test.beforeEach(async ({ page }) => {
+        // Ensure NiFi is ready - logging is now handled automatically by the fixture
         await ensureNiFiReady(page);
-    });
-
-    // Save logs after each test
-    test.afterEach(async ({ page: _page }, testInfo) => {
-        const testName = getCurrentTestName(testInfo);
-        const testFile = testInfo.file;
-
-        try {
-            const logFilePath = await saveTestLogs(testName, testFile);
-            if (logFilePath) {
-                // eslint-disable-next-line no-console
-                console.log(`📝 Logs saved to: ${logFilePath}`);
-            }
-        } catch (error) {
-            // eslint-disable-next-line no-console
-            console.error(
-                `Error saving logs for test "${testName}": ${error.message}`,
-            );
-        }
     });
 
     test("should verify login and processor deployment", async ({ page }) => {
@@ -140,7 +108,6 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         logMessage(
             "info",
             `Found property labels: ${result.propertyLabels.join(", ")}`,
-            getCurrentTestName(test.info()),
         );
     });
 
@@ -191,7 +158,6 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         logMessage(
             "info",
             `Found property labels in configuration dialog: ${result.propertyLabels.join(", ")}`,
-            getCurrentTestName(test.info()),
         );
     });
 
@@ -256,15 +222,10 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         ).toContain("MultiIssuerJWTTokenAuthenticator");
 
         // Log processor details for verification
-        logMessage(
-            "info",
-            "Processor verification complete",
-            getCurrentTestName(test.info()),
-        );
+        logMessage("info", "Processor verification complete");
         logMessage(
             "info",
             `Processor details: Name=${processor.name}, ID=${processor.id || "N/A"}`,
-            getCurrentTestName(test.info()),
         );
 
         // Take a screenshot of the processor on the canvas

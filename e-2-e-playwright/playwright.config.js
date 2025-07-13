@@ -41,6 +41,7 @@ module.exports = defineConfig({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { outputFolder: REPORTS_DIR, open: 'never' }],
+    ['json', { outputFile: path.join(TARGET_DIR, 'test-results.json') }],
     ['list']
   ],
   /* Output directories for test artifacts */
@@ -54,7 +55,7 @@ module.exports = defineConfig({
     baseURL: BASE_URL,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
 
     /* Take screenshot on failure */
     screenshot: 'only-on-failure',
