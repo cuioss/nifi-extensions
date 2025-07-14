@@ -10,25 +10,26 @@ import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 import { CONSTANTS } from "../utils/constants.js";
 import {
-    setupComprehensiveErrorDetection,
+    setupAuthAwareErrorDetection,
     checkForCriticalErrors,
 } from "../utils/console-logger.js";
 import {
     CriticalErrorDetector,
+    globalCriticalErrorDetector,
     checkCriticalErrors,
     cleanupCriticalErrorDetection,
 } from "../utils/critical-error-detector.js";
 
 test.describe("Self-Test: Critical Error Detection", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        // Setup comprehensive error detection
-        await setupComprehensiveErrorDetection(page, testInfo);
+        // Setup auth-aware error detection (skips initial canvas checks)
+        await setupAuthAwareErrorDetection(page, testInfo);
 
         // Authenticate first
         const authService = new AuthService(page);
         await authService.ensureReady();
 
-        // Check for critical errors after authentication
+        // Now check for critical errors after authentication completes
         await checkForCriticalErrors(page, testInfo);
     });
 
@@ -43,7 +44,7 @@ test.describe("Self-Test: Critical Error Detection", () => {
         // This test verifies that empty page detection works
         // If the canvas is missing, it should fail immediately
 
-        const detector = new CriticalErrorDetector();
+        const detector = globalCriticalErrorDetector;
 
         // Check for canvas existence
         const canvasExists = await detector.checkCanvasExists(page);
@@ -72,7 +73,7 @@ test.describe("Self-Test: Critical Error Detection", () => {
         // This test checks for UI loading stalls
         // If "Loading JWT Validator UI..." is detected, it should fail immediately
 
-        const detector = new CriticalErrorDetector();
+        const detector = globalCriticalErrorDetector;
 
         // Check for UI loading stalls
         const hasStalls = await detector.checkForUILoadingStalls(
@@ -111,8 +112,8 @@ test.describe("Self-Test: Critical Error Detection", () => {
     }, _testInfo) => {
         // This test verifies that JavaScript errors are detected and cause failures
 
-        // First, verify that the critical error detector is monitoring
-        const detector = new CriticalErrorDetector();
+        // Use the global detector that's already monitoring from beforeEach
+        const detector = globalCriticalErrorDetector;
         expect(
             detector.isMonitoring,
             "Critical error detector should be monitoring",
@@ -159,7 +160,7 @@ test.describe("Self-Test: Critical Error Detection", () => {
     }, _testInfo) => {
         // This test specifically checks for RequireJS/AMD module loading issues
 
-        const detector = new CriticalErrorDetector();
+        const detector = globalCriticalErrorDetector;
         const existingErrors = detector.getDetectedErrors();
 
         // Check for module loading errors
@@ -213,7 +214,7 @@ test.describe("Self-Test: Critical Error Detection", () => {
         });
 
         // Check for empty canvas using critical error detector
-        const detector = new CriticalErrorDetector();
+        const detector = globalCriticalErrorDetector;
         const hasProcessors = await detector.checkForProcessors(page);
 
         // For this specific test, we'll be more lenient
@@ -257,7 +258,7 @@ test.describe("Self-Test: Critical Error Detection", () => {
         // Perform all critical error checks
         await checkCriticalErrors(page, testInfo);
 
-        const detector = new CriticalErrorDetector();
+        const detector = globalCriticalErrorDetector;
         const allErrors = detector.getDetectedErrors();
 
         // Categorize errors

@@ -12,7 +12,7 @@ import { ProcessorService } from "../utils/processor.js";
 import { CONSTANTS } from "../utils/constants.js";
 import { processorLogger } from "../utils/shared-logger.js";
 import {
-    setupComprehensiveErrorDetection,
+    setupAuthAwareErrorDetection,
     checkForCriticalErrors,
 } from "../utils/console-logger.js";
 import {
@@ -22,8 +22,8 @@ import {
 
 test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        // Setup comprehensive error detection FIRST
-        await setupComprehensiveErrorDetection(page, testInfo);
+        // Setup auth-aware error detection (skips initial canvas checks)
+        await setupAuthAwareErrorDetection(page, testInfo);
 
         const authService = new AuthService(page);
         await authService.ensureReady();

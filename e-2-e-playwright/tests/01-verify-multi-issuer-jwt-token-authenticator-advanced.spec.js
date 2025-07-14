@@ -21,7 +21,7 @@ import { AuthService } from "../utils/auth-service.js";
 import { CONSTANTS } from "../utils/constants.js";
 import {
     saveTestBrowserLogs,
-    setupComprehensiveErrorDetection,
+    setupAuthAwareErrorDetection,
     checkForCriticalErrors,
 } from "../utils/console-logger.js";
 import {
@@ -169,8 +169,8 @@ async function checkForLoadingStall(page) {
 test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     // Make sure we're logged in before each test
     test.beforeEach(async ({ page }, testInfo) => {
-        // Setup comprehensive error detection FIRST
-        await setupComprehensiveErrorDetection(page, testInfo);
+        // Setup auth-aware error detection (skips initial canvas checks)
+        await setupAuthAwareErrorDetection(page, testInfo);
 
         const authService = new AuthService(page);
         await authService.ensureReady();

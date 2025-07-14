@@ -326,17 +326,23 @@ export async function saveTestBrowserLogs(testInfo) {
 /**
  * Setup comprehensive error detection and logging
  * This is the recommended function to use in test files for strict error detection
+ * @param {import('@playwright/test').Page} page - The Playwright page object
+ * @param {import('@playwright/test').TestInfo} testInfo - The test information object
+ * @param {boolean} skipInitialChecks - Skip initial canvas/UI checks (for pre-auth setup)
  */
-export async function setupComprehensiveErrorDetection(page, testInfo) {
+export async function setupComprehensiveErrorDetection(page, testInfo, skipInitialChecks = false) {
   // Setup enhanced console logging with critical error detection
   globalConsoleLogger.setupLogging(page, testInfo);
   
-  // Perform initial critical error checks
-  await globalCriticalErrorDetector.checkForEmptyCanvas(page, testInfo);
-  await globalCriticalErrorDetector.checkForUILoadingStalls(page, testInfo);
-  
-  // Fail immediately if any critical errors detected during setup
-  globalCriticalErrorDetector.failTestOnCriticalErrors();
+  // Only perform initial critical error checks if not skipping them
+  // This allows setup before authentication without false failures
+  if (!skipInitialChecks) {
+    await globalCriticalErrorDetector.checkForEmptyCanvas(page, testInfo);
+    await globalCriticalErrorDetector.checkForUILoadingStalls(page, testInfo);
+    
+    // Fail immediately if any critical errors detected during setup
+    globalCriticalErrorDetector.failTestOnCriticalErrors();
+  }
   
   return {
     checkCriticalErrors: async () => {
@@ -352,6 +358,14 @@ export async function setupComprehensiveErrorDetection(page, testInfo) {
       globalCriticalErrorDetector.clearErrors();
     }
   };
+}
+
+/**
+ * Setup error detection with authentication awareness
+ * Recommended for tests that need to authenticate before checking canvas
+ */
+export async function setupAuthAwareErrorDetection(page, testInfo) {
+  return setupComprehensiveErrorDetection(page, testInfo, true);
 }
 
 /**
