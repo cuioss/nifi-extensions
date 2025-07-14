@@ -970,7 +970,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         claims.put(JWTAttributes.Token.AUTHORIZATION_PASSED, "true");
 
         // Add token identity information
-        claims.put(JWTAttributes.Token.SUBJECT, token.getSubject());
+        claims.put(JWTAttributes.Token.SUBJECT, token.getSubject().orElse(""));
         claims.put(JWTAttributes.Token.ISSUER, token.getIssuer());
         claims.put(JWTAttributes.Token.EXPIRATION, token.getExpirationTime().toString());
 
