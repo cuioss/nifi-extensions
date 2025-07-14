@@ -4,6 +4,7 @@
 :toc-title: Table of Contents
 :sectnums:
 :source-highlighter: highlight.js
+:icons: font
 
 == Purpose
 
@@ -15,6 +16,44 @@ This document describes the process for handling roundtrip testing for the UI co
 * xref:implementation-guide.adoc[Implementation Guide] - Detailed implementation guidance
 * xref:nifi-ui-structure.adoc[NiFi UI Structure Guide] - NiFi UI structure and selectors
 * xref:../README.adoc[E2E Playwright Tests] - Main module documentation
+
+== Roundtrip Testing Philosophy
+
+Roundtrip testing is an iterative approach that combines:
+
+* **Automated Test Execution**: Using Playwright to simulate user interactions
+* **Real-time Browser Analysis**: Capturing console logs and browser behavior
+* **Iterative Development**: Making incremental fixes based on test feedback
+* **Comprehensive Validation**: Full build and integration testing after fixes
+
+== Prerequisites
+
+=== Environment Requirements
+
+* Docker environment properly configured
+* NiFi test container available and functional
+* Playwright testing framework installed and configured
+* Browser logs collection mechanism enabled (automatic in current setup)
+
+=== Test Coverage Requirements
+
+[IMPORTANT]
+====
+**Critical Prerequisite**: There must be a corresponding Playwright test for the feature under test available in the `e-2-e-playwright/tests/` directory.
+====
+
+Ensure the following test files exist for your UI feature:
+
+* `self-test.spec.js` - Basic functionality verification
+* `processor-deployment.spec.js` - Processor-specific UI testing
+* Custom test files for specific UI components
+
+=== Deployment Workflow Integration
+
+[IMPORTANT]
+====
+**Critical Component**: The roundtrip testing process requires deploying production code changes to the test environment after each modification using the appropriate deployment scripts.
+====
 
 == Roundtrip Testing Workflow
 
@@ -47,6 +86,12 @@ npx playwright test tests/01-verify-multi-issuer-jwt-token-authenticator-advance
 
 You can replace the test file with any specific test you need to run.
 
+**Examples of test specifications**:
+
+* `tests/processor-deployment.spec.js` - For processor UI issues
+* `tests/self-test.spec.js` - For basic functionality verification
+* `tests/*processor*.spec.js` - For all processor-related tests
+
 === 3. Verify Test Results
 
 Check the test results and logs:
@@ -55,7 +100,56 @@ Check the test results and logs:
 * Detailed logs are available under `e-2-e-playwright/target/logs`
 * Screenshots and videos of failed tests are stored in `e-2-e-playwright/test-results`
 
-=== 4. Analyze Issues
+=== 4. Analyze Browser Console Logs
+
+**Log Location**: `e-2-e-playwright/target/test-results/`
+
+Browser logs are automatically captured with the following naming pattern:
+[source]
+----
+browser-logs-YYYY-MM-DDTHH-MM-SS-sssZ.json
+----
+
+**Log Analysis Steps**:
+
+1. **Locate Latest Log File**:
++
+[source,bash]
+----
+ls -la e-2-e-playwright/target/test-results/*.json | tail -1
+----
+
+2. **Review Log Content**:
++
+[source,bash]
+----
+# View the latest log file
+cat e-2-e-playwright/target/test-results/[test-name]/trace.json | jq '.'
+----
+
+3. **Key Analysis Points**:
++
+* **Errors Array**: Look for JavaScript errors and exceptions
+* **Warnings Array**: Check for configuration or compatibility warnings  
+* **Info Array**: Review informational messages and timing data
+* **Test Context**: Verify test name, spec name, and URL context
+
+**Log Structure Reference**:
+[source,json]
+----
+{
+  "timestamp": "2025-06-24T...",
+  "testName": "should load JWT validator UI",
+  "specName": "04-processor-deployment.cy.js",
+  "errors": ["Error messages..."],
+  "warnings": ["Warning messages..."],
+  "info": [{"type": "info", "message": "...", "timestamp": "..."}],
+  "url": "https://localhost:9095/nifi/...",
+  "userAgent": "Mozilla/5.0..."
+}
+----
+
+=== 5. Analyze Issues
 
 If tests fail or issues are identified:
 
@@ -64,7 +158,20 @@ If tests fail or issues are identified:
 * Examine the screenshots or videos of failed tests
 * Identify the UI components that need modification
 
-=== 5. Modify UI Code
+**Common UI Issues and Solutions**:
+
+* **Loading Indicator Hanging**: Check `hideLoadingIndicatorRobust()` function
+* **Component Registration Failures**: Verify `registerComponents()` execution
+* **CSS/Styling Issues**: Review `base.css` and component-specific styles
+* **JavaScript Errors**: Check module imports and function definitions
+
+**Key Files for UI Fixes**:
+
+* `nifi-cuioss-ui/src/main/webapp/js/main.js` - Core UI logic
+* `nifi-cuioss-ui/src/main/webapp/js/nf-jwt-validator.js` - JWT validator UI
+* `nifi-cuioss-ui/src/main/webapp/css/modules/base.css` - Base styling
+
+=== 6. Modify UI Code
 
 Make the necessary changes to the UI code:
 
@@ -72,7 +179,7 @@ Make the necessary changes to the UI code:
 * Modify the HTML, CSS, or JavaScript as needed
 * Follow the project's coding standards and patterns
 
-=== 6. Build the UI Module
+=== 7. Build the UI Module
 
 Build the modified UI module:
 
@@ -87,7 +194,7 @@ Ensure that:
 * All warnings are addressed
 * Code style checks pass
 
-=== 7. Redeploy Changes
+=== 8. Redeploy Changes
 
 Redeploy the changes to the running NiFi instance:
 
@@ -102,7 +209,22 @@ This script will:
 * Copy it to the deployment location
 * Restart the NiFi service to load the new changes
 
-=== 8. Commit Successful Fixes
+Alternatively, you can use the copy-deployment script for faster iteration:
+
+[source,bash]
+----
+# Build and deploy updated NAR file to test environment
+integration-testing/src/main/docker/copy-deployment.sh
+----
+
+**What this script does**:
+
+* ✅ Builds the NAR file with `./mvnw package -DskipTests`
+* ✅ Copies the updated NAR to the deployment location
+* ✅ Makes production code changes available for testing
+* ✅ Ensures test environment reflects latest modifications
+
+=== 9. Commit Successful Fixes
 
 After each successful fix (such as resolving a warning or error in the logs):
 
@@ -125,13 +247,120 @@ This step ensures that:
 * The team is kept informed about improvements
 * You can easily revert to a working state if needed
 
-=== 9. Repeat the Process
+=== 10. Repeat the Process
 
 Return to step 2 and repeat the process until:
 
 * All tests pass successfully
 * The UI functions as expected
 * All requirements are met
+
+== Final Validation
+
+=== Environment Cleanup and Verification
+
+==== Stop Test Environment
+
+[source,bash]
+----
+# Stop the test container environment
+integration-testing/src/main/docker/stop-test-container.sh
+----
+
+==== Full Build Verification
+
+[IMPORTANT]
+====
+**Both commands must pass successfully before considering the fix complete.**
+====
+
+**Step 1: Full Build Verification**
+[source,bash]
+----
+# Execute full build verification
+./mvnw clean verify
+----
+
+This command validates:
+
+* ✅ Compilation of all modules
+* ✅ Unit test execution
+* ✅ ESLint validation (zero warnings required)
+* ✅ Maven artifact generation
+
+**Step 2: Integration Test Verification**
+[source,bash]
+----
+# Execute integration tests with Docker environment
+./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests
+----
+
+This command validates:
+
+* ✅ End-to-end test execution
+* ✅ Docker environment lifecycle
+* ✅ Complete user workflow simulation
+* ✅ Integration with external services
+
+=== Fix Validation Requirements
+
+**If either command fails**:
+
+1. **Analyze the failure output carefully**
+2. **Fix the specific issues identified**
+3. **Re-run both commands until they pass**
+4. **Do not proceed with commit until both pass**
+
+**Success Criteria**:
+
+* ✅ `./mvnw clean verify` exits with code 0
+* ✅ `./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests` exits with code 0
+* ✅ No ESLint warnings or errors
+* ✅ All tests pass consistently
+
+== Advanced Troubleshooting
+
+=== Common Roundtrip Testing Scenarios
+
+==== Loading Indicator Issues
+
+**Symptoms**:
+* UI hangs on "Loading JWT Validator UI..." message
+* Components fail to initialize properly
+
+**Analysis Focus**:
+* Check for timing-related console errors
+* Verify `hideLoadingIndicatorRobust()` execution
+* Review component registration sequence
+
+==== Component Registration Failures
+
+**Symptoms**:
+* Custom UI tabs not appearing
+* Processor configuration interface unavailable
+
+**Analysis Focus**:
+* Verify `registerComponents()` execution
+* Check for module import errors
+* Review CSS selector accuracy
+
+==== Timing and Race Conditions
+
+**Symptoms**:
+* Intermittent test failures
+* Components sometimes load, sometimes don't
+
+**Analysis Focus**:
+* Review initialization sequence timing
+* Check for DOM readiness issues
+* Verify async/await patterns
+
+=== Log Analysis Best Practices
+
+1. **Chronological Analysis**: Review logs in timestamp order
+2. **Error Correlation**: Match errors with specific test actions
+3. **Pattern Recognition**: Look for recurring error patterns
+4. **Context Validation**: Verify URL, test name, and browser context
 
 == Best Practices
 
@@ -141,6 +370,7 @@ Return to step 2 and repeat the process until:
 * Document the changes made in each cycle
 * Keep track of which tests pass and fail after each change
 * Use browser developer tools to debug UI issues before rebuilding
+* Follow the fail-fast development approach with incremental changes
 
 === Troubleshooting
 
@@ -203,3 +433,9 @@ echo "Successfully fixed the UI issue in the example component"
 == Conclusion
 
 The roundtrip testing process provides a structured approach to UI development and testing. By following this iterative workflow, you can efficiently develop and verify UI components while ensuring they meet all requirements and function correctly in the NiFi environment.
+
+This methodology ensures high-quality UI components that integrate seamlessly with the NiFi platform while maintaining the project's fail-fast development standards.
+
+---
+
+*Document version: 1.0 | Last updated: June 2025*
