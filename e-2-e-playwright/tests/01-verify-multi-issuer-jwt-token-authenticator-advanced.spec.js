@@ -20,23 +20,30 @@ import { ProcessorService } from "../utils/processor.js";
 import { AuthService } from "../utils/auth-service.js";
 import { CONSTANTS } from "../utils/constants.js";
 import {
-    setupBrowserConsoleLogging,
     saveTestBrowserLogs,
+    setupComprehensiveErrorDetection,
+    checkForCriticalErrors,
 } from "../utils/console-logger.js";
+import {
+    checkCriticalErrors,
+    cleanupCriticalErrorDetection,
+} from "../utils/critical-error-detector.js";
 import { processorLogger } from "../utils/shared-logger.js";
 
 // Loading indicator selectors
 const LOADING_INDICATOR_SELECTORS = [
-    '#loading-indicator',
-    '.loading-indicator',
+    "#loading-indicator",
+    ".loading-indicator",
     '[id*="loading"]',
-    'text="Loading JWT Validator UI..."'
+    'text="Loading JWT Validator UI..."',
 ];
 
 /**
  * Check if the loading indicator is visible and fail the test if it is
  * This implements the requirement that the test must fail when the page
  * stalls at "Loading JWT Validator UI..."
+ * @param {import('@playwright/test').Page} page - The Playwright page object
+ * @returns {Promise<boolean>} True if no loading stall detected, throws error if stall detected
  */
 async function checkForLoadingStall(page) {
     processorLogger.info("Checking for loading indicator stall...");
@@ -46,15 +53,19 @@ async function checkForLoadingStall(page) {
     const exactTextLocators = [
         page.locator('text="Loading JWT Validator UI..."'),
         page.locator('text="Loading JWT Validator UI"'),
-        page.locator('text=Loading JWT Validator UI...'),
-        page.locator('text=Loading JWT Validator UI')
+        page.locator("text=Loading JWT Validator UI..."),
+        page.locator("text=Loading JWT Validator UI"),
     ];
 
     for (const locator of exactTextLocators) {
         const isVisible = await locator.isVisible().catch(() => false);
         if (isVisible) {
-            const textContent = await locator.textContent().catch(() => "Loading JWT Validator UI...");
-            processorLogger.error(`CRITICAL: UI stalled at loading message: "${textContent}"`);
+            const textContent = await locator
+                .textContent()
+                .catch(() => "Loading JWT Validator UI...");
+            processorLogger.error(
+                `CRITICAL: UI stalled at loading message: "${textContent}"`,
+            );
 
             // Take a screenshot for debugging
             const screenshotPath = `loading-stall-${Date.now()}.png`;
@@ -66,10 +77,10 @@ async function checkForLoadingStall(page) {
             // Fail the test with a detailed message
             throw new Error(
                 `FAILURE: UI stalled at "Loading JWT Validator UI..." message.\n` +
-                `This indicates the JWT Validator UI failed to initialize properly.\n` +
-                `URL: ${url}\n` +
-                `Screenshot saved to: ${screenshotPath}\n` +
-                `This test is designed to fail in this condition as required.`
+                    `This indicates the JWT Validator UI failed to initialize properly.\n` +
+                    `URL: ${url}\n` +
+                    `Screenshot saved to: ${screenshotPath}\n` +
+                    `This test is designed to fail in this condition as required.`,
             );
         }
     }
@@ -81,14 +92,20 @@ async function checkForLoadingStall(page) {
 
         if (isVisible) {
             // Get the text content if possible
-            const textContent = await locator.textContent().catch(() => "Unknown");
+            const textContent = await locator
+                .textContent()
+                .catch(() => "Unknown");
 
             // Only fail if the text contains "Loading JWT Validator UI"
-            if (textContent.includes("Loading JWT Validator UI") ||
+            if (
+                textContent.includes("Loading JWT Validator UI") ||
                 textContent.includes("Loading JWT") ||
-                (textContent.includes("Loading") && selector.includes("loading"))) {
-
-                processorLogger.error(`Loading indicator still visible: ${selector} with text "${textContent}"`);
+                (textContent.includes("Loading") &&
+                    selector.includes("loading"))
+            ) {
+                processorLogger.error(
+                    `Loading indicator still visible: ${selector} with text "${textContent}"`,
+                );
 
                 // Take a screenshot for debugging
                 const screenshotPath = `loading-stall-${Date.now()}.png`;
@@ -100,25 +117,28 @@ async function checkForLoadingStall(page) {
                 // Fail the test with a detailed message
                 throw new Error(
                     `FAILURE: UI stalled at loading indicator with text: "${textContent}"\n` +
-                    `Selector: ${selector}\n` +
-                    `URL: ${url}\n` +
-                    `Screenshot saved to: ${screenshotPath}\n` +
-                    `This test is designed to fail in this condition as required.`
+                        `Selector: ${selector}\n` +
+                        `URL: ${url}\n` +
+                        `Screenshot saved to: ${screenshotPath}\n` +
+                        `This test is designed to fail in this condition as required.`,
                 );
             }
         }
     }
 
     // Also check for any element containing the loading text using a more general approach
-    const allElements = await page.$$('*');
+    const allElements = await page.$$("*");
     for (const element of allElements) {
         try {
             const textContent = await element.textContent();
-            if (textContent &&
+            if (
+                textContent &&
                 (textContent.includes("Loading JWT Validator UI...") ||
-                 textContent === "Loading JWT Validator UI")) {
-
-                processorLogger.error(`Found element with loading text: "${textContent}"`);
+                    textContent === "Loading JWT Validator UI")
+            ) {
+                processorLogger.error(
+                    `Found element with loading text: "${textContent}"`,
+                );
 
                 // Take a screenshot for debugging
                 const screenshotPath = `loading-text-stall-${Date.now()}.png`;
@@ -130,10 +150,10 @@ async function checkForLoadingStall(page) {
                 // Fail the test with a detailed message
                 throw new Error(
                     `FAILURE: Found element with text: "${textContent}"\n` +
-                    `This indicates the JWT Validator UI failed to initialize properly.\n` +
-                    `URL: ${url}\n` +
-                    `Screenshot saved to: ${screenshotPath}\n` +
-                    `This test is designed to fail in this condition as required.`
+                        `This indicates the JWT Validator UI failed to initialize properly.\n` +
+                        `URL: ${url}\n` +
+                        `Screenshot saved to: ${screenshotPath}\n` +
+                        `This test is designed to fail in this condition as required.`,
                 );
             }
         } catch (error) {
@@ -149,14 +169,16 @@ async function checkForLoadingStall(page) {
 test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     // Make sure we're logged in before each test
     test.beforeEach(async ({ page }, testInfo) => {
-        // Setup console logging for this test
-        setupBrowserConsoleLogging(page, testInfo);
+        // Setup comprehensive error detection FIRST
+        await setupComprehensiveErrorDetection(page, testInfo);
 
         const authService = new AuthService(page);
         await authService.ensureReady();
 
-        // Check for loading stall after authentication
-        // This ensures we fail fast if the UI is stalled
+        // Check for critical errors after authentication
+        await checkCriticalErrors(page, testInfo);
+
+        // Also check for loading stall after authentication using original function
         await checkForLoadingStall(page);
     });
 
@@ -172,25 +194,36 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         await checkForLoadingStall(page);
 
         // Verify the canvas is ready as an additional check
-        await expect(page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS)).toBeVisible({
-            timeout: 30000,
-        });
+        await expect(page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS)).toBeVisible(
+            {
+                timeout: 30000,
+            },
+        );
 
         processorLogger.success("UI loaded successfully without stalling");
     });
 
-    test.afterEach(async ({ page: _ }, testInfo) => {
+    test.afterEach(async ({ page }, testInfo) => {
+        // Final check for critical errors before test completion
+        await checkForCriticalErrors(page, testInfo);
+
         // Save console logs for this specific test
         try {
             await saveTestBrowserLogs(testInfo);
         } catch (error) {
             // Silently handle logging errors
         }
+
+        // Cleanup critical error detection
+        cleanupCriticalErrorDetection();
     });
 
     test("should verify MultiIssuerJWTTokenAuthenticator deployment", async ({
         page,
-    }) => {
+    }, testInfo) => {
+        // Check for critical errors before proceeding
+        await checkCriticalErrors(page, testInfo);
+
         const processorService = new ProcessorService(page);
 
         // Check for loading stall before proceeding
@@ -200,6 +233,9 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         await expect(page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS)).toBeVisible(
             { timeout: 30000 },
         );
+
+        // Check for critical errors after canvas verification
+        await checkCriticalErrors(page, testInfo);
 
         // Find and verify the processor deployment
         const processor =
@@ -226,6 +262,9 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
                 "MultiIssuerJWTTokenAuthenticator not found - skipping advanced configuration test",
             );
         }
+
+        // Final check for critical errors
+        await checkCriticalErrors(page, testInfo);
     });
 
     test("should open processor configuration dialog", async ({ page }) => {

@@ -1,11 +1,13 @@
 /**
- * @file Global Console Logger
+ * @file Enhanced Console Logger with Critical Error Detection
  * Captures ALL browser console logs across all tests and saves to accessible file
- * @version 1.0.0
+ * Now includes real-time critical error detection and automatic test failure
+ * @version 2.0.0
  */
 
 import fs from 'fs';
 import path from 'path';
+import { globalCriticalErrorDetector } from './critical-error-detector.js';
 
 class IndividualTestLogger {
   constructor() {
@@ -13,7 +15,7 @@ class IndividualTestLogger {
   }
 
   /**
-   * Set up console logging for a specific test
+   * Set up enhanced console logging with critical error detection for a specific test
    */
   setupLogging(page, testInfo) {
     if (!page || !testInfo) return;
@@ -26,6 +28,9 @@ class IndividualTestLogger {
     }
     
     const testLogsArray = this.testLogs.get(testId);
+
+    // Start critical error detection for this test
+    globalCriticalErrorDetector.startMonitoring(page, testInfo);
 
     // Capture all console messages for this specific test
     page.on('console', (msg) => {
@@ -40,6 +45,9 @@ class IndividualTestLogger {
       };
       
       testLogsArray.push(logEntry);
+      
+      // Check for critical errors in real-time
+      this.checkForCriticalErrorsInLog(logEntry, testInfo);
     });
 
     // Capture page errors for this specific test
@@ -96,6 +104,75 @@ class IndividualTestLogger {
     const sanitizedTitle = testInfo.title.replace(/[^a-zA-Z0-9]/g, '_');
     const sanitizedFile = (testInfo.titlePath?.[0] || 'unknown').replace(/[^a-zA-Z0-9]/g, '_');
     return `${sanitizedFile}-${sanitizedTitle}`;
+  }
+
+  /**
+   * Check for critical errors in real-time during logging
+   */
+  checkForCriticalErrorsInLog(logEntry, testInfo) {
+    const message = logEntry.text;
+    const type = logEntry.type;
+    
+    // Critical JavaScript error patterns
+    const criticalPatterns = [
+      /Uncaught Error/i,
+      /Uncaught TypeError/i,
+      /Uncaught ReferenceError/i,
+      /Uncaught SyntaxError/i,
+      /Mismatched anonymous define\(\)/i,
+      /Module name .* has not been loaded/i,
+      /Loading JWT Validator UI\.\.\./i,
+      /Loading JWT Validator UI/i,
+      /RequireJS/i,
+      /Script error/i
+    ];
+    
+    // Check if this is a critical error
+    const isCritical = criticalPatterns.some(pattern => pattern.test(message));
+    
+    if (isCritical && type === 'error') {
+      console.error(`🚨 CRITICAL ERROR DETECTED IN REAL-TIME: ${message}`);
+      
+      // Mark this in the log entry
+      logEntry.isCriticalError = true;
+      logEntry.criticalErrorType = this.getCriticalErrorType(message);
+      
+      // Optionally fail immediately (can be controlled by test configuration)
+      if (this.shouldFailImmediately(logEntry)) {
+        throw new Error(
+          `🚨 CRITICAL ERROR DETECTED - Test failed immediately:\n` +
+          `Type: ${logEntry.criticalErrorType}\n` +
+          `Message: ${message}\n` +
+          `Test: ${testInfo.title}\n` +
+          `This test is designed to fail when critical JavaScript errors are detected.`
+        );
+      }
+    }
+  }
+
+  /**
+   * Determine the type of critical error
+   */
+  getCriticalErrorType(message) {
+    if (/Uncaught Error|Uncaught TypeError|Uncaught ReferenceError|Uncaught SyntaxError/i.test(message)) {
+      return 'JAVASCRIPT_ERROR';
+    }
+    if (/Mismatched anonymous define\(\)|RequireJS|Module name .* has not been loaded/i.test(message)) {
+      return 'MODULE_LOADING_ERROR';
+    }
+    if (/Loading JWT Validator UI/i.test(message)) {
+      return 'UI_LOADING_STALL';
+    }
+    return 'UNKNOWN_CRITICAL_ERROR';
+  }
+
+  /**
+   * Determine if test should fail immediately on this error
+   */
+  shouldFailImmediately(logEntry) {
+    // For now, always fail immediately on critical errors
+    // This can be made configurable later
+    return true;
   }
 
   /**
@@ -244,4 +321,44 @@ export async function saveTestBrowserLogs(testInfo) {
   const testId = globalConsoleLogger.getTestId(testInfo);
   const logs = globalConsoleLogger.getTestLogs(testId);
   return globalConsoleLogger.saveTestLogs(testId, logs);
+}
+
+/**
+ * Setup comprehensive error detection and logging
+ * This is the recommended function to use in test files for strict error detection
+ */
+export async function setupComprehensiveErrorDetection(page, testInfo) {
+  // Setup enhanced console logging with critical error detection
+  globalConsoleLogger.setupLogging(page, testInfo);
+  
+  // Perform initial critical error checks
+  await globalCriticalErrorDetector.checkForEmptyCanvas(page, testInfo);
+  await globalCriticalErrorDetector.checkForUILoadingStalls(page, testInfo);
+  
+  // Fail immediately if any critical errors detected during setup
+  globalCriticalErrorDetector.failTestOnCriticalErrors();
+  
+  return {
+    checkCriticalErrors: async () => {
+      await globalCriticalErrorDetector.checkForEmptyCanvas(page, testInfo);
+      await globalCriticalErrorDetector.checkForUILoadingStalls(page, testInfo);
+      globalCriticalErrorDetector.failTestOnCriticalErrors();
+    },
+    
+    getCriticalErrors: () => globalCriticalErrorDetector.getDetectedErrors(),
+    
+    cleanup: () => {
+      globalCriticalErrorDetector.stopMonitoring();
+      globalCriticalErrorDetector.clearErrors();
+    }
+  };
+}
+
+/**
+ * Quick check for critical errors during test execution
+ */
+export async function checkForCriticalErrors(page, testInfo) {
+  await globalCriticalErrorDetector.checkForEmptyCanvas(page, testInfo);
+  await globalCriticalErrorDetector.checkForUILoadingStalls(page, testInfo);
+  globalCriticalErrorDetector.failTestOnCriticalErrors();
 }

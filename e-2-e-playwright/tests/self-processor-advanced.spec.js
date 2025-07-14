@@ -1,8 +1,9 @@
 /**
- * @file Self-Test: Processor Advanced Configuration
+ * @file Self-Test: Processor Advanced Configuration - STRICT MODE
  * Tests processor advanced configuration access with 2025 best practices
  * Single responsibility: Verify processor advanced dialog opens and "Back to Processor" works
- * @version 1.0.0
+ * NOW INCLUDES: Strict error detection that fails tests on critical errors
+ * @version 2.0.0 - Enhanced with critical error detection
  */
 
 import { test, expect } from "@playwright/test";
@@ -10,52 +11,89 @@ import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 import { CONSTANTS } from "../utils/constants.js";
 import { processorLogger } from "../utils/shared-logger.js";
+import {
+    setupComprehensiveErrorDetection,
+    checkForCriticalErrors,
+} from "../utils/console-logger.js";
+import {
+    checkCriticalErrors,
+    cleanupCriticalErrorDetection,
+} from "../utils/critical-error-detector.js";
 
-test.describe("Self-Test: Processor Advanced Configuration", () => {
-    test.beforeEach(async ({ page }) => {
+test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () => {
+    test.beforeEach(async ({ page }, testInfo) => {
+        // Setup comprehensive error detection FIRST
+        await setupComprehensiveErrorDetection(page, testInfo);
+
         const authService = new AuthService(page);
         await authService.ensureReady();
+
+        // Check for critical errors after authentication
+        await checkCriticalErrors(page, testInfo);
     });
 
-    test("should open processor configuration dialog", async ({ page }) => {
+    test.afterEach(async ({ page }, testInfo) => {
+        // Final check for critical errors before test completion
+        await checkForCriticalErrors(page, testInfo);
+
+        // Cleanup critical error detection
+        cleanupCriticalErrorDetection();
+    });
+
+    test("should open processor configuration dialog", async ({
+        page,
+    }, testInfo) => {
+        // Check for critical errors before starting
+        await checkCriticalErrors(page, testInfo);
+
         const processorService = new ProcessorService(page);
 
-        // Find any processor on canvas
+        // STRICT MODE: Find any processor on canvas - MUST exist
         const processor = await processorService.find("processor", {
             failIfNotFound: false,
         });
 
-        if (processor) {
-            try {
-                // Open configuration dialog
-                const dialog = await processorService.configure(processor);
-
-                // Verify dialog is visible
-                await expect(dialog).toBeVisible({ timeout: 10000 });
-
-                // Close dialog using ESC key or close button
-                await page.keyboard.press("Escape");
-
-                // Verify dialog is closed
-                await expect(dialog).not.toBeVisible({ timeout: 5000 });
-            } catch (error) {
-                processorLogger.warn(
-                    "Could not open processor configuration dialog: %s",
-                    error.message,
-                );
-                // This is acceptable as the processor might not support configuration
-            }
-        } else {
-            processorLogger.error(
-                "No processor found on canvas for configuration test",
+        // STRICT FAILURE: No processor found means empty canvas - this is a critical error
+        if (!processor) {
+            throw new Error(
+                "🚨 CRITICAL ERROR: No processor found on canvas!\n" +
+                    "This indicates an empty canvas which is a fundamental issue.\n" +
+                    "Expected: At least one processor should be available for configuration testing.\n" +
+                    "Actual: Canvas is empty or processors failed to load.\n" +
+                    "This test is designed to fail when the canvas is empty.",
             );
-            throw new Error("Test failed: No processor found on canvas for configuration test");
         }
+
+        // Check for critical errors before attempting configuration
+        await checkCriticalErrors(page, testInfo);
+
+        // STRICT MODE: Configuration must work - no try/catch to mask failures
+        // Open configuration dialog
+        const dialog = await processorService.configure(processor);
+
+        // Verify dialog is visible
+        await expect(dialog).toBeVisible({ timeout: 10000 });
+
+        // Check for critical errors after opening dialog
+        await checkCriticalErrors(page, testInfo);
+
+        // Close dialog using ESC key or close button
+        await page.keyboard.press("Escape");
+
+        // Verify dialog is closed
+        await expect(dialog).not.toBeVisible({ timeout: 5000 });
+
+        // Final check for critical errors
+        await checkCriticalErrors(page, testInfo);
+
+        processorLogger.success(
+            "Configuration dialog test completed successfully",
+        );
     });
 
     test("should access advanced configuration properties", async ({
         page,
-    }) => {
+    }, testInfo) => {
         const processorService = new ProcessorService(page);
 
         // Find a processor that supports advanced configuration
@@ -64,65 +102,68 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
         });
 
         if (processor) {
-            try {
-                // Right-click to open context menu
-                await processorService.interact(processor, {
-                    action: "rightclick",
-                });
+            // STRICT MODE: No try/catch to mask failures - fail fast on errors
 
-                // Look for configure option
-                const configureOption = page.getByRole("menuitem", {
-                    name: /configure/i,
-                });
+            // Right-click to open context menu
+            await processorService.interact(processor, {
+                action: "rightclick",
+            });
 
-                // If configure option exists, click it
-                if (await configureOption.isVisible({ timeout: 2000 })) {
-                    await configureOption.click();
+            // Look for configure option
+            const configureOption = page.getByRole("menuitem", {
+                name: /configure/i,
+            });
 
-                    // Wait for configuration dialog
-                    const dialog = page.locator(
-                        ".mat-dialog-container, .configure-dialog",
-                    );
-                    await expect(dialog).toBeVisible({ timeout: 10000 });
+            // If configure option exists, click it
+            if (await configureOption.isVisible({ timeout: 2000 })) {
+                await configureOption.click();
 
-                    // Look for Properties or Advanced tab
-                    const advancedTab = page.getByRole("tab", {
-                        name: /properties|advanced/i,
-                    });
-
-                    if (await advancedTab.isVisible({ timeout: 2000 })) {
-                        await advancedTab.click();
-
-                        // Verify advanced content is loaded
-                        const advancedContent = page.locator(
-                            ".mat-tab-body-active, .properties-content",
-                        );
-                        await expect(advancedContent).toBeVisible({
-                            timeout: 10000,
-                        });
-                    }
-
-                    // Close using ESC
-                    await page.keyboard.press("Escape");
-                }
-            } catch (error) {
-                processorLogger.warn(
-                    "Could not access advanced configuration properties: %s",
-                    error.message,
+                // Wait for configuration dialog
+                const dialog = page.locator(
+                    ".mat-dialog-container, .configure-dialog",
                 );
-                // This is acceptable as the processor might not support advanced configuration
+                await expect(dialog).toBeVisible({ timeout: 10000 });
+
+                // Look for Properties or Advanced tab
+                const advancedTab = page.getByRole("tab", {
+                    name: /properties|advanced/i,
+                });
+
+                if (await advancedTab.isVisible({ timeout: 2000 })) {
+                    await advancedTab.click();
+
+                    // Verify advanced content is loaded
+                    const advancedContent = page.locator(
+                        ".mat-tab-body-active, .properties-content",
+                    );
+                    await expect(advancedContent).toBeVisible({
+                        timeout: 10000,
+                    });
+                }
+
+                // Close using ESC
+                await page.keyboard.press("Escape");
             }
+
+            // STRICT MODE: Check for critical errors after advanced configuration access
+            await checkCriticalErrors(page, testInfo);
         } else {
-            processorLogger.error(
-                "No JWT processor found for advanced configuration test",
+            // STRICT FAILURE: No JWT processor found
+            throw new Error(
+                "🚨 CRITICAL ERROR: No JWT processor found for advanced configuration test!\n" +
+                    "This indicates either:\n" +
+                    "1. Empty canvas (no processors deployed)\n" +
+                    "2. JWT processors failed to load\n" +
+                    "3. UI initialization issues\n" +
+                    "Expected: JWT processor should be available for advanced configuration testing.\n" +
+                    "This test is designed to fail when JWT processors are not available.",
             );
-            throw new Error("Test failed: No JWT processor found for advanced configuration test");
         }
     });
 
     test('should verify "Back to Processor" navigation link', async ({
         page,
-    }) => {
+    }, _testInfo) => {
         const processorService = new ProcessorService(page);
 
         // Find any processor on canvas
@@ -184,14 +225,18 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
                 // This is acceptable as the processor might not support navigation
             }
         } else {
-            processorLogger.error("No processor found for back navigation test");
-            throw new Error("Test failed: No processor found for back navigation test");
+            processorLogger.error(
+                "No processor found for back navigation test",
+            );
+            throw new Error(
+                "Test failed: No processor found for back navigation test",
+            );
         }
     });
 
     test("should handle configuration dialog failures gracefully", async ({
         page,
-    }) => {
+    }, _testInfo) => {
         const processorService = new ProcessorService(page);
 
         // Try to configure a non-existent processor
@@ -212,7 +257,7 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
 
     test("should verify processor interaction reliability", async ({
         page,
-    }) => {
+    }, _testInfo) => {
         const processorService = new ProcessorService(page);
 
         // Find any processor on canvas
@@ -244,7 +289,9 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
             }
         } else {
             processorLogger.error("No processor found for interaction test");
-            throw new Error("Test failed: No processor found for interaction test");
+            throw new Error(
+                "Test failed: No processor found for interaction test",
+            );
         }
     });
 });
