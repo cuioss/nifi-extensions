@@ -89,13 +89,11 @@ export class AuthService {
 
   /**
    * Modern login with semantic locators and auto-waiting
+   * Always uses constants directly - passwords are never passed as parameters
    */
-  async login(credentials = {}) {
-    const username = credentials.username || CONSTANTS.AUTH.USERNAME;
-    const password = credentials.password || CONSTANTS.AUTH.PASSWORD;
-
+  async login() {
     const start = Date.now();
-    console.log(`🔵 AUTH: Starting login for user: ${username}...`);
+    console.log(`🔵 AUTH: Starting login for user: ${CONSTANTS.AUTH.USERNAME}...`);
     try {
       const result = await (async () => {
       // Navigate to login page
@@ -108,25 +106,79 @@ export class AuthService {
         return true;
       }
 
-      // Look for login button with modern selectors
-      const loginButton = this.page.getByRole('button', { name: /log in|login/i });
-      if (await loginButton.isVisible()) {
-        await loginButton.click();
+      // First get the CSRF token by navigating to the login page
+      await this.page.goto('/nifi');
+      await this.page.waitForLoadState('networkidle');
+
+      // Extract CSRF token from cookies
+      const cookies = await this.page.context().cookies();
+      const requestTokenCookie = cookies.find(c => c.name === '__Secure-Request-Token');
+      const requestToken = requestTokenCookie?.value;
+
+      if (!requestToken) {
+        throw new Error('Could not obtain CSRF token from login page');
+      }
+      
+      // Use API-based authentication (like HAR file shows)
+      const response = await this.page.request.post('/nifi-api/access/token', {
+        headers: {
+          'Request-Token': requestToken,
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+        },
+        form: {
+          username: CONSTANTS.AUTH.USERNAME,
+          password: CONSTANTS.AUTH.PASSWORD
+        }
+      });
+
+      if (!response.ok()) {
+        const errorBody = await response.text().catch(() => 'Unknown error');
+        throw new Error(`API login failed: ${response.status()} ${response.statusText()} - ${errorBody}`);
       }
 
-      // Fill credentials using semantic locators
-      await this.page.getByLabel(/username|email/i).fill(username);
-      await this.page.getByLabel(/password/i).fill(password);
+      // Get the JWT token from response
+      const token = await response.text();
+      
+      if (!token || token.trim().length === 0) {
+        throw new Error('Received empty token from authentication API');
+      }
+      
+      // Set the authorization header for subsequent requests
+      await this.page.setExtraHTTPHeaders({
+        'Authorization': `Bearer ${token}`
+      });
 
-      // Submit login form
-      await this.page.getByRole('button', { name: /sign in|login|submit/i }).click();
+      // Navigate to main canvas after successful authentication
+      await this.page.goto('/nifi');
 
       // Wait for authentication with proper error handling
       try {
-        await expect(this.page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS))
-          .toBeVisible({ timeout: 30000 });
+        // Wait for page to be fully loaded
+        await this.page.waitForLoadState('networkidle');
         
-        console.log(`✅ AUTH: Successfully logged in as ${username}`);
+        // Check multiple indicators that login was successful
+        const mainCanvasVisible = await this.page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS).isVisible().catch(() => false);
+        const logoutVisible = await this.page.getByRole('button', { name: /log out|logout/i }).isVisible().catch(() => false);
+        const usernameVisible = await this.page.locator(`text=${CONSTANTS.AUTH.USERNAME}`).isVisible().catch(() => false);
+        
+        const authSuccess = mainCanvasVisible || logoutVisible || usernameVisible;
+
+        if (!authSuccess) {
+          // Wait a bit more and try again
+          await this.page.waitForTimeout(2000);
+          
+          const retryMainCanvas = await this.page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS).isVisible().catch(() => false);
+          const retryLogout = await this.page.getByRole('button', { name: /log out|logout/i }).isVisible().catch(() => false);
+          const retryUsername = await this.page.locator(`text=${CONSTANTS.AUTH.USERNAME}`).isVisible().catch(() => false);
+          
+          const retrySuccess = retryMainCanvas || retryLogout || retryUsername;
+          
+          if (!retrySuccess) {
+            throw new Error('Authentication indicators not found after retry');
+          }
+        }
+        
+        console.log(`✅ AUTH: Successfully logged in as ${CONSTANTS.AUTH.USERNAME}`);
         return true;
       } catch (error) {
         // Check for error messages
@@ -135,18 +187,18 @@ export class AuthService {
         
         const errorMsg = errorText 
           ? `Login failed - ${errorText}` 
-          : `Login failed for user: ${username}`;
+          : `Login failed for user: ${CONSTANTS.AUTH.USERNAME}`;
         
         console.log(`🔴 AUTH: ${errorMsg}`);
         throw new Error(errorMsg);
       }
       })();
       const duration = Date.now() - start;
-      console.log(`✅ AUTH: Login for user: ${username} completed in ${duration}ms`);
+      console.log(`✅ AUTH: Login for user: ${CONSTANTS.AUTH.USERNAME} completed in ${duration}ms`);
       return result;
     } catch (error) {
       const duration = Date.now() - start;
-      console.log(`🔴 AUTH: Login for user: ${username} failed after ${duration}ms: ${error.message}`);
+      console.log(`🔴 AUTH: Login for user: ${CONSTANTS.AUTH.USERNAME} failed after ${duration}ms: ${error.message}`);
       throw error;
     }
   }
@@ -163,20 +215,21 @@ export class AuthService {
       localStorage.clear();
       sessionStorage.clear();
     });
+    
+    // Clear authorization headers
+    await this.page.setExtraHTTPHeaders({});
 
     // Navigate to login page
     await this.page.goto('/nifi');
     await this.page.waitForLoadState('networkidle');
 
-    // Verify logout success
-    const isLoggedOut = await this.page.getByRole('button', { name: /log in|login/i })
-      .isVisible()
-      .catch(() => false);
+    // Verify logout success by checking if authentication indicators are gone
+    const isStillAuthenticated = await this.isAuthenticated();
 
-    if (isLoggedOut) {
+    if (!isStillAuthenticated) {
       console.log('success', 'Successfully logged out');
     } else {
-      throw new Error('Logout failed - Login button not visible');
+      throw new Error('Logout failed - Still appears to be authenticated');
     }
   }
 

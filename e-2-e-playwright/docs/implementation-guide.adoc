@@ -334,30 +334,69 @@ test('should verify processor configuration', async ({ page }) => {
 
 === Authentication and Navigation Utilities
 
+**IMPORTANT UPDATE (January 2025)**: NiFi authentication now uses API token-based authentication instead of form-based login.
+
 We implement authentication and navigation utilities for common operations:
 
 [source,javascript]
 ----
-// utils/login-tool.js
-/**
- * Logs into NiFi with the specified credentials
- * @param {Page} page - Playwright page object
- * @param {string} username - Username for login
- * @param {string} password - Password for login
- */
-export async function loginToNiFi(page, username = 'admin', password = 'adminadminadmin') {
-  // Navigate to login page
-  await page.goto('/');
+// utils/auth-service.js - Modern API Token Authentication
+export class AuthService {
+  constructor(page) {
+    this.page = page;
+  }
 
-  // Fill in login form
-  await page.fill('[data-testid="username-input"]', username);
-  await page.fill('[data-testid="password-input"]', password);
+  /**
+   * Modern API token-based authentication
+   * Uses CSRF token and POST to /nifi-api/access/token
+   */
+  async login() {
+    // Navigate to get CSRF token
+    await this.page.goto('/nifi');
+    await this.page.waitForLoadState('networkidle');
 
-  // Submit login form
-  await page.click('[data-testid="login-button"]');
+    // Extract CSRF token from cookies
+    const cookies = await this.page.context().cookies();
+    const requestToken = cookies.find(c => c.name === '__Secure-Request-Token')?.value;
 
-  // Wait for successful login
-  await page.waitForSelector('[data-testid="flow-status-container"]', { timeout: 15000 });
+    if (!requestToken) {
+      throw new Error('Could not obtain CSRF token');
+    }
+
+    // API-based authentication (POST to token endpoint)
+    const response = await this.page.request.post('/nifi-api/access/token', {
+      headers: {
+        'Request-Token': requestToken,
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+      },
+      form: {
+        username: CONSTANTS.AUTH.USERNAME,
+        password: CONSTANTS.AUTH.PASSWORD
+      }
+    });
+
+    if (!response.ok()) {
+      throw new Error(`API login failed: ${response.status()}`);
+    }
+
+    // Get JWT token and set authorization header
+    const token = await response.text();
+    await this.page.setExtraHTTPHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+
+    // Navigate to main canvas
+    await this.page.goto('/nifi');
+    await this.page.waitForLoadState('networkidle');
+
+    // Verify authentication success
+    const authSuccess = await this.page.locator('#canvas-container').isVisible().catch(() => false) ||
+                       await this.page.locator(`text=${CONSTANTS.AUTH.USERNAME}`).isVisible().catch(() => false);
+
+    if (!authSuccess) {
+      throw new Error('Authentication verification failed');
+    }
+  }
 }
 
 // utils/navigation-tool.js

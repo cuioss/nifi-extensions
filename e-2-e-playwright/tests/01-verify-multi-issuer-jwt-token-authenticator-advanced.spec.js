@@ -8,12 +8,28 @@ import { test, expect } from "@playwright/test";
 import { ProcessorService } from "../utils/processor.js";
 import { AuthService } from "../utils/auth-service.js";
 import { CONSTANTS } from "../utils/constants.js";
+import {
+    setupBrowserConsoleLogging,
+    saveTestBrowserLogs,
+} from "../utils/console-logger.js";
 
 test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     // Make sure we're logged in before each test
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({ page }, testInfo) => {
+        // Setup console logging for this test
+        setupBrowserConsoleLogging(page, testInfo);
+
         const authService = new AuthService(page);
         await authService.ensureReady();
+    });
+
+    test.afterEach(async ({ page: _ }, testInfo) => {
+        // Save console logs for this specific test
+        try {
+            await saveTestBrowserLogs(testInfo);
+        } catch (error) {
+            // Silently handle logging errors
+        }
     });
 
     test("should verify MultiIssuerJWTTokenAuthenticator deployment", async ({

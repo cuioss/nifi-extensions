@@ -62,13 +62,11 @@ export class LoginPage {
 
   /**
    * Perform complete login flow
+   * Always uses constants directly - passwords are never passed as parameters
    */
-  async login(credentials = {}) {
-    const username = credentials.username || CONSTANTS.AUTH.USERNAME;
-    const password = credentials.password || CONSTANTS.AUTH.PASSWORD;
-
+  async login() {
     await this.goto();
-    await this.fillCredentials(username, password);
+    await this.fillCredentials(CONSTANTS.AUTH.USERNAME, CONSTANTS.AUTH.PASSWORD);
     await this.submit();
   }
 

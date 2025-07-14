@@ -7,7 +7,10 @@
 
 import { test, expect } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
-import { setupBrowserConsoleLogging, saveAllBrowserLogs } from "../utils/console-logger.js";
+import {
+    setupBrowserConsoleLogging,
+    saveAllBrowserLogs,
+} from "../utils/console-logger.js";
 import fs from "fs";
 import path from "path";
 
@@ -235,10 +238,10 @@ test.describe("Self-Test: Browser Console Logging", () => {
     }, testInfo) => {
         // Setup console logging specifically for this test
         setupBrowserConsoleLogging(page, testInfo);
-        
+
         // Navigate and generate console activity
         await page.goto("/nifi");
-        
+
         // Generate specific console messages to verify
         await page.evaluate(() => {
             console.log("Direct log test - INFO message");
@@ -246,43 +249,52 @@ test.describe("Self-Test: Browser Console Logging", () => {
             console.error("Direct log test - ERROR message");
             console.info("Direct log test - DETAILED info");
         });
-        
+
         // Wait a moment for logs to be captured
         await page.waitForTimeout(500);
-        
-        // Save logs to direct accessible file
-        const result = await saveAllBrowserLogs();
-        
-        expect(result).toBeTruthy();
+
+        // Save logs to direct accessible file (returns array of results for each test)
+        const results = await saveAllBrowserLogs();
+
+        expect(results).toBeTruthy();
+        expect(Array.isArray(results)).toBeTruthy();
+        expect(results.length).toBeGreaterThan(0);
+
+        // Get the result for this specific test
+        const result = results[0]; // Since this is the only test running
+
         expect(result.textLog).toBeTruthy();
         expect(result.jsonLog).toBeTruthy();
         expect(result.totalLogs).toBeGreaterThan(0);
-        
+        expect(result.testId).toBeTruthy();
+
         // Verify files exist and are accessible
         expect(fs.existsSync(result.textLog)).toBeTruthy();
         expect(fs.existsSync(result.jsonLog)).toBeTruthy();
-        
+
         // Verify content contains our test messages
-        const textContent = fs.readFileSync(result.textLog, 'utf8');
+        const textContent = fs.readFileSync(result.textLog, "utf8");
         expect(textContent).toContain("Direct log test - INFO message");
         expect(textContent).toContain("Direct log test - WARNING message");
         expect(textContent).toContain("Direct log test - ERROR message");
-        
-        const jsonContent = JSON.parse(fs.readFileSync(result.jsonLog, 'utf8'));
+        expect(textContent).toContain(result.testId); // Should contain test identifier
+
+        const jsonContent = JSON.parse(fs.readFileSync(result.jsonLog, "utf8"));
         expect(jsonContent.length).toBeGreaterThan(0);
-        
-        const infoMsg = jsonContent.find(log => log.text.includes("Direct log test - INFO"));
+
+        const infoMsg = jsonContent.find((log) =>
+            log.text.includes("Direct log test - INFO"),
+        );
         expect(infoMsg).toBeTruthy();
         expect(infoMsg.type).toBe("log");
-        
-        console.log(`✅ Direct browser console log files created:`);
-        console.log(`   📄 Text: ${result.textLog}`);
-        console.log(`   📋 JSON: ${result.jsonLog}`);
+        expect(infoMsg.test).toBe(testInfo.title);
+
+        // Test completed successfully
     });
 
     test("should verify log file cleanup and rotation", async ({
-        page,
-    }, testInfo) => {
+        page: _,
+    }, _testInfo) => {
         const logsDir = path.join(process.cwd(), "target", "logs");
 
         // Ensure logs directory exists
@@ -290,10 +302,10 @@ test.describe("Self-Test: Browser Console Logging", () => {
             fs.mkdirSync(logsDir, { recursive: true });
         }
 
-        // Check initial state
-        const initialFiles = fs
-            .readdirSync(logsDir)
-            .filter((f) => f.endsWith(".json"));
+        // Check initial state (commented out as not used in this simplified test)
+        // const initialFiles = fs
+        //     .readdirSync(logsDir)
+        //     .filter((f) => f.endsWith(".json"));
 
         // Create a test log file
         const testLogFile = path.join(logsDir, "test-log-cleanup.json");

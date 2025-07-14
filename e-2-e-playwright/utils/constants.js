@@ -14,12 +14,13 @@ export const PAGE_TYPES = {
 
 /**
  * Authentication constants
+ * 
+ * ⚠️  WARNING: DO NOT CHANGE THESE VALUES WITHOUT PRIOR USER CONSULTATION
+ * These credentials must match the NiFi instance configuration
  */
 export const AUTH = {
-  USERNAME: process.env.NIFI_USERNAME || 'admin',
-  PASSWORD: process.env.NIFI_PASSWORD || 'admin123',
-  ADMIN_USERNAME: process.env.NIFI_ADMIN_USERNAME || 'admin',
-  ADMIN_PASSWORD: process.env.NIFI_ADMIN_PASSWORD || 'admin123'
+  USERNAME: 'testUser',
+  PASSWORD: 'drowssap'
 };
 
 /**
@@ -51,33 +52,33 @@ export const TIMEOUTS = {
  * Prioritizes semantic locators over complex CSS selectors
  */
 export const SELECTORS = {
-  // Main application elements
-  MAIN_CANVAS: 'mat-sidenav-content, #canvas-container, .mat-drawer-content',
-  
+  // Main application elements - use first() to avoid strict mode violation
+  MAIN_CANVAS: '#canvas-container',
+
   // Authentication elements - using semantic selectors
   USERNAME_INPUT: 'input[name="username"], input[placeholder*="username" i], input[type="text"]',
   PASSWORD_INPUT: 'input[name="password"], input[placeholder*="password" i], input[type="password"]',
   LOGIN_BUTTON: 'button[type="submit"], button:has-text("Log In"), button:has-text("Sign In")',
-  
+
   // Canvas and workspace
   CANVAS_CONTAINER: 'mat-sidenav-content',
   CANVAS_SVG: 'svg.canvas-svg, mat-sidenav-content svg, #canvas-container svg',
-  
+
   // Processors - simplified selectors
   PROCESSOR_ELEMENT: '.processor, [data-type*="processor"], .component',
-  
+
   // Dialogs - using role-based selectors (2025 best practice)
   DIALOG_CONTAINER: '[role="dialog"], mat-dialog-container',
-  
+
   // Forms - semantic approach
   TEXT_INPUT: 'input[type="text"], input[matInput]',
   TEXTAREA: 'textarea, textarea[matInput]',
-  
+
   // Buttons - semantic approach
   SUBMIT_BUTTON: 'button[type="submit"]',
   CANCEL_BUTTON: 'button:has-text("Cancel")',
   APPLY_BUTTON: 'button:has-text("Apply")',
-  
+
   // Context menus
   CONTEXT_MENU: '[role="menu"], .context-menu',
   MENU_ITEM: '[role="menuitem"]'

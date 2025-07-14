@@ -7,22 +7,31 @@
 import fs from 'fs';
 import path from 'path';
 
-class GlobalConsoleLogger {
+class IndividualTestLogger {
   constructor() {
-    this.allLogs = [];
-    this.isSetup = false;
+    this.testLogs = new Map(); // Map of testId -> logs array
   }
 
   /**
-   * Set up global console logging for a page
+   * Set up console logging for a specific test
    */
   setupLogging(page, testInfo) {
-    if (!page || this.isSetup) return;
+    if (!page || !testInfo) return;
+    
+    const testId = this.getTestId(testInfo);
+    
+    // Initialize logs array for this test
+    if (!this.testLogs.has(testId)) {
+      this.testLogs.set(testId, []);
+    }
+    
+    const testLogsArray = this.testLogs.get(testId);
 
-    // Capture all console messages
+    // Capture all console messages for this specific test
     page.on('console', (msg) => {
       const logEntry = {
-        test: testInfo?.title || 'Unknown Test',
+        test: testInfo.title,
+        testFile: testInfo.titlePath?.[0] || 'Unknown File',
         timestamp: new Date().toISOString(),
         type: msg.type(),
         text: msg.text(),
@@ -30,13 +39,14 @@ class GlobalConsoleLogger {
         args: msg.args()?.map(arg => arg.toString()) || []
       };
       
-      this.allLogs.push(logEntry);
+      testLogsArray.push(logEntry);
     });
 
-    // Capture page errors
+    // Capture page errors for this specific test
     page.on('pageerror', (error) => {
       const logEntry = {
-        test: testInfo?.title || 'Unknown Test',
+        test: testInfo.title,
+        testFile: testInfo.titlePath?.[0] || 'Unknown File',
         timestamp: new Date().toISOString(),
         type: 'pageerror',
         text: error.message,
@@ -45,13 +55,14 @@ class GlobalConsoleLogger {
         args: []
       };
       
-      this.allLogs.push(logEntry);
+      testLogsArray.push(logEntry);
     });
 
-    // Capture unhandled exceptions
+    // Capture page crashes for this specific test
     page.on('crash', () => {
       const logEntry = {
-        test: testInfo?.title || 'Unknown Test',
+        test: testInfo.title,
+        testFile: testInfo.titlePath?.[0] || 'Unknown File',
         timestamp: new Date().toISOString(),
         type: 'crash',
         text: 'Page crashed',
@@ -59,13 +70,14 @@ class GlobalConsoleLogger {
         args: []
       };
       
-      this.allLogs.push(logEntry);
+      testLogsArray.push(logEntry);
     });
 
-    // Capture request failures
+    // Capture request failures for this specific test
     page.on('requestfailed', (request) => {
       const logEntry = {
-        test: testInfo?.title || 'Unknown Test',
+        test: testInfo.title,
+        testFile: testInfo.titlePath?.[0] || 'Unknown File',
         timestamp: new Date().toISOString(),
         type: 'requestfailed',
         text: `Request failed: ${request.method()} ${request.url()} - ${request.failure()?.errorText || 'Unknown error'}`,
@@ -73,17 +85,24 @@ class GlobalConsoleLogger {
         args: [request.url(), request.method()]
       };
       
-      this.allLogs.push(logEntry);
+      testLogsArray.push(logEntry);
     });
-
-    this.isSetup = true;
   }
 
   /**
-   * Save all captured logs to a file
+   * Generate unique test identifier
    */
-  async saveAllLogs() {
-    if (this.allLogs.length === 0) {
+  getTestId(testInfo) {
+    const sanitizedTitle = testInfo.title.replace(/[^a-zA-Z0-9]/g, '_');
+    const sanitizedFile = (testInfo.titlePath?.[0] || 'unknown').replace(/[^a-zA-Z0-9]/g, '_');
+    return `${sanitizedFile}-${sanitizedTitle}`;
+  }
+
+  /**
+   * Save logs for a specific test
+   */
+  async saveTestLogs(testId, logs) {
+    if (!logs || logs.length === 0) {
       return null;
     }
 
@@ -95,36 +114,53 @@ class GlobalConsoleLogger {
       fs.mkdirSync(logsDir, { recursive: true });
     }
 
-    // Create comprehensive log file
+    // Create individual test log files
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const logFileName = `all-browser-console-logs-${timestamp}.log`;
+    const logFileName = `${testId}-console-logs-${timestamp}.log`;
     const logFilePath = path.join(logsDir, logFileName);
 
     // Format logs for readability
-    const formattedLogs = this.formatLogsForFile(this.allLogs);
+    const formattedLogs = this.formatLogsForFile(logs, testId);
 
     // Write to file
     fs.writeFileSync(logFilePath, formattedLogs, 'utf8');
 
     // Also save as JSON for programmatic access
-    const jsonFileName = `all-browser-console-logs-${timestamp}.json`;
+    const jsonFileName = `${testId}-console-logs-${timestamp}.json`;
     const jsonFilePath = path.join(logsDir, jsonFileName);
-    fs.writeFileSync(jsonFilePath, JSON.stringify(this.allLogs, null, 2), 'utf8');
+    fs.writeFileSync(jsonFilePath, JSON.stringify(logs, null, 2), 'utf8');
 
     return {
       textLog: logFilePath,
       jsonLog: jsonFilePath,
-      totalLogs: this.allLogs.length
+      totalLogs: logs.length,
+      testId
     };
+  }
+
+  /**
+   * Save all captured logs for all tests
+   */
+  async saveAllLogs() {
+    const results = [];
+    
+    for (const [testId, logs] of this.testLogs) {
+      const result = await this.saveTestLogs(testId, logs);
+      if (result) {
+        results.push(result);
+      }
+    }
+    
+    return results.length > 0 ? results : null;
   }
 
   /**
    * Format logs for human-readable file
    */
-  formatLogsForFile(logs) {
+  formatLogsForFile(logs, testId = 'ALL_TESTS') {
     const header = `
 ===============================================
-      ALL BROWSER CONSOLE LOGS
+      BROWSER CONSOLE LOGS - ${testId}
 ===============================================
 Generated: ${new Date().toISOString()}
 Total Log Entries: ${logs.length}
@@ -137,6 +173,7 @@ Total Log Entries: ${logs.length}
       return `
 ${separator} Entry ${index + 1} ${separator}
 Test: ${log.test}
+File: ${log.testFile}
 Time: ${log.timestamp}
 Type: ${log.type.toUpperCase()}
 Message: ${log.text}
@@ -150,23 +187,41 @@ ${log.args.length > 0 ? `Args: ${log.args.join(', ')}` : ''}
   }
 
   /**
-   * Get current log count
+   * Get current log count for a specific test
    */
-  getLogCount() {
-    return this.allLogs.length;
+  getLogCount(testId) {
+    if (testId) {
+      return this.testLogs.get(testId)?.length || 0;
+    }
+    // Return total count across all tests
+    let total = 0;
+    for (const logs of this.testLogs.values()) {
+      total += logs.length;
+    }
+    return total;
   }
 
   /**
-   * Clear all logs
+   * Clear logs for a specific test or all logs
    */
-  clearLogs() {
-    this.allLogs = [];
-    this.isSetup = false;
+  clearLogs(testId) {
+    if (testId) {
+      this.testLogs.delete(testId);
+    } else {
+      this.testLogs.clear();
+    }
+  }
+
+  /**
+   * Get logs for a specific test
+   */
+  getTestLogs(testId) {
+    return this.testLogs.get(testId) || [];
   }
 }
 
 // Export global instance
-export const globalConsoleLogger = new GlobalConsoleLogger();
+export const globalConsoleLogger = new IndividualTestLogger();
 
 /**
  * Convenience function to setup logging on a page
@@ -180,4 +235,13 @@ export function setupBrowserConsoleLogging(page, testInfo) {
  */
 export async function saveAllBrowserLogs() {
   return globalConsoleLogger.saveAllLogs();
+}
+
+/**
+ * Save logs for a specific test
+ */
+export async function saveTestBrowserLogs(testInfo) {
+  const testId = globalConsoleLogger.getTestId(testInfo);
+  const logs = globalConsoleLogger.getTestLogs(testId);
+  return globalConsoleLogger.saveTestLogs(testId, logs);
 }
