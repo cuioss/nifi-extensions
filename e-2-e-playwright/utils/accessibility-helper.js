@@ -5,7 +5,7 @@
 
 import { injectAxe, checkA11y, configureAxe } from 'axe-playwright';
 import { CONSTANTS } from './constants.js';
-import { authLogger as logMessage } from './shared-logger.js';
+import { accessibilityLogger } from './shared-logger.js';
 
 /**
  * Modern accessibility testing service
@@ -23,7 +23,7 @@ export class AccessibilityService {
     if (this.isInjected) return;
 
     await injectAxe(this.page);
-    
+
     // Configure axe for NiFi-specific testing
     await configureAxe(this.page, {
       rules: {
@@ -32,7 +32,7 @@ export class AccessibilityService {
         'keyboard-navigation': { enabled: true },
         'aria-labels': { enabled: true },
         'focus-management': { enabled: true },
-        
+
         // Disable rules that may conflict with Angular Material
         'landmark-one-main': { enabled: false },
         'page-has-heading-one': { enabled: false }
@@ -41,7 +41,7 @@ export class AccessibilityService {
     });
 
     this.isInjected = true;
-    console.log('success', 'Axe-core injected and configured');
+    accessibilityLogger.success('Axe-core injected and configured');
   }
 
   /**
@@ -72,13 +72,13 @@ export class AccessibilityService {
         },
         tags,
         detailedReport,
-        detailedReportOptions: { 
+        detailedReportOptions: {
           html: detailedReport,
           outputDir: 'target/accessibility-reports'
         }
       });
 
-      console.log('success', 'Accessibility check passed');
+      accessibilityLogger.success('Accessibility check passed');
       return { passed: true, violations: [] };
     } catch (error) {
       if (failOnViolations) {
@@ -86,11 +86,11 @@ export class AccessibilityService {
       }
 
       // Log accessibility issues as warnings
-      console.log('warn', `Accessibility violations found: ${error.message}`);
-      return { 
-        passed: false, 
+      accessibilityLogger.warn('Accessibility violations found: %s', error.message);
+      return {
+        passed: false,
         violations: error.violations || [],
-        message: error.message 
+        message: error.message
       };
     }
   }
@@ -100,7 +100,7 @@ export class AccessibilityService {
    */
   async checkElement(selector, options = {}) {
     await this.inject();
-    
+
     const element = this.page.locator(selector);
     await element.waitFor({ timeout: 5000 });
 
@@ -115,7 +115,7 @@ export class AccessibilityService {
    */
   async checkLoginForm() {
     await this.inject();
-    
+
     return this.check({
       include: 'form, [role="form"], .login-form',
       tags: ['wcag2a', 'wcag2aa', 'wcag21aa'],
@@ -128,12 +128,12 @@ export class AccessibilityService {
    */
   async checkMainCanvas() {
     await this.inject();
-    
+
     return this.check({
       include: CONSTANTS.SELECTORS.MAIN_CANVAS,
       exclude: [
         // Exclude complex SVG elements that may have accessibility issues
-        'svg', 
+        'svg',
         '.d3-tip',
         '.nvtooltip'
       ],
@@ -147,7 +147,7 @@ export class AccessibilityService {
    */
   async checkDialog() {
     await this.inject();
-    
+
     return this.check({
       include: CONSTANTS.SELECTORS.DIALOG_CONTAINER,
       tags: ['wcag2a', 'wcag2aa', 'wcag21aa'],
@@ -160,7 +160,7 @@ export class AccessibilityService {
    */
   async generateReport(testName = 'accessibility-test') {
     await this.inject();
-    
+
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const reportPath = `target/accessibility-reports/${testName}-${timestamp}.html`;
 
@@ -172,7 +172,7 @@ export class AccessibilityService {
       }
     });
 
-    console.log('info', `Accessibility report generated: ${reportPath}`);
+    accessibilityLogger.info('Accessibility report generated: %s', reportPath);
     return result;
   }
 }

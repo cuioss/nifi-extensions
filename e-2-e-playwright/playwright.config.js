@@ -32,7 +32,7 @@ module.exports = defineConfig({
     timeout: 10000
   },
   /* Global setup and teardown hooks */
-  globalTeardown: './e-2-e-playwright/global-teardown.js',
+  globalTeardown: './scripts/global-teardown.js',
   /* Enhanced parallel execution for better performance */
   fullyParallel: true,
   workers: process.env.CI ? 2 : undefined,
@@ -88,11 +88,11 @@ module.exports = defineConfig({
   },
 
   /* Focused browser configuration - Chromium as sensible default
-   * 
+   *
    * Why Chromium only:
    * - Most stable and widely used browser in enterprise environments
    * - Best Playwright support and performance
-   * - Consistent behavior across development and CI environments  
+   * - Consistent behavior across development and CI environments
    * - NiFi's UI is primarily tested and optimized for Chrome/Chromium
    * - Reduces test execution time and maintenance overhead
    * - Enterprise users typically standardize on Chrome-based browsers
@@ -100,7 +100,7 @@ module.exports = defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { 
+      use: {
         ...devices['Desktop Chrome'],
         // Enable modern Chrome features for enterprise NiFi testing
         launchOptions: {

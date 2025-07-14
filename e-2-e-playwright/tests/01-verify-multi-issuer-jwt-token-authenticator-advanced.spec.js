@@ -12,6 +12,7 @@ import {
     setupBrowserConsoleLogging,
     saveTestBrowserLogs,
 } from "../utils/console-logger.js";
+import { processorLogger } from "../utils/shared-logger.js";
 
 test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     // Make sure we're logged in before each test
@@ -63,7 +64,7 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
                 "Processor name should contain MultiIssuerJWTTokenAuthenticator",
             ).toContain("MultiIssuerJWTTokenAuthenticator");
         } else {
-            console.log(
+            processorLogger.info(
                 "MultiIssuerJWTTokenAuthenticator not found - skipping advanced configuration test",
             );
         }
@@ -94,16 +95,18 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
                 // Verify dialog appeared
                 await expect(dialog).toBeVisible();
 
-                console.log("Successfully opened configuration dialog");
+                processorLogger.success(
+                    "Successfully opened configuration dialog",
+                );
             } catch (error) {
-                console.log(
-                    "Configuration dialog could not be opened:",
+                processorLogger.warn(
+                    "Configuration dialog could not be opened: %s",
                     error.message,
                 );
                 // This is acceptable as the UI may have restrictions
             }
         } else {
-            console.log(
+            processorLogger.info(
                 "MultiIssuerJWTTokenAuthenticator not found - skipping configuration dialog test",
             );
         }
@@ -139,16 +142,18 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
                 // Verify advanced configuration view
                 await expect(advancedConfig).toBeVisible();
 
-                console.log("Successfully accessed advanced configuration");
+                processorLogger.success(
+                    "Successfully accessed advanced configuration",
+                );
             } catch (error) {
-                console.log(
-                    "Advanced configuration could not be accessed:",
+                processorLogger.warn(
+                    "Advanced configuration could not be accessed: %s",
                     error.message,
                 );
                 // This is acceptable as the processor may not allow configuration in this context
             }
         } else {
-            console.log(
+            processorLogger.info(
                 "MultiIssuerJWTTokenAuthenticator not found - skipping advanced configuration test",
             );
         }
@@ -181,9 +186,9 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
                 "Processor should remain accessible after interaction",
             ).toBeTruthy();
 
-            console.log("Successfully interacted with processor");
+            processorLogger.success("Successfully interacted with processor");
         } else {
-            console.log(
+            processorLogger.info(
                 "MultiIssuerJWTTokenAuthenticator not found - skipping interaction test",
             );
         }

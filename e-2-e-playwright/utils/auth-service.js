@@ -6,7 +6,7 @@
 
 import { expect } from '@playwright/test';
 import { CONSTANTS } from './constants.js';
-// Simplified logging - using console.log instead of custom logger
+import { authLogger } from './shared-logger.js';
 
 /**
  * Modern authentication service with 2025 Playwright patterns
@@ -20,7 +20,7 @@ export class AuthService {
    * Check if services are accessible using modern request API
    */
   async checkServiceAccessibility(serviceUrl, serviceName, timeout = 5000) {
-    console.log(`🔵 AUTH: Checking ${serviceName} accessibility...`);
+    authLogger.info(`Checking ${serviceName} accessibility...`);
 
     try {
       const response = await this.page.request.get(serviceUrl, {
@@ -29,18 +29,18 @@ export class AuthService {
       });
 
       // Consider 401 as accessible (requires auth)
-      const isAccessible = response && 
+      const isAccessible = response &&
         ((response.status() >= 200 && response.status() < 400) || response.status() === 401);
 
       if (isAccessible) {
-        console.log(`✅ AUTH: ${serviceName} service is accessible`);
+        authLogger.success(`${serviceName} service is accessible`);
       } else {
-        console.log(`🔴 AUTH: ${serviceName} not accessible - Status: ${response?.status() || 'unknown'}`);
+        authLogger.warn(`${serviceName} not accessible - Status: %s`, response?.status() || 'unknown');
       }
 
       return isAccessible;
     } catch (error) {
-      console.log(`🔴 AUTH: ${serviceName} not accessible - ${error.message}`);
+      authLogger.error(`${serviceName} not accessible - %s`, error.message);
       return false;
     }
   }
@@ -50,19 +50,19 @@ export class AuthService {
    */
   async checkNiFiAccessibility(timeout = 5000) {
     return this.checkServiceAccessibility(
-      CONSTANTS.SERVICE_URLS.NIFI_SYSTEM_DIAGNOSTICS, 
-      'NiFi', 
+      CONSTANTS.SERVICE_URLS.NIFI_SYSTEM_DIAGNOSTICS,
+      'NiFi',
       timeout
     );
   }
 
   /**
-   * Check Keycloak accessibility  
+   * Check Keycloak accessibility
    */
   async checkKeycloakAccessibility(timeout = 5000) {
     return this.checkServiceAccessibility(
-      CONSTANTS.SERVICE_URLS.KEYCLOAK_HEALTH, 
-      'Keycloak', 
+      CONSTANTS.SERVICE_URLS.KEYCLOAK_HEALTH,
+      'Keycloak',
       timeout
     );
   }
@@ -93,7 +93,7 @@ export class AuthService {
    */
   async login() {
     const start = Date.now();
-    console.log(`🔵 AUTH: Starting login for user: ${CONSTANTS.AUTH.USERNAME}...`);
+    authLogger.info(`Starting login for user: ${CONSTANTS.AUTH.USERNAME}...`);
     try {
       const result = await (async () => {
       // Navigate to login page
@@ -102,7 +102,7 @@ export class AuthService {
 
       // Check if already authenticated
       if (await this.isAuthenticated()) {
-        console.log('🔵 AUTH: Already authenticated');
+        authLogger.info('Already authenticated');
         return true;
       }
 
@@ -118,7 +118,7 @@ export class AuthService {
       if (!requestToken) {
         throw new Error('Could not obtain CSRF token from login page');
       }
-      
+
       // Use API-based authentication (like HAR file shows)
       const response = await this.page.request.post('/nifi-api/access/token', {
         headers: {
@@ -138,11 +138,11 @@ export class AuthService {
 
       // Get the JWT token from response
       const token = await response.text();
-      
+
       if (!token || token.trim().length === 0) {
         throw new Error('Received empty token from authentication API');
       }
-      
+
       // Set the authorization header for subsequent requests
       await this.page.setExtraHTTPHeaders({
         'Authorization': `Bearer ${token}`
@@ -155,50 +155,50 @@ export class AuthService {
       try {
         // Wait for page to be fully loaded
         await this.page.waitForLoadState('networkidle');
-        
+
         // Check multiple indicators that login was successful
         const mainCanvasVisible = await this.page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS).isVisible().catch(() => false);
         const logoutVisible = await this.page.getByRole('button', { name: /log out|logout/i }).isVisible().catch(() => false);
         const usernameVisible = await this.page.locator(`text=${CONSTANTS.AUTH.USERNAME}`).isVisible().catch(() => false);
-        
+
         const authSuccess = mainCanvasVisible || logoutVisible || usernameVisible;
 
         if (!authSuccess) {
           // Wait a bit more and try again
           await this.page.waitForTimeout(2000);
-          
+
           const retryMainCanvas = await this.page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS).isVisible().catch(() => false);
           const retryLogout = await this.page.getByRole('button', { name: /log out|logout/i }).isVisible().catch(() => false);
           const retryUsername = await this.page.locator(`text=${CONSTANTS.AUTH.USERNAME}`).isVisible().catch(() => false);
-          
+
           const retrySuccess = retryMainCanvas || retryLogout || retryUsername;
-          
+
           if (!retrySuccess) {
             throw new Error('Authentication indicators not found after retry');
           }
         }
-        
-        console.log(`✅ AUTH: Successfully logged in as ${CONSTANTS.AUTH.USERNAME}`);
+
+        authLogger.success(`Successfully logged in as ${CONSTANTS.AUTH.USERNAME}`);
         return true;
       } catch (error) {
         // Check for error messages
         const errorElement = this.page.locator('.login-error, .error-message, .alert-danger');
         const errorText = await errorElement.textContent().catch(() => null);
-        
-        const errorMsg = errorText 
-          ? `Login failed - ${errorText}` 
+
+        const errorMsg = errorText
+          ? `Login failed - ${errorText}`
           : `Login failed for user: ${CONSTANTS.AUTH.USERNAME}`;
-        
-        console.log(`🔴 AUTH: ${errorMsg}`);
+
+        authLogger.error(errorMsg);
         throw new Error(errorMsg);
       }
       })();
       const duration = Date.now() - start;
-      console.log(`✅ AUTH: Login for user: ${CONSTANTS.AUTH.USERNAME} completed in ${duration}ms`);
+      authLogger.success(`Login for user: ${CONSTANTS.AUTH.USERNAME} completed in ${duration}ms`);
       return result;
     } catch (error) {
       const duration = Date.now() - start;
-      console.log(`🔴 AUTH: Login for user: ${CONSTANTS.AUTH.USERNAME} failed after ${duration}ms: ${error.message}`);
+      authLogger.error(`Login for user: ${CONSTANTS.AUTH.USERNAME} failed after ${duration}ms: %s`, error.message);
       throw error;
     }
   }
@@ -207,7 +207,7 @@ export class AuthService {
    * Modern logout with proper cleanup
    */
   async logout() {
-    console.log('info', 'Performing logout...');
+    authLogger.info('Performing logout...');
 
     // Clear authentication state
     await this.page.context().clearCookies();
@@ -215,7 +215,7 @@ export class AuthService {
       localStorage.clear();
       sessionStorage.clear();
     });
-    
+
     // Clear authorization headers
     await this.page.setExtraHTTPHeaders({});
 
@@ -227,7 +227,7 @@ export class AuthService {
     const isStillAuthenticated = await this.isAuthenticated();
 
     if (!isStillAuthenticated) {
-      console.log('success', 'Successfully logged out');
+      authLogger.success('Successfully logged out');
     } else {
       throw new Error('Logout failed - Still appears to be authenticated');
     }
@@ -237,7 +237,7 @@ export class AuthService {
    * Ensure NiFi is ready for testing with modern patterns
    */
   async ensureReady() {
-    console.log('info', 'Ensuring NiFi is ready for testing...');
+    authLogger.info('Ensuring NiFi is ready for testing...');
 
     // Check service accessibility
     const isAccessible = await this.checkNiFiAccessibility();
@@ -251,10 +251,10 @@ export class AuthService {
     // Final verification using modern locators
     await expect(this.page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS))
       .toBeVisible({ timeout: 10000 });
-    
+
     await expect(this.page).toHaveTitle(/NiFi/);
 
-    console.log('success', 'NiFi is ready for testing');
+    authLogger.success('NiFi is ready for testing');
   }
 
   /**
@@ -262,12 +262,12 @@ export class AuthService {
    */
   async navigateToPage(pageType) {
     const pageConfig = CONSTANTS.PAGE_TYPES[pageType];
-    
+
     if (!pageConfig) {
       throw new Error(`Unknown page type: ${pageType}`);
     }
 
-    console.log('info', `Navigating to ${pageConfig.description || pageType}`);
+    authLogger.info(`Navigating to ${pageConfig.description || pageType}`);
 
     await this.page.goto(pageConfig.path || pageConfig);
     await this.page.waitForLoadState('networkidle');
@@ -284,7 +284,7 @@ export class AuthService {
       expect(found, `Navigation to ${pageType} failed`).toBeTruthy();
     }
 
-    console.log('success', `Successfully navigated to ${pageType}`);
+    authLogger.success(`Successfully navigated to ${pageType}`);
   }
 }
 
