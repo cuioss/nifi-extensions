@@ -1,0 +1,205 @@
+= UI Roundtrip Testing Guide
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+
+== Purpose
+
+This document describes the process for handling roundtrip testing for the UI components. Roundtrip testing involves making changes to the UI code, deploying those changes, and verifying them with Playwright tests in an iterative process.
+
+== Related Documentation
+
+* xref:Testing-Scope.adoc[Testing Scope and Capabilities] - Detailed testing framework capabilities
+* xref:implementation-guide.adoc[Implementation Guide] - Detailed implementation guidance
+* xref:nifi-ui-structure.adoc[NiFi UI Structure Guide] - NiFi UI structure and selectors
+* xref:../README.adoc[E2E Playwright Tests] - Main module documentation
+
+== Roundtrip Testing Workflow
+
+The roundtrip testing process follows these iterative steps:
+
+=== 1. Initial Deployment
+
+To start NiFi with a new deployment, run:
+
+[source,bash]
+----
+./integration-testing/src/main/docker/run-and-deploy.sh
+----
+
+This script will:
+
+* Build the necessary components
+* Deploy them to the Docker environment
+* Start the NiFi instance with the current configuration
+
+=== 2. Run Playwright Tests
+
+Execute the Playwright tests to verify the current functionality:
+
+[source,bash]
+----
+cd e-2-e-playwright
+npx playwright test tests/01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js --project chromium
+----
+
+You can replace the test file with any specific test you need to run.
+
+=== 3. Verify Test Results
+
+Check the test results and logs:
+
+* Test results will be displayed in the console
+* Detailed logs are available under `e-2-e-playwright/target/logs`
+* Screenshots and videos of failed tests are stored in `e-2-e-playwright/test-results`
+
+=== 4. Analyze Issues
+
+If tests fail or issues are identified:
+
+* Review the test logs to understand the failure points
+* Check browser console logs for JavaScript errors
+* Examine the screenshots or videos of failed tests
+* Identify the UI components that need modification
+
+=== 5. Modify UI Code
+
+Make the necessary changes to the UI code:
+
+* Navigate to the appropriate files in `nifi-cuioss-ui/src/main/webapp`
+* Modify the HTML, CSS, or JavaScript as needed
+* Follow the project's coding standards and patterns
+
+=== 6. Build the UI Module
+
+Build the modified UI module:
+
+[source,bash]
+----
+./mvnw clean install -pl nifi-cuioss-ui
+----
+
+Ensure that:
+
+* All build errors are fixed
+* All warnings are addressed
+* Code style checks pass
+
+=== 7. Redeploy Changes
+
+Redeploy the changes to the running NiFi instance:
+
+[source,bash]
+----
+./integration-testing/src/main/docker/redeploy-nifi.sh
+----
+
+This script will:
+
+* Build the updated NAR file
+* Copy it to the deployment location
+* Restart the NiFi service to load the new changes
+
+=== 8. Commit Successful Fixes
+
+After each successful fix (such as resolving a warning or error in the logs):
+
+[source,bash]
+----
+git add <modified-files>
+git commit -m "Fix: Description of the issue that was resolved"
+----
+
+Make sure to:
+
+* Include a descriptive commit message explaining what was fixed
+* Inform the team about the changes made and their impact
+* Document any important observations or lessons learned
+
+This step ensures that:
+
+* Progress is tracked incrementally
+* Changes are properly documented
+* The team is kept informed about improvements
+* You can easily revert to a working state if needed
+
+=== 9. Repeat the Process
+
+Return to step 2 and repeat the process until:
+
+* All tests pass successfully
+* The UI functions as expected
+* All requirements are met
+
+== Best Practices
+
+=== Efficient Development Cycle
+
+* Make small, focused changes in each iteration
+* Document the changes made in each cycle
+* Keep track of which tests pass and fail after each change
+* Use browser developer tools to debug UI issues before rebuilding
+
+=== Troubleshooting
+
+==== Common Issues
+
+* *Test Timeouts*: May indicate slow UI responses or missing elements
+* *Element Not Found*: Selector may need updating after UI changes
+* *Console Errors*: JavaScript errors that need fixing in the UI code
+* *Deployment Issues*: Check Docker logs if redeployment fails
+
+==== Debugging Tips
+
+* Add console logging in the UI code to track execution flow
+* Use `page.pause()` in Playwright tests to debug interactively
+* Check network requests in the browser developer tools
+* Verify that CSS selectors still match after UI changes
+
+=== Performance Considerations
+
+* Monitor the time taken for each test run
+* Watch for increasing page load times after changes
+* Be aware of memory usage in long-running test sessions
+
+== Example Roundtrip Workflow
+
+[source]
+----
+# Initial setup
+./integration-testing/src/main/docker/run-and-deploy.sh
+
+# Run tests
+cd e-2-e-playwright
+npx playwright test tests/01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js --project chromium
+
+# Check results and logs
+ls -la target/logs
+cat target/logs/test-run.log
+
+# Make UI changes
+vim ../nifi-cuioss-ui/src/main/webapp/js/components/example-component.js
+
+# Build UI module
+cd ..
+./mvnw clean install -pl nifi-cuioss-ui
+
+# Redeploy
+./integration-testing/src/main/docker/redeploy-nifi.sh
+
+# Run tests again to verify changes
+cd e-2-e-playwright
+npx playwright test tests/01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js --project chromium
+
+# If the fix was successful, commit the changes
+git add ../nifi-cuioss-ui/src/main/webapp/js/components/example-component.js
+git commit -m "Fix: Resolved UI issue in example component"
+# Inform the team about the successful fix
+echo "Successfully fixed the UI issue in the example component"
+----
+
+== Conclusion
+
+The roundtrip testing process provides a structured approach to UI development and testing. By following this iterative workflow, you can efficiently develop and verify UI components while ensuring they meet all requirements and function correctly in the NiFi environment.
