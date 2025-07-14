@@ -436,44 +436,48 @@ test('should verify token processing results', async ({ page }) => {
 });
 ----
 
-=== Cross-Browser Testing
+=== Browser Configuration
 
-Playwright tests are designed to run across multiple browsers with projects configured in playwright.config.js:
+The framework uses Chromium as the single, sensible default browser for enterprise NiFi testing.
+
+==== Why Chromium Only?
+
+* **Enterprise Standard**: Most widely used browser in enterprise environments
+* **Best Playwright Support**: Most stable and performant browser for Playwright automation
+* **Consistent Environment**: Same behavior across development, CI, and production testing
+* **NiFi Optimization**: NiFi's UI is primarily tested and optimized for Chrome/Chromium
+* **Reduced Maintenance**: Single browser reduces test execution time and maintenance overhead
+* **Enterprise Reality**: Most enterprise users standardize on Chrome-based browsers
 
 [source,javascript]
 ----
-// playwright.config.js - Browser configuration
+// playwright.config.js - Focused browser configuration
 projects: [
   {
     name: 'chromium',
-    use: { ...devices['Desktop Chrome'] },
-  },
-  {
-    name: 'firefox',
-    use: { ...devices['Desktop Firefox'] },
-  },
-  {
-    name: 'webkit',
-    use: { ...devices['Desktop Safari'] },
+    use: { 
+      ...devices['Desktop Chrome'],
+      // Enable modern Chrome features for enterprise NiFi testing
+      launchOptions: {
+        args: [
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
+          '--enable-automation',
+          '--no-sandbox',
+          '--disable-dev-shm-usage',
+          '--ignore-certificate-errors'
+        ]
+      }
+    },
   }
 ]
 
-// Browser-specific handling in tests
-test('should handle file uploads across browsers', async ({ page, browserName }) => {
-  // Upload file with appropriate options for the browser
+// Standard file upload handling
+test('should handle file uploads', async ({ page }) => {
   const fileInput = page.locator('[data-testid="file-input"]');
-
-  // Set file path relative to test directory
   const filePath = 'fixtures/jwks/keycloak-jwks.json';
-
-  // Handle browser-specific behaviors if needed
-  if (browserName === 'firefox') {
-    await fileInput.setInputFiles(filePath, { force: true });
-  } else {
-    await fileInput.setInputFiles(filePath);
-  }
-
-  // Common validation
+  
+  await fileInput.setInputFiles(filePath);
   await expect(page.locator('[data-testid="file-name"]')).toContainText('keycloak-jwks.json');
 });
 ----
@@ -1117,7 +1121,7 @@ jobs:
           cd e-2-e-playwright
           npm ci
 
-      - name: Install Playwright browsers
+      - name: Install Playwright Chromium
         run: |
           cd e-2-e-playwright
           npx playwright install --with-deps chromium
@@ -1219,13 +1223,13 @@ When evaluating Playwright test results, consider the following:
 2. **Visual Evidence**: Review screenshots, videos, and trace files to understand the UI state
 3. **Error Messages**: Analyze error messages and stack traces for clues
 4. **Test Environment**: Check if failures are environment-specific
-5. **Browser Compatibility**: Determine if failures are browser-specific
+5. **Browser Environment**: Check Chromium configuration and launch options
 
 To determine if a failure is a flaky test or a real issue:
 1. Rerun the failing test in isolation using `npx playwright test tests/path/to/spec.js`
 2. Use the Playwright UI mode for interactive debugging: `npx playwright test --ui`
 3. Examine trace files for step-by-step replay of test execution
-4. Check if the failure is reproducible in different browsers
+4. Check if the failure is consistent in the Chromium environment
 5. Examine network logs and response times using the Network tab in trace viewer
 6. Review application logs for related errors
 
@@ -1249,7 +1253,7 @@ When tests fail due to console errors or warnings, follow this analysis process:
    * Examine the error stack trace to identify source location
    * Check the test step that triggered the error
    * Verify if the error is reproducible outside of tests
-   * Determine if it's browser-specific
+   * Verify the Chromium configuration is correct
 
 4. **Decision Process for Allowed Warnings**:
    * Can the issue be fixed in our code? → Fix immediately
@@ -1400,8 +1404,7 @@ module.exports = [
   // Deprecated API usage warnings from third-party libraries
   'Synchronous XMLHttpRequest on the main thread is deprecated',
 
-  // Browser-specific warnings
-  '[Firefox] Unable to preventdefault inside passive event listener',
+  // Chromium-specific warnings
   '[Chrome] Provider for: vscode-resource',
 
   // Playwright-specific warnings

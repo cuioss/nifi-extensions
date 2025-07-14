@@ -87,45 +87,34 @@ module.exports = defineConfig({
     }
   },
 
-  /* Enhanced browser configuration for modern testing */
+  /* Focused browser configuration - Chromium as sensible default
+   * 
+   * Why Chromium only:
+   * - Most stable and widely used browser in enterprise environments
+   * - Best Playwright support and performance
+   * - Consistent behavior across development and CI environments  
+   * - NiFi's UI is primarily tested and optimized for Chrome/Chromium
+   * - Reduces test execution time and maintenance overhead
+   * - Enterprise users typically standardize on Chrome-based browsers
+   */
   projects: [
     {
       name: 'chromium',
       use: { 
         ...devices['Desktop Chrome'],
-        // Enable modern Chrome features
+        // Enable modern Chrome features for enterprise NiFi testing
         launchOptions: {
           args: [
             '--disable-web-security',
             '--disable-features=VizDisplayCompositor',
             '--enable-automation',
-            '--no-sandbox'
+            '--no-sandbox',
+            '--disable-dev-shm-usage',
+            '--ignore-certificate-errors'
           ]
         }
       },
-    },
-    // Enable additional browsers for comprehensive testing
-    {
-      name: 'firefox',
-      use: { 
-        ...devices['Desktop Firefox'],
-        launchOptions: {
-          firefoxUserPrefs: {
-            'security.tls.insecure_fallback_hosts': 'localhost',
-            'dom.webnotifications.enabled': false
-          }
-        }
-      },
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-    // Add mobile testing capability
-    {
-      name: 'mobile-chrome',
-      use: { ...devices['Pixel 5'] },
-    },
+    }
   ],
 
   /* Run your local dev server before starting the tests */
