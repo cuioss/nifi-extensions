@@ -1,0 +1,44 @@
+{
+  "timestamp": "2025-07-14T20:45:31.414Z",
+  "url": "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/?id=08e20549-0198-1000-65a2-24abdfb667a2&revision=1&clientId=346173ec-4c73-459a-8a73-91c523fb9162&editable=true&disconnectedNodeAcknowledged=false",
+  "loadingIndicatorVisible": true,
+  "consoleMessages": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 ()",
+      "location": {
+        "url": "https://localhost:9095/nifi-api/flow/current-user",
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "timestamp": "2025-07-14T20:45:17.082Z"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 ()",
+      "location": {
+        "url": "https://localhost:9095/nifi-api/flow/current-user",
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "timestamp": "2025-07-14T20:45:17.801Z"
+    }
+  ],
+  "pageErrors": [
+    {
+      "message": "Cannot use import statement outside a module",
+      "stack": "",
+      "timestamp": "2025-07-14T20:45:21.434Z"
+    },
+    {
+      "message": "Cannot use import statement outside a module",
+      "stack": "",
+      "timestamp": "2025-07-14T20:45:21.434Z"
+    },
+    {
+      "message": "Cannot use import statement outside a module",
+      "stack": "",
+      "timestamp": "2025-07-14T20:45:21.434Z"
+    }
+  ]
+}

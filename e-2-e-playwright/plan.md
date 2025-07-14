@@ -1,235 +1,186 @@
 # E2E Playwright Testing Implementation Plan
 
-## Current Status Analysis
+## Critical Issue: JWT Validator UI Loading Stall - Modern Solution
 
-### Test Results Summary
+### Problem Statement
+
+**Root Cause Identified**: The JWT Validator UI is stalling at "Loading JWT Validator UI..." message due to ES6 module vs RequireJS conflicts.
+
+**Current State Analysis**:
+- ✅ **Environment Working**: NiFi running at https://localhost:9095
+- ✅ **JWT Processor Deployed**: Custom UI accessible but stalled
+- ⚠️ **Module System Conflict**: ES6 modules don't work with RequireJS browser loading
+- ⚠️ **Legacy Architecture**: RequireJS is outdated (2024-2025 best practices use ES6 + bundlers)
+
+**Console Errors Identified**:
+- `Cannot use import statement outside a module` (3 instances)
+- ES6 `import/export` statements incompatible with RequireJS
+- Mixed module systems causing initialization failures
+
+### Current Test Results
 - **Total Tests**: 33
-- **Passed**: 16 (48.5%)
-- **Failed**: 16 (48.5%) 
-- **Skipped**: 1 (3%)
-- **Critical Issue**: Integration tests failing due to strict error detection during authentication
+- **Passed**: 29 (87.9%)
+- **Failed**: 2 (6.1%) - Due to UI loading stall
+- **Root Cause**: ES6 modules not loading in RequireJS environment
 
-### Root Cause Analysis ✅ **UPDATED FINDINGS**
+## Modern Solution: Migrate to ES6 Modules + Modern Bundler
 
-**Environment Status:**
-- ✅ **NiFi is running** - Docker container healthy on port 9095 (HTTPS)
-- ✅ **Keycloak is running** - Docker container on port 9080 (HTTP) 
-- ✅ **Authentication works** - Login tests pass (4/5 tests successful)
-- ✅ **Configuration correct** - URLs and ports match running services
+### Why Modern Approach (2024-2025 Best Practices):
 
-**Real Issue:**
-The critical error detection system is **too strict** and failing during the authentication process, before reaching the main canvas. This is causing integration tests to fail during setup, not because of missing services.
+1. **ES6 Modules Are Standard**: Native browser support, better tooling
+2. **RequireJS Is Legacy**: AMD/RequireJS considered outdated
+3. **Better Performance**: Modern bundlers (Vite/Webpack) optimize better
+4. **Future-Proof**: Aligns with entire JavaScript ecosystem direction
+5. **Developer Experience**: Hot reload, better debugging, tree-shaking
 
-Key observations:
-1. ✅ **Critical error detection is working correctly** - It's detecting empty pages during login flow
-2. ✅ **NiFi environment is running** - Services are accessible and functional
-3. ❌ **Timing issue** - Error detection runs before authentication completes
-4. ✅ **Authentication flow works** - Self-login tests demonstrate successful auth
+### Phase 1: Git Repository Cleanup
 
-## Action Plan: Step-by-Step Implementation
+#### Step 1.1: Commit Non-UI Changes
+- **Task**: Commit all working changes outside nifi-cuioss-ui module
+- **Scope**: e-2-e-playwright tests, documentation, integration configs
+- **Command**: `git add e-2-e-playwright integration-testing doc && git commit`
 
-### Phase 1: Fix Critical Error Detection Timing (Priority: CRITICAL)
+#### Step 1.2: Revert nifi-cuioss-ui Changes
+- **Task**: Revert all AMD conversions in nifi-cuioss-ui module
+- **Reason**: Go back to original ES6 modules for modern approach
+- **Command**: `git checkout HEAD -- nifi-cuioss-ui/`
 
-#### Step 1.1: Analyze Authentication Flow Issue
-- **Task**: Understand why critical error detection fails during auth setup  
-- **Problem**: Error detection runs before `authService.ensureReady()` completes
-- **Files to examine**: 
-  - `utils/critical-error-detector.js` - Canvas checking logic
-  - `tests/*-critical-errors.spec.js` - Test execution order
-  - `utils/auth-service.js` - Authentication completion detection
-- **Expected outcome**: Understand timing of canvas availability vs auth
-- **Acceptance criteria**: Clear sequence of auth → canvas → error detection
+### Phase 2: Implement Modern Build System
 
-#### Step 1.2: Implement Conditional Error Detection
-- **Task**: Make critical error detection conditional on authentication state
-- **Solution**: Only check for canvas after successful authentication
-- **Implementation approaches**:
-  1. **Option A**: Delay canvas checking until after auth in `setupComprehensiveErrorDetection`
-  2. **Option B**: Add authentication state awareness to critical error detector  
-  3. **Option C**: Make canvas checking conditional based on page URL/state
-- **Files to modify**:
-  - `utils/console-logger.js` - `setupComprehensiveErrorDetection()`
-  - `utils/critical-error-detector.js` - Add auth-aware checking
-- **Expected outcome**: Tests pass through authentication without false failures
-- **Acceptance criteria**: Critical error tests complete auth flow before checking canvas
+#### Step 2.1: Add Modern Bundler (Vite Recommended)
+- **Task**: Configure Vite for ES6 module bundling
+- **Files to Create**:
+  - `nifi-cuioss-ui/vite.config.js` - Vite configuration
+  - `nifi-cuioss-ui/package.json` - Update build scripts
+- **Benefits**: Fast dev server, optimized production builds, ES6 native support
 
-#### Step 1.3: Test Authentication-Aware Error Detection
-- **Task**: Verify error detection works correctly after auth completion
-- **Steps**:
-  1. Modify one critical error test to be auth-aware
-  2. Run test to verify it reaches post-auth state
-  3. Confirm error detection still works when canvas actually is missing
-  4. Test with both logged-in and logged-out states
-- **Expected outcome**: Error detection works correctly in both states
-- **Acceptance criteria**: Tests pass during auth, fail on real canvas issues
+#### Step 2.2: Update HTML Entry Point
+- **Task**: Replace RequireJS with bundled ES6 modules
+- **Files to Modify**:
+  - `nifi-cuioss-ui/src/main/webapp/index.html`
+- **Changes**:
+  - Remove RequireJS script tags
+  - Add bundled JavaScript output
+  - Update module loading approach
 
-### Phase 2: Test Configuration and URL Management (Priority: HIGH)
-
-#### Step 2.1: Identify Correct Test URLs
-- **Task**: Find the correct URLs for NiFi and Keycloak in test environment
-- **Files to examine**:
-  - `utils/constants.js` - Check base URLs
-  - `playwright.config.js` - Check base URL configuration
-  - Docker environment files for port mappings
-- **Expected outcome**: Correct URLs for integration tests
-- **Acceptance criteria**: Tests connect to running services
-
-#### Step 2.2: Environment-Specific Configuration
-- **Task**: Create configuration for different test environments
+#### Step 2.3: Configure Maven Integration
+- **Task**: Integrate Vite build into Maven lifecycle
+- **Files to Modify**:
+  - `nifi-cuioss-ui/pom.xml`
 - **Implementation**:
-  - Add environment detection (local vs CI vs integration)
-  - Configure different base URLs per environment
-  - Add fallback/mock modes for development
-- **Files to modify**:
-  - `playwright.config.js`
-  - `utils/constants.js`
-  - Environment-specific config files
-- **Expected outcome**: Tests work in multiple environments
-- **Acceptance criteria**: Can run tests with/without NiFi
+  - Update frontend-maven-plugin
+  - Configure Vite build in Maven phases
+  - Ensure proper WebJars integration
 
-### Phase 3: Test Reliability and Robustness (Priority: MEDIUM)
+### Phase 3: Module System Migration
 
-#### Step 3.1: Enhanced Startup Detection
-- **Task**: Add robust service availability checking
+#### Step 3.1: Keep ES6 Module Syntax
+- **Task**: Maintain existing ES6 `import/export` statements
+- **Benefit**: No code changes needed - already using modern syntax
+- **Files**: All `.js` files in `src/main/webapp/js/`
+
+#### Step 3.2: Update Path Resolution
+- **Task**: Configure Vite for proper module resolution
 - **Implementation**:
-  - Create service health check utilities
-  - Add retry mechanisms for service startup
-  - Implement graceful degradation for missing services
-- **Files to create/modify**:
-  - `utils/service-health-checker.js`
-  - `utils/environment-detector.js`
-  - Test setup hooks
-- **Expected outcome**: Tests wait for services to be ready
-- **Acceptance criteria**: No false failures due to startup timing
+  - Set up path aliases for utils, components, services
+  - Configure WebJars integration with Vite
+  - Ensure proper CSS/asset handling
 
-#### Step 3.2: Conditional Test Execution
-- **Task**: Make tests conditional based on environment availability
-- **Implementation**:
-  - Add environment detection to test hooks
-  - Skip integration tests when NiFi not available
-  - Run self-tests (mocks) when services unavailable
-  - Add clear messaging about test requirements
-- **Files to modify**:
-  - Test spec files
-  - `global-setup.js` or equivalent
-  - Test configuration
-- **Expected outcome**: Tests adapt to available environment
-- **Acceptance criteria**: Clear test execution based on environment
+#### Step 3.3: Build Configuration
+- **Task**: Configure production build for WAR deployment
+- **Requirements**:
+  - Single bundled JavaScript file
+  - CSS extraction and bundling
+  - Asset optimization and minification
+  - Source maps for debugging
 
-### Phase 4: CI/CD Integration (Priority: MEDIUM)
+### Phase 4: Testing and Validation
 
-#### Step 4.1: Maven Profile Enhancement
-- **Task**: Enhance integration test profile to handle environment setup
-- **Implementation**:
-  - Add Docker container startup to Maven lifecycle
-  - Configure proper test phases (pre-integration-test, integration-test, post-integration-test)
-  - Add container cleanup after tests
-- **Files to modify**:
-  - `pom.xml` (e-2-e-playwright)
-  - Maven profiles
-- **Expected outcome**: `mvn verify -Pintegration-tests` works end-to-end
-- **Acceptance criteria**: Single command runs full integration test
+#### Step 4.1: Development Testing
+- **Task**: Verify Vite dev server works correctly
+- **Command**: `npm run dev` (with Vite)
+- **Validation**: ES6 modules load without errors
 
-#### Step 4.2: Test Report Enhancement
-- **Task**: Improve test reporting and artifact collection
-- **Implementation**:
-  - Ensure screenshots/videos are collected on failure
-  - Add environment information to test reports
-  - Configure proper test result aggregation
-  - Add performance metrics collection
-- **Files to modify**:
-  - `playwright.config.js`
-  - Maven configuration
-  - Test reporting configuration
-- **Expected outcome**: Rich test reports with debugging info
-- **Acceptance criteria**: Easy failure diagnosis from reports
+#### Step 4.2: Production Build Testing
+- **Task**: Test Maven build with Vite integration
+- **Commands**:
+  ```bash
+  ./mvnw clean install -pl nifi-cuioss-ui -DskipTests
+  ./integration-testing/src/main/docker/redeploy-nifi.sh
+  ```
+- **Validation**: Bundled output works in NiFi environment
 
-### Phase 5: Test Coverage and Validation (Priority: LOW)
+#### Step 4.3: Full Integration Testing
+- **Task**: Run complete E2E test suite
+- **Command**: `./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests`
+- **Success Criteria**: All 33 tests pass
 
-#### Step 5.1: Integration Test Expansion
-- **Task**: Add more comprehensive integration tests
-- **Implementation**:
-  - Test processor configuration workflows
-  - Test authentication flows end-to-end
-  - Test error handling scenarios
-  - Add performance/load testing
-- **Files to create**:
-  - Additional test spec files
-  - Test data fixtures
-  - Helper utilities
-- **Expected outcome**: Comprehensive test coverage
-- **Acceptance criteria**: All critical user journeys tested
+## Implementation Steps
 
-#### Step 5.2: Self-Test Enhancement
-- **Task**: Improve self-tests for development workflow
-- **Implementation**:
-  - Add more mock scenarios
-  - Test critical error detection thoroughly
-  - Add component-level testing
-  - Improve test isolation
-- **Files to modify**:
-  - Self-test spec files
-  - Mock utilities
-  - Test fixtures
-- **Expected outcome**: Reliable development testing
-- **Acceptance criteria**: Can develop/debug without full environment
+### 1. Git Cleanup
+```bash
+# Commit working changes
+git add e-2-e-playwright/ integration-testing/ doc/ *.md
+git commit -m "feat: Complete E2E test infrastructure and documentation
 
-## Immediate Next Steps (This Session)
+- Implement comprehensive Playwright test suite (33 tests)
+- Add console error capture and analysis tools
+- Update integration testing documentation
+- Fix authentication and processor deployment tests
 
-### 1. ✅ Environment Investigation COMPLETED (15 minutes)
-- ✅ NiFi containers are running and healthy (port 9095)
-- ✅ Keycloak containers are running (port 9080) 
-- ✅ Configuration URLs are correct
-- ✅ Login tests demonstrate working environment
+🤖 Generated with Claude Code
 
-### 2. ✅ Fix Critical Error Detection Timing COMPLETED (30 minutes)
-- ✅ **PRIORITY**: Modified critical error detection to be authentication-aware
-- ✅ **Implementation**: Added `setupAuthAwareErrorDetection()` function
-- ✅ **Target**: Made error detection skip initial checks, perform after auth
+Co-Authored-By: Claude <noreply@anthropic.com>"
 
-### 3. ✅ Validation and Testing COMPLETED (20 minutes)
-- ✅ **All 6 critical error tests now pass** (was 0/6, now 6/6)
-- ✅ **Integration tests working** - Main JWT authenticator tests pass
-- ✅ **Processor tests working** - Configuration dialog tests pass
-- ✅ **Error detection still works** - Tests detect real issues after auth
+# Revert UI changes to start fresh
+git checkout HEAD -- nifi-cuioss-ui/
+```
+
+### 2. Modern Build Setup
+```bash
+# Configure Vite
+npm init vite@latest nifi-cuioss-ui --template vanilla
+# Customize vite.config.js for NiFi integration
+# Update package.json scripts
+# Integrate with Maven build
+```
+
+### 3. Validation
+```bash
+# Test development
+cd nifi-cuioss-ui && npm run dev
+
+# Test production build
+./mvnw clean install -pl nifi-cuioss-ui -DskipTests
+
+# Test full integration
+./integration-testing/src/main/docker/redeploy-nifi.sh
+./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests
+```
+
+## Expected Outcomes
+
+### Immediate Benefits
+- **ES6 Module Support**: Native ES6 `import/export` syntax
+- **Fast Development**: Vite hot reload and fast rebuilds
+- **Modern Tooling**: Better debugging, source maps, dev tools
+- **Performance**: Optimized bundles with tree-shaking
+
+### Long-term Benefits
+- **Maintainability**: Standard JavaScript module system
+- **Future-Proof**: Aligns with 2024-2025 best practices
+- **Developer Experience**: Modern development workflow
+- **Performance**: Better runtime performance than RequireJS
 
 ## Success Criteria
 
-### Short Term (This Session)
-- [ ] Understand why tests are failing (environment issue)
-- [ ] Get at least one integration test passing
-- [ ] Verify critical error detection works with real NiFi
+- [ ] **ES6 Modules Working**: No "Cannot use import statement" errors
+- [ ] **Build Integration**: Vite integrated with Maven build
+- [ ] **UI Loading**: JWT Validator UI loads without stalling
+- [ ] **All Tests Pass**: 33/33 Playwright tests passing
+- [ ] **Performance**: Faster load times than RequireJS
+- [ ] **Modern Stack**: 2024-2025 compliant architecture
 
-### Medium Term (Next Days)
-- [ ] Full integration test suite passes with running NiFi
-- [ ] Maven profile starts/stops environment automatically
-- [ ] Tests work in both local and CI environments
+---
 
-### Long Term (Next Weeks)
-- [ ] Comprehensive test coverage of JWT processor functionality
-- [ ] Reliable CI/CD pipeline with integration tests
-- [ ] Performance and load testing capabilities
-
-## Risk Assessment
-
-### High Risk
-- **Docker environment complexity**: May need complex setup for NiFi + Keycloak
-- **Port conflicts**: Multiple services might conflict on same ports
-- **Authentication complexity**: OAuth/JWT flows might be complex to test
-
-### Medium Risk
-- **Test timing issues**: Service startup might be slow
-- **Configuration complexity**: Multiple environment configurations
-- **CI/CD integration**: May need different setup for different CI systems
-
-### Low Risk
-- **Test framework issues**: Playwright is well-established
-- **Code quality**: ESLint and existing patterns are good
-- **Error detection**: Critical error system is working well
-
-## Next Actions Required
-
-1. **Immediate**: Investigate current Docker/NiFi setup
-2. **Short term**: Configure tests for running environment  
-3. **Medium term**: Enhance Maven integration test profile
-4. **Long term**: Expand test coverage and reliability
+*Document version: 3.0 | Focus: Modern ES6 + Bundler Architecture | Last updated: July 2025*
