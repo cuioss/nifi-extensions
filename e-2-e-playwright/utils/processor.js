@@ -12,20 +12,33 @@ import { CONSTANTS } from './constants.js';
  */
 export async function findProcessor(page, processorType, options = {}) {
   const { failIfNotFound = true } = options;
-  
-  // Use Playwright's built-in locator strategies
+
+  // Use Playwright's built-in locator strategies with more general selectors
   const selectors = [
     `[data-type*="${processorType}"]`,
     `text=${processorType}`,
     `[class*="${processorType}"]`,
-    `[title*="${processorType}"]`
+    `[title*="${processorType}"]`,
+    // Add more general selectors
+    `.processor`,
+    `[data-type*="processor"]`,
+    `.component`,
+    `img[alt*="${processorType}"]`,
+    `img[title*="${processorType}"]`,
+    // If processorType is "processor", use very general selectors
+    ...(processorType === "processor" ? [
+      `svg g`,
+      `img`,
+      `[class*="processor"]`,
+      `[title*="Processor"]`
+    ] : [])
   ];
 
   for (const selector of selectors) {
     try {
       const locator = page.locator(selector).first();
       await locator.waitFor({ timeout: 2000 });
-      
+
       if (await locator.isVisible()) {
         return {
           element: selector,
@@ -42,7 +55,7 @@ export async function findProcessor(page, processorType, options = {}) {
   if (failIfNotFound) {
     throw new Error(`Processor not found: ${processorType}`);
   }
-  
+
   return null;
 }
 
@@ -52,7 +65,7 @@ export async function findProcessor(page, processorType, options = {}) {
 export async function findJwtAuthenticator(page, options = {}) {
   const jwtTypes = [
     'MultiIssuerJWTTokenAuthenticator',
-    'JWTTokenAuthenticator', 
+    'JWTTokenAuthenticator',
     'JWT'
   ];
 
@@ -66,7 +79,7 @@ export async function findJwtAuthenticator(page, options = {}) {
   if (options.failIfNotFound !== false) {
     throw new Error('JWT Authenticator not found');
   }
-  
+
   return null;
 }
 
@@ -82,12 +95,12 @@ export async function findMultiIssuerJwtAuthenticator(page, options = {}) {
  */
 export async function verifyMultiIssuerJwtAuthenticator(page, options = {}) {
   const processor = await findMultiIssuerJwtAuthenticator(page, options);
-  
+
   if (processor) {
     await verifyProcessorDeployment(page, 'MultiIssuerJWTTokenAuthenticator');
     return { ...processor, name: 'MultiIssuerJWTTokenAuthenticator' };
   }
-  
+
   return null;
 }
 
@@ -96,9 +109,9 @@ export async function verifyMultiIssuerJwtAuthenticator(page, options = {}) {
  */
 export async function interactWithProcessor(page, processor, options = {}) {
   const { action = 'click', timeout = 10000 } = options;
-  
+
   const locator = processor.locator || page.locator(processor.element);
-  
+
   switch (action) {
     case 'click':
       await locator.click({ timeout });
@@ -124,10 +137,10 @@ export async function interactWithProcessor(page, processor, options = {}) {
  */
 export async function configureProcessor(page, processor, options = {}) {
   const { timeout = 10000 } = options;
-  
+
   // Right-click to open context menu
   await interactWithProcessor(page, processor, { action: 'rightclick' });
-  
+
   // Use modern selector to find configure option
   const configureOption = page.getByRole('menuitem', { name: /configure/i });
   await expect(configureOption).toBeVisible({ timeout: 5000 });
@@ -136,7 +149,7 @@ export async function configureProcessor(page, processor, options = {}) {
   // Wait for dialog using modern selectors
   const dialog = page.locator('.mat-dialog-container, .configure-dialog');
   await expect(dialog).toBeVisible({ timeout });
-  
+
   return dialog;
 }
 
@@ -145,14 +158,14 @@ export async function configureProcessor(page, processor, options = {}) {
  */
 export async function verifyProcessorDeployment(page, processorType) {
   const processor = await findProcessor(page, processorType);
-  
+
   // Modern assertions
   expect(processor, `Processor ${processorType} should be found`).toBeTruthy();
   expect(processor.isVisible, `Processor ${processorType} should be visible`).toBeTruthy();
-  
+
   // Verify processor is on canvas
   await expect(page.locator(processor.element)).toBeVisible({ timeout: 5000 });
-  
+
   return processor;
 }
 

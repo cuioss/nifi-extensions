@@ -46,10 +46,10 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
                 // This is acceptable as the processor might not support configuration
             }
         } else {
-            processorLogger.info(
+            processorLogger.error(
                 "No processor found on canvas for configuration test",
             );
-            // Test passes even if no processor is found
+            throw new Error("Test failed: No processor found on canvas for configuration test");
         }
     });
 
@@ -113,10 +113,10 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
                 // This is acceptable as the processor might not support advanced configuration
             }
         } else {
-            processorLogger.info(
+            processorLogger.error(
                 "No JWT processor found for advanced configuration test",
             );
-            // Test passes even if no processor is found
+            throw new Error("Test failed: No JWT processor found for advanced configuration test");
         }
     });
 
@@ -184,8 +184,8 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
                 // This is acceptable as the processor might not support navigation
             }
         } else {
-            processorLogger.info("No processor found for back navigation test");
-            // Test passes even if no processor is found
+            processorLogger.error("No processor found for back navigation test");
+            throw new Error("Test failed: No processor found for back navigation test");
         }
     });
 
@@ -243,8 +243,8 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
                 // This is acceptable as the processor might not support interaction
             }
         } else {
-            processorLogger.info("No processor found for interaction test");
-            // Test passes even if no processor is found
+            processorLogger.error("No processor found for interaction test");
+            throw new Error("Test failed: No processor found for interaction test");
         }
     });
 });

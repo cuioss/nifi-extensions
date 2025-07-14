@@ -2,6 +2,17 @@
  * @file MultiIssuerJWTTokenAuthenticator Advanced Configuration Test - Modernized
  * Verifies the advanced configuration of the MultiIssuerJWTTokenAuthenticator processor
  * @version 2.0.0
+ *
+ * IMPORTANT: This test has been modified to fail when the page stalls at "Loading JWT Validator UI..."
+ * This is a requirement specified in the issue description. The test now includes a dedicated check
+ * for this loading stall condition and will fail with a detailed error message if detected.
+ *
+ * The loading stall check is performed:
+ * 1. In a dedicated test "should not stall at loading indicator"
+ * 2. In the beforeEach hook for all tests
+ * 3. At the beginning of each individual test
+ *
+ * This ensures that the test will fail fast and with a clear error message if the UI is stalled.
  */
 
 import { test, expect } from "@playwright/test";
@@ -14,6 +25,127 @@ import {
 } from "../utils/console-logger.js";
 import { processorLogger } from "../utils/shared-logger.js";
 
+// Loading indicator selectors
+const LOADING_INDICATOR_SELECTORS = [
+    '#loading-indicator',
+    '.loading-indicator',
+    '[id*="loading"]',
+    'text="Loading JWT Validator UI..."'
+];
+
+/**
+ * Check if the loading indicator is visible and fail the test if it is
+ * This implements the requirement that the test must fail when the page
+ * stalls at "Loading JWT Validator UI..."
+ */
+async function checkForLoadingStall(page) {
+    processorLogger.info("Checking for loading indicator stall...");
+
+    // First check for any element with the exact loading text
+    // This is the most specific check and should be prioritized
+    const exactTextLocators = [
+        page.locator('text="Loading JWT Validator UI..."'),
+        page.locator('text="Loading JWT Validator UI"'),
+        page.locator('text=Loading JWT Validator UI...'),
+        page.locator('text=Loading JWT Validator UI')
+    ];
+
+    for (const locator of exactTextLocators) {
+        const isVisible = await locator.isVisible().catch(() => false);
+        if (isVisible) {
+            const textContent = await locator.textContent().catch(() => "Loading JWT Validator UI...");
+            processorLogger.error(`CRITICAL: UI stalled at loading message: "${textContent}"`);
+
+            // Take a screenshot for debugging
+            const screenshotPath = `loading-stall-${Date.now()}.png`;
+            await page.screenshot({ path: screenshotPath });
+
+            // Get page URL for context
+            const url = page.url();
+
+            // Fail the test with a detailed message
+            throw new Error(
+                `FAILURE: UI stalled at "Loading JWT Validator UI..." message.\n` +
+                `This indicates the JWT Validator UI failed to initialize properly.\n` +
+                `URL: ${url}\n` +
+                `Screenshot saved to: ${screenshotPath}\n` +
+                `This test is designed to fail in this condition as required.`
+            );
+        }
+    }
+
+    // Check each loading indicator selector
+    for (const selector of LOADING_INDICATOR_SELECTORS) {
+        const locator = page.locator(selector);
+        const isVisible = await locator.isVisible().catch(() => false);
+
+        if (isVisible) {
+            // Get the text content if possible
+            const textContent = await locator.textContent().catch(() => "Unknown");
+
+            // Only fail if the text contains "Loading JWT Validator UI"
+            if (textContent.includes("Loading JWT Validator UI") ||
+                textContent.includes("Loading JWT") ||
+                (textContent.includes("Loading") && selector.includes("loading"))) {
+
+                processorLogger.error(`Loading indicator still visible: ${selector} with text "${textContent}"`);
+
+                // Take a screenshot for debugging
+                const screenshotPath = `loading-stall-${Date.now()}.png`;
+                await page.screenshot({ path: screenshotPath });
+
+                // Get page URL for context
+                const url = page.url();
+
+                // Fail the test with a detailed message
+                throw new Error(
+                    `FAILURE: UI stalled at loading indicator with text: "${textContent}"\n` +
+                    `Selector: ${selector}\n` +
+                    `URL: ${url}\n` +
+                    `Screenshot saved to: ${screenshotPath}\n` +
+                    `This test is designed to fail in this condition as required.`
+                );
+            }
+        }
+    }
+
+    // Also check for any element containing the loading text using a more general approach
+    const allElements = await page.$$('*');
+    for (const element of allElements) {
+        try {
+            const textContent = await element.textContent();
+            if (textContent &&
+                (textContent.includes("Loading JWT Validator UI...") ||
+                 textContent === "Loading JWT Validator UI")) {
+
+                processorLogger.error(`Found element with loading text: "${textContent}"`);
+
+                // Take a screenshot for debugging
+                const screenshotPath = `loading-text-stall-${Date.now()}.png`;
+                await page.screenshot({ path: screenshotPath });
+
+                // Get page URL for context
+                const url = page.url();
+
+                // Fail the test with a detailed message
+                throw new Error(
+                    `FAILURE: Found element with text: "${textContent}"\n` +
+                    `This indicates the JWT Validator UI failed to initialize properly.\n` +
+                    `URL: ${url}\n` +
+                    `Screenshot saved to: ${screenshotPath}\n` +
+                    `This test is designed to fail in this condition as required.`
+                );
+            }
+        } catch (error) {
+            // Ignore errors when trying to get text content
+            continue;
+        }
+    }
+
+    processorLogger.info("No loading indicator stall detected");
+    return true;
+}
+
 test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     // Make sure we're logged in before each test
     test.beforeEach(async ({ page }, testInfo) => {
@@ -22,6 +154,29 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
 
         const authService = new AuthService(page);
         await authService.ensureReady();
+
+        // Check for loading stall after authentication
+        // This ensures we fail fast if the UI is stalled
+        await checkForLoadingStall(page);
+    });
+
+    // This test specifically checks for the loading stall condition
+    // It will fail if the UI is stalled at "Loading JWT Validator UI..."
+    test("should not stall at loading indicator", async ({ page }) => {
+        processorLogger.info("Running loading stall check test...");
+
+        // Wait for the page to be fully loaded
+        await page.waitForLoadState("networkidle", { timeout: 30000 });
+
+        // Check for loading stall
+        await checkForLoadingStall(page);
+
+        // Verify the canvas is ready as an additional check
+        await expect(page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS)).toBeVisible({
+            timeout: 30000,
+        });
+
+        processorLogger.success("UI loaded successfully without stalling");
     });
 
     test.afterEach(async ({ page: _ }, testInfo) => {
@@ -37,6 +192,9 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         page,
     }) => {
         const processorService = new ProcessorService(page);
+
+        // Check for loading stall before proceeding
+        await checkForLoadingStall(page);
 
         // Verify the canvas is ready
         await expect(page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS)).toBeVisible(
@@ -72,6 +230,9 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
 
     test("should open processor configuration dialog", async ({ page }) => {
         const processorService = new ProcessorService(page);
+
+        // Check for loading stall before proceeding
+        await checkForLoadingStall(page);
 
         // Verify the canvas is ready
         await expect(page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS)).toBeVisible(
@@ -117,6 +278,9 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     }) => {
         const processorService = new ProcessorService(page);
 
+        // Check for loading stall before proceeding
+        await checkForLoadingStall(page);
+
         // Verify the canvas is ready
         await expect(page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS)).toBeVisible(
             { timeout: 30000 },
@@ -161,6 +325,9 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
 
     test("should verify processor can be interacted with", async ({ page }) => {
         const processorService = new ProcessorService(page);
+
+        // Check for loading stall before proceeding
+        await checkForLoadingStall(page);
 
         // Verify the canvas is ready
         await expect(page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS)).toBeVisible(
