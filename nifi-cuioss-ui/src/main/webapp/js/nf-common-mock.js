@@ -1,13 +1,13 @@
 'use strict';
 
 // Mock implementation of nf.Common for standalone testing
-(function() {
+(function () {
     // Simple mock logger for standalone usage
     const logger = {
-        debug: function(msg) { console.debug('[nf-common-mock]', msg); },
-        info: function(msg) { console.info('[nf-common-mock]', msg); },
-        warn: function(msg) { console.warn('[nf-common-mock]', msg); },
-        error: function(msg) { console.error('[nf-common-mock]', msg); }
+        debug: function (msg) { console.debug('[nf-common-mock]', msg); },
+        info: function (msg) { console.info('[nf-common-mock]', msg); },
+        warn: function (msg) { console.warn('[nf-common-mock]', msg); },
+        error: function (msg) { console.error('[nf-common-mock]', msg); }
     };
 
     /**
@@ -45,73 +45,73 @@
             // Create tab structure
             const jwtValidatorContainer = document.getElementById('jwt-validator-container');
             let tabContainer = document.getElementById('jwt-validator-tabs');
-            
+
             if (!tabContainer) {
                 // Hide loading indicator first
                 const loadingIndicator = document.getElementById('loading-indicator');
                 if (loadingIndicator) {
                     loadingIndicator.style.display = 'none';
                 }
-                
+
                 // Create tabs container
                 tabContainer = document.createElement('div');
                 tabContainer.id = 'jwt-validator-tabs';
                 tabContainer.className = 'jwt-validator-tabs';
                 jwtValidatorContainer.appendChild(tabContainer);
-                
+
                 // Create tab navigation
                 const tabNavigation = document.createElement('div');
                 tabNavigation.className = 'tab-navigation';
                 tabContainer.appendChild(tabNavigation);
-                
+
                 // Create tab content container
                 const tabContent = document.createElement('div');
                 tabContent.className = 'tab-content';
                 tabContainer.appendChild(tabContent);
             }
-            
+
             const tabNavigation = tabContainer.querySelector('.tab-navigation');
             const tabContent = tabContainer.querySelector('.tab-content');
-            
+
             // Create tab navigation item
             const tabNavItem = document.createElement('div');
             tabNavItem.className = 'tab-nav-item';
             tabNavItem.textContent = id.charAt(0).toUpperCase() + id.slice(1).replace(/([A-Z])/g, ' $1');
             tabNavItem.setAttribute('data-tab', id);
             tabNavigation.appendChild(tabNavItem);
-            
+
             // Create tab content
             const tab = document.createElement('div');
             tab.className = 'tab-pane';
             tab.id = 'tab-' + id;
             tab.setAttribute('data-tab', id);
             tabContent.appendChild(tab);
-            
+
             // Initialize component in tab
             if (component && typeof component.init === 'function') {
                 component.init(tab, null, null, function () {
                     // Component initialized callback
                 });
             }
-            
+
             // Add click handler for tab navigation
             tabNavItem.addEventListener('click', function () {
                 // Remove active class from all nav items and tabs
                 const allNavItems = tabNavigation.querySelectorAll('.tab-nav-item');
                 const allTabs = tabContent.querySelectorAll('.tab-pane');
-                
+
                 allNavItems.forEach(function (ni) {
                     ni.classList.remove('active');
                 });
                 allTabs.forEach(function (t) {
                     t.classList.remove('active');
                 });
-                
+
                 // Add active class to clicked tab and its content
                 tabNavItem.classList.add('active');
                 tab.classList.add('active');
             });
-            
+
             // If this is the first tab, activate it
             if (tabNavigation.children.length === 1) {
                 tabNavItem.classList.add('active');
@@ -129,12 +129,12 @@
      */
     const getI18n = function () {
         return {
-            getProperty: function(key) {
+            getProperty: function (key) {
                 const translations = {
                     // JWT Validator
                     'jwt.validator.title': 'JWT Token Validator',
                     'jwt.validator.loading': 'Loading JWT Validator UI...',
-                    
+
                     // Property help texts
                     'property.token.location.help': 'Defines where to extract the token from.',
                     'property.token.header.help': 'The header name containing the token when using AUTHORIZATION_HEADER.',
@@ -145,7 +145,7 @@
                     'property.maximum.token.size.help': 'Maximum size in bytes for JWT tokens.',
                     'property.allowed.algorithms.help': 'Comma-separated list of allowed JWT signature algorithms.',
                     'property.require.https.jwks.help': 'Whether to require HTTPS for JWKS endpoint URLs.',
-                    
+
                     // Token Verification
                     'token.verification.title': 'Token Verification',
                     'token.verification.input.label': 'Enter JWT Token',
@@ -157,7 +157,7 @@
                     'token.verification.details': 'Token Details',
                     'token.verification.claims': 'Claims',
                     'token.verification.raw': 'Raw Token',
-                    
+
                     // Issuer Configuration
                     'issuer.config.title': 'Issuer Configuration',
                     'issuer.config.add': 'Add Issuer',
@@ -168,7 +168,7 @@
                     'issuer.config.jwks.url': 'JWKS URL',
                     'issuer.config.audience': 'Audience',
                     'issuer.config.claim.mappings': 'Claim Mappings',
-                    
+
                     // Common
                     'common.loading': 'Loading...',
                     'common.error': 'Error',

@@ -4,8 +4,15 @@ module.exports = {
         'amd': true,
         'jquery': true,
         'es6': true,
-        'jest': true
+        'jest': true,
+        'node': true
     },
+    'ignorePatterns': [
+        'target/**',
+        'node_modules/**',
+        'src/main/webapp/js/bundle.vite.umd.js',
+        'src/main/webapp/js/bundle.webpack.js'
+    ],
     'extends': [
         'eslint:recommended',
         'plugin:jest/recommended'

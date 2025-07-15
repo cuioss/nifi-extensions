@@ -14,32 +14,32 @@ export async function addProcessorToCanvas(page, processorType = 'MultiIssuerJWT
   try {
     // Look for the actual draggable processor button (not the icon div)
     const draggableProcessorButton = page.locator('button.cdk-drag[class*="icon-processor"]').first();
-    
+
     // Check if the draggable button is visible
     if (await draggableProcessorButton.isVisible()) {
       // Get canvas for drop target
       const canvas = page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS || '#canvas, .canvas, svg');
       await canvas.waitFor({ timeout: 5000 });
-      
+
       const canvasBounds = await canvas.boundingBox();
-      
+
       if (canvasBounds) {
         const centerX = canvasBounds.width / 2;
         const centerY = canvasBounds.height / 2;
-        
+
         // Drag processor to canvas center
-        await draggableProcessorButton.dragTo(canvas, { 
+        await draggableProcessorButton.dragTo(canvas, {
           targetPosition: { x: centerX, y: centerY },
-          force: true 
+          force: true
         });
-        
+
         // Wait for processor to appear on canvas
         await page.waitForTimeout(3000);
-        
+
         // Check if processor was added by looking for processor elements on canvas
         const processorOnCanvas = page.locator('g.processor, rect.processor, [data-component-type="processor"]');
         const processorExists = await processorOnCanvas.count() > 0;
-        
+
         if (processorExists) {
           console.log('Successfully added processor to canvas');
           return true;
@@ -56,7 +56,7 @@ export async function addProcessorToCanvas(page, processorType = 'MultiIssuerJWT
   } catch (error) {
     console.log('Could not add processor to canvas:', error.message);
   }
-  
+
   return false;
 }
 
@@ -78,17 +78,18 @@ export async function findProcessor(page, processorType, options = {}) {
     `rect.processor[data-type*="${processorType}"]`,
     `[data-component-type="processor"][data-type*="${processorType}"]`,
     `g.component[data-type*="${processorType}"]`,
-    
-    // Text-based selectors
-    `text:has-text("${processorType}")`,
+
+    // Text-based selectors - using more specific selectors to avoid matching multiple elements
+    `text.processor-name:has-text("${processorType}")`,
+    `text.processor-type:has-text("${processorType}")`,
     `[title*="${processorType}"]`,
     `[alt*="${processorType}"]`,
-    
+
     // General processor selectors on canvas
     `g.processor, rect.processor`,
     `[data-component-type="processor"]`,
     `g.component`,
-    
+
     // If looking for any processor, use very general selectors
     ...(processorType === "processor" || processorType.includes("Processor") ? [
       `svg g.processor`,
@@ -154,7 +155,7 @@ export async function findJwtAuthenticator(page, options = {}) {
 export async function findMultiIssuerJwtAuthenticator(page, options = {}) {
   // First try to find existing processor
   let processor = await findProcessor(page, 'MultiIssuerJWTTokenAuthenticator', { failIfNotFound: false });
-  
+
   if (!processor && options.addIfNotFound !== false) {
     // Try to add processor to canvas
     const added = await addProcessorToCanvas(page, 'MultiIssuerJWTTokenAuthenticator');
@@ -163,11 +164,11 @@ export async function findMultiIssuerJwtAuthenticator(page, options = {}) {
       processor = await findProcessor(page, 'MultiIssuerJWTTokenAuthenticator', { failIfNotFound: false });
     }
   }
-  
+
   if (!processor && options.failIfNotFound !== false) {
     throw new Error('MultiIssuerJWTTokenAuthenticator not found');
   }
-  
+
   return processor;
 }
 
@@ -256,7 +257,7 @@ export async function interactWithProcessor(page, processor, options = {}) {
     await page.waitForLoadState('networkidle', { timeout: 5000 });
   } catch (error) {
     console.error(`Processor interaction failed (${action}):`, error.message);
-    
+
     // Take screenshot on failure for debugging
     if (takeScreenshot) {
       const screenshotPath = testInfo && testInfo.outputDir
@@ -264,7 +265,7 @@ export async function interactWithProcessor(page, processor, options = {}) {
         : `target/processor-interaction-failed-${Date.now()}.png`;
       await page.screenshot({ path: screenshotPath });
     }
-    
+
     throw error;
   }
 }
@@ -276,7 +277,7 @@ export async function configureProcessor(page, processorIdentifier, options = {}
   const { timeout = 10000, testInfo = null } = options;
 
   let processor = processorIdentifier;
-  
+
   // If processorIdentifier is a string, find the processor first
   if (typeof processorIdentifier === 'string') {
     processor = await findProcessor(page, processorIdentifier, { addIfNotFound: true });
@@ -366,8 +367,14 @@ export async function verifyProcessorDeployment(page, processorType) {
   expect(processor, `Processor ${processorType} should be found`).toBeTruthy();
   expect(processor.isVisible, `Processor ${processorType} should be visible`).toBeTruthy();
 
-  // Verify processor is on canvas
-  await expect(page.locator(processor.element)).toBeVisible({ timeout: 5000 });
+  // Verify processor is on canvas - use the locator directly instead of recreating it
+  // This avoids strict mode violations when the selector matches multiple elements
+  if (processor.locator) {
+    await expect(processor.locator).toBeVisible({ timeout: 5000 });
+  } else {
+    // If locator is not available, use the first matching element to avoid strict mode violations
+    await expect(page.locator(processor.element).first()).toBeVisible({ timeout: 5000 });
+  }
 
   return processor;
 }
