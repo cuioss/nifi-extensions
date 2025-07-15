@@ -261,6 +261,11 @@ npx playwright test --grep "Capture JWT UI Console Errors"
 * `capture_jwt_console_spec_js-Capture_JWT_UI_Console_Errors-console-logs-*.json` - Single unified JSON log
 * `capture_jwt_console_spec_js-Capture_JWT_UI_Console_Errors-console-logs-*.log` - Single unified human-readable log
 
+[NOTE]
+====
+The JWT UI analysis is injected directly into the browser console and captured within the unified log entries. Look for "JWT UI ANALYSIS SUMMARY" markers in the log.
+====
+
 **Analysis Focus**:
 * **Loading Indicator Status**: Look for "Loading indicator visible: false" in the unified log
 * **Success Messages**: Look for "initialization completed" and "Loading indicator hidden"
@@ -274,9 +279,9 @@ npx playwright test --grep "Capture JWT UI Console Errors"
 * **Loading Stalls**: Ensure loading indicator is properly hidden
 * **Component Registration**: Verify custom UI components are registered
 
-[NOTE]
+[IMPORTANT]
 ====
-The JWT UI console error capture test uses the same unified logging system as all other tests. JWT UI specific analysis is included within the single unified log file, not in separate files.
+The JWT UI console error capture test uses the same unified logging system as all other tests. JWT UI specific analysis is injected into the browser console and captured within the single unified log file. **No separate summary files are created** - this maintains the unified logging principle of one log per test session.
 ====
 
 === 6. Modify UI Code
