@@ -6,67 +6,27 @@
     <title>MultiIssuerJWTTokenAuthenticator UI</title>
     <link rel="stylesheet" href="css/styles.css">
 
-    <!-- Load jQuery first -->
-    <script type="text/javascript" src="webjars/META-INF/resources/webjars/jquery/3.6.0/jquery.min.js"></script>
-
-    <!-- Load jQuery UI for tooltips -->
-    <script type="text/javascript" src="webjars/META-INF/resources/webjars/jquery-ui/1.13.2/jquery-ui.min.js"></script>
-    <link rel="stylesheet" href="webjars/META-INF/resources/webjars/jquery-ui/1.13.2/jquery-ui.css">
-
-    <!-- Load RequireJS -->
-    <script type="text/javascript" src="webjars/META-INF/resources/webjars/requirejs/2.3.6/require.min.js"></script>
-
+    <!-- Load external dependencies from WebJars (maintained by Maven) -->
+    
     <!-- Load Cash-DOM (jQuery alternative) -->
     <script type="text/javascript" src="webjars/META-INF/resources/webjars/cash-dom/8.1.5/dist/cash.min.js"></script>
 
     <!-- Load Popper.js (required by Tippy.js) -->
     <script type="text/javascript" src="webjars/META-INF/resources/webjars/popperjs__core/2.11.8/dist/umd/popper.min.js"></script>
 
-    <!-- Load Tippy.js -->
+    <!-- Load Tippy.js for tooltips -->
     <script type="text/javascript" src="webjars/META-INF/resources/webjars/tippy.js/6.3.7/dist/tippy.umd.min.js"></script>
     <link rel="stylesheet" href="webjars/META-INF/resources/webjars/tippy.js/6.3.7/dist/tippy.css">
 
-    <!-- Configure RequireJS -->
+    <!-- Load NiFi Common mock for standalone testing -->
+    <script type="text/javascript" src="js/nf-common-mock.js"></script>
+    
+    <!-- Make nf.Common available as global variable for bundle -->
     <script type="text/javascript">
-        // Configure RequireJS
-        require.config({
-            paths: {
-                'jquery': ['webjars/META-INF/resources/webjars/jquery/3.6.0/jquery.min'],
-                'jquery-ui': ['webjars/META-INF/resources/webjars/jquery-ui/1.13.2/jquery-ui'],
-                'nf.Common': ['js/nf-common-mock'], // Mock for nf.Common
-                'components/jwksValidator': ['js/components/jwksValidator'],
-                'components/tokenVerifier': ['js/components/tokenVerifier'],
-                'components/issuerConfigEditor': ['js/components/issuerConfigEditor'],
-                'services/apiClient': ['js/services/apiClient']
-            },
-            shim: {
-                'jquery-ui': {
-                    deps: ['jquery'],
-                    exports: 'jQuery'
-                }
-            },
-            // Use the already loaded jQuery instance
-            map: {
-                '*': {
-                    'jquery': 'jquery-global'
-                },
-                'jquery-global': {
-                    'jquery': 'jquery'
-                }
-            },
-            waitSeconds: 120 // Increase timeout for module loading
-        });
-
-        // Define a module that returns the global jQuery
-        define('jquery-global', ['jquery'], function($) {
-            // Use the already loaded jQuery UI
-            return window.jQuery;
-        });
-
-        // Define jquery-ui-tooltip as a module that returns jQuery UI
-        define('jquery-ui-tooltip', [], function() {
-            return window.jQuery;
-        });
+        // Ensure nf.Common is available as a global for the bundle
+        if (typeof window.nfCommon !== 'undefined') {
+            window.nfCommon = window.nfCommon;
+        }
     </script>
 </head>
 <body>
@@ -75,37 +35,35 @@
         <div id="loading-indicator">Loading JWT Validator UI...</div>
     </div>
 
-    <!-- Use the nf.Common mock from js/nf-common-mock.js -->
+    <!-- Load our modern ES6 bundle built with Vite -->
+    <script type="text/javascript" src="js/bundle.vite.umd.js"></script>
+    
+    <!-- Initialize the JWT UI -->
     <script type="text/javascript">
-        // Create a global jQuery variable
-        window.jQuery = window.$ = jQuery;
-    </script>
-
-    <!-- Load our scripts using RequireJS -->
-    <script type="text/javascript">
-        // Create a global flag to track component registration
-        window.jwtComponentsRegistered = window.jwtComponentsRegistered || false;
-
-        require(['js/main', 'js/bundle', 'js/nf-jwt-validator'], function(main, bundle) {
-            console.log('All modules loaded successfully');
-
-            // Initialize the main module
-
-            // Initialize main module only if components haven't been registered yet
-            if (!window.jwtComponentsRegistered && main && typeof main.init === 'function') {
-                console.log('Initializing main module from index.html');
-                main.init();
-            } else if (window.jwtComponentsRegistered) {
-                console.log('Components already registered, skipping main module initialization');
+        // Initialize the JWT UI components when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, initializing JWT UI...');
+            
+            // Initialize the UI components - the bundle exposes nifiCuiossUI global variable
+            if (window.nifiCuiossUI && typeof window.nifiCuiossUI.init === 'function') {
+                console.log('Initializing JWT UI from Vite bundle');
+                window.nifiCuiossUI.init().then(function(success) {
+                    if (success) {
+                        console.log('JWT UI initialization completed successfully');
+                    } else {
+                        console.warn('JWT UI initialization completed with warnings');
+                    }
+                }).catch(function(error) {
+                    console.error('JWT UI initialization failed:', error);
+                });
+            } else {
+                console.error('nifiCuiossUI not found in global scope. Bundle may not have loaded correctly.');
             }
-
-            // Initialize bundle module only if components haven't been registered yet
-            if (!window.jwtComponentsRegistered && bundle && typeof bundle.init === 'function') {
-                console.log('Initializing bundle module from index.html');
-                bundle.init();
-            } else if (window.jwtComponentsRegistered) {
-                console.log('Components already registered, skipping bundle module initialization');
-            }
+        });
+        
+        // Add global error handler for debugging
+        window.addEventListener('error', function(event) {
+            console.error('Global error:', event.error);
         });
     </script>
 </body>

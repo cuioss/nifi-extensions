@@ -5,8 +5,8 @@
   "dependencyManagement": "Runtime dependencies (cash-dom, tippy.js, @popperjs/core) are managed via WebJars in pom.xml. NPM dependencies are for development only.",
   "main": "src/main/webapp/js/main.js",
   "scripts": {
-    "build": "webpack --mode production",
-    "dev": "webpack --mode development --watch",
+    "build": "NODE_ENV=production vite build",
+    "dev": "NODE_ENV=development vite build --watch",
     "lint": "eslint . --ext .js",
     "lint:fix": "eslint . --ext .js --fix",
     "stylelint": "stylelint \"src/main/webapp/css/**/*.css\"",
@@ -56,8 +56,7 @@
     "stylelint-declaration-strict-value": "^1.10.11",
     "stylelint-order": "^7.0.0",
     "tippy.js": "^6.3.7",
-    "webpack": "^5.92.1",
-    "webpack-cli": "^6.0.1",
+    "vite": "^5.4.0",
     "whatwg-fetch": "^3.6.20"
   },
   "jest": {
