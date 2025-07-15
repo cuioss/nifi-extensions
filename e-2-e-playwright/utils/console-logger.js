@@ -121,14 +121,28 @@ class IndividualTestLogger {
       /Uncaught SyntaxError/i,
       /Mismatched anonymous define\(\)/i,
       /Module name .* has not been loaded/i,
-      /Loading JWT Validator UI\.\.\./i,
-      /Loading JWT Validator UI/i,
       /RequireJS/i,
       /Script error/i
     ];
     
+    // UI Loading stall patterns (only match actual stalls, not success messages)
+    const uiLoadingStallPatterns = [
+      /Loading JWT Validator UI\.\.\.$/, // Only match if it ends with "..." (actual stall)
+      /UI loading timeout/i,
+      /Loading indicator still visible/i,
+      /UI failed to initialize/i
+    ];
+    
+    // Skip debug messages that contain success indicators
+    const isSuccessMessage = /Loading indicator hidden|successfully hidden|initialization completed/i.test(message);
+    
+    if (isSuccessMessage) {
+      return; // Skip success messages from critical error detection
+    }
+    
     // Check if this is a critical error
-    const isCritical = criticalPatterns.some(pattern => pattern.test(message));
+    const isCritical = criticalPatterns.some(pattern => pattern.test(message)) ||
+                      uiLoadingStallPatterns.some(pattern => pattern.test(message));
     
     if (isCritical && type === 'error') {
       console.error(`🚨 CRITICAL ERROR DETECTED IN REAL-TIME: ${message}`);
@@ -160,7 +174,7 @@ class IndividualTestLogger {
     if (/Mismatched anonymous define\(\)|RequireJS|Module name .* has not been loaded/i.test(message)) {
       return 'MODULE_LOADING_ERROR';
     }
-    if (/Loading JWT Validator UI/i.test(message)) {
+    if (uiLoadingStallPatterns.some(pattern => pattern.test(message))) {
       return 'UI_LOADING_STALL';
     }
     return 'UNKNOWN_CRITICAL_ERROR';

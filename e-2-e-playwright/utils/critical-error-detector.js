@@ -21,9 +21,11 @@ const CRITICAL_ERROR_PATTERNS = {
   ],
   
   UI_LOADING_STALLS: [
-    /Loading JWT Validator UI\.\.\./i,
-    /Loading JWT Validator UI/i,
-    /Loading.*UI.*\.\.\./i
+    /Loading JWT Validator UI\.\.\.$/, // Only match if it ends with "..." (actual stall)
+    /UI loading timeout/i,
+    /Loading indicator still visible/i,
+    /UI failed to initialize/i,
+    /Loading.*UI.*\.\.\.$/ // Only match if it ends with "..." (actual stall)
   ],
   
   MODULE_LOADING_ERRORS: [
@@ -108,6 +110,13 @@ export class CriticalErrorDetector {
     const message = msg.text();
     const type = msg.type();
     
+    // Skip success messages that indicate proper UI initialization
+    const isSuccessMessage = /Loading indicator hidden|successfully hidden|initialization completed|Component registration successful/i.test(message);
+    
+    if (isSuccessMessage) {
+      return; // Skip success messages from critical error detection
+    }
+    
     // Check for JavaScript errors
     if (type === 'error') {
       for (const pattern of CRITICAL_ERROR_PATTERNS.JAVASCRIPT_ERRORS) {
@@ -136,15 +145,17 @@ export class CriticalErrorDetector {
       }
     }
     
-    // Check for UI loading stalls in any message type
-    for (const pattern of CRITICAL_ERROR_PATTERNS.UI_LOADING_STALLS) {
-      if (pattern.test(message)) {
-        this.addCriticalError(
-          'UI_LOADING_STALL',
-          `UI Loading Stall Detected: ${message}`,
-          testInfo
-        );
-        break;
+    // Check for UI loading stalls in any message type (but skip debug messages)
+    if (type !== 'debug') {
+      for (const pattern of CRITICAL_ERROR_PATTERNS.UI_LOADING_STALLS) {
+        if (pattern.test(message)) {
+          this.addCriticalError(
+            'UI_LOADING_STALL',
+            `UI Loading Stall Detected: ${message}`,
+            testInfo
+          );
+          break;
+        }
       }
     }
   }
