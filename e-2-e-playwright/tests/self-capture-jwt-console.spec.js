@@ -92,8 +92,7 @@ test.describe("JWT UI Console Error Capture", () => {
 
         if (logResult) {
             console.log("\n=== UNIFIED LOGGING SYSTEM REPORT ===");
-            console.log(`Console logs saved to: ${logResult.jsonLog}`);
-            console.log(`Human-readable logs saved to: ${logResult.textLog}`);
+            console.log(`Console logs saved to: ${logResult.textLog}`);
             console.log(`Total log entries: ${logResult.totalLogs}`);
             console.log(`Test ID: ${logResult.testId}`);
             console.log(

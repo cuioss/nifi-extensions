@@ -190,14 +190,64 @@ class IndividualTestLogger {
   }
 
   /**
-   * Save logs for a specific test
+   * Save logs for a specific test in the test results directory
    */
-  async saveTestLogs(testId, logs) {
+  async saveTestLogs(testId, logs, testInfo) {
     if (!logs || logs.length === 0) {
       return null;
     }
 
-    // Create target/logs directory
+    // Get the test results directory path from testInfo
+    // This follows the same pattern as other test artifacts
+    const testResultsDir = testInfo.outputDir;
+    
+    if (!fs.existsSync(testResultsDir)) {
+      fs.mkdirSync(testResultsDir, { recursive: true });
+    }
+
+    // Create single console log file in the test results directory
+    const logFileName = 'console-logs.log';
+    const logFilePath = path.join(testResultsDir, logFileName);
+
+    // Format logs for readability
+    const formattedLogs = this.formatLogsForFile(logs, testId);
+
+    // Write only the human-readable log file
+    fs.writeFileSync(logFilePath, formattedLogs, 'utf8');
+
+    return {
+      textLog: logFilePath,
+      totalLogs: logs.length,
+      testId
+    };
+  }
+
+  /**
+   * Save all captured logs for all tests
+   */
+  async saveAllLogs() {
+    const results = [];
+    
+    for (const [testId, logs] of this.testLogs) {
+      // For global teardown, we don't have testInfo, so save to old location
+      const result = await this.saveTestLogsLegacy(testId, logs);
+      if (result) {
+        results.push(result);
+      }
+    }
+    
+    return results.length > 0 ? results : null;
+  }
+
+  /**
+   * Legacy save method for global teardown when testInfo is not available
+   */
+  async saveTestLogsLegacy(testId, logs) {
+    if (!logs || logs.length === 0) {
+      return null;
+    }
+
+    // Create target/logs directory for legacy global teardown
     const targetDir = path.join(process.cwd(), 'target');
     const logsDir = path.join(targetDir, 'logs');
 
@@ -216,33 +266,11 @@ class IndividualTestLogger {
     // Write to file
     fs.writeFileSync(logFilePath, formattedLogs, 'utf8');
 
-    // Also save as JSON for programmatic access
-    const jsonFileName = `${testId}-console-logs-${timestamp}.json`;
-    const jsonFilePath = path.join(logsDir, jsonFileName);
-    fs.writeFileSync(jsonFilePath, JSON.stringify(logs, null, 2), 'utf8');
-
     return {
       textLog: logFilePath,
-      jsonLog: jsonFilePath,
       totalLogs: logs.length,
       testId
     };
-  }
-
-  /**
-   * Save all captured logs for all tests
-   */
-  async saveAllLogs() {
-    const results = [];
-    
-    for (const [testId, logs] of this.testLogs) {
-      const result = await this.saveTestLogs(testId, logs);
-      if (result) {
-        results.push(result);
-      }
-    }
-    
-    return results.length > 0 ? results : null;
   }
 
   /**
@@ -334,7 +362,7 @@ export async function saveAllBrowserLogs() {
 export async function saveTestBrowserLogs(testInfo) {
   const testId = globalConsoleLogger.getTestId(testInfo);
   const logs = globalConsoleLogger.getTestLogs(testId);
-  return globalConsoleLogger.saveTestLogs(testId, logs);
+  return globalConsoleLogger.saveTestLogs(testId, logs, testInfo);
 }
 
 /**
