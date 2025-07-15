@@ -85,7 +85,7 @@ grep -A 5 "JWT UI ANALYSIS" target/test-results/*/console-logs.log
 * `nifi-cuioss-ui/src/main/webapp/index.html` - Main HTML entry point
 * `nifi-cuioss-ui/vite.config.js` - Modern build configuration
 
-**JWT UI Console Test**: `tests/self-capture-jwt-console.spec.js` - Captures JWT UI specific console output with analysis markers.
+**Browser Console Test**: `tests/self-capture-browser-console.spec.js` - Captures browser console output with analysis markers for any processor UI.
 
 === 6. Build and Deploy
 

@@ -7,10 +7,10 @@ import {
     saveTestBrowserLogs,
 } from "../utils/console-logger.js";
 
-test.describe("JWT UI Console Error Capture", () => {
-    test("Capture JWT UI Console Errors", async ({ page }, testInfo) => {
+test.describe("Browser Console Error Capture", () => {
+    test("Capture Browser Console Errors", async ({ page }, testInfo) => {
         // Setup unified console logging system instead of custom implementation
-        // Skip initial canvas checks since JWT UI page doesn't have a canvas
+        // Skip initial canvas checks since processor UI page doesn't have a canvas
         const errorDetection = await setupAuthAwareErrorDetection(
             page,
             testInfo,
@@ -21,12 +21,12 @@ test.describe("JWT UI Console Error Capture", () => {
         const authService = new AuthService(page);
         await authService.ensureReady();
 
-        // Navigate to JWT UI page after authentication
-        const jwtUIUrl =
+        // Navigate to processor UI page after authentication
+        const processorUIUrl =
             "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/?id=08e20549-0198-1000-65a2-24abdfb667a2&revision=1&clientId=346173ec-4c73-459a-8a73-91c523fb9162&editable=true&disconnectedNodeAcknowledged=false";
 
-        console.log("Navigating to JWT UI page...");
-        await page.goto(jwtUIUrl);
+        console.log("Navigating to processor UI page...");
+        await page.goto(processorUIUrl);
 
         // Wait for page to load and modules to attempt loading
         await page.waitForTimeout(10000);
@@ -42,8 +42,8 @@ test.describe("JWT UI Console Error Capture", () => {
             console.log(`Loading indicator text: "${text}"`);
         }
 
-        // Check for critical errors after navigation (skip canvas checks for JWT UI page)
-        // The JWT UI page doesn't have a canvas, so we only check for console errors
+        // Check for critical errors after navigation (skip canvas checks for processor UI page)
+        // The processor UI page doesn't have a canvas, so we only check for console errors
         const criticalErrors = errorDetection.getCriticalErrors();
         if (criticalErrors.length > 0) {
             const jsErrors = criticalErrors.filter(
@@ -58,10 +58,10 @@ test.describe("JWT UI Console Error Capture", () => {
             }
         }
 
-        // Add JWT UI specific information to the browser console so it gets captured in the unified log
+        // Add processor UI specific information to the browser console so it gets captured in the unified log
         await page.evaluate(
             (analysisData) => {
-                console.log("=== JWT UI ANALYSIS SUMMARY ===");
+                console.log("=== PROCESSOR UI ANALYSIS SUMMARY ===");
                 console.log(`URL: ${analysisData.url}`);
                 console.log(
                     `Loading indicator visible: ${analysisData.loadingIndicatorVisible}`,
@@ -74,10 +74,10 @@ test.describe("JWT UI Console Error Capture", () => {
                 console.log(
                     `Critical errors detected: ${analysisData.criticalErrors}`,
                 );
-                console.log("=== END JWT UI ANALYSIS ===");
+                console.log("=== END PROCESSOR UI ANALYSIS ===");
             },
             {
-                url: jwtUIUrl,
+                url: processorUIUrl,
                 loadingIndicatorVisible: isVisible,
                 loadingIndicatorText: isVisible
                     ? await loadingIndicator.textContent()
@@ -96,7 +96,7 @@ test.describe("JWT UI Console Error Capture", () => {
             console.log(`Total log entries: ${logResult.totalLogs}`);
             console.log(`Test ID: ${logResult.testId}`);
             console.log(
-                "JWT UI analysis has been injected into the browser console and captured in the unified log.",
+                "Processor UI analysis has been injected into the browser console and captured in the unified log.",
             );
         }
 
