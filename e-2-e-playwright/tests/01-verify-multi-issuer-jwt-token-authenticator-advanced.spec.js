@@ -336,7 +336,7 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
 
     test("should attempt to access advanced configuration", async ({
         page,
-    }) => {
+    }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
         // Check for loading stall before proceeding
