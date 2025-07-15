@@ -68,6 +68,8 @@ grep -A 5 "JWT UI ANALYSIS" target/test-results/*/console-logs.log
 
 **Note**: Console logs only exist when browser activity occurs. Normal NiFi canvas operation generates no console output.
 
+**Fail-on-Console-Error**: The console logging system can be configured to fail tests when console errors occur. This is useful for catching JavaScript errors that might otherwise be missed. Use `setupStrictErrorDetection()` instead of `setupAuthAwareErrorDetection()` to enable this feature.
+
 === 5. Fix Issues
 
 **Common UI Issues**:
