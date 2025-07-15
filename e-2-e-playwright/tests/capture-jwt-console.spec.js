@@ -80,8 +80,8 @@ test.describe('JWT UI Console Error Capture', () => {
     pageErrors: pageErrors
   };
   
-  fs.writeFileSync('jwt-ui-console-errors.json', JSON.stringify(report, null, 2));
+  fs.writeFileSync('target/jwt-ui-console-errors.json', JSON.stringify(report, null, 2));
   console.log('\n=== REPORT SAVED ===');
-  console.log('Console errors saved to: jwt-ui-console-errors.json');
+  console.log('Console errors saved to: target/jwt-ui-console-errors.json');
   });
 });

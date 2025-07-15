@@ -247,7 +247,7 @@ export async function interactWithProcessor(page, processor, options = {}) {
 
     // Take screenshot if requested
     if (takeScreenshot) {
-      await page.screenshot({ path: `processor-interaction-${Date.now()}.png` });
+      await page.screenshot({ path: `target/processor-interaction-${Date.now()}.png` });
     }
 
     await page.waitForLoadState('networkidle', { timeout: 5000 });
@@ -256,7 +256,7 @@ export async function interactWithProcessor(page, processor, options = {}) {
     
     // Take screenshot on failure for debugging
     if (takeScreenshot) {
-      await page.screenshot({ path: `processor-interaction-failed-${Date.now()}.png` });
+      await page.screenshot({ path: `target/processor-interaction-failed-${Date.now()}.png` });
     }
     
     throw error;
