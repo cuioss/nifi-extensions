@@ -44,10 +44,13 @@ class IndividualTestLogger {
         args: msg.args()?.map(arg => arg.toString()) || []
       };
       
-      testLogsArray.push(logEntry);
-      
-      // Check for critical errors in real-time
-      this.checkForCriticalErrorsInLog(logEntry, testInfo);
+      // Filter out irrelevant setup-related logs
+      if (this.shouldIncludeLogEntry(logEntry)) {
+        testLogsArray.push(logEntry);
+        
+        // Check for critical errors in real-time
+        this.checkForCriticalErrorsInLog(logEntry, testInfo);
+      }
     });
 
     // Capture page errors for this specific test
@@ -63,7 +66,9 @@ class IndividualTestLogger {
         args: []
       };
       
-      testLogsArray.push(logEntry);
+      if (this.shouldIncludeLogEntry(logEntry)) {
+        testLogsArray.push(logEntry);
+      }
     });
 
     // Capture page crashes for this specific test
@@ -78,6 +83,7 @@ class IndividualTestLogger {
         args: []
       };
       
+      // Page crashes are always relevant
       testLogsArray.push(logEntry);
     });
 
@@ -93,8 +99,82 @@ class IndividualTestLogger {
         args: [request.url(), request.method()]
       };
       
-      testLogsArray.push(logEntry);
+      if (this.shouldIncludeLogEntry(logEntry)) {
+        testLogsArray.push(logEntry);
+      }
     });
+
+    // Capture network responses with error status codes (like 404s for fonts)
+    page.on('response', (response) => {
+      const status = response.status();
+      const url = response.url();
+      
+      // Capture 4xx and 5xx responses (but filter out irrelevant ones)
+      if (status >= 400) {
+        const logEntry = {
+          test: testInfo.title,
+          testFile: testInfo.titlePath?.[0] || 'Unknown File',
+          timestamp: new Date().toISOString(),
+          type: 'networkerror',
+          text: `HTTP ${status}: ${response.request().method()} ${url}`,
+          location: null,
+          args: [url, response.request().method(), status.toString()]
+        };
+        
+        if (this.shouldIncludeLogEntry(logEntry)) {
+          testLogsArray.push(logEntry);
+        }
+      }
+    });
+  }
+
+  /**
+   * Filter out irrelevant setup-related logs
+   */
+  shouldIncludeLogEntry(logEntry) {
+    const message = logEntry.text;
+    const url = logEntry.args?.[0] || '';
+    
+    // Filter out irrelevant setup-related logs
+    const irrelevantPatterns = [
+      // 401 errors during initial login/setup
+      /Failed to load resource: the server responded with a status of 401/i,
+      /HTTP 401.*nifi-api\/flow\/current-user/i,
+      
+      // Expected authentication-related errors during setup
+      /401.*authentication/i,
+      /login.*failed/i,
+      /unauthorized/i,
+      
+      // Development-only verbose logs
+      /\[DOM\] Input elements should have autocomplete attributes/i,
+      /More info: https:\/\/goo\.gl\/9p2vKq/i
+    ];
+    
+    // Check if this is an irrelevant setup log
+    const isIrrelevant = irrelevantPatterns.some(pattern => pattern.test(message));
+    
+    if (isIrrelevant) {
+      return false;
+    }
+    
+    // Always include relevant resource loading errors (like FontAwesome 404s)
+    if (logEntry.type === 'networkerror' || logEntry.type === 'requestfailed') {
+      const relevantResourcePatterns = [
+        /\.(woff|woff2|ttf|eot|otf)(\?.*)?$/i,  // Font files
+        /\.(css|js|png|jpg|jpeg|gif|svg)(\?.*)?$/i,  // Other UI resources
+        /nifi-cuioss-ui.*\.(woff|woff2|css|js)/i,  // Our UI resources specifically
+        /fontawesome/i,  // FontAwesome resources
+        /media\//i  // Media directory resources
+      ];
+      
+      const isRelevantResource = relevantResourcePatterns.some(pattern => pattern.test(url));
+      if (isRelevantResource) {
+        return true;
+      }
+    }
+    
+    return true;
   }
 
   /**
