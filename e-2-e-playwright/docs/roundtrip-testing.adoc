@@ -97,55 +97,108 @@ You can replace the test file with any specific test you need to run.
 Check the test results and logs:
 
 * Test results will be displayed in the console
-* Detailed logs are available under `e-2-e-playwright/target/logs`
-* Screenshots and videos of failed tests are stored in `e-2-e-playwright/test-results`
+* **Unified console logs** are available under `e-2-e-playwright/target/logs/`
+* Screenshots and videos of failed tests are stored in `e-2-e-playwright/target/test-results/`
+* **JWT UI specific logs** are integrated into the unified logging system
 
 === 4. Analyze Browser Console Logs
 
-**Log Location**: `e-2-e-playwright/target/test-results/`
+**Log Location**: `e-2-e-playwright/target/logs/`
 
-Browser logs are automatically captured with the following naming pattern:
+Browser logs are automatically captured using the **unified logging system** with the following naming patterns:
+
+**Console Logs**:
 [source]
 ----
-browser-logs-YYYY-MM-DDTHH-MM-SS-sssZ.json
+[test-file]-[test-name]-console-logs-YYYY-MM-DDTHH-MM-SS-sssZ.json
+[test-file]-[test-name]-console-logs-YYYY-MM-DDTHH-MM-SS-sssZ.log
+----
+
+**JWT UI Specific Logs**:
+[source]
+----
+capture-jwt-console-JWT_UI_Console_Error_Capture-summary-YYYY-MM-DDTHH-MM-SS-sssZ.json
 ----
 
 **Log Analysis Steps**:
 
-1. **Locate Latest Log File**:
+1. **Locate Latest Log Files**:
 +
 [source,bash]
 ----
-ls -la e-2-e-playwright/target/test-results/*.json | tail -1
+# List all console logs
+ls -la e-2-e-playwright/target/logs/*.json | tail -5
+
+# List JWT UI specific logs
+ls -la e-2-e-playwright/target/logs/*jwt* | tail -2
 ----
 
-2. **Review Log Content**:
+2. **Review Console Log Content**:
 +
 [source,bash]
 ----
-# View the latest log file
-cat e-2-e-playwright/target/test-results/[test-name]/trace.json | jq '.'
+# View the latest JSON console log
+cat e-2-e-playwright/target/logs/[test-file]-[test-name]-console-logs-*.json | jq '.'
+
+# View human-readable console log
+cat e-2-e-playwright/target/logs/[test-file]-[test-name]-console-logs-*.log
 ----
 
-3. **Key Analysis Points**:
+3. **Review JWT UI Summary**:
 +
-* **Errors Array**: Look for JavaScript errors and exceptions
-* **Warnings Array**: Check for configuration or compatibility warnings  
-* **Info Array**: Review informational messages and timing data
-* **Test Context**: Verify test name, spec name, and URL context
+[source,bash]
+----
+# View JWT UI summary report
+cat e-2-e-playwright/target/logs/capture-jwt-console-JWT_UI_Console_Error_Capture-summary-*.json | jq '.'
+----
 
-**Log Structure Reference**:
+4. **Key Analysis Points**:
++
+* **Error Type Messages**: Look for JavaScript errors and exceptions (`type: "error"`)
+* **Warning Messages**: Check for configuration or compatibility warnings (`type: "warning"`)
+* **Debug Messages**: Review detailed initialization and execution flow (`type: "debug"`)
+* **Loading Indicator Status**: Check `loadingIndicatorVisible` in JWT UI summary
+* **Test Context**: Verify test name, file, and URL context
+* **Critical Error Detection**: The system automatically detects and reports critical errors
+* **Success Messages**: Look for "initialization completed" and "Loading indicator hidden" messages
+
+**Unified Console Log Structure**:
+[source,json]
+----
+[
+  {
+    "test": "Capture JWT UI Console Errors",
+    "testFile": "capture-jwt-console.spec.js",
+    "timestamp": "2025-07-15T07:22:08.450Z",
+    "type": "debug",
+    "text": "[DEBUG] NiFi-Main: JWT UI initialization starting...",
+    "location": {
+      "url": "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/js/bundle.vite.umd.js",
+      "lineNumber": 0,
+      "columnNumber": 1343
+    },
+    "args": []
+  }
+]
+----
+
+**JWT UI Summary Structure**:
 [source,json]
 ----
 {
-  "timestamp": "2025-06-24T...",
-  "testName": "should load JWT validator UI",
-  "specName": "04-processor-deployment.cy.js",
-  "errors": ["Error messages..."],
-  "warnings": ["Warning messages..."],
-  "info": [{"type": "info", "message": "...", "timestamp": "..."}],
-  "url": "https://localhost:9095/nifi/...",
-  "userAgent": "Mozilla/5.0..."
+  "timestamp": "2025-07-15T07:22:11.084Z",
+  "url": "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/...",
+  "loadingIndicatorVisible": false,
+  "loadingIndicatorText": null,
+  "unifiedLogFiles": {
+    "jsonLog": "target/logs/[test-file]-[test-name]-console-logs-*.json",
+    "textLog": "target/logs/[test-file]-[test-name]-console-logs-*.log",
+    "totalLogs": 42
+  },
+  "testInfo": {
+    "title": "Capture JWT UI Console Errors",
+    "testId": "capture_jwt_console_spec_js-Capture_JWT_UI_Console_Errors"
+  }
 }
 ----
 
@@ -164,12 +217,51 @@ If tests fail or issues are identified:
 * **Component Registration Failures**: Verify `registerComponents()` execution
 * **CSS/Styling Issues**: Review `base.css` and component-specific styles
 * **JavaScript Errors**: Check module imports and function definitions
+* **ES6 Module Loading Issues**: Ensure Vite bundler is generating UMD format correctly
 
 **Key Files for UI Fixes**:
 
 * `nifi-cuioss-ui/src/main/webapp/js/main.js` - Core UI logic
-* `nifi-cuioss-ui/src/main/webapp/js/nf-jwt-validator.js` - JWT validator UI
+* `nifi-cuioss-ui/src/main/webapp/js/bundle.vite.umd.js` - Modern ES6 bundled UI (generated)
+* `nifi-cuioss-ui/src/main/webapp/js/nf-common-mock.js` - NiFi common API mock
+* `nifi-cuioss-ui/src/main/webapp/index.html` - Main HTML entry point
+* `nifi-cuioss-ui/vite.config.js` - Modern build configuration
 * `nifi-cuioss-ui/src/main/webapp/css/modules/base.css` - Base styling
+
+=== 5.1. JWT UI Console Error Capture
+
+**Purpose**: The JWT UI console error capture system automatically collects and analyzes browser console logs specific to JWT UI functionality.
+
+**Test File**: `tests/capture-jwt-console.spec.js`
+
+**Features**:
+* **Unified Logging Integration**: Saves logs to `target/logs/` directory
+* **Critical Error Detection**: Automatically detects JavaScript errors and UI loading stalls
+* **Success Message Filtering**: Distinguishes between error messages and success messages
+* **Loading Indicator Analysis**: Tracks JWT UI loading state
+
+**Running JWT UI Console Capture**:
+[source,bash]
+----
+npx playwright test --grep "Capture JWT UI Console Errors"
+----
+
+**Output Files**:
+* `capture-jwt-console-JWT_UI_Console_Error_Capture-summary-*.json` - JWT UI summary report
+* `capture_jwt_console_spec_js-Capture_JWT_UI_Console_Errors-console-logs-*.json` - Raw console logs
+* `capture_jwt_console_spec_js-Capture_JWT_UI_Console_Errors-console-logs-*.log` - Human-readable logs
+
+**Key Analysis Points**:
+* **Loading Indicator Status**: `loadingIndicatorVisible: false` indicates success
+* **Success Messages**: Look for "initialization completed" and "Loading indicator hidden"
+* **Critical Errors**: System automatically fails tests on JavaScript errors
+* **Debug Flow**: Trace initialization sequence through debug messages
+
+**Common JWT UI Issues**:
+* **Module Loading Errors**: Check for ES6 import/export issues
+* **Bundle Generation**: Verify Vite build produces valid UMD bundle
+* **Loading Stalls**: Ensure loading indicator is properly hidden
+* **Component Registration**: Verify custom UI components are registered
 
 === 6. Modify UI Code
 
@@ -181,10 +273,14 @@ Make the necessary changes to the UI code:
 
 === 7. Build the UI Module
 
-Build the modified UI module:
+Build the modified UI module using the modern build system:
 
 [source,bash]
 ----
+# Build with Vite bundler (for JS changes)
+cd nifi-cuioss-ui && npm run build && cd ..
+
+# Build the Maven module
 ./mvnw clean install -pl nifi-cuioss-ui
 ----
 
@@ -193,6 +289,8 @@ Ensure that:
 * All build errors are fixed
 * All warnings are addressed
 * Code style checks pass
+* **Modern ES6 bundling** completes successfully
+* **Vite build** generates `bundle.vite.umd.js` correctly
 
 === 8. Redeploy Changes
 
@@ -287,6 +385,8 @@ This command validates:
 * ✅ Unit test execution
 * ✅ ESLint validation (zero warnings required)
 * ✅ Maven artifact generation
+* ✅ **Modern build system** (Vite bundler execution)
+* ✅ **ES6 to UMD conversion** for browser compatibility
 
 **Step 2: Integration Test Verification**
 [source,bash]
@@ -407,10 +507,16 @@ npx playwright test tests/01-verify-multi-issuer-jwt-token-authenticator-advance
 
 # Check results and logs
 ls -la target/logs
-cat target/logs/test-run.log
+cat target/logs/*console-logs*.log | tail -50
+
+# Check JWT UI specific logs
+cat target/logs/*jwt*.json | jq '.loadingIndicatorVisible'
 
 # Make UI changes
-vim ../nifi-cuioss-ui/src/main/webapp/js/components/example-component.js
+vim ../nifi-cuioss-ui/src/main/webapp/js/main.js
+
+# Build modern UI bundle
+cd ../nifi-cuioss-ui && npm run build && cd ../e-2-e-playwright
 
 # Build UI module
 cd ..
