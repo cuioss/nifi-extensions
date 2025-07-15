@@ -107,17 +107,17 @@ Check the test results and logs:
 
 Browser logs are automatically captured using the **unified logging system** with the following naming patterns:
 
-**Console Logs**:
+**Console Logs** (all tests follow this pattern):
 [source]
 ----
 [test-file]-[test-name]-console-logs-YYYY-MM-DDTHH-MM-SS-sssZ.json
 [test-file]-[test-name]-console-logs-YYYY-MM-DDTHH-MM-SS-sssZ.log
 ----
 
-**JWT UI Specific Logs**:
+**Test-specific Summary Reports** (when applicable):
 [source]
 ----
-capture-jwt-console-JWT_UI_Console_Error_Capture-summary-YYYY-MM-DDTHH-MM-SS-sssZ.json
+[test-file]-[test-name]-summary-YYYY-MM-DDTHH-MM-SS-sssZ.json
 ----
 
 **Log Analysis Steps**:
@@ -126,11 +126,11 @@ capture-jwt-console-JWT_UI_Console_Error_Capture-summary-YYYY-MM-DDTHH-MM-SS-sss
 +
 [source,bash]
 ----
-# List all console logs
-ls -la e-2-e-playwright/target/logs/*.json | tail -5
+# List all console logs (unified logging system)
+ls -la e-2-e-playwright/target/logs/*console-logs*.json | tail -5
 
-# List JWT UI specific logs
-ls -la e-2-e-playwright/target/logs/*jwt* | tail -2
+# List summary reports (when available)
+ls -la e-2-e-playwright/target/logs/*summary*.json | tail -5
 ----
 
 2. **Review Console Log Content**:
@@ -144,12 +144,12 @@ cat e-2-e-playwright/target/logs/[test-file]-[test-name]-console-logs-*.json | j
 cat e-2-e-playwright/target/logs/[test-file]-[test-name]-console-logs-*.log
 ----
 
-3. **Review JWT UI Summary**:
+3. **Review Test Summary Reports** (when available):
 +
 [source,bash]
 ----
-# View JWT UI summary report
-cat e-2-e-playwright/target/logs/capture-jwt-console-JWT_UI_Console_Error_Capture-summary-*.json | jq '.'
+# View test summary report
+cat e-2-e-playwright/target/logs/*summary*.json | jq '.'
 ----
 
 4. **Key Analysis Points**:
@@ -157,7 +157,7 @@ cat e-2-e-playwright/target/logs/capture-jwt-console-JWT_UI_Console_Error_Captur
 * **Error Type Messages**: Look for JavaScript errors and exceptions (`type: "error"`)
 * **Warning Messages**: Check for configuration or compatibility warnings (`type: "warning"`)
 * **Debug Messages**: Review detailed initialization and execution flow (`type: "debug"`)
-* **Loading Indicator Status**: Check `loadingIndicatorVisible` in JWT UI summary
+* **Loading Indicator Status**: Check `loadingIndicatorVisible` in test summary reports
 * **Test Context**: Verify test name, file, and URL context
 * **Critical Error Detection**: The system automatically detects and reports critical errors
 * **Success Messages**: Look for "initialization completed" and "Loading indicator hidden" messages
@@ -182,7 +182,7 @@ cat e-2-e-playwright/target/logs/capture-jwt-console-JWT_UI_Console_Error_Captur
 ]
 ----
 
-**JWT UI Summary Structure**:
+**Test Summary Structure** (when available):
 [source,json]
 ----
 {
@@ -196,8 +196,8 @@ cat e-2-e-playwright/target/logs/capture-jwt-console-JWT_UI_Console_Error_Captur
     "totalLogs": 42
   },
   "testInfo": {
-    "title": "Capture JWT UI Console Errors",
-    "testId": "capture_jwt_console_spec_js-Capture_JWT_UI_Console_Errors"
+    "title": "Test Name",
+    "testId": "[test-file]-[test-name]"
   }
 }
 ----
@@ -230,12 +230,12 @@ If tests fail or issues are identified:
 
 === 5.1. JWT UI Console Error Capture
 
-**Purpose**: The JWT UI console error capture system automatically collects and analyzes browser console logs specific to JWT UI functionality.
+**Purpose**: The JWT UI console error capture test is part of the unified logging system and automatically collects and analyzes browser console logs for JWT UI functionality.
 
 **Test File**: `tests/capture-jwt-console.spec.js`
 
 **Features**:
-* **Unified Logging Integration**: Saves logs to `target/logs/` directory
+* **Unified Logging Integration**: Uses the same logging system as all other tests
 * **Critical Error Detection**: Automatically detects JavaScript errors and UI loading stalls
 * **Success Message Filtering**: Distinguishes between error messages and success messages
 * **Loading Indicator Analysis**: Tracks JWT UI loading state
@@ -246,12 +246,12 @@ If tests fail or issues are identified:
 npx playwright test --grep "Capture JWT UI Console Errors"
 ----
 
-**Output Files**:
-* `capture-jwt-console-JWT_UI_Console_Error_Capture-summary-*.json` - JWT UI summary report
-* `capture_jwt_console_spec_js-Capture_JWT_UI_Console_Errors-console-logs-*.json` - Raw console logs
-* `capture_jwt_console_spec_js-Capture_JWT_UI_Console_Errors-console-logs-*.log` - Human-readable logs
+**Output Files** (follows unified logging format):
+* `capture_jwt_console_spec_js-Capture_JWT_UI_Console_Errors-console-logs-*.json` - Console logs (JSON)
+* `capture_jwt_console_spec_js-Capture_JWT_UI_Console_Errors-console-logs-*.log` - Console logs (human-readable)
+* `capture-jwt-console-JWT_UI_Console_Error_Capture-summary-*.json` - Test summary report
 
-**Key Analysis Points**:
+**Analysis Focus**:
 * **Loading Indicator Status**: `loadingIndicatorVisible: false` indicates success
 * **Success Messages**: Look for "initialization completed" and "Loading indicator hidden"
 * **Critical Errors**: System automatically fails tests on JavaScript errors
@@ -262,6 +262,11 @@ npx playwright test --grep "Capture JWT UI Console Errors"
 * **Bundle Generation**: Verify Vite build produces valid UMD bundle
 * **Loading Stalls**: Ensure loading indicator is properly hidden
 * **Component Registration**: Verify custom UI components are registered
+
+[NOTE]
+====
+The JWT UI console error capture test uses the same unified logging system as all other tests. The only difference is that it includes an additional summary report with JWT UI specific information.
+====
 
 === 6. Modify UI Code
 
@@ -509,8 +514,8 @@ npx playwright test tests/01-verify-multi-issuer-jwt-token-authenticator-advance
 ls -la target/logs
 cat target/logs/*console-logs*.log | tail -50
 
-# Check JWT UI specific logs
-cat target/logs/*jwt*.json | jq '.loadingIndicatorVisible'
+# Check test summary reports (if available)
+cat target/logs/*summary*.json | jq '.loadingIndicatorVisible'
 
 # Make UI changes
 vim ../nifi-cuioss-ui/src/main/webapp/js/main.js
