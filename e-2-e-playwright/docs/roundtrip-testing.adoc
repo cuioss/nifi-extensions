@@ -8,549 +8,155 @@
 
 == Purpose
 
-This document describes the process for handling roundtrip testing for the UI components. Roundtrip testing involves making changes to the UI code, deploying those changes, and verifying them with Playwright tests in an iterative process.
-
-== Related Documentation
-
-* xref:Testing-Scope.adoc[Testing Scope and Capabilities] - Detailed testing framework capabilities
-* xref:implementation-guide.adoc[Implementation Guide] - Detailed implementation guidance
-* xref:nifi-ui-structure.adoc[NiFi UI Structure Guide] - NiFi UI structure and selectors
-* xref:../README.adoc[E2E Playwright Tests] - Main module documentation
-
-== Roundtrip Testing Philosophy
-
-Roundtrip testing is an iterative approach that combines:
-
-* **Automated Test Execution**: Using Playwright to simulate user interactions
-* **Real-time Browser Analysis**: Capturing console logs and browser behavior
-* **Iterative Development**: Making incremental fixes based on test feedback
-* **Comprehensive Validation**: Full build and integration testing after fixes
+Iterative UI development workflow: modify code → deploy → test → analyze → repeat until all tests pass.
 
 == Prerequisites
 
-=== Environment Requirements
+* Docker environment configured
+* NiFi test container functional
+* Playwright tests available in `e-2-e-playwright/tests/`
+* Corresponding test files for UI feature under development
 
-* Docker environment properly configured
-* NiFi test container available and functional
-* Playwright testing framework installed and configured
-* Browser logs collection mechanism enabled (automatic in current setup)
-
-=== Test Coverage Requirements
-
-[IMPORTANT]
-====
-**Critical Prerequisite**: There must be a corresponding Playwright test for the feature under test available in the `e-2-e-playwright/tests/` directory.
-====
-
-Ensure the following test files exist for your UI feature:
-
-* `self-test.spec.js` - Basic functionality verification
-* `processor-deployment.spec.js` - Processor-specific UI testing
-* Custom test files for specific UI components
-
-=== Deployment Workflow Integration
-
-[IMPORTANT]
-====
-**Critical Component**: The roundtrip testing process requires deploying production code changes to the test environment after each modification using the appropriate deployment scripts.
-====
-
-== Roundtrip Testing Workflow
-
-The roundtrip testing process follows these iterative steps:
+== Workflow Steps
 
 === 1. Initial Deployment
-
-To start NiFi with a new deployment, run:
 
 [source,bash]
 ----
 ./integration-testing/src/main/docker/run-and-deploy.sh
 ----
 
-This script will:
-
-* Build the necessary components
-* Deploy them to the Docker environment
-* Start the NiFi instance with the current configuration
-
-=== 2. Run Playwright Tests
-
-Execute the Playwright tests to verify the current functionality:
+=== 2. Run Tests
 
 [source,bash]
 ----
 cd e-2-e-playwright
-npx playwright test tests/01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js --project chromium
+npx playwright test tests/[test-file].spec.js --project chromium
 ----
 
-You can replace the test file with any specific test you need to run.
+=== 3. Analyze Results
 
-**Examples of test specifications**:
+Test artifacts are co-located in `target/test-results/[test-specific-directory]/`:
 
-* `tests/processor-deployment.spec.js` - For processor UI issues
-* `tests/self-test.spec.js` - For basic functionality verification
-* `tests/*processor*.spec.js` - For all processor-related tests
+* `console-logs.log` - Browser console output (if any)
+* `test-failed-1.png` - Screenshots
+* `video.webm` - Test execution video
+* `trace.zip` - Playwright trace
+* `processor-interaction-*.png` - Processor screenshots
 
-=== 3. Verify Test Results
+=== 4. Console Log Analysis
 
-Check the test results and logs:
-
-* Test results will be displayed in the console
-* **Unified console logs** are available under `e-2-e-playwright/target/logs/`
-* Screenshots and videos of failed tests are stored in `e-2-e-playwright/target/test-results/`
-* **JWT UI specific logs** are integrated into the unified logging system
-
-=== 4. Analyze Browser Console Logs
-
-**Log Location**: `e-2-e-playwright/target/test-results/[test-specific-directory]/`
-
-Browser logs are automatically captured using the **unified logging system** with the following structure:
-
-**One Log File Per Test Session**:
-[source]
-----
-target/test-results/[test-specific-directory]/console-logs.log
-----
-
-**Example**:
-[source]
-----
-target/test-results/01-verify-multi-issuer-jwt-30806-kenAuthenticator-deployment-chromium/console-logs.log
-target/test-results/capture-jwt-console-JWT-UI-876e8-pture-JWT-UI-Console-Errors-chromium/console-logs.log
-----
-
-[IMPORTANT]
-====
-**Unified Logging Principle**: Each test session generates **ONE** human-readable log file containing ALL browser console output for that session. The log file is stored in the same directory as other test artifacts (screenshots, videos, etc.). Test-specific information is included within this unified log, not in separate files.
-====
-
-**Log Analysis Steps**:
-
-1. **Locate Latest Log Files**:
-+
+**Quick Analysis Commands**:
 [source,bash]
 ----
-# List all console logs in test results directories
-find e-2-e-playwright/target/test-results -name "console-logs.log" | head -5
+# Find console logs
+find target/test-results -name "console-logs.log"
+
+# Check for errors
+grep -n "ERROR\|WARN" target/test-results/[test-dir]/console-logs.log
+
+# Find JWT UI analysis
+grep -A 5 "JWT UI ANALYSIS" target/test-results/*/console-logs.log
 ----
 
-2. **Review Console Log Content**:
-+
-[source,bash]
-----
-# View the latest console log
-cat e-2-e-playwright/target/test-results/[test-specific-directory]/console-logs.log
-----
+**Key Log Types**:
 
-3. **Search for Test-Specific Information** (within unified logs):
-+
-[source,bash]
-----
-# Search for JWT UI analysis within unified logs
-grep -A 10 -B 2 "JWT UI ANALYSIS" e-2-e-playwright/target/test-results/*/console-logs.log
+* `type: "error"` - JavaScript errors
+* `type: "networkerror"` - 404s, failed requests
+* `type: "warning"` - Configuration warnings
+* `type: "info/debug"` - Execution flow
 
-# Search for specific error patterns
-grep -n "ERROR\|WARN" e-2-e-playwright/target/test-results/[test-specific-directory]/console-logs.log
-----
+**Note**: Console logs only exist when browser activity occurs. Normal NiFi canvas operation generates no console output.
 
-4. **Key Analysis Points**:
-+
-* **Error Type Messages**: Look for JavaScript errors and exceptions (`type: "error"`)
-* **Warning Messages**: Check for configuration or compatibility warnings (`type: "warning"`)
-* **Debug Messages**: Review detailed initialization and execution flow (`type: "debug"`)
-* **Test-Specific Analysis**: Look for analysis sections like "JWT UI ANALYSIS SUMMARY" within the unified log
-* **Test Context**: Verify test name, file, and URL context
-* **Critical Error Detection**: The system automatically detects and reports critical errors
-* **Success Messages**: Look for "initialization completed" and "Loading indicator hidden" messages
+=== 5. Fix Issues
 
-**Unified Console Log Structure**:
-[source,text]
-----
-===============================================
-      BROWSER CONSOLE LOGS - [test-id]
-===============================================
-Generated: 2025-07-15T08:04:40.016Z
-Total Log Entries: 47
-===============================================
-
---- Entry 43 ---
-Test: Capture JWT UI Console Errors
-File: capture-jwt-console.spec.js
-Time: 2025-07-15T08:04:40.016Z
-Type: LOG
-Message: === JWT UI ANALYSIS SUMMARY ===
-Location: {"url":"","lineNumber":1,"columnNumber":14}
-
---- Entry 44 ---
-Test: Capture JWT UI Console Errors
-File: capture-jwt-console.spec.js
-Time: 2025-07-15T08:04:40.016Z
-Type: LOG
-Message: URL: https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/...
-Location: {"url":"","lineNumber":2,"columnNumber":14}
-
---- Entry 45 ---
-Test: Capture JWT UI Console Errors
-File: capture-jwt-console.spec.js
-Time: 2025-07-15T08:04:40.016Z
-Type: LOG
-Message: Loading indicator visible: false
-Location: {"url":"","lineNumber":3,"columnNumber":14}
-----
-
-=== 5. Analyze Issues
-
-If tests fail or issues are identified:
-
-* Review the test logs to understand the failure points
-* Check browser console logs for JavaScript errors
-* Examine the screenshots or videos of failed tests
-* Identify the UI components that need modification
-
-**Common UI Issues and Solutions**:
+**Common UI Issues**:
 
 * **Loading Indicator Hanging**: Check `hideLoadingIndicatorRobust()` function
 * **Component Registration Failures**: Verify `registerComponents()` execution
-* **CSS/Styling Issues**: Review `base.css` and component-specific styles
 * **JavaScript Errors**: Check module imports and function definitions
-* **ES6 Module Loading Issues**: Ensure Vite bundler is generating UMD format correctly
+* **ES6 Module Loading Issues**: Ensure Vite bundler generates UMD format correctly
 
-**Key Files for UI Fixes**:
+**Key Files**:
 
 * `nifi-cuioss-ui/src/main/webapp/js/main.js` - Core UI logic
-* `nifi-cuioss-ui/src/main/webapp/js/bundle.vite.umd.js` - Modern ES6 bundled UI (generated)
-* `nifi-cuioss-ui/src/main/webapp/js/nf-common-mock.js` - NiFi common API mock
 * `nifi-cuioss-ui/src/main/webapp/index.html` - Main HTML entry point
 * `nifi-cuioss-ui/vite.config.js` - Modern build configuration
-* `nifi-cuioss-ui/src/main/webapp/css/modules/base.css` - Base styling
 
-=== 5.1. JWT UI Console Error Capture
+**JWT UI Console Test**: `tests/self-capture-jwt-console.spec.js` - Captures JWT UI specific console output with analysis markers.
 
-**Purpose**: The JWT UI console error capture test uses the unified logging system to automatically collect and analyze browser console logs for JWT UI functionality.
-
-**Test File**: `tests/capture-jwt-console.spec.js`
-
-**Features**:
-* **Unified Logging Integration**: Uses the same single log file approach as all other tests
-* **Critical Error Detection**: Automatically detects JavaScript errors and UI loading stalls
-* **Success Message Filtering**: Distinguishes between error messages and success messages
-* **Loading Indicator Analysis**: Tracks JWT UI loading state within the unified log
-
-**Running JWT UI Console Capture**:
-[source,bash]
-----
-npx playwright test --grep "Capture JWT UI Console Errors"
-----
-
-**Output Files** (unified logging format):
-* `target/test-results/[test-specific-directory]/console-logs.log` - Single unified log file
-
-**Example**:
-* `target/test-results/capture-jwt-console-JWT-UI-876e8-pture-JWT-UI-Console-Errors-chromium/console-logs.log`
-
-[NOTE]
-====
-The JWT UI analysis is injected directly into the browser console and captured within the unified log entries. Look for "JWT UI ANALYSIS SUMMARY" markers in the log. The log file is stored alongside other test artifacts (screenshots, videos, etc.).
-====
-
-**Analysis Focus**:
-* **Loading Indicator Status**: Look for "Loading indicator visible: false" in the unified log
-* **Success Messages**: Look for "initialization completed" and "Loading indicator hidden"
-* **Critical Errors**: System automatically fails tests on JavaScript errors
-* **Debug Flow**: Trace initialization sequence through debug messages
-* **JWT UI Analysis Section**: Look for "JWT UI ANALYSIS SUMMARY" markers in the unified log
-
-**Common JWT UI Issues**:
-* **Module Loading Errors**: Check for ES6 import/export issues
-* **Bundle Generation**: Verify Vite build produces valid UMD bundle
-* **Loading Stalls**: Ensure loading indicator is properly hidden
-* **Component Registration**: Verify custom UI components are registered
-
-[IMPORTANT]
-====
-The JWT UI console error capture test uses the same unified logging system as all other tests. JWT UI specific analysis is injected into the browser console and captured within the single unified log file. **No separate summary files are created** - this maintains the unified logging principle of one log per test session.
-====
-
-=== 6. Modify UI Code
-
-Make the necessary changes to the UI code:
-
-* Navigate to the appropriate files in `nifi-cuioss-ui/src/main/webapp`
-* Modify the HTML, CSS, or JavaScript as needed
-* Follow the project's coding standards and patterns
-
-=== 7. Build the UI Module
-
-Build the modified UI module using the modern build system:
+=== 6. Build and Deploy
 
 [source,bash]
 ----
-# Build with Vite bundler (for JS changes)
+# Build UI module
 cd nifi-cuioss-ui && npm run build && cd ..
-
-# Build the Maven module
 ./mvnw clean install -pl nifi-cuioss-ui
-----
 
-Ensure that:
-
-* All build errors are fixed
-* All warnings are addressed
-* Code style checks pass
-* **Modern ES6 bundling** completes successfully
-* **Vite build** generates `bundle.vite.umd.js` correctly
-
-=== 8. Redeploy Changes
-
-Redeploy the changes to the running NiFi instance:
-
-[source,bash]
-----
+# Redeploy changes
 ./integration-testing/src/main/docker/redeploy-nifi.sh
 ----
 
-This script will:
-
-* Build the updated NAR file
-* Copy it to the deployment location
-* Restart the NiFi service to load the new changes
-
-Alternatively, you can use the copy-deployment script for faster iteration:
-
-[source,bash]
-----
-# Build and deploy updated NAR file to test environment
-integration-testing/src/main/docker/copy-deployment.sh
-----
-
-**What this script does**:
-
-* ✅ Builds the NAR file with `./mvnw package -DskipTests`
-* ✅ Copies the updated NAR to the deployment location
-* ✅ Makes production code changes available for testing
-* ✅ Ensures test environment reflects latest modifications
-
-=== 9. Commit Successful Fixes
-
-After each successful fix (such as resolving a warning or error in the logs):
+=== 7. Commit and Repeat
 
 [source,bash]
 ----
 git add <modified-files>
-git commit -m "Fix: Description of the issue that was resolved"
+git commit -m "Fix: Description of issue resolved"
 ----
 
-Make sure to:
-
-* Include a descriptive commit message explaining what was fixed
-* Inform the team about the changes made and their impact
-* Document any important observations or lessons learned
-
-This step ensures that:
-
-* Progress is tracked incrementally
-* Changes are properly documented
-* The team is kept informed about improvements
-* You can easily revert to a working state if needed
-
-=== 10. Repeat the Process
-
-Return to step 2 and repeat the process until:
-
-* All tests pass successfully
-* The UI functions as expected
-* All requirements are met
+Repeat steps 2-7 until all tests pass.
 
 == Final Validation
 
-=== Environment Cleanup and Verification
-
-==== Stop Test Environment
-
 [source,bash]
 ----
-# Stop the test container environment
+# Stop test environment
 integration-testing/src/main/docker/stop-test-container.sh
-----
 
-==== Full Build Verification
-
-[IMPORTANT]
-====
-**Both commands must pass successfully before considering the fix complete.**
-====
-
-**Step 1: Full Build Verification**
-[source,bash]
-----
-# Execute full build verification
+# Full build verification (both must pass)
 ./mvnw clean verify
-----
-
-This command validates:
-
-* ✅ Compilation of all modules
-* ✅ Unit test execution
-* ✅ ESLint validation (zero warnings required)
-* ✅ Maven artifact generation
-* ✅ **Modern build system** (Vite bundler execution)
-* ✅ **ES6 to UMD conversion** for browser compatibility
-
-**Step 2: Integration Test Verification**
-[source,bash]
-----
-# Execute integration tests with Docker environment
 ./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests
 ----
 
-This command validates:
+**Success Criteria**: Both commands exit with code 0, no ESLint warnings, all tests pass consistently.
 
-* ✅ End-to-end test execution
-* ✅ Docker environment lifecycle
-* ✅ Complete user workflow simulation
-* ✅ Integration with external services
+== Quick Reference
 
-=== Fix Validation Requirements
+**Common Issues**:
 
-**If either command fails**:
-
-1. **Analyze the failure output carefully**
-2. **Fix the specific issues identified**
-3. **Re-run both commands until they pass**
-4. **Do not proceed with commit until both pass**
-
-**Success Criteria**:
-
-* ✅ `./mvnw clean verify` exits with code 0
-* ✅ `./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests` exits with code 0
-* ✅ No ESLint warnings or errors
-* ✅ All tests pass consistently
-
-== Advanced Troubleshooting
-
-=== Common Roundtrip Testing Scenarios
-
-==== Loading Indicator Issues
-
-**Symptoms**:
-* UI hangs on "Loading JWT Validator UI..." message
-* Components fail to initialize properly
-
-**Analysis Focus**:
-* Check for timing-related console errors
-* Verify `hideLoadingIndicatorRobust()` execution
-* Review component registration sequence
-
-==== Component Registration Failures
-
-**Symptoms**:
-* Custom UI tabs not appearing
-* Processor configuration interface unavailable
-
-**Analysis Focus**:
-* Verify `registerComponents()` execution
-* Check for module import errors
-* Review CSS selector accuracy
-
-==== Timing and Race Conditions
-
-**Symptoms**:
-* Intermittent test failures
-* Components sometimes load, sometimes don't
-
-**Analysis Focus**:
-* Review initialization sequence timing
-* Check for DOM readiness issues
-* Verify async/await patterns
-
-=== Log Analysis Best Practices
-
-1. **Chronological Analysis**: Review logs in timestamp order
-2. **Error Correlation**: Match errors with specific test actions
-3. **Pattern Recognition**: Look for recurring error patterns
-4. **Context Validation**: Verify URL, test name, and browser context
-
-== Best Practices
-
-=== Efficient Development Cycle
-
-* Make small, focused changes in each iteration
-* Document the changes made in each cycle
-* Keep track of which tests pass and fail after each change
-* Use browser developer tools to debug UI issues before rebuilding
-* Follow the fail-fast development approach with incremental changes
-
-=== Troubleshooting
-
-==== Common Issues
-
-* *Test Timeouts*: May indicate slow UI responses or missing elements
-* *Element Not Found*: Selector may need updating after UI changes
-* *Console Errors*: JavaScript errors that need fixing in the UI code
+* *Test Timeouts*: Slow UI responses or missing elements
+* *Element Not Found*: Selector needs updating after UI changes
+* *Console Errors*: JavaScript errors that need fixing in UI code
 * *Deployment Issues*: Check Docker logs if redeployment fails
 
-==== Debugging Tips
+**Debugging Tips**:
 
-* Add console logging in the UI code to track execution flow
+* Add console logging in UI code to track execution flow
 * Use `page.pause()` in Playwright tests to debug interactively
-* Check network requests in the browser developer tools
-* Verify that CSS selectors still match after UI changes
+* Use browser developer tools to check network requests
+* Verify CSS selectors still match after UI changes
 
-=== Performance Considerations
-
-* Monitor the time taken for each test run
-* Watch for increasing page load times after changes
-* Be aware of memory usage in long-running test sessions
-
-== Example Roundtrip Workflow
-
-[source]
+**Example Workflow**:
+[source,bash]
 ----
 # Initial setup
 ./integration-testing/src/main/docker/run-and-deploy.sh
 
 # Run tests
 cd e-2-e-playwright
-npx playwright test tests/01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js --project chromium
+npx playwright test tests/[test-file].spec.js --project chromium
 
-# Check results and logs
-find target/test-results -name "console-logs.log" | head -5
-cat target/test-results/*/console-logs.log | tail -50
-
-# Check for JWT UI analysis within unified logs
+# Check results
+find target/test-results -name "console-logs.log"
 grep -A 5 "JWT UI ANALYSIS" target/test-results/*/console-logs.log
 
-# Make UI changes
-vim ../nifi-cuioss-ui/src/main/webapp/js/main.js
-
-# Build modern UI bundle
-cd ../nifi-cuioss-ui && npm run build && cd ../e-2-e-playwright
-
-# Build UI module
-cd ..
+# Make changes, build, and redeploy
+cd nifi-cuioss-ui && npm run build && cd ..
 ./mvnw clean install -pl nifi-cuioss-ui
-
-# Redeploy
 ./integration-testing/src/main/docker/redeploy-nifi.sh
 
-# Run tests again to verify changes
-cd e-2-e-playwright
-npx playwright test tests/01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js --project chromium
-
-# If the fix was successful, commit the changes
-git add ../nifi-cuioss-ui/src/main/webapp/js/components/example-component.js
-git commit -m "Fix: Resolved UI issue in example component"
-# Inform the team about the successful fix
-echo "Successfully fixed the UI issue in the example component"
+# Test again and commit if successful
+git add <files>
+git commit -m "Fix: Description"
 ----
-
-== Conclusion
-
-The roundtrip testing process provides a structured approach to UI development and testing. By following this iterative workflow, you can efficiently develop and verify UI components while ensuring they meet all requirements and function correctly in the NiFi environment.
-
-This methodology ensures high-quality UI components that integrate seamlessly with the NiFi platform while maintaining the project's fail-fast development standards.
-
----
-
-*Document version: 1.0 | Last updated: June 2025*
