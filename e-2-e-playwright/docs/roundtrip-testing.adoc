@@ -105,20 +105,19 @@ Check the test results and logs:
 
 **Log Location**: `e-2-e-playwright/target/logs/`
 
-Browser logs are automatically captured using the **unified logging system** with the following naming patterns:
+Browser logs are automatically captured using the **unified logging system** with the following naming pattern:
 
-**Console Logs** (all tests follow this pattern):
+**One Log File Per Test Session**:
 [source]
 ----
 [test-file]-[test-name]-console-logs-YYYY-MM-DDTHH-MM-SS-sssZ.json
 [test-file]-[test-name]-console-logs-YYYY-MM-DDTHH-MM-SS-sssZ.log
 ----
 
-**Test-specific Summary Reports** (when applicable):
-[source]
-----
-[test-file]-[test-name]-summary-YYYY-MM-DDTHH-MM-SS-sssZ.json
-----
+[IMPORTANT]
+====
+**Unified Logging Principle**: Each test session generates **ONE** JSON log file and **ONE** human-readable log file containing ALL browser console output for that session. Test-specific information is included within these unified logs, not in separate files.
+====
 
 **Log Analysis Steps**:
 
@@ -128,9 +127,6 @@ Browser logs are automatically captured using the **unified logging system** wit
 ----
 # List all console logs (unified logging system)
 ls -la e-2-e-playwright/target/logs/*console-logs*.json | tail -5
-
-# List summary reports (when available)
-ls -la e-2-e-playwright/target/logs/*summary*.json | tail -5
 ----
 
 2. **Review Console Log Content**:
@@ -144,12 +140,15 @@ cat e-2-e-playwright/target/logs/[test-file]-[test-name]-console-logs-*.json | j
 cat e-2-e-playwright/target/logs/[test-file]-[test-name]-console-logs-*.log
 ----
 
-3. **Review Test Summary Reports** (when available):
+3. **Search for Test-Specific Information** (within unified logs):
 +
 [source,bash]
 ----
-# View test summary report
-cat e-2-e-playwright/target/logs/*summary*.json | jq '.'
+# Search for JWT UI analysis within unified logs
+grep -A 10 -B 2 "JWT UI ANALYSIS" e-2-e-playwright/target/logs/*console-logs*.log
+
+# Search for specific test information within JSON logs
+cat e-2-e-playwright/target/logs/*console-logs*.json | jq '.[] | select(.text | contains("JWT UI ANALYSIS"))'
 ----
 
 4. **Key Analysis Points**:
@@ -157,7 +156,7 @@ cat e-2-e-playwright/target/logs/*summary*.json | jq '.'
 * **Error Type Messages**: Look for JavaScript errors and exceptions (`type: "error"`)
 * **Warning Messages**: Check for configuration or compatibility warnings (`type: "warning"`)
 * **Debug Messages**: Review detailed initialization and execution flow (`type: "debug"`)
-* **Loading Indicator Status**: Check `loadingIndicatorVisible` in test summary reports
+* **Test-Specific Analysis**: Look for analysis sections like "JWT UI ANALYSIS SUMMARY" within the unified log
 * **Test Context**: Verify test name, file, and URL context
 * **Critical Error Detection**: The system automatically detects and reports critical errors
 * **Success Messages**: Look for "initialization completed" and "Loading indicator hidden" messages
@@ -182,23 +181,35 @@ cat e-2-e-playwright/target/logs/*summary*.json | jq '.'
 ]
 ----
 
-**Test Summary Structure** (when available):
+**Test-Specific Analysis Within Unified Log**:
 [source,json]
 ----
 {
+  "test": "Capture JWT UI Console Errors",
+  "testFile": "capture-jwt-console.spec.js",
   "timestamp": "2025-07-15T07:22:11.084Z",
-  "url": "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/...",
-  "loadingIndicatorVisible": false,
-  "loadingIndicatorText": null,
-  "unifiedLogFiles": {
-    "jsonLog": "target/logs/[test-file]-[test-name]-console-logs-*.json",
-    "textLog": "target/logs/[test-file]-[test-name]-console-logs-*.log",
-    "totalLogs": 42
-  },
-  "testInfo": {
-    "title": "Test Name",
-    "testId": "[test-file]-[test-name]"
-  }
+  "type": "log",
+  "text": "=== JWT UI ANALYSIS SUMMARY ===",
+  "location": null,
+  "args": []
+},
+{
+  "test": "Capture JWT UI Console Errors",
+  "testFile": "capture-jwt-console.spec.js",
+  "timestamp": "2025-07-15T07:22:11.085Z",
+  "type": "log",
+  "text": "URL: https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/...",
+  "location": null,
+  "args": []
+},
+{
+  "test": "Capture JWT UI Console Errors",
+  "testFile": "capture-jwt-console.spec.js",
+  "timestamp": "2025-07-15T07:22:11.085Z",
+  "type": "log",
+  "text": "Loading indicator visible: false",
+  "location": null,
+  "args": []
 }
 ----
 
@@ -230,15 +241,15 @@ If tests fail or issues are identified:
 
 === 5.1. JWT UI Console Error Capture
 
-**Purpose**: The JWT UI console error capture test is part of the unified logging system and automatically collects and analyzes browser console logs for JWT UI functionality.
+**Purpose**: The JWT UI console error capture test uses the unified logging system to automatically collect and analyze browser console logs for JWT UI functionality.
 
 **Test File**: `tests/capture-jwt-console.spec.js`
 
 **Features**:
-* **Unified Logging Integration**: Uses the same logging system as all other tests
+* **Unified Logging Integration**: Uses the same single log file approach as all other tests
 * **Critical Error Detection**: Automatically detects JavaScript errors and UI loading stalls
 * **Success Message Filtering**: Distinguishes between error messages and success messages
-* **Loading Indicator Analysis**: Tracks JWT UI loading state
+* **Loading Indicator Analysis**: Tracks JWT UI loading state within the unified log
 
 **Running JWT UI Console Capture**:
 [source,bash]
@@ -246,16 +257,16 @@ If tests fail or issues are identified:
 npx playwright test --grep "Capture JWT UI Console Errors"
 ----
 
-**Output Files** (follows unified logging format):
-* `capture_jwt_console_spec_js-Capture_JWT_UI_Console_Errors-console-logs-*.json` - Console logs (JSON)
-* `capture_jwt_console_spec_js-Capture_JWT_UI_Console_Errors-console-logs-*.log` - Console logs (human-readable)
-* `capture-jwt-console-JWT_UI_Console_Error_Capture-summary-*.json` - Test summary report
+**Output Files** (unified logging format):
+* `capture_jwt_console_spec_js-Capture_JWT_UI_Console_Errors-console-logs-*.json` - Single unified JSON log
+* `capture_jwt_console_spec_js-Capture_JWT_UI_Console_Errors-console-logs-*.log` - Single unified human-readable log
 
 **Analysis Focus**:
-* **Loading Indicator Status**: `loadingIndicatorVisible: false` indicates success
+* **Loading Indicator Status**: Look for "Loading indicator visible: false" in the unified log
 * **Success Messages**: Look for "initialization completed" and "Loading indicator hidden"
 * **Critical Errors**: System automatically fails tests on JavaScript errors
 * **Debug Flow**: Trace initialization sequence through debug messages
+* **JWT UI Analysis Section**: Look for "JWT UI ANALYSIS SUMMARY" markers in the unified log
 
 **Common JWT UI Issues**:
 * **Module Loading Errors**: Check for ES6 import/export issues
@@ -265,7 +276,7 @@ npx playwright test --grep "Capture JWT UI Console Errors"
 
 [NOTE]
 ====
-The JWT UI console error capture test uses the same unified logging system as all other tests. The only difference is that it includes an additional summary report with JWT UI specific information.
+The JWT UI console error capture test uses the same unified logging system as all other tests. JWT UI specific analysis is included within the single unified log file, not in separate files.
 ====
 
 === 6. Modify UI Code
@@ -514,8 +525,8 @@ npx playwright test tests/01-verify-multi-issuer-jwt-token-authenticator-advance
 ls -la target/logs
 cat target/logs/*console-logs*.log | tail -50
 
-# Check test summary reports (if available)
-cat target/logs/*summary*.json | jq '.loadingIndicatorVisible'
+# Check for JWT UI analysis within unified logs
+grep -A 5 "JWT UI ANALYSIS" target/logs/*console-logs*.log
 
 # Make UI changes
 vim ../nifi-cuioss-ui/src/main/webapp/js/main.js

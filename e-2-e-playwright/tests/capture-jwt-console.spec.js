@@ -47,7 +47,25 @@ test.describe('JWT UI Console Error Capture', () => {
       }
     }
     
+    // Add JWT UI specific information to the browser console so it gets captured in the unified log
+    await page.evaluate((analysisData) => {
+      console.log('=== JWT UI ANALYSIS SUMMARY ===');
+      console.log(`URL: ${analysisData.url}`);
+      console.log(`Loading indicator visible: ${analysisData.loadingIndicatorVisible}`);
+      if (analysisData.loadingIndicatorText) {
+        console.log(`Loading indicator text: "${analysisData.loadingIndicatorText}"`);
+      }
+      console.log(`Critical errors detected: ${analysisData.criticalErrors}`);
+      console.log('=== END JWT UI ANALYSIS ===');
+    }, {
+      url: jwtUIUrl,
+      loadingIndicatorVisible: isVisible,
+      loadingIndicatorText: isVisible ? await loadingIndicator.textContent() : null,
+      criticalErrors: criticalErrors.length
+    });
+    
     // Save the captured logs using the unified logging system
+    // All console output (including JWT UI analysis) will be in this single unified log
     const logResult = await saveTestBrowserLogs(testInfo);
     
     if (logResult) {
@@ -56,45 +74,8 @@ test.describe('JWT UI Console Error Capture', () => {
       console.log(`Human-readable logs saved to: ${logResult.textLog}`);
       console.log(`Total log entries: ${logResult.totalLogs}`);
       console.log(`Test ID: ${logResult.testId}`);
+      console.log('JWT UI analysis has been injected into the browser console and captured in the unified log.');
     }
-    
-    // Create a JWT-specific summary report that integrates with unified logging
-    // This report is saved in target/logs/ to be part of the unified logging system
-    const fs = require('fs');
-    const path = require('path');
-    
-    // Create target/logs directory if it doesn't exist
-    const targetDir = path.join(process.cwd(), 'target');
-    const logsDir = path.join(targetDir, 'logs');
-    if (!fs.existsSync(logsDir)) {
-      fs.mkdirSync(logsDir, { recursive: true });
-    }
-    
-    const summaryReport = {
-      timestamp: new Date().toISOString(),
-      url: jwtUIUrl,
-      loadingIndicatorVisible: isVisible,
-      loadingIndicatorText: isVisible ? await loadingIndicator.textContent() : null,
-      unifiedLogFiles: logResult ? {
-        jsonLog: logResult.jsonLog,
-        textLog: logResult.textLog,
-        totalLogs: logResult.totalLogs
-      } : null,
-      testInfo: {
-        title: testInfo.title,
-        testId: logResult?.testId || 'unknown'
-      }
-    };
-    
-    // Save the summary report in target/logs/ following unified logging naming convention
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const summaryFileName = `capture-jwt-console-JWT_UI_Console_Error_Capture-summary-${timestamp}.json`;
-    const summaryPath = path.join(logsDir, summaryFileName);
-    fs.writeFileSync(summaryPath, JSON.stringify(summaryReport, null, 2));
-    
-    console.log('\n=== JWT UI SUMMARY REPORT SAVED ===');
-    console.log(`JWT UI summary report saved to: ${summaryPath}`);
-    console.log(`This report is now part of the unified logging system under target/logs/`);
     
     // Cleanup
     errorDetection.cleanup();
