@@ -3,7 +3,8 @@
  * Tests processor advanced configuration access with 2025 best practices
  * Single responsibility: Verify processor advanced dialog opens and "Back to Processor" works
  * NOW INCLUDES: Strict error detection that fails tests on critical errors
- * @version 2.0.0 - Enhanced with critical error detection
+ * @version 2.0.0
+ * @description Enhanced with critical error detection
  */
 
 import { test, expect } from "@playwright/test";

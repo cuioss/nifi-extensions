@@ -2,7 +2,7 @@
  * @file MultiIssuerJWTTokenAuthenticator Advanced Configuration Test - Modernized
  * Verifies the advanced configuration of the MultiIssuerJWTTokenAuthenticator processor
  * @version 2.0.0
- *
+ * @description
  * IMPORTANT: This test has been modified to fail when the page stalls at "Loading JWT Validator UI..."
  * This is a requirement specified in the issue description. The test now includes a dedicated check
  * for this loading stall condition and will fail with a detailed error message if detected.

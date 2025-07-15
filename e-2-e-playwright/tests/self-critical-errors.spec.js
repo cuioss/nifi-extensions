@@ -14,7 +14,7 @@ import {
     checkForCriticalErrors,
 } from "../utils/console-logger.js";
 import {
-    CriticalErrorDetector,
+    CriticalErrorDetector as _CriticalErrorDetector,
     globalCriticalErrorDetector,
     checkCriticalErrors,
     cleanupCriticalErrorDetection,
