@@ -169,17 +169,27 @@ async function checkForLoadingStall(page) {
 test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     // Make sure we're logged in before each test
     test.beforeEach(async ({ page }, testInfo) => {
-        // Setup auth-aware error detection (skips initial canvas checks)
-        await setupAuthAwareErrorDetection(page, testInfo);
+        try {
+            // Setup auth-aware error detection (skips initial canvas checks)
+            await setupAuthAwareErrorDetection(page, testInfo);
 
-        const authService = new AuthService(page);
-        await authService.ensureReady();
+            const authService = new AuthService(page);
+            await authService.ensureReady();
 
-        // Check for critical errors after authentication
-        await checkCriticalErrors(page, testInfo);
+            // Check for critical errors after authentication
+            await checkCriticalErrors(page, testInfo);
 
-        // Also check for loading stall after authentication using original function
-        await checkForLoadingStall(page);
+            // Also check for loading stall after authentication using original function
+            await checkForLoadingStall(page);
+        } catch (error) {
+            // Save console logs immediately if beforeEach fails
+            try {
+                await saveTestBrowserLogs(testInfo);
+            } catch (logError) {
+                console.warn('Failed to save console logs during beforeEach error:', logError.message);
+            }
+            throw error; // Re-throw the original error
+        }
     });
 
     // This test specifically checks for the loading stall condition
@@ -204,14 +214,26 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     });
 
     test.afterEach(async ({ page }, testInfo) => {
-        // Final check for critical errors before test completion
-        await checkForCriticalErrors(page, testInfo);
-
-        // Save console logs for this specific test
+        // Always try to save console logs first, regardless of test outcome
         try {
             await saveTestBrowserLogs(testInfo);
         } catch (error) {
-            // Silently handle logging errors
+            console.warn('Failed to save console logs in afterEach:', error.message);
+        }
+
+        // Final check for critical errors before test completion (only if test passed)
+        if (testInfo.status === 'passed') {
+            try {
+                await checkForCriticalErrors(page, testInfo);
+            } catch (error) {
+                // If critical errors are found, save logs again with the error info
+                try {
+                    await saveTestBrowserLogs(testInfo);
+                } catch (logError) {
+                    console.warn('Failed to save console logs after critical error:', logError.message);
+                }
+                throw error;
+            }
         }
 
         // Cleanup critical error detection

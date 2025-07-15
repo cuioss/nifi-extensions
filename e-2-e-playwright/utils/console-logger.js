@@ -68,6 +68,13 @@ class IndividualTestLogger {
       
       if (this.shouldIncludeLogEntry(logEntry)) {
         testLogsArray.push(logEntry);
+        
+        // Auto-save logs when critical page errors occur
+        setTimeout(() => {
+          this.saveTestLogs(testId, testLogsArray, testInfo).catch(err => {
+            console.warn('Failed to auto-save logs on page error:', err.message);
+          });
+        }, 100); // Small delay to allow other logs to be captured
       }
     });
 
@@ -85,6 +92,13 @@ class IndividualTestLogger {
       
       // Page crashes are always relevant
       testLogsArray.push(logEntry);
+      
+      // Auto-save logs when page crashes
+      setTimeout(() => {
+        this.saveTestLogs(testId, testLogsArray, testInfo).catch(err => {
+          console.warn('Failed to auto-save logs on page crash:', err.message);
+        });
+      }, 100); // Small delay to allow other logs to be captured
     });
 
     // Capture request failures for this specific test
@@ -230,6 +244,15 @@ class IndividualTestLogger {
       // Mark this in the log entry
       logEntry.isCriticalError = true;
       logEntry.criticalErrorType = this.getCriticalErrorType(message);
+      
+      // Auto-save logs when critical errors are detected
+      const testId = this.getTestId(testInfo);
+      const testLogsArray = this.testLogs.get(testId) || [];
+      setTimeout(() => {
+        this.saveTestLogs(testId, testLogsArray, testInfo).catch(err => {
+          console.warn('Failed to auto-save logs on critical error:', err.message);
+        });
+      }, 100); // Small delay to allow other logs to be captured
       
       // Optionally fail immediately (can be controlled by test configuration)
       if (this.shouldFailImmediately(logEntry)) {
