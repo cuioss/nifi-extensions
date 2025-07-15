@@ -203,10 +203,10 @@ test.describe("Self-Test: Critical Error Detection", () => {
 
     test("should detect missing processors on canvas", async ({
         page,
-    }, _testInfo) => {
+    }, testInfo) => {
         // This test ensures that if processors are expected but missing, it fails
 
-        const processorService = new ProcessorService(page);
+        const processorService = new ProcessorService(page, testInfo);
 
         // Try to find any processor on the canvas
         const processor = await processorService.find("processor", {

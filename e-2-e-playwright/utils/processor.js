@@ -189,7 +189,7 @@ export async function verifyMultiIssuerJwtAuthenticator(page, options = {}) {
  * Interact with processor using modern patterns with force option to handle button interception
  */
 export async function interactWithProcessor(page, processor, options = {}) {
-  const { action = 'click', timeout = 10000, takeScreenshot = false } = options;
+  const { action = 'click', timeout = 10000, takeScreenshot = false, testInfo = null } = options;
 
   const locator = processor.locator || page.locator(processor.element);
 
@@ -247,7 +247,10 @@ export async function interactWithProcessor(page, processor, options = {}) {
 
     // Take screenshot if requested
     if (takeScreenshot) {
-      await page.screenshot({ path: `target/processor-interaction-${Date.now()}.png` });
+      const screenshotPath = testInfo && testInfo.outputDir
+        ? `${testInfo.outputDir}/processor-interaction-${Date.now()}.png`
+        : `target/processor-interaction-${Date.now()}.png`;
+      await page.screenshot({ path: screenshotPath });
     }
 
     await page.waitForLoadState('networkidle', { timeout: 5000 });
@@ -256,7 +259,10 @@ export async function interactWithProcessor(page, processor, options = {}) {
     
     // Take screenshot on failure for debugging
     if (takeScreenshot) {
-      await page.screenshot({ path: `target/processor-interaction-failed-${Date.now()}.png` });
+      const screenshotPath = testInfo && testInfo.outputDir
+        ? `${testInfo.outputDir}/processor-interaction-failed-${Date.now()}.png`
+        : `target/processor-interaction-failed-${Date.now()}.png`;
+      await page.screenshot({ path: screenshotPath });
     }
     
     throw error;
@@ -267,7 +273,7 @@ export async function interactWithProcessor(page, processor, options = {}) {
  * Configure processor using modern patterns with better error handling
  */
 export async function configureProcessor(page, processorIdentifier, options = {}) {
-  const { timeout = 10000 } = options;
+  const { timeout = 10000, testInfo = null } = options;
 
   let processor = processorIdentifier;
   
@@ -285,7 +291,7 @@ export async function configureProcessor(page, processorIdentifier, options = {}
 
   try {
     // Right-click to open context menu with force option
-    await interactWithProcessor(page, processor, { action: 'rightclick', timeout });
+    await interactWithProcessor(page, processor, { action: 'rightclick', timeout, testInfo });
 
     // Wait for context menu and find configure option
     const configureSelectors = [
@@ -370,8 +376,9 @@ export async function verifyProcessorDeployment(page, processorType) {
  * Simplified ProcessorService class
  */
 export class ProcessorService {
-  constructor(page) {
+  constructor(page, testInfo = null) {
     this.page = page;
+    this.testInfo = testInfo;
   }
 
   async find(processorType, options = {}) {
@@ -391,19 +398,19 @@ export class ProcessorService {
   }
 
   async interact(processor, options = {}) {
-    return interactWithProcessor(this.page, processor, options);
+    return interactWithProcessor(this.page, processor, { ...options, testInfo: this.testInfo });
   }
 
   async configure(processor, options = {}) {
-    return configureProcessor(this.page, processor, options);
+    return configureProcessor(this.page, processor, { ...options, testInfo: this.testInfo });
   }
 
   async openConfiguration(processor, options = {}) {
-    return configureProcessor(this.page, processor, options);
+    return configureProcessor(this.page, processor, { ...options, testInfo: this.testInfo });
   }
 
   async configureMultiIssuerJwtAuthenticator(processor, options = {}) {
-    return configureProcessor(this.page, processor, options);
+    return configureProcessor(this.page, processor, { ...options, testInfo: this.testInfo });
   }
 
   async verifyDeployment(processorType) {

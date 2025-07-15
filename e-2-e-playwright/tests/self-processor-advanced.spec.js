@@ -47,7 +47,7 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
         // Check for critical errors before starting
         await checkCriticalErrors(page, testInfo);
 
-        const processorService = new ProcessorService(page);
+        const processorService = new ProcessorService(page, testInfo);
 
         // STRICT MODE: Find any processor on canvas - MUST exist
         const processor = await processorService.find("processor", {
@@ -95,7 +95,7 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
     test("should access advanced configuration properties", async ({
         page,
     }, testInfo) => {
-        const processorService = new ProcessorService(page);
+        const processorService = new ProcessorService(page, testInfo);
 
         // Find a processor that supports advanced configuration
         const processor = await processorService.findJwtAuthenticator({
@@ -165,7 +165,7 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
     test('should verify "Back to Processor" navigation link', async ({
         page,
     }, _testInfo) => {
-        const processorService = new ProcessorService(page);
+        const processorService = new ProcessorService(page, testInfo);
 
         // Find any processor on canvas
         const processor = await processorService.findJwtAuthenticator({
@@ -238,7 +238,7 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
     test("should handle configuration dialog failures gracefully", async ({
         page,
     }, _testInfo) => {
-        const processorService = new ProcessorService(page);
+        const processorService = new ProcessorService(page, testInfo);
 
         // Try to configure a non-existent processor
         const nonExistentProcessor = {
@@ -259,7 +259,7 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
     test("should verify processor interaction reliability", async ({
         page,
     }, _testInfo) => {
-        const processorService = new ProcessorService(page);
+        const processorService = new ProcessorService(page, testInfo);
 
         // Find any processor on canvas
         const processor = await processorService.find("processor", {

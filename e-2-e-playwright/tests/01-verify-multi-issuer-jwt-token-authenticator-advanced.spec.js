@@ -224,7 +224,7 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         // Check for critical errors before proceeding
         await checkCriticalErrors(page, testInfo);
 
-        const processorService = new ProcessorService(page);
+        const processorService = new ProcessorService(page, testInfo);
 
         // Check for loading stall before proceeding
         await checkForLoadingStall(page);
@@ -267,8 +267,8 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         await checkCriticalErrors(page, testInfo);
     });
 
-    test("should open processor configuration dialog", async ({ page }) => {
-        const processorService = new ProcessorService(page);
+    test("should open processor configuration dialog", async ({ page }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
 
         // Check for loading stall before proceeding
         await checkForLoadingStall(page);
@@ -315,7 +315,7 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     test("should attempt to access advanced configuration", async ({
         page,
     }) => {
-        const processorService = new ProcessorService(page);
+        const processorService = new ProcessorService(page, testInfo);
 
         // Check for loading stall before proceeding
         await checkForLoadingStall(page);
@@ -362,8 +362,8 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         }
     });
 
-    test("should verify processor can be interacted with", async ({ page }) => {
-        const processorService = new ProcessorService(page);
+    test("should verify processor can be interacted with", async ({ page }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
 
         // Check for loading stall before proceeding
         await checkForLoadingStall(page);
