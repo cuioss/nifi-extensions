@@ -413,7 +413,9 @@ class IndividualTestLogger {
       /Mismatched anonymous define\(\)/i,
       /Module name .* has not been loaded/i,
       /RequireJS/i,
-      /Script error/i
+      /Script error/i,
+      /downloadable font.*download failed.*FontAwesome/i,  // FontAwesome download failures
+      /fontawesome.*404|fontawesome.*failed|fontawesome.*error/i  // Other FontAwesome errors
     ];
 
     // UI Loading stall patterns (only match actual stalls, not success messages)
@@ -474,6 +476,12 @@ class IndividualTestLogger {
     if (/Mismatched anonymous define\(\)|RequireJS|Module name .* has not been loaded/i.test(message)) {
       return 'MODULE_LOADING_ERROR';
     }
+    if (/downloadable font.*download failed.*FontAwesome/i.test(message)) {
+      return 'FONTAWESOME_DOWNLOAD_FAILED';
+    }
+    if (/fontawesome.*404|fontawesome.*failed|fontawesome.*error/i.test(message)) {
+      return 'FONTAWESOME_RESOURCE_ERROR';
+    }
     if (uiLoadingStallPatterns.some(pattern => pattern.test(message))) {
       return 'UI_LOADING_STALL';
     }
@@ -508,15 +516,23 @@ class IndividualTestLogger {
     // Create single console log file in the test results directory
     const logFileName = 'console-logs.log';
     const logFilePath = path.join(testResultsDir, logFileName);
+    
+    // Also create JSON log file
+    const jsonFileName = 'console-logs.json';
+    const jsonFilePath = path.join(testResultsDir, jsonFileName);
 
     // Format logs for readability
     const formattedLogs = this.formatLogsForFile(logs, testId);
 
-    // Write only the human-readable log file
+    // Write human-readable log file
     fs.writeFileSync(logFilePath, formattedLogs, 'utf8');
+    
+    // Write JSON log file
+    fs.writeFileSync(jsonFilePath, JSON.stringify(logs, null, 2), 'utf8');
 
     return {
       textLog: logFilePath,
+      jsonLog: jsonFilePath,
       totalLogs: logs.length,
       testId
     };
@@ -559,15 +575,21 @@ class IndividualTestLogger {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const logFileName = `${testId}-console-logs-${timestamp}.log`;
     const logFilePath = path.join(logsDir, logFileName);
+    
+    // Also create JSON log file
+    const jsonFileName = `${testId}-console-logs-${timestamp}.json`;
+    const jsonFilePath = path.join(logsDir, jsonFileName);
 
     // Format logs for readability
     const formattedLogs = this.formatLogsForFile(logs, testId);
 
-    // Write to file
+    // Write to files
     fs.writeFileSync(logFilePath, formattedLogs, 'utf8');
+    fs.writeFileSync(jsonFilePath, JSON.stringify(logs, null, 2), 'utf8');
 
     return {
       textLog: logFilePath,
+      jsonLog: jsonFilePath,
       totalLogs: logs.length,
       testId
     };

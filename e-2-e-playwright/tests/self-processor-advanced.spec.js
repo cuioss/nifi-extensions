@@ -73,7 +73,7 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
         const dialog = await processorService.configure(processor);
 
         // Verify dialog is visible
-        await expect(dialog).toBeVisible({ timeout: 10000 });
+        await expect(dialog).toBeVisible({ timeout: 3000 });
 
         // Check for critical errors after opening dialog
         await checkCriticalErrors(page, testInfo);
@@ -119,11 +119,11 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
             if (await configureOption.isVisible({ timeout: 2000 })) {
                 await configureOption.click();
 
-                // Wait for configuration dialog
+                // Wait for configuration dialog - should fail if dialog doesn't open
                 const dialog = page.locator(
                     ".mat-dialog-container, .configure-dialog",
                 );
-                await expect(dialog).toBeVisible({ timeout: 10000 });
+                await expect(dialog).toBeVisible({ timeout: 3000 });
 
                 // Look for Properties or Advanced tab
                 const advancedTab = page.getByRole("tab", {
@@ -138,7 +138,7 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
                         ".mat-tab-body-active, .properties-content",
                     );
                     await expect(advancedContent).toBeVisible({
-                        timeout: 10000,
+                        timeout: 3000,
                     });
                 }
 
@@ -164,7 +164,7 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
 
     test('should verify "Back to Processor" navigation link', async ({
         page,
-    }, _testInfo) => {
+    }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
         // Find any processor on canvas
@@ -201,7 +201,7 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
                         // Verify we're back on main canvas
                         await expect(
                             page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS),
-                        ).toBeVisible({ timeout: 10000 });
+                        ).toBeVisible({ timeout: 3000 });
 
                         backLinkFound = true;
                         break;
@@ -237,7 +237,7 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
 
     test("should handle configuration dialog failures gracefully", async ({
         page,
-    }, _testInfo) => {
+    }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
         // Try to configure a non-existent processor
@@ -258,7 +258,7 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
 
     test("should verify processor interaction reliability", async ({
         page,
-    }, _testInfo) => {
+    }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
         // Find any processor on canvas
