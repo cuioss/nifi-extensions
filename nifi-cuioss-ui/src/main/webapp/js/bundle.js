@@ -28,7 +28,7 @@ const hideLoadingIndicatorImmediate = () => {
         // Also hide by text content
         const allElements = document.querySelectorAll('*');
         allElements.forEach(element => {
-            if (element.textContent && element.textContent.includes('Loading JWT')) {
+            if (element.textContent?.includes('Loading JWT')) {
                 element.style.display = 'none';
                 element.style.visibility = 'hidden';
                 element.setAttribute('aria-hidden', 'true');
@@ -57,7 +57,7 @@ export const init = function () {
     }
 
     // Initialize the main module if it's available
-    if (main && typeof main.init === 'function') {
+    if (typeof main?.init === 'function') {
         logger.debug('Initializing JWT UI components from bundle.js');
         main.init();
     } else {
