@@ -814,3 +814,55 @@ export async function setupStrictErrorDetection(page, testInfo, skipInitialCheck
   // Setup comprehensive error detection
   return setupComprehensiveErrorDetection(page, testInfo, skipInitialChecks);
 }
+
+/**
+ * Inject test console messages with unique identifier
+ * @param {import('@playwright/test').Page} page - The Playwright page object
+ * @param {string} testId - Unique test identifier
+ */
+export async function injectTestConsoleMessages(page, testId) {
+  await page.evaluate((id) => {
+    console.log(`Direct log test - INFO message - ${id}`);
+    console.warn(`Direct log test - WARNING message - ${id}`);
+    console.error(`Direct log test - ERROR message - ${id}`);
+    console.info(`Direct log test - DETAILED info - ${id}`);
+  }, testId);
+}
+
+/**
+ * Check loading indicator status
+ * @param {import('@playwright/test').Page} page - The Playwright page object
+ * @returns {Promise<{isVisible: boolean, text: string|null}>}
+ */
+export async function checkLoadingIndicatorStatus(page) {
+  const loadingIndicator = page.locator("#loading-indicator");
+  const isVisible = await loadingIndicator.isVisible();
+  let text = null;
+  
+  if (isVisible) {
+    try {
+      text = await loadingIndicator.textContent();
+    } catch (error) {
+      // Handle case where element becomes unavailable
+      text = null;
+    }
+  }
+  
+  return { isVisible, text };
+}
+
+/**
+ * Create test log file with content
+ * @param {import('@playwright/test').TestInfo} testInfo - Test info object
+ * @param {Object} content - Content to write to file
+ * @param {string} filename - Optional filename
+ * @returns {Promise<string>} Path to created file
+ */
+export async function createTestLogFile(testInfo, content, filename = 'test-console-logs.json') {
+  const fs = await import('fs');
+  const path = await import('path');
+  
+  const logFilePath = path.join(testInfo.outputDir, filename);
+  fs.writeFileSync(logFilePath, JSON.stringify(content, null, 2));
+  return logFilePath;
+}

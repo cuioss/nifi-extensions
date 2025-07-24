@@ -468,4 +468,41 @@ export class ProcessorService {
   async verifyDeployment(processorType) {
     return verifyProcessorDeployment(this.page, processorType);
   }
+
+  async waitForConfigurationDialog() {
+    const dialog = this.page.locator('[role="dialog"], .dialog, .configuration-dialog');
+    await expect(dialog).toBeVisible({ timeout: 3000 });
+    return dialog;
+  }
+
+  async findBackNavigationLink() {
+    const backLinks = [
+      this.page.getByRole("link", { name: /back to processor/i }),
+      this.page.getByRole("button", { name: /back to processor/i }),
+      this.page.getByText(/back to processor/i),
+      this.page.locator('[href*="processor"]'),
+      this.page.locator(".back-link, .return-link"),
+    ];
+    
+    for (const backLink of backLinks) {
+      if (await backLink.isVisible({ timeout: 2000 })) {
+        return backLink;
+      }
+    }
+    return null;
+  }
+
+  async navigateBack() {
+    const backLink = await this.findBackNavigationLink();
+    if (backLink) {
+      await backLink.click();
+      await this.page.waitForLoadState("networkidle");
+      return true;
+    } else {
+      // Fallback to browser back
+      await this.page.goBack();
+      await this.page.waitForLoadState("networkidle");
+      return false; // Indicates fallback was used
+    }
+  }
 }

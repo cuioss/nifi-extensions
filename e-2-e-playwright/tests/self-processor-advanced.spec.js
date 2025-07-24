@@ -14,7 +14,7 @@ import { CONSTANTS } from "../utils/constants.js";
 import { processorLogger } from "../utils/shared-logger.js";
 import {
     setupAuthAwareErrorDetection,
-    checkForCriticalErrors,
+    // checkForCriticalErrors, // Unused in current implementation
     saveTestBrowserLogs,
 } from "../utils/console-logger.js";
 import {
@@ -34,12 +34,15 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
         // await checkCriticalErrors(page, testInfo);
     });
 
-    test.afterEach(async ({ page }, testInfo) => {
+    test.afterEach(async ({ page: _ }, testInfo) => {
         // Always save browser logs first, regardless of test outcome
         try {
             await saveTestBrowserLogs(testInfo);
         } catch (error) {
-            console.warn('Failed to save console logs in afterEach:', error.message);
+            console.warn(
+                "Failed to save console logs in afterEach:",
+                error.message,
+            );
         }
 
         // Skip final check before test completion
@@ -119,7 +122,9 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
                 await configureOption.click();
 
                 // Wait for configuration dialog - utility handles NiFi-compatible selectors
-                const dialog = page.locator('[role="dialog"], .dialog, .configuration-dialog');
+                const dialog = page.locator(
+                    '[role="dialog"], .dialog, .configuration-dialog',
+                );
                 await expect(dialog).toBeVisible({ timeout: 3000 });
 
                 // Use utility method to access advanced properties with proper selectors

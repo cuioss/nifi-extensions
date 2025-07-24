@@ -11,6 +11,8 @@ import {
     setupBrowserConsoleLogging,
     saveAllBrowserLogs,
     saveTestBrowserLogs,
+    injectTestConsoleMessages,
+    // checkLoadingIndicatorStatus, // Unused in current implementation
 } from "../utils/console-logger.js";
 import fs from "fs";
 import path from "path";
@@ -21,12 +23,15 @@ test.describe("Self-Test: Browser Console Logging", () => {
         setupBrowserConsoleLogging(page, testInfo);
     });
 
-    test.afterEach(async ({ page }, testInfo) => {
+    test.afterEach(async ({ page: _ }, testInfo) => {
         // Always save browser logs first, regardless of test outcome
         try {
             await saveTestBrowserLogs(testInfo);
         } catch (error) {
-            console.warn('Failed to save console logs in afterEach:', error.message);
+            console.warn(
+                "Failed to save console logs in afterEach:",
+                error.message,
+            );
         }
     });
 
@@ -257,19 +262,17 @@ test.describe("Self-Test: Browser Console Logging", () => {
         // Check if NiFi is accessible before running this test
         const authService = new AuthService(page);
         const isAccessible = await authService.checkNiFiAccessibility();
-        test.skip(!isAccessible, 'NiFi service is not accessible - cannot test browser logging with real navigation');
+        test.skip(
+            !isAccessible,
+            "NiFi service is not accessible - cannot test browser logging with real navigation",
+        );
 
         // Navigate and generate console activity
         await page.goto("/nifi");
 
         // Generate specific console messages to verify with unique identifier
         const testId = `direct-log-test-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
-        await page.evaluate((id) => {
-            console.log(`Direct log test - INFO message - ${id}`);
-            console.warn(`Direct log test - WARNING message - ${id}`);
-            console.error(`Direct log test - ERROR message - ${id}`);
-            console.info(`Direct log test - DETAILED info - ${id}`);
-        }, testId);
+        await injectTestConsoleMessages(page, testId);
 
         // Wait a moment for logs to be captured
         await page.waitForTimeout(500);
@@ -295,9 +298,15 @@ test.describe("Self-Test: Browser Console Logging", () => {
 
         // Verify content contains our test messages
         const textContent = fs.readFileSync(result.textLog, "utf8");
-        expect(textContent).toContain(`Direct log test - INFO message - ${testId}`);
-        expect(textContent).toContain(`Direct log test - WARNING message - ${testId}`);
-        expect(textContent).toContain(`Direct log test - ERROR message - ${testId}`);
+        expect(textContent).toContain(
+            `Direct log test - INFO message - ${testId}`,
+        );
+        expect(textContent).toContain(
+            `Direct log test - WARNING message - ${testId}`,
+        );
+        expect(textContent).toContain(
+            `Direct log test - ERROR message - ${testId}`,
+        );
         expect(textContent).toContain(result.testId); // Should contain test identifier
 
         const jsonContent = JSON.parse(fs.readFileSync(result.jsonLog, "utf8"));
@@ -315,7 +324,7 @@ test.describe("Self-Test: Browser Console Logging", () => {
 
     test("should verify console logging works without external dependencies", async ({
         page,
-    }, testInfo) => {
+    }, _testInfo) => {
         // Navigate to a simple page to ensure page context exists
         await page.goto("about:blank");
 
@@ -333,7 +342,7 @@ test.describe("Self-Test: Browser Console Logging", () => {
 
     test("should verify log file cleanup and rotation", async ({
         page: _,
-    }, testInfo) => {
+    }, _testInfo) => {
         const logsDir = path.join(process.cwd(), "target", "logs");
 
         // Ensure logs directory exists

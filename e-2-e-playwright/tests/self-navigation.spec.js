@@ -22,12 +22,10 @@ test.describe("Self-Test: Navigation", () => {
         await authService.navigateToPage("MAIN_CANVAS");
 
         // Verify we're on the main canvas
-        await expect(page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS)).toBeVisible(
-            { timeout: 10000 },
-        );
+        await authService.verifyCanvasVisible();
 
         // Verify page is stable and ready
-        await page.waitForLoadState("networkidle");
+        await authService.waitForPageReady();
 
         // Check for key navigation elements
         const operateButtons = page.getByRole("button", { name: /operate/i });
@@ -44,9 +42,7 @@ test.describe("Self-Test: Navigation", () => {
         }).rejects.toThrow(/Unknown page type/);
 
         // Should still be on a valid page
-        await expect(
-            page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS),
-        ).toBeVisible();
+        await authService.verifyCanvasVisible();
     });
 
     test("should verify page accessibility and loading state", async ({
@@ -87,24 +83,21 @@ test.describe("Self-Test: Navigation", () => {
         await page.waitForLoadState("networkidle");
 
         // Should return to same functional state
-        await expect(page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS)).toBeVisible(
-            { timeout: 15000 },
-        );
+        await authService.verifyCanvasVisible();
     });
 
     test("should verify page readiness indicators", async ({ page }) => {
+        const authService = new AuthService(page);
+
         // Wait for all network activity to complete
         await page.waitForLoadState("networkidle");
 
-        // Verify no loading spinners are present
-        const loadingIndicators = page.locator(
-            ".loading, .spinner, mat-spinner",
-        );
-        await expect(loadingIndicators).toHaveCount(0, { timeout: 10000 });
+        // Wait for page to be fully ready (includes loading indicator checks)
+        await authService.waitForPageReady();
 
         // Verify main canvas is interactive
+        await authService.verifyCanvasVisible();
         const canvas = page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS);
-        await expect(canvas).toBeVisible();
 
         // Verify the canvas is ready for interaction (not disabled)
         const isEnabled = await canvas.isEnabled();

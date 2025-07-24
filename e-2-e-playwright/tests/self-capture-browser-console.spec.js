@@ -5,6 +5,7 @@ import { AuthService } from "../utils/auth-service.js";
 import {
     setupAuthAwareErrorDetection,
     saveTestBrowserLogs,
+    checkLoadingIndicatorStatus,
 } from "../utils/console-logger.js";
 
 test.describe("Browser Console Error Capture", () => {
@@ -31,15 +32,13 @@ test.describe("Browser Console Error Capture", () => {
         // Wait for page to load and modules to attempt loading
         await page.waitForTimeout(10000);
 
-        // Check if loading indicator is visible
-        const loadingIndicator = page.locator("#loading-indicator");
-        const isVisible = await loadingIndicator.isVisible();
+        // Check if loading indicator is visible using utility function
+        const loadingStatus = await checkLoadingIndicatorStatus(page);
         console.log(`\n=== LOADING INDICATOR STATUS ===`);
-        console.log(`Loading indicator visible: ${isVisible}`);
+        console.log(`Loading indicator visible: ${loadingStatus.isVisible}`);
 
-        if (isVisible) {
-            const text = await loadingIndicator.textContent();
-            console.log(`Loading indicator text: "${text}"`);
+        if (loadingStatus.isVisible && loadingStatus.text) {
+            console.log(`Loading indicator text: "${loadingStatus.text}"`);
         }
 
         // Check for critical errors after navigation (skip canvas checks for processor UI page)
@@ -78,10 +77,8 @@ test.describe("Browser Console Error Capture", () => {
             },
             {
                 url: processorUIUrl,
-                loadingIndicatorVisible: isVisible,
-                loadingIndicatorText: isVisible
-                    ? await loadingIndicator.textContent()
-                    : null,
+                loadingIndicatorVisible: loadingStatus.isVisible,
+                loadingIndicatorText: loadingStatus.text,
                 criticalErrors: criticalErrors.length,
             },
         );

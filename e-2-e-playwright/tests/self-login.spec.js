@@ -7,7 +7,7 @@
 
 import { test, expect } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
-import { CONSTANTS } from "../utils/constants.js";
+// import { CONSTANTS } from "../utils/constants.js"; // Unused in current implementation
 
 test.describe("Self-Test: Login", () => {
     test("should successfully authenticate with valid credentials", async ({
@@ -17,7 +17,10 @@ test.describe("Self-Test: Login", () => {
 
         // Check if NiFi is accessible before attempting navigation
         const isAccessible = await authService.checkNiFiAccessibility();
-        test.skip(!isAccessible, 'NiFi service is not accessible - cannot test authentication');
+        test.skip(
+            !isAccessible,
+            "NiFi service is not accessible - cannot test authentication",
+        );
 
         // Navigate to login page
         await page.goto("/nifi");
@@ -26,9 +29,7 @@ test.describe("Self-Test: Login", () => {
         await authService.login();
 
         // Verify successful authentication - canvas should be visible
-        await expect(page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS)).toBeVisible(
-            { timeout: 15000 },
-        );
+        await authService.verifyCanvasVisible();
 
         // Verify page title contains NiFi
         await expect(page).toHaveTitle(/NiFi/);
@@ -51,16 +52,13 @@ test.describe("Self-Test: Login", () => {
         await authService.ensureReady();
 
         // Verify authenticated state
-        await expect(
-            page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS),
-        ).toBeVisible();
+        await authService.verifyCanvasVisible();
 
         // Perform logout
         await authService.logout();
 
         // Verify logout - login button should be visible
-        const loginButton = page.getByRole("button", { name: /log in|login/i });
-        await expect(loginButton).toBeVisible({ timeout: 10000 });
+        await authService.verifyLogoutState();
     });
 
     test("should maintain authentication state across page reloads", async ({
@@ -70,18 +68,14 @@ test.describe("Self-Test: Login", () => {
 
         // Login and verify
         await authService.ensureReady();
-        await expect(
-            page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS),
-        ).toBeVisible();
+        await authService.verifyCanvasVisible();
 
         // Reload page
         await page.reload();
         await page.waitForLoadState("networkidle");
 
         // Should still be authenticated
-        await expect(page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS)).toBeVisible(
-            { timeout: 15000 },
-        );
+        await authService.verifyCanvasVisible();
     });
 
     test("should detect authentication status correctly", async ({ page }) => {
@@ -89,7 +83,10 @@ test.describe("Self-Test: Login", () => {
 
         // Check if NiFi is accessible before attempting navigation
         const isAccessible = await authService.checkNiFiAccessibility();
-        test.skip(!isAccessible, 'NiFi service is not accessible - cannot test authentication status');
+        test.skip(
+            !isAccessible,
+            "NiFi service is not accessible - cannot test authentication status",
+        );
 
         // Initially should not be authenticated
         await page.goto("/nifi");

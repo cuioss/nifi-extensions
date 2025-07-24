@@ -243,6 +243,30 @@ export class AuthService {
   }
 
   /**
+   * Verify logout state by checking for login interface
+   */
+  async verifyLogoutState() {
+    const loginButton = this.page.getByRole("button", { name: /log in|login/i });
+    await expect(loginButton).toBeVisible({ timeout: 10000 });
+  }
+
+  /**
+   * Wait for page to be fully ready with no loading indicators
+   */
+  async waitForPageReady() {
+    await this.page.waitForLoadState("networkidle");
+    const loadingIndicators = this.page.locator(".loading, .spinner, mat-spinner");
+    await expect(loadingIndicators).toHaveCount(0, { timeout: 10000 });
+  }
+
+  /**
+   * Verify main canvas is visible and ready
+   */
+  async verifyCanvasVisible() {
+    await expect(this.page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS)).toBeVisible({ timeout: 10000 });
+  }
+
+  /**
    * Ensure NiFi is ready for testing with modern patterns
    */
   async ensureReady() {

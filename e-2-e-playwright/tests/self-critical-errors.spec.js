@@ -8,7 +8,7 @@
 import { test, expect } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
-import { CONSTANTS } from "../utils/constants.js";
+// import { CONSTANTS } from "../utils/constants.js"; // Unused in current implementation
 import {
     setupAuthAwareErrorDetection,
     checkForCriticalErrors,
@@ -34,12 +34,15 @@ test.describe("Self-Test: Critical Error Detection", () => {
         await checkForCriticalErrors(page, testInfo);
     });
 
-    test.afterEach(async ({ page }, testInfo) => {
+    test.afterEach(async ({ page: _ }, testInfo) => {
         // Always save browser logs first, regardless of test outcome
         try {
             await saveTestBrowserLogs(testInfo);
         } catch (error) {
-            console.warn('Failed to save console logs in afterEach:', error.message);
+            console.warn(
+                "Failed to save console logs in afterEach:",
+                error.message,
+            );
         }
 
         // Cleanup critical error detection
@@ -108,16 +111,13 @@ test.describe("Self-Test: Critical Error Detection", () => {
         ).toBe(0);
 
         // Additional checks for UI readiness
-        const canvas = page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS);
-        await expect(
-            canvas,
-            "Main canvas should be visible and ready",
-        ).toBeVisible({ timeout: 10000 });
+        const authService = new AuthService(page);
+        await authService.verifyCanvasVisible();
     });
 
     test("should fail on JavaScript Uncaught Errors", async ({
         page,
-    }, testInfo) => {
+    }, _testInfo) => {
         // This test verifies that JavaScript errors are detected and cause failures
 
         // Use the global detector that's already monitoring from beforeEach
@@ -156,16 +156,13 @@ test.describe("Self-Test: Critical Error Detection", () => {
         await page.waitForLoadState("networkidle");
 
         // Additional verification that the page is working correctly
-        const canvas = page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS);
-        await expect(
-            canvas,
-            "Canvas should be functional without JS errors",
-        ).toBeVisible();
+        const authService = new AuthService(page);
+        await authService.verifyCanvasVisible();
     });
 
     test("should fail on RequireJS module loading errors", async ({
         page,
-    }, testInfo) => {
+    }, _testInfo) => {
         // This test specifically checks for RequireJS/AMD module loading issues
 
         const detector = globalCriticalErrorDetector;
@@ -202,11 +199,8 @@ test.describe("Self-Test: Critical Error Detection", () => {
         await page.waitForLoadState("networkidle");
 
         // Check that the main application modules have loaded
-        const canvas = page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS);
-        await expect(
-            canvas,
-            "Canvas should be functional indicating modules loaded",
-        ).toBeVisible();
+        const authService = new AuthService(page);
+        await authService.verifyCanvasVisible();
     });
 
     test("should detect missing processors on canvas", async ({
@@ -239,11 +233,8 @@ test.describe("Self-Test: Critical Error Detection", () => {
             );
 
             // Check if this is intentionally empty or a problem
-            const canvas = page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS);
-            await expect(
-                canvas,
-                "Canvas should be visible and ready for content",
-            ).toBeVisible();
+            const authService = new AuthService(page);
+            await authService.verifyCanvasVisible();
 
             // Log the finding for debugging
             console.log(
@@ -305,11 +296,8 @@ test.describe("Self-Test: Critical Error Detection", () => {
         ).toBe(0);
 
         // Final verification that the application is functional
-        const canvas = page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS);
-        await expect(
-            canvas,
-            "Application should be fully functional",
-        ).toBeVisible();
+        const authService = new AuthService(page);
+        await authService.verifyCanvasVisible();
 
         console.log(
             "✅ Comprehensive critical error validation passed - application is healthy",
