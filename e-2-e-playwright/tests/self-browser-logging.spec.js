@@ -5,14 +5,13 @@
  * @version 1.0.0
  */
 
-import { test, expect } from "@playwright/test";
-import { AuthService } from "../utils/auth-service.js";
+import {expect, test} from "@playwright/test";
+import {AuthService} from "../utils/auth-service.js";
 import {
-    setupBrowserConsoleLogging,
+    injectTestConsoleMessages,
     saveAllBrowserLogs,
     saveTestBrowserLogs,
-    injectTestConsoleMessages,
-    // checkLoadingIndicatorStatus, // Unused in current implementation
+    setupBrowserConsoleLogging,
 } from "../utils/console-logger.js";
 import fs from "fs";
 import path from "path";

@@ -2,12 +2,12 @@
  * Simple tests for componentCleanup - targeting basic functionality for coverage
  */
 import {
-    registerComponent,
     addCleanupFunction,
-    cleanupComponent,
     cleanupAll,
+    cleanupComponent,
+    managedSetInterval,
     managedSetTimeout,
-    managedSetInterval
+    registerComponent
 } from '../../../main/webapp/js/utils/componentCleanup.js';
 
 describe('Component Cleanup - Simple Coverage Tests', () => {

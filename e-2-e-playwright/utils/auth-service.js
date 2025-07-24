@@ -4,9 +4,9 @@
  * Removes duplication and uses 2025 best practices
  */
 
-import { expect } from '@playwright/test';
-import { CONSTANTS } from './constants.js';
-import { authLogger } from './shared-logger.js';
+import {expect} from '@playwright/test';
+import {CONSTANTS} from './constants.js';
+import {authLogger} from './shared-logger.js';
 
 /**
  * Modern authentication service with 2025 Playwright patterns
@@ -274,7 +274,7 @@ export class AuthService {
 
     // Check service accessibility
     const isAccessible = await this.checkNiFiAccessibility();
-    
+
     if (!isAccessible) {
       authLogger.warn('NiFi is not accessible - skipping test due to service unavailability');
       // Use Playwright's skip functionality to mark test as skipped instead of failed

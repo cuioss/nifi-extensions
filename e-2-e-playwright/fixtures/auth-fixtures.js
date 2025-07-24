@@ -3,8 +3,8 @@
  * Implements 2025 best practices with fixture-based architecture
  */
 
-import { test as base, expect } from '@playwright/test';
-import { CONSTANTS } from '../utils/constants.js';
+import {expect, test as base} from '@playwright/test';
+import {CONSTANTS} from '../utils/constants.js';
 
 /**
  * Authentication fixtures providing authenticated and unauthenticated contexts
@@ -17,35 +17,35 @@ export const test = base.extend({
     await test.step('Setup authenticated session', async () => {
       // Navigate to login page
       await page.goto('/nifi');
-      
+
       // Wait for page to be ready
       await page.waitForLoadState('networkidle');
-      
+
       // Perform login if not already authenticated
       const isLoggedIn = await page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS).isVisible()
         .catch(() => false);
-      
+
       if (!isLoggedIn) {
         // Click login if available
         const loginBtn = page.getByRole('button', { name: /log in|login/i });
         if (await loginBtn.isVisible()) {
           await loginBtn.click();
         }
-        
+
         // Fill credentials
         await page.getByLabel(/username|email/i).fill(CONSTANTS.AUTH.USERNAME);
         await page.getByLabel(/password/i).fill(CONSTANTS.AUTH.PASSWORD);
-        
+
         // Submit login
         await page.getByRole('button', { name: /sign in|login|submit/i }).click();
-        
+
         // Wait for successful login
         await expect(page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS)).toBeVisible({ timeout: 30000 });
       }
     });
-    
+
     await use(page);
-    
+
     // Cleanup - logout if needed
     await test.step('Cleanup authenticated session', async () => {
       // Logout is handled by global teardown
@@ -62,7 +62,7 @@ export const test = base.extend({
       await page.goto('/nifi');
       await page.waitForLoadState('networkidle');
     });
-    
+
     await use(page);
   },
 
@@ -73,24 +73,24 @@ export const test = base.extend({
     await test.step('Setup admin authenticated session', async () => {
       await page.goto('/nifi');
       await page.waitForLoadState('networkidle');
-      
+
       const isLoggedIn = await page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS).isVisible()
         .catch(() => false);
-      
+
       if (!isLoggedIn) {
         const loginBtn = page.getByRole('button', { name: /log in|login/i });
         if (await loginBtn.isVisible()) {
           await loginBtn.click();
         }
-        
+
         await page.getByLabel(/username|email/i).fill(CONSTANTS.AUTH.ADMIN_USERNAME || CONSTANTS.AUTH.USERNAME);
         await page.getByLabel(/password/i).fill(CONSTANTS.AUTH.ADMIN_PASSWORD || CONSTANTS.AUTH.PASSWORD);
-        
+
         await page.getByRole('button', { name: /sign in|login|submit/i }).click();
         await expect(page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS)).toBeVisible({ timeout: 30000 });
       }
     });
-    
+
     await use(page);
   },
 
@@ -103,13 +103,13 @@ export const test = base.extend({
       processorName: `test-processor-${Date.now()}`,
       groupName: `test-group-${Date.now()}`,
       timestamp: new Date().toISOString(),
-      
+
       // Invalid credentials for negative testing
       invalidCredentials: {
         username: 'invalid-user',
         password: 'invalid-password'
       },
-      
+
       // Test processor configurations
       processorConfig: {
         name: `TestProcessor-${Math.random().toString(36).substring(7)}`,
@@ -119,9 +119,9 @@ export const test = base.extend({
         }
       }
     };
-    
+
     await use(data);
-    
+
     // Cleanup test data if needed
     await test.step('Cleanup test data', async () => {
       // Cleanup is handled by individual tests or global teardown
@@ -137,11 +137,11 @@ export const test = base.extend({
         await expect(page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS)).toBeVisible();
         await expect(page).toHaveTitle(/NiFi/);
       },
-      
+
       async expectLoginPage() {
         await expect(page.getByRole('button', { name: /log in|login/i })).toBeVisible();
       },
-      
+
       async expectAuthenticated() {
         await expect(page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS)).toBeVisible();
         // Check for user menu or logout option
@@ -150,7 +150,7 @@ export const test = base.extend({
           await expect(userMenu).toBeVisible();
         }
       },
-      
+
       async expectPageType(expectedType) {
         // Use modern approach instead of complex page type detection
         switch (expectedType) {
@@ -165,7 +165,7 @@ export const test = base.extend({
         }
       }
     };
-    
+
     await use(verifier);
   }
 });

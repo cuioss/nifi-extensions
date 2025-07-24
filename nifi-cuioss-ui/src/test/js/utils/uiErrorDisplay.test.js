@@ -1,5 +1,5 @@
 import $ from 'cash-dom';
-import { displayUiError, displayUiWarning, displayUiInfo } from 'utils/uiErrorDisplay'; // Assuming this path will be resolved by Jest setup
+import { displayUiError, displayUiInfo, displayUiWarning } from 'utils/uiErrorDisplay'; // Assuming this path will be resolved by Jest setup
 
 const mockI18n = {
     'processor.jwt.unknownError': 'Test Unknown Error',

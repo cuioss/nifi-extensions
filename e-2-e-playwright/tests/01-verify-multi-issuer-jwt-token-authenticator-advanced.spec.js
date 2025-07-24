@@ -4,15 +4,12 @@
  * @version 2.0.0
  */
 
-import { test } from "@playwright/test";
-import { ProcessorService } from "../utils/processor.js";
-import { AuthService } from "../utils/auth-service.js";
-import {
-    saveTestBrowserLogs,
-    setupStrictErrorDetection,
-} from "../utils/console-logger.js";
-import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
-import { processorLogger } from "../utils/shared-logger.js";
+import {test} from "@playwright/test";
+import {ProcessorService} from "../utils/processor.js";
+import {AuthService} from "../utils/auth-service.js";
+import {saveTestBrowserLogs, setupStrictErrorDetection,} from "../utils/console-logger.js";
+import {cleanupCriticalErrorDetection} from "../utils/critical-error-detector.js";
+import {processorLogger} from "../utils/shared-logger.js";
 
 test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     // Make sure we're logged in before each test

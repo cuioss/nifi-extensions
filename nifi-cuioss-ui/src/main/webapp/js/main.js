@@ -24,7 +24,7 @@ import * as tokenVerifier from './components/tokenVerifier.js';
 import * as issuerConfigEditor from './components/issuerConfigEditor.js';
 import * as i18n from './utils/i18n.js';
 import { initTooltips } from './utils/tooltip.js';
-import { initKeyboardShortcuts, cleanup as cleanupKeyboardShortcuts } from './utils/keyboardShortcuts.js';
+import { cleanup as cleanupKeyboardShortcuts, initKeyboardShortcuts } from './utils/keyboardShortcuts.js';
 import { API, CSS, NIFI, UI_TEXT } from './utils/constants.js';
 
 const logger = createLogger('NiFi-Main');

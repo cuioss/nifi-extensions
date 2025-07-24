@@ -3,9 +3,9 @@
  * Centralized export for all page objects with fixture integration
  */
 
-import { test as base } from '@playwright/test';
-import { LoginPage } from './LoginPage.js';
-import { CanvasPage } from './CanvasPage.js';
+import {test as base} from '@playwright/test';
+import {LoginPage} from './LoginPage.js';
+import {CanvasPage} from './CanvasPage.js';
 
 /**
  * Page Object fixtures for modern testing

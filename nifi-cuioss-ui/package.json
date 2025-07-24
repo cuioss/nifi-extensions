@@ -1,6 +1,7 @@
 {
   "name": "nifi-cuioss-ui",
   "version": "1.0.0",
+  "type": "module",
   "description": "Provides custom UI components for NiFi CU Boulder CUIOSS extensions.",
   "dependencyManagement": "Runtime dependencies (cash-dom, tippy.js, @popperjs/core) are managed via WebJars in pom.xml. NPM dependencies are for development only.",
   "main": "src/main/webapp/js/main.js",
@@ -15,7 +16,7 @@
     "test:watch": "NODE_ENV=test jest --watch",
     "test:coverage": "NODE_ENV=test jest --coverage",
     "test:ci": "NODE_ENV=test jest --coverage --watchAll=false --passWithNoTests",
-    "validate-deps": "node scripts/validate-dependencies.js"
+    "validate-deps": "node scripts/validate-dependencies.cjs"
   },
   "repository": {
     "type": "git",

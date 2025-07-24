@@ -4,8 +4,6 @@
  * @version 1.0.0
  */
 
-import { expect } from '@playwright/test';
-
 /**
  * Critical error patterns that should cause immediate test failure
  */
@@ -19,7 +17,7 @@ const CRITICAL_ERROR_PATTERNS = {
     /Module name .* has not been loaded/i,
     /Script error/i
   ],
-  
+
   UI_LOADING_STALLS: [
     /Loading JWT Validator UI\.\.\.$/, // Only match if it ends with "..." (actual stall)
     /UI loading timeout/i,
@@ -27,14 +25,14 @@ const CRITICAL_ERROR_PATTERNS = {
     /UI failed to initialize/i,
     /Loading.*UI.*\.\.\.$/ // Only match if it ends with "..." (actual stall)
   ],
-  
+
   MODULE_LOADING_ERRORS: [
     /RequireJS/i,
     /define\(\) module/i,
     /AMD module/i,
     /Module loading failed/i
   ],
-  
+
   PAGE_ERRORS: [
     /Page crashed/i,
     /Navigation failed/i,
@@ -48,12 +46,12 @@ const CRITICAL_ERROR_PATTERNS = {
 const EMPTY_CANVAS_SELECTORS = {
   PROCESSOR_ELEMENTS: [
     'g.processor',
-    'rect.processor', 
+    'rect.processor',
     '[data-component-type="processor"]',
     'g.component',
     '.processor-component'
   ],
-  
+
   CANVAS_SELECTORS: [
     '#canvas',
     '.canvas',
@@ -76,20 +74,20 @@ export class CriticalErrorDetector {
    */
   startMonitoring(page, testInfo) {
     if (this.isMonitoring) return;
-    
+
     this.isMonitoring = true;
     this.detectedErrors = [];
-    
+
     // Monitor console messages for critical errors
     page.on('console', (msg) => {
       this.checkConsoleMessage(msg, testInfo);
     });
-    
+
     // Monitor page errors
     page.on('pageerror', (error) => {
       this.checkPageError(error, testInfo);
     });
-    
+
     // Monitor page crashes
     page.on('crash', () => {
       this.addCriticalError('PAGE_CRASH', 'Page crashed unexpectedly', testInfo);
@@ -109,20 +107,20 @@ export class CriticalErrorDetector {
   checkConsoleMessage(msg, testInfo) {
     const message = msg.text();
     const type = msg.type();
-    
+
     // Skip success messages that indicate proper UI initialization
     const isSuccessMessage = /Loading indicator hidden|successfully hidden|initialization completed|Component registration successful/i.test(message);
-    
+
     if (isSuccessMessage) {
       return; // Skip success messages from critical error detection
     }
-    
+
     // Check for JavaScript errors
     if (type === 'error') {
       for (const pattern of CRITICAL_ERROR_PATTERNS.JAVASCRIPT_ERRORS) {
         if (pattern.test(message)) {
           this.addCriticalError(
-            'JAVASCRIPT_ERROR', 
+            'JAVASCRIPT_ERROR',
             `JavaScript Error: ${message}`,
             testInfo,
             msg.location()
@@ -130,7 +128,7 @@ export class CriticalErrorDetector {
           break;
         }
       }
-      
+
       // Check for module loading errors
       for (const pattern of CRITICAL_ERROR_PATTERNS.MODULE_LOADING_ERRORS) {
         if (pattern.test(message)) {
@@ -144,7 +142,7 @@ export class CriticalErrorDetector {
         }
       }
     }
-    
+
     // Check for UI loading stalls in any message type (but skip debug messages)
     if (type !== 'debug') {
       for (const pattern of CRITICAL_ERROR_PATTERNS.UI_LOADING_STALLS) {
@@ -165,7 +163,7 @@ export class CriticalErrorDetector {
    */
   checkPageError(error, testInfo) {
     const message = error.message;
-    
+
     // All page errors are considered critical
     this.addCriticalError(
       'PAGE_ERROR',
@@ -189,9 +187,9 @@ export class CriticalErrorDetector {
       location,
       stack
     };
-    
+
     this.detectedErrors.push(error);
-    
+
     // Log the critical error immediately
     console.error(`🚨 CRITICAL ERROR DETECTED: ${type} - ${message}`);
   }
@@ -211,7 +209,7 @@ export class CriticalErrorDetector {
         );
         return false;
       }
-      
+
       // Check for processors on canvas
       const hasProcessors = await this.checkForProcessors(page);
       if (!hasProcessors) {
@@ -222,7 +220,7 @@ export class CriticalErrorDetector {
         );
         return false;
       }
-      
+
       return true;
     } catch (error) {
       this.addCriticalError(
@@ -284,7 +282,7 @@ export class CriticalErrorDetector {
         '[class*="loading"]:has-text("JWT")',
         '[class*="loading"]:has-text("UI")'
       ];
-      
+
       for (const selector of loadingStallSelectors) {
         try {
           const element = page.locator(selector);
@@ -302,7 +300,7 @@ export class CriticalErrorDetector {
           // Continue to next selector
         }
       }
-      
+
       return false;
     } catch (error) {
       this.addCriticalError(
@@ -322,7 +320,7 @@ export class CriticalErrorDetector {
       const errorSummary = this.detectedErrors
         .map(error => `${error.type}: ${error.message}`)
         .join('\n');
-      
+
       throw new Error(
         `🚨 CRITICAL ERRORS DETECTED - Test failed immediately:\n\n${errorSummary}\n\n` +
         `Total errors: ${this.detectedErrors.length}\n` +
@@ -363,11 +361,11 @@ export const globalCriticalErrorDetector = new CriticalErrorDetector();
  */
 export async function setupCriticalErrorDetection(page, testInfo) {
   globalCriticalErrorDetector.startMonitoring(page, testInfo);
-  
+
   // Perform initial checks
   await globalCriticalErrorDetector.checkForEmptyCanvas(page, testInfo);
   await globalCriticalErrorDetector.checkForUILoadingStalls(page, testInfo);
-  
+
   // Fail immediately if any critical errors detected
   globalCriticalErrorDetector.failTestOnCriticalErrors();
 }
@@ -383,7 +381,7 @@ export async function checkCriticalErrors(page, testInfo) {
       failOnStatusCode: false
     });
     const isAccessible = response && ((response.status() >= 200 && response.status() < 400) || response.status() === 401);
-    
+
     if (!isAccessible) {
       // NiFi is not accessible, skip critical error checks as they would give false positives
       const { test } = await import('@playwright/test');

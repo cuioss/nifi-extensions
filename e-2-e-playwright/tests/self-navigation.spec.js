@@ -5,9 +5,9 @@
  * @version 1.0.0
  */
 
-import { test, expect } from "@playwright/test";
-import { AuthService } from "../utils/auth-service.js";
-import { CONSTANTS } from "../utils/constants.js";
+import {expect, test} from "@playwright/test";
+import {AuthService} from "../utils/auth-service.js";
+import {CONSTANTS} from "../utils/constants.js";
 
 test.describe("Self-Test: Navigation", () => {
     test.beforeEach(async ({ page }) => {

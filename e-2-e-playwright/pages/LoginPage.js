@@ -3,8 +3,8 @@
  * Implements Page Object Model with fixtures integration
  */
 
-import { expect } from '@playwright/test';
-import { CONSTANTS } from '../utils/constants.js';
+import {expect} from '@playwright/test';
+import {CONSTANTS} from '../utils/constants.js';
 
 /**
  * Modern Login Page Object with 2025 best practices
@@ -33,12 +33,12 @@ export class LoginPage {
   async goto() {
     await this.page.goto('/nifi');
     await this.page.waitForLoadState('networkidle');
-    
+
     // Check if login button is available (might already be on login page)
     const needsLogin = await this.page.getByRole('button', { name: /log in|login/i })
       .isVisible()
       .catch(() => false);
-    
+
     if (needsLogin) {
       await this.page.getByRole('button', { name: /log in|login/i }).click();
     }
@@ -77,7 +77,7 @@ export class LoginPage {
     // Check for main canvas or dashboard
     await expect(this.page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS))
       .toBeVisible({ timeout: 30000 });
-    
+
     // Verify page title
     await expect(this.page).toHaveTitle(/NiFi/);
   }
@@ -88,7 +88,7 @@ export class LoginPage {
   async verifyLoginFailure(expectedErrorText = null) {
     // Should still be on login page
     await expect(this.loginButton).toBeVisible();
-    
+
     // Check for error message if specified
     if (expectedErrorText) {
       await expect(this.errorMessage).toContainText(expectedErrorText);

@@ -7,7 +7,7 @@ import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
 import { confirmClearForm } from '../utils/confirmationDialog.js';
-import { getIsLocalhost, setIsLocalhostForTesting, API, CSS } from '../utils/constants.js';
+import { API, CSS, getIsLocalhost, setIsLocalhostForTesting } from '../utils/constants.js';
 import { FormFieldFactory } from '../utils/formBuilder.js';
 
 /**

@@ -4,7 +4,7 @@
  * @version 2.0.0
  */
 
-import { saveAllBrowserLogs } from '../utils/console-logger.js';
+import {saveAllBrowserLogs} from '../utils/console-logger.js';
 
 /**
  * Global teardown function that runs after all tests have completed

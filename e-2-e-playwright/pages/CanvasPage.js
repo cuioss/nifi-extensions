@@ -3,8 +3,8 @@
  * Represents the main NiFi canvas with modern locator strategies
  */
 
-import { expect } from '@playwright/test';
-import { CONSTANTS } from '../utils/constants.js';
+import {expect} from '@playwright/test';
+import {CONSTANTS} from '../utils/constants.js';
 
 /**
  * Modern Canvas Page Object with 2025 best practices
@@ -21,15 +21,15 @@ export class CanvasPage {
   initializeLocators() {
     this.canvas = this.page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS);
     this.canvasSvg = this.page.locator(CONSTANTS.SELECTORS.CANVAS_SVG);
-    
+
     // Toolbar elements
     this.toolbar = this.page.locator('mat-toolbar, .toolbar');
     this.operateButton = this.page.getByRole('button', { name: /operate/i });
     this.settingsButton = this.page.getByRole('button', { name: /settings/i });
-    
+
     // Processor elements
     this.processors = this.page.locator(CONSTANTS.SELECTORS.PROCESSOR_ELEMENT);
-    
+
     // Context menu
     this.contextMenu = this.page.locator(CONSTANTS.SELECTORS.CONTEXT_MENU);
   }
@@ -77,10 +77,10 @@ export class CanvasPage {
   async rightClickProcessor(processorType) {
     const processor = await this.findProcessor(processorType);
     expect(processor, `Processor ${processorType} should be found`).toBeTruthy();
-    
+
     await processor.click({ button: 'right' });
     await expect(this.contextMenu).toBeVisible({ timeout: 5000 });
-    
+
     return processor;
   }
 
@@ -89,15 +89,15 @@ export class CanvasPage {
    */
   async configureProcessor(processorType) {
     await this.rightClickProcessor(processorType);
-    
+
     const configureOption = this.page.getByRole('menuitem', { name: /configure/i });
     await expect(configureOption).toBeVisible();
     await configureOption.click();
-    
+
     // Wait for configuration dialog
     const dialog = this.page.locator(CONSTANTS.SELECTORS.DIALOG_CONTAINER);
     await expect(dialog).toBeVisible({ timeout: 10000 });
-    
+
     return dialog;
   }
 
@@ -137,9 +137,9 @@ export class CanvasPage {
    */
   async takeScreenshot(filename = null) {
     const screenshotPath = filename || `target/screenshots/canvas-${Date.now()}.png`;
-    await this.page.screenshot({ 
+    await this.page.screenshot({
       path: screenshotPath,
-      fullPage: true 
+      fullPage: true
     });
     return screenshotPath;
   }
@@ -149,7 +149,7 @@ export class CanvasPage {
    */
   async waitForStable() {
     await this.page.waitForLoadState('networkidle');
-    
+
     // Wait for any loading indicators to disappear
     const loadingIndicators = this.page.locator('.loading, .spinner, mat-spinner');
     await expect(loadingIndicators).toHaveCount(0, { timeout: 10000 });

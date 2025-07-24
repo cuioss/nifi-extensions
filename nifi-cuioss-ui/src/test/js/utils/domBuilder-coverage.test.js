@@ -3,11 +3,11 @@
  * These tests target the most used functions to achieve 80% coverage target.
  */
 import {
-    createFragment,
     createElement,
+    createFragment,
     DOMBuilder,
-    FormFieldBuilder,
-    DOMUtils
+    DOMUtils,
+    FormFieldBuilder
 } from '../../../main/webapp/js/utils/domBuilder.js';
 
 describe('DOMBuilder Coverage Tests', () => {

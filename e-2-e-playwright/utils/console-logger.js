@@ -7,8 +7,8 @@
 
 import fs from 'fs';
 import path from 'path';
-import { globalCriticalErrorDetector } from './critical-error-detector.js';
-import { CONSOLE_ERROR_CONFIG } from '../config/console-error-config.js';
+import {globalCriticalErrorDetector} from './critical-error-detector.js';
+import {CONSOLE_ERROR_CONFIG} from '../config/console-error-config.js';
 
 class IndividualTestLogger {
   constructor() {
@@ -241,7 +241,7 @@ class IndividualTestLogger {
 
     // Apply console logging configuration based on log type
     const loggingConfig = CONSOLE_ERROR_CONFIG.CONSOLE_LOGGING;
-    
+
     // Filter by log type based on configuration
     switch (logType) {
       case 'debug':
@@ -521,7 +521,7 @@ To generate browser console logs:
 2. Re-run the tests with the integration-tests profile
 3. Check for any test setup issues that might prevent browser interactions
 `;
-      
+
       fs.writeFileSync(noticeFilePath, noticeContent, 'utf8');
       return noticeFilePath;
     }
@@ -529,7 +529,7 @@ To generate browser console logs:
     // Create single console log file in the test results directory
     const logFileName = 'console-logs.log';
     const logFilePath = path.join(testResultsDir, logFileName);
-    
+
     // Also create JSON log file
     const jsonFileName = 'console-logs.json';
     const jsonFilePath = path.join(testResultsDir, jsonFileName);
@@ -539,7 +539,7 @@ To generate browser console logs:
 
     // Write human-readable log file
     fs.writeFileSync(logFilePath, formattedLogs, 'utf8');
-    
+
     // Write JSON log file
     fs.writeFileSync(jsonFilePath, JSON.stringify(logs, null, 2), 'utf8');
 
@@ -588,7 +588,7 @@ To generate browser console logs:
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const logFileName = `${testId}-console-logs-${timestamp}.log`;
     const logFilePath = path.join(logsDir, logFileName);
-    
+
     // Also create JSON log file
     const jsonFileName = `${testId}-console-logs-${timestamp}.json`;
     const jsonFilePath = path.join(logsDir, jsonFileName);
@@ -838,7 +838,7 @@ export async function checkLoadingIndicatorStatus(page) {
   const loadingIndicator = page.locator("#loading-indicator");
   const isVisible = await loadingIndicator.isVisible();
   let text = null;
-  
+
   if (isVisible) {
     try {
       text = await loadingIndicator.textContent();
@@ -847,7 +847,7 @@ export async function checkLoadingIndicatorStatus(page) {
       text = null;
     }
   }
-  
+
   return { isVisible, text };
 }
 
@@ -861,7 +861,7 @@ export async function checkLoadingIndicatorStatus(page) {
 export async function createTestLogFile(testInfo, content, filename = 'test-console-logs.json') {
   const fs = await import('fs');
   const path = await import('path');
-  
+
   const logFilePath = path.join(testInfo.outputDir, filename);
   fs.writeFileSync(logFilePath, JSON.stringify(content, null, 2));
   return logFilePath;

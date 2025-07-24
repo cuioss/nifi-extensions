@@ -3,9 +3,9 @@
  * Activates axe-playwright for automated accessibility testing
  */
 
-import { injectAxe, checkA11y, configureAxe } from 'axe-playwright';
-import { CONSTANTS } from './constants.js';
-import { accessibilityLogger } from './shared-logger.js';
+import {checkA11y, configureAxe, injectAxe} from 'axe-playwright';
+import {CONSTANTS} from './constants.js';
+import {accessibilityLogger} from './shared-logger.js';
 
 /**
  * Modern accessibility testing service

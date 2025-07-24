@@ -3,9 +3,9 @@
  * Combines all fixtures with modern 2025 patterns including global console logging
  */
 
-import { test as authTest } from './auth-fixtures.js';
-import { injectAxe, checkA11y } from 'axe-playwright';
-import { setupBrowserConsoleLogging } from '../utils/console-logger.js';
+import {test as authTest} from './auth-fixtures.js';
+import {checkA11y, injectAxe} from 'axe-playwright';
+import {setupBrowserConsoleLogging} from '../utils/console-logger.js';
 
 /**
  * Extended test with all fixtures combined including global console logging
@@ -17,7 +17,7 @@ export const test = authTest.extend({
   page: async ({ page }, use, testInfo) => {
     // Setup global console logging for this page
     setupBrowserConsoleLogging(page, testInfo);
-    
+
     await use(page);
   },
   /**
@@ -28,7 +28,7 @@ export const test = authTest.extend({
       // Inject axe-core into the page
       await injectAxe(page);
     });
-    
+
     await use(page);
   },
 
@@ -41,18 +41,18 @@ export const test = authTest.extend({
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(100); // Small buffer for dynamic content
     };
-    
+
     page.takeStepScreenshot = async (stepName) => {
-      await page.screenshot({ 
+      await page.screenshot({
         path: `target/screenshots/${stepName}-${Date.now()}.png`,
-        fullPage: true 
+        fullPage: true
       });
     };
-    
+
     page.expectOperationToFail = async (operation, expectedError) => {
       await expect(operation).rejects.toThrow(expectedError);
     };
-    
+
     await use(page);
   },
 
@@ -69,9 +69,9 @@ export const test = authTest.extend({
         return originalMark.call(this, name);
       };
     });
-    
+
     await use(page);
-    
+
     // Collect performance data
     await test.step('Collect performance metrics', async () => {
       const marks = await page.evaluate(() => window.performanceMarks || []);
@@ -88,7 +88,7 @@ export const test = authTest.extend({
 export const accessibilityTest = test.extend({
   page: async ({ accessibilityPage }, use) => {
     await use(accessibilityPage);
-    
+
     // Run accessibility check after each test
     await test.step('Accessibility check', async () => {
       try {

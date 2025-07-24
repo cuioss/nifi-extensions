@@ -3,11 +3,11 @@
  * without complex DOM mocking.
  */
 import {
-    FormFieldFactory,
-    FormFieldBuilder,
-    createFormField,
     createFormButton,
-    createFormSection
+    createFormField,
+    createFormSection,
+    FormFieldBuilder,
+    FormFieldFactory
 } from '../../../main/webapp/js/utils/formBuilder.js';
 import { CSS } from '../../../main/webapp/js/utils/constants.js';
 

@@ -546,9 +546,9 @@
             </build>
         </profile>
         <profile>
-            <!-- Usage: ./mvnw -Prewrite rewrite:run -->
+            <!-- Usage: ./mvnw -Ppre-commit clean install -DskipTests -->
             <!-- Unifies all OpenRewrite modernization and preparation recipes -->
-            <id>rewrite</id>
+            <id>pre-commit</id>
             <build>
                 <plugins>
                     <plugin>
@@ -561,7 +561,7 @@
                                 <recipe>org.openrewrite.java.format.AutoFormat</recipe>
                                 <recipe>org.openrewrite.java.format.NormalizeLineBreaks</recipe>
                                 <recipe>org.openrewrite.java.format.RemoveTrailingWhitespace</recipe>
-                                <recipe>org.openrewrite.java.migrate.UpgradeToJava17</recipe>
+                                <recipe>org.openrewrite.java.migrate.UpgradeToJava21</recipe>
                                 <recipe>org.openrewrite.java.migrate.util.JavaUtilAPIs</recipe>
                                 <recipe>org.openrewrite.java.migrate.util.OptionalNotEmptyToIsPresent</recipe>
                                 <recipe>org.openrewrite.java.migrate.util.OptionalNotPresentToIsEmpty</recipe>

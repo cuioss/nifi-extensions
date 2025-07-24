@@ -3,7 +3,7 @@
  * Tests the centralized logging functionality
  */
 
-import { logger, createLogger, LOG_LEVELS, LogLevel } from 'utils/logger';
+import { createLogger, LOG_LEVELS, logger, LogLevel } from 'utils/logger';
 
 describe('Logger Utility', () => {
     let consoleDebugSpy;

@@ -1,11 +1,11 @@
 /* eslint-disable no-console */
 const { test } = require("@playwright/test");
 
-import { AuthService } from "../utils/auth-service.js";
+import {AuthService} from "../utils/auth-service.js";
 import {
-    setupAuthAwareErrorDetection,
-    saveTestBrowserLogs,
     checkLoadingIndicatorStatus,
+    saveTestBrowserLogs,
+    setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
 
 test.describe("Browser Console Error Capture", () => {

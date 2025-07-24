@@ -5,8 +5,8 @@
  * @version 1.0.0
  */
 
-import { test, expect } from "@playwright/test";
-import { AuthService } from "../utils/auth-service.js";
+import {expect, test} from "@playwright/test";
+import {AuthService} from "../utils/auth-service.js";
 // import { CONSTANTS } from "../utils/constants.js"; // Unused in current implementation
 
 test.describe("Self-Test: Login", () => {

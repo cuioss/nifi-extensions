@@ -4,8 +4,8 @@
  * @version 3.0.0
  */
 
-import { expect } from '@playwright/test';
-import { CONSTANTS } from './constants.js';
+import {expect} from '@playwright/test';
+import {CONSTANTS} from './constants.js';
 
 /**
  * Add processor to canvas first
@@ -61,15 +61,15 @@ export async function addProcessorToCanvas(page, processorType = 'MultiIssuerJWT
       const processorRow = page.locator(`table tr:has(td:has-text("${processorType}"))`).first();
       if (await processorRow.isVisible({ timeout: 3000 }).catch(() => false)) {
         await processorRow.click();
-        
+
         // Click the Add button
         const addButton = page.locator('button:has-text("Add")').last();
         await addButton.click();
-        
+
         // Wait for dialog to close and processor to appear
         await dialog.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
         await page.waitForTimeout(2000);
-        
+
         // Check if processor was added by looking for processor elements on canvas
         const processorOnCanvas = page.locator('g.processor, rect.processor, [data-component-type="processor"]');
         const processorExists = await processorOnCanvas.count() > 0;
@@ -350,7 +350,7 @@ export async function configureProcessor(page, processorIdentifier, options = {}
       '[role="dialog"]',
       '.dialog',
       '.configuration-dialog',
-      '.processor-configuration', 
+      '.processor-configuration',
       '.configure-dialog',
       '.mat-dialog-container'
     ];
@@ -458,10 +458,10 @@ export class ProcessorService {
       await expect(advancedContent.first()).toBeVisible({
         timeout: 3000,
       });
-      
+
       return true;
     }
-    
+
     return false;
   }
 
@@ -483,7 +483,7 @@ export class ProcessorService {
       this.page.locator('[href*="processor"]'),
       this.page.locator(".back-link, .return-link"),
     ];
-    
+
     for (const backLink of backLinks) {
       if (await backLink.isVisible({ timeout: 2000 })) {
         return backLink;
