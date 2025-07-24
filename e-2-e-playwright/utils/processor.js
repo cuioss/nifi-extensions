@@ -345,14 +345,14 @@ export async function configureProcessor(page, processorIdentifier, options = {}
 
     await configureOption.click({ force: true });
 
-    // Wait for dialog using multiple selectors
+    // Wait for dialog using NiFi-compatible selectors
     const dialogSelectors = [
-      '.mat-dialog-container',
-      '.configure-dialog',
-      '.processor-configuration',
-      '.configuration-dialog',
       '[role="dialog"]',
-      '.dialog'
+      '.dialog',
+      '.configuration-dialog',
+      '.processor-configuration', 
+      '.configure-dialog',
+      '.mat-dialog-container'
     ];
 
     let dialog = null;
@@ -440,6 +440,29 @@ export class ProcessorService {
 
   async configureMultiIssuerJwtAuthenticator(processor, options = {}) {
     return configureProcessor(this.page, processor, { ...options, testInfo: this.testInfo });
+  }
+
+  async accessAdvancedProperties(dialog, options = {}) {
+    // Look for Properties or Advanced tab with NiFi-compatible selectors
+    const advancedTab = this.page.getByRole("tab", {
+      name: /properties|advanced/i,
+    });
+
+    if (await advancedTab.isVisible({ timeout: 2000 })) {
+      await advancedTab.click();
+
+      // Verify advanced content is loaded using NiFi-compatible selectors
+      const advancedContent = this.page.locator(
+        '[role="tabpanel"]:not([hidden]), .tab-pane.active, [aria-expanded="true"]',
+      );
+      await expect(advancedContent.first()).toBeVisible({
+        timeout: 3000,
+      });
+      
+      return true;
+    }
+    
+    return false;
   }
 
   async verifyDeployment(processorType) {

@@ -118,28 +118,12 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
             if (await configureOption.isVisible({ timeout: 2000 })) {
                 await configureOption.click();
 
-                // Wait for configuration dialog (using NiFi-compatible selectors)
-                const dialog = page.locator(
-                    '[role="dialog"], .dialog, .configuration-dialog, .mat-dialog-container',
-                );
+                // Wait for configuration dialog - utility handles NiFi-compatible selectors
+                const dialog = page.locator('[role="dialog"], .dialog, .configuration-dialog');
                 await expect(dialog).toBeVisible({ timeout: 3000 });
 
-                // Look for Properties or Advanced tab
-                const advancedTab = page.getByRole("tab", {
-                    name: /properties|advanced/i,
-                });
-
-                if (await advancedTab.isVisible({ timeout: 2000 })) {
-                    await advancedTab.click();
-
-                    // Verify advanced content is loaded (using NiFi-compatible selectors)
-                    const advancedContent = page.locator(
-                        '[role="tabpanel"]:not([hidden]), .tab-pane.active, [aria-expanded="true"]',
-                    );
-                    await expect(advancedContent.first()).toBeVisible({
-                        timeout: 3000,
-                    });
-                }
+                // Use utility method to access advanced properties with proper selectors
+                await processorService.accessAdvancedProperties(dialog);
 
                 // Close using ESC
                 await page.keyboard.press("Escape");
