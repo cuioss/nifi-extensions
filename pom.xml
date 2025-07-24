@@ -66,7 +66,7 @@
 
         <!-- WebJars Dependencies -->
         <version.jquery>3.7.1</version.jquery>
-        <version.jquery-ui>1.13.2</version.jquery-ui>
+        <version.jquery-ui>1.14.1</version.jquery-ui>
         <version.requirejs>2.3.7</version.requirejs>
         <version.cash-dom>8.1.5</version.cash-dom>
         <version.tippy.js>6.3.7</version.tippy.js>
