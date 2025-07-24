@@ -67,7 +67,7 @@
         <!-- WebJars Dependencies -->
         <version.jquery>3.6.0</version.jquery>
         <version.jquery-ui>1.13.2</version.jquery-ui>
-        <version.requirejs>2.3.6</version.requirejs>
+        <version.requirejs>2.3.7</version.requirejs>
         <version.cash-dom>8.1.5</version.cash-dom>
         <version.tippy.js>6.3.7</version.tippy.js>
         <version.popperjs__core>2.11.8</version.popperjs__core>
