@@ -280,7 +280,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
             // Mock ConfigurationManager
             ConfigurationManager mockConfigManager = mock(ConfigurationManager.class);
             when(mockConfigManager.isConfigurationLoaded()).thenReturn(true);
-            when(mockConfigManager.getIssuerIds()).thenReturn(Arrays.asList("external-issuer"));
+            when(mockConfigManager.getIssuerIds()).thenReturn(List.of("external-issuer"));
             Map<String, String> issuerConfig = new HashMap<>();
             issuerConfig.put("jwks-url", "https://external-issuer/.well-known/jwks.json");
             issuerConfig.put("issuer", "external-issuer");
@@ -430,22 +430,17 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
         @Test
         @DisplayName("Test extractTokenFromContent with large content")
-        void testExtractTokenFromLargeContent() throws Exception {
+        void testExtractTokenFromLargeContent() {
             // Configure for content extraction
             testRunner.setProperty(Properties.TOKEN_LOCATION, "FLOW_FILE_CONTENT");
 
             // Create large content with token embedded
-            StringBuilder largeContent = new StringBuilder();
-            for (int i = 0; i < 1000; i++) {
-                largeContent.append("padding-data-");
-            }
-            largeContent.append(VALID_TOKEN);
-            for (int i = 0; i < 1000; i++) {
-                largeContent.append("-more-padding");
-            }
+            String largeContent = "padding-data-".repeat(1000) +
+                VALID_TOKEN +
+                "-more-padding".repeat(1000);
 
             // Enqueue and run
-            testRunner.enqueue(largeContent.toString());
+            testRunner.enqueue(largeContent);
             testRunner.run();
 
             // Verify processing
