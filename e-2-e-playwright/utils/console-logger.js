@@ -501,16 +501,29 @@ class IndividualTestLogger {
    * Save logs for a specific test in the test results directory
    */
   async saveTestLogs(testId, logs, testInfo) {
-    if (!logs || logs.length === 0) {
-      return null;
-    }
-
     // Get the test results directory path from testInfo
-    // This follows the same pattern as other test artifacts
     const testResultsDir = testInfo.outputDir;
 
     if (!fs.existsSync(testResultsDir)) {
       fs.mkdirSync(testResultsDir, { recursive: true });
+    }
+
+    if (!logs || logs.length === 0) {
+      // Create a notice file indicating no browser logs were captured
+      const noticeFileName = 'console-logs-notice.txt';
+      const noticeFilePath = path.join(testResultsDir, noticeFileName);
+      const noticeContent = `No browser console logs captured for test: ${testId}
+Test was likely skipped due to service unavailability or completed without browser interactions.
+Timestamp: ${new Date().toISOString()}
+
+To generate browser console logs:
+1. Ensure NiFi is running on https://localhost:9095
+2. Re-run the tests with the integration-tests profile
+3. Check for any test setup issues that might prevent browser interactions
+`;
+      
+      fs.writeFileSync(noticeFilePath, noticeContent, 'utf8');
+      return noticeFilePath;
     }
 
     // Create single console log file in the test results directory

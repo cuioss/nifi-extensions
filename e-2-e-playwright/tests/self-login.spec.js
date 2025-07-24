@@ -15,6 +15,10 @@ test.describe("Self-Test: Login", () => {
     }) => {
         const authService = new AuthService(page);
 
+        // Check if NiFi is accessible before attempting navigation
+        const isAccessible = await authService.checkNiFiAccessibility();
+        test.skip(!isAccessible, 'NiFi service is not accessible - cannot test authentication');
+
         // Navigate to login page
         await page.goto("/nifi");
 
@@ -82,6 +86,10 @@ test.describe("Self-Test: Login", () => {
 
     test("should detect authentication status correctly", async ({ page }) => {
         const authService = new AuthService(page);
+
+        // Check if NiFi is accessible before attempting navigation
+        const isAccessible = await authService.checkNiFiAccessibility();
+        test.skip(!isAccessible, 'NiFi service is not accessible - cannot test authentication status');
 
         // Initially should not be authenticated
         await page.goto("/nifi");

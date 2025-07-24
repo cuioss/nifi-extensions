@@ -12,30 +12,64 @@ import { CONSTANTS } from './constants.js';
  */
 export async function addProcessorToCanvas(page, processorType = 'MultiIssuerJWTTokenAuthenticator') {
   try {
-    // Look for the actual draggable processor button (not the icon div)
-    const draggableProcessorButton = page.locator('button.cdk-drag[class*="icon-processor"]').first();
+    // Check if the Add Processor dialog is already open
+    const dialog = page.locator('div[role="dialog"]:has(h2:has-text("Add Processor"))');
+    if (await dialog.isVisible({ timeout: 1000 }).catch(() => false)) {
+      console.log('Add Processor dialog is already open');
+    } else {
+      // Look for the actual draggable processor button (not the icon div)
+      const draggableProcessorButton = page.locator('button.cdk-drag[class*="icon-processor"]').first();
 
-    // Check if the draggable button is visible
-    if (await draggableProcessorButton.isVisible()) {
-      // Get canvas for drop target
-      const canvas = page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS || '#canvas, .canvas, svg');
-      await canvas.waitFor({ timeout: 5000 });
+      // Check if the draggable button is visible
+      if (await draggableProcessorButton.isVisible()) {
+        // Get canvas for drop target
+        const canvas = page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS || '#canvas, .canvas, svg');
+        await canvas.waitFor({ timeout: 5000 });
 
-      const canvasBounds = await canvas.boundingBox();
+        const canvasBounds = await canvas.boundingBox();
 
-      if (canvasBounds) {
-        const centerX = canvasBounds.width / 2;
-        const centerY = canvasBounds.height / 2;
+        if (canvasBounds) {
+          const centerX = canvasBounds.width / 2;
+          const centerY = canvasBounds.height / 2;
 
-        // Drag processor to canvas center
-        await draggableProcessorButton.dragTo(canvas, {
-          targetPosition: { x: centerX, y: centerY },
-          force: true
-        });
+          // Drag processor to canvas center
+          await draggableProcessorButton.dragTo(canvas, {
+            targetPosition: { x: centerX, y: centerY },
+            force: true
+          });
 
-        // Wait for processor to appear on canvas
-        await page.waitForTimeout(3000);
+          // Wait for dialog to appear
+          await page.waitForTimeout(1000);
+        } else {
+          console.log('Could not get canvas bounds for drag target');
+          return false;
+        }
+      } else {
+        console.log('Draggable processor button not visible');
+        return false;
+      }
+    }
 
+    // Handle the Add Processor dialog
+    if (await dialog.isVisible({ timeout: 5000 }).catch(() => false)) {
+      // Filter for the specific processor type
+      const filterInput = page.locator('input[placeholder="Filter types"]');
+      await filterInput.fill(processorType);
+      await page.waitForTimeout(500);
+
+      // Click on the processor in the table
+      const processorRow = page.locator(`table tr:has(td:has-text("${processorType}"))`).first();
+      if (await processorRow.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await processorRow.click();
+        
+        // Click the Add button
+        const addButton = page.locator('button:has-text("Add")').last();
+        await addButton.click();
+        
+        // Wait for dialog to close and processor to appear
+        await dialog.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(2000);
+        
         // Check if processor was added by looking for processor elements on canvas
         const processorOnCanvas = page.locator('g.processor, rect.processor, [data-component-type="processor"]');
         const processorExists = await processorOnCanvas.count() > 0;
@@ -44,14 +78,19 @@ export async function addProcessorToCanvas(page, processorType = 'MultiIssuerJWT
           console.log('Successfully added processor to canvas');
           return true;
         } else {
-          console.log('Processor drag completed but no processor found on canvas');
+          console.log('Processor was selected but not found on canvas');
           return false;
         }
       } else {
-        console.log('Could not get canvas bounds for drag target');
+        console.log(`Processor type "${processorType}" not found in dialog`);
+        // Cancel the dialog
+        const cancelButton = page.locator('button:has-text("Cancel")');
+        await cancelButton.click();
+        return false;
       }
     } else {
-      console.log('Draggable processor button not visible');
+      console.log('Add Processor dialog did not appear');
+      return false;
     }
   } catch (error) {
     console.log('Could not add processor to canvas:', error.message);
@@ -64,12 +103,9 @@ export async function addProcessorToCanvas(page, processorType = 'MultiIssuerJWT
  * Find processor on canvas using modern Playwright patterns
  */
 export async function findProcessor(page, processorType, options = {}) {
-  const { failIfNotFound = true, addIfNotFound = false } = options;
+  const { failIfNotFound = true } = options;
 
-  // First, try to add processor to canvas if requested
-  if (addIfNotFound) {
-    await addProcessorToCanvas(page, processorType);
-  }
+  // Note: Processors should already exist on canvas - no longer adding them automatically
 
   // Use more specific selectors for processors on canvas
   const selectors = [
@@ -143,7 +179,7 @@ export async function findJwtAuthenticator(page, options = {}) {
   }
 
   if (options.failIfNotFound !== false) {
-    throw new Error('JWT Authenticator not found');
+    throw new Error('JWT Authenticator not found on canvas (should already be present)');
   }
 
   return null;
@@ -153,22 +189,8 @@ export async function findJwtAuthenticator(page, options = {}) {
  * Find MultiIssuer JWT Token Authenticator specifically
  */
 export async function findMultiIssuerJwtAuthenticator(page, options = {}) {
-  // First try to find existing processor
-  let processor = await findProcessor(page, 'MultiIssuerJWTTokenAuthenticator', { failIfNotFound: false });
-
-  if (!processor && options.addIfNotFound !== false) {
-    // Try to add processor to canvas
-    const added = await addProcessorToCanvas(page, 'MultiIssuerJWTTokenAuthenticator');
-    if (added) {
-      // Try to find again after adding
-      processor = await findProcessor(page, 'MultiIssuerJWTTokenAuthenticator', { failIfNotFound: false });
-    }
-  }
-
-  if (!processor && options.failIfNotFound !== false) {
-    throw new Error('MultiIssuerJWTTokenAuthenticator not found');
-  }
-
+  // Find existing processor on canvas (should already be present)
+  const processor = await findProcessor(page, 'MultiIssuerJWTTokenAuthenticator', options);
   return processor;
 }
 

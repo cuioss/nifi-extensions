@@ -12,6 +12,7 @@ import { CONSTANTS } from "../utils/constants.js";
 import {
     setupAuthAwareErrorDetection,
     checkForCriticalErrors,
+    saveTestBrowserLogs,
 } from "../utils/console-logger.js";
 import {
     CriticalErrorDetector as _CriticalErrorDetector,
@@ -33,7 +34,14 @@ test.describe("Self-Test: Critical Error Detection", () => {
         await checkForCriticalErrors(page, testInfo);
     });
 
-    test.afterEach(async ({ page: _page }, _testInfo) => {
+    test.afterEach(async ({ page }, testInfo) => {
+        // Always save browser logs first, regardless of test outcome
+        try {
+            await saveTestBrowserLogs(testInfo);
+        } catch (error) {
+            console.warn('Failed to save console logs in afterEach:', error.message);
+        }
+
         // Cleanup critical error detection
         cleanupCriticalErrorDetection();
     });
@@ -109,7 +117,7 @@ test.describe("Self-Test: Critical Error Detection", () => {
 
     test("should fail on JavaScript Uncaught Errors", async ({
         page,
-    }, _testInfo) => {
+    }, testInfo) => {
         // This test verifies that JavaScript errors are detected and cause failures
 
         // Use the global detector that's already monitoring from beforeEach
@@ -157,7 +165,7 @@ test.describe("Self-Test: Critical Error Detection", () => {
 
     test("should fail on RequireJS module loading errors", async ({
         page,
-    }, _testInfo) => {
+    }, testInfo) => {
         // This test specifically checks for RequireJS/AMD module loading issues
 
         const detector = globalCriticalErrorDetector;

@@ -10,11 +10,26 @@ import { AuthService } from "../utils/auth-service.js";
 import {
     setupBrowserConsoleLogging,
     saveAllBrowserLogs,
+    saveTestBrowserLogs,
 } from "../utils/console-logger.js";
 import fs from "fs";
 import path from "path";
 
 test.describe("Self-Test: Browser Console Logging", () => {
+    test.beforeEach(async ({ page }, testInfo) => {
+        // Setup console logging for each test
+        setupBrowserConsoleLogging(page, testInfo);
+    });
+
+    test.afterEach(async ({ page }, testInfo) => {
+        // Always save browser logs first, regardless of test outcome
+        try {
+            await saveTestBrowserLogs(testInfo);
+        } catch (error) {
+            console.warn('Failed to save console logs in afterEach:', error.message);
+        }
+    });
+
     test("should capture console messages during test execution", async ({
         page,
     }, testInfo) => {
@@ -28,6 +43,9 @@ test.describe("Self-Test: Browser Console Logging", () => {
                 timestamp: new Date().toISOString(),
             });
         });
+
+        // Navigate to a simple page first to ensure page context exists
+        await page.goto("about:blank");
 
         const authService = new AuthService(page);
 
@@ -236,8 +254,10 @@ test.describe("Self-Test: Browser Console Logging", () => {
     test("should create direct accessible browser console log file", async ({
         page,
     }, testInfo) => {
-        // Setup console logging specifically for this test
-        setupBrowserConsoleLogging(page, testInfo);
+        // Check if NiFi is accessible before running this test
+        const authService = new AuthService(page);
+        const isAccessible = await authService.checkNiFiAccessibility();
+        test.skip(!isAccessible, 'NiFi service is not accessible - cannot test browser logging with real navigation');
 
         // Navigate and generate console activity
         await page.goto("/nifi");
@@ -292,9 +312,27 @@ test.describe("Self-Test: Browser Console Logging", () => {
         // Test completed successfully
     });
 
+    test("should verify console logging works without external dependencies", async ({
+        page,
+    }, testInfo) => {
+        // Navigate to a simple page to ensure page context exists
+        await page.goto("about:blank");
+
+        // Generate console activity without any external service dependencies
+        await page.evaluate(() => {
+            console.log("Standalone test log message");
+            console.warn("Standalone test warning message");
+            console.info("Standalone test info message");
+            console.error("Standalone test error message");
+        });
+
+        // Wait a moment for logs to be captured
+        await page.waitForTimeout(1000);
+    });
+
     test("should verify log file cleanup and rotation", async ({
         page: _,
-    }, _testInfo) => {
+    }, testInfo) => {
         const logsDir = path.join(process.cwd(), "target", "logs");
 
         // Ensure logs directory exists

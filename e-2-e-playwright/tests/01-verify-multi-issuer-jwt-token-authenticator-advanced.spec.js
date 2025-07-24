@@ -40,7 +40,7 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         }
     });
 
-    test.afterEach(async ({ _page }, testInfo) => {
+    test.afterEach(async ({ page }, testInfo) => {
         // Always try to save console logs first, regardless of test outcome
         try {
             await saveTestBrowserLogs(testInfo);
