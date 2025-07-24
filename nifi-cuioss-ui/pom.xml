@@ -94,6 +94,8 @@
                     <packagingIncludes>
                         **/*.class,**/*.xml,**/*.properties,**/*.html,**/*.js,**/*.css,META-INF/**,WEB-INF/**,webjars/**
                     </packagingIncludes>
+                    <!-- Exclude the problematic double-slash directory entry -->
+                    <packagingExcludes>**/popperjs__core/2.11.8//</packagingExcludes>
                     <overlays>
                         <overlay>
                             <groupId>org.webjars</groupId>
@@ -139,6 +141,10 @@
                                 <include>META-INF/resources/webjars/**</include>
                             </includes>
                             <targetPath>webjars</targetPath>
+                            <!-- Known issue: This webjar contains a malformed directory entry 
+                                 'META-INF/resources/webjars/popperjs__core/2.11.8//' that causes
+                                 a harmless warning on case-insensitive filesystems. The warning
+                                 can be safely ignored as it doesn't affect functionality. -->
                         </overlay>
                     </overlays>
                 </configuration>

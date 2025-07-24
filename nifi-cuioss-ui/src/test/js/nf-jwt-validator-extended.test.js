@@ -44,11 +44,11 @@ describe('nf-jwt-validator.js Extended Tests', () => {
     afterEach(() => {
         // Clean up DOM
         document.body.innerHTML = '';
-        
+
         // Restore window properties
         window.jwtComponentsRegistered = originalWindow.jwtComponentsRegistered;
         window.jwtInitializationInProgress = originalWindow.jwtInitializationInProgress;
-        
+
         // Clear mocks
         jest.clearAllMocks();
         jest.resetModules();
@@ -57,10 +57,10 @@ describe('nf-jwt-validator.js Extended Tests', () => {
     describe('Initialization Scenarios', () => {
         it('should skip initialization if components are already registered', () => {
             window.jwtComponentsRegistered = true;
-            
+
             // Load the script
             require('../../main/webapp/js/nf-jwt-validator');
-            
+
             // Trigger DOMContentLoaded
             const event = new Event('DOMContentLoaded');
             document.dispatchEvent(event);
@@ -73,10 +73,10 @@ describe('nf-jwt-validator.js Extended Tests', () => {
 
         it('should skip initialization if already in progress', () => {
             window.jwtInitializationInProgress = true;
-            
+
             // Load the script
             require('../../main/webapp/js/nf-jwt-validator');
-            
+
             // Trigger DOMContentLoaded
             const event = new Event('DOMContentLoaded');
             document.dispatchEvent(event);
@@ -90,10 +90,10 @@ describe('nf-jwt-validator.js Extended Tests', () => {
         it('should handle successful initialization with Promise result', async () => {
             const initPromise = Promise.resolve();
             mockMain.init.mockReturnValue(initPromise);
-            
+
             // Load the script
             require('../../main/webapp/js/nf-jwt-validator');
-            
+
             // Trigger DOMContentLoaded
             const event = new Event('DOMContentLoaded');
             document.dispatchEvent(event);
@@ -116,10 +116,10 @@ describe('nf-jwt-validator.js Extended Tests', () => {
             const error = new Error('Init failed');
             const initPromise = Promise.reject(error);
             mockMain.init.mockReturnValue(initPromise);
-            
+
             // Load the script
             require('../../main/webapp/js/nf-jwt-validator');
-            
+
             // Trigger DOMContentLoaded
             const event = new Event('DOMContentLoaded');
             document.dispatchEvent(event);
@@ -142,10 +142,10 @@ describe('nf-jwt-validator.js Extended Tests', () => {
 
         it('should handle non-Promise initialization result', () => {
             mockMain.init.mockReturnValue('success');
-            
+
             // Load the script
             require('../../main/webapp/js/nf-jwt-validator');
-            
+
             // Trigger DOMContentLoaded
             const event = new Event('DOMContentLoaded');
             document.dispatchEvent(event);
@@ -159,10 +159,10 @@ describe('nf-jwt-validator.js Extended Tests', () => {
 
         it('should handle missing main module', () => {
             jest.doMock('js/main', () => null, { virtual: true });
-            
+
             // Load the script
             require('../../main/webapp/js/nf-jwt-validator');
-            
+
             // Trigger DOMContentLoaded
             const event = new Event('DOMContentLoaded');
             document.dispatchEvent(event);
@@ -175,10 +175,10 @@ describe('nf-jwt-validator.js Extended Tests', () => {
 
         it('should handle main module without init function', () => {
             jest.doMock('js/main', () => ({ someOtherMethod: jest.fn() }), { virtual: true });
-            
+
             // Load the script
             require('../../main/webapp/js/nf-jwt-validator');
-            
+
             // Trigger DOMContentLoaded
             const event = new Event('DOMContentLoaded');
             document.dispatchEvent(event);
@@ -193,10 +193,10 @@ describe('nf-jwt-validator.js Extended Tests', () => {
             jest.doMock('js/main', () => {
                 throw new Error('Module not found');
             }, { virtual: true });
-            
+
             // Load the script
             require('../../main/webapp/js/nf-jwt-validator');
-            
+
             // Trigger DOMContentLoaded
             const event = new Event('DOMContentLoaded');
             document.dispatchEvent(event);
@@ -213,7 +213,7 @@ describe('nf-jwt-validator.js Extended Tests', () => {
         it('should hide loading indicators by id', () => {
             // Load the script
             require('../../main/webapp/js/nf-jwt-validator');
-            
+
             // Trigger DOMContentLoaded
             const event = new Event('DOMContentLoaded');
             document.dispatchEvent(event);
@@ -236,7 +236,7 @@ describe('nf-jwt-validator.js Extended Tests', () => {
 
             // Load the script
             require('../../main/webapp/js/nf-jwt-validator');
-            
+
             // Trigger DOMContentLoaded
             const event = new Event('DOMContentLoaded');
             document.dispatchEvent(event);
@@ -253,7 +253,7 @@ describe('nf-jwt-validator.js Extended Tests', () => {
 
             // Load the script
             require('../../main/webapp/js/nf-jwt-validator');
-            
+
             // Trigger DOMContentLoaded
             const event = new Event('DOMContentLoaded');
             document.dispatchEvent(event);
@@ -274,7 +274,7 @@ describe('nf-jwt-validator.js Extended Tests', () => {
 
             // Load the script
             require('../../main/webapp/js/nf-jwt-validator');
-            
+
             // Trigger DOMContentLoaded
             const event = new Event('DOMContentLoaded');
             document.dispatchEvent(event);
@@ -292,10 +292,10 @@ describe('nf-jwt-validator.js Extended Tests', () => {
     describe('Edge Cases', () => {
         it('should handle DOMContentLoaded being fired multiple times', () => {
             mockMain.init.mockReturnValue(true);
-            
+
             // Load the script
             require('../../main/webapp/js/nf-jwt-validator');
-            
+
             // Trigger DOMContentLoaded twice
             const event = new Event('DOMContentLoaded');
             document.dispatchEvent(event);
@@ -310,10 +310,10 @@ describe('nf-jwt-validator.js Extended Tests', () => {
 
         it('should handle main.init returning undefined', () => {
             mockMain.init.mockReturnValue(undefined);
-            
+
             // Load the script
             require('../../main/webapp/js/nf-jwt-validator');
-            
+
             // Trigger DOMContentLoaded
             const event = new Event('DOMContentLoaded');
             document.dispatchEvent(event);
