@@ -1,189 +1,244 @@
 'use strict';
 
-/**
- * Mock implementation of nf.Common for standalone testing.
- * This provides the minimum functionality needed by the JWT Validator UI components.
- */
-
-/**
- * Registers a custom UI component.
- *
- * @param {string} id - The ID of the component
- * @param {object} component - The component object
- * @param {object} options - Options for the component
- */
-export const registerCustomUiComponent = function (id, component, options) {
-    // Try to initialize the component if it has an init method
-    if (component && typeof component.init === 'function') {
-        try {
-            const container = document.createElement('div');
-            container.id = 'component-' + id.replace(/\./g, '-');
-            container.className = 'custom-component';
-            document.getElementById('jwt-validator-container').appendChild(container);
-            component.init(container, null, options && options.jwks_type, function () {
-                // Component initialized callback
-            });
-        } catch (e) {
-            // eslint-disable-next-line no-console
-            console.warn('Failed to initialize component:', id, e.message);
-        }
-    }
-};
-
-/**
- * Registers a custom UI tab.
- *
- * @param {string} id - The ID of the tab
- * @param {object} component - The tab component
- */
-export const registerCustomUiTab = function (id, component) {
-    // Create a tab container
-    let tabContainer = document.getElementById('jwt-validator-tabs');
-    let tabNavigation;
-
-    if (!tabContainer) {
-        tabContainer = document.createElement('div');
-        tabContainer.id = 'jwt-validator-tabs';
-        tabContainer.className = 'custom-tabs';
-        document.getElementById('jwt-validator-container').appendChild(tabContainer);
-
-        // Create tab navigation container
-        tabNavigation = document.createElement('div');
-        tabNavigation.className = 'custom-tabs-navigation';
-        tabNavigation.id = 'custom-tabs-navigation';
-        tabContainer.appendChild(tabNavigation);
-    } else {
-        // Get tab navigation container
-        tabNavigation = document.getElementById('custom-tabs-navigation');
-    }
-
-    // Create tab navigation item
-    const tabNavItem = document.createElement('div');
-    tabNavItem.className = 'tab-nav-item';
-    tabNavItem.setAttribute('data-tab-target', id.replace(/\./g, '-'));
-    tabNavItem.textContent = id.split('.').pop().replace(/-/g, ' ');
-    tabNavigation.appendChild(tabNavItem);
-
-    // Create the tab
-    const tab = document.createElement('div');
-    tab.id = 'tab-' + id.replace(/\./g, '-');
-    tab.className = 'custom-tab';
-    tab.setAttribute('data-tab-id', id);
-
-    // Create tab header (hidden but kept for compatibility)
-    const tabHeader = document.createElement('div');
-    tabHeader.className = 'tab-header';
-    tabHeader.textContent = id.split('.').pop().replace(/-/g, ' ');
-    tab.appendChild(tabHeader);
-
-    // Create tab content
-    const tabContent = document.createElement('div');
-    tabContent.className = 'tab-content';
-    tab.appendChild(tabContent);
-
-    // Add the tab to the container
-    tabContainer.appendChild(tab);
-
-    // Try to initialize the tab if it has an init method
-    if (component && typeof component.init === 'function') {
-        try {
-            component.init(tabContent, {}, function () {
-                // Tab initialized callback
-            });
-        } catch (e) {
-            // eslint-disable-next-line no-console
-            console.warn('Failed to initialize tab:', id, e.message);
-        }
-    }
-
-    // Add click handler for tab navigation
-    tabNavItem.addEventListener('click', function () {
-        // Remove active class from all tabs and nav items
-        const allTabs = document.querySelectorAll('.custom-tab');
-        const allNavItems = document.querySelectorAll('.tab-nav-item');
-
-        allTabs.forEach(function (t) {
-            t.classList.remove('active');
-        });
-
-        allNavItems.forEach(function (ni) {
-            ni.classList.remove('active');
-        });
-
-        // Add active class to clicked tab and its content
-        tabNavItem.classList.add('active');
-        tab.classList.add('active');
-    });
-
-    // If this is the first tab, activate it
-    if (tabNavigation.children.length === 1) {
-        tabNavItem.classList.add('active');
-        tab.classList.add('active');
-    }
-};
-
-/**
- * Gets the i18n resources.
- *
- * @return {object} The i18n resources
- */
-export const getI18n = function () {
-    return {
-        // Property help texts
-        'property.token.location.help': 'Defines where to extract the token from.',
-        'property.token.header.help': 'The header name containing the token when using AUTHORIZATION_HEADER.',
-        'property.custom.header.name.help': 'The custom header name when using CUSTOM_HEADER.',
-        'property.bearer.token.prefix.help': 'The prefix to strip from the token (e.g., "Bearer ").',
-        'property.require.valid.token.help': 'Whether to require a valid token for processing.',
-        'property.jwks.refresh.interval.help': 'Interval in seconds for refreshing JWKS keys.',
-        'property.maximum.token.size.help': 'Maximum token size in bytes.',
-        'property.allowed.algorithms.help': 'Comma-separated list of allowed JWT signing algorithms.',
-        'property.require.https.jwks.help': 'Whether to require HTTPS for JWKS URLs.',
-
-        // Button labels and UI text
-        'processor.jwt.testConnection': 'Test Connection',
-        'processor.jwt.verifyToken': 'Verify Token',
-        'processor.jwt.tokenInput': 'JWT Token',
-        'processor.jwt.tokenInputPlaceholder': 'Enter JWT token to verify',
-        'processor.jwt.verificationResults': 'Verification Results',
-        'processor.jwt.noTokenProvided': 'No token provided',
-        'processor.jwt.verifying': 'Verifying token...',
-        'processor.jwt.testing': 'Testing...',
-        'processor.jwt.invalidType': 'Invalid JWKS type',
-        'processor.jwt.validJwks': 'Valid JWKS',
-        'processor.jwt.invalidJwks': 'Invalid JWKS',
-        'processor.jwt.keysFound': 'keys found',
-        'processor.jwt.validationError': 'Validation error',
-        'processor.jwt.verificationError': 'Verification error',
-        'processor.jwt.failed': 'Failed',
-        'processor.jwt.ok': 'OK'
+// Mock implementation of nf.Common for standalone testing
+(function () {
+    // Simple mock logger for standalone usage
+    const logger = {
+        debug: function (msg) { console.debug('[nf-common-mock]', msg); },
+        info: function (msg) { console.info('[nf-common-mock]', msg); },
+        warn: function (msg) { console.warn('[nf-common-mock]', msg); },
+        error: function (msg) { console.error('[nf-common-mock]', msg); }
     };
-};
 
-/**
- * Escapes HTML special characters.
- *
- * @param {string} text - The text to escape
- * @return {string} The escaped text
- */
-export const escapeHtml = function (text) {
-    return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-};
+    /**
+     * Registers a custom UI component.
+     *
+     * @param {string} id - The ID of the component
+     * @param {object} component - The component object
+     * @param {object} options - Options for the component
+     */
+    const registerCustomUiComponent = function (id, component, options) {
+        // Try to initialize the component if it has an init method
+        if (component && typeof component.init === 'function') {
+            try {
+                const container = document.createElement('div');
+                container.id = 'component-' + id.replace(/\./g, '-');
+                container.className = 'custom-component';
+                document.getElementById('jwt-validator-container').appendChild(container);
+                component.init(container, null, options && options.jwks_type, function () {
+                    // Component initialized callback
+                });
+            } catch (e) {
+                console.error('Failed to initialize component', id, e);
+            }
+        }
+    };
 
-/**
- * Formats a date.
- *
- * @param {Date} date - The date to format
- * @return {string} The formatted date
- */
-export const formatDateTime = function (date) {
-    if (!date) {
-        return '';
-    }
-    return date.toLocaleString();
-};
+    /**
+     * Registers a custom UI tab.
+     *
+     * @param {string} id - The ID of the tab
+     * @param {object} component - The component object
+     */
+    const registerCustomUiTab = function (id, component) {
+        try {
+            // Create tab structure
+            const jwtValidatorContainer = document.getElementById('jwt-validator-container');
+            let tabContainer = document.getElementById('jwt-validator-tabs');
+
+            if (!tabContainer) {
+                // Hide loading indicator first
+                const loadingIndicator = document.getElementById('loading-indicator');
+                if (loadingIndicator) {
+                    loadingIndicator.style.display = 'none';
+                }
+
+                // Create tabs container
+                tabContainer = document.createElement('div');
+                tabContainer.id = 'jwt-validator-tabs';
+                tabContainer.className = 'jwt-validator-tabs';
+                jwtValidatorContainer.appendChild(tabContainer);
+
+                // Create tab navigation
+                const tabNavigation = document.createElement('div');
+                tabNavigation.className = 'tab-navigation';
+                tabContainer.appendChild(tabNavigation);
+
+                // Create tab content container
+                const tabContent = document.createElement('div');
+                tabContent.className = 'tab-content';
+                tabContainer.appendChild(tabContent);
+            }
+
+            const tabNavigation = tabContainer.querySelector('.tab-navigation');
+            const tabContent = tabContainer.querySelector('.tab-content');
+
+            // Create tab navigation item
+            const tabNavItem = document.createElement('div');
+            tabNavItem.className = 'tab-nav-item';
+            tabNavItem.textContent = id.charAt(0).toUpperCase() + id.slice(1).replace(/([A-Z])/g, ' $1');
+            tabNavItem.setAttribute('data-tab', id);
+            tabNavigation.appendChild(tabNavItem);
+
+            // Create tab content
+            const tab = document.createElement('div');
+            tab.className = 'tab-pane';
+            tab.id = 'tab-' + id;
+            tab.setAttribute('data-tab', id);
+            tabContent.appendChild(tab);
+
+            // Initialize component in tab
+            if (component && typeof component.init === 'function') {
+                component.init(tab, null, null, function () {
+                    // Component initialized callback
+                });
+            }
+
+            // Add click handler for tab navigation
+            tabNavItem.addEventListener('click', function () {
+                // Remove active class from all nav items and tabs
+                const allNavItems = tabNavigation.querySelectorAll('.tab-nav-item');
+                const allTabs = tabContent.querySelectorAll('.tab-pane');
+
+                allNavItems.forEach(function (ni) {
+                    ni.classList.remove('active');
+                });
+                allTabs.forEach(function (t) {
+                    t.classList.remove('active');
+                });
+
+                // Add active class to clicked tab and its content
+                tabNavItem.classList.add('active');
+                tab.classList.add('active');
+            });
+
+            // If this is the first tab, activate it
+            if (tabNavigation.children.length === 1) {
+                tabNavItem.classList.add('active');
+                tab.classList.add('active');
+            }
+        } catch (error) {
+            console.error('Failed to register tab', id, error);
+        }
+    };
+
+    /**
+     * Gets the i18n resources.
+     *
+     * @return {object} The i18n resources
+     */
+    const getI18n = function () {
+        return {
+            getProperty: function (key) {
+                const translations = {
+                    // JWT Validator
+                    'jwt.validator.title': 'JWT Token Validator',
+                    'jwt.validator.loading': 'Loading JWT Validator UI...',
+
+                    // Property help texts
+                    'property.token.location.help': 'Defines where to extract the token from.',
+                    'property.token.header.help': 'The header name containing the token when using AUTHORIZATION_HEADER.',
+                    'property.custom.header.name.help': 'The custom header name when using CUSTOM_HEADER.',
+                    'property.bearer.token.prefix.help': 'The prefix to strip from the token (e.g., "Bearer ").',
+                    'property.require.valid.token.help': 'Whether to require a valid token for processing.',
+                    'property.jwks.refresh.interval.help': 'Interval in seconds for refreshing JWKS keys.',
+                    'property.maximum.token.size.help': 'Maximum size in bytes for JWT tokens.',
+                    'property.allowed.algorithms.help': 'Comma-separated list of allowed JWT signature algorithms.',
+                    'property.require.https.jwks.help': 'Whether to require HTTPS for JWKS endpoint URLs.',
+
+                    // Token Verification
+                    'token.verification.title': 'Token Verification',
+                    'token.verification.input.label': 'Enter JWT Token',
+                    'token.verification.button': 'Verify Token',
+                    'token.verification.valid': 'Token is valid',
+                    'token.verification.invalid': 'Token is invalid',
+                    'token.verification.error': 'Error verifying token',
+                    'token.verification.loading': 'Verifying token...',
+                    'token.verification.details': 'Token Details',
+                    'token.verification.claims': 'Claims',
+                    'token.verification.raw': 'Raw Token',
+
+                    // Issuer Configuration
+                    'issuer.config.title': 'Issuer Configuration',
+                    'issuer.config.add': 'Add Issuer',
+                    'issuer.config.remove': 'Remove Issuer',
+                    'issuer.config.save': 'Save Configuration',
+                    'issuer.config.issuer.name': 'Issuer Name',
+                    'issuer.config.issuer.url': 'Issuer URL',
+                    'issuer.config.jwks.url': 'JWKS URL',
+                    'issuer.config.audience': 'Audience',
+                    'issuer.config.claim.mappings': 'Claim Mappings',
+
+                    // Common
+                    'common.loading': 'Loading...',
+                    'common.error': 'Error',
+                    'common.success': 'Success',
+                    'common.save': 'Save',
+                    'common.cancel': 'Cancel',
+                    'common.add': 'Add',
+                    'common.remove': 'Remove',
+                    'common.edit': 'Edit',
+                    'common.verify': 'Verify',
+                    'common.details': 'Details',
+                    'common.name': 'Name',
+                    'common.value': 'Value',
+                    'common.yes': 'Yes',
+                    'common.no': 'No'
+                };
+                return translations[key] || key;
+            }
+        };
+    };
+
+    /**
+     * Logs an error message.
+     *
+     * @param {string} message - The error message
+     */
+    const logError = function (message) {
+        console.error('[NiFi Error]', message);
+    };
+
+    /**
+     * Escapes HTML characters in text.
+     *
+     * @param {string} text - The text to escape
+     * @return {string} The escaped text
+     */
+    const escapeHtml = function (text) {
+        if (!text) {
+            return '';
+        }
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    };
+
+    /**
+     * Formats a date.
+     *
+     * @param {Date} date - The date to format
+     * @return {string} The formatted date
+     */
+    const formatDateTime = function (date) {
+        if (!date) {
+            return '';
+        }
+        return date.toLocaleString();
+    };
+
+    // Create the global nfCommon object
+    window.nfCommon = {
+        registerCustomUiComponent: registerCustomUiComponent,
+        registerCustomUiTab: registerCustomUiTab,
+        getI18n: getI18n,
+        logError: logError,
+        escapeHtml: escapeHtml,
+        formatDateTime: formatDateTime
+    };
+
+    logger.info('nf.Common mock initialized and available as window.nfCommon');
+})();

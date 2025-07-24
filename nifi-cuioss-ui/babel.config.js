@@ -1,4 +1,4 @@
-module.exports = (api) => {
+export default (api) => {
     const isTest = api.env('test'); // Automatically true when NODE_ENV=test (which Jest sets)
     const plugins = [];
 

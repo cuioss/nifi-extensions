@@ -2,14 +2,14 @@
  * Simple tests for validation utility functions.
  */
 import {
-    validateRequired,
-    validateProcessorIdFromUrl,
-    validateUrl,
-    validateJwtToken,
-    validateIssuerName,
-    validateClientId,
     validateAudience,
-    validateIssuerConfig
+    validateClientId,
+    validateIssuerConfig,
+    validateIssuerName,
+    validateJwtToken,
+    validateProcessorIdFromUrl,
+    validateRequired,
+    validateUrl
 } from '../../../main/webapp/js/utils/validation.js';
 import { getIsLocalhost } from '../../../main/webapp/js/utils/constants.js';
 

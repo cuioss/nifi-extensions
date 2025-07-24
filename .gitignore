@@ -18,10 +18,10 @@
 jest_stderr.log
 jest_stdout.log
 
-# Cypress test reports and artifacts
-**/tests-report/
-**/cypress/screenshots/
-**/cypress/videos/
-
 /CLAUDE.md
 **/.claude
+
+# Build artifacts
+**/bundle.vite.umd.js
+**/bundle.vite.umd.cjs
+**/bundle.webpack.js

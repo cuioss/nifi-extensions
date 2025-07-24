@@ -22,9 +22,13 @@ global.nfCommon = require('./mocks/nf-common.js'); // Moved from local require i
 // global.jwksValidator = { ... }; // Removed as per subtask
 
 // Mock the console to prevent noise during tests
+// To enable debug output during testing, set DEBUG=1 environment variable:
+// DEBUG=1 npm test
 // We already have originalConsoleError defined above
 const originalConsoleWarn = console.warn;
 const originalConsoleLog = console.log;
+const originalConsoleDebug = console.debug;
+const originalConsoleInfo = console.info;
 
 // Completely suppress console.error during tests to avoid test failures
 console.error = (...args) => {
@@ -35,16 +39,30 @@ console.error = (...args) => {
 };
 
 console.warn = (...args) => {
-    if (args[0]?.includes?.('Warning:')) {
-        return;
+    // Suppress most console.warn messages during tests unless DEBUG is enabled
+    if (process.env.DEBUG) {
+        originalConsoleWarn(...args);
     }
-    originalConsoleWarn(...args);
 };
 
 console.log = (...args) => {
     // Suppress most console.log messages during tests
     if (process.env.DEBUG) {
         originalConsoleLog(...args);
+    }
+};
+
+console.debug = (...args) => {
+    // Suppress console.debug messages during tests unless DEBUG is enabled
+    if (process.env.DEBUG) {
+        originalConsoleDebug(...args);
+    }
+};
+
+console.info = (...args) => {
+    // Suppress console.info messages during tests unless DEBUG is enabled
+    if (process.env.DEBUG) {
+        originalConsoleInfo(...args);
     }
 };
 

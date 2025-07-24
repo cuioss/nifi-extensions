@@ -1,5 +1,5 @@
 import $ from 'cash-dom';
-import { displayUiError } from 'utils/uiErrorDisplay'; // Assuming this path will be resolved by Jest setup
+import { displayUiError, displayUiInfo, displayUiWarning } from 'utils/uiErrorDisplay'; // Assuming this path will be resolved by Jest setup
 
 const mockI18n = {
     'processor.jwt.unknownError': 'Test Unknown Error',
@@ -429,4 +429,248 @@ describe('extractErrorMessage (direct test for edge cases not easily triggered v
     // For now, all paths are expected to be hit via displayUiError.
     // Example: if i18n itself is missing a key like 'processor.jwt.unknownError'
     // This is harder to test without direct access or more complex setup for displayUiError's i18n param.
+});
+
+describe('displayUiWarning', () => {
+    let $targetElement;
+
+    beforeEach(() => {
+        // Create a div and append it to the body to serve as the target
+        $targetElement = $('<div id="warning-target"></div>');
+        $(document.body).append($targetElement);
+    });
+
+    afterEach(() => {
+        // Clean up the target element
+        $targetElement.remove();
+    });
+
+    it('should display warning message without auto-hide by default', () => {
+        const message = 'Warning: This is a test warning';
+
+        // Mock setTimeout to verify it's not called by default
+        const originalSetTimeout = global.setTimeout;
+        const mockSetTimeout = jest.fn();
+        global.setTimeout = mockSetTimeout;
+
+        displayUiWarning($targetElement, message);
+
+        // Should display the warning message
+        expect($targetElement.find('.warning-message').length).toBe(1);
+        expect($targetElement.find('.warning-content').text()).toBe(message);
+
+        // Should NOT set timeout for auto-hide by default
+        expect(mockSetTimeout).not.toHaveBeenCalled();
+
+        // Restore original setTimeout
+        global.setTimeout = originalSetTimeout;
+    });
+
+    it('should display warning message with auto-hide when enabled', () => {
+        const message = 'Warning with auto-hide';
+
+        // Mock setTimeout to test auto-hide functionality
+        const originalSetTimeout = global.setTimeout;
+        const mockSetTimeout = jest.fn();
+        global.setTimeout = mockSetTimeout;
+
+        displayUiWarning($targetElement, message, { autoHide: true });
+
+        // Should display the warning message
+        expect($targetElement.find('.warning-message').length).toBe(1);
+        expect($targetElement.find('.warning-content').text()).toBe(message);
+
+        // Should set timeout for auto-hide
+        expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), 5000);
+
+        // Restore original setTimeout
+        global.setTimeout = originalSetTimeout;
+    });
+
+    it('should handle fadeOut animation for auto-hide warnings', () => {
+        const message = 'Auto-hide warning';
+
+        // Mock setTimeout and fadeOut
+        const originalSetTimeout = global.setTimeout;
+        const mockSetTimeout = jest.fn((callback) => {
+            // Execute callback immediately for testing
+            callback();
+        });
+        global.setTimeout = mockSetTimeout;
+
+        const mockFadeOut = jest.fn((duration, callback) => {
+            if (callback) callback.call({ remove: jest.fn() });
+        });
+
+        // Mock find method
+        const originalFind = $targetElement.find;
+        $targetElement.find = jest.fn().mockReturnValue({
+            fadeOut: mockFadeOut
+        });
+
+        displayUiWarning($targetElement, message, { autoHide: true });
+
+        // Should set timeout and call fadeOut
+        expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), 5000);
+        expect(mockFadeOut).toHaveBeenCalledWith(300, expect.any(Function));
+
+        // Restore original functions
+        global.setTimeout = originalSetTimeout;
+        $targetElement.find = originalFind;
+    });
+
+    it('should handle empty message gracefully', () => {
+        displayUiWarning($targetElement, '');
+
+        expect($targetElement.find('.warning-message').length).toBe(1);
+        expect($targetElement.find('.warning-content').text()).toBe('');
+    });
+});
+
+describe('displayUiInfo', () => {
+    let $targetElement;
+
+    beforeEach(() => {
+        // Create a div and append it to the body to serve as the target
+        $targetElement = $('<div id="info-target"></div>');
+        $(document.body).append($targetElement);
+    });
+
+    afterEach(() => {
+        // Clean up the target element
+        $targetElement.remove();
+    });
+
+    it('should display info message without auto-hide by default', () => {
+        const message = 'Information: This is a test message';
+
+        // Mock setTimeout to verify it's not called by default
+        const originalSetTimeout = global.setTimeout;
+        const mockSetTimeout = jest.fn();
+        global.setTimeout = mockSetTimeout;
+
+        displayUiInfo($targetElement, message);
+
+        // Should display the info message
+        expect($targetElement.find('.info-message').length).toBe(1);
+        expect($targetElement.find('.info-content').text()).toBe(message);
+
+        // Should NOT set timeout for auto-hide by default
+        expect(mockSetTimeout).not.toHaveBeenCalled();
+
+        // Restore original setTimeout
+        global.setTimeout = originalSetTimeout;
+    });
+
+    it('should display info message with auto-hide when enabled', () => {
+        const message = 'Info with auto-hide';
+
+        // Mock setTimeout to test auto-hide functionality
+        const originalSetTimeout = global.setTimeout;
+        const mockSetTimeout = jest.fn();
+        global.setTimeout = mockSetTimeout;
+
+        displayUiInfo($targetElement, message, { autoHide: true });
+
+        // Should display the info message
+        expect($targetElement.find('.info-message').length).toBe(1);
+        expect($targetElement.find('.info-content').text()).toBe(message);
+
+        // Should set timeout for auto-hide
+        expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), 5000);
+
+        // Restore original setTimeout
+        global.setTimeout = originalSetTimeout;
+    });
+
+    it('should handle fadeOut animation for auto-hide info messages', () => {
+        const message = 'Auto-hide info';
+
+        // Mock setTimeout and fadeOut
+        const originalSetTimeout = global.setTimeout;
+        const mockSetTimeout = jest.fn((callback) => {
+            // Execute callback immediately for testing
+            callback();
+        });
+        global.setTimeout = mockSetTimeout;
+
+        const mockFadeOut = jest.fn((duration, callback) => {
+            if (callback) callback.call({ remove: jest.fn() });
+        });
+
+        // Mock find method
+        const originalFind = $targetElement.find;
+        $targetElement.find = jest.fn().mockReturnValue({
+            fadeOut: mockFadeOut
+        });
+
+        displayUiInfo($targetElement, message, { autoHide: true });
+
+        // Should set timeout and call fadeOut
+        expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), 5000);
+        expect(mockFadeOut).toHaveBeenCalledWith(300, expect.any(Function));
+
+        // Restore original functions
+        global.setTimeout = originalSetTimeout;
+        $targetElement.find = originalFind;
+    });
+
+    it('should handle empty message gracefully', () => {
+        displayUiInfo($targetElement, '');
+
+        expect($targetElement.find('.info-message').length).toBe(1);
+        expect($targetElement.find('.info-content').text()).toBe('');
+    });
+});
+
+describe('getErrorTypeClass (via displayUiError type option)', () => {
+    let $targetElement;
+
+    beforeEach(() => {
+        $targetElement = $('<div id="error-type-target"></div>');
+        $(document.body).append($targetElement);
+    });
+
+    afterEach(() => {
+        $targetElement.remove();
+    });
+
+    it('should apply validation-error class for validation type', () => {
+        const error = { message: 'Validation error' };
+        displayUiError($targetElement, error, mockI18n, 'processor.jwt.validationError', {
+            type: 'validation'
+        });
+
+        expect($targetElement.find('.error-message').hasClass('validation-error')).toBe(true);
+    });
+
+    it('should apply network-error class for network type', () => {
+        const error = { message: 'Network error' };
+        displayUiError($targetElement, error, mockI18n, 'processor.jwt.validationError', {
+            type: 'network'
+        });
+
+        expect($targetElement.find('.error-message').hasClass('network-error')).toBe(true);
+    });
+
+    it('should apply server-error class for server type', () => {
+        const error = { message: 'Server error' };
+        displayUiError($targetElement, error, mockI18n, 'processor.jwt.validationError', {
+            type: 'server'
+        });
+
+        expect($targetElement.find('.error-message').hasClass('server-error')).toBe(true);
+    });
+
+    it('should not apply any specific error class for default/unknown type', () => {
+        const error = { message: 'Generic error' };
+        displayUiError($targetElement, error, mockI18n, 'processor.jwt.validationError', {
+            type: 'unknown'
+        });
+
+        const $errorMessage = $targetElement.find('.error-message');
+        expect($errorMessage.hasClass('validation-error')).toBe(false);
+        expect($errorMessage.hasClass('network-error')).toBe(false);
+        expect($errorMessage.hasClass('server-error')).toBe(false);
+    });
 });

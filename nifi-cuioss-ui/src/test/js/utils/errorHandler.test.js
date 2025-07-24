@@ -2,9 +2,9 @@
  * Tests for error handler utilities.
  */
 import {
-    createXhrErrorObject,
+    createApiClientCallbackErrorHandler,
     createApiClientErrorHandler,
-    createApiClientCallbackErrorHandler
+    createXhrErrorObject
 } from '../../../main/webapp/js/utils/errorHandler.js';
 
 describe('Error Handler utilities', () => {

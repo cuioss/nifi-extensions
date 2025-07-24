@@ -1,0 +1,164 @@
+= UI Roundtrip Testing Guide
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+:icons: font
+
+== Purpose
+
+Iterative UI development workflow: modify code → deploy → test → analyze → repeat until all tests pass.
+
+== Prerequisites
+
+* Docker environment configured
+* NiFi test container functional
+* Playwright tests available in `e-2-e-playwright/tests/`
+* Corresponding test files for UI feature under development
+
+== Workflow Steps
+
+=== 1. Initial Deployment
+
+[source,bash]
+----
+./integration-testing/src/main/docker/run-and-deploy.sh
+----
+
+=== 2. Run Tests
+
+[source,bash]
+----
+cd e-2-e-playwright
+npx playwright test tests/[test-file].spec.js --project chromium
+----
+
+=== 3. Analyze Results
+
+Test artifacts are co-located in `target/test-results/[test-specific-directory]/`:
+
+* `console-logs.log` - Browser console output (if any)
+* `test-failed-1.png` - Screenshots
+* `video.webm` - Test execution video
+* `trace.zip` - Playwright trace
+* `processor-interaction-*.png` - Processor screenshots
+
+=== 4. Console Log Analysis
+
+**Quick Analysis Commands**:
+[source,bash]
+----
+# Find console logs
+find target/test-results -name "console-logs.log"
+
+# Check for errors
+grep -n "ERROR\|WARN" target/test-results/[test-dir]/console-logs.log
+
+# Find JWT UI analysis
+grep -A 5 "JWT UI ANALYSIS" target/test-results/*/console-logs.log
+----
+
+**Key Log Types**:
+
+* `type: "error"` - JavaScript errors
+* `type: "networkerror"` - 404s, failed requests
+* `type: "warning"` - Configuration warnings
+* `type: "info/debug"` - Execution flow
+
+**Note**: Console logs only exist when browser activity occurs. Normal NiFi canvas operation generates no console output.
+
+**Fail-on-Console-Error**: The console logging system can be configured to fail tests when console errors occur. This is useful for catching JavaScript errors that might otherwise be missed. Use `setupStrictErrorDetection()` instead of `setupAuthAwareErrorDetection()` to enable this feature.
+
+=== 5. Fix Issues
+
+**Common UI Issues**:
+
+* **Loading Indicator Hanging**: Check `hideLoadingIndicatorRobust()` function
+* **Component Registration Failures**: Verify `registerComponents()` execution
+* **JavaScript Errors**: Check module imports and function definitions
+* **ES6 Module Loading Issues**: Ensure Vite bundler generates UMD format correctly
+
+**Key Files**:
+
+* `nifi-cuioss-ui/src/main/webapp/js/main.js` - Core UI logic
+* `nifi-cuioss-ui/src/main/webapp/index.html` - Main HTML entry point
+* `nifi-cuioss-ui/vite.config.js` - Modern build configuration
+
+**Browser Console Test**: `tests/self-capture-browser-console.spec.js` - Captures browser console output with analysis markers for any processor UI.
+
+=== 6. Build and Deploy
+
+[source,bash]
+----
+# Build UI module
+cd nifi-cuioss-ui && npm run build && cd ..
+./mvnw clean install -pl nifi-cuioss-ui
+
+# Redeploy changes
+./integration-testing/src/main/docker/redeploy-nifi.sh
+----
+
+=== 7. Commit and Repeat
+
+[source,bash]
+----
+git add <modified-files>
+git commit -m "Fix: Description of issue resolved"
+----
+
+Repeat steps 2-7 until all tests pass.
+
+== Final Validation
+
+[source,bash]
+----
+# Stop test environment
+integration-testing/src/main/docker/stop-test-container.sh
+
+# Full build verification (both must pass)
+./mvnw clean verify
+./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests
+----
+
+**Success Criteria**: Both commands exit with code 0, no ESLint warnings, all tests pass consistently.
+
+== Quick Reference
+
+**Common Issues**:
+
+* *Test Timeouts*: Slow UI responses or missing elements
+* *Element Not Found*: Selector needs updating after UI changes
+* *Console Errors*: JavaScript errors that need fixing in UI code
+* *Deployment Issues*: Check Docker logs if redeployment fails
+
+**Debugging Tips**:
+
+* Add console logging in UI code to track execution flow
+* Use `page.pause()` in Playwright tests to debug interactively
+* Use browser developer tools to check network requests
+* Verify CSS selectors still match after UI changes
+
+**Example Workflow**:
+[source,bash]
+----
+# Initial setup
+./integration-testing/src/main/docker/run-and-deploy.sh
+
+# Run tests
+cd e-2-e-playwright
+npx playwright test tests/[test-file].spec.js --project chromium
+
+# Check results
+find target/test-results -name "console-logs.log"
+grep -A 5 "JWT UI ANALYSIS" target/test-results/*/console-logs.log
+
+# Make changes, build, and redeploy
+cd nifi-cuioss-ui && npm run build && cd ..
+./mvnw clean install -pl nifi-cuioss-ui
+./integration-testing/src/main/docker/redeploy-nifi.sh
+
+# Test again and commit if successful
+git add <files>
+git commit -m "Fix: Description"
+----

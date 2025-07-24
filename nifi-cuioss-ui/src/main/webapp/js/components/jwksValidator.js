@@ -4,7 +4,7 @@
 import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
-import { getIsLocalhost, setIsLocalhostForTesting, API } from '../utils/constants.js';
+import { API, getIsLocalhost, setIsLocalhostForTesting } from '../utils/constants.js';
 
 /**
  * Initialize the custom UI with standardized error handling and async patterns.

@@ -38,6 +38,7 @@ import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
 import org.apache.nifi.processor.util.StandardValidators;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -57,18 +58,18 @@ import static de.cuioss.nifi.processors.auth.JWTTranslationKeys.Validation;
  */
 @Tags({"jwt", "oauth", "authentication", "authorization", "security", "token"})
 @CapabilityDescription("Validates JWT tokens from multiple issuers. Extracts JWT tokens from flow files, " +
-    "validates them against configured issuers, and routes flow files based on validation results.")
+        "validates them against configured issuers, and routes flow files based on validation results.")
 @SeeAlso()
 @ReadsAttributes({
-    @ReadsAttribute(attribute = "http.headers.authorization", description = "HTTP Authorization header containing the JWT token")
+        @ReadsAttribute(attribute = "http.headers.authorization", description = "HTTP Authorization header containing the JWT token")
 })
 @WritesAttributes({
-    @WritesAttribute(attribute = JWTAttributes.Content.PREFIX + "*", description = "JWT token claims"),
-    @WritesAttribute(attribute = JWTAttributes.Token.VALIDATED_AT, description = "Timestamp when the token was validated"),
-    @WritesAttribute(attribute = JWTAttributes.Token.AUTHORIZATION_PASSED, description = "Whether the token passed authorization checks"),
-    @WritesAttribute(attribute = JWTAttributes.Error.CODE, description = "Error code if token validation failed"),
-    @WritesAttribute(attribute = JWTAttributes.Error.REASON, description = "Error reason if token validation failed"),
-    @WritesAttribute(attribute = JWTAttributes.Error.CATEGORY, description = "Error category if token validation failed")
+        @WritesAttribute(attribute = JWTAttributes.Content.PREFIX + "*", description = "JWT token claims"),
+        @WritesAttribute(attribute = JWTAttributes.Token.VALIDATED_AT, description = "Timestamp when the token was validated"),
+        @WritesAttribute(attribute = JWTAttributes.Token.AUTHORIZATION_PASSED, description = "Whether the token passed authorization checks"),
+        @WritesAttribute(attribute = JWTAttributes.Error.CODE, description = "Error code if token validation failed"),
+        @WritesAttribute(attribute = JWTAttributes.Error.REASON, description = "Error reason if token validation failed"),
+        @WritesAttribute(attribute = JWTAttributes.Error.CATEGORY, description = "Error category if token validation failed")
 })
 @RequiresInstanceClassLoading
 @EqualsAndHashCode(callSuper = true)
@@ -148,7 +149,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         this.relationships = rels;
 
         LOGGER.info("MultiIssuerJWTTokenAuthenticator processor initialized with {} property descriptors",
-            descriptors.size());
+                descriptors.size());
     }
 
     @Override
@@ -170,57 +171,57 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 switch (propertyKey) {
                     case Issuer.JWKS_URL -> {
                         return new PropertyDescriptor.Builder()
-                            .name(propertyDescriptorName)
-                            .displayName(displayName)
-                            .description(i18nResolver.getTranslatedString(Property.Issuer.JWKS_URL_DESCRIPTION, propertyKey, issuerName))
-                            .required(false)
-                            .dynamic(true)
-                            .addValidator(StandardValidators.URL_VALIDATOR)
-                            .build();
+                                .name(propertyDescriptorName)
+                                .displayName(displayName)
+                                .description(i18nResolver.getTranslatedString(Property.Issuer.JWKS_URL_DESCRIPTION, propertyKey, issuerName))
+                                .required(false)
+                                .dynamic(true)
+                                .addValidator(StandardValidators.URL_VALIDATOR)
+                                .build();
                     }
                     case Issuer.ISSUER_NAME -> {
                         return new PropertyDescriptor.Builder()
-                            .name(propertyDescriptorName)
-                            .displayName(displayName)
-                            .description(i18nResolver.getTranslatedString(Property.Issuer.ISSUER_DESCRIPTION, propertyKey, issuerName))
-                            .required(false)
-                            .dynamic(true)
-                            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-                            .build();
+                                .name(propertyDescriptorName)
+                                .displayName(displayName)
+                                .description(i18nResolver.getTranslatedString(Property.Issuer.ISSUER_DESCRIPTION, propertyKey, issuerName))
+                                .required(false)
+                                .dynamic(true)
+                                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                                .build();
                     }
                     case Issuer.AUDIENCE, Issuer.CLIENT_ID -> {
                         return new PropertyDescriptor.Builder()
+                                .name(propertyDescriptorName)
+                                .displayName(displayName)
+                                .description(i18nResolver.getTranslatedString(
+                                        Issuer.AUDIENCE.equals(propertyKey) ? Property.Issuer.AUDIENCE_DESCRIPTION : Property.Issuer.CLIENT_ID_DESCRIPTION,
+                                        propertyKey, issuerName))
+                                .required(false)
+                                .dynamic(true)
+                                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                                .build();
+                    }
+                    default -> new PropertyDescriptor.Builder()
                             .name(propertyDescriptorName)
-                            .displayName(displayName)
-                            .description(i18nResolver.getTranslatedString(
-                                Issuer.AUDIENCE.equals(propertyKey) ? Property.Issuer.AUDIENCE_DESCRIPTION : Property.Issuer.CLIENT_ID_DESCRIPTION,
-                                propertyKey, issuerName))
+                            .displayName(propertyDescriptorName)
+                            .description("Dynamic property for issuer configuration")
                             .required(false)
                             .dynamic(true)
                             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                             .build();
-                    }
-                    default -> new PropertyDescriptor.Builder()
-                        .name(propertyDescriptorName)
-                        .displayName(propertyDescriptorName)
-                        .description("Dynamic property for issuer configuration")
-                        .required(false)
-                        .dynamic(true)
-                        .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-                        .build();
                 }
             }
         }
 
         // Support other dynamic properties
         return new PropertyDescriptor.Builder()
-            .name(propertyDescriptorName)
-            .displayName(propertyDescriptorName)
-            .description("Dynamic property")
-            .required(false)
-            .dynamic(true)
-            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-            .build();
+                .name(propertyDescriptorName)
+                .displayName(propertyDescriptorName)
+                .description("Dynamic property")
+                .required(false)
+                .dynamic(true)
+                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                .build();
     }
 
     /**
@@ -233,7 +234,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         // Initialize the ConfigurationManager
         configurationManager = new ConfigurationManager();
         LOGGER.info("Configuration manager initialized, external configuration loaded: %s",
-            configurationManager.isConfigurationLoaded());
+                configurationManager.isConfigurationLoaded());
 
         // Log all available property descriptors to help with debugging
         LOGGER.info("Available property descriptors:");
@@ -295,7 +296,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     // Log what changed if this is a reconfiguration (not initial setup)
                     if (tokenValidator.get() != null) {
                         LOGGER.info(AuthLogMessages.INFO.CONFIG_HASH_CHANGED.format(
-                            configurationHash.get(), currentConfigHash));
+                                configurationHash.get(), currentConfigHash));
 
                         // Clean up old resources before creating new ones
                         cleanupResources();
@@ -371,9 +372,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             String propertyName = propertyDescriptor.getName();
             if (propertyName.startsWith(ISSUER_PREFIX)) {
                 hashBuilder.append(propertyName)
-                    .append("=")
-                    .append(context.getProperty(propertyDescriptor).getValue())
-                    .append(";");
+                        .append("=")
+                        .append(context.getProperty(propertyDescriptor).getValue())
+                        .append(";");
             }
         }
 
@@ -382,9 +383,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             // Add static properties from external configuration
             for (Map.Entry<String, String> entry : configurationManager.getStaticProperties().entrySet()) {
                 hashBuilder.append(entry.getKey())
-                    .append("=")
-                    .append(entry.getValue())
-                    .append(";");
+                        .append("=")
+                        .append(entry.getValue())
+                        .append(";");
             }
 
             // Add issuer properties from external configuration
@@ -392,12 +393,12 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 Map<String, String> issuerProps = configurationManager.getIssuerProperties(issuerId);
                 for (Map.Entry<String, String> entry : issuerProps.entrySet()) {
                     hashBuilder.append("issuer.")
-                        .append(issuerId)
-                        .append(".")
-                        .append(entry.getKey())
-                        .append("=")
-                        .append(entry.getValue())
-                        .append(";");
+                            .append(issuerId)
+                            .append(".")
+                            .append(entry.getKey())
+                            .append("=")
+                            .append(entry.getValue())
+                            .append(";");
                 }
             }
         }
@@ -509,7 +510,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     // Only add UI property if it doesn't exist in external configuration
                     // This implements the precedence order: external Config > UI Config
                     Map<String, String> issuerProps = issuerPropertiesMap.computeIfAbsent(issuerName, k -> new HashMap<>());
-                    issuerProps.computeIfAbsent(propertyKey, k-> context.getProperty(propertyDescriptor).getValue());
+                    issuerProps.computeIfAbsent(propertyKey, k -> context.getProperty(propertyDescriptor).getValue());
                 }
             }
         }
@@ -635,9 +636,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         for (String key : sortedKeys) {
             hashBuilder.append(key)
-                .append("=")
-                .append(properties.get(key))
-                .append(";");
+                    .append("=")
+                    .append(properties.get(key))
+                    .append(";");
         }
 
         return hashBuilder.toString();
@@ -718,20 +719,20 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         // Log the properties for debugging
         LOGGER.info("Creating issuer configuration for %s with properties: jwksUrl=%s, issuer=%s, audience=%s, clientId=%s",
-            issuerName, jwksUrl, issuer, audience, clientId);
+                issuerName, jwksUrl, issuer, audience, clientId);
 
         try {
             // Create issuer configuration using builder pattern
             // Based on the examples in Usage.adoc
             IssuerConfig issuerConfig = IssuerConfig.builder()
-                .issuer(issuer)
-                // Configure JWKS URL directly
-                .jwksFilePath(jwksUrl)
-                // Add optional audience if provided
-                .expectedAudience(audience != null && !audience.isEmpty() ? audience : null)
-                // Add optional client ID if provided
-                .expectedClientId(clientId != null && !clientId.isEmpty() ? clientId : null)
-                .build();
+                    .issuerIdentifier(issuer)
+                    // Configure JWKS URL directly
+                    .jwksFilePath(jwksUrl)
+                    // Add optional audience if provided
+                    .expectedAudience(audience != null && !audience.isEmpty() ? audience : null)
+                    // Add optional client ID if provided
+                    .expectedClientId(clientId != null && !clientId.isEmpty() ? clientId : null)
+                    .build();
 
             LOGGER.info(AuthLogMessages.INFO.ISSUER_CONFIG_CREATED.format(issuerName));
 
@@ -817,11 +818,11 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             if (token == null || token.isEmpty()) {
                 LOGGER.warn("No token found in the specified location: %s", tokenLocation);
                 handleError(
-                    session,
-                    flowFile,
-                    "AUTH-001",
-                    i18nResolver.getTranslatedString(JWTTranslationKeys.Error.NO_TOKEN_FOUND, tokenLocation),
-                    "EXTRACTION_ERROR"
+                        session,
+                        flowFile,
+                        "AUTH-001",
+                        i18nResolver.getTranslatedString(JWTTranslationKeys.Error.NO_TOKEN_FOUND, tokenLocation),
+                        "EXTRACTION_ERROR"
                 );
                 return;
             }
@@ -831,11 +832,11 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             if (token.length() > maxTokenSize) {
                 LOGGER.warn(AuthLogMessages.WARN.TOKEN_SIZE_EXCEEDED.format(maxTokenSize));
                 handleError(
-                    session,
-                    flowFile,
-                    "AUTH-003",
-                    i18nResolver.getTranslatedString(JWTTranslationKeys.Error.TOKEN_SIZE_LIMIT, maxTokenSize),
-                    "TOKEN_SIZE_VIOLATION"
+                        session,
+                        flowFile,
+                        "AUTH-003",
+                        i18nResolver.getTranslatedString(JWTTranslationKeys.Error.TOKEN_SIZE_LIMIT, maxTokenSize),
+                        "TOKEN_SIZE_VIOLATION"
                 );
                 return;
             }
@@ -844,11 +845,11 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             if (!token.contains(".")) {
                 LOGGER.warn("Token is malformed (missing segments)");
                 handleError(
-                    session,
-                    flowFile,
-                    "AUTH-004",
-                    i18nResolver.getTranslatedString(JWTTranslationKeys.Error.TOKEN_MALFORMED),
-                    "MALFORMED_TOKEN"
+                        session,
+                        flowFile,
+                        "AUTH-004",
+                        i18nResolver.getTranslatedString(JWTTranslationKeys.Error.TOKEN_MALFORMED),
+                        "MALFORMED_TOKEN"
                 );
                 return;
             }
@@ -887,11 +888,11 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         } catch (Exception e) {
             LOGGER.error(e, "Error processing flow file: %s", e.getMessage());
             handleError(
-                session,
-                flowFile,
-                "AUTH-999",
-                i18nResolver.getTranslatedString(JWTTranslationKeys.Error.UNKNOWN, e.getMessage()),
-                "PROCESSING_ERROR"
+                    session,
+                    flowFile,
+                    "AUTH-999",
+                    i18nResolver.getTranslatedString(JWTTranslationKeys.Error.UNKNOWN, e.getMessage()),
+                    "PROCESSING_ERROR"
             );
         }
     }
@@ -933,7 +934,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             byte[] buffer = new byte[4096];
             int len;
             while ((len = inputStream.read(buffer)) != -1) {
-                contentBuilder.append(new String(buffer, 0, len, java.nio.charset.StandardCharsets.UTF_8));
+                contentBuilder.append(new String(buffer, 0, len, StandardCharsets.UTF_8));
             }
         });
 
@@ -970,7 +971,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         claims.put(JWTAttributes.Token.AUTHORIZATION_PASSED, "true");
 
         // Add token identity information
-        claims.put(JWTAttributes.Token.SUBJECT, token.getSubject());
+        claims.put(JWTAttributes.Token.SUBJECT, token.getSubject().orElse(""));
         claims.put(JWTAttributes.Token.ISSUER, token.getIssuer());
         claims.put(JWTAttributes.Token.EXPIRATION, token.getExpirationTime().toString());
 

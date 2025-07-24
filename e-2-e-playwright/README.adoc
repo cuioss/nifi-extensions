@@ -1,0 +1,242 @@
+= NiFi Extensions End-to-End Playwright Tests
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+
+This module contains end-to-end tests for NiFi Extensions using Playwright.
+
+== Maven Coordinates
+
+[source,xml]
+----
+<dependency>
+    <groupId>org.apache.nifi</groupId>
+    <artifactId>e-2-e-playwright</artifactId>
+</dependency>
+----
+
+== Overview
+
+The e-2-e-playwright module provides automated end-to-end testing for NiFi Extensions using the Playwright testing framework. These tests validate the functionality of NiFi Extensions in a real NiFi environment.
+
+== Core Concepts
+
+=== ✅ Supported Capabilities
+
+The testing framework is capable of:
+
+* **Authentication** - Login to NiFi using test credentials
+* **Navigation** - Moving between NiFi pages and verifying page states
+* **Processor Discovery** - Finding existing processors deployed on the canvas
+* **Processor Interaction** - Accessing and interacting with deployed processors
+* **Canvas Analysis** - Analyzing the NiFi canvas and its components
+* **Configuration Verification** - Verifying processor configuration and properties
+
+For detailed information about testing scope and capabilities, see xref:docs/Testing-Scope.adoc[Testing Scope and Capabilities].
+
+=== ❌ Technical Limitations
+
+Due to the complexity of NiFi's Angular Material UI and drag-and-drop interactions, the following operations are **NOT supported**:
+
+* **Adding Processors** - Complex drag-and-drop from toolbar to canvas
+* **Removing Processors** - Complex context menu and confirmation workflows
+* **Component Creation** - Creating new canvas components
+* **Component Deletion** - Deleting existing canvas components
+
+=== 🎯 Testing Strategy
+
+The framework is designed to test **deployed processors** rather than processor lifecycle management. Tests should:
+
+1. **Verify processor deployment** - Confirm processors are correctly deployed to NiFi
+2. **Test processor functionality** - Interact with existing processors to verify behavior
+3. **Validate configuration** - Check processor properties and settings
+4. **Monitor processor state** - Verify processor status and health
+
+*Note: Processors should be deployed through the standard NiFi deployment process (NAR files) before running tests.*
+
+== Detailed Component Documentation
+
+=== Module Structure
+
+* `tests/` - Contains the Playwright test files
+* `utils/` - Contains helper functions and utilities
+* `scripts/` - Contains scripts for log analysis and other utilities
+
+=== Core Components
+
+* **processor-tool.js** - Utilities for processor discovery and verification
+* **login-tool.js** - Authentication and session management
+* **navigation-tool.js** - Page navigation and verification
+* **constants.js** - Selectors and configuration constants
+
+For detailed information about the NiFi UI structure, see xref:docs/nifi-ui-structure.adoc[NiFi UI Structure Guide].
+
+== Configuration
+
+The Playwright configuration is defined in `playwright.config.js`. It includes settings for:
+
+* Test timeouts
+* Browser configuration
+* Screenshot and video capture
+* Reporting
+
+=== Maven Standard Directory Structure
+
+This module follows the Maven standard directory structure for test artifacts. All temporary files are stored in the `target` directory:
+
+* `target/test-results` - Contains test results and traces
+* `target/playwright-report` - Contains HTML reports
+* `target/screenshots` - Contains screenshots taken during tests
+* `target/videos` - Contains videos recorded during tests
+
+This ensures that all temporary artifacts are properly managed and can be cleaned up with `mvn clean`.
+
+== Test Requirements
+
+The Playwright tests in this module are designed to run against a live NiFi instance. Before running the tests, ensure that:
+
+1. NiFi is running and accessible at the URL specified in `PLAYWRIGHT_BASE_URL` (default: https://localhost:9095/nifi)
+2. Keycloak is running and accessible at the URL specified in `PLAYWRIGHT_KEYCLOAK_URL` (default: http://localhost:9080)
+3. The test user credentials in `utils/constants.js` are valid for the running NiFi instance
+
+The tests will fail if NiFi is not running or not accessible.
+
+== Running Tests
+
+=== Via Maven
+
+To run the tests via Maven:
+
+[source,bash]
+----
+./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests
+----
+
+=== Via npm
+
+To run the tests directly via npm:
+
+[source,bash]
+----
+cd e-2-e-playwright
+npm run playwright:test
+----
+
+For headed mode (with browser UI):
+
+[source,bash]
+----
+npm run playwright:test:headed
+----
+
+For interactive UI mode:
+
+[source,bash]
+----
+npm run playwright:test:ui
+----
+
+== Viewing Reports
+
+After running tests, you can view the HTML report:
+
+[source,bash]
+----
+npm run playwright:report
+----
+
+== Generating Tests
+
+Playwright includes a code generation tool to help create tests:
+
+[source,bash]
+----
+npm run playwright:codegen
+----
+
+== Environment Variables
+
+* `PLAYWRIGHT_BASE_URL` - Base URL for NiFi (default: https://localhost:9095/nifi)
+* `PLAYWRIGHT_KEYCLOAK_URL` - URL for Keycloak (default: http://localhost:9080)
+
+== Usage Examples
+
+=== Basic Processor Verification
+
+[source,javascript]
+----
+// Example: Verify a processor is deployed and accessible
+test("should verify processor deployment", async ({ page }) => {
+  // Login to NiFi
+  await loginToNiFi(page);
+
+  // Navigate to canvas
+  await navigateToCanvas(page);
+
+  // Verify processor is deployed and accessible
+  const verification = await verifyProcessorDeployment(page, "MyProcessor");
+
+  expect(verification.found).toBeTruthy();
+  expect(verification.visible).toBeTruthy();
+  expect(verification.details.name).toContain("MyProcessor");
+});
+----
+
+=== Authentication and Navigation
+
+[source,javascript]
+----
+// Example: Login and navigate to different pages
+test("should navigate through NiFi UI", async ({ page }) => {
+  // Login to NiFi
+  await loginToNiFi(page);
+
+  // Verify we're on the main canvas
+  await verifyPageType(page, "MAIN_CANVAS");
+
+  // Take screenshot for documentation
+  await page.screenshot({ path: "target/screenshots/main-canvas.png" });
+});
+----
+
+== Best Practices
+
+* **Pre-deploy processors** - Deploy processors through standard NiFi deployment before testing
+* **Focus on verification** - Test processor functionality rather than UI operations
+* **Use reliable selectors** - Prefer data-testid attributes when available
+* **Handle timeouts** - Set appropriate timeouts for UI operations
+* **Capture screenshots** - Use screenshots for debugging and documentation
+* **Clean up resources** - Ensure tests clean up after themselves
+* **Isolate tests** - Each test should be independent and not rely on other tests
+
+== Technical Details
+
+=== Thread Safety
+
+* Tests run in isolated browser contexts
+* Each test gets a fresh page instance
+* No shared state between tests
+
+=== Performance Considerations
+
+* Authentication is the slowest operation (~3-5 seconds)
+* Page navigation takes ~1-2 seconds
+* Processor verification is relatively fast (~0.5 seconds)
+* Screenshots add minimal overhead
+
+=== Implementation Notes
+
+* Built on Playwright 1.32.0+
+* Uses Jest-compatible assertions
+* Supports parallel test execution
+* Compatible with CI/CD pipelines
+
+== Related Documentation
+
+* xref:docs/Testing-Scope.adoc[Testing Scope and Capabilities] - Detailed testing framework capabilities
+* xref:docs/nifi-ui-structure.adoc[NiFi UI Structure Guide] - NiFi UI structure and selectors
+* xref:docs/mcp-playwright-guide.adoc[MCP Playwright Guide] - MCP Playwright tool integration
+* https://playwright.dev/docs/intro[Playwright Documentation] - Official Playwright documentation
+* https://nifi.apache.org/docs.html[Apache NiFi Documentation] - Official NiFi documentation

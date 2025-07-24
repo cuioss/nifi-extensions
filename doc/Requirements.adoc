@@ -1,13 +1,14 @@
 = JWT Validation Processor Requirements
-:toc:
+:toc: left
 :toclevels: 3
 :toc-title: Table of Contents
 :sectnums:
+:source-highlighter: highlight.js
 
 == Overview
 This document outlines the requirements for the JWT Validation Processor, a component designed to enhance Apache NiFi's capabilities in handling REST API authentication through JWT tokens.
 
-For detailed implementation specifications, see the link:Specification.adoc[Specification Document].
+For detailed implementation specifications, see the xref:Specification.adoc[Specification Document].
 
 == General Requirements
 
@@ -18,7 +19,7 @@ For detailed implementation specifications, see the link:Specification.adoc[Spec
 * Provide standardized JWT validation capabilities
 * Support OAuth 2.0 token validation workflow
 
-_Implementation details: link:Specification.adoc[Main Specification]_
+_Implementation details: xref:Specification.adoc[Main Specification]_
 
 == MultiIssuerJWTTokenAuthenticator
 
@@ -31,7 +32,7 @@ _Implementation details: link:Specification.adoc[Main Specification]_
 * Extract token information
 * Route flow files based on validation results
 
-_Implementation details: link:specification/technical-components.adoc[Technical Components]_
+_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
 
 [#NIFI-AUTH-3]
 === NIFI-AUTH-3: Token Validation Requirements
@@ -43,7 +44,7 @@ _Implementation details: link:specification/technical-components.adoc[Technical 
 * Validate token audience if present (aud claim)
 * Support multiple token issuers
 
-_Implementation details: link:specification/token-validation.adoc[Token Validation]_
+_Implementation details: xref:specification/token-validation.adoc[Token Validation]_
 
 [#NIFI-AUTH-4]
 === NIFI-AUTH-4: Multiple Issuer Support
@@ -53,7 +54,7 @@ _Implementation details: link:specification/token-validation.adoc[Token Validati
 * Support different signing algorithms per issuer
 * Allow dynamic issuer key/certificate updates
 
-_Implementation details: link:specification/token-validation.adoc[Token Validation]_
+_Implementation details: xref:specification/token-validation.adoc[Token Validation]_
 
 [#NIFI-AUTH-5]
 === NIFI-AUTH-5: Input Requirements
@@ -62,7 +63,7 @@ _Implementation details: link:specification/token-validation.adoc[Token Validati
 * Support configurable token location in flow file
 * Handle various token formats (Bearer, raw JWT)
 
-_Implementation details: link:specification/technical-components.adoc[Technical Components]_
+_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
 
 [#NIFI-AUTH-5.1]
 ==== NIFI-AUTH-5.1: Token Location
@@ -106,7 +107,7 @@ The processor must support advanced properties that are only shown when explicit
 [#NIFI-AUTH-7]
 === NIFI-AUTH-7: Configuration Requirements
 
-_Implementation details: link:specification/configuration.adoc[Configuration]_
+_Implementation details: xref:specification/configuration.adoc[Configuration]_
 
 [#NIFI-AUTH-7.1]
 ==== NIFI-AUTH-7.1: UI Configuration
@@ -197,7 +198,7 @@ _Implementation details: link:specification/configuration.adoc[Configuration]_
   ** Allow runtime reload without restart
   ** Log configuration changes at appropriate level
 
-_Implementation details: link:specification/configuration.adoc[Configuration]_
+_Implementation details: xref:specification/configuration.adoc[Configuration]_
 
 [#NIFI-AUTH-8]
 === NIFI-AUTH-8: Security Requirements
@@ -207,7 +208,7 @@ _Implementation details: link:specification/configuration.adoc[Configuration]_
 * Proper error handling without information leakage
 * Compliance with security best practices
 
-_Implementation details: link:specification/security.adoc[Security]_
+_Implementation details: xref:specification/security.adoc[Security]_
 
 [#NIFI-AUTH-9]
 === NIFI-AUTH-9: Performance Requirements
@@ -222,7 +223,7 @@ _Implementation details: link:specification/security.adoc[Security]_
   ** Token validation latency: <50ms per token
   ** Memory usage: <100MB additional heap usage
 
-_Implementation details: link:specification/technical-components.adoc[Technical Components]_
+_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
 
 [#NIFI-AUTH-10]
 === NIFI-AUTH-10: Error Handling Requirements
@@ -236,7 +237,7 @@ _Implementation details: link:specification/technical-components.adoc[Technical 
 * Recovery mechanisms for transient errors
 * Proper logging of errors with appropriate severity levels
 
-_Implementation details: link:specification/error-handling.adoc[Error Handling]_
+_Implementation details: xref:specification/error-handling.adoc[Error Handling]_
 
 == Integration Requirements
 
@@ -256,7 +257,7 @@ _Implementation details: link:specification/error-handling.adoc[Error Handling]_
 * Example flow for token transformation
 * Example flow for multi-tenant API routing
 
-_Implementation details: link:specification/integration-patterns.adoc[Integration Patterns]_
+_Implementation details: xref:specification/integration-patterns.adoc[Integration Patterns]_
 
 [#NIFI-AUTH-13]
 === NIFI-AUTH-13: Documentation Requirements
@@ -267,7 +268,7 @@ _Implementation details: link:specification/integration-patterns.adoc[Integratio
 * Security considerations
 * Performance tuning recommendations
 
-_Implementation details: link:Specification.adoc[Specification Document]_
+_Implementation details: xref:Specification.adoc[Specification Document]_
 
 == Testing Requirements
 
@@ -282,7 +283,7 @@ _Implementation details: link:Specification.adoc[Specification Document]_
   ** Log message verification
 * Performance testing with >1000 tokens/sec throughput
 
-_Implementation details: link:specification/testing.adoc[Testing]_
+_Implementation details: xref:specification/testing.adoc[Testing]_
 
 [#NIFI-AUTH-15]
 === NIFI-AUTH-15: Integration Testing
@@ -324,7 +325,7 @@ _Implementation details: link:specification/testing.adoc[Testing]_
 Log messages (as defined in LogMessage.md) are not internationalized. They are always written in English for consistency in logs and monitoring systems.
 ====
 
-_Implementation details: link:specification/internationalization.adoc[Internationalization]_
+_Implementation details: xref:specification/internationalization.adoc[Internationalization]_
 
 == Observability Requirements
 
@@ -371,4 +372,4 @@ _Implementation details: link:specification/internationalization.adoc[Internatio
 * Support metric scraping via NiFi's monitoring endpoints
 * Include proper documentation for external system configuration
 
-_Implementation details: link:specification/observability.adoc[Observability]_
+_Implementation details: xref:specification/observability.adoc[Observability]_

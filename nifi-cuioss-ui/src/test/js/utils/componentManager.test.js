@@ -1,7 +1,7 @@
 /**
  * Simple tests for ComponentManager - targeting core functionality for coverage
  */
-import { ComponentManager, COMPONENT_STATES } from '../../../main/webapp/js/utils/componentManager.js';
+import { COMPONENT_STATES, ComponentManager } from '../../../main/webapp/js/utils/componentManager.js';
 
 // Mock componentCleanup with simple implementation
 jest.mock('../../../main/webapp/js/utils/componentCleanup.js', () => ({

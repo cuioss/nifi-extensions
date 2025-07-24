@@ -41,12 +41,13 @@
         <!-- Sonar related-->
         <sonar.organization>cuioss-github</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        <!-- Exclude e-2-e-cypress module from SonarQube analysis -->
-        <sonar.exclusions>e-2-e-cypress/**</sonar.exclusions>
+        <!-- Exclude e-2-e-playwright module from SonarQube analysis -->
+        <sonar.exclusions>e-2-e-playwright/**</sonar.exclusions>
         <sonar.skip>false</sonar.skip>
-        <!-- Core -->
+        <!-- Maven Plugins -->
         <maven.compiler.plugin.version>3.14.0</maven.compiler.plugin.version>
         <maven.gpg.plugin.version>3.2.7</maven.gpg.plugin.version>
+        <maven.exec.plugin.version>3.5.0</maven.exec.plugin.version>
         <central-publishing-maven-plugin.version>0.7.0</central-publishing-maven-plugin.version>
         <sonar.maven.plugin.version>5.1.0.4751</sonar.maven.plugin.version>
         <jacoco.maven.plugin.version>0.8.13</jacoco.maven.plugin.version>
@@ -62,6 +63,17 @@
         <frontend.maven.plugin.version>1.15.1</frontend.maven.plugin.version>
         <frontend.node.version>v20.19.2</frontend.node.version>
         <frontend.npm.version>10.5.0</frontend.npm.version>
+
+        <!-- WebJars Dependencies -->
+        <version.jquery>3.6.0</version.jquery>
+        <version.jquery-ui>1.13.2</version.jquery-ui>
+        <version.requirejs>2.3.6</version.requirejs>
+        <version.cash-dom>8.1.5</version.cash-dom>
+        <version.tippy.js>6.3.7</version.tippy.js>
+        <version.popperjs__core>2.11.8</version.popperjs__core>
+
+        <!-- Logging Dependencies -->
+        <version.slf4j>2.0.17</version.slf4j>
 
         <!-- The version needs to be aligned with the one defined within the nifi boms. Otherwise, it's getting messy-->
         <version.junit.jupiter>5.11.3</version.junit.jupiter>
@@ -138,32 +150,32 @@
             <dependency>
                 <groupId>org.webjars</groupId>
                 <artifactId>jquery</artifactId>
-                <version>3.6.0</version>
+                <version>${version.jquery}</version>
             </dependency>
             <dependency>
                 <groupId>org.webjars</groupId>
                 <artifactId>jquery-ui</artifactId>
-                <version>1.13.2</version>
+                <version>${version.jquery-ui}</version>
             </dependency>
             <dependency>
                 <groupId>org.webjars</groupId>
                 <artifactId>requirejs</artifactId>
-                <version>2.3.6</version>
+                <version>${version.requirejs}</version>
             </dependency>
             <dependency>
                 <groupId>org.webjars.npm</groupId>
                 <artifactId>cash-dom</artifactId>
-                <version>8.1.5</version>
+                <version>${version.cash-dom}</version>
             </dependency>
             <dependency>
                 <groupId>org.webjars.npm</groupId>
                 <artifactId>tippy.js</artifactId>
-                <version>6.3.7</version>
+                <version>${version.tippy.js}</version>
             </dependency>
             <dependency>
                 <groupId>org.webjars.npm</groupId>
                 <artifactId>popperjs__core</artifactId>
-                <version>2.11.8</version>
+                <version>${version.popperjs__core}</version>
             </dependency>
             <!-- Incoming-->
             <dependency>
@@ -246,14 +258,14 @@
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-jdk14</artifactId>
                 <scope>test</scope>
-                <version>2.0.17</version>
+                <version>${version.slf4j}</version>
             </dependency>
             <!-- Bridge jakarta-commons logging  to slf4j -->
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>jcl-over-slf4j</artifactId>
                 <scope>test</scope>
-                <version>2.0.17</version>
+                <version>${version.slf4j}</version>
             </dependency>
             <!-- outgoing-->
             <dependency>
@@ -281,7 +293,7 @@
         <module>nifi-cuioss-ui</module>
         <module>nifi-cuioss-nar</module>
         <module>integration-testing</module>
-        <module>e-2-e-cypress</module>
+        <module>e-2-e-playwright</module>
     </modules>
     <build>
         <pluginManagement>
@@ -298,7 +310,7 @@
                                 <version>${version.lombok}</version>
                             </annotationProcessorPath>
                         </annotationProcessorPaths>
-                        <release>17</release>
+                        <release>21</release>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -389,7 +401,7 @@
                 <module>nifi-cuioss-ui</module>
                 <module>nifi-cuioss-nar</module>
                 <module>integration-testing</module>
-                <!-- e-2-e-cypress module excluded from sonar analysis -->
+                <!-- e-2-e-playwright module excluded from sonar analysis -->
             </modules>
             <build>
                 <plugins>
@@ -426,7 +438,7 @@
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>
-                        <version>3.5.0</version>
+                        <version>${maven.exec.plugin.version}</version>
                         <executions>
                             <!-- Create deployment directory -->
                             <execution>
@@ -534,9 +546,9 @@
             </build>
         </profile>
         <profile>
-            <!-- Usage: ./mvnw -Prewrite rewrite:run -->
+            <!-- Usage: ./mvnw -Ppre-commit clean install -DskipTests -->
             <!-- Unifies all OpenRewrite modernization and preparation recipes -->
-            <id>rewrite</id>
+            <id>pre-commit</id>
             <build>
                 <plugins>
                     <plugin>
@@ -549,7 +561,7 @@
                                 <recipe>org.openrewrite.java.format.AutoFormat</recipe>
                                 <recipe>org.openrewrite.java.format.NormalizeLineBreaks</recipe>
                                 <recipe>org.openrewrite.java.format.RemoveTrailingWhitespace</recipe>
-                                <recipe>org.openrewrite.java.migrate.UpgradeToJava17</recipe>
+                                <recipe>org.openrewrite.java.migrate.UpgradeToJava21</recipe>
                                 <recipe>org.openrewrite.java.migrate.util.JavaUtilAPIs</recipe>
                                 <recipe>org.openrewrite.java.migrate.util.OptionalNotEmptyToIsPresent</recipe>
                                 <recipe>org.openrewrite.java.migrate.util.OptionalNotPresentToIsEmpty</recipe>
@@ -586,7 +598,7 @@
                 <module>nifi-cuioss-ui</module>
                 <module>nifi-cuioss-nar</module>
                 <module>integration-testing</module>
-                <!-- e-2-e-cypress module excluded from release snapshots -->
+                <!-- e-2-e-playwright module excluded from release snapshots -->
             </modules>
             <build>
                 <plugins>
@@ -616,7 +628,7 @@
                 <module>nifi-cuioss-ui</module>
                 <module>nifi-cuioss-nar</module>
                 <module>integration-testing</module>
-                <!-- e-2-e-cypress module excluded from releases -->
+                <!-- e-2-e-playwright module excluded from releases -->
             </modules>
             <build>
                 <plugins>

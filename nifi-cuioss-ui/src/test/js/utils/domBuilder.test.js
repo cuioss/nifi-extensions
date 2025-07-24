@@ -1,10 +1,7 @@
 /**
  * Simple tests for domBuilder utilities - targeting basic functions only
  */
-import {
-    createElement,
-    createFragment
-} from '../../../main/webapp/js/utils/domBuilder.js';
+import { createElement, createFragment } from '../../../main/webapp/js/utils/domBuilder.js';
 
 describe('DOM Builder - Simple Coverage Tests', () => {
     it('should create basic element', () => {

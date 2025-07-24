@@ -1,0 +1,35 @@
+{
+  "name": "e-2-e-playwright",
+  "version": "1.0.0",
+  "description": "End-to-End Playwright tests for NiFi Extensions - Implements centralized JavaScript/ESLint standards",
+  "scripts": {
+    "playwright:test": "playwright test",
+    "playwright:test:headed": "playwright test --headed",
+    "playwright:test:ui": "playwright test --ui",
+    "playwright:report": "playwright show-report",
+    "playwright:codegen": "playwright codegen",
+    "test:failfast": "playwright test --reporter=list",
+    "analyze:console": "node scripts/log-analyzer.js --basic",
+    "analyze:logs": "node scripts/log-analyzer.js --enhanced",
+    "analyze:logs-verbose": "node scripts/log-analyzer.js --enhanced --verbose",
+    "lint": "eslint 'tests/**/*.js'",
+    "lint:fix": "eslint 'tests/**/*.js' --fix",
+    "lint:check": "eslint 'tests/**/*.js' --max-warnings 0",
+    "lint:strict": "eslint 'tests/**/*.js' --max-warnings 25 --report-unused-disable-directives",
+    "format": "prettier --write 'tests/**/*.js'",
+    "format:check": "prettier --check 'tests/**/*.js'"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.42.1",
+    "axe-playwright": "^2.0.1",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-jsdoc": "^46.8.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-security": "^2.1.1",
+    "eslint-plugin-sonarjs": "^0.25.1",
+    "eslint-plugin-unicorn": "^52.0.0",
+    "jwt-decode": "^4.0.0",
+    "prettier": "^3.4.2"
+  }
+}

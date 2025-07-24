@@ -3,6 +3,9 @@
  * Provides standardized initialization patterns and replaces global state management.
  */
 import { managedSetTimeout } from './componentCleanup.js';
+import { createLogger } from './logger.js';
+
+const logger = createLogger('ComponentManager');
 
 /**
  * Component registration states
@@ -38,8 +41,7 @@ export class ComponentManager {
      */
     async registerComponent(componentId, component, options = {}) {
         if (this.registeredComponents.has(componentId)) {
-            // eslint-disable-next-line no-console
-            console.debug(`Component ${componentId} already registered`);
+            logger.debug(`Component ${componentId} already registered`);
             return true;
         }
 
@@ -104,8 +106,7 @@ export class ComponentManager {
             await initPromise;
             componentInfo.state = COMPONENT_STATES.REGISTERED;
             componentInfo.registrationTime = Date.now();
-            // eslint-disable-next-line no-console
-            console.debug(`Component ${id} initialized successfully`);
+            logger.debug(`Component ${id} initialized successfully`);
         } finally {
             this.initializationPromises.delete(id);
         }
@@ -134,8 +135,7 @@ export class ComponentManager {
                 return; // Success
             } catch (error) {
                 lastError = error;
-                // eslint-disable-next-line no-console
-                console.warn(
+                logger.warn(
                     `Component ${id} initialization attempt ${attempt + 1} failed:`,
                     error
                 );
@@ -330,8 +330,7 @@ export class ComponentManager {
             try {
                 handler(componentId, error);
             } catch (handlerError) {
-                // eslint-disable-next-line no-console
-                console.error('Error in component error handler:', handlerError);
+                logger.error('Error in component error handler:', handlerError);
             }
         });
     }
@@ -381,14 +380,12 @@ export class ComponentManager {
             try {
                 componentInfo.component.cleanup();
             } catch (error) {
-                // eslint-disable-next-line no-console
-                console.warn(`Error during cleanup of component ${componentId}:`, error);
+                logger.warn(`Error during cleanup of component ${componentId}:`, error);
             }
         }
 
         this.registeredComponents.delete(componentId);
-        // eslint-disable-next-line no-console
-        console.debug(`Component ${componentId} unregistered`);
+        logger.debug(`Component ${componentId} unregistered`);
         return true;
     }
 
@@ -418,8 +415,7 @@ export const componentManager = new ComponentManager();
 
 // Add default error handler
 componentManager.addErrorHandler((componentId, error) => {
-    // eslint-disable-next-line no-console
-    console.error(`Component ${componentId} initialization failed:`, error);
+    logger.error(`Component ${componentId} initialization failed:`, error);
 });
 
 export { COMPONENT_STATES };
