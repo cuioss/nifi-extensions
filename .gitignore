@@ -23,4 +23,5 @@ jest_stdout.log
 
 # Build artifacts
 **/bundle.vite.umd.js
+**/bundle.vite.umd.cjs
 **/bundle.webpack.js
