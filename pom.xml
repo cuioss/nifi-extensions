@@ -65,7 +65,7 @@
         <frontend.npm.version>10.5.0</frontend.npm.version>
 
         <!-- WebJars Dependencies -->
-        <version.jquery>3.6.0</version.jquery>
+        <version.jquery>3.7.1</version.jquery>
         <version.jquery-ui>1.13.2</version.jquery-ui>
         <version.requirejs>2.3.7</version.requirejs>
         <version.cash-dom>8.1.5</version.cash-dom>
