@@ -262,13 +262,14 @@ test.describe("Self-Test: Browser Console Logging", () => {
         // Navigate and generate console activity
         await page.goto("/nifi");
 
-        // Generate specific console messages to verify
-        await page.evaluate(() => {
-            console.log("Direct log test - INFO message");
-            console.warn("Direct log test - WARNING message");
-            console.error("Direct log test - ERROR message");
-            console.info("Direct log test - DETAILED info");
-        });
+        // Generate specific console messages to verify with unique identifier
+        const testId = `direct-log-test-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+        await page.evaluate((id) => {
+            console.log(`Direct log test - INFO message - ${id}`);
+            console.warn(`Direct log test - WARNING message - ${id}`);
+            console.error(`Direct log test - ERROR message - ${id}`);
+            console.info(`Direct log test - DETAILED info - ${id}`);
+        }, testId);
 
         // Wait a moment for logs to be captured
         await page.waitForTimeout(500);
@@ -294,9 +295,9 @@ test.describe("Self-Test: Browser Console Logging", () => {
 
         // Verify content contains our test messages
         const textContent = fs.readFileSync(result.textLog, "utf8");
-        expect(textContent).toContain("Direct log test - INFO message");
-        expect(textContent).toContain("Direct log test - WARNING message");
-        expect(textContent).toContain("Direct log test - ERROR message");
+        expect(textContent).toContain(`Direct log test - INFO message - ${testId}`);
+        expect(textContent).toContain(`Direct log test - WARNING message - ${testId}`);
+        expect(textContent).toContain(`Direct log test - ERROR message - ${testId}`);
         expect(textContent).toContain(result.testId); // Should contain test identifier
 
         const jsonContent = JSON.parse(fs.readFileSync(result.jsonLog, "utf8"));

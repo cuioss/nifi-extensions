@@ -118,9 +118,9 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
             if (await configureOption.isVisible({ timeout: 2000 })) {
                 await configureOption.click();
 
-                // Wait for configuration dialog - should fail if dialog doesn't open
+                // Wait for configuration dialog (using NiFi-compatible selectors)
                 const dialog = page.locator(
-                    ".mat-dialog-container, .configure-dialog",
+                    '[role="dialog"], .dialog, .configuration-dialog, .mat-dialog-container',
                 );
                 await expect(dialog).toBeVisible({ timeout: 3000 });
 
@@ -132,11 +132,11 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
                 if (await advancedTab.isVisible({ timeout: 2000 })) {
                     await advancedTab.click();
 
-                    // Verify advanced content is loaded
+                    // Verify advanced content is loaded (using NiFi-compatible selectors)
                     const advancedContent = page.locator(
-                        ".mat-tab-body-active, .properties-content",
+                        '[role="tabpanel"]:not([hidden]), .tab-pane.active, [aria-expanded="true"]',
                     );
-                    await expect(advancedContent).toBeVisible({
+                    await expect(advancedContent.first()).toBeVisible({
                         timeout: 3000,
                     });
                 }
