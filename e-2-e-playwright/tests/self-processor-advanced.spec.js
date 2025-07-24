@@ -7,13 +7,19 @@
  * @description Enhanced with critical error detection
  */
 
-import {expect, test} from "@playwright/test";
-import {AuthService} from "../utils/auth-service.js";
-import {ProcessorService} from "../utils/processor.js";
-import {CONSTANTS} from "../utils/constants.js";
-import {processorLogger} from "../utils/shared-logger.js";
-import {saveTestBrowserLogs, setupAuthAwareErrorDetection,} from "../utils/console-logger.js";
-import {checkCriticalErrors, cleanupCriticalErrorDetection,} from "../utils/critical-error-detector.js";
+import { expect, test } from "@playwright/test";
+import { AuthService } from "../utils/auth-service.js";
+import { ProcessorService } from "../utils/processor.js";
+import { CONSTANTS } from "../utils/constants.js";
+import { processorLogger } from "../utils/shared-logger.js";
+import {
+    saveTestBrowserLogs,
+    setupAuthAwareErrorDetection,
+} from "../utils/console-logger.js";
+import {
+    checkCriticalErrors,
+    cleanupCriticalErrorDetection,
+} from "../utils/critical-error-detector.js";
 
 test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () => {
     test.beforeEach(async ({ page }, testInfo) => {

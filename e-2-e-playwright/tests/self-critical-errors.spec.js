@@ -5,11 +5,15 @@
  * @version 1.0.0
  */
 
-import {expect, test} from "@playwright/test";
-import {AuthService} from "../utils/auth-service.js";
-import {ProcessorService} from "../utils/processor.js";
+import { expect, test } from "@playwright/test";
+import { AuthService } from "../utils/auth-service.js";
+import { ProcessorService } from "../utils/processor.js";
 // import { CONSTANTS } from "../utils/constants.js"; // Unused in current implementation
-import {checkForCriticalErrors, saveTestBrowserLogs, setupAuthAwareErrorDetection,} from "../utils/console-logger.js";
+import {
+    checkForCriticalErrors,
+    saveTestBrowserLogs,
+    setupAuthAwareErrorDetection,
+} from "../utils/console-logger.js";
 import {
     checkCriticalErrors,
     cleanupCriticalErrorDetection,

@@ -5,8 +5,8 @@
  * @version 1.0.0
  */
 
-import {expect, test} from "@playwright/test";
-import {AuthService} from "../utils/auth-service.js";
+import { expect, test } from "@playwright/test";
+import { AuthService } from "../utils/auth-service.js";
 import {
     injectTestConsoleMessages,
     saveAllBrowserLogs,
