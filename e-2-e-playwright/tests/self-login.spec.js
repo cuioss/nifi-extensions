@@ -7,7 +7,6 @@
 
 import { expect, test } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
-// import { CONSTANTS } from "../utils/constants.js"; // Unused in current implementation
 
 test.describe("Self-Test: Login", () => {
     test("should successfully authenticate with valid credentials", async ({
