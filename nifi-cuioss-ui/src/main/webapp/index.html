@@ -27,8 +27,9 @@
     <!-- Make nf.Common available as global variable for bundle -->
     <script type="text/javascript">
         // Ensure nf.Common is available as a global for the bundle
-        if (typeof window.nfCommon !== 'undefined') {
-            window.nfCommon = window.nfCommon;
+        // The nfCommon global is already set by nf-common-mock.js
+        if (typeof window.nfCommon === 'undefined') {
+            console.warn('nfCommon is not defined. This may cause issues with the bundle.');
         }
     </script>
 </head>
