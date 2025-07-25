@@ -1053,11 +1053,11 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private AccessTokenContent validateToken(String tokenString, ProcessContext context) throws TokenValidationException {
         // Get the TokenValidator
         TokenValidator validator = getTokenValidator(context);
-        
+
         if (validator == null) {
             throw new IllegalStateException("No TokenValidator available - no issuer configurations provided");
         }
-        
+
         return validator.createAccessToken(tokenString);
     }
 

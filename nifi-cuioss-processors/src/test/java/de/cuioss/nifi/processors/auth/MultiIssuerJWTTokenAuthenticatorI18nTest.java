@@ -170,11 +170,13 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
         // Given a processor with an issuer that uses HTTP instead of HTTPS
         testRunner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
         testRunner.setProperty(Properties.REQUIRE_HTTPS_FOR_JWKS, "true");
+        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
 
         // When configuring an issuer with HTTP URL
         try {
             testRunner.setProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "http://test-issuer/.well-known/jwks.json");
             testRunner.setProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
+            testRunner.setProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
 
             // Run the processor to trigger validation
             testRunner.enqueue("test data");

@@ -309,6 +309,9 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             TestRunner newTestRunner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
             newTestRunner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
 
+            // Set require-valid-token to false to allow running without issuers
+            newTestRunner.setProperty(Properties.REQUIRE_VALID_TOKEN, "false");
+
             // Create flow file with Authorization header
             Map<String, String> attributes = new HashMap<>();
             attributes.put("http.headers.authorization", "Bearer " + VALID_TOKEN);
@@ -317,7 +320,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Run the processor
             newTestRunner.run();
 
-            // Verify results - should fail without issuers
+            // Verify results - should fail because no issuers are configured to validate the token
             newTestRunner.assertTransferCount(Relationships.SUCCESS, 0);
             newTestRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 

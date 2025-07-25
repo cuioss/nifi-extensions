@@ -70,6 +70,11 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
         testRunner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
         testRunner.setProperty(Properties.TOKEN_HEADER, "Authorization");
         testRunner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Bearer");
+
+        // Configure a default test issuer
+        testRunner.setProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
+        testRunner.setProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
+        testRunner.setProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
     }
 
     @Nested
@@ -397,15 +402,6 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
         @Test
         @DisplayName("Test onStopped lifecycle method")
         void testOnStoppedWithMultipleExecutions() throws Exception {
-            // Initialize and start the processor
-            ProcessorInitializationContext initContext = mock(ProcessorInitializationContext.class);
-            when(initContext.getIdentifier()).thenReturn("test-processor-id");
-            processor.initialize(initContext);
-
-            ProcessContext context = mock(ProcessContext.class);
-            when(context.getProperty(any(PropertyDescriptor.class))).thenReturn(mock(PropertyValue.class));
-            processor.onScheduled(context);
-
             // Create and enqueue some flow files to process
             Map<String, String> attributes = new HashMap<>();
             attributes.put("http.headers.authorization", "Bearer " + VALID_TOKEN);
@@ -437,6 +433,10 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
         void testExtractTokenFromLargeContent() {
             // Configure for content extraction
             testRunner.setProperty(Properties.TOKEN_LOCATION, "FLOW_FILE_CONTENT");
+            // Also need to set issuer config for content extraction
+            testRunner.setProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
+            testRunner.setProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
+            testRunner.setProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
 
             // Create large content with token embedded
             String largeContent = "padding-data-".repeat(1000) +
