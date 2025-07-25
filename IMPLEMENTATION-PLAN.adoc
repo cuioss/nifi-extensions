@@ -29,6 +29,7 @@ Last updated: 2025-07-25
 2. *All processor tests now pass*: Fixed tests for MultiIssuerJWTTokenAuthenticator, Extended, and I18n test classes
 3. *Clean architecture*: Test support module has minimal dependencies and proper documentation
 4. *No production code changes required*: Solution implemented entirely in test code
+5. *Simplified project structure*: Moved `DynamicPropertyTestHelper` to `nifi-cuioss-processors` test directory and removed the `nifi-cuioss-test-support` module (2025-07-25)
 
 == Pre-1.0 Development Rules (TOP PRIORITY)
 
@@ -77,10 +78,10 @@ Create a dedicated test support module (`nifi-cuioss-test-support`) containing a
 
 The solution was simpler than initially planned. Instead of creating custom implementations, we:
 
-1. *Created `nifi-cuioss-test-support` module* with:
-   - `DynamicPropertyTestHelper` utility class providing helper methods
-   - Comprehensive documentation in `doc/testing-dynamic-properties.adoc`
-   - Unit tests demonstrating proper usage
+1. *Created `DynamicPropertyTestHelper` utility class* (initially in `nifi-cuioss-test-support` module, later moved to `nifi-cuioss-processors/src/test`):
+   - Provides helper methods for handling dynamic properties in tests
+   - Includes comprehensive unit tests demonstrating proper usage
+   - Located at: `de.cuioss.nifi.processors.auth.test.DynamicPropertyTestHelper`
 
 2. *Implemented the override pattern* in all test classes:
    ```java
@@ -97,17 +98,19 @@ The solution was simpler than initially planned. Instead of creating custom impl
 3. *Key accomplishments*:
    - All 62 processor tests now pass
    - No changes needed to production code
-   - Minimal test-support module with only essential dependencies (nifi-api, nifi-mock)
-   - Clear documentation and examples for future developers
+   - Test helper class integrated directly into nifi-cuioss-processors test code
+   - Eliminated unnecessary module dependency
+   - Simplified project structure by removing `nifi-cuioss-test-support` module
 
 ==== Tasks
 * *Location*: Test infrastructure
 * *Tasks*:
   - [x] Analyze TestRunner dynamic property handling - COMPLETED 2025-07-25
-  - [x] Implement Option 1: Create test support module - COMPLETED 2025-07-25
+  - [x] Implement Option 1: Create test support module - COMPLETED 2025-07-25 (later simplified by moving to processors module)
   - [x] Document testing approach for dynamic properties - COMPLETED 2025-07-25
   - [x] Update all failing tests to use new approach - COMPLETED 2025-07-25
   - [x] Ensure all unit tests pass - COMPLETED 2025-07-25 (All 62 tests passing)
+  - [x] Simplify structure by moving DynamicPropertyTestHelper to processors module - COMPLETED 2025-07-25
 * *Dependencies*: None
 * *Blocking*: All other development work
 * *Status*: COMPLETED - All processor tests now handle dynamic properties correctly using MockProcessContext override pattern
