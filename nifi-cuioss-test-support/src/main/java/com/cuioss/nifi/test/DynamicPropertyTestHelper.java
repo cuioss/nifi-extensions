@@ -27,35 +27,36 @@ import java.util.Map;
 
 /**
  * Helper class for testing processors with dynamic properties.
- * 
- * This class provides utilities to work around the limitation where TestRunner 
+ *
+ * This class provides utilities to work around the limitation where TestRunner
  * doesn't properly handle dynamic properties in getProperties() method.
  */
+
 public class DynamicPropertyTestHelper {
 
     /**
      * Creates a ProcessContext from a TestRunner that properly includes dynamic properties.
-     * 
+     *
      * @param testRunner The test runner with configured properties
      * @param processor The processor being tested
      * @return A ProcessContext that includes all dynamic properties
      */
     public static ProcessContext createContextWithDynamicProperties(TestRunner testRunner, Processor processor) {
         MockProcessContext context = new MockProcessContext(processor);
-        
+
         // Copy all properties from TestRunner to MockProcessContext
         Map<PropertyDescriptor, String> properties = testRunner.getProcessContext().getProperties();
         for (Map.Entry<PropertyDescriptor, String> entry : properties.entrySet()) {
             context.setProperty(entry.getKey(), entry.getValue());
         }
-        
+
         // The MockProcessContext will now properly return dynamic properties
         return context;
     }
 
     /**
      * Sets multiple dynamic properties with a common prefix.
-     * 
+     *
      * @param testRunner The test runner
      * @param prefix The property prefix (e.g., "issuer.test-issuer.")
      * @param properties Map of property suffixes to values
@@ -69,7 +70,7 @@ public class DynamicPropertyTestHelper {
 
     /**
      * Sets issuer properties for JWT testing.
-     * 
+     *
      * @param testRunner The test runner
      * @param issuerName The issuer name
      * @param issuerProperties Map of issuer properties (without prefix)
@@ -77,24 +78,5 @@ public class DynamicPropertyTestHelper {
     public static void setIssuerProperties(TestRunner testRunner, String issuerName, Map<String, String> issuerProperties) {
         String prefix = "issuer." + issuerName + ".";
         setDynamicProperties(testRunner, prefix, issuerProperties);
-    }
-
-    /**
-     * Example usage for testing JWT processors with multiple issuers.
-     */
-    public static void configureMultipleIssuers(TestRunner testRunner) {
-        // Configure issuer 1
-        Map<String, String> issuer1Props = new HashMap<>();
-        issuer1Props.put("jwks-url", "https://issuer1.example.com/.well-known/jwks.json");
-        issuer1Props.put("issuer", "https://issuer1.example.com");
-        issuer1Props.put("audience", "api1");
-        setIssuerProperties(testRunner, "issuer1", issuer1Props);
-
-        // Configure issuer 2
-        Map<String, String> issuer2Props = new HashMap<>();
-        issuer2Props.put("jwks-url", "https://issuer2.example.com/.well-known/jwks.json");
-        issuer2Props.put("issuer", "https://issuer2.example.com");
-        issuer2Props.put("audience", "api2");
-        setIssuerProperties(testRunner, "issuer2", issuer2Props);
     }
 }
