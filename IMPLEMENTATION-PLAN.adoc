@@ -31,22 +31,31 @@ Last updated: 2025-07-25
 
 === Phase 2: UI Enhancement (P2)
 
+NOTE: Each UI feature requires a corresponding E2E test in `e-2-e-playwright/tests/`. See `e-2-e-playwright/docs/roundtrip-testing.adoc` for implementation guide.
+
 ==== 2.1 Custom UI Components
 * [ ] Create `MultiIssuerJwtAuthenticatorCustomizer.js`
+* [ ] Create E2E test: `02-verify-jwt-authenticator-customizer.spec.js`
 * [ ] Implement JWKS Validation Button
+* [ ] Create E2E test: `03-verify-jwks-validation-button.spec.js`
 * [ ] Add Token Verification Tab
+* [ ] Create E2E test: `04-verify-token-verification-tab.spec.js`
 * [ ] Add Metrics Tab
+* [ ] Create E2E test: `05-verify-metrics-tab.spec.js`
 * [ ] Add Help Tab
+* [ ] Create E2E test: `06-verify-help-tab.spec.js`
 
 ==== 2.2 REST Endpoint
 * [ ] Create `/api/token/verify` endpoint
 * [ ] Implement token verification logic
 * [ ] Add security controls
+* [ ] Create E2E test: `07-verify-token-verification-api.spec.js`
 
 ==== 2.3 JWKS Validation
 * [ ] Add URL validation for JWKS endpoints
 * [ ] Add file existence validation
 * [ ] Implement validation button backend
+* [ ] Create E2E test: `08-verify-jwks-validation-complete.spec.js`
 
 === Phase 3: Observability (P2)
 
