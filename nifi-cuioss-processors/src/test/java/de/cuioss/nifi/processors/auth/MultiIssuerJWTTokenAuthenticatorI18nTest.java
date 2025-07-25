@@ -16,7 +16,9 @@
 package de.cuioss.nifi.processors.auth;
 
 import de.cuioss.tools.logging.CuiLogger;
+import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.util.MockFlowFile;
+import org.apache.nifi.util.MockProcessContext;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,11 +39,26 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
 
     private static final CuiLogger LOGGER = new CuiLogger(MultiIssuerJWTTokenAuthenticatorI18nTest.class);
     private TestRunner testRunner;
+    private MultiIssuerJWTTokenAuthenticator processor;
+    private Map<String, String> dynamicProperties = new HashMap<>();
     private static final String ISSUER_PREFIX = "issuer.";
 
     @BeforeEach
     void setUp() {
-        testRunner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
+        processor = new MultiIssuerJWTTokenAuthenticator() {
+            @Override
+            public void onScheduled(final ProcessContext context) {
+                // Override onScheduled to manually add dynamic properties before calling super
+                MockProcessContext mockContext = (MockProcessContext) context;
+                
+                // Add our tracked dynamic properties
+                dynamicProperties.forEach(mockContext::setProperty);
+                
+                // Now call the original onScheduled with all properties available
+                super.onScheduled(context);
+            }
+        };
+        testRunner = TestRunners.newTestRunner(processor);
 
         // Configure basic properties
         testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
@@ -49,9 +66,14 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
         testRunner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Bearer");
 
         // Configure issuer properties
-        testRunner.setProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
-        testRunner.setProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
-        testRunner.setProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
+        setDynamicProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
+        setDynamicProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
+        setDynamicProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
+    }
+    
+    private void setDynamicProperty(String key, String value) {
+        testRunner.setProperty(key, value);
+        dynamicProperties.put(key, value);
     }
 
     @Test
@@ -168,22 +190,37 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
     @DisplayName("Test internationalized validation error messages")
     void internationalizedValidationErrorMessages() {
         // Given a processor with an issuer that uses HTTP instead of HTTPS
-        testRunner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
-        testRunner.setProperty(Properties.REQUIRE_HTTPS_FOR_JWKS, "true");
-        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
+        // Create a new processor and test runner
+        Map<String, String> localDynamicProperties = new HashMap<>();
+        MultiIssuerJWTTokenAuthenticator newProcessor = new MultiIssuerJWTTokenAuthenticator() {
+            @Override
+            public void onScheduled(final ProcessContext context) {
+                MockProcessContext mockContext = (MockProcessContext) context;
+                localDynamicProperties.forEach(mockContext::setProperty);
+                super.onScheduled(context);
+            }
+        };
+        TestRunner newTestRunner = TestRunners.newTestRunner(newProcessor);
+        newTestRunner.setProperty(Properties.REQUIRE_HTTPS_FOR_JWKS, "true");
+        newTestRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
 
         // When configuring an issuer with HTTP URL
         try {
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "http://test-issuer/.well-known/jwks.json");
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
+            newTestRunner.setProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "http://test-issuer/.well-known/jwks.json");
+            newTestRunner.setProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
+            newTestRunner.setProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
+            
+            // Track dynamic properties
+            localDynamicProperties.put(ISSUER_PREFIX + "test-issuer.jwks-url", "http://test-issuer/.well-known/jwks.json");
+            localDynamicProperties.put(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
+            localDynamicProperties.put(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
 
             // Run the processor to trigger validation
-            testRunner.enqueue("test data");
-            testRunner.run();
+            newTestRunner.enqueue("test data");
+            newTestRunner.run();
 
             // Then the validation error should be internationalized
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(
+            MockFlowFile flowFile = newTestRunner.getFlowFilesForRelationship(
                     Relationships.AUTHENTICATION_FAILED).get(0);
 
             // The processor should still run but validation will fail

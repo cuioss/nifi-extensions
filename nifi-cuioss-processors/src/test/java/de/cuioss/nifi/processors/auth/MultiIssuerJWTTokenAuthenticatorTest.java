@@ -16,8 +16,11 @@
  */
 package de.cuioss.nifi.processors.auth;
 
+import com.cuioss.nifi.test.DynamicPropertyTestHelper;
 import de.cuioss.nifi.processors.auth.JWTPropertyKeys;
+import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.util.MockFlowFile;
+import org.apache.nifi.util.MockProcessContext;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +46,8 @@ import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships
 class MultiIssuerJWTTokenAuthenticatorTest {
 
     private TestRunner testRunner;
+    private MultiIssuerJWTTokenAuthenticator processor;
+    private Map<String, String> dynamicProperties = new HashMap<>();
 
     // Sample JWT tokens for testing
     private static final String VALID_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJpc3MiOiJ0ZXN0LWlzc3VlciJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
@@ -50,7 +55,20 @@ class MultiIssuerJWTTokenAuthenticatorTest {
 
     @BeforeEach
     void setup() {
-        testRunner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
+        processor = new MultiIssuerJWTTokenAuthenticator() {
+            @Override
+            public void onScheduled(final ProcessContext context) {
+                // Override onScheduled to manually add dynamic properties before calling super
+                MockProcessContext mockContext = (MockProcessContext) context;
+                
+                // Add our tracked dynamic properties
+                dynamicProperties.forEach(mockContext::setProperty);
+                
+                // Now call the original onScheduled with all properties available
+                super.onScheduled(context);
+            }
+        };
+        testRunner = TestRunners.newTestRunner(processor);
 
         // Configure basic properties
         testRunner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
@@ -58,9 +76,14 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         testRunner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Bearer");
 
         // Configure issuer properties (using our test constant)
-        testRunner.setProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
-        testRunner.setProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
-        testRunner.setProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
+        setDynamicProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
+        setDynamicProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
+        setDynamicProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
+    }
+    
+    private void setDynamicProperty(String key, String value) {
+        testRunner.setProperty(key, value);
+        dynamicProperties.put(key, value);
     }
 
     @Nested
@@ -173,9 +196,11 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         @DisplayName("Test multiple issuer configuration")
         void multipleIssuerConfiguration() {
             // Add a second issuer configuration
-            testRunner.setProperty(ISSUER_PREFIX + "second-issuer.jwks-url", "https://second-issuer/.well-known/jwks.json");
-            testRunner.setProperty(ISSUER_PREFIX + "second-issuer.issuer", "second-issuer");
-            testRunner.setProperty(ISSUER_PREFIX + "second-issuer.audience", "second-audience");
+            setDynamicProperty(ISSUER_PREFIX + "second-issuer.jwks-url", "https://second-issuer/.well-known/jwks.json");
+            setDynamicProperty(ISSUER_PREFIX + "second-issuer.issuer", "second-issuer");
+            setDynamicProperty(ISSUER_PREFIX + "second-issuer.audience", "second-audience");
+            
+            // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
             Map<String, String> attributes = new HashMap<>();
@@ -305,12 +330,22 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         @Test
         @DisplayName("Test configuration without issuers")
         void configurationWithoutIssuers() {
-            // Create a new test runner without issuer configuration
-            TestRunner newTestRunner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
+            // Create a new processor and test runner without issuer configuration
+            MultiIssuerJWTTokenAuthenticator newProcessor = new MultiIssuerJWTTokenAuthenticator();
+            TestRunner newTestRunner = TestRunners.newTestRunner(newProcessor);
             newTestRunner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
 
             // Set require-valid-token to false to allow running without issuers
             newTestRunner.setProperty(Properties.REQUIRE_VALID_TOKEN, "false");
+            
+            // Initialize processor with MockProcessContext (no issuers)
+            MockProcessContext context = new MockProcessContext(newProcessor);
+            newTestRunner.getProcessContext().getProperties().forEach((descriptor, value) -> {
+                if (value != null) {
+                    context.setProperty(descriptor, value);
+                }
+            });
+            newProcessor.onScheduled(context);
 
             // Create flow file with Authorization header
             Map<String, String> attributes = new HashMap<>();
@@ -335,10 +370,38 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         @Test
         @DisplayName("Test configuration hash changes with issuer properties")
         void configurationHashChangesWithIssuerProperties() {
-            // Setup initial configuration
-            TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
+            // Track dynamic properties for this test
+            Map<String, String> testDynamicProperties = new HashMap<>();
+            
+            // Setup processor with override to handle dynamic properties
+            MultiIssuerJWTTokenAuthenticator hashProcessor = new MultiIssuerJWTTokenAuthenticator() {
+                @Override
+                public void onScheduled(final ProcessContext context) {
+                    // Override onScheduled to manually add dynamic properties before calling super
+                    MockProcessContext mockContext = (MockProcessContext) context;
+                    
+                    // Add our tracked dynamic properties
+                    testDynamicProperties.forEach(mockContext::setProperty);
+                    
+                    // Now call the original onScheduled with all properties available
+                    super.onScheduled(context);
+                }
+            };
+            
+            TestRunner runner = TestRunners.newTestRunner(hashProcessor);
             runner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
+            runner.setProperty(Properties.TOKEN_HEADER, "Authorization");
+            runner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Bearer");
+            
+            // Set complete issuer configuration
             runner.setProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
+            runner.setProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
+            runner.setProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
+            
+            // Track dynamic properties
+            testDynamicProperties.put(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
+            testDynamicProperties.put(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
+            testDynamicProperties.put(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
 
             // Create flow file with Authorization header
             Map<String, String> attributes = new HashMap<>();
@@ -351,6 +414,14 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Change issuer configuration
             runner.setProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://updated-issuer/.well-known/jwks.json");
             runner.setProperty(ISSUER_PREFIX + "new-issuer.jwks-url", "https://new-issuer/.well-known/jwks.json");
+            runner.setProperty(ISSUER_PREFIX + "new-issuer.issuer", "new-issuer");
+            runner.setProperty(ISSUER_PREFIX + "new-issuer.audience", "new-audience");
+            
+            // Update tracked dynamic properties
+            testDynamicProperties.put(ISSUER_PREFIX + "test-issuer.jwks-url", "https://updated-issuer/.well-known/jwks.json");
+            testDynamicProperties.put(ISSUER_PREFIX + "new-issuer.jwks-url", "https://new-issuer/.well-known/jwks.json");
+            testDynamicProperties.put(ISSUER_PREFIX + "new-issuer.issuer", "new-issuer");
+            testDynamicProperties.put(ISSUER_PREFIX + "new-issuer.audience", "new-audience");
 
             // Second run with changed configuration
             runner.enqueue("test data", attributes);
@@ -375,7 +446,9 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         @DisplayName("Test authorization with required scopes")
         void authorizationWithRequiredScopes() {
             // Setup issuer with required scopes
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read,write");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read,write");
+            
+            // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
             Map<String, String> attributes = new HashMap<>();
@@ -401,7 +474,9 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         @DisplayName("Test authorization with required roles")
         void authorizationWithRequiredRoles() {
             // Setup issuer with required roles
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "user,admin");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "user,admin");
+            
+            // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
             Map<String, String> attributes = new HashMap<>();
@@ -427,8 +502,10 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         @DisplayName("Test authorization with case-sensitive matching")
         void authorizationWithCaseSensitiveMatching() {
             // Setup issuer with case-sensitive matching enabled
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "READ,WRITE");
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.CASE_SENSITIVE_MATCHING, "true");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "READ,WRITE");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.CASE_SENSITIVE_MATCHING, "true");
+            
+            // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
             Map<String, String> attributes = new HashMap<>();
@@ -454,8 +531,10 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         @DisplayName("Test authorization with case-insensitive matching")
         void authorizationWithCaseInsensitiveMatching() {
             // Setup issuer with case-insensitive matching (default behavior)
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read,write");
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.CASE_SENSITIVE_MATCHING, "false");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read,write");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.CASE_SENSITIVE_MATCHING, "false");
+            
+            // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
             Map<String, String> attributes = new HashMap<>();
@@ -481,8 +560,10 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         @DisplayName("Test authorization with require-all-scopes flag")
         void authorizationWithRequireAllScopes() {
             // Setup issuer with require-all-scopes enabled
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read,write,admin");
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRE_ALL_SCOPES, "true");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read,write,admin");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRE_ALL_SCOPES, "true");
+            
+            // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
             Map<String, String> attributes = new HashMap<>();
@@ -508,8 +589,10 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         @DisplayName("Test authorization with require-all-roles flag")
         void authorizationWithRequireAllRoles() {
             // Setup issuer with require-all-roles enabled
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "user,admin,moderator");
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRE_ALL_ROLES, "true");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "user,admin,moderator");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRE_ALL_ROLES, "true");
+            
+            // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
             Map<String, String> attributes = new HashMap<>();
@@ -535,8 +618,10 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         @DisplayName("Test that jwt.authorized attribute is properly set in flow files")
         void jwtAuthorizedAttributeSetInFlowFiles() {
             // Setup issuer with authorization requirements
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read");
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "user");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "user");
+            
+            // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
             Map<String, String> attributes = new HashMap<>();
@@ -565,9 +650,11 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         void backwardCompatibilityNoAuthorizationConfig() {
             // Setup issuer without any authorization requirements (backward compatibility)
             // Only set basic required properties
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
+            
+            // Properties are already set and tracked
 
             // Create flow file with Authorization header
             Map<String, String> attributes = new HashMap<>();
@@ -594,8 +681,10 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         @DisplayName("Test authorization with both scopes and roles")
         void authorizationWithBothScopesAndRoles() {
             // Setup issuer with both scopes and roles
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read,write");
-            testRunner.setProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "user,admin");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read,write");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "user,admin");
+            
+            // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
             Map<String, String> attributes = new HashMap<>();
@@ -621,16 +710,18 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         @DisplayName("Test authorization with multiple issuers having different requirements")
         void authorizationWithMultipleIssuersWithDifferentRequirements() {
             // Setup first issuer with scope requirements
-            testRunner.setProperty(ISSUER_PREFIX + "first-issuer.jwks-url", "https://first-issuer/.well-known/jwks.json");
-            testRunner.setProperty(ISSUER_PREFIX + "first-issuer.issuer", "first-issuer");
-            testRunner.setProperty(ISSUER_PREFIX + "first-issuer.audience", "first-audience");
-            testRunner.setProperty(ISSUER_PREFIX + "first-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read");
+            setDynamicProperty(ISSUER_PREFIX + "first-issuer.jwks-url", "https://first-issuer/.well-known/jwks.json");
+            setDynamicProperty(ISSUER_PREFIX + "first-issuer.issuer", "first-issuer");
+            setDynamicProperty(ISSUER_PREFIX + "first-issuer.audience", "first-audience");
+            setDynamicProperty(ISSUER_PREFIX + "first-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read");
 
             // Setup second issuer with role requirements  
-            testRunner.setProperty(ISSUER_PREFIX + "second-issuer.jwks-url", "https://second-issuer/.well-known/jwks.json");
-            testRunner.setProperty(ISSUER_PREFIX + "second-issuer.issuer", "second-issuer");
-            testRunner.setProperty(ISSUER_PREFIX + "second-issuer.audience", "second-audience");
-            testRunner.setProperty(ISSUER_PREFIX + "second-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "admin");
+            setDynamicProperty(ISSUER_PREFIX + "second-issuer.jwks-url", "https://second-issuer/.well-known/jwks.json");
+            setDynamicProperty(ISSUER_PREFIX + "second-issuer.issuer", "second-issuer");
+            setDynamicProperty(ISSUER_PREFIX + "second-issuer.audience", "second-audience");
+            setDynamicProperty(ISSUER_PREFIX + "second-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "admin");
+            
+            // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
             Map<String, String> attributes = new HashMap<>();

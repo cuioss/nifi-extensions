@@ -1,0 +1,151 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.cuioss.nifi.test.example;
+
+import org.apache.nifi.components.PropertyDescriptor;
+import org.apache.nifi.processor.ProcessContext;
+import org.apache.nifi.processor.Processor;
+import org.apache.nifi.processor.ProcessSession;
+import org.apache.nifi.processor.Relationship;
+import org.apache.nifi.processor.exception.ProcessException;
+
+import java.util.Set;
+import org.apache.nifi.util.MockProcessContext;
+import org.apache.nifi.util.TestRunner;
+import org.apache.nifi.util.TestRunners;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Example test demonstrating how to work with dynamic properties in NiFi processor tests.
+ * 
+ * The key insight is that while TestRunner.setProperty() allows setting dynamic properties,
+ * the ProcessContext.getProperties() method from TestRunner may not return them properly.
+ * 
+ * Solution: Use MockProcessContext directly in onScheduled() for testing.
+ */
+public class ExampleDynamicPropertyTest {
+
+    /**
+     * Example of testing a processor with dynamic properties using MockProcessContext directly.
+     */
+    public void testProcessorWithDynamicProperties() {
+        // Assume we have a processor that accepts dynamic properties with prefix "issuer."
+        Processor processor = createYourProcessor();
+        
+        // Create MockProcessContext directly instead of using TestRunner
+        MockProcessContext context = new MockProcessContext(processor);
+        
+        // Set static properties
+        PropertyDescriptor staticProp = new PropertyDescriptor.Builder()
+                .name("static.property")
+                .build();
+        context.setProperty(staticProp, "static-value");
+        
+        // Set dynamic properties - these will be properly returned by getProperties()
+        context.setProperty("issuer.test-issuer.jwks-url", "https://example.com/jwks");
+        context.setProperty("issuer.test-issuer.issuer", "test-issuer");
+        context.setProperty("issuer.test-issuer.audience", "test-audience");
+        
+        // Call onScheduled directly with our MockProcessContext
+        processor.onScheduled(context);
+        
+        // Now the processor's initialization logic that iterates over context.getProperties()
+        // will properly see all dynamic properties
+        
+        // For testing onTrigger, you still use TestRunner
+        TestRunner testRunner = TestRunners.newTestRunner(processor);
+        
+        // Configure the same properties in TestRunner for onTrigger testing
+        testRunner.setProperty(staticProp, "static-value");
+        testRunner.setProperty("issuer.test-issuer.jwks-url", "https://example.com/jwks");
+        testRunner.setProperty("issuer.test-issuer.issuer", "test-issuer");
+        testRunner.setProperty("issuer.test-issuer.audience", "test-audience");
+        
+        // Now you can test onTrigger
+        testRunner.enqueue("test data");
+        testRunner.run();
+        
+        // Assert your expectations
+        testRunner.assertTransferCount("success", 1);
+    }
+
+    /**
+     * Alternative approach: Override the processor's onScheduled for testing.
+     */
+    public void testWithProcessorWrapper() {
+        // Create a test wrapper that captures the configuration
+        TestableProcessor processor = new TestableProcessor();
+        
+        TestRunner testRunner = TestRunners.newTestRunner(processor);
+        
+        // Set dynamic properties
+        testRunner.setProperty("issuer.test-issuer.jwks-url", "https://example.com/jwks");
+        testRunner.setProperty("issuer.test-issuer.issuer", "test-issuer");
+        testRunner.setProperty("issuer.test-issuer.audience", "test-audience");
+        
+        // Run the processor
+        testRunner.enqueue("test data");
+        testRunner.run();
+        
+        // Now you can verify that the processor received the configuration
+        Map<String, String> capturedProps = processor.getCapturedDynamicProperties();
+        assert capturedProps.containsKey("issuer.test-issuer.jwks-url");
+        assert capturedProps.get("issuer.test-issuer.jwks-url").equals("https://example.com/jwks");
+    }
+
+    /**
+     * Helper class that extends your processor to capture dynamic properties for testing.
+     */
+    private static class TestableProcessor extends YourActualProcessor {
+        private Map<String, String> capturedDynamicProperties = new HashMap<>();
+        
+        @Override
+        public void onScheduled(ProcessContext context) {
+            // Capture all properties starting with "issuer."
+            for (Map.Entry<PropertyDescriptor, String> entry : context.getProperties().entrySet()) {
+                if (entry.getKey().getName().startsWith("issuer.")) {
+                    capturedDynamicProperties.put(entry.getKey().getName(), entry.getValue());
+                }
+            }
+            
+            // Call the original onScheduled
+            super.onScheduled(context);
+        }
+        
+        public Map<String, String> getCapturedDynamicProperties() {
+            return capturedDynamicProperties;
+        }
+    }
+
+    // Placeholder methods - replace with actual implementations
+    private Processor createYourProcessor() {
+        // Return your actual processor instance
+        return null;
+    }
+    
+    private static class YourActualProcessor implements Processor {
+        // This would be your actual processor implementation
+        @Override
+        public void onScheduled(ProcessContext context) {
+            // Implementation
+        }
+        
+        // Other required methods...
+    }
+}
