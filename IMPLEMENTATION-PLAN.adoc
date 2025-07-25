@@ -7,370 +7,111 @@
 
 == Overview
 
-This document outlines the implementation plan for completing the NiFi JWT Authenticator based on gaps identified between the specifications and current implementation.
+This document outlines the implementation plan for completing the NiFi JWT Authenticator.
 
 Last updated: 2025-07-25
 
-=== Current Status Summary
+=== Current Status
 
-* ✅ *Phase 0 (Test Infrastructure)*: COMPLETED - All processor tests (62) now pass
-* 🟨 *Phase 1 (Core Functionality)*: PARTIALLY COMPLETED
-  - ✅ Authorization Implementation: COMPLETED
-  - ❌ YAML Configuration Support: REMOVED from scope per user request
-  - ✅ Test Implementation: COMPLETED (all tests written and passing)
-* ❌ *Phase 2 (UI Enhancement)*: NOT STARTED
-* ❌ *Phase 3 (Observability)*: NOT STARTED
-* ❌ *Phase 4 (Advanced Features)*: NOT STARTED
-* ❌ *Phase 5 (Documentation & Polish)*: NOT STARTED
+* ✅ *Phase 0*: Test Infrastructure - COMPLETED
+* ✅ *Phase 1*: Core Functionality - COMPLETED (except YAML support - removed from scope)
+* ❌ *Phase 2*: UI Enhancement - NOT STARTED
+* ❌ *Phase 3*: Observability - NOT STARTED
+* ❌ *Phase 4*: Advanced Features - NOT STARTED
+* ❌ *Phase 5*: Documentation & Polish - NOT STARTED
 
-=== Recent Accomplishments (2025-07-25)
+=== Completed Tasks
 
-1. *Fixed critical test infrastructure issue*: Created `nifi-cuioss-test-support` module to handle dynamic properties in tests
-2. *All processor tests now pass*: Fixed tests for MultiIssuerJWTTokenAuthenticator, Extended, and I18n test classes
-3. *Clean architecture*: Test support module has minimal dependencies and proper documentation
-4. *No production code changes required*: Solution implemented entirely in test code
-5. *Simplified project structure*: Moved `DynamicPropertyTestHelper` to `nifi-cuioss-processors` test directory and removed the `nifi-cuioss-test-support` module (2025-07-25)
+* Test infrastructure fixed (DynamicPropertyTestHelper)
+* Authorization implementation (scope/role validation)
+* Flow file attributes (jwt.scopes, jwt.roles, jwt.authorized)
+* All 62 processor tests passing
 
-== Pre-1.0 Development Rules (TOP PRIORITY)
+== Remaining Tasks
 
-* *Version*: 1.0-SNAPSHOT (pre-1.0)
-* *Rule*: Breaking changes are allowed and encouraged for better API design
-* *Approach*: Fail-secure by default, explicit configuration required
-* *No backward compatibility requirements*: Existing configurations may break
+=== Phase 2: UI Enhancement (P2)
 
-== Completion Steps for Each Task
+==== 2.1 Custom UI Components
+* [ ] Create `MultiIssuerJwtAuthenticatorCustomizer.js`
+* [ ] Implement JWKS Validation Button
+* [ ] Add Token Verification Tab
+* [ ] Add Metrics Tab
+* [ ] Add Help Tab
 
-Each implementation task must pass these three builds before commit:
+==== 2.2 REST Endpoint
+* [ ] Create `/api/token/verify` endpoint
+* [ ] Implement token verification logic
+* [ ] Add security controls
 
-1. *Pre-commit build*: `./mvnw -Ppre-commit clean install -DskipTests`
-2. *Full build with tests*: `./mvnw clean install`
-3. *E2E integration tests*: `./mvnw -B --no-transfer-progress clean verify -pl e-2-e-playwright -Pintegration-tests`
+==== 2.3 JWKS Validation
+* [ ] Add URL validation for JWKS endpoints
+* [ ] Add file existence validation
+* [ ] Implement validation button backend
 
-Commit after each task only if all three builds succeed.
+=== Phase 3: Observability (P2)
 
-== Priority Classifications
+==== 3.1 Metrics Implementation
+* [ ] Create `NifiSecurityEventRegistry` class
+* [ ] Bridge SecurityEventCounter to NiFi metrics
+* [ ] Implement Prometheus formatting
+* [ ] Add metrics endpoints
 
-* *P0 (Blocker)*: Critical issues preventing development/testing
-* *P1 (Critical)*: Core functionality required for basic operation
-* *P2 (High)*: Important features for production readiness
-* *P3 (Medium)*: Enhanced functionality and user experience
-* *P4 (Low)*: Nice-to-have features
+==== 3.2 UI Metrics Display
+* [ ] Display validation success/failure rates
+* [ ] Show issuer-specific metrics
+* [ ] Add real-time updates
 
-== Phase 0: Critical Test Infrastructure Issue (P0 - BLOCKER) [COMPLETED - 2025-07-25]
+==== 3.3 Monitoring Templates
+* [ ] Create JWT validation dashboard
+* [ ] Add issuer-specific panels
+* [ ] Create alert rules
 
-=== 0.1 Fix Unit Test Framework for Dynamic Properties [COMPLETED]
+=== Phase 4: Advanced Features (P3)
 
-==== Problem Description
-* *Issue*: All processor unit tests fail with "At least one issuer configuration must be provided"
-* *Root Cause*: NiFi TestRunner's ProcessContext doesn't properly handle dynamic properties
-* *Impact*: Cannot run unit tests for processors using dynamic properties
-* *Details*:
-  - Dynamic properties set via `testRunner.setProperty(ISSUER_PREFIX + "...")` are not available in `context.getProperties().keySet()`
-  - The `loadUIConfigurations()` method cannot iterate over dynamic properties in test environment
-  - This is NOT a cui-jwt-validation library issue - it's a TestRunner limitation
+==== 4.1 Advanced cui-jwt-validation Integration
+* [ ] Replace direct JWKS loading with JwksLoader
+* [ ] Implement JwksLoaderFactory usage
+* [ ] Add HttpJwksLoaderConfig support
 
-==== Implemented Solution: Override onScheduled Method Pattern
+==== 4.2 Integration Testing
+* [ ] Create Docker Compose setup
+* [ ] Add Keycloak integration
+* [ ] Implement integration test suite
+* [ ] Fix broken link in integration-testing/README.adoc:186
 
-===== Overview
-Create a dedicated test support module (`nifi-cuioss-test-support`) containing a reusable MockProcessContext implementation that properly handles dynamic properties for all processor tests.
+==== 4.3 E2E Test Completion
+* [ ] Implement issuer configuration tests
+* [ ] Add token verification flow tests
+* [ ] Create JWKS validation tests
+* [ ] Add metrics verification tests
 
-===== Final Implementation
+=== Phase 5: Documentation & Polish (P4)
 
-The solution was simpler than initially planned. Instead of creating custom implementations, we:
+==== 5.1 Internationalization
+* [ ] Complete all German translations
+* [ ] Add I18nKeys constants class
+* [ ] Create i18n completeness tests
 
-1. *Created `DynamicPropertyTestHelper` utility class* (initially in `nifi-cuioss-test-support` module, later moved to `nifi-cuioss-processors/src/test`):
-   - Provides helper methods for handling dynamic properties in tests
-   - Includes comprehensive unit tests demonstrating proper usage
-   - Located at: `de.cuioss.nifi.processors.auth.test.DynamicPropertyTestHelper`
+==== 5.2 Integration Patterns
+* [ ] Create API Gateway pattern example
+* [ ] Add service-to-service auth example
+* [ ] Create multi-tenant routing example
 
-2. *Implemented the override pattern* in all test classes:
-   ```java
-   processor = new MultiIssuerJWTTokenAuthenticator() {
-       @Override
-       public void onScheduled(final ProcessContext context) {
-           MockProcessContext mockContext = (MockProcessContext) context;
-           dynamicProperties.forEach(mockContext::setProperty);
-           super.onScheduled(context);
-       }
-   };
-   ```
+==== 5.3 Security Hardening
+* [ ] Add algorithm whitelist configuration
+* [ ] Implement algorithm validation
+* [ ] Add security configuration options
 
-3. *Key accomplishments*:
-   - All 62 processor tests now pass
-   - No changes needed to production code
-   - Test helper class integrated directly into nifi-cuioss-processors test code
-   - Eliminated unnecessary module dependency
-   - Simplified project structure by removing `nifi-cuioss-test-support` module
-
-==== Tasks
-* *Location*: Test infrastructure
-* *Tasks*:
-  - [x] Analyze TestRunner dynamic property handling - COMPLETED 2025-07-25
-  - [x] Implement Option 1: Create test support module - COMPLETED 2025-07-25 (later simplified by moving to processors module)
-  - [x] Document testing approach for dynamic properties - COMPLETED 2025-07-25
-  - [x] Update all failing tests to use new approach - COMPLETED 2025-07-25
-  - [x] Ensure all unit tests pass - COMPLETED 2025-07-25 (All 62 tests passing)
-  - [x] Simplify structure by moving DynamicPropertyTestHelper to processors module - COMPLETED 2025-07-25
-* *Dependencies*: None
-* *Blocking*: All other development work
-* *Status*: COMPLETED - All processor tests now handle dynamic properties correctly using MockProcessContext override pattern
-
-== Phase 1: Core Functionality (P1) [PARTIALLY COMPLETED - 2025-07-25]
-
-=== 1.1 Authorization Implementation [COMPLETED]
-
-==== Scope and Role Checking
-* *Location*: `MultiIssuerJwtAuthenticator.java`
-* *Tasks*:
-  - [x] Add scope validation in `onTrigger()` method
-  - [x] Add role validation in `onTrigger()` method
-  - [x] Create `AuthorizationValidator` utility class
-  - [x] Add per-issuer authorization configuration support
-* *Dependencies*: None
-
-==== Flow File Attributes
-* *Location*: `MultiIssuerJwtAuthenticator.java`
-* *Tasks*:
-  - [x] Add missing attributes: `jwt.scopes`, `jwt.roles`, `jwt.authorized`
-  - [x] Update attribute documentation
-* *Dependencies*: Authorization implementation
-
-=== 1.2 YAML Configuration Support [REMOVED - User Request]
-
-==== ConfigurationManager Enhancement
-* *Location*: `ConfigurationManager.java:169`
-* *Tasks*:
-  - [ ] Implement YAML parsing using SnakeYAML (TODO from line 169) - *REMOVED per user request*
-  - [ ] Add YAML to IssuerConfig conversion - *REMOVED per user request*
-  - [ ] Add tests for YAML configuration - *REMOVED per user request*
-* *Dependencies*: SnakeYAML library - *NOT ADDED per user request*
-* *Note*: YAML support removed from implementation scope per user request on 2025-07-25
-
-=== 1.3 Test Implementation [BLOCKED BY PHASE 0]
-
-==== Unit Tests
-* *Location*: `MultiIssuerJwtAuthenticatorTest.java`
-* *Tasks*:
-  - [x] Implement token validation tests (code written but tests fail)
-  - [x] Add multi-issuer test scenarios (code written but tests fail)
-  - [x] Add error handling tests (code written but tests fail)
-  - [x] Add authorization tests (code written but tests fail)
-* *Dependencies*: Phase 0 - Test Infrastructure Fix
-* *Status*: Implementation complete but all tests fail due to TestRunner dynamic property issue
-
-== Phase 2: UI Enhancement (P2)
-
-=== 2.1 Custom UI Components
-
-==== UI Customizer Implementation
-* *Location*: `META-INF/nifi-processor-customizers/`
-* *Tasks*:
-  - [ ] Create `MultiIssuerJwtAuthenticatorCustomizer.js`
-  - [ ] Implement JWKS Validation Button
-  - [ ] Add Token Verification Tab
-  - [ ] Add Metrics Tab
-  - [ ] Add Help Tab
-* *Dependencies*: Frontend JavaScript knowledge
-
-==== REST Endpoint
-* *Location*: New REST controller
-* *Tasks*:
-  - [ ] Create `/api/token/verify` endpoint
-  - [ ] Implement token verification logic
-  - [ ] Add security controls
-  - [ ] Create response DTOs
-* *Dependencies*: NiFi REST API framework
-
-=== 2.2 Validation Enhancements
-
-==== JWKS Validation
-* *Location*: Configuration UI
-* *Tasks*:
-  - [ ] Add URL validation for JWKS endpoints (TODO from configuration-ui.adoc:249)
-  - [ ] Add file existence validation (TODO from configuration-ui.adoc:256)
-  - [ ] Implement validation button backend
-  - [ ] Add validation result display
-* *Dependencies*: UI Customizer
-
-== Phase 3: Observability (P2)
-
-=== 3.1 Metrics Implementation
-
-==== SecurityEventRegistry
-* *Location*: New package `de.cuioss.nifi.processors.auth.metrics`
-* *Tasks*:
-  - [ ] Create `NifiSecurityEventRegistry` class
-  - [ ] Bridge SecurityEventCounter to NiFi metrics
-  - [ ] Implement Prometheus formatting
-  - [ ] Add metrics endpoints
-* *Dependencies*: cui-jwt-validation metrics
-
-==== UI Metrics Display
-* *Location*: Metrics Tab in UI
-* *Tasks*:
-  - [ ] Display validation success/failure rates
-  - [ ] Show issuer-specific metrics
-  - [ ] Add real-time updates
-  - [ ] Create metric charts
-* *Dependencies*: SecurityEventRegistry, UI Customizer
-
-=== 3.2 Monitoring Templates
-
-==== Grafana Dashboards
-* *Location*: `doc/monitoring/`
-* *Tasks*:
-  - [ ] Create JWT validation dashboard
-  - [ ] Add issuer-specific panels
-  - [ ] Create alert rules
-  - [ ] Document dashboard usage
-* *Dependencies*: Metrics implementation
-
-== Phase 4: Advanced Features (P3)
-
-=== 4.1 Advanced cui-jwt-validation Integration
-
-==== JwksLoader Implementation
-* *Location*: `MultiIssuerJwtAuthenticator.java`
-* *Tasks*:
-  - [ ] Replace direct JWKS loading with JwksLoader
-  - [ ] Implement JwksLoaderFactory usage
-  - [ ] Add HttpJwksLoaderConfig support
-  - [ ] Update configuration handling
-* *Dependencies*: cui-jwt-validation library
-
-=== 4.2 Integration Testing
-
-==== Docker-based Tests
-* *Location*: `integration-testing/`
-* *Tasks*:
-  - [ ] Create Docker Compose setup
-  - [ ] Add Keycloak integration
-  - [ ] Implement integration test suite
-  - [ ] Add CI/CD integration
-  - [ ] Fix broken link to plan.adoc in integration-testing/README.adoc:186
-* *Dependencies*: Docker, Keycloak
-
-=== 4.3 E2E Test Completion
-
-==== Playwright Tests
-* *Location*: `e-2-e-playwright/tests/`
-* *Tasks*:
-  - [ ] Implement issuer configuration tests
-  - [ ] Add token verification flow tests
-  - [ ] Create JWKS validation tests
-  - [ ] Add metrics verification tests
-* *Dependencies*: UI implementation
-
-==== E2E Testing Roadmap (from end-to-end-testing.adoc:254)
-* *Phase 1: Setup and Infrastructure*:
-  - [ ] Set up test environment
-  - [ ] Configure Playwright
-  - [ ] Create basic page objects
-  - [ ] Implement authentication helpers
-* *Phase 2: Basic Test Implementation*:
-  - [ ] Login/logout tests
-  - [ ] Basic navigation tests
-  - [ ] Simple processor configuration tests
-  - [ ] Basic error handling tests
-* *Phase 3: Advanced Test Implementation*:
-  - [ ] Complex processor configuration tests
-  - [ ] Multi-step workflows
-  - [ ] Error recovery scenarios
-  - [ ] Performance testing basics
-* *Phase 4: Maintenance and Expansion*:
-  - [ ] Test maintenance procedures
-  - [ ] Adding new test cases
-  - [ ] Performance optimization
-  - [ ] Integration with CI/CD
-
-== Phase 5: Documentation & Polish (P4)
-
-=== 5.1 Internationalization
-
-==== German Translations
-* *Location*: `Messages_de.properties`
-* *Tasks*:
-  - [ ] Complete all German translations
-  - [ ] Add I18nKeys constants class
-  - [ ] Create i18n completeness tests
-  - [ ] Update documentation
-* *Dependencies*: None
-
-=== 5.2 Integration Patterns
-
-==== Example Flows
-* *Location*: `doc/examples/`
-* *Tasks*:
-  - [ ] Create API Gateway pattern example
-  - [ ] Add service-to-service auth example
-  - [ ] Create multi-tenant routing example
-  - [ ] Add template files
-* *Dependencies*: Core functionality complete
-
-=== 5.3 Security Hardening
-
-==== Algorithm Restrictions
-* *Location*: `MultiIssuerJwtAuthenticator.java`
-* *Tasks*:
-  - [ ] Add algorithm whitelist configuration
-  - [ ] Implement algorithm validation
-  - [ ] Add security configuration options
-  - [ ] Update documentation
-* *Dependencies*: None
-
-=== 5.4 Build Configuration
-
-==== Maven Enforcer Fix
-* *Location*: `nifi-cuioss-nar/pom.xml:31`
-* *Tasks*:
-  - [ ] Investigate and resolve Maven enforcer workaround (FIXME)
-  - [ ] Remove `<enforcer.skip>true</enforcer.skip>` if possible
-  - [ ] Document proper build configuration
-* *Dependencies*: None
+==== 5.4 Build Configuration
+* [ ] Resolve Maven enforcer workaround in nifi-cuioss-nar/pom.xml:31
+* [ ] Remove `<enforcer.skip>true</enforcer.skip>` if possible
 
 == Implementation Order
 
-=== Phase 0 (Blocker - Test Infrastructure)
-* Fix dynamic property handling in tests
-* Ensure all unit tests can run
-
-=== Phase 1 (Core Functionality)
-* Authorization implementation
-* ~~YAML configuration~~ (removed)
-* Basic test coverage
-
-=== Phase 2 (UI Enhancement)
-* Custom UI components
-* REST endpoints
-* Validation features
-
-=== Phase 3 (Observability)
-* Metrics implementation
-* Monitoring setup
-* Dashboard creation
-
-=== Phase 4 (Advanced Features)
-* Advanced library integration
-* Integration testing
-* E2E test completion
-
-=== Phase 5 (Documentation & Polish)
-* Internationalization
-* Integration patterns
-* Security hardening
-* Build configuration fixes
-
-== Risk Mitigation
-
-=== Technical Risks
-1. *NiFi API Limitations*: Research NiFi custom UI capabilities early
-2. *Library Compatibility*: Test cui-jwt-validation advanced features in isolation
-3. *Performance Impact*: Implement metrics collection with minimal overhead
-
-=== Schedule Risks
-1. *Dependencies*: Prioritize core functionality to unblock other phases
-2. *Testing*: Allocate buffer time for test implementation
-3. *Integration*: Plan for potential integration challenges with external systems
+1. Phase 2 (UI Enhancement)
+2. Phase 3 (Observability)
+3. Phase 4 (Advanced Features)
+4. Phase 5 (Documentation & Polish)
 
 == Success Criteria
 
@@ -380,11 +121,3 @@ The solution was simpler than initially planned. Instead of creating custom impl
 4. Metrics collection and monitoring operational
 5. 80%+ test coverage for new code
 6. Documentation complete and up-to-date
-
-== Next Steps
-
-1. Review and approve implementation plan
-2. Set up development environment
-3. Create feature branches for each phase
-4. Begin Phase 1 implementation
-5. Schedule weekly progress reviews
