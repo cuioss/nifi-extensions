@@ -289,7 +289,6 @@
     </dependencyManagement>
 
     <modules>
-        <module>nifi-cuioss-test-support</module>
         <module>nifi-cuioss-processors</module>
         <module>nifi-cuioss-ui</module>
         <module>nifi-cuioss-nar</module>
@@ -398,8 +397,7 @@
         <profile>
             <id>sonar</id>
             <modules>
-                <module>nifi-cuioss-test-support</module>
-                <module>nifi-cuioss-processors</module>
+                        <module>nifi-cuioss-processors</module>
                 <module>nifi-cuioss-ui</module>
                 <module>nifi-cuioss-nar</module>
                 <module>integration-testing</module>
@@ -596,8 +594,7 @@
         <profile>
             <id>release-snapshot</id>
             <modules>
-                <module>nifi-cuioss-test-support</module>
-                <module>nifi-cuioss-processors</module>
+                        <module>nifi-cuioss-processors</module>
                 <module>nifi-cuioss-ui</module>
                 <module>nifi-cuioss-nar</module>
                 <module>integration-testing</module>

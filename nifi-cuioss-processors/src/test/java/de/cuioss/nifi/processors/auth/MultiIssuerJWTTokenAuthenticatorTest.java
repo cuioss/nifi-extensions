@@ -16,7 +16,7 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import com.cuioss.nifi.test.DynamicPropertyTestHelper;
+import de.cuioss.nifi.processors.auth.test.DynamicPropertyTestHelper;
 import de.cuioss.nifi.processors.auth.JWTPropertyKeys;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.util.MockFlowFile;
