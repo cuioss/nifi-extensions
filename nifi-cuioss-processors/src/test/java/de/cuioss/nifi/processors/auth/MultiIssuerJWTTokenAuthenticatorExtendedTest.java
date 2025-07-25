@@ -16,6 +16,10 @@
  */
 package de.cuioss.nifi.processors.auth;
 
+import de.cuioss.jwt.validation.domain.claim.ClaimValue;
+import de.cuioss.jwt.validation.domain.token.AccessTokenContent;
+import de.cuioss.jwt.validation.exception.TokenValidationException;
+import de.cuioss.jwt.validation.security.SecurityEventCounter;
 import de.cuioss.nifi.processors.auth.config.ConfigurationManager;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.components.PropertyValue;
@@ -77,11 +81,11 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
         void testExtractClaimsFullContent() throws Exception {
             // Use reflection to test private method
             Method extractClaimsMethod = MultiIssuerJWTTokenAuthenticator.class
-                    .getDeclaredMethod("extractClaims", de.cuioss.jwt.validation.domain.token.AccessTokenContent.class);
+                    .getDeclaredMethod("extractClaims", AccessTokenContent.class);
             extractClaimsMethod.setAccessible(true);
 
             // Create a mock AccessTokenContent
-            var mockToken = mock(de.cuioss.jwt.validation.domain.token.AccessTokenContent.class);
+            var mockToken = mock(AccessTokenContent.class);
             when(mockToken.getSubject()).thenReturn(Optional.of("test-subject"));
             when(mockToken.getIssuer()).thenReturn("test-issuer");
             when(mockToken.getExpirationTime()).thenReturn(OffsetDateTime.now().plusSeconds(3600));
@@ -90,8 +94,8 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
             when(mockToken.getScopes()).thenReturn(Arrays.asList("scope1", "scope2"));
 
             // Mock claims
-            Map<String, de.cuioss.jwt.validation.domain.claim.ClaimValue> claims = new HashMap<>();
-            var claimValue = mock(de.cuioss.jwt.validation.domain.claim.ClaimValue.class);
+            Map<String, ClaimValue> claims = new HashMap<>();
+            var claimValue = mock(ClaimValue.class);
             when(claimValue.getOriginalString()).thenReturn("claim-value");
             claims.put("custom-claim", claimValue);
             when(mockToken.getClaims()).thenReturn(claims);
@@ -118,11 +122,11 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
         void testExtractClaimsMinimalContent() throws Exception {
             // Use reflection to test private method
             Method extractClaimsMethod = MultiIssuerJWTTokenAuthenticator.class
-                    .getDeclaredMethod("extractClaims", de.cuioss.jwt.validation.domain.token.AccessTokenContent.class);
+                    .getDeclaredMethod("extractClaims", AccessTokenContent.class);
             extractClaimsMethod.setAccessible(true);
 
             // Create a mock AccessTokenContent with minimal data
-            var mockToken = mock(de.cuioss.jwt.validation.domain.token.AccessTokenContent.class);
+            var mockToken = mock(AccessTokenContent.class);
             when(mockToken.getSubject()).thenReturn(Optional.empty());
             when(mockToken.getIssuer()).thenReturn("test-issuer");
             when(mockToken.getExpirationTime()).thenReturn(OffsetDateTime.now().plusSeconds(3600));
@@ -220,7 +224,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
             // Set up a mock security event counter
             Field counterField = MultiIssuerJWTTokenAuthenticator.class.getDeclaredField("securityEventCounter");
             counterField.setAccessible(true);
-            var mockCounter = mock(de.cuioss.jwt.validation.security.SecurityEventCounter.class);
+            var mockCounter = mock(SecurityEventCounter.class);
             counterField.set(processor, mockCounter);
 
             // Use reflection to test private method
@@ -381,7 +385,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
                     () -> validateMethod.invoke(processor, VALID_TOKEN, context));
 
             // Verify the cause is TokenValidationException
-            assertInstanceOf(de.cuioss.jwt.validation.exception.TokenValidationException.class, ex.getCause());
+            assertInstanceOf(TokenValidationException.class, ex.getCause());
             assertTrue(ex.getCause().getMessage().contains("No healthy issuer configuration found"));
         }
     }
@@ -436,8 +440,8 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
             // Create large content with token embedded
             String largeContent = "padding-data-".repeat(1000) +
-                VALID_TOKEN +
-                "-more-padding".repeat(1000);
+                    VALID_TOKEN +
+                    "-more-padding".repeat(1000);
 
             // Enqueue and run
             testRunner.enqueue(largeContent);

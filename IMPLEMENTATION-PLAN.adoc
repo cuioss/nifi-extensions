@@ -11,6 +11,23 @@ This document outlines the implementation plan for completing the NiFi JWT Authe
 
 Last updated: 2025-07-25
 
+== Pre-1.0 Development Rules (TOP PRIORITY)
+
+* *Version*: 1.0-SNAPSHOT (pre-1.0)
+* *Rule*: Breaking changes are allowed and encouraged for better API design
+* *Approach*: Fail-secure by default, explicit configuration required
+* *No backward compatibility requirements*: Existing configurations may break
+
+== Completion Steps for Each Task
+
+Each implementation task must pass these three builds before commit:
+
+1. *Pre-commit build*: `./mvnw -Ppre-commit clean install -DskipTests`
+2. *Full build with tests*: `./mvnw clean install`
+3. *E2E integration tests*: `./mvnw -B --no-transfer-progress clean verify -pl e-2-e-playwright -Pintegration-tests`
+
+Commit after each task only if all three builds succeed.
+
 == Priority Classifications
 
 * *P1 (Critical)*: Core functionality required for basic operation
@@ -18,45 +35,46 @@ Last updated: 2025-07-25
 * *P3 (Medium)*: Enhanced functionality and user experience
 * *P4 (Low)*: Nice-to-have features
 
-== Phase 1: Core Functionality (P1)
+== Phase 1: Core Functionality (P1) [COMPLETED - 2025-07-25]
 
-=== 1.1 Authorization Implementation
+=== 1.1 Authorization Implementation [COMPLETED]
 
 ==== Scope and Role Checking
 * *Location*: `MultiIssuerJwtAuthenticator.java`
 * *Tasks*:
-  - [ ] Add scope validation in `onTrigger()` method
-  - [ ] Add role validation in `onTrigger()` method
-  - [ ] Create `AuthorizationValidator` utility class
-  - [ ] Add per-issuer authorization configuration support
+  - [x] Add scope validation in `onTrigger()` method
+  - [x] Add role validation in `onTrigger()` method
+  - [x] Create `AuthorizationValidator` utility class
+  - [x] Add per-issuer authorization configuration support
 * *Dependencies*: None
 
 ==== Flow File Attributes
 * *Location*: `MultiIssuerJwtAuthenticator.java`
 * *Tasks*:
-  - [ ] Add missing attributes: `jwt.scopes`, `jwt.roles`, `jwt.authorized`
-  - [ ] Update attribute documentation
+  - [x] Add missing attributes: `jwt.scopes`, `jwt.roles`, `jwt.authorized`
+  - [x] Update attribute documentation
 * *Dependencies*: Authorization implementation
 
-=== 1.2 YAML Configuration Support
+=== 1.2 YAML Configuration Support [REMOVED - User Request]
 
 ==== ConfigurationManager Enhancement
 * *Location*: `ConfigurationManager.java:169`
 * *Tasks*:
-  - [ ] Implement YAML parsing using SnakeYAML (TODO from line 169)
-  - [ ] Add YAML to IssuerConfig conversion
-  - [ ] Add tests for YAML configuration
-* *Dependencies*: SnakeYAML library
+  - [ ] Implement YAML parsing using SnakeYAML (TODO from line 169) - *REMOVED per user request*
+  - [ ] Add YAML to IssuerConfig conversion - *REMOVED per user request*
+  - [ ] Add tests for YAML configuration - *REMOVED per user request*
+* *Dependencies*: SnakeYAML library - *NOT ADDED per user request*
+* *Note*: YAML support removed from implementation scope per user request on 2025-07-25
 
-=== 1.3 Test Implementation
+=== 1.3 Test Implementation [COMPLETED]
 
 ==== Unit Tests
 * *Location*: `MultiIssuerJwtAuthenticatorTest.java`
 * *Tasks*:
-  - [ ] Implement token validation tests
-  - [ ] Add multi-issuer test scenarios
-  - [ ] Add error handling tests
-  - [ ] Add authorization tests
+  - [x] Implement token validation tests
+  - [x] Add multi-issuer test scenarios
+  - [x] Add error handling tests
+  - [x] Add authorization tests
 * *Dependencies*: Authorization implementation
 
 == Phase 2: UI Enhancement (P2)

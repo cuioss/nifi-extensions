@@ -17,13 +17,16 @@
 package de.cuioss.nifi.processors.auth;
 
 import de.cuioss.jwt.validation.IssuerConfig;
+import de.cuioss.jwt.validation.ParserConfig;
 import de.cuioss.jwt.validation.TokenValidator;
 import de.cuioss.jwt.validation.domain.token.AccessTokenContent;
 import de.cuioss.jwt.validation.exception.TokenValidationException;
+import de.cuioss.jwt.validation.metrics.TokenValidatorMonitor;
 import de.cuioss.jwt.validation.security.SecurityEventCounter;
 import de.cuioss.nifi.processors.auth.config.ConfigurationManager;
 import de.cuioss.nifi.processors.auth.i18n.I18nResolver;
 import de.cuioss.nifi.processors.auth.i18n.NiFiI18nResolver;
+import de.cuioss.nifi.processors.auth.util.AuthorizationValidator;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -67,6 +70,8 @@ import static de.cuioss.nifi.processors.auth.JWTTranslationKeys.Validation;
         @WritesAttribute(attribute = JWTAttributes.Content.PREFIX + "*", description = "JWT token claims"),
         @WritesAttribute(attribute = JWTAttributes.Token.VALIDATED_AT, description = "Timestamp when the token was validated"),
         @WritesAttribute(attribute = JWTAttributes.Token.AUTHORIZATION_PASSED, description = "Whether the token passed authorization checks"),
+        @WritesAttribute(attribute = JWTAttributes.Authorization.AUTHORIZED, description = "Whether the token is authorized based on scope/role checks"),
+        @WritesAttribute(attribute = JWTAttributes.Authorization.BYPASSED, description = "Whether authorization was bypassed (explicitly configured)"),
         @WritesAttribute(attribute = JWTAttributes.Error.CODE, description = "Error code if token validation failed"),
         @WritesAttribute(attribute = JWTAttributes.Error.REASON, description = "Error reason if token validation failed"),
         @WritesAttribute(attribute = JWTAttributes.Error.CATEGORY, description = "Error category if token validation failed")
@@ -114,6 +119,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     // Configuration cache to avoid recreating objects unnecessarily
     private final Map<String, IssuerConfig> issuerConfigCache = new ConcurrentHashMap<>();
+
+    // Authorization configuration cache
+    private final Map<String, AuthorizationValidator.AuthorizationConfig> authorizationConfigCache = new ConcurrentHashMap<>();
 
     private I18nResolver i18nResolver;
 
@@ -199,6 +207,34 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                                 .required(false)
                                 .dynamic(true)
                                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                                .build();
+                    }
+                    case Issuer.REQUIRED_SCOPES, Issuer.REQUIRED_ROLES -> {
+                        return new PropertyDescriptor.Builder()
+                                .name(propertyDescriptorName)
+                                .displayName(displayName)
+                                .description(i18nResolver.getTranslatedString(
+                                        Issuer.REQUIRED_SCOPES.equals(propertyKey) ? "Required scopes for authorization (comma-separated)" : "Required roles for authorization (comma-separated)",
+                                        propertyKey, issuerName))
+                                .required(false)
+                                .dynamic(true)
+                                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                                .build();
+                    }
+                    case Issuer.REQUIRE_ALL_SCOPES, Issuer.REQUIRE_ALL_ROLES, Issuer.CASE_SENSITIVE_MATCHING, Issuer.BYPASS_AUTHORIZATION -> {
+                        return new PropertyDescriptor.Builder()
+                                .name(propertyDescriptorName)
+                                .displayName(displayName)
+                                .description(i18nResolver.getTranslatedString(
+                                        Issuer.BYPASS_AUTHORIZATION.equals(propertyKey) ?
+                                                "Bypass all authorization checks for this issuer (WARNING: security risk)" :
+                                                "Boolean property for authorization configuration",
+                                        propertyKey, issuerName))
+                                .required(false)
+                                .dynamic(true)
+                                .allowableValues("true", "false")
+                                .defaultValue("false")
+                                .addValidator(StandardValidators.BOOLEAN_VALIDATOR)
                                 .build();
                     }
                     default -> new PropertyDescriptor.Builder()
@@ -306,8 +342,16 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     List<IssuerConfig> issuerConfigs = createIssuerConfigs(context);
 
                     // Create a new TokenValidator with issuer configurations
-                    // The TokenValidator creates a SecurityEventCounter internally
-                    TokenValidator newValidator = new TokenValidator(issuerConfigs.toArray(new IssuerConfig[0]));
+                    // Create default parser configuration
+                    ParserConfig parserConfig = ParserConfig.builder()
+                            .maxTokenSize(context.getProperty(Properties.MAXIMUM_TOKEN_SIZE).asInteger())
+                            .build();
+
+                    // Use the TokenValidator builder pattern
+                    TokenValidator newValidator = TokenValidator.builder()
+                            .parserConfig(parserConfig)
+                            .issuerConfigs(issuerConfigs)
+                            .build();
                     tokenValidator.set(newValidator);
 
                     // Get the SecurityEventCounter for metrics
@@ -320,6 +364,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
                     // Clear the issuer Config cache to ensure we don't use stale configurations
                     issuerConfigCache.clear();
+                    authorizationConfigCache.clear();
                 }
             }
         }
@@ -351,6 +396,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         // Clear the issuer Config cache to ensure we don't use stale configurations
         // during the transition period
         issuerConfigCache.clear();
+        authorizationConfigCache.clear();
     }
 
     /**
@@ -527,6 +573,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             if (!currentIssuerNames.contains(cachedIssuerName)) {
                 LOGGER.info(AuthLogMessages.INFO.REMOVING_ISSUER_CONFIG.format(cachedIssuerName));
                 issuerConfigCache.remove(cachedIssuerName);
+                authorizationConfigCache.remove(cachedIssuerName);
             }
         }
     }
@@ -554,6 +601,12 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             IssuerConfig issuerConfig = getOrCreateIssuerConfig(issuerName, properties, context);
             if (issuerConfig != null) {
                 issuerConfigs.add(issuerConfig);
+
+                // Also create and cache authorization configuration
+                AuthorizationValidator.AuthorizationConfig authConfig = createAuthorizationConfig(issuerName, properties);
+                if (authConfig != null) {
+                    authorizationConfigCache.put(issuerName, authConfig);
+                }
             }
         }
 
@@ -857,8 +910,18 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             // Validate token using the TokenValidator - will throw TokenValidationException if invalid
             AccessTokenContent accessToken = validateToken(token, context);
 
+            // Perform authorization check
+            AuthorizationCheckResult authResult = performAuthorizationCheckWithDetails(accessToken);
+
             // Token is valid, add claims as attributes
             Map<String, String> attributes = extractClaims(accessToken);
+
+            // Add authorization result
+            attributes.put(JWTAttributes.Authorization.AUTHORIZED, String.valueOf(authResult.isAuthorized()));
+            if (authResult.isBypassed()) {
+                attributes.put(JWTAttributes.Authorization.BYPASSED, "true");
+            }
+
             flowFile = session.putAllAttributes(flowFile, attributes);
 
             // Transfer to success relationship
@@ -968,7 +1031,6 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         // Add validation metadata
         claims.put(JWTAttributes.Token.VALIDATED_AT, Instant.now().toString());
-        claims.put(JWTAttributes.Token.AUTHORIZATION_PASSED, "true");
 
         // Add token identity information
         claims.put(JWTAttributes.Token.SUBJECT, token.getSubject().orElse(""));
@@ -1001,6 +1063,171 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         });
 
         return claims;
+    }
+
+    /**
+     * Creates authorization configuration from issuer properties.
+     * BREAKING CHANGE: Now requires explicit authorization configuration or bypass.
+     *
+     * @param issuerName The name of the issuer
+     * @param properties The issuer properties
+     * @return The authorization configuration, or null if bypass is explicitly set
+     */
+    private AuthorizationValidator.AuthorizationConfig createAuthorizationConfig(String issuerName, Map<String, String> properties) {
+        // Check if bypass authorization is explicitly set
+        boolean bypassAuthorization = Boolean.parseBoolean(properties.getOrDefault(Issuer.BYPASS_AUTHORIZATION, "false"));
+
+        if (bypassAuthorization) {
+            LOGGER.warn(AuthLogMessages.WARN.AUTHORIZATION_BYPASS_ENABLED.format(issuerName));
+            return null;
+        }
+
+        // Check if any authorization properties are set
+        String requiredScopes = properties.get(Issuer.REQUIRED_SCOPES);
+        String requiredRoles = properties.get(Issuer.REQUIRED_ROLES);
+
+        if ((requiredScopes == null || requiredScopes.isEmpty()) &&
+                (requiredRoles == null || requiredRoles.isEmpty())) {
+            // BREAKING CHANGE: No authorization configuration is now considered a security error
+            LOGGER.error(AuthLogMessages.ERROR.NO_AUTHORIZATION_CONFIG.format(issuerName));
+            // Create a configuration that will deny all access
+            return AuthorizationValidator.AuthorizationConfig.builder()
+                    .requiredScopes(Set.of("__DENY_ALL__"))  // Impossible scope to match
+                    .requireAllScopes(true)
+                    .build();
+        }
+
+        // Parse comma-separated values
+        Set<String> scopeSet = null;
+        if (requiredScopes != null && !requiredScopes.isEmpty()) {
+            scopeSet = new HashSet<>(Arrays.asList(requiredScopes.split(",")));
+            scopeSet.removeIf(String::isEmpty);
+        }
+
+        Set<String> roleSet = null;
+        if (requiredRoles != null && !requiredRoles.isEmpty()) {
+            roleSet = new HashSet<>(Arrays.asList(requiredRoles.split(",")));
+            roleSet.removeIf(String::isEmpty);
+        }
+
+        // Get boolean properties
+        boolean requireAllScopes = Boolean.parseBoolean(properties.getOrDefault(Issuer.REQUIRE_ALL_SCOPES, "false"));
+        boolean requireAllRoles = Boolean.parseBoolean(properties.getOrDefault(Issuer.REQUIRE_ALL_ROLES, "false"));
+        boolean caseSensitive = Boolean.parseBoolean(properties.getOrDefault(Issuer.CASE_SENSITIVE_MATCHING, "true"));
+
+        return AuthorizationValidator.AuthorizationConfig.builder()
+                .requiredScopes(scopeSet)
+                .requiredRoles(roleSet)
+                .requireAllScopes(requireAllScopes)
+                .requireAllRoles(requireAllRoles)
+                .caseSensitive(caseSensitive)
+                .build();
+    }
+
+    /**
+     * Result of authorization check including bypass status.
+     */
+    private static class AuthorizationCheckResult {
+        private final boolean authorized;
+        private final boolean bypassed;
+
+        public AuthorizationCheckResult(boolean authorized, boolean bypassed) {
+            this.authorized = authorized;
+            this.bypassed = bypassed;
+        }
+
+        public boolean isAuthorized() {
+            return authorized;
+        }
+
+        public boolean isBypassed() {
+            return bypassed;
+        }
+    }
+
+    /**
+     * Performs authorization check for the validated token with detailed result.
+     * BREAKING CHANGE: Now fails secure - denies access if no authorization configuration exists.
+     *
+     * @param accessToken The validated access token
+     * @return AuthorizationCheckResult with authorization status and bypass flag
+     */
+    private AuthorizationCheckResult performAuthorizationCheckWithDetails(AccessTokenContent accessToken) {
+        boolean isAuthorized = performAuthorizationCheck(accessToken);
+        // Check if this was a bypass by checking if auth config is null for this issuer
+        String tokenIssuer = accessToken.getIssuer();
+        boolean bypassed = false;
+
+        for (Map.Entry<String, IssuerConfig> issuerEntry : issuerConfigCache.entrySet()) {
+            String issuerName = issuerEntry.getKey();
+            IssuerConfig issuerConfig = issuerEntry.getValue();
+
+            if (issuerConfig != null && tokenIssuer.equals(issuerConfig.getIssuerIdentifier())) {
+                AuthorizationValidator.AuthorizationConfig authConfig = authorizationConfigCache.get(issuerName);
+                if (authConfig == null && isAuthorized) {
+                    bypassed = true;
+                }
+                break;
+            }
+        }
+
+        return new AuthorizationCheckResult(isAuthorized, bypassed);
+    }
+
+    /**
+     * Performs authorization check for the validated token.
+     * BREAKING CHANGE: Now fails secure - denies access if no authorization configuration exists.
+     *
+     * @param accessToken The validated access token
+     * @return true if authorized, false otherwise
+     */
+    private boolean performAuthorizationCheck(AccessTokenContent accessToken) {
+        // Get the issuer from the token
+        String tokenIssuer = accessToken.getIssuer();
+
+        // Find the matching authorization configuration
+        // First try to find exact match by issuer value
+        AuthorizationValidator.AuthorizationConfig authConfig = null;
+        boolean issuerFound = false;
+
+        // Look through all issuer configurations to find a match
+        for (Map.Entry<String, IssuerConfig> issuerEntry : issuerConfigCache.entrySet()) {
+            String issuerName = issuerEntry.getKey();
+            IssuerConfig issuerConfig = issuerEntry.getValue();
+
+            // Check if this issuer configuration matches the token issuer
+            if (issuerConfig != null && tokenIssuer.equals(issuerConfig.getIssuerIdentifier())) {
+                // Found matching issuer
+                issuerFound = true;
+                authConfig = authorizationConfigCache.get(issuerName);
+                break;
+            }
+        }
+
+        // BREAKING CHANGE: If no matching issuer found, deny access (fail-secure)
+        if (!issuerFound) {
+            LOGGER.error(AuthLogMessages.ERROR.NO_ISSUER_CONFIG_FOR_TOKEN.format(tokenIssuer));
+            return false;
+        }
+
+        // If authorization config is null, it means bypass was explicitly set
+        if (authConfig == null) {
+            LOGGER.info(AuthLogMessages.INFO.AUTHORIZATION_BYPASSED.format(tokenIssuer));
+            return true;
+        }
+
+        // Perform authorization validation
+        AuthorizationValidator.AuthorizationResult result = AuthorizationValidator.validate(accessToken, authConfig);
+
+        if (!result.isAuthorized()) {
+            LOGGER.warn(AuthLogMessages.WARN.AUTHORIZATION_FAILED.format(
+                    accessToken.getSubject().orElse("unknown"), tokenIssuer, result.getReason()));
+        } else {
+            LOGGER.debug(AuthLogMessages.INFO.AUTHORIZATION_SUCCESSFUL.format(
+                    accessToken.getSubject().orElse("unknown"), tokenIssuer));
+        }
+
+        return result.isAuthorized();
     }
 
     /**
