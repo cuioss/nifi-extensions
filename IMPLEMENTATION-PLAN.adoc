@@ -30,12 +30,43 @@ Commit after each task only if all three builds succeed.
 
 == Priority Classifications
 
+* *P0 (Blocker)*: Critical issues preventing development/testing
 * *P1 (Critical)*: Core functionality required for basic operation
 * *P2 (High)*: Important features for production readiness
 * *P3 (Medium)*: Enhanced functionality and user experience
 * *P4 (Low)*: Nice-to-have features
 
-== Phase 1: Core Functionality (P1) [COMPLETED - 2025-07-25]
+== Phase 0: Critical Test Infrastructure Issue (P0 - BLOCKER)
+
+=== 0.1 Fix Unit Test Framework for Dynamic Properties [HIGH PRIORITY]
+
+==== Problem Description
+* *Issue*: All processor unit tests fail with "At least one issuer configuration must be provided"
+* *Root Cause*: NiFi TestRunner's ProcessContext doesn't properly handle dynamic properties
+* *Impact*: Cannot run unit tests for processors using dynamic properties
+* *Details*:
+  - Dynamic properties set via `testRunner.setProperty(ISSUER_PREFIX + "...")` are not available in `context.getProperties().keySet()`
+  - The `loadUIConfigurations()` method cannot iterate over dynamic properties in test environment
+  - This is NOT a cui-jwt-validation library issue - it's a TestRunner limitation
+
+==== Proposed Solutions
+* *Option 1*: Create MockProcessContext that properly returns dynamic properties
+* *Option 2*: Refactor property loading to support test environment
+* *Option 3*: Create integration test approach bypassing TestRunner
+* *Option 4*: Inject configurations directly for testing
+
+==== Tasks
+* *Location*: Test infrastructure
+* *Tasks*:
+  - [ ] Analyze TestRunner dynamic property handling
+  - [ ] Implement chosen solution for test framework
+  - [ ] Update all failing tests to use new approach
+  - [ ] Ensure all unit tests pass
+  - [ ] Document testing approach for dynamic properties
+* *Dependencies*: None
+* *Blocking*: All other development work
+
+== Phase 1: Core Functionality (P1) [PARTIALLY COMPLETED - 2025-07-25]
 
 === 1.1 Authorization Implementation [COMPLETED]
 
@@ -66,16 +97,17 @@ Commit after each task only if all three builds succeed.
 * *Dependencies*: SnakeYAML library - *NOT ADDED per user request*
 * *Note*: YAML support removed from implementation scope per user request on 2025-07-25
 
-=== 1.3 Test Implementation [COMPLETED]
+=== 1.3 Test Implementation [BLOCKED BY PHASE 0]
 
 ==== Unit Tests
 * *Location*: `MultiIssuerJwtAuthenticatorTest.java`
 * *Tasks*:
-  - [x] Implement token validation tests
-  - [x] Add multi-issuer test scenarios
-  - [x] Add error handling tests
-  - [x] Add authorization tests
-* *Dependencies*: Authorization implementation
+  - [x] Implement token validation tests (code written but tests fail)
+  - [x] Add multi-issuer test scenarios (code written but tests fail)
+  - [x] Add error handling tests (code written but tests fail)
+  - [x] Add authorization tests (code written but tests fail)
+* *Dependencies*: Phase 0 - Test Infrastructure Fix
+* *Status*: Implementation complete but all tests fail due to TestRunner dynamic property issue
 
 == Phase 2: UI Enhancement (P2)
 
@@ -249,9 +281,13 @@ Commit after each task only if all three builds succeed.
 
 == Implementation Order
 
+=== Phase 0 (Blocker - Test Infrastructure)
+* Fix dynamic property handling in tests
+* Ensure all unit tests can run
+
 === Phase 1 (Core Functionality)
 * Authorization implementation
-* YAML configuration
+* ~~YAML configuration~~ (removed)
 * Basic test coverage
 
 === Phase 2 (UI Enhancement)
