@@ -65,6 +65,11 @@ public final class JWTAttributes {
          * Whether the token passed authorization checks.
          */
         public static final String AUTHORIZATION_PASSED = "jwt.authorization.passed";
+
+        /**
+         * Whether a JWT token is present in the request.
+         */
+        public static final String PRESENT = "jwt.present";
     }
 
     /**

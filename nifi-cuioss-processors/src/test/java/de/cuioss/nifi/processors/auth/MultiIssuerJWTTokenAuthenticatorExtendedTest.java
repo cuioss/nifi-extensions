@@ -384,9 +384,9 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
             InvocationTargetException ex = assertThrows(InvocationTargetException.class,
                     () -> validateMethod.invoke(processor, VALID_TOKEN, context));
 
-            // Verify the cause is TokenValidationException
-            assertInstanceOf(TokenValidationException.class, ex.getCause());
-            assertTrue(ex.getCause().getMessage().contains("No healthy issuer configuration found"));
+            // Verify the cause is IllegalStateException since no TokenValidator is available
+            assertInstanceOf(IllegalStateException.class, ex.getCause());
+            assertTrue(ex.getCause().getMessage().contains("No TokenValidator available"));
         }
     }
 

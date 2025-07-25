@@ -198,8 +198,9 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         }
 
         @Test
-        @DisplayName("Test failure when no token is found")
-        void failureWhenNoTokenFound() {
+        @DisplayName("Test failure when no token is found with require-valid-token=true (default)")
+        void failureWhenNoTokenFoundWithRequireValidTokenTrue() {
+            // Default is require-valid-token=true
             // Create flow file without Authorization header
             testRunner.enqueue("test data");
 
@@ -207,6 +208,57 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.run();
 
             // Verify results
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            // Get the output flow file
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+
+            // Verify error attributes
+            flowFile.assertAttributeExists("jwt.error.reason");
+            flowFile.assertAttributeExists("jwt.error.code");
+        }
+
+        @Test
+        @DisplayName("Test success when no token is found with require-valid-token=false")
+        void successWhenNoTokenFoundWithRequireValidTokenFalse() {
+            // Set require-valid-token to false
+            testRunner.setProperty(Properties.REQUIRE_VALID_TOKEN, "false");
+
+            // Create flow file without Authorization header
+            testRunner.enqueue("test data");
+
+            // Run the processor
+            testRunner.run();
+
+            // Verify results - should route to SUCCESS
+            testRunner.assertTransferCount(Relationships.SUCCESS, 1);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 0);
+
+            // Get the output flow file
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).get(0);
+
+            // Verify attributes
+            flowFile.assertAttributeEquals("jwt.present", "false");
+            flowFile.assertAttributeEquals("jwt.authorized", "false");
+            flowFile.assertAttributeEquals("jwt.error.reason", "No token provided");
+        }
+
+        @Test
+        @DisplayName("Test failure when invalid token is found even with require-valid-token=false")
+        void failureWhenInvalidTokenFoundWithRequireValidTokenFalse() {
+            // Set require-valid-token to false
+            testRunner.setProperty(Properties.REQUIRE_VALID_TOKEN, "false");
+
+            // Create flow file with invalid token
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Bearer " + INVALID_TOKEN);
+            testRunner.enqueue("test data", attributes);
+
+            // Run the processor
+            testRunner.run();
+
+            // Verify results - should still route to AUTHENTICATION_FAILED for invalid tokens
             testRunner.assertTransferCount(Relationships.SUCCESS, 0);
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 

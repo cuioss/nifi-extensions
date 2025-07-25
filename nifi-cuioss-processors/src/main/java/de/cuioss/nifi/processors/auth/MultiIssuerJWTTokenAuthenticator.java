@@ -69,6 +69,7 @@ import static de.cuioss.nifi.processors.auth.JWTTranslationKeys.Validation;
 @WritesAttributes({
         @WritesAttribute(attribute = JWTAttributes.Content.PREFIX + "*", description = "JWT token claims"),
         @WritesAttribute(attribute = JWTAttributes.Token.VALIDATED_AT, description = "Timestamp when the token was validated"),
+        @WritesAttribute(attribute = JWTAttributes.Token.PRESENT, description = "Whether a JWT token is present in the request"),
         @WritesAttribute(attribute = JWTAttributes.Token.AUTHORIZATION_PASSED, description = "Whether the token passed authorization checks"),
         @WritesAttribute(attribute = JWTAttributes.Authorization.AUTHORIZED, description = "Whether the token is authorized based on scope/role checks"),
         @WritesAttribute(attribute = JWTAttributes.Authorization.BYPASSED, description = "Whether authorization was bypassed (explicitly configured)"),
@@ -340,6 +341,21 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
                     // Create issuer configurations
                     List<IssuerConfig> issuerConfigs = createIssuerConfigs(context);
+
+                    // Check if we have any issuer configurations
+                    if (issuerConfigs.isEmpty()) {
+                        // If no issuer configurations and require-valid-token is false, we can continue without a validator
+                        boolean requireValidToken = context.getProperty(Properties.REQUIRE_VALID_TOKEN).asBoolean();
+                        if (!requireValidToken) {
+                            LOGGER.warn("No issuer configurations found, but require-valid-token is false. TokenValidator will not be initialized.");
+                            tokenValidator.set(null);
+                            securityEventCounter = null;
+                            configurationHash.set(currentConfigHash);
+                            return null;
+                        } else {
+                            throw new IllegalArgumentException("At least one issuer configuration must be provided when require-valid-token is true");
+                        }
+                    }
 
                     // Create a new TokenValidator with issuer configurations
                     // Create default parser configuration
@@ -867,17 +883,35 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     extractTokenFromHeader(flowFile, "Authorization");
             };
 
-            // If no token found, log warning and route to failure
+            // If no token found, check if valid token is required
             if (token == null || token.isEmpty()) {
-                LOGGER.warn("No token found in the specified location: %s", tokenLocation);
-                handleError(
-                        session,
-                        flowFile,
-                        "AUTH-001",
-                        i18nResolver.getTranslatedString(JWTTranslationKeys.Error.NO_TOKEN_FOUND, tokenLocation),
-                        "EXTRACTION_ERROR"
-                );
-                return;
+                boolean requireValidToken = context.getProperty(Properties.REQUIRE_VALID_TOKEN).asBoolean();
+
+                if (!requireValidToken) {
+                    // If valid token is not required, route to success
+                    LOGGER.info("No token found but valid token not required, routing to success");
+
+                    // Set attributes to indicate no token was present
+                    Map<String, String> attributes = new HashMap<>();
+                    attributes.put(JWTAttributes.Error.REASON, "No token provided");
+                    attributes.put(JWTAttributes.Token.PRESENT, "false");
+                    attributes.put(JWTAttributes.Authorization.AUTHORIZED, "false");
+
+                    flowFile = session.putAllAttributes(flowFile, attributes);
+                    session.transfer(flowFile, Relationships.SUCCESS);
+                    return;
+                } else {
+                    // If valid token is required, route to failure
+                    LOGGER.warn("No token found in the specified location: %s", tokenLocation);
+                    handleError(
+                            session,
+                            flowFile,
+                            "AUTH-001",
+                            i18nResolver.getTranslatedString(JWTTranslationKeys.Error.NO_TOKEN_FOUND, tokenLocation),
+                            "EXTRACTION_ERROR"
+                    );
+                    return;
+                }
             }
 
             // Check token size limits
@@ -915,6 +949,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
             // Token is valid, add claims as attributes
             Map<String, String> attributes = extractClaims(accessToken);
+
+            // Add token presence indicator
+            attributes.put(JWTAttributes.Token.PRESENT, "true");
 
             // Add authorization result
             attributes.put(JWTAttributes.Authorization.AUTHORIZED, String.valueOf(authResult.isAuthorized()));
@@ -1016,6 +1053,11 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private AccessTokenContent validateToken(String tokenString, ProcessContext context) throws TokenValidationException {
         // Get the TokenValidator
         TokenValidator validator = getTokenValidator(context);
+        
+        if (validator == null) {
+            throw new IllegalStateException("No TokenValidator available - no issuer configurations provided");
+        }
+        
         return validator.createAccessToken(tokenString);
     }
 
