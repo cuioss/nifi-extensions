@@ -18,12 +18,12 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     // Make sure we're logged in before each test
     test.beforeEach(async ({ page }, testInfo) => {
         try {
+            // Setup error detection before login to catch any potential errors
+            await setupStrictErrorDetection(page, testInfo, false);
+
             // Login first before going to JWT UI
             const authService = new AuthService(page);
             await authService.ensureReady();
-
-            // Setup error detection after login
-            await setupStrictErrorDetection(page, testInfo, false);
 
             // Skip critical error detection for this test since we navigate directly to JWT UI
             // await checkCriticalErrors(page, testInfo);

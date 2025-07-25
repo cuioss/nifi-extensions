@@ -77,8 +77,7 @@
             const tabNavItem = document.createElement('div');
             tabNavItem.className = 'tab-nav-item';
             // Use i18n key if available, otherwise format the ID
-            const i18n = getI18n();
-            const tabLabel = i18n.getProperty(id) || id.charAt(0).toUpperCase() + id.slice(1).replace(/([A-Z])/g, ' $1');
+            const tabLabel = getI18n().getProperty(id) || id.charAt(0).toUpperCase() + id.slice(1).replace(/([A-Z])/g, ' $1');
             tabNavItem.textContent = tabLabel;
             tabNavItem.setAttribute('data-tab', id);
             tabNavigation.appendChild(tabNavItem);
