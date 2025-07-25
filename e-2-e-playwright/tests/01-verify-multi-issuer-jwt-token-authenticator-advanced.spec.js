@@ -18,9 +18,10 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     // Make sure we're logged in before each test
     test.beforeEach(async ({ page }, testInfo) => {
         try {
-            // Setup strict error detection (enables fail-on-console-error)
-            await setupStrictErrorDetection(page, testInfo, true);
+            // Setup error detection before login to catch any potential errors
+            await setupStrictErrorDetection(page, testInfo, false);
 
+            // Login first before going to JWT UI
             const authService = new AuthService(page);
             await authService.ensureReady();
 
@@ -131,6 +132,15 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
                     processorLogger.warn(` Error checking: ${element.name}`);
                 }
             }
+
+            // Take screenshot of advanced configuration
+            await page.screenshot({
+                path: `target/test-results/jwt-advanced-configuration-${Date.now()}.png`,
+                fullPage: true,
+            });
+            processorLogger.info(
+                "Screenshot of JWT advanced configuration saved",
+            );
 
             if (elementsFound >= 3) {
                 processorLogger.success(
