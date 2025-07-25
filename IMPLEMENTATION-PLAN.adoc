@@ -11,6 +11,25 @@ This document outlines the implementation plan for completing the NiFi JWT Authe
 
 Last updated: 2025-07-25
 
+=== Current Status Summary
+
+* ✅ *Phase 0 (Test Infrastructure)*: COMPLETED - All processor tests (62) now pass
+* 🟨 *Phase 1 (Core Functionality)*: PARTIALLY COMPLETED
+  - ✅ Authorization Implementation: COMPLETED
+  - ❌ YAML Configuration Support: REMOVED from scope per user request
+  - ✅ Test Implementation: COMPLETED (all tests written and passing)
+* ❌ *Phase 2 (UI Enhancement)*: NOT STARTED
+* ❌ *Phase 3 (Observability)*: NOT STARTED
+* ❌ *Phase 4 (Advanced Features)*: NOT STARTED
+* ❌ *Phase 5 (Documentation & Polish)*: NOT STARTED
+
+=== Recent Accomplishments (2025-07-25)
+
+1. *Fixed critical test infrastructure issue*: Created `nifi-cuioss-test-support` module to handle dynamic properties in tests
+2. *All processor tests now pass*: Fixed tests for MultiIssuerJWTTokenAuthenticator, Extended, and I18n test classes
+3. *Clean architecture*: Test support module has minimal dependencies and proper documentation
+4. *No production code changes required*: Solution implemented entirely in test code
+
 == Pre-1.0 Development Rules (TOP PRIORITY)
 
 * *Version*: 1.0-SNAPSHOT (pre-1.0)
@@ -36,9 +55,9 @@ Commit after each task only if all three builds succeed.
 * *P3 (Medium)*: Enhanced functionality and user experience
 * *P4 (Low)*: Nice-to-have features
 
-== Phase 0: Critical Test Infrastructure Issue (P0 - BLOCKER)
+== Phase 0: Critical Test Infrastructure Issue (P0 - BLOCKER) [COMPLETED - 2025-07-25]
 
-=== 0.1 Fix Unit Test Framework for Dynamic Properties [HIGH PRIORITY]
+=== 0.1 Fix Unit Test Framework for Dynamic Properties [COMPLETED]
 
 ==== Problem Description
 * *Issue*: All processor unit tests fail with "At least one issuer configuration must be provided"
@@ -49,96 +68,37 @@ Commit after each task only if all three builds succeed.
   - The `loadUIConfigurations()` method cannot iterate over dynamic properties in test environment
   - This is NOT a cui-jwt-validation library issue - it's a TestRunner limitation
 
-==== Proposed Solutions
-* *Option 1*: Create MockProcessContext that properly returns dynamic properties [SELECTED FOR IMPLEMENTATION]
-* *Option 2*: Refactor property loading to support test environment
-* *Option 3*: Create integration test approach bypassing TestRunner
-* *Option 4*: Inject configurations directly for testing
-
-==== Selected Solution: Option 1 - Create Reusable MockProcessContext Module
+==== Implemented Solution: Override onScheduled Method Pattern
 
 ===== Overview
 Create a dedicated test support module (`nifi-cuioss-test-support`) containing a reusable MockProcessContext implementation that properly handles dynamic properties for all processor tests.
 
-===== Module Structure
-```
-nifi-cuioss-test-support/
-├── pom.xml
-└── src/
-    ├── main/
-    │   └── java/
-    │       └── com/
-    │           └── cuioss/
-    │               └── nifi/
-    │                   └── test/
-    │                       ├── MockProcessContext.java
-    │                       ├── MockPropertyValue.java
-    │                       └── ProcessContextBuilder.java
-    └── test/
-        └── java/
-            └── com/
-                └── cuioss/
-                    └── nifi/
-                        └── test/
-                            └── MockProcessContextTest.java
-```
+===== Final Implementation
 
-===== Core Components
+The solution was simpler than initially planned. Instead of creating custom implementations, we:
 
-1. *MockProcessContext*:
-   - Implements Apache NiFi's ProcessContext interface
-   - Stores static and dynamic properties in separate maps
-   - Handles property retrieval with proper PropertyValue wrapping
-   - Supports expression language evaluation
-   - Thread-safe for concurrent testing
+1. *Created `nifi-cuioss-test-support` module* with:
+   - `DynamicPropertyTestHelper` utility class providing helper methods
+   - Comprehensive documentation in `doc/testing-dynamic-properties.adoc`
+   - Unit tests demonstrating proper usage
 
-2. *MockPropertyValue*:
-   - Implements PropertyValue interface
-   - Handles type conversions (String, Integer, Long, Boolean, etc.)
-   - Supports expression language evaluation
-   - Provides default value handling
+2. *Implemented the override pattern* in all test classes:
+   ```java
+   processor = new MultiIssuerJWTTokenAuthenticator() {
+       @Override
+       public void onScheduled(final ProcessContext context) {
+           MockProcessContext mockContext = (MockProcessContext) context;
+           dynamicProperties.forEach(mockContext::setProperty);
+           super.onScheduled(context);
+       }
+   };
+   ```
 
-3. *ProcessContextBuilder*:
-   - Fluent builder for easy test setup
-   - Add static properties with descriptors
-   - Add dynamic properties with custom prefixes
-   - Configure expression language support
-   - Set component ID and name
-
-===== Key Features
-* Full support for dynamic properties with prefix-based filtering
-* Expression language evaluation (optional)
-* Property validation
-* Default value handling
-* Immutable after build for thread safety
-* Compatible with existing TestRunner infrastructure
-
-===== Integration Benefits
-* Replace verbose Mockito setup with simple builder pattern
-* Reusable across all processor tests
-* Consistent behavior for property handling
-* Better test maintainability
-* Reduced boilerplate code
-
-===== Implementation Steps (COMPLETED)
-1. Created new module `nifi-cuioss-test-support`
-2. Created DynamicPropertyTestHelper utility class
-3. Documented two approaches for testing with dynamic properties:
-   - Using MockProcessContext directly from nifi-mock
-   - Creating testable processor wrappers
-4. Added comprehensive documentation and examples
-5. Updated parent pom.xml to include new module
-
-===== Implementation Notes
-Instead of creating custom MockProcessContext and MockPropertyValue implementations, we leveraged the existing `org.apache.nifi.util.MockProcessContext` from the `nifi-mock` library. This approach:
-- Reduces code duplication
-- Ensures compatibility with NiFi's testing framework
-- Provides a simpler solution that focuses on documenting the workaround
-
-The test-support module now provides:
-- Helper utilities for setting dynamic properties
-- Documentation of the TestRunner limitation
-- Example code showing how to properly test processors with dynamic properties
+3. *Key accomplishments*:
+   - All 62 processor tests now pass
+   - No changes needed to production code
+   - Minimal test-support module with only essential dependencies (nifi-api, nifi-mock)
+   - Clear documentation and examples for future developers
 
 ==== Tasks
 * *Location*: Test infrastructure
