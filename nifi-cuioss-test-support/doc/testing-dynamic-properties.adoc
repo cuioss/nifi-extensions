@@ -1,0 +1,246 @@
+= Testing NiFi Processors with Dynamic Properties
+:toc: left
+:toclevels: 3
+:source-highlighter: highlight.js
+
+== Overview
+
+This document provides examples and best practices for testing Apache NiFi processors that support dynamic properties. The main challenge is that NiFi's `TestRunner` doesn't properly return dynamic properties when iterating over `context.getProperties()`, which can cause tests to fail.
+
+== The Problem
+
+When testing NiFi processors that support dynamic properties:
+
+1. `TestRunner.setProperty()` allows setting dynamic properties
+2. However, `ProcessContext.getProperties()` from TestRunner may not return them
+3. This causes processors that iterate over properties during `onScheduled()` to miss dynamic properties
+4. Tests fail with errors like "At least one issuer configuration must be provided"
+
+== Solutions
+
+=== Solution 1: Override onScheduled Method
+
+The recommended approach is to override the processor's `onScheduled` method in your test to inject dynamic properties:
+
+[source,java]
+----
+@BeforeEach
+void setup() {
+    Map<String, String> dynamicProperties = new HashMap<>();
+    
+    processor = new MultiIssuerJWTTokenAuthenticator() {
+        @Override
+        public void onScheduled(final ProcessContext context) {
+            // Cast to MockProcessContext and add dynamic properties
+            MockProcessContext mockContext = (MockProcessContext) context;
+            dynamicProperties.forEach(mockContext::setProperty);
+            
+            // Call the original onScheduled with all properties available
+            super.onScheduled(context);
+        }
+    };
+    
+    testRunner = TestRunners.newTestRunner(processor);
+    
+    // Track dynamic properties as you set them
+    setDynamicProperty("issuer.test-issuer.jwks-url", "https://example.com/jwks");
+    setDynamicProperty("issuer.test-issuer.issuer", "test-issuer");
+}
+
+private void setDynamicProperty(String key, String value) {
+    testRunner.setProperty(key, value);
+    dynamicProperties.put(key, value);
+}
+----
+
+=== Solution 2: Direct MockProcessContext Usage
+
+For more control, you can use `MockProcessContext` directly:
+
+[source,java]
+----
+public void testProcessorWithDynamicProperties() {
+    // Create your processor
+    Processor processor = createYourProcessor();
+    
+    // Create MockProcessContext directly
+    MockProcessContext context = new MockProcessContext(processor);
+    
+    // Set static properties
+    PropertyDescriptor staticProp = new PropertyDescriptor.Builder()
+            .name("static.property")
+            .build();
+    context.setProperty(staticProp, "static-value");
+    
+    // Set dynamic properties - these will be properly returned by getProperties()
+    context.setProperty("issuer.test-issuer.jwks-url", "https://example.com/jwks");
+    context.setProperty("issuer.test-issuer.issuer", "test-issuer");
+    context.setProperty("issuer.test-issuer.audience", "test-audience");
+    
+    // Call onScheduled directly with our MockProcessContext
+    processor.onScheduled(context);
+    
+    // For testing onTrigger, use TestRunner
+    TestRunner testRunner = TestRunners.newTestRunner(processor);
+    
+    // Configure the same properties in TestRunner
+    testRunner.setProperty(staticProp, "static-value");
+    testRunner.setProperty("issuer.test-issuer.jwks-url", "https://example.com/jwks");
+    testRunner.setProperty("issuer.test-issuer.issuer", "test-issuer");
+    testRunner.setProperty("issuer.test-issuer.audience", "test-audience");
+    
+    // Test onTrigger
+    testRunner.enqueue("test data");
+    testRunner.run();
+    
+    // Assert expectations
+    testRunner.assertTransferCount("success", 1);
+}
+----
+
+=== Solution 3: Testable Processor Wrapper
+
+Create a wrapper that captures dynamic properties for verification:
+
+[source,java]
+----
+private static class TestableProcessor extends YourActualProcessor {
+    private Map<String, String> capturedDynamicProperties = new HashMap<>();
+    
+    @Override
+    public void onScheduled(ProcessContext context) {
+        // Capture all properties starting with "issuer."
+        for (Map.Entry<PropertyDescriptor, String> entry : context.getProperties().entrySet()) {
+            if (entry.getKey().getName().startsWith("issuer.")) {
+                capturedDynamicProperties.put(entry.getKey().getName(), entry.getValue());
+            }
+        }
+        
+        // Call the original onScheduled
+        super.onScheduled(context);
+    }
+    
+    public Map<String, String> getCapturedDynamicProperties() {
+        return capturedDynamicProperties;
+    }
+}
+----
+
+== Complete Example
+
+Here's a complete example test class demonstrating the recommended approach:
+
+[source,java]
+----
+package com.cuioss.nifi.test.example;
+
+import org.apache.nifi.components.PropertyDescriptor;
+import org.apache.nifi.processor.ProcessContext;
+import org.apache.nifi.processor.Processor;
+import org.apache.nifi.util.MockProcessContext;
+import org.apache.nifi.util.TestRunner;
+import org.apache.nifi.util.TestRunners;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class ExampleDynamicPropertyTest {
+    
+    private TestRunner testRunner;
+    private MyDynamicProcessor processor;
+    private Map<String, String> dynamicProperties = new HashMap<>();
+    
+    @BeforeEach
+    void setup() {
+        // Create processor with onScheduled override
+        processor = new MyDynamicProcessor() {
+            @Override
+            public void onScheduled(final ProcessContext context) {
+                MockProcessContext mockContext = (MockProcessContext) context;
+                dynamicProperties.forEach(mockContext::setProperty);
+                super.onScheduled(context);
+            }
+        };
+        
+        testRunner = TestRunners.newTestRunner(processor);
+        
+        // Set static properties
+        testRunner.setProperty(MyDynamicProcessor.STATIC_PROP, "value");
+        
+        // Set dynamic properties
+        setDynamicProperty("custom.property1", "value1");
+        setDynamicProperty("custom.property2", "value2");
+    }
+    
+    private void setDynamicProperty(String key, String value) {
+        testRunner.setProperty(key, value);
+        dynamicProperties.put(key, value);
+    }
+    
+    @Test
+    void testProcessorWithDynamicProperties() {
+        // Enqueue test data
+        testRunner.enqueue("test data");
+        
+        // Run the processor
+        testRunner.run();
+        
+        // Verify results
+        testRunner.assertTransferCount("success", 1);
+        testRunner.assertTransferCount("failure", 0);
+    }
+}
+----
+
+== Best Practices
+
+1. **Always track dynamic properties**: Keep a map of dynamic properties set during test setup
+2. **Use the override pattern**: Override `onScheduled` to inject dynamic properties consistently
+3. **Test both static and dynamic properties**: Ensure your tests cover both types
+4. **Verify property visibility**: Add assertions to verify dynamic properties are processed correctly
+5. **Document the workaround**: Add comments explaining why the override is necessary
+
+== Helper Utilities
+
+The `nifi-cuioss-test-support` module provides the `DynamicPropertyTestHelper` class with utility methods to simplify testing:
+
+[source,java]
+----
+// Create a context with dynamic properties
+ProcessContext context = DynamicPropertyTestHelper.createContextWithDynamicProperties(
+    testRunner, processor);
+
+// Set multiple dynamic properties at once
+Map<String, String> dynamicProps = new HashMap<>();
+dynamicProps.put("issuer.test.url", "https://example.com");
+dynamicProps.put("issuer.test.audience", "test-audience");
+DynamicPropertyTestHelper.setDynamicProperties(context, dynamicProps);
+----
+
+== Troubleshooting
+
+=== Common Issues
+
+1. **ClassCastException**: Ensure you're casting to `MockProcessContext`, not a Mockito mock
+2. **Properties not visible**: Verify you're adding properties before calling `super.onScheduled()`
+3. **Null values**: Check for null values when copying properties to avoid NullPointerException
+
+=== Debug Tips
+
+1. Log all properties in `onScheduled` to verify what's available:
+   ```java
+   context.getProperties().forEach((k, v) -> 
+       System.out.println(k.getName() + " = " + v));
+   ```
+
+2. Use breakpoints in `onScheduled` to inspect the context state
+
+3. Verify the processor's `supportsDynamicProperties()` returns true
+
+== References
+
+- [Apache NiFi Testing Guide](https://nifi.apache.org/docs/nifi-docs/html/developer-guide.html#testing)
+- [MockProcessContext JavaDoc](https://nifi.apache.org/docs/nifi-docs/components/org.apache.nifi/nifi-mock/apidocs/org/apache/nifi/util/MockProcessContext.html)
+- [TestRunner JavaDoc](https://nifi.apache.org/docs/nifi-docs/components/org.apache.nifi/nifi-mock/apidocs/org/apache/nifi/util/TestRunner.html)
