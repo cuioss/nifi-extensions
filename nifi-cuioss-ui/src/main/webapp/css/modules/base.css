@@ -840,3 +840,63 @@ button:hover {
     border: 1px solid var(--border-color);
     border-radius: 4px;
 }
+
+/* JWT Validator Tabs */
+
+.jwt-validator-tabs {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.jwt-validator-tabs .tab-navigation {
+    display: flex;
+    background-color: var(--background-color);
+    border-bottom: 2px solid var(--border-color);
+    margin-bottom: 20px;
+}
+
+.jwt-validator-tabs .tab-nav-item {
+    padding: 12px 20px;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text-color-light);
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+    margin-right: 5px;
+}
+
+.jwt-validator-tabs .tab-nav-item:hover {
+    background-color: #f5f5f5;
+    color: var(--text-color);
+}
+
+.jwt-validator-tabs .tab-nav-item.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+    background-color: transparent;
+}
+
+.jwt-validator-tabs .tab-content {
+    width: 100%;
+}
+
+.jwt-validator-tabs .tab-pane {
+    display: none;
+    animation: fadeIn 0.3s ease-in;
+}
+
+.jwt-validator-tabs .tab-pane.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

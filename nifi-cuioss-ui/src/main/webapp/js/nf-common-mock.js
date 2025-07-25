@@ -76,7 +76,10 @@
             // Create tab navigation item
             const tabNavItem = document.createElement('div');
             tabNavItem.className = 'tab-nav-item';
-            tabNavItem.textContent = id.charAt(0).toUpperCase() + id.slice(1).replace(/([A-Z])/g, ' $1');
+            // Use i18n key if available, otherwise format the ID
+            const i18n = getI18n();
+            const tabLabel = i18n.getProperty(id) || id.charAt(0).toUpperCase() + id.slice(1).replace(/([A-Z])/g, ' $1');
+            tabNavItem.textContent = tabLabel;
             tabNavItem.setAttribute('data-tab', id);
             tabNavigation.appendChild(tabNavItem);
 
@@ -134,6 +137,11 @@
                     // JWT Validator
                     'jwt.validator.title': 'JWT Token Validator',
                     'jwt.validator.loading': 'Loading JWT Validator UI...',
+                    // Tab names
+                    'jwt.validation.issuer.configuration': 'Issuer Configuration',
+                    'jwt.validation.token.verification': 'Token Verification',
+                    'Jwt.Validation.Issuer.Configuration': 'Issuer Configuration',
+                    'Jwt.Validation.Token.Verification': 'Token Verification',
 
                     // Property help texts
                     'property.token.location.help': 'Defines where to extract the token from.',
@@ -158,16 +166,6 @@
                     'token.verification.claims': 'Claims',
                     'token.verification.raw': 'Raw Token',
 
-                    // Issuer Configuration
-                    'issuer.config.title': 'Issuer Configuration',
-                    'issuer.config.add': 'Add Issuer',
-                    'issuer.config.remove': 'Remove Issuer',
-                    'issuer.config.save': 'Save Configuration',
-                    'issuer.config.issuer.name': 'Issuer Name',
-                    'issuer.config.issuer.url': 'Issuer URL',
-                    'issuer.config.jwks.url': 'JWKS URL',
-                    'issuer.config.audience': 'Audience',
-                    'issuer.config.claim.mappings': 'Claim Mappings',
 
                     // Common
                     'common.loading': 'Loading...',
@@ -183,7 +181,27 @@
                     'common.name': 'Name',
                     'common.value': 'Value',
                     'common.yes': 'Yes',
-                    'common.no': 'No'
+                    'common.no': 'No',
+                    // Issuer Configuration
+                    'issuer.config.description': 'Configure JWT issuers for token validation. Each issuer requires a name and properties like jwks-url and issuer URI.',
+                    'issuer.config.issuer.name': 'Issuer Name',
+                    'issuer.config.issuer.url': 'Issuer URI',
+                    'issuer.config.issuer.url.description': 'The URI of the token issuer (must match the iss claim)',
+                    'issuer.config.issuer.url.help': 'This value must exactly match the "iss" claim in JWT tokens. Example: https://auth.example.com/auth/realms/myrealm',
+                    'issuer.config.jwks.url': 'JWKS URL',
+                    'issuer.config.jwks.url.description': 'The URL of the JWKS endpoint',
+                    'issuer.config.jwks.url.help': 'URL providing public keys for JWT signature verification. Usually ends with /.well-known/jwks.json',
+                    'issuer.config.audience': 'Audience',
+                    'issuer.config.audience.description': 'The expected audience claim value',
+                    'issuer.config.audience.help': 'Optional: Expected "aud" claim value in JWT tokens. Leave blank to accept any audience.',
+                    'issuer.config.client.id': 'Client ID',
+                    'issuer.config.client.id.description': 'The client ID for token validation',
+                    'issuer.config.client.id.help': 'Optional: Expected "azp" or "client_id" claim value. Used for additional token validation.',
+                    'issuer.config.add': 'Add Issuer',
+                    'issuer.config.save.issuer': 'Save Issuer',
+                    'issuer.config.test.connection': 'Test Connection',
+                    'issuer.config.test.connection.tooltip': 'Test connectivity to the JWKS endpoint and verify it returns valid keys',
+                    'issuer.config.remove.tooltip': 'Delete this issuer configuration'
                 };
                 return translations[key] || key;
             }

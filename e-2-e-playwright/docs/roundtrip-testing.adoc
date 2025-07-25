@@ -1,164 +1,173 @@
 = UI Roundtrip Testing Guide
 :toc: left
-:toclevels: 3
-:toc-title: Table of Contents
+:toclevels: 2
+:toc-title: Contents
 :sectnums:
 :source-highlighter: highlight.js
-:icons: font
 
-== Purpose
+== Overview
 
-Iterative UI development workflow: modify code → deploy → test → analyze → repeat until all tests pass.
+Roundtrip testing workflow: modify code → deploy → test → analyze → repeat.
 
-== Prerequisites
+== Quick Start
 
-* Docker environment configured
-* NiFi test container functional
-* Playwright tests available in `e-2-e-playwright/tests/`
-* Corresponding test files for UI feature under development
+[source,bash]
+----
+# Deploy changes
+./integration-testing/src/main/docker/redeploy-nifi.sh
+
+# Run test
+cd e-2-e-playwright && npm run playwright:test -- tests/[test-file].spec.js
+
+# Check results
+ls -la target/test-results/*/
+----
 
 == Workflow Steps
 
-=== 1. Initial Deployment
+=== 1. Make Code Changes
+
+* UI components: `nifi-cuioss-ui/src/main/webapp/js/`
+* Styles: `nifi-cuioss-ui/src/main/webapp/css/`
+* HTML: `nifi-cuioss-ui/src/main/webapp/index.html`
+* Backend: `nifi-cuioss-processors/src/main/java/`
+
+=== 2. Build and Deploy
 
 [source,bash]
 ----
+# Initial start (first time or after stop)
+./integration-testing/src/main/docker/run-and-deploy.sh
+
+# Quick redeploy (preserves running container)
+./integration-testing/src/main/docker/redeploy-nifi.sh
+
+# Full restart (if container issues)
+./integration-testing/src/main/docker/stop-test-container.sh
 ./integration-testing/src/main/docker/run-and-deploy.sh
 ----
 
-=== 2. Run Tests
+=== 3. Run Tests
 
 [source,bash]
 ----
-cd e-2-e-playwright
-npx playwright test tests/[test-file].spec.js --project chromium
+# Single test
+npm run playwright:test -- tests/specific-test.spec.js
+
+# All tests
+npm run playwright:test
+
+# With UI (for debugging)
+npm run playwright:test -- --ui
 ----
 
-=== 3. Analyze Results
+=== 4. Analyze Failures
 
-Test artifacts are co-located in `target/test-results/[test-specific-directory]/`:
-
-* `console-logs.log` - Browser console output (if any)
-* `test-failed-1.png` - Screenshots
-* `video.webm` - Test execution video
-* `trace.zip` - Playwright trace
-* `processor-interaction-*.png` - Processor screenshots
-
-=== 4. Console Log Analysis
-
-**Quick Analysis Commands**:
-[source,bash]
-----
-# Find console logs
-find target/test-results -name "console-logs.log"
-
-# Check for errors
-grep -n "ERROR\|WARN" target/test-results/[test-dir]/console-logs.log
-
-# Find JWT UI analysis
-grep -A 5 "JWT UI ANALYSIS" target/test-results/*/console-logs.log
-----
-
-**Key Log Types**:
-
-* `type: "error"` - JavaScript errors
-* `type: "networkerror"` - 404s, failed requests
-* `type: "warning"` - Configuration warnings
-* `type: "info/debug"` - Execution flow
-
-**Note**: Console logs only exist when browser activity occurs. Normal NiFi canvas operation generates no console output.
-
-**Fail-on-Console-Error**: The console logging system can be configured to fail tests when console errors occur. This is useful for catching JavaScript errors that might otherwise be missed. Use `setupStrictErrorDetection()` instead of `setupAuthAwareErrorDetection()` to enable this feature.
-
-=== 5. Fix Issues
-
-**Common UI Issues**:
-
-* **Loading Indicator Hanging**: Check `hideLoadingIndicatorRobust()` function
-* **Component Registration Failures**: Verify `registerComponents()` execution
-* **JavaScript Errors**: Check module imports and function definitions
-* **ES6 Module Loading Issues**: Ensure Vite bundler generates UMD format correctly
-
-**Key Files**:
-
-* `nifi-cuioss-ui/src/main/webapp/js/main.js` - Core UI logic
-* `nifi-cuioss-ui/src/main/webapp/index.html` - Main HTML entry point
-* `nifi-cuioss-ui/vite.config.js` - Modern build configuration
-
-**Browser Console Test**: `tests/self-capture-browser-console.spec.js` - Captures browser console output with analysis markers for any processor UI.
-
-=== 6. Build and Deploy
+Test artifacts in `target/test-results/[test-dir]/`:
+* `console-logs.log` - Browser console output
+* `test-failed-*.png` - Failure screenshots
+* `video.webm` - Test execution recording
+* `trace.zip` - Detailed execution trace
 
 [source,bash]
 ----
-# Build UI module
-cd nifi-cuioss-ui && npm run build && cd ..
-./mvnw clean install -pl nifi-cuioss-ui
+# Find errors
+grep -n "ERROR" target/test-results/*/console-logs.log
 
-# Redeploy changes
-./integration-testing/src/main/docker/redeploy-nifi.sh
+# View screenshot
+open target/test-results/*/test-failed-*.png
+
+# Analyze trace
+npx playwright show-trace target/test-results/*/trace.zip
 ----
 
-=== 7. Commit and Repeat
+=== 5. Fix and Repeat
+
+Based on failure analysis:
+* JavaScript errors → Fix in source files
+* Missing elements → Update selectors or wait conditions
+* 404 errors → Fix resource paths
+* Timing issues → Add appropriate waits
+
+Repeat steps 1-4 until tests pass.
+
+== Common Issues
+
+|===
+| Issue | Solution
+
+| WebJar 404s
+| Fix paths in index.html (remove extra prefixes)
+
+| MIME type errors  
+| Check resource paths and server configuration
+
+| Element not found
+| Verify selector matches rendered HTML
+
+| Timeout errors
+| Add waits or increase timeout values
+
+| Console errors
+| Check browser console logs for JavaScript errors
+|===
+
+== Debug Techniques
+
+**Disable strict error checking**:
+[source,javascript]
+----
+await setupStrictErrorDetection(page, testInfo, false);
+----
+
+**Interactive debugging**:
+[source,javascript]
+----
+await page.pause(); // Opens Playwright Inspector
+----
+
+**Capture intermediate state**:
+[source,javascript]
+----
+await page.screenshot({ path: 'debug.png' });
+----
+
+== Build Commands
 
 [source,bash]
 ----
-git add <modified-files>
-git commit -m "Fix: Description of issue resolved"
-----
+# Build everything
+./mvnw clean install -DskipTests
 
-Repeat steps 2-7 until all tests pass.
+# Build specific module
+./mvnw clean install -pl nifi-cuioss-ui -DskipTests
 
-== Final Validation
-
-[source,bash]
-----
-# Stop test environment
-integration-testing/src/main/docker/stop-test-container.sh
-
-# Full build verification (both must pass)
+# Full build with tests
 ./mvnw clean verify
-./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests
 ----
 
-**Success Criteria**: Both commands exit with code 0, no ESLint warnings, all tests pass consistently.
+== Success Criteria
 
-== Quick Reference
+✓ All tests pass consistently  
+✓ No console errors in browser  
+✓ UI elements render correctly  
+✓ Expected functionality works  
 
-**Common Issues**:
+== Postconditions
 
-* *Test Timeouts*: Slow UI responses or missing elements
-* *Element Not Found*: Selector needs updating after UI changes
-* *Console Errors*: JavaScript errors that need fixing in UI code
-* *Deployment Issues*: Check Docker logs if redeployment fails
+Before committing changes, run final validation:
 
-**Debugging Tips**:
-
-* Add console logging in UI code to track execution flow
-* Use `page.pause()` in Playwright tests to debug interactively
-* Use browser developer tools to check network requests
-* Verify CSS selectors still match after UI changes
-
-**Example Workflow**:
 [source,bash]
 ----
-# Initial setup
-./integration-testing/src/main/docker/run-and-deploy.sh
+# 1. Build entire project
+./mvnw clean install
 
-# Run tests
-cd e-2-e-playwright
-npx playwright test tests/[test-file].spec.js --project chromium
+# 2. Run all E2E tests
+./mvnw -B --no-transfer-progress clean verify -pl e-2-e-playwright -Pintegration-tests
 
-# Check results
-find target/test-results -name "console-logs.log"
-grep -A 5 "JWT UI ANALYSIS" target/test-results/*/console-logs.log
-
-# Make changes, build, and redeploy
-cd nifi-cuioss-ui && npm run build && cd ..
-./mvnw clean install -pl nifi-cuioss-ui
-./integration-testing/src/main/docker/redeploy-nifi.sh
-
-# Test again and commit if successful
-git add <files>
-git commit -m "Fix: Description"
+# 3. If both pass → commit
+git add .
+git commit -m "feat: Description of changes"
 ----
+
+Both commands must exit with code 0 before committing.

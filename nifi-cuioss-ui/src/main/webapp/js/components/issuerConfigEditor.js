@@ -157,10 +157,12 @@ const _createEditorStructure = ($parentElement) => {
     const $container = $('<div class="issuer-config-editor"></div>');
     $parentElement.append($container);
 
-    const $title = $('<h3>Issuer Configurations</h3>');
+    const titleText = i18n['Jwt.Validation.Issuer.Configuration'] || 'Issuer Configurations';
+    const $title = $(`<h3>${titleText}</h3>`);
     $container.append($title);
 
-    const $description = $('<p>Configure JWT issuers for token validation. Each issuer requires a name and properties like jwks-url and issuer URI.</p>');
+    const descriptionText = i18n['issuer.config.description'] || 'Configure JWT issuers for token validation. Each issuer requires a name and properties like jwks-url and issuer URI.';
+    const $description = $(`<p>${descriptionText}</p>`);
     $container.append($description);
 
     // Add a global error display area
