@@ -20,6 +20,7 @@ import {
     checkCriticalErrors,
     cleanupCriticalErrorDetection,
 } from "../utils/critical-error-detector.js";
+import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -38,9 +39,9 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
         try {
             await saveTestBrowserLogs(testInfo);
         } catch (error) {
-            console.warn(
-                "Failed to save console logs in afterEach:",
-                error.message,
+            logTestWarning(
+                "afterEach",
+                `Failed to save console logs in afterEach: ${error.message}`,
             );
         }
 

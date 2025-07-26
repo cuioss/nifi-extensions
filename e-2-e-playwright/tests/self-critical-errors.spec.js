@@ -19,6 +19,7 @@ import {
     cleanupCriticalErrorDetection,
     globalCriticalErrorDetector,
 } from "../utils/critical-error-detector.js";
+import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("Self-Test: Critical Error Detection", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -38,9 +39,9 @@ test.describe("Self-Test: Critical Error Detection", () => {
         try {
             await saveTestBrowserLogs(testInfo);
         } catch (error) {
-            console.warn(
-                "Failed to save console logs in afterEach:",
-                error.message,
+            logTestWarning(
+                "afterEach",
+                `Failed to save console logs in afterEach: ${error.message}`,
             );
         }
 
@@ -221,7 +222,8 @@ test.describe("Self-Test: Critical Error Detection", () => {
         // For this specific test, we'll be more lenient
         // We'll report the status but not necessarily fail
         if (!hasProcessors && !processor) {
-            console.warn(
+            logTestWarning(
+                "test",
                 "⚠️  No processors found on canvas - this may indicate an empty canvas issue",
             );
 

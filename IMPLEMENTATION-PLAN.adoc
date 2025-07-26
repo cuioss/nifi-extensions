@@ -9,13 +9,13 @@
 
 This document outlines the implementation plan for completing the NiFi JWT Authenticator.
 
-Last updated: 2025-07-25
+Last updated: 2025-07-26
 
 === Current Status
 
 * ✅ *Phase 0*: Test Infrastructure - COMPLETED
 * ✅ *Phase 1*: Core Functionality - COMPLETED (except YAML support - removed from scope)
-* ❌ *Phase 2*: UI Enhancement - NOT STARTED
+* 🚧 *Phase 2*: UI Enhancement - IN PROGRESS (E2E tests created)
 * ❌ *Phase 3*: Observability - NOT STARTED
 * ❌ *Phase 4*: Advanced Features - NOT STARTED
 * ❌ *Phase 5*: Documentation & Polish - NOT STARTED
@@ -26,6 +26,9 @@ Last updated: 2025-07-25
 * Authorization implementation (scope/role validation)
 * Flow file attributes (jwt.scopes, jwt.roles, jwt.authorized)
 * All 62 processor tests passing
+* E2E test infrastructure improved (test error handler utility)
+* Created E2E tests for all Phase 2 UI features (7 test files)
+* Fixed ESLint warnings (reduced from 68 to 13, below 25 limit)
 
 == Remaining Tasks
 
@@ -33,29 +36,31 @@ Last updated: 2025-07-25
 
 NOTE: Each UI feature requires a corresponding E2E test in `e-2-e-playwright/tests/`. See `e-2-e-playwright/docs/roundtrip-testing.adoc` for implementation guide.
 
+*UPDATE 2025-07-26*: E2E test files have been created for all Phase 2 UI features. These tests are currently failing as expected since the UI components haven't been implemented yet. The tests will serve as acceptance criteria for the UI implementation.
+
 ==== 2.1 Custom UI Components
 * [ ] Create `MultiIssuerJwtAuthenticatorCustomizer.js`
-* [ ] Create E2E test: `02-verify-jwt-authenticator-customizer.spec.js`
+* [x] Create E2E test: `02-verify-jwt-authenticator-customizer.spec.js`
 * [ ] Implement JWKS Validation Button
-* [ ] Create E2E test: `03-verify-jwks-validation-button.spec.js`
+* [x] Create E2E test: `03-verify-jwks-validation-button.spec.js`
 * [ ] Add Token Verification Tab
-* [ ] Create E2E test: `04-verify-token-verification-tab.spec.js`
+* [x] Create E2E test: `04-verify-token-verification-tab.spec.js`
 * [ ] Add Metrics Tab
-* [ ] Create E2E test: `05-verify-metrics-tab.spec.js`
+* [x] Create E2E test: `05-verify-metrics-tab.spec.js`
 * [ ] Add Help Tab
-* [ ] Create E2E test: `06-verify-help-tab.spec.js`
+* [x] Create E2E test: `06-verify-help-tab.spec.js`
 
 ==== 2.2 REST Endpoint
 * [ ] Create `/api/token/verify` endpoint
 * [ ] Implement token verification logic
 * [ ] Add security controls
-* [ ] Create E2E test: `07-verify-token-verification-api.spec.js`
+* [x] Create E2E test: `07-verify-token-verification-api.spec.js`
 
 ==== 2.3 JWKS Validation
 * [ ] Add URL validation for JWKS endpoints
 * [ ] Add file existence validation
 * [ ] Implement validation button backend
-* [ ] Create E2E test: `08-verify-jwks-validation-complete.spec.js`
+* [x] Create E2E test: `08-verify-jwks-validation-complete.spec.js`
 
 === Phase 3: Observability (P2)
 

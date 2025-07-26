@@ -13,6 +13,7 @@ import {
 } from "../utils/console-logger.js";
 import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
 import { processorLogger } from "../utils/shared-logger.js";
+import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     // Make sure we're logged in before each test
@@ -32,9 +33,9 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
             try {
                 await saveTestBrowserLogs(testInfo);
             } catch (logError) {
-                console.warn(
-                    "Failed to save console logs during beforeEach error:",
-                    logError.message,
+                logTestWarning(
+                    "beforeEach",
+                    `Failed to save console logs during beforeEach error: ${logError.message}`,
                 );
             }
             throw error; // Re-throw the original error
@@ -46,9 +47,9 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         try {
             await saveTestBrowserLogs(testInfo);
         } catch (error) {
-            console.warn(
-                "Failed to save console logs in afterEach:",
-                error.message,
+            logTestWarning(
+                "afterEach",
+                `Failed to save console logs in afterEach: ${error.message}`,
             );
         }
 
@@ -62,7 +63,10 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         //         try {
         //             await saveTestBrowserLogs(testInfo);
         //         } catch (logError) {
-        //             console.warn('Failed to save console logs after critical error:', logError.message);
+        //             logTestWarning(
+        //                 "afterEach",
+        //                 `Failed to save console logs after critical error: ${logError.message}`
+        //             );
         //         }
         //         throw error;
         //     }

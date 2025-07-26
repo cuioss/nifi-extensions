@@ -15,6 +15,7 @@ import {
 } from "../utils/console-logger.js";
 import fs from "fs";
 import path from "path";
+import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("Self-Test: Browser Console Logging", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -27,9 +28,9 @@ test.describe("Self-Test: Browser Console Logging", () => {
         try {
             await saveTestBrowserLogs(testInfo);
         } catch (error) {
-            console.warn(
-                "Failed to save console logs in afterEach:",
-                error.message,
+            logTestWarning(
+                "afterEach",
+                `Failed to save console logs in afterEach: ${error.message}`,
             );
         }
     });
