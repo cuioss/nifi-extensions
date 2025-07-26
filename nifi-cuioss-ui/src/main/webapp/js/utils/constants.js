@@ -236,7 +236,9 @@ export const COMPONENTS = {
 export const NIFI = {
     COMPONENT_TABS: {
         ISSUER_CONFIG: 'jwt.validation.issuer.configuration',
-        TOKEN_VERIFICATION: 'jwt.validation.token.verification'
+        TOKEN_VERIFICATION: 'jwt.validation.token.verification',
+        METRICS: 'jwt.validation.metrics',
+        HELP: 'jwt.validation.help'
     },
     PROCESSOR_TYPES: {
         MULTI_ISSUER_JWT_AUTHENTICATOR: 'MultiIssuerJWTTokenAuthenticator'
@@ -271,7 +273,11 @@ export const UI_TEXT = {
     },
     I18N_KEYS: {
         JWT_VALIDATOR_LOADING: 'jwt.validator.loading',
-        JWT_VALIDATOR_TITLE: 'jwt.validator.title'
+        JWT_VALIDATOR_TITLE: 'jwt.validator.title',
+        METRICS_TITLE: 'jwt.validator.metrics.title',
+        METRICS_TAB_NAME: 'jwt.validator.metrics.tab.name',
+        HELP_TITLE: 'jwt.validator.help.title',
+        HELP_TAB_NAME: 'jwt.validator.help.tab.name'
     }
 };
 

@@ -34,9 +34,43 @@
     </script>
 </head>
 <body>
-    <div id="jwt-validator-container">
+    <div id="jwt-validator-container" data-testid="jwt-customizer-container">
         <!-- This container will be populated by the JavaScript UI components -->
         <div id="loading-indicator">Loading JWT Validator UI...</div>
+        
+        <!-- Tab structure for JWT configuration -->
+        <div id="jwt-validator-tabs" class="jwt-tabs-container" style="display:none;">
+            <div class="jwt-tabs-header" data-testid="jwt-config-tabs">
+                <ul class="tabs" role="tablist">
+                    <li role="presentation" class="active">
+                        <a href="#issuer-config" role="tab" data-toggle="tab">Configuration</a>
+                    </li>
+                    <li role="presentation">
+                        <a href="#token-verification" role="tab" data-toggle="tab">Token Verification</a>
+                    </li>
+                    <li role="presentation">
+                        <a href="#metrics" role="tab" data-toggle="tab">Metrics</a>
+                    </li>
+                    <li role="presentation">
+                        <a href="#help" role="tab" data-toggle="tab">Help</a>
+                    </li>
+                </ul>
+            </div>
+            <div class="jwt-tabs-content">
+                <div id="issuer-config" class="tab-pane active" role="tabpanel" data-testid="issuer-config-panel">
+                    <!-- Issuer configuration content will be injected here -->
+                </div>
+                <div id="token-verification" class="tab-pane" role="tabpanel">
+                    <!-- Token verification content will be injected here -->
+                </div>
+                <div id="metrics" class="tab-pane" role="tabpanel">
+                    <!-- Metrics content will be injected here -->
+                </div>
+                <div id="help" class="tab-pane" role="tabpanel">
+                    <!-- Help content will be injected here -->
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Load our modern ES6 bundle built with Vite -->

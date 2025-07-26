@@ -50,3 +50,165 @@
     background-color: #fff;
     border-radius: 5px;
 }
+
+/* Enhanced Metrics Tab Styles */
+
+.metrics-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color, #ddd);
+}
+
+.metrics-header h3 {
+    margin: 0;
+    color: var(--text-primary, #333);
+}
+
+#refresh-metrics-btn {
+    padding: 6px 12px;
+    font-size: 14px;
+}
+
+#refresh-metrics-btn i {
+    margin-right: 4px;
+}
+
+/* Metrics Summary Cards */
+.metrics-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.metrics-summary .metric-card {
+    background: var(--background-light, #fff);
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+    padding: 20px;
+    text-align: center;
+    transition: transform 0.2s ease;
+}
+
+.metrics-summary .metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.metrics-summary .metric-card h4 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    color: var(--text-secondary, #666);
+    font-weight: normal;
+}
+
+/* Issuer Metrics */
+.issuer-metrics {
+    margin-bottom: 30px;
+}
+
+.issuer-metrics h4 {
+    margin-bottom: 15px;
+    color: var(--text-primary, #333);
+}
+
+.metrics-list {
+    background: var(--background-light, #fff);
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+    padding: 15px;
+}
+
+.issuer-metric-item {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color-light, #eee);
+}
+
+.issuer-metric-item:last-child {
+    border-bottom: none;
+}
+
+.issuer-name {
+    font-weight: 600;
+    color: var(--text-primary, #333);
+    margin-bottom: 5px;
+}
+
+.issuer-stats {
+    display: flex;
+    gap: 20px;
+    font-size: 14px;
+    color: var(--text-secondary, #666);
+}
+
+.issuer-stats .stat {
+    display: inline-block;
+}
+
+/* Error Metrics */
+.error-metrics h4 {
+    margin-bottom: 15px;
+    color: var(--text-primary, #333);
+}
+
+.error-metric-item {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color-light, #eee);
+}
+
+.error-metric-item:last-child {
+    border-bottom: none;
+}
+
+.error-details {
+    margin-bottom: 5px;
+}
+
+.error-issuer {
+    font-weight: 600;
+    color: var(--error-color, #d32f2f);
+    margin-right: 10px;
+}
+
+.error-message {
+    color: var(--text-primary, #333);
+}
+
+.error-count {
+    color: var(--text-secondary, #666);
+    font-size: 14px;
+}
+
+.error-time {
+    font-size: 12px;
+    color: var(--text-secondary, #666);
+}
+
+/* Loading and Error States */
+.metrics-loading,
+.no-data,
+.no-errors {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-secondary, #666);
+    font-style: italic;
+}
+
+.metrics-error {
+    text-align: center;
+    padding: 40px;
+    color: var(--error-color, #d32f2f);
+}
+
+.metrics-error i {
+    font-size: 48px;
+    margin-bottom: 20px;
+    display: block;
+}
+
+.metrics-error button {
+    margin-top: 20px;
+}

@@ -159,9 +159,11 @@ describe('main.js (real implementation with JSDOM)', () => {
             jest.runAllTimers();
 
             // window.jwtComponentsRegistered is no longer accessible, check effects instead
-            expect(nfCommon.registerCustomUiTab).toHaveBeenCalledTimes(2);
+            expect(nfCommon.registerCustomUiTab).toHaveBeenCalledTimes(4);
             expect(nfCommon.registerCustomUiTab).toHaveBeenCalledWith('jwt.validation.issuer.configuration', expect.anything());
             expect(nfCommon.registerCustomUiTab).toHaveBeenCalledWith('jwt.validation.token.verification', expect.anything());
+            expect(nfCommon.registerCustomUiTab).toHaveBeenCalledWith('jwt.validation.metrics', expect.anything());
+            expect(nfCommon.registerCustomUiTab).toHaveBeenCalledWith('jwt.validation.help', expect.anything());
             expect(document.getElementById('loading-indicator').style.display).toBe('none'); // Direct check for display: none
             expect(document.getElementById('jwt-validator-tabs').style.display).not.toBe('none'); // Check that display is not 'none'
         });

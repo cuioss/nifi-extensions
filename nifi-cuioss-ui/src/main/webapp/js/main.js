@@ -22,9 +22,12 @@ import { createLogger } from './utils/logger.js';
 import * as nfCommon from 'nf.Common';
 import * as tokenVerifier from './components/tokenVerifier.js';
 import * as issuerConfigEditor from './components/issuerConfigEditor.js';
+import * as metricsTab from './components/metricsTab.js';
+import * as helpTab from './components/helpTab.js';
 import * as i18n from './utils/i18n.js';
 import { initTooltips } from './utils/tooltip.js';
 import { cleanup as cleanupKeyboardShortcuts, initKeyboardShortcuts } from './utils/keyboardShortcuts.js';
+import { initTabs, cleanup as cleanupTabs } from './utils/tabManager.js';
 import { API, CSS, NIFI, UI_TEXT } from './utils/constants.js';
 
 const logger = createLogger('NiFi-Main');
@@ -51,9 +54,11 @@ const registerComponents = () => {
         // Initialize i18n
         i18n.getLanguage();
 
-        // Register the two main UI tabs
+        // Register all UI tabs
         nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.ISSUER_CONFIG, issuerConfigEditor);
         nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.TOKEN_VERIFICATION, tokenVerifier);
+        nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.METRICS, metricsTab);
+        nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.HELP, helpTab);
 
         // Set flag for test compatibility
         window.jwtComponentsRegistered = true;
@@ -397,6 +402,7 @@ export const init = () => {
             if (success) {
                 logger.debug('Component registration successful, setting up UI...');
                 setupUI();
+                initTabs();
                 registerHelpTooltips();
                 setupDialogHandlers();
                 initKeyboardShortcuts();
@@ -404,6 +410,7 @@ export const init = () => {
             } else {
                 console.warn('Component registration failed, using fallback...');
                 setupUI();
+                initTabs();
                 registerHelpTooltips();
                 initKeyboardShortcuts();
             }
@@ -625,6 +632,7 @@ export const cleanup = () => {
         // Simple cleanup - just remove event handlers
         $(document).off('dialogOpen');
         cleanupKeyboardShortcuts();
+        cleanupTabs();
 
         // Cleanup tooltip observer
         if (window.nifiJwtTooltipObserver) {
