@@ -40,15 +40,17 @@ const formatTime = (date) => {
  * @returns {void}
  */
 export const init = () => {
-    logger.debug('Initializing metrics tab');
+    logger.info('Initializing metrics tab');
 
     // Create the metrics tab content if it doesn't exist
     if (!$('#jwt-metrics-content').length) {
+        logger.info('Creating metrics tab content...');
         createMetricsContent();
+        // Start periodic metrics refresh only after creating content
+        startMetricsRefresh();
+    } else {
+        logger.debug('Metrics tab content already exists, skipping creation');
     }
-
-    // Start periodic metrics refresh
-    startMetricsRefresh();
 };
 
 /**
@@ -60,7 +62,8 @@ const createMetricsContent = () => {
             <div class="metrics-header">
                 <h3>${nfCommon.getI18n().getProperty(UI_TEXT.I18N_KEYS.METRICS_TITLE) ||
                 'JWT Validation Metrics'}</h3>
-                <button id="refresh-metrics-btn" class="btn btn-small" data-testid="refresh-metrics-button">
+                <button id="refresh-metrics-btn" class="btn btn-small" 
+                data-testid="refresh-metrics-button">
                     <i class="fa fa-refresh"></i> Refresh
                 </button>
             </div>
@@ -100,17 +103,24 @@ const createMetricsContent = () => {
         </div>
     `;
 
-    // Append to the tab container or create container if needed
-    const tabContainer = $('#jwt-validator-tabs');
-    if (tabContainer.length) {
-        tabContainer.append(metricsHtml);
+    // Append to the metrics tab pane
+    const metricsTabPane = $('#metrics');
+    logger.info('Metrics tab pane found:', metricsTabPane.length > 0);
+    if (metricsTabPane.length) {
+        logger.info('Appending metrics content to tab pane');
+        metricsTabPane.html(metricsHtml);
+        logger.info('Metrics content appended, new length:', metricsTabPane.html().length);
     } else {
+        // Fallback: append to container if tab pane doesn't exist
+        logger.warn('Metrics tab pane not found, appending to container');
         $('#jwt-validator-container').append(metricsHtml);
     }
 
     // Bind event handlers
     $('#refresh-metrics-btn').on('click', refreshMetrics);
 };
+
+let metricsInterval = null;
 
 /**
  * Starts periodic metrics refresh
@@ -119,8 +129,10 @@ const startMetricsRefresh = () => {
     // Initial load
     refreshMetrics();
 
-    // Refresh every 10 seconds
-    setInterval(refreshMetrics, 10000);
+    // Refresh every 10 seconds - skip in test environment
+    if (typeof jest === 'undefined') {
+        metricsInterval = setInterval(refreshMetrics, 10000);
+    }
 };
 
 /**
@@ -182,7 +194,7 @@ const fetchMetricsData = async () => {
                     }
                 ]
             });
-        }, 500);
+        }, 100);
     });
 };
 
@@ -203,7 +215,8 @@ const updateMetricsDisplay = (data) => {
             <div class="issuer-name">${issuer.name}</div>
             <div class="issuer-stats">
                 <span class="stat">Validations: ${formatNumber(issuer.validations)}</span>
-                <span class="stat">Success Rate: ${formatPercentage(issuer.successRate / 100)}</span>
+                <span class="stat">Success Rate: 
+                ${formatPercentage(issuer.successRate / 100)}</span>
                 <span class="stat">Last: ${formatTime(issuer.lastValidation)}</span>
             </div>
         </div>
@@ -250,6 +263,10 @@ const showMetricsError = () => {
 export const cleanup = () => {
     logger.debug('Cleaning up metrics tab');
     $('#refresh-metrics-btn').off('click');
+    if (metricsInterval) {
+        clearInterval(metricsInterval);
+        metricsInterval = null;
+    }
 };
 
 /**

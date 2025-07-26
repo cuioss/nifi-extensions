@@ -21,15 +21,17 @@ const logger = createLogger('HelpTab');
  * @returns {void}
  */
 export const init = () => {
-    logger.debug('Initializing help tab');
+    logger.info('Initializing help tab');
 
     // Create the help tab content if it doesn't exist
     if (!$('#jwt-help-content').length) {
+        logger.info('Creating help tab content...');
         createHelpContent();
+        // Initialize collapsible sections only after creating content
+        initializeCollapsibles();
+    } else {
+        logger.info('Help tab content already exists, skipping creation');
     }
-
-    // Initialize collapsible sections
-    initializeCollapsibles();
 };
 
 /**
@@ -48,8 +50,8 @@ const createHelpContent = () => {
                         <i class="fa fa-chevron-down"></i> Getting Started
                     </h4>
                     <div class="collapsible-content show">
-                        <p>The MultiIssuerJWTTokenAuthenticator processor validates JWT tokens from multiple issuers. 
-                   Follow these steps to configure:</p>
+                        <p>The MultiIssuerJWTTokenAuthenticator processor validates JWT tokens from 
+                        multiple issuers. Follow these steps to configure:</p>
                         <ol>
                             <li>Add at least one issuer configuration</li>
                             <li>Configure the JWKS URL or file path for each issuer</li>
@@ -71,8 +73,8 @@ const createHelpContent = () => {
                         <h5>Example Configurations</h5>
                         <div class="example-config">
                             <strong>Keycloak:</strong><br>
-                            <code>jwt.issuer.keycloak.jwks.url = 
-                                https://keycloak.example.com/realms/myrealm/protocol/openid-connect/certs</code>
+                            <code>jwt.issuer.keycloak.jwks.url = https://keycloak.example.com/realms/
+                            myrealm/protocol/openid-connect/certs</code>
                         </div>
                         
                         <div class="example-config">
@@ -129,10 +131,12 @@ const createHelpContent = () => {
                         
                         <h5>Common Issues</h5>
                         <ul>
-                            <li><strong>Invalid Signature:</strong> Check that the JWKS URL is correct</li>
+                            <li><strong>Invalid Signature:</strong> Check that the JWKS URL is 
+                            correct</li>
                             <li><strong>Token Expired:</strong> Generate a new token</li>
                             <li><strong>Unknown Issuer:</strong> Add the issuer configuration</li>
-                            <li><strong>Missing Scopes:</strong> Ensure token contains required scopes</li>
+                            <li><strong>Missing Scopes:</strong> Ensure token contains required 
+                            scopes</li>
                         </ul>
                     </div>
                 </div>
@@ -194,11 +198,16 @@ const createHelpContent = () => {
         </div>
     `;
 
-    // Append to the tab container or create container if needed
-    const tabContainer = $('#jwt-validator-tabs');
-    if (tabContainer.length) {
-        tabContainer.append(helpHtml);
+    // Append to the help tab pane
+    const helpTabPane = $('#help');
+    logger.info('Help tab pane found:', helpTabPane.length > 0);
+    if (helpTabPane.length) {
+        logger.info('Appending help content to tab pane');
+        helpTabPane.html(helpHtml);
+        logger.info('Help content appended, new length:', helpTabPane.html().length);
     } else {
+        // Fallback: append to container if tab pane doesn't exist
+        logger.warn('Help tab pane not found, appending to container');
         $('#jwt-validator-container').append(helpHtml);
     }
 };

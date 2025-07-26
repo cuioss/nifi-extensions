@@ -54,11 +54,20 @@ const registerComponents = () => {
         // Initialize i18n
         i18n.getLanguage();
 
-        // Register all UI tabs
-        nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.ISSUER_CONFIG, issuerConfigEditor);
-        nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.TOKEN_VERIFICATION, tokenVerifier);
-        nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.METRICS, metricsTab);
-        nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.HELP, helpTab);
+        // Skip registerCustomUiTab calls in standalone mode - tabs already exist in HTML
+        // In production NiFi environment, these would register with the real NiFi framework
+        const isStandaloneMode = window.location.href.includes('nifi-cuioss-ui') ||
+                                 window.location.href.includes('localhost:9095') ||
+                                 window.location.pathname.includes('/nifi-cuioss-ui');
+        if (typeof nfCommon.registerCustomUiTab === 'function' && !isStandaloneMode) {
+            // Only register tabs when running inside NiFi (not standalone)
+            nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.ISSUER_CONFIG, issuerConfigEditor);
+            nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.TOKEN_VERIFICATION, tokenVerifier);
+            nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.METRICS, metricsTab);
+            nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.HELP, helpTab);
+        } else {
+            logger.info('Skipping tab registration in standalone mode');
+        }
 
         // Set flag for test compatibility
         window.jwtComponentsRegistered = true;
@@ -362,6 +371,80 @@ const setupDialogHandlers = () => {
 };
 
 /**
+ * Initializes tab content components when tabs are shown
+ */
+const initializeTabContent = () => {
+    try {
+        logger.info('Initializing tab content components...');
+
+        // Initialize all tabs immediately since they exist in the DOM
+        logger.info('Initializing issuer config tab');
+        const issuerConfigElement = document.getElementById('issuer-config');
+        if (issuerConfigElement) {
+            // Provide required parameters: element, callback, url
+            const callback = () => logger.debug('Issuer config initialized');
+            const url = window.location.href;
+            issuerConfigEditor.init(issuerConfigElement, callback, url);
+        } else {
+            logger.warn('Issuer config tab element not found');
+        }
+
+        logger.info('Initializing token verification tab');
+        const tokenVerifierElement = document.getElementById('token-verification');
+        if (tokenVerifierElement) {
+            // Provide required parameters: element, config, type, callback
+            const callback = () => logger.debug('Token verifier initialized');
+            tokenVerifier.init(tokenVerifierElement, {}, 'jwt', callback);
+        } else {
+            logger.warn('Token verification tab element not found');
+        }
+
+        logger.info('Initializing metrics tab');
+        metricsTab.init();
+
+        logger.info('Initializing help tab');
+        helpTab.init();
+
+        // Also set up tab change handler for any re-initialization needs
+        $(document).on('tabChanged', (_event, data) => {
+            logger.debug('Tab changed to:', data.tabId);
+
+            switch (data.tabId) {
+                case '#issuer-config': {
+                    const issuerElement = document.getElementById('issuer-config');
+                    if (issuerElement) {
+                        const callback = () => logger.debug('Issuer config re-initialized');
+                        const url = window.location.href;
+                        issuerConfigEditor.init(issuerElement, callback, url);
+                    }
+                    break;
+                }
+                case '#token-verification': {
+                    const tokenElement = document.getElementById('token-verification');
+                    if (tokenElement) {
+                        const callback = () => logger.debug('Token verifier re-initialized');
+                        tokenVerifier.init(tokenElement, {}, 'jwt', callback);
+                    }
+                    break;
+                }
+                case '#metrics':
+                    metricsTab.init();
+                    break;
+                case '#help':
+                    helpTab.init();
+                    break;
+                default:
+                    logger.warn('Unknown tab:', data.tabId);
+            }
+        });
+
+        logger.info('Tab content initialization setup complete');
+    } catch (error) {
+        logger.error('Failed to initialize tab content:', error);
+    }
+};
+
+/**
  * Main initialization function for the JWT validation UI components.
  *
  * This function replaces the previous 344-line over-engineered initialization
@@ -406,6 +489,9 @@ export const init = () => {
                 registerHelpTooltips();
                 setupDialogHandlers();
                 initKeyboardShortcuts();
+
+                // Initialize tab content components
+                initializeTabContent();
                 logger.info('JWT UI initialization completed successfully');
             } else {
                 console.warn('Component registration failed, using fallback...');
@@ -413,6 +499,9 @@ export const init = () => {
                 initTabs();
                 registerHelpTooltips();
                 initKeyboardShortcuts();
+
+                // Initialize tab content components
+                initializeTabContent();
             }
 
             // Multiple safety checks to ensure loading indicator is hidden
@@ -690,4 +779,12 @@ export {
     shouldHideElement,
     hideElement,
     setupHelpTooltips
+};
+
+// Export tab components for external access
+export {
+    helpTab,
+    metricsTab,
+    issuerConfigEditor,
+    tokenVerifier
 };

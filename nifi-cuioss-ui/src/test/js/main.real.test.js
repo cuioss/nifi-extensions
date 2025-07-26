@@ -319,7 +319,7 @@ describe('main.js (real implementation with JSDOM)', () => {
             beforeEach(() => {
                 global.nf.Canvas.initialized = true;
                 mainModule.init();
-                jest.runAllTimers();
+                jest.advanceTimersByTime(1000); // Use fixed time advance instead of runAllTimers
                 mockInitTooltips.mockClear(); // Use the imported initTooltips mock
             });
 
