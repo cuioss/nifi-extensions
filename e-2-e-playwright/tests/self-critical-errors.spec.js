@@ -238,6 +238,7 @@ test.describe("Self-Test: Critical Error Detection", () => {
             await authService.verifyCanvasVisible();
 
             // Log the finding for debugging
+            // eslint-disable-next-line no-console
             console.log(
                 "Canvas is empty but functional - this may be expected in some test scenarios",
             );
@@ -300,6 +301,7 @@ test.describe("Self-Test: Critical Error Detection", () => {
         const authService = new AuthService(page);
         await authService.verifyCanvasVisible();
 
+        // eslint-disable-next-line no-console
         console.log(
             "✅ Comprehensive critical error validation passed - application is healthy",
         );

@@ -6,6 +6,7 @@
 
 import { test, expect } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
+import { ProcessorService } from "../utils/processor.js";
 import {
     saveTestBrowserLogs,
     setupStrictErrorDetection,
@@ -45,30 +46,46 @@ test.describe("Token Verification Tab", () => {
         cleanupCriticalErrorDetection();
     });
 
-    test("should access token verification tab", async ({
-        page,
-    }, _testInfo) => {
+    test("should access token verification tab", async ({ page }, testInfo) => {
         processorLogger.info("Testing token verification tab access");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            // Find and configure processor
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            // Wait for custom UI to load
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const tokenVerificationTab = await page.locator(
+            // Determine UI context
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeTab = customUIFrame.locator(
+                '[role="tab"]:has-text("Token Verification")',
+            );
+            if ((await iframeTab.count()) > 0) {
+                uiContext = customUIFrame;
+                processorLogger.info(
+                    "Working with Token Verification tab in iframe",
+                );
+            }
+
+            const tokenVerificationTab = await uiContext.locator(
                 '[role="tab"]:has-text("Token Verification")',
             );
             await expect(tokenVerificationTab).toBeVisible({ timeout: 5000 });
             await tokenVerificationTab.click();
             processorLogger.info("Clicked Token Verification tab");
 
-            const tabPanel = await page.locator(
+            const tabPanel = await uiContext.locator(
                 '[role="tabpanel"][data-tab="token-verification"]',
             );
             await expect(tabPanel).toBeVisible({ timeout: 5000 });
@@ -90,7 +107,7 @@ test.describe("Token Verification Tab", () => {
             ];
 
             for (const element of expectedElements) {
-                const el = await page.locator(element.selector);
+                const el = await uiContext.locator(element.selector);
                 await expect(el).toBeVisible({ timeout: 5000 });
                 processorLogger.info(`✓ Found ${element.description}`);
             }
@@ -106,26 +123,38 @@ test.describe("Token Verification Tab", () => {
         }
     });
 
-    test("should verify valid JWT token", async ({ page }, _testInfo) => {
+    test("should verify valid JWT token", async ({ page }, testInfo) => {
         processorLogger.info("Testing valid JWT token verification");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const tokenVerificationTab = await page.locator(
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeTab = customUIFrame.locator(
+                '[role="tab"]:has-text("Token Verification")',
+            );
+            if ((await iframeTab.count()) > 0) {
+                uiContext = customUIFrame;
+            }
+
+            const tokenVerificationTab = await uiContext.locator(
                 '[role="tab"]:has-text("Token Verification")',
             );
             await tokenVerificationTab.click();
 
-            const tokenInput = await page.locator(
+            const tokenInput = await uiContext.locator(
                 '[data-testid="token-input-area"]',
             );
             await expect(tokenInput).toBeVisible({ timeout: 5000 });
@@ -135,19 +164,19 @@ test.describe("Token Verification Tab", () => {
             await tokenInput.fill(validToken);
             processorLogger.info("Entered valid JWT token");
 
-            const verifyButton = await page.locator(
+            const verifyButton = await uiContext.locator(
                 '[data-testid="verify-token-button"]',
             );
             await verifyButton.click();
             processorLogger.info("Clicked verify button");
 
-            const successResult = await page.locator(
+            const successResult = await uiContext.locator(
                 '[data-testid="verification-success"]',
             );
             await expect(successResult).toBeVisible({ timeout: 10000 });
             processorLogger.info("✓ Token verified successfully");
 
-            const tokenDetails = await page.locator(
+            const tokenDetails = await uiContext.locator(
                 '[data-testid="token-details"]',
             );
             await expect(tokenDetails).toBeVisible({ timeout: 5000 });
@@ -162,7 +191,7 @@ test.describe("Token Verification Tab", () => {
             ];
 
             for (const section of detailSections) {
-                const el = await page.locator(section.selector);
+                const el = await uiContext.locator(section.selector);
                 await expect(el).toBeVisible({ timeout: 5000 });
                 processorLogger.info(`✓ ${section.name} section displayed`);
             }
@@ -176,44 +205,56 @@ test.describe("Token Verification Tab", () => {
         }
     });
 
-    test("should handle invalid JWT token", async ({ page }, _testInfo) => {
+    test("should handle invalid JWT token", async ({ page }, testInfo) => {
         processorLogger.info("Testing invalid JWT token verification");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const tokenVerificationTab = await page.locator(
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeTab = customUIFrame.locator(
+                '[role="tab"]:has-text("Token Verification")',
+            );
+            if ((await iframeTab.count()) > 0) {
+                uiContext = customUIFrame;
+            }
+
+            const tokenVerificationTab = await uiContext.locator(
                 '[role="tab"]:has-text("Token Verification")',
             );
             await tokenVerificationTab.click();
 
-            const tokenInput = await page.locator(
+            const tokenInput = await uiContext.locator(
                 '[data-testid="token-input-area"]',
             );
             await tokenInput.fill("invalid.jwt.token");
             processorLogger.info("Entered invalid JWT token");
 
-            const verifyButton = await page.locator(
+            const verifyButton = await uiContext.locator(
                 '[data-testid="verify-token-button"]',
             );
             await verifyButton.click();
 
-            const errorResult = await page.locator(
+            const errorResult = await uiContext.locator(
                 '[data-testid="verification-error"]',
             );
             await expect(errorResult).toBeVisible({ timeout: 10000 });
             await expect(errorResult).toContainText(/invalid|malformed|error/i);
             processorLogger.info("✓ Error message displayed for invalid token");
 
-            const errorDetails = await page.locator(
+            const errorDetails = await uiContext.locator(
                 '[data-testid="error-details"]',
             );
             await expect(errorDetails).toBeVisible({ timeout: 5000 });
@@ -228,21 +269,33 @@ test.describe("Token Verification Tab", () => {
 
     test("should display token expiration status", async ({
         page,
-    }, _testInfo) => {
+    }, testInfo) => {
         processorLogger.info("Testing token expiration status display");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const tokenVerificationTab = await page.locator(
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeTab = customUIFrame.locator(
+                '[role="tab"]:has-text("Token Verification")',
+            );
+            if ((await iframeTab.count()) > 0) {
+                uiContext = customUIFrame;
+            }
+
+            const tokenVerificationTab = await uiContext.locator(
                 '[role="tab"]:has-text("Token Verification")',
             );
             await tokenVerificationTab.click();
@@ -250,25 +303,25 @@ test.describe("Token Verification Tab", () => {
             const expiredToken =
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.4Adcj3UFYzPUVaVF43FmMab6RlaQD8A9V8wFzzht-KQ";
 
-            const tokenInput = await page.locator(
+            const tokenInput = await uiContext.locator(
                 '[data-testid="token-input-area"]',
             );
             await tokenInput.fill(expiredToken);
             processorLogger.info("Entered expired JWT token");
 
-            const verifyButton = await page.locator(
+            const verifyButton = await uiContext.locator(
                 '[data-testid="verify-token-button"]',
             );
             await verifyButton.click();
 
-            const expirationWarning = await page.locator(
+            const expirationWarning = await uiContext.locator(
                 '[data-testid="token-expired-warning"]',
             );
             await expect(expirationWarning).toBeVisible({ timeout: 10000 });
             await expect(expirationWarning).toContainText(/expired/i);
             processorLogger.info("✓ Expiration warning displayed");
 
-            const expirationDetails = await page.locator(
+            const expirationDetails = await uiContext.locator(
                 '[data-testid="expiration-details"]',
             );
             await expect(expirationDetails).toBeVisible({ timeout: 5000 });
@@ -283,38 +336,50 @@ test.describe("Token Verification Tab", () => {
         }
     });
 
-    test("should clear token and results", async ({ page }, _testInfo) => {
+    test("should clear token and results", async ({ page }, testInfo) => {
         processorLogger.info("Testing clear token functionality");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const tokenVerificationTab = await page.locator(
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeTab = customUIFrame.locator(
+                '[role="tab"]:has-text("Token Verification")',
+            );
+            if ((await iframeTab.count()) > 0) {
+                uiContext = customUIFrame;
+            }
+
+            const tokenVerificationTab = await uiContext.locator(
                 '[role="tab"]:has-text("Token Verification")',
             );
             await tokenVerificationTab.click();
 
-            const tokenInput = await page.locator(
+            const tokenInput = await uiContext.locator(
                 '[data-testid="token-input-area"]',
             );
             await tokenInput.fill("some.jwt.token");
 
-            const verifyButton = await page.locator(
+            const verifyButton = await uiContext.locator(
                 '[data-testid="verify-token-button"]',
             );
             await verifyButton.click();
 
             await page.waitForTimeout(1000);
 
-            const clearButton = await page.locator(
+            const clearButton = await uiContext.locator(
                 '[data-testid="clear-token-button"]',
             );
             await expect(clearButton).toBeVisible({ timeout: 5000 });
@@ -324,7 +389,7 @@ test.describe("Token Verification Tab", () => {
             await expect(tokenInput).toHaveValue("");
             processorLogger.info("✓ Token input cleared");
 
-            const resultPanel = await page.locator(
+            const resultPanel = await uiContext.locator(
                 '[data-testid="verification-result-panel"]',
             );
             await expect(resultPanel).not.toContainText(

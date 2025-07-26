@@ -6,6 +6,7 @@
 
 import { test, expect } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
+import { ProcessorService } from "../utils/processor.js";
 import {
     saveTestBrowserLogs,
     setupStrictErrorDetection,
@@ -45,26 +46,44 @@ test.describe("Help Tab", () => {
         cleanupCriticalErrorDetection();
     });
 
-    test("should display help documentation", async ({ page }, _testInfo) => {
+    test("should display help documentation", async ({ page }, testInfo) => {
         processorLogger.info("Testing help documentation display");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            // Find and configure processor
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            // Wait for custom UI to load
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const helpTab = await page.locator('[role="tab"]:has-text("Help")');
+            // Determine UI context
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeTab = customUIFrame.locator(
+                '[role="tab"]:has-text("Help")',
+            );
+            if ((await iframeTab.count()) > 0) {
+                uiContext = customUIFrame;
+                processorLogger.info("Working with Help tab in iframe");
+            }
+
+            const helpTab = await uiContext.locator(
+                '[role="tab"]:has-text("Help")',
+            );
             await expect(helpTab).toBeVisible({ timeout: 5000 });
             await helpTab.click();
             processorLogger.info("Clicked Help tab");
 
-            const helpPanel = await page.locator(
+            const helpPanel = await uiContext.locator(
                 '[role="tabpanel"][data-tab="help"]',
             );
             await expect(helpPanel).toBeVisible({ timeout: 5000 });
@@ -94,7 +113,7 @@ test.describe("Help Tab", () => {
             ];
 
             for (const section of helpSections) {
-                const el = await page.locator(section.selector);
+                const el = await uiContext.locator(section.selector);
                 await expect(el).toBeVisible({ timeout: 5000 });
                 processorLogger.info(`✓ Found ${section.description}`);
             }
@@ -110,26 +129,38 @@ test.describe("Help Tab", () => {
         }
     });
 
-    test("should have expandable help sections", async ({
-        page,
-    }, _testInfo) => {
+    test("should have expandable help sections", async ({ page }, testInfo) => {
         processorLogger.info("Testing expandable help sections");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const helpTab = await page.locator('[role="tab"]:has-text("Help")');
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeTab = customUIFrame.locator(
+                '[role="tab"]:has-text("Help")',
+            );
+            if ((await iframeTab.count()) > 0) {
+                uiContext = customUIFrame;
+            }
+
+            const helpTab = await uiContext.locator(
+                '[role="tab"]:has-text("Help")',
+            );
             await helpTab.click();
 
-            const accordionItems = await page.locator(
+            const accordionItems = await uiContext.locator(
                 '[data-testid="help-accordion-item"]',
             );
             const itemCount = await accordionItems.count();
@@ -191,24 +222,38 @@ test.describe("Help Tab", () => {
 
     test("should display configuration examples", async ({
         page,
-    }, _testInfo) => {
+    }, testInfo) => {
         processorLogger.info("Testing configuration examples");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const helpTab = await page.locator('[role="tab"]:has-text("Help")');
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeTab = customUIFrame.locator(
+                '[role="tab"]:has-text("Help")',
+            );
+            if ((await iframeTab.count()) > 0) {
+                uiContext = customUIFrame;
+            }
+
+            const helpTab = await uiContext.locator(
+                '[role="tab"]:has-text("Help")',
+            );
             await helpTab.click();
 
-            const examplesSection = await page.locator(
+            const examplesSection = await uiContext.locator(
                 '[data-testid="help-examples"]',
             );
             await expect(examplesSection).toBeVisible({ timeout: 5000 });
@@ -233,7 +278,7 @@ test.describe("Help Tab", () => {
             ];
 
             for (const example of exampleTypes) {
-                const el = await page.locator(example.selector);
+                const el = await uiContext.locator(example.selector);
                 await expect(el).toBeVisible({ timeout: 5000 });
                 processorLogger.info(`✓ Found ${example.description}`);
 
@@ -255,24 +300,40 @@ test.describe("Help Tab", () => {
         }
     });
 
-    test("should have copy code functionality", async ({ page }, _testInfo) => {
+    test("should have copy code functionality", async ({ page }, testInfo) => {
         processorLogger.info("Testing copy code functionality");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const helpTab = await page.locator('[role="tab"]:has-text("Help")');
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeTab = customUIFrame.locator(
+                '[role="tab"]:has-text("Help")',
+            );
+            if ((await iframeTab.count()) > 0) {
+                uiContext = customUIFrame;
+            }
+
+            const helpTab = await uiContext.locator(
+                '[role="tab"]:has-text("Help")',
+            );
             await helpTab.click();
 
-            const codeBlocks = await page.locator('[data-testid="code-block"]');
+            const codeBlocks = await uiContext.locator(
+                '[data-testid="code-block"]',
+            );
             const blockCount = await codeBlocks.count();
             processorLogger.info(`Found ${blockCount} code blocks`);
 
@@ -288,7 +349,7 @@ test.describe("Help Tab", () => {
                 await copyButton.click();
                 processorLogger.info("Clicked copy button");
 
-                const copyFeedback = await page.locator(
+                const copyFeedback = await uiContext.locator(
                     '[data-testid="copy-feedback"]',
                 );
                 await expect(copyFeedback).toBeVisible({ timeout: 5000 });
@@ -310,26 +371,38 @@ test.describe("Help Tab", () => {
         }
     });
 
-    test("should display troubleshooting guide", async ({
-        page,
-    }, _testInfo) => {
+    test("should display troubleshooting guide", async ({ page }, testInfo) => {
         processorLogger.info("Testing troubleshooting guide");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const helpTab = await page.locator('[role="tab"]:has-text("Help")');
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeTab = customUIFrame.locator(
+                '[role="tab"]:has-text("Help")',
+            );
+            if ((await iframeTab.count()) > 0) {
+                uiContext = customUIFrame;
+            }
+
+            const helpTab = await uiContext.locator(
+                '[role="tab"]:has-text("Help")',
+            );
             await helpTab.click();
 
-            const troubleshootingSection = await page.locator(
+            const troubleshootingSection = await uiContext.locator(
                 '[data-testid="help-troubleshooting"]',
             );
             await expect(troubleshootingSection).toBeVisible({ timeout: 5000 });
@@ -343,7 +416,7 @@ test.describe("Help Tab", () => {
             ];
 
             for (const topic of troubleshootingTopics) {
-                const topicElement = await page.locator(
+                const topicElement = await uiContext.locator(
                     `[data-testid="troubleshooting-topic"]:has-text("${topic}")`,
                 );
                 await expect(topicElement).toBeVisible({ timeout: 5000 });
@@ -361,24 +434,38 @@ test.describe("Help Tab", () => {
         }
     });
 
-    test("should have search functionality", async ({ page }, _testInfo) => {
+    test("should have search functionality", async ({ page }, testInfo) => {
         processorLogger.info("Testing help search functionality");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const helpTab = await page.locator('[role="tab"]:has-text("Help")');
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeTab = customUIFrame.locator(
+                '[role="tab"]:has-text("Help")',
+            );
+            if ((await iframeTab.count()) > 0) {
+                uiContext = customUIFrame;
+            }
+
+            const helpTab = await uiContext.locator(
+                '[role="tab"]:has-text("Help")',
+            );
             await helpTab.click();
 
-            const searchInput = await page.locator(
+            const searchInput = await uiContext.locator(
                 '[data-testid="help-search-input"]',
             );
             await expect(searchInput).toBeVisible({ timeout: 5000 });
@@ -388,12 +475,12 @@ test.describe("Help Tab", () => {
 
             await searchInput.press("Enter");
 
-            const searchResults = await page.locator(
+            const searchResults = await uiContext.locator(
                 '[data-testid="search-results"]',
             );
             await expect(searchResults).toBeVisible({ timeout: 5000 });
 
-            const resultItems = await page.locator(
+            const resultItems = await uiContext.locator(
                 '[data-testid="search-result-item"]',
             );
             const resultCount = await resultItems.count();
@@ -408,7 +495,7 @@ test.describe("Help Tab", () => {
                 );
             }
 
-            const clearButton = await page.locator(
+            const clearButton = await uiContext.locator(
                 '[data-testid="clear-search-button"]',
             );
             await expect(clearButton).toBeVisible({ timeout: 5000 });

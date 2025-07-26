@@ -9,13 +9,13 @@ import { AuthService } from "../utils/auth-service.js";
 import { processorLogger } from "../utils/shared-logger.js";
 import {
     saveTestBrowserLogs,
-    setupStrictErrorDetection,
+    setupStrictErrorDetection as _setupStrictErrorDetection,
 } from "../utils/console-logger.js";
 import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
 import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page }, _testInfo) => {
         // Skip error detection for custom UI tests - no canvas element exists
         // await setupStrictErrorDetection(page, testInfo, false);
 
@@ -41,7 +41,7 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
 
     test("should display all four tabs in custom UI", async ({
         page,
-    }, testInfo) => {
+    }, _testInfo) => {
         processorLogger.info("Navigating directly to JWT Custom UI");
 
         // Navigate directly to the custom UI
@@ -231,7 +231,7 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
 
     test("should test tab switching functionality", async ({
         page,
-    }, testInfo) => {
+    }, _testInfo) => {
         processorLogger.info("Testing tab switching functionality");
 
         // Navigate directly to the custom UI

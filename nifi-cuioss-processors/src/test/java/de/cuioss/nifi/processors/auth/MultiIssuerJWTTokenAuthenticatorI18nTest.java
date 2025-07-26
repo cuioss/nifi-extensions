@@ -50,10 +50,10 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
             public void onScheduled(final ProcessContext context) {
                 // Override onScheduled to manually add dynamic properties before calling super
                 MockProcessContext mockContext = (MockProcessContext) context;
-                
+
                 // Add our tracked dynamic properties
                 dynamicProperties.forEach(mockContext::setProperty);
-                
+
                 // Now call the original onScheduled with all properties available
                 super.onScheduled(context);
             }
@@ -70,7 +70,7 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
         setDynamicProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
         setDynamicProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
     }
-    
+
     private void setDynamicProperty(String key, String value) {
         testRunner.setProperty(key, value);
         dynamicProperties.put(key, value);
@@ -209,7 +209,7 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
             newTestRunner.setProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "http://test-issuer/.well-known/jwks.json");
             newTestRunner.setProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
             newTestRunner.setProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
-            
+
             // Track dynamic properties
             localDynamicProperties.put(ISSUER_PREFIX + "test-issuer.jwks-url", "http://test-issuer/.well-known/jwks.json");
             localDynamicProperties.put(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");

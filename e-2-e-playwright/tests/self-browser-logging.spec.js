@@ -59,8 +59,11 @@ test.describe("Self-Test: Browser Console Logging", () => {
 
         // Navigate and interact to generate more console activity
         await page.evaluate(() => {
+            // eslint-disable-next-line no-console
             console.log("Test console log message");
+            // eslint-disable-next-line no-console
             console.warn("Test console warning message");
+            // eslint-disable-next-line no-console
             console.info("Test console info message");
         });
 
@@ -125,6 +128,7 @@ test.describe("Self-Test: Browser Console Logging", () => {
 
         // Intentionally trigger a console error
         await page.evaluate(() => {
+            // eslint-disable-next-line no-console
             console.error("Intentional test error for logging validation");
         });
 
@@ -163,7 +167,9 @@ test.describe("Self-Test: Browser Console Logging", () => {
 
         // Generate some console activity
         await page.evaluate(() => {
+            // eslint-disable-next-line no-console
             console.log("File system test message");
+            // eslint-disable-next-line no-console
             console.warn("File system test warning");
         });
 
@@ -236,6 +242,7 @@ test.describe("Self-Test: Browser Console Logging", () => {
         // Attempt to make a request to a non-existent endpoint
         await page.evaluate(() => {
             fetch("/nonexistent-endpoint").catch((err) =>
+                // eslint-disable-next-line no-console
                 console.warn("Expected network error:", err.message),
             );
         });
@@ -262,10 +269,13 @@ test.describe("Self-Test: Browser Console Logging", () => {
         // Check if NiFi is accessible before running this test
         const authService = new AuthService(page);
         const isAccessible = await authService.checkNiFiAccessibility();
-        test.skip(
-            !isAccessible,
-            "NiFi service is not accessible - cannot test browser logging with real navigation",
-        );
+        if (!isAccessible) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not accessible. " +
+                    "Cannot test browser logging with real navigation. " +
+                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+            );
+        }
 
         // Navigate and generate console activity
         await page.goto("/nifi");
@@ -330,9 +340,13 @@ test.describe("Self-Test: Browser Console Logging", () => {
 
         // Generate console activity without any external service dependencies
         await page.evaluate(() => {
+            // eslint-disable-next-line no-console
             console.log("Standalone test log message");
+            // eslint-disable-next-line no-console
             console.warn("Standalone test warning message");
+            // eslint-disable-next-line no-console
             console.info("Standalone test info message");
+            // eslint-disable-next-line no-console
             console.error("Standalone test error message");
         });
 

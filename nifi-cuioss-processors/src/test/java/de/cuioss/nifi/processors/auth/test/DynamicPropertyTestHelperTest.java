@@ -17,11 +17,7 @@
 package de.cuioss.nifi.processors.auth.test;
 
 import org.apache.nifi.components.PropertyDescriptor;
-import org.apache.nifi.processor.AbstractProcessor;
-import org.apache.nifi.processor.ProcessContext;
-import org.apache.nifi.processor.ProcessSession;
-import org.apache.nifi.processor.ProcessorInitializationContext;
-import org.apache.nifi.processor.Relationship;
+import org.apache.nifi.processor.*;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
@@ -50,21 +46,21 @@ class DynamicPropertyTestHelperTest {
     void testCreateContextWithDynamicProperties() {
         // Set static property
         testRunner.setProperty(TestProcessor.STATIC_PROPERTY, "static-value");
-        
+
         // Set dynamic properties
         testRunner.setProperty("dynamic.prop1", "value1");
         testRunner.setProperty("dynamic.prop2", "value2");
-        
+
         // Create context using helper
         ProcessContext context = DynamicPropertyTestHelper.createContextWithDynamicProperties(testRunner, processor);
-        
+
         // Verify all properties are present
         Map<PropertyDescriptor, String> properties = context.getProperties();
         assertEquals(3, properties.size());
-        
+
         // Verify static property
         assertEquals("static-value", context.getProperty(TestProcessor.STATIC_PROPERTY).getValue());
-        
+
         // Verify dynamic properties are included
         boolean foundDynamic1 = false;
         boolean foundDynamic2 = false;
@@ -89,10 +85,10 @@ class DynamicPropertyTestHelperTest {
         properties.put("url", "https://example.com");
         properties.put("timeout", "30000");
         properties.put("enabled", "true");
-        
+
         // Set properties with prefix
         DynamicPropertyTestHelper.setDynamicProperties(testRunner, "service.config.", properties);
-        
+
         // Verify properties were set correctly
         assertEquals("https://example.com", testRunner.getProcessContext().getProperty("service.config.url").getValue());
         assertEquals("30000", testRunner.getProcessContext().getProperty("service.config.timeout").getValue());
@@ -107,19 +103,19 @@ class DynamicPropertyTestHelperTest {
         issuerProps.put("issuer", "https://auth.example.com");
         issuerProps.put("audience", "my-api");
         issuerProps.put("algorithm", "RS256");
-        
+
         // Set issuer properties
         DynamicPropertyTestHelper.setIssuerProperties(testRunner, "auth-server", issuerProps);
-        
+
         // Verify properties were set with correct prefix
-        assertEquals("https://auth.example.com/.well-known/jwks.json", 
-            testRunner.getProcessContext().getProperty("issuer.auth-server.jwks-url").getValue());
-        assertEquals("https://auth.example.com", 
-            testRunner.getProcessContext().getProperty("issuer.auth-server.issuer").getValue());
-        assertEquals("my-api", 
-            testRunner.getProcessContext().getProperty("issuer.auth-server.audience").getValue());
-        assertEquals("RS256", 
-            testRunner.getProcessContext().getProperty("issuer.auth-server.algorithm").getValue());
+        assertEquals("https://auth.example.com/.well-known/jwks.json",
+                testRunner.getProcessContext().getProperty("issuer.auth-server.jwks-url").getValue());
+        assertEquals("https://auth.example.com",
+                testRunner.getProcessContext().getProperty("issuer.auth-server.issuer").getValue());
+        assertEquals("my-api",
+                testRunner.getProcessContext().getProperty("issuer.auth-server.audience").getValue());
+        assertEquals("RS256",
+                testRunner.getProcessContext().getProperty("issuer.auth-server.algorithm").getValue());
     }
 
     @Test
@@ -137,12 +133,12 @@ class DynamicPropertyTestHelperTest {
         issuer2Props.put("issuer", "https://issuer2.example.com");
         issuer2Props.put("audience", "api2");
         DynamicPropertyTestHelper.setIssuerProperties(testRunner, "issuer2", issuer2Props);
-        
+
         // Verify both issuers are configured
-        assertEquals("https://issuer1.example.com/.well-known/jwks.json", 
-            testRunner.getProcessContext().getProperty("issuer.issuer1.jwks-url").getValue());
-        assertEquals("https://issuer2.example.com/.well-known/jwks.json", 
-            testRunner.getProcessContext().getProperty("issuer.issuer2.jwks-url").getValue());
+        assertEquals("https://issuer1.example.com/.well-known/jwks.json",
+                testRunner.getProcessContext().getProperty("issuer.issuer1.jwks-url").getValue());
+        assertEquals("https://issuer2.example.com/.well-known/jwks.json",
+                testRunner.getProcessContext().getProperty("issuer.issuer2.jwks-url").getValue());
     }
 
     @Test
@@ -150,7 +146,7 @@ class DynamicPropertyTestHelperTest {
         // Test with empty map
         Map<String, String> emptyProps = new HashMap<>();
         DynamicPropertyTestHelper.setDynamicProperties(testRunner, "prefix.", emptyProps);
-        
+
         // Should not throw exception and no properties should be set
         assertDoesNotThrow(() -> testRunner.run());
     }
@@ -159,7 +155,7 @@ class DynamicPropertyTestHelperTest {
      * Test processor that supports dynamic properties
      */
     private static class TestProcessor extends AbstractProcessor {
-        
+
         static final PropertyDescriptor STATIC_PROPERTY = new PropertyDescriptor.Builder()
                 .name("static.property")
                 .displayName("Static Property")

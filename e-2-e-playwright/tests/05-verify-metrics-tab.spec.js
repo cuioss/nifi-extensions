@@ -6,6 +6,7 @@
 
 import { test, expect } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
+import { ProcessorService } from "../utils/processor.js";
 import {
     saveTestBrowserLogs,
     setupStrictErrorDetection,
@@ -45,28 +46,44 @@ test.describe("Metrics Tab", () => {
         cleanupCriticalErrorDetection();
     });
 
-    test("should display metrics dashboard", async ({ page }, _testInfo) => {
+    test("should display metrics dashboard", async ({ page }, testInfo) => {
         processorLogger.info("Testing metrics dashboard display");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            // Find and configure processor
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            // Wait for custom UI to load
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const metricsTab = await page.locator(
+            // Determine UI context
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeTab = customUIFrame.locator(
+                '[role="tab"]:has-text("Metrics")',
+            );
+            if ((await iframeTab.count()) > 0) {
+                uiContext = customUIFrame;
+                processorLogger.info("Working with Metrics tab in iframe");
+            }
+
+            const metricsTab = await uiContext.locator(
                 '[role="tab"]:has-text("Metrics")',
             );
             await expect(metricsTab).toBeVisible({ timeout: 5000 });
             await metricsTab.click();
             processorLogger.info("Clicked Metrics tab");
 
-            const metricsPanel = await page.locator(
+            const metricsPanel = await uiContext.locator(
                 '[role="tabpanel"][data-tab="metrics"]',
             );
             await expect(metricsPanel).toBeVisible({ timeout: 5000 });
@@ -92,7 +109,7 @@ test.describe("Metrics Tab", () => {
             ];
 
             for (const section of metricsSections) {
-                const el = await page.locator(section.selector);
+                const el = await uiContext.locator(section.selector);
                 await expect(el).toBeVisible({ timeout: 5000 });
                 processorLogger.info(`✓ Found ${section.description} section`);
             }
@@ -108,45 +125,57 @@ test.describe("Metrics Tab", () => {
 
     test("should show validation success and failure rates", async ({
         page,
-    }, _testInfo) => {
+    }, testInfo) => {
         processorLogger.info("Testing validation rate metrics");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const metricsTab = await page.locator(
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeTab = customUIFrame.locator(
+                '[role="tab"]:has-text("Metrics")',
+            );
+            if ((await iframeTab.count()) > 0) {
+                uiContext = customUIFrame;
+            }
+
+            const metricsTab = await uiContext.locator(
                 '[role="tab"]:has-text("Metrics")',
             );
             await metricsTab.click();
 
-            const validationMetrics = await page.locator(
+            const validationMetrics = await uiContext.locator(
                 '[data-testid="validation-metrics"]',
             );
             await expect(validationMetrics).toBeVisible({ timeout: 5000 });
 
-            const successRate = await page.locator(
+            const successRate = await uiContext.locator(
                 '[data-testid="success-rate"]',
             );
             await expect(successRate).toBeVisible({ timeout: 5000 });
             await expect(successRate).toContainText(/\d+(\.\d+)?%/);
             processorLogger.info("✓ Success rate displayed");
 
-            const failureRate = await page.locator(
+            const failureRate = await uiContext.locator(
                 '[data-testid="failure-rate"]',
             );
             await expect(failureRate).toBeVisible({ timeout: 5000 });
             await expect(failureRate).toContainText(/\d+(\.\d+)?%/);
             processorLogger.info("✓ Failure rate displayed");
 
-            const totalValidations = await page.locator(
+            const totalValidations = await uiContext.locator(
                 '[data-testid="total-validations"]',
             );
             await expect(totalValidations).toBeVisible({ timeout: 5000 });
@@ -166,31 +195,43 @@ test.describe("Metrics Tab", () => {
 
     test("should display issuer-specific metrics", async ({
         page,
-    }, _testInfo) => {
+    }, testInfo) => {
         processorLogger.info("Testing issuer-specific metrics");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const metricsTab = await page.locator(
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeTab = customUIFrame.locator(
+                '[role="tab"]:has-text("Metrics")',
+            );
+            if ((await iframeTab.count()) > 0) {
+                uiContext = customUIFrame;
+            }
+
+            const metricsTab = await uiContext.locator(
                 '[role="tab"]:has-text("Metrics")',
             );
             await metricsTab.click();
 
-            const issuerMetrics = await page.locator(
+            const issuerMetrics = await uiContext.locator(
                 '[data-testid="issuer-metrics"]',
             );
             await expect(issuerMetrics).toBeVisible({ timeout: 5000 });
 
-            const issuerTable = await page.locator(
+            const issuerTable = await uiContext.locator(
                 '[data-testid="issuer-metrics-table"]',
             );
             await expect(issuerTable).toBeVisible({ timeout: 5000 });
@@ -206,14 +247,14 @@ test.describe("Metrics Tab", () => {
             ];
 
             for (const header of tableHeaders) {
-                const headerCell = await page.locator(
+                const headerCell = await uiContext.locator(
                     `th:has-text("${header}")`,
                 );
                 await expect(headerCell).toBeVisible({ timeout: 5000 });
                 processorLogger.info(`✓ Found header: ${header}`);
             }
 
-            const issuerRows = await page.locator(
+            const issuerRows = await uiContext.locator(
                 '[data-testid="issuer-metrics-row"]',
             );
             const rowCount = await issuerRows.count();
@@ -241,26 +282,38 @@ test.describe("Metrics Tab", () => {
         }
     });
 
-    test("should show performance metrics", async ({ page }, _testInfo) => {
+    test("should show performance metrics", async ({ page }, testInfo) => {
         processorLogger.info("Testing performance metrics display");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const metricsTab = await page.locator(
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeTab = customUIFrame.locator(
+                '[role="tab"]:has-text("Metrics")',
+            );
+            if ((await iframeTab.count()) > 0) {
+                uiContext = customUIFrame;
+            }
+
+            const metricsTab = await uiContext.locator(
                 '[role="tab"]:has-text("Metrics")',
             );
             await metricsTab.click();
 
-            const performanceMetrics = await page.locator(
+            const performanceMetrics = await uiContext.locator(
                 '[data-testid="performance-metrics"]',
             );
             await expect(performanceMetrics).toBeVisible({ timeout: 5000 });
@@ -289,7 +342,7 @@ test.describe("Metrics Tab", () => {
             ];
 
             for (const indicator of performanceIndicators) {
-                const el = await page.locator(indicator.selector);
+                const el = await uiContext.locator(indicator.selector);
                 await expect(el).toBeVisible({ timeout: 5000 });
                 await expect(el).toContainText(indicator.pattern);
                 processorLogger.info(`✓ ${indicator.description} displayed`);
@@ -304,31 +357,43 @@ test.describe("Metrics Tab", () => {
         }
     });
 
-    test("should refresh metrics data", async ({ page }, _testInfo) => {
+    test("should refresh metrics data", async ({ page }, testInfo) => {
         processorLogger.info("Testing metrics refresh functionality");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const metricsTab = await page.locator(
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeTab = customUIFrame.locator(
+                '[role="tab"]:has-text("Metrics")',
+            );
+            if ((await iframeTab.count()) > 0) {
+                uiContext = customUIFrame;
+            }
+
+            const metricsTab = await uiContext.locator(
                 '[role="tab"]:has-text("Metrics")',
             );
             await metricsTab.click();
 
-            const refreshButton = await page.locator(
+            const refreshButton = await uiContext.locator(
                 '[data-testid="refresh-metrics-button"]',
             );
             await expect(refreshButton).toBeVisible({ timeout: 5000 });
 
-            const totalValidationsBefore = await page
+            const totalValidationsBefore = await uiContext
                 .locator('[data-testid="total-validations"]')
                 .textContent();
             processorLogger.info(
@@ -338,7 +403,7 @@ test.describe("Metrics Tab", () => {
             await refreshButton.click();
             processorLogger.info("Clicked refresh button");
 
-            const refreshIndicator = await page.locator(
+            const refreshIndicator = await uiContext.locator(
                 '[data-testid="refresh-indicator"]',
             );
             await expect(refreshIndicator).toBeVisible({ timeout: 2000 });
@@ -347,7 +412,7 @@ test.describe("Metrics Tab", () => {
             await expect(refreshIndicator).not.toBeVisible({ timeout: 10000 });
             processorLogger.info("✓ Refresh completed");
 
-            const lastUpdated = await page.locator(
+            const lastUpdated = await uiContext.locator(
                 '[data-testid="last-updated"]',
             );
             await expect(lastUpdated).toBeVisible({ timeout: 5000 });
@@ -363,26 +428,38 @@ test.describe("Metrics Tab", () => {
         }
     });
 
-    test("should export metrics data", async ({ page }, _testInfo) => {
+    test("should export metrics data", async ({ page }, testInfo) => {
         processorLogger.info("Testing metrics export functionality");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const metricsTab = await page.locator(
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeTab = customUIFrame.locator(
+                '[role="tab"]:has-text("Metrics")',
+            );
+            if ((await iframeTab.count()) > 0) {
+                uiContext = customUIFrame;
+            }
+
+            const metricsTab = await uiContext.locator(
                 '[role="tab"]:has-text("Metrics")',
             );
             await metricsTab.click();
 
-            const exportButton = await page.locator(
+            const exportButton = await uiContext.locator(
                 '[data-testid="export-metrics-button"]',
             );
             await expect(exportButton).toBeVisible({ timeout: 5000 });
@@ -390,7 +467,7 @@ test.describe("Metrics Tab", () => {
             await exportButton.click();
             processorLogger.info("Clicked export button");
 
-            const exportOptions = await page.locator(
+            const exportOptions = await uiContext.locator(
                 '[data-testid="export-options"]',
             );
             await expect(exportOptions).toBeVisible({ timeout: 5000 });
@@ -398,7 +475,7 @@ test.describe("Metrics Tab", () => {
             const exportFormats = ["CSV", "JSON", "Prometheus"];
 
             for (const format of exportFormats) {
-                const formatOption = await page.locator(
+                const formatOption = await uiContext.locator(
                     `[data-testid="export-${format.toLowerCase()}"]`,
                 );
                 await expect(formatOption).toBeVisible({ timeout: 5000 });

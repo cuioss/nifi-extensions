@@ -16,8 +16,8 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import de.cuioss.nifi.processors.auth.test.DynamicPropertyTestHelper;
 import de.cuioss.nifi.processors.auth.JWTPropertyKeys;
+import de.cuioss.nifi.processors.auth.test.DynamicPropertyTestHelper;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.MockProcessContext;
@@ -60,10 +60,10 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             public void onScheduled(final ProcessContext context) {
                 // Override onScheduled to manually add dynamic properties before calling super
                 MockProcessContext mockContext = (MockProcessContext) context;
-                
+
                 // Add our tracked dynamic properties
                 dynamicProperties.forEach(mockContext::setProperty);
-                
+
                 // Now call the original onScheduled with all properties available
                 super.onScheduled(context);
             }
@@ -80,7 +80,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         setDynamicProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
         setDynamicProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
     }
-    
+
     private void setDynamicProperty(String key, String value) {
         testRunner.setProperty(key, value);
         dynamicProperties.put(key, value);
@@ -199,7 +199,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             setDynamicProperty(ISSUER_PREFIX + "second-issuer.jwks-url", "https://second-issuer/.well-known/jwks.json");
             setDynamicProperty(ISSUER_PREFIX + "second-issuer.issuer", "second-issuer");
             setDynamicProperty(ISSUER_PREFIX + "second-issuer.audience", "second-audience");
-            
+
             // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
@@ -337,7 +337,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
 
             // Set require-valid-token to false to allow running without issuers
             newTestRunner.setProperty(Properties.REQUIRE_VALID_TOKEN, "false");
-            
+
             // Initialize processor with MockProcessContext (no issuers)
             MockProcessContext context = new MockProcessContext(newProcessor);
             newTestRunner.getProcessContext().getProperties().forEach((descriptor, value) -> {
@@ -372,32 +372,32 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         void configurationHashChangesWithIssuerProperties() {
             // Track dynamic properties for this test
             Map<String, String> testDynamicProperties = new HashMap<>();
-            
+
             // Setup processor with override to handle dynamic properties
             MultiIssuerJWTTokenAuthenticator hashProcessor = new MultiIssuerJWTTokenAuthenticator() {
                 @Override
                 public void onScheduled(final ProcessContext context) {
                     // Override onScheduled to manually add dynamic properties before calling super
                     MockProcessContext mockContext = (MockProcessContext) context;
-                    
+
                     // Add our tracked dynamic properties
                     testDynamicProperties.forEach(mockContext::setProperty);
-                    
+
                     // Now call the original onScheduled with all properties available
                     super.onScheduled(context);
                 }
             };
-            
+
             TestRunner runner = TestRunners.newTestRunner(hashProcessor);
             runner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
             runner.setProperty(Properties.TOKEN_HEADER, "Authorization");
             runner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Bearer");
-            
+
             // Set complete issuer configuration
             runner.setProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
             runner.setProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
             runner.setProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
-            
+
             // Track dynamic properties
             testDynamicProperties.put(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
             testDynamicProperties.put(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
@@ -416,7 +416,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             runner.setProperty(ISSUER_PREFIX + "new-issuer.jwks-url", "https://new-issuer/.well-known/jwks.json");
             runner.setProperty(ISSUER_PREFIX + "new-issuer.issuer", "new-issuer");
             runner.setProperty(ISSUER_PREFIX + "new-issuer.audience", "new-audience");
-            
+
             // Update tracked dynamic properties
             testDynamicProperties.put(ISSUER_PREFIX + "test-issuer.jwks-url", "https://updated-issuer/.well-known/jwks.json");
             testDynamicProperties.put(ISSUER_PREFIX + "new-issuer.jwks-url", "https://new-issuer/.well-known/jwks.json");
@@ -447,7 +447,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         void authorizationWithRequiredScopes() {
             // Setup issuer with required scopes
             setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read,write");
-            
+
             // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
@@ -475,7 +475,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         void authorizationWithRequiredRoles() {
             // Setup issuer with required roles
             setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "user,admin");
-            
+
             // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
@@ -504,7 +504,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Setup issuer with case-sensitive matching enabled
             setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "READ,WRITE");
             setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.CASE_SENSITIVE_MATCHING, "true");
-            
+
             // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
@@ -533,7 +533,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Setup issuer with case-insensitive matching (default behavior)
             setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read,write");
             setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.CASE_SENSITIVE_MATCHING, "false");
-            
+
             // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
@@ -562,7 +562,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Setup issuer with require-all-scopes enabled
             setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read,write,admin");
             setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRE_ALL_SCOPES, "true");
-            
+
             // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
@@ -591,7 +591,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Setup issuer with require-all-roles enabled
             setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "user,admin,moderator");
             setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRE_ALL_ROLES, "true");
-            
+
             // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
@@ -620,7 +620,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Setup issuer with authorization requirements
             setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read");
             setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "user");
-            
+
             // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
@@ -653,7 +653,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             setDynamicProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
             setDynamicProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
             setDynamicProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
-            
+
             // Properties are already set and tracked
 
             // Create flow file with Authorization header
@@ -683,7 +683,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Setup issuer with both scopes and roles
             setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read,write");
             setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "user,admin");
-            
+
             // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
@@ -720,7 +720,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             setDynamicProperty(ISSUER_PREFIX + "second-issuer.issuer", "second-issuer");
             setDynamicProperty(ISSUER_PREFIX + "second-issuer.audience", "second-audience");
             setDynamicProperty(ISSUER_PREFIX + "second-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "admin");
-            
+
             // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header

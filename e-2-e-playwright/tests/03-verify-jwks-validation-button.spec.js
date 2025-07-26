@@ -6,6 +6,7 @@
 
 import { test, expect } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
+import { ProcessorService } from "../utils/processor.js";
 import {
     saveTestBrowserLogs,
     setupStrictErrorDetection,
@@ -47,21 +48,37 @@ test.describe("JWKS Validation Button", () => {
 
     test("should validate JWKS URL successfully", async ({
         page,
-    }, _testInfo) => {
+    }, testInfo) => {
         processorLogger.info("Testing JWKS validation button - valid URL");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            // Find and configure processor
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            // Wait for custom UI to load
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const jwksUrlInput = await page.locator(
+            // Determine UI context
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeInput = customUIFrame.locator(
+                '[data-testid="jwks-url-input"]',
+            );
+            if ((await iframeInput.count()) > 0) {
+                uiContext = customUIFrame;
+                processorLogger.info("Working with JWKS validation in iframe");
+            }
+
+            const jwksUrlInput = await uiContext.locator(
                 '[data-testid="jwks-url-input"]',
             );
             await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
@@ -70,14 +87,14 @@ test.describe("JWKS Validation Button", () => {
             );
             processorLogger.info("Entered valid JWKS URL");
 
-            const validateButton = await page.locator(
+            const validateButton = await uiContext.locator(
                 '[data-testid="validate-jwks-button"]',
             );
             await expect(validateButton).toBeVisible({ timeout: 5000 });
             await validateButton.click();
             processorLogger.info("Clicked validate button");
 
-            const successMessage = await page.locator(
+            const successMessage = await uiContext.locator(
                 '[data-testid="validation-success-message"]',
             );
             await expect(successMessage).toBeVisible({ timeout: 10000 });
@@ -86,7 +103,7 @@ test.describe("JWKS Validation Button", () => {
             );
             processorLogger.success("JWKS URL validated successfully");
 
-            const validationIcon = await page.locator(
+            const validationIcon = await uiContext.locator(
                 '[data-testid="validation-success-icon"]',
             );
             await expect(validationIcon).toBeVisible({ timeout: 5000 });
@@ -100,42 +117,54 @@ test.describe("JWKS Validation Button", () => {
         }
     });
 
-    test("should handle invalid JWKS URL", async ({ page }, _testInfo) => {
+    test("should handle invalid JWKS URL", async ({ page }, testInfo) => {
         processorLogger.info("Testing JWKS validation button - invalid URL");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const jwksUrlInput = await page.locator(
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeInput = customUIFrame.locator(
+                '[data-testid="jwks-url-input"]',
+            );
+            if ((await iframeInput.count()) > 0) {
+                uiContext = customUIFrame;
+            }
+
+            const jwksUrlInput = await uiContext.locator(
                 '[data-testid="jwks-url-input"]',
             );
             await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
             await jwksUrlInput.fill("not-a-valid-url");
             processorLogger.info("Entered invalid JWKS URL");
 
-            const validateButton = await page.locator(
+            const validateButton = await uiContext.locator(
                 '[data-testid="validate-jwks-button"]',
             );
             await expect(validateButton).toBeVisible({ timeout: 5000 });
             await validateButton.click();
             processorLogger.info("Clicked validate button");
 
-            const errorMessage = await page.locator(
+            const errorMessage = await uiContext.locator(
                 '[data-testid="validation-error-message"]',
             );
             await expect(errorMessage).toBeVisible({ timeout: 10000 });
             await expect(errorMessage).toContainText(/invalid|error|failed/i);
             processorLogger.info("✓ Error message displayed for invalid URL");
 
-            const errorIcon = await page.locator(
+            const errorIcon = await uiContext.locator(
                 '[data-testid="validation-error-icon"]',
             );
             await expect(errorIcon).toBeVisible({ timeout: 5000 });
@@ -149,42 +178,54 @@ test.describe("JWKS Validation Button", () => {
         }
     });
 
-    test("should validate JWKS file path", async ({ page }, _testInfo) => {
+    test("should validate JWKS file path", async ({ page }, testInfo) => {
         processorLogger.info("Testing JWKS validation button - file path");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const filePathRadio = await page.locator(
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeRadio = customUIFrame.locator(
+                '[data-testid="jwks-source-file"]',
+            );
+            if ((await iframeRadio.count()) > 0) {
+                uiContext = customUIFrame;
+            }
+
+            const filePathRadio = await uiContext.locator(
                 '[data-testid="jwks-source-file"]',
             );
             await expect(filePathRadio).toBeVisible({ timeout: 5000 });
             await filePathRadio.click();
             processorLogger.info("Selected file path option");
 
-            const jwksFileInput = await page.locator(
+            const jwksFileInput = await uiContext.locator(
                 '[data-testid="jwks-file-input"]',
             );
             await expect(jwksFileInput).toBeVisible({ timeout: 5000 });
             await jwksFileInput.fill("/path/to/jwks.json");
             processorLogger.info("Entered JWKS file path");
 
-            const validateButton = await page.locator(
+            const validateButton = await uiContext.locator(
                 '[data-testid="validate-jwks-button"]',
             );
             await expect(validateButton).toBeVisible({ timeout: 5000 });
             await validateButton.click();
             processorLogger.info("Clicked validate button");
 
-            const validationResult = await page.locator(
+            const validationResult = await uiContext.locator(
                 '[data-testid="validation-result"]',
             );
             await expect(validationResult).toBeVisible({ timeout: 10000 });
@@ -199,21 +240,33 @@ test.describe("JWKS Validation Button", () => {
 
     test("should display validation progress indicator", async ({
         page,
-    }, _testInfo) => {
+    }, testInfo) => {
         processorLogger.info("Testing JWKS validation progress indicator");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const jwksUrlInput = await page.locator(
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeInput = customUIFrame.locator(
+                '[data-testid="jwks-url-input"]',
+            );
+            if ((await iframeInput.count()) > 0) {
+                uiContext = customUIFrame;
+            }
+
+            const jwksUrlInput = await uiContext.locator(
                 '[data-testid="jwks-url-input"]',
             );
             await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
@@ -221,18 +274,18 @@ test.describe("JWKS Validation Button", () => {
                 "https://slow-response.example.com/jwks.json",
             );
 
-            const validateButton = await page.locator(
+            const validateButton = await uiContext.locator(
                 '[data-testid="validate-jwks-button"]',
             );
             await validateButton.click();
 
-            const progressIndicator = await page.locator(
+            const progressIndicator = await uiContext.locator(
                 '[data-testid="validation-progress"]',
             );
             await expect(progressIndicator).toBeVisible({ timeout: 2000 });
             processorLogger.info("✓ Progress indicator displayed");
 
-            const spinner = await page.locator(
+            const spinner = await uiContext.locator(
                 '[data-testid="validation-spinner"]',
             );
             await expect(spinner).toBeVisible({ timeout: 2000 });

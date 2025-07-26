@@ -13,7 +13,7 @@ import {
     setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
 import {
-    checkCriticalErrors,
+    checkCriticalErrors as _checkCriticalErrors,
     cleanupCriticalErrorDetection,
 } from "../utils/critical-error-detector.js";
 import { logTestWarning } from "../utils/test-error-handler.js";

@@ -6,6 +6,7 @@
 
 import { test, expect } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
+import { ProcessorService } from "../utils/processor.js";
 import {
     saveTestBrowserLogs,
     setupStrictErrorDetection,
@@ -47,19 +48,40 @@ test.describe("JWT Authenticator Customizer UI", () => {
 
     test("should display custom JWT authenticator UI", async ({
         page,
-    }, _testInfo) => {
+    }, testInfo) => {
         processorLogger.info("Testing JWT Authenticator Customizer UI");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            // Find the MultiIssuerJWTTokenAuthenticator processor on the canvas
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+
+            // Open processor configuration
+            const dialog = await processorService.configure(processor);
+
+            // Access advanced properties to get to custom UI
+            await processorService.accessAdvancedProperties(dialog);
+
+            // Wait for custom UI to load
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
+
+            // Check if custom UI is in an iframe
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            // Try to find elements in iframe first
+            const iframeContainer = customUIFrame.locator(
+                '[data-testid="jwt-customizer-container"]',
+            );
+            if ((await iframeContainer.count()) > 0) {
+                uiContext = customUIFrame;
+                processorLogger.info("Custom UI found in iframe");
+            }
 
             const customUIElements = [
                 {
@@ -80,7 +102,7 @@ test.describe("JWT Authenticator Customizer UI", () => {
                 processorLogger.info(
                     `Checking for ${element.description}: ${element.selector}`,
                 );
-                const el = await page.locator(element.selector);
+                const el = await uiContext.locator(element.selector);
                 await expect(el).toBeVisible({ timeout: 5000 });
                 processorLogger.info(`✓ Found ${element.description}`);
             }
@@ -95,7 +117,7 @@ test.describe("JWT Authenticator Customizer UI", () => {
             for (const tabName of tabs) {
                 const tabSelector = `[role="tab"]:has-text("${tabName}")`;
                 processorLogger.info(`Checking for tab: ${tabName}`);
-                const tab = await page.locator(tabSelector);
+                const tab = await uiContext.locator(tabSelector);
                 await expect(tab).toBeVisible({ timeout: 5000 });
                 processorLogger.info(`✓ Found ${tabName} tab`);
             }
@@ -113,21 +135,37 @@ test.describe("JWT Authenticator Customizer UI", () => {
 
     test("should handle issuer configuration interactions", async ({
         page,
-    }, _testInfo) => {
+    }, testInfo) => {
         processorLogger.info("Testing issuer configuration interactions");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            // Find and configure processor
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            // Wait for custom UI to load
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const addIssuerButton = await page.locator(
+            // Determine UI context (iframe or main page)
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeButton = customUIFrame.locator(
+                '[data-testid="add-issuer-button"]',
+            );
+            if ((await iframeButton.count()) > 0) {
+                uiContext = customUIFrame;
+                processorLogger.info("Working with custom UI in iframe");
+            }
+
+            const addIssuerButton = await uiContext.locator(
                 '[data-testid="add-issuer-button"]',
             );
             await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
@@ -155,7 +193,7 @@ test.describe("JWT Authenticator Customizer UI", () => {
 
             for (const field of issuerFormFields) {
                 processorLogger.info(`Filling ${field.description}`);
-                const input = await page.locator(field.selector);
+                const input = await uiContext.locator(field.selector);
                 await expect(input).toBeVisible({ timeout: 5000 });
                 await input.fill(field.value);
                 processorLogger.info(
@@ -163,14 +201,14 @@ test.describe("JWT Authenticator Customizer UI", () => {
                 );
             }
 
-            const saveButton = await page.locator(
+            const saveButton = await uiContext.locator(
                 '[data-testid="save-issuer-button"]',
             );
             await expect(saveButton).toBeVisible({ timeout: 5000 });
             await saveButton.click();
             processorLogger.info("Saved issuer configuration");
 
-            const savedIssuer = await page.locator(
+            const savedIssuer = await uiContext.locator(
                 '[data-testid="issuer-item"]:has-text("test-issuer")',
             );
             await expect(savedIssuer).toBeVisible({ timeout: 5000 });

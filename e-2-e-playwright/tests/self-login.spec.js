@@ -16,10 +16,13 @@ test.describe("Self-Test: Login", () => {
 
         // Check if NiFi is accessible before attempting navigation
         const isAccessible = await authService.checkNiFiAccessibility();
-        test.skip(
-            !isAccessible,
-            "NiFi service is not accessible - cannot test authentication",
-        );
+        if (!isAccessible) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not accessible. " +
+                    "Cannot test authentication. " +
+                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+            );
+        }
 
         // Navigate to login page
         await page.goto("/nifi");
@@ -82,10 +85,13 @@ test.describe("Self-Test: Login", () => {
 
         // Check if NiFi is accessible before attempting navigation
         const isAccessible = await authService.checkNiFiAccessibility();
-        test.skip(
-            !isAccessible,
-            "NiFi service is not accessible - cannot test authentication status",
-        );
+        if (!isAccessible) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not accessible. " +
+                    "Cannot test authentication status. " +
+                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+            );
+        }
 
         // Initially should not be authenticated
         await page.goto("/nifi");

@@ -6,6 +6,7 @@
 
 import { test, expect } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
+import { ProcessorService } from "../utils/processor.js";
 import {
     saveTestBrowserLogs,
     setupStrictErrorDetection,
@@ -45,19 +46,35 @@ test.describe("JWKS Validation Complete", () => {
         cleanupCriticalErrorDetection();
     });
 
-    test("should validate JWKS URL format", async ({ page }, _testInfo) => {
+    test("should validate JWKS URL format", async ({ page }, testInfo) => {
         processorLogger.info("Testing JWKS URL format validation");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            // Find and configure processor
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            // Wait for custom UI to load
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
+
+            // Determine UI context
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeInput = customUIFrame.locator(
+                '[data-testid="jwks-url-input"]',
+            );
+            if ((await iframeInput.count()) > 0) {
+                uiContext = customUIFrame;
+                processorLogger.info("Working with JWKS validation in iframe");
+            }
 
             const testUrls = [
                 {
@@ -90,13 +107,13 @@ test.describe("JWKS Validation Complete", () => {
             for (const testCase of testUrls) {
                 processorLogger.info(`Testing: ${testCase.description}`);
 
-                const jwksUrlInput = await page.locator(
+                const jwksUrlInput = await uiContext.locator(
                     '[data-testid="jwks-url-input"]',
                 );
                 await jwksUrlInput.clear();
                 await jwksUrlInput.fill(testCase.url);
 
-                const validateButton = await page.locator(
+                const validateButton = await uiContext.locator(
                     '[data-testid="validate-jwks-button"]',
                 );
                 await validateButton.click();
@@ -104,7 +121,7 @@ test.describe("JWKS Validation Complete", () => {
                 await page.waitForTimeout(1000);
 
                 if (testCase.valid) {
-                    const successIndicator = await page.locator(
+                    const successIndicator = await uiContext.locator(
                         '[data-testid="validation-success-icon"], [data-testid="validation-success-message"]',
                     );
                     await expect(successIndicator).toBeVisible({
@@ -114,7 +131,7 @@ test.describe("JWKS Validation Complete", () => {
                         `✓ ${testCase.description} validated successfully`,
                     );
                 } else {
-                    const errorIndicator = await page.locator(
+                    const errorIndicator = await uiContext.locator(
                         '[data-testid="validation-error-icon"], [data-testid="validation-error-message"]',
                     );
                     await expect(errorIndicator).toBeVisible({ timeout: 5000 });
@@ -133,21 +150,33 @@ test.describe("JWKS Validation Complete", () => {
         }
     });
 
-    test("should validate JWKS file paths", async ({ page }, _testInfo) => {
+    test("should validate JWKS file paths", async ({ page }, testInfo) => {
         processorLogger.info("Testing JWKS file path validation");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const fileSourceRadio = await page.locator(
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeRadio = customUIFrame.locator(
+                '[data-testid="jwks-source-file"]',
+            );
+            if ((await iframeRadio.count()) > 0) {
+                uiContext = customUIFrame;
+            }
+
+            const fileSourceRadio = await uiContext.locator(
                 '[data-testid="jwks-source-file"]',
             );
             await fileSourceRadio.click();
@@ -219,41 +248,56 @@ test.describe("JWKS Validation Complete", () => {
         }
     });
 
-    test("should test JWKS connectivity", async ({ page }, _testInfo) => {
+    test("should test JWKS connectivity", async ({ page }, testInfo) => {
         processorLogger.info("Testing JWKS connectivity validation");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const jwksUrlInput = await page.locator(
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeInput = customUIFrame.locator(
+                '[data-testid="jwks-url-input"]',
+            );
+            if ((await iframeInput.count()) > 0) {
+                uiContext = customUIFrame;
+                processorLogger.info(
+                    "Working with JWKS connectivity in iframe",
+                );
+            }
+
+            const jwksUrlInput = await uiContext.locator(
                 '[data-testid="jwks-url-input"]',
             );
             await jwksUrlInput.fill(
                 "https://example.com/.well-known/jwks.json",
             );
 
-            const testConnectionButton = await page.locator(
+            const testConnectionButton = await uiContext.locator(
                 '[data-testid="test-connection-button"]',
             );
             await expect(testConnectionButton).toBeVisible({ timeout: 5000 });
             await testConnectionButton.click();
             processorLogger.info("Clicked test connection button");
 
-            const connectionProgress = await page.locator(
+            const connectionProgress = await uiContext.locator(
                 '[data-testid="connection-test-progress"]',
             );
             await expect(connectionProgress).toBeVisible({ timeout: 2000 });
             processorLogger.info("✓ Connection test in progress");
 
-            const connectionResult = await page.locator(
+            const connectionResult = await uiContext.locator(
                 '[data-testid="connection-test-result"]',
             );
             await expect(connectionResult).toBeVisible({ timeout: 10000 });
@@ -278,7 +322,7 @@ test.describe("JWKS Validation Complete", () => {
             ];
 
             for (const detail of resultDetails) {
-                const el = await page.locator(detail.selector);
+                const el = await uiContext.locator(detail.selector);
                 await expect(el).toBeVisible({ timeout: 5000 });
                 processorLogger.info(`✓ ${detail.description} displayed`);
             }
@@ -294,21 +338,36 @@ test.describe("JWKS Validation Complete", () => {
 
     test("should validate JWKS content structure", async ({
         page,
-    }, _testInfo) => {
+    }, testInfo) => {
         processorLogger.info("Testing JWKS content structure validation");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
-            const manualInputTab = await page.locator(
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeTab = customUIFrame.locator(
+                '[data-testid="jwks-source-manual"]',
+            );
+            if ((await iframeTab.count()) > 0) {
+                uiContext = customUIFrame;
+                processorLogger.info(
+                    "Working with JWKS content validation in iframe",
+                );
+            }
+
+            const manualInputTab = await uiContext.locator(
                 '[data-testid="jwks-source-manual"]',
             );
             await manualInputTab.click();
@@ -350,13 +409,13 @@ test.describe("JWKS Validation Complete", () => {
             for (const testCase of testJwksContent) {
                 processorLogger.info(`Testing: ${testCase.description}`);
 
-                const jwksTextarea = await page.locator(
+                const jwksTextarea = await uiContext.locator(
                     '[data-testid="jwks-manual-input"]',
                 );
                 await jwksTextarea.clear();
                 await jwksTextarea.fill(testCase.content);
 
-                const validateButton = await page.locator(
+                const validateButton = await uiContext.locator(
                     '[data-testid="validate-jwks-content-button"]',
                 );
                 await validateButton.click();
@@ -364,7 +423,7 @@ test.describe("JWKS Validation Complete", () => {
                 await page.waitForTimeout(1000);
 
                 if (testCase.valid) {
-                    const successMessage = await page.locator(
+                    const successMessage = await uiContext.locator(
                         '[data-testid="jwks-content-valid"]',
                     );
                     await expect(successMessage).toBeVisible({ timeout: 5000 });
@@ -372,13 +431,13 @@ test.describe("JWKS Validation Complete", () => {
                         `✓ ${testCase.description} validated successfully`,
                     );
 
-                    const keyDetails = await page.locator(
+                    const keyDetails = await uiContext.locator(
                         '[data-testid="jwks-key-details"]',
                     );
                     await expect(keyDetails).toBeVisible({ timeout: 5000 });
                     processorLogger.info("✓ Key details displayed");
                 } else {
-                    const errorMessage = await page.locator(
+                    const errorMessage = await uiContext.locator(
                         '[data-testid="jwks-content-error"]',
                     );
                     await expect(errorMessage).toBeVisible({ timeout: 5000 });
@@ -401,32 +460,47 @@ test.describe("JWKS Validation Complete", () => {
 
     test("should perform end-to-end JWKS validation", async ({
         page,
-    }, _testInfo) => {
+    }, testInfo) => {
         processorLogger.info("Testing end-to-end JWKS validation");
 
         try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            const processorService = new ProcessorService(page, testInfo);
 
+            const processor =
+                await processorService.findMultiIssuerJwtAuthenticator({
+                    failIfNotFound: true,
+                });
+            const dialog = await processorService.configure(processor);
+            await processorService.accessAdvancedProperties(dialog);
+
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(2000);
 
+            const customUIFrame = page.frameLocator("iframe").first();
+            let uiContext = page;
+
+            const iframeButton = customUIFrame.locator(
+                '[data-testid="add-issuer-button"]',
+            );
+            if ((await iframeButton.count()) > 0) {
+                uiContext = customUIFrame;
+                processorLogger.info(
+                    "Working with end-to-end validation in iframe",
+                );
+            }
+
             processorLogger.info("Step 1: Add issuer configuration");
-            const addIssuerButton = await page.locator(
+            const addIssuerButton = await uiContext.locator(
                 '[data-testid="add-issuer-button"]',
             );
             await addIssuerButton.click();
 
-            const issuerNameInput = await page.locator(
+            const issuerNameInput = await uiContext.locator(
                 '[data-testid="issuer-name-input"]',
             );
             await issuerNameInput.fill("test-issuer");
 
-            const jwksUrlInput = await page.locator(
+            const jwksUrlInput = await uiContext.locator(
                 '[data-testid="jwks-url-input"]',
             );
             await jwksUrlInput.fill(
@@ -434,7 +508,7 @@ test.describe("JWKS Validation Complete", () => {
             );
 
             processorLogger.info("Step 2: Validate JWKS URL");
-            const validateButton = await page.locator(
+            const validateButton = await uiContext.locator(
                 '[data-testid="validate-jwks-button"]',
             );
             await validateButton.click();
@@ -442,7 +516,7 @@ test.describe("JWKS Validation Complete", () => {
             await page.waitForTimeout(2000);
 
             processorLogger.info("Step 3: Test connection");
-            const testConnectionButton = await page.locator(
+            const testConnectionButton = await uiContext.locator(
                 '[data-testid="test-connection-button"]',
             );
             await testConnectionButton.click();
@@ -450,12 +524,12 @@ test.describe("JWKS Validation Complete", () => {
             await page.waitForTimeout(2000);
 
             processorLogger.info("Step 4: Save configuration");
-            const saveButton = await page.locator(
+            const saveButton = await uiContext.locator(
                 '[data-testid="save-issuer-button"]',
             );
             await saveButton.click();
 
-            const savedIssuer = await page.locator(
+            const savedIssuer = await uiContext.locator(
                 '[data-testid="issuer-item"]:has-text("test-issuer")',
             );
             await expect(savedIssuer).toBeVisible({ timeout: 5000 });

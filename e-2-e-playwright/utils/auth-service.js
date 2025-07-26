@@ -276,11 +276,12 @@ export class AuthService {
     const isAccessible = await this.checkNiFiAccessibility();
 
     if (!isAccessible) {
-      authLogger.warn('NiFi is not accessible - skipping test due to service unavailability');
-      // Use Playwright's skip functionality to mark test as skipped instead of failed
-      const { test } = await import('@playwright/test');
-      test.skip(true, 'NiFi service is not accessible - integration tests require running NiFi instance');
-      return;
+      authLogger.error('NiFi is not accessible - test cannot proceed');
+      throw new Error(
+        'PRECONDITION FAILED: NiFi service is not accessible at ' + CONSTANTS.SERVICE_URLS.NIFI_SYSTEM_DIAGNOSTICS + 
+        '. Integration tests require a running NiFi instance. ' +
+        'Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh'
+      );
     }
 
     // Ensure authentication

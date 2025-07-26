@@ -10,7 +10,7 @@ import { processorLogger } from "../utils/shared-logger.js";
 import { saveTestBrowserLogs } from "../utils/console-logger.js";
 
 test.describe("Debug JWT Custom UI", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page }, _testInfo) => {
         // Enable console logging
         page.on("console", (msg) => {
             processorLogger.info(
@@ -31,7 +31,7 @@ test.describe("Debug JWT Custom UI", () => {
         await saveTestBrowserLogs(testInfo);
     });
 
-    test("debug tab content visibility", async ({ page }, testInfo) => {
+    test("debug tab content visibility", async ({ page }, _testInfo) => {
         processorLogger.info("Debugging JWT Custom UI tab content");
 
         // Navigate directly to the custom UI
@@ -82,6 +82,7 @@ test.describe("Debug JWT Custom UI", () => {
         // Try to manually initialize the help tab
         await page.evaluate(() => {
             if (window.nifiCuiossUI && window.nifiCuiossUI.helpTab) {
+                // eslint-disable-next-line no-console
                 console.log("Manually calling helpTab.init()");
                 window.nifiCuiossUI.helpTab.init();
             }
@@ -109,6 +110,7 @@ test.describe("Debug JWT Custom UI", () => {
 
         // Try to trigger tab initialization through main module
         await page.evaluate(() => {
+            // eslint-disable-next-line no-console
             console.log(
                 "Trying to initialize tabs through initializeTabContent...",
             );
@@ -116,6 +118,7 @@ test.describe("Debug JWT Custom UI", () => {
             const scripts = document.querySelectorAll("script");
             scripts.forEach((script) => {
                 if (script.src && script.src.includes("bundle.vite")) {
+                    // eslint-disable-next-line no-console
                     console.log("Found vite bundle script:", script.src);
                 }
             });
