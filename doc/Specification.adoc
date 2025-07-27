@@ -26,6 +26,7 @@ This specification is organized into the following documents:
 * xref:specification/security.adoc[Security] - Security considerations
 * xref:specification/integration-patterns.adoc[Integration Patterns] - Integration examples
 * xref:specification/internationalization.adoc[Internationalization] - i18n implementation
+* xref:specification/jwt-rest-api.adoc[JWT REST API] - REST API endpoints for JWT token verification, JWKS validation, and metrics
 * xref:LogMessage.md[Log Messages] - Log message documentation
 
 [NOTE]

@@ -1,0 +1,234 @@
+= JWT REST API Specification
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+
+link:../Specification.adoc[Back to Main Specification]
+
+== Overview
+_See Requirement link:../Requirements.adoc#REQ-UI-001[REQ-UI-001: Custom UI Components]_
+
+This specification defines the REST API endpoints for JWT token verification, JWKS validation, and security metrics in the NiFi JWT Authenticator. These endpoints enable the custom UI components to interact with the backend JWT validation services.
+
+== Status: IMPLEMENTED
+
+The following classes implement this specification:
+
+* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/JwtVerificationServlet.java[JwtVerificationServlet]
+* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/JwksValidationServlet.java[JwksValidationServlet]
+* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/MetricsServlet.java[MetricsServlet]
+* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/ApiKeyAuthenticationFilter.java[ApiKeyAuthenticationFilter]
+* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/service/JwtValidationService.java[JwtValidationService]
+
+The following tests verify the implementation:
+
+* Unit tests for servlets (pending)
+* link:../../e-2-e-playwright/tests/07-verify-token-verification-api.spec.js[E2E Token Verification API Test] (currently skipped)
+
+== API Endpoints
+
+=== Token Verification Endpoint
+
+==== Overview
+Verifies JWT tokens using the cui-jwt-validation library with the same configuration as the processor.
+
+==== Endpoint Details
+* *Path*: `/nifi-api/processors/jwt/verify-token`
+* *Method*: POST
+* *Content-Type*: `application/json`
+* *Authentication*: Required (API Key)
+
+==== Request Format
+[source,json]
+----
+{
+  "token": "eyJ...",
+  "processorId": "uuid-of-processor",
+  "issuer": "https://example.com",
+  "requiredScopes": ["read", "write"],
+  "requiredRoles": ["admin"]
+}
+----
+
+==== Request Fields
+* `token` (required): The JWT token to verify
+* `processorId` (required): UUID of the MultiIssuerJWTTokenAuthenticator processor to use for configuration
+* `issuer` (optional): Expected issuer claim, if provided will be validated
+* `requiredScopes` (optional): Array of required scopes for authorization check
+* `requiredRoles` (optional): Array of required roles for authorization check
+
+==== Response Format
+
+===== Success Response (200 OK)
+[source,json]
+----
+{
+  "valid": true,
+  "claims": {
+    "sub": "1234567890",
+    "name": "John Doe",
+    "iat": 1516239022
+  },
+  "issuer": "https://example.com",
+  "scopes": ["read", "write"],
+  "roles": ["admin"],
+  "authorized": true,
+  "expiredAt": null
+}
+----
+
+===== Invalid Token Response (400 Bad Request)
+[source,json]
+----
+{
+  "valid": false,
+  "error": "Invalid token format",
+  "claims": null
+}
+----
+
+===== Expired Token Response (401 Unauthorized)
+[source,json]
+----
+{
+  "valid": false,
+  "error": "Token expired",
+  "expiredAt": "2025-01-27T10:30:00Z"
+}
+----
+
+=== JWKS URL Validation Endpoint
+
+==== Overview
+Validates JWKS URL accessibility and content structure.
+
+==== Endpoint Details
+* *Path*: `/nifi-api/processors/jwt/validate-jwks`
+* *Method*: POST
+* *Content-Type*: `application/json`
+* *Authentication*: Required (API Key)
+
+==== Request Format
+[source,json]
+----
+{
+  "jwksUrl": "https://example.com/.well-known/jwks.json",
+  "processorId": "uuid-of-processor"
+}
+----
+
+==== Response Format
+[source,json]
+----
+{
+  "valid": true,
+  "accessible": true,
+  "error": "",
+  "keyCount": 2,
+  "algorithms": ["RS256", "ES256"]
+}
+----
+
+=== Security Metrics Endpoint
+
+==== Overview
+Provides security metrics for JWT validation operations.
+
+==== Endpoint Details
+* *Path*: `/nifi-api/processors/jwt/metrics`
+* *Method*: GET
+* *Authentication*: Required (API Key)
+
+==== Query Parameters
+* `processorId` (required): UUID of the processor
+
+==== Response Format
+[source,json]
+----
+{
+  "totalTokensValidated": 1250,
+  "validTokens": 1180,
+  "invalidTokens": 70,
+  "errorRate": 0.056,
+  "lastValidation": "2025-01-27T10:30:00Z",
+  "topErrors": [
+    {"error": "Token expired", "count": 45},
+    {"error": "Invalid signature", "count": 25}
+  ],
+  "issuerMetrics": {
+    "https://example.com": {
+      "totalValidated": 500,
+      "validTokens": 480,
+      "invalidTokens": 20
+    }
+  }
+}
+----
+
+== Authentication
+
+=== API Key Authentication
+All endpoints require API key authentication using the following headers:
+
+* `X-API-Key`: The API key generated for the processor instance
+* `X-Processor-Id`: The processor UUID
+
+The API key is generated when the processor configuration UI is opened and passed as a URL parameter. Each processor instance has its own unique API key that is regenerated on processor restart.
+
+=== Security Considerations
+1. API keys are stored in memory only and never persisted
+2. Keys are generated using `SecureRandom` with 256 bits of entropy
+3. Each processor instance has its own unique key
+4. Keys are regenerated when the processor is restarted
+5. No external access - API is only accessible from the processor's configuration UI
+
+== Error Handling
+
+=== Standard Error Response Format
+All error responses follow this format:
+[source,json]
+----
+{
+  "error": "Error message",
+  "valid": false,
+  "details": "Additional error details if available"
+}
+----
+
+=== HTTP Status Codes
+* `200 OK`: Successful operation
+* `400 Bad Request`: Invalid request format or parameters
+* `401 Unauthorized`: Missing or invalid API key
+* `500 Internal Server Error`: Server processing error
+
+== E2E Test Mode Support
+
+For E2E testing, the endpoints support operation without a processorId when accessed via `/api/token/*` paths. This mode:
+
+1. Performs basic JWT parsing without signature verification
+2. Extracts claims without full validation
+3. Returns simulated metrics
+4. Bypasses API key authentication
+
+This mode is only available in test environments and is automatically disabled in production.
+
+== Technical Standards
+
+=== Jakarta EE 10 Compliance
+All servlets use Jakarta EE 10 APIs (`jakarta.servlet.*`) for compatibility with NiFi 2.4.0.
+
+=== JSON Processing
+Uses Jakarta JSON API for all JSON parsing and generation to maintain consistency with the Jakarta EE stack.
+
+=== Configuration Access
+Servlets access processor configuration via NiFi's REST API to ensure consistency with the processor's TokenValidator instance.
+
+== Related Documentation
+
+* link:../Requirements.adoc[Requirements Document]
+* link:../../IMPLEMENTATION-PLAN.adoc[Implementation Plan]
+* link:configuration.adoc[Configuration Specification]
+* link:token-validation.adoc[Token Validation Specification]
+* link:security.adoc[Security Specification]
