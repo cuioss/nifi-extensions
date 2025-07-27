@@ -1049,7 +1049,25 @@ The shared parser pattern ensures that any changes to issuer configuration handl
 
 ### Next Steps
 To complete the implementation:
-1. Generate API keys in processor and pass to UI
-2. Update JavaScript to call REST endpoints with authentication
-3. Ensure UI tabs display data from API responses
-4. Fix E2E tests or update them to match implementation approach
+
+1. **Frontend Integration Prerequisites**:
+   - Generate API keys in processor and pass to UI
+   - Implement `MultiIssuerJwtAuthenticatorCustomizer.js` as the main custom UI component
+   - Set up tab-based navigation structure
+
+2. **Connect UI Components to REST Endpoints**:
+   - Update JavaScript to call REST endpoints with authentication
+   - Token Verification Tab - connect to `/nifi-api/processors/jwt/verify-token`
+   - JWKS Validation Button - connect to `/nifi-api/processors/jwt/validate-jwks`
+   - Metrics Tab - connect to `/nifi-api/processors/jwt/metrics`
+   - Ensure UI tabs display data from API responses
+
+3. **Complete JWKS Validation Features**:
+   - Add URL validation for JWKS endpoints
+   - Add file existence validation
+   - Implement validation button backend logic
+
+4. **Testing**:
+   - Run E2E tests to verify integration
+   - Each implemented feature should pass its corresponding E2E test
+   - Use failing tests as implementation guide

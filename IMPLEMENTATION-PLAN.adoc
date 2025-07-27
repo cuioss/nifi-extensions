@@ -71,27 +71,31 @@ This branch has completed the E2E test infrastructure refactoring:
 * ✅ Console logging infrastructure (console-logger.js)
 * ✅ Critical error detection (critical-error-detector.js)
 
-==== Next Steps for UI Implementation
+==== Next Steps for UI Implementation (Updated 2025-01-27)
 
-1. **Create UI Foundation**:
-   - Implement `MultiIssuerJwtAuthenticatorCustomizer.js` as the main custom UI component
-   - Add Font Awesome integration (already added to pom.xml)
-   - Set up tab-based navigation structure
+1. **Frontend Integration Prerequisites**:
+   - [ ] Generate API keys in processor and pass to UI
+   - [ ] Implement `MultiIssuerJwtAuthenticatorCustomizer.js` as the main custom UI component
+   - [ ] Set up tab-based navigation structure
 
-2. **Implement Individual Features** (in order):
-   - JWKS Validation Button (test: 03-verify-jwks-validation-button.spec.js)
-   - Token Verification Tab (test: 04-verify-token-verification-tab.spec.js)
-   - Metrics Tab (test: 05-verify-metrics-tab.spec.js)
-   - Help Tab (test: 06-verify-help-tab.spec.js)
+2. **Connect UI Components to REST Endpoints**:
+   - [ ] Update JavaScript to call REST endpoints with authentication
+   - [ ] Token Verification Tab - connect to `/nifi-api/processors/jwt/verify-token`
+   - [ ] JWKS Validation Button - connect to `/nifi-api/processors/jwt/validate-jwks`
+   - [ ] Metrics Tab - connect to `/nifi-api/processors/jwt/metrics`
+   - [ ] Ensure UI tabs display data from API responses
 
-3. **Backend Integration**:
-   - Create `/api/token/verify` REST endpoint
-   - Implement JWKS validation endpoint
-   - Add metrics data endpoint
+3. **Complete JWKS Validation Features**:
+   - [ ] Add URL validation for JWKS endpoints (frontend)
+   - [ ] Add file existence validation (frontend)
+   - [ ] Implement validation button backend logic
 
-4. **Run E2E Tests**:
-   - Each implemented feature should pass its corresponding E2E test
-   - Use failing tests as implementation guide
+4. **Testing**:
+   - [ ] Run E2E tests to verify integration
+   - [ ] Each implemented feature should pass its corresponding E2E test
+   - [ ] Use failing tests as implementation guide
+
+NOTE: The backend REST endpoints are fully implemented. The focus now is on frontend integration.
 
 ==== 2.1 Custom UI Components
 * [x] Create custom UI structure (implemented as complete web app in nifi-cuioss-ui module)
@@ -122,9 +126,10 @@ This branch has completed the E2E test infrastructure refactoring:
 NOTE: Backend REST endpoints are implemented but not integrated with the UI. The E2E tests fail because they expect UI components to be connected to these endpoints.
 
 ==== 2.3 JWKS Validation
-* [ ] Add URL validation for JWKS endpoints
-* [ ] Add file existence validation
-* [ ] Implement validation button backend
+* [x] *PARTIAL (2025-01-27)*: Backend servlet implemented (`JwksValidationServlet`)
+* [ ] Add URL validation for JWKS endpoints (frontend validation)
+* [ ] Add file existence validation (frontend validation)
+* [ ] Connect validation button to backend endpoint
 * [x] Create E2E test: `08-verify-jwks-validation-complete.spec.js`
 
 ==== 2.4 Test Infrastructure (COMPLETED in this branch)
