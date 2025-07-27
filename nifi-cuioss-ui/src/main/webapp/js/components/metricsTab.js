@@ -14,6 +14,7 @@ import { createLogger } from '../utils/logger.js';
 import { formatNumber, formatDate } from '../utils/formatters.js';
 import { UI_TEXT } from '../utils/constants.js';
 import * as nfCommon from 'nf.Common';
+import { getSecurityMetrics } from '../services/apiClient.js';
 
 const logger = createLogger('MetricsTab');
 
@@ -156,46 +157,37 @@ const refreshMetrics = async () => {
  * @returns {Promise<Object>} Metrics data
  */
 const fetchMetricsData = async () => {
-    // Mock implementation - in production, this would call the actual API
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve({
-                totalValidations: 1247,
-                successCount: 1198,
-                failureCount: 49,
-                avgResponseTime: 23,
-                activeIssuers: 3,
-                issuerMetrics: [
-                    {
-                        name: 'Keycloak Production',
-                        validations: 823,
-                        successRate: 98.5,
-                        lastValidation: new Date()
-                    },
-                    {
-                        name: 'Auth0 Development',
-                        validations: 324,
-                        successRate: 94.2,
-                        lastValidation: new Date()
-                    },
-                    {
-                        name: 'Internal JWT Service',
-                        validations: 100,
-                        successRate: 87.0,
-                        lastValidation: new Date()
-                    }
-                ],
-                recentErrors: [
-                    {
-                        timestamp: new Date(),
-                        issuer: 'Internal JWT Service',
-                        error: 'Token expired',
-                        count: 5
-                    }
-                ]
-            });
-        }, 100);
-    });
+    try {
+        // Call the actual API endpoint for security metrics
+        const metricsResponse = await getSecurityMetrics();
+
+        // Transform the response to match expected format
+        const totalValidations = metricsResponse.totalTokensValidated || 0;
+        const successCount = metricsResponse.validTokens || 0;
+        const failureCount = metricsResponse.invalidTokens || 0;
+
+        return {
+            totalValidations: totalValidations,
+            successCount: successCount,
+            failureCount: failureCount,
+            avgResponseTime: metricsResponse.averageResponseTime || 0,
+            activeIssuers: metricsResponse.activeIssuers || 0,
+            issuerMetrics: metricsResponse.issuerMetrics || [],
+            recentErrors: metricsResponse.topErrors || []
+        };
+    } catch (error) {
+        logger.error('Failed to fetch metrics from API:', error);
+        // Return default values on error
+        return {
+            totalValidations: 0,
+            successCount: 0,
+            failureCount: 0,
+            avgResponseTime: 0,
+            activeIssuers: 0,
+            issuerMetrics: [],
+            recentErrors: []
+        };
+    }
 };
 
 /**
@@ -205,7 +197,13 @@ const fetchMetricsData = async () => {
 const updateMetricsDisplay = (data) => {
     // Update summary metrics
     $('#total-validations').text(formatNumber(data.totalValidations));
-    $('#success-rate').text(formatPercentage(data.successCount / data.totalValidations));
+
+    // Calculate success rate safely
+    const successRate = data.totalValidations > 0
+        ? data.successCount / data.totalValidations
+        : 0;
+    $('#success-rate').text(formatPercentage(successRate));
+
     $('#avg-response-time').text(`${data.avgResponseTime}ms`);
     $('#active-issuers').text(data.activeIssuers);
 

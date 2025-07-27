@@ -7,8 +7,9 @@ import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
 import { confirmClearForm } from '../utils/confirmationDialog.js';
-import { API, CSS, getIsLocalhost, setIsLocalhostForTesting } from '../utils/constants.js';
+import { CSS, getIsLocalhost, setIsLocalhostForTesting } from '../utils/constants.js';
 import { FormFieldFactory } from '../utils/formBuilder.js';
+import { verifyToken } from '../services/apiClient.js';
 
 /**
  * Initialize the custom UI with standardized error handling and async patterns.
@@ -127,14 +128,7 @@ const _initializeTokenVerifier = async (element, callback) => {
         };
 
         try {
-            $.ajax({
-                method: 'POST',
-                url: API.ENDPOINTS.JWT_VERIFY_TOKEN,
-                data: JSON.stringify({ token: token }),
-                contentType: 'application/json',
-                dataType: 'json',
-                timeout: API.TIMEOUTS.DEFAULT
-            })
+            verifyToken(token)
                 .then(responseData => {
                     resetButton();
                     _handleTokenVerificationResponse(
@@ -145,10 +139,16 @@ const _initializeTokenVerifier = async (element, callback) => {
                         _displayInvalidToken
                     );
                 })
-                .catch(jqXHR => {
+                .catch(error => {
                     resetButton();
+                    // Convert error to jqXHR-like object for compatibility
+                    const jqXHRLike = error.jqXHR || {
+                        status: error.status || 500,
+                        statusText: error.statusText || 'Error',
+                        responseJSON: error.responseJSON || { error: error.message || 'Unknown error' }
+                    };
                     _handleTokenVerificationAjaxError(
-                        jqXHR,
+                        jqXHRLike,
                         $resultsContent,
                         i18n,
                         _displayValidToken
@@ -445,14 +445,7 @@ const _handleVerifyButtonClick = (token, $resultsContent, i18n, resetButton) => 
     _resetUIAndShowLoading($resultsContent, i18n);
 
     try {
-        $.ajax({
-            method: 'POST',
-            url: API.ENDPOINTS.JWT_VERIFY_TOKEN,
-            data: JSON.stringify({ token: trimmedToken }),
-            contentType: 'application/json',
-            dataType: 'json',
-            timeout: API.TIMEOUTS.DEFAULT
-        })
+        verifyToken(trimmedToken)
             .then(responseData => {
                 resetButton();
                 _handleTokenVerificationResponse(
@@ -472,10 +465,16 @@ const _handleVerifyButtonClick = (token, $resultsContent, i18n, resetButton) => 
                     }
                 );
             })
-            .catch(jqXHR => {
+            .catch(error => {
                 resetButton();
+                // Convert error to jqXHR-like object for compatibility
+                const jqXHRLike = error.jqXHR || {
+                    status: error.status || 500,
+                    statusText: error.statusText || 'Error',
+                    responseJSON: error.responseJSON || { error: error.message || 'Unknown error' }
+                };
                 _handleTokenVerificationAjaxError(
-                    jqXHR,
+                    jqXHRLike,
                     $resultsContent,
                     i18n,
                     (response, isSimulated) => {

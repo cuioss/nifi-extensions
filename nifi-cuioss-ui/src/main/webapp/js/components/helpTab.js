@@ -73,8 +73,7 @@ const createHelpContent = () => {
                         <h5>Example Configurations</h5>
                         <div class="example-config">
                             <strong>Keycloak:</strong><br>
-                            <code>jwt.issuer.keycloak.jwks.url = 
-                                https://keycloak.example.com/realms/myrealm/protocol/openid-connect/certs</code>
+                            <code>jwt.issuer.keycloak.jwks.url = https://keycloak.example.com/realms/myrealm/protocol/openid-connect/certs</code>
                         </div>
                         
                         <div class="example-config">

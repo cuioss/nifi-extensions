@@ -17,6 +17,35 @@ import { createXhrErrorObject } from '../utils/errorHandler.js';
 const BASE_URL = API.BASE_URL;
 
 /**
+ * Gets authentication configuration from URL parameters or stored config.
+ * This retrieves the processor ID and API key needed for authentication.
+ *
+ * @returns {Object} Authentication configuration
+ * @returns {string} returns.processorId - The processor ID
+ * @returns {string} returns.apiKey - The API key for authentication
+ */
+const getAuthConfig = () => {
+    // First check if we have stored auth config
+    if (window.jwtAuthConfig && window.jwtAuthConfig.processorId && window.jwtAuthConfig.apiKey) {
+        return window.jwtAuthConfig;
+    }
+
+    // Otherwise try to get from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const processorId = urlParams.get('processorId');
+    const apiKey = urlParams.get('apiKey');
+
+    if (processorId && apiKey) {
+        // Store for future use
+        window.jwtAuthConfig = { processorId, apiKey };
+        return window.jwtAuthConfig;
+    }
+
+    // Return empty config if not available (for standalone testing)
+    return { processorId: '', apiKey: '' };
+};
+
+/**
  * Generic API call helper that eliminates duplicate AJAX setup across methods.
  *
  * This function provides standardized AJAX configuration including timeout,
@@ -26,6 +55,7 @@ const BASE_URL = API.BASE_URL;
  * @param {string} method - HTTP method (GET, POST, PUT, DELETE)
  * @param {string} endpoint - API endpoint URL (relative or absolute)
  * @param {Object|null} [data=null] - Request data to be JSON serialized
+ * @param {boolean} [includeAuth=true] - Whether to include authentication headers
  * @returns {Promise<Object>} Promise that resolves to the API response data
  *
  * @example
@@ -36,13 +66,27 @@ const BASE_URL = API.BASE_URL;
  * // POST request with data
  * const result = await apiCall('POST', '/api/submit', {name: 'test'});
  */
-const apiCall = (method, endpoint, data = null) => {
+const apiCall = (method, endpoint, data = null, includeAuth = true) => {
     const config = {
         method,
         url: endpoint,
         dataType: 'json',
         timeout: API.TIMEOUTS.DEFAULT
     };
+
+    // Add authentication headers for JWT API endpoints
+    if (includeAuth && endpoint.includes('/jwt/')) {
+        const authConfig = getAuthConfig();
+        config.headers = {
+            'X-API-Key': authConfig.apiKey,
+            'X-Processor-Id': authConfig.processorId
+        };
+
+        // Also add processorId to the data if it's a JWT endpoint
+        if (data && authConfig.processorId) {
+            data.processorId = authConfig.processorId;
+        }
+    }
 
     if (data) {
         config.data = JSON.stringify(data);

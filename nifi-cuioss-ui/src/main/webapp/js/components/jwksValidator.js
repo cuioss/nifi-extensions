@@ -4,7 +4,8 @@
 import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
-import { API, getIsLocalhost, setIsLocalhostForTesting } from '../utils/constants.js';
+import { getIsLocalhost, setIsLocalhostForTesting } from '../utils/constants.js';
+import { validateJwksUrl } from '../services/apiClient.js';
 
 /**
  * Initialize the custom UI with standardized error handling and async patterns.
@@ -76,16 +77,17 @@ const _initializeJwksValidator = async (element, propertyValue, jwks_type, callb
             const jwksValue = currentJwksValue || 'https://example.com/.well-known/jwks.json';
 
             try {
-                $.ajax({
-                    method: 'POST',
-                    url: API.ENDPOINTS.JWKS_VALIDATE_URL,
-                    data: JSON.stringify({ jwksValue: jwksValue }),
-                    contentType: 'application/json',
-                    dataType: 'json',
-                    timeout: API.TIMEOUTS.DEFAULT
-                })
+                validateJwksUrl(jwksValue)
                     .then(responseData => _handleAjaxSuccess(responseData, $resultContainer, i18n))
-                    .catch(jqXHR => _handleAjaxError(jqXHR, $resultContainer, i18n));
+                    .catch(error => {
+                        // Convert error to jqXHR-like object for compatibility
+                        const jqXHRLike = error.jqXHR || {
+                            status: error.status || 500,
+                            statusText: error.statusText || 'Error',
+                            responseJSON: error.responseJSON || { error: error.message || 'Unknown error' }
+                        };
+                        _handleAjaxError(jqXHRLike, $resultContainer, i18n);
+                    });
             } catch (e) {
                 _handleSynchronousError(e, $resultContainer, i18n);
             }

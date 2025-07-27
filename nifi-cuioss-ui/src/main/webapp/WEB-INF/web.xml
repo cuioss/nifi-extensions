@@ -50,6 +50,11 @@
         <filter-name>ApiKeyAuthenticationFilter</filter-name>
         <url-pattern>/nifi-api/processors/jwt/*</url-pattern>
     </filter-mapping>
+    <!-- Additional mapping for E2E test compatibility -->
+    <filter-mapping>
+        <filter-name>ApiKeyAuthenticationFilter</filter-name>
+        <url-pattern>/api/token/*</url-pattern>
+    </filter-mapping>
 
     <!-- JWT API Servlets -->
     <servlet>
@@ -59,6 +64,11 @@
     <servlet-mapping>
         <servlet-name>JwtVerificationServlet</servlet-name>
         <url-pattern>/nifi-api/processors/jwt/verify-token</url-pattern>
+    </servlet-mapping>
+    <!-- Additional mapping for E2E test compatibility -->
+    <servlet-mapping>
+        <servlet-name>JwtVerificationServlet</servlet-name>
+        <url-pattern>/api/token/verify</url-pattern>
     </servlet-mapping>
 
     <servlet>

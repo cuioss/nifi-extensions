@@ -29,7 +29,17 @@ jest.mock('../../main/webapp/js/utils/tooltip.js', () => ({
 
 jest.mock('components/tokenVerifier', () => ({ init: jest.fn() }), { virtual: true });
 jest.mock('components/issuerConfigEditor', () => ({ init: jest.fn() }), { virtual: true });
-jest.mock('services/apiClient', () => ({ init: jest.fn() }), { virtual: true });
+jest.mock('services/apiClient', () => ({
+    init: jest.fn(),
+    getSecurityMetrics: jest.fn().mockResolvedValue({
+        totalValidations: 100,
+        successfulValidations: 90,
+        failedValidations: 10,
+        issuerMetrics: {},
+        recentErrors: [],
+        averageResponseTime: 50
+    })
+}), { virtual: true });
 jest.mock('js/utils/formatters', () => ({}), { virtual: true });
 
 // Mock the i18n utility that main.js imports directly as './utils/i18n.js'

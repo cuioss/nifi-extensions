@@ -113,6 +113,14 @@ jest.mock('../../../main/webapp/js/utils/constants.js', () => ({
     }
 }));
 
+// Mock the apiClient module
+let mockValidateJwksUrl;
+jest.mock('../../../main/webapp/js/services/apiClient.js', () => ({
+    validateJwksUrl: jest.fn().mockImplementation(() => {
+        return mockValidateJwksUrl();
+    })
+}));
+
 describe('jwksValidator', () => {
     let jwksValidator;
     let parentElement;
@@ -121,6 +129,12 @@ describe('jwksValidator', () => {
     beforeEach(() => {
         jest.resetModules();
         jest.clearAllMocks();
+
+        // Default mock implementation for validateJwksUrl
+        mockValidateJwksUrl = jest.fn().mockResolvedValue({
+            valid: true,
+            keyCount: 3
+        });
 
         jwksValidator = require('components/jwksValidator');
         parentElement = document.createElement('div');
@@ -231,6 +245,7 @@ describe('jwksValidator', () => {
 
         it('should handle button click and start JWKS validation', async () => {
             const mockCash = require('cash-dom').default;
+            const { validateJwksUrl } = require('../../../main/webapp/js/services/apiClient.js');
 
             await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
 
@@ -239,7 +254,7 @@ describe('jwksValidator', () => {
 
             // Should show testing message
             expect(mockCash().html).toHaveBeenCalledWith('Testing JWKS...');
-            expect(mockCash.ajax).toHaveBeenCalled();
+            expect(validateJwksUrl).toHaveBeenCalled();
         });
     });
 
@@ -284,20 +299,24 @@ describe('jwksValidator', () => {
     describe('JWKS Validation', () => {
         it('should handle valid JWKS response', async () => {
             const mockCash = require('cash-dom').default;
+            const { validateJwksUrl } = require('../../../main/webapp/js/services/apiClient.js');
+
+            // Set up successful response
+            mockValidateJwksUrl = jest.fn().mockResolvedValue({
+                valid: true,
+                keyCount: 5
+            });
 
             await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
 
             // Trigger button click
             mockCash.__triggerClick();
 
-            // Resolve with valid response
-            mockCash.__resolveAjax({
-                valid: true,
-                keyCount: 5
-            });
-
             // Wait for promise resolution
             await new Promise(resolve => setTimeout(resolve, 0));
+
+            // Check that validateJwksUrl was called with correct parameter
+            expect(validateJwksUrl).toHaveBeenCalledWith('https://example.com');
 
             // Should display success message
             expect(mockCash().html).toHaveBeenCalledWith(
@@ -308,13 +327,16 @@ describe('jwksValidator', () => {
         it('should handle invalid JWKS response', async () => {
             const mockCash = require('cash-dom').default;
 
+            // Set up invalid response
+            mockValidateJwksUrl = jest.fn().mockResolvedValue({
+                valid: false,
+                message: 'JWKS is invalid'
+            });
+
             await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
 
             // Trigger button click
             mockCash.__triggerClick();
-
-            // Resolve with invalid response
-            mockCash.__resolveAjax({ valid: false, message: 'JWKS is invalid' });
 
             // Wait for promise resolution
             await new Promise(resolve => setTimeout(resolve, 0));
@@ -326,35 +348,56 @@ describe('jwksValidator', () => {
 
         it('should handle AJAX errors', async () => {
             const mockCash = require('cash-dom').default;
+            const { validateJwksUrl } = require('../../../main/webapp/js/services/apiClient.js');
+
+            // Set up rejection
+            mockValidateJwksUrl = jest.fn().mockRejectedValue({
+                status: 500,
+                statusText: 'Server Error',
+                message: 'Failed to validate'
+            });
 
             await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
 
-            // Test that button click triggers ajax call
+            // Test that button click triggers validation
             mockCash.__triggerClick();
-            expect(mockCash.ajax).toHaveBeenCalled();
+            expect(validateJwksUrl).toHaveBeenCalled();
 
             // Test that initial testing message is shown
             expect(mockCash().html).toHaveBeenCalledWith('Testing JWKS...');
+
+            // Wait for promise rejection
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            // Should handle error
+            const { displayUiError } = require('../../../main/webapp/js/utils/uiErrorDisplay.js');
+            expect(displayUiError).toHaveBeenCalled();
         });
 
         it('should handle synchronous exceptions', async () => {
             const mockCash = require('cash-dom').default;
+            const { validateJwksUrl } = require('../../../main/webapp/js/services/apiClient.js');
 
-            // Mock ajax to throw synchronous error
-            mockCash.ajax.mockImplementationOnce(() => {
-                throw new Error('AJAX setup failed');
+            // Mock validateJwksUrl to throw synchronous error
+            validateJwksUrl.mockImplementationOnce(() => {
+                throw new Error('Validation setup failed');
             });
 
             await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
 
             // Trigger button click (should handle sync exception)
             expect(() => mockCash.__triggerClick()).not.toThrow();
+
+            // Should handle error
+            const { displayUiError } = require('../../../main/webapp/js/utils/uiErrorDisplay.js');
+            expect(displayUiError).toHaveBeenCalled();
         });
 
         it('should use callback getValue if available', async () => {
             const callbackWithGetValue = jest.fn();
             callbackWithGetValue.getValue = jest.fn().mockReturnValue('https://custom-url.com');
             const mockCash = require('cash-dom').default;
+            const { validateJwksUrl } = require('../../../main/webapp/js/services/apiClient.js');
 
             await jwksValidator.init(parentElement, 'https://example.com', 'server', callbackWithGetValue);
 
@@ -363,11 +406,15 @@ describe('jwksValidator', () => {
 
             // Should use getValue from callback
             expect(callbackWithGetValue.getValue).toHaveBeenCalled();
+
+            // Should call validateJwksUrl with custom URL
+            expect(validateJwksUrl).toHaveBeenCalledWith('https://custom-url.com');
         });
 
         it('should fallback to propertyValue when callback getValue not available', async () => {
             const callbackWithoutGetValue = jest.fn();
             const mockCash = require('cash-dom').default;
+            const { validateJwksUrl } = require('../../../main/webapp/js/services/apiClient.js');
 
             await jwksValidator.init(parentElement, 'https://example.com', 'server', callbackWithoutGetValue);
 
@@ -375,13 +422,12 @@ describe('jwksValidator', () => {
             mockCash.__triggerClick();
 
             // Should use propertyValue as fallback
-            expect(mockCash.ajax).toHaveBeenCalledWith(expect.objectContaining({
-                data: JSON.stringify({ jwksValue: 'https://example.com' })
-            }));
+            expect(validateJwksUrl).toHaveBeenCalledWith('https://example.com');
         });
 
         it('should handle empty jwks value with default', async () => {
             const mockCash = require('cash-dom').default;
+            const { validateJwksUrl } = require('../../../main/webapp/js/services/apiClient.js');
 
             await jwksValidator.init(parentElement, '', 'server', callback);
 
@@ -389,9 +435,7 @@ describe('jwksValidator', () => {
             mockCash.__triggerClick();
 
             // Should use default JWKS URL
-            expect(mockCash.ajax).toHaveBeenCalledWith(expect.objectContaining({
-                data: JSON.stringify({ jwksValue: 'https://example.com/.well-known/jwks.json' })
-            }));
+            expect(validateJwksUrl).toHaveBeenCalledWith('https://example.com/.well-known/jwks.json');
         });
     });
 
@@ -401,30 +445,37 @@ describe('jwksValidator', () => {
             constants.getIsLocalhost.mockReturnValue(true);
             const mockCash = require('cash-dom').default;
 
+            // Set up rejection
+            mockValidateJwksUrl = jest.fn().mockRejectedValue({
+                status: 0,
+                statusText: 'Connection refused'
+            });
+
             await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
 
             // Trigger button click
             mockCash.__triggerClick();
 
-            // Simulate error in localhost mode
-            try {
-                mockCash.__rejectAjax({ statusText: 'Connection refused', status: 0 });
-                await new Promise(resolve => setTimeout(resolve, 0));
-            } catch (e) {
-                // Expected error in localhost mode
-            }
+            // Wait for promise rejection
+            await new Promise(resolve => setTimeout(resolve, 0));
 
             // Should display simulated response in localhost
-            expect(mockCash().html).toHaveBeenCalled();
+            expect(mockCash().html).toHaveBeenCalledWith(
+                expect.stringContaining('Valid JWKS')
+            );
+            expect(mockCash().html).toHaveBeenCalledWith(
+                expect.stringContaining('(Simulated response)')
+            );
         });
 
         it('should show simulated response on synchronous exception in localhost mode', async () => {
             const constants = require('../../../main/webapp/js/utils/constants.js');
             constants.getIsLocalhost.mockReturnValue(true);
             const mockCash = require('cash-dom').default;
+            const { validateJwksUrl } = require('../../../main/webapp/js/services/apiClient.js');
 
-            // Mock ajax to throw synchronous error
-            mockCash.ajax.mockImplementationOnce(() => {
+            // Mock validateJwksUrl to throw synchronous error
+            validateJwksUrl.mockImplementationOnce(() => {
                 throw new Error('Connection failed');
             });
 
@@ -444,21 +495,30 @@ describe('jwksValidator', () => {
             constants.getIsLocalhost.mockReturnValue(false);
             const mockCash = require('cash-dom').default;
 
+            // Set up rejection
+            mockValidateJwksUrl = jest.fn().mockRejectedValue({
+                status: 500,
+                statusText: 'Network Error'
+            });
+
             await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
 
             // Trigger button click
             mockCash.__triggerClick();
 
-            // Simulate error in non-localhost mode
-            try {
-                mockCash.__rejectAjax({ statusText: 'Network Error', status: 500 });
-                await new Promise(resolve => setTimeout(resolve, 0));
-            } catch (e) {
-                // Expected error in non-localhost mode
-            }
+            // Wait for promise rejection
+            await new Promise(resolve => setTimeout(resolve, 0));
 
             // Should handle error normally (not simulated response)
-            expect(mockCash().html).toHaveBeenCalled();
+            const { displayUiError } = require('../../../main/webapp/js/utils/uiErrorDisplay.js');
+            expect(displayUiError).toHaveBeenCalled();
+
+            // Should NOT show simulated response
+            const htmlCalls = mockCash().html.mock.calls;
+            const hasSimulatedResponse = htmlCalls.some(call =>
+                call[0] && call[0].includes('(Simulated response)')
+            );
+            expect(hasSimulatedResponse).toBe(false);
         });
     });
 
@@ -543,33 +603,35 @@ describe('jwksValidator', () => {
         it('should handle AJAX timeout error', async () => {
             const mockCash = require('cash-dom').default;
 
+            // Set up timeout rejection
+            mockValidateJwksUrl = jest.fn().mockRejectedValue({
+                status: 0,
+                statusText: 'timeout'
+            });
+
             await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
 
             // Trigger button click
             mockCash.__triggerClick();
 
-            // Simulate timeout error
-            try {
-                mockCash.__rejectAjax({ status: 0, statusText: 'timeout' });
-                await new Promise(resolve => setTimeout(resolve, 0));
-            } catch (e) {
-                // Expected timeout error
-            }
+            // Wait for promise rejection
+            await new Promise(resolve => setTimeout(resolve, 0));
 
             // Should handle timeout gracefully
-            expect(mockCash().html).toHaveBeenCalled();
+            const { displayUiError } = require('../../../main/webapp/js/utils/uiErrorDisplay.js');
+            expect(displayUiError).toHaveBeenCalled();
         });
 
         it('should handle invalid keyCount in response', async () => {
             const mockCash = require('cash-dom').default;
 
+            // Set up response without keyCount
+            mockValidateJwksUrl = jest.fn().mockResolvedValue({ valid: true });
+
             await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
 
             // Trigger button click
             mockCash.__triggerClick();
-
-            // Resolve with valid but no keyCount
-            mockCash.__resolveAjax({ valid: true });
 
             // Wait for promise resolution
             await new Promise(resolve => setTimeout(resolve, 0));
@@ -608,6 +670,7 @@ describe('jwksValidator', () => {
         it('should handle special characters in JWKS URL', async () => {
             const specialUrl = 'https://example.com/jwks?param=value&other=test%20encoded';
             const mockCash = require('cash-dom').default;
+            const { validateJwksUrl } = require('../../../main/webapp/js/services/apiClient.js');
 
             await jwksValidator.init(parentElement, specialUrl, 'server', callback);
 
@@ -615,9 +678,7 @@ describe('jwksValidator', () => {
             mockCash.__triggerClick();
 
             // Should handle special characters
-            expect(mockCash.ajax).toHaveBeenCalledWith(expect.objectContaining({
-                data: JSON.stringify({ jwksValue: specialUrl })
-            }));
+            expect(validateJwksUrl).toHaveBeenCalledWith(specialUrl);
         });
     });
 });

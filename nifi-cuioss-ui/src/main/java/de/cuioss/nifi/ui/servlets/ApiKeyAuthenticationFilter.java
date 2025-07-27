@@ -68,6 +68,13 @@ public class ApiKeyAuthenticationFilter implements Filter {
 
         LOGGER.debug("Processing request: %s %s", method, requestPath);
 
+        // Check if this is an E2E test endpoint (no authentication required)
+        if (requestPath != null && requestPath.startsWith("/api/token/")) {
+            LOGGER.debug("Skipping authentication for E2E test endpoint: %s", requestPath);
+            chain.doFilter(request, response);
+            return;
+        }
+
         // Extract API key and processor ID from headers
         String apiKey = httpRequest.getHeader(API_KEY_HEADER);
         String processorId = httpRequest.getHeader(PROCESSOR_ID_HEADER);

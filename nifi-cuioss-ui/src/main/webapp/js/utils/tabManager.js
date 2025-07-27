@@ -46,12 +46,17 @@ export const initTabs = () => {
         });
     });
 
+    // Use WeakMap for storing clicking state (cash-dom compatible)
+    const clickingState = new WeakMap();
+
     // Handle data-toggle="tab" clicks (Bootstrap-style)
     $(document).on('click', '[data-toggle="tab"]', function (e) {
         e.preventDefault();
+        const element = this;
+
         // Don't trigger click again if we're already handling a tab click
-        if (!$(this).data('clicking')) {
-            $(this).data('clicking', true);
+        if (!clickingState.get(element)) {
+            clickingState.set(element, true);
             const $link = $(this);
             const targetId = $link.attr('href');
 
@@ -74,7 +79,7 @@ export const initTabs = () => {
             }
 
             setTimeout(() => {
-                $(this).removeData('clicking');
+                clickingState.delete(element);
             }, 0);
         }
     });
