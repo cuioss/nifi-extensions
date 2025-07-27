@@ -24,6 +24,7 @@ import de.cuioss.jwt.validation.exception.TokenValidationException;
 import de.cuioss.jwt.validation.metrics.TokenValidatorMonitor;
 import de.cuioss.jwt.validation.security.SecurityEventCounter;
 import de.cuioss.nifi.processors.auth.config.ConfigurationManager;
+import de.cuioss.nifi.processors.auth.config.IssuerConfigurationParser;
 import de.cuioss.nifi.processors.auth.i18n.I18nResolver;
 import de.cuioss.nifi.processors.auth.i18n.NiFiI18nResolver;
 import de.cuioss.nifi.processors.auth.util.AuthorizationValidator;
@@ -47,6 +48,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.*;
 import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Properties;
@@ -358,10 +360,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     }
 
                     // Create a new TokenValidator with issuer configurations
-                    // Create default parser configuration
-                    ParserConfig parserConfig = ParserConfig.builder()
-                            .maxTokenSize(context.getProperty(Properties.MAXIMUM_TOKEN_SIZE).asInteger())
-                            .build();
+                    // Create parser configuration using shared parser
+                    Map<String, String> properties = convertContextToProperties(context);
+                    ParserConfig parserConfig = IssuerConfigurationParser.parseParserConfig(properties);
 
                     // Use the TokenValidator builder pattern
                     TokenValidator newValidator = TokenValidator.builder()
@@ -475,23 +476,46 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @return A list of issuer configurations
      */
     private List<IssuerConfig> createIssuerConfigs(final ProcessContext context) {
-        // Step 1: Load issuer properties from all sources
-        Map<String, Map<String, String>> issuerPropertiesMap = new HashMap<>();
-        Set<String> currentIssuerNames = new HashSet<>();
+        // Convert ProcessContext to properties map for shared parser
+        Map<String, String> properties = convertContextToProperties(context);
 
-        // Load configurations from external sources and UI
-        loadIssuerConfigurations(context, issuerPropertiesMap, currentIssuerNames);
+        // Use shared parser to create issuer configurations
+        List<IssuerConfig> issuerConfigs = IssuerConfigurationParser.parseIssuerConfigs(properties, configurationManager);
 
-        // Step 2: Clean up removed issuers from cache
+        // Clean up removed issuers from cache (extract current issuer names)
+        Set<String> currentIssuerNames = issuerConfigs.stream()
+                .map(IssuerConfig::getIssuerIdentifier)
+                .collect(Collectors.toSet());
         cleanupRemovedIssuers(currentIssuerNames);
 
-        // Step 3: Process each issuer configuration
-        List<IssuerConfig> issuerConfigs = processIssuerConfigurations(issuerPropertiesMap, context);
-
-        // Step 4: Log summary
+        // Log summary
         logConfigurationSummary(issuerConfigs);
 
         return issuerConfigs;
+    }
+
+    /**
+     * Converts ProcessContext to a simple properties map for use with shared parser.
+     * 
+     * @param context The process context
+     * @return Map of property names to values
+     */
+    private Map<String, String> convertContextToProperties(final ProcessContext context) {
+        Map<String, String> properties = new HashMap<>();
+
+        // Add static properties
+        properties.put("Maximum Token Size", context.getProperty(Properties.MAXIMUM_TOKEN_SIZE).getValue());
+
+        // Add dynamic properties (issuers)
+        for (PropertyDescriptor propertyDescriptor : context.getProperties().keySet()) {
+            String propertyName = propertyDescriptor.getName();
+            String propertyValue = context.getProperty(propertyDescriptor).getValue();
+            if (propertyValue != null) {
+                properties.put(propertyName, propertyValue);
+            }
+        }
+
+        return properties;
     }
 
     /**
