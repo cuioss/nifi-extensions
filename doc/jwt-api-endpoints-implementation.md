@@ -1,23 +1,30 @@
 # JWT API Endpoints Implementation Guide
 
-## Implementation Checklist
+## Implementation Status (Updated: 2025-01-27)
 
-- [ ] Create servlet module structure in `nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/`
-- [ ] Create `IssuerConfigurationParser` in `nifi-cuioss-processors` for shared configuration parsing
-- [ ] Update `MultiIssuerJWTTokenAuthenticator` to use `IssuerConfigurationParser`
-- [ ] Add cui-jwt-validation and Jakarta JSON dependencies to `nifi-cuioss-ui/pom.xml`
-- [ ] Implement `JwtVerificationServlet` for token verification
-- [ ] Implement `JwksValidationServlet` for JWKS URL validation
-- [ ] Implement `MetricsServlet` for security metrics
-- [ ] Create `JwtValidationService` with TokenValidator logic
-- [ ] Create `ProcessorConfigReader` utility to fetch processor configuration
-- [ ] Implement `ApiKeyAuthenticationFilter` for secure access
-- [ ] Update `web.xml` with servlet mappings
+### ✅ Completed Backend Tasks
+- [x] Create servlet module structure in `nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/`
+- [x] Create `IssuerConfigurationParser` in `nifi-cuioss-processors` for shared configuration parsing
+- [x] Update `MultiIssuerJWTTokenAuthenticator` to use `IssuerConfigurationParser`
+- [x] Add cui-jwt-validation and Jakarta JSON dependencies to `nifi-cuioss-ui/pom.xml`
+- [x] Implement `JwtVerificationServlet` for token verification
+- [x] Implement `JwksValidationServlet` for JWKS URL validation
+- [x] Implement `MetricsServlet` for security metrics
+- [x] Create `JwtValidationService` with TokenValidator logic
+- [x] Create `ProcessorConfigReader` utility to fetch processor configuration
+- [x] Implement `ApiKeyAuthenticationFilter` for secure access
+- [x] Update `web.xml` with servlet mappings
+
+### ❌ Pending Frontend Integration Tasks
 - [ ] Modify processor to generate and pass API key to UI
 - [ ] Update UI JavaScript to use API key authentication
+- [ ] Connect UI components to REST endpoints
 - [ ] Write unit tests using RestAssured
 - [ ] Update E2E test `07-verify-token-verification-api.spec.js`
 - [ ] Test integration with actual NiFi instance
+
+### 🔴 Critical Issue
+**E2E tests are failing** because they expect UI components (tabs for Token Verification, JWKS Validation, Metrics, Help) to be displayed in the processor configuration dialog. The current implementation only provides REST API endpoints without the frontend UI integration.
 
 ## Overview
 
@@ -1007,3 +1014,42 @@ The shared parser pattern ensures that any changes to issuer configuration handl
    
 2. **JWT Best Practices** (RFC 8725)
    - URL: https://datatracker.ietf.org/doc/html/rfc8725
+
+## Implementation Summary (2025-01-27)
+
+### What Was Implemented
+1. **Backend REST API Endpoints**:
+   - `/nifi-api/processors/jwt/verify-token` - Token verification with claims extraction
+   - `/nifi-api/processors/jwt/validate-jwks` - JWKS validation (URL, file, content)
+   - `/nifi-api/processors/jwt/metrics` - Security metrics endpoint
+
+2. **Core Services**:
+   - `IssuerConfigurationParser` - Shared configuration parsing logic
+   - `JwtValidationService` - Token validation using cui-jwt-validation
+   - `ProcessorConfigReader` - Fetches processor config via NiFi REST API
+   - `ApiKeyAuthenticationFilter` - Per-processor API key authentication
+
+3. **Technical Decisions**:
+   - Used Jakarta EE 10 (not javax) for NiFi 2.4.0 compatibility
+   - Standard Java HTTP client instead of cui-java-tools HttpHandler
+   - REST API approach for configuration access
+   - Shared parser to maintain consistency with processor
+
+### What's Missing
+1. **Frontend UI Integration**:
+   - UI components not connected to REST endpoints
+   - Processor configuration dialog missing custom tabs
+   - API key generation and passing to UI
+   - JavaScript code to call REST endpoints
+
+2. **Testing**:
+   - Unit tests for servlets
+   - Integration tests with NiFi
+   - E2E tests expecting UI components fail
+
+### Next Steps
+To complete the implementation:
+1. Generate API keys in processor and pass to UI
+2. Update JavaScript to call REST endpoints with authentication
+3. Ensure UI tabs display data from API responses
+4. Fix E2E tests or update them to match implementation approach

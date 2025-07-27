@@ -9,13 +9,17 @@
 
 This document outlines the implementation plan for completing the NiFi JWT Authenticator.
 
-Last updated: 2025-07-26 (Branch: refactor/e2e-test-structure-makeover)
+Last updated: 2025-01-27 (Branch: feature/p1-core-functionality)
 
 === Current Status
 
 * ✅ *Phase 0*: Test Infrastructure - COMPLETED
 * ✅ *Phase 1*: Core Functionality - COMPLETED (except YAML support - removed from scope)
-* 🚧 *Phase 2*: UI Enhancement - IN PROGRESS (E2E test infrastructure complete, UI implementation pending)
+* 🚧 *Phase 2*: UI Enhancement - IN PROGRESS
+  ** ✅ E2E test infrastructure complete
+  ** ✅ REST API endpoints implemented (backend only)
+  ** ❌ UI components not connected to REST endpoints
+  ** ❌ E2E tests failing due to missing UI integration
 * ❌ *Phase 3*: Observability - NOT STARTED
 * ❌ *Phase 4*: Advanced Features - NOT STARTED
 * ❌ *Phase 5*: Documentation & Polish - NOT STARTED
@@ -31,6 +35,12 @@ Last updated: 2025-07-26 (Branch: refactor/e2e-test-structure-makeover)
 * Fixed ESLint warnings (reduced from 68 to 13, below 25 limit)
 * Modernized E2E test structure with 2025 best practices
 * Implemented service-oriented test architecture (AuthService, ConsoleLogger, CriticalErrorDetector)
+* *NEW (2025-01-27)*: Implemented JWT REST API endpoints (backend only):
+  ** Created shared IssuerConfigurationParser
+  ** Implemented JwtVerificationServlet, JwksValidationServlet, MetricsServlet
+  ** Added ApiKeyAuthenticationFilter for security
+  ** Created supporting services (JwtValidationService, ProcessorConfigReader)
+  ** All backend tests passing
 
 == Remaining Tasks
 
@@ -47,6 +57,8 @@ IMPORTANT: UI E2E tests (02-06, 08 files) are currently failing because they att
 4. Access the custom UI within the processor context
 
 Until this navigation pattern is fixed, these tests will continue to fail with "EMPTY_PAGE - Canvas element not found" errors.
+
+*UPDATE 2025-01-27*: The root cause is now understood - the UI components exist but are not integrated with the REST endpoints. The backend REST API is complete but the frontend JavaScript code doesn't call these endpoints yet.
 
 ==== Current Branch Status (refactor/e2e-test-structure-makeover)
 
@@ -98,9 +110,16 @@ This branch has completed the E2E test infrastructure refactoring:
 * [x] Document implementation approach for production
 * [x] Update E2E tests to skip when endpoints unavailable
 * [x] Create E2E test: `07-verify-token-verification-api.spec.js` (CURRENTLY SKIPPED - requires implementation)
-* [ ] Production implementation using HandleHTTPRequest/Response (see doc/jwt-api-endpoints-implementation.md)
+* [x] *COMPLETED (2025-01-27)*: Backend implementation using servlets (see doc/jwt-api-endpoints-implementation.md)
+  ** [x] JwtVerificationServlet at `/nifi-api/processors/jwt/verify-token`
+  ** [x] JwksValidationServlet at `/nifi-api/processors/jwt/validate-jwks`
+  ** [x] MetricsServlet at `/nifi-api/processors/jwt/metrics`
+  ** [x] ApiKeyAuthenticationFilter for security
+* [ ] Frontend integration - connect UI components to REST endpoints
+* [ ] Generate API keys in processor and pass to UI
+* [ ] Update JavaScript to call REST endpoints with authentication
 
-NOTE: The E2E test `07-verify-token-verification-api.spec.js` is currently skipped as it requires REST endpoints that don't exist in standard NiFi. Once the endpoints are implemented following the guide in `doc/jwt-api-endpoints-implementation.md`, remove the skip and enable the test.
+NOTE: Backend REST endpoints are implemented but not integrated with the UI. The E2E tests fail because they expect UI components to be connected to these endpoints.
 
 ==== 2.3 JWKS Validation
 * [ ] Add URL validation for JWKS endpoints
