@@ -1,65 +1,75 @@
 /**
- * @file Shared Logger Utility
- * Provides a consistent logging interface for tests and utilities
- * @version 1.0.0
+ * @file Shared Logger Utility - Cleaned Version
+ * Provides consistent logging with colors and emojis for E2E tests
+ * @version 2.0.0
  */
 
 /**
- * Logger class with different log levels
+ * Logger class for consistent output formatting
  */
 class Logger {
-  /**
-   * Create a new logger instance
-   * @param {string} name - The name of the logger
-   */
   constructor(name) {
     this.name = name;
+    this.colors = {
+      reset: '\x1b[0m',
+      red: '\x1b[31m',
+      green: '\x1b[32m',
+      yellow: '\x1b[33m',
+      blue: '\x1b[34m',
+      magenta: '\x1b[35m',
+      cyan: '\x1b[36m',
+      gray: '\x1b[90m'
+    };
+    
+    this.emojis = {
+      info: '📌',
+      success: '✅',
+      warning: '⚠️',
+      error: '❌',
+      debug: '🐛',
+      test: '🧪'
+    };
   }
 
   /**
-   * Format a log message with timestamp and logger name
-   * @param {string} level - The log level
-   * @param {string} message - The message to log
+   * Format a message with timestamp, emoji, and color
+   * @param {string} level - Log level (info, success, warning, error)
+   * @param {string} message - The message to format
    * @param {...any} args - Additional arguments to format into the message
-   * @returns {string} The formatted log message
+   * @returns {string} Formatted message
    */
   formatMessage(level, message, ...args) {
     const timestamp = new Date().toISOString();
-    const formattedMessage = args.length > 0 ? this.formatArgs(message, args) : message;
-    return `[${timestamp}] [${level.toUpperCase()}] [${this.name}] ${formattedMessage}`;
-  }
-
-  /**
-   * Format a message with arguments
-   * @param {string} message - The message template
-   * @param {Array<any>} args - The arguments to format into the message
-   * @returns {string} The formatted message
-   */
-  formatArgs(message, args) {
-    if (message.includes('%s') || message.includes('%d') || message.includes('%j') || message.includes('%o')) {
-      // Node.js util.format style
-      return this.formatNodeStyle(message, args);
-    } else {
-      // Simple concatenation
-      return `${message} ${args.join(' ')}`;
-    }
-  }
-
-  /**
-   * Format a message using Node.js util.format style
-   * @param {string} message - The message template
-   * @param {Array<any>} args - The arguments to format into the message
-   * @returns {string} The formatted message
-   */
-  formatNodeStyle(message, args) {
-    let index = 0;
-    return message.replace(/%[sdjo]/g, () => {
-      if (index < args.length) {
-        const arg = args[index++];
-        return typeof arg === 'object' ? JSON.stringify(arg) : String(arg);
+    const emoji = this.emojis[level] || '';
+    const color = this.getColorForLevel(level);
+    
+    // Format the message with any additional arguments
+    let formattedMessage = message;
+    if (args.length > 0) {
+      formattedMessage = message.replace(/%s/g, () => args.shift() || '');
+      if (args.length > 0) {
+        formattedMessage += ' ' + args.join(' ');
       }
-      return '';
-    });
+    }
+    
+    return `[${timestamp}] ${color}[${level.toUpperCase()}]${this.colors.reset} ${emoji} ${color}[${this.name}]${this.colors.reset} ${formattedMessage}`;
+  }
+
+  /**
+   * Get color code for log level
+   * @param {string} level - Log level
+   * @returns {string} Color code
+   */
+  getColorForLevel(level) {
+    const colorMap = {
+      info: this.colors.blue,
+      success: this.colors.green,
+      warning: this.colors.yellow,
+      error: this.colors.red,
+      debug: this.colors.gray,
+      test: this.colors.magenta
+    };
+    return colorMap[level] || this.colors.reset;
   }
 
   /**
@@ -72,21 +82,12 @@ class Logger {
   }
 
   /**
-   * Log a debug message
-   * @param {string} message - The message to log
-   * @param {...any} args - Additional arguments to format into the message
-   */
-  debug(message, ...args) {
-    console.log(this.formatMessage('debug', message, ...args));
-  }
-
-  /**
    * Log a warning message
    * @param {string} message - The message to log
    * @param {...any} args - Additional arguments to format into the message
    */
   warn(message, ...args) {
-    console.warn(this.formatMessage('warn', message, ...args));
+    console.warn(this.formatMessage('warning', message, ...args));
   }
 
   /**
@@ -108,16 +109,9 @@ class Logger {
   }
 }
 
-// Create and export default loggers for different components
-export const testLogger = new Logger('Test');
-export const authLogger = new Logger('Auth');
+// Create and export the loggers that are actually used in the codebase
 export const processorLogger = new Logger('Processor');
-export const accessibilityLogger = new Logger('Accessibility');
+export const authLogger = new Logger('Auth');
 
-// Export the Logger class for creating custom loggers
+// Export the Logger class for creating custom loggers if needed
 export { Logger };
-
-// Export a function to create a new logger instance
-export function createLogger(name) {
-  return new Logger(name);
-}
