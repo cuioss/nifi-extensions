@@ -473,6 +473,35 @@ export class ProcessorService {
     return false;
   }
 
+  async openAdvancedUI(processor) {
+    processorLogger.info("Opening Advanced UI via right-click menu");
+    
+    // Right-click on processor
+    await this.interact(processor, { action: "rightclick" });
+    
+    // Look for Advanced menu item
+    const advancedMenuItem = this.page.getByRole("menuitem", { name: /advanced/i });
+    
+    if (await advancedMenuItem.isVisible({ timeout: 2000 })) {
+      await advancedMenuItem.click();
+      processorLogger.info("Clicked Advanced menu item");
+      
+      // Wait for navigation
+      await this.page.waitForLoadState("networkidle");
+      await this.page.waitForTimeout(2000);
+      
+      // Verify we're on the advanced page
+      const url = this.page.url();
+      if (url.includes("/advanced")) {
+        processorLogger.success("Successfully navigated to Advanced UI");
+        return true;
+      }
+    }
+    
+    processorLogger.error("Could not find Advanced menu item");
+    return false;
+  }
+
   async verifyDeployment(processorType) {
     return verifyProcessorDeployment(this.page, processorType);
   }
