@@ -250,3 +250,36 @@ export async function createTestLogFile(testInfo, content, filename = 'test-cons
     
     return filepath;
 }
+
+/**
+ * Save all browser console logs to files
+ * Used by global teardown to save all collected logs
+ */
+export async function saveAllBrowserLogs() {
+    const allLogs = globalConsoleLogger.getAllLogs();
+    
+    if (allLogs.length === 0) {
+        return null;
+    }
+    
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const outputDir = path.join(process.cwd(), 'target', 'test-results', 'browser-console-logs');
+    await fs.mkdir(outputDir, { recursive: true });
+    
+    // Save as JSON
+    const jsonPath = path.join(outputDir, `all-console-logs-${timestamp}.json`);
+    await fs.writeFile(jsonPath, JSON.stringify(allLogs, null, 2));
+    
+    // Save as text
+    const textContent = allLogs.map(log => 
+        `[${log.timestamp}] [${log.type.toUpperCase()}] ${log.text}`
+    ).join('\n');
+    const textPath = path.join(outputDir, `all-console-logs-${timestamp}.txt`);
+    await fs.writeFile(textPath, textContent);
+    
+    return {
+        jsonLog: jsonPath,
+        textLog: textPath,
+        totalLogs: allLogs.length
+    };
+}
