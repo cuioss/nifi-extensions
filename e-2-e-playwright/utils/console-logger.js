@@ -6,7 +6,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { checkCriticalError, registerCriticalError, clearCriticalErrors } from './critical-error-detector.js';
+import { globalCriticalErrorDetector } from './critical-error-detector.js';
 
 /**
  * Individual test logger that manages console logs per test
@@ -161,7 +161,7 @@ export async function setupStrictErrorDetection(page, testInfo, skipInitialCheck
     globalConsoleLogger.setActiveTest(testId);
     
     // Clear any previous critical errors
-    clearCriticalErrors();
+    globalCriticalErrorDetector.clearErrors();
     
     // Setup console message handler
     page.on('console', async (msg) => {
@@ -179,7 +179,8 @@ export async function setupStrictErrorDetection(page, testInfo, skipInitialCheck
         
         // Check for critical errors
         if (type === 'error' && !isErrorWhitelisted(text)) {
-            checkCriticalError(page, text);
+            // Check console messages for critical errors
+            globalCriticalErrorDetector.checkConsoleMessage(msg, testInfo);
         }
     });
     
@@ -192,7 +193,7 @@ export async function setupStrictErrorDetection(page, testInfo, skipInitialCheck
         });
         
         if (!isErrorWhitelisted(error.message)) {
-            registerCriticalError('PAGE_ERROR', error.message);
+            globalCriticalErrorDetector.addCriticalError('PAGE_ERROR', error.message, testInfo);
         }
     });
     
@@ -209,7 +210,8 @@ export async function setupStrictErrorDetection(page, testInfo, skipInitialCheck
             
             // Don't treat 401/403 as critical in auth-aware mode
             if (response.status() !== 401 && response.status() !== 403) {
-                checkCriticalError(page, message);
+                // Check HTTP errors for critical patterns
+                globalCriticalErrorDetector.addCriticalError('HTTP_ERROR', message, testInfo);
             }
         }
     });

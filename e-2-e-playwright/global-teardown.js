@@ -5,7 +5,7 @@
  * @version 3.0.0
  */
 
-import {saveAllBrowserLogs} from './utils/console-logger.js';
+import {globalConsoleLogger} from './utils/console-logger.js';
 
 /**
  * Global teardown function that runs after all tests have completed
@@ -15,15 +15,10 @@ async function globalTeardown() {
 
   try {
     // Save individual test logs
-    const results = await saveAllBrowserLogs();
+    const filepath = await globalConsoleLogger.saveAllLogs();
 
-    if (results && results.length > 0) {
-      console.log('📝 Saved individual browser console logs:');
-      results.forEach(result => {
-        console.log(`   🔍 Test: ${result.testId} (${result.totalLogs} logs)`);
-        console.log(`      📄 Text: ${result.textLog}`);
-        console.log(`      📋 JSON: ${result.jsonLog}`);
-      });
+    if (filepath) {
+      console.log(`📝 Saved all browser console logs to: ${filepath}`);
     } else {
       console.log('📝 No browser console logs captured during test run');
     }

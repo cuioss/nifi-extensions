@@ -9,7 +9,7 @@
 
 This document outlines the implementation plan for completing the NiFi JWT Authenticator.
 
-Last updated: 2025-01-27 (Branch: feature/p1-core-functionality)
+Last updated: 2025-07-28 (Branch: feature/p1-core-functionality)
 
 === Current Status
 
@@ -21,6 +21,8 @@ Last updated: 2025-01-27 (Branch: feature/p1-core-functionality)
   ** ✅ UI components connected to REST endpoints
   ** ✅ Authentication implemented with API keys
   ** ✅ All frontend tests passing
+  ** ✅ E2E test navigation pattern fixed (Right-click → Advanced menu)
+  ** ✅ All E2E tests updated to use verified navigation utilities
   ** ⚠️ E2E test 07-verify-token-verification-api.spec.js remains skipped (deployment constraints)
 * ❌ *Phase 3*: Observability - NOT STARTED
 * ❌ *Phase 4*: Advanced Features - NOT STARTED
@@ -48,124 +50,56 @@ Last updated: 2025-01-27 (Branch: feature/p1-core-functionality)
   ** Fixed all frontend test failures
   ** Added E2E test mode support in servlets
   ** All builds pass successfully
+* *COMPLETED (2025-07-28)*: E2E Test Navigation and Cleanup:
+  ** Fixed E2E test navigation pattern (Right-click → Advanced menu → iframe)
+  ** Updated all tests to use `setupAuthAwareErrorDetection` instead of `setupStrictErrorDetection`
+  ** Implemented ProcessorService utility with verified navigation pattern
+  ** Cleaned up processor.js - removed 275 lines of unused code (41% reduction)
+  ** Removed completely unused utilities (accessibility-helper.js, test-orchestrator.js)
+  ** Cleaned up console-logger.js - removed 628 lines (71% reduction)
+  ** Total cleanup: ~1,025 lines of unused code removed across utilities
+
+== E2E Test Navigation Pattern (CRITICAL)
+
+=== Correct Navigation Flow
+The custom UI is accessed through the NiFi processor's Advanced menu, NOT through a dialog tab:
+
+1. Find the MultiIssuerJWTTokenAuthenticator processor on canvas
+2. Right-click on the processor
+3. Select "Advanced" from context menu
+4. Custom UI loads in an iframe
+5. Navigate tabs within the iframe
+
+=== Verified Utility Pattern
+All E2E tests must use this pattern:
+```javascript
+const processor = await processorService.findJwtAuthenticator({
+    failIfNotFound: true
+});
+await processorService.openAdvancedUI(processor);
+const customUIFrame = await processorService.getAdvancedUIFrame();
+await processorService.clickTab(customUIFrame, "TabName");
+```
+
+This pattern is verified by `self-processor-advanced.spec.js`.
 
 == Remaining Tasks
 
-=== Phase 2: UI Enhancement (P2)
+=== Phase 2.5: E2E Test Verification and Stability (P1)
 
-NOTE: Each UI feature requires a corresponding E2E test in `e-2-e-playwright/tests/`. See `e-2-e-playwright/docs/roundtrip-testing.adoc` for implementation guide.
+==== Current State
+* [x] All E2E tests updated to use correct navigation pattern
+* [x] Tests use `setupAuthAwareErrorDetection` to avoid false positives
+* [x] ProcessorService utility provides consistent navigation methods
+* [ ] Some tests may still have flaky selectors or timing issues
+* [ ] Test 07 remains skipped due to deployment path constraints
 
-*UPDATE 2025-07-26*: E2E test files have been created for all Phase 2 UI features. These tests are currently failing as expected since the UI components haven't been implemented yet. The tests will serve as acceptance criteria for the UI implementation.
-
-IMPORTANT: UI E2E tests (02-06, 08 files) are currently failing because they attempt to access the custom UI directly at `/nifi-cuioss-ui-1.0-SNAPSHOT/`. These tests need to be updated to:
-1. Navigate to NiFi canvas
-2. Create/configure a MultiIssuerJWTTokenAuthenticator processor
-3. Open the processor's configuration dialog
-4. Access the custom UI within the processor context
-
-Until this navigation pattern is fixed, these tests will continue to fail with "EMPTY_PAGE - Canvas element not found" errors.
-
-*UPDATE 2025-01-27*: COMPLETED - All UI components are now properly connected to the backend REST endpoints. The frontend JavaScript code in apiClient.js handles authentication and makes proper API calls. E2E test 07 remains skipped due to deployment path constraints.
-
-==== Current Branch Status (refactor/e2e-test-structure-makeover)
-
-This branch has completed the E2E test infrastructure refactoring:
-
-* ✅ All 7 E2E test files created for Phase 2 UI features
-* ✅ Test infrastructure modernized with service-oriented architecture
-* ✅ Error handling utilities implemented (test-error-handler.js)
-* ✅ Authentication service abstraction (auth-service.js)
-* ✅ Console logging infrastructure (console-logger.js)
-* ✅ Critical error detection (critical-error-detector.js)
-
-==== Phase 2 Completion Summary (2025-01-27)
-
-1. **Frontend Integration Completed**:
-   - [x] API key generation and passing to UI implemented
-   - [x] Authentication implemented in apiClient.js
-   - [x] Tab-based navigation structure maintained
-
-2. **UI Components Connected to REST Endpoints**:
-   - [x] Token Verification Tab - connected to `/nifi-api/processors/jwt/verify-token`
-   - [x] JWKS Validation Button - connected to `/nifi-api/processors/jwt/validate-jwks`
-   - [x] Metrics Tab - connected to `/nifi-api/processors/jwt/metrics`
-   - [x] All UI tabs display data from API responses
-
-3. **Technical Achievements**:
-   - [x] Fixed jQuery compatibility issues with cash-dom
-   - [x] Fixed all frontend test failures
-   - [x] Adjusted test coverage thresholds
-   - [x] Added E2E test mode support in servlets
-
-4. **Build Status**:
-   - [x] Pre-commit build passes
-   - [x] Full build with tests passes
-   - [x] Frontend tests pass
-   - [x] E2E test 07 remains skipped (known limitation)
-
-NOTE: Phase 2 is now complete. All UI components are connected to backend REST endpoints.
-
-==== 2.1 Custom UI Components
-* [x] Create custom UI structure (implemented as complete web app in nifi-cuioss-ui module)
-* [x] Create E2E test: `02-verify-jwt-authenticator-customizer.spec.js`
-* [x] Implement JWKS Validation Button (connected to REST endpoint)
-* [x] Create E2E test: `03-verify-jwks-validation-button.spec.js`
-* [x] Add Token Verification Tab (fully connected to REST endpoint)
-* [x] Create E2E test: `04-verify-token-verification-tab.spec.js`
-* [x] Add Metrics Tab (connected to REST endpoint)
-* [x] Create E2E test: `05-verify-metrics-tab.spec.js`
-* [x] Add Help Tab
-* [x] Create E2E test: `06-verify-help-tab.spec.js`
-
-==== 2.2 REST Endpoint
-* [x] Research NiFi REST endpoint patterns
-* [x] Document implementation approach for production
-* [x] Update E2E tests to skip when endpoints unavailable
-* [x] Create E2E test: `07-verify-token-verification-api.spec.js` (CURRENTLY SKIPPED - requires implementation)
-* [x] *COMPLETED (2025-01-27)*: Backend implementation using servlets (see doc/jwt-api-endpoints-implementation.md)
-  ** [x] JwtVerificationServlet at `/nifi-api/processors/jwt/verify-token`
-  ** [x] JwksValidationServlet at `/nifi-api/processors/jwt/validate-jwks`
-  ** [x] MetricsServlet at `/nifi-api/processors/jwt/metrics`
-  ** [x] ApiKeyAuthenticationFilter for security
-* [x] Frontend integration - connect UI components to REST endpoints
-* [x] Generate API keys in processor and pass to UI
-* [x] Update JavaScript to call REST endpoints with authentication
-
-NOTE: Backend REST endpoints are implemented but not integrated with the UI. The E2E tests fail because they expect UI components to be connected to these endpoints.
-
-==== 2.3 JWKS Validation
-* [x] *COMPLETED (2025-01-27)*: Backend servlet implemented (`JwksValidationServlet`)
-* [x] Connected validation button to backend endpoint via apiClient
-* [x] Frontend calls validateJwksUrl function from apiClient
-* [x] Create E2E test: `08-verify-jwks-validation-complete.spec.js`
-* [ ] Add additional frontend validation (URL format, file existence)
-
-==== 2.4 Test Infrastructure (COMPLETED in this branch)
-* [x] Modernize E2E test structure
-* [x] Implement test error handler utility
-* [x] Create authentication service abstraction
-* [x] Add console logging infrastructure
-* [x] Implement critical error detection
-* [x] Create all Phase 2 E2E test files
-
-=== Phase 2.5: E2E Test Enablement (P1)
-
-==== Enable and Extend E2E Tests
-* [ ] Fix E2E test navigation pattern to access custom UI through processor configuration
-* [ ] Update test 02-verify-jwt-authenticator-customizer.spec.js to navigate via processor
-* [ ] Update test 03-verify-jwks-validation-button.spec.js to navigate via processor
-* [ ] Update test 04-verify-token-verification-tab.spec.js to navigate via processor
-* [ ] Update test 05-verify-metrics-tab.spec.js to navigate via processor
-* [ ] Update test 06-verify-help-tab.spec.js to navigate via processor
-* [ ] Enable test 07-verify-token-verification-api.spec.js (remove skip)
-* [ ] Update test 08-verify-jwks-validation-complete.spec.js to navigate via processor
-* [ ] Create processor creation utility for E2E tests
-* [ ] Add authentication handling for custom UI access
-* [ ] Ensure all UI interactions are covered by E2E tests
-* [ ] Add E2E tests for error scenarios
-* [ ] Add E2E tests for edge cases
-
-NOTE: E2E tests currently fail because they try to access the custom UI directly at `/nifi-cuioss-ui/`. They need to navigate through NiFi canvas -> create processor -> open configuration -> access custom UI.
+==== Next Steps
+* [ ] Run full E2E test suite and fix any remaining failures
+* [ ] Stabilize flaky tests with better wait conditions
+* [ ] Add retry logic for intermittent failures
+* [ ] Consider enabling test 07 with proper deployment configuration
+* [ ] Add visual regression tests for UI components
 
 === Phase 3: Observability (P2)
 
@@ -225,9 +159,14 @@ NOTE: E2E tests currently fail because they try to access the custom UI directly
 * [ ] Resolve Maven enforcer workaround in nifi-cuioss-nar/pom.xml:31
 * [ ] Remove `<enforcer.skip>true</enforcer.skip>` if possible
 
+==== 5.5 Accessibility
+* [ ] Integrate accessibility-helper.js into E2E tests
+* [ ] Add WCAG compliance checks to critical user journeys
+* [ ] Create accessibility test reports
+
 == Implementation Order
 
-1. Phase 2 (UI Enhancement)
+1. Phase 2.5 (E2E Test Verification)
 2. Phase 3 (Observability)
 3. Phase 4 (Advanced Features)
 4. Phase 5 (Documentation & Polish)
@@ -240,62 +179,45 @@ NOTE: E2E tests currently fail because they try to access the custom UI directly
 4. Metrics collection and monitoring operational
 5. 80%+ test coverage for new code
 6. Documentation complete and up-to-date
+7. E2E tests stable and passing consistently
 
-== Branch Summary: refactor/e2e-test-structure-makeover
+== Technical Architecture Summary
 
-This branch represents a significant milestone in the Phase 2 implementation:
+=== E2E Test Infrastructure
+The E2E test suite uses a service-oriented architecture with:
 
-=== Latest Updates (2025-07-26 - UI Implementation)
+1. **Core Services**:
+   - `ProcessorService` - Handles processor navigation and interaction
+   - `AuthService` - Manages authentication flow
+   - `ConsoleLogger` - Captures browser console logs
+   - `CriticalErrorDetector` - Monitors for critical errors
 
-1. **Custom UI Structure Completed**:
-   - Implemented complete tab-based UI structure in nifi-cuioss-ui module
-   - Added Metrics Tab component with real-time metrics display
-   - Added Help Tab component with comprehensive documentation
-   - Registered all tabs in main.js
-   - Added tab switching functionality with tabManager utility
+2. **Navigation Pattern**:
+   - All tests use the verified Right-click → Advanced menu pattern
+   - Tests operate within iframe context for custom UI
+   - No direct navigation to custom UI URLs
 
-2. **UI Components Created**:
-   - `metricsTab.js` - Displays JWT validation metrics and statistics
-   - `helpTab.js` - Provides user documentation and troubleshooting
-   - `tabManager.js` - Handles tab switching and state management
+3. **Error Detection**:
+   - `setupAuthAwareErrorDetection` - Standard for most tests
+   - `setupStrictErrorDetection` - Only for self-tests
+   - Automatic critical error detection and reporting
 
-3. **Styling Completed**:
-   - Enhanced `metrics.css` with comprehensive styles
-   - Created `help.css` for documentation display
-   - Updated `base.css` with tab structure styles
-   - Added necessary CSS variables to `variables.css`
+=== Code Cleanup Summary (2025-07-28)
 
-4. **HTML Structure Updated**:
-   - Added complete tab structure to `index.html`
-   - Included all required `data-testid` attributes for E2E tests
-   - Set up proper ARIA roles for accessibility
+1. **Removed Unused Files**:
+   - `accessibility-helper.js` - No usage, should be integrated later
+   - `test-orchestrator.js` - Functionality provided by npm scripts
 
-=== What Was Accomplished
+2. **Cleaned Up Utilities**:
+   - `processor.js` - Reduced from 663 to 388 lines (41% reduction)
+   - `console-logger.js` - Reduced from 878 to 250 lines (71% reduction)
+   - `shared-logger.js` - Removed unused logger exports
+   - Total: ~1,025 lines of unused code removed
 
-1. **E2E Test Infrastructure Overhaul**:
-   - Modernized test structure following 2025 best practices
-   - Implemented service-oriented architecture for better maintainability
-   - Added comprehensive error handling and logging capabilities
-
-2. **Test Coverage for Phase 2**:
-   - Created 7 new E2E test files covering all planned UI features
-   - Tests serve as acceptance criteria for UI implementation
-   - Tests are currently failing (expected) awaiting UI implementation
-
-3. **Utility Services Created**:
-   - `test-error-handler.js` - Centralized error handling with log preservation
-   - `auth-service.js` - Authentication abstraction for tests
-   - `console-logger.js` - Browser console log capture
-   - `critical-error-detector.js` - Strict error detection
-
-=== Ready for Next Phase
-
-With this branch complete, the project is now ready for:
-1. UI component implementation (MultiIssuerJwtAuthenticatorCustomizer.js)
-2. Backend REST endpoint creation
-3. Feature-by-feature implementation guided by failing E2E tests
-
-The failing E2E tests provide a clear roadmap for implementing each UI feature, ensuring that acceptance criteria are met as development progresses.
+3. **Remaining Utilities**:
+   - All remaining code is actively used in tests
+   - Clear separation between self-test and production utilities
+   - Better maintainability with focused, single-purpose utilities
 
 == JWT REST API Implementation Details
 
