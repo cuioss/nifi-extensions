@@ -75,10 +75,13 @@ test.describe("JWKS Validation Button", () => {
                 );
             }
             // Open Advanced UI via right-click menu
-            const advancedOpened = await processorService.openAdvancedUI(processor);
-            
+            const advancedOpened =
+                await processorService.openAdvancedUI(processor);
+
             if (!advancedOpened) {
-                throw new Error("Failed to open Advanced UI via right-click menu");
+                throw new Error(
+                    "Failed to open Advanced UI via right-click menu",
+                );
             }
 
             // Wait for custom UI to load
@@ -86,14 +89,14 @@ test.describe("JWKS Validation Button", () => {
 
             // The custom UI loads in an iframe
             const frames = page.frames();
-            const customUIFrame = frames.find(f => 
-                f.url().includes("nifi-cuioss-ui")
+            const customUIFrame = frames.find((f) =>
+                f.url().includes("nifi-cuioss-ui"),
             );
-            
+
             if (!customUIFrame) {
                 throw new Error("Could not find custom UI iframe");
             }
-            
+
             const uiContext = customUIFrame;
 
             // First click "Add Issuer" to enable the form

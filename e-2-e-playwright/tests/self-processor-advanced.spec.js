@@ -16,10 +16,7 @@ import {
     saveTestBrowserLogs,
     setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
-import {
-    checkCriticalErrors,
-    cleanupCriticalErrorDetection,
-} from "../utils/critical-error-detector.js";
+import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
 import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () => {
@@ -130,7 +127,7 @@ test.describe("Self-Test: Processor Advanced Configuration - STRICT MODE", () =>
                 // Close dialog first since Advanced is accessed via right-click
                 await page.keyboard.press("Escape");
                 await expect(dialog).not.toBeVisible({ timeout: 2000 });
-                
+
                 // Now open Advanced UI via right-click menu
                 await processorService.openAdvancedUI(processor);
 

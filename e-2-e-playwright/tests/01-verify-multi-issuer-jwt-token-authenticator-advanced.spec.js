@@ -79,87 +79,98 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     test("should access and verify advanced configuration", async ({
         page,
     }, testInfo) => {
-        const _processorService = new ProcessorService(page, testInfo);
+        const processorService = new ProcessorService(page, testInfo);
 
-        // Navigate directly to JWT UI to test advanced configuration
-        // Note: We skip canvas verification since we're going directly to the JWT UI
-        processorLogger.info(
-            "Navigating directly to JWT UI advanced configuration",
+        // First, navigate to the canvas
+        await page.goto("https://localhost:9095/nifi/", {
+            waitUntil: "networkidle",
+            timeout: 15000,
+        });
+
+        // Find the MultiIssuerJWTTokenAuthenticator processor on canvas
+        const processor = await processorService.findProcessorByType(
+            "MultiIssuerJWTTokenAuthenticator",
         );
 
-        try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
+        if (!processor) {
+            throw new Error(
+                "MultiIssuerJWTTokenAuthenticator processor not found on canvas. Please add it manually.",
             );
+        }
 
-            await page.waitForTimeout(2000);
+        // Open Advanced UI via right-click menu
+        const advancedOpened = await processorService.openAdvancedUI(processor);
 
-            // Verify advanced configuration elements
-            const advancedElements = [
-                {
-                    selector: 'h3:has-text("Issuer Configurations")',
-                    name: "Issuer Configurations header",
-                },
-                {
-                    selector: 'button:has-text("Add Issuer")',
-                    name: "Add Issuer button",
-                },
-                {
-                    selector: 'input[placeholder*="Issuer Name"]',
-                    name: "Issuer Name input",
-                },
-                {
-                    selector: 'button:has-text("Verify Token")',
-                    name: "Verify Token button",
-                },
-                {
-                    selector: 'h3:has-text("Verification Results")',
-                    name: "Verification Results section",
-                },
-            ];
+        if (!advancedOpened) {
+            throw new Error("Failed to open Advanced UI via right-click menu");
+        }
 
-            let elementsFound = 0;
-            for (const element of advancedElements) {
-                try {
-                    const el = page.locator(element.selector);
-                    if (await el.isVisible()) {
-                        elementsFound++;
-                        processorLogger.info(` Found: ${element.name}`);
-                    } else {
-                        processorLogger.warn(` Not found: ${element.name}`);
-                    }
-                } catch {
-                    processorLogger.warn(` Error checking: ${element.name}`);
+        // Wait for custom UI to load
+        await page.waitForTimeout(2000);
+
+        // Get the custom UI frame
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Could not find custom UI iframe");
+        }
+
+        processorLogger.info("Successfully accessed custom UI iframe");
+
+        // Verify advanced configuration elements
+        const advancedElements = [
+            {
+                selector: 'h3:has-text("Issuer Configurations")',
+                name: "Issuer Configurations header",
+            },
+            {
+                selector: 'button:has-text("Add Issuer")',
+                name: "Add Issuer button",
+            },
+            {
+                selector: 'input[placeholder*="Issuer Name"]',
+                name: "Issuer Name input",
+            },
+            {
+                selector: 'button:has-text("Verify Token")',
+                name: "Verify Token button",
+            },
+            {
+                selector: 'h3:has-text("Verification Results")',
+                name: "Verification Results section",
+            },
+        ];
+
+        let elementsFound = 0;
+        for (const element of advancedElements) {
+            try {
+                const el = customUIFrame.locator(element.selector);
+                if (await el.isVisible()) {
+                    elementsFound++;
+                    processorLogger.info(` Found: ${element.name}`);
+                } else {
+                    processorLogger.warn(` Not found: ${element.name}`);
                 }
+            } catch {
+                processorLogger.warn(` Error checking: ${element.name}`);
             }
+        }
 
-            // Take screenshot of advanced configuration
-            await page.screenshot({
-                path: `target/test-results/jwt-advanced-configuration-${Date.now()}.png`,
-                fullPage: true,
-            });
-            processorLogger.info(
-                "Screenshot of JWT advanced configuration saved",
-            );
+        // Take screenshot of advanced configuration
+        await page.screenshot({
+            path: `target/test-results/jwt-advanced-configuration-${Date.now()}.png`,
+            fullPage: true,
+        });
+        processorLogger.info("Screenshot of JWT advanced configuration saved");
 
-            if (elementsFound >= 3) {
-                processorLogger.success(
-                    `JWT UI advanced configuration verified with ${elementsFound}/${advancedElements.length} elements`,
-                );
-            } else {
-                processorLogger.warn(
-                    `Only ${elementsFound}/${advancedElements.length} advanced configuration elements found`,
-                );
-            }
-        } catch (navError) {
-            processorLogger.error(
-                `Failed to navigate to JWT UI: ${navError.message}`,
+        if (elementsFound >= 3) {
+            processorLogger.success(
+                `JWT UI advanced configuration verified with ${elementsFound}/${advancedElements.length} elements`,
             );
-            throw navError;
+        } else {
+            processorLogger.warn(
+                `Only ${elementsFound}/${advancedElements.length} advanced configuration elements found`,
+            );
         }
     });
 });

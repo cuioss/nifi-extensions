@@ -6,6 +6,7 @@
 
 import { expect, test } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
+import { ProcessorService } from "../utils/processor.js";
 import { processorLogger } from "../utils/shared-logger.js";
 import {
     saveTestBrowserLogs,
@@ -41,23 +42,44 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
 
     test("should display all four tabs in custom UI", async ({
         page,
-    }, _testInfo) => {
-        processorLogger.info("Navigating directly to JWT Custom UI");
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
 
-        // Navigate directly to the custom UI
-        await page.goto("https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/", {
+        // First, navigate to the canvas
+        await page.goto("https://localhost:9095/nifi/", {
             waitUntil: "networkidle",
             timeout: 15000,
         });
 
-        // Wait for the page to fully load and UI to initialize
+        // Find the MultiIssuerJWTTokenAuthenticator processor on canvas
+        const processor = await processorService.findProcessorByType(
+            "MultiIssuerJWTTokenAuthenticator",
+        );
+
+        if (!processor) {
+            throw new Error(
+                "MultiIssuerJWTTokenAuthenticator processor not found on canvas. Please add it manually.",
+            );
+        }
+
+        // Open Advanced UI via right-click menu
+        const advancedOpened = await processorService.openAdvancedUI(processor);
+
+        if (!advancedOpened) {
+            throw new Error("Failed to open Advanced UI via right-click menu");
+        }
+
+        // Wait for custom UI to load
         await page.waitForTimeout(2000);
 
-        // Wait for JWT UI initialization to complete
-        await page.waitForFunction(() => window.jwtUISetupComplete === true, {
-            timeout: 10000,
-        });
-        processorLogger.info("JWT UI initialization completed");
+        // Get the custom UI frame
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Could not find custom UI iframe");
+        }
+
+        processorLogger.info("Successfully accessed custom UI iframe");
 
         // Take initial screenshot
         await page.screenshot({
@@ -65,8 +87,8 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
             fullPage: true,
         });
 
-        // Check if the JWT container is visible
-        const jwtContainer = page.locator(
+        // Check if the JWT container is visible in the iframe
+        const jwtContainer = customUIFrame.locator(
             '[data-testid="jwt-customizer-container"]',
         );
         const isContainerVisible = await jwtContainer.isVisible({
@@ -75,18 +97,20 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
 
         if (!isContainerVisible) {
             processorLogger.warn(
-                "JWT container not visible, checking page content",
+                "JWT container not visible, checking iframe content",
             );
 
-            // Check what's actually on the page
-            const bodyText = await page.locator("body").textContent();
+            // Check what's actually in the iframe
+            const bodyText = await customUIFrame.locator("body").textContent();
             processorLogger.info(
-                `Page content: ${bodyText.substring(0, 200)}...`,
+                `Iframe content: ${bodyText.substring(0, 200)}...`,
             );
         }
 
-        // Check for tab container
-        const tabContainer = page.locator('[data-testid="jwt-config-tabs"]');
+        // Check for tab container in the iframe
+        const tabContainer = customUIFrame.locator(
+            '[data-testid="jwt-config-tabs"]',
+        );
         const isTabContainerVisible = await tabContainer.isVisible({
             timeout: 5000,
         });
@@ -120,7 +144,7 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
 
             let tabsFound = 0;
             for (const tab of expectedTabs) {
-                const tabLink = page.locator(tab.selector);
+                const tabLink = customUIFrame.locator(tab.selector);
                 if (await tabLink.isVisible({ timeout: 2000 })) {
                     tabsFound++;
                     processorLogger.info(`✓ Found tab: ${tab.name}`);
@@ -138,7 +162,7 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
                     // Verify tab content based on tab type
                     switch (tab.name) {
                         case "Configuration": {
-                            const addIssuerBtn = page.locator(
+                            const addIssuerBtn = customUIFrame.locator(
                                 'button:has-text("Add Issuer")',
                             );
                             if (
@@ -151,7 +175,7 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
                             break;
                         }
                         case "Token Verification": {
-                            const verifyBtn = page.locator(
+                            const verifyBtn = customUIFrame.locator(
                                 'button:has-text("Verify Token")',
                             );
                             if (await verifyBtn.isVisible({ timeout: 2000 })) {
@@ -162,7 +186,7 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
                             break;
                         }
                         case "Metrics": {
-                            const refreshBtn = page.locator(
+                            const refreshBtn = customUIFrame.locator(
                                 '[data-testid="refresh-metrics-button"]',
                             );
                             if (await refreshBtn.isVisible({ timeout: 2000 })) {
@@ -173,7 +197,7 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
                             break;
                         }
                         case "Help": {
-                            const helpContent = page.locator(
+                            const helpContent = customUIFrame.locator(
                                 '[data-testid="help-tab-content"]',
                             );
                             if (
@@ -198,8 +222,8 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
         } else {
             processorLogger.error("Tab container not found!");
 
-            // Debug: Check if tabs are hidden initially
-            const hiddenTabs = page.locator("#jwt-validator-tabs");
+            // Debug: Check if tabs are hidden initially in iframe
+            const hiddenTabs = customUIFrame.locator("#jwt-validator-tabs");
             if ((await hiddenTabs.count()) > 0) {
                 const displayStyle = await hiddenTabs.evaluate(
                     (el) => window.getComputedStyle(el).display,
@@ -209,7 +233,7 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
                 );
 
                 // If hidden, we might need to trigger initialization
-                await page.evaluate(() => {
+                await customUIFrame.evaluate(() => {
                     // Try to show tabs if they're hidden
                     const tabsEl =
                         document.getElementById("jwt-validator-tabs");
@@ -231,30 +255,44 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
 
     test("should test tab switching functionality", async ({
         page,
-    }, _testInfo) => {
-        processorLogger.info("Testing tab switching functionality");
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
 
-        // Navigate directly to the custom UI
-        await page.goto("https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/", {
+        // First, navigate to the canvas
+        await page.goto("https://localhost:9095/nifi/", {
             waitUntil: "networkidle",
             timeout: 15000,
         });
 
+        // Find the MultiIssuerJWTTokenAuthenticator processor on canvas
+        const processor = await processorService.findProcessorByType(
+            "MultiIssuerJWTTokenAuthenticator",
+        );
+
+        if (!processor) {
+            throw new Error(
+                "MultiIssuerJWTTokenAuthenticator processor not found on canvas. Please add it manually.",
+            );
+        }
+
+        // Open Advanced UI via right-click menu
+        const advancedOpened = await processorService.openAdvancedUI(processor);
+
+        if (!advancedOpened) {
+            throw new Error("Failed to open Advanced UI via right-click menu");
+        }
+
+        // Wait for custom UI to load
         await page.waitForTimeout(2000);
 
-        // Wait for JWT UI initialization to complete
-        await page.waitForFunction(() => window.jwtUISetupComplete === true, {
-            timeout: 10000,
-        });
-        processorLogger.info("JWT UI initialization completed");
+        // Get the custom UI frame
+        const customUIFrame = await processorService.getAdvancedUIFrame();
 
-        // Make tabs visible if hidden
-        await page.evaluate(() => {
-            const tabsEl = document.getElementById("jwt-validator-tabs");
-            if (tabsEl) {
-                tabsEl.style.display = "block";
-            }
-        });
+        if (!customUIFrame) {
+            throw new Error("Could not find custom UI iframe");
+        }
+
+        processorLogger.info("Testing tab switching functionality");
 
         // Test tab switching
         const tabs = [
@@ -277,7 +315,7 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
         ];
 
         for (const tabSwitch of tabs) {
-            const tabLink = page.locator(tabSwitch.selector);
+            const tabLink = customUIFrame.locator(tabSwitch.selector);
             if (await tabLink.isVisible({ timeout: 2000 })) {
                 await tabLink.click();
                 await page.waitForTimeout(500);

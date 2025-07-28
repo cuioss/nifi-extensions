@@ -75,10 +75,13 @@ test.describe("JWT Authenticator Customizer UI", () => {
             }
 
             // Open Advanced UI via right-click menu
-            const advancedOpened = await processorService.openAdvancedUI(processor);
-            
+            const advancedOpened =
+                await processorService.openAdvancedUI(processor);
+
             if (!advancedOpened) {
-                throw new Error("Failed to open Advanced UI via right-click menu");
+                throw new Error(
+                    "Failed to open Advanced UI via right-click menu",
+                );
             }
 
             // Wait for custom UI to load
@@ -87,17 +90,19 @@ test.describe("JWT Authenticator Customizer UI", () => {
             // The custom UI loads in an iframe
             const frames = page.frames();
             processorLogger.info(`Found ${frames.length} frames`);
-            
+
             // Find the custom UI frame
-            const customUIFrame = frames.find(f => 
-                f.url().includes("nifi-cuioss-ui")
+            const customUIFrame = frames.find((f) =>
+                f.url().includes("nifi-cuioss-ui"),
             );
-            
+
             if (!customUIFrame) {
                 throw new Error("Could not find custom UI iframe");
             }
-            
-            processorLogger.info("Using custom UI frame: " + customUIFrame.url());
+
+            processorLogger.info(
+                "Using custom UI frame: " + customUIFrame.url(),
+            );
             const uiContext = customUIFrame;
 
             const customUIElements = [
@@ -179,10 +184,13 @@ test.describe("JWT Authenticator Customizer UI", () => {
             }
 
             // Open Advanced UI via right-click menu
-            const advancedOpened = await processorService.openAdvancedUI(processor);
-            
+            const advancedOpened =
+                await processorService.openAdvancedUI(processor);
+
             if (!advancedOpened) {
-                throw new Error("Failed to open Advanced UI via right-click menu");
+                throw new Error(
+                    "Failed to open Advanced UI via right-click menu",
+                );
             }
 
             // Wait for custom UI to load
@@ -191,17 +199,19 @@ test.describe("JWT Authenticator Customizer UI", () => {
             // The custom UI loads in an iframe
             const frames = page.frames();
             processorLogger.info(`Found ${frames.length} frames`);
-            
+
             // Find the custom UI frame
-            const customUIFrame = frames.find(f => 
-                f.url().includes("nifi-cuioss-ui")
+            const customUIFrame = frames.find((f) =>
+                f.url().includes("nifi-cuioss-ui"),
             );
-            
+
             if (!customUIFrame) {
                 throw new Error("Could not find custom UI iframe");
             }
-            
-            processorLogger.info("Using custom UI frame: " + customUIFrame.url());
+
+            processorLogger.info(
+                "Using custom UI frame: " + customUIFrame.url(),
+            );
             const uiContext = customUIFrame;
 
             const addIssuerButton = await uiContext.getByRole("button", {
