@@ -52,10 +52,6 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
 
         // Get the custom UI frame
         const customUIFrame = await processorService.getAdvancedUIFrame();
-            timeout: 15000,
-        });
-
-        const customUIFrame = await processorService.navigateToAdvancedUI();
 
         // Take initial screenshot
         await page.screenshot({
@@ -244,13 +240,6 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
 
         // Get the custom UI frame
         const customUIFrame = await processorService.getAdvancedUIFrame();
-            timeout: 15000,
-        });
-
-        // Find the MultiIssuerJWTTokenAuthenticator processor on canvas
-        const processor = await processorService.findProcessorByType(
-            "MultiIssuerJWTTokenAuthenticator",
-        );
 
         if (!processor) {
             throw new Error(
@@ -267,9 +256,6 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
 
         // Wait for custom UI to load
         await page.waitForTimeout(2000);
-
-        // Get the custom UI frame
-        const customUIFrame = await processorService.getAdvancedUIFrame();
 
         if (!customUIFrame) {
             throw new Error("Could not find custom UI iframe");

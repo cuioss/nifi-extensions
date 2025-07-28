@@ -1,104 +1,12 @@
 /**
  * @file Simplified Processor Utilities
  * Consolidated processor operations using Playwright built-ins
- * @version 3.0.0
+ * @version 4.0.0 - Cleaned up unused methods
  */
 
 import {expect} from '@playwright/test';
 import {CONSTANTS} from './constants.js';
 import { processorLogger } from './shared-logger.js';
-
-/**
- * Add processor to canvas first
- */
-export async function addProcessorToCanvas(page, processorType = 'MultiIssuerJWTTokenAuthenticator') {
-  try {
-    // Check if the Add Processor dialog is already open
-    const dialog = page.locator('div[role="dialog"]:has(h2:has-text("Add Processor"))');
-    if (await dialog.isVisible({ timeout: 1000 }).catch(() => false)) {
-      console.log('Add Processor dialog is already open');
-    } else {
-      // Look for the actual draggable processor button (not the icon div)
-      const draggableProcessorButton = page.locator('button.cdk-drag[class*="icon-processor"]').first();
-
-      // Check if the draggable button is visible
-      if (await draggableProcessorButton.isVisible()) {
-        // Get canvas for drop target
-        const canvas = page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS || '#canvas, .canvas, svg');
-        await canvas.waitFor({ timeout: 5000 });
-
-        const canvasBounds = await canvas.boundingBox();
-
-        if (canvasBounds) {
-          const centerX = canvasBounds.width / 2;
-          const centerY = canvasBounds.height / 2;
-
-          // Drag processor to canvas center
-          await draggableProcessorButton.dragTo(canvas, {
-            targetPosition: { x: centerX, y: centerY },
-            force: true
-          });
-
-          // Wait for dialog to appear
-          await page.waitForTimeout(1000);
-        } else {
-          console.log('Could not get canvas bounds for drag target');
-          return false;
-        }
-      } else {
-        console.log('Draggable processor button not visible');
-        return false;
-      }
-    }
-
-    // Handle the Add Processor dialog
-    if (await dialog.isVisible({ timeout: 5000 }).catch(() => false)) {
-      // Filter for the specific processor type
-      const filterInput = page.locator('input[placeholder="Filter types"]');
-      await filterInput.fill(processorType);
-      await page.waitForTimeout(500);
-
-      // Click on the processor in the table
-      const processorRow = page.locator(`table tr:has(td:has-text("${processorType}"))`).first();
-      if (await processorRow.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await processorRow.click();
-
-        // Click the Add button
-        const addButton = page.locator('button:has-text("Add")').last();
-        await addButton.click();
-
-        // Wait for dialog to close and processor to appear
-        await dialog.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
-        await page.waitForTimeout(2000);
-
-        // Check if processor was added by looking for processor elements on canvas
-        const processorOnCanvas = page.locator('g.processor, rect.processor, [data-component-type="processor"]');
-        const processorExists = await processorOnCanvas.count() > 0;
-
-        if (processorExists) {
-          console.log('Successfully added processor to canvas');
-          return true;
-        } else {
-          console.log('Processor was selected but not found on canvas');
-          return false;
-        }
-      } else {
-        console.log(`Processor type "${processorType}" not found in dialog`);
-        // Cancel the dialog
-        const cancelButton = page.locator('button:has-text("Cancel")');
-        await cancelButton.click();
-        return false;
-      }
-    } else {
-      console.log('Add Processor dialog did not appear');
-      return false;
-    }
-  } catch (error) {
-    console.log('Could not add processor to canvas:', error.message);
-  }
-
-  return false;
-}
 
 /**
  * Find processor on canvas using modern Playwright patterns
@@ -181,29 +89,6 @@ export async function findJwtAuthenticator(page, options = {}) {
 
   if (options.failIfNotFound !== false) {
     throw new Error('JWT Authenticator not found on canvas (should already be present)');
-  }
-
-  return null;
-}
-
-/**
- * Find MultiIssuer JWT Token Authenticator specifically
- */
-export async function findMultiIssuerJwtAuthenticator(page, options = {}) {
-  // Find existing processor on canvas (should already be present)
-  const processor = await findProcessor(page, 'MultiIssuerJWTTokenAuthenticator', options);
-  return processor;
-}
-
-/**
- * Verify MultiIssuer JWT Token Authenticator deployment
- */
-export async function verifyMultiIssuerJwtAuthenticator(page, options = {}) {
-  const processor = await findMultiIssuerJwtAuthenticator(page, options);
-
-  if (processor) {
-    await verifyProcessorDeployment(page, 'MultiIssuerJWTTokenAuthenticator');
-    return { ...processor, name: 'MultiIssuerJWTTokenAuthenticator' };
   }
 
   return null;
@@ -303,7 +188,7 @@ export async function configureProcessor(page, processorIdentifier, options = {}
 
   // If processorIdentifier is a string, find the processor first
   if (typeof processorIdentifier === 'string') {
-    processor = await findProcessor(page, processorIdentifier, { addIfNotFound: true });
+    processor = await findProcessor(page, processorIdentifier);
     if (!processor) {
       throw new Error(`Cannot configure processor: ${processorIdentifier} not found`);
     }
@@ -403,7 +288,7 @@ export async function verifyProcessorDeployment(page, processorType) {
 }
 
 /**
- * Simplified ProcessorService class
+ * Simplified ProcessorService class with only used methods
  */
 export class ProcessorService {
   constructor(page, testInfo = null) {
@@ -420,11 +305,7 @@ export class ProcessorService {
   }
 
   async findMultiIssuerJwtAuthenticator(options = {}) {
-    return findMultiIssuerJwtAuthenticator(this.page, options);
-  }
-
-  async verifyMultiIssuerJwtAuthenticator(options = {}) {
-    return verifyMultiIssuerJwtAuthenticator(this.page, options);
+    return findProcessor(this.page, 'MultiIssuerJWTTokenAuthenticator', options);
   }
 
   async interact(processor, options = {}) {
@@ -433,44 +314,6 @@ export class ProcessorService {
 
   async configure(processor, options = {}) {
     return configureProcessor(this.page, processor, { ...options, testInfo: this.testInfo });
-  }
-
-  async openConfiguration(processor, options = {}) {
-    return configureProcessor(this.page, processor, { ...options, testInfo: this.testInfo });
-  }
-
-  async configureMultiIssuerJwtAuthenticator(processor, options = {}) {
-    return configureProcessor(this.page, processor, { ...options, testInfo: this.testInfo });
-  }
-
-  async accessAdvancedProperties(dialog, options = {}) {
-    // Look for Advanced tab specifically (not Properties tab)
-    const advancedTab = this.page.getByRole("tab", {
-      name: /^advanced$/i,
-    });
-
-    if (await advancedTab.isVisible({ timeout: 2000 })) {
-      await advancedTab.click();
-      
-      // Wait for tab switch
-      await this.page.waitForTimeout(1000);
-
-      // Verify advanced content is loaded using NiFi-compatible selectors
-      const advancedContent = this.page.locator(
-        '[role="tabpanel"]:not([hidden]), .tab-pane.active, [aria-expanded="true"]',
-      );
-      await expect(advancedContent.first()).toBeVisible({
-        timeout: 3000,
-      });
-
-      return true;
-    }
-
-    // If no "Advanced" tab found, log available tabs for debugging
-    const allTabs = await this.page.getByRole("tab").allTextContents();
-    processorLogger.warn(`No Advanced tab found. Available tabs: ${allTabs.join(", ")}`);
-    
-    return false;
   }
 
   async openAdvancedUI(processor) {
@@ -517,98 +360,25 @@ export class ProcessorService {
     return customUIFrame;
   }
 
-  async openAdvancedUIAndGetFrame(processor) {
-    // Combined method for convenience
-    const opened = await this.openAdvancedUI(processor);
-    if (!opened) {
-      throw new Error("Failed to open Advanced UI");
-    }
-    
-    // Wait a bit for iframe to load
+  /**
+   * Click a tab in the custom UI
+   * @param {Frame} customUIFrame - The custom UI iframe
+   * @param {string} tabName - Name of the tab to click
+   */
+  async clickTab(customUIFrame, tabName) {
+    const tab = customUIFrame.locator(`[role="tab"]:has-text("${tabName}")`);
+    await tab.click();
     await this.page.waitForTimeout(1000);
-    
-    const frame = await this.getAdvancedUIFrame();
-    if (!frame) {
-      throw new Error("Could not find Advanced UI iframe");
-    }
-    
-    return frame;
+    processorLogger.info(`Clicked ${tabName} tab`);
   }
 
-  async navigateToAdvancedTab(tabName) {
-    processorLogger.info(`Navigating to ${tabName} tab in Advanced UI`);
-    
-    // Get the iframe context
-    const uiFrame = await this.getAdvancedUIFrame();
-    if (!uiFrame) {
-      throw new Error("Advanced UI frame not found. Make sure to call openAdvancedUI first.");
-    }
-    
-    // Look for the tab
-    const tabSelector = `[role="tab"]:has-text("${tabName}")`;
-    const tab = uiFrame.locator(tabSelector);
-    
-    if (await tab.isVisible({ timeout: 3000 })) {
-      await tab.click();
-      processorLogger.info(`Clicked ${tabName} tab`);
-      
-      // Wait for tab content to load
-      await this.page.waitForTimeout(1000);
-      
-      // Verify tab is active (check multiple possible indicators)
-      const ariaSelected = await tab.getAttribute("aria-selected");
-      const classList = await tab.getAttribute("class");
-      const isActive = ariaSelected === "true" || (classList && classList.includes("active"));
-      
-      if (isActive || true) { // For now, assume success if click worked
-        processorLogger.success(`Successfully navigated to ${tabName} tab`);
-        return uiFrame;
-      }
-    }
-    
-    processorLogger.error(`Could not find or navigate to ${tabName} tab`);
-    return null;
-  }
-
-  async verifyDeployment(processorType) {
-    return verifyProcessorDeployment(this.page, processorType);
-  }
-
-  async waitForConfigurationDialog() {
-    const dialog = this.page.locator('[role="dialog"], .dialog, .configuration-dialog');
-    await expect(dialog).toBeVisible({ timeout: 3000 });
-    return dialog;
-  }
-
-  async findBackNavigationLink() {
-    const backLinks = [
-      this.page.getByRole("link", { name: /back to processor/i }),
-      this.page.getByRole("button", { name: /back to processor/i }),
-      this.page.getByText(/back to processor/i),
-      this.page.locator('[href*="processor"]'),
-      this.page.locator(".back-link, .return-link"),
-    ];
-
-    for (const backLink of backLinks) {
-      if (await backLink.isVisible({ timeout: 2000 })) {
-        return backLink;
-      }
-    }
-    return null;
-  }
-
-  async navigateBack() {
-    const backLink = await this.findBackNavigationLink();
-    if (backLink) {
-      await backLink.click();
-      await this.page.waitForLoadState("networkidle");
-      return true;
-    } else {
-      // Fallback to browser back
-      await this.page.goBack();
-      await this.page.waitForLoadState("networkidle");
-      return false; // Indicates fallback was used
-    }
+  /**
+   * Find processor by type (used by one test)
+   * @param {string} processorType - Type of processor to find
+   * @returns {Promise<Object>} Processor object
+   */
+  async findProcessorByType(processorType) {
+    return findProcessor(this.page, processorType);
   }
 
   /**
@@ -646,17 +416,5 @@ export class ProcessorService {
 
     processorLogger.info("Successfully accessed custom UI iframe");
     return customUIFrame;
-  }
-
-  /**
-   * Click a tab in the custom UI
-   * @param {Frame} customUIFrame - The custom UI iframe
-   * @param {string} tabName - Name of the tab to click
-   */
-  async clickTab(customUIFrame, tabName) {
-    const tab = customUIFrame.locator(`[role="tab"]:has-text("${tabName}")`);
-    await tab.click();
-    await this.page.waitForTimeout(1000);
-    processorLogger.info(`Clicked ${tabName} tab`);
   }
 }
