@@ -9,7 +9,7 @@ import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 import {
     saveTestBrowserLogs,
-    setupStrictErrorDetection,
+    setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
 import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
 import { processorLogger } from "../utils/shared-logger.js";
@@ -18,7 +18,7 @@ import { logTestWarning } from "../utils/test-error-handler.js";
 test.describe("Metrics Tab", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         try {
-            await setupStrictErrorDetection(page, testInfo, false);
+            await setupAuthAwareErrorDetection(page, testInfo);
             const authService = new AuthService(page);
             await authService.ensureReady();
         } catch (error) {
@@ -52,38 +52,19 @@ test.describe("Metrics Tab", () => {
         try {
             const processorService = new ProcessorService(page, testInfo);
 
-            // Find and configure processor
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: true,
-                });
-            const dialog = await processorService.configure(processor);
-            await processorService.accessAdvancedProperties(dialog);
+            // Find JWT processor using the verified utility
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
-            // Wait for custom UI to load
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
+            // Open Advanced UI using the verified utility
+            await processorService.openAdvancedUI(processor);
 
-            // Determine UI context
-            const customUIFrame = page.frameLocator("iframe").first();
-            let uiContext = page;
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Metrics");
 
-            const iframeTab = customUIFrame.locator(
-                '[role="tab"]:has-text("Metrics")',
-            );
-            if ((await iframeTab.count()) > 0) {
-                uiContext = customUIFrame;
-                processorLogger.info("Working with Metrics tab in iframe");
-            }
-
-            const metricsTab = await uiContext.locator(
-                '[role="tab"]:has-text("Metrics")',
-            );
-            await expect(metricsTab).toBeVisible({ timeout: 5000 });
-            await metricsTab.click();
-            processorLogger.info("Clicked Metrics tab");
-
-            const metricsPanel = await uiContext.locator(
+            const metricsPanel = await customUIFrame.locator(
                 '[role="tabpanel"][data-tab="metrics"]',
             );
             await expect(metricsPanel).toBeVisible({ timeout: 5000 });
@@ -109,7 +90,7 @@ test.describe("Metrics Tab", () => {
             ];
 
             for (const section of metricsSections) {
-                const el = await uiContext.locator(section.selector);
+                const el = await customUIFrame.locator(section.selector);
                 await expect(el).toBeVisible({ timeout: 5000 });
                 processorLogger.info(`✓ Found ${section.description} section`);
             }
@@ -131,51 +112,38 @@ test.describe("Metrics Tab", () => {
         try {
             const processorService = new ProcessorService(page, testInfo);
 
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: true,
-                });
-            const dialog = await processorService.configure(processor);
-            await processorService.accessAdvancedProperties(dialog);
+            // Find JWT processor using the verified utility
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
+            // Open Advanced UI using the verified utility
+            await processorService.openAdvancedUI(processor);
 
-            const customUIFrame = page.frameLocator("iframe").first();
-            let uiContext = page;
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Metrics");
 
-            const iframeTab = customUIFrame.locator(
-                '[role="tab"]:has-text("Metrics")',
-            );
-            if ((await iframeTab.count()) > 0) {
-                uiContext = customUIFrame;
-            }
-
-            const metricsTab = await uiContext.locator(
-                '[role="tab"]:has-text("Metrics")',
-            );
-            await metricsTab.click();
-
-            const validationMetrics = await uiContext.locator(
+            const validationMetrics = await customUIFrame.locator(
                 '[data-testid="validation-metrics"]',
             );
             await expect(validationMetrics).toBeVisible({ timeout: 5000 });
 
-            const successRate = await uiContext.locator(
+            const successRate = await customUIFrame.locator(
                 '[data-testid="success-rate"]',
             );
             await expect(successRate).toBeVisible({ timeout: 5000 });
             await expect(successRate).toContainText(/\d+(\.\d+)?%/);
             processorLogger.info("✓ Success rate displayed");
 
-            const failureRate = await uiContext.locator(
+            const failureRate = await customUIFrame.locator(
                 '[data-testid="failure-rate"]',
             );
             await expect(failureRate).toBeVisible({ timeout: 5000 });
             await expect(failureRate).toContainText(/\d+(\.\d+)?%/);
             processorLogger.info("✓ Failure rate displayed");
 
-            const totalValidations = await uiContext.locator(
+            const totalValidations = await customUIFrame.locator(
                 '[data-testid="total-validations"]',
             );
             await expect(totalValidations).toBeVisible({ timeout: 5000 });
@@ -201,37 +169,24 @@ test.describe("Metrics Tab", () => {
         try {
             const processorService = new ProcessorService(page, testInfo);
 
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: true,
-                });
-            const dialog = await processorService.configure(processor);
-            await processorService.accessAdvancedProperties(dialog);
+            // Find JWT processor using the verified utility
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
+            // Open Advanced UI using the verified utility
+            await processorService.openAdvancedUI(processor);
 
-            const customUIFrame = page.frameLocator("iframe").first();
-            let uiContext = page;
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Metrics");
 
-            const iframeTab = customUIFrame.locator(
-                '[role="tab"]:has-text("Metrics")',
-            );
-            if ((await iframeTab.count()) > 0) {
-                uiContext = customUIFrame;
-            }
-
-            const metricsTab = await uiContext.locator(
-                '[role="tab"]:has-text("Metrics")',
-            );
-            await metricsTab.click();
-
-            const issuerMetrics = await uiContext.locator(
+            const issuerMetrics = await customUIFrame.locator(
                 '[data-testid="issuer-metrics"]',
             );
             await expect(issuerMetrics).toBeVisible({ timeout: 5000 });
 
-            const issuerTable = await uiContext.locator(
+            const issuerTable = await customUIFrame.locator(
                 '[data-testid="issuer-metrics-table"]',
             );
             await expect(issuerTable).toBeVisible({ timeout: 5000 });
@@ -247,14 +202,14 @@ test.describe("Metrics Tab", () => {
             ];
 
             for (const header of tableHeaders) {
-                const headerCell = await uiContext.locator(
+                const headerCell = await customUIFrame.locator(
                     `th:has-text("${header}")`,
                 );
                 await expect(headerCell).toBeVisible({ timeout: 5000 });
                 processorLogger.info(`✓ Found header: ${header}`);
             }
 
-            const issuerRows = await uiContext.locator(
+            const issuerRows = await customUIFrame.locator(
                 '[data-testid="issuer-metrics-row"]',
             );
             const rowCount = await issuerRows.count();
@@ -288,32 +243,19 @@ test.describe("Metrics Tab", () => {
         try {
             const processorService = new ProcessorService(page, testInfo);
 
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: true,
-                });
-            const dialog = await processorService.configure(processor);
-            await processorService.accessAdvancedProperties(dialog);
+            // Find JWT processor using the verified utility
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
+            // Open Advanced UI using the verified utility
+            await processorService.openAdvancedUI(processor);
 
-            const customUIFrame = page.frameLocator("iframe").first();
-            let uiContext = page;
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Metrics");
 
-            const iframeTab = customUIFrame.locator(
-                '[role="tab"]:has-text("Metrics")',
-            );
-            if ((await iframeTab.count()) > 0) {
-                uiContext = customUIFrame;
-            }
-
-            const metricsTab = await uiContext.locator(
-                '[role="tab"]:has-text("Metrics")',
-            );
-            await metricsTab.click();
-
-            const performanceMetrics = await uiContext.locator(
+            const performanceMetrics = await customUIFrame.locator(
                 '[data-testid="performance-metrics"]',
             );
             await expect(performanceMetrics).toBeVisible({ timeout: 5000 });
@@ -342,7 +284,7 @@ test.describe("Metrics Tab", () => {
             ];
 
             for (const indicator of performanceIndicators) {
-                const el = await uiContext.locator(indicator.selector);
+                const el = await customUIFrame.locator(indicator.selector);
                 await expect(el).toBeVisible({ timeout: 5000 });
                 await expect(el).toContainText(indicator.pattern);
                 processorLogger.info(`✓ ${indicator.description} displayed`);
@@ -363,37 +305,24 @@ test.describe("Metrics Tab", () => {
         try {
             const processorService = new ProcessorService(page, testInfo);
 
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: true,
-                });
-            const dialog = await processorService.configure(processor);
-            await processorService.accessAdvancedProperties(dialog);
+            // Find JWT processor using the verified utility
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
+            // Open Advanced UI using the verified utility
+            await processorService.openAdvancedUI(processor);
 
-            const customUIFrame = page.frameLocator("iframe").first();
-            let uiContext = page;
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Metrics");
 
-            const iframeTab = customUIFrame.locator(
-                '[role="tab"]:has-text("Metrics")',
-            );
-            if ((await iframeTab.count()) > 0) {
-                uiContext = customUIFrame;
-            }
-
-            const metricsTab = await uiContext.locator(
-                '[role="tab"]:has-text("Metrics")',
-            );
-            await metricsTab.click();
-
-            const refreshButton = await uiContext.locator(
+            const refreshButton = await customUIFrame.locator(
                 '[data-testid="refresh-metrics-button"]',
             );
             await expect(refreshButton).toBeVisible({ timeout: 5000 });
 
-            const totalValidationsBefore = await uiContext
+            const totalValidationsBefore = await customUIFrame
                 .locator('[data-testid="total-validations"]')
                 .textContent();
             processorLogger.info(
@@ -403,7 +332,7 @@ test.describe("Metrics Tab", () => {
             await refreshButton.click();
             processorLogger.info("Clicked refresh button");
 
-            const refreshIndicator = await uiContext.locator(
+            const refreshIndicator = await customUIFrame.locator(
                 '[data-testid="refresh-indicator"]',
             );
             await expect(refreshIndicator).toBeVisible({ timeout: 2000 });
@@ -412,7 +341,7 @@ test.describe("Metrics Tab", () => {
             await expect(refreshIndicator).not.toBeVisible({ timeout: 10000 });
             processorLogger.info("✓ Refresh completed");
 
-            const lastUpdated = await uiContext.locator(
+            const lastUpdated = await customUIFrame.locator(
                 '[data-testid="last-updated"]',
             );
             await expect(lastUpdated).toBeVisible({ timeout: 5000 });
@@ -434,32 +363,19 @@ test.describe("Metrics Tab", () => {
         try {
             const processorService = new ProcessorService(page, testInfo);
 
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: true,
-                });
-            const dialog = await processorService.configure(processor);
-            await processorService.accessAdvancedProperties(dialog);
+            // Find JWT processor using the verified utility
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
+            // Open Advanced UI using the verified utility
+            await processorService.openAdvancedUI(processor);
 
-            const customUIFrame = page.frameLocator("iframe").first();
-            let uiContext = page;
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Metrics");
 
-            const iframeTab = customUIFrame.locator(
-                '[role="tab"]:has-text("Metrics")',
-            );
-            if ((await iframeTab.count()) > 0) {
-                uiContext = customUIFrame;
-            }
-
-            const metricsTab = await uiContext.locator(
-                '[role="tab"]:has-text("Metrics")',
-            );
-            await metricsTab.click();
-
-            const exportButton = await uiContext.locator(
+            const exportButton = await customUIFrame.locator(
                 '[data-testid="export-metrics-button"]',
             );
             await expect(exportButton).toBeVisible({ timeout: 5000 });
@@ -467,7 +383,7 @@ test.describe("Metrics Tab", () => {
             await exportButton.click();
             processorLogger.info("Clicked export button");
 
-            const exportOptions = await uiContext.locator(
+            const exportOptions = await customUIFrame.locator(
                 '[data-testid="export-options"]',
             );
             await expect(exportOptions).toBeVisible({ timeout: 5000 });
@@ -475,7 +391,7 @@ test.describe("Metrics Tab", () => {
             const exportFormats = ["CSV", "JSON", "Prometheus"];
 
             for (const format of exportFormats) {
-                const formatOption = await uiContext.locator(
+                const formatOption = await customUIFrame.locator(
                     `[data-testid="export-${format.toLowerCase()}"]`,
                 );
                 await expect(formatOption).toBeVisible({ timeout: 5000 });

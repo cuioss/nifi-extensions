@@ -9,7 +9,7 @@ import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 import {
     saveTestBrowserLogs,
-    setupStrictErrorDetection,
+    setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
 import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
 import { processorLogger } from "../utils/shared-logger.js";
@@ -18,7 +18,7 @@ import { logTestWarning } from "../utils/test-error-handler.js";
 test.describe("Help Tab", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         try {
-            await setupStrictErrorDetection(page, testInfo, false);
+            await setupAuthAwareErrorDetection(page, testInfo);
             const authService = new AuthService(page);
             await authService.ensureReady();
         } catch (error) {
@@ -52,38 +52,19 @@ test.describe("Help Tab", () => {
         try {
             const processorService = new ProcessorService(page, testInfo);
 
-            // Find and configure processor
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: true,
-                });
-            const dialog = await processorService.configure(processor);
-            await processorService.accessAdvancedProperties(dialog);
+            // Find JWT processor using the verified utility
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
-            // Wait for custom UI to load
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
+            // Open Advanced UI using the verified utility
+            await processorService.openAdvancedUI(processor);
 
-            // Determine UI context
-            const customUIFrame = page.frameLocator("iframe").first();
-            let uiContext = page;
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Help");
 
-            const iframeTab = customUIFrame.locator(
-                '[role="tab"]:has-text("Help")',
-            );
-            if ((await iframeTab.count()) > 0) {
-                uiContext = customUIFrame;
-                processorLogger.info("Working with Help tab in iframe");
-            }
-
-            const helpTab = await uiContext.locator(
-                '[role="tab"]:has-text("Help")',
-            );
-            await expect(helpTab).toBeVisible({ timeout: 5000 });
-            await helpTab.click();
-            processorLogger.info("Clicked Help tab");
-
-            const helpPanel = await uiContext.locator(
+            const helpPanel = await customUIFrame.locator(
                 '[role="tabpanel"][data-tab="help"]',
             );
             await expect(helpPanel).toBeVisible({ timeout: 5000 });
@@ -113,7 +94,7 @@ test.describe("Help Tab", () => {
             ];
 
             for (const section of helpSections) {
-                const el = await uiContext.locator(section.selector);
+                const el = await customUIFrame.locator(section.selector);
                 await expect(el).toBeVisible({ timeout: 5000 });
                 processorLogger.info(`✓ Found ${section.description}`);
             }
@@ -135,32 +116,19 @@ test.describe("Help Tab", () => {
         try {
             const processorService = new ProcessorService(page, testInfo);
 
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: true,
-                });
-            const dialog = await processorService.configure(processor);
-            await processorService.accessAdvancedProperties(dialog);
+            // Find JWT processor using the verified utility
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
+            // Open Advanced UI using the verified utility
+            await processorService.openAdvancedUI(processor);
 
-            const customUIFrame = page.frameLocator("iframe").first();
-            let uiContext = page;
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Help");
 
-            const iframeTab = customUIFrame.locator(
-                '[role="tab"]:has-text("Help")',
-            );
-            if ((await iframeTab.count()) > 0) {
-                uiContext = customUIFrame;
-            }
-
-            const helpTab = await uiContext.locator(
-                '[role="tab"]:has-text("Help")',
-            );
-            await helpTab.click();
-
-            const accordionItems = await uiContext.locator(
+            const accordionItems = await customUIFrame.locator(
                 '[data-testid="help-accordion-item"]',
             );
             const itemCount = await accordionItems.count();
@@ -228,32 +196,19 @@ test.describe("Help Tab", () => {
         try {
             const processorService = new ProcessorService(page, testInfo);
 
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: true,
-                });
-            const dialog = await processorService.configure(processor);
-            await processorService.accessAdvancedProperties(dialog);
+            // Find JWT processor using the verified utility
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
+            // Open Advanced UI using the verified utility
+            await processorService.openAdvancedUI(processor);
 
-            const customUIFrame = page.frameLocator("iframe").first();
-            let uiContext = page;
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Help");
 
-            const iframeTab = customUIFrame.locator(
-                '[role="tab"]:has-text("Help")',
-            );
-            if ((await iframeTab.count()) > 0) {
-                uiContext = customUIFrame;
-            }
-
-            const helpTab = await uiContext.locator(
-                '[role="tab"]:has-text("Help")',
-            );
-            await helpTab.click();
-
-            const examplesSection = await uiContext.locator(
+            const examplesSection = await customUIFrame.locator(
                 '[data-testid="help-examples"]',
             );
             await expect(examplesSection).toBeVisible({ timeout: 5000 });
@@ -278,7 +233,7 @@ test.describe("Help Tab", () => {
             ];
 
             for (const example of exampleTypes) {
-                const el = await uiContext.locator(example.selector);
+                const el = await customUIFrame.locator(example.selector);
                 await expect(el).toBeVisible({ timeout: 5000 });
                 processorLogger.info(`✓ Found ${example.description}`);
 
@@ -306,32 +261,19 @@ test.describe("Help Tab", () => {
         try {
             const processorService = new ProcessorService(page, testInfo);
 
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: true,
-                });
-            const dialog = await processorService.configure(processor);
-            await processorService.accessAdvancedProperties(dialog);
+            // Find JWT processor using the verified utility
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
+            // Open Advanced UI using the verified utility
+            await processorService.openAdvancedUI(processor);
 
-            const customUIFrame = page.frameLocator("iframe").first();
-            let uiContext = page;
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Help");
 
-            const iframeTab = customUIFrame.locator(
-                '[role="tab"]:has-text("Help")',
-            );
-            if ((await iframeTab.count()) > 0) {
-                uiContext = customUIFrame;
-            }
-
-            const helpTab = await uiContext.locator(
-                '[role="tab"]:has-text("Help")',
-            );
-            await helpTab.click();
-
-            const codeBlocks = await uiContext.locator(
+            const codeBlocks = await customUIFrame.locator(
                 '[data-testid="code-block"]',
             );
             const blockCount = await codeBlocks.count();
@@ -349,7 +291,7 @@ test.describe("Help Tab", () => {
                 await copyButton.click();
                 processorLogger.info("Clicked copy button");
 
-                const copyFeedback = await uiContext.locator(
+                const copyFeedback = await customUIFrame.locator(
                     '[data-testid="copy-feedback"]',
                 );
                 await expect(copyFeedback).toBeVisible({ timeout: 5000 });
@@ -377,32 +319,19 @@ test.describe("Help Tab", () => {
         try {
             const processorService = new ProcessorService(page, testInfo);
 
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: true,
-                });
-            const dialog = await processorService.configure(processor);
-            await processorService.accessAdvancedProperties(dialog);
+            // Find JWT processor using the verified utility
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
+            // Open Advanced UI using the verified utility
+            await processorService.openAdvancedUI(processor);
 
-            const customUIFrame = page.frameLocator("iframe").first();
-            let uiContext = page;
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Help");
 
-            const iframeTab = customUIFrame.locator(
-                '[role="tab"]:has-text("Help")',
-            );
-            if ((await iframeTab.count()) > 0) {
-                uiContext = customUIFrame;
-            }
-
-            const helpTab = await uiContext.locator(
-                '[role="tab"]:has-text("Help")',
-            );
-            await helpTab.click();
-
-            const troubleshootingSection = await uiContext.locator(
+            const troubleshootingSection = await customUIFrame.locator(
                 '[data-testid="help-troubleshooting"]',
             );
             await expect(troubleshootingSection).toBeVisible({ timeout: 5000 });
@@ -416,7 +345,7 @@ test.describe("Help Tab", () => {
             ];
 
             for (const topic of troubleshootingTopics) {
-                const topicElement = await uiContext.locator(
+                const topicElement = await customUIFrame.locator(
                     `[data-testid="troubleshooting-topic"]:has-text("${topic}")`,
                 );
                 await expect(topicElement).toBeVisible({ timeout: 5000 });
@@ -440,32 +369,19 @@ test.describe("Help Tab", () => {
         try {
             const processorService = new ProcessorService(page, testInfo);
 
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: true,
-                });
-            const dialog = await processorService.configure(processor);
-            await processorService.accessAdvancedProperties(dialog);
+            // Find JWT processor using the verified utility
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
+            // Open Advanced UI using the verified utility
+            await processorService.openAdvancedUI(processor);
 
-            const customUIFrame = page.frameLocator("iframe").first();
-            let uiContext = page;
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Help");
 
-            const iframeTab = customUIFrame.locator(
-                '[role="tab"]:has-text("Help")',
-            );
-            if ((await iframeTab.count()) > 0) {
-                uiContext = customUIFrame;
-            }
-
-            const helpTab = await uiContext.locator(
-                '[role="tab"]:has-text("Help")',
-            );
-            await helpTab.click();
-
-            const searchInput = await uiContext.locator(
+            const searchInput = await customUIFrame.locator(
                 '[data-testid="help-search-input"]',
             );
             await expect(searchInput).toBeVisible({ timeout: 5000 });
@@ -475,12 +391,12 @@ test.describe("Help Tab", () => {
 
             await searchInput.press("Enter");
 
-            const searchResults = await uiContext.locator(
+            const searchResults = await customUIFrame.locator(
                 '[data-testid="search-results"]',
             );
             await expect(searchResults).toBeVisible({ timeout: 5000 });
 
-            const resultItems = await uiContext.locator(
+            const resultItems = await customUIFrame.locator(
                 '[data-testid="search-result-item"]',
             );
             const resultCount = await resultItems.count();
@@ -495,7 +411,7 @@ test.describe("Help Tab", () => {
                 );
             }
 
-            const clearButton = await uiContext.locator(
+            const clearButton = await customUIFrame.locator(
                 '[data-testid="clear-search-button"]',
             );
             await expect(clearButton).toBeVisible({ timeout: 5000 });

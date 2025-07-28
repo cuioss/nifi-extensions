@@ -9,7 +9,7 @@ import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 import {
     saveTestBrowserLogs,
-    setupStrictErrorDetection,
+    setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
 import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
 import { processorLogger } from "../utils/shared-logger.js";
@@ -18,7 +18,7 @@ import { logTestWarning } from "../utils/test-error-handler.js";
 test.describe("JWKS Validation Complete", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         try {
-            await setupStrictErrorDetection(page, testInfo, false);
+            await setupAuthAwareErrorDetection(page, testInfo);
             const authService = new AuthService(page);
             await authService.ensureReady();
         } catch (error) {
@@ -52,29 +52,17 @@ test.describe("JWKS Validation Complete", () => {
         try {
             const processorService = new ProcessorService(page, testInfo);
 
-            // Find and configure processor
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: true,
-                });
-            const dialog = await processorService.configure(processor);
-            await processorService.accessAdvancedProperties(dialog);
+            // Find JWT processor using the verified utility
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
-            // Wait for custom UI to load
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
+            // Open Advanced UI using the verified utility
+            await processorService.openAdvancedUI(processor);
 
-            // Determine UI context
-            const customUIFrame = page.frameLocator("iframe").first();
-            let uiContext = page;
-
-            const iframeInput = customUIFrame.locator(
-                '[data-testid="jwks-url-input"]',
-            );
-            if ((await iframeInput.count()) > 0) {
-                uiContext = customUIFrame;
-                processorLogger.info("Working with JWKS validation in iframe");
-            }
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Configuration");
 
             const testUrls = [
                 {
@@ -107,13 +95,13 @@ test.describe("JWKS Validation Complete", () => {
             for (const testCase of testUrls) {
                 processorLogger.info(`Testing: ${testCase.description}`);
 
-                const jwksUrlInput = await uiContext.locator(
+                const jwksUrlInput = await customUIFrame.locator(
                     '[data-testid="jwks-url-input"]',
                 );
                 await jwksUrlInput.clear();
                 await jwksUrlInput.fill(testCase.url);
 
-                const validateButton = await uiContext.locator(
+                const validateButton = await customUIFrame.locator(
                     '[data-testid="validate-jwks-button"]',
                 );
                 await validateButton.click();
@@ -121,7 +109,7 @@ test.describe("JWKS Validation Complete", () => {
                 await page.waitForTimeout(1000);
 
                 if (testCase.valid) {
-                    const successIndicator = await uiContext.locator(
+                    const successIndicator = await customUIFrame.locator(
                         '[data-testid="validation-success-icon"], [data-testid="validation-success-message"]',
                     );
                     await expect(successIndicator).toBeVisible({
@@ -131,7 +119,7 @@ test.describe("JWKS Validation Complete", () => {
                         `✓ ${testCase.description} validated successfully`,
                     );
                 } else {
-                    const errorIndicator = await uiContext.locator(
+                    const errorIndicator = await customUIFrame.locator(
                         '[data-testid="validation-error-icon"], [data-testid="validation-error-message"]',
                     );
                     await expect(errorIndicator).toBeVisible({ timeout: 5000 });
@@ -156,27 +144,19 @@ test.describe("JWKS Validation Complete", () => {
         try {
             const processorService = new ProcessorService(page, testInfo);
 
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: true,
-                });
-            const dialog = await processorService.configure(processor);
-            await processorService.accessAdvancedProperties(dialog);
+            // Find JWT processor using the verified utility
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
+            // Open Advanced UI using the verified utility
+            await processorService.openAdvancedUI(processor);
 
-            const customUIFrame = page.frameLocator("iframe").first();
-            let uiContext = page;
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Configuration");
 
-            const iframeRadio = customUIFrame.locator(
-                '[data-testid="jwks-source-file"]',
-            );
-            if ((await iframeRadio.count()) > 0) {
-                uiContext = customUIFrame;
-            }
-
-            const fileSourceRadio = await uiContext.locator(
+            const fileSourceRadio = await customUIFrame.locator(
                 '[data-testid="jwks-source-file"]',
             );
             await fileSourceRadio.click();
@@ -213,7 +193,7 @@ test.describe("JWKS Validation Complete", () => {
             for (const testCase of testPaths) {
                 processorLogger.info(`Testing: ${testCase.description}`);
 
-                const filePathInput = await page.locator(
+                const filePathInput = await customUIFrame.locator(
                     '[data-testid="jwks-file-input"]',
                 );
                 await filePathInput.clear();
@@ -221,7 +201,7 @@ test.describe("JWKS Validation Complete", () => {
                     await filePathInput.fill(testCase.path);
                 }
 
-                const validateButton = await page.locator(
+                const validateButton = await customUIFrame.locator(
                     '[data-testid="validate-jwks-button"]',
                 );
                 await validateButton.click();
@@ -232,7 +212,7 @@ test.describe("JWKS Validation Complete", () => {
                     ? '[data-testid="validation-success"]'
                     : '[data-testid="validation-error"]';
 
-                const result = await page.locator(resultSelector);
+                const result = await customUIFrame.locator(resultSelector);
                 await expect(result).toBeVisible({ timeout: 5000 });
                 processorLogger.info(
                     `✓ ${testCase.description} validation result: ${testCase.valid ? "valid" : "invalid"}`,
@@ -254,50 +234,39 @@ test.describe("JWKS Validation Complete", () => {
         try {
             const processorService = new ProcessorService(page, testInfo);
 
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: true,
-                });
-            const dialog = await processorService.configure(processor);
-            await processorService.accessAdvancedProperties(dialog);
+            // Find JWT processor using the verified utility
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
+            // Open Advanced UI using the verified utility
+            await processorService.openAdvancedUI(processor);
 
-            const customUIFrame = page.frameLocator("iframe").first();
-            let uiContext = page;
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Configuration");
 
-            const iframeInput = customUIFrame.locator(
-                '[data-testid="jwks-url-input"]',
-            );
-            if ((await iframeInput.count()) > 0) {
-                uiContext = customUIFrame;
-                processorLogger.info(
-                    "Working with JWKS connectivity in iframe",
-                );
-            }
-
-            const jwksUrlInput = await uiContext.locator(
+            const jwksUrlInput = await customUIFrame.locator(
                 '[data-testid="jwks-url-input"]',
             );
             await jwksUrlInput.fill(
                 "https://example.com/.well-known/jwks.json",
             );
 
-            const testConnectionButton = await uiContext.locator(
+            const testConnectionButton = await customUIFrame.locator(
                 '[data-testid="test-connection-button"]',
             );
             await expect(testConnectionButton).toBeVisible({ timeout: 5000 });
             await testConnectionButton.click();
             processorLogger.info("Clicked test connection button");
 
-            const connectionProgress = await uiContext.locator(
+            const connectionProgress = await customUIFrame.locator(
                 '[data-testid="connection-test-progress"]',
             );
             await expect(connectionProgress).toBeVisible({ timeout: 2000 });
             processorLogger.info("✓ Connection test in progress");
 
-            const connectionResult = await uiContext.locator(
+            const connectionResult = await customUIFrame.locator(
                 '[data-testid="connection-test-result"]',
             );
             await expect(connectionResult).toBeVisible({ timeout: 10000 });
@@ -322,7 +291,7 @@ test.describe("JWKS Validation Complete", () => {
             ];
 
             for (const detail of resultDetails) {
-                const el = await uiContext.locator(detail.selector);
+                const el = await customUIFrame.locator(detail.selector);
                 await expect(el).toBeVisible({ timeout: 5000 });
                 processorLogger.info(`✓ ${detail.description} displayed`);
             }
@@ -344,30 +313,19 @@ test.describe("JWKS Validation Complete", () => {
         try {
             const processorService = new ProcessorService(page, testInfo);
 
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: true,
-                });
-            const dialog = await processorService.configure(processor);
-            await processorService.accessAdvancedProperties(dialog);
+            // Find JWT processor using the verified utility
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
+            // Open Advanced UI using the verified utility
+            await processorService.openAdvancedUI(processor);
 
-            const customUIFrame = page.frameLocator("iframe").first();
-            let uiContext = page;
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Configuration");
 
-            const iframeTab = customUIFrame.locator(
-                '[data-testid="jwks-source-manual"]',
-            );
-            if ((await iframeTab.count()) > 0) {
-                uiContext = customUIFrame;
-                processorLogger.info(
-                    "Working with JWKS content validation in iframe",
-                );
-            }
-
-            const manualInputTab = await uiContext.locator(
+            const manualInputTab = await customUIFrame.locator(
                 '[data-testid="jwks-source-manual"]',
             );
             await manualInputTab.click();
@@ -409,13 +367,13 @@ test.describe("JWKS Validation Complete", () => {
             for (const testCase of testJwksContent) {
                 processorLogger.info(`Testing: ${testCase.description}`);
 
-                const jwksTextarea = await uiContext.locator(
+                const jwksTextarea = await customUIFrame.locator(
                     '[data-testid="jwks-manual-input"]',
                 );
                 await jwksTextarea.clear();
                 await jwksTextarea.fill(testCase.content);
 
-                const validateButton = await uiContext.locator(
+                const validateButton = await customUIFrame.locator(
                     '[data-testid="validate-jwks-content-button"]',
                 );
                 await validateButton.click();
@@ -423,7 +381,7 @@ test.describe("JWKS Validation Complete", () => {
                 await page.waitForTimeout(1000);
 
                 if (testCase.valid) {
-                    const successMessage = await uiContext.locator(
+                    const successMessage = await customUIFrame.locator(
                         '[data-testid="jwks-content-valid"]',
                     );
                     await expect(successMessage).toBeVisible({ timeout: 5000 });
@@ -431,13 +389,13 @@ test.describe("JWKS Validation Complete", () => {
                         `✓ ${testCase.description} validated successfully`,
                     );
 
-                    const keyDetails = await uiContext.locator(
+                    const keyDetails = await customUIFrame.locator(
                         '[data-testid="jwks-key-details"]',
                     );
                     await expect(keyDetails).toBeVisible({ timeout: 5000 });
                     processorLogger.info("✓ Key details displayed");
                 } else {
-                    const errorMessage = await uiContext.locator(
+                    const errorMessage = await customUIFrame.locator(
                         '[data-testid="jwks-content-error"]',
                     );
                     await expect(errorMessage).toBeVisible({ timeout: 5000 });
@@ -466,41 +424,30 @@ test.describe("JWKS Validation Complete", () => {
         try {
             const processorService = new ProcessorService(page, testInfo);
 
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: true,
-                });
-            const dialog = await processorService.configure(processor);
-            await processorService.accessAdvancedProperties(dialog);
+            // Find JWT processor using the verified utility
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
+            // Open Advanced UI using the verified utility
+            await processorService.openAdvancedUI(processor);
 
-            const customUIFrame = page.frameLocator("iframe").first();
-            let uiContext = page;
-
-            const iframeButton = customUIFrame.locator(
-                '[data-testid="add-issuer-button"]',
-            );
-            if ((await iframeButton.count()) > 0) {
-                uiContext = customUIFrame;
-                processorLogger.info(
-                    "Working with end-to-end validation in iframe",
-                );
-            }
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Configuration");
 
             processorLogger.info("Step 1: Add issuer configuration");
-            const addIssuerButton = await uiContext.locator(
+            const addIssuerButton = await customUIFrame.locator(
                 '[data-testid="add-issuer-button"]',
             );
             await addIssuerButton.click();
 
-            const issuerNameInput = await uiContext.locator(
+            const issuerNameInput = await customUIFrame.locator(
                 '[data-testid="issuer-name-input"]',
             );
             await issuerNameInput.fill("test-issuer");
 
-            const jwksUrlInput = await uiContext.locator(
+            const jwksUrlInput = await customUIFrame.locator(
                 '[data-testid="jwks-url-input"]',
             );
             await jwksUrlInput.fill(
@@ -508,7 +455,7 @@ test.describe("JWKS Validation Complete", () => {
             );
 
             processorLogger.info("Step 2: Validate JWKS URL");
-            const validateButton = await uiContext.locator(
+            const validateButton = await customUIFrame.locator(
                 '[data-testid="validate-jwks-button"]',
             );
             await validateButton.click();
@@ -516,7 +463,7 @@ test.describe("JWKS Validation Complete", () => {
             await page.waitForTimeout(2000);
 
             processorLogger.info("Step 3: Test connection");
-            const testConnectionButton = await uiContext.locator(
+            const testConnectionButton = await customUIFrame.locator(
                 '[data-testid="test-connection-button"]',
             );
             await testConnectionButton.click();
@@ -524,12 +471,12 @@ test.describe("JWKS Validation Complete", () => {
             await page.waitForTimeout(2000);
 
             processorLogger.info("Step 4: Save configuration");
-            const saveButton = await uiContext.locator(
+            const saveButton = await customUIFrame.locator(
                 '[data-testid="save-issuer-button"]',
             );
             await saveButton.click();
 
-            const savedIssuer = await uiContext.locator(
+            const savedIssuer = await customUIFrame.locator(
                 '[data-testid="issuer-item"]:has-text("test-issuer")',
             );
             await expect(savedIssuer).toBeVisible({ timeout: 5000 });

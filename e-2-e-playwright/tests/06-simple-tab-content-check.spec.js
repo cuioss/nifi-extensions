@@ -1,63 +1,112 @@
 /* eslint-disable no-console */
 import { test } from "@playwright/test";
+import { AuthService } from "../utils/auth-service.js";
+import { ProcessorService } from "../utils/processor.js";
+import {
+    setupAuthAwareErrorDetection,
+    saveTestBrowserLogs,
+} from "../utils/console-logger.js";
+import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
 
-const BASE_URL = "http://localhost:9095/nifi-cuioss-ui/";
+test.describe("Simple Tab Content Check", () => {
+    test.beforeEach(async ({ page }, testInfo) => {
+        try {
+            await setupAuthAwareErrorDetection(page, testInfo);
+            const authService = new AuthService(page);
+            await authService.ensureReady();
+        } catch (error) {
+            try {
+                await saveTestBrowserLogs(testInfo);
+            } catch (logError) {
+                console.log(
+                    `Failed to save console logs during beforeEach error: ${logError.message}`,
+                );
+            }
+            throw error;
+        }
+    });
 
-test("check all tab content", async ({ page }) => {
-    console.log("Navigating to base URL");
-    await page.goto(BASE_URL, { waitUntil: "networkidle" });
-
-    console.log("Waiting for tabs to be visible");
-    await page.waitForSelector(".tab", { state: "visible", timeout: 10000 });
-    await page.waitForTimeout(2000);
-
-    // Check each tab
-    const tabs = [
-        {
-            selector: '[data-tab="#issuer-config"]',
-            pane: "#issuer-config",
-            name: "Configuration",
-        },
-        {
-            selector: '[data-tab="#token-verification"]',
-            pane: "#token-verification",
-            name: "Token Verification",
-        },
-        {
-            selector: '[data-tab="#metrics"]',
-            pane: "#metrics",
-            name: "Metrics",
-        },
-        { selector: '[data-tab="#help"]', pane: "#help", name: "Help" },
-    ];
-
-    for (const tab of tabs) {
-        console.log(`\n=== Checking ${tab.name} tab ===`);
-
-        // Click the tab
-        await page.click(tab.selector);
-        await page.waitForTimeout(1000);
-
-        // Get content
-        const content = await page.locator(tab.pane).textContent();
-        const html = await page.locator(tab.pane).innerHTML();
-
-        console.log(`${tab.name} content length: ${content.length} chars`);
-        console.log(`${tab.name} HTML length: ${html.length} chars`);
-
-        if (content.length < 50) {
-            console.log(`${tab.name} appears empty! Content: "${content}"`);
-            console.log(`${tab.name} HTML preview: ${html.substring(0, 200)}`);
-        } else {
+    test.afterEach(async ({ page: _ }, testInfo) => {
+        try {
+            await saveTestBrowserLogs(testInfo);
+        } catch (error) {
             console.log(
-                `${tab.name} has content: ${content.substring(0, 100)}...`,
+                `Failed to save console logs in afterEach: ${error.message}`,
             );
         }
+        cleanupCriticalErrorDetection();
+    });
 
-        // Take screenshot
-        await page.screenshot({
-            path: `target/test-results/simple-tab-${tab.name.toLowerCase().replace(" ", "-")}.png`,
-            fullPage: true,
+    test("check all tab content", async ({ page }, testInfo) => {
+        console.log("Starting simple tab content check");
+
+        const processorService = new ProcessorService(page, testInfo);
+
+        // Find JWT processor using the verified utility
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
         });
-    }
+
+        // Open Advanced UI using the verified utility
+        await processorService.openAdvancedUI(processor);
+
+        // Get the custom UI frame
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        // Check each tab
+        const tabs = [
+            {
+                name: "Configuration",
+                pane: "#issuer-config",
+            },
+            {
+                name: "Token Verification",
+                pane: "#token-verification",
+            },
+            {
+                name: "Metrics",
+                pane: "#metrics",
+            },
+            {
+                name: "Help",
+                pane: "#help",
+            },
+        ];
+
+        for (const tab of tabs) {
+            console.log(`\n=== Checking ${tab.name} tab ===`);
+
+            // Click the tab using ProcessorService
+            await processorService.clickTab(customUIFrame, tab.name);
+            await page.waitForTimeout(1000);
+
+            // Get content from iframe context
+            const content = await customUIFrame.locator(tab.pane).textContent();
+            const html = await customUIFrame.locator(tab.pane).innerHTML();
+
+            console.log(
+                `${tab.name} content length: ${content?.length || 0} chars`,
+            );
+            console.log(`${tab.name} HTML length: ${html?.length || 0} chars`);
+
+            if (!content || content.length < 50) {
+                console.log(
+                    `${tab.name} appears empty! Content: "${content || "null"}"`,
+                );
+                console.log(
+                    `${tab.name} HTML preview: ${html?.substring(0, 200) || "null"}`,
+                );
+            } else {
+                console.log(
+                    `${tab.name} has content: ${content.substring(0, 100)}...`,
+                );
+            }
+
+            // Take screenshot
+            await page.screenshot({
+                path: `target/test-results/simple-tab-${tab.name.toLowerCase().replace(" ", "-")}.png`,
+                fullPage: true,
+            });
+        }
+    });
 });

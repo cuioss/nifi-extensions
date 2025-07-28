@@ -9,7 +9,7 @@ import { ProcessorService } from "../utils/processor.js";
 import { AuthService } from "../utils/auth-service.js";
 import {
     saveTestBrowserLogs,
-    setupStrictErrorDetection,
+    setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
 import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
 import { processorLogger } from "../utils/shared-logger.js";
@@ -19,8 +19,8 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     // Make sure we're logged in before each test
     test.beforeEach(async ({ page }, testInfo) => {
         try {
-            // Setup error detection before login to catch any potential errors
-            await setupStrictErrorDetection(page, testInfo, false);
+            // Setup auth-aware error detection
+            await setupAuthAwareErrorDetection(page, testInfo);
 
             // Login first before going to JWT UI
             const authService = new AuthService(page);
@@ -81,13 +81,16 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
-        // First, navigate to the canvas
-        await page.goto("https://localhost:9095/nifi/", {
-            waitUntil: "networkidle",
-            timeout: 15000,
+        // Find JWT processor using the verified utility
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
         });
 
-        const customUIFrame = await processorService.navigateToAdvancedUI();
+        // Open Advanced UI using the verified utility
+        await processorService.openAdvancedUI(processor);
+
+        // Get the custom UI frame
+        const customUIFrame = await processorService.getAdvancedUIFrame();
 
         // Verify advanced configuration elements
         const advancedElements = [

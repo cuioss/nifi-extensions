@@ -10,17 +10,14 @@ import { ProcessorService } from "../utils/processor.js";
 import { processorLogger } from "../utils/shared-logger.js";
 import {
     saveTestBrowserLogs,
-    setupStrictErrorDetection as _setupStrictErrorDetection,
+    setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
 import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
 import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
-    test.beforeEach(async ({ page }, _testInfo) => {
-        // Skip error detection for custom UI tests - no canvas element exists
-        // await setupStrictErrorDetection(page, testInfo, false);
-
-        // Login first
+    test.beforeEach(async ({ page }, testInfo) => {
+        await setupAuthAwareErrorDetection(page, testInfo);
         const authService = new AuthService(page);
         await authService.ensureReady();
     });
@@ -45,9 +42,16 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
     }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
-        // First, navigate to the canvas
-        await page.goto("https://localhost:9095/nifi/", {
-            waitUntil: "networkidle",
+        // Find JWT processor using the verified utility
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+
+        // Open Advanced UI using the verified utility
+        await processorService.openAdvancedUI(processor);
+
+        // Get the custom UI frame
+        const customUIFrame = await processorService.getAdvancedUIFrame();
             timeout: 15000,
         });
 
@@ -230,9 +234,16 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
     }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
-        // First, navigate to the canvas
-        await page.goto("https://localhost:9095/nifi/", {
-            waitUntil: "networkidle",
+        // Find JWT processor using the verified utility
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+
+        // Open Advanced UI using the verified utility
+        await processorService.openAdvancedUI(processor);
+
+        // Get the custom UI frame
+        const customUIFrame = await processorService.getAdvancedUIFrame();
             timeout: 15000,
         });
 
