@@ -55,125 +55,92 @@ test.describe("JWT Custom UI Tabs Verification", () => {
         if (!processor) {
             throw new Error("No JWT processor found on canvas");
         }
-
-        // Open processor configuration
-        const dialog = await processorService.configure(processor);
-        await expect(dialog).toBeVisible({ timeout: 5000 });
-
-        // Look for the Advanced button or Properties tab
-        const advancedButton = page.getByRole("button", { name: /advanced/i });
-        const propertiesTab = page.getByRole("tab", { name: /properties/i });
-
-        // First click on Properties tab if visible
-        if (await propertiesTab.isVisible({ timeout: 3000 })) {
-            await propertiesTab.click();
-            await page.waitForTimeout(1000);
-            processorLogger.info("Clicked on Properties tab");
+        
+        // Open Advanced UI using the verified navigation pattern
+        await processorService.openAdvancedUI(processor);
+        
+        // Get the custom UI frame
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+        
+        if (!customUIFrame) {
+            throw new Error("Failed to get custom UI frame");
         }
 
-        // Then look for Advanced button
-        if (await advancedButton.isVisible({ timeout: 5000 })) {
-            await advancedButton.click();
-            processorLogger.info("Clicked on Advanced button");
+        // Take screenshot of the custom UI
+        await page.screenshot({
+            path: `target/test-results/jwt-custom-ui-tabs-${Date.now()}.png`,
+            fullPage: true,
+        });
 
-            // Wait for custom UI to load
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
+        // Check for tab container in the iframe
+        const tabContainer = customUIFrame.locator(
+            '[data-testid="jwt-config-tabs"]',
+        );
+        const isTabContainerVisible = await tabContainer.isVisible({
+            timeout: 5000,
+        });
 
-            // Take screenshot of the custom UI
-            await page.screenshot({
-                path: `target/test-results/jwt-custom-ui-tabs-${Date.now()}.png`,
-                fullPage: true,
-            });
+        if (isTabContainerVisible) {
+            processorLogger.info("Tab container found");
 
-            // Check for tab container
-            const tabContainer = page.locator(
-                '[data-testid="jwt-config-tabs"]',
-            );
-            const isTabContainerVisible = await tabContainer.isVisible({
-                timeout: 5000,
-            });
+            // Verify all four tabs are present
+            const expectedTabs = [
+                {
+                    name: "Configuration",
+                    selector: 'a[href="#issuer-config"]',
+                },
+                {
+                    name: "Token Verification",
+                    selector: 'a[href="#token-verification"]',
+                },
+                { name: "Metrics", selector: 'a[href="#metrics"]' },
+                { name: "Help", selector: 'a[href="#help"]' },
+            ];
 
-            if (isTabContainerVisible) {
-                processorLogger.info("Tab container found");
+            let tabsFound = 0;
+            for (const tab of expectedTabs) {
+                const tabLink = customUIFrame.locator(tab.selector);
+                if (await tabLink.isVisible({ timeout: 2000 })) {
+                    tabsFound++;
+                    processorLogger.info(`✓ Found tab: ${tab.name}`);
 
-                // Verify all four tabs are present
-                const expectedTabs = [
-                    {
-                        name: "Configuration",
-                        selector: 'a[href="#issuer-config"]',
-                    },
-                    {
-                        name: "Token Verification",
-                        selector: 'a[href="#token-verification"]',
-                    },
-                    { name: "Metrics", selector: 'a[href="#metrics"]' },
-                    { name: "Help", selector: 'a[href="#help"]' },
-                ];
+                    // Click on the tab to verify it works
+                    await tabLink.click();
+                    await page.waitForTimeout(500);
 
-                let tabsFound = 0;
-                for (const tab of expectedTabs) {
-                    const tabLink = page.locator(tab.selector);
-                    if (await tabLink.isVisible({ timeout: 2000 })) {
-                        tabsFound++;
-                        processorLogger.info(`✓ Found tab: ${tab.name}`);
-
-                        // Click on the tab to verify it works
-                        await tabLink.click();
-                        await page.waitForTimeout(500);
-
-                        // Take screenshot of each tab
-                        await page.screenshot({
-                            path: `target/test-results/jwt-tab-${tab.name.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}.png`,
-                            fullPage: true,
-                        });
-                    } else {
-                        processorLogger.warn(`✗ Tab not found: ${tab.name}`);
-                    }
-                }
-
-                expect(tabsFound).toBe(4);
-                processorLogger.success(
-                    `All ${tabsFound} tabs verified successfully`,
-                );
-            } else {
-                // If tab container not visible, check if we're in the iframe
-                const iframe = page.frameLocator("iframe").first();
-                if (iframe) {
-                    processorLogger.info("Checking inside iframe for tabs");
-
-                    const iframeTabContainer = iframe.locator(
-                        '[data-testid="jwt-config-tabs"]',
-                    );
-                    if (await iframeTabContainer.isVisible({ timeout: 5000 })) {
-                        processorLogger.info("Tab container found in iframe");
-
-                        // Check tabs in iframe
-                        const tabLinks = await iframe
-                            .locator(".jwt-tabs-header .tabs a")
-                            .count();
-                        processorLogger.info(
-                            `Found ${tabLinks} tabs in iframe`,
-                        );
-
-                        expect(tabLinks).toBe(4);
-                    }
+                    // Take screenshot of each tab
+                    await page.screenshot({
+                        path: `target/test-results/jwt-tab-${tab.name.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}.png`,
+                        fullPage: true,
+                    });
+                } else {
+                    processorLogger.warn(`✗ Tab not found: ${tab.name}`);
                 }
             }
-        } else {
-            processorLogger.warn(
-                "Advanced button not found in configuration dialog",
+
+            expect(tabsFound).toBe(4);
+            processorLogger.success(
+                `All ${tabsFound} tabs verified successfully`,
             );
-
-            // Take screenshot to debug
-            await page.screenshot({
-                path: `target/test-results/jwt-config-dialog-${Date.now()}.png`,
-                fullPage: true,
-            });
+        } else {
+            // If tab container not visible in expected location, try alternate selector
+            processorLogger.info("Checking alternate selectors for tabs");
+            
+            const tabLinks = await customUIFrame
+                .locator(".jwt-tabs-header .tabs a")
+                .count();
+            
+            if (tabLinks > 0) {
+                processorLogger.info(
+                    `Found ${tabLinks} tabs using alternate selector`,
+                );
+                expect(tabLinks).toBe(4);
+            } else {
+                throw new Error(
+                    "Could not find tabs in JWT Custom UI",
+                );
+            }
         }
-
-        // Close dialog
-        await page.keyboard.press("Escape");
     });
 
     test("should verify tab content functionality", async ({
@@ -190,89 +157,71 @@ test.describe("JWT Custom UI Tabs Verification", () => {
             throw new Error("No JWT processor found on canvas");
         }
 
-        // Open processor configuration
-        const dialog = await processorService.configure(processor);
-        await expect(dialog).toBeVisible({ timeout: 5000 });
-
-        // Look for the Advanced button or Properties tab
-        const advancedButton = page.getByRole("button", { name: /advanced/i });
-        const propertiesTab = page.getByRole("tab", { name: /properties/i });
-
-        // First click on Properties tab if visible
-        if (await propertiesTab.isVisible({ timeout: 3000 })) {
-            await propertiesTab.click();
-            await page.waitForTimeout(1000);
-            processorLogger.info("Clicked on Properties tab");
+        // Open Advanced UI using the verified navigation pattern
+        await processorService.openAdvancedUI(processor);
+        
+        // Get the custom UI frame
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+        
+        if (!customUIFrame) {
+            throw new Error("Failed to get custom UI frame");
         }
 
-        // Then look for Advanced button
-        if (await advancedButton.isVisible({ timeout: 5000 })) {
-            await advancedButton.click();
-            processorLogger.info("Clicked on Advanced button");
-
-            // Wait for custom UI to load
-            await page.waitForLoadState("networkidle");
-            await page.waitForTimeout(2000);
-
-            // Test specific tab content
-            // Configuration tab (should be active by default)
-            const addIssuerButton = page.locator(
-                'button:has-text("Add Issuer")',
-            );
+        // Test specific tab content
+        // Configuration tab (should be active by default)
+        const addIssuerButton = customUIFrame.locator(
+            'button:has-text("Add Issuer")',
+        );
             if (await addIssuerButton.isVisible({ timeout: 3000 })) {
                 processorLogger.info(
                     "✓ Configuration tab: Add Issuer button found",
                 );
             }
 
-            // Token Verification tab
-            const tokenVerificationTab = page.locator(
-                'a[href="#token-verification"]',
-            );
+        // Token Verification tab
+        const tokenVerificationTab = customUIFrame.locator(
+            'a[href="#token-verification"]',
+        );
             if (await tokenVerificationTab.isVisible()) {
                 await tokenVerificationTab.click();
                 await page.waitForTimeout(500);
 
-                const verifyButton = page.locator(
-                    'button:has-text("Verify Token")',
-                );
-                if (await verifyButton.isVisible({ timeout: 3000 })) {
+            const verifyButton = customUIFrame.locator(
+                'button:has-text("Verify Token")',
+            ).first();
+            if (await verifyButton.isVisible({ timeout: 3000 })) {
                     processorLogger.info(
                         "✓ Token Verification tab: Verify Token button found",
                     );
                 }
             }
 
-            // Metrics tab
-            const metricsTab = page.locator('a[href="#metrics"]');
+        // Metrics tab
+        const metricsTab = customUIFrame.locator('a[href="#metrics"]');
             if (await metricsTab.isVisible()) {
                 await metricsTab.click();
                 await page.waitForTimeout(500);
 
-                const refreshButton = page.locator(
-                    '[data-testid="refresh-metrics-button"]',
-                );
+            const refreshButton = customUIFrame.locator(
+                '[data-testid="refresh-metrics-button"]',
+            );
                 if (await refreshButton.isVisible({ timeout: 3000 })) {
                     processorLogger.info("✓ Metrics tab: Refresh button found");
                 }
             }
 
-            // Help tab
-            const helpTab = page.locator('a[href="#help"]');
+        // Help tab
+        const helpTab = customUIFrame.locator('a[href="#help"]');
             if (await helpTab.isVisible()) {
                 await helpTab.click();
                 await page.waitForTimeout(500);
 
-                const helpContent = page.locator(
-                    '[data-testid="help-tab-content"]',
-                );
+            const helpContent = customUIFrame.locator(
+                '[data-testid="help-tab-content"]',
+            );
                 if (await helpContent.isVisible({ timeout: 3000 })) {
                     processorLogger.info("✓ Help tab: Content found");
                 }
             }
-        }
-
-        // Close dialog
-        await page.keyboard.press("Escape");
     });
 });
