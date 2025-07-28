@@ -7,7 +7,6 @@
 import { test, expect } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
-import { navigateToAdvancedUI, clickTab } from "../utils/test-helpers.js";
 import {
     saveTestBrowserLogs,
     setupStrictErrorDetection,
@@ -59,13 +58,13 @@ test.describe("Token Verification Tab", () => {
                 timeout: 15000,
             });
 
-            const customUIFrame = await navigateToAdvancedUI(
-                page,
-                processorService,
-            );
+            const customUIFrame = await processorService.navigateToAdvancedUI();
 
             // Click on Token Verification tab
-            await clickTab(customUIFrame, "Token Verification");
+            await processorService.clickTab(
+                customUIFrame,
+                "Token Verification",
+            );
 
             const tabPanel = customUIFrame.locator(
                 '[role="tabpanel"][data-tab="token-verification"]',
@@ -117,13 +116,13 @@ test.describe("Token Verification Tab", () => {
                 timeout: 15000,
             });
 
-            const customUIFrame = await navigateToAdvancedUI(
-                page,
-                processorService,
-            );
+            const customUIFrame = await processorService.navigateToAdvancedUI();
 
             // Click on Token Verification tab
-            await clickTab(customUIFrame, "Token Verification");
+            await processorService.clickTab(
+                customUIFrame,
+                "Token Verification",
+            );
 
             const tokenInput = customUIFrame.locator(
                 '[data-testid="token-input-area"]',
@@ -188,13 +187,13 @@ test.describe("Token Verification Tab", () => {
                 timeout: 15000,
             });
 
-            const customUIFrame = await navigateToAdvancedUI(
-                page,
-                processorService,
-            );
+            const customUIFrame = await processorService.navigateToAdvancedUI();
 
             // Click on Token Verification tab
-            await clickTab(customUIFrame, "Token Verification");
+            await processorService.clickTab(
+                customUIFrame,
+                "Token Verification",
+            );
 
             const tokenInput = customUIFrame.locator(
                 '[data-testid="token-input-area"]',
@@ -243,13 +242,13 @@ test.describe("Token Verification Tab", () => {
                 timeout: 15000,
             });
 
-            const customUIFrame = await navigateToAdvancedUI(
-                page,
-                processorService,
-            );
+            const customUIFrame = await processorService.navigateToAdvancedUI();
 
             // Click on Token Verification tab
-            await clickTab(customUIFrame, "Token Verification");
+            await processorService.clickTab(
+                customUIFrame,
+                "Token Verification",
+            );
 
             const expiredToken =
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.4Adcj3UFYzPUVaVF43FmMab6RlaQD8A9V8wFzzht-KQ";
@@ -299,13 +298,13 @@ test.describe("Token Verification Tab", () => {
                 timeout: 15000,
             });
 
-            const customUIFrame = await navigateToAdvancedUI(
-                page,
-                processorService,
-            );
+            const customUIFrame = await processorService.navigateToAdvancedUI();
 
             // Click on Token Verification tab
-            await clickTab(customUIFrame, "Token Verification");
+            await processorService.clickTab(
+                customUIFrame,
+                "Token Verification",
+            );
 
             const tokenInput = customUIFrame.locator(
                 '[data-testid="token-input-area"]',
