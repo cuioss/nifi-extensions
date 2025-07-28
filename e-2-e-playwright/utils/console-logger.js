@@ -69,37 +69,25 @@ class IndividualTestLogger {
             return null;
         }
 
-        // Ensure directory exists
-        await fs.mkdir(this.globalLogPath, { recursive: true });
+        // Use testInfo.outputDir for per-test directory structure
+        if (!testInfo || !testInfo.outputDir) {
+            console.warn('testInfo.outputDir not available, skipping console log save');
+            return null;
+        }
 
-        // Create filename with test info
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const safeTitle = testInfo.title.replace(/[^a-zA-Z0-9]/g, '-');
-        const filename = `${safeTitle}-${timestamp}.json`;
-        const filepath = path.join(this.globalLogPath, filename);
+        const outputDir = testInfo.outputDir;
+        await fs.mkdir(outputDir, { recursive: true });
 
-        // Save logs
-        await fs.writeFile(filepath, JSON.stringify({
-            testInfo: {
-                title: testInfo.title,
-                titlePath: testInfo.titlePath,
-                file: testInfo.file,
-                line: testInfo.line,
-                column: testInfo.column,
-                testId: testInfo.testId,
-                status: testInfo.status,
-                duration: testInfo.duration,
-                errors: testInfo.errors,
-                annotations: testInfo.annotations
-            },
-            logs,
-            summary: {
-                total: logs.length,
-                errors: logs.filter(l => l.type === 'error').length,
-                warnings: logs.filter(l => l.type === 'warning').length,
-                info: logs.filter(l => l.type === 'log' || l.type === 'info').length
-            }
-        }, null, 2));
+        // Use standard console-logs.log filename as documented
+        const filename = 'console-logs.log';
+        const filepath = path.join(outputDir, filename);
+
+        // Save logs in text format as documented in roundtrip-testing.adoc
+        const logContent = logs.map(log => 
+            `[${log.timestamp}] [${log.type.toUpperCase()}] ${log.text}`
+        ).join('\n');
+
+        await fs.writeFile(filepath, logContent);
 
         // Clear logs after saving
         this.clearTestLogs(testId);
