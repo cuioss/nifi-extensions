@@ -7,16 +7,18 @@
 import { test, expect } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
-import { saveTestBrowserLogs } from "../utils/console-logger.js";
+import {
+    saveTestBrowserLogs,
+    setupAuthAwareErrorDetection,
+} from "../utils/console-logger.js";
+import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
 import { processorLogger } from "../utils/shared-logger.js";
 import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("JWKS Validation Button", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         try {
-            // Note: We skip strict error detection for these tests because they navigate
-            // away from the main canvas to the processor's custom UI
-            // await setupStrictErrorDetection(page, testInfo, false);
+            await setupAuthAwareErrorDetection(page, testInfo);
 
             const authService = new AuthService(page);
             await authService.ensureReady();
@@ -42,8 +44,7 @@ test.describe("JWKS Validation Button", () => {
                 `Failed to save console logs in afterEach: ${error.message}`,
             );
         }
-        // Skip cleanup since we didn't setup critical error detection
-        // cleanupCriticalErrorDetection();
+        cleanupCriticalErrorDetection();
     });
 
     test("should validate JWKS URL successfully", async ({
@@ -235,37 +236,18 @@ test.describe("JWKS Validation Button", () => {
             await validateButton.click();
             processorLogger.info("Clicked validate button");
 
-            // Check for error indication - this could be various forms
-            try {
-                const errorMessage = await uiContext
-                    .locator(
-                        '.error-message, [class*="error"], .validation-error, .verification-result',
-                    )
-                    .first();
-                await expect(errorMessage).toBeVisible({ timeout: 10000 });
-                processorLogger.info(
-                    "✓ Validation result displayed for invalid URL",
-                );
-            } catch (error) {
-                // If no specific error element, just verify the button is still there (validation completed)
-                await expect(validateButton).toBeVisible({ timeout: 5000 });
-                processorLogger.info("✓ Validation completed for invalid URL");
-            }
-
-            // Check for error icons (optional)
-            try {
-                const errorIcon = await uiContext
-                    .locator(
-                        '[class*="error"], [class*="warning"], [class*="invalid"]',
-                    )
-                    .first();
-                await expect(errorIcon).toBeVisible({ timeout: 5000 });
-                processorLogger.info("✓ Error icon displayed");
-            } catch (error) {
-                processorLogger.info(
-                    "No specific error icon found - validation result was displayed",
-                );
-            }
+            // Validation must show some kind of result - either error or completion
+            const validationResult = await uiContext
+                .locator(
+                    '.error-message, [class*="error"], .validation-error, .verification-result, [class*="result"]',
+                )
+                .first();
+            await expect(validationResult).toBeVisible({
+                timeout: 10000,
+            });
+            processorLogger.info(
+                "✓ Validation result displayed for invalid URL",
+            );
 
             processorLogger.success("Invalid JWKS URL handled correctly");
         } catch (error) {

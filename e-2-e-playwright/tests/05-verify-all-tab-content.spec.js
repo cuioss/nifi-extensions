@@ -171,17 +171,20 @@ test.describe("Comprehensive JWT Tab Content Verification", () => {
             // Assert that Metrics and Help tabs have content (we know these work)
             // These assertions are already handled above with more flexible checks
 
-            // Log the actual content status for debugging
-            if (!configHasContent) {
-                processorLogger.warn(
-                    "Configuration tab appears empty or only has placeholder content",
-                );
-            }
-            if (!tokenHasContent) {
-                processorLogger.warn(
-                    "Token Verification tab appears empty or only has placeholder content",
-                );
-            }
+            // Enforce that all tabs must have meaningful content
+            expect(configHasContent).toBe(
+                true,
+                "Configuration tab must have functional content",
+            );
+            expect(tokenHasContent).toBe(
+                true,
+                "Token Verification tab must have functional content",
+            );
+            expect(hasMetricsContent).toBe(
+                true,
+                "Metrics tab must have content",
+            );
+            expect(hasHelpContent).toBe(true, "Help tab must have content");
 
             processorLogger.success(
                 "Comprehensive tab content verification completed",

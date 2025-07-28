@@ -1,0 +1,81 @@
+/**
+ * FontAwesome icon definitions for consistent icon usage across components.
+ * All FontAwesome icons used in the application should be defined here.
+ */
+
+/* Help and Information Icons */
+.help-tooltip::before,
+.fa-question-circle::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    content: "\f059"; /* fa-circle-question (FA6) / fa-question-circle (FA4 compat) */
+}
+
+/* Navigation Icons */
+.fa-chevron-down::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    content: "\f078";
+}
+
+.fa-chevron-right::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    content: "\f054";
+}
+
+/* Action Icons */
+.fa-check::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    content: "\f00c";
+}
+
+.fa-check-circle::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    content: "\f058";
+}
+
+.fa-trash::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    content: "\f2ed";
+}
+
+.fa-refresh::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    content: "\f021";
+}
+
+/* Status Icons */
+.fa-exclamation-triangle::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    content: "\f071";
+}
+
+/* Link Icons */
+.fa-external-link::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    content: "\f35d";
+}
+
+/* Component-specific icon styles */
+.metrics-error .fa,
+.token-valid .fa,
+.collapsible-header .fa {
+    margin-right: 8px;
+}
+
+.help-tooltip {
+    margin-left: 5px;
+    color: #666;
+    cursor: help;
+}
+
+.help-tooltip:hover {
+    color: #0078d4;
+}

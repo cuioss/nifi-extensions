@@ -322,13 +322,6 @@ test.describe("Metrics Tab", () => {
             );
             await expect(refreshButton).toBeVisible({ timeout: 5000 });
 
-            const totalValidationsBefore = await customUIFrame
-                .locator('[data-testid="total-validations"]')
-                .textContent();
-            processorLogger.info(
-                `Total validations before: ${totalValidationsBefore}`,
-            );
-
             await refreshButton.click();
             processorLogger.info("Clicked refresh button");
 

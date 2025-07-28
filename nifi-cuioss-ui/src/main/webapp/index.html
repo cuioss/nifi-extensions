@@ -21,8 +21,13 @@
     <script type="text/javascript" src="webjars/tippy.js/6.3.7/dist/tippy.umd.min.js"></script>
     <link rel="stylesheet" href="webjars/tippy.js/6.3.7/dist/tippy.css">
 
-    <!-- Load FontAwesome CSS -->
+    <!-- Load FontAwesome CSS - we need our own copy because:
+         1. We run in an iframe that might not inherit parent styles reliably
+         2. NiFi's dynamically injected FA 4.7.0 CSS has broken font paths (404 errors)
+         3. Ensures consistent icon availability across all contexts
+         Note: The 404 errors from NiFi's broken paths are harmless -->
     <link rel="stylesheet" href="webjars/font-awesome/6.7.2/css/all.min.css">
+    <link rel="stylesheet" href="webjars/font-awesome/6.7.2/css/v4-shims.min.css">
 
     <!-- Load NiFi Common mock for standalone testing -->
     <script type="text/javascript" src="js/nf-common-mock.js"></script>

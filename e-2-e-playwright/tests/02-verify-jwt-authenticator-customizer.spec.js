@@ -7,16 +7,18 @@
 import { test, expect } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
-import { saveTestBrowserLogs } from "../utils/console-logger.js";
+import {
+    saveTestBrowserLogs,
+    setupAuthAwareErrorDetection,
+} from "../utils/console-logger.js";
+import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
 import { processorLogger } from "../utils/shared-logger.js";
 import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("JWT Authenticator Customizer UI", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         try {
-            // Note: We skip strict error detection for these tests because they navigate
-            // away from the main canvas to the processor's custom UI
-            // await setupStrictErrorDetection(page, testInfo, false);
+            await setupAuthAwareErrorDetection(page, testInfo);
 
             const authService = new AuthService(page);
             await authService.ensureReady();
@@ -42,8 +44,7 @@ test.describe("JWT Authenticator Customizer UI", () => {
                 `Failed to save console logs in afterEach: ${error.message}`,
             );
         }
-        // Skip cleanup since we didn't setup critical error detection
-        // cleanupCriticalErrorDetection();
+        cleanupCriticalErrorDetection();
     });
 
     test("should display custom JWT authenticator UI", async ({

@@ -4,7 +4,7 @@
  * @version 2.0.0
  */
 
-import { test } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { ProcessorService } from "../utils/processor.js";
 import { AuthService } from "../utils/auth-service.js";
 import {
@@ -26,8 +26,7 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
             const authService = new AuthService(page);
             await authService.ensureReady();
 
-            // Skip critical error detection for this test since we navigate directly to JWT UI
-            // await checkCriticalErrors(page, testInfo);
+            await authService.verifyCanvasVisible();
         } catch (error) {
             // Save console logs immediately if beforeEach fails
             try {
@@ -53,24 +52,7 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
             );
         }
 
-        // Skip critical error check for this test since we navigate directly to JWT UI
-        // Final check for critical errors before test completion (only if test passed)
-        // if (testInfo.status === 'passed') {
-        //     try {
-        //         await checkForCriticalErrors(page, testInfo);
-        //     } catch (error) {
-        //         // If critical errors are found, save logs again with the error info
-        //         try {
-        //             await saveTestBrowserLogs(testInfo);
-        //         } catch (logError) {
-        //             logTestWarning(
-        //                 "afterEach",
-        //                 `Failed to save console logs after critical error: ${logError.message}`
-        //             );
-        //         }
-        //         throw error;
-        //     }
-        // }
+        // Critical error check is handled by setupAuthAwareErrorDetection
 
         // Cleanup critical error detection
         cleanupCriticalErrorDetection();
@@ -138,14 +120,30 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         });
         processorLogger.info("Screenshot of JWT advanced configuration saved");
 
-        if (elementsFound >= 3) {
-            processorLogger.success(
-                `JWT UI advanced configuration verified with ${elementsFound}/${advancedElements.length} elements`,
+        // Fail the test if essential elements are missing
+        expect(elementsFound).toBeGreaterThanOrEqual(
+            advancedElements.length - 1,
+            `Expected at least ${advancedElements.length - 1} advanced configuration elements, but found only ${elementsFound}`,
+        );
+
+        // Test actual functionality - try to add an issuer
+        const addIssuerButton = customUIFrame.locator(
+            'button:has-text("Add Issuer")',
+        );
+        if (await addIssuerButton.isVisible()) {
+            await addIssuerButton.click();
+            processorLogger.info("Successfully clicked Add Issuer button");
+
+            // Verify form appears
+            const issuerNameInput = customUIFrame.locator(
+                'input[placeholder*="Issuer Name"]',
             );
-        } else {
-            processorLogger.warn(
-                `Only ${elementsFound}/${advancedElements.length} advanced configuration elements found`,
-            );
+            await expect(issuerNameInput).toBeVisible({ timeout: 5000 });
+            processorLogger.info("Add Issuer form appeared successfully");
         }
+
+        processorLogger.success(
+            `JWT UI advanced configuration verified with ${elementsFound}/${advancedElements.length} elements and functionality tested`,
+        );
     });
 });

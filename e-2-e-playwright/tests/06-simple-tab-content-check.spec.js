@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { test } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 import {
@@ -89,12 +89,21 @@ test.describe("Simple Tab Content Check", () => {
             );
             console.log(`${tab.name} HTML length: ${html?.length || 0} chars`);
 
+            // Assert that tab content meets minimum requirements
+            expect(content).toBeTruthy();
+            expect(content.length).toBeGreaterThan(10);
+            expect(html).toBeTruthy();
+            expect(html.length).toBeGreaterThan(20);
+
             if (!content || content.length < 50) {
                 console.log(
                     `${tab.name} appears empty! Content: "${content || "null"}"`,
                 );
                 console.log(
                     `${tab.name} HTML preview: ${html?.substring(0, 200) || "null"}`,
+                );
+                throw new Error(
+                    `${tab.name} tab has insufficient content (${content?.length || 0} chars)`,
                 );
             } else {
                 console.log(
