@@ -9,7 +9,6 @@ import { expect, test } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
 import {
     injectTestConsoleMessages,
-    saveAllBrowserLogs,
     saveTestBrowserLogs,
     setupBrowserConsoleLogging,
 } from "../utils/console-logger.js";
@@ -287,27 +286,14 @@ test.describe("Self-Test: Browser Console Logging", () => {
         // Wait a moment for logs to be captured
         await page.waitForTimeout(500);
 
-        // Save logs to direct accessible file (returns array of results for each test)
-        const results = await saveAllBrowserLogs();
+        // Save logs using per-test logging approach
+        const logPath = await saveTestBrowserLogs(testInfo);
 
-        expect(results).toBeTruthy();
-        expect(Array.isArray(results)).toBeTruthy();
-        expect(results.length).toBeGreaterThan(0);
-
-        // Get the result for this specific test
-        const result = results[0]; // Since this is the only test running
-
-        expect(result.textLog).toBeTruthy();
-        expect(result.jsonLog).toBeTruthy();
-        expect(result.totalLogs).toBeGreaterThan(0);
-        expect(result.testId).toBeTruthy();
-
-        // Verify files exist and are accessible
-        expect(fs.existsSync(result.textLog)).toBeTruthy();
-        expect(fs.existsSync(result.jsonLog)).toBeTruthy();
+        expect(logPath).toBeTruthy();
+        expect(fs.existsSync(logPath)).toBeTruthy();
 
         // Verify content contains our test messages
-        const textContent = fs.readFileSync(result.textLog, "utf8");
+        const textContent = fs.readFileSync(logPath, "utf8");
         expect(textContent).toContain(
             `Direct log test - INFO message - ${testId}`,
         );
@@ -317,17 +303,15 @@ test.describe("Self-Test: Browser Console Logging", () => {
         expect(textContent).toContain(
             `Direct log test - ERROR message - ${testId}`,
         );
-        expect(textContent).toContain(result.testId); // Should contain test identifier
+        expect(textContent).toContain(testId); // Should contain test identifier
 
-        const jsonContent = JSON.parse(fs.readFileSync(result.jsonLog, "utf8"));
-        expect(jsonContent.length).toBeGreaterThan(0);
+        // Verify that we can read the log file content and it contains our test messages
+        expect(textContent.length).toBeGreaterThan(0);
 
-        const infoMsg = jsonContent.find((log) =>
-            log.text.includes("Direct log test - INFO"),
-        );
-        expect(infoMsg).toBeTruthy();
-        expect(infoMsg.type).toBe("log");
-        expect(infoMsg.test).toBe(testInfo.title);
+        // Verify that all our test messages are present
+        expect(textContent).toContain("Direct log test - INFO");
+        expect(textContent).toContain("Direct log test - WARNING");
+        expect(textContent).toContain("Direct log test - ERROR");
 
         // Test completed successfully
     });

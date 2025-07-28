@@ -124,9 +124,10 @@ test.describe("Comprehensive JWT Tab Content Verification", () => {
                 .textContent();
             processorLogger.info("Metrics tab content found");
             // Check for either the translated text or the i18n key
-            const hasMetricsContent = metricsContent.includes("Validation Metrics") || 
-                                     metricsContent.includes("jwt.validator.metrics.title") ||
-                                     metricsContent.includes("Total Validations");
+            const hasMetricsContent =
+                metricsContent.includes("Validation Metrics") ||
+                metricsContent.includes("jwt.validator.metrics.title") ||
+                metricsContent.includes("Total Validations");
             expect(hasMetricsContent).toBeTruthy();
 
             await page.screenshot({
@@ -143,9 +144,10 @@ test.describe("Comprehensive JWT Tab Content Verification", () => {
                 .textContent();
             processorLogger.info("Help tab content found");
             // Check for either the translated text or the i18n key
-            const hasHelpContent = helpContent.includes("JWT Authenticator Help") || 
-                                  helpContent.includes("jwt.validator.help.title") ||
-                                  helpContent.includes("Getting Started");
+            const hasHelpContent =
+                helpContent.includes("JWT Authenticator Help") ||
+                helpContent.includes("jwt.validator.help.title") ||
+                helpContent.includes("Getting Started");
             expect(hasHelpContent).toBeTruthy();
 
             await page.screenshot({
@@ -164,9 +166,7 @@ test.describe("Comprehensive JWT Tab Content Verification", () => {
             processorLogger.info(
                 `- Metrics tab has content: ${hasMetricsContent}`,
             );
-            processorLogger.info(
-                `- Help tab has content: ${hasHelpContent}`,
-            );
+            processorLogger.info(`- Help tab has content: ${hasHelpContent}`);
 
             // Assert that Metrics and Help tabs have content (we know these work)
             // These assertions are already handled above with more flexible checks
