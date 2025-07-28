@@ -84,25 +84,13 @@ test.describe("JWT Authenticator Customizer UI", () => {
                 );
             }
 
-            // Wait for custom UI to load
-            await page.waitForTimeout(2000);
-
-            // The custom UI loads in an iframe
-            const frames = page.frames();
-            processorLogger.info(`Found ${frames.length} frames`);
-
-            // Find the custom UI frame
-            const customUIFrame = frames.find((f) =>
-                f.url().includes("nifi-cuioss-ui"),
-            );
+            // Get the custom UI frame using the utility
+            const customUIFrame = await processorService.getAdvancedUIFrame();
 
             if (!customUIFrame) {
                 throw new Error("Could not find custom UI iframe");
             }
 
-            processorLogger.info(
-                "Using custom UI frame: " + customUIFrame.url(),
-            );
             const uiContext = customUIFrame;
 
             const customUIElements = [
@@ -193,25 +181,13 @@ test.describe("JWT Authenticator Customizer UI", () => {
                 );
             }
 
-            // Wait for custom UI to load
-            await page.waitForTimeout(2000);
-
-            // The custom UI loads in an iframe
-            const frames = page.frames();
-            processorLogger.info(`Found ${frames.length} frames`);
-
-            // Find the custom UI frame
-            const customUIFrame = frames.find((f) =>
-                f.url().includes("nifi-cuioss-ui"),
-            );
+            // Get the custom UI frame using the utility
+            const customUIFrame = await processorService.getAdvancedUIFrame();
 
             if (!customUIFrame) {
                 throw new Error("Could not find custom UI iframe");
             }
 
-            processorLogger.info(
-                "Using custom UI frame: " + customUIFrame.url(),
-            );
             const uiContext = customUIFrame;
 
             const addIssuerButton = await uiContext.getByRole("button", {

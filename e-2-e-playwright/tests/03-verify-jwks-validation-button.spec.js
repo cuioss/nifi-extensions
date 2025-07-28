@@ -84,14 +84,8 @@ test.describe("JWKS Validation Button", () => {
                 );
             }
 
-            // Wait for custom UI to load
-            await page.waitForTimeout(2000);
-
-            // The custom UI loads in an iframe
-            const frames = page.frames();
-            const customUIFrame = frames.find((f) =>
-                f.url().includes("nifi-cuioss-ui"),
-            );
+            // Get the custom UI frame using the utility
+            const customUIFrame = await processorService.getAdvancedUIFrame();
 
             if (!customUIFrame) {
                 throw new Error("Could not find custom UI iframe");
@@ -186,23 +180,24 @@ test.describe("JWKS Validation Button", () => {
                 );
             }
 
-            // Navigate directly to the custom UI (separate web application)
-            processorLogger.info(
-                "Navigating directly to JWT custom UI for invalid JWKS test",
-            );
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            // Open Advanced UI via right-click menu
+            const advancedOpened =
+                await processorService.openAdvancedUI(processor);
 
-            // Wait for custom UI to load
-            await page.waitForTimeout(2000);
+            if (!advancedOpened) {
+                throw new Error(
+                    "Failed to open Advanced UI via right-click menu",
+                );
+            }
 
-            // The custom UI is a direct web application, not in an iframe
-            const uiContext = page;
+            // Get the custom UI frame using the utility
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+
+            if (!customUIFrame) {
+                throw new Error("Could not find custom UI iframe");
+            }
+
+            const uiContext = customUIFrame;
 
             // First click "Add Issuer" to enable the form
             const addIssuerButton = await uiContext.getByRole("button", {
@@ -307,23 +302,24 @@ test.describe("JWKS Validation Button", () => {
                 );
             }
 
-            // Navigate directly to the custom UI (separate web application)
-            processorLogger.info(
-                "Navigating directly to JWT custom UI for file path test",
-            );
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            // Open Advanced UI via right-click menu
+            const advancedOpened =
+                await processorService.openAdvancedUI(processor);
 
-            // Wait for custom UI to load
-            await page.waitForTimeout(2000);
+            if (!advancedOpened) {
+                throw new Error(
+                    "Failed to open Advanced UI via right-click menu",
+                );
+            }
 
-            // The custom UI is a direct web application, not in an iframe
-            const uiContext = page;
+            // Get the custom UI frame using the utility
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+
+            if (!customUIFrame) {
+                throw new Error("Could not find custom UI iframe");
+            }
+
+            const uiContext = customUIFrame;
 
             // First click "Add Issuer" to enable the form
             const addIssuerButton = await uiContext.getByRole("button", {
@@ -405,23 +401,24 @@ test.describe("JWKS Validation Button", () => {
                 );
             }
 
-            // Navigate directly to the custom UI (separate web application)
-            processorLogger.info(
-                "Navigating directly to JWT custom UI for progress indicator test",
-            );
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+            // Open Advanced UI via right-click menu
+            const advancedOpened =
+                await processorService.openAdvancedUI(processor);
 
-            // Wait for custom UI to load
-            await page.waitForTimeout(2000);
+            if (!advancedOpened) {
+                throw new Error(
+                    "Failed to open Advanced UI via right-click menu",
+                );
+            }
 
-            // The custom UI is a direct web application, not in an iframe
-            const uiContext = page;
+            // Get the custom UI frame using the utility
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+
+            if (!customUIFrame) {
+                throw new Error("Could not find custom UI iframe");
+            }
+
+            const uiContext = customUIFrame;
 
             // First click "Add Issuer" to enable the form
             const addIssuerButton = await uiContext.getByRole("button", {

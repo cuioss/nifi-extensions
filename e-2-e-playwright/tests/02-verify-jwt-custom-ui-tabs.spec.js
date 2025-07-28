@@ -55,13 +55,13 @@ test.describe("JWT Custom UI Tabs Verification", () => {
         if (!processor) {
             throw new Error("No JWT processor found on canvas");
         }
-        
+
         // Open Advanced UI using the verified navigation pattern
         await processorService.openAdvancedUI(processor);
-        
+
         // Get the custom UI frame
         const customUIFrame = await processorService.getAdvancedUIFrame();
-        
+
         if (!customUIFrame) {
             throw new Error("Failed to get custom UI frame");
         }
@@ -125,20 +125,18 @@ test.describe("JWT Custom UI Tabs Verification", () => {
         } else {
             // If tab container not visible in expected location, try alternate selector
             processorLogger.info("Checking alternate selectors for tabs");
-            
+
             const tabLinks = await customUIFrame
                 .locator(".jwt-tabs-header .tabs a")
                 .count();
-            
+
             if (tabLinks > 0) {
                 processorLogger.info(
                     `Found ${tabLinks} tabs using alternate selector`,
                 );
                 expect(tabLinks).toBe(4);
             } else {
-                throw new Error(
-                    "Could not find tabs in JWT Custom UI",
-                );
+                throw new Error("Could not find tabs in JWT Custom UI");
             }
         }
     });
@@ -159,10 +157,10 @@ test.describe("JWT Custom UI Tabs Verification", () => {
 
         // Open Advanced UI using the verified navigation pattern
         await processorService.openAdvancedUI(processor);
-        
+
         // Get the custom UI frame
         const customUIFrame = await processorService.getAdvancedUIFrame();
-        
+
         if (!customUIFrame) {
             throw new Error("Failed to get custom UI frame");
         }
@@ -172,56 +170,56 @@ test.describe("JWT Custom UI Tabs Verification", () => {
         const addIssuerButton = customUIFrame.locator(
             'button:has-text("Add Issuer")',
         );
-            if (await addIssuerButton.isVisible({ timeout: 3000 })) {
-                processorLogger.info(
-                    "✓ Configuration tab: Add Issuer button found",
-                );
-            }
+        if (await addIssuerButton.isVisible({ timeout: 3000 })) {
+            processorLogger.info(
+                "✓ Configuration tab: Add Issuer button found",
+            );
+        }
 
         // Token Verification tab
         const tokenVerificationTab = customUIFrame.locator(
             'a[href="#token-verification"]',
         );
-            if (await tokenVerificationTab.isVisible()) {
-                await tokenVerificationTab.click();
-                await page.waitForTimeout(500);
+        if (await tokenVerificationTab.isVisible()) {
+            await tokenVerificationTab.click();
+            await page.waitForTimeout(500);
 
-            const verifyButton = customUIFrame.locator(
-                'button:has-text("Verify Token")',
-            ).first();
+            const verifyButton = customUIFrame
+                .locator('button:has-text("Verify Token")')
+                .first();
             if (await verifyButton.isVisible({ timeout: 3000 })) {
-                    processorLogger.info(
-                        "✓ Token Verification tab: Verify Token button found",
-                    );
-                }
+                processorLogger.info(
+                    "✓ Token Verification tab: Verify Token button found",
+                );
             }
+        }
 
         // Metrics tab
         const metricsTab = customUIFrame.locator('a[href="#metrics"]');
-            if (await metricsTab.isVisible()) {
-                await metricsTab.click();
-                await page.waitForTimeout(500);
+        if (await metricsTab.isVisible()) {
+            await metricsTab.click();
+            await page.waitForTimeout(500);
 
             const refreshButton = customUIFrame.locator(
                 '[data-testid="refresh-metrics-button"]',
             );
-                if (await refreshButton.isVisible({ timeout: 3000 })) {
-                    processorLogger.info("✓ Metrics tab: Refresh button found");
-                }
+            if (await refreshButton.isVisible({ timeout: 3000 })) {
+                processorLogger.info("✓ Metrics tab: Refresh button found");
             }
+        }
 
         // Help tab
         const helpTab = customUIFrame.locator('a[href="#help"]');
-            if (await helpTab.isVisible()) {
-                await helpTab.click();
-                await page.waitForTimeout(500);
+        if (await helpTab.isVisible()) {
+            await helpTab.click();
+            await page.waitForTimeout(500);
 
             const helpContent = customUIFrame.locator(
                 '[data-testid="help-tab-content"]',
             );
-                if (await helpContent.isVisible({ timeout: 3000 })) {
-                    processorLogger.info("✓ Help tab: Content found");
-                }
+            if (await helpContent.isVisible({ timeout: 3000 })) {
+                processorLogger.info("✓ Help tab: Content found");
             }
+        }
     });
 });
