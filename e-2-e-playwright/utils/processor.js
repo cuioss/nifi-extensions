@@ -6,6 +6,7 @@
 
 import {expect} from '@playwright/test';
 import {CONSTANTS} from './constants.js';
+import { processorLogger } from './shared-logger.js';
 
 /**
  * Add processor to canvas first
@@ -443,13 +444,16 @@ export class ProcessorService {
   }
 
   async accessAdvancedProperties(dialog, options = {}) {
-    // Look for Properties or Advanced tab with NiFi-compatible selectors
+    // Look for Advanced tab specifically (not Properties tab)
     const advancedTab = this.page.getByRole("tab", {
-      name: /properties|advanced/i,
+      name: /^advanced$/i,
     });
 
     if (await advancedTab.isVisible({ timeout: 2000 })) {
       await advancedTab.click();
+      
+      // Wait for tab switch
+      await this.page.waitForTimeout(1000);
 
       // Verify advanced content is loaded using NiFi-compatible selectors
       const advancedContent = this.page.locator(
@@ -462,6 +466,10 @@ export class ProcessorService {
       return true;
     }
 
+    // If no "Advanced" tab found, log available tabs for debugging
+    const allTabs = await this.page.getByRole("tab").allTextContents();
+    processorLogger.warn(`No Advanced tab found. Available tabs: ${allTabs.join(", ")}`);
+    
     return false;
   }
 

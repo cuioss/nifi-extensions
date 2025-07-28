@@ -1,6 +1,5 @@
 /* eslint-disable no-console */
-const { test } = require("@playwright/test");
-
+import { test } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
 import {
     checkLoadingIndicatorStatus,

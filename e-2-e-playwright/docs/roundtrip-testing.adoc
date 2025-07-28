@@ -49,6 +49,27 @@ ls -la target/test-results/*/
 
 === 3. Run Tests
 
+==== Test Orchestration with Pre-checks
+
+The test suite includes self-tests that validate the testing environment before running actual tests. This ensures all prerequisites are met.
+
+[source,bash]
+----
+# Run tests with automatic pre-checks (recommended)
+npm run test
+
+# Run specific JWT tests with pre-checks
+npm run test:jwt
+
+# Run all tests with pre-checks
+npm run test:all
+
+# Run tests without pre-checks (not recommended)
+npm run test:no-precheck
+----
+
+==== Direct Test Execution
+
 [source,bash]
 ----
 # Single test
@@ -59,7 +80,29 @@ npm run playwright:test
 
 # With UI (for debugging)
 npm run playwright:test -- --ui
+
+# Self-tests only
+npm run test:self
 ----
+
+==== Test Commands
+
+* `npm run test` - Runs tests with self-test pre-checks
+* `npm run test:self` - Runs only self-tests
+* `npm run test:jwt` - Runs JWT-related tests with pre-checks
+* `npm run test:all` - Runs all tests with pre-checks
+* `npm run test:no-precheck` - Runs tests without pre-checks
+
+==== Pre-check Validation
+
+Self-tests validate:
+* NiFi accessibility and login functionality
+* Navigation patterns
+* Critical error detection
+* Browser console logging
+* Processor interaction capabilities
+
+If self-tests fail, the actual tests won't run and you'll see clear error messages about what needs to be fixed.
 
 === 4. Analyze Failures
 
