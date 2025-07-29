@@ -12,468 +12,319 @@ import {
     setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
 import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
-import { processorLogger } from "../utils/shared-logger.js";
-import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("JWKS Validation Button", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        try {
-            await setupAuthAwareErrorDetection(page, testInfo);
+        await setupAuthAwareErrorDetection(page, testInfo);
 
-            const authService = new AuthService(page);
-            await authService.ensureReady();
-        } catch (error) {
-            try {
-                await saveTestBrowserLogs(testInfo);
-            } catch (logError) {
-                logTestWarning(
-                    "beforeEach",
-                    `Failed to save console logs during beforeEach error: ${logError.message}`,
-                );
-            }
-            throw error;
-        }
+        const authService = new AuthService(page);
+        await authService.ensureReady();
     });
 
     test.afterEach(async ({ page: _ }, testInfo) => {
-        try {
-            await saveTestBrowserLogs(testInfo);
-        } catch (error) {
-            logTestWarning(
-                "afterEach",
-                `Failed to save console logs in afterEach: ${error.message}`,
-            );
-        }
+        await saveTestBrowserLogs(testInfo);
         cleanupCriticalErrorDetection();
     });
 
     test("should validate JWKS URL successfully", async ({
         page,
     }, testInfo) => {
-        processorLogger.info("Testing JWKS validation button - valid URL");
+        // Test JWKS validation button with valid URL
+        const processorService = new ProcessorService(page, testInfo);
 
-        try {
-            const processorService = new ProcessorService(page, testInfo);
-
-            // Find and configure processor
-            // Try to find the processor first
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: false,
-                });
-
-            // If processor not found, provide clear instructions
-            if (!processor) {
-                throw new Error(
-                    "❌ MultiIssuerJWTTokenAuthenticator processor not found on canvas!\n\n" +
-                        "Please manually add the processor to the canvas before running E2E tests:\n" +
-                        "1. Navigate to NiFi UI at https://localhost:9095/nifi\n" +
-                        "2. Drag a 'Processor' component onto the canvas\n" +
-                        "3. Search for and select 'MultiIssuerJWTTokenAuthenticator'\n" +
-                        "4. Click 'Add' to place it on the canvas\n" +
-                        "5. Re-run the E2E tests\n\n" +
-                        "This is a prerequisite for E2E testing the JWKS validation functionality.",
-                );
-            }
-            // Open Advanced UI via right-click menu
-            const advancedOpened =
-                await processorService.openAdvancedUI(processor);
-
-            if (!advancedOpened) {
-                throw new Error(
-                    "Failed to open Advanced UI via right-click menu",
-                );
-            }
-
-            // Get the custom UI frame using the utility
-            const customUIFrame = await processorService.getAdvancedUIFrame();
-
-            if (!customUIFrame) {
-                throw new Error("Could not find custom UI iframe");
-            }
-
-            const uiContext = customUIFrame;
-
-            // First click "Add Issuer" to enable the form
-            const addIssuerButton = await uiContext.getByRole("button", {
-                name: "Add Issuer",
+        // Find and configure processor
+        // Try to find the processor first
+        const processor =
+            await processorService.findMultiIssuerJwtAuthenticator({
+                failIfNotFound: false,
             });
-            await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
-            await addIssuerButton.click();
-            processorLogger.info("Clicked Add Issuer to enable form");
 
-            // Wait longer for form to be fully enabled
-            await page.waitForTimeout(1000);
+        // If processor not found, provide clear instructions
+        expect(processor).toBeTruthy();
+        // Open Advanced UI via right-click menu
+        const advancedOpened = await processorService.openAdvancedUI(processor);
 
-            const jwksUrlInput = await uiContext
-                .locator('input[name="jwks-url"]')
-                .first();
-            await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
+        expect(advancedOpened).toBe(true);
 
-            // Try force fill if normal fill doesn't work
-            try {
-                await jwksUrlInput.fill(
-                    "https://example.com/.well-known/jwks.json",
-                );
-            } catch (error) {
-                processorLogger.warn("Normal fill failed, trying force fill");
-                await jwksUrlInput.fill(
-                    "https://example.com/.well-known/jwks.json",
-                    { force: true },
-                );
-            }
-            processorLogger.info("Entered valid JWKS URL");
+        // Get the custom UI frame using the utility
+        const customUIFrame = await processorService.getAdvancedUIFrame();
 
-            const validateButton = await uiContext
-                .getByRole("button", { name: "Test Connection" })
-                .first();
-            await expect(validateButton).toBeVisible({ timeout: 5000 });
-            await validateButton.click();
-            processorLogger.info("Clicked validate button");
+        expect(customUIFrame).toBeTruthy();
 
-            const successMessage = await uiContext
-                .locator(
-                    '.verification-result, .success-message, [class*="success"]',
-                )
-                .first();
-            await expect(successMessage).toBeVisible({ timeout: 10000 });
-            // Just verify a validation message appears, don't check specific text
-            processorLogger.success("JWKS URL validated successfully");
+        const uiContext = customUIFrame;
 
-            const validationIcon = await uiContext
-                .locator(
-                    '[class*="success"], [class*="check"], [class*="valid"]',
-                )
-                .first();
-            await expect(validationIcon).toBeVisible({ timeout: 5000 });
-            processorLogger.info("✓ Validation success icon displayed");
-        } catch (error) {
-            processorLogger.error(
-                `Error during JWKS validation test: ${error.message}`,
-            );
-            throw error;
-        }
+        // First click "Add Issuer" to enable the form
+        const addIssuerButton = await uiContext.getByRole("button", {
+            name: "Add Issuer",
+        });
+        await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
+        await addIssuerButton.click();
+        // Clicked Add Issuer to enable form
+
+        // Wait longer for form to be fully enabled
+        await page.waitForLoadState("networkidle");
+
+        const jwksUrlInput = await uiContext
+            .locator('input[name="jwks-url"]')
+            .first();
+        await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
+
+        // Fill the JWKS URL input
+        await jwksUrlInput.fill("https://example.com/.well-known/jwks.json");
+        // Entered valid JWKS URL
+
+        const validateButton = await uiContext
+            .getByRole("button", { name: "Test Connection" })
+            .first();
+        await expect(validateButton).toBeVisible({ timeout: 5000 });
+        await validateButton.click();
+        // Clicked validate button
+
+        const successMessage = await uiContext
+            .locator(
+                '.verification-result, .success-message, [class*="success"]',
+            )
+            .first();
+        await expect(successMessage).toBeVisible({ timeout: 10000 });
+        // Just verify a validation message appears, don't check specific text
+        // JWKS URL validated successfully
+
+        const validationIcon = await uiContext
+            .locator('[class*="success"], [class*="check"], [class*="valid"]')
+            .first();
+        await expect(validationIcon).toBeVisible({ timeout: 5000 });
+        // Validation success icon should be displayed
     });
 
     test("should handle invalid JWKS URL", async ({ page }, testInfo) => {
-        processorLogger.info("Testing JWKS validation button - invalid URL");
+        // Testing JWKS validation button - invalid URL
 
-        try {
-            const processorService = new ProcessorService(page, testInfo);
+        const processorService = new ProcessorService(page, testInfo);
 
-            // Try to find the processor first
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: false,
-                });
-
-            // If processor not found, provide clear instructions
-            if (!processor) {
-                throw new Error(
-                    "❌ MultiIssuerJWTTokenAuthenticator processor not found on canvas!\n\n" +
-                        "Please manually add the processor to the canvas before running E2E tests:\n" +
-                        "1. Navigate to NiFi UI at https://localhost:9095/nifi\n" +
-                        "2. Drag a 'Processor' component onto the canvas\n" +
-                        "3. Search for and select 'MultiIssuerJWTTokenAuthenticator'\n" +
-                        "4. Click 'Add' to place it on the canvas\n" +
-                        "5. Re-run the E2E tests\n\n" +
-                        "This is a prerequisite for E2E testing the JWKS validation functionality.",
-                );
-            }
-
-            // Open Advanced UI via right-click menu
-            const advancedOpened =
-                await processorService.openAdvancedUI(processor);
-
-            if (!advancedOpened) {
-                throw new Error(
-                    "Failed to open Advanced UI via right-click menu",
-                );
-            }
-
-            // Get the custom UI frame using the utility
-            const customUIFrame = await processorService.getAdvancedUIFrame();
-
-            if (!customUIFrame) {
-                throw new Error("Could not find custom UI iframe");
-            }
-
-            const uiContext = customUIFrame;
-
-            // First click "Add Issuer" to enable the form
-            const addIssuerButton = await uiContext.getByRole("button", {
-                name: "Add Issuer",
+        // Try to find the processor first
+        const processor =
+            await processorService.findMultiIssuerJwtAuthenticator({
+                failIfNotFound: false,
             });
-            await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
-            await addIssuerButton.click();
-            processorLogger.info("Clicked Add Issuer to enable form");
 
-            // Wait for form to be fully enabled
-            await page.waitForTimeout(2000);
+        // If processor not found, provide clear instructions
+        expect(processor).toBeTruthy();
 
-            const jwksUrlInput = await uiContext
-                .locator('input[name="jwks-url"]')
-                .first();
-            await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
+        // Open Advanced UI via right-click menu
+        const advancedOpened = await processorService.openAdvancedUI(processor);
 
-            // Check if input is enabled and force enable if needed
-            const isEnabled = await jwksUrlInput.isEnabled();
-            if (!isEnabled) {
-                processorLogger.warn(
-                    "JWKS URL input appears disabled, trying to enable",
-                );
-                await jwksUrlInput.click({ force: true });
-                await page.waitForTimeout(500);
-            }
+        expect(advancedOpened).toBe(true);
 
-            await jwksUrlInput.fill("not-a-valid-url", { force: true });
-            processorLogger.info("Entered invalid JWKS URL");
+        // Get the custom UI frame using the utility
+        const customUIFrame = await processorService.getAdvancedUIFrame();
 
-            const validateButton = await uiContext
-                .getByRole("button", { name: "Test Connection" })
-                .first();
-            await expect(validateButton).toBeVisible({ timeout: 5000 });
-            await validateButton.click();
-            processorLogger.info("Clicked validate button");
+        expect(customUIFrame).toBeTruthy();
 
-            // Validation must show some kind of result - either error or completion
-            const validationResult = await uiContext
-                .locator(
-                    '.error-message, [class*="error"], .validation-error, .verification-result, [class*="result"]',
-                )
-                .first();
-            await expect(validationResult).toBeVisible({
-                timeout: 10000,
-            });
-            processorLogger.info(
-                "✓ Validation result displayed for invalid URL",
-            );
+        const uiContext = customUIFrame;
 
-            processorLogger.success("Invalid JWKS URL handled correctly");
-        } catch (error) {
-            processorLogger.error(
-                `Error during invalid JWKS URL test: ${error.message}`,
-            );
-            throw error;
+        // First click "Add Issuer" to enable the form
+        const addIssuerButton = await uiContext.getByRole("button", {
+            name: "Add Issuer",
+        });
+        await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
+        await addIssuerButton.click();
+        // Clicked Add Issuer to enable form
+
+        // Wait for form to be fully enabled
+        await page.waitForLoadState("networkidle");
+
+        const jwksUrlInput = await uiContext
+            .locator('input[name="jwks-url"]')
+            .first();
+        await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
+
+        // Check if input is enabled and force enable if needed
+        const isEnabled = await jwksUrlInput.isEnabled();
+        if (!isEnabled) {
+            // JWKS URL input appears disabled, trying to enable
+            await jwksUrlInput.click({ force: true });
+            await page.waitForLoadState("domcontentloaded");
         }
+
+        await jwksUrlInput.fill("not-a-valid-url", { force: true });
+        // Entered invalid JWKS URL
+
+        const validateButton = await uiContext
+            .getByRole("button", { name: "Test Connection" })
+            .first();
+        await expect(validateButton).toBeVisible({ timeout: 5000 });
+        await validateButton.click();
+        // Clicked validate button
+
+        // Validation must show some kind of result - either error or completion
+        const validationResult = await uiContext
+            .locator(
+                '.error-message, [class*="error"], .validation-error, .verification-result, [class*="result"]',
+            )
+            .first();
+        await expect(validationResult).toBeVisible({
+            timeout: 10000,
+        });
+        // Validation result displayed for invalid URL
+
+        // Invalid JWKS URL handled correctly
     });
 
     test("should validate JWKS file path", async ({ page }, testInfo) => {
-        processorLogger.info("Testing JWKS validation button - file path");
+        // Testing JWKS validation button - file path
 
-        try {
-            const processorService = new ProcessorService(page, testInfo);
+        const processorService = new ProcessorService(page, testInfo);
 
-            // Try to find the processor first
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: false,
-                });
-
-            // If processor not found, provide clear instructions
-            if (!processor) {
-                throw new Error(
-                    "❌ MultiIssuerJWTTokenAuthenticator processor not found on canvas!\n\n" +
-                        "Please manually add the processor to the canvas before running E2E tests:\n" +
-                        "1. Navigate to NiFi UI at https://localhost:9095/nifi\n" +
-                        "2. Drag a 'Processor' component onto the canvas\n" +
-                        "3. Search for and select 'MultiIssuerJWTTokenAuthenticator'\n" +
-                        "4. Click 'Add' to place it on the canvas\n" +
-                        "5. Re-run the E2E tests\n\n" +
-                        "This is a prerequisite for E2E testing the JWKS validation functionality.",
-                );
-            }
-
-            // Open Advanced UI via right-click menu
-            const advancedOpened =
-                await processorService.openAdvancedUI(processor);
-
-            if (!advancedOpened) {
-                throw new Error(
-                    "Failed to open Advanced UI via right-click menu",
-                );
-            }
-
-            // Get the custom UI frame using the utility
-            const customUIFrame = await processorService.getAdvancedUIFrame();
-
-            if (!customUIFrame) {
-                throw new Error("Could not find custom UI iframe");
-            }
-
-            const uiContext = customUIFrame;
-
-            // First click "Add Issuer" to enable the form
-            const addIssuerButton = await uiContext.getByRole("button", {
-                name: "Add Issuer",
+        // Try to find the processor first
+        const processor =
+            await processorService.findMultiIssuerJwtAuthenticator({
+                failIfNotFound: false,
             });
-            await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
-            await addIssuerButton.click();
-            processorLogger.info("Clicked Add Issuer to enable form");
 
-            // Wait for form to be fully enabled
-            await page.waitForTimeout(2000);
+        // If processor not found, provide clear instructions
+        expect(processor).toBeTruthy();
 
-            // For file path test, we'll just use the JWKS URL input with a file path
-            const jwksUrlInput = await uiContext
-                .locator('input[name="jwks-url"]')
-                .first();
-            await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
+        // Open Advanced UI via right-click menu
+        const advancedOpened = await processorService.openAdvancedUI(processor);
 
-            // Check if input is enabled and force enable if needed
-            const isEnabled = await jwksUrlInput.isEnabled();
-            if (!isEnabled) {
-                processorLogger.warn(
-                    "JWKS URL input appears disabled, trying to enable",
-                );
-                await jwksUrlInput.click({ force: true });
-                await page.waitForTimeout(500);
-            }
+        expect(advancedOpened).toBe(true);
 
-            await jwksUrlInput.fill("/path/to/jwks.json", { force: true });
-            processorLogger.info("Entered JWKS file path");
+        // Get the custom UI frame using the utility
+        const customUIFrame = await processorService.getAdvancedUIFrame();
 
-            const validateButton = await uiContext
-                .getByRole("button", { name: "Test Connection" })
-                .first();
-            await expect(validateButton).toBeVisible({ timeout: 5000 });
-            await validateButton.click();
-            processorLogger.info("Clicked validate button");
+        expect(customUIFrame).toBeTruthy();
 
-            const validationResult = await uiContext
-                .locator(
-                    '.validation-result, .verification-result, [class*="result"]',
-                )
-                .first();
-            await expect(validationResult).toBeVisible({ timeout: 10000 });
-            processorLogger.success("JWKS file path validation completed");
-        } catch (error) {
-            processorLogger.error(
-                `Error during JWKS file validation test: ${error.message}`,
-            );
-            throw error;
+        const uiContext = customUIFrame;
+
+        // First click "Add Issuer" to enable the form
+        const addIssuerButton = await uiContext.getByRole("button", {
+            name: "Add Issuer",
+        });
+        await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
+        await addIssuerButton.click();
+        // Clicked Add Issuer to enable form
+
+        // Wait for form to be fully enabled
+        await page.waitForLoadState("networkidle");
+
+        // For file path test, we'll just use the JWKS URL input with a file path
+        const jwksUrlInput = await uiContext
+            .locator('input[name="jwks-url"]')
+            .first();
+        await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
+
+        // Check if input is enabled and force enable if needed
+        const isEnabled = await jwksUrlInput.isEnabled();
+        if (!isEnabled) {
+            // JWKS URL input appears disabled, trying to enable
+            await jwksUrlInput.click({ force: true });
+            await page.waitForLoadState("domcontentloaded");
         }
+
+        await jwksUrlInput.fill("/path/to/jwks.json", { force: true });
+        // Entered JWKS file path
+
+        const validateButton = await uiContext
+            .getByRole("button", { name: "Test Connection" })
+            .first();
+        await expect(validateButton).toBeVisible({ timeout: 5000 });
+        await validateButton.click();
+        // Clicked validate button
+
+        const validationResult = await uiContext
+            .locator(
+                '.validation-result, .verification-result, [class*="result"]',
+            )
+            .first();
+        await expect(validationResult).toBeVisible({ timeout: 10000 });
+        // JWKS file path validation completed
     });
 
     test("should display validation progress indicator", async ({
         page,
     }, testInfo) => {
-        processorLogger.info("Testing JWKS validation progress indicator");
+        // Testing JWKS validation progress indicator
 
-        try {
-            const processorService = new ProcessorService(page, testInfo);
+        const processorService = new ProcessorService(page, testInfo);
 
-            // Try to find the processor first
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: false,
-                });
-
-            // If processor not found, provide clear instructions
-            if (!processor) {
-                throw new Error(
-                    "❌ MultiIssuerJWTTokenAuthenticator processor not found on canvas!\n\n" +
-                        "Please manually add the processor to the canvas before running E2E tests:\n" +
-                        "1. Navigate to NiFi UI at https://localhost:9095/nifi\n" +
-                        "2. Drag a 'Processor' component onto the canvas\n" +
-                        "3. Search for and select 'MultiIssuerJWTTokenAuthenticator'\n" +
-                        "4. Click 'Add' to place it on the canvas\n" +
-                        "5. Re-run the E2E tests\n\n" +
-                        "This is a prerequisite for E2E testing the JWKS validation functionality.",
-                );
-            }
-
-            // Open Advanced UI via right-click menu
-            const advancedOpened =
-                await processorService.openAdvancedUI(processor);
-
-            if (!advancedOpened) {
-                throw new Error(
-                    "Failed to open Advanced UI via right-click menu",
-                );
-            }
-
-            // Get the custom UI frame using the utility
-            const customUIFrame = await processorService.getAdvancedUIFrame();
-
-            if (!customUIFrame) {
-                throw new Error("Could not find custom UI iframe");
-            }
-
-            const uiContext = customUIFrame;
-
-            // First click "Add Issuer" to enable the form
-            const addIssuerButton = await uiContext.getByRole("button", {
-                name: "Add Issuer",
+        // Try to find the processor first
+        const processor =
+            await processorService.findMultiIssuerJwtAuthenticator({
+                failIfNotFound: false,
             });
-            await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
-            await addIssuerButton.click();
-            processorLogger.info("Clicked Add Issuer to enable form");
 
-            // Wait for form to be fully enabled
-            await page.waitForTimeout(2000);
+        // If processor not found, provide clear instructions
+        expect(processor).toBeTruthy();
 
-            const jwksUrlInput = await uiContext
-                .locator('input[name="jwks-url"]')
-                .first();
-            await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
+        // Open Advanced UI via right-click menu
+        const advancedOpened = await processorService.openAdvancedUI(processor);
 
-            // Check if input is enabled and force enable if needed
-            const isEnabled = await jwksUrlInput.isEnabled();
-            if (!isEnabled) {
-                processorLogger.warn(
-                    "JWKS URL input appears disabled, trying to enable",
-                );
-                await jwksUrlInput.click({ force: true });
-                await page.waitForTimeout(500);
-            }
+        expect(advancedOpened).toBe(true);
 
-            await jwksUrlInput.fill(
-                "https://slow-response.example.com/jwks.json",
-                { force: true },
-            );
+        // Get the custom UI frame using the utility
+        const customUIFrame = await processorService.getAdvancedUIFrame();
 
-            const validateButton = await uiContext
-                .getByRole("button", { name: "Test Connection" })
-                .first();
-            await expect(validateButton).toBeVisible({ timeout: 5000 });
-            await validateButton.click();
+        expect(customUIFrame).toBeTruthy();
 
-            // Check for progress indicators (optional, as they may be very brief)
-            try {
-                const progressIndicator = await uiContext
-                    .locator('[class*="progress"], [class*="loading"]')
-                    .first();
-                await expect(progressIndicator).toBeVisible({ timeout: 1000 });
-                processorLogger.info("✓ Progress indicator displayed");
+        const uiContext = customUIFrame;
 
-                await expect(progressIndicator).not.toBeVisible({
-                    timeout: 15000,
-                });
-                processorLogger.info(
-                    "✓ Progress indicator disappeared after validation",
-                );
-            } catch (error) {
-                processorLogger.info(
-                    "Progress indicator not found or too brief - this is acceptable",
-                );
-            }
+        // First click "Add Issuer" to enable the form
+        const addIssuerButton = await uiContext.getByRole("button", {
+            name: "Add Issuer",
+        });
+        await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
+        await addIssuerButton.click();
+        // Clicked Add Issuer to enable form
 
-            // Verify validation completed by checking for any result
-            const anyResult = await uiContext
-                .locator(
-                    '.verification-result, .validation-result, [class*="result"], button[class*="verify"]',
-                )
-                .first();
-            await expect(anyResult).toBeVisible({ timeout: 10000 });
-            processorLogger.success(
-                "Validation progress indicator working correctly",
-            );
-        } catch (error) {
-            processorLogger.error(
-                `Error during progress indicator test: ${error.message}`,
-            );
-            throw error;
+        // Wait for form to be fully enabled
+        await page.waitForLoadState("networkidle");
+
+        const jwksUrlInput = await uiContext
+            .locator('input[name="jwks-url"]')
+            .first();
+        await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
+
+        // Check if input is enabled and force enable if needed
+        const isEnabled = await jwksUrlInput.isEnabled();
+        if (!isEnabled) {
+            // JWKS URL input appears disabled, trying to enable
+            await jwksUrlInput.click({ force: true });
+            await page.waitForLoadState("domcontentloaded");
         }
+
+        await jwksUrlInput.fill("https://slow-response.example.com/jwks.json", {
+            force: true,
+        });
+
+        const validateButton = await uiContext
+            .getByRole("button", { name: "Test Connection" })
+            .first();
+        await expect(validateButton).toBeVisible({ timeout: 5000 });
+        await validateButton.click();
+
+        // Check for progress indicators (optional, as they may be very brief)
+        try {
+            const progressIndicator = await uiContext
+                .locator('[class*="progress"], [class*="loading"]')
+                .first();
+            await expect(progressIndicator).toBeVisible({ timeout: 1000 });
+            // Progress indicator displayed
+
+            await expect(progressIndicator).not.toBeVisible({
+                timeout: 15000,
+            });
+            // Progress indicator disappeared after validation
+        } catch (error) {
+            // Progress indicator not found or too brief - this is acceptable
+        }
+
+        // Verify validation completed by checking for any result
+        const anyResult = await uiContext
+            .locator(
+                '.verification-result, .validation-result, [class*="result"], button[class*="verify"]',
+            )
+            .first();
+        await expect(anyResult).toBeVisible({ timeout: 10000 });
+        // Validation progress indicator working correctly
     });
 });

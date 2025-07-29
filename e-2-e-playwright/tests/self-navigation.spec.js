@@ -27,10 +27,13 @@ test.describe("Self-Test: Navigation", () => {
         // Verify page is stable and ready
         await authService.waitForPageReady();
 
-        // Check for key navigation elements
-        const operateButtons = page.getByRole("button", { name: /operate/i });
-        const navigationElements = await operateButtons.count();
-        expect(navigationElements).toBeGreaterThanOrEqual(0);
+        // Verify canvas has loaded and is interactive
+        const canvas = page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS);
+        await expect(canvas).toBeVisible();
+
+        // Check that the page has loaded completely - should have some UI elements
+        const buttons = await page.getByRole("button").count();
+        expect(buttons).toBeGreaterThan(0);
     });
 
     test("should handle navigation errors gracefully", async ({ page }) => {

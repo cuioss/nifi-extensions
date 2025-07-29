@@ -37,15 +37,8 @@ test.describe("Self-Test: Login", () => {
         await expect(page).toHaveTitle(/NiFi/);
     });
 
-    test("should reject invalid credentials", async ({ page: _ }) => {
-        // This test is no longer relevant since we use constants directly
-        // Invalid credentials would be a configuration issue, not a runtime test
-        // Skipping this test as passwords are never passed as parameters
-        test.skip(
-            true,
-            "Test not applicable - credentials are always from constants",
-        );
-    });
+    // Test for invalid credentials removed - credentials come from constants
+    // and invalid credentials would be a configuration issue, not a runtime test
 
     test("should logout successfully when authenticated", async ({ page }) => {
         const authService = new AuthService(page);

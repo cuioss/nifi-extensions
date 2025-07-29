@@ -32,7 +32,7 @@ test.describe("Self-Test: Critical Error Detection", () => {
 
         // Wait for page to be fully stable after authentication
         await page.waitForLoadState("networkidle");
-        
+
         // Now check for critical errors after authentication completes
         await checkForCriticalErrors(page, testInfo);
     });
