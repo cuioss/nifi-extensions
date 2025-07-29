@@ -10,7 +10,6 @@
  * @since 1.0.0
  */
 'use strict';
-import $ from 'cash-dom';
 import { API } from '../utils/constants.js';
 import { createXhrErrorObject } from '../utils/errorHandler.js';
 
@@ -93,7 +92,33 @@ const apiCall = (method, endpoint, data = null, includeAuth = true) => {
         config.contentType = 'application/json';
     }
 
-    return $.ajax(config);
+    // Cash-DOM doesn't have ajax, use fetch API instead
+    const fetchOptions = {
+        method: config.method || 'GET',
+        headers: config.headers || {},
+        credentials: 'same-origin'
+    };
+
+    if (config.data) {
+        fetchOptions.body = config.data;
+        if (config.contentType) {
+            fetchOptions.headers['Content-Type'] = config.contentType;
+        }
+    }
+
+    return fetch(config.url, fetchOptions)
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw createXhrErrorObject({
+                        status: response.status,
+                        statusText: response.statusText,
+                        responseText: text
+                    });
+                });
+            }
+            return response.json();
+        });
 };
 
 /**

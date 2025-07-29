@@ -22,7 +22,6 @@ import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonWriterFactory;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -56,7 +55,6 @@ import java.util.concurrent.atomic.AtomicLong;
  *   ]
  * }
  */
-@WebServlet("/nifi-api/processors/jwt/metrics")
 public class MetricsServlet extends HttpServlet {
 
     private static final CuiLogger LOGGER = new CuiLogger(MetricsServlet.class);

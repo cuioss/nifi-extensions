@@ -1315,5 +1315,4 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     }
 
-
 }

@@ -19,7 +19,6 @@ package de.cuioss.nifi.ui.servlets;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.*;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -47,11 +46,6 @@ import java.util.Map;
  * 
  * All methods use POST and expect JSON request bodies.
  */
-@WebServlet(urlPatterns = {
-        "/nifi-api/processors/jwt/validate-jwks-url",
-        "/nifi-api/processors/jwt/validate-jwks-file",
-        "/nifi-api/processors/jwt/validate-jwks-content"
-})
 public class JwksValidationServlet extends HttpServlet {
 
     private static final CuiLogger LOGGER = new CuiLogger(JwksValidationServlet.class);

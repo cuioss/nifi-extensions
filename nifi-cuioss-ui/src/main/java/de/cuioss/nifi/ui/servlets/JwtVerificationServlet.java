@@ -21,7 +21,6 @@ import de.cuioss.nifi.ui.service.JwtValidationService.TokenValidationResult;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.*;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -52,7 +51,6 @@ import java.util.Map;
  *   "claims": { ... token claims ... }
  * }
  */
-@WebServlet("/nifi-api/processors/jwt/verify-token")
 public class JwtVerificationServlet extends HttpServlet {
 
     private static final CuiLogger LOGGER = new CuiLogger(JwtVerificationServlet.class);
