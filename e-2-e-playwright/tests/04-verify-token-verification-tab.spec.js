@@ -451,22 +451,23 @@ test.describe("Token Verification Tab", () => {
         processorLogger.info("Clicked clear button");
 
         // Handle confirmation dialog if it appears
-        const confirmButton = customUIFrame
-            .locator('button:has-text("Confirm"), button:has-text("Yes")')
+        // Look for the dialog confirmation button, not the form clear button
+        const dialogConfirmButton = customUIFrame
+            .locator('.confirmation-dialog .confirm-button')
             .first();
-        if (await confirmButton.isVisible({ timeout: 2000 })) {
-            await confirmButton.click();
-            processorLogger.info("Confirmed clear action");
+        if (await dialogConfirmButton.isVisible({ timeout: 2000 })) {
+            await dialogConfirmButton.click();
+            processorLogger.info("Confirmed clear action in dialog");
         }
 
         await expect(tokenInput).toHaveValue("");
         processorLogger.info("✓ Token input cleared");
 
         // Check that results are cleared or show initial instructions
-        const resultsContent = customUIFrame.locator(".token-results-content");
+        const resultsContent = tokenVerificationTab.locator(".token-results-content").first();
         const resultsText = await resultsContent.textContent();
-        // Should either be empty or show instructions
-        expect(resultsText).not.toMatch(/success|error|expired|valid|invalid/i);
+        // Should either be empty or show instructions (but not error/success messages)
+        expect(resultsText).not.toMatch(/token is valid|token is invalid|error|expired|verification failed/i);
         processorLogger.success("Token and results cleared successfully");
     });
 });

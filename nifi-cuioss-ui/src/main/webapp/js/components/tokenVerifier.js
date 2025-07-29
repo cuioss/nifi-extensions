@@ -171,8 +171,13 @@ const _initializeTokenVerifier = async (element, callback) => {
         if (hasContent) {
             // Show confirmation for clearing form data
             await confirmClearForm(() => {
-                // Clear the token input
-                $tokenInput.val('');
+                // Clear the token input using native DOM API for better reliability
+                const inputElement = $tokenInput[0];
+                if (inputElement) {
+                    inputElement.value = '';
+                    // Trigger input event to ensure any listeners are notified
+                    inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+                }
 
                 // Clear results and show initial instructions
                 _showInitialInstructions($resultsContent, i18n);

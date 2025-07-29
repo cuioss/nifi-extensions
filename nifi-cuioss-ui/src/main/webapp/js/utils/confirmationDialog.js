@@ -59,7 +59,11 @@ export const showConfirmationDialog = (options) => {
         // Show dialog with animation
         requestAnimationFrame(() => {
             $dialog.addClass('show');
-            $dialog.find('.confirm-button').focus();
+            // Use native DOM API for focus since cash-dom doesn't have .focus()
+            const confirmButton = $dialog.find('.confirm-button')[0];
+            if (confirmButton) {
+                confirmButton.focus();
+            }
         });
     });
 };
@@ -165,14 +169,20 @@ const trapFocus = ($dialog) => {
                 // Shift + Tab
                 if (document.activeElement === firstElement[0]) {
                     e.preventDefault();
-                    lastElement.focus();
+                    // Use native DOM API for focus since cash-dom doesn't have .focus()
+                    if (lastElement[0]) {
+                        lastElement[0].focus();
+                    }
                 }
             } else {
                 // Tab - handle focus for last element or let default behavior work
                 const isLastElementActive = document.activeElement === lastElement[0];
                 if (isLastElementActive) {
                     e.preventDefault();
-                    firstElement.focus();
+                    // Use native DOM API for focus since cash-dom doesn't have .focus()
+                    if (firstElement[0]) {
+                        firstElement[0].focus();
+                    }
                 }
             }
         }
@@ -298,7 +308,9 @@ const _handleFocusTrapping = (e, firstElement, lastElement) => {
             // Shift + Tab
             if (document.activeElement === firstElement) {
                 e.preventDefault();
-                lastElement.focus();
+                if (lastElement) {
+                    lastElement.focus();
+                }
                 return true;
             }
         } else {
@@ -306,7 +318,9 @@ const _handleFocusTrapping = (e, firstElement, lastElement) => {
             const isLastElementActive = document.activeElement === lastElement;
             if (isLastElementActive) {
                 e.preventDefault();
-                firstElement.focus();
+                if (firstElement) {
+                    firstElement.focus();
+                }
                 return true;
             }
             // Return false to indicate focus was not trapped in this case
