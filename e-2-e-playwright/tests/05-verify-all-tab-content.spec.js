@@ -6,7 +6,6 @@ import {
     setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
 import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
-import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("Comprehensive JWT Tab Content Verification", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -41,7 +40,7 @@ test.describe("Comprehensive JWT Tab Content Verification", () => {
         // Checking Configuration tab content
         await processorService.clickTab(customUIFrame, "Configuration");
 
-        const configContent = await customUIFrame
+        const _configContent = await customUIFrame
             .locator("#issuer-config")
             .textContent();
         // Configuration tab content found

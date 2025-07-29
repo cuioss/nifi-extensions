@@ -7,6 +7,7 @@
 import { test, expect } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
+import { processorLogger } from "../utils/shared-logger.js";
 import {
     saveTestBrowserLogs,
     setupAuthAwareErrorDetection,
@@ -302,21 +303,17 @@ test.describe("JWKS Validation Button", () => {
         await expect(validateButton).toBeVisible({ timeout: 5000 });
         await validateButton.click();
 
-        // Check for progress indicators (optional, as they may be very brief)
-        try {
-            const progressIndicator = await uiContext
-                .locator('[class*="progress"], [class*="loading"]')
-                .first();
-            await expect(progressIndicator).toBeVisible({ timeout: 1000 });
-            // Progress indicator displayed
+        // Progress indicator must be displayed during validation
+        const progressIndicator = await uiContext
+            .locator('[class*="progress"], [class*="loading"]')
+            .first();
+        await expect(progressIndicator).toBeVisible({ timeout: 2000 });
+        processorLogger.info("Progress indicator displayed");
 
-            await expect(progressIndicator).not.toBeVisible({
-                timeout: 15000,
-            });
-            // Progress indicator disappeared after validation
-        } catch (error) {
-            // Progress indicator not found or too brief - this is acceptable
-        }
+        await expect(progressIndicator).not.toBeVisible({
+            timeout: 15000,
+        });
+        processorLogger.info("Progress indicator disappeared after validation");
 
         // Verify validation completed by checking for any result
         const anyResult = await uiContext

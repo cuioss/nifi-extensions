@@ -96,20 +96,44 @@ test.describe("Simple Tab Content Check", () => {
             expect(content).toBeTruthy();
             expect(html).toBeTruthy();
 
-            // Each tab should have substantial content
+            // Each tab must have substantial content - strict requirements
             const minContentLength = {
-                Configuration: 100,
-                "Token Verification": 100,
-                Metrics: 50,
-                Help: 200,
+                Configuration: 500, // Should have issuer form elements
+                "Token Verification": 300, // Should have verification form
+                Metrics: 200, // Should have metrics data
+                Help: 500, // Should have documentation
             };
 
-            const expectedLength = minContentLength[tab.name] || 100;
-            expect(content.length).toBeGreaterThan(expectedLength);
+            const expectedLength = minContentLength[tab.name];
+            expect(content.length).toBeGreaterThan(
+                expectedLength,
+                `${tab.name} tab content too short: ${content.length} chars, expected > ${expectedLength}`,
+            );
 
-            // Verify tab has proper HTML structure
-            expect(html).toMatch(/<[^>]+>/);
-            expect(html.length).toBeGreaterThan(expectedLength * 2);
+            // Verify tab has proper HTML structure with specific elements
+            expect(html).toMatch(/<[^>]+>/); // Has HTML tags
+            expect(html.length).toBeGreaterThan(
+                expectedLength * 3,
+                `${tab.name} tab HTML too short: ${html.length} chars`,
+            );
+
+            // Verify specific content per tab
+            switch (tab.name) {
+                case "Configuration":
+                    expect(html).toContain("button");
+                    expect(html).toContain("input");
+                    break;
+                case "Token Verification":
+                    expect(html).toContain("button");
+                    expect(html).toContain("textarea");
+                    break;
+                case "Metrics":
+                    expect(html).toContain("data-testid");
+                    break;
+                case "Help":
+                    expect(html).toContain("h");
+                    break;
+            }
 
             // Log success for debugging
             processorLogger.info(

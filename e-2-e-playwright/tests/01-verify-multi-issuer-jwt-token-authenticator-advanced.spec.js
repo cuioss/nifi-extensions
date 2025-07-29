@@ -98,19 +98,13 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
             },
         ];
 
-        let elementsFound = 0;
+        // Verify all required elements are present - no workarounds
         for (const element of advancedElements) {
-            try {
-                const el = customUIFrame.locator(element.selector);
-                if (await el.isVisible()) {
-                    elementsFound++;
-                    processorLogger.info(` Found: ${element.name}`);
-                } else {
-                    processorLogger.warn(` Not found: ${element.name}`);
-                }
-            } catch {
-                processorLogger.warn(` Error checking: ${element.name}`);
-            }
+            const el = customUIFrame.locator(element.selector);
+            await expect(el).toBeVisible({
+                timeout: 5000,
+            });
+            processorLogger.info(` ✓ Found: ${element.name}`);
         }
 
         // Take screenshot of advanced configuration
@@ -120,30 +114,25 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         });
         processorLogger.info("Screenshot of JWT advanced configuration saved");
 
-        // Fail the test if essential elements are missing
-        expect(elementsFound).toBeGreaterThanOrEqual(
-            advancedElements.length - 1,
-            `Expected at least ${advancedElements.length - 1} advanced configuration elements, but found only ${elementsFound}`,
-        );
+        // All elements verified - test will fail if any are missing
 
         // Test actual functionality - try to add an issuer
         const addIssuerButton = customUIFrame.locator(
             'button:has-text("Add Issuer")',
         );
-        if (await addIssuerButton.isVisible()) {
-            await addIssuerButton.click();
-            processorLogger.info("Successfully clicked Add Issuer button");
+        await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
+        await addIssuerButton.click();
+        processorLogger.info("Successfully clicked Add Issuer button");
 
-            // Verify form appears
-            const issuerNameInput = customUIFrame.locator(
-                'input[placeholder*="Issuer Name"]',
-            );
-            await expect(issuerNameInput).toBeVisible({ timeout: 5000 });
-            processorLogger.info("Add Issuer form appeared successfully");
-        }
+        // Verify form appears
+        const issuerNameInput = customUIFrame.locator(
+            'input[placeholder*="Issuer Name"]',
+        );
+        await expect(issuerNameInput).toBeVisible({ timeout: 5000 });
+        processorLogger.info("Add Issuer form appeared successfully");
 
         processorLogger.success(
-            `JWT UI advanced configuration verified with ${elementsFound}/${advancedElements.length} elements and functionality tested`,
+            "JWT UI advanced configuration verified with all required elements and functionality tested",
         );
     });
 });
