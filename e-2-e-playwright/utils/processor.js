@@ -348,15 +348,31 @@ export class ProcessorService {
   async getAdvancedUIFrame() {
     // Find the custom UI frame
     const frames = this.page.frames();
-    const customUIFrame = frames.find(f => 
+    
+    // Debug log all frames
+    processorLogger.info(`Found ${frames.length} frames on page`);
+    frames.forEach((frame, index) => {
+      processorLogger.info(`Frame ${index}: ${frame.url()}`);
+    });
+    
+    // Try multiple patterns to find the custom UI frame
+    // IMPORTANT: The custom UI is served from nifi-cuioss-ui-1.0-SNAPSHOT
+    let customUIFrame = frames.find(f => 
       f.url().includes("nifi-cuioss-ui")
     );
+    
+    // If not found, try the second frame (first is usually the main page)
+    if (!customUIFrame && frames.length > 1) {
+      customUIFrame = frames[1];
+      processorLogger.info(`Using second frame as fallback: ${customUIFrame.url()}`);
+    }
     
     if (!customUIFrame) {
       processorLogger.error("Could not find custom UI iframe");
       return null;
     }
     
+    processorLogger.info(`Found custom UI frame: ${customUIFrame.url()}`);
     return customUIFrame;
   }
 

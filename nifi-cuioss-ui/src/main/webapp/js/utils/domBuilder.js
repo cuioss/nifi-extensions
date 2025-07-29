@@ -37,7 +37,17 @@ export const createElement = (tag, options = {}) => {
     // Handle attributes
     if (options.attributes) {
         Object.entries(options.attributes).forEach(([key, value]) => {
-            element.setAttribute(key, value);
+            // Special handling for boolean attributes like disabled, checked, etc.
+            if (key === 'disabled' || key === 'checked' || key === 'readonly' || key === 'required') {
+                if (value === true || value === 'true') {
+                    element.setAttribute(key, '');
+                } else if (value === false || value === 'false') {
+                    // Don't set the attribute at all if it's false
+                    return;
+                }
+            } else {
+                element.setAttribute(key, value);
+            }
         });
     }
 

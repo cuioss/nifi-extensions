@@ -68,7 +68,8 @@ const _initializeTokenVerifier = async (element, callback) => {
         type: 'textarea',
         required: true,
         cssClass: 'token-verifier-field',
-        attributes: { rows: 5 }
+        attributes: { rows: 5 },
+        disabled: false  // Explicitly set disabled to false (not string "false")
     });
 
     // Create verify button using factory

@@ -368,9 +368,13 @@ export class FormFieldFactory {
             id: `field-${name}`,
             name: name,
             placeholder: placeholder,
-            disabled: disabled,
             ...additionalAttributes
         };
+
+        // Only add disabled attribute if it's true
+        if (disabled === true) {
+            baseAttributes.disabled = disabled;
+        }
 
         const inputElement = createElement(type === 'textarea' ? 'textarea' : 'input', {
             css: [`field-${name}`, 'form-input'],
