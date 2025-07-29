@@ -373,24 +373,43 @@ const _handleJwksValidationError = ($resultContainer, error, isAjaxError = true)
 };
 
 /**
- * Performs the JWKS URL validation via AJAX.
+ * Performs the JWKS URL validation via fetch API.
  * @param {string} jwksValue - The JWKS URL to validate
  * @param {object} $resultContainer - The result display container
  */
 const _performJwksValidation = (jwksValue, $resultContainer) => {
     try {
-        $.ajax({
+        // Use fetch API instead of $.ajax
+        return fetch(API.ENDPOINTS.JWKS_VALIDATE_URL, {
             method: 'POST',
-            url: API.ENDPOINTS.JWKS_VALIDATE_URL,
-            data: JSON.stringify({ jwksValue: jwksValue }),
-            contentType: 'application/json',
-            dataType: 'json',
-            timeout: API.TIMEOUTS.DEFAULT
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ jwksValue: jwksValue }),
+            credentials: 'same-origin'
         })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        error.status = response.status;
+                        error.statusText = response.statusText;
+                        error.responseText = text;
+                        try {
+                            error.responseJSON = JSON.parse(text);
+                        } catch (e) {
+                            // Not JSON, that's ok
+                        }
+                        throw error;
+                    });
+                }
+                return response.json();
+            })
             .then(responseData => _handleJwksValidationResponse($resultContainer, responseData))
-            .catch(jqXHR => _handleJwksValidationError($resultContainer, jqXHR, true));
+            .catch(error => _handleJwksValidationError($resultContainer, error, true));
     } catch (e) {
         _handleJwksValidationError($resultContainer, e, false);
+        return Promise.reject(e);
     }
 };
 

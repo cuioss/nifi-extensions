@@ -1786,29 +1786,22 @@ describe('issuerConfigEditor', function () { // Re-enabled tests
                 const jwksValue = 'https://test.com/jwks.json';
                 const mockResponseData = { valid: true, keyCount: 3 };
 
-                // Mock $.ajax to return successful response
-                const $ = require('cash-dom');
-                $.ajax = jest.fn().mockImplementation(() => ({
-                    then: (callback) => {
-                        callback(mockResponseData);
-                        return {
-                            catch: () => {
-                            }
-                        };
-                    },
-                    catch: () => {
-                    }
-                }));
+                // Mock fetch to return successful response
+                global.fetch = jest.fn().mockResolvedValue({
+                    ok: true,
+                    json: jest.fn().mockResolvedValue(mockResponseData)
+                });
 
-                issuerConfigEditor.__test_exports._performJwksValidation(jwksValue, mockResultContainer);
+                // Await the returned promise
+                await issuerConfigEditor.__test_exports._performJwksValidation(jwksValue, mockResultContainer);
 
-                expect($.ajax).toHaveBeenCalledWith({
+                expect(global.fetch).toHaveBeenCalledWith('../nifi-api/processors/jwks/validate-url', {
                     method: 'POST',
-                    url: '../nifi-api/processors/jwks/validate-url',
-                    data: JSON.stringify({ jwksValue: jwksValue }),
-                    contentType: 'application/json',
-                    dataType: 'json',
-                    timeout: 5000
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ jwksValue: jwksValue }),
+                    credentials: 'same-origin'
                 });
 
                 expect(mockResultContainer.html).toHaveBeenCalledWith(
@@ -1816,26 +1809,17 @@ describe('issuerConfigEditor', function () { // Re-enabled tests
                 );
             });
 
-            it('should perform JWKS validation with AJAX error', async () => {
+            it('should perform JWKS validation with fetch error', async () => {
                 global.getIsLocalhost.mockReturnValue(false);
                 const jwksValue = 'https://test.com/jwks.json';
-                const mockError = new Error('AJAX error');
+                const mockError = new Error('Fetch error');
                 displayUiError.mockClear();
 
-                // Mock $.ajax to return error
-                const $ = require('cash-dom');
-                $.ajax = jest.fn().mockImplementation(() => ({
-                    then: () => ({
-                        catch: (errorCallback) => {
-                            errorCallback(mockError);
-                        }
-                    }),
-                    catch: (errorCallback) => {
-                        errorCallback(mockError);
-                    }
-                }));
+                // Mock fetch to reject with error
+                global.fetch = jest.fn().mockRejectedValue(mockError);
 
-                issuerConfigEditor.__test_exports._performJwksValidation(jwksValue, mockResultContainer);
+                // Await the returned promise (should handle rejection internally)
+                await issuerConfigEditor.__test_exports._performJwksValidation(jwksValue, mockResultContainer);
 
                 expect(displayUiError).toHaveBeenCalledWith(
                     mockResultContainer,
@@ -1845,23 +1829,26 @@ describe('issuerConfigEditor', function () { // Re-enabled tests
                 );
             });
 
-            it('should perform JWKS validation with synchronous error', async () => {
+            it('should perform JWKS validation with HTTP error response', async () => {
                 global.getIsLocalhost.mockReturnValue(false);
                 const jwksValue = 'https://test.com/jwks.json';
-                const mockError = new Error('Synchronous error');
                 displayUiError.mockClear();
 
-                // Mock $.ajax to throw synchronous error
-                const $ = require('cash-dom');
-                $.ajax = jest.fn().mockImplementation(() => {
-                    throw mockError;
-                });
+                // Mock fetch to return HTTP error response
+                const mockResponse = {
+                    ok: false,
+                    status: 500,
+                    statusText: 'Internal Server Error',
+                    text: jest.fn().mockResolvedValue('Server Error')
+                };
+                global.fetch = jest.fn().mockResolvedValue(mockResponse);
 
-                issuerConfigEditor.__test_exports._performJwksValidation(jwksValue, mockResultContainer);
+                // Await the returned promise (should handle error internally)
+                await issuerConfigEditor.__test_exports._performJwksValidation(jwksValue, mockResultContainer);
 
                 expect(displayUiError).toHaveBeenCalledWith(
                     mockResultContainer,
-                    mockError,
+                    expect.any(Error),
                     mockI18n,
                     'processor.jwt.validationError'
                 );
