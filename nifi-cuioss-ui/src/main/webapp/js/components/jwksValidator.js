@@ -4,7 +4,6 @@
 import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
-import { getIsLocalhost, setIsLocalhostForTesting } from '../utils/constants.js';
 import { validateJwksUrl } from '../services/apiClient.js';
 
 /**
@@ -133,34 +132,14 @@ const _handleAjaxSuccess = (responseData, $resultContainer, i18n) => {
 
 // Private function to handle AJAX error response
 const _handleAjaxError = (jqXHR, $resultContainer, i18n) => {
-    if (getIsLocalhost()) {
-        $resultContainer.html(`
-            <span style="color: var(--success-color); font-weight: bold;">
-                ${i18n['processor.jwt.ok'] || 'OK'}
-            </span>
-            ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'}
-            (3 ${i18n['processor.jwt.keysFound'] || 'keys found'})
-            <em>(Simulated response)</em>
-        `);
-    } else {
-        displayUiError($resultContainer, jqXHR, i18n);
-    }
+    // Always display the actual error (no localhost simulation)
+    displayUiError($resultContainer, jqXHR, i18n);
 };
 
 // Private function to handle synchronous errors during AJAX setup or other issues
 const _handleSynchronousError = (exception, $resultContainer, i18n) => {
-    if (getIsLocalhost()) {
-        $resultContainer.html(`
-            <span style="color: var(--success-color); font-weight: bold;">
-                ${i18n['processor.jwt.ok'] || 'OK'}
-            </span>
-            ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'}
-            (3 ${i18n['processor.jwt.keysFound'] || 'keys found'})
-            <em>(Simulated response)</em>
-        `);
-    } else {
-        displayUiError($resultContainer, exception, i18n);
-    }
+    // Always display the actual error (no localhost simulation)
+    displayUiError($resultContainer, exception, i18n);
 };
 
 /**
@@ -168,11 +147,5 @@ const _handleSynchronousError = (exception, $resultContainer, i18n) => {
  * Removes event listeners and cleans up resources.
  */
 export const cleanup = () => {
-    // Reset localhost override for testing
-    setIsLocalhostForTesting(null);
-};
-
-// Function for testing purposes only to control the isLocalhost behavior
-export const __setIsLocalhostForTesting = function (value) {
-    setIsLocalhostForTesting(value);
+    // Cleanup any event listeners or resources
 };

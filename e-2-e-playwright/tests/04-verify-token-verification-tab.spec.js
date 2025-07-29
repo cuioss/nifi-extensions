@@ -206,7 +206,7 @@ test.describe("Token Verification Tab", () => {
             .first();
         // Try to fill token input (may be initially disabled)
         try {
-            await tokenInput.fill(CONSTANTS.TEST_TOKENS.INVALID, {
+            await tokenInput.fill(CONSTANTS.TEST_TOKENS.MALFORMED, {
                 timeout: 2000,
             });
         } catch (error) {
@@ -216,12 +216,12 @@ test.describe("Token Verification Tab", () => {
                     input.removeAttribute("disabled");
                     input.disabled = false;
                 });
-                await tokenInput.fill(CONSTANTS.TEST_TOKENS.INVALID);
+                await tokenInput.fill(CONSTANTS.TEST_TOKENS.MALFORMED);
             } else {
                 throw error;
             }
         }
-        processorLogger.info("Entered invalid JWT token");
+        processorLogger.info("Entered malformed JWT token");
 
         const verifyButton = tokenVerificationTab
             .locator(".verify-token-button")
@@ -243,6 +243,21 @@ test.describe("Token Verification Tab", () => {
             }
         }
         processorLogger.info("Clicked verify button");
+
+        // Capture console logs for debugging
+        const consoleLogs = [];
+        page.on("console", (msg) => {
+            // Capture ALL console messages for debugging
+            const text = msg.text();
+            console.log("Browser console:", text);
+            consoleLogs.push(text);
+        });
+
+        // Wait a bit for the verification to complete
+        await page.waitForTimeout(2000);
+
+        // Print captured console logs
+        processorLogger.info("Console logs captured:", consoleLogs.join(", "));
 
         // Look for error display using the correct CSS classes
         const errorResult = customUIFrame
@@ -432,15 +447,15 @@ test.describe("Token Verification Tab", () => {
             .locator('button:has-text("Clear"), .clear-token-button')
             .first();
         await expect(clearButton).toBeVisible({ timeout: 5000 });
-        
+
         // Try to click the clear button (may be initially disabled)
         try {
             await clearButton.click({ timeout: 2000 });
         } catch (error) {
-            if (error.message.includes('disabled')) {
+            if (error.message.includes("disabled")) {
                 // Force enable the button first
-                await clearButton.evaluate(button => {
-                    button.removeAttribute('disabled');
+                await clearButton.evaluate((button) => {
+                    button.removeAttribute("disabled");
                     button.disabled = false;
                 });
                 await clearButton.click();
@@ -453,7 +468,7 @@ test.describe("Token Verification Tab", () => {
         // Handle confirmation dialog if it appears
         // Look for the dialog confirmation button, not the form clear button
         const dialogConfirmButton = customUIFrame
-            .locator('.confirmation-dialog .confirm-button')
+            .locator(".confirmation-dialog .confirm-button")
             .first();
         if (await dialogConfirmButton.isVisible({ timeout: 2000 })) {
             await dialogConfirmButton.click();
@@ -464,10 +479,14 @@ test.describe("Token Verification Tab", () => {
         processorLogger.info("✓ Token input cleared");
 
         // Check that results are cleared or show initial instructions
-        const resultsContent = tokenVerificationTab.locator(".token-results-content").first();
+        const resultsContent = tokenVerificationTab
+            .locator(".token-results-content")
+            .first();
         const resultsText = await resultsContent.textContent();
         // Should either be empty or show instructions (but not error/success messages)
-        expect(resultsText).not.toMatch(/token is valid|token is invalid|error|expired|verification failed/i);
+        expect(resultsText).not.toMatch(
+            /token is valid|token is invalid|error|expired|verification failed/i,
+        );
         processorLogger.success("Token and results cleared successfully");
     });
 });

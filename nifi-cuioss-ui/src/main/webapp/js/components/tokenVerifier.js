@@ -7,7 +7,7 @@ import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
 import { confirmClearForm } from '../utils/confirmationDialog.js';
-import { CSS, getIsLocalhost, setIsLocalhostForTesting } from '../utils/constants.js';
+import { CSS } from '../utils/constants.js';
 import { FormFieldFactory } from '../utils/formBuilder.js';
 import { verifyToken } from '../services/apiClient.js';
 
@@ -162,7 +162,8 @@ const _initializeTokenVerifier = async (element, callback) => {
                 });
         } catch (e) {
             resetButton();
-            _handleTokenVerificationSyncException(e, $resultsContent, i18n, _displayValidToken, _displayInvalidToken, token);
+            _handleTokenVerificationSyncException(
+                e, $resultsContent, i18n, _displayValidToken, _displayInvalidToken, token);
         }
     });
 
@@ -291,27 +292,11 @@ const _handleTokenVerificationResponse = (
     i18n,
     displayValidTokenFunc,
     displayInvalidTokenFunc,
-    originalToken = ''
+    originalToken = '' // eslint-disable-line no-unused-vars
 ) => {
     console.debug('_handleTokenVerificationResponse called with:', responseData);
-    
-    // In localhost mode, override the response based on token validation
-    if (getIsLocalhost() && originalToken) {
-        console.debug('Localhost mode detected, performing local token validation for:', originalToken);
-        const localValidationResult = _createSampleTokenResponse(originalToken);
-        console.debug('Local validation result:', localValidationResult);
-        
-        if (localValidationResult.valid) {
-            console.debug('Local validation: valid token, calling displayValidTokenFunc');
-            displayValidTokenFunc(localValidationResult, true); // isSimulated is true for localhost
-        } else {
-            console.debug('Local validation: invalid token, calling displayInvalidTokenFunc');
-            displayInvalidTokenFunc(localValidationResult, $resultsContent, i18n);
-        }
-        return;
-    }
-    
-    // Normal production path
+
+    // Always use the actual API response (no localhost simulation)
     if (responseData.valid) {
         console.debug('Response indicates valid token, calling displayValidTokenFunc');
         displayValidTokenFunc(responseData, false); // isSimulated is false for actual responses
@@ -370,67 +355,9 @@ const _sanitizeErrorMessage = (errorMessage, i18n) => {
     return errorMessage || (i18n['processor.jwt.unknownError'] || 'Unknown error');
 };
 
-/**
- * Creates a sample token response for localhost simulation.
- * @param {string} token - The token being verified (used to determine response type)
- * @returns {object} Sample token verification response
- */
-const _createSampleTokenResponse = (token = '') => {
-    // Basic token validation for localhost simulation
-    const trimmedToken = token.trim();
-    
-    // Check for obviously invalid tokens
-    if (!trimmedToken || 
-        trimmedToken === 'invalid.jwt.token' || 
-        trimmedToken === 'not-even-close-to-jwt' ||
-        !trimmedToken.includes('.')) {
-        // Return invalid response for clearly bad tokens
-        return {
-            valid: false,
-            error: 'Invalid JWT token format',
-            message: 'Token validation failed: Invalid token format'
-        };
-    }
-    
-    // Check for expired token (basic check based on token content)
-    if (trimmedToken.includes('eyJleHAiOjE1MTYyMzkwMjJ9') || 
-        trimmedToken.toLowerCase().includes('expired')) {
-        // Return expired response
-        return {
-            valid: false,
-            error: 'Token has expired',
-            message: 'Token validation failed: Token has expired',
-            expired: true
-        };
-    }
-    
-    // Valid token response for properly formatted tokens
-    const expirationDate = new Date(Date.now() + 3600000).toISOString();
-
-    return {
-        valid: true,
-        subject: 'user123',
-        issuer: 'https://sample-issuer.example.com',
-        audience: 'sample-audience',
-        expiration: expirationDate,
-        roles: ['admin', 'user'],
-        scopes: ['read', 'write'],
-        claims: {
-            sub: 'user123',
-            iss: 'https://sample-issuer.example.com',
-            aud: 'sample-audience',
-            exp: Math.floor(Date.now() / 1000) + 3600,
-            iat: Math.floor(Date.now() / 1000),
-            roles: ['admin', 'user'],
-            scope: 'read write',
-            name: 'John Doe',
-            email: 'john.doe@example.com'
-        }
-    };
-};
 
 /**
- * Handles AJAX errors during token verification, with localhost simulation support.
+ * Handles AJAX errors during token verification.
  * @param {object} jqXHR - The jQuery XHR error object
  * @param {object} $resultsContent - Results display container
  * @param {object} i18n - Internationalization object
@@ -444,25 +371,13 @@ const _handleTokenVerificationAjaxError = (jqXHR, $resultsContent, i18n, display
     // eslint-disable-next-line no-console
     console.debug('Extracted error message:', errorMessage);
     console.debug('_handleTokenVerificationAjaxError called with token:', token);
-    console.debug('getIsLocalhost():', getIsLocalhost());
 
-    if (getIsLocalhost()) {
-        const sampleResponse = _createSampleTokenResponse(token);
-        console.debug('Sample response for token:', token, '=', sampleResponse);
-        if (sampleResponse.valid) {
-            displayValidTokenFunc(sampleResponse, true); // isSimulated is true
-        } else {
-            // Display error for invalid tokens in localhost mode
-            console.debug('Displaying invalid token response');
-            displayInvalidTokenFunc(sampleResponse, $resultsContent, i18n);
-        }
-    } else {
-        displayUiError($resultsContent, jqXHR, i18n, 'processor.jwt.verificationError');
-    }
+    // Always display the actual error (no localhost simulation)
+    displayUiError($resultsContent, jqXHR, i18n, 'processor.jwt.verificationError');
 };
 
 /**
- * Handles synchronous exceptions during token verification, with localhost simulation support.
+ * Handles synchronous exceptions during token verification.
  * @param {Error} exception - The exception object
  * @param {object} $resultsContent - Results display container
  * @param {object} i18n - Internationalization object
@@ -476,24 +391,15 @@ const _handleTokenVerificationSyncException = (
     i18n,
     displayValidTokenFunc,
     displayInvalidTokenFunc,
-    token = ''
+    token = '' // eslint-disable-line no-unused-vars
 ) => {
     // Sanitize exception message for potential future use
     const sanitizedMessage = _sanitizeErrorMessage(exception.message, i18n);
     // eslint-disable-next-line no-console
     console.debug('Sanitized error message:', sanitizedMessage);
 
-    if (getIsLocalhost()) {
-        const sampleResponse = _createSampleTokenResponse(token);
-        if (sampleResponse.valid) {
-            displayValidTokenFunc(sampleResponse, true); // isSimulated is true
-        } else {
-            // Display error for invalid tokens in localhost mode
-            displayInvalidTokenFunc(sampleResponse, $resultsContent, i18n);
-        }
-    } else {
-        displayUiError($resultsContent, exception, i18n, 'processor.jwt.verificationError');
-    }
+    // Always display the actual error (no localhost simulation)
+    displayUiError($resultsContent, exception, i18n, 'processor.jwt.verificationError');
 };
 
 
@@ -502,12 +408,11 @@ const _handleTokenVerificationSyncException = (
  * Removes event listeners and cleans up resources.
  */
 export const cleanup = () => {
-    // Reset localhost override for testing
-    setIsLocalhostForTesting(null);
-};
-
-export const __setIsLocalhostForTesting = function (value) {
-    setIsLocalhostForTesting(value);
+    // Cleanup any timeouts
+    if (typeof window._tokenVerifierTimeouts !== 'undefined') {
+        window._tokenVerifierTimeouts.forEach(timeout => clearTimeout(timeout));
+        window._tokenVerifierTimeouts = [];
+    }
 };
 
 /**
@@ -620,7 +525,6 @@ export const __test = {
     handleTokenVerificationResponse: _handleTokenVerificationResponse,
     extractErrorMessageFromXHR: _extractErrorMessageFromXHR,
     sanitizeErrorMessage: _sanitizeErrorMessage,
-    createSampleTokenResponse: _createSampleTokenResponse,
     handleTokenVerificationAjaxError: _handleTokenVerificationAjaxError,
     handleTokenVerificationSyncException: _handleTokenVerificationSyncException,
     handleVerifyButtonClick: _handleVerifyButtonClick,

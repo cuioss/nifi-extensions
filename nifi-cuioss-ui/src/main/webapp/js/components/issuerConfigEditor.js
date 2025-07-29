@@ -19,7 +19,7 @@ import { getI18n } from 'nf.Common';
 import * as apiClient from '../services/apiClient.js';
 import { displayUiError, displayUiSuccess } from '../utils/uiErrorDisplay.js';
 import { confirmRemoveIssuer } from '../utils/confirmationDialog.js';
-import { API, COMPONENTS, getIsLocalhost } from '../utils/constants.js';
+import { API, COMPONENTS } from '../utils/constants.js';
 import { validateIssuerConfig, validateProcessorIdFromUrl } from '../utils/validation.js';
 import { FormFieldBuilder } from '../utils/formBuilder.js';
 import { ComponentLifecycle } from '../utils/componentCleanup.js';
@@ -361,15 +361,9 @@ const _handleJwksValidationResponse = ($resultContainer, responseData) => {
  * @param {object} error - The error object
  * @param {boolean} isAjaxError - Whether this is an AJAX error vs synchronous error
  */
-const _handleJwksValidationError = ($resultContainer, error, isAjaxError = true) => {
-    if (getIsLocalhost()) {
-        const simulatedMessage = isAjaxError
-            ? _createJwksSuccessMessage(3, true)
-            : _createJwksSuccessMessage(3, true) + ' <em>(Simulated error path response)</em>';
-        $resultContainer.html(simulatedMessage);
-    } else {
-        displayUiError($resultContainer, error, i18n, 'processor.jwt.validationError');
-    }
+const _handleJwksValidationError = ($resultContainer, error) => {
+    // Always display the actual error (no localhost simulation)
+    displayUiError($resultContainer, error, i18n, 'processor.jwt.validationError');
 };
 
 /**

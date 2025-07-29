@@ -364,5 +364,3 @@ export const validateIssuerConfig = (formData) => {
     };
 };
 
-// Environment detection moved to centralized utility in constants.js
-// Use getIsLocalhost() from '../utils/constants.js' instead

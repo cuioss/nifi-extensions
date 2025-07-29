@@ -31,12 +31,12 @@ const getAuthConfig = () => {
 
     // Otherwise try to get from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
-    const processorId = urlParams.get('processorId');
+    const processorId = urlParams.get('id') || urlParams.get('processorId');  // NiFi uses 'id' parameter
     const apiKey = urlParams.get('apiKey');
 
-    if (processorId && apiKey) {
-        // Store for future use
-        window.jwtAuthConfig = { processorId, apiKey };
+    if (processorId) {
+        // Store for future use (apiKey is optional)
+        window.jwtAuthConfig = { processorId, apiKey: apiKey || '' };
         return window.jwtAuthConfig;
     }
 
@@ -251,6 +251,8 @@ export const validateJwksContent = (jwksContent) => {
  * }
  */
 export const verifyToken = (token) => {
+    // Normal production path - make actual API call
+    // Note: localhost simulation is handled by the tokenVerifier component
     return apiCall('POST', `${BASE_URL}/verify-token`, { token })
         .catch(error => { throw createXhrErrorObject(error); });
 };
