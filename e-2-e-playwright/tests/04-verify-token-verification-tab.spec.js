@@ -246,7 +246,7 @@ test.describe("Token Verification Tab", () => {
 
         // Look for error display using the correct CSS classes
         const errorResult = customUIFrame
-            .locator(".token-error, .error-container")
+            .locator(".token-error, .error-container, .error-message")
             .first();
         await expect(errorResult).toBeVisible({ timeout: 10000 });
         processorLogger.info("✓ Error result displayed");
@@ -333,7 +333,7 @@ test.describe("Token Verification Tab", () => {
         // Look for error or warning about expiration
         const expirationMessage = customUIFrame
             .locator(
-                ".token-error, .error-container, .warning-message, .token-invalid",
+                ".token-error, .error-container, .warning-message, .token-invalid, .error-message",
             )
             .first();
         await expect(expirationMessage).toBeVisible({ timeout: 10000 });
