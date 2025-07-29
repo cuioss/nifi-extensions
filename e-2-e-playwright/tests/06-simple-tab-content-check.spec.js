@@ -1,7 +1,7 @@
-/* eslint-disable no-console */
 import { test, expect } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
+import { processorLogger } from "../utils/shared-logger.js";
 import {
     setupAuthAwareErrorDetection,
     saveTestBrowserLogs,
@@ -18,7 +18,7 @@ test.describe("Simple Tab Content Check", () => {
             try {
                 await saveTestBrowserLogs(testInfo);
             } catch (logError) {
-                console.log(
+                processorLogger.warn(
                     `Failed to save console logs during beforeEach error: ${logError.message}`,
                 );
             }
@@ -30,7 +30,7 @@ test.describe("Simple Tab Content Check", () => {
         try {
             await saveTestBrowserLogs(testInfo);
         } catch (error) {
-            console.log(
+            processorLogger.warn(
                 `Failed to save console logs in afterEach: ${error.message}`,
             );
         }
@@ -38,7 +38,7 @@ test.describe("Simple Tab Content Check", () => {
     });
 
     test("check all tab content", async ({ page }, testInfo) => {
-        console.log("Starting simple tab content check");
+        processorLogger.info("Starting simple tab content check");
 
         const processorService = new ProcessorService(page, testInfo);
 
@@ -74,42 +74,47 @@ test.describe("Simple Tab Content Check", () => {
         ];
 
         for (const tab of tabs) {
-            console.log(`\n=== Checking ${tab.name} tab ===`);
+            processorLogger.info(`Checking ${tab.name} tab`);
 
             // Click the tab using ProcessorService
             await processorService.clickTab(customUIFrame, tab.name);
-            await page.waitForTimeout(1000);
+
+            // Wait for tab content to be visible
+            await expect(customUIFrame.locator(tab.pane)).toBeVisible({
+                timeout: 5000,
+            });
 
             // Get content from iframe context
             const content = await customUIFrame.locator(tab.pane).textContent();
             const html = await customUIFrame.locator(tab.pane).innerHTML();
 
-            console.log(
-                `${tab.name} content length: ${content?.length || 0} chars`,
+            processorLogger.debug(
+                `${tab.name} content length: ${content?.length || 0} chars, HTML length: ${html?.length || 0} chars`,
             );
-            console.log(`${tab.name} HTML length: ${html?.length || 0} chars`);
 
             // Assert that tab content meets minimum requirements
             expect(content).toBeTruthy();
-            expect(content.length).toBeGreaterThan(10);
             expect(html).toBeTruthy();
-            expect(html.length).toBeGreaterThan(20);
 
-            if (!content || content.length < 50) {
-                console.log(
-                    `${tab.name} appears empty! Content: "${content || "null"}"`,
-                );
-                console.log(
-                    `${tab.name} HTML preview: ${html?.substring(0, 200) || "null"}`,
-                );
-                throw new Error(
-                    `${tab.name} tab has insufficient content (${content?.length || 0} chars)`,
-                );
-            } else {
-                console.log(
-                    `${tab.name} has content: ${content.substring(0, 100)}...`,
-                );
-            }
+            // Each tab should have substantial content
+            const minContentLength = {
+                Configuration: 100,
+                "Token Verification": 100,
+                Metrics: 50,
+                Help: 200,
+            };
+
+            const expectedLength = minContentLength[tab.name] || 100;
+            expect(content.length).toBeGreaterThan(expectedLength);
+
+            // Verify tab has proper HTML structure
+            expect(html).toMatch(/<[^>]+>/);
+            expect(html.length).toBeGreaterThan(expectedLength * 2);
+
+            // Log success for debugging
+            processorLogger.info(
+                `✓ ${tab.name} tab has sufficient content (${content.length} chars)`,
+            );
 
             // Take screenshot
             await page.screenshot({

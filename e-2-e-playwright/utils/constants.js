@@ -114,6 +114,16 @@ export const PROCESSOR_TYPES = {
 };
 
 /**
+ * Test JWT tokens for verification tests
+ */
+export const TEST_TOKENS = {
+  VALID: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.POstGetfAytaZS82wHcjoTyoqhMyxXiWdR7Nn7A29DNSl0EiXLdwJ6xC6AfgZWF1bOsS_TuYI3OG85AmiExREkrS6tDfTQ2B3WXlrr-wp5AokiRbz3_oB4OxG-W9KcEEbDRcZc0nH3L7LzYptiy1PtAylQGxHTWZXtGz4ht0bAecBgmpdgXMguEIcoqPJ1n3pIWk_dUZegpqx0Lka21H6XxUTxiy8OcaarA8zdnPUnV6AmNP3ecFawIFYdvJB_cm-GvpCSbr8G8y_Mllj8f4x9nBH8pQux89_6gUY618iYv7tuPWBFfEbLxtF2pZS6YC1aSfLQxeNe8djT9YjpvRZA',
+  EXPIRED: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.4Adcj3UFYzPUVaVF43FmMab6RlaQD8A9V8wFzzht-KQ',
+  INVALID: 'invalid.jwt.token',
+  MALFORMED: 'not-even-close-to-jwt'
+};
+
+/**
  * Error patterns for console monitoring
  */
 export const ERROR_PATTERNS = {
@@ -144,5 +154,6 @@ export const CONSTANTS = {
   SELECTORS,
   PAGE_DEFINITIONS,
   PROCESSOR_TYPES,
-  ERROR_PATTERNS
+  ERROR_PATTERNS,
+  TEST_TOKENS
 };
