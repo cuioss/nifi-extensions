@@ -52,9 +52,9 @@ test.describe("Comprehensive JWT Tab Content Verification", () => {
                 return (
                     el.innerHTML.trim().length > 0 &&
                     !el.innerHTML.includes("Loading") &&
-                    (el.querySelector("form") ||
-                        el.querySelector("input") ||
-                        el.querySelector(".config-content"))
+                    (el.querySelector("form") !== null ||
+                        el.querySelector("input") !== null ||
+                        el.querySelector(".config-content") !== null)
                 );
             });
 
@@ -78,9 +78,9 @@ test.describe("Comprehensive JWT Tab Content Verification", () => {
                 return (
                     el.innerHTML.trim().length > 0 &&
                     !el.innerHTML.includes("Loading") &&
-                    (el.querySelector("textarea") ||
-                        el.querySelector("button") ||
-                        el.querySelector(".verification-content"))
+                    (el.querySelector("textarea") !== null ||
+                        el.querySelector("button") !== null ||
+                        el.querySelector(".verification-content") !== null)
                 );
             });
 

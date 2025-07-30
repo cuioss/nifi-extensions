@@ -20,9 +20,8 @@
  *
  * @example
  * // Using API endpoints
- * $.ajax({
- *   url: API.ENDPOINTS.JWT_VERIFY_TOKEN,
- *   timeout: API.TIMEOUTS.DEFAULT
+ * fetch(API.ENDPOINTS.JWT_VERIFY_TOKEN, {
+ *   signal: AbortSignal.timeout(API.TIMEOUTS.DEFAULT)
  * });
  */
 export const API = {

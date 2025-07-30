@@ -14,7 +14,7 @@ export default defineConfig({
             // Library name (global variable name when included as script)
             name: 'nifiCuiossUI',
             // Output file name
-            fileName: 'bundle.vite',
+            fileName: 'bundle',
             // Format: UMD for compatibility with existing NiFi infrastructure
             formats: ['umd']
         },

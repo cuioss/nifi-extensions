@@ -3,7 +3,6 @@
 /**
  * Token Verification Interface UI component.
  */
-import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
 import { confirmClearForm } from '../utils/confirmationDialog.js';
@@ -54,10 +53,12 @@ const _initializeTokenVerifier = async (element, callback) => {
     const formFactory = new FormFieldFactory({ i18n });
 
     // Create UI elements
-    const $container = $(`<div class="${CSS.TOKEN_VERIFIER.CONTAINER}"></div>`);
+    const container = document.createElement('div');
+    container.className = CSS.TOKEN_VERIFIER.CONTAINER;
 
     // Create token input area using factory pattern
-    const $inputSection = $(`<div class="${CSS.TOKEN_VERIFIER.INPUT_SECTION}"></div>`);
+    const inputSection = document.createElement('div');
+    inputSection.className = CSS.TOKEN_VERIFIER.INPUT_SECTION;
 
     // Create token input field using the factory
     const tokenField = formFactory.createField({
@@ -73,461 +74,202 @@ const _initializeTokenVerifier = async (element, callback) => {
     });
 
     // Create verify button using factory
-    const $verifyButton = $(formFactory.createButton({
+    const verifyButton = formFactory.createButton({
         text: i18n['processor.jwt.verifyToken'] || 'Verify Token',
         variant: 'primary',
         cssClass: CSS.TOKEN_VERIFIER.VERIFY_BUTTON,
         icon: 'fa-check'
         // No onClick handler - will be attached separately for compatibility
-    }));
+    });
 
     // Create clear button
-    const $clearButton = $(formFactory.createButton({
+    const clearButton = formFactory.createButton({
         text: 'Clear',
         variant: 'secondary',
         cssClass: 'clear-token-button',
         icon: 'fa-trash'
-    }));
+    });
 
     // Create button container
-    const $buttonContainer = $('<div class="button-container"></div>');
-    $buttonContainer.append($verifyButton[0]).append($clearButton[0]);
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'button-container';
+    buttonContainer.appendChild(verifyButton);
+    buttonContainer.appendChild(clearButton);
 
-    $inputSection.append(tokenField).append($buttonContainer[0]);
+    inputSection.appendChild(tokenField);
+    inputSection.appendChild(buttonContainer);
 
     // Create results area
-    const $resultsSection = $(`<div class="${CSS.TOKEN_VERIFIER.RESULTS_SECTION}"></div>`);
-    const $resultsHeader = $('<h3></h3>')
-        .text(i18n['processor.jwt.verificationResults'] || 'Verification Results');
-    const $resultsContent = $(`<div class="${CSS.TOKEN_VERIFIER.RESULTS_CONTENT}"></div>`);
+    const resultsSection = document.createElement('div');
+    resultsSection.className = CSS.TOKEN_VERIFIER.RESULTS_SECTION;
 
-    $resultsSection.append($resultsHeader).append($resultsContent);
+    const resultsHeader = document.createElement('h3');
+    resultsHeader.textContent = i18n['processor.jwt.verificationResults'] || 'Verification Results';
 
-    // Add sections to container
-    $container.append($inputSection).append($resultsSection);
+    const resultsContent = document.createElement('div');
+    resultsContent.className = CSS.TOKEN_VERIFIER.RESULTS_CONTENT;
 
-    // Add container to element
-    $(element).append($container); // element is the parent div provided by NiFi
+    resultsSection.appendChild(resultsHeader);
+    resultsSection.appendChild(resultsContent);
 
-    // Handle verify button click
-    $verifyButton.on('click', () => {
-        // Get token value from the factory-created field
-        const $tokenInput = $(tokenField).find('#field-token-input');
-        const token = $tokenInput.val().trim();
+    container.appendChild(inputSection);
+    container.appendChild(resultsSection);
+
+    element.appendChild(container);
+
+    // Attach event handlers after adding to DOM
+    verifyButton.addEventListener('click', async () => {
+        const tokenInput = tokenField.querySelector('#field-token-input');
+        const token = tokenInput ? tokenInput.value.trim() : '';
 
         if (!token) {
-            $resultsContent.html(`<div class="${CSS.TOKEN_VERIFIER.TOKEN_ERROR}">${i18n['processor.jwt.noTokenProvided'] || 'No token provided'}</div>`);
+            displayUiError(resultsContent, null, i18n, 'processor.jwt.noTokenProvided');
             return;
         }
 
-        // Add loading state to button
-        $verifyButton.addClass('loading').prop('disabled', true);
-        _resetUIAndShowLoading($resultsContent, i18n);
+        // Clear previous results
+        resultsContent.innerHTML = `<div class="verifying">${i18n['processor.jwt.verifying'] || 'Verifying token...'}</div>`;
 
-        const resetButton = () => {
-            $verifyButton.removeClass('loading').prop('disabled', false);
-        };
-
-        console.debug('Starting token verification for token:', token);
         try {
-            verifyToken(token)
-                .then(responseData => {
-                    console.debug('verifyToken API call succeeded with response:', responseData);
-                    resetButton();
-                    _handleTokenVerificationResponse(
-                        responseData,
-                        $resultsContent,
-                        i18n,
-                        _displayValidToken,
-                        _displayInvalidToken,
-                        token
-                    );
-                })
-                .catch(error => {
-                    resetButton();
-                    // Convert error to jqXHR-like object for compatibility
-                    const jqXHRLike = error.jqXHR || {
-                        status: error.status || 500,
-                        statusText: error.statusText || 'Error',
-                        responseJSON: error.responseJSON || { error: error.message || 'Unknown error' }
-                    };
-                    _handleTokenVerificationAjaxError(
-                        jqXHRLike,
-                        $resultsContent,
-                        i18n,
-                        _displayValidToken,
-                        _displayInvalidToken,
-                        token
-                    );
-                });
-        } catch (e) {
-            resetButton();
-            _handleTokenVerificationSyncException(
-                e, $resultsContent, i18n, _displayValidToken, _displayInvalidToken, token);
+            const result = await verifyToken(token);
+            _displayVerificationResults(result, resultsContent, i18n);
+        } catch (error) {
+            const jqXHRLike = error.jqXHR || {
+                status: error.status || 500,
+                statusText: error.statusText || 'Error',
+                responseJSON: error.responseJSON || { error: error.message || 'Unknown error' }
+            };
+            displayUiError(resultsContent, jqXHRLike, i18n);
         }
     });
 
-    // Handle clear button click
-    $clearButton.on('click', async () => {
-        const $tokenInput = $(tokenField).find('#field-token-input');
-        const tokenValue = $tokenInput.val() ? $tokenInput.val().trim() : '';
-        const resultsHtml = $resultsContent.html() || '';
-        const hasContent = tokenValue || (typeof resultsHtml === 'string' && resultsHtml.trim().length > 0);
-
-        if (hasContent) {
-            // Show confirmation for clearing form data
-            await confirmClearForm(() => {
-                // Clear the token input using native DOM API for better reliability
-                const inputElement = $tokenInput[0];
-                if (inputElement) {
-                    inputElement.value = '';
-                    // Trigger input event to ensure any listeners are notified
-                    inputElement.dispatchEvent(new Event('input', { bubbles: true }));
-                }
-
-                // Clear results and show initial instructions
-                _showInitialInstructions($resultsContent, i18n);
-            });
-        } else {
-            // Nothing to clear, just show a brief message and then instructions
-            $resultsContent.html('<div class="info-message">Form is already empty.</div>');
-            const showInstructionsTimeout = setTimeout(() => {
-                _showInitialInstructions($resultsContent, i18n);
-            }, 2000);
-
-            // Store timeout reference for potential cleanup
-            if (typeof window._tokenVerifierTimeouts === 'undefined') {
-                window._tokenVerifierTimeouts = [];
+    clearButton.addEventListener('click', () => {
+        confirmClearForm(() => {
+            const tokenInput = tokenField.querySelector('#field-token-input');
+            if (tokenInput) {
+                tokenInput.value = '';
             }
-            window._tokenVerifierTimeouts.push(showInstructionsTimeout);
-        }
+            resultsContent.innerHTML = '';
+        });
     });
 
-    // Function to display valid token details (now private)
-    const _displayValidToken = (response, isSimulated) => {
-        const html = _createValidTokenHtml(response, isSimulated, i18n, CSS);
-        $resultsContent.html(html);
-    };
-
-    // Function to display invalid token details (now private)
-    const _displayInvalidToken = (response, $resultsContentFromCaller, i18nFromCaller) => {
-        // Ensure we're using the passed $resultsContent and i18n if available,
-        // otherwise fallback to the ones in the broader scope (though less ideal)
-        const $targetContent = $resultsContentFromCaller || $resultsContent;
-        const i18nToUse = i18nFromCaller || i18n;
-        displayUiError($targetContent, { responseJSON: response }, i18nToUse, 'processor.jwt.tokenInvalid');
-    };
-
-    _showInitialInstructions($resultsContent, i18n);
-
-    // Use optional chaining and logical AND for callback
-    callback?.({ validate: () => true });
+    // Initialize callback if provided
+    if (typeof callback === 'function') {
+        callback({
+            validate: () => true,
+            getValue: () => {
+                const tokenInput = tokenField.querySelector('#field-token-input');
+                return tokenInput ? tokenInput.value : '';
+            },
+            setValue: (value) => {
+                const tokenInput = tokenField.querySelector('#field-token-input');
+                if (tokenInput) {
+                    tokenInput.value = value;
+                }
+            }
+        });
+    }
 };
 
-// --- Refactored Private Helper Functions ---
-
 /**
- * Creates HTML for displaying valid token details
- * @param {object} response - Token validation response
- * @param {boolean} isSimulated - Whether this is a simulated response
- * @param {object} i18n - Internationalization object
- * @param {object} CSS - CSS constants
- * @returns {string} HTML string for valid token display
+ * Display verification results in the UI.
+ * @param {Object} result - The verification result
+ * @param {HTMLElement} container - The container element
+ * @param {Object} i18n - Internationalization object
+ * @private
  */
-const _createValidTokenHtml = (response, isSimulated, i18n, CSS) => {
-    const simulatedText = isSimulated ? ' <em>(Simulated response)</em>' : '';
-    const { roles = [], scopes = [] } = response;
+const _displayVerificationResults = (result, container, i18n) => {
+    const isValid = result.valid === true;
+    const statusClass = isValid ? 'valid' : 'invalid';
+    const statusText = isValid
+        ? (i18n['processor.jwt.tokenValid'] || 'Token is valid')
+        : (i18n['processor.jwt.tokenInvalid'] || 'Token is invalid');
 
-    const rolesRow = roles.length > 0 ?
-        `<tr><th>${i18n['processor.jwt.roles'] || 'Roles'}</th><td>${roles.join(', ')}</td></tr>` : '';
-    const scopesRow = scopes.length > 0 ?
-        `<tr><th>${i18n['processor.jwt.scopes'] || 'Scopes'}</th><td>${scopes.join(' ')}</td></tr>` : '';
-
-    return `
-        <div class="${CSS.TOKEN_VERIFIER.TOKEN_VALID}">
-            <span class="fa fa-check-circle"></span>
-            ${i18n['processor.jwt.tokenValid'] || 'Token is valid'}${simulatedText}
-        </div>
-        <div class="${CSS.TOKEN_VERIFIER.TOKEN_DETAILS}">
-            <h4>${i18n['processor.jwt.tokenDetails'] || 'Token Details'}</h4>
-            <table class="${CSS.TOKEN_VERIFIER.TOKEN_CLAIMS_TABLE}">
-                <tr><th>${i18n['processor.jwt.subject'] || 'Subject'}</th><td>${response.subject || ''}</td></tr>
-                <tr><th>${i18n['processor.jwt.issuer'] || 'Issuer'}</th><td>${response.issuer || ''}</td></tr>
-                <tr><th>${i18n['processor.jwt.audience'] || 'Audience'}</th><td>${response.audience || ''}</td></tr>
-                <tr><th>${i18n['processor.jwt.expiration'] || 'Expiration'}</th><td>${response.expiration || ''}</td></tr>
-                ${rolesRow}
-                ${scopesRow}
-            </table>
-            <h4>${i18n['processor.jwt.allClaims'] || 'All Claims'}</h4>
-            <pre class="${CSS.TOKEN_VERIFIER.TOKEN_RAW_CLAIMS}">${JSON.stringify(
-    response.claims,
-    null,
-    2
-)}</pre>
+    let html = `
+        <div class="verification-status ${statusClass}">
+            <i class="fa ${isValid ? 'fa-check-circle' : 'fa-times-circle'}"></i>
+            <span>${statusText}</span>
         </div>
     `;
-};
 
-const _showInitialInstructions = ($resultsContent, i18n) => {
-    $resultsContent.html(`
-        <div class="${CSS.TOKEN_VERIFIER.TOKEN_INSTRUCTIONS}">
-            ${i18n['processor.jwt.initialInstructions'] ||
-                'Enter a JWT token above and click "Verify Token" to validate it.'}
-        </div>
-    `);
-};
+    if (result.decoded) {
+        html += '<div class="token-details">';
 
-const _resetUIAndShowLoading = ($resultsContent, i18n) => {
-    $resultsContent.html(`
-        <div class="${CSS.TOKEN_VERIFIER.TOKEN_LOADING}">
-            <div class="loading-spinner"></div>
-            <span class="loading-text">${i18n['processor.jwt.verifying'] || 'Verifying token...'}</span>
-        </div>
-    `);
-};
-
-const _handleTokenVerificationResponse = (
-    responseData,
-    $resultsContent,
-    i18n,
-    displayValidTokenFunc,
-    displayInvalidTokenFunc,
-    originalToken = '' // eslint-disable-line no-unused-vars
-) => {
-    console.debug('_handleTokenVerificationResponse called with:', responseData);
-
-    // Always use the actual API response (no localhost simulation)
-    if (responseData.valid) {
-        console.debug('Response indicates valid token, calling displayValidTokenFunc');
-        displayValidTokenFunc(responseData, false); // isSimulated is false for actual responses
-    } else {
-        // Pass $resultsContent and i18n to _displayInvalidToken
-        console.debug('Response indicates invalid token, calling displayInvalidTokenFunc');
-        displayInvalidTokenFunc(responseData, $resultsContent, i18n);
-    }
-};
-
-/**
- * Extracts error message from jqXHR response, attempting JSON parsing first.
- * @param {object} jqXHR - The jQuery XHR error object
- * @returns {string} Extracted error message
- */
-const _extractErrorMessageFromXHR = (jqXHR) => {
-    // Default to statusText if available, otherwise use a generic message
-    let errorMessage = jqXHR.statusText || 'Error processing request';
-
-    // Only try to parse responseText if it looks like JSON (starts with { or [)
-    if (jqXHR.responseText) {
-        if (typeof jqXHR.responseText === 'string' &&
-            (jqXHR.responseText.trim().startsWith('{') || jqXHR.responseText.trim().startsWith('['))) {
-            try {
-                const errorJson = JSON.parse(jqXHR.responseText);
-                errorMessage = errorJson?.message || errorMessage;
-            } catch (e) {
-                // eslint-disable-next-line no-console
-                console.debug('Failed to parse responseText as JSON:', e);
-                // Keep the original error message if JSON parsing fails
-            }
-        } else if (typeof jqXHR.responseText === 'string') {
-            // If responseText doesn't look like JSON, use it directly if it's a string
-            errorMessage = jqXHR.responseText;
+        // Header
+        if (result.decoded.header) {
+            html += `
+                <div class="token-section">
+                    <h4>${i18n['processor.jwt.tokenHeader'] || 'Header'}</h4>
+                    <pre>${JSON.stringify(result.decoded.header, null, 2)}</pre>
+                </div>
+            `;
         }
+
+        // Payload
+        if (result.decoded.payload) {
+            html += `
+                <div class="token-section">
+                    <h4>${i18n['processor.jwt.tokenPayload'] || 'Payload'}</h4>
+                    <pre>${JSON.stringify(result.decoded.payload, null, 2)}</pre>
+                </div>
+            `;
+
+            // Extract and display specific claims
+            const payload = result.decoded.payload;
+            html += '<div class="token-claims">';
+
+            if (payload.exp) {
+                const expDate = new Date(payload.exp * 1000);
+                const isExpired = expDate < new Date();
+                html += `
+                    <div class="claim ${isExpired ? 'expired' : ''}">
+                        <strong>${i18n['processor.jwt.expiration'] || 'Expiration'}:</strong>
+                        ${expDate.toLocaleString()}
+                        ${isExpired ? ` <span class="expired-label">(${i18n['processor.jwt.expired'] || 'Expired'})</span>` : ''}
+                    </div>
+                `;
+            }
+
+            if (payload.iss) {
+                html += `
+                    <div class="claim">
+                        <strong>${i18n['processor.jwt.issuer'] || 'Issuer'}:</strong>
+                        ${payload.iss}
+                    </div>
+                `;
+            }
+
+            if (payload.sub) {
+                html += `
+                    <div class="claim">
+                        <strong>${i18n['processor.jwt.subject'] || 'Subject'}:</strong>
+                        ${payload.sub}
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+        }
+
+        html += '</div>';
     }
 
-    return errorMessage;
-};
-
-/**
- * Sanitizes error message, ensuring it's not null, undefined, or problematic values.
- * @param {string} errorMessage - Raw error message
- * @param {object} i18n - Internationalization object
- * @returns {string} Sanitized error message
- */
-const _sanitizeErrorMessage = (errorMessage, i18n) => {
-    const isNullOrUndefined = errorMessage == null;
-    const trimmedMsg = isNullOrUndefined ? '' : String(errorMessage).trim();
-    const lowerCaseMsg = isNullOrUndefined ? '' : String(errorMessage).toLowerCase();
-
-    if (isNullOrUndefined || trimmedMsg === '' || lowerCaseMsg === 'null' || lowerCaseMsg === 'undefined') {
-        return i18n['processor.jwt.unknownError'] || 'Unknown error';
+    if (result.error) {
+        html += `
+            <div class="verification-error">
+                <strong>${i18n['processor.jwt.error'] || 'Error'}:</strong>
+                ${result.error}
+            </div>
+        `;
     }
 
-    return errorMessage || (i18n['processor.jwt.unknownError'] || 'Unknown error');
+    container.innerHTML = html;
 };
-
-
-/**
- * Handles AJAX errors during token verification.
- * @param {object} jqXHR - The jQuery XHR error object
- * @param {object} $resultsContent - Results display container
- * @param {object} i18n - Internationalization object
- * @param {Function} displayValidTokenFunc - Function to display valid token
- * @param {Function} displayInvalidTokenFunc - Function to display invalid token
- * @param {string} token - The token being verified
- */
-const _handleTokenVerificationAjaxError = (jqXHR, $resultsContent, i18n, displayValidTokenFunc, displayInvalidTokenFunc, token = '') => {
-    // Extract and sanitize error message for potential future use
-    const errorMessage = _extractErrorMessageFromXHR(jqXHR);
-    // eslint-disable-next-line no-console
-    console.debug('Extracted error message:', errorMessage);
-    console.debug('_handleTokenVerificationAjaxError called with token:', token);
-
-    // Always display the actual error (no localhost simulation)
-    displayUiError($resultsContent, jqXHR, i18n, 'processor.jwt.verificationError');
-};
-
-/**
- * Handles synchronous exceptions during token verification.
- * @param {Error} exception - The exception object
- * @param {object} $resultsContent - Results display container
- * @param {object} i18n - Internationalization object
- * @param {Function} displayValidTokenFunc - Function to display valid token
- * @param {Function} displayInvalidTokenFunc - Function to display invalid token
- * @param {string} token - The token being verified
- */
-const _handleTokenVerificationSyncException = (
-    exception,
-    $resultsContent,
-    i18n,
-    displayValidTokenFunc,
-    displayInvalidTokenFunc,
-    token = '' // eslint-disable-line no-unused-vars
-) => {
-    // Sanitize exception message for potential future use
-    const sanitizedMessage = _sanitizeErrorMessage(exception.message, i18n);
-    // eslint-disable-next-line no-console
-    console.debug('Sanitized error message:', sanitizedMessage);
-
-    // Always display the actual error (no localhost simulation)
-    displayUiError($resultsContent, exception, i18n, 'processor.jwt.verificationError');
-};
-
 
 /**
  * Cleanup function for the token verifier component.
  * Removes event listeners and cleans up resources.
  */
 export const cleanup = () => {
-    // Cleanup any timeouts
-    if (typeof window._tokenVerifierTimeouts !== 'undefined') {
-        window._tokenVerifierTimeouts.forEach(timeout => clearTimeout(timeout));
-        window._tokenVerifierTimeouts = [];
-    }
-};
-
-/**
- * Extracted verify button click logic for testing
- * @param {string} token - The token to verify
- * @param {object} $resultsContent - Results content element
- * @param {object} i18n - Internationalization object
- * @param {Function} resetButton - Function to reset button state
- * @returns {boolean} True if verification started, false if token was empty
- */
-const _handleVerifyButtonClick = (token, $resultsContent, i18n, resetButton) => {
-    const trimmedToken = token.trim();
-    if (!trimmedToken) {
-        $resultsContent.html(`<div class="${CSS.TOKEN_VERIFIER.TOKEN_ERROR}">${i18n['processor.jwt.noTokenProvided'] || 'No token provided'}</div>`);
-        return false;
-    }
-
-    _resetUIAndShowLoading($resultsContent, i18n);
-
-    try {
-        verifyToken(trimmedToken)
-            .then(responseData => {
-                resetButton();
-                _handleTokenVerificationResponse(
-                    responseData,
-                    $resultsContent,
-                    i18n,
-                    (response, isSimulated) => {
-                        // Create HTML and display it
-                        const html = _createValidTokenHtml(response, isSimulated, i18n, CSS);
-                        $resultsContent.html(html);
-                    },
-                    (response, $resultsContentParam, i18nParam) => {
-                        // Use provided params or fallback to closure variables
-                        const $targetContent = $resultsContentParam || $resultsContent;
-                        const i18nToUse = i18nParam || i18n;
-                        displayUiError($targetContent, { responseJSON: response }, i18nToUse, 'processor.jwt.tokenInvalid');
-                    },
-                    trimmedToken
-                );
-            })
-            .catch(error => {
-                resetButton();
-                // Convert error to jqXHR-like object for compatibility
-                const jqXHRLike = error.jqXHR || {
-                    status: error.status || 500,
-                    statusText: error.statusText || 'Error',
-                    responseJSON: error.responseJSON || { error: error.message || 'Unknown error' }
-                };
-                _handleTokenVerificationAjaxError(
-                    jqXHRLike,
-                    $resultsContent,
-                    i18n,
-                    (response, isSimulated) => {
-                        // Create HTML and display it
-                        const html = _createValidTokenHtml(response, isSimulated, i18n, CSS);
-                        $resultsContent.html(html);
-                    },
-                    (response, $resultsContentParam, i18nParam) => {
-                        // Use provided params or fallback to closure variables
-                        const $targetContent = $resultsContentParam || $resultsContent;
-                        const i18nToUse = i18nParam || i18n;
-                        displayUiError($targetContent, { responseJSON: response }, i18nToUse, 'processor.jwt.tokenInvalid');
-                    },
-                    trimmedToken
-                );
-            });
-    } catch (e) {
-        resetButton();
-        _handleTokenVerificationSyncException(e, $resultsContent, i18n, (response, isSimulated) => {
-            // Create HTML and display it
-            const html = _createValidTokenHtml(response, isSimulated, i18n, CSS);
-            $resultsContent.html(html);
-        }, (response, $resultsContentParam, i18nParam) => {
-            // Use provided params or fallback to closure variables
-            const $targetContent = $resultsContentParam || $resultsContent;
-            const i18nToUse = i18nParam || i18n;
-            displayUiError($targetContent, { responseJSON: response }, i18nToUse, 'processor.jwt.tokenInvalid');
-        }, trimmedToken);
-    }
-
-    return true;
-};
-
-/**
- * Extracted clear button click logic for testing
- * @param {string} tokenValue - Current token value
- * @param {string} resultsHtml - Current results HTML
- * @param {object} $resultsContent - Results content element
- * @param {object} i18n - Internationalization object
- * @returns {boolean} True if content exists to clear
- */
-const _handleClearButtonClick = (tokenValue, resultsHtml, $resultsContent, i18n) => {
-    const hasContent = !!(tokenValue || (typeof resultsHtml === 'string' && resultsHtml.trim().length > 0));
-
-    if (!hasContent) {
-        $resultsContent.html('<div class="info-message">Form is already empty.</div>');
-        setTimeout(() => {
-            _showInitialInstructions($resultsContent, i18n);
-        }, 2000);
-    }
-
-    return hasContent;
-};
-
-// Export internal functions for testing
-export const __test = {
-    showInitialInstructions: _showInitialInstructions,
-    resetUIAndShowLoading: _resetUIAndShowLoading,
-    handleTokenVerificationResponse: _handleTokenVerificationResponse,
-    extractErrorMessageFromXHR: _extractErrorMessageFromXHR,
-    sanitizeErrorMessage: _sanitizeErrorMessage,
-    handleTokenVerificationAjaxError: _handleTokenVerificationAjaxError,
-    handleTokenVerificationSyncException: _handleTokenVerificationSyncException,
-    handleVerifyButtonClick: _handleVerifyButtonClick,
-    handleClearButtonClick: _handleClearButtonClick,
-    createValidTokenHtml: _createValidTokenHtml
+    // Event listeners are automatically cleaned up when elements are removed
 };

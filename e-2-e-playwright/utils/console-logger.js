@@ -151,6 +151,9 @@ export async function setupStrictErrorDetection(page, testInfo, skipInitialCheck
     // Clear any previous critical errors
     globalCriticalErrorDetector.clearErrors();
     
+    // Start monitoring for critical errors
+    globalCriticalErrorDetector.startMonitoring(page, testInfo);
+    
     // Setup console message handler
     page.on('console', async (msg) => {
         const type = msg.type();
@@ -219,6 +222,49 @@ export function isErrorWhitelisted(message) {
     ];
     
     return whitelist.some(pattern => message.includes(pattern));
+}
+
+/**
+ * Check for critical errors on the page
+ */
+export async function checkForCriticalErrors(page, testInfo) {
+    // Delegate to the critical error detector
+    const { checkCriticalErrors } = await import('./critical-error-detector.js');
+    return checkCriticalErrors(page, testInfo);
+}
+
+/**
+ * Check loading indicator status
+ */
+export async function checkLoadingIndicatorStatus(page) {
+    const loadingIndicators = [
+        'text="Loading JWT Validator UI..."',
+        'text="Loading JWT Validator UI"',
+        '.loading-indicator',
+        '[class*="loading"]'
+    ];
+    
+    for (const selector of loadingIndicators) {
+        try {
+            const element = page.locator(selector);
+            const isVisible = await element.isVisible({ timeout: 1000 });
+            if (isVisible) {
+                return {
+                    isVisible: true,
+                    selector: selector,
+                    text: await element.textContent()
+                };
+            }
+        } catch {
+            // Continue to next selector
+        }
+    }
+    
+    return {
+        isVisible: false,
+        selector: null,
+        text: null
+    };
 }
 
 /**

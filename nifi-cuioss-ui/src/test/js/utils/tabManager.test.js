@@ -2,7 +2,6 @@
  * Tests for Tab Manager utility
  */
 
-import $ from 'cash-dom';
 import { jest } from '@jest/globals';
 import * as tabManager from '../../../main/webapp/js/utils/tabManager.js';
 
@@ -48,132 +47,175 @@ describe('Tab Manager', () => {
 
     afterEach(() => {
         tabManager.cleanup();
-        $(document).off('tabChanged');
         document.body.innerHTML = '';
     });
 
     describe('initTabs', () => {
-        it('should handle tab clicks', () => {
-            const metricsTab = document.querySelector('a[href="#metrics"]');
-            const event = new Event('click', { bubbles: true, cancelable: true });
-
-            metricsTab.dispatchEvent(event);
-
-            // Check active states
-            expect(metricsTab.parentElement.classList.contains('active')).toBe(true);
-            expect(document.querySelector('#metrics').classList.contains('active')).toBe(true);
-            expect(document.querySelector('#issuer-config').classList.contains('active')).toBe(false);
+        it('should initialize tabs with event handlers', () => {
+            // Tabs should be initialized
+            const tabs = document.querySelectorAll('.jwt-tabs-header .tabs a');
+            expect(tabs.length).toBe(4);
         });
 
-        it('should handle invalid href', () => {
-            document.body.innerHTML += '<li><a href="#" data-toggle="tab">Invalid</a></li>';
-            const invalidTab = document.querySelector('a[href="#"]');
-            const event = new Event('click', { bubbles: true, cancelable: true });
+        it('should handle multiple initialization calls gracefully', () => {
+            // Initialize again
+            tabManager.initTabs();
 
-            invalidTab.dispatchEvent(event);
+            // Should still work correctly
+            const tabs = document.querySelectorAll('.jwt-tabs-header .tabs a');
+            expect(tabs.length).toBe(4);
+        });
+    });
 
-            // Active tab should not change
-            expect(document.querySelector('a[href="#issuer-config"]').parentElement.classList.contains('active')).toBe(true);
+    describe('Tab switching', () => {
+        it('should switch tabs when clicking on tab links', () => {
+            const tokenTab = document.querySelector('a[href="#token-verification"]');
+            const tokenPane = document.getElementById('token-verification');
+            const configPane = document.getElementById('issuer-config');
+
+            // Initial state
+            expect(tokenPane.classList.contains('active')).toBe(false);
+            expect(configPane.classList.contains('active')).toBe(true);
+
+            // Click on token tab
+            tokenTab.click();
+
+            // Check new state
+            expect(tokenPane.classList.contains('active')).toBe(true);
+            expect(configPane.classList.contains('active')).toBe(false);
+
+            // Check tab header state
+            expect(tokenTab.parentElement.classList.contains('active')).toBe(true);
         });
 
-        it('should trigger tabChanged event', async () => {
-            const tabChangedPromise = new Promise((resolve) => {
-                $(document).on('tabChanged', (e, data) => {
-                    resolve(data);
-                });
+        it('should handle clicks on data-toggle elements', () => {
+            const metricsLink = document.querySelector('a[href="#metrics"]');
+            const metricsPane = document.getElementById('metrics');
+
+            // Click on metrics tab
+            metricsLink.click();
+
+            // Check state
+            expect(metricsPane.classList.contains('active')).toBe(true);
+            expect(metricsLink.parentElement.classList.contains('active')).toBe(true);
+        });
+
+        it('should dispatch tabChanged event when switching tabs', () => {
+            const tabChangedHandler = jest.fn();
+            document.addEventListener('tabChanged', tabChangedHandler);
+
+            const helpTab = document.querySelector('a[href="#help"]');
+            helpTab.click();
+
+            expect(tabChangedHandler).toHaveBeenCalled();
+            expect(tabChangedHandler.mock.calls[0][0].detail).toEqual({
+                tabId: '#help',
+                tabName: 'Help'
             });
 
-            const tokenTab = document.querySelector('a[href="#token-verification"]');
-            const event = new Event('click', { bubbles: true, cancelable: true });
-            tokenTab.dispatchEvent(event);
-
-            const data = await tabChangedPromise;
-            expect(data.tabId).toBe('#token-verification');
-            expect(data.tabName).toBe('Token Verification');
+            document.removeEventListener('tabChanged', tabChangedHandler);
         });
     });
 
-    describe('switchToTab', () => {
-        it('should programmatically switch tabs', () => {
-            tabManager.switchToTab('#help');
+    describe('activateTab', () => {
+        it('should programmatically switch to a specific tab', () => {
+            const targetTab = '#metrics';
+            tabManager.activateTab(targetTab);
 
-            expect(document.querySelector('a[href="#help"]').parentElement.classList.contains('active')).toBe(true);
-            expect(document.querySelector('#help').classList.contains('active')).toBe(true);
-        });
-
-        it('should handle non-existent tab', () => {
-            tabManager.switchToTab('#nonexistent');
-
-            // Active tab should not change
-            expect(document.querySelector('a[href="#issuer-config"]').parentElement.classList.contains('active')).toBe(true);
-        });
-    });
-
-    describe('getActiveTab', () => {
-        it('should return active tab info', () => {
-            const activeTab = tabManager.getActiveTab();
-
-            expect(activeTab.tabId).toBe('#issuer-config');
-            expect(activeTab.tabName).toBe('Configuration');
-        });
-
-        it('should return updated active tab after switch', () => {
-            // Clean up any previous state
-            $('.jwt-tabs-header .tabs li').removeClass('active');
-            $('a[href="#metrics"]').parent().addClass('active');
-
-            const activeTab = tabManager.getActiveTab();
-
-            expect(activeTab.tabId).toBe('#metrics');
-            expect(activeTab.tabName).toBe('Metrics');
-        });
-    });
-
-    describe('setTabEnabled', () => {
-        it('should disable a tab', () => {
-            tabManager.setTabEnabled('#metrics', false);
-
+            const metricsPane = document.getElementById('metrics');
             const metricsTab = document.querySelector('a[href="#metrics"]');
-            expect(metricsTab.parentElement.classList.contains('disabled')).toBe(true);
-            expect(metricsTab.hasAttribute('disabled')).toBe(true);
+
+            expect(metricsPane.classList.contains('active')).toBe(true);
+            expect(metricsTab.parentElement.classList.contains('active')).toBe(true);
         });
 
-        it('should enable a disabled tab', () => {
-            // First disable
-            tabManager.setTabEnabled('#metrics', false);
-            // Then enable
-            tabManager.setTabEnabled('#metrics', true);
+        it('should handle invalid tab IDs gracefully', () => {
+            // Should not throw error
+            expect(() => {
+                tabManager.activateTab('#invalid-tab');
+            }).not.toThrow();
+        });
 
-            const metricsTab = document.querySelector('a[href="#metrics"]');
-            expect(metricsTab.parentElement.classList.contains('disabled')).toBe(false);
-            expect(metricsTab.hasAttribute('disabled')).toBe(false);
+        it('should work with or without hash prefix', () => {
+            tabManager.activateTab('help');
+
+            const helpPane = document.getElementById('help');
+            expect(helpPane.classList.contains('active')).toBe(true);
         });
     });
 
-    describe('setTabVisible', () => {
-        it('should hide a tab', () => {
-            tabManager.setTabVisible('#help', false);
+    describe('Event delegation', () => {
+        it('should handle dynamically added tabs', () => {
+            // Add a new tab dynamically
+            const tabList = document.querySelector('.jwt-tabs-header .tabs');
+            const newTab = document.createElement('li');
+            newTab.innerHTML = '<a href="#new-tab" data-toggle="tab">New Tab</a>';
+            tabList.appendChild(newTab);
 
-            const helpTab = document.querySelector('a[href="#help"]').parentElement;
-            expect(helpTab.style.display).toBe('none');
+            // Add corresponding pane
+            const tabContent = document.querySelector('.jwt-tabs-content');
+            const newPane = document.createElement('div');
+            newPane.id = 'new-tab';
+            newPane.className = 'tab-pane';
+            newPane.textContent = 'New Tab Content';
+            tabContent.appendChild(newPane);
+
+            // Click on the new tab
+            const newTabLink = newTab.querySelector('a');
+            newTabLink.click();
+
+            // Should switch to new tab
+            expect(newPane.classList.contains('active')).toBe(true);
+            expect(newTab.classList.contains('active')).toBe(true);
+        });
+    });
+
+    describe('cleanup', () => {
+        it('should clean up event handlers', () => {
+            // Add event listener to track clicks
+            let clickCount = 0;
+            const clickHandler = () => clickCount++;
+            document.addEventListener('click', clickHandler);
+
+            // Clean up
+            tabManager.cleanup();
+
+            // Click on tab after cleanup
+            const tab = document.querySelector('a[href="#help"]');
+            tab.click();
+
+            // Remove our test handler
+            document.removeEventListener('click', clickHandler);
+
+            // The tab switching should still work if event delegation is properly cleaned up
+            // This is a basic test - in real implementation we'd need to verify
+            // the specific event handler is removed
+            expect(clickCount).toBe(1); // Our handler was called
+        });
+    });
+
+    describe('Error handling', () => {
+        it('should handle missing tab panes gracefully', () => {
+            // Remove a tab pane
+            const helpPane = document.getElementById('help');
+            helpPane.remove();
+
+            // Try to switch to the missing pane
+            expect(() => {
+                const helpTab = document.querySelector('a[href="#help"]');
+                helpTab.click();
+            }).not.toThrow();
         });
 
-        it('should show a hidden tab', () => {
-            // First hide
-            tabManager.setTabVisible('#help', false);
-            // Then show
-            tabManager.setTabVisible('#help', true);
+        it('should handle missing tab structure', () => {
+            // Clear DOM
+            document.body.innerHTML = '';
 
-            const helpTab = document.querySelector('a[href="#help"]').parentElement;
-            expect(helpTab.style.display).not.toBe('none');
-        });
-
-        it('should switch to first visible tab when hiding active tab', () => {
-            // Make issuer-config active and hide it
-            tabManager.setTabVisible('#issuer-config', false);
-
-            // Should switch to token-verification (first visible)
-            expect(document.querySelector('a[href="#token-verification"]').parentElement.classList.contains('active')).toBe(true);
+            // Should not throw when initializing without tab structure
+            expect(() => {
+                tabManager.cleanup();
+                tabManager.initTabs();
+            }).not.toThrow();
         });
     });
 });

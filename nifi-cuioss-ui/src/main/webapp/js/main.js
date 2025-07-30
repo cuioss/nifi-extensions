@@ -17,7 +17,6 @@
  * @author CUIOSS Team
  * @since 1.0.0
  */
-import $ from 'cash-dom';
 import { createLogger } from './utils/logger.js';
 import * as nfCommon from 'nf.Common';
 import * as tokenVerifier from './components/tokenVerifier.js';
@@ -104,19 +103,18 @@ const registerComponents = () => {
 const setupHelpTooltips = () => {
     try {
         // Find property labels and add tooltips
-        $(CSS.SELECTORS.PROPERTY_LABEL).each((_index, label) => {
-            const propertyName = $(label).text().trim();
+        document.querySelectorAll(CSS.SELECTORS.PROPERTY_LABEL).forEach(label => {
+            const propertyName = label.textContent.trim();
             const helpKey = UI_TEXT.PROPERTY_LABELS[propertyName];
 
-            if (helpKey && $(label).find(CSS.SELECTORS.HELP_TOOLTIP).length === 0) {
+            if (helpKey && !label.querySelector(CSS.SELECTORS.HELP_TOOLTIP)) {
                 const helpText = nfCommon.getI18n().getProperty(helpKey);
                 if (helpText) {
-                    const tooltip = $(
-                        `<span class="${CSS.CLASSES.HELP_TOOLTIP} ` +
-                        `${CSS.CLASSES.FA} ${CSS.CLASSES.FA_QUESTION_CIRCLE}"></span>`
-                    );
-                    tooltip.attr('title', helpText);
-                    $(label).append(tooltip);
+                    const tooltip = document.createElement('span');
+                    tooltip.className = `${CSS.CLASSES.HELP_TOOLTIP} ` +
+                        `${CSS.CLASSES.FA} ${CSS.CLASSES.FA_QUESTION_CIRCLE}`;
+                    tooltip.setAttribute('title', helpText);
+                    label.appendChild(tooltip);
                 }
             }
         });
@@ -212,16 +210,15 @@ const setupTooltipObserver = () => {
                     mutation.addedNodes.forEach((node) => {
                         if (node.nodeType === Node.ELEMENT_NODE) {
                             // Initialize tooltips for newly added elements
-                            const $node = $(node);
-                            const elementsWithTitle = $node.find('[title]');
-                            const helpTooltips = $node.find('.help-tooltip');
+                            const elementsWithTitle = node.querySelectorAll('[title]');
+                            const helpTooltips = node.querySelectorAll('.help-tooltip');
 
                             if (elementsWithTitle.length > 0) {
-                                initTooltips(elementsWithTitle.get(), { placement: 'bottom' });
+                                initTooltips(Array.from(elementsWithTitle), { placement: 'bottom' });
                             }
 
                             if (helpTooltips.length > 0) {
-                                initTooltips(helpTooltips.get(), { placement: 'right' });
+                                initTooltips(Array.from(helpTooltips), { placement: 'right' });
                             }
                         }
                     });
@@ -324,15 +321,15 @@ const updateTranslations = () => {
     const i18nObj = nfCommon.getI18n();
 
     // Update loading text
-    const loadingIndicator = $(`#${CSS.IDS.LOADING_INDICATOR}`);
-    if (loadingIndicator.length) {
-        loadingIndicator.text(i18nObj.getProperty(UI_TEXT.I18N_KEYS.JWT_VALIDATOR_LOADING) || 'Loading...');
+    const loadingIndicator = document.getElementById(CSS.IDS.LOADING_INDICATOR);
+    if (loadingIndicator) {
+        loadingIndicator.textContent = i18nObj.getProperty(UI_TEXT.I18N_KEYS.JWT_VALIDATOR_LOADING) || 'Loading...';
     }
 
     // Update title
-    const title = $(CSS.SELECTORS.JWT_VALIDATOR_TITLE);
-    if (title.length) {
-        title.text(i18nObj.getProperty(UI_TEXT.I18N_KEYS.JWT_VALIDATOR_TITLE) || 'JWT Validator');
+    const title = document.querySelector(CSS.SELECTORS.JWT_VALIDATOR_TITLE);
+    if (title) {
+        title.textContent = i18nObj.getProperty(UI_TEXT.I18N_KEYS.JWT_VALIDATOR_TITLE) || 'JWT Validator';
     }
 };
 
@@ -348,7 +345,8 @@ const updateTranslations = () => {
  * setupDialogHandlers(); // Registers dialog open event listener
  */
 const setupDialogHandlers = () => {
-    $(document).on('dialogOpen', (_event, data) => {
+    document.addEventListener('dialogOpen', (event) => {
+        const data = event.detail;
         const dialogElement = Array.isArray(data) ? data[0] : data;
 
         const isProcessorDialog = dialogElement?.classList?.contains(
@@ -406,7 +404,8 @@ const initializeTabContent = () => {
         helpTab.init();
 
         // Also set up tab change handler for any re-initialization needs
-        $(document).on('tabChanged', (_event, data) => {
+        document.addEventListener('tabChanged', (event) => {
+            const data = event.detail;
             logger.debug('Tab changed to:', data.tabId);
 
             switch (data.tabId) {
@@ -719,7 +718,7 @@ const emergencyFallbackHideLoading = () => {
 export const cleanup = () => {
     try {
         // Simple cleanup - just remove event handlers
-        $(document).off('dialogOpen');
+        // Note: Need to track and remove specific event listeners added with addEventListener
         cleanupKeyboardShortcuts();
         cleanupTabs();
 

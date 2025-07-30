@@ -1761,24 +1761,34 @@ describe('issuerConfigEditor', function () { // Re-enabled tests
             });
 
             it('should handle JWKS validation error in localhost mode (AJAX error)', () => {
+                const mockDisplayUiError = require('../../../main/webapp/js/utils/uiErrorDisplay.js').displayUiError;
                 global.getIsLocalhost.mockReturnValue(true);
                 const error = new Error('Network error');
 
                 issuerConfigEditor.__test_exports._handleJwksValidationError(mockResultContainer, error, true);
 
-                expect(mockResultContainer.html).toHaveBeenCalledWith(
-                    expect.stringContaining('(Simulated response)')
+                // Should always display the actual error (no localhost simulation)
+                expect(mockDisplayUiError).toHaveBeenCalledWith(
+                    mockResultContainer,
+                    error,
+                    expect.any(Object),
+                    'processor.jwt.validationError'
                 );
             });
 
             it('should handle JWKS validation error in localhost mode (synchronous error)', () => {
+                const mockDisplayUiError = require('../../../main/webapp/js/utils/uiErrorDisplay.js').displayUiError;
                 global.getIsLocalhost.mockReturnValue(true);
                 const error = new Error('Sync error');
 
                 issuerConfigEditor.__test_exports._handleJwksValidationError(mockResultContainer, error, false);
 
-                expect(mockResultContainer.html).toHaveBeenCalledWith(
-                    expect.stringContaining('(Simulated error path response)')
+                // Should always display the actual error (no localhost simulation)
+                expect(mockDisplayUiError).toHaveBeenCalledWith(
+                    mockResultContainer,
+                    error,
+                    expect.any(Object),
+                    'processor.jwt.validationError'
                 );
             });
 

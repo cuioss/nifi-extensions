@@ -39,11 +39,14 @@ export const createElement = (tag, options = {}) => {
         Object.entries(options.attributes).forEach(([key, value]) => {
             // Special handling for boolean attributes like disabled, checked, etc.
             if (key === 'disabled' || key === 'checked' || key === 'readonly' || key === 'required') {
-                if (value === true || value === 'true') {
+                if (value === true || value === 'true' || value === '') {
                     element.setAttribute(key, '');
-                } else if (value === false || value === 'false') {
+                } else if (value === false || value === 'false' || value === null || value === undefined) {
                     // Don't set the attribute at all if it's false
                     return;
+                } else {
+                    // For any other value, set it as is (e.g., disabled="disabled")
+                    element.setAttribute(key, value);
                 }
             } else {
                 element.setAttribute(key, value);
@@ -122,9 +125,11 @@ export const createFormField = (config) => {
 };
 
 /**
- * FormFieldBuilder class for compatibility - simple wrapper around createFormField.
+ * SimpleDOMFieldBuilder class for compatibility - simple wrapper around createFormField.
+ * Note: This is a legacy implementation that returns DocumentFragments.
+ * For new code, use FormFieldBuilder from formBuilder.js which returns HTMLElements.
  */
-export class FormFieldBuilder {
+export class SimpleDOMFieldBuilder {
     static createField(config) {
         return createFormField(config);
     }
@@ -132,7 +137,7 @@ export class FormFieldBuilder {
     static createFields(fieldConfigs) {
         const builder = new DOMBuilder();
         fieldConfigs.forEach(config => {
-            const fieldFragment = FormFieldBuilder.createField(config);
+            const fieldFragment = SimpleDOMFieldBuilder.createField(config);
             builder.addExisting(fieldFragment.firstElementChild);
         });
         return builder.build();

@@ -9,7 +9,6 @@
  * @module components/helpTab
  */
 
-import $ from 'cash-dom';
 import { createLogger } from '../utils/logger.js';
 import { UI_TEXT } from '../utils/constants.js';
 import * as nfCommon from 'nf.Common';
@@ -24,7 +23,7 @@ export const init = () => {
     logger.info('Initializing help tab');
 
     // Create the help tab content if it doesn't exist
-    if (!$('#jwt-help-content').length) {
+    if (!document.getElementById('jwt-help-content')) {
         logger.info('Creating help tab content...');
         createHelpContent();
         // Initialize collapsible sections only after creating content
@@ -201,16 +200,19 @@ const createHelpContent = () => {
     `;
 
     // Append to the help tab pane
-    const helpTabPane = $('#help');
-    logger.info('Help tab pane found:', helpTabPane.length > 0);
-    if (helpTabPane.length) {
+    const helpTabPane = document.getElementById('help');
+    logger.info('Help tab pane found:', !!helpTabPane);
+    if (helpTabPane) {
         logger.info('Appending help content to tab pane');
-        helpTabPane.html(helpHtml);
-        logger.info('Help content appended, new length:', helpTabPane.html().length);
+        helpTabPane.innerHTML = helpHtml;
+        logger.info('Help content appended, new length:', helpTabPane.innerHTML.length);
     } else {
         // Fallback: append to container if tab pane doesn't exist
         logger.warn('Help tab pane not found, appending to container');
-        $('#jwt-validator-container').append(helpHtml);
+        const container = document.getElementById('jwt-validator-container');
+        if (container) {
+            container.insertAdjacentHTML('beforeend', helpHtml);
+        }
     }
 };
 
@@ -218,25 +220,32 @@ const createHelpContent = () => {
  * Initializes collapsible sections behavior
  */
 const initializeCollapsibles = () => {
-    $('.collapsible-header').on('click', function () {
-        const $header = $(this);
-        const $content = $header.next('.collapsible-content');
-        const $icon = $header.find('i.fa');
+    document.querySelectorAll('.collapsible-header').forEach(header => {
+        header.addEventListener('click', function () {
+            const content = this.nextElementSibling;
+            const icon = this.querySelector('i.fa');
 
-        // Toggle active state
-        $header.toggleClass('active');
+            // Toggle active state
+            this.classList.toggle('active');
 
-        // Toggle content visibility
-        $content.toggleClass('show');
+            // Toggle content visibility
+            if (content && content.classList.contains('collapsible-content')) {
+                content.classList.toggle('show');
+            }
 
-        // Toggle icon
-        if ($header.hasClass('active')) {
-            $icon.removeClass('fa-chevron-right').addClass('fa-chevron-down');
-        } else {
-            $icon.removeClass('fa-chevron-down').addClass('fa-chevron-right');
-        }
+            // Toggle icon
+            if (icon) {
+                if (this.classList.contains('active')) {
+                    icon.classList.remove('fa-chevron-right');
+                    icon.classList.add('fa-chevron-down');
+                } else {
+                    icon.classList.remove('fa-chevron-down');
+                    icon.classList.add('fa-chevron-right');
+                }
+            }
 
-        logger.debug('Toggled help section:', $header.text().trim());
+            logger.debug('Toggled help section:', this.textContent.trim());
+        });
     });
 };
 
@@ -245,7 +254,7 @@ const initializeCollapsibles = () => {
  */
 export const cleanup = () => {
     logger.debug('Cleaning up help tab');
-    $('.collapsible-header').off('click');
+    // Event listeners are automatically removed when elements are removed
 };
 
 /**

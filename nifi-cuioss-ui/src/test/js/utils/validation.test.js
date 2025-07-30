@@ -11,7 +11,6 @@ import {
     validateRequired,
     validateUrl
 } from '../../../main/webapp/js/utils/validation.js';
-import { getIsLocalhost } from '../../../main/webapp/js/utils/constants.js';
 
 describe('Validation utilities (simplified)', () => {
     describe('validateRequired', () => {
@@ -95,13 +94,6 @@ describe('Validation utilities (simplified)', () => {
             };
             const result = validateIssuerConfig(config);
             expect(result).toHaveProperty('isValid');
-        });
-    });
-
-    describe('getIsLocalhost (from constants)', () => {
-        it('should return boolean value', () => {
-            const result = getIsLocalhost();
-            expect(typeof result).toBe('boolean');
         });
     });
 });

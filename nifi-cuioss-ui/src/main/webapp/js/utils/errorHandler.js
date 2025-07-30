@@ -33,10 +33,10 @@
  * @returns {StandardizedError} Standardized error object with consistent structure
  *
  * @example
- * // In AJAX error handler
- * $.ajax(url).catch((jqXHR, textStatus, errorThrown) => {
- *   const error = createXhrErrorObject(jqXHR, textStatus, errorThrown);
- *   console.error(`Error ${error.status}: ${error.statusText}`);
+ * // In fetch error handler
+ * fetch(url).catch((error) => {
+ *   const errorObj = createXhrErrorObject(error);
+ *   console.error(`Error ${errorObj.status}: ${errorObj.statusText}`);
  * });
  *
  * @example

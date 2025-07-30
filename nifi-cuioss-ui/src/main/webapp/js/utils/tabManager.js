@@ -1,172 +1,160 @@
 'use strict';
 
 /**
- * Tab Manager Utility
- * Handles tab switching and state management for the JWT Authenticator UI
- *
- * @module utils/tabManager
+ * Tab manager for JWT Validator UI tabs.
+ * Handles tab switching, state management, and related events.
  */
 
-import $ from 'cash-dom';
 import { createLogger } from './logger.js';
 
-const logger = createLogger('TabManager');
+const logger = createLogger('tabManager');
 
 /**
- * Initializes tab switching functionality
+ * Initialize tab functionality
  */
 export const initTabs = () => {
     logger.debug('Initializing tab manager');
 
-    // Handle tab clicks
-    $(document).on('click', '.jwt-tabs-header .tabs a', function (e) {
+    // Use WeakMap for storing clicking state
+    const clickingState = new WeakMap();
+
+    // Single event handler for all tab clicks using event delegation
+    const handleTabClick = (e) => {
+        // Check for regular tab links
+        const tabLink = e.target.closest('.jwt-tabs-header .tabs a');
+        // Check for data-toggle tabs
+        const toggleLink = e.target.closest('[data-toggle="tab"]');
+
+        const link = tabLink || toggleLink;
+        if (!link) return;
+
         e.preventDefault();
 
-        const $link = $(this);
-        const targetId = $link.attr('href');
+        // Prevent double-click handling
+        if (toggleLink && clickingState.get(link)) return;
+
+        if (toggleLink) {
+            clickingState.set(link, true);
+            setTimeout(() => clickingState.delete(link), 100);
+        }
+
+        const targetId = link.getAttribute('href') || link.getAttribute('data-target');
 
         if (!targetId || targetId === '#') {
             return;
         }
 
         // Update active tab
-        $('.jwt-tabs-header .tabs li').removeClass('active');
-        $link.parent().addClass('active');
+        document.querySelectorAll('.jwt-tabs-header .tabs li').forEach(li => li.classList.remove('active'));
+        if (link.parentElement) {
+            link.parentElement.classList.add('active');
+        }
 
         // Update active content
-        $('.tab-pane').removeClass('active');
-        $(targetId).addClass('active');
+        document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+        const targetElement = document.querySelector(targetId);
+        if (targetElement) {
+            targetElement.classList.add('active');
+        }
 
         logger.debug('Switched to tab:', targetId);
 
         // Trigger custom event for tab change
-        $(document).trigger('tabChanged', {
-            tabId: targetId,
-            tabName: $link.text().trim()
-        });
-    });
-
-    // Use WeakMap for storing clicking state (cash-dom compatible)
-    const clickingState = new WeakMap();
-
-    // Handle data-toggle="tab" clicks (Bootstrap-style)
-    $(document).on('click', '[data-toggle="tab"]', function (e) {
-        e.preventDefault();
-        const element = this;
-
-        // Don't trigger click again if we're already handling a tab click
-        if (!clickingState.get(element)) {
-            clickingState.set(element, true);
-            const $link = $(this);
-            const targetId = $link.attr('href');
-
-            if (targetId && targetId !== '#') {
-                // Update active tab
-                $('.jwt-tabs-header .tabs li').removeClass('active');
-                $link.parent().addClass('active');
-
-                // Update active content
-                $('.tab-pane').removeClass('active');
-                $(targetId).addClass('active');
-
-                logger.debug('Switched to tab via data-toggle:', targetId);
-
-                // Trigger custom event for tab change
-                $(document).trigger('tabChanged', {
-                    tabId: targetId,
-                    tabName: $link.text().trim()
-                });
+        document.dispatchEvent(new CustomEvent('tabChanged', {
+            detail: {
+                tabId: targetId,
+                tabName: link.textContent.trim()
             }
-
-            setTimeout(() => {
-                clickingState.delete(element);
-            }, 0);
-        }
-    });
-};
-
-/**
- * Programmatically switches to a specific tab
- * @param {string} tabId - The ID of the tab to switch to (e.g., '#metrics')
- */
-export const switchToTab = (tabId) => {
-    const $tabLink = $(`.jwt-tabs-header .tabs a[href="${tabId}"]`);
-
-    if ($tabLink.length) {
-        $tabLink.trigger('click');
-        logger.debug('Programmatically switched to tab:', tabId);
-    } else {
-        logger.warn('Tab not found:', tabId);
-    }
-};
-
-/**
- * Gets the currently active tab
- * @returns {Object} Object containing tabId and tabName
- */
-export const getActiveTab = () => {
-    const $activeLink = $('.jwt-tabs-header .tabs li.active a');
-
-    return {
-        tabId: $activeLink.attr('href'),
-        tabName: $activeLink.text().trim()
+        }));
     };
+
+    // Add single event listener at document level
+    document.addEventListener('click', handleTabClick);
+
+    // Store handler reference for cleanup
+    window.__tabClickHandler = handleTabClick;
 };
 
 /**
- * Enables or disables a specific tab
- * @param {string} tabId - The ID of the tab
- * @param {boolean} enabled - Whether to enable or disable the tab
+ * Programmatically activate a specific tab
+ * @param {string} tabId - The href/id of the tab to activate
+ * @returns {boolean} True if tab was found and activated
  */
-export const setTabEnabled = (tabId, enabled) => {
-    const $tabLink = $(`.jwt-tabs-header .tabs a[href="${tabId}"]`);
-    const $tabLi = $tabLink.parent();
-
-    if (enabled) {
-        $tabLi.removeClass('disabled');
-        $tabLink.removeAttr('disabled');
-    } else {
-        $tabLi.addClass('disabled');
-        $tabLink.attr('disabled', 'disabled');
+export const activateTab = (tabId) => {
+    // Ensure tabId starts with #
+    const normalizedTabId = tabId.startsWith('#') ? tabId : `#${tabId}`;
+    const tabLink = document.querySelector(`.jwt-tabs-header .tabs a[href="${normalizedTabId}"]`);
+    if (tabLink) {
+        tabLink.click();
+        return true;
     }
-
-    logger.debug(`Tab ${tabId} ${enabled ? 'enabled' : 'disabled'}`);
+    return false;
 };
 
 /**
- * Shows or hides a specific tab
- * @param {string} tabId - The ID of the tab
- * @param {boolean} visible - Whether to show or hide the tab
+ * Get information about the currently active tab
+ * @returns {Object|null} Object with id and name of active tab, or null if none
  */
-export const setTabVisible = (tabId, visible) => {
-    const $tabLi = $(`.jwt-tabs-header .tabs a[href="${tabId}"]`).parent();
+export const getCurrentTab = () => {
+    const activeLink = document.querySelector('.jwt-tabs-header .tabs li.active a');
+    if (activeLink) {
+        return {
+            id: activeLink.getAttribute('href'),
+            name: activeLink.textContent.trim()
+        };
+    }
+    return null;
+};
 
-    if (visible) {
-        $tabLi.show();
-    } else {
-        $tabLi.hide();
+/**
+ * Check if a specific tab is currently active
+ * @param {string} tabId - The href/id of the tab to check
+ * @returns {boolean} True if the tab is active
+ */
+export const isTabActive = (tabId) => {
+    const tabLink = document.querySelector(`.jwt-tabs-header .tabs a[href="${tabId}"]`);
+    return tabLink && tabLink.parentElement && tabLink.parentElement.classList.contains('active');
+};
 
-        // If hiding the active tab, switch to the first visible tab
-        if ($tabLi.hasClass('active')) {
-            const $allTabs = $('.jwt-tabs-header .tabs li');
-            $allTabs.each(function () {
-                const $li = $(this);
-                if ($li.css('display') !== 'none' && !$li.is($tabLi)) {
-                    $li.find('a').trigger('click');
-                    return false; // break
-                }
-            });
+/**
+ * Set the state of a tab (enabled, disabled, error)
+ * @param {string} tabId - The href/id of the tab
+ * @param {string} state - The state to set ('enabled', 'disabled', 'error')
+ * @returns {boolean} True if tab was found and state was set
+ */
+export const setTabState = (tabId, state) => {
+    const tabLink = document.querySelector(`.jwt-tabs-header .tabs a[href="${tabId}"]`);
+    const tabLi = tabLink ? tabLink.parentElement : null;
+
+    if (tabLi) {
+        if (state === 'disabled') {
+            tabLi.classList.add('disabled');
+        } else if (state === 'enabled') {
+            tabLi.classList.remove('disabled');
+        } else if (state === 'error') {
+            // Flash error state briefly
+            tabLi.classList.add('error');
+            setTimeout(() => {
+                document.querySelectorAll('.jwt-tabs-header .tabs li').forEach(li => {
+                    li.classList.remove('error');
+                });
+            }, 3000);
         }
+        return true;
     }
-
-    logger.debug(`Tab ${tabId} ${visible ? 'shown' : 'hidden'}`);
+    return false;
 };
 
 /**
- * Cleans up tab manager event handlers
+ * Clean up tab event handlers
  */
-export const cleanup = () => {
-    logger.debug('Cleaning up tab manager');
-    $(document).off('click', '.jwt-tabs-header .tabs a');
-    $(document).off('click', '[data-toggle="tab"]');
+export const cleanupTabs = () => {
+    if (window.__tabClickHandler) {
+        document.removeEventListener('click', window.__tabClickHandler);
+        delete window.__tabClickHandler;
+    }
+    logger.debug('Tab manager cleaned up');
 };
+
+// Export cleanup alias for backward compatibility
+export const cleanup = cleanupTabs;

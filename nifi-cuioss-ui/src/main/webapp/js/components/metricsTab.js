@@ -9,7 +9,6 @@
  * @module components/metricsTab
  */
 
-import $ from 'cash-dom';
 import { createLogger } from '../utils/logger.js';
 import { formatNumber, formatDate } from '../utils/formatters.js';
 import { UI_TEXT } from '../utils/constants.js';
@@ -44,7 +43,7 @@ export const init = () => {
     logger.info('Initializing metrics tab');
 
     // Create the metrics tab content if it doesn't exist
-    if (!$('#jwt-metrics-content').length) {
+    if (!document.getElementById('jwt-metrics-content')) {
         logger.info('Creating metrics tab content...');
         createMetricsContent();
         // Start periodic metrics refresh only after creating content
@@ -105,23 +104,30 @@ const createMetricsContent = () => {
     `;
 
     // Append to the metrics tab pane
-    const metricsTabPane = $('#metrics');
-    logger.info('Metrics tab pane found:', metricsTabPane.length > 0);
-    if (metricsTabPane.length) {
+    const metricsTabPane = document.getElementById('metrics');
+    logger.info('Metrics tab pane found:', !!metricsTabPane);
+    if (metricsTabPane) {
         logger.info('Appending metrics content to tab pane');
-        metricsTabPane.html(metricsHtml);
-        logger.info('Metrics content appended, new length:', metricsTabPane.html().length);
+        metricsTabPane.innerHTML = metricsHtml;
+        logger.info('Metrics content appended, new length:', metricsTabPane.innerHTML.length);
     } else {
         // Fallback: append to container if tab pane doesn't exist
         logger.warn('Metrics tab pane not found, appending to container');
-        $('#jwt-validator-container').append(metricsHtml);
+        const container = document.getElementById('jwt-validator-container');
+        if (container) {
+            container.insertAdjacentHTML('beforeend', metricsHtml);
+        }
     }
 
     // Bind event handlers
-    $('#refresh-metrics-btn').on('click', refreshMetrics);
+    const refreshBtn = document.getElementById('refresh-metrics-btn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', refreshMetrics);
+    }
 };
 
 let metricsInterval = null;
+let metricsEndpointAvailable = true; // Track if the endpoint is available
 
 /**
  * Starts periodic metrics refresh
@@ -141,6 +147,12 @@ const startMetricsRefresh = () => {
  */
 const refreshMetrics = async () => {
     logger.debug('Refreshing metrics');
+
+    // Don't try to refresh if we know the endpoint is not available
+    if (!metricsEndpointAvailable) {
+        logger.debug('Metrics endpoint not available, skipping refresh');
+        return;
+    }
 
     try {
         // In a real implementation, this would fetch from the processor's metrics endpoint
@@ -177,6 +189,13 @@ const fetchMetricsData = async () => {
         };
     } catch (error) {
         logger.error('Failed to fetch metrics from API:', error);
+        // If it's a 404 error, the endpoint is not implemented yet
+        if (error.status === 404) {
+            logger.info('Metrics endpoint not available (404), showing placeholder data');
+            metricsEndpointAvailable = false; // Mark endpoint as unavailable
+            // Show placeholder message in the UI
+            showMetricsNotAvailable();
+        }
         // Return default values on error
         return {
             totalValidations: 0,
@@ -196,16 +215,21 @@ const fetchMetricsData = async () => {
  */
 const updateMetricsDisplay = (data) => {
     // Update summary metrics
-    $('#total-validations').text(formatNumber(data.totalValidations));
+    const totalValidationsEl = document.getElementById('total-validations');
+    if (totalValidationsEl) totalValidationsEl.textContent = formatNumber(data.totalValidations);
 
     // Calculate success rate safely
     const successRate = data.totalValidations > 0
         ? data.successCount / data.totalValidations
         : 0;
-    $('#success-rate').text(formatPercentage(successRate));
+    const successRateEl = document.getElementById('success-rate');
+    if (successRateEl) successRateEl.textContent = formatPercentage(successRate);
 
-    $('#avg-response-time').text(`${data.avgResponseTime}ms`);
-    $('#active-issuers').text(data.activeIssuers);
+    const avgResponseTimeEl = document.getElementById('avg-response-time');
+    if (avgResponseTimeEl) avgResponseTimeEl.textContent = `${data.avgResponseTime}ms`;
+
+    const activeIssuersEl = document.getElementById('active-issuers');
+    if (activeIssuersEl) activeIssuersEl.textContent = data.activeIssuers;
 
     // Update issuer-specific metrics
     const issuerListHtml = data.issuerMetrics.map(issuer => `
@@ -220,8 +244,11 @@ const updateMetricsDisplay = (data) => {
         </div>
     `).join('');
 
-    $('#issuer-metrics-list').html(issuerListHtml ||
-        '<div class="no-data">No issuer data available</div>');
+    const issuerListEl = document.getElementById('issuer-metrics-list');
+    if (issuerListEl) {
+        issuerListEl.innerHTML = issuerListHtml ||
+            '<div class="no-data">No issuer data available</div>';
+    }
 
     // Update error metrics
     if (data.recentErrors.length > 0) {
@@ -236,9 +263,11 @@ const updateMetricsDisplay = (data) => {
             </div>
         `).join('');
 
-        $('#error-metrics-list').html(errorListHtml);
+        const errorListEl = document.getElementById('error-metrics-list');
+        if (errorListEl) errorListEl.innerHTML = errorListHtml;
     } else {
-        $('#error-metrics-list').html('<div class="no-errors">No recent errors</div>');
+        const errorListEl = document.getElementById('error-metrics-list');
+        if (errorListEl) errorListEl.innerHTML = '<div class="no-errors">No recent errors</div>';
     }
 };
 
@@ -246,13 +275,38 @@ const updateMetricsDisplay = (data) => {
  * Shows an error message when metrics cannot be loaded
  */
 const showMetricsError = () => {
-    $('#jwt-metrics-content').html(`
-        <div class="metrics-error">
-            <i class="fa fa-exclamation-triangle"></i>
-            <p>Unable to load metrics. Please try again later.</p>
-            <button onclick="location.reload()">Reload Page</button>
-        </div>
-    `);
+    const metricsContent = document.getElementById('jwt-metrics-content');
+    if (metricsContent) {
+        metricsContent.innerHTML = `
+            <div class="metrics-error">
+                <i class="fa fa-exclamation-triangle"></i>
+                <p>Unable to load metrics. Please try again later.</p>
+                <button onclick="location.reload()">Reload Page</button>
+            </div>
+        `;
+    }
+};
+
+/**
+ * Shows a message when metrics endpoint is not available
+ */
+const showMetricsNotAvailable = () => {
+    const metricsContent = document.getElementById('jwt-metrics-content');
+    if (metricsContent) {
+        metricsContent.innerHTML = `
+            <div class="metrics-not-available">
+                <i class="fa fa-info-circle"></i>
+                <h3>Metrics Not Available</h3>
+                <p>The metrics endpoint is not currently implemented.</p>
+                <p>Metrics functionality will be available in a future release.</p>
+            </div>
+        `;
+    }
+    // Stop the refresh interval if metrics are not available
+    if (metricsInterval) {
+        clearInterval(metricsInterval);
+        metricsInterval = null;
+    }
 };
 
 /**
@@ -260,7 +314,7 @@ const showMetricsError = () => {
  */
 export const cleanup = () => {
     logger.debug('Cleaning up metrics tab');
-    $('#refresh-metrics-btn').off('click');
+    // Event listeners are automatically cleaned up when elements are removed
     if (metricsInterval) {
         clearInterval(metricsInterval);
         metricsInterval = null;
@@ -274,3 +328,6 @@ export const cleanup = () => {
 export const getDisplayName = () => {
     return nfCommon.getI18n().getProperty(UI_TEXT.I18N_KEYS.METRICS_TAB_NAME) || 'Metrics';
 };
+
+// Export refreshMetrics for global access
+window.metricsTab = { refreshMetrics };

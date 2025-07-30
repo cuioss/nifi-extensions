@@ -1,7 +1,6 @@
 /**
  * JWKS Validation Button UI component.
  */
-import $ from 'cash-dom';
 import * as nfCommon from 'nf.Common';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
 import { validateJwksUrl } from '../services/apiClient.js';
@@ -45,39 +44,51 @@ const _initializeJwksValidator = async (element, propertyValue, jwks_type, callb
     const i18n = nfCommon.getI18n() || {};
 
     // Create UI elements
-    const $container = $('<div class="jwks-verification-container"></div>');
+    const container = document.createElement('div');
+    container.className = 'jwks-verification-container';
+
+    // Store callback object reference in closure
+    let callbackObj = null;
 
     // Only show the Test Connection button for the 'server' type (URL input)
     if (jwks_type === 'server') {
         // Create the button and result container
-        const $verifyButton = $('<button type="button" class="verify-jwks-button"></button>')
-            .text(i18n['processor.jwt.testConnection'] || 'Test Connection');
-        const $resultContainer = $('<div class="verification-result"></div>');
+        const verifyButton = document.createElement('button');
+        verifyButton.type = 'button';
+        verifyButton.className = 'verify-jwks-button';
+        verifyButton.textContent = i18n['processor.jwt.testConnection'] || 'Test Connection';
+
+        const resultContainer = document.createElement('div');
+        resultContainer.className = 'verification-result';
 
         // Find the input field (element is the parent div containing the input)
-        const $inputField = $(element).find('input');
+        const inputField = element.querySelector('input');
 
         // If we can find the input field, insert the button directly after it
-        if ($inputField.length) {
-            const $buttonWrapper = $('<div class="jwks-button-wrapper"></div>')
-                .append($verifyButton)
-                .append($resultContainer);
-            $inputField.after($buttonWrapper);
+        if (inputField) {
+            const buttonWrapper = document.createElement('div');
+            buttonWrapper.className = 'jwks-button-wrapper';
+            buttonWrapper.appendChild(verifyButton);
+            buttonWrapper.appendChild(resultContainer);
+            inputField.parentNode.insertBefore(buttonWrapper, inputField.nextSibling);
         } else {
             // Fallback: Add elements to the container (which is then appended to element)
-            $container.append($verifyButton).append($resultContainer);
+            container.appendChild(verifyButton);
+            container.appendChild(resultContainer);
         }
 
         // Handle button click
-        $verifyButton.on('click', () => {
-            $resultContainer.html(i18n['processor.jwt.testing'] || 'Testing...');
+        verifyButton.addEventListener('click', () => {
+            resultContainer.innerHTML = i18n['processor.jwt.testing'] || 'Testing...';
             // Use the callback to get the current property value if available
-            const currentJwksValue = (typeof callback === 'function' && callback.getValue) ? callback.getValue() : propertyValue;
-            const jwksValue = currentJwksValue || 'https://example.com/.well-known/jwks.json';
+            const currentJwksValue = callbackObj?.getValue ? callbackObj.getValue() : propertyValue;
+            // Also check for value from input field
+            const inputValue = inputField ? inputField.value : null;
+            const jwksValue = inputValue || currentJwksValue || 'https://example.com/.well-known/jwks.json';
 
             try {
                 validateJwksUrl(jwksValue)
-                    .then(responseData => _handleAjaxSuccess(responseData, $resultContainer, i18n))
+                    .then(responseData => _handleAjaxSuccess(responseData, resultContainer, i18n))
                     .catch(error => {
                         // Convert error to jqXHR-like object for compatibility
                         const jqXHRLike = error.jqXHR || {
@@ -85,61 +96,60 @@ const _initializeJwksValidator = async (element, propertyValue, jwks_type, callb
                             statusText: error.statusText || 'Error',
                             responseJSON: error.responseJSON || { error: error.message || 'Unknown error' }
                         };
-                        _handleAjaxError(jqXHRLike, $resultContainer, i18n);
+                        _handleAjaxError(jqXHRLike, resultContainer, i18n);
                     });
             } catch (e) {
-                _handleSynchronousError(e, $resultContainer, i18n);
+                _handleSynchronousError(e, resultContainer, i18n);
             }
         });
 
         // Add a default text to the result container for better UX
-        $resultContainer.html(`<em>${i18n['jwksValidator.initialInstructions'] || 'Click the button to validate JWKS'}</em>`);
+        resultContainer.innerHTML = `<em>${i18n['jwksValidator.initialInstructions'] || 'Click the button to validate JWKS'}</em>`;
     }
 
-    $(element).append($container); // element is the parent div provided by NiFi
-
+    element.appendChild(container);
 
     // Initialize callback if provided
     // Use optional chaining for callback
     if (callback) {
         let currentPropertyValue = propertyValue;
-        callback({
+        callbackObj = {
             validate: () => true,
             getValue: () => currentPropertyValue,
             setValue: newValue => {
                 currentPropertyValue = newValue;
-                propertyValue = newValue;
             },
             jwks_type
-        });
+        };
+        callback(callbackObj);
     }
 };
 
 // Private function to handle AJAX success response
-const _handleAjaxSuccess = (responseData, $resultContainer, i18n) => {
+const _handleAjaxSuccess = (responseData, resultContainer, i18n) => {
     if (responseData.valid) {
-        $resultContainer.html(`
+        resultContainer.innerHTML = `
             <span style="color: var(--success-color); font-weight: bold;">
                 ${i18n['processor.jwt.ok'] || 'OK'}
             </span>
             ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'}
             (${responseData.keyCount} ${i18n['processor.jwt.keysFound'] || 'keys found'})
-        `);
+        `;
     } else {
-        displayUiError($resultContainer, { responseJSON: responseData }, i18n, 'processor.jwt.invalidJwks');
+        displayUiError(resultContainer, { responseJSON: responseData }, i18n, 'processor.jwt.invalidJwks');
     }
 };
 
 // Private function to handle AJAX error response
-const _handleAjaxError = (jqXHR, $resultContainer, i18n) => {
+const _handleAjaxError = (jqXHR, resultContainer, i18n) => {
     // Always display the actual error (no localhost simulation)
-    displayUiError($resultContainer, jqXHR, i18n);
+    displayUiError(resultContainer, jqXHR, i18n);
 };
 
 // Private function to handle synchronous errors during AJAX setup or other issues
-const _handleSynchronousError = (exception, $resultContainer, i18n) => {
+const _handleSynchronousError = (exception, resultContainer, i18n) => {
     // Always display the actual error (no localhost simulation)
-    displayUiError($resultContainer, exception, i18n);
+    displayUiError(resultContainer, exception, i18n);
 };
 
 /**
@@ -149,3 +159,4 @@ const _handleSynchronousError = (exception, $resultContainer, i18n) => {
 export const cleanup = () => {
     // Cleanup any event listeners or resources
 };
+

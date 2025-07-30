@@ -132,25 +132,32 @@ export const displayUiError = ($targetElement, error, i18n, errorTypeKey = 'proc
         </div>
     `;
 
-    $targetElement.html(errorHtml);
+    $targetElement.innerHTML = errorHtml;
 
     // Add close button functionality
     if (closable) {
-        $targetElement.find('.close-error').on('click', () => {
-            $targetElement.find('.error-message').fadeOut(300, function () {
-                // Use the element directly instead of $(this)
-                this.remove();
+        const closeBtn = $targetElement.querySelector('.close-error');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                const errorMsg = $targetElement.querySelector('.error-message');
+                if (errorMsg) {
+                    errorMsg.style.transition = 'opacity 0.3s';
+                    errorMsg.style.opacity = '0';
+                    setTimeout(() => errorMsg.remove(), 300);
+                }
             });
-        });
+        }
     }
 
     // Auto-hide functionality
     if (autoHide) {
         setTimeout(() => {
-            $targetElement.find('.error-message').fadeOut(300, function () {
-                // Use the element directly instead of $(this)
-                this.remove();
-            });
+            const errorMsg = $targetElement.querySelector('.error-message');
+            if (errorMsg) {
+                errorMsg.style.transition = 'opacity 0.3s';
+                errorMsg.style.opacity = '0';
+                setTimeout(() => errorMsg.remove(), 300);
+            }
         }, 5000);
     }
 };
@@ -172,12 +179,15 @@ export const displayUiSuccess = ($targetElement, message, options = {}) => {
         </div>
     `;
 
-    $targetElement.html(successHtml);
+    $targetElement.innerHTML = successHtml;
 
     // Auto-hide functionality
     if (autoHide) {
         setTimeout(() => {
-            $targetElement.find('.success-message').remove();
+            const successMsg = $targetElement.querySelector('.success-message');
+            if (successMsg) {
+                successMsg.remove();
+            }
         }, 5000);
     }
 };
@@ -198,7 +208,7 @@ export const displayUiInfo = ($targetElement, message, options = {}) => {
         </div>
     `;
 
-    $targetElement.html(infoHtml);
+    $targetElement.innerHTML = infoHtml;
 
     if (autoHide) {
         setTimeout(() => {
@@ -226,7 +236,7 @@ export const displayUiWarning = ($targetElement, message, options = {}) => {
         </div>
     `;
 
-    $targetElement.html(warningHtml);
+    $targetElement.innerHTML = warningHtml;
 
     if (autoHide) {
         setTimeout(() => {
