@@ -132,14 +132,16 @@ export const displayUiError = ($targetElement, error, i18n, errorTypeKey = 'proc
         </div>
     `;
 
-    $targetElement.innerHTML = errorHtml;
+    // Handle both jQuery objects and DOM elements
+    const element = $targetElement[0] || $targetElement;
+    element.innerHTML = errorHtml;
 
     // Add close button functionality
     if (closable) {
-        const closeBtn = $targetElement.querySelector('.close-error');
+        const closeBtn = element.querySelector('.close-error');
         if (closeBtn) {
             closeBtn.addEventListener('click', () => {
-                const errorMsg = $targetElement.querySelector('.error-message');
+                const errorMsg = element.querySelector('.error-message');
                 if (errorMsg) {
                     errorMsg.style.transition = 'opacity 0.3s';
                     errorMsg.style.opacity = '0';
@@ -152,7 +154,7 @@ export const displayUiError = ($targetElement, error, i18n, errorTypeKey = 'proc
     // Auto-hide functionality
     if (autoHide) {
         setTimeout(() => {
-            const errorMsg = $targetElement.querySelector('.error-message');
+            const errorMsg = element.querySelector('.error-message');
             if (errorMsg) {
                 errorMsg.style.transition = 'opacity 0.3s';
                 errorMsg.style.opacity = '0';
@@ -179,12 +181,14 @@ export const displayUiSuccess = ($targetElement, message, options = {}) => {
         </div>
     `;
 
-    $targetElement.innerHTML = successHtml;
+    // Handle both jQuery objects and DOM elements
+    const element = $targetElement[0] || $targetElement;
+    element.innerHTML = successHtml;
 
     // Auto-hide functionality
     if (autoHide) {
         setTimeout(() => {
-            const successMsg = $targetElement.querySelector('.success-message');
+            const successMsg = element.querySelector('.success-message');
             if (successMsg) {
                 successMsg.remove();
             }
@@ -208,14 +212,18 @@ export const displayUiInfo = ($targetElement, message, options = {}) => {
         </div>
     `;
 
-    $targetElement.innerHTML = infoHtml;
+    // Handle both jQuery objects and DOM elements
+    const element = $targetElement[0] || $targetElement;
+    element.innerHTML = infoHtml;
 
     if (autoHide) {
         setTimeout(() => {
-            $targetElement.find('.info-message').fadeOut(300, function () {
-                // Use the element directly instead of $(this)
-                this.remove();
-            });
+            const infoMsg = element.querySelector('.info-message');
+            if (infoMsg) {
+                infoMsg.style.transition = 'opacity 0.3s';
+                infoMsg.style.opacity = '0';
+                setTimeout(() => infoMsg.remove(), 300);
+            }
         }, 5000);
     }
 };
@@ -236,14 +244,18 @@ export const displayUiWarning = ($targetElement, message, options = {}) => {
         </div>
     `;
 
-    $targetElement.innerHTML = warningHtml;
+    // Handle both jQuery objects and DOM elements
+    const element = $targetElement[0] || $targetElement;
+    element.innerHTML = warningHtml;
 
     if (autoHide) {
         setTimeout(() => {
-            $targetElement.find('.warning-message').fadeOut(300, function () {
-                // Use the element directly instead of $(this)
-                this.remove();
-            });
+            const warningMsg = element.querySelector('.warning-message');
+            if (warningMsg) {
+                warningMsg.style.transition = 'opacity 0.3s';
+                warningMsg.style.opacity = '0';
+                setTimeout(() => warningMsg.remove(), 300);
+            }
         }, 5000);
     }
 };

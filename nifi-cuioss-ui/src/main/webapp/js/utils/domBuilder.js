@@ -146,6 +146,7 @@ export class SimpleDOMFieldBuilder {
 
 // Legacy compatibility exports
 export const createFragment = () => document.createDocumentFragment();
+export const FormFieldBuilder = SimpleDOMFieldBuilder;
 
 export class DOMBuilder {
     constructor() {

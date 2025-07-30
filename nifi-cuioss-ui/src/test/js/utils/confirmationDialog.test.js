@@ -57,8 +57,8 @@ describe('confirmationDialog', () => {
 
             expect(confirmButton).toBeTruthy();
             expect(cancelButton).toBeTruthy();
-            expect(confirmButton.textContent).toBe('Confirm');
-            expect(cancelButton.textContent).toBe('Cancel');
+            expect(confirmButton.textContent.trim()).toBe('Confirm');
+            expect(cancelButton.textContent.trim()).toBe('Cancel');
         });
 
         it('should resolve to true when confirm button is clicked', async () => {

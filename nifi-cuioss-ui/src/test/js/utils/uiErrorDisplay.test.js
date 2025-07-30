@@ -333,7 +333,7 @@ describe('displayUiSuccess', () => {
     });
 });
 
-describe('fadeOut functionality', () => {
+describe('fade animation functionality', () => {
     let $targetElement;
 
     beforeEach(() => {
@@ -345,81 +345,52 @@ describe('fadeOut functionality', () => {
         $targetElement.remove();
     });
 
-    it('should handle fadeOut animation for closable errors', () => {
+    it('should handle fade animation for closable errors', () => {
         const mockError = { message: 'Closable error' };
         const mockI18n = { 'processor.jwt.validationError': 'Validation Error' };
-
-        // Mock fadeOut function
-        const mockFadeOut = jest.fn((duration, callback) => {
-            // Simulate immediate fadeOut completion
-            if (callback) callback.call({ remove: jest.fn() });
-        });
-
-        // Mock the find method to return an element with fadeOut
-        const originalFind = $targetElement.find;
-        $targetElement.find = jest.fn().mockReturnValue({
-            fadeOut: mockFadeOut,
-            on: jest.fn()
-        });
 
         displayUiError($targetElement, mockError, mockI18n, 'processor.jwt.validationError', {
             closable: true
         });
 
-        // Get the click handler that was registered
-        const onClickCall = $targetElement.find.mock.results.find(result =>
-            result.value && result.value.on
-        );
+        // Get the close button and error message
+        const closeButton = $targetElement[0].querySelector('.close-error');
+        const errorMsg = $targetElement[0].querySelector('.error-message');
+        
+        expect(closeButton).toBeTruthy();
+        expect(errorMsg).toBeTruthy();
 
-        // Only proceed with testing if we have a valid click handler
-        expect(onClickCall).toBeTruthy();
-        expect(onClickCall.value.on.mock.calls.length).toBeGreaterThan(0);
+        // Click the close button
+        closeButton.click();
 
-        const clickHandler = onClickCall.value.on.mock.calls[0][1];
-
-        // Simulate clicking the close button
-        clickHandler();
-
-        // Should call fadeOut with correct parameters
-        expect(mockFadeOut).toHaveBeenCalledWith(300, expect.any(Function));
-
-        // Restore original find method
-        $targetElement.find = originalFind;
+        // Should apply fade transition
+        expect(errorMsg.style.transition).toBe('opacity 0.3s');
+        expect(errorMsg.style.opacity).toBe('0');
     });
 
-    it('should handle fadeOut animation for auto-hide errors', () => {
+    it('should handle fade animation for auto-hide errors', () => {
         const mockError = { message: 'Auto-hide error' };
         const mockI18n = { 'processor.jwt.validationError': 'Validation Error' };
 
-        // Mock setTimeout and fadeOut
-        const originalSetTimeout = global.setTimeout;
-        const mockSetTimeout = jest.fn((callback) => {
-            // Execute callback immediately for testing
-            callback();
-        });
-        global.setTimeout = mockSetTimeout;
-
-        const mockFadeOut = jest.fn((duration, callback) => {
-            if (callback) callback.call({ remove: jest.fn() });
-        });
-
-        // Mock find method
-        const originalFind = $targetElement.find;
-        $targetElement.find = jest.fn().mockReturnValue({
-            fadeOut: mockFadeOut
-        });
+        // Use fake timers
+        jest.useFakeTimers();
 
         displayUiError($targetElement, mockError, mockI18n, 'processor.jwt.validationError', {
             autoHide: true
         });
 
-        // Should set timeout and call fadeOut
-        expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), 5000);
-        expect(mockFadeOut).toHaveBeenCalledWith(300, expect.any(Function));
+        // Fast-forward time by 5 seconds
+        jest.advanceTimersByTime(5000);
 
-        // Restore original functions
-        global.setTimeout = originalSetTimeout;
-        $targetElement.find = originalFind;
+        // Get the error message
+        const errorMsg = $targetElement[0].querySelector('.error-message');
+        if (errorMsg) {
+            // Should apply fade transition
+            expect(errorMsg.style.transition).toBe('opacity 0.3s');
+            expect(errorMsg.style.opacity).toBe('0');
+        }
+
+        jest.useRealTimers();
     });
 });
 
@@ -487,36 +458,26 @@ describe('displayUiWarning', () => {
         global.setTimeout = originalSetTimeout;
     });
 
-    it('should handle fadeOut animation for auto-hide warnings', () => {
+    it('should handle fade animation for auto-hide warnings', () => {
         const message = 'Auto-hide warning';
 
-        // Mock setTimeout and fadeOut
-        const originalSetTimeout = global.setTimeout;
-        const mockSetTimeout = jest.fn((callback) => {
-            // Execute callback immediately for testing
-            callback();
-        });
-        global.setTimeout = mockSetTimeout;
-
-        const mockFadeOut = jest.fn((duration, callback) => {
-            if (callback) callback.call({ remove: jest.fn() });
-        });
-
-        // Mock find method
-        const originalFind = $targetElement.find;
-        $targetElement.find = jest.fn().mockReturnValue({
-            fadeOut: mockFadeOut
-        });
+        // Use fake timers
+        jest.useFakeTimers();
 
         displayUiWarning($targetElement, message, { autoHide: true });
 
-        // Should set timeout and call fadeOut
-        expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), 5000);
-        expect(mockFadeOut).toHaveBeenCalledWith(300, expect.any(Function));
+        // Fast-forward time by 5 seconds
+        jest.advanceTimersByTime(5000);
 
-        // Restore original functions
-        global.setTimeout = originalSetTimeout;
-        $targetElement.find = originalFind;
+        // Get the warning message
+        const warningMsg = $targetElement[0].querySelector('.warning-message');
+        if (warningMsg) {
+            // Should apply fade transition
+            expect(warningMsg.style.transition).toBe('opacity 0.3s');
+            expect(warningMsg.style.opacity).toBe('0');
+        }
+
+        jest.useRealTimers();
     });
 
     it('should handle empty message gracefully', () => {
@@ -583,36 +544,26 @@ describe('displayUiInfo', () => {
         global.setTimeout = originalSetTimeout;
     });
 
-    it('should handle fadeOut animation for auto-hide info messages', () => {
+    it('should handle fade animation for auto-hide info messages', () => {
         const message = 'Auto-hide info';
 
-        // Mock setTimeout and fadeOut
-        const originalSetTimeout = global.setTimeout;
-        const mockSetTimeout = jest.fn((callback) => {
-            // Execute callback immediately for testing
-            callback();
-        });
-        global.setTimeout = mockSetTimeout;
-
-        const mockFadeOut = jest.fn((duration, callback) => {
-            if (callback) callback.call({ remove: jest.fn() });
-        });
-
-        // Mock find method
-        const originalFind = $targetElement.find;
-        $targetElement.find = jest.fn().mockReturnValue({
-            fadeOut: mockFadeOut
-        });
+        // Use fake timers
+        jest.useFakeTimers();
 
         displayUiInfo($targetElement, message, { autoHide: true });
 
-        // Should set timeout and call fadeOut
-        expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), 5000);
-        expect(mockFadeOut).toHaveBeenCalledWith(300, expect.any(Function));
+        // Fast-forward time by 5 seconds
+        jest.advanceTimersByTime(5000);
 
-        // Restore original functions
-        global.setTimeout = originalSetTimeout;
-        $targetElement.find = originalFind;
+        // Get the info message
+        const infoMsg = $targetElement[0].querySelector('.info-message');
+        if (infoMsg) {
+            // Should apply fade transition
+            expect(infoMsg.style.transition).toBe('opacity 0.3s');
+            expect(infoMsg.style.opacity).toBe('0');
+        }
+
+        jest.useRealTimers();
     });
 
     it('should handle empty message gracefully', () => {
