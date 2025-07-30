@@ -8,6 +8,13 @@
 ## Critical Rule: Vanilla JavaScript Preference
 **The preferred way is to use vanilla JavaScript where possible: fetch instead of ajax. If it is not too complex to implement without jQuery/cash, always resort to vanilla JS.**
 
+## Test Strategy: Complete Rewrite Over jQuery Replication
+**Important**: When fixing failing tests, DO NOT attempt to replicate the previous jQuery-based structure with mocks and workarounds. Instead:
+- Completely rewrite tests to match the new vanilla JavaScript implementation
+- Test actual DOM behavior instead of mocking jQuery methods
+- Example: Instead of mocking `fadeOut()`, test CSS transitions directly
+- This approach is cleaner, more maintainable, and tests what actually happens
+
 ## 🔴 CRITICAL TASKS - Build Blocking
 
 ### 1. Fix Unit Test Failures - IN PROGRESS 🔄
