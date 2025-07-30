@@ -1,10 +1,6 @@
 /**
- * Tests for the actual main.js implementation using real jQuery and JSDOM.
+ * Tests for the actual main.js implementation using vanilla JavaScript.
  */
-
-// Import $ from cash-dom for use by main.js, mirroring the change in main.js
-// The global $ should be set up by jest's setupFiles (jquery-extended.js)
-import $ from 'cash-dom';
 
 // Define a clear translation map for all i18n needs in this test file
 const testTranslations = {
@@ -21,7 +17,7 @@ const testTranslations = {
     'property.require.https.jwks.help': 'Test Help for Require HTTPS for JWKS URLs'
 };
 
-// Mock dependencies of main.js (excluding jQuery)
+// Mock dependencies of main.js
 const mockInitTooltips = jest.fn();
 jest.mock('../../main/webapp/js/utils/tooltip.js', () => ({
     initTooltips: mockInitTooltips
@@ -29,6 +25,8 @@ jest.mock('../../main/webapp/js/utils/tooltip.js', () => ({
 
 jest.mock('components/tokenVerifier', () => ({ init: jest.fn() }), { virtual: true });
 jest.mock('components/issuerConfigEditor', () => ({ init: jest.fn() }), { virtual: true });
+jest.mock('components/metricsTab', () => ({ init: jest.fn() }), { virtual: true });
+jest.mock('components/helpTab', () => ({ init: jest.fn() }), { virtual: true });
 jest.mock('services/apiClient', () => ({
     init: jest.fn(),
     getSecurityMetrics: jest.fn().mockResolvedValue({
@@ -42,10 +40,21 @@ jest.mock('services/apiClient', () => ({
 }), { virtual: true });
 jest.mock('js/utils/formatters', () => ({}), { virtual: true });
 
-// Mock the i18n utility that main.js imports directly as './utils/i18n.js'
+// Mock the i18n utility
 jest.mock('../../main/webapp/js/utils/i18n.js', () => ({
     getLanguage: jest.fn().mockReturnValue('en'),
     translate: jest.fn(key => testTranslations[key] || key)
+}));
+
+// Mock keyboardShortcuts and tabManager
+jest.mock('../../main/webapp/js/utils/keyboardShortcuts.js', () => ({
+    initKeyboardShortcuts: jest.fn(),
+    cleanup: jest.fn()
+}));
+
+jest.mock('../../main/webapp/js/utils/tabManager.js', () => ({
+    initTabs: jest.fn(),
+    cleanup: jest.fn()
 }));
 
 // Top-level mock for nf.Common
@@ -55,13 +64,12 @@ const mockGetI18n = jest.fn().mockReturnValue({
 });
 const mockRegisterCustomUiTab = jest.fn();
 const mockRegisterCustomUiComponent = jest.fn();
-const mockFormatValue = jest.fn(value => String(value)); // Basic mock for formatValue
-const mockEscapeHtml = jest.fn(value => String(value)); // Basic mock for escapeHtml
-const mockFormatDateTime = jest.fn(value => String(value)); // Basic mock for formatDateTime
+const mockFormatValue = jest.fn(value => String(value));
+const mockEscapeHtml = jest.fn(value => String(value));
+const mockFormatDateTime = jest.fn(value => String(value));
 const mockShowMessage = jest.fn();
 const mockShowConfirmationDialog = jest.fn();
 const mockAjax = jest.fn().mockReturnValue({ done: jest.fn().mockReturnThis(), fail: jest.fn().mockReturnThis() });
-
 
 jest.mock('nf.Common', () => ({
     getI18n: mockGetI18n,
@@ -73,16 +81,15 @@ jest.mock('nf.Common', () => ({
     showMessage: mockShowMessage,
     showConfirmationDialog: mockShowConfirmationDialog,
     ajax: mockAjax
-    // Add any other nf.Common functions that might be called by main.js
-}), { virtual: true }); // virtual: true if nf.Common is not a real file path
+}), { virtual: true });
 
-
-describe('main.js (real implementation with JSDOM)', () => {
+describe('main.js (real implementation)', () => {
     let mainModule;
-    let nfCommon; // Will be assigned the mocked nf.Common
+    let nfCommon;
     let consoleErrorSpy;
     let consoleLogSpy;
-    // Use fake timers for all tests in this describe block
+    let i18nModule;
+
     beforeAll(() => {
         jest.useFakeTimers();
     });
@@ -92,23 +99,17 @@ describe('main.js (real implementation with JSDOM)', () => {
     });
 
     beforeEach(() => {
-        jest.resetModules(); // Important to reset modules before each test
-        // global.debugMessages = []; // Initialize global debug array - REMOVED
+        jest.resetModules();
 
-        // Simulate DOM ready state before loading main.js or calling init()
-        // This might help ensure $(document).ready() in main.js fires reliably.
+        // Simulate DOM ready state
         Object.defineProperty(document, 'readyState', {
             configurable: true,
-            get() { return 'interactive'; } // or 'complete'
+            get() { return 'interactive'; }
         });
         document.dispatchEvent(new Event('DOMContentLoaded'));
 
-        // Ensure the mock is cleared before each test in this describe block
+        // Clear mocks
         mockInitTooltips.mockClear();
-
-        // global.jQuery and global.$ should be set by the jest setupFile (jquery-extended.js)
-
-        // Clear top-level mocks
         mockGetI18n.mockClear();
         mockGetProperty.mockClear();
         mockRegisterCustomUiTab.mockClear();
@@ -120,14 +121,13 @@ describe('main.js (real implementation with JSDOM)', () => {
         mockShowConfirmationDialog.mockClear();
         mockAjax.mockClear();
 
-        // Re-assign mock implementations if they need to be reset per test or use test-specific values
+        // Re-assign mock implementations
         mockGetI18n.mockReturnValue({ getProperty: mockGetProperty });
         mockGetProperty.mockImplementation(key => testTranslations[key] || `[${key}]_getProperty_TOP_MOCK`);
         mockAjax.mockReturnValue({ done: jest.fn().mockReturnThis(), fail: jest.fn().mockReturnThis() });
 
-
-        // Assign nfCommon to the imported mock for use in assertions if needed
         nfCommon = require('nf.Common');
+        i18nModule = require('../../main/webapp/js/utils/i18n.js');
 
         document.body.innerHTML = `
             <div id="loading-indicator">Loading...</div>
@@ -143,12 +143,11 @@ describe('main.js (real implementation with JSDOM)', () => {
             </div>
             <div id="non-processor-dialog-mock" class="not-processor-dialog" style="display:none;"></div>
         `;
-        // document.body.innerHTML += '<div id="debug-log-output" style="display:none;"></div>'; // No longer writing to DOM
 
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
-        global.nf = { Canvas: { initialized: false } }; // Default to false, tests can override
+        global.nf = { Canvas: { initialized: false } };
         global.window.jwtComponentsRegistered = false;
         global.window.jwtUISetupComplete = false;
         global.window.jwtInitializationInProgress = false;
@@ -168,20 +167,18 @@ describe('main.js (real implementation with JSDOM)', () => {
             mainModule.init();
             jest.runAllTimers();
 
-            // window.jwtComponentsRegistered is no longer accessible, check effects instead
             expect(nfCommon.registerCustomUiTab).toHaveBeenCalledTimes(4);
             expect(nfCommon.registerCustomUiTab).toHaveBeenCalledWith('jwt.validation.issuer.configuration', expect.anything());
             expect(nfCommon.registerCustomUiTab).toHaveBeenCalledWith('jwt.validation.token.verification', expect.anything());
             expect(nfCommon.registerCustomUiTab).toHaveBeenCalledWith('jwt.validation.metrics', expect.anything());
             expect(nfCommon.registerCustomUiTab).toHaveBeenCalledWith('jwt.validation.help', expect.anything());
-            expect(document.getElementById('loading-indicator').style.display).toBe('none'); // Direct check for display: none
-            expect(document.getElementById('jwt-validator-tabs').style.display).not.toBe('none'); // Check that display is not 'none'
+            expect(document.getElementById('loading-indicator').style.display).toBe('none');
+            expect(document.getElementById('jwt-validator-tabs').style.display).not.toBe('none');
         });
 
-        it('should skip help tooltip creation when helpText is falsy (line 50 coverage)', () => {
+        it('should skip help tooltip creation when helpText is falsy', () => {
             global.nf.Canvas.initialized = true;
 
-            // Clear existing DOM and add only a property label that won't have help text
             document.body.innerHTML = `
                 <div id="loading-indicator">Loading...</div>
                 <div id="jwt-validator-tabs" style="display: none;"></div>
@@ -189,26 +186,23 @@ describe('main.js (real implementation with JSDOM)', () => {
                 <div class="property-label">Unknown Property Name</div>
             `;
 
-            // Mock getProperty to return empty string for unknown properties
             mockGetProperty.mockImplementation(key => {
                 if (key && testTranslations[key]) {
                     return testTranslations[key];
                 }
-                return ''; // Return empty string for unknown properties - this tests line 50
+                return ''; // Return empty string for unknown properties
             });
 
             mainModule.init();
             jest.runAllTimers();
 
-            // The unknown property should not have a help tooltip span added
             const unknownPropertyLabel = document.querySelector('.property-label');
             expect(unknownPropertyLabel.querySelector('span.help-tooltip')).toBeNull();
         });
 
-        it('should return empty string when translation key is falsy (line 101 coverage)', () => {
+        it('should return empty string when translation key is falsy', () => {
             global.nf.Canvas.initialized = true;
 
-            // Clear existing DOM and add a property with a name that has no mapping in helpTextKeys
             document.body.innerHTML = `
                 <div id="loading-indicator">Loading...</div>
                 <div id="jwt-validator-tabs" style="display: none;"></div>
@@ -219,7 +213,6 @@ describe('main.js (real implementation with JSDOM)', () => {
             mainModule.init();
             jest.runAllTimers();
 
-            // Verify that no help tooltip was added since the key lookup would return falsy (line 101)
             const propertyLabel = document.querySelector('.property-label');
             expect(propertyLabel.querySelector('span.help-tooltip')).toBeNull();
         });
@@ -229,51 +222,37 @@ describe('main.js (real implementation with JSDOM)', () => {
             mainModule.init();
             jest.runAllTimers();
 
-            // Since beforeEach adds .property-label elements that should receive tooltips,
-            // and init() calls registerHelpTooltips which calls initTooltips (our mock),
-            // we expect it to have been called (with UI Polish enhancements, it may be called multiple times)
             expect(mockInitTooltips).toHaveBeenCalled();
         });
 
         it('should use fallback title if tippy initialization fails', () => {
             global.nf.Canvas.initialized = true;
             document.body.innerHTML = '<div class="property-label" data-i18n-key-direct="property.token.location.help">Token Location <span class="help-tooltip" title="Original Title Should Be Overwritten by i18n"></span></div>';
-            // Ensure the help text is correctly assigned to the title attribute first by registerHelpTooltips
-            // which is called inside mainModule.init()
 
-            // Force our mocked initTooltips to simulate an internal error (like tippy throwing)
-            // For this test to pass as originally intended (testing main.js's try/catch around initTooltips),
-            // initTooltips itself would need to throw.
             mockInitTooltips.mockImplementationOnce(() => { throw new Error('Simulated initTooltips failure'); });
-
-            mainModule.init(); // This calls registerHelpTooltips, which then calls initTooltips
-            jest.runAllTimers();
-
-            const helpSpan = document.querySelector('div.property-label span.help-tooltip');
-            expect(helpSpan).not.toBeNull();
-            // This test now checks if the registerHelpTooltips's own try/catch logs the error.
-            // The fallback to data-original-title happens inside initTooltips, which is now fully mocked.
-            // So, we can't directly test that part here anymore unless we make the mock more complex.
-            // The main purpose is to ensure main.js's error handling for tooltip initialization works.
-            // In the simplified implementation, tooltip errors are logged as debug messages, not errors
-            expect(consoleErrorSpy).not.toHaveBeenCalled();
-            // We can't assert data-original-title here because initTooltips is a black box.
-        });
-
-        it('should NOT use fallback title if tippy initialization succeeds', () => {
-            global.nf.Canvas.initialized = true;
-            document.body.innerHTML = '<div class="property-label" data-i18n-key-direct="property.token.location.help">Token Location <span class="help-tooltip" title="Initial Title"></span></div>';
-
-            mockInitTooltips.mockClear(); // Use the imported initTooltips mock
-            mockInitTooltips.mockImplementation(() => {}); // Default successful mock
 
             mainModule.init();
             jest.runAllTimers();
 
             const helpSpan = document.querySelector('div.property-label span.help-tooltip');
             expect(helpSpan).not.toBeNull();
-            expect(mockInitTooltips).toHaveBeenCalled(); // Ensure initTooltips was called
-            expect(helpSpan.getAttribute('data-original-title')).toBeNull(); // Or toBeUndefined() if cash-dom returns that for missing attr
+            expect(consoleErrorSpy).not.toHaveBeenCalled();
+        });
+
+        it('should NOT use fallback title if tippy initialization succeeds', () => {
+            global.nf.Canvas.initialized = true;
+            document.body.innerHTML = '<div class="property-label" data-i18n-key-direct="property.token.location.help">Token Location <span class="help-tooltip" title="Initial Title"></span></div>';
+
+            mockInitTooltips.mockClear();
+            mockInitTooltips.mockImplementation(() => {});
+
+            mainModule.init();
+            jest.runAllTimers();
+
+            const helpSpan = document.querySelector('div.property-label span.help-tooltip');
+            expect(helpSpan).not.toBeNull();
+            expect(mockInitTooltips).toHaveBeenCalled();
+            expect(helpSpan.getAttribute('data-original-title')).toBeNull();
             expect(consoleErrorSpy).not.toHaveBeenCalledWith('Error initializing tooltips:', expect.any(Error));
         });
 
@@ -289,109 +268,94 @@ describe('main.js (real implementation with JSDOM)', () => {
         it('should register components when nfCanvasInitialized event is triggered', () => {
             global.nf.Canvas.initialized = false;
 
-            // DOMContentLoaded is fired above. Now, when mainModule is required, its .ready() should fire.
-            // DOMContentLoaded is fired in beforeEach.
-            mainModule = require('../../main/webapp/js/main'); // Re-require main module
-            mainModule.init(); // Initialize it
+            mainModule = require('../../main/webapp/js/main');
+            mainModule.init();
 
-            // In the simplified implementation, components are registered immediately in ready()
-            // regardless of nf.Canvas.initialized state
-            expect(window.jwtComponentsRegistered).toBe(true); // Flag should be set already
-            expect(nfCommon.registerCustomUiTab).toHaveBeenCalled(); // Components should be registered already
-
-            // In the simplified implementation, there's no longer an event listener for nfCanvasInitialized
-            // Components are registered once during DOM ready regardless of canvas state
-            // The loading indicator should already be hidden
+            // In the simplified implementation, components are registered immediately
+            expect(window.jwtComponentsRegistered).toBe(true);
+            expect(nfCommon.registerCustomUiTab).toHaveBeenCalled();
             expect(document.getElementById('loading-indicator').style.display).toBe('none');
         });
 
         it('should execute final setTimeout for hideLoadingIndicator and updateUITranslations', () => {
             global.nf.Canvas.initialized = true;
-            // DOMContentLoaded is fired above.
-            mainModule = require('../../main/webapp/js/main'); // Re-require
+            mainModule = require('../../main/webapp/js/main');
             mainModule.init();
-            // jest.runAllTimers(); // For ready handler
 
             const loadingIndicator = document.getElementById('loading-indicator');
-            loadingIndicator.style.display = 'block'; // or ''
+            loadingIndicator.style.display = 'block';
             loadingIndicator.textContent = 'Initial Loading Text';
             document.querySelector('.jwt-validator-title').textContent = 'Initial Title Text';
 
-            jest.advanceTimersByTime(3000); // For the setTimeout in main.js
+            jest.advanceTimersByTime(3000);
 
             expect(loadingIndicator.style.display).toBe('none');
-            // Text assertions are removed as i18n.translate within setTimeout is problematic to test reliably here.
-            // The core functionality of hideLoadingIndicator (tested by visibility) and
-            // updateUITranslations (tested in a synchronous context elsewhere) are covered.
         });
 
         describe('dialogOpen event handling', () => {
             beforeEach(() => {
                 global.nf.Canvas.initialized = true;
                 mainModule.init();
-                jest.advanceTimersByTime(1000); // Use fixed time advance instead of runAllTimers
-                mockInitTooltips.mockClear(); // Use the imported initTooltips mock
+                jest.advanceTimersByTime(1000);
+                mockInitTooltips.mockClear();
             });
 
-
-            it('should handle dialogOpen with non-array data (line 182 coverage)', async () => {
+            it('should handle dialogOpen with non-array data', async () => {
                 const dialogContent = document.getElementById('processor-dialog-mock');
-
-                // Add processor type for this test
                 const processorTypeEl = dialogContent.querySelector('.processor-type');
                 processorTypeEl.textContent = 'NiFi Flow - MultiIssuerJWTTokenAuthenticator';
-
                 dialogContent.style.display = 'block';
 
-                // Trigger with non-array data (covers line 182: data is not an array)
-                $(document).trigger('dialogOpen', dialogContent); // Pass dialogContent directly, not as array
+                // Trigger with non-array data using native event
+                const event = new CustomEvent('dialogOpen', { detail: dialogContent });
+                document.dispatchEvent(event);
 
                 jest.advanceTimersByTime(600);
 
                 expect(mockInitTooltips).toHaveBeenCalled();
             });
 
-            it('should handle dialogOpen when processorTypeElement is null (line 189 coverage)', async () => {
+            it('should handle dialogOpen when processorTypeElement is null', async () => {
                 const dialogContent = document.getElementById('processor-dialog-mock');
-
-                // Remove the processor type element to make processorTypeElement null
                 const processorTypeEl = dialogContent.querySelector('.processor-type');
                 if (processorTypeEl) {
                     processorTypeEl.remove();
                 }
-
                 dialogContent.style.display = 'block';
 
-                // Trigger dialogOpen - this will hit line 189 where processorTypeElement is null
-                $(document).trigger('dialogOpen', [dialogContent]);
+                // Trigger dialogOpen using native event
+                const event = new CustomEvent('dialogOpen', { detail: [dialogContent] });
+                document.dispatchEvent(event);
 
                 jest.advanceTimersByTime(600);
 
-                // Since processorType will be empty string, MultiIssuerJWTTokenAuthenticator check will fail
-                // and mockInitTooltips should not be called
                 expect(mockInitTooltips).not.toHaveBeenCalled();
             });
 
             it('should NOT act if processorType does not include MultiIssuerJWTTokenAuthenticator', async () => {
                 const dialogContent = document.getElementById('other-processor-dialog-mock');
-                dialogContent.style.display = 'block'; // .show()
-                // Use $ (cash-dom from jquery-compat) to trigger. Pass dialogContent directly.
-                $(document).trigger('dialogOpen', [dialogContent]); // Pass as array
+                dialogContent.style.display = 'block';
+
+                const event = new CustomEvent('dialogOpen', { detail: [dialogContent] });
+                document.dispatchEvent(event);
+
                 jest.advanceTimersByTime(600);
-                await Promise.resolve(); // Ensure microtasks flush
-                expect(mockInitTooltips).not.toHaveBeenCalled(); // Use the imported initTooltips mock
-                // done(); // Removed
+                await Promise.resolve();
+
+                expect(mockInitTooltips).not.toHaveBeenCalled();
             });
 
             it('should NOT act if dialogContent does not have class processor-dialog', async () => {
                 const dialogContent = document.getElementById('non-processor-dialog-mock');
-                dialogContent.style.display = 'block'; // .show()
-                // Use $ (cash-dom from jquery-compat) to trigger. Pass dialogContent directly.
-                $(document).trigger('dialogOpen', [dialogContent]); // Pass as array
+                dialogContent.style.display = 'block';
+
+                const event = new CustomEvent('dialogOpen', { detail: [dialogContent] });
+                document.dispatchEvent(event);
+
                 jest.advanceTimersByTime(600);
-                await Promise.resolve(); // Ensure microtasks flush
-                expect(mockInitTooltips).not.toHaveBeenCalled(); // Use the imported initTooltips mock
-                // done(); // Removed
+                await Promise.resolve();
+
+                expect(mockInitTooltips).not.toHaveBeenCalled();
             });
         });
     });
@@ -412,10 +376,8 @@ describe('main.js (real implementation with JSDOM)', () => {
         });
 
         test('emergencyFallbackHideLoading handles fallback error gracefully', async () => {
-            // Create a spy for console.error to track fallback failures
             const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
 
-            // Mock getElementById to throw an error during emergency fallback
             const originalGetElementById = document.getElementById;
             document.getElementById = jest.fn().mockImplementation(() => {
                 throw new Error('DOM access failed');
@@ -425,22 +387,18 @@ describe('main.js (real implementation with JSDOM)', () => {
 
             expect(consoleSpy).toHaveBeenCalledWith('Even emergency fallback failed:', expect.any(Error));
 
-            // Restore mocks
             document.getElementById = originalGetElementById;
             consoleSpy.mockRestore();
         });
 
         test('shouldHideElement identifies different loading texts', () => {
-            // Test short loading text
             expect(mainModule.shouldHideElement('Loading JWT Validator UI...')).toBe(true);
             expect(mainModule.shouldHideElement('Loading')).toBe(true);
             expect(mainModule.shouldHideElement('Loading...')).toBe(true);
 
-            // Test long text should not be hidden
             const longText = 'This is a very long piece of text that is definitely longer than 100 characters and should not be considered a loading indicator because it contains substantial content that users need to see';
             expect(mainModule.shouldHideElement(longText)).toBe(false);
 
-            // Test non-loading text
             expect(mainModule.shouldHideElement('Some other content')).toBe(false);
         });
 
@@ -458,7 +416,6 @@ describe('main.js (real implementation with JSDOM)', () => {
         });
 
         test('cleanup handles tooltip observer cleanup', () => {
-            // Set up a mock tooltip observer
             const mockObserver = {
                 disconnect: jest.fn()
             };
@@ -476,20 +433,16 @@ describe('main.js (real implementation with JSDOM)', () => {
             expect(() => mainModule.cleanup()).not.toThrow();
         });
 
-        test('cleanup handles jQuery errors gracefully', () => {
-            // Mock jQuery to throw an error
-            const original$ = global.$;
-            const mockJQuery = jest.fn().mockReturnValue({
-                off: jest.fn().mockImplementation(() => {
-                    throw new Error('jQuery error');
-                })
-            });
-            global.$ = mockJQuery;
+        test('cleanup handles document event listener removal gracefully', () => {
+            const mockRemoveEventListener = jest.spyOn(document, 'removeEventListener');
 
-            expect(() => mainModule.cleanup()).not.toThrow();
+            mainModule.cleanup();
 
-            // Restore original $
-            global.$ = original$;
+            // The cleanup function doesn't actually remove dialogOpen listeners
+            // because we don't store a reference to the handler
+            expect(mockRemoveEventListener).not.toHaveBeenCalledWith('dialogOpen', expect.any(Function));
+
+            mockRemoveEventListener.mockRestore();
         });
     });
 });

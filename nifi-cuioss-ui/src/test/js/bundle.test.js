@@ -151,7 +151,7 @@ describe('bundle.js', () => {
         it('should export hideLoadingIndicatorImmediate function', () => {
             const { hideLoadingIndicatorImmediate } = require('../../main/webapp/js/bundle');
             expect(typeof hideLoadingIndicatorImmediate).toBe('function');
-            
+
             // Set up DOM
             document.body.innerHTML = `
                 <div class="test-element">Loading JWT Validator...</div>
@@ -170,10 +170,10 @@ describe('bundle.js', () => {
         it('should handle document without errors', () => {
             // Simple test that the function can be called without throwing
             const { hideLoadingIndicatorImmediate } = require('../../main/webapp/js/bundle');
-            
+
             // Set up minimal DOM
             document.body.innerHTML = '<div id="loading-indicator">Loading...</div>';
-            
+
             // Should not throw
             expect(() => {
                 hideLoadingIndicatorImmediate();
@@ -182,17 +182,17 @@ describe('bundle.js', () => {
 
         it('should handle DOM query errors gracefully', () => {
             const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
-            
+
             // Create a scenario that might cause warnings
             document.body.innerHTML = '';
-            
+
             const { hideLoadingIndicatorImmediate } = require('../../main/webapp/js/bundle');
-            
+
             // Function should complete without throwing
             expect(() => {
                 hideLoadingIndicatorImmediate();
             }).not.toThrow();
-            
+
             // Restore mocks
             consoleWarnSpy.mockRestore();
         });

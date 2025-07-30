@@ -98,7 +98,7 @@ public class JwtVerificationServlet extends HttpServlet {
         String token = requestJson.getString("token");
         String processorId = requestJson.containsKey("processorId") ? requestJson.getString("processorId") : null;
         String expectedIssuer = requestJson.containsKey("issuer") ? requestJson.getString("issuer") : null;
-        
+
         LOGGER.info("Request received - processorId: %s, token: %s", processorId, token);
 
         // Extract authorization requirements if present
