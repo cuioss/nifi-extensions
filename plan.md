@@ -106,6 +106,34 @@ All backend endpoints are fully implemented and configured:
   }
   ```
 
+### 🚨 E2E PLAYWRIGHT TEST FAILURES TO FIX
+
+#### Critical HTTP 404 Errors Detected:
+1. **Metrics Endpoint Missing**
+   - [ ] Fix: HTTP 404 - `https://localhost:9095/nifi-api/processors/jwt/metrics`
+   - [ ] Verify servlet mapping in web.xml
+   - [ ] Check if metrics endpoint is properly deployed
+
+2. **Font Resources Missing**
+   - [ ] Fix: HTTP 404 - `fontawesome-webfont-5GKVPAEF.woff2?v=4.7.0`
+   - [ ] Fix: HTTP 404 - `fontawesome-webfont-Z4ARLA73.woff?v=4.7.0`
+   - [ ] Fix: HTTP 404 - `fontawesome-webfont-RJ6LE7IU.ttf?v=4.7.0`
+   - [ ] Update font-awesome resources or fix asset bundling
+
+#### Failing E2E Test Cases:
+1. **tests/05-verify-metrics-tab.spec.js**
+   - [ ] Test: "should display issuer-specific metrics" - Timeout waiting for `[data-testid="issuer-metrics"]`
+   - [ ] Issue: Metrics tab content not rendering properly
+
+2. **tests/05-verify-all-tab-content.spec.js**
+   - [ ] Test: "all tabs should display their content properly" - Failed on retry
+   - [ ] Issue: Tab content verification failing
+
+#### E2E Test Environment Issues:
+- [ ] Verify NiFi server is properly configured for E2E tests
+- [ ] Check if all required endpoints are accessible during E2E test execution
+- [ ] Ensure custom UI WAR is properly deployed with all assets
+
 ## ✅ VERIFICATION RESULTS
 
 ### Thorough Test Analysis Completed:
