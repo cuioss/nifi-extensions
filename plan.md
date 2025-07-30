@@ -20,6 +20,8 @@
 - [ ] Check all required endpoints accessibility
 - [ ] Ensure custom UI WAR deployment includes all assets
 
+**Note**: Font-awesome 404 errors (fontawesome-webfont-*.woff2/woff/ttf) can be safely ignored. These are legacy font resources that don't affect functionality.
+
 ### 🔧 HIGH PRIORITY: TEST COVERAGE IMPROVEMENTS
 
 **Current Status**: Coverage below required thresholds
