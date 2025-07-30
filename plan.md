@@ -1,133 +1,105 @@
-# jQuery Migration Project - Status Report
+# NiFi JWT Extensions - Open Tasks
 
-## 🎉 PROJECT COMPLETION STATUS: ALL CRITICAL TASKS COMPLETED ✅
+## 🚨 HIGH PRIORITY: E2E Integration Test Failures
 
-**Final Status**: All planned tasks have been successfully completed!
+### Current Test Status:
+- ✅ **Unit Tests**: 630/630 passing (100%)
+- ✅ **E2E Self-Tests**: 29/29 passing (100%)
+- ❌ **E2E Integration Tests**: 11 test files with failures
 
-### 🔧 E2E PLAYWRIGHT TEST ISSUES ✅ **COMPLETED**
+### Key Finding:
+**Since `self-processor-advanced.spec.js` passes, NiFi IS running and the processor IS available.** The failures are likely due to the integration tests not properly using the ProcessorService utility or other test implementation issues.
 
-**ALL E2E TEST ISSUES RESOLVED!**
+### 🔧 E2E Integration Test Fixes Needed:
 
-#### 1. Self-Test Failures ✅ **COMPLETED**
-- [x] Fixed: `errorDetection.getCriticalErrors()` undefined error
-- [x] Fixed: Missing function imports (setupBrowserConsoleLogging, injectTestConsoleMessages)
-- [x] **RESOLVED**: Fixed remaining 2 E2E test failures
-  - Fixed browser logging test message format (WARN → WARNING)
-  - Fixed console capture test cleanup method and imports
-  - **Result**: All 8 E2E self-tests now passing ✅
+#### 1. Failing Test: `01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js`
+- [ ] Verify test is using ProcessorService.findJwtAuthenticator() correctly
+- [ ] Check if test expects specific processor configuration not present
+- [ ] Update test to handle dynamic processor IDs
 
-#### 2. Infrastructure Requirements (Optional - Not Required)
-- [ ] Optional: Verify NiFi is running: https://localhost:9095/nifi (for full integration tests)
-- [ ] Optional: Verify Keycloak is running: https://localhost:9085 (for full integration tests)  
-- [ ] Optional: Ensure MultiIssuerJWTTokenAuthenticator is on the canvas (for full integration tests)
+#### 2. Failing Test: `02-verify-jwt-authenticator-customizer.spec.js`
+- [ ] Fix locator issues for finding processor elements
+- [ ] Ensure test uses proper frame switching for custom UI
+- [ ] Update selectors to match current DOM structure
 
-#### 3. All Previously Fixed Issues ✅ **COMPLETED**
-- ✅ **Metrics endpoint**: Fixed HTTP 404 errors by updating metricsTab.js
-- ✅ **Tab content verification**: Fixed by adding proper data-testid attributes
-- ✅ **Browser logging tests**: Fixed log message format and file access
-- ✅ **Console capture tests**: Fixed cleanup method and imports
+#### 3. Failing Test: `02-verify-jwt-custom-ui-tabs.spec.js`
+- [ ] Fix tab navigation selectors
+- [ ] Ensure proper wait conditions for tab content loading
+- [ ] Update test to use data-testid attributes
 
-### ✅ COMPLETED: TEST COVERAGE IMPROVEMENTS **COMPLETED**
+#### 4. Failing Test: `03-verify-jwks-validation-button.spec.js`
+- [ ] Fix JWKS validation button interaction
+- [ ] Handle async validation responses properly
+- [ ] Update error message expectations
 
-**Coverage Progress Made**: 
-- ✅ Added comprehensive tests for helpTab.js (61.53% → ~90%+)
-- ✅ Added extensive tests for metricsTab.js (61.07% → ~85%+)
-- ✅ Added comprehensive tests for confirmationDialog.js (66.1% → 97.45% statements)
-- ✅ Added comprehensive tests for componentManager.js (76.33% → 80.15% statements)
-- ✅ Created 88 new tests across all components (37 + 27 + 24 = 88 total)
-- ✅ Significantly improved branch and function coverage across the board
+#### 5. Failing Test: `03-verify-jwt-custom-ui-direct.spec.js`
+- [ ] Fix direct UI access navigation
+- [ ] Update frame detection logic
+- [ ] Fix tab switching test functionality
 
-**Final Coverage Results**:
-- ✅ **confirmationDialog.js**: 97.45% statements, 77.96% branches (27 tests)
-- ✅ **componentManager.js**: 80.15% statements, 72.22% branches (24 tests)
-- ✅ All target files now exceed 80% statement coverage threshold
+#### 6. Failing Test: `04-verify-token-verification-tab.spec.js`
+- [ ] Fix token input and verification flow
+- [ ] Update result display selectors
+- [ ] Handle token validation timing
 
-**Non-Critical Coverage Gaps** (Optional improvements):
-- [ ] Optional: bundle.js (auto-generated, 31% coverage) - not actionable
-- [ ] Optional: logger.js (57.77% statements) - impacts overall metrics but not critical
+#### 7. Failing Test: `05-verify-all-tab-content.spec.js`
+- [ ] Update selectors for all tab content verification
+- [ ] Fix content visibility checks
+- [ ] Add proper wait conditions
 
-#### 1. keyboardShortcuts.js ✅
-- ✅ Improved from 73.58% → 93.08% statements, 94.15% lines
-- ✅ Added tests for keyboard event handling
-- ✅ Added tests for shortcut registration and modal interactions
+#### 8. Failing Test: `05-verify-metrics-tab.spec.js`
+- [ ] Handle missing `/nifi-api/processors/jwt/metrics` endpoint (404)
+- [ ] Update test to check UI-only metrics display
+- [ ] Add mock data handling or skip backend-dependent tests
 
-#### 2. tabManager.js ✅
-- ✅ Improved from 65.21% → 97.1% statements, 100% lines
-- ✅ Added tests for tab switching logic
-- ✅ Added tests for active tab management and initialization
+#### 9. Failing Test: `06-simple-tab-content-check.spec.js`
+- [ ] Simplify content verification approach
+- [ ] Use more robust selectors
+- [ ] Add retry logic for dynamic content
 
-#### 3. main.js ✅
-- ✅ Improved from 76.62% → 88.31% statements, 89.43% lines
-- ✅ Added tests for initialization flows
-- ✅ Added tests for error handling paths and edge cases
+#### 10. Failing Test: `06-verify-help-tab.spec.js`
+- [ ] Fix help content verification
+- [ ] Update expected help text
+- [ ] Handle dynamic content loading
 
-#### 4. Restore Coverage Thresholds ✅
-- ✅ Updated package.json to restore original thresholds
+#### 11. Failing Test: `08-verify-jwks-validation-complete.spec.js`
+- [ ] Fix complete JWKS validation flow
+- [ ] Update all validation scenarios
+- [ ] Handle edge cases properly
 
-### 📝 OPTIONAL: Code Quality Improvements (Not Required)
+### 🔍 Common Issues to Address:
+1. **Missing Font Resources**: `fontawesome-webfont` files return 404
+2. **Backend Endpoint Not Implemented**: `/nifi-api/processors/jwt/metrics` returns 404
+3. **Timeout Issues**: Tests failing to find elements within timeout period
+4. **Frame Navigation**: Custom UI iframe handling needs improvement
 
-#### 1. Console Suppression Review (Optional)
-- [ ] Optional: Review `src/test/js/setup.js` (lines 33-67)
-- [ ] Optional: Evaluate if console.error/warn suppression is still needed
-- [ ] Optional: Consider impact on debugging (currently suppresses all output unless DEBUG=1)
+## 📝 LOW PRIORITY: Optional Improvements
 
-#### 2. Optional Coverage Improvements (Not actionable)
-- [ ] Optional: **bundle.js** - Auto-generated file (31.18% coverage) - not actionable
-- [ ] Optional: **helpTab.js** - Help content rendering (48.71% coverage) - already significantly improved
-- [ ] Optional: **metricsTab.js** - Metrics display logic (55.33% coverage) - already significantly improved
+### Infrastructure Setup (Optional)
+- [ ] Document E2E test setup requirements clearly
+- [ ] Create mock server for missing backend endpoints
+- [ ] Add font resource files or update tests to ignore 404s
 
----
+### Code Quality (Optional)
+- [ ] Review console suppression in `src/test/js/setup.js`
+- [ ] Improve test error messages and debugging output
+- [ ] Add E2E test retry configuration
 
-## ✅ COMPLETED ITEMS
+## ✅ COMPLETED TASKS
 
-### Test Coverage Improvements (July 30, 2025)
-- ✅ Created comprehensive test suite for helpTab.js (19 tests, 61.53% → ~90%+)
-- ✅ Created extensive test suite for metricsTab.js (18 tests, 61.07% → ~85%+)
-- ✅ Created comprehensive test suite for confirmationDialog.js (27 tests, 66.1% → 97.45%)
-- ✅ Created comprehensive test suite for componentManager.js (24 tests, 76.33% → 80.15%)
-- ✅ Fixed E2E test import errors (reduced failures from 8 to 2)
-- ✅ **Total new tests added**: 88 comprehensive tests across all components
-- ✅ **Achievement**: All target files now exceed 80% statement coverage threshold
+### Unit Test Achievements
+- All 630 unit tests passing
+- Test coverage exceeds 80% threshold for all target files
+- Fixed metricsTab test data structure issues
 
-### Unit Test Fixes (July 30, 2025)
-- ✅ Fixed all 7 critical failing unit tests
-- ✅ **keyboardShortcuts.test.js**: Fixed 4 tests by adding offsetParent mocks and timing adjustments
-- ✅ **main.real.test.js**: Fixed 3 tests with proper window.location mocking and spy usage
-- ✅ **Result**: All 568 unit tests now passing!
-
-### Backend Implementation
-- ✅ All backend servlets implemented and tested
-- ✅ Unit tests: 22 tests passing (EasyMock)
-- ✅ Integration tests: 17 tests created (REST Assured)
+### E2E Self-Test Achievements  
+- All 29 self-tests passing
+- Fixed browser logging and console capture
+- Validated test infrastructure
 
 ### jQuery Migration
-- ✅ Complete jQuery/Cash-DOM removal from all test files
-- ✅ 531 JavaScript unit tests passing
-- ✅ Vanilla JavaScript implementation throughout
-- ✅ Fetch API replacing jQuery AJAX
-- ✅ Native DOM manipulation and event handling
+- Complete removal of jQuery/Cash-DOM
+- Full vanilla JavaScript implementation
+- All AJAX calls converted to Fetch API
 
-### Build Status
-- ✅ Pre-commit checks passing
-- ✅ Full build successful (with integration tests excluded)
-- ✅ ESLint compliance maintained
-
-## 🎯 FINAL PROJECT SUMMARY
-
-**🎉 ALL CRITICAL TASKS COMPLETED SUCCESSFULLY! 🎉**
-
-### Final Achievement Summary:
-- ✅ **568 unit tests passing** (0 failures)
-- ✅ **8 E2E self-tests passing** (0 failures) 
-- ✅ **88 new comprehensive tests added** across all components
-- ✅ **All target files exceed 80% statement coverage threshold**
-- ✅ **jQuery migration completed** - Full vanilla JavaScript implementation
-- ✅ **All critical test failures resolved**
-- ✅ **Build pipeline passing** with full ESLint compliance
-
-### Next Steps:
-- **No immediate action required** - All critical tasks completed
-- Optional infrastructure setup available for full integration testing
-- Optional code quality improvements can be addressed in future iterations
-
-*Project completion date: July 30, 2025*
+*Last updated: July 30, 2025*
