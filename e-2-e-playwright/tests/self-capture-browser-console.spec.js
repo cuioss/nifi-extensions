@@ -7,6 +7,7 @@ import {
     saveTestBrowserLogs,
     setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
+import { globalCriticalErrorDetector } from "../utils/critical-error-detector.js";
 
 test.describe("Browser Console Error Capture", () => {
     test("should capture and validate browser console errors", async ({
@@ -14,7 +15,7 @@ test.describe("Browser Console Error Capture", () => {
     }, testInfo) => {
         // Setup unified console logging system instead of custom implementation
         // Skip initial canvas checks since processor UI page doesn't have a canvas
-        const errorDetection = await setupAuthAwareErrorDetection(
+        await setupAuthAwareErrorDetection(
             page,
             testInfo,
         );
@@ -49,7 +50,7 @@ test.describe("Browser Console Error Capture", () => {
 
         // Check for critical errors after navigation (skip canvas checks for processor UI page)
         // The processor UI page doesn't have a canvas, so we only check for console errors
-        const criticalErrors = errorDetection.getCriticalErrors();
+        const criticalErrors = globalCriticalErrorDetector.getDetectedErrors();
         if (criticalErrors.length > 0) {
             const jsErrors = criticalErrors.filter(
                 (error) =>

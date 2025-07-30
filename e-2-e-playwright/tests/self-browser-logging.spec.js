@@ -8,9 +8,8 @@
 import { expect, test } from "@playwright/test";
 import { AuthService } from "../utils/auth-service.js";
 import {
-    injectTestConsoleMessages,
     saveTestBrowserLogs,
-    setupBrowserConsoleLogging,
+    setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
 import fs from "fs";
 import path from "path";
@@ -19,7 +18,7 @@ import { logTestWarning } from "../utils/test-error-handler.js";
 test.describe("Self-Test: Browser Console Logging", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Setup console logging for each test
-        setupBrowserConsoleLogging(page, testInfo);
+        await setupAuthAwareErrorDetection(page, testInfo);
     });
 
     test.afterEach(async ({ page: _ }, testInfo) => {
@@ -281,7 +280,14 @@ test.describe("Self-Test: Browser Console Logging", () => {
 
         // Generate specific console messages to verify with unique identifier
         const testId = `direct-log-test-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
-        await injectTestConsoleMessages(page, testId);
+        
+        // Inject test console messages directly
+        await page.evaluate((id) => {
+            console.log(`Direct log test - INFO message - ${id}`);
+            console.warn(`Direct log test - WARN message - ${id}`);
+            console.error(`Direct log test - ERROR message - ${id}`);
+            console.debug(`Direct log test - DEBUG message - ${id}`);
+        }, testId);
 
         // Wait a moment for logs to be captured
         await page.waitForTimeout(500);
