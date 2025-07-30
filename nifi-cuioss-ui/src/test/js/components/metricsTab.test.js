@@ -168,6 +168,52 @@ describe('MetricsTab', () => {
 
     describe('metrics refresh', () => {
         beforeEach(() => {
+            // Clear any existing content
+            document.body.innerHTML = `
+                <div id="jwt-validator-container">
+                    <div id="metrics" class="tab-pane"></div>
+                </div>
+            `;
+            // Reset the mock for each test - clear any previous setup including mockRejectedValueOnce
+            mockGetSecurityMetrics.mockClear();
+            mockGetSecurityMetrics.mockReset();
+            mockGetSecurityMetrics.mockResolvedValue({
+                totalTokensValidated: 1000,
+                validTokens: 950,
+                invalidTokens: 50,
+                averageResponseTime: 45,
+                minResponseTime: 10,
+                maxResponseTime: 200,
+                p95ResponseTime: 80,
+                activeIssuers: 2,
+                issuerMetrics: [
+                    {
+                        name: 'keycloak',
+                        totalRequests: 600,
+                        successCount: 580,
+                        failureCount: 20,
+                        successRate: 96.7, // 580/600 * 100 = 96.7%
+                        avgResponseTime: 40
+                    },
+                    {
+                        name: 'auth0',
+                        totalRequests: 400,
+                        successCount: 370,
+                        failureCount: 30,
+                        successRate: 92.5, // 370/400 * 100 = 92.5%
+                        avgResponseTime: 50
+                    }
+                ],
+                topErrors: [
+                    {
+                        timestamp: new Date(),
+                        issuer: 'keycloak',
+                        error: 'Token expired',
+                        count: 5,
+                        subject: 'user123'
+                    }
+                ]
+            });
             metricsTab.init();
         });
 
@@ -183,20 +229,23 @@ describe('MetricsTab', () => {
         });
 
         it('should handle metrics fetch error gracefully', async () => {
+            // Clear previous mock and set to reject for this specific test only  
             mockGetSecurityMetrics.mockRejectedValueOnce(new Error('Network error'));
+            
+            // Manually trigger refresh since timers are disabled in test environment
+            await window.metricsTab.refreshMetrics();
 
-            // Trigger refresh
-            jest.advanceTimersByTime(100);
-            await Promise.resolve();
-
-            // Should not throw and should keep default values
+            // When there's an API error, the implementation returns default values (0) 
+            // instead of showing an error display, which is good UX
             expect(document.getElementById('total-validations').textContent).toBe('0');
+            expect(document.getElementById('success-rate').textContent).toBe('0.0%');
+            expect(document.getElementById('failure-rate').textContent).toBe('0.0%');
+            expect(document.getElementById('active-issuers').textContent).toBe('0');
         });
 
         it('should update issuer metrics table', async () => {
-            jest.advanceTimersByTime(100);
-            await Promise.resolve();
-            await Promise.resolve();
+            // Manually trigger refresh to ensure fresh data after previous tests
+            await window.metricsTab.refreshMetrics();
 
             const issuerRows = document.querySelectorAll('.issuer-metrics-table tbody tr');
             expect(issuerRows.length).toBe(2); // keycloak and auth0
@@ -212,9 +261,8 @@ describe('MetricsTab', () => {
         });
 
         it('should update recent errors', async () => {
-            jest.advanceTimersByTime(100);
-            await Promise.resolve();
-            await Promise.resolve();
+            // Manually trigger refresh to ensure fresh data after previous tests
+            await window.metricsTab.refreshMetrics();
 
             const errorItems = document.querySelectorAll('.error-metric-item');
             expect(errorItems.length).toBeGreaterThan(0);
