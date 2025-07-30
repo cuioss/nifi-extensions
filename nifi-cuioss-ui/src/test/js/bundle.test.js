@@ -2,9 +2,8 @@
  * Tests for bundle.js
  */
 
-// Mock jQuery, nf.Common, and js/main at the top level
+// Mock nf.Common, and js/main at the top level
 // These are direct or indirect dependencies of bundle.js
-jest.mock('jquery', () => jest.fn(), { virtual: true }); // Basic mock for $
 jest.mock('nf.Common', () => ({
     // Add any specific nfCommon functions that might be called during bundle.js execution or its imports
     registerCustomUiTab: jest.fn(),

@@ -1,23 +1,23 @@
 /**
- * Provides utility functions for tests, particularly for mocking AJAX responses
+ * Provides utility functions for tests, particularly for mocking fetch responses
  * that are aware of a simulated "localhost" environment.
  */
 
 /**
- * Creates a mock implementation for cash-dom's $.ajax.
- * This mock can simulate localhost behavior, where AJAX errors might be presented
+ * Creates a mock implementation for fetch API.
+ * This mock can simulate localhost behavior, where fetch errors might be presented
  * as successes with sample data, or behave normally for non-localhost scenarios.
  *
  * @param {object} options - Configuration for the mock.
  * @param {boolean} options.isLocalhostValue - The current localhost state for the test.
- * @param {object} options.simulatedLocalhostSuccessData - Data to resolve with when isLocalhostValue is true and an AJAX "error" occurs,
+ * @param {object} options.simulatedLocalhostSuccessData - Data to resolve with when isLocalhostValue is true and an error occurs,
  *                                                       or when a success occurs on localhost.
- * @param {object} [options.successData] - Data to resolve with for a successful AJAX call when not on localhost.
- * @param {object} [options.errorData] - Data to reject with for a failed AJAX call when not on localhost.
- * @param {boolean} [options.isErrorScenario=false] - Set to true if this mock is for a scenario that should lead to an AJAX error/rejection.
+ * @param {object} [options.successData] - Data to resolve with for a successful fetch call when not on localhost.
+ * @param {object} [options.errorData] - Data to reject with for a failed fetch call when not on localhost.
+ * @param {boolean} [options.isErrorScenario=false] - Set to true if this mock is for a scenario that should lead to a fetch error/rejection.
  * @param {boolean} [options.isSynchronousErrorScenario=false] - If true and isErrorScenario is true, the mock will throw a synchronous error.
  */
-export const createAjaxMock = ({
+export const createFetchMock = ({
     isLocalhostValue,
     simulatedLocalhostSuccessData,
     successData, // For actual success (non-localhost, or localhost if not overriding errors)
@@ -25,28 +25,25 @@ export const createAjaxMock = ({
     isErrorScenario = false,
     isSynchronousErrorScenario = false
 }) => {
-    return jest.fn(() => { // This is the function that will mock $.ajax
+    return jest.fn(() => {
         if (isSynchronousErrorScenario) {
-            throw new Error('Simulated synchronous AJAX error by test-utils');
+            throw new Error('Simulated synchronous fetch error by test-utils');
         }
-
-        let thenCb, catchCb;
-        const promise = {
-            then: function (cb) { thenCb = cb; return this; },
-            catch: function (cb) { catchCb = cb; return this; },
-            // Helper to simulate async resolution/rejection
-            _resolve: function (data) { setTimeout(() => { if (thenCb) thenCb(data); }, 0); },
-            _reject: function (err) { setTimeout(() => { if (catchCb) catchCb(err); }, 0); }
-        };
 
         if (isErrorScenario) {
             if (isLocalhostValue) {
-                // For localhost error scenarios, the SUT's .catch block should be hit,
-                // which then decides to show a simulated success. So, we reject here.
-                // console.log('test-utils: Simulating localhost error scenario (will reject)');
-                promise._reject(errorData || { statusText: 'Simulated Localhost Error', responseText: 'Error for localhost test to trigger SUT catch' });
+                // For localhost error scenarios, simulate a network error
+                return Promise.reject(errorData || new Error('Simulated Localhost Error'));
             } else {
-                promise._reject(errorData || { statusText: 'Generic Test Error', responseText: 'Error from test-utils' });
+                // For non-localhost error scenarios, simulate HTTP error response
+                const errorResponse = {
+                    ok: false,
+                    status: 500,
+                    statusText: 'Internal Server Error',
+                    json: () => Promise.resolve(errorData || { error: 'Generic Test Error' }),
+                    text: () => Promise.resolve(JSON.stringify(errorData || { error: 'Generic Test Error' }))
+                };
+                return Promise.resolve(errorResponse);
             }
         } else { // Success scenario
             const responseData = isLocalhostValue
@@ -60,15 +57,29 @@ export const createAjaxMock = ({
                 scenario: 'success'
             };
 
-            // Resolve with the appropriate data
-            promise._resolve({
+            const finalData = {
                 ...responseData,
                 __testMetadata: environmentInfo
-            });
+            };
+
+            const successResponse = {
+                ok: true,
+                status: 200,
+                statusText: 'OK',
+                json: () => Promise.resolve(finalData),
+                text: () => Promise.resolve(JSON.stringify(finalData))
+            };
+
+            return Promise.resolve(successResponse);
         }
-        return promise;
     });
 };
+
+/**
+ * Legacy alias for backwards compatibility.
+ * @deprecated Use createFetchMock instead
+ */
+export const createAjaxMock = createFetchMock;
 
 // Sample data that can be imported by tests
 export const sampleJwksSuccess = {

@@ -90,27 +90,15 @@ describe('apiClient', () => {
 
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-        // Default mock for compatAjax for each test
-        // This is used by SUT's validateJwksUrl if it internally calls compatAjax
-        // and by other SUT functions if they use ajax.
-        // Since apiClient.js uses ajax internally, this mock will be used by it.
-        // This default implementation returns a promise that can be controlled in tests
-        // if a more specific mock isn't provided via mockResolvedValueOnce/mockRejectedValueOnce.
+        // Default mock for fetch-based implementation
         mockAjax.mockImplementation(() => {
-            let resolvePromise, rejectPromise;
-            const promise = new Promise((resolve, reject) => {
-                resolvePromise = resolve;
-                rejectPromise = reject;
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                statusText: 'OK',
+                json: () => Promise.resolve({}),
+                text: () => Promise.resolve('{}')
             });
-            // @ts-ignore
-            promise.resolve = resolvePromise;
-            // @ts-ignore
-            promise.reject = rejectPromise;
-            // Add done/fail/always for compatibility with SUT if it uses them (though cash-dom might not)
-            promise.done = (fn) => { promise.then(fn); return promise; };
-            promise.fail = (fn) => { promise.catch(fn); return promise; };
-            promise.always = (fn) => { promise.finally(fn); return promise; };
-            return promise;
         });
     });
 
