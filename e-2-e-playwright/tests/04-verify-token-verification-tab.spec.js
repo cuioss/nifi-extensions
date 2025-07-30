@@ -249,7 +249,7 @@ test.describe("Token Verification Tab", () => {
         page.on("console", (msg) => {
             // Capture ALL console messages for debugging
             const text = msg.text();
-            console.log("Browser console:", text);
+            // console.log("Browser console:", text);
             consoleLogs.push(text);
         });
 
