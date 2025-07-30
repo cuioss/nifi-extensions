@@ -40,12 +40,18 @@
    - ✅ All 48 tests passing (0 skipped)
 
 #### Test Files Remaining:
-1. **issuerConfigEditor.test.js**
+1. **issuerConfigEditor.test.js** - HEAVY jQuery migration needed
+   - [ ] Remove extensive cash-dom mocking (find, val, html, text, append)
+   - [ ] Replace $.ajax mocks with fetch API mocks
+   - [ ] Convert jQuery-style selectors to vanilla JS
+   - [ ] Replace addClass/removeClass/show/hide tests with actual DOM tests
    - [ ] Fix form.querySelector is not a function
    - [ ] Fix JWKS validation response handling
-   - [ ] Add DOM methods to mock objects
 
-2. **main.real.test.js**
+2. **main.real.test.js** - jQuery event migration needed
+   - [ ] Remove cash-dom import
+   - [ ] Replace $(document).trigger() with native dispatchEvent
+   - [ ] Convert jQuery-style document ready tests
    - [ ] Fix dialogOpen event handling
    - [ ] Fix initTooltips not being called
 
@@ -73,9 +79,34 @@
   - JWKS tests: 2 pass, 2 fail (backend 403)
   - Tests fail fast when processor missing (correct behavior)
 
+### 3. Additional Test Files Needing jQuery Migration
+
+Based on analysis, these test files also contain jQuery patterns:
+
+1. **uiErrorDisplay.test.js** - Despite being "fixed", still uses cash-dom
+   - [ ] Remove cash-dom import
+   - [ ] Replace $('<div>') with document.createElement()
+   - [ ] Convert $(document.body).append() to native appendChild
+   - [ ] Replace $targetElement.find() with querySelector
+   - [ ] Convert .text(), .html(), .hasClass() to native methods
+
+2. **test-utils.js** - Contains jQuery ajax mock utilities
+   - [ ] Replace createAjaxMock with fetch-based mock utilities
+   - [ ] Remove cash-dom specific test helpers
+
+3. **apiClient.test.js** - Still has jQuery-style patterns
+   - [ ] Remove mockAjax object simulating jQuery behavior
+   - [ ] Remove jQuery promise pattern tests (done, fail, always)
+   - [ ] Simplify to pure fetch API testing
+
+4. **bundle.test.js** - Still mocks jQuery
+   - [ ] Remove jest.mock('jquery') call
+   - [ ] Verify no jQuery dependencies remain
+
 ### Completed Items:
-- ✅ jQuery/Cash-DOM migration complete
+- ✅ jQuery/Cash-DOM migration complete (for implementation)
 - ✅ ESLint errors fixed
 - ✅ Bundle loading fixed
 - ✅ DOM manipulation fixed
 - ✅ Error handling implemented
+- ✅ Test strategy defined: Complete rewrite over jQuery replication
