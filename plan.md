@@ -171,6 +171,35 @@ The application now loads and functions properly in NiFi. While some unit tests 
 - ✅ Tests correctly fail fast with `expect(processor).toBeTruthy()` when processor is not on canvas
 - ✅ No workarounds or test skipping implemented - tests fail loud as required
 - ✅ ESLint errors fixed (removed console.log)
-- ✅ Full build passes: `mvn clean install -DskipTests`
+- ❌ **Build FAILS with tests as expected**: `mvn clean install` fails due to 74 unit test failures
 
-All critical tasks from the initial plan have been completed and committed.
+## Unit Test Failures to Fix (Build Blocking)
+
+### Failed Test Files (6 total, 74 failures):
+1. **domBuilder-coverage.test.js**
+   - FormFieldBuilder.createField is undefined
+   - FormFieldBuilder.createFields is undefined
+   - Implementation/test mismatch after vanilla JS migration
+
+2. **bundle.test.js**
+   - hideLoadingIndicatorImmediate is not a function
+   - main.init not being called as expected
+   - Module export issues
+
+3. **uiErrorDisplay.test.js**
+   - DOM manipulation failures
+   - jQuery to vanilla JS conversion issues
+
+4. **issuerConfigEditor.test.js**
+   - form.querySelector is not a function
+   - JWKS validation response handling
+   - Mock object missing DOM methods
+
+5. **main.real.test.js**
+   - dialogOpen event handling failures
+   - initTooltips not being called
+
+6. **tokenVerifier.test.js**
+   - Various test failures from vanilla JS migration
+
+All these test failures must be fixed before the build can pass.
