@@ -284,7 +284,7 @@ test.describe("Self-Test: Browser Console Logging", () => {
         // Inject test console messages directly
         await page.evaluate((id) => {
             console.log(`Direct log test - INFO message - ${id}`);
-            console.warn(`Direct log test - WARN message - ${id}`);
+            console.warn(`Direct log test - WARNING message - ${id}`);
             console.error(`Direct log test - ERROR message - ${id}`);
             console.debug(`Direct log test - DEBUG message - ${id}`);
         }, testId);

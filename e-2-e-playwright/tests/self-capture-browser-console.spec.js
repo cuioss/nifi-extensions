@@ -7,7 +7,7 @@ import {
     saveTestBrowserLogs,
     setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
-import { globalCriticalErrorDetector } from "../utils/critical-error-detector.js";
+import { globalCriticalErrorDetector, cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
 
 test.describe("Browser Console Error Capture", () => {
     test("should capture and validate browser console errors", async ({
@@ -103,6 +103,6 @@ test.describe("Browser Console Error Capture", () => {
         }
 
         // Cleanup
-        errorDetection.cleanup();
+        cleanupCriticalErrorDetection();
     });
 });
