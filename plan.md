@@ -82,9 +82,11 @@ The bundle loading issue has been fixed:
 
 ### 📋 Remaining Issues (Non-Critical)
 
-#### Unit Test Failures
-- Some unit tests fail due to whitespace changes from ESLint auto-fix
-- Test expectations need minor updates to match formatted code
+#### Unit Test Failures (74 failures, 482 passed)
+- **FormFieldBuilder tests**: `Cannot read properties of undefined` - implementation/test mismatch
+- **Bundle.js tests**: Functions not being called as expected
+- **DOM manipulation tests**: Mock objects missing querySelector methods
+- **Not just whitespace issues** - these are real test failures from vanilla JS migration
 - Not blocking integration or functionality
 
 #### Backend Endpoints Not Implemented
