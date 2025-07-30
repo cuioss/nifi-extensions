@@ -1,0 +1,291 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package de.cuioss.nifi.ui.servlets;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
+import static org.easymock.EasyMock.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+class JwksValidationServletTest {
+
+    private HttpServletRequest request;
+    private HttpServletResponse response;
+    private JwksValidationServlet servlet;
+    private ByteArrayOutputStream responseOutput;
+
+    @BeforeEach
+    void setUp() throws IOException {
+        request = createMock(HttpServletRequest.class);
+        response = createMock(HttpServletResponse.class);
+        servlet = new JwksValidationServlet();
+        responseOutput = new ByteArrayOutputStream();
+
+        expect(response.getOutputStream()).andReturn(new TestServletOutputStream(responseOutput)).anyTimes();
+        response.setContentType("application/json");
+        expectLastCall().anyTimes();
+        response.setCharacterEncoding("UTF-8");
+        expectLastCall().anyTimes();
+    }
+
+    @Test
+    void testValidJwksContentValidation() throws Exception {
+        // Arrange
+        String validJwksContent = """
+            {
+                "keys": [
+                    {
+                        "kty": "RSA",
+                        "kid": "test-key-1",
+                        "use": "sig",
+                        "n": "0vx7agoebGcQ...",
+                        "e": "AQAB"
+                    }
+                ]
+            }
+            """;
+
+        String requestJson = """
+            {
+                "jwksContent": "%s",
+                "processorId": "test-processor-id"
+            }
+            """.formatted(validJwksContent.replace("\"", "\\\"").replace("\n", "\\n"));
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-content").anyTimes();
+
+        response.setStatus(200);
+        expectLastCall();
+
+        replay(request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(request, response);
+
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":true"));
+        assertTrue(responseJson.contains("\"accessible\":true"));
+        assertTrue(responseJson.contains("\"keyCount\":1"));
+    }
+
+    @Test
+    void testInvalidJwksContentMissingKeys() throws Exception {
+        // Arrange
+        String invalidJwksContent = """
+            {
+                "invalid": "structure"
+            }
+            """;
+
+        String requestJson = """
+            {
+                "jwksContent": "%s",
+                "processorId": "test-processor-id"
+            }
+            """.formatted(invalidJwksContent.replace("\"", "\\\"").replace("\n", "\\n"));
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-content").anyTimes();
+
+        response.setStatus(400);
+        expectLastCall();
+
+        replay(request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(request, response);
+
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":false"));
+        assertTrue(responseJson.contains("missing required 'keys' field"));
+    }
+
+    @Test
+    void testInvalidJwksContentEmptyKeys() throws Exception {
+        // Arrange
+        String emptyKeysJwksContent = """
+            {
+                "keys": []
+            }
+            """;
+
+        String requestJson = """
+            {
+                "jwksContent": "%s",
+                "processorId": "test-processor-id"
+            }
+            """.formatted(emptyKeysJwksContent.replace("\"", "\\\"").replace("\n", "\\n"));
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-content").anyTimes();
+
+        response.setStatus(400);
+        expectLastCall();
+
+        replay(request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(request, response);
+
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":false"));
+        assertTrue(responseJson.contains("empty 'keys' array"));
+    }
+
+    @Test
+    void testMissingRequiredFields() throws Exception {
+        // Test missing jwksContent
+        String requestJson = """
+            {
+                "processorId": "test-processor-id"
+            }
+            """;
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-content").anyTimes();
+
+        response.setStatus(400);
+        expectLastCall();
+
+        replay(request, response);
+
+        servlet.doPost(request, response);
+
+        verify(request, response);
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("Missing required field: jwksContent"));
+    }
+
+    @Test
+    void testUnknownEndpoint() throws Exception {
+        // Arrange
+        String requestJson = """
+            {
+                "test": "data"
+            }
+            """;
+
+        expect(request.getServletPath()).andReturn("/unknown/endpoint").anyTimes();
+
+        response.setStatus(404);
+        expectLastCall();
+
+        replay(request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(request, response);
+
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":false"));
+        assertTrue(responseJson.contains("Endpoint not found"));
+    }
+
+    @Test
+    void testInvalidJsonRequest() throws Exception {
+        // Arrange
+        String invalidJson = "{ invalid json }";
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(invalidJson));
+        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-content").anyTimes();
+
+        response.setStatus(400);
+        expectLastCall();
+
+        replay(request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(request, response);
+
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":false"));
+        assertTrue(responseJson.contains("Invalid JSON format"));
+    }
+
+    // Helper classes for testing
+    private static class TestServletInputStream extends jakarta.servlet.ServletInputStream {
+        private final ByteArrayInputStream inputStream;
+
+        public TestServletInputStream(String content) {
+            this.inputStream = new ByteArrayInputStream(content.getBytes());
+        }
+
+        @Override
+        public int read() throws IOException {
+            return inputStream.read();
+        }
+
+        @Override
+        public boolean isFinished() {
+            return inputStream.available() == 0;
+        }
+
+        @Override
+        public boolean isReady() {
+            return true;
+        }
+
+        @Override
+        public void setReadListener(jakarta.servlet.ReadListener readListener) {
+            // Not implemented for testing
+        }
+    }
+
+    private static class TestServletOutputStream extends jakarta.servlet.ServletOutputStream {
+        private final ByteArrayOutputStream outputStream;
+
+        public TestServletOutputStream(ByteArrayOutputStream outputStream) {
+            this.outputStream = outputStream;
+        }
+
+        @Override
+        public void write(int b) throws IOException {
+            outputStream.write(b);
+        }
+
+        @Override
+        public boolean isReady() {
+            return true;
+        }
+
+        @Override
+        public void setWriteListener(jakarta.servlet.WriteListener writeListener) {
+            // Not implemented for testing
+        }
+    }
+}
