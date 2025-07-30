@@ -2,62 +2,52 @@
 
 ## 📋 PENDING TASKS (Sorted by Priority)
 
-### 🚨 CRITICAL: E2E PLAYWRIGHT TEST FAILURES
+### 🔧 E2E PLAYWRIGHT TEST ISSUES
 
-#### 1. Metrics Endpoint Issues
-- [ ] Fix: HTTP 404 - `https://localhost:9095/nifi-api/processors/jwt/metrics`
-- [ ] Verify servlet mapping in web.xml is correct
-- [ ] Check if metrics endpoint is properly deployed during E2E tests
+#### 1. Self-Test Failures
+- [ ] Fix: Browser console logging tests (8 failing)
+  - Issue: `errorDetection.getCriticalErrors()` undefined
+  - Affects: self-browser-logging.spec.js, self-capture-browser-console.spec.js
+  
+#### 2. Infrastructure Requirements
+- [ ] Verify NiFi is running: https://localhost:9095/nifi
+- [ ] Verify Keycloak is running: https://localhost:9085
+- [ ] Ensure MultiIssuerJWTTokenAuthenticator is on the canvas
 
-#### 2. Failing E2E Test Cases
-- [ ] **tests/05-verify-metrics-tab.spec.js** - "should display issuer-specific metrics" timeout
-  - Issue: Waiting for `[data-testid="issuer-metrics"]` element
-- [ ] **tests/05-verify-all-tab-content.spec.js** - "all tabs should display their content properly"
-  - Issue: Tab content verification failing
+#### 3. Previously Fixed Issues
+- ✅ **Metrics endpoint**: Fixed HTTP 404 errors by updating metricsTab.js
+- ✅ **Tab content verification**: Fixed by adding proper data-testid attributes
 
-#### 3. E2E Test Environment
-- [ ] Verify NiFi server configuration for E2E tests
-- [ ] Check all required endpoints accessibility
-- [ ] Ensure custom UI WAR deployment includes all assets
+### 🎯 PRIORITY: TEST COVERAGE IMPROVEMENTS
 
-**Note**: Font-awesome 404 errors (fontawesome-webfont-*.woff2/woff/ttf) can be safely ignored. These are legacy font resources that don't affect functionality.
+**Current Coverage Results**: 
+- Statements: 70.7% (need 80%) ❌
+- Branches: 47.74% (need 78%) ❌  
+- Functions: 60% (need 80%) ❌
+- Lines: 89.76% ✓
 
-### 🔧 HIGH PRIORITY: TEST COVERAGE IMPROVEMENTS
+**Files Needing Coverage Improvements**:
+- [ ] Improve branch coverage across all files (30.26% gap)
+- [ ] Improve function coverage across all files (20% gap)
+- [ ] Improve statement coverage across all files (9.3% gap)
 
-**Current Status**: Coverage below required thresholds
-- Statements: 67.38% (need 80%) ❌
-- Branches: 45.22% (need 78%) ❌  
-- Functions: 58.02% (need 80%) ❌
+#### 1. keyboardShortcuts.js ✅
+- ✅ Improved from 73.58% → 93.08% statements, 94.15% lines
+- ✅ Added tests for keyboard event handling
+- ✅ Added tests for shortcut registration and modal interactions
 
-#### 1. keyboardShortcuts.js (73.58% → 80%+ needed)
-- [ ] Add tests for keyboard event handling
-- [ ] Test shortcut registration and modal interactions
-- [ ] Cover lines: 86,89,95,99,142-143,156-157,169,177-180,191-192,206-207,215-222,233,327-328,338,342-362,431-432
+#### 2. tabManager.js ✅
+- ✅ Improved from 65.21% → 97.1% statements, 100% lines
+- ✅ Added tests for tab switching logic
+- ✅ Added tests for active tab management and initialization
 
-#### 2. tabManager.js (65.21% → 80%+ needed)
-- [ ] Add tests for tab switching logic
-- [ ] Test active tab management and initialization
-- [ ] Cover lines: 44,99-106,115-116,126-145
+#### 3. main.js ✅
+- ✅ Improved from 76.62% → 88.31% statements, 89.43% lines
+- ✅ Added tests for initialization flows
+- ✅ Added tests for error handling paths and edge cases
 
-#### 3. main.js (76.62% → 80%+ needed)
-- [ ] Add tests for initialization flows
-- [ ] Test error handling paths and edge cases
-- [ ] Cover lines: 68,79-80,160,168-169,187-188,240,278-279,297-305,383-385,394-395,408-436,442,469-471,496-503,528-535,565-566,615,636-641,653-654,741,761
-
-#### 4. Restore Coverage Thresholds
-- [ ] Update package.json to restore original thresholds:
-  ```json
-  {
-    "coverageThreshold": {
-      "global": {
-        "branches": 78,
-        "functions": 80,
-        "lines": 80,
-        "statements": 80
-      }
-    }
-  }
-  ```
+#### 4. Restore Coverage Thresholds ✅
+- ✅ Updated package.json to restore original thresholds
 
 ### 📝 LOW PRIORITY: Code Quality Improvements
 
@@ -74,6 +64,12 @@
 ---
 
 ## ✅ COMPLETED ITEMS
+
+### Unit Test Fixes (July 30, 2025)
+- ✅ Fixed all 7 critical failing unit tests
+- ✅ **keyboardShortcuts.test.js**: Fixed 4 tests by adding offsetParent mocks and timing adjustments
+- ✅ **main.real.test.js**: Fixed 3 tests with proper window.location mocking and spy usage
+- ✅ **Result**: All 568 unit tests now passing!
 
 ### Backend Implementation
 - ✅ All backend servlets implemented and tested

@@ -217,5 +217,137 @@ describe('Tab Manager', () => {
                 tabManager.initTabs();
             }).not.toThrow();
         });
+
+        it('should handle empty href attribute', () => {
+            // Add a tab with empty href
+            const tabList = document.querySelector('.jwt-tabs-header .tabs');
+            const emptyTab = document.createElement('li');
+            emptyTab.innerHTML = '<a href="#" data-toggle="tab">Empty Tab</a>';
+            tabList.appendChild(emptyTab);
+
+            const activeTabBefore = document.querySelector('.jwt-tabs-header .tabs li.active a').getAttribute('href');
+            
+            // Click on the empty href tab
+            const emptyTabLink = emptyTab.querySelector('a');
+            emptyTabLink.click();
+
+            // Should not change active tab
+            const activeTabAfter = document.querySelector('.jwt-tabs-header .tabs li.active a').getAttribute('href');
+            expect(activeTabAfter).toBe(activeTabBefore);
+        });
+    });
+
+    describe('getCurrentTab', () => {
+        it('should return information about the currently active tab', () => {
+            const currentTab = tabManager.getCurrentTab();
+            expect(currentTab).toEqual({
+                id: '#issuer-config',
+                name: 'Configuration'
+            });
+        });
+
+        it('should return null when no tab is active', () => {
+            // Remove active class from all tabs
+            document.querySelectorAll('.jwt-tabs-header .tabs li').forEach(li => {
+                li.classList.remove('active');
+            });
+
+            const currentTab = tabManager.getCurrentTab();
+            expect(currentTab).toBeNull();
+        });
+
+        it('should return correct info after switching tabs', () => {
+            // Switch to metrics tab
+            tabManager.activateTab('#metrics');
+            
+            const currentTab = tabManager.getCurrentTab();
+            expect(currentTab).toEqual({
+                id: '#metrics',
+                name: 'Metrics'
+            });
+        });
+    });
+
+    describe('isTabActive', () => {
+        it('should return true for active tab', () => {
+            expect(tabManager.isTabActive('#issuer-config')).toBe(true);
+        });
+
+        it('should return false for inactive tab', () => {
+            expect(tabManager.isTabActive('#help')).toBe(false);
+        });
+
+        it('should return false for non-existent tab', () => {
+            // isTabActive returns falsy (null) for non-existent tabs
+            expect(tabManager.isTabActive('#non-existent')).toBeFalsy();
+        });
+
+        it('should work after tab switch', () => {
+            tabManager.activateTab('#token-verification');
+            expect(tabManager.isTabActive('#token-verification')).toBe(true);
+            expect(tabManager.isTabActive('#issuer-config')).toBe(false);
+        });
+    });
+
+    describe('setTabState', () => {
+        it('should disable a tab', () => {
+            const result = tabManager.setTabState('#help', 'disabled');
+            expect(result).toBe(true);
+            
+            const helpTab = document.querySelector('a[href="#help"]').parentElement;
+            expect(helpTab.classList.contains('disabled')).toBe(true);
+        });
+
+        it('should enable a previously disabled tab', () => {
+            // First disable it
+            tabManager.setTabState('#help', 'disabled');
+            
+            // Then enable it
+            const result = tabManager.setTabState('#help', 'enabled');
+            expect(result).toBe(true);
+            
+            const helpTab = document.querySelector('a[href="#help"]').parentElement;
+            expect(helpTab.classList.contains('disabled')).toBe(false);
+        });
+
+        it('should set error state temporarily', (done) => {
+            const result = tabManager.setTabState('#metrics', 'error');
+            expect(result).toBe(true);
+            
+            const metricsTab = document.querySelector('a[href="#metrics"]').parentElement;
+            expect(metricsTab.classList.contains('error')).toBe(true);
+            
+            // Wait for error state to be removed
+            setTimeout(() => {
+                expect(metricsTab.classList.contains('error')).toBe(false);
+                done();
+            }, 3100);
+        });
+
+        it('should return false for non-existent tab', () => {
+            const result = tabManager.setTabState('#non-existent', 'disabled');
+            expect(result).toBe(false);
+        });
+
+        it('should handle tabs without parent element', () => {
+            // Create a detached tab link
+            const detachedLink = document.createElement('a');
+            detachedLink.href = '#detached';
+            
+            // Mock querySelector to return our detached link
+            const originalQuerySelector = document.querySelector;
+            document.querySelector = (selector) => {
+                if (selector === '.jwt-tabs-header .tabs a[href="#detached"]') {
+                    return detachedLink;
+                }
+                return originalQuerySelector.call(document, selector);
+            };
+            
+            const result = tabManager.setTabState('#detached', 'disabled');
+            expect(result).toBe(false);
+            
+            // Restore original querySelector
+            document.querySelector = originalQuerySelector;
+        });
     });
 });
