@@ -19,7 +19,7 @@ Last updated: 2025-07-31 (Branch: feature/p1-core-functionality)
 * ✅ **Observability** - 100% Complete
 * ✅ **JWKS Source Types** - 100% Complete (URL, file, memory)
 * ✅ **Internationalization** - 100% Complete (German translations, type-safe keys, validation tests)
-* 🟡 **Integration Testing** - 70% Complete (Docker Compose setup exists, needs enhancement)
+* 🟡 **Integration Testing** - 85% Complete (Docker Compose setup exists, Keycloak token service implemented)
 * 🟡 **Security Hardening** - 0% Complete  
 * ✅ **Build Polish** - 100% Complete (test coverage fixed, all tests passing)
 * 🟡 **Documentation & Examples** - 60% Complete
@@ -32,10 +32,16 @@ The following sections outline tasks that are not yet implemented and would enha
 
 === Integration Testing Enhancement
 
+* [x] **Keycloak Token Service** - Created centralized token management utility
+  - Implemented `keycloak-token-service.js` in `e-2-e-playwright/utils/`
+  - Provides fail-loud error handling with helpful error messages
+  - Supports both valid token fetching and invalid token generation
+  - Includes comprehensive self-test suite
+* [x] **E2E Test Integration** - Updated token verification tests to use new utility
+  - Tests now attempt real Keycloak tokens with automatic fallback
+  - Proper error handling when Keycloak is not running
 * [ ] Enhance existing integration test suite with comprehensive end-to-end JWT flow validation
-* [ ] Add automated test cases for Keycloak integration scenarios
-  - **Hint**: Use the new `keycloak-token-service.js` utility in `e-2-e-playwright/utils/` for obtaining valid and invalid access tokens
-  - The utility provides fail-loud error handling and centralized token management for all E2E tests
+* [ ] Add automated test cases for additional Keycloak integration scenarios
 * [ ] Document integration testing setup and usage patterns
 
 === Security Hardening
@@ -123,6 +129,30 @@ The project will be considered fully complete when:
 * [ ] Build configuration is production-ready
 * [ ] Documentation covers all integration patterns
 * [ ] All known technical limitations are addressed
+
+== Recently Completed Tasks (2025-07-31)
+
+=== Keycloak Token Service Implementation
+
+The following integration testing enhancements were completed:
+
+1. **Created Keycloak Token Service** (`e-2-e-playwright/utils/keycloak-token-service.js`)
+   - Centralized access token management for all E2E tests
+   - Implements fail-loud pattern with detailed error messages
+   - Automatic detection of Keycloak availability
+   - Methods for both valid and invalid token generation
+
+2. **Updated E2E Tests**
+   - Modified token verification tests to use the new utility
+   - Added automatic fallback to static tokens when Keycloak is unavailable
+   - Improved error handling and logging
+
+3. **Enhanced Test Infrastructure**
+   - Added Keycloak configuration to constants.js
+   - Created comprehensive self-test suite for token service
+   - Fixed ESLint formatting issues
+
+This implementation provides a robust foundation for future Keycloak integration testing and ensures tests can run both with and without active Keycloak instances.
 
 == Development Environment
 
