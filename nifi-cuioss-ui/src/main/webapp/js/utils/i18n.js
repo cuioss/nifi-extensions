@@ -137,7 +137,13 @@ const translations = {
         'property.jwks.refresh.interval.help': 'Wie oft die JWKS-Schlüssel vom Server aktualisiert werden sollen',
         'property.maximum.token.size.help': 'Maximal zulässige Größe des JWT-Tokens in Bytes',
         'property.allowed.algorithms.help': 'Liste der erlaubten Signaturalgorithmen für die Token-Validierung',
-        'property.require.https.jwks.help': 'Ob HTTPS für JWKS-URLs erforderlich ist'
+        'property.require.https.jwks.help': 'Ob HTTPS für JWKS-URLs erforderlich ist',
+
+        // Missing i18n keys identified from constants.js
+        'jwt.validator.metrics.title': 'JWT-Validierungsmetriken',
+        'jwt.validator.metrics.tab.name': 'Metriken',
+        'jwt.validator.help.title': 'JWT-Authentifikator-Hilfe',
+        'jwt.validator.help.tab.name': 'Hilfe'
     }
 };
 
