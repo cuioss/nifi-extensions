@@ -80,7 +80,7 @@ The following sections outline tasks that are not yet implemented and would enha
 
 === Code Quality Improvements
 
-* [ ] **YAML Configuration Support**: Complete implementation in `ConfigurationManager.java` (currently logs warning and skips)
+* [x] **YAML Configuration Support**: ✅ Implemented in `ConfigurationManager.java` with full test coverage
 * [ ] **Error Handling**: Enhance error messages throughout the codebase for better debugging
 * [ ] **Performance**: Add caching for JWKS loading and validation results
 * [ ] **Logging**: Standardize logging levels and add structured logging support
@@ -89,10 +89,10 @@ The following sections outline tasks that are not yet implemented and would enha
 
 ==== Current Constraints
 
-1. **YAML Configuration**: Not implemented - JSON configuration only
-   - **Impact**: Users must use JSON format for issuer configuration files
-   - **Workaround**: Convert YAML to JSON manually
-   - **Implementation**: Add YAML parser to `ConfigurationManager.java`
+1. ~~**YAML Configuration**: Not implemented - JSON configuration only~~ ✅ **COMPLETED**
+   - YAML configuration is now fully supported via SnakeYAML
+   - Both .yml and .yaml extensions are supported
+   - Supports nested and flat YAML structures
 
 2. **Algorithm Restrictions**: No JWT algorithm whitelist validation
    - **Impact**: All JWT algorithms accepted (potential security risk)
@@ -131,6 +131,31 @@ The project will be considered fully complete when:
 * [ ] All known technical limitations are addressed
 
 == Recently Completed Tasks (2025-07-31)
+
+=== YAML Configuration Support Implementation
+
+The following technical debt item was completed:
+
+1. **Added YAML Parser** (`nifi-cuioss-processors/pom.xml`)
+   - Added SnakeYAML 2.2 dependency
+   - No additional configuration required
+
+2. **Implemented YAML Loading** (`ConfigurationManager.java`)
+   - Created `loadYamlFile()` method with recursive processing
+   - Supports both nested and flat YAML structures
+   - Handles issuer lists with automatic ID assignment
+   - Properly validates empty YAML files
+
+3. **Comprehensive Testing** (`ConfigurationManagerTest.java`)
+   - 7 test cases covering various YAML scenarios
+   - Tests for nested structures, lists, empty files, and reload functionality
+   - All tests passing with 100% coverage of new code
+
+4. **Documentation**
+   - Created example YAML configuration file
+   - Updated configuration-static.adoc to note YAML is implemented
+
+This implementation allows users to configure the JWT authenticator using YAML files, which are more human-readable and easier to manage than properties files, especially for complex configurations with multiple issuers.
 
 === Keycloak Token Service Implementation
 
