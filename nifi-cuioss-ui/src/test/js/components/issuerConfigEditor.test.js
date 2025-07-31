@@ -251,7 +251,7 @@ describe('issuerConfigEditor', function () {
                 await jest.runAllTimersAsync();
 
                 // Verify fetch was called correctly
-                expect(global.fetch).toHaveBeenCalledWith('../nifi-api/processors/jwks/validate-url', {
+                expect(global.fetch).toHaveBeenCalledWith('nifi-api/processors/jwks/validate-url', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ jwksValue: 'https://valid.jwks.url/keys' }),

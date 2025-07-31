@@ -7,7 +7,10 @@ import {
     saveTestBrowserLogs,
     setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
-import { globalCriticalErrorDetector, cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
+import {
+    globalCriticalErrorDetector,
+    cleanupCriticalErrorDetection,
+} from "../utils/critical-error-detector.js";
 
 test.describe("Browser Console Error Capture", () => {
     test("should capture and validate browser console errors", async ({
@@ -15,10 +18,7 @@ test.describe("Browser Console Error Capture", () => {
     }, testInfo) => {
         // Setup unified console logging system instead of custom implementation
         // Skip initial canvas checks since processor UI page doesn't have a canvas
-        await setupAuthAwareErrorDetection(
-            page,
-            testInfo,
-        );
+        await setupAuthAwareErrorDetection(page, testInfo);
 
         // First authenticate to NiFi
         console.log("Authenticating to NiFi...");

@@ -60,7 +60,7 @@ describe('HelpTab', () => {
             // Second init
             helpTab.init();
             const secondContent = document.getElementById('jwt-help-content');
-            
+
             expect(secondContent.getAttribute('data-test')).toBe('original');
         });
 
@@ -73,7 +73,7 @@ describe('HelpTab', () => {
             // Check for specific sections
             const sectionHeaders = Array.from(document.querySelectorAll('.collapsible-header'))
                 .map(h => h.textContent.trim());
-            
+
             expect(sectionHeaders.some(h => h.includes('Getting Started'))).toBe(true);
             expect(sectionHeaders.some(h => h.includes('Issuer Configuration'))).toBe(true);
             expect(sectionHeaders.some(h => h.includes('Authorization Rules'))).toBe(true);
@@ -110,9 +110,9 @@ describe('HelpTab', () => {
         it('should initialize with Getting Started section expanded', () => {
             const gettingStartedHeader = Array.from(document.querySelectorAll('.collapsible-header'))
                 .find(h => h.textContent.includes('Getting Started'));
-            
+
             expect(gettingStartedHeader.classList.contains('active')).toBe(true);
-            
+
             const content = gettingStartedHeader.nextElementSibling;
             expect(content.classList.contains('show')).toBe(true);
         });
@@ -208,7 +208,7 @@ describe('HelpTab', () => {
         it('should include resource links', () => {
             const links = document.querySelectorAll('.resource-links a');
             expect(links.length).toBeGreaterThan(0);
-            
+
             const hrefs = Array.from(links).map(l => l.getAttribute('href'));
             expect(hrefs).toContain('https://jwt.io/introduction');
             expect(hrefs).toContain('https://tools.ietf.org/html/rfc7517');

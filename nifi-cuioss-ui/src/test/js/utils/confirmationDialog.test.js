@@ -27,7 +27,7 @@ describe('ConfirmationDialog', () => {
             // Check dialog was created
             const dialog = document.querySelector('.confirmation-dialog');
             expect(dialog).toBeTruthy();
-            
+
             // Check content
             expect(dialog.querySelector('.dialog-title').textContent).toBe('Test Title');
             expect(dialog.querySelector('.dialog-message').textContent).toBe('Test Message');
@@ -77,10 +77,10 @@ describe('ConfirmationDialog', () => {
 
             // Run fake timers to trigger requestAnimationFrame
             jest.runAllTimers();
-            
+
             const dialog = document.querySelector('.confirmation-dialog');
             expect(dialog).toBeTruthy();
-            
+
             // Press Escape on dialog
             const event = new KeyboardEvent('keydown', { key: 'Escape' });
             dialog.dispatchEvent(event);
@@ -155,7 +155,7 @@ describe('ConfirmationDialog', () => {
             const dialog = document.querySelector('.confirmation-dialog');
             const title = dialog.querySelector('.dialog-title');
             const message = dialog.querySelector('.dialog-message');
-            
+
             expect(title.innerHTML).not.toContain('<script>');
             expect(message.innerHTML).not.toContain('<img');
             expect(title.textContent).toContain('<script>alert("XSS")</script>');
@@ -262,11 +262,11 @@ describe('ConfirmationDialog', () => {
 
             // Press Enter - create event with target having the correct class
             const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
-            Object.defineProperty(event, 'target', { 
+            Object.defineProperty(event, 'target', {
                 value: confirmBtn,
-                configurable: true 
+                configurable: true
             });
-            
+
             // Dispatch on the dialog to trigger the handler
             const dialog = document.querySelector('.confirmation-dialog');
             dialog.dispatchEvent(event);
@@ -291,7 +291,7 @@ describe('ConfirmationDialog', () => {
             const shiftTabEvent = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true });
             const preventDefaultSpy = jest.fn();
             Object.defineProperty(shiftTabEvent, 'preventDefault', { value: preventDefaultSpy });
-            
+
             // Dispatch on dialog to trigger focus trapping handler
             dialog.dispatchEvent(shiftTabEvent);
 
@@ -315,7 +315,7 @@ describe('ConfirmationDialog', () => {
             const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true });
             const preventDefaultSpy = jest.fn();
             Object.defineProperty(tabEvent, 'preventDefault', { value: preventDefaultSpy });
-            
+
             // Dispatch on dialog to trigger focus trapping handler
             dialog.dispatchEvent(tabEvent);
 
@@ -381,15 +381,15 @@ describe('ConfirmationDialog', () => {
             jest.runAllTimers();
 
             const cancelBtn = document.querySelector('.cancel-button');
-            
+
             // Press Enter on cancel button (should not close dialog)
             const event = new KeyboardEvent('keydown', { key: 'Enter' });
             cancelBtn.dispatchEvent(event);
-            
+
             // Dialog should still exist
             const dialog = document.querySelector('.confirmation-dialog');
             expect(dialog).toBeTruthy();
-            
+
             // Clean up by clicking cancel
             cancelBtn.click();
             await promise;
@@ -404,9 +404,9 @@ describe('ConfirmationDialog', () => {
             const middleBtn = document.createElement('button');
             middleBtn.textContent = 'Middle';
             dialog.querySelector('.dialog-footer').appendChild(middleBtn);
-            
+
             middleBtn.focus();
-            
+
             // Press Tab (should NOT prevent default since it's not first/last)
             const tabEvent = new KeyboardEvent('keydown', { key: 'Tab' });
             Object.defineProperty(tabEvent, 'preventDefault', { value: jest.fn() });
@@ -448,7 +448,7 @@ describe('ConfirmationDialog', () => {
             const { __test } = require('../../../main/webapp/js/utils/confirmationDialog.js');
             const firstElement = { focus: jest.fn() };
             const lastElement = { focus: jest.fn() };
-            
+
             // Mock document.activeElement
             Object.defineProperty(document, 'activeElement', {
                 writable: true,

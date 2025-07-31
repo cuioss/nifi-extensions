@@ -318,7 +318,7 @@ export const getSecurityMetrics = () => {
  * }
  */
 export const getProcessorProperties = (processorId) => {
-    return apiCall('GET', `../nifi-api/processors/${processorId}`);
+    return apiCall('GET', `nifi-api/processors/${processorId}`);
 };
 
 /**
@@ -364,6 +364,6 @@ export const updateProcessorProperties = (processorId, properties) => {
             }
         };
 
-        return apiCall('PUT', `../nifi-api/processors/${processorId}`, updateRequest);
+        return apiCall('PUT', `nifi-api/processors/${processorId}`, updateRequest);
     });
 };

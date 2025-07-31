@@ -297,13 +297,13 @@ describe('Keyboard Shortcuts', () => {
             button.className = 'verify-token-button';
             button.textContent = 'Verify';
             document.body.appendChild(button);
-            
+
             // Mock offsetParent to make button appear visible
             Object.defineProperty(button, 'offsetParent', {
                 get: jest.fn(() => document.body),
                 configurable: true
             });
-            
+
             const clickSpy = jest.spyOn(button, 'click');
 
             const event = new KeyboardEvent('keydown', {
@@ -323,7 +323,7 @@ describe('Keyboard Shortcuts', () => {
             button.disabled = true;
             button.textContent = 'Verify';
             document.body.appendChild(button);
-            
+
             const clickSpy = jest.spyOn(button, 'click');
 
             const event = new KeyboardEvent('keydown', {
@@ -341,13 +341,13 @@ describe('Keyboard Shortcuts', () => {
             const button = document.createElement('button');
             button.textContent = 'Reset';
             document.body.appendChild(button);
-            
+
             // Mock offsetParent to make button appear visible
             Object.defineProperty(button, 'offsetParent', {
                 get: jest.fn(() => document.body),
                 configurable: true
             });
-            
+
             const clickSpy = jest.spyOn(button, 'click');
 
             const event = new KeyboardEvent('keydown', {
@@ -369,7 +369,7 @@ describe('Keyboard Shortcuts', () => {
         it('should show shortcuts hint on initialization', () => {
             // Clear session storage
             sessionStorage.clear();
-            
+
             // Re-initialize
             keyboardShortcuts.cleanup();
             keyboardShortcuts.initKeyboardShortcuts();
@@ -385,7 +385,7 @@ describe('Keyboard Shortcuts', () => {
 
         it('should not show shortcuts hint if already shown', () => {
             sessionStorage.setItem('nifi-jwt-shortcuts-shown', 'true');
-            
+
             keyboardShortcuts.cleanup();
             keyboardShortcuts.initKeyboardShortcuts();
 
@@ -397,7 +397,7 @@ describe('Keyboard Shortcuts', () => {
 
         it('should auto-hide shortcuts hint after 5 seconds', () => {
             sessionStorage.clear();
-            
+
             keyboardShortcuts.cleanup();
             keyboardShortcuts.initKeyboardShortcuts();
 
@@ -413,16 +413,16 @@ describe('Keyboard Shortcuts', () => {
 
         it('should close shortcuts hint on close button click', () => {
             sessionStorage.clear();
-            
+
             keyboardShortcuts.cleanup();
             keyboardShortcuts.initKeyboardShortcuts();
 
             jest.advanceTimersByTime(2100);
             const hint = document.querySelector('.shortcuts-hint');
             const closeBtn = hint.querySelector('.close-hint');
-            
+
             closeBtn.click();
-            
+
             expect(document.querySelector('.shortcuts-hint')).toBeFalsy();
         });
 
@@ -485,13 +485,13 @@ describe('Keyboard Shortcuts', () => {
             const button = document.createElement('button');
             button.textContent = 'Clear';
             document.body.appendChild(button);
-            
+
             // Mock offsetParent to make button appear visible
             Object.defineProperty(button, 'offsetParent', {
                 get: jest.fn(() => document.body),
                 configurable: true
             });
-            
+
             const clickSpy = jest.spyOn(button, 'click');
 
             const event = new KeyboardEvent('keydown', {
@@ -510,12 +510,12 @@ describe('Keyboard Shortcuts', () => {
             button.textContent = 'Reset';
             button.style.display = 'none';
             document.body.appendChild(button);
-            
+
             // Also add a visible button
             const visibleButton = document.createElement('button');
             visibleButton.textContent = 'Clear';
             document.body.appendChild(visibleButton);
-            
+
             const hiddenClickSpy = jest.spyOn(button, 'click');
             const visibleClickSpy = jest.spyOn(visibleButton, 'click');
 

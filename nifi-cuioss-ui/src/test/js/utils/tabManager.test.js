@@ -226,7 +226,7 @@ describe('Tab Manager', () => {
             tabList.appendChild(emptyTab);
 
             const activeTabBefore = document.querySelector('.jwt-tabs-header .tabs li.active a').getAttribute('href');
-            
+
             // Click on the empty href tab
             const emptyTabLink = emptyTab.querySelector('a');
             emptyTabLink.click();
@@ -259,7 +259,7 @@ describe('Tab Manager', () => {
         it('should return correct info after switching tabs', () => {
             // Switch to metrics tab
             tabManager.activateTab('#metrics');
-            
+
             const currentTab = tabManager.getCurrentTab();
             expect(currentTab).toEqual({
                 id: '#metrics',
@@ -293,7 +293,7 @@ describe('Tab Manager', () => {
         it('should disable a tab', () => {
             const result = tabManager.setTabState('#help', 'disabled');
             expect(result).toBe(true);
-            
+
             const helpTab = document.querySelector('a[href="#help"]').parentElement;
             expect(helpTab.classList.contains('disabled')).toBe(true);
         });
@@ -301,27 +301,25 @@ describe('Tab Manager', () => {
         it('should enable a previously disabled tab', () => {
             // First disable it
             tabManager.setTabState('#help', 'disabled');
-            
+
             // Then enable it
             const result = tabManager.setTabState('#help', 'enabled');
             expect(result).toBe(true);
-            
+
             const helpTab = document.querySelector('a[href="#help"]').parentElement;
             expect(helpTab.classList.contains('disabled')).toBe(false);
         });
 
-        it('should set error state temporarily', (done) => {
+        it('should set error state temporarily', async () => {
             const result = tabManager.setTabState('#metrics', 'error');
             expect(result).toBe(true);
-            
+
             const metricsTab = document.querySelector('a[href="#metrics"]').parentElement;
             expect(metricsTab.classList.contains('error')).toBe(true);
-            
+
             // Wait for error state to be removed
-            setTimeout(() => {
-                expect(metricsTab.classList.contains('error')).toBe(false);
-                done();
-            }, 3100);
+            await new Promise(resolve => setTimeout(resolve, 3100));
+            expect(metricsTab.classList.contains('error')).toBe(false);
         });
 
         it('should return false for non-existent tab', () => {
@@ -333,7 +331,7 @@ describe('Tab Manager', () => {
             // Create a detached tab link
             const detachedLink = document.createElement('a');
             detachedLink.href = '#detached';
-            
+
             // Mock querySelector to return our detached link
             const originalQuerySelector = document.querySelector;
             document.querySelector = (selector) => {
@@ -342,10 +340,10 @@ describe('Tab Manager', () => {
                 }
                 return originalQuerySelector.call(document, selector);
             };
-            
+
             const result = tabManager.setTabState('#detached', 'disabled');
             expect(result).toBe(false);
-            
+
             // Restore original querySelector
             document.querySelector = originalQuerySelector;
         });

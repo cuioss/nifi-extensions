@@ -68,7 +68,7 @@ describe('MetricsTab', () => {
                     avgResponseTime: 40
                 },
                 {
-                    name: 'auth0', 
+                    name: 'auth0',
                     totalRequests: 400,
                     successCount: 370,
                     failureCount: 30,
@@ -121,7 +121,7 @@ describe('MetricsTab', () => {
             // Second init
             metricsTab.init();
             const secondContent = document.getElementById('jwt-metrics-content');
-            
+
             expect(secondContent.getAttribute('data-test')).toBe('original');
         });
 
@@ -229,13 +229,13 @@ describe('MetricsTab', () => {
         });
 
         it('should handle metrics fetch error gracefully', async () => {
-            // Clear previous mock and set to reject for this specific test only  
+            // Clear previous mock and set to reject for this specific test only
             mockGetSecurityMetrics.mockRejectedValueOnce(new Error('Network error'));
-            
+
             // Manually trigger refresh since timers are disabled in test environment
             await window.metricsTab.refreshMetrics();
 
-            // When there's an API error, the implementation returns default values (0) 
+            // When there's an API error, the implementation returns default values (0)
             // instead of showing an error display, which is good UX
             expect(document.getElementById('total-validations').textContent).toBe('0');
             expect(document.getElementById('success-rate').textContent).toBe('0.0%');
@@ -290,7 +290,7 @@ describe('MetricsTab', () => {
 
         it('should refresh metrics on refresh button click', async () => {
             const refreshBtn = document.getElementById('refresh-metrics-btn');
-            
+
             // Clear initial calls
             mockGetSecurityMetrics.mockClear();
 
@@ -307,17 +307,17 @@ describe('MetricsTab', () => {
             await Promise.resolve();
 
             const exportBtn = document.getElementById('export-metrics-btn');
-            
+
             // Check that export button exists
             expect(exportBtn).toBeTruthy();
-            
+
             // Since the export functionality creates a dropdown, let's just verify the button click works
             expect(() => exportBtn.click()).not.toThrow();
         });
 
         it('should handle export with no metrics gracefully', () => {
             const exportBtn = document.getElementById('export-metrics-btn');
-            
+
             expect(() => exportBtn.click()).not.toThrow();
         });
     });
@@ -325,7 +325,7 @@ describe('MetricsTab', () => {
     describe('cleanup', () => {
         it('should stop metrics refresh on cleanup', () => {
             metricsTab.init();
-            
+
             // Verify refresh is active
             jest.advanceTimersByTime(30000);
             expect(mockGetSecurityMetrics).toHaveBeenCalled();

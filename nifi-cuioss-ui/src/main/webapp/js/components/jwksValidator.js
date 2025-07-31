@@ -79,7 +79,8 @@ const _initializeJwksValidator = async (element, propertyValue, jwks_type, callb
 
         // Handle button click
         verifyButton.addEventListener('click', () => {
-            resultContainer.innerHTML = i18n['processor.jwt.testing'] || 'Testing...';
+            // Display loading indicator with proper CSS class
+            resultContainer.innerHTML = `<span class="loading">${i18n['processor.jwt.testing'] || 'Testing...'}</span>`;
             // Use the callback to get the current property value if available
             const currentJwksValue = callbackObj?.getValue ? callbackObj.getValue() : propertyValue;
             // Also check for value from input field
@@ -129,7 +130,7 @@ const _initializeJwksValidator = async (element, propertyValue, jwks_type, callb
 const _handleAjaxSuccess = (responseData, resultContainer, i18n) => {
     if (responseData.valid) {
         resultContainer.innerHTML = `
-            <span style="color: var(--success-color); font-weight: bold;">
+            <span class="success-message valid" style="color: var(--success-color); font-weight: bold;">
                 ${i18n['processor.jwt.ok'] || 'OK'}
             </span>
             ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'}

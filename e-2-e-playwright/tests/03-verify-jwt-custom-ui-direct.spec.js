@@ -134,9 +134,9 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
                     // Verify tab content based on tab type
                     switch (tab.name) {
                         case "Configuration": {
-                            const addIssuerBtn = customUIFrame.locator(
-                                'button:has-text("Add Issuer")',
-                            );
+                            const addIssuerBtn = customUIFrame
+                                .locator('button:has-text("Add Issuer")')
+                                .first();
                             if (
                                 await addIssuerBtn.isVisible({ timeout: 2000 })
                             ) {
@@ -147,9 +147,9 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
                             break;
                         }
                         case "Token Verification": {
-                            const verifyBtn = customUIFrame.locator(
-                                'button:has-text("Verify Token")',
-                            );
+                            const verifyBtn = customUIFrame
+                                .locator('button:has-text("Verify Token")')
+                                .first();
                             if (await verifyBtn.isVisible({ timeout: 2000 })) {
                                 processorLogger.info(
                                     "  ✓ Token Verification tab content verified",
@@ -158,9 +158,11 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
                             break;
                         }
                         case "Metrics": {
-                            const refreshBtn = customUIFrame.locator(
-                                '[data-testid="refresh-metrics-button"]',
-                            );
+                            const refreshBtn = customUIFrame
+                                .locator(
+                                    '[data-testid="refresh-metrics-button"]',
+                                )
+                                .first();
                             if (await refreshBtn.isVisible({ timeout: 2000 })) {
                                 processorLogger.info(
                                     "  ✓ Metrics tab content verified",
@@ -169,9 +171,9 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
                             break;
                         }
                         case "Help": {
-                            const helpContent = customUIFrame.locator(
-                                '[data-testid="help-tab-content"]',
-                            );
+                            const helpContent = customUIFrame
+                                .locator('[data-testid="help-tab-content"]')
+                                .first();
                             if (
                                 await helpContent.isVisible({ timeout: 2000 })
                             ) {
@@ -236,18 +238,6 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
         });
 
         // Open Advanced UI using the verified utility
-        await processorService.openAdvancedUI(processor);
-
-        // Get the custom UI frame
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!processor) {
-            throw new Error(
-                "MultiIssuerJWTTokenAuthenticator processor not found on canvas. Please add it manually.",
-            );
-        }
-
-        // Open Advanced UI via right-click menu
         const advancedOpened = await processorService.openAdvancedUI(processor);
 
         if (!advancedOpened) {
@@ -256,6 +246,9 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
 
         // Wait for custom UI to load
         await page.waitForTimeout(2000);
+
+        // Get the custom UI frame
+        const customUIFrame = await processorService.getAdvancedUIFrame();
 
         if (!customUIFrame) {
             throw new Error("Could not find custom UI iframe");

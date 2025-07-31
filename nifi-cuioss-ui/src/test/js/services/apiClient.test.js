@@ -181,7 +181,7 @@ describe('apiClient', () => {
         it('should resolve with properties on successful GET', async () => {
             mockAjax.mockResolvedValue(mockSuccessData); // $.ajax().then() provides data directly
             const response = await apiClient.getProcessorProperties(processorId);
-            expect(mockFetch).toHaveBeenCalledWith(`../nifi-api/processors/${processorId}`, expect.objectContaining({ method: 'GET' }));
+            expect(mockFetch).toHaveBeenCalledWith(`nifi-api/processors/${processorId}`, expect.objectContaining({ method: 'GET' }));
             expect(response).toEqual(mockSuccessData); // response is data itself
         });
 
@@ -190,7 +190,7 @@ describe('apiClient', () => {
             mockAjax.mockRejectedValue(mockJqXHR);
 
             await expect(apiClient.getProcessorProperties(processorId)).rejects.toEqual(mockJqXHR);
-            expect(mockFetch).toHaveBeenCalledWith(`../nifi-api/processors/${processorId}`, expect.objectContaining({ method: 'GET' }));
+            expect(mockFetch).toHaveBeenCalledWith(`nifi-api/processors/${processorId}`, expect.objectContaining({ method: 'GET' }));
         });
     });
 
@@ -211,8 +211,8 @@ describe('apiClient', () => {
             const response = await apiClient.updateProcessorProperties(processorId, propertiesToUpdate);
 
             expect(mockFetch).toHaveBeenCalledTimes(2);
-            expect(mockFetch.mock.calls[0]).toEqual([`../nifi-api/processors/${processorId}`, expect.objectContaining({ method: 'GET' })]);
-            expect(mockFetch.mock.calls[1]).toEqual([`../nifi-api/processors/${processorId}`, expect.objectContaining({
+            expect(mockFetch.mock.calls[0]).toEqual([`nifi-api/processors/${processorId}`, expect.objectContaining({ method: 'GET' })]);
+            expect(mockFetch.mock.calls[1]).toEqual([`nifi-api/processors/${processorId}`, expect.objectContaining({
                 method: 'PUT',
                 body: JSON.stringify({
                     revision: mockInitialRevision,
@@ -231,7 +231,7 @@ describe('apiClient', () => {
 
             await expect(apiClient.updateProcessorProperties(processorId, propertiesToUpdate)).rejects.toEqual(mockJqXHR);
             expect(mockFetch).toHaveBeenCalledTimes(1); // Only GET should be called
-            expect(mockFetch.mock.calls[0]).toEqual([`../nifi-api/processors/${processorId}`, expect.objectContaining({ method: 'GET' })]);
+            expect(mockFetch.mock.calls[0]).toEqual([`nifi-api/processors/${processorId}`, expect.objectContaining({ method: 'GET' })]);
         });
 
         it('should reject if PUT fails', async () => {

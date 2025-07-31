@@ -96,7 +96,7 @@ describe('ComponentManager - Comprehensive Coverage Tests', () => {
         it('should handle component without init function', async () => {
             const componentWithoutInit = {};
             const result = await componentManager.registerComponent('noInit', componentWithoutInit, { retryCount: 0 });
-            
+
             expect(result).toBe(false);
             expect(componentManager.getComponentState('noInit')).toBe(COMPONENT_STATES.ERROR);
         });
@@ -146,7 +146,7 @@ describe('ComponentManager - Comprehensive Coverage Tests', () => {
             componentManager.addErrorHandler('not a function');
             componentManager.addErrorHandler(null);
             componentManager.addErrorHandler(undefined);
-            
+
             expect(componentManager.errorHandlers).toHaveLength(initialLength);
         });
     });
@@ -189,7 +189,7 @@ describe('ComponentManager - Comprehensive Coverage Tests', () => {
             };
 
             await componentManager.registerComponent('badCleanup', componentWithBadCleanup);
-            
+
             // Should not throw even if cleanup throws
             expect(() => componentManager.unregisterComponent('badCleanup')).not.toThrow();
         });
@@ -211,14 +211,14 @@ describe('ComponentManager - Comprehensive Coverage Tests', () => {
     describe('prerequisites', () => {
         it('should handle NiFi readiness when already initialized', async () => {
             global.nf = { Canvas: { initialized: true } };
-            
+
             const mockComponent = { init: jest.fn().mockResolvedValue(true) };
             const result = await componentManager.registerComponent('nifiReady', mockComponent, {
                 requiresNifi: true
             });
 
             expect(result).toBe(true);
-            
+
             delete global.nf;
         });
 
@@ -233,7 +233,7 @@ describe('ComponentManager - Comprehensive Coverage Tests', () => {
 
         it('should handle DOM readiness in test environment', async () => {
             const mockComponent = { init: jest.fn().mockResolvedValue(true) };
-            
+
             const result = await componentManager.registerComponent('domReady', mockComponent, {
                 requiresDOM: true
             });
@@ -243,7 +243,7 @@ describe('ComponentManager - Comprehensive Coverage Tests', () => {
 
         it('should skip requirements when disabled', async () => {
             const mockComponent = { init: jest.fn().mockResolvedValue(true) };
-            
+
             const result = await componentManager.registerComponent('noRequirements', mockComponent, {
                 requiresNifi: false,
                 requiresDOM: false
@@ -278,7 +278,7 @@ describe('ComponentManager - Comprehensive Coverage Tests', () => {
             };
 
             await componentManager.registerComponent('custom', mockComponent, customOptions);
-            
+
             const info = componentManager.getComponentInfo('custom');
             expect(info.options.retryCount).toBe(5);
             expect(info.options.retryDelay).toBe(500);
@@ -289,14 +289,14 @@ describe('ComponentManager - Comprehensive Coverage Tests', () => {
 
         it('should handle pending initialization during unregister', async () => {
             const slowComponent = {
-                init: jest.fn().mockImplementation(() => 
+                init: jest.fn().mockImplementation(() =>
                     new Promise(resolve => setTimeout(resolve, 50))
                 )
             };
 
             // Start registration but don't wait
             const registerPromise = componentManager.registerComponent('slow', slowComponent);
-            
+
             // Immediately unregister while initialization is pending
             const result = componentManager.unregisterComponent('slow');
             expect(result).toBe(true);

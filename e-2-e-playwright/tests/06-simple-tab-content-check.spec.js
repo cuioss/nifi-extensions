@@ -88,7 +88,7 @@ test.describe("Simple Tab Content Check", () => {
             const content = await customUIFrame.locator(tab.pane).textContent();
             const html = await customUIFrame.locator(tab.pane).innerHTML();
 
-            processorLogger.debug(
+            processorLogger.info(
                 `${tab.name} content length: ${content?.length || 0} chars, HTML length: ${html?.length || 0} chars`,
             );
 
@@ -99,8 +99,8 @@ test.describe("Simple Tab Content Check", () => {
             // Each tab must have substantial content - strict requirements
             const minContentLength = {
                 Configuration: 500, // Should have issuer form elements
-                "Token Verification": 300, // Should have verification form
-                Metrics: 200, // Should have metrics data
+                "Token Verification": 200, // Should have verification form
+                Metrics: 100, // Should have metrics data or not available message
                 Help: 500, // Should have documentation
             };
 

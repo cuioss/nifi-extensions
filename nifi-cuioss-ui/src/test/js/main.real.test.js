@@ -296,43 +296,43 @@ describe('main.js (real implementation)', () => {
             // Mock window.location with complete properties
             const originalLocation = window.location;
             delete window.location;
-            window.location = { 
+            window.location = {
                 pathname: '/nifi-cuioss-ui/index.html',
                 hostname: 'localhost',
                 search: '',
                 href: 'http://localhost/nifi-cuioss-ui/index.html'
             };
-            
+
             // Re-require the module to pick up the new location
             jest.resetModules();
-            
+
             // Clear and re-setup mocks for the new module instance
             mockRegisterCustomUiTab.mockClear();
-            
+
             const mainModuleStandalone = require('../../main/webapp/js/main');
-            
+
             global.nf.Canvas.initialized = true;
             mainModuleStandalone.init();
             jest.runAllTimers();
-            
+
             // Should not register tabs in standalone mode
             expect(mockRegisterCustomUiTab).not.toHaveBeenCalled();
-            
+
             // Restore
             window.location = originalLocation;
         });
 
         it('should handle component registration errors gracefully', () => {
             global.nf.Canvas.initialized = true;
-            
+
             // Make registerCustomUiTab throw an error
             mockRegisterCustomUiTab.mockImplementationOnce(() => {
                 throw new Error('Registration failed');
             });
-            
+
             mainModule.init();
             jest.runAllTimers();
-            
+
             // Should catch and log the error
             expect(consoleErrorSpy).toHaveBeenCalledWith('JWT UI component registration failed:', expect.any(Error));
             // Window flag may or may not be set depending on where error occurred
@@ -340,7 +340,7 @@ describe('main.js (real implementation)', () => {
 
         it('should handle MutationObserver for loading messages', () => {
             global.nf.Canvas.initialized = true;
-            
+
             // Create a mock MutationObserver
             const mockObserverCallback = jest.fn();
             const mockObserve = jest.fn();
@@ -352,10 +352,10 @@ describe('main.js (real implementation)', () => {
                 };
             });
             global.MutationObserver = MockMutationObserver;
-            
+
             mainModule.init();
             jest.runAllTimers();
-            
+
             // Verify MutationObserver was set up
             expect(MockMutationObserver).toHaveBeenCalled();
             expect(mockObserve).toHaveBeenCalledWith(document.body, {
@@ -363,7 +363,7 @@ describe('main.js (real implementation)', () => {
                 subtree: true,
                 characterData: true
             });
-            
+
             // Simulate adding a loading message
             const mockMutation = {
                 type: 'childList',
@@ -372,29 +372,29 @@ describe('main.js (real implementation)', () => {
                     textContent: 'Loading JWT Validator UI...'
                 }]
             };
-            
+
             mockObserverCallback([mockMutation]);
-            
+
             // Should have hidden loading indicator
             expect(document.getElementById('loading-indicator').style.display).toBe('none');
         });
 
         it('should handle periodic loading check', () => {
             global.nf.Canvas.initialized = true;
-            
+
             // Add a loading message to the DOM
             const loadingDiv = document.createElement('div');
             loadingDiv.innerText = 'Loading JWT Validator UI';
             document.body.appendChild(loadingDiv);
-            
+
             mainModule.init();
-            
+
             // Advance timer to trigger periodic check
             jest.advanceTimersByTime(150); // First periodic check at 100ms
-            
+
             // Should detect and hide loading
             expect(document.getElementById('loading-indicator').style.display).toBe('none');
-            
+
             // Clean up after 10 seconds
             jest.advanceTimersByTime(10000);
         });
@@ -526,7 +526,7 @@ describe('main.js (real implementation)', () => {
             `;
 
             global.nf.Canvas.initialized = true;
-            
+
             // Initialize main module first
             await mainModule.init();
             jest.runAllTimers();
@@ -575,11 +575,11 @@ describe('main.js (real implementation)', () => {
             helpTabSpy.mockClear();
             issuerConfigSpy.mockClear();
             tokenVerifierSpy.mockClear();
-            
+
             document.dispatchEvent(new CustomEvent('tabChanged', {
                 detail: { tabId: '#unknown', tabName: 'Unknown' }
             }));
-            
+
             // None should be called for unknown tab
             expect(metricsTabSpy).not.toHaveBeenCalled();
             expect(helpTabSpy).not.toHaveBeenCalled();
@@ -589,7 +589,7 @@ describe('main.js (real implementation)', () => {
 
         test('handles missing tab elements during initialization', () => {
             global.nf.Canvas.initialized = true;
-            
+
             // Remove token verification element
             document.body.innerHTML = `
                 <div id="loading-indicator">Loading...</div>

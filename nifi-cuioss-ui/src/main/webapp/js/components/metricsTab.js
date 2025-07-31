@@ -185,12 +185,12 @@ const createMetricsContent = () => {
     if (refreshBtn) {
         refreshBtn.addEventListener('click', handleRefreshClick);
     }
-    
+
     const exportBtn = document.getElementById('export-metrics-btn');
     if (exportBtn) {
         exportBtn.addEventListener('click', handleExportClick);
     }
-    
+
     // Bind export format buttons
     const exportOptions = document.getElementById('export-options');
     if (exportOptions) {
@@ -228,9 +228,9 @@ const handleRefreshClick = async () => {
     if (refreshIndicator) {
         refreshIndicator.style.display = 'inline-block';
     }
-    
+
     await refreshMetrics();
-    
+
     if (refreshIndicator) {
         setTimeout(() => {
             refreshIndicator.style.display = 'none';
@@ -347,23 +347,23 @@ const updateMetricsDisplay = (data) => {
     const failureRate = data.totalValidations > 0
         ? data.failureCount / data.totalValidations
         : 0;
-    
+
     const successRateEl = document.getElementById('success-rate');
     if (successRateEl) successRateEl.textContent = formatPercentage(successRate);
-    
+
     const failureRateEl = document.getElementById('failure-rate');
     if (failureRateEl) failureRateEl.textContent = formatPercentage(failureRate);
 
     // Update performance metrics
     const avgResponseTimeEl = document.getElementById('avg-response-time');
     if (avgResponseTimeEl) avgResponseTimeEl.textContent = `${data.avgResponseTime || 0} ms`;
-    
+
     const minResponseTimeEl = document.getElementById('min-response-time');
     if (minResponseTimeEl) minResponseTimeEl.textContent = `${data.minResponseTime || 0} ms`;
-    
+
     const maxResponseTimeEl = document.getElementById('max-response-time');
     if (maxResponseTimeEl) maxResponseTimeEl.textContent = `${data.maxResponseTime || 0} ms`;
-    
+
     const p95ResponseTimeEl = document.getElementById('p95-response-time');
     if (p95ResponseTimeEl) p95ResponseTimeEl.textContent = `${data.p95ResponseTime || 0} ms`;
 

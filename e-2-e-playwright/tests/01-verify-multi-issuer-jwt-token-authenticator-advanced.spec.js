@@ -68,11 +68,21 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
             failIfNotFound: true,
         });
 
+        processorLogger.info(`Found processor: ${processor.type}`);
+
         // Open Advanced UI using the verified utility
-        await processorService.openAdvancedUI(processor);
+        const advancedOpened = await processorService.openAdvancedUI(processor);
+
+        if (!advancedOpened) {
+            throw new Error("Failed to open Advanced UI via right-click menu");
+        }
 
         // Get the custom UI frame
         const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Could not find custom UI iframe");
+        }
 
         // Verify advanced configuration elements on the Configuration tab
         const configTabElements = [

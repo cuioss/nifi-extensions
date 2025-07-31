@@ -280,7 +280,7 @@ test.describe("Self-Test: Browser Console Logging", () => {
 
         // Generate specific console messages to verify with unique identifier
         const testId = `direct-log-test-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
-        
+
         // Inject test console messages directly
         await page.evaluate((id) => {
             console.log(`Direct log test - INFO message - ${id}`);

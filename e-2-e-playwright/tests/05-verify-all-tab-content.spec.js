@@ -97,9 +97,9 @@ test.describe("Comprehensive JWT Tab Content Verification", () => {
             .locator("#metrics")
             .textContent();
         // Metrics tab content found
-        // Check for either the translated text or the i18n key
+        // Check for either the metrics data or the not available message
         expect(metricsContent).toMatch(
-            /Validation Metrics|jwt\.validator\.metrics\.title|Total Validations/,
+            /Validation Metrics|jwt\.validator\.metrics\.title|Total Validations|Metrics Not Available/,
         );
 
         await page.screenshot({

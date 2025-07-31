@@ -26,10 +26,10 @@
  */
 export const API = {
     /** @type {string} Base URL for JWT-specific API endpoints */
-    BASE_URL: '../nifi-api/processors/jwt',
+    BASE_URL: 'nifi-api/processors/jwt',
 
     /** @type {string} Base URL for general NiFi processor endpoints */
-    NIFI_BASE_URL: '../nifi-api/processors',
+    NIFI_BASE_URL: 'nifi-api/processors',
 
     /**
      * API endpoint paths for various operations
@@ -49,10 +49,10 @@ export const API = {
         SET_ISSUER_CONFIG: '/issuer-config',
 
         /** @type {string} Full URL for JWKS validation endpoint */
-        JWKS_VALIDATE_URL: '../nifi-api/processors/jwks/validate-url',
+        JWKS_VALIDATE_URL: 'nifi-api/processors/jwks/validate-url',
 
         /** @type {string} Full URL for JWT token verification endpoint */
-        JWT_VERIFY_TOKEN: '../nifi-api/processors/jwt/verify-token'
+        JWT_VERIFY_TOKEN: 'nifi-api/processors/jwt/verify-token'
     },
 
     /**
