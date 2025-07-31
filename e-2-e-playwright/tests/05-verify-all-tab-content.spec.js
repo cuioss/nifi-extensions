@@ -97,10 +97,12 @@ test.describe("Comprehensive JWT Tab Content Verification", () => {
             .locator("#metrics")
             .textContent();
         // Metrics tab content found
-        // Check for either the metrics data or the not available message
+        // Check for actual metrics data (not the error message)
         expect(metricsContent).toMatch(
-            /Validation Metrics|jwt\.validator\.metrics\.title|Total Validations|Metrics Not Available/,
+            /Validation Metrics|jwt\.validator\.metrics\.title|Total Validations/,
         );
+        // Should NOT contain the error message
+        expect(metricsContent).not.toContain("Metrics Not Available");
 
         await page.screenshot({
             path: "target/test-results/comprehensive-tab-metrics.png",

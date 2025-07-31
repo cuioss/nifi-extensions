@@ -63,7 +63,7 @@
     </servlet>
     <servlet-mapping>
         <servlet-name>JwtVerificationServlet</servlet-name>
-        <url-pattern>/jwt/verify-token</url-pattern>
+        <url-pattern>/nifi-api/processors/jwt/verify-token</url-pattern>
     </servlet-mapping>
     <!-- Additional mapping for E2E test compatibility -->
     <servlet-mapping>
@@ -77,15 +77,15 @@
     </servlet>
     <servlet-mapping>
         <servlet-name>JwksValidationServlet</servlet-name>
-        <url-pattern>/jwt/validate-jwks-url</url-pattern>
+        <url-pattern>/nifi-api/processors/jwt/validate-jwks-url</url-pattern>
     </servlet-mapping>
     <servlet-mapping>
         <servlet-name>JwksValidationServlet</servlet-name>
-        <url-pattern>/jwt/validate-jwks-file</url-pattern>
+        <url-pattern>/nifi-api/processors/jwt/validate-jwks-file</url-pattern>
     </servlet-mapping>
     <servlet-mapping>
         <servlet-name>JwksValidationServlet</servlet-name>
-        <url-pattern>/jwt/validate-jwks-content</url-pattern>
+        <url-pattern>/nifi-api/processors/jwt/validate-jwks-content</url-pattern>
     </servlet-mapping>
 
     <servlet>
@@ -94,7 +94,7 @@
     </servlet>
     <servlet-mapping>
         <servlet-name>MetricsServlet</servlet-name>
-        <url-pattern>/jwt/metrics</url-pattern>
+        <url-pattern>/nifi-api/processors/jwt/metrics</url-pattern>
     </servlet-mapping>
 
 </web-app>

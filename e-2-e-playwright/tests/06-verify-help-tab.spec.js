@@ -50,6 +50,17 @@ test.describe("Help Tab", () => {
         processorLogger.info("Testing help documentation display");
 
         try {
+            // Explicit NiFi service availability check
+            const authService = new AuthService(page);
+            const isNiFiAvailable = await authService.checkNiFiAccessibility();
+            if (!isNiFiAvailable) {
+                throw new Error(
+                    "PRECONDITION FAILED: NiFi service is not available. " +
+                        "Integration tests require a running NiFi instance. " +
+                        "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+                );
+            }
+
             const processorService = new ProcessorService(page, testInfo);
 
             // Find JWT processor using the verified utility
@@ -108,6 +119,17 @@ test.describe("Help Tab", () => {
         processorLogger.info("Testing expandable help sections");
 
         try {
+            // Explicit NiFi service availability check
+            const authService = new AuthService(page);
+            const isNiFiAvailable = await authService.checkNiFiAccessibility();
+            if (!isNiFiAvailable) {
+                throw new Error(
+                    "PRECONDITION FAILED: NiFi service is not available. " +
+                        "Integration tests require a running NiFi instance. " +
+                        "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+                );
+            }
+
             const processorService = new ProcessorService(page, testInfo);
 
             // Find JWT processor using the verified utility
@@ -188,6 +210,17 @@ test.describe("Help Tab", () => {
         processorLogger.info("Testing configuration examples");
 
         try {
+            // Explicit NiFi service availability check
+            const authService = new AuthService(page);
+            const isNiFiAvailable = await authService.checkNiFiAccessibility();
+            if (!isNiFiAvailable) {
+                throw new Error(
+                    "PRECONDITION FAILED: NiFi service is not available. " +
+                        "Integration tests require a running NiFi instance. " +
+                        "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+                );
+            }
+
             const processorService = new ProcessorService(page, testInfo);
 
             // Find JWT processor using the verified utility
@@ -255,6 +288,17 @@ test.describe("Help Tab", () => {
         processorLogger.info("Testing copy code functionality");
 
         try {
+            // Explicit NiFi service availability check
+            const authService = new AuthService(page);
+            const isNiFiAvailable = await authService.checkNiFiAccessibility();
+            if (!isNiFiAvailable) {
+                throw new Error(
+                    "PRECONDITION FAILED: NiFi service is not available. " +
+                        "Integration tests require a running NiFi instance. " +
+                        "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+                );
+            }
+
             const processorService = new ProcessorService(page, testInfo);
 
             // Find JWT processor using the verified utility
@@ -313,6 +357,17 @@ test.describe("Help Tab", () => {
         processorLogger.info("Testing troubleshooting guide");
 
         try {
+            // Explicit NiFi service availability check
+            const authService = new AuthService(page);
+            const isNiFiAvailable = await authService.checkNiFiAccessibility();
+            if (!isNiFiAvailable) {
+                throw new Error(
+                    "PRECONDITION FAILED: NiFi service is not available. " +
+                        "Integration tests require a running NiFi instance. " +
+                        "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+                );
+            }
+
             const processorService = new ProcessorService(page, testInfo);
 
             // Find JWT processor using the verified utility
@@ -366,6 +421,17 @@ test.describe("Help Tab", () => {
         processorLogger.info("Testing help search functionality");
 
         try {
+            // Explicit NiFi service availability check
+            const authService = new AuthService(page);
+            const isNiFiAvailable = await authService.checkNiFiAccessibility();
+            if (!isNiFiAvailable) {
+                throw new Error(
+                    "PRECONDITION FAILED: NiFi service is not available. " +
+                        "Integration tests require a running NiFi instance. " +
+                        "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+                );
+            }
+
             const processorService = new ProcessorService(page, testInfo);
 
             // Find JWT processor using the verified utility

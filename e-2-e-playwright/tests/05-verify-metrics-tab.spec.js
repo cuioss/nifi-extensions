@@ -69,43 +69,35 @@ test.describe("Metrics Tab", () => {
             await expect(metricsTabContent).toBeVisible({ timeout: 5000 });
             processorLogger.info("✓ Metrics tab content displayed");
 
-            // Note: Backend metrics endpoint returns 404 (known issue)
-            // The UI will show a "not available" message
-            processorLogger.warn(
-                "Note: Metrics endpoint returns 404 - expecting 'not available' message",
-            );
-
-            // Check for the "not available" message that appears when endpoint returns 404
-            const notAvailableMessage = await customUIFrame.locator(
-                ".metrics-not-available",
-            );
-
-            // Try to find either the metrics content or the not available message
+            // Check for actual metrics content
             const metricsContent = await customUIFrame.locator(
                 "#jwt-metrics-content",
             );
 
-            if (await notAvailableMessage.isVisible({ timeout: 5000 })) {
-                processorLogger.info(
-                    "✓ Metrics 'not available' message displayed (expected due to 404)",
-                );
+            // Wait for metrics content to be visible
+            await expect(metricsContent).toBeVisible({ timeout: 10000 });
+            processorLogger.info("✓ Metrics content displayed");
 
-                // Verify the message content
-                const messageText = await notAvailableMessage.textContent();
-                expect(messageText).toContain("Metrics Not Available");
-                processorLogger.info("✓ Correct error message shown to user");
-            } else if (await metricsContent.isVisible()) {
-                // If by chance the metrics load (backend fixed), verify basic structure
-                processorLogger.info(
-                    "✓ Metrics content displayed (backend may be fixed)",
-                );
-            } else {
-                throw new Error(
-                    "Neither metrics content nor 'not available' message found",
-                );
-            }
+            // Verify metrics sections are present
+            const validationMetrics = await customUIFrame.locator(
+                '[data-testid="validation-metrics"]',
+            );
+            await expect(validationMetrics).toBeVisible({ timeout: 5000 });
+            processorLogger.info("✓ Validation metrics section visible");
 
-            processorLogger.success("Metrics tab handled 404 error gracefully");
+            const performanceMetrics = await customUIFrame.locator(
+                '[data-testid="performance-metrics"]',
+            );
+            await expect(performanceMetrics).toBeVisible({ timeout: 5000 });
+            processorLogger.info("✓ Performance metrics section visible");
+
+            const issuerMetrics = await customUIFrame.locator(
+                '[data-testid="issuer-metrics"]',
+            );
+            await expect(issuerMetrics).toBeVisible({ timeout: 5000 });
+            processorLogger.info("✓ Issuer metrics section visible");
+
+            processorLogger.success("Metrics dashboard displayed successfully");
         } catch (error) {
             processorLogger.error(
                 `Error displaying metrics dashboard: ${error.message}`,
@@ -114,38 +106,342 @@ test.describe("Metrics Tab", () => {
         }
     });
 
-    test.skip("should show validation success and failure rates", () => {
-        // Skip test due to backend endpoint returning 404
-        processorLogger.warn(
-            "Test skipped: Backend metrics endpoint returns 404 (known issue)",
-        );
+    test("should show validation success and failure rates", async ({
+        page,
+    }, testInfo) => {
+        processorLogger.info("Testing validation success and failure rates");
+
+        try {
+            const processorService = new ProcessorService(page, testInfo);
+
+            // Find JWT processor
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
+
+            // Open Advanced UI
+            await processorService.openAdvancedUI(processor);
+
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Metrics");
+
+            // Wait for metrics to load
+            await customUIFrame.waitForTimeout(2000);
+
+            // Check for validation success rate
+            const successRate = await customUIFrame.locator(
+                '[data-testid="success-rate"]',
+            );
+            await expect(successRate).toBeVisible({ timeout: 5000 });
+            processorLogger.info("✓ Success rate metric displayed");
+
+            // Check for failure rate
+            const failureRate = await customUIFrame.locator(
+                '[data-testid="failure-rate"]',
+            );
+            await expect(failureRate).toBeVisible({ timeout: 5000 });
+            processorLogger.info("✓ Failure rate metric displayed");
+
+            processorLogger.success(
+                "Validation success and failure rates displayed successfully",
+            );
+        } catch (error) {
+            processorLogger.error(
+                `Error displaying validation rates: ${error.message}`,
+            );
+            throw error;
+        }
     });
 
-    test.skip("should display issuer-specific metrics", () => {
-        // Skip test due to backend endpoint returning 404
-        processorLogger.info(
-            "Test skipped: Backend metrics endpoint returns 404 (known issue)",
-        );
+    test("should display issuer-specific metrics", async ({
+        page,
+    }, testInfo) => {
+        processorLogger.info("Testing issuer-specific metrics display");
+
+        try {
+            const processorService = new ProcessorService(page, testInfo);
+
+            // Find JWT processor
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
+
+            // Open Advanced UI
+            await processorService.openAdvancedUI(processor);
+
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Metrics");
+
+            // Wait for metrics to load
+            await customUIFrame.waitForTimeout(2000);
+
+            // Check for issuer metrics table
+            const issuerTable = await customUIFrame.locator(
+                '[data-testid="issuer-metrics-table"]',
+            );
+            await expect(issuerTable).toBeVisible({ timeout: 5000 });
+            processorLogger.info("✓ Issuer metrics table displayed");
+
+            processorLogger.success(
+                "Issuer-specific metrics displayed successfully",
+            );
+        } catch (error) {
+            processorLogger.error(
+                `Error displaying issuer metrics: ${error.message}`,
+            );
+            throw error;
+        }
     });
 
-    test.skip("should show performance metrics", () => {
-        // Skip test due to backend endpoint returning 404
-        processorLogger.info(
-            "Test skipped: Backend metrics endpoint returns 404 (known issue)",
-        );
+    test("should show performance metrics", async ({ page }, testInfo) => {
+        processorLogger.info("Testing performance metrics display");
+
+        try {
+            // Explicit NiFi service availability check
+            const authService = new AuthService(page);
+            const isNiFiAvailable = await authService.checkNiFiAccessibility();
+            if (!isNiFiAvailable) {
+                throw new Error(
+                    "PRECONDITION FAILED: NiFi service is not available. " +
+                        "Integration tests require a running NiFi instance. " +
+                        "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+                );
+            }
+
+            const processorService = new ProcessorService(page, testInfo);
+
+            // Find JWT processor
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
+
+            // Open Advanced UI
+            await processorService.openAdvancedUI(processor);
+
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Metrics");
+
+            // Wait for metrics to load
+            const metricsContent = await customUIFrame.locator("#metrics");
+            await expect(metricsContent).toBeVisible({ timeout: 10000 });
+
+            // Check for performance metrics section
+            const performanceSection = await customUIFrame.locator(
+                '.metrics-section:has-text("Performance")',
+            );
+            await expect(performanceSection).toBeVisible({ timeout: 5000 });
+            processorLogger.info("✓ Performance metrics section displayed");
+
+            // Check for specific performance metrics
+            const metricsElements = [
+                "Response Time",
+                "Throughput",
+                "Error Rate",
+                "Success Rate",
+            ];
+
+            for (const metric of metricsElements) {
+                const metricElement = await customUIFrame.locator(
+                    `text=${metric}, [data-metric="${metric.toLowerCase().replace(/\s+/g, "-")}"]`,
+                );
+                await expect(metricElement).toBeVisible({ timeout: 5000 });
+                processorLogger.info(`✓ Found ${metric} metric`);
+            }
+
+            processorLogger.success(
+                "Performance metrics displayed successfully",
+            );
+        } catch (error) {
+            processorLogger.error(
+                `Error showing performance metrics: ${error.message}`,
+            );
+            throw error;
+        }
     });
 
-    test.skip("should refresh metrics data", () => {
-        // Skip test due to backend endpoint returning 404
-        processorLogger.info(
-            "Test skipped: Backend metrics endpoint returns 404 (known issue)",
-        );
+    test("should refresh metrics data", async ({ page }, testInfo) => {
+        processorLogger.info("Testing metrics data refresh");
+
+        try {
+            // Explicit NiFi service availability check
+            const authService = new AuthService(page);
+            const isNiFiAvailable = await authService.checkNiFiAccessibility();
+            if (!isNiFiAvailable) {
+                throw new Error(
+                    "PRECONDITION FAILED: NiFi service is not available. " +
+                        "Integration tests require a running NiFi instance. " +
+                        "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+                );
+            }
+
+            const processorService = new ProcessorService(page, testInfo);
+
+            // Find JWT processor
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
+
+            // Open Advanced UI
+            await processorService.openAdvancedUI(processor);
+
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Metrics");
+
+            // Wait for metrics to load
+            const metricsContent = await customUIFrame.locator("#metrics");
+            await expect(metricsContent).toBeVisible({ timeout: 10000 });
+
+            // Find refresh button
+            const refreshButton = await customUIFrame.getByRole("button", {
+                name: /refresh|reload/i,
+            });
+            await expect(refreshButton).toBeVisible({ timeout: 5000 });
+            processorLogger.info("✓ Found refresh button");
+
+            // Get initial metrics content
+            const _initialContent = await metricsContent.textContent();
+
+            // Click refresh button
+            await refreshButton.click();
+            processorLogger.info("Clicked refresh button");
+
+            // Wait for refresh to complete (loading indicator or content change)
+            await page.waitForTimeout(1000); // Allow time for refresh
+
+            // Verify metrics content is still visible (may have same or updated content)
+            await expect(metricsContent).toBeVisible({ timeout: 5000 });
+
+            // Check for refresh completion indicators
+            const refreshCompleted = await customUIFrame
+                .locator(
+                    ".refresh-complete, .data-updated, [data-last-updated]",
+                )
+                .isVisible()
+                .catch(() => false);
+
+            if (refreshCompleted) {
+                processorLogger.info("✓ Refresh completion indicator found");
+            } else {
+                processorLogger.info(
+                    "✓ Metrics content remains available after refresh",
+                );
+            }
+
+            processorLogger.success("Metrics refresh functionality working");
+        } catch (error) {
+            processorLogger.error(
+                `Error refreshing metrics data: ${error.message}`,
+            );
+            throw error;
+        }
     });
 
-    test.skip("should export metrics data", () => {
-        // Skip test due to backend endpoint returning 404
-        processorLogger.info(
-            "Test skipped: Backend metrics endpoint returns 404 (known issue)",
-        );
+    test("should export metrics data", async ({ page }, testInfo) => {
+        processorLogger.info("Testing metrics data export");
+
+        try {
+            // Explicit NiFi service availability check
+            const authService = new AuthService(page);
+            const isNiFiAvailable = await authService.checkNiFiAccessibility();
+            if (!isNiFiAvailable) {
+                throw new Error(
+                    "PRECONDITION FAILED: NiFi service is not available. " +
+                        "Integration tests require a running NiFi instance. " +
+                        "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+                );
+            }
+
+            const processorService = new ProcessorService(page, testInfo);
+
+            // Find JWT processor
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
+
+            // Open Advanced UI
+            await processorService.openAdvancedUI(processor);
+
+            // Get the custom UI frame
+            const customUIFrame = await processorService.getAdvancedUIFrame();
+            await processorService.clickTab(customUIFrame, "Metrics");
+
+            // Wait for metrics to load
+            const metricsContent = await customUIFrame.locator("#metrics");
+            await expect(metricsContent).toBeVisible({ timeout: 10000 });
+
+            // Find export button
+            const exportButton = await customUIFrame.getByRole("button", {
+                name: /export|download/i,
+            });
+            await expect(exportButton).toBeVisible({ timeout: 5000 });
+            processorLogger.info("✓ Found export button");
+
+            // Set up download promise before clicking
+            const downloadPromise = page.waitForEvent("download", {
+                timeout: 10000,
+            });
+
+            // Click export button
+            await exportButton.click();
+            processorLogger.info("Clicked export button");
+
+            try {
+                // Wait for download to start
+                const download = await downloadPromise;
+                processorLogger.info("✓ Download initiated");
+
+                // Verify download properties
+                const filename = download.suggestedFilename();
+                expect(filename).toMatch(/metrics|export/i);
+                processorLogger.info(`✓ Downloaded file: ${filename}`);
+
+                processorLogger.success("Metrics export functionality working");
+            } catch (downloadError) {
+                // If download doesn't work, check for alternative export indicators
+                processorLogger.info(
+                    "Download not detected, checking for export feedback",
+                );
+
+                const exportFeedback = await customUIFrame
+                    .locator(
+                        ".export-success, .download-complete, [data-export-status]",
+                    )
+                    .isVisible()
+                    .catch(() => false);
+
+                if (exportFeedback) {
+                    processorLogger.info("✓ Export feedback indicator found");
+                    processorLogger.success(
+                        "Metrics export completed (non-download method)",
+                    );
+                } else {
+                    // Check if export data is displayed in UI instead of downloaded
+                    const exportData = await customUIFrame
+                        .locator(".export-data, .metrics-json, pre, code")
+                        .isVisible()
+                        .catch(() => false);
+
+                    if (exportData) {
+                        processorLogger.info("✓ Export data displayed in UI");
+                        processorLogger.success(
+                            "Metrics export functionality working (display mode)",
+                        );
+                    } else {
+                        throw new Error(
+                            "Export functionality not working - no download or display detected",
+                        );
+                    }
+                }
+            }
+        } catch (error) {
+            processorLogger.error(
+                `Error exporting metrics data: ${error.message}`,
+            );
+            throw error;
+        }
     });
 });

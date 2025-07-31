@@ -53,6 +53,17 @@ test.describe("JWT Authenticator Customizer UI", () => {
         processorLogger.info("Testing JWT Authenticator Customizer UI");
 
         try {
+            // Explicit NiFi service availability check
+            const authService = new AuthService(page);
+            const isNiFiAvailable = await authService.checkNiFiAccessibility();
+            if (!isNiFiAvailable) {
+                throw new Error(
+                    "PRECONDITION FAILED: NiFi service is not available. " +
+                        "Integration tests require a running NiFi instance. " +
+                        "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+                );
+            }
+
             const processorService = new ProcessorService(page, testInfo);
 
             // Try to find the processor first
@@ -150,6 +161,17 @@ test.describe("JWT Authenticator Customizer UI", () => {
         processorLogger.info("Testing issuer configuration interactions");
 
         try {
+            // Explicit NiFi service availability check
+            const authService = new AuthService(page);
+            const isNiFiAvailable = await authService.checkNiFiAccessibility();
+            if (!isNiFiAvailable) {
+                throw new Error(
+                    "PRECONDITION FAILED: NiFi service is not available. " +
+                        "Integration tests require a running NiFi instance. " +
+                        "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+                );
+            }
+
             const processorService = new ProcessorService(page, testInfo);
 
             // Try to find the processor first
@@ -233,17 +255,16 @@ test.describe("JWT Authenticator Customizer UI", () => {
                 }
                 await expect(input).toBeVisible({ timeout: 5000 });
 
-                // Check if input is enabled and force enable if needed
+                // Verify input is enabled - fail test if disabled
                 const isEnabled = await input.isEnabled();
                 if (!isEnabled) {
-                    processorLogger.warn(
-                        `${field.description} input appears disabled, trying to enable`,
+                    throw new Error(
+                        `TEST FAILURE: ${field.description} input is disabled when it should be enabled. ` +
+                            `This indicates a UI state issue that needs to be resolved in the application code.`,
                     );
-                    await input.click({ force: true });
-                    await page.waitForTimeout(500);
                 }
 
-                await input.fill(field.value, { force: true });
+                await input.fill(field.value);
                 processorLogger.info(
                     `✓ Filled ${field.description} with: ${field.value}`,
                 );

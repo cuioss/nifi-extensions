@@ -109,24 +109,8 @@ test.describe("Token Verification Tab", () => {
             .first();
         await expect(tokenInput).toBeVisible({ timeout: 5000 });
 
-        // Try to fill token input (may be initially disabled)
-        // If disabled, force the interaction
-        try {
-            await tokenInput.fill(CONSTANTS.TEST_TOKENS.VALID, {
-                timeout: 2000,
-            });
-        } catch (error) {
-            if (error.message.includes("disabled")) {
-                // Force enable the input first
-                await tokenInput.evaluate((input) => {
-                    input.removeAttribute("disabled");
-                    input.disabled = false;
-                });
-                await tokenInput.fill(CONSTANTS.TEST_TOKENS.VALID);
-            } else {
-                throw error;
-            }
-        }
+        // Fill the token input
+        await tokenInput.fill(CONSTANTS.TEST_TOKENS.VALID);
 
         processorLogger.info("Entered valid JWT token");
 
@@ -134,21 +118,8 @@ test.describe("Token Verification Tab", () => {
             .locator(".verify-token-button")
             .first();
 
-        // Try to click the verify button (may be initially disabled)
-        try {
-            await verifyButton.click({ timeout: 2000 });
-        } catch (error) {
-            if (error.message.includes("disabled")) {
-                // Force enable the button first
-                await verifyButton.evaluate((button) => {
-                    button.removeAttribute("disabled");
-                    button.disabled = false;
-                });
-                await verifyButton.click();
-            } else {
-                throw error;
-            }
-        }
+        // Click the verify button
+        await verifyButton.click();
         processorLogger.info("Clicked verify button");
 
         // Look for the success message with the correct CSS class
@@ -204,44 +175,16 @@ test.describe("Token Verification Tab", () => {
         const tokenInput = tokenVerificationTab
             .locator("#field-token-input")
             .first();
-        // Try to fill token input (may be initially disabled)
-        try {
-            await tokenInput.fill(CONSTANTS.TEST_TOKENS.MALFORMED, {
-                timeout: 2000,
-            });
-        } catch (error) {
-            if (error.message.includes("disabled")) {
-                // Force enable the input first
-                await tokenInput.evaluate((input) => {
-                    input.removeAttribute("disabled");
-                    input.disabled = false;
-                });
-                await tokenInput.fill(CONSTANTS.TEST_TOKENS.MALFORMED);
-            } else {
-                throw error;
-            }
-        }
+        // Fill the token input with malformed token
+        await tokenInput.fill(CONSTANTS.TEST_TOKENS.MALFORMED);
         processorLogger.info("Entered malformed JWT token");
 
         const verifyButton = tokenVerificationTab
             .locator(".verify-token-button")
             .first();
 
-        // Try to click the verify button (may be initially disabled)
-        try {
-            await verifyButton.click({ timeout: 2000 });
-        } catch (error) {
-            if (error.message.includes("disabled")) {
-                // Force enable the button first
-                await verifyButton.evaluate((button) => {
-                    button.removeAttribute("disabled");
-                    button.disabled = false;
-                });
-                await verifyButton.click();
-            } else {
-                throw error;
-            }
-        }
+        // Click the verify button
+        await verifyButton.click();
         processorLogger.info("Clicked verify button");
 
         // Capture console logs for debugging
@@ -329,21 +272,8 @@ test.describe("Token Verification Tab", () => {
             .locator(".verify-token-button")
             .first();
 
-        // Try to click the verify button (may be initially disabled)
-        try {
-            await verifyButton.click({ timeout: 2000 });
-        } catch (error) {
-            if (error.message.includes("disabled")) {
-                // Force enable the button first
-                await verifyButton.evaluate((button) => {
-                    button.removeAttribute("disabled");
-                    button.disabled = false;
-                });
-                await verifyButton.click();
-            } else {
-                throw error;
-            }
-        }
+        // Click the verify button
+        await verifyButton.click();
 
         // Look for error or warning about expiration
         const expirationMessage = customUIFrame
@@ -395,43 +325,15 @@ test.describe("Token Verification Tab", () => {
         const tokenInput = tokenVerificationTab
             .locator("#field-token-input")
             .first();
-        // Try to fill token input (may be initially disabled)
-        try {
-            await tokenInput.fill(CONSTANTS.TEST_TOKENS.MALFORMED, {
-                timeout: 2000,
-            });
-        } catch (error) {
-            if (error.message.includes("disabled")) {
-                // Force enable the input first
-                await tokenInput.evaluate((input) => {
-                    input.removeAttribute("disabled");
-                    input.disabled = false;
-                });
-                await tokenInput.fill(CONSTANTS.TEST_TOKENS.MALFORMED);
-            } else {
-                throw error;
-            }
-        }
+        // Fill the token input with malformed token
+        await tokenInput.fill(CONSTANTS.TEST_TOKENS.MALFORMED);
 
         const verifyButton = tokenVerificationTab
             .locator(".verify-token-button")
             .first();
 
-        // Try to click the verify button (may be initially disabled)
-        try {
-            await verifyButton.click({ timeout: 2000 });
-        } catch (error) {
-            if (error.message.includes("disabled")) {
-                // Force enable the button first
-                await verifyButton.evaluate((button) => {
-                    button.removeAttribute("disabled");
-                    button.disabled = false;
-                });
-                await verifyButton.click();
-            } else {
-                throw error;
-            }
-        }
+        // Click the verify button
+        await verifyButton.click();
 
         // Wait for verification to complete - look for any result
         await expect(
@@ -448,21 +350,8 @@ test.describe("Token Verification Tab", () => {
             .first();
         await expect(clearButton).toBeVisible({ timeout: 5000 });
 
-        // Try to click the clear button (may be initially disabled)
-        try {
-            await clearButton.click({ timeout: 2000 });
-        } catch (error) {
-            if (error.message.includes("disabled")) {
-                // Force enable the button first
-                await clearButton.evaluate((button) => {
-                    button.removeAttribute("disabled");
-                    button.disabled = false;
-                });
-                await clearButton.click();
-            } else {
-                throw error;
-            }
-        }
+        // Click the clear button
+        await clearButton.click();
         processorLogger.info("Clicked clear button");
 
         // Handle confirmation dialog if it appears

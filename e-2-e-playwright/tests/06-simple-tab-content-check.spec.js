@@ -100,7 +100,7 @@ test.describe("Simple Tab Content Check", () => {
             const minContentLength = {
                 Configuration: 500, // Should have issuer form elements
                 "Token Verification": 200, // Should have verification form
-                Metrics: 100, // Should have metrics data or not available message
+                Metrics: 500, // Should have actual metrics data (not error message)
                 Help: 500, // Should have documentation
             };
 

@@ -30,6 +30,17 @@ test.describe("JWKS Validation Button", () => {
     test("should validate JWKS URL successfully", async ({
         page,
     }, testInfo) => {
+        // Explicit NiFi service availability check
+        const authService = new AuthService(page);
+        const isNiFiAvailable = await authService.checkNiFiAccessibility();
+        if (!isNiFiAvailable) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not available. " +
+                    "Integration tests require a running NiFi instance. " +
+                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+            );
+        }
+
         // Test JWKS validation button with valid URL
         const processorService = new ProcessorService(page, testInfo);
 
@@ -98,8 +109,18 @@ test.describe("JWKS Validation Button", () => {
     });
 
     test("should handle invalid JWKS URL", async ({ page }, testInfo) => {
-        // Testing JWKS validation button - invalid URL
+        // Explicit NiFi service availability check
+        const authService = new AuthService(page);
+        const isNiFiAvailable = await authService.checkNiFiAccessibility();
+        if (!isNiFiAvailable) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not available. " +
+                    "Integration tests require a running NiFi instance. " +
+                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+            );
+        }
 
+        // Testing JWKS validation button - invalid URL
         const processorService = new ProcessorService(page, testInfo);
 
         // Try to find the processor first
@@ -174,8 +195,18 @@ test.describe("JWKS Validation Button", () => {
     });
 
     test("should validate JWKS file path", async ({ page }, testInfo) => {
-        // Testing JWKS validation button - file path
+        // Explicit NiFi service availability check
+        const authService = new AuthService(page);
+        const isNiFiAvailable = await authService.checkNiFiAccessibility();
+        if (!isNiFiAvailable) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not available. " +
+                    "Integration tests require a running NiFi instance. " +
+                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+            );
+        }
 
+        // Testing JWKS validation button - file path
         const processorService = new ProcessorService(page, testInfo);
 
         // Try to find the processor first
@@ -246,8 +277,18 @@ test.describe("JWKS Validation Button", () => {
     test("should display validation progress indicator", async ({
         page,
     }, testInfo) => {
-        // Testing JWKS validation progress indicator
+        // Explicit NiFi service availability check
+        const authService = new AuthService(page);
+        const isNiFiAvailable = await authService.checkNiFiAccessibility();
+        if (!isNiFiAvailable) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not available. " +
+                    "Integration tests require a running NiFi instance. " +
+                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+            );
+        }
 
+        // Testing JWKS validation progress indicator
         const processorService = new ProcessorService(page, testInfo);
 
         // Try to find the processor first
@@ -305,21 +346,23 @@ test.describe("JWKS Validation Button", () => {
         await expect(validateButton).toBeVisible({ timeout: 5000 });
         await validateButton.click();
 
-        // Wait a moment for the validation to start
-        await page.waitForTimeout(100);
-
-        // Verify validation completed by checking for any result content
-        // The loading indicator may be too quick to catch reliably
+        // Check for the loading state
         const verificationResult = await uiContext
             .locator(".verification-result")
             .first();
 
-        // Wait for the result container to have some content other than the initial instructions
+        // The result should immediately show "Testing..." when validation starts
+        await expect(verificationResult).toContainText("Testing", {
+            timeout: 2000,
+        });
+        processorLogger.info("✓ Validation progress indicator displayed");
+
+        // Wait for the final result (OK or Error)
         await expect(verificationResult).toContainText(
-            /OK|Error|Invalid|Valid|Testing/i,
+            /OK|Error|Invalid|Valid/i,
             { timeout: 10000 },
         );
-        processorLogger.info("Validation completed with result");
+        processorLogger.info("✓ Validation completed with result");
         // Validation progress indicator working correctly
     });
 });
