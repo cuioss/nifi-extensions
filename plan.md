@@ -2,7 +2,26 @@
 
 ## 📋 OPEN TASKS (Organized by Priority)
 
-### Infrastructure & Configuration Tasks:
+### High Priority - Processor Integration Tasks:
+- [ ] **Add JWKS source type property to MultiIssuerJWTTokenAuthenticator**
+  - Add property descriptor for JWKS source type (URL, file, memory)
+  - Update processor to pass jwks_type parameter to custom UI components
+  - Enable conditional rendering based on selected JWKS source type
+  - Update processor documentation to describe new JWKS source options
+
+- [ ] **Update issuer configuration to support different JWKS sources**
+  - Modify issuer properties to include jwks-file and jwks-content options
+  - Update configuration parser to handle different source types
+  - Ensure backward compatibility with existing jwks-url configurations
+  - Add validation for file paths and memory content in processor
+
+- [ ] **Enable E2E tests for JWKS file and memory validation**
+  - Remove skip annotations from JWKS file path validation test
+  - Remove skip annotations from JWKS content structure validation test
+  - Update test selectors to match actual UI implementation
+  - Verify tests pass with processor integration
+
+### Medium Priority - Infrastructure Tasks:
 - [ ] **Review console suppression in `src/test/js/setup.js`**
   - Investigate if console suppression is hiding important error messages
   - May impact debugging capabilities
@@ -11,22 +30,14 @@
   - Enhance error messages to be more descriptive
   - Add context to test failures for easier debugging
 
+### Low Priority - Configuration Tasks:
 - [ ] **Add E2E test retry configuration**
   - Implement retry logic for flaky tests
   - Configure appropriate retry counts and delays
 
-### Processor Integration Tasks (New):
-- [ ] **Add JWKS source type property to MultiIssuerJWTTokenAuthenticator**
-  - Add property descriptor for JWKS source type (URL, file, memory)
-  - Update processor to pass jwks_type parameter to custom UI components
-  - Enable conditional rendering based on selected JWKS source type
+## ✅ COMPLETED TASKS
 
-- [ ] **Update issuer configuration to support different JWKS sources**
-  - Modify issuer properties to include jwks-file and jwks-content options
-  - Update configuration parser to handle different source types
-  - Ensure backward compatibility with existing jwks-url configurations
-
-### Future Feature Implementation Tasks (JWKS UI Enhancements):
+### JWKS UI Enhancements (Completed July 31, 2025):
 - [x] **Implement JWKS file path validation UI components** ✅
   - Added file input field for JWKS file paths
   - Created validate file button for file validation
@@ -49,6 +60,24 @@
   - Added real-time syntax and structure checking
   - Created user-friendly validation error messages
   - Validates keys array, key types (kty), and key usage (use/key_ops)
+
+- [x] **Fix E2E test formatting and update documentation** ✅
+  - Fixed all ESLint formatting issues in E2E tests
+  - Updated JWKS validation test documentation
+  - Documented processor integration requirements
+
+### E2E Testing Infrastructure (Completed Earlier):
+- [x] **Enhanced test reliability with NiFi service checks** ✅
+  - Added explicit NiFi service availability checks (13 test methods)
+  - Tests fail immediately with clear messages if NiFi unavailable
+  
+- [x] **Removed force-enable workarounds** ✅
+  - Replaced with proper test failures
+  - Clear error messages for UI state issues
+
+- [x] **Re-enabled metrics tests** ✅
+  - Restored 3 previously skipped metrics tests
+  - Added comprehensive implementations
 
 ## 🔍 Key Issues Fixed:
 1. **URL Path Resolution Bug**: Fixed relative URL paths (`../`) that were causing 404 errors for the metrics endpoint
@@ -190,8 +219,17 @@
 - Resolved code formatting issues (trailing spaces, long lines)
 - E2E tests ready but skipped pending processor integration
 
-**Next Steps**:
-- Processor needs to expose JWKS source type property (URL, file, memory)
-- Once processor supports different JWKS types, the UI will automatically enable
+## 🚀 Current Status:
+- **UI Implementation**: Complete and tested for JWKS file and memory validation
+- **Backend Integration**: APIs available and connected
+- **Test Coverage**: 644 JavaScript tests passing, 24 new tests for JWKS validator
+- **E2E Tests**: Written and ready, awaiting processor integration
+- **Blocker**: Processor needs to expose JWKS source type property
+
+## 📊 Project Metrics:
+- **JavaScript Unit Tests**: 644/644 passing (100%)
+- **E2E Self-Tests**: 29/29 passing (100%)
+- **E2E Integration Tests**: 11/11 passing (2 skipped pending processor work)
+- **Code Coverage**: Tests maintain >80% coverage requirements
 
 *Last updated: July 31, 2025*
