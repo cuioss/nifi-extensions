@@ -1,0 +1,67 @@
+# Example JWT Validation Configuration in YAML format
+# This file demonstrates the YAML configuration options for the MultiIssuerJWTTokenAuthenticator
+
+# JWT validation settings
+jwt:
+  validation:
+    # Enable/disable JWT validation
+    enabled: true
+    
+    # Clock skew tolerance in seconds
+    clockSkew: 60
+    
+    # Cache settings
+    cache:
+      enabled: true
+      ttl: 300  # Time to live in seconds
+    
+    # Security settings
+    security:
+      algorithms:
+        - RS256
+        - RS384
+        - RS512
+        - ES256
+      minKeySize: 2048
+    
+    # List of trusted issuers
+    issuers:
+      # Example 1: Google OAuth2
+      - id: google
+        name: Google OAuth2
+        issuer: https://accounts.google.com
+        jwksUri: https://www.googleapis.com/oauth2/v3/certs
+        audience: your-client-id.apps.googleusercontent.com
+        enabled: true
+      
+      # Example 2: Auth0
+      - id: auth0
+        name: Auth0 Tenant
+        issuer: https://your-tenant.auth0.com/
+        jwksUri: https://your-tenant.auth0.com/.well-known/jwks.json
+        audience: https://your-api.example.com
+        enabled: true
+      
+      # Example 3: Keycloak
+      - id: keycloak
+        name: Keycloak Realm
+        issuer: https://keycloak.example.com/realms/your-realm
+        jwksUri: https://keycloak.example.com/realms/your-realm/protocol/openid-connect/certs
+        audience: your-client
+        enabled: true
+        # Additional claims validation
+        requiredClaims:
+          - sub
+          - email
+          - roles
+
+# Alternative flat structure (also supported)
+# issuers:
+#   - id: issuer1
+#     jwksUri: https://example.com/jwks
+#     audience: api1
+#   - id: issuer2
+#     jwksUri: https://example.com/jwks2
+#     audience: api2
+# clockSkew: 30
+# enabled: true

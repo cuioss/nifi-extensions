@@ -17,6 +17,7 @@ package de.cuioss.nifi.processors.auth.config;
 
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.Getter;
+import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -165,9 +166,12 @@ public class ConfigurationManager {
                 LOGGER.info("Loaded properties configuration from %s", file.getAbsolutePath());
                 return true;
             } else if (fileName.endsWith(".yml") || fileName.endsWith(".yaml")) {
-                LOGGER.warn("YAML configuration not yet implemented, skipping %s", file.getAbsolutePath());
-                // TODO: Implement YAML configuration loading
-                return false;
+                boolean loaded = loadYamlFile(file);
+                if (loaded) {
+                    lastLoadedTimestamp = file.lastModified();
+                    LOGGER.info("Loaded YAML configuration from %s", file.getAbsolutePath());
+                }
+                return loaded;
             } else {
                 LOGGER.warn("Unsupported configuration file format: %s", fileName);
                 return false;
@@ -201,6 +205,106 @@ public class ConfigurationManager {
                 // Store static property
                 staticProperties.put(key, value);
             }
+        }
+    }
+
+    /**
+     * Loads configuration from a YAML file.
+     *
+     * @param file the YAML file
+     * @return true if configuration was loaded successfully, false otherwise
+     * @throws IOException if an I/O error occurs
+     */
+    @SuppressWarnings("unchecked")
+    private boolean loadYamlFile(File file) throws IOException {
+        Yaml yaml = new Yaml();
+        Map<String, Object> yamlData;
+        
+        try (FileInputStream fis = new FileInputStream(file)) {
+            yamlData = yaml.load(fis);
+        }
+        
+        if (yamlData == null || yamlData.isEmpty()) {
+            LOGGER.warn("YAML file %s is empty or invalid", file.getAbsolutePath());
+            return false;
+        }
+        
+        // Process YAML data
+        processYamlData(yamlData, "");
+        return true;
+    }
+    
+    /**
+     * Recursively processes YAML data and stores properties.
+     *
+     * @param data the YAML data map
+     * @param prefix the current property prefix
+     */
+    @SuppressWarnings("unchecked")
+    private void processYamlData(Map<String, Object> data, String prefix) {
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            
+            String fullKey = prefix.isEmpty() ? key : prefix + "." + key;
+            
+            if (value instanceof Map) {
+                // Recursively process nested maps
+                processYamlData((Map<String, Object>) value, fullKey);
+            } else if (value instanceof List) {
+                // Process lists (typically for issuer configurations)
+                processList(fullKey, (List<?>) value);
+            } else if (value != null) {
+                // Store simple values
+                if (fullKey.startsWith("jwt.validation.issuer.")) {
+                    parseIssuerProperty(fullKey, value.toString());
+                } else {
+                    staticProperties.put(fullKey, value.toString());
+                }
+            }
+        }
+    }
+    
+    /**
+     * Processes a list from YAML configuration.
+     *
+     * @param key the property key
+     * @param list the list value
+     */
+    @SuppressWarnings("unchecked")
+    private void processList(String key, List<?> list) {
+        if (key.equals("jwt.validation.issuers") || key.equals("issuers")) {
+            // Process issuer list
+            for (int i = 0; i < list.size(); i++) {
+                Object item = list.get(i);
+                if (item instanceof Map) {
+                    Map<String, Object> issuerConfig = (Map<String, Object>) item;
+                    String issuerId = String.valueOf(i);
+                    
+                    // Check if issuer has an id or name
+                    if (issuerConfig.containsKey("id")) {
+                        issuerId = issuerConfig.get("id").toString();
+                    } else if (issuerConfig.containsKey("name")) {
+                        issuerId = issuerConfig.get("name").toString();
+                    }
+                    
+                    // Store issuer properties
+                    Map<String, String> issuerProps = issuerProperties.computeIfAbsent(issuerId, k -> new HashMap<>());
+                    for (Map.Entry<String, Object> issuerEntry : issuerConfig.entrySet()) {
+                        if (issuerEntry.getValue() != null) {
+                            issuerProps.put(issuerEntry.getKey(), issuerEntry.getValue().toString());
+                        }
+                    }
+                }
+            }
+        } else {
+            // For other lists, store as comma-separated values
+            String listValue = list.stream()
+                    .filter(Objects::nonNull)
+                    .map(Object::toString)
+                    .reduce((a, b) -> a + "," + b)
+                    .orElse("");
+            staticProperties.put(key, listValue);
         }
     }
 
