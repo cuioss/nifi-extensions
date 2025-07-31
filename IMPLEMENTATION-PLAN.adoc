@@ -34,6 +34,8 @@ The following sections outline tasks that are not yet implemented and would enha
 
 * [ ] Enhance existing integration test suite with comprehensive end-to-end JWT flow validation
 * [ ] Add automated test cases for Keycloak integration scenarios
+  - **Hint**: Use the new `keycloak-token-service.js` utility in `e-2-e-playwright/utils/` for obtaining valid and invalid access tokens
+  - The utility provides fail-loud error handling and centralized token management for all E2E tests
 * [ ] Document integration testing setup and usage patterns
 
 === Security Hardening

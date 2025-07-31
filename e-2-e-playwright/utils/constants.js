@@ -24,6 +24,16 @@ export const AUTH = {
 };
 
 /**
+ * Keycloak configuration constants
+ * These values match the oauth_integration_tests realm configuration
+ */
+export const KEYCLOAK_CONFIG = {
+  REALM: 'oauth_integration_tests',
+  CLIENT_ID: 'test_client',
+  CLIENT_SECRET: 'yTKslWLtf4giJcWCaoVJ20H8sy6STexM'
+};
+
+/**
  * Service URLs
  */
 export const SERVICE_URLS = {
@@ -32,7 +42,8 @@ export const SERVICE_URLS = {
   NIFI_CANVAS: (process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:9095/nifi') + '#/canvas',
   NIFI_SYSTEM_DIAGNOSTICS: (process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:9095/nifi') + '/nifi-api/system-diagnostics',
   KEYCLOAK_BASE: process.env.PLAYWRIGHT_KEYCLOAK_URL || 'http://localhost:9080',
-  KEYCLOAK_HEALTH: (process.env.PLAYWRIGHT_KEYCLOAK_URL || 'http://localhost:9080') + '/health'
+  KEYCLOAK_HEALTH: (process.env.PLAYWRIGHT_KEYCLOAK_URL || 'http://localhost:9080') + '/health',
+  KEYCLOAK_TOKEN: (process.env.PLAYWRIGHT_KEYCLOAK_URL || 'http://localhost:9080') + '/realms/oauth_integration_tests/protocol/openid-connect/token'
 };
 
 /**
@@ -149,6 +160,7 @@ export const BROWSER_ERROR_PATTERNS = ERROR_PATTERNS.CRITICAL;
 export const CONSTANTS = {
   PAGE_TYPES,
   AUTH,
+  KEYCLOAK_CONFIG,
   SERVICE_URLS,
   TIMEOUTS,
   SELECTORS,
