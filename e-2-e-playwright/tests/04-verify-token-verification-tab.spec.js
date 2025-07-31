@@ -9,6 +9,10 @@ import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 import { CONSTANTS } from "../utils/constants.js";
 import {
+    getValidAccessToken,
+    getInvalidAccessToken,
+} from "../utils/keycloak-token-service.js";
+import {
     saveTestBrowserLogs,
     setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
@@ -109,8 +113,17 @@ test.describe("Token Verification Tab", () => {
             .first();
         await expect(tokenInput).toBeVisible({ timeout: 5000 });
 
+        // Try to get a real token from Keycloak, fall back to test token if not available
+        let validToken = CONSTANTS.TEST_TOKENS.VALID;
+        try {
+            validToken = await getValidAccessToken();
+            processorLogger.info("Using real token from Keycloak");
+        } catch (error) {
+            processorLogger.info("Keycloak not available, using test token");
+        }
+
         // Fill the token input
-        await tokenInput.fill(CONSTANTS.TEST_TOKENS.VALID);
+        await tokenInput.fill(validToken);
 
         processorLogger.info("Entered valid JWT token");
 
@@ -175,9 +188,9 @@ test.describe("Token Verification Tab", () => {
         const tokenInput = tokenVerificationTab
             .locator("#field-token-input")
             .first();
-        // Fill the token input with malformed token
-        await tokenInput.fill(CONSTANTS.TEST_TOKENS.MALFORMED);
-        processorLogger.info("Entered malformed JWT token");
+        // Fill the token input with invalid token from our utility
+        await tokenInput.fill(getInvalidAccessToken());
+        processorLogger.info("Entered invalid JWT token");
 
         const verifyButton = tokenVerificationTab
             .locator(".verify-token-button")
@@ -325,8 +338,8 @@ test.describe("Token Verification Tab", () => {
         const tokenInput = tokenVerificationTab
             .locator("#field-token-input")
             .first();
-        // Fill the token input with malformed token
-        await tokenInput.fill(CONSTANTS.TEST_TOKENS.MALFORMED);
+        // Fill the token input with invalid token from our utility
+        await tokenInput.fill(getInvalidAccessToken());
 
         const verifyButton = tokenVerificationTab
             .locator(".verify-token-button")
