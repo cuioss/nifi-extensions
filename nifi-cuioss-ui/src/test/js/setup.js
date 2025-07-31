@@ -33,34 +33,33 @@ const originalConsoleInfo = console.info;
 // Helper function to determine if a message should be shown during tests
 const shouldShowMessage = (message, level) => {
     if (process.env.DEBUG) return true;
-    
+
     const messageStr = String(message).toLowerCase();
-    
+
     // Suppress known non-critical errors first
     if (level === 'error') {
         // Suppress old NiFi FontAwesome 404 errors (these are expected/harmless)
         if (messageStr.includes('404') && messageStr.includes('font')) {
             // Check for old NiFi FontAwesome patterns
-            if (messageStr.includes('fontawesome') || 
-                messageStr.includes('font-awesome') || 
+            if (messageStr.includes('fontawesome') ||
+                messageStr.includes('font-awesome') ||
                 messageStr.includes('fa-') ||
-                messageStr.includes('.woff') || 
-                messageStr.includes('.ttf') || 
+                messageStr.includes('.woff') ||
+                messageStr.includes('.ttf') ||
                 messageStr.includes('.eot')) {
-                
                 // But still show FontAwesome 6+ errors (newer library issues)
-                if (messageStr.includes('fontawesome-6') || 
+                if (messageStr.includes('fontawesome-6') ||
                     messageStr.includes('font-awesome-6') ||
                     messageStr.includes('@fortawesome') ||
                     messageStr.includes('fa6-')) {
                     return true; // Show newer FontAwesome issues
                 }
-                
+
                 return false; // Suppress old NiFi FontAwesome 404s
             }
         }
     }
-    
+
     // Always show actual errors that could indicate real problems
     if (level === 'error') {
         // Show fetch/network errors (except the FontAwesome ones handled above)
@@ -76,14 +75,14 @@ const shouldShowMessage = (message, level) => {
             return true;
         }
     }
-    
+
     // Always show warnings about missing or invalid configurations
     if (level === 'warn') {
         if (messageStr.includes('missing') || messageStr.includes('not found') || messageStr.includes('invalid')) {
             return true;
         }
     }
-    
+
     return false;
 };
 

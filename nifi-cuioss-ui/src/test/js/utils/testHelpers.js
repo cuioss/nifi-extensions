@@ -12,10 +12,10 @@
  * @returns {string} Formatted error message
  */
 export const createTestErrorMessage = (testName, expected, actual, context = {}) => {
-    const contextStr = Object.keys(context).length > 0 
+    const contextStr = Object.keys(context).length > 0
         ? `\nContext: ${JSON.stringify(context, null, 2)}`
         : '';
-    
+
     return `
 Test: ${testName}
 Expected: ${expected}
@@ -30,8 +30,9 @@ Actual: ${JSON.stringify(actual, null, 2)}${contextStr}
  * @returns {object} Enhanced expect object
  */
 export const expectWithContext = (actual, testName) => {
+    // eslint-disable-next-line jest/valid-expect
     const originalExpect = expect(actual);
-    
+
     return {
         ...originalExpect,
         toBe: (expected) => {
@@ -52,7 +53,7 @@ export const expectWithContext = (actual, testName) => {
             try {
                 return originalExpect.toHaveProperty(property, value);
             } catch (error) {
-                const message = value !== undefined 
+                const message = value !== undefined
                     ? `property '${property}' with value ${JSON.stringify(value)}`
                     : `property '${property}'`;
                 throw new Error(createTestErrorMessage(testName, message, actual));
@@ -146,7 +147,7 @@ Element HTML: ${element.outerHTML}
  */
 export const createEnhancedMock = (mockName, defaultReturnValue) => {
     const mock = jest.fn().mockReturnValue(defaultReturnValue);
-    
+
     // Add custom error reporting
     mock.getCallInfo = () => ({
         name: mockName,
@@ -155,7 +156,7 @@ export const createEnhancedMock = (mockName, defaultReturnValue) => {
         results: mock.mock.results,
         lastCall: mock.mock.calls[mock.mock.calls.length - 1]
     });
-    
+
     return mock;
 };
 
@@ -169,7 +170,7 @@ export const createEnhancedMock = (mockName, defaultReturnValue) => {
  */
 export const waitForCondition = async (condition, description, timeout = 5000, interval = 100) => {
     const startTime = Date.now();
-    
+
     while (Date.now() - startTime < timeout) {
         try {
             if (await condition()) {
@@ -181,10 +182,10 @@ export const waitForCondition = async (condition, description, timeout = 5000, i
                 console.debug(`Condition check failed: ${error.message}`);
             }
         }
-        
+
         await new Promise(resolve => setTimeout(resolve, interval));
     }
-    
+
     throw new Error(`
 Timeout waiting for condition
 Description: ${description}

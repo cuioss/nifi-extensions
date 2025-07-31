@@ -13,7 +13,11 @@ import {
     setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
 import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
-import { withPageRetry, withElementRetry, createNiFiRetryConfig } from "../utils/retry-helper.js";
+import {
+    withPageRetry as _withPageRetry,
+    withElementRetry as _withElementRetry,
+    createNiFiRetryConfig as _createNiFiRetryConfig,
+} from "../utils/retry-helper.js";
 
 test.describe("JWKS Validation Button", () => {
     test.beforeEach(async ({ page }, testInfo) => {

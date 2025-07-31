@@ -24,23 +24,23 @@ describe('Validation utilities (simplified)', () => {
             const testInput = 'valid value';
             const testName = 'validateRequired with valid input';
             logTestState('execution', { input: testInput }, testName);
-            
+
             const result = validateRequired(testInput);
-            
-            expectWithContext(result.isValid, `${testName} - isValid property`).toBe(true);
-            expectWithContext(result.sanitizedValue, `${testName} - sanitizedValue property`).toBe(testInput);
+
+            expect(result.isValid).toBe(true);
+            expect(result.sanitizedValue).toBe(testInput);
         });
 
         it('should reject empty values', () => {
             const testInput = '';
             const testName = 'validateRequired with empty input';
             logTestState('execution', { input: testInput }, testName);
-            
+
             const result = validateRequired(testInput);
-            
-            expectWithContext(result.isValid, `${testName} - isValid should be false`).toBe(false);
-            expectWithContext(result.error, `${testName} - error should be present`).toBeTruthy();
-            
+
+            expect(result.isValid).toBe(false);
+            expect(result.error).toBeTruthy();
+
             if (!result.error) {
                 throw new Error(`Test failed: ${testName} - Expected error message but got: ${JSON.stringify(result)}`);
             }
@@ -70,12 +70,12 @@ describe('Validation utilities (simplified)', () => {
             const testInput = 'http://example.com';
             const testName = 'validateUrl with HTTP URL';
             logTestState('execution', { input: testInput }, testName);
-            
+
             const result = validateUrl(testInput);
-            
+
             // Enhanced error context for debugging
             expect(result).toHaveProperty('isValid');
-            
+
             if (!result.isValid) {
                 throw new Error(`
 === TEST FAILURE DETAILS ===
@@ -91,12 +91,12 @@ Actual Result: ${JSON.stringify(result, null, 2)}
             const testInput = 'https://example.com';
             const testName = 'validateUrl with HTTPS URL';
             logTestState('execution', { input: testInput }, testName);
-            
+
             const result = validateUrl(testInput);
-            
+
             // Enhanced assertions with better error context
             expect(result).toHaveProperty('isValid');
-            
+
             if (!result.isValid) {
                 throw new Error(`
 === TEST FAILURE DETAILS ===
@@ -106,7 +106,7 @@ Expected: HTTPS URL should be valid
 Actual Result: ${JSON.stringify(result, null, 2)}
 ============================`);
             }
-            
+
             expect(result.isValid).toBe(true);
             expect(result.sanitizedValue).toBe(testInput);
         });
@@ -118,13 +118,13 @@ Actual Result: ${JSON.stringify(result, null, 2)}
                 'javascript:alert(1)',
                 'mailto:test@example.com'
             ];
-            
+
             invalidUrls.forEach(testInput => {
                 const testName = `validateUrl with invalid URL: ${testInput}`;
                 logTestState('execution', { input: testInput }, testName);
-                
+
                 const result = validateUrl(testInput);
-                
+
                 if (result.isValid) {
                     throw new Error(`
 === TEST FAILURE DETAILS ===
@@ -135,9 +135,9 @@ Actual Result: ${JSON.stringify(result, null, 2)}
 Error: URL was incorrectly validated as valid
 ============================`);
                 }
-                
+
                 expect(result.error).toBeTruthy();
-                
+
                 if (!result.error) {
                     throw new Error(`
 === TEST FAILURE DETAILS ===

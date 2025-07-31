@@ -2,7 +2,7 @@
  * I18nKeys constants class for type-safe internationalization key access.
  * This module provides centralized constant definitions for all translation keys
  * used throughout the JWT Authenticator UI.
- * 
+ *
  * @fileoverview Type-safe internationalization key constants
  * @author CUIOSS Team
  * @since 1.0.0
@@ -13,7 +13,7 @@
  * Centralized internationalization key constants.
  * These constants provide type safety and IDE autocomplete support
  * for internationalization keys used throughout the application.
- * 
+ *
  * @readonly
  * @enum {string}
  */
@@ -90,7 +90,7 @@ export const I18nKeys = Object.freeze({
 
 /**
  * Helper function to validate that a key exists in the I18nKeys constants.
- * 
+ *
  * @param {string} key - The key to validate
  * @returns {boolean} True if the key exists in I18nKeys
  */
@@ -100,7 +100,7 @@ export const isValidI18nKey = (key) => {
 
 /**
  * Helper function to get all available i18n keys.
- * 
+ *
  * @returns {string[]} Array of all available i18n keys
  */
 export const getAllI18nKeys = () => {
@@ -109,10 +109,11 @@ export const getAllI18nKeys = () => {
 
 /**
  * Helper function to get I18n key by constant name.
- * 
+ *
  * @param {string} constantName - The constant name (e.g., 'JWT_VALIDATOR_TITLE')
  * @returns {string|null} The i18n key or null if not found
  */
 export const getI18nKeyByConstant = (constantName) => {
     return I18nKeys[constantName] || null;
 };
+

@@ -203,8 +203,10 @@ test.describe("JWKS Validation Complete", () => {
         await page.waitForTimeout(500);
 
         // Select file source type from the JWKS type dropdown
-        const jwksTypeSelect = await customUIFrame.locator('.field-jwks-type').first();
-        await jwksTypeSelect.selectOption('file');
+        const jwksTypeSelect = await customUIFrame
+            .locator(".field-jwks-type")
+            .first();
+        await jwksTypeSelect.selectOption("file");
         processorLogger.info("Selected file source option");
 
         const testPaths = [
@@ -238,15 +240,19 @@ test.describe("JWKS Validation Complete", () => {
         for (const testCase of testPaths) {
             processorLogger.info(`Testing: ${testCase.description}`);
 
-            const filePathInput = await customUIFrame.locator('.field-jwks-file').first();
+            const filePathInput = await customUIFrame
+                .locator(".field-jwks-file")
+                .first();
             await filePathInput.clear();
             if (testCase.path) {
                 await filePathInput.fill(testCase.path);
             }
 
-            const validateButton = await customUIFrame.getByRole("button", {
-                name: "Test Connection",
-            }).first();
+            const validateButton = await customUIFrame
+                .getByRole("button", {
+                    name: "Test Connection",
+                })
+                .first();
             await validateButton.click();
 
             await page.waitForTimeout(1000);
@@ -374,8 +380,10 @@ test.describe("JWKS Validation Complete", () => {
         await page.waitForTimeout(500);
 
         // Select memory source type from the JWKS type dropdown
-        const jwksTypeSelect = await customUIFrame.locator('.field-jwks-type').first();
-        await jwksTypeSelect.selectOption('memory');
+        const jwksTypeSelect = await customUIFrame
+            .locator(".field-jwks-type")
+            .first();
+        await jwksTypeSelect.selectOption("memory");
         processorLogger.info("Selected memory JWKS input");
 
         const testJwksContent = [
@@ -414,13 +422,17 @@ test.describe("JWKS Validation Complete", () => {
         for (const testCase of testJwksContent) {
             processorLogger.info(`Testing: ${testCase.description}`);
 
-            const jwksTextarea = await customUIFrame.locator('.field-jwks-content').first();
+            const jwksTextarea = await customUIFrame
+                .locator(".field-jwks-content")
+                .first();
             await jwksTextarea.clear();
             await jwksTextarea.fill(testCase.content);
 
-            const validateButton = await customUIFrame.getByRole("button", {
-                name: "Test Connection",
-            }).first();
+            const validateButton = await customUIFrame
+                .getByRole("button", {
+                    name: "Test Connection",
+                })
+                .first();
             await validateButton.click();
 
             await page.waitForTimeout(1000);

@@ -792,7 +792,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         // Determine JWKS source type (default to URL for backward compatibility)
         String jwksType = properties.getOrDefault(Issuer.JWKS_TYPE, "url");
-        
+
         // Validate based on JWKS source type
         switch (jwksType) {
             case "url" -> {
@@ -901,7 +901,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         // Log the properties for debugging
         LOGGER.info("Creating issuer configuration for %s with properties: jwksType=%s, jwksSource=%s, issuer=%s, audience=%s, clientId=%s",
-                issuerName, jwksType, jwksType.equals("memory") ? "[CONTENT]" : jwksSource, issuer, audience, clientId);
+                issuerName, jwksType, "memory".equals(jwksType) ? "[CONTENT]" : jwksSource, issuer, audience, clientId);
 
         try {
             // Create issuer configuration using builder pattern

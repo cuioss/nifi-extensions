@@ -364,16 +364,15 @@ describe('i18n', () => {
 
         it('should have all I18nKeys constants defined with valid keys', () => {
             const allKeys = getAllI18nKeys();
-            
+
             expect(allKeys.length).toBeGreaterThan(0);
-            
+
             // Verify each key from I18nKeys exists in English translations
-            allKeys.forEach(key => {
-                if (key !== 'test.onlyInEnglish') { // Skip test-only key
-                    expect(TRANSLATIONS.en[key]).toBeDefined();
-                    expect(typeof TRANSLATIONS.en[key]).toBe('string');
-                    expect(TRANSLATIONS.en[key].length).toBeGreaterThan(0);
-                }
+            const nonTestKeys = allKeys.filter(key => key !== 'test.onlyInEnglish');
+            nonTestKeys.forEach(key => {
+                expect(TRANSLATIONS.en[key]).toBeDefined();
+                expect(typeof TRANSLATIONS.en[key]).toBe('string');
+                expect(TRANSLATIONS.en[key].length).toBeGreaterThan(0);
             });
         });
 
@@ -381,29 +380,28 @@ describe('i18n', () => {
             const allKeys = getAllI18nKeys();
             const germanKeys = Object.keys(TRANSLATIONS.de);
             const englishKeys = Object.keys(TRANSLATIONS.en);
-            
+
             // Find keys missing in German (excluding test-only keys)
-            const missingInGerman = englishKeys.filter(key => 
+            const missingInGerman = englishKeys.filter(key =>
                 !germanKeys.includes(key) && !key.startsWith('test.')
             );
-            
+
             expect(missingInGerman).toEqual([]);
         });
 
         it('should validate key completeness across all supported languages', () => {
             const supportedLanguages = ['en', 'de'];
             const allKeys = getAllI18nKeys();
-            
+
             supportedLanguages.forEach(language => {
                 const langKeys = Object.keys(TRANSLATIONS[language]);
-                
+
                 // Check that all non-test keys are present
-                allKeys.forEach(key => {
-                    if (!key.startsWith('test.')) {
-                        expect(langKeys).toContain(key);
-                        expect(TRANSLATIONS[language][key]).toBeTruthy();
-                        expect(typeof TRANSLATIONS[language][key]).toBe('string');
-                    }
+                const nonTestKeys = allKeys.filter(key => !key.startsWith('test.'));
+                nonTestKeys.forEach(key => {
+                    expect(langKeys).toContain(key);
+                    expect(TRANSLATIONS[language][key]).toBeTruthy();
+                    expect(typeof TRANSLATIONS[language][key]).toBe('string');
                 });
             });
         });
@@ -420,23 +418,23 @@ describe('i18n', () => {
         it('should have no duplicate values in I18nKeys constants', () => {
             const allKeys = getAllI18nKeys();
             const uniqueKeys = [...new Set(allKeys)];
-            
+
             expect(allKeys.length).toBe(uniqueKeys.length);
         });
 
         it('should have meaningful German translations (not just copies of English)', () => {
             const keysToCheck = [
                 'common.loading',
-                'common.error', 
+                'common.error',
                 'common.success',
                 'token.verification.title',
                 'jwks.validation.title'
             ];
-            
+
             keysToCheck.forEach(key => {
                 const englishValue = TRANSLATIONS.en[key];
                 const germanValue = TRANSLATIONS.de[key];
-                
+
                 expect(germanValue).toBeDefined();
                 expect(germanValue).not.toBe(englishValue);
                 expect(germanValue.length).toBeGreaterThan(0);

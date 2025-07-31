@@ -485,26 +485,26 @@ const _createSaveButton = (issuerForm, processorId = null) => {
  */
 const _populateIssuerFormFields = (formFields, properties) => {
     // Add JWKS Type selection field
-    addSelectField(formFields, 'jwks-type', 'JWKS Source Type', 'The source type for JWKS configuration', properties ? properties['jwks-type'] : 'url', 
+    addSelectField(formFields, 'jwks-type', 'JWKS Source Type', 'The source type for JWKS configuration', properties ? properties['jwks-type'] : 'url',
         [
-            {value: 'url', label: 'URL (Remote JWKS endpoint)'},
-            {value: 'file', label: 'File (Local JWKS file)'},
-            {value: 'memory', label: 'Memory (Inline JWKS content)'}
+            { value: 'url', label: 'URL (Remote JWKS endpoint)' },
+            { value: 'file', label: 'File (Local JWKS file)' },
+            { value: 'memory', label: 'Memory (Inline JWKS content)' }
         ],
         'Select how JWKS keys should be retrieved for this issuer');
-    
+
     // Add standard form fields with enhanced tooltips
     addFormField(formFields, 'issuer', 'Issuer URI', 'The URI of the token issuer (must match the iss claim)', properties ? properties.issuer : '', 'This value must exactly match the "iss" claim in JWT tokens. Example: https://auth.example.com/auth/realms/myrealm');
-    
+
     // Add JWKS URL field (shown for URL type)
     const jwksUrlField = addFormField(formFields, 'jwks-url', 'JWKS URL', 'The URL of the JWKS endpoint', properties ? properties['jwks-url'] : '', 'URL providing public keys for JWT signature verification. Usually ends with /.well-known/jwks.json');
     jwksUrlField.classList.add('jwks-type-url');
-    
+
     // Add JWKS File field (shown for file type)
     const jwksFileField = addFormField(formFields, 'jwks-file', 'JWKS File Path', 'Path to local JWKS JSON file', properties ? properties['jwks-file'] : '', 'Absolute or relative path to a JSON file containing JWKS keys');
     jwksFileField.classList.add('jwks-type-file');
     jwksFileField.style.display = properties && properties['jwks-type'] === 'file' ? '' : 'none';
-    
+
     // Add JWKS Content field (shown for memory type)
     const jwksContentField = addTextAreaField(formFields, 'jwks-content', 'JWKS Content', 'Inline JWKS JSON content', properties ? properties['jwks-content'] : '', 'Paste the full JWKS JSON content here', 5);
     jwksContentField.classList.add('jwks-type-memory');
@@ -514,17 +514,20 @@ const _populateIssuerFormFields = (formFields, properties) => {
     _createJwksTestConnectionButton(formFields, () => {
         const jwksTypeSelect = formFields.querySelector('.field-jwks-type');
         const jwksType = jwksTypeSelect ? jwksTypeSelect.value : 'url';
-        
-        switch(jwksType) {
-            case 'url':
+
+        switch (jwksType) {
+            case 'url': {
                 const jwksInput = formFields.querySelector('.field-jwks-url');
                 return jwksInput ? jwksInput.value : '';
-            case 'file':
+            }
+            case 'file': {
                 const jwksFileInput = formFields.querySelector('.field-jwks-file');
                 return jwksFileInput ? jwksFileInput.value : '';
-            case 'memory':
+            }
+            case 'memory': {
                 const jwksContentInput = formFields.querySelector('.field-jwks-content');
                 return jwksContentInput ? jwksContentInput.value : '';
+            }
             default:
                 return '';
         }
@@ -624,18 +627,18 @@ const addFormField = (container, name, label, description, value, helpText) => {
 const addSelectField = (container, name, label, description, value, options, helpText) => {
     const fieldContainer = document.createElement('div');
     fieldContainer.className = `form-field field-container-${name}`;
-    
+
     const labelElement = document.createElement('label');
     labelElement.setAttribute('for', `field-${name}`);
     labelElement.textContent = label;
     fieldContainer.appendChild(labelElement);
-    
+
     const selectElement = document.createElement('select');
     selectElement.id = `field-${name}`;
     selectElement.name = name;
     selectElement.className = `field-${name} form-input issuer-config-field`;
     selectElement.title = helpText || description;
-    
+
     options.forEach(option => {
         const optionElement = document.createElement('option');
         optionElement.value = option.value;
@@ -645,27 +648,27 @@ const addSelectField = (container, name, label, description, value, options, hel
         }
         selectElement.appendChild(optionElement);
     });
-    
+
     fieldContainer.appendChild(selectElement);
-    
+
     // Add change handler to toggle field visibility
     if (name === 'jwks-type') {
         selectElement.addEventListener('change', (e) => {
             const selectedType = e.target.value;
             const form = container.closest('.issuer-form') || container;
-            
+
             // Hide all type-specific fields
             form.querySelectorAll('.jwks-type-url, .jwks-type-file, .jwks-type-memory').forEach(field => {
                 field.style.display = 'none';
             });
-            
+
             // Show fields for selected type
             form.querySelectorAll(`.jwks-type-${selectedType}`).forEach(field => {
                 field.style.display = '';
             });
         });
     }
-    
+
     container.appendChild(fieldContainer);
     return fieldContainer;
 };
@@ -784,13 +787,13 @@ const _createPropertyUpdates = (issuerName, formFields) => {
 
     const updates = {};
     const jwksType = properties['jwks-type'];
-    
+
     // Always include jwks-type and issuer
     updates[`issuer.${issuerName}.jwks-type`] = jwksType;
     if (properties.issuer) {
         updates[`issuer.${issuerName}.issuer`] = properties.issuer;
     }
-    
+
     // Include only the relevant JWKS source based on type
     switch (jwksType) {
         case 'url':
@@ -809,7 +812,7 @@ const _createPropertyUpdates = (issuerName, formFields) => {
             }
             break;
     }
-    
+
     // Include optional properties if present
     if (properties.audience) {
         updates[`issuer.${issuerName}.audience`] = properties.audience;
