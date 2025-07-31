@@ -37,6 +37,21 @@ public final class JWTPropertyKeys {
         public static final String JWKS_URL = "jwks-url";
 
         /**
+         * JWKS file path property key.
+         */
+        public static final String JWKS_FILE = "jwks-file";
+
+        /**
+         * JWKS content property key for in-memory JWKS.
+         */
+        public static final String JWKS_CONTENT = "jwks-content";
+
+        /**
+         * JWKS source type property key.
+         */
+        public static final String JWKS_TYPE = "jwks-type";
+
+        /**
          * Issuer property key.
          */
         public static final String ISSUER_NAME = "issuer";

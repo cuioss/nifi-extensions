@@ -285,5 +285,17 @@ public final class JWTProcessorConstants {
                 .defaultValue("10")
                 .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
                 .build();
+
+        /**
+         * JWKS source type for issuers (URL, file, memory).
+         */
+        public static final PropertyDescriptor JWKS_SOURCE_TYPE = new PropertyDescriptor.Builder()
+                .name("jwks.source.type")
+                .displayName("JWKS Source Type")
+                .description("Default JWKS source type for issuers. Can be overridden per issuer.")
+                .required(true)
+                .defaultValue("url")
+                .allowableValues("url", "file", "memory")
+                .build();
     }
 }

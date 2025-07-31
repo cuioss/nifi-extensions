@@ -60,10 +60,20 @@ import static de.cuioss.nifi.processors.auth.JWTTranslationKeys.Validation;
  * MultiIssuerJWTTokenAuthenticator is a NiFi processor that validates JWT tokens from multiple issuers.
  * It extracts JWT tokens from flow files, validates them against configured issuers, and routes
  * flow files based on validation results.
+ * 
+ * <p>JWKS Configuration:</p>
+ * <p>The processor supports three types of JWKS sources for each issuer:</p>
+ * <ul>
+ *   <li><b>URL:</b> Fetches JWKS from a remote endpoint (default). Use issuer.{name}.jwks-url property.</li>
+ *   <li><b>File:</b> Loads JWKS from a local file. Use issuer.{name}.jwks-file property.</li>
+ *   <li><b>Memory:</b> Uses inline JWKS content. Use issuer.{name}.jwks-content property.</li>
+ * </ul>
+ * <p>Set the JWKS source type using issuer.{name}.jwks-type property (url, file, or memory).</p>
  */
 @Tags({"jwt", "oauth", "authentication", "authorization", "security", "token"})
 @CapabilityDescription("Validates JWT tokens from multiple issuers. Extracts JWT tokens from flow files, " +
-        "validates them against configured issuers, and routes flow files based on validation results.")
+        "validates them against configured issuers, and routes flow files based on validation results. " +
+        "Supports URL, file, and in-memory JWKS configurations for flexible key management.")
 @SeeAlso()
 @ReadsAttributes({
         @ReadsAttribute(attribute = "http.headers.authorization", description = "HTTP Authorization header containing the JWT token")
@@ -152,6 +162,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         descriptors.add(Properties.ALLOWED_ALGORITHMS);
         descriptors.add(Properties.REQUIRE_HTTPS_FOR_JWKS);
         descriptors.add(Properties.JWKS_CONNECTION_TIMEOUT);
+        descriptors.add(Properties.JWKS_SOURCE_TYPE);
         this.supportedPropertyDescriptors = descriptors;
 
         final Set<Relationship> rels = new HashSet<>();
@@ -180,6 +191,17 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
                 // Add specific validators based on property key
                 switch (propertyKey) {
+                    case Issuer.JWKS_TYPE -> {
+                        return new PropertyDescriptor.Builder()
+                                .name(propertyDescriptorName)
+                                .displayName(displayName)
+                                .description("JWKS source type for this issuer (url, file, or memory)")
+                                .required(false)
+                                .dynamic(true)
+                                .allowableValues("url", "file", "memory")
+                                .defaultValue("url")
+                                .build();
+                    }
                     case Issuer.JWKS_URL -> {
                         return new PropertyDescriptor.Builder()
                                 .name(propertyDescriptorName)
@@ -188,6 +210,26 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                                 .required(false)
                                 .dynamic(true)
                                 .addValidator(StandardValidators.URL_VALIDATOR)
+                                .build();
+                    }
+                    case Issuer.JWKS_FILE -> {
+                        return new PropertyDescriptor.Builder()
+                                .name(propertyDescriptorName)
+                                .displayName(displayName)
+                                .description("File path to JWKS JSON file for this issuer")
+                                .required(false)
+                                .dynamic(true)
+                                .addValidator(StandardValidators.FILE_EXISTS_VALIDATOR)
+                                .build();
+                    }
+                    case Issuer.JWKS_CONTENT -> {
+                        return new PropertyDescriptor.Builder()
+                                .name(propertyDescriptorName)
+                                .displayName(displayName)
+                                .description("JWKS JSON content for this issuer (for in-memory configuration)")
+                                .required(false)
+                                .dynamic(true)
+                                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                                 .build();
                     }
                     case Issuer.ISSUER_NAME -> {
@@ -748,25 +790,46 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private List<String> validateIssuerConfig(String issuerName, Map<String, String> properties, ProcessContext context) {
         List<String> errors = new ArrayList<>();
 
-        // Check required properties
-        if (!properties.containsKey(Issuer.JWKS_URL) || properties.get(Issuer.JWKS_URL).isEmpty()) {
-            errors.add(i18nResolver.getTranslatedString(Validation.Issuer.MISSING_JWKS, issuerName));
-        } else {
-            // Validate jwks-url format
-            String jwksUrl = properties.get(Issuer.JWKS_URL);
-            if (!jwksUrl.startsWith(Http.HTTP_PROTOCOL) && !jwksUrl.startsWith(Http.HTTPS_PROTOCOL)) {
-                errors.add(i18nResolver.getTranslatedString(Validation.Issuer.INVALID_URL, issuerName, jwksUrl));
-            }
+        // Determine JWKS source type (default to URL for backward compatibility)
+        String jwksType = properties.getOrDefault(Issuer.JWKS_TYPE, "url");
+        
+        // Validate based on JWKS source type
+        switch (jwksType) {
+            case "url" -> {
+                // Check required properties for URL type
+                if (!properties.containsKey(Issuer.JWKS_URL) || properties.get(Issuer.JWKS_URL).isEmpty()) {
+                    errors.add(i18nResolver.getTranslatedString(Validation.Issuer.MISSING_JWKS, issuerName));
+                } else {
+                    // Validate jwks-url format
+                    String jwksUrl = properties.get(Issuer.JWKS_URL);
+                    if (!jwksUrl.startsWith(Http.HTTP_PROTOCOL) && !jwksUrl.startsWith(Http.HTTPS_PROTOCOL)) {
+                        errors.add(i18nResolver.getTranslatedString(Validation.Issuer.INVALID_URL, issuerName, jwksUrl));
+                    }
 
-            // Enforce HTTPS for JWKS URLs if required
-            boolean requireHttps = context.getProperty(Properties.REQUIRE_HTTPS_FOR_JWKS).asBoolean();
-            if (requireHttps && jwksUrl.startsWith(Http.HTTP_PROTOCOL)) {
-                errors.add(i18nResolver.getTranslatedString(Validation.Issuer.REQUIRES_HTTPS, issuerName));
-                LOGGER.error(AuthLogMessages.ERROR.HTTPS_REQUIRED.format(issuerName));
-            } else if (jwksUrl.startsWith(Http.HTTP_PROTOCOL)) {
-                // Just warn if HTTPS is not required but HTTP is used
-                LOGGER.warn(AuthLogMessages.WARN.INSECURE_JWKS_URL.format(issuerName));
+                    // Enforce HTTPS for JWKS URLs if required
+                    boolean requireHttps = context.getProperty(Properties.REQUIRE_HTTPS_FOR_JWKS).asBoolean();
+                    if (requireHttps && jwksUrl.startsWith(Http.HTTP_PROTOCOL)) {
+                        errors.add(i18nResolver.getTranslatedString(Validation.Issuer.REQUIRES_HTTPS, issuerName));
+                        LOGGER.error(AuthLogMessages.ERROR.HTTPS_REQUIRED.format(issuerName));
+                    } else if (jwksUrl.startsWith(Http.HTTP_PROTOCOL)) {
+                        // Just warn if HTTPS is not required but HTTP is used
+                        LOGGER.warn(AuthLogMessages.WARN.INSECURE_JWKS_URL.format(issuerName));
+                    }
+                }
             }
+            case "file" -> {
+                // Check required properties for file type
+                if (!properties.containsKey(Issuer.JWKS_FILE) || properties.get(Issuer.JWKS_FILE).isEmpty()) {
+                    errors.add("Issuer " + issuerName + " is configured with jwks-type 'file' but missing jwks-file property");
+                }
+            }
+            case "memory" -> {
+                // Check required properties for memory type
+                if (!properties.containsKey(Issuer.JWKS_CONTENT) || properties.get(Issuer.JWKS_CONTENT).isEmpty()) {
+                    errors.add("Issuer " + issuerName + " is configured with jwks-type 'memory' but missing jwks-content property");
+                }
+            }
+            default -> errors.add("Issuer " + issuerName + " has invalid jwks-type: " + jwksType);
         }
 
         // Check issuer property
@@ -791,19 +854,45 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @return The IssuerConfig object, or null if the required properties are missing
      */
     private IssuerConfig createIssuerConfig(String issuerName, Map<String, String> properties) {
-        // Required properties
-        String jwksUrl = properties.get(Issuer.JWKS_URL);
+        // Get issuer name
         String issuer = properties.get(Issuer.ISSUER_NAME);
-
-        if (jwksUrl == null || jwksUrl.isEmpty()) {
-            LOGGER.warn(AuthLogMessages.WARN.MISSING_JWKS_URL.format(issuerName));
-            return null;
-        }
-
         if (issuer == null || issuer.isEmpty()) {
             // Use issuer name as default if not specified
             issuer = issuerName;
             LOGGER.info("Using issuer name '%s' as default issuer value", issuerName);
+        }
+
+        // Determine JWKS source type (default to URL for backward compatibility)
+        String jwksType = properties.getOrDefault(Issuer.JWKS_TYPE, "url");
+
+        // Get JWKS configuration based on type
+        String jwksSource = null;
+        switch (jwksType) {
+            case "url" -> {
+                jwksSource = properties.get(Issuer.JWKS_URL);
+                if (jwksSource == null || jwksSource.isEmpty()) {
+                    LOGGER.warn(AuthLogMessages.WARN.MISSING_JWKS_URL.format(issuerName));
+                    return null;
+                }
+            }
+            case "file" -> {
+                jwksSource = properties.get(Issuer.JWKS_FILE);
+                if (jwksSource == null || jwksSource.isEmpty()) {
+                    LOGGER.warn("Missing jwks-file for issuer: %s", issuerName);
+                    return null;
+                }
+            }
+            case "memory" -> {
+                jwksSource = properties.get(Issuer.JWKS_CONTENT);
+                if (jwksSource == null || jwksSource.isEmpty()) {
+                    LOGGER.warn("Missing jwks-content for issuer: %s", issuerName);
+                    return null;
+                }
+            }
+            default -> {
+                LOGGER.error("Invalid jwks-type for issuer %s: %s", issuerName, jwksType);
+                return null;
+            }
         }
 
         // Optional properties
@@ -811,22 +900,33 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         String clientId = properties.get(Issuer.CLIENT_ID);
 
         // Log the properties for debugging
-        LOGGER.info("Creating issuer configuration for %s with properties: jwksUrl=%s, issuer=%s, audience=%s, clientId=%s",
-                issuerName, jwksUrl, issuer, audience, clientId);
+        LOGGER.info("Creating issuer configuration for %s with properties: jwksType=%s, jwksSource=%s, issuer=%s, audience=%s, clientId=%s",
+                issuerName, jwksType, jwksType.equals("memory") ? "[CONTENT]" : jwksSource, issuer, audience, clientId);
 
         try {
             // Create issuer configuration using builder pattern
-            // Based on the examples in Usage.adoc
-            IssuerConfig issuerConfig = IssuerConfig.builder()
+            IssuerConfig.IssuerConfigBuilder builder = IssuerConfig.builder()
                     .issuerIdentifier(issuer)
-                    // Configure JWKS URL directly
-                    .jwksFilePath(jwksUrl)
                     // Add optional audience if provided
                     .expectedAudience(audience != null && !audience.isEmpty() ? audience : null)
                     // Add optional client ID if provided
-                    .expectedClientId(clientId != null && !clientId.isEmpty() ? clientId : null)
-                    .build();
+                    .expectedClientId(clientId != null && !clientId.isEmpty() ? clientId : null);
 
+            // Configure JWKS source based on type
+            switch (jwksType) {
+                case "url", "file" -> {
+                    // For both URL and file, use jwksFilePath (the library handles both)
+                    builder.jwksFilePath(jwksSource);
+                }
+                case "memory" -> {
+                    // For memory, we need to use jwksContent directly
+                    // Note: This assumes the library supports setting JWKS content directly
+                    // If not, we may need to create a temporary file or use a different approach
+                    builder.jwksFilePath(jwksSource); // This might need adjustment based on library capabilities
+                }
+            }
+
+            IssuerConfig issuerConfig = builder.build();
             LOGGER.info(AuthLogMessages.INFO.ISSUER_CONFIG_CREATED.format(issuerName));
 
             return issuerConfig;

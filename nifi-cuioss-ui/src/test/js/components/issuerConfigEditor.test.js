@@ -377,6 +377,7 @@ describe('issuerConfigEditor', function () {
                 await jest.runAllTimersAsync();
 
                 expect(apiClient.updateProcessorProperties).toHaveBeenCalledWith('12345-abcde', {
+                    'issuer.test-issuer.jwks-type': 'url',
                     'issuer.test-issuer.issuer': 'https://test.com',
                     'issuer.test-issuer.jwks-url': 'https://test.com/jwks.json',
                     'issuer.test-issuer.audience': 'sample-audience',
@@ -571,10 +572,11 @@ describe('issuerConfigEditor', function () {
                 const validation2 = issuerConfigEditor.__test_exports._validateIssuerFormData({
                     issuerName: 'test-issuer',
                     issuer: '',
-                    'jwks-url': 'https://test.com/jwks.json'
+                    'jwks-url': 'https://test.com/jwks.json',
+                    'jwks-type': 'url'
                 });
                 expect(validation2.isValid).toBe(false);
-                expect(validation2.error.message).toContain('Issuer URI and JWKS URL are required');
+                expect(validation2.error.message).toContain('Issuer URI is required');
 
                 // Test valid data
                 const validation3 = issuerConfigEditor.__test_exports._validateIssuerFormData({
