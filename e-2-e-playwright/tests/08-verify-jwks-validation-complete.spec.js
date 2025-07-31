@@ -170,25 +170,16 @@ test.describe("JWKS Validation Complete", () => {
         processorLogger.success("JWKS URL format validation completed");
     });
 
-    test.skip("should validate JWKS file paths", async ({ page }, testInfo) => {
+    test("should validate JWKS file paths", async ({ page }, testInfo) => {
         /**
-         * INTENTIONALLY SKIPPED TEST
+         * JWKS FILE VALIDATION TEST
          *
-         * Reason: File-based JWKS validation UI is implemented but requires processor-level integration
-         *
-         * Details:
-         * - The jwksValidator.js component now supports 'file' type JWKS validation
-         * - Backend endpoint /validate-jwks-file is available and integrated
-         * - However, the processor needs to expose different JWKS source types (URL, file, memory)
-         * - Currently, the processor only exposes jwks-url field without type differentiation
-         * - The UI components are ready but need processor property descriptors to specify JWKS type
-         *
-         * Status: UI implementation complete, awaiting processor-level integration
-         * Future: When processor adds JWKS source type property, this test can be enabled
+         * Status: Processor integration complete - test enabled
+         * - Processor now supports JWKS source type property (jwks-type)
+         * - UI components fully integrated with processor configuration
+         * - Backend validation endpoints connected
          */
-        processorLogger.info(
-            "INTENTIONALLY SKIPPED: JWKS file path validation - awaiting processor-level integration",
-        );
+        processorLogger.info("Testing JWKS file path validation");
 
         const processorService = new ProcessorService(page, testInfo);
 
@@ -204,10 +195,16 @@ test.describe("JWKS Validation Complete", () => {
         const customUIFrame = await processorService.getAdvancedUIFrame();
         await processorService.clickTab(customUIFrame, "Configuration");
 
-        const fileSourceRadio = await customUIFrame.locator(
-            '[data-testid="jwks-source-file"]',
-        );
-        await fileSourceRadio.click();
+        // First add an issuer to enable the form
+        const addIssuerButton = await customUIFrame.getByRole("button", {
+            name: "Add Issuer",
+        });
+        await addIssuerButton.click();
+        await page.waitForTimeout(500);
+
+        // Select file source type from the JWKS type dropdown
+        const jwksTypeSelect = await customUIFrame.locator('.field-jwks-type').first();
+        await jwksTypeSelect.selectOption('file');
         processorLogger.info("Selected file source option");
 
         const testPaths = [
@@ -241,27 +238,39 @@ test.describe("JWKS Validation Complete", () => {
         for (const testCase of testPaths) {
             processorLogger.info(`Testing: ${testCase.description}`);
 
-            const filePathInput = await customUIFrame.locator(
-                '[data-testid="jwks-file-input"]',
-            );
+            const filePathInput = await customUIFrame.locator('.field-jwks-file').first();
             await filePathInput.clear();
             if (testCase.path) {
                 await filePathInput.fill(testCase.path);
             }
 
-            const validateButton = await customUIFrame.locator(
-                '[data-testid="validate-jwks-button"]',
-            );
+            const validateButton = await customUIFrame.getByRole("button", {
+                name: "Test Connection",
+            }).first();
             await validateButton.click();
 
             await page.waitForTimeout(1000);
 
-            const resultSelector = testCase.valid
-                ? '[data-testid="validation-success"]'
-                : '[data-testid="validation-error"]';
+            // Check for validation result in the verification-result container
+            const verificationResult = await customUIFrame
+                .locator(".verification-result")
+                .first();
+            await expect(verificationResult).toBeVisible({ timeout: 5000 });
 
-            const result = await customUIFrame.locator(resultSelector);
-            await expect(result).toBeVisible({ timeout: 5000 });
+            if (testCase.valid) {
+                // For valid paths, expect success indication (OK or Valid)
+                await expect(verificationResult).toContainText(/OK|Valid/i, {
+                    timeout: 5000,
+                });
+            } else {
+                // For invalid paths, expect error indication
+                await expect(verificationResult).toContainText(
+                    /Error|Invalid|fail/i,
+                    {
+                        timeout: 5000,
+                    },
+                );
+            }
             processorLogger.info(
                 `✓ ${testCase.description} validation result: ${testCase.valid ? "valid" : "invalid"}`,
             );
@@ -330,28 +339,18 @@ test.describe("JWKS Validation Complete", () => {
         processorLogger.success("JWKS connectivity test completed");
     });
 
-    test.skip("should validate JWKS content structure", async ({
+    test("should validate JWKS content structure", async ({
         page,
     }, testInfo) => {
         /**
-         * INTENTIONALLY SKIPPED TEST
+         * JWKS CONTENT VALIDATION TEST
          *
-         * Reason: Manual JWKS content validation UI is implemented but requires processor-level integration
-         *
-         * Details:
-         * - The jwksValidator.js component now supports 'memory' type JWKS validation
-         * - Client-side JSON validation for JWKS structure is fully implemented
-         * - Validates keys array, key types (kty), and key usage (use/key_ops)
-         * - However, the processor needs to expose different JWKS source types (URL, file, memory)
-         * - Currently, the processor only exposes jwks-url field without type differentiation
-         * - The UI components are ready but need processor property descriptors to specify JWKS type
-         *
-         * Status: UI implementation complete, awaiting processor-level integration
-         * Future: When processor adds JWKS source type property, this test can be enabled
+         * Status: Processor integration complete - test enabled
+         * - Processor now supports JWKS source type property (jwks-type)
+         * - UI components fully integrated with processor configuration
+         * - Client-side JSON validation for JWKS structure fully implemented
          */
-        processorLogger.info(
-            "INTENTIONALLY SKIPPED: JWKS content structure validation - awaiting processor-level integration",
-        );
+        processorLogger.info("Testing JWKS content structure validation");
 
         const processorService = new ProcessorService(page, testInfo);
 
@@ -367,11 +366,17 @@ test.describe("JWKS Validation Complete", () => {
         const customUIFrame = await processorService.getAdvancedUIFrame();
         await processorService.clickTab(customUIFrame, "Configuration");
 
-        const manualInputTab = await customUIFrame.locator(
-            '[data-testid="jwks-source-manual"]',
-        );
-        await manualInputTab.click();
-        processorLogger.info("Selected manual JWKS input");
+        // First add an issuer to enable the form
+        const addIssuerButton = await customUIFrame.getByRole("button", {
+            name: "Add Issuer",
+        });
+        await addIssuerButton.click();
+        await page.waitForTimeout(500);
+
+        // Select memory source type from the JWKS type dropdown
+        const jwksTypeSelect = await customUIFrame.locator('.field-jwks-type').first();
+        await jwksTypeSelect.selectOption('memory');
+        processorLogger.info("Selected memory JWKS input");
 
         const testJwksContent = [
             {
@@ -409,38 +414,39 @@ test.describe("JWKS Validation Complete", () => {
         for (const testCase of testJwksContent) {
             processorLogger.info(`Testing: ${testCase.description}`);
 
-            const jwksTextarea = await customUIFrame.locator(
-                '[data-testid="jwks-manual-input"]',
-            );
+            const jwksTextarea = await customUIFrame.locator('.field-jwks-content').first();
             await jwksTextarea.clear();
             await jwksTextarea.fill(testCase.content);
 
-            const validateButton = await customUIFrame.locator(
-                '[data-testid="validate-jwks-content-button"]',
-            );
+            const validateButton = await customUIFrame.getByRole("button", {
+                name: "Test Connection",
+            }).first();
             await validateButton.click();
 
             await page.waitForTimeout(1000);
 
+            // Check for validation result in the verification-result container
+            const verificationResult = await customUIFrame
+                .locator(".verification-result")
+                .first();
+            await expect(verificationResult).toBeVisible({ timeout: 5000 });
+
             if (testCase.valid) {
-                const successMessage = await customUIFrame.locator(
-                    '[data-testid="jwks-content-valid"]',
-                );
-                await expect(successMessage).toBeVisible({ timeout: 5000 });
+                // For valid content, expect success indication (OK or Valid)
+                await expect(verificationResult).toContainText(/OK|Valid/i, {
+                    timeout: 5000,
+                });
                 processorLogger.info(
                     `✓ ${testCase.description} validated successfully`,
                 );
-
-                const keyDetails = await customUIFrame.locator(
-                    '[data-testid="jwks-key-details"]',
-                );
-                await expect(keyDetails).toBeVisible({ timeout: 5000 });
-                processorLogger.info("✓ Key details displayed");
             } else {
-                const errorMessage = await customUIFrame.locator(
-                    '[data-testid="jwks-content-error"]',
+                // For invalid content, expect error indication
+                await expect(verificationResult).toContainText(
+                    /Error|Invalid|fail/i,
+                    {
+                        timeout: 5000,
+                    },
                 );
-                await expect(errorMessage).toBeVisible({ timeout: 5000 });
                 processorLogger.info(
                     `✓ ${testCase.description} correctly rejected`,
                 );

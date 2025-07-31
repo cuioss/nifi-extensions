@@ -1,0 +1,165 @@
+= E2E Test Retry Configuration Examples
+
+This document shows how to use the enhanced retry functionality for more robust E2E tests.
+
+== Configuration Options
+
+=== Environment Variables
+
+The enhanced Playwright configuration supports the following environment variables:
+
+* `E2E_RETRIES`: Number of retry attempts (overrides default of 1 locally, 3 in CI)
+* `E2E_TIMEOUT`: Global test timeout in seconds (default: 60s)
+* `E2E_EXPECT_TIMEOUT`: Expect assertion timeout in seconds (default: 15s)
+
+=== Usage Examples
+
+[source,bash]
+----
+# Run tests with 2 retries and extended timeouts
+E2E_RETRIES=2 E2E_TIMEOUT=90 E2E_EXPECT_TIMEOUT=20 npm run test:e2e
+
+# Run specific test with debug output and retries
+DEBUG=1 E2E_RETRIES=3 npx playwright test 03-verify-jwks-validation-button.spec.js
+----
+
+== Retry Helper Functions
+
+=== Basic Retry with Custom Logic
+
+[source,javascript]
+----
+import {withRetry} from './retry-helper.js';
+
+test('should handle flaky operation', async ({page}) => {
+    const result = await withRetry(async () => {
+        // Your flaky operation here
+        const element = await page.locator('#dynamic-element');
+        await expect(element).toBeVisible();
+        return element.textContent();
+    }, {
+        maxRetries: 3,
+        initialDelay: 1000,
+        shouldRetry: (error, attempt) => {
+            // Custom retry logic
+            return error.message.includes('timeout') && attempt < 3;
+        }
+    });
+});
+----
+
+=== NiFi-Specific Retry Configuration
+
+[source,javascript]
+----
+import { withPageRetry, createNiFiRetryConfig } from '../utils/retry-helper.js';
+
+test('should handle NiFi UI interactions', async ({ page }) => {
+    const customUIFrame = await withPageRetry(page, async () => {
+        const frame = await processorService.getAdvancedUIFrame();
+        if (!frame) {
+            throw new Error('NiFi Advanced UI not ready');
+        }
+        return frame;
+    }, createNiFiRetryConfig({ maxRetries: 4 }));
+});
+----
+
+=== Element-Specific Retry
+
+[source,javascript]
+----
+import { withElementRetry } from '../utils/retry-helper.js';
+
+test('should handle element interactions', async ({ page }) => {
+    const button = page.locator('.validate-button');
+    
+    const result = await withElementRetry(button, async (locator) => {
+        await locator.click();
+        // Wait for some result
+        const result = await page.locator('.result').textContent();
+        if (!result || result.includes('error')) {
+            throw new Error('Operation failed, needs retry');
+        }
+        return result;
+    }, {
+        maxRetries: 5,
+        initialDelay: 500
+    });
+});
+----
+
+=== Advanced Custom Retry Configuration
+
+[source,javascript]
+----
+import { withRetry } from '../utils/retry-helper.js';
+
+test('should handle complex scenario', async ({ page }) => {
+    await withRetry(async () => {
+        // Complex test operation
+        await page.goto('/complex-page');
+        await page.waitForLoadState('networkidle');
+        
+        const frame = await page.frame('custom-ui');
+        if (!frame) throw new Error('Frame not loaded');
+        
+        await frame.locator('#submit-button').click();
+        
+        const success = await frame.locator('.success-message').isVisible();
+        if (!success) throw new Error('Operation did not complete successfully');
+        
+    }, {
+        maxRetries: 4,
+        initialDelay: 2000,
+        maxDelay: 10000,
+        backoffMultiplier: 1.5,
+        shouldRetry: (error, attempt) => {
+            // Don't retry assertion failures
+            if (error.message.includes('expect')) return false;
+            
+            // Always retry on network/timeout issues
+            if (error.message.includes('timeout') || 
+                error.message.includes('network')) return true;
+            
+            // Retry NiFi-specific issues
+            if (error.message.includes('Frame not loaded') ||
+                error.message.includes('not complete')) return true;
+            
+            return false;
+        },
+        onRetry: (error, attempt, delay) => {
+            console.log(`🔄 Retry ${attempt}: ${error.message} (waiting ${delay}ms)`);
+        }
+    });
+});
+----
+
+== Best Practices
+
+. *Use NiFi-specific retry config* for NiFi UI interactions
+. *Keep retry counts reasonable* (3-5 max) to avoid very long test runs
+. *Add descriptive retry callbacks* for better debugging
+. *Don't retry assertion errors* - these usually indicate test logic issues
+. *Use element retries* for common UI interaction issues
+. *Consider timeout adjustments* alongside retry configuration
+
+== Common Retry Scenarios
+
+=== NiFi Processor Interactions
+
+* Loading Advanced UI frames
+* Finding processor elements
+* Form interactions after dynamic loading
+
+=== Network Operations
+
+* JWKS validation requests
+* API calls that may timeout
+* File upload/download operations
+
+=== Dynamic UI Elements
+
+* Elements that appear after AJAX calls
+* Form fields that become enabled after other interactions
+* Validation messages that appear asynchronously

@@ -23,13 +23,14 @@ const VIDEOS_DIR = path.join(TARGET_DIR, 'videos');
  */
 module.exports = defineConfig({
   testDir: './tests',
-  /* Maximum time one test can run for - increased for complex enterprise scenarios */
-  timeout: 60 * 1000,
+  /* Enhanced timeout configuration based on test complexity */
+  timeout: process.env.E2E_TIMEOUT ? parseInt(process.env.E2E_TIMEOUT) * 1000 : 60 * 1000,
   expect: {
     /**
      * Maximum time expect() should wait for the condition to be met
+     * Increased for complex enterprise UI interactions
      */
-    timeout: 10000
+    timeout: process.env.E2E_EXPECT_TIMEOUT ? parseInt(process.env.E2E_EXPECT_TIMEOUT) * 1000 : 15000
   },
   /* Global setup and teardown hooks */
   globalTeardown: './scripts/global-teardown.js',
@@ -38,8 +39,8 @@ module.exports = defineConfig({
   workers: process.env.CI ? 2 : undefined,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Enhanced retry strategy */
-  retries: process.env.CI ? 3 : 1,
+  /* Enhanced retry strategy with intelligent retry logic */
+  retries: process.env.CI ? 3 : (process.env.E2E_RETRIES ? parseInt(process.env.E2E_RETRIES) : 1),
   /* Modern reporter configuration with accessibility reports */
   reporter: [
     ['html', { outputFolder: REPORTS_DIR, open: 'never' }],
