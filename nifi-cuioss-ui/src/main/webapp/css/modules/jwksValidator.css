@@ -37,3 +37,84 @@
     padding: 5px;
     min-height: 20px;
 }
+
+/* JWKS File Validation Styles */
+
+.jwks-file-container {
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid var(--gray-light);
+    border-radius: 3px;
+    background-color: var(--background-color-overlay);
+}
+
+.file-path-display {
+    color: var(--text-color-secondary);
+    margin-bottom: 10px;
+    font-size: 0.9em;
+}
+
+.validate-file-button {
+    padding: 5px 10px;
+    border: 1px solid var(--primary-color-dark);
+    color: var(--container-background);
+    margin-right: 10px;
+    background-color: var(--primary-color);
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.validate-file-button:hover {
+    background-color: var(--primary-color-dark);
+}
+
+.file-validation-result {
+    margin-top: 10px;
+    padding: 5px;
+    min-height: 20px;
+}
+
+/* JWKS Memory (Content) Validation Styles */
+
+.jwks-memory-container {
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid var(--gray-light);
+    border-radius: 3px;
+    background-color: var(--background-color-overlay);
+}
+
+.content-description {
+    color: var(--text-color-secondary);
+    margin-bottom: 10px;
+    font-size: 0.9em;
+}
+
+.validate-content-button {
+    padding: 5px 10px;
+    border: 1px solid var(--primary-color-dark);
+    color: var(--container-background);
+    margin-right: 10px;
+    background-color: var(--primary-color);
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.validate-content-button:hover {
+    background-color: var(--primary-color-dark);
+}
+
+.content-validation-result {
+    margin-top: 10px;
+    padding: 5px;
+    min-height: 20px;
+}
+
+/* Common message styles */
+
+.info-message {
+    color: var(--info-color);
+    font-style: italic;
+}

@@ -3,7 +3,7 @@
  */
 import * as nfCommon from 'nf.Common';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
-import { validateJwksUrl } from '../services/apiClient.js';
+import { validateJwksUrl, validateJwksFile } from '../services/apiClient.js';
 
 /**
  * Initialize the custom UI with standardized error handling and async patterns.
@@ -108,6 +108,138 @@ const _initializeJwksValidator = async (element, propertyValue, jwks_type, callb
         resultContainer.innerHTML = `<em>${i18n['jwksValidator.initialInstructions'] || 'Click the button to validate JWKS'}</em>`;
     }
 
+    // Add UI for file type JWKS
+    if (jwks_type === 'file') {
+        const fileContainer = document.createElement('div');
+        fileContainer.className = 'jwks-file-container';
+        const filePathDisplay = document.createElement('div');
+        filePathDisplay.className = 'file-path-display';
+        const fileDesc = i18n['processor.jwt.filePathDescription'] || 'Enter file path to JWKS file';
+        filePathDisplay.innerHTML = `<em>${fileDesc}</em>`;
+        const validateButton = document.createElement('button');
+        validateButton.type = 'button';
+        validateButton.className = 'validate-file-button';
+        validateButton.textContent = i18n['processor.jwt.validateFile'] || 'Validate File';
+        const resultContainer = document.createElement('div');
+        resultContainer.className = 'file-validation-result';
+        fileContainer.appendChild(filePathDisplay);
+        fileContainer.appendChild(validateButton);
+        fileContainer.appendChild(resultContainer);
+        container.appendChild(fileContainer);
+        // Handle file validation button click
+        validateButton.addEventListener('click', () => {
+            const inputField = element.querySelector('input');
+            const filePath = inputField ? inputField.value : propertyValue;
+            if (!filePath) {
+                resultContainer.innerHTML = `<span class="error-message">${i18n['processor.jwt.noFilePathProvided'] || 'No file path provided'}</span>`;
+                return;
+            }
+
+            const validatingMsg = i18n['processor.jwt.validatingFile'] || 'Validating file...';
+            resultContainer.innerHTML = `<span class="loading">${validatingMsg}</span>`;
+            // Call the file validation API
+            validateJwksFile(filePath)
+                .then(responseData => {
+                    if (responseData.valid) {
+                        const okText = i18n['processor.jwt.ok'] || 'OK';
+                        const validText = i18n['processor.jwt.validJwksFile'] || 'Valid JWKS file';
+                        const keysText = i18n['processor.jwt.keysFound'] || 'keys found';
+                        const successStyle = 'color: var(--success-color); font-weight: bold;';
+                        resultContainer.innerHTML = `
+                            <span class="success-message valid" style="${successStyle}">
+                                ${okText}
+                            </span>
+                            ${validText}
+                            (${responseData.keyCount} ${keysText})
+                        `;
+                    } else {
+                        const errMsg = responseData.error ||
+                            i18n['processor.jwt.invalidJwksFile'] || 'Invalid JWKS file';
+                        resultContainer.innerHTML = `<span class="error-message">${errMsg}</span>`;
+                    }
+                })
+                .catch(error => {
+                    // Handle API error
+                    const errorMessage = error.responseJSON?.error || error.statusText ||
+                        i18n['processor.jwt.fileValidationError'] || 'File validation error';
+                    const errorSpan = `<span class="error-message">${errorMessage}</span>`;
+                    resultContainer.innerHTML = errorSpan;
+                });
+        });
+    }
+    // Add UI for memory type JWKS (manual content entry)
+    if (jwks_type === 'memory') {
+        const memoryContainer = document.createElement('div');
+        memoryContainer.className = 'jwks-memory-container';
+        const contentDescription = document.createElement('div');
+        contentDescription.className = 'content-description';
+        const contentDesc = i18n['processor.jwt.memoryContentDescription'] || 'Enter JWKS JSON content directly';
+        contentDescription.innerHTML = `<em>${contentDesc}</em>`;
+        const validateButton = document.createElement('button');
+        validateButton.type = 'button';
+        validateButton.className = 'validate-content-button';
+        validateButton.textContent = i18n['processor.jwt.validateContent'] || 'Validate JSON';
+        const resultContainer = document.createElement('div');
+        resultContainer.className = 'content-validation-result';
+        memoryContainer.appendChild(contentDescription);
+        memoryContainer.appendChild(validateButton);
+        memoryContainer.appendChild(resultContainer);
+        container.appendChild(memoryContainer);
+        // Handle content validation button click
+        validateButton.addEventListener('click', () => {
+            const inputField = element.querySelector('textarea') || element.querySelector('input');
+            const content = inputField ? inputField.value : propertyValue;
+            if (!content) {
+                resultContainer.innerHTML = `<span class="error-message">${i18n['processor.jwt.noContentProvided'] || 'No JWKS content provided'}</span>`;
+                return;
+            }
+
+            const validatingMsg = i18n['processor.jwt.validatingContent'] || 'Validating content...';
+            resultContainer.innerHTML = `<span class="loading">${validatingMsg}</span>`;
+            // Perform client-side JSON validation
+            try {
+                const jwksData = JSON.parse(content);
+                // Basic JWKS structure validation
+                if (!jwksData.keys || !Array.isArray(jwksData.keys)) {
+                    const errMsg = i18n['processor.jwt.invalidJwksStructure'] ||
+                        'Invalid JWKS structure: missing "keys" array';
+                    throw new Error(errMsg);
+                }
+
+                if (jwksData.keys.length === 0) {
+                    throw new Error(i18n['processor.jwt.noKeysInJwks'] || 'No keys found in JWKS');
+                }
+
+                // Validate each key has required fields
+                jwksData.keys.forEach((key, index) => {
+                    if (!key.kty) {
+                        throw new Error(`${i18n['processor.jwt.missingKeyType'] || 'Missing key type (kty)'} at index ${index}`);
+                    }
+                    if (!key.use && !key.key_ops) {
+                        const errMsg = i18n['processor.jwt.missingKeyUsage'] ||
+                            'Missing key usage (use or key_ops)';
+                        throw new Error(`${errMsg} at index ${index}`);
+                    }
+                });
+                const okText = i18n['processor.jwt.ok'] || 'OK';
+                const validText = i18n['processor.jwt.validJwks'] || 'Valid JWKS';
+                const keysText = i18n['processor.jwt.keysFound'] || 'keys found';
+                const successStyle = 'color: var(--success-color); font-weight: bold;';
+                resultContainer.innerHTML = `
+                    <span class="success-message valid" style="${successStyle}">
+                        ${okText}
+                    </span>
+                    ${validText}
+                    (${jwksData.keys.length} ${keysText})
+                `;
+            } catch (error) {
+                const errMsg = i18n['processor.jwt.invalidJson'] || 'Invalid JSON';
+                const errorSpan = `<span class="error-message">${errMsg}: ${error.message}</span>`;
+                resultContainer.innerHTML = errorSpan;
+            }
+        });
+    }
+
     element.appendChild(container);
 
     // Initialize callback if provided
@@ -129,12 +261,16 @@ const _initializeJwksValidator = async (element, propertyValue, jwks_type, callb
 // Private function to handle AJAX success response
 const _handleAjaxSuccess = (responseData, resultContainer, i18n) => {
     if (responseData.valid) {
+        const okText = i18n['processor.jwt.ok'] || 'OK';
+        const validText = i18n['processor.jwt.validJwks'] || 'Valid JWKS';
+        const keysText = i18n['processor.jwt.keysFound'] || 'keys found';
+        const successStyle = 'color: var(--success-color); font-weight: bold;';
         resultContainer.innerHTML = `
-            <span class="success-message valid" style="color: var(--success-color); font-weight: bold;">
-                ${i18n['processor.jwt.ok'] || 'OK'}
+            <span class="success-message valid" style="${successStyle}">
+                ${okText}
             </span>
-            ${i18n['processor.jwt.validJwks'] || 'Valid JWKS'}
-            (${responseData.keyCount} ${i18n['processor.jwt.keysFound'] || 'keys found'})
+            ${validText}
+            (${responseData.keyCount} ${keysText})
         `;
     } else {
         displayUiError(resultContainer, { responseJSON: responseData }, i18n, 'processor.jwt.invalidJwks');
