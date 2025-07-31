@@ -22,6 +22,7 @@ import de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships;
 import de.cuioss.nifi.processors.auth.JWTProcessorConstants.TokenLocation;
 import de.cuioss.nifi.processors.auth.i18n.I18nResolver;
 import de.cuioss.nifi.processors.auth.i18n.NiFiI18nResolver;
+import de.cuioss.nifi.processors.auth.util.ErrorContext;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -139,7 +140,16 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
             session.transfer(flowFile, Relationships.SUCCESS);
 
         } catch (Exception e) {
-            LOGGER.error(e, "Error processing flow file: %s", e.getMessage());
+            String contextMessage = ErrorContext.forComponent("JWTTokenAuthenticator")
+                    .operation("onTrigger")
+                    .errorCode(ErrorContext.ErrorCodes.PROCESSING_ERROR)
+                    .cause(e)
+                    .build()
+                    .with("flowFileUuid", flowFile.getAttribute("uuid"))
+                    .with("tokenLocation", context.getProperty(Properties.TOKEN_LOCATION).getValue())
+                    .buildMessage("Error processing flow file");
+
+            LOGGER.error(e, contextMessage);
 
             // Add error attributes
             Map<String, String> attributes = new HashMap<>();

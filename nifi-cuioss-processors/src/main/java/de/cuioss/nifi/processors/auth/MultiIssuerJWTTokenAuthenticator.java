@@ -28,6 +28,7 @@ import de.cuioss.nifi.processors.auth.config.IssuerConfigurationParser;
 import de.cuioss.nifi.processors.auth.i18n.I18nResolver;
 import de.cuioss.nifi.processors.auth.i18n.NiFiI18nResolver;
 import de.cuioss.nifi.processors.auth.util.AuthorizationValidator;
+import de.cuioss.nifi.processors.auth.util.ErrorContext;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -1026,7 +1027,15 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     return;
                 } else {
                     // If valid token is required, route to failure
-                    LOGGER.warn("No token found in the specified location: %s", tokenLocation);
+                    String contextMessage = ErrorContext.forComponent("MultiIssuerJWTTokenAuthenticator")
+                            .operation("extractToken")
+                            .errorCode(ErrorContext.ErrorCodes.VALIDATION_ERROR)
+                            .build()
+                            .with("tokenLocation", tokenLocation)
+                            .with("flowFileUuid", flowFile.getAttribute("uuid"))
+                            .buildMessage("No token found in the specified location");
+
+                    LOGGER.warn(contextMessage);
                     handleError(
                             session,
                             flowFile,
@@ -1041,7 +1050,16 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             // Check token size limits
             int maxTokenSize = context.getProperty(Properties.MAXIMUM_TOKEN_SIZE).asInteger();
             if (token.length() > maxTokenSize) {
-                LOGGER.warn(AuthLogMessages.WARN.TOKEN_SIZE_EXCEEDED.format(maxTokenSize));
+                String contextMessage = ErrorContext.forComponent("MultiIssuerJWTTokenAuthenticator")
+                        .operation("validateTokenSize")
+                        .errorCode(ErrorContext.ErrorCodes.VALIDATION_ERROR)
+                        .build()
+                        .with("tokenSize", token.length())
+                        .with("maxTokenSize", maxTokenSize)
+                        .with("flowFileUuid", flowFile.getAttribute("uuid"))
+                        .buildMessage("Token exceeds maximum size limit");
+
+                LOGGER.warn(contextMessage);
                 handleError(
                         session,
                         flowFile,
@@ -1054,7 +1072,15 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
             // Check for obviously malformed tokens (should have at least 2 dots for header.payload.signature)
             if (!token.contains(".")) {
-                LOGGER.warn("Token is malformed (missing segments)");
+                String contextMessage = ErrorContext.forComponent("MultiIssuerJWTTokenAuthenticator")
+                        .operation("validateTokenFormat")
+                        .errorCode(ErrorContext.ErrorCodes.TOKEN_ERROR)
+                        .build()
+                        .with("tokenSegments", token.split("\\.").length)
+                        .with("flowFileUuid", flowFile.getAttribute("uuid"))
+                        .buildMessage("Token is malformed (missing segments)");
+
+                LOGGER.warn(contextMessage);
                 handleError(
                         session,
                         flowFile,
@@ -1110,7 +1136,16 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
             handleError(session, flowFile, errorCode, errorMessage, category);
         } catch (Exception e) {
-            LOGGER.error(e, "Error processing flow file: %s", e.getMessage());
+            String contextMessage = ErrorContext.forComponent("MultiIssuerJWTTokenAuthenticator")
+                    .operation("onTrigger")
+                    .errorCode(ErrorContext.ErrorCodes.PROCESSING_ERROR)
+                    .cause(e)
+                    .build()
+                    .with("flowFileUuid", flowFile.getAttribute("uuid"))
+                    .with("tokenLocation", tokenLocation)
+                    .buildMessage("Error processing flow file");
+
+            LOGGER.error(e, contextMessage);
             handleError(
                     session,
                     flowFile,

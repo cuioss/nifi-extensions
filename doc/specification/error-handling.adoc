@@ -13,7 +13,71 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Hand
 == Error Handling Implementation
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
 
-The MultiIssuerJWTTokenAuthenticator implements comprehensive error handling using the cui-jwt-validation library to detect and report validation issues in a consistent manner.
+The MultiIssuerJWTTokenAuthenticator implements comprehensive error handling using the cui-jwt-validation library to detect and report validation issues in a consistent manner. Error handling has been enhanced with the `ErrorContext` utility class to provide structured, contextual error information.
+
+=== ErrorContext Utility
+
+The `ErrorContext` utility class provides enhanced error reporting with:
+
+* **Component Identification**: Identifies which component generated the error
+* **Operation Context**: Specifies what operation was being performed
+* **Error Categorization**: Uses standardized error codes for classification
+* **Contextual Information**: Includes relevant debugging data
+* **Exception Chain Analysis**: Tracks root causes through exception chains
+
+[source,java]
+----
+// Example usage
+String contextMessage = ErrorContext.forComponent("MultiIssuerJWTTokenAuthenticator")
+    .operation("validateTokenSize")
+    .errorCode(ErrorContext.ErrorCodes.VALIDATION_ERROR)
+    .build()
+    .with("tokenSize", token.length())
+    .with("maxTokenSize", maxTokenSize)
+    .with("flowFileUuid", flowFile.getAttribute("uuid"))
+    .buildMessage("Token exceeds maximum size limit");
+
+LOGGER.error(contextMessage);
+----
+
+=== Standardized Error Codes
+
+The `ErrorContext` class defines standardized error codes for consistent categorization:
+
+[cols="2,3"]
+|===
+|Error Code |Description
+
+|CONFIGURATION_ERROR
+|Issues with processor or issuer configuration
+
+|VALIDATION_ERROR
+|Token validation failures (format, size, etc.)
+
+|PROCESSING_ERROR
+|General processing errors
+
+|SECURITY_ERROR
+|Security-related failures
+
+|IO_ERROR
+|File or network I/O errors
+
+|AUTHENTICATION_ERROR
+|Authentication failures
+
+|AUTHORIZATION_ERROR
+|Authorization failures
+
+|TOKEN_ERROR
+|Token-specific errors (malformed, expired)
+
+|NETWORK_ERROR
+|Network connectivity issues
+
+|RESOURCE_ERROR
+|Resource availability issues
+|===
 
 === Error Categories
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
@@ -127,6 +191,31 @@ For information about how errors are handled in the UI, see link:configuration-u
 == Testing Error Handling
 
 For details on how error handling is tested, including specific test cases and verification approaches, see link:testing.adoc[Testing Specification].
+
+=== Enhanced Error Messages
+
+The implementation provides enhanced error messages with contextual information:
+
+==== Example Error Messages
+
+[source,text]
+----
+# Token validation error with context
+Error processing flow file [ErrorCode=PROCESSING_ERROR, Component=MultiIssuerJWTTokenAuthenticator, Operation=onTrigger, flowFileUuid=abc123, tokenLocation=AUTHORIZATION_HEADER] Caused by: JWTValidationException: Token signature is invalid
+
+# Configuration error with file context  
+Error loading configuration file [ErrorCode=IO_ERROR, Component=ConfigurationManager, Operation=loadConfigurationFile, file=/opt/nifi/conf/jwt-validation.yaml, fileFormat=yaml] Caused by: YAMLException: Invalid syntax at line 10
+
+# Issuer configuration error with details
+Failed to create issuer configuration [ErrorCode=CONFIGURATION_ERROR, Component=IssuerConfigurationParser, Operation=parseIssuers, issuerId=auth-server-1, issuerName=Primary Auth Server, jwksUrl=https://auth.example.com/.well-known/jwks.json]
+----
+
+==== Benefits of Enhanced Error Handling
+
+1. **Faster Debugging**: Contextual information helps identify issues quickly
+2. **Better Monitoring**: Standardized error codes enable automated alerting
+3. **Improved Operations**: Clear error categorization helps with routing and resolution
+4. **Enhanced Security**: Structured logging without exposing sensitive data
 
 == See Also
 

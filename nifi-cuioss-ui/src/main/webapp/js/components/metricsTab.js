@@ -79,15 +79,18 @@ const createMetricsContent = () => {
                 <div class="metrics-grid">
                     <div class="metric-card">
                         <h5>Total Validations</h5>
-                        <div class="metric-value" id="total-validations" data-testid="total-validations">0</div>
+                        <div class="metric-value" id="total-validations"
+                             data-testid="total-validations">0</div>
                     </div>
                     <div class="metric-card">
                         <h5>Success Rate</h5>
-                        <div class="metric-value" id="success-rate" data-testid="success-rate">0%</div>
+                        <div class="metric-value" id="success-rate"
+                             data-testid="success-rate">0%</div>
                     </div>
                     <div class="metric-card">
                         <h5>Failure Rate</h5>
-                        <div class="metric-value" id="failure-rate" data-testid="failure-rate">0%</div>
+                        <div class="metric-value" id="failure-rate"
+                             data-testid="failure-rate">0%</div>
                     </div>
                     <div class="metric-card">
                         <h5>Active Issuers</h5>
@@ -101,19 +104,23 @@ const createMetricsContent = () => {
                 <div class="metrics-grid">
                     <div class="metric-card">
                         <h5>Average Response Time</h5>
-                        <div class="metric-value" id="avg-response-time" data-testid="avg-response-time">0 ms</div>
+                        <div class="metric-value" id="avg-response-time"
+                             data-testid="avg-response-time">0 ms</div>
                     </div>
                     <div class="metric-card">
                         <h5>Min Response Time</h5>
-                        <div class="metric-value" id="min-response-time" data-testid="min-response-time">0 ms</div>
+                        <div class="metric-value" id="min-response-time"
+                             data-testid="min-response-time">0 ms</div>
                     </div>
                     <div class="metric-card">
                         <h5>Max Response Time</h5>
-                        <div class="metric-value" id="max-response-time" data-testid="max-response-time">0 ms</div>
+                        <div class="metric-value" id="max-response-time"
+                             data-testid="max-response-time">0 ms</div>
                     </div>
                     <div class="metric-card">
                         <h5>P95 Response Time</h5>
-                        <div class="metric-value" id="p95-response-time" data-testid="p95-response-time">0 ms</div>
+                        <div class="metric-value" id="p95-response-time"
+                             data-testid="p95-response-time">0 ms</div>
                     </div>
                 </div>
             </div>
@@ -143,19 +150,24 @@ const createMetricsContent = () => {
             
             <div class="error-metrics" data-testid="error-metrics">
                 <h4>Recent Errors</h4>
-                <div id="error-metrics-list" class="metrics-list">
+                <div id="error-metrics-list" class="metrics-list"
+                     data-testid="error-metrics-list">
                     <div class="no-errors">No recent errors</div>
                 </div>
             </div>
             
             <div class="metrics-footer">
-                <span class="last-updated" data-testid="last-updated">Last updated: Never</span>
-                <span class="refresh-indicator" data-testid="refresh-indicator" style="display:none;">
+                <span class="last-updated" data-testid="last-updated">
+                    Last updated: Never
+                </span>
+                <span class="refresh-indicator" data-testid="refresh-indicator"
+                      style="display:none;">
                     <i class="fa fa-spinner fa-spin"></i> Refreshing...
                 </span>
             </div>
             
-            <div id="export-options" class="export-options" data-testid="export-options" style="display:none;">
+            <div id="export-options" class="export-options" data-testid="export-options"
+                 style="display:none;">
                 <h5>Export Format:</h5>
                 <button class="btn btn-small" data-testid="export-csv">CSV</button>
                 <button class="btn btn-small" data-testid="export-json">JSON</button>

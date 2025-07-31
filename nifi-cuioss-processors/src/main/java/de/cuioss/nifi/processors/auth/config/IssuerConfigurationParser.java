@@ -18,6 +18,7 @@ package de.cuioss.nifi.processors.auth.config;
 
 import de.cuioss.jwt.validation.IssuerConfig;
 import de.cuioss.jwt.validation.ParserConfig;
+import de.cuioss.nifi.processors.auth.util.ErrorContext;
 import de.cuioss.tools.logging.CuiLogger;
 
 import java.util.*;
@@ -163,7 +164,17 @@ public class IssuerConfigurationParser {
                     LOGGER.info("Created issuer configuration for %s", issuerId);
                 }
             } catch (Exception e) {
-                LOGGER.error(e, "Failed to create issuer configuration for %s: %s", issuerId, e.getMessage());
+                String contextMessage = ErrorContext.forComponent("IssuerConfigurationParser")
+                        .operation("parseIssuers")
+                        .errorCode(ErrorContext.ErrorCodes.CONFIGURATION_ERROR)
+                        .cause(e)
+                        .build()
+                        .with("issuerId", issuerId)
+                        .with("issuerName", issuerProps.get(NAME_SUFFIX))
+                        .with("jwksUrl", issuerProps.get(JWKS_URL_SUFFIX))
+                        .buildMessage("Failed to create issuer configuration");
+
+                LOGGER.error(e, contextMessage);
             }
         }
 

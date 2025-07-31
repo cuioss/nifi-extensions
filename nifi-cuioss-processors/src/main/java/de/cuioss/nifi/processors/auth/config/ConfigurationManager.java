@@ -15,6 +15,7 @@
  */
 package de.cuioss.nifi.processors.auth.config;
 
+import de.cuioss.nifi.processors.auth.util.ErrorContext;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.Getter;
 import org.yaml.snakeyaml.Yaml;
@@ -104,7 +105,16 @@ public class ConfigurationManager {
                     lastLoadedTimestamp = lastModified;
                     return true;
                 } catch (Exception e) {
-                    LOGGER.error(e, "Failed to reload configuration, using previous configuration");
+                    String contextMessage = ErrorContext.forComponent("ConfigurationManager")
+                            .operation("checkAndReloadConfiguration")
+                            .errorCode(ErrorContext.ErrorCodes.CONFIGURATION_ERROR)
+                            .cause(e)
+                            .build()
+                            .with("configFile", configFile.getAbsolutePath())
+                            .with("lastModified", lastModified)
+                            .buildMessage("Failed to reload configuration, using previous configuration");
+
+                    LOGGER.error(e, contextMessage);
                 }
             }
         }
@@ -177,7 +187,16 @@ public class ConfigurationManager {
                 return false;
             }
         } catch (Exception e) {
-            LOGGER.error(e, "Error loading configuration from %s", file.getAbsolutePath());
+            String contextMessage = ErrorContext.forComponent("ConfigurationManager")
+                    .operation("loadConfigurationFile")
+                    .errorCode(ErrorContext.ErrorCodes.IO_ERROR)
+                    .cause(e)
+                    .build()
+                    .with("file", file.getAbsolutePath())
+                    .with("fileFormat", fileName.substring(fileName.lastIndexOf('.') + 1))
+                    .buildMessage("Error loading configuration file");
+
+            LOGGER.error(e, contextMessage);
             return false;
         }
     }
@@ -219,21 +238,21 @@ public class ConfigurationManager {
     private boolean loadYamlFile(File file) throws IOException {
         Yaml yaml = new Yaml();
         Map<String, Object> yamlData;
-        
+
         try (FileInputStream fis = new FileInputStream(file)) {
             yamlData = yaml.load(fis);
         }
-        
+
         if (yamlData == null || yamlData.isEmpty()) {
             LOGGER.warn("YAML file %s is empty or invalid", file.getAbsolutePath());
             return false;
         }
-        
+
         // Process YAML data
         processYamlData(yamlData, "");
         return true;
     }
-    
+
     /**
      * Recursively processes YAML data and stores properties.
      *
@@ -245,15 +264,15 @@ public class ConfigurationManager {
         for (Map.Entry<String, Object> entry : data.entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
-            
+
             String fullKey = prefix.isEmpty() ? key : prefix + "." + key;
-            
+
             if (value instanceof Map) {
                 // Recursively process nested maps
                 processYamlData((Map<String, Object>) value, fullKey);
-            } else if (value instanceof List) {
+            } else if (value instanceof List<?> list) {
                 // Process lists (typically for issuer configurations)
-                processList(fullKey, (List<?>) value);
+                processList(fullKey, list);
             } else if (value != null) {
                 // Store simple values
                 if (fullKey.startsWith("jwt.validation.issuer.")) {
@@ -264,7 +283,7 @@ public class ConfigurationManager {
             }
         }
     }
-    
+
     /**
      * Processes a list from YAML configuration.
      *
@@ -273,21 +292,21 @@ public class ConfigurationManager {
      */
     @SuppressWarnings("unchecked")
     private void processList(String key, List<?> list) {
-        if (key.equals("jwt.validation.issuers") || key.equals("issuers")) {
+        if ("jwt.validation.issuers".equals(key) || "issuers".equals(key)) {
             // Process issuer list
             for (int i = 0; i < list.size(); i++) {
                 Object item = list.get(i);
                 if (item instanceof Map) {
                     Map<String, Object> issuerConfig = (Map<String, Object>) item;
                     String issuerId = String.valueOf(i);
-                    
+
                     // Check if issuer has an id or name
                     if (issuerConfig.containsKey("id")) {
                         issuerId = issuerConfig.get("id").toString();
                     } else if (issuerConfig.containsKey("name")) {
                         issuerId = issuerConfig.get("name").toString();
                     }
-                    
+
                     // Store issuer properties
                     Map<String, String> issuerProps = issuerProperties.computeIfAbsent(issuerId, k -> new HashMap<>());
                     for (Map.Entry<String, Object> issuerEntry : issuerConfig.entrySet()) {
