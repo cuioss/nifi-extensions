@@ -15,6 +15,17 @@
   - Implement retry logic for flaky tests
   - Configure appropriate retry counts and delays
 
+### Processor Integration Tasks (New):
+- [ ] **Add JWKS source type property to MultiIssuerJWTTokenAuthenticator**
+  - Add property descriptor for JWKS source type (URL, file, memory)
+  - Update processor to pass jwks_type parameter to custom UI components
+  - Enable conditional rendering based on selected JWKS source type
+
+- [ ] **Update issuer configuration to support different JWKS sources**
+  - Modify issuer properties to include jwks-file and jwks-content options
+  - Update configuration parser to handle different source types
+  - Ensure backward compatibility with existing jwks-url configurations
+
 ### Future Feature Implementation Tasks (JWKS UI Enhancements):
 - [x] **Implement JWKS file path validation UI components** ✅
   - Added file input field for JWKS file paths
@@ -166,6 +177,10 @@
 - ✅ Added comprehensive test coverage (24 tests for JWKS Validator)
 - ✅ Fixed all ESLint errors and warnings in modified files
 - ✅ All 644 JavaScript tests passing
+- ✅ Fixed E2E test formatting issues and updated documentation
+  - Fixed all ESLint formatting issues in E2E tests
+  - Updated JWKS validation test documentation to reflect UI completion
+  - Documented that processor-level integration is needed for full functionality
 
 **Technical Implementation Details**:
 - Modified `jwksValidator.js` to support 'file' and 'memory' JWKS types
@@ -173,5 +188,10 @@
 - Updated `apiClient.js` exports to include `validateJwksFile`
 - Fixed test expectations to match current API endpoints
 - Resolved code formatting issues (trailing spaces, long lines)
+- E2E tests ready but skipped pending processor integration
+
+**Next Steps**:
+- Processor needs to expose JWKS source type property (URL, file, memory)
+- Once processor supports different JWKS types, the UI will automatically enable
 
 *Last updated: July 31, 2025*
