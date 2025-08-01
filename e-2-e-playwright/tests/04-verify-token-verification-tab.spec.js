@@ -136,8 +136,7 @@ test.describe("Token Verification Tab", () => {
         await verifyButton.click();
         processorLogger.info("Clicked verify button");
 
-        // In standalone mode, we'll get an error message due to missing auth
-        // Look for either success or error result
+        // With the fixed servlet configuration, we should get actual JWT validation results
         const verificationResult = customUIFrame
             .locator(
                 ".verification-status.valid, .verification-status.invalid, .error-message, .token-error, .error-container",
@@ -149,27 +148,34 @@ test.describe("Token Verification Tab", () => {
         const resultText = await verificationResult.textContent();
         processorLogger.info(`Verification result: ${resultText}`);
 
-        // In standalone mode without auth, we expect an error about missing authentication
-        // This is acceptable for testing the UI behavior
+        // Now we expect actual JWT validation results, not authentication errors
         if (
-            resultText.includes("Missing or empty API key") ||
-            resultText.includes("401") ||
-            resultText.includes("Unauthorized")
+            resultText.includes("Token is valid") ||
+            resultText.includes("valid")
         ) {
             processorLogger.info(
-                "✓ Got expected authentication error in standalone mode",
+                "✅ Token verified successfully - JWT validation working!",
             );
-        } else if (resultText.includes("Token is valid")) {
-            processorLogger.info("✓ Token verified successfully");
 
             // Look for token details with the correct CSS class
             const tokenDetails = customUIFrame.locator(".token-details");
             if (await tokenDetails.isVisible({ timeout: 2000 })) {
-                processorLogger.info("✓ Token details displayed");
+                processorLogger.info("✅ Token details displayed");
             }
+        } else if (
+            resultText.includes("Missing or empty API key") ||
+            resultText.includes("401") ||
+            resultText.includes("Unauthorized")
+        ) {
+            processorLogger.error(
+                "❌ Still getting authentication errors - servlet configuration may not be working",
+            );
+            throw new Error(
+                "Authentication error indicates servlet URL mapping issue",
+            );
         } else {
             processorLogger.info(
-                "✓ Got verification result (may be error in standalone mode)",
+                "✅ Got JWT validation result (possibly invalid token)",
             );
         }
 
@@ -315,22 +321,30 @@ test.describe("Token Verification Tab", () => {
         const messageText = await verificationMessage.textContent();
         processorLogger.info(`Verification result: ${messageText}`);
 
-        // In standalone mode, we might get auth errors instead of expiration messages
+        // With the fixed servlet configuration, we should get actual expiration detection
         if (
+            messageText.includes("expired") ||
+            messageText.includes("Expired") ||
+            messageText.includes("Token expired")
+        ) {
+            processorLogger.info(
+                "✅ Token expiration detected correctly - JWT validation working!",
+            );
+        } else if (
             messageText.includes("401") ||
             messageText.includes("Unauthorized") ||
             messageText.includes("API key")
         ) {
-            processorLogger.info(
-                "✓ Got expected authentication error in standalone mode",
+            processorLogger.error(
+                "❌ Still getting authentication errors - servlet configuration may not be working",
             );
-        } else if (
-            messageText.includes("expired") ||
-            messageText.includes("Expired")
-        ) {
-            processorLogger.info("✓ Token expiration detected correctly");
+            throw new Error(
+                "Authentication error indicates servlet URL mapping issue",
+            );
         } else {
-            processorLogger.info("✓ Verification result displayed");
+            processorLogger.info(
+                "✅ Got JWT validation result: " + messageText,
+            );
         }
 
         processorLogger.success("Token expiration UI tested successfully");

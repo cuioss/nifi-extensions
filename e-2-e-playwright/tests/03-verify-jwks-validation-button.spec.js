@@ -105,19 +105,38 @@ test.describe("JWKS Validation Button", () => {
         const resultText = await verificationResult.textContent();
         processorLogger.info(`Validation result: ${resultText}`);
 
-        // In standalone mode, we might get auth errors
+        // With fixed servlet configuration, we should get actual JWKS validation results
         if (
+            resultText.includes("OK") ||
+            resultText.includes("Valid") ||
+            resultText.includes("accessible")
+        ) {
+            processorLogger.info(
+                "✅ JWKS URL validated successfully - JWKS validation working!",
+            );
+        } else if (
+            resultText.includes("Error") ||
+            resultText.includes("Failed") ||
+            resultText.includes("Invalid")
+        ) {
+            processorLogger.info(
+                "✅ JWKS URL validation returned expected error - validation working!",
+            );
+        } else if (
             resultText.includes("401") ||
             resultText.includes("Unauthorized") ||
             resultText.includes("API key")
         ) {
-            processorLogger.info(
-                "✓ Got expected authentication error in standalone mode",
+            processorLogger.error(
+                "❌ Still getting authentication errors - servlet configuration may not be working",
             );
-        } else if (resultText.includes("OK") || resultText.includes("Valid")) {
-            processorLogger.info("✓ JWKS URL validated successfully");
+            throw new Error(
+                "Authentication error indicates servlet URL mapping issue",
+            );
         } else {
-            processorLogger.info("✓ Got validation result");
+            processorLogger.info(
+                "✅ Got JWKS validation result: " + resultText,
+            );
         }
     });
 

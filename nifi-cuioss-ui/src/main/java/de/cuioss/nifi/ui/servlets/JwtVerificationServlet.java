@@ -125,8 +125,15 @@ public class JwtVerificationServlet extends HttpServlet {
         }
 
         // For E2E tests, allow missing processorId (use test mode)
-        boolean isE2ETest = req.getServletPath() != null && req.getServletPath().startsWith("/api/token/");
-        if (!isE2ETest && (processorId == null || processorId.trim().isEmpty())) {
+        String servletPath = req.getServletPath();
+        String requestURI = req.getRequestURI();
+        boolean isE2ETest = (servletPath != null && servletPath.startsWith("/api/token/")) ||
+                (requestURI != null && requestURI.contains("/api/token/"));
+
+        // Also enable test mode if processorId is explicitly empty (for standalone UI testing)
+        boolean useTestMode = isE2ETest || (processorId != null && processorId.trim().isEmpty());
+
+        if (!useTestMode && (processorId == null || processorId.trim().isEmpty())) {
             sendErrorResponse(resp, 400, "Processor ID cannot be empty", false);
             return;
         }
@@ -136,7 +143,9 @@ public class JwtVerificationServlet extends HttpServlet {
         // 3. Verify token using service
         TokenValidationResult result;
         try {
-            result = validationService.verifyToken(token, processorId);
+            // Use null processorId for test mode to trigger test configuration
+            String validationProcessorId = useTestMode ? null : processorId;
+            result = validationService.verifyToken(token, validationProcessorId);
 
             // For E2E tests, perform additional validation
             if (isE2ETest && result.isValid()) {

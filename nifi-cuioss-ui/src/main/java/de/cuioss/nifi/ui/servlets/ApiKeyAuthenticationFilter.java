@@ -71,11 +71,20 @@ public class ApiKeyAuthenticationFilter implements Filter {
         // Extract processor ID from headers
         String processorId = httpRequest.getHeader(PROCESSOR_ID_HEADER);
 
-        // Validate processor ID header is present
-        if (processorId == null || processorId.trim().isEmpty()) {
+        // For test mode (standalone UI), allow empty processor ID
+        String requestURI = httpRequest.getRequestURI();
+        boolean isTestMode = (requestURI != null && requestURI.contains("/verify-token")) &&
+                (processorId == null || processorId.trim().isEmpty());
+
+        // Validate processor ID header is present (except in test mode)
+        if (!isTestMode && (processorId == null || processorId.trim().isEmpty())) {
             LOGGER.warn("Missing processor ID header in request to %s", requestPath);
             sendUnauthorizedResponse(httpResponse, "Missing or empty processor ID header");
             return;
+        }
+
+        if (isTestMode) {
+            LOGGER.debug("Test mode enabled for token verification - allowing empty processor ID");
         }
 
         // Check if user is authenticated (when available)

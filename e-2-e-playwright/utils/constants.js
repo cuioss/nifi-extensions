@@ -126,11 +126,28 @@ export const PROCESSOR_TYPES = {
 
 /**
  * Test JWT tokens for verification tests
+ * These tokens are designed for E2E testing and use basic JWT structure
+ * without requiring signature verification (test mode only).
+ * 
+ * Token payloads decoded:
+ * - VALID: Valid token with future expiration
+ * - EXPIRED: Token with past expiration date  
+ * - INVALID: Malformed token string
+ * - MALFORMED: Not a JWT structure at all
  */
 export const TEST_TOKENS = {
-  VALID: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.POstGetfAytaZS82wHcjoTyoqhMyxXiWdR7Nn7A29DNSl0EiXLdwJ6xC6AfgZWF1bOsS_TuYI3OG85AmiExREkrS6tDfTQ2B3WXlrr-wp5AokiRbz3_oB4OxG-W9KcEEbDRcZc0nH3L7LzYptiy1PtAylQGxHTWZXtGz4ht0bAecBgmpdgXMguEIcoqPJ1n3pIWk_dUZegpqx0Lka21H6XxUTxiy8OcaarA8zdnPUnV6AmNP3ecFawIFYdvJB_cm-GvpCSbr8G8y_Mllj8f4x9nBH8pQux89_6gUY618iYv7tuPWBFfEbLxtF2pZS6YC1aSfLQxeNe8djT9YjpvRZA',
-  EXPIRED: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.4Adcj3UFYzPUVaVF43FmMab6RlaQD8A9V8wFzzht-KQ',
+  // Valid token with exp: 2030-01-01 (far future), iss: test-issuer, sub: test-user
+  // Payload: {"sub":"test-user","iss":"test-issuer","exp":1893456000,"iat":1735689600,"scopes":["read","write"],"roles":["user"]}
+  VALID: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXIiLCJpc3MiOiJ0ZXN0LWlzc3VlciIsImV4cCI6MTg5MzQ1NjAwMCwiaWF0IjoxNzM1Njg5NjAwLCJzY29wZXMiOlsicmVhZCIsIndyaXRlIl0sInJvbGVzIjpbInVzZXIiXX0.fake-signature-for-testing',
+  
+  // Expired token with exp: 2020-01-01 (past), iss: test-issuer, sub: expired-user
+  // Payload: {"sub":"expired-user","iss":"test-issuer","exp":1577836800,"iat":1577836800,"scopes":["read"],"roles":["user"]}
+  EXPIRED: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJleHBpcmVkLXVzZXIiLCJpc3MiOiJ0ZXN0LWlzc3VlciIsImV4cCI6MTU3NzgzNjgwMCwiaWF0IjoxNTc3ODM2ODAwLCJzY29wZXMiOlsicmVhZCJdLCJyb2xlcyI6WyJ1c2VyIl19.fake-signature-for-testing',
+  
+  // Invalid token - recognized by service as invalid
   INVALID: 'invalid.jwt.token',
+  
+  // Malformed token - not JWT structure
   MALFORMED: 'not-even-close-to-jwt'
 };
 
