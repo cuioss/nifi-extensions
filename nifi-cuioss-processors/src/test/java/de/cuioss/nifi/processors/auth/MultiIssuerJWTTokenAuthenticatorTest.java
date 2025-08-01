@@ -16,8 +16,6 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import de.cuioss.nifi.processors.auth.JWTPropertyKeys;
-import de.cuioss.nifi.processors.auth.test.DynamicPropertyTestHelper;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.MockProcessContext;
@@ -106,7 +104,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -133,7 +131,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -157,7 +155,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -185,7 +183,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -215,7 +213,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -237,7 +235,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -261,7 +259,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 0);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
 
             // Verify attributes
             flowFile.assertAttributeEquals("jwt.present", "false");
@@ -288,7 +286,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -320,7 +318,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -360,7 +358,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             newTestRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = newTestRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = newTestRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -463,7 +461,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes are present
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -491,7 +489,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes are present
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -520,7 +518,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes are present
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -549,7 +547,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes are present
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -578,7 +576,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes are present
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -607,7 +605,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes are present
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -636,7 +634,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Note: The jwt.authorized attribute would be set during actual token validation
             // Since we're not actually validating tokens yet, we can only verify that
@@ -670,7 +668,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file 
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes are present
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -699,7 +697,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes are present
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -736,7 +734,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes are present
             flowFile.assertAttributeExists("jwt.error.reason");

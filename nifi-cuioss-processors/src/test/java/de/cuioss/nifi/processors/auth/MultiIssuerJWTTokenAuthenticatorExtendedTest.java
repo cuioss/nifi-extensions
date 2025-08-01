@@ -102,7 +102,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
         @Test
         @DisplayName("Test extractClaims method with full token content")
-        void testExtractClaimsFullContent() throws Exception {
+        void extractClaimsFullContent() throws Exception {
             // Use reflection to test private method
             Method extractClaimsMethod = MultiIssuerJWTTokenAuthenticator.class
                     .getDeclaredMethod("extractClaims", AccessTokenContent.class);
@@ -143,7 +143,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
         @Test
         @DisplayName("Test extractClaims method with minimal token content")
-        void testExtractClaimsMinimalContent() throws Exception {
+        void extractClaimsMinimalContent() throws Exception {
             // Use reflection to test private method
             Method extractClaimsMethod = MultiIssuerJWTTokenAuthenticator.class
                     .getDeclaredMethod("extractClaims", AccessTokenContent.class);
@@ -180,7 +180,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
         @Test
         @DisplayName("Test cleanupResources method")
-        void testCleanupResources() throws Exception {
+        void cleanupResources() throws Exception {
             // Initialize the processor first
             ProcessorInitializationContext initContext = mock(ProcessorInitializationContext.class);
             when(initContext.getIdentifier()).thenReturn("test-processor-id");
@@ -210,7 +210,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
         @Test
         @DisplayName("Test cleanupResources handles exceptions gracefully")
-        void testCleanupResourcesWithException() throws Exception {
+        void cleanupResourcesWithException() throws Exception {
             // This test verifies that cleanup doesn't throw exceptions
             Method cleanupMethod = MultiIssuerJWTTokenAuthenticator.class.getDeclaredMethod("cleanupResources");
             cleanupMethod.setAccessible(true);
@@ -226,7 +226,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
         @Test
         @DisplayName("Test logSecurityMetrics method")
-        void testLogSecurityMetrics() throws Exception {
+        void logSecurityMetrics() throws Exception {
             // Use reflection to test private method
             Method logMetricsMethod = MultiIssuerJWTTokenAuthenticator.class.getDeclaredMethod("logSecurityMetrics");
             logMetricsMethod.setAccessible(true);
@@ -243,7 +243,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
         @Test
         @DisplayName("Test logSecurityMetrics with security event counter")
-        void testLogSecurityMetricsWithCounter() throws Exception {
+        void logSecurityMetricsWithCounter() throws Exception {
             // Set up a mock security event counter
             Field counterField = MultiIssuerJWTTokenAuthenticator.class.getDeclaredField("securityEventCounter");
             counterField.setAccessible(true);
@@ -265,7 +265,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
         @Test
         @DisplayName("Test generateConfigurationHash method")
-        void testGenerateConfigurationHash() throws Exception {
+        void generateConfigurationHash() throws Exception {
             // Set up issuer configurations - these are already set in @BeforeEach
             // but we'll re-set them to be explicit
             setDynamicProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
@@ -304,7 +304,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
         @Test
         @DisplayName("Test loadExternalConfigurations method")
-        void testLoadExternalConfigurations() throws Exception {
+        void loadExternalConfigurations() throws Exception {
             // Mock ConfigurationManager
             ConfigurationManager mockConfigManager = mock(ConfigurationManager.class);
             when(mockConfigManager.isConfigurationLoaded()).thenReturn(true);
@@ -344,7 +344,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
         @Test
         @DisplayName("Test cleanupRemovedIssuers method")
-        void testCleanupRemovedIssuers() throws Exception {
+        void cleanupRemovedIssuers() throws Exception {
             // Use reflection to access private fields and method
             Field configField = MultiIssuerJWTTokenAuthenticator.class.getDeclaredField("issuerConfigCache");
             configField.setAccessible(true);
@@ -379,7 +379,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
         @Test
         @DisplayName("Test validateToken method")
-        void testValidateToken() throws Exception {
+        void validateToken() throws Exception {
             // Initialize the processor
             ProcessorInitializationContext initContext = mock(ProcessorInitializationContext.class);
             when(initContext.getIdentifier()).thenReturn("test-processor-id");
@@ -406,13 +406,16 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
             // Don't call onScheduled directly with a mock context as it expects MockProcessContext
             testRunner.run(0); // This will call onScheduled with proper context
 
-            // Test with valid token format - expect TokenValidationException wrapped in InvocationTargetException
+            // Test with HS256 token - expect TokenValidationException for algorithm rejection wrapped in InvocationTargetException
             InvocationTargetException ex = assertThrows(InvocationTargetException.class,
                     () -> validateMethod.invoke(processor, VALID_TOKEN, context));
 
-            // Verify the cause is IllegalStateException since no TokenValidator is available
-            assertInstanceOf(IllegalStateException.class, ex.getCause());
-            assertTrue(ex.getCause().getMessage().contains("No TokenValidator available"));
+            // Verify the cause is TokenValidationException since HS256 algorithm is rejected for security reasons
+            assertInstanceOf(TokenValidationException.class, ex.getCause());
+            String actualMessage = ex.getCause().getMessage();
+            // HS256 is rejected by SignatureAlgorithmPreferences, causing algorithm validation to fail
+            assertTrue(actualMessage.contains("Failed to validate JWT algorithm"),
+                    "Expected algorithm validation failure message, but got: " + actualMessage);
         }
     }
 
@@ -422,7 +425,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
         @Test
         @DisplayName("Test onStopped lifecycle method")
-        void testOnStoppedWithMultipleExecutions() throws Exception {
+        void onStoppedWithMultipleExecutions() throws Exception {
             // Create and enqueue some flow files to process
             Map<String, String> attributes = new HashMap<>();
             attributes.put("http.headers.authorization", "Bearer " + VALID_TOKEN);
@@ -451,7 +454,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
         @Test
         @DisplayName("Test extractTokenFromContent with large content")
-        void testExtractTokenFromLargeContent() {
+        void extractTokenFromLargeContent() {
             // Configure for content extraction
             testRunner.setProperty(Properties.TOKEN_LOCATION, "FLOW_FILE_CONTENT");
             // Also need to set issuer config for content extraction - these are already set in @BeforeEach
@@ -471,13 +474,13 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
             // Verify processing
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
             flowFile.assertAttributeExists("jwt.error.reason");
         }
 
         @Test
         @DisplayName("Test getSupportedDynamicPropertyDescriptor with various inputs")
-        void testGetSupportedDynamicPropertyDescriptorEdgeCases() {
+        void getSupportedDynamicPropertyDescriptorEdgeCases() {
             // Test with valid issuer property
             PropertyDescriptor descriptor = processor.getSupportedDynamicPropertyDescriptor(ISSUER_PREFIX + "test.jwks-url");
             assertNotNull(descriptor);

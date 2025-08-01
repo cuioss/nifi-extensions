@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ErrorContextTest {
 
     @Test
-    void testBasicErrorContext() {
+    void basicErrorContext() {
         String message = ErrorContext.forComponent("TestComponent")
                 .operation("testOperation")
                 .build()
@@ -37,7 +37,7 @@ class ErrorContextTest {
     }
 
     @Test
-    void testErrorContextWithCode() {
+    void errorContextWithCode() {
         String message = ErrorContext.forComponent("TestComponent")
                 .operation("testOperation")
                 .errorCode(ErrorContext.ErrorCodes.VALIDATION_ERROR)
@@ -51,7 +51,7 @@ class ErrorContextTest {
     }
 
     @Test
-    void testErrorContextWithContext() {
+    void errorContextWithContext() {
         String message = ErrorContext.forComponent("TestComponent")
                 .operation("testOperation")
                 .build()
@@ -65,7 +65,7 @@ class ErrorContextTest {
     }
 
     @Test
-    void testErrorContextWithCause() {
+    void errorContextWithCause() {
         Exception cause = new IllegalArgumentException("Invalid argument");
         String message = ErrorContext.forComponent("TestComponent")
                 .operation("testOperation")
@@ -79,7 +79,7 @@ class ErrorContextTest {
     }
 
     @Test
-    void testErrorContextWithNestedCause() {
+    void errorContextWithNestedCause() {
         Exception rootCause = new IllegalStateException("Root cause");
         Exception cause = new RuntimeException("Wrapped exception", rootCause);
 
@@ -96,7 +96,7 @@ class ErrorContextTest {
     }
 
     @Test
-    void testErrorContextWithLongValue() {
+    void errorContextWithLongValue() {
         String longValue = "a".repeat(150);
         String message = ErrorContext.forComponent("TestComponent")
                 .operation("testOperation")
@@ -111,7 +111,7 @@ class ErrorContextTest {
     }
 
     @Test
-    void testErrorContextWithNullValue() {
+    void errorContextWithNullValue() {
         String message = ErrorContext.forComponent("TestComponent")
                 .operation("testOperation")
                 .build()
@@ -123,7 +123,7 @@ class ErrorContextTest {
     }
 
     @Test
-    void testAllErrorCodes() {
+    void allErrorCodes() {
         // Verify all error codes are defined
         assertNotNull(ErrorContext.ErrorCodes.CONFIGURATION_ERROR);
         assertNotNull(ErrorContext.ErrorCodes.VALIDATION_ERROR);

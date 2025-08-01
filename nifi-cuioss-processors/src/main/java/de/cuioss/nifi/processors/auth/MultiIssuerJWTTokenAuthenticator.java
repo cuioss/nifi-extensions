@@ -23,6 +23,8 @@ import de.cuioss.jwt.validation.domain.token.AccessTokenContent;
 import de.cuioss.jwt.validation.exception.TokenValidationException;
 import de.cuioss.jwt.validation.metrics.TokenValidatorMonitor;
 import de.cuioss.jwt.validation.security.SecurityEventCounter;
+import de.cuioss.jwt.validation.security.SecurityEventCounter.EventType;
+import de.cuioss.jwt.validation.security.SignatureAlgorithmPreferences;
 import de.cuioss.nifi.processors.auth.config.ConfigurationManager;
 import de.cuioss.nifi.processors.auth.config.IssuerConfigurationParser;
 import de.cuioss.nifi.processors.auth.i18n.I18nResolver;
@@ -46,9 +48,12 @@ import org.apache.nifi.processor.util.StandardValidators;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
+import java.util.Base64;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.*;
@@ -1210,6 +1215,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @throws TokenValidationException if the token is invalid
      */
     private AccessTokenContent validateToken(String tokenString, ProcessContext context) throws TokenValidationException {
+        // Validate algorithm before token processing
+        validateTokenAlgorithm(tokenString, context);
+
         // Get the TokenValidator
         TokenValidator validator = getTokenValidator(context);
 
@@ -1218,6 +1226,113 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         }
 
         return validator.createAccessToken(tokenString);
+    }
+
+    /**
+     * Validates that the JWT token uses an allowed signing algorithm.
+     *
+     * @param tokenString The JWT token string to validate
+     * @param context     The process context
+     * @throws TokenValidationException if the algorithm is not allowed
+     */
+    private void validateTokenAlgorithm(String tokenString, ProcessContext context) throws TokenValidationException {
+        try {
+            // Parse the JWT header to extract the algorithm
+            String[] tokenParts = tokenString.split("\\.");
+            if (tokenParts.length < 2) {
+                throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED, "Invalid JWT token format - insufficient segments");
+            }
+
+            // Decode the header (first part)
+            String headerJson = new String(Base64.getDecoder().decode(tokenParts[0]), StandardCharsets.UTF_8);
+
+            // Parse the JSON to extract the algorithm
+            String algorithm = extractAlgorithmFromHeader(headerJson);
+
+            // Create SignatureAlgorithmPreferences instance
+            // Check if custom algorithms are configured, otherwise use secure defaults
+            SignatureAlgorithmPreferences algorithmPreferences;
+            String allowedAlgorithmsConfig = context.getProperty(Properties.ALLOWED_ALGORITHMS).getValue();
+
+            if (allowedAlgorithmsConfig != null && !allowedAlgorithmsConfig.trim().isEmpty()) {
+                // Use configured algorithms
+                List<String> configuredAlgorithms = Arrays.stream(allowedAlgorithmsConfig.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .collect(Collectors.toList());
+                algorithmPreferences = new SignatureAlgorithmPreferences(configuredAlgorithms);
+                LOGGER.debug("Using configured signature algorithms: %s", configuredAlgorithms);
+            } else {
+                // Use secure defaults from SignatureAlgorithmPreferences
+                algorithmPreferences = new SignatureAlgorithmPreferences();
+                LOGGER.debug("Using default secure signature algorithms: %s", algorithmPreferences.getPreferredAlgorithms());
+            }
+
+            // Validate the algorithm using SignatureAlgorithmPreferences
+            if (!algorithmPreferences.isSupported(algorithm)) {
+                String contextMessage = ErrorContext.forComponent("MultiIssuerJWTTokenAuthenticator")
+                        .operation("validateTokenAlgorithm")
+                        .errorCode(ErrorContext.ErrorCodes.SECURITY_ERROR)
+                        .build()
+                        .with("algorithm", algorithm)
+                        .with("supportedAlgorithms", algorithmPreferences.getPreferredAlgorithms())
+                        .buildMessage("Token uses unsupported or insecure algorithm");
+                LOGGER.warn(contextMessage);
+                throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED,
+                        "Token algorithm '" + algorithm + "' is not supported. Supported algorithms: " + algorithmPreferences.getPreferredAlgorithms());
+            }
+
+            LOGGER.debug("Token algorithm '%s' is supported and secure", algorithm);
+
+        } catch (IllegalArgumentException e) {
+            // Base64 decoding failed
+            String contextMessage = ErrorContext.forComponent("MultiIssuerJWTTokenAuthenticator")
+                    .operation("validateTokenAlgorithm")
+                    .errorCode(ErrorContext.ErrorCodes.TOKEN_ERROR)
+                    .cause(e)
+                    .build()
+                    .buildMessage("Failed to decode JWT header");
+            LOGGER.warn(contextMessage);
+            throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED, "Invalid JWT token format - cannot decode header");
+        } catch (Exception e) {
+            // Any other parsing error
+            String contextMessage = ErrorContext.forComponent("MultiIssuerJWTTokenAuthenticator")
+                    .operation("validateTokenAlgorithm")
+                    .errorCode(ErrorContext.ErrorCodes.TOKEN_ERROR)
+                    .cause(e)
+                    .build()
+                    .buildMessage("Failed to validate JWT algorithm");
+            LOGGER.warn(contextMessage);
+            throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED, "Failed to validate JWT algorithm");
+        }
+    }
+
+    /**
+     * Extracts the algorithm claim from a JWT header JSON string.
+     *
+     * @param headerJson The JWT header as JSON string
+     * @return The algorithm value
+     * @throws TokenValidationException if the algorithm cannot be extracted
+     */
+    private String extractAlgorithmFromHeader(String headerJson) throws TokenValidationException {
+        // Simple JSON parsing to extract the "alg" field
+        // Using a simple approach to avoid adding JSON parsing dependencies
+        try {
+            // Look for the "alg" field in the JSON
+            String algPattern = "\"alg\"\\s*:\\s*\"([^\"]+)\"";
+            Pattern pattern = Pattern.compile(algPattern);
+            Matcher matcher = pattern.matcher(headerJson);
+
+            if (matcher.find()) {
+                return matcher.group(1);
+            }
+
+            // If no algorithm found, this is suspicious
+            throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED, "JWT header does not contain algorithm field");
+
+        } catch (Exception e) {
+            throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED, "Failed to parse JWT header for algorithm");
+        }
     }
 
 

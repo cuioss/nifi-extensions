@@ -65,7 +65,7 @@ class JWTTokenAuthenticatorTest {
         testRunner.assertTransferCount(Relationships.FAILURE, 0);
 
         // Get the output flow file
-        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).get(0);
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
 
         // Verify attributes
         flowFile.assertAttributeExists("jwt.token");
@@ -96,7 +96,7 @@ class JWTTokenAuthenticatorTest {
         testRunner.assertTransferCount(Relationships.FAILURE, 0);
 
         // Get the output flow file
-        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).get(0);
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
 
         // Verify attributes
         flowFile.assertAttributeExists("jwt.token");
@@ -124,7 +124,7 @@ class JWTTokenAuthenticatorTest {
         testRunner.assertTransferCount(Relationships.FAILURE, 0);
 
         // Get the output flow file
-        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).get(0);
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
 
         // Verify attributes
         flowFile.assertAttributeExists("jwt.token");
@@ -150,7 +150,7 @@ class JWTTokenAuthenticatorTest {
         testRunner.assertTransferCount(Relationships.FAILURE, 1);
 
         // Get the output flow file
-        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.FAILURE).get(0);
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.FAILURE).getFirst();
 
         // Verify attributes
         flowFile.assertAttributeExists("jwt.error.reason");
@@ -181,7 +181,7 @@ class JWTTokenAuthenticatorTest {
         testRunner.assertTransferCount(Relationships.FAILURE, 0);
 
         // Get the output flow file
-        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).get(0);
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
 
         // Verify attributes
         flowFile.assertAttributeExists("jwt.token");

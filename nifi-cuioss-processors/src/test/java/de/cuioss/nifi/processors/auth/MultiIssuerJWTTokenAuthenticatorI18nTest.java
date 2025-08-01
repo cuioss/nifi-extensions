@@ -89,7 +89,7 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
         testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
         MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(
-                Relationships.AUTHENTICATION_FAILED).get(0);
+                Relationships.AUTHENTICATION_FAILED).getFirst();
 
         // Verify error attributes
         String errorReason = flowFile.getAttribute(JWTAttributes.Error.REASON);
@@ -131,7 +131,7 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
         testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
         MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(
-                Relationships.AUTHENTICATION_FAILED).get(0);
+                Relationships.AUTHENTICATION_FAILED).getFirst();
 
         // Verify error attributes
         String errorReason = flowFile.getAttribute(JWTAttributes.Error.REASON);
@@ -171,7 +171,7 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
         testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
         MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(
-                Relationships.AUTHENTICATION_FAILED).get(0);
+                Relationships.AUTHENTICATION_FAILED).getFirst();
 
         // Verify error attributes
         String errorReason = flowFile.getAttribute(JWTAttributes.Error.REASON);
@@ -221,7 +221,7 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
 
             // Then the validation error should be internationalized
             MockFlowFile flowFile = newTestRunner.getFlowFilesForRelationship(
-                    Relationships.AUTHENTICATION_FAILED).get(0);
+                    Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // The processor should still run but validation will fail
             String errorReason = flowFile.getAttribute(JWTAttributes.Error.REASON);

@@ -22,7 +22,6 @@ import org.apache.nifi.processor.Processor;
 import org.apache.nifi.util.MockProcessContext;
 import org.apache.nifi.util.TestRunner;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**

@@ -24,7 +24,10 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
@@ -41,7 +44,7 @@ class AuthorizationValidatorTest {
     }
 
     @Test
-    void testValidateWithNoRequiredScopesOrRoles() {
+    void validateWithNoRequiredScopesOrRoles() {
         // Given
         when(mockToken.getScopes()).thenReturn(Arrays.asList("read", "write"));
         when(mockToken.getRoles()).thenReturn(Arrays.asList("user", "admin"));
@@ -64,7 +67,7 @@ class AuthorizationValidatorTest {
     }
 
     @Test
-    void testValidateWithMatchingScopes() {
+    void validateWithMatchingScopes() {
         // Given
         when(mockToken.getScopes()).thenReturn(Arrays.asList("read", "write"));
         when(mockToken.getRoles()).thenReturn(Collections.emptyList());
@@ -84,7 +87,7 @@ class AuthorizationValidatorTest {
     }
 
     @Test
-    void testValidateWithMissingScopes() {
+    void validateWithMissingScopes() {
         // Given
         when(mockToken.getScopes()).thenReturn(Arrays.asList("read"));
         when(mockToken.getRoles()).thenReturn(Collections.emptyList());
@@ -105,7 +108,7 @@ class AuthorizationValidatorTest {
     }
 
     @Test
-    void testValidateWithMatchingRoles() {
+    void validateWithMatchingRoles() {
         // Given
         when(mockToken.getScopes()).thenReturn(Collections.emptyList());
         when(mockToken.getRoles()).thenReturn(Arrays.asList("user", "admin"));
@@ -125,7 +128,7 @@ class AuthorizationValidatorTest {
     }
 
     @Test
-    void testValidateWithMissingRoles() {
+    void validateWithMissingRoles() {
         // Given
         when(mockToken.getScopes()).thenReturn(Collections.emptyList());
         when(mockToken.getRoles()).thenReturn(Arrays.asList("user"));
@@ -146,7 +149,7 @@ class AuthorizationValidatorTest {
     }
 
     @Test
-    void testValidateWithRequireAllScopes() {
+    void validateWithRequireAllScopes() {
         // Given
         when(mockToken.getScopes()).thenReturn(Arrays.asList("read", "write"));
         when(mockToken.getRoles()).thenReturn(Collections.emptyList());
@@ -168,7 +171,7 @@ class AuthorizationValidatorTest {
     }
 
     @Test
-    void testValidateWithRequireAllRoles() {
+    void validateWithRequireAllRoles() {
         // Given
         when(mockToken.getScopes()).thenReturn(Collections.emptyList());
         when(mockToken.getRoles()).thenReturn(Arrays.asList("user", "moderator"));
@@ -190,7 +193,7 @@ class AuthorizationValidatorTest {
     }
 
     @Test
-    void testValidateWithCaseInsensitiveScopes() {
+    void validateWithCaseInsensitiveScopes() {
         // Given
         when(mockToken.getScopes()).thenReturn(Arrays.asList("READ", "Write"));
         when(mockToken.getRoles()).thenReturn(Collections.emptyList());
@@ -211,7 +214,7 @@ class AuthorizationValidatorTest {
     }
 
     @Test
-    void testValidateWithCaseInsensitiveRoles() {
+    void validateWithCaseInsensitiveRoles() {
         // Given
         when(mockToken.getScopes()).thenReturn(Collections.emptyList());
         when(mockToken.getRoles()).thenReturn(Arrays.asList("USER", "Admin"));
@@ -232,7 +235,7 @@ class AuthorizationValidatorTest {
     }
 
     @Test
-    void testValidateWithBothScopesAndRoles() {
+    void validateWithBothScopesAndRoles() {
         // Given
         when(mockToken.getScopes()).thenReturn(Arrays.asList("read", "write"));
         when(mockToken.getRoles()).thenReturn(Arrays.asList("user"));
@@ -253,7 +256,7 @@ class AuthorizationValidatorTest {
     }
 
     @Test
-    void testValidateWithFailingBothScopesAndRoles() {
+    void validateWithFailingBothScopesAndRoles() {
         // Given
         when(mockToken.getScopes()).thenReturn(Arrays.asList("write"));
         when(mockToken.getRoles()).thenReturn(Arrays.asList("guest"));
@@ -278,7 +281,7 @@ class AuthorizationValidatorTest {
     }
 
     @Test
-    void testValidateWithBypassAuthorization() {
+    void validateWithBypassAuthorization() {
         // Given
         when(mockToken.getScopes()).thenReturn(Collections.emptyList());
         when(mockToken.getRoles()).thenReturn(Collections.emptyList());

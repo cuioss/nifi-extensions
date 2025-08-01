@@ -43,7 +43,7 @@ class DynamicPropertyTestHelperTest {
     }
 
     @Test
-    void testCreateContextWithDynamicProperties() {
+    void createContextWithDynamicProperties() {
         // Set static property
         testRunner.setProperty(TestProcessor.STATIC_PROPERTY, "static-value");
 
@@ -79,7 +79,7 @@ class DynamicPropertyTestHelperTest {
     }
 
     @Test
-    void testSetDynamicProperties() {
+    void setDynamicProperties() {
         // Prepare properties map
         Map<String, String> properties = new HashMap<>();
         properties.put("url", "https://example.com");
@@ -96,7 +96,7 @@ class DynamicPropertyTestHelperTest {
     }
 
     @Test
-    void testSetIssuerProperties() {
+    void setIssuerProperties() {
         // Prepare issuer properties
         Map<String, String> issuerProps = new HashMap<>();
         issuerProps.put("jwks-url", "https://auth.example.com/.well-known/jwks.json");
@@ -119,7 +119,7 @@ class DynamicPropertyTestHelperTest {
     }
 
     @Test
-    void testMultipleIssuersConfiguration() {
+    void multipleIssuersConfiguration() {
         // Configure first issuer
         Map<String, String> issuer1Props = new HashMap<>();
         issuer1Props.put("jwks-url", "https://issuer1.example.com/.well-known/jwks.json");
@@ -142,7 +142,7 @@ class DynamicPropertyTestHelperTest {
     }
 
     @Test
-    void testEmptyPropertiesMap() {
+    void emptyPropertiesMap() {
         // Test with empty map
         Map<String, String> emptyProps = new HashMap<>();
         DynamicPropertyTestHelper.setDynamicProperties(testRunner, "prefix.", emptyProps);
@@ -175,7 +175,7 @@ class DynamicPropertyTestHelperTest {
 
         @Override
         public List<PropertyDescriptor> getSupportedPropertyDescriptors() {
-            return Collections.singletonList(STATIC_PROPERTY);
+            return List.of(STATIC_PROPERTY);
         }
 
         @Override

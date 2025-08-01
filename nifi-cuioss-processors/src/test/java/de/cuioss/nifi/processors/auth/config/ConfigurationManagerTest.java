@@ -57,7 +57,7 @@ class ConfigurationManagerTest {
     }
 
     @Test
-    void testLoadYamlConfiguration() throws IOException {
+    void loadYamlConfiguration() throws IOException {
         // Create a test YAML file
         String yamlContent = """
             jwt:
@@ -108,7 +108,7 @@ class ConfigurationManagerTest {
     }
 
     @Test
-    void testLoadYamlConfigurationWithoutIds() throws IOException {
+    void loadYamlConfigurationWithoutIds() throws IOException {
         // Create a test YAML file without explicit IDs
         String yamlContent = """
             jwt:
@@ -138,7 +138,7 @@ class ConfigurationManagerTest {
     }
 
     @Test
-    void testLoadNestedYamlConfiguration() throws IOException {
+    void loadNestedYamlConfiguration() throws IOException {
         // Create a test YAML file with nested structure
         String yamlContent = """
             jwt:
@@ -167,7 +167,7 @@ class ConfigurationManagerTest {
     }
 
     @Test
-    void testEmptyYamlFile() throws IOException {
+    void emptyYamlFile() throws IOException {
         // Create an empty YAML file
         File yamlFile = tempDir.resolve("empty.yml").toFile();
         Files.writeString(yamlFile.toPath(), "");
@@ -180,7 +180,7 @@ class ConfigurationManagerTest {
     }
 
     @Test
-    void testInvalidYamlFile() throws IOException {
+    void invalidYamlFile() throws IOException {
         // Create an invalid YAML file
         String invalidYaml = """
             jwt:
@@ -202,7 +202,7 @@ class ConfigurationManagerTest {
     }
 
     @Test
-    void testYamlReload() throws IOException {
+    void yamlReload() throws IOException {
         // Create initial YAML file
         String initialYaml = """
             jwt:
@@ -242,7 +242,7 @@ class ConfigurationManagerTest {
     }
 
     @Test
-    void testAlternativeYamlStructure() throws IOException {
+    void alternativeYamlStructure() throws IOException {
         // Test with a flatter YAML structure
         String yamlContent = """
             issuers:
