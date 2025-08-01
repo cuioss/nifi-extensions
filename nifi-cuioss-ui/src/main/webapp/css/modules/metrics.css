@@ -212,3 +212,40 @@
 .metrics-error button {
     margin-top: 20px;
 }
+
+/* Metrics not available state - consistent with error-message styling */
+.metrics-not-available {
+    display: flex;
+    position: relative;
+    padding: 12px 16px;
+    border: 1px solid #fff3e0;
+    color: #f57f17;
+    background-color: #fff3e0;
+    border-radius: 6px;
+    margin: 20px;
+    box-shadow: 0 2px 4px rgb(255 152 0 / 10%);
+    animation: error-slide-in 0.3s ease-out;
+}
+
+.metrics-not-available::before {
+    content: '📊';
+    flex-shrink: 0;
+    font-size: 16px;
+    margin-top: 1px;
+    margin-right: 12px;
+}
+
+.metrics-not-available .error-content {
+    flex: 1;
+}
+
+.metrics-not-available h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.metrics-not-available p {
+    margin: 4px 0;
+    font-size: 14px;
+}

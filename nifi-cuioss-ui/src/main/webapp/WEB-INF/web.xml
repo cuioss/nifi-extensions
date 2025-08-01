@@ -55,6 +55,11 @@
         <filter-name>ApiKeyAuthenticationFilter</filter-name>
         <url-pattern>/api/token/*</url-pattern>
     </filter-mapping>
+    <!-- Mapping for JWT endpoints accessed directly -->
+    <filter-mapping>
+        <filter-name>ApiKeyAuthenticationFilter</filter-name>
+        <url-pattern>/jwt/*</url-pattern>
+    </filter-mapping>
 
     <!-- JWT API Servlets -->
     <servlet>

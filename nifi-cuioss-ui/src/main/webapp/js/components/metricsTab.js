@@ -520,10 +520,13 @@ const showMetricsError = () => {
     const metricsContent = document.getElementById('jwt-metrics-content');
     if (metricsContent) {
         metricsContent.innerHTML = `
-            <div class="metrics-error">
-                <i class="fa fa-exclamation-triangle"></i>
-                <p>Unable to load metrics. Please try again later.</p>
-                <button onclick="location.reload()">Reload Page</button>
+            <div class="error-message server-error">
+                <div class="error-content">
+                    <strong>Error:</strong> Unable to load metrics. Please try again later.
+                </div>
+            </div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn btn-primary" onclick="location.reload()">Reload Page</button>
             </div>
         `;
     }
@@ -536,11 +539,12 @@ const showMetricsNotAvailable = () => {
     const metricsContent = document.getElementById('jwt-metrics-content');
     if (metricsContent) {
         metricsContent.innerHTML = `
-            <div class="metrics-not-available">
-                <i class="fa fa-info-circle"></i>
-                <h3>Metrics Not Available</h3>
-                <p>The metrics endpoint is not currently implemented.</p>
-                <p>Metrics functionality will be available in a future release.</p>
+            <div class="metrics-not-available validation-error">
+                <div class="error-content">
+                    <h3>Metrics Not Available</h3>
+                    <p>The metrics endpoint is not currently implemented.</p>
+                    <p>Metrics functionality will be available in a future release.</p>
+                </div>
             </div>
         `;
     }
