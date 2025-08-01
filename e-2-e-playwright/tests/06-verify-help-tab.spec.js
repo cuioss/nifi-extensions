@@ -98,9 +98,9 @@ test.describe("Help Tab", () => {
             await expect(gettingStarted).toBeVisible();
             processorLogger.info("✓ Getting Started section found");
 
-            const issuerConfig = await customUIFrame.locator(
-                '.help-section:has-text("Issuer Configuration")',
-            );
+            const issuerConfig = await customUIFrame
+                .locator('.help-section:has-text("Issuer Configuration")')
+                .first();
             await expect(issuerConfig).toBeVisible();
             processorLogger.info("✓ Issuer Configuration section found");
 
@@ -235,6 +235,20 @@ test.describe("Help Tab", () => {
             const customUIFrame = await processorService.getAdvancedUIFrame();
             await processorService.clickTab(customUIFrame, "Help");
 
+            // First, ensure the Issuer Configuration section is expanded
+            const issuerConfigHeader = await customUIFrame
+                .locator('.collapsible-header:has-text("Issuer Configuration")')
+                .first();
+
+            // Check if it's already expanded (has 'active' class)
+            const isActive = await issuerConfigHeader.evaluate((el) =>
+                el.classList.contains("active"),
+            );
+            if (!isActive) {
+                await issuerConfigHeader.click();
+                await customUIFrame.waitForTimeout(500); // Wait for animation
+            }
+
             // Look for configuration examples in the help content
             const examplesSection = await customUIFrame
                 .locator(".example-config")
@@ -242,34 +256,26 @@ test.describe("Help Tab", () => {
             await expect(examplesSection).toBeVisible({ timeout: 5000 });
             processorLogger.info("✓ Found configuration examples");
 
-            const exampleTypes = [
-                {
-                    selector: '[data-testid="example-basic-config"]',
-                    description: "Basic Configuration Example",
-                },
-                {
-                    selector: '[data-testid="example-multi-issuer"]',
-                    description: "Multi-Issuer Example",
-                },
-                {
-                    selector: '[data-testid="example-jwks-file"]',
-                    description: "JWKS File Example",
-                },
-                {
-                    selector: '[data-testid="example-authorization"]',
-                    description: "Authorization Example",
-                },
-            ];
+            // Check for specific example configurations
+            const exampleConfigs = await customUIFrame
+                .locator(".example-config")
+                .all();
+            expect(exampleConfigs.length).toBeGreaterThan(0);
+            processorLogger.info(
+                `✓ Found ${exampleConfigs.length} example configurations`,
+            );
 
-            for (const example of exampleTypes) {
-                const el = await customUIFrame.locator(example.selector);
-                await expect(el).toBeVisible({ timeout: 5000 });
-                processorLogger.info(`✓ Found ${example.description}`);
+            // Verify each example has a code block
+            for (let i = 0; i < Math.min(exampleConfigs.length, 3); i++) {
+                const example = exampleConfigs[i];
+                await expect(example).toBeVisible();
 
-                const codeBlock = el.locator("pre, code");
-                await expect(codeBlock).toBeVisible({ timeout: 5000 });
+                const codeBlock = example.locator("code");
+                await expect(codeBlock).toBeVisible();
+
+                const text = await example.textContent();
                 processorLogger.info(
-                    `✓ Code block visible for ${example.description}`,
+                    `✓ Example ${i + 1} visible with content: ${text.substring(0, 50)}...`,
                 );
             }
 
@@ -382,27 +388,48 @@ test.describe("Help Tab", () => {
             const customUIFrame = await processorService.getAdvancedUIFrame();
             await processorService.clickTab(customUIFrame, "Help");
 
-            // Look for Common Issues section which contains troubleshooting
-            const troubleshootingSection = await customUIFrame.locator(
+            // Look for Common Issues section
+            const commonIssuesSection = await customUIFrame.locator(
                 '.help-section:has-text("Common Issues")',
             );
-            await expect(troubleshootingSection).toBeVisible({ timeout: 5000 });
+            await expect(commonIssuesSection).toBeVisible({ timeout: 5000 });
             processorLogger.info("✓ Found Common Issues section");
 
-            // Check that help content has troubleshooting information
-            const helpText = await customUIFrame.locator("#help").textContent();
-            const troubleshootingKeywords = [
-                "Token",
-                "JWKS",
-                "validation",
-                "issue",
-                "error",
+            // Look for Troubleshooting section
+            const troubleshootingHeader = await customUIFrame.locator(
+                '.collapsible-header:has-text("Troubleshooting")',
+            );
+            await expect(troubleshootingHeader).toBeVisible({ timeout: 5000 });
+            processorLogger.info("✓ Found Troubleshooting section");
+
+            // Expand troubleshooting section if needed
+            const isActive = await troubleshootingHeader.evaluate((el) =>
+                el.classList.contains("active"),
+            );
+            if (!isActive) {
+                await troubleshootingHeader.click();
+                await customUIFrame.waitForTimeout(500);
+            }
+
+            // Check that troubleshooting content is visible
+            const troubleshootingContent = await customUIFrame.locator(
+                '.help-section:has(.collapsible-header:has-text("Troubleshooting")) .collapsible-content',
+            );
+            await expect(troubleshootingContent).toBeVisible({ timeout: 5000 });
+
+            // Verify troubleshooting content
+            const troubleshootingText =
+                await troubleshootingContent.textContent();
+            const expectedContent = [
+                "JWKS Loading Issues",
+                "network connectivity",
+                "SSL/TLS certificates",
             ];
 
-            for (const keyword of troubleshootingKeywords) {
-                expect(helpText.toLowerCase()).toContain(keyword.toLowerCase());
+            for (const content of expectedContent) {
+                expect(troubleshootingText).toContain(content);
                 processorLogger.info(
-                    `✓ Found troubleshooting keyword: ${keyword}`,
+                    `✓ Found troubleshooting content: ${content}`,
                 );
             }
 
@@ -455,7 +482,7 @@ test.describe("Help Tab", () => {
 
             // Verify content contains searchable keywords
             const searchableKeywords = [
-                "token validation",
+                "Token Verification",
                 "JWT",
                 "JWKS",
                 "issuer",

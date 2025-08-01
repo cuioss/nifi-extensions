@@ -17,6 +17,9 @@ import { getSecurityMetrics } from '../services/apiClient.js';
 
 const logger = createLogger('MetricsTab');
 
+// Store last metrics data for export
+let lastMetricsData = null;
+
 /**
  * Formats a decimal number as a percentage
  * @param {number} value - Decimal value (e.g., 0.95 for 95%)
@@ -265,8 +268,78 @@ const handleExportClick = () => {
  */
 const handleExport = (format) => {
     logger.info(`Exporting metrics in ${format} format`);
-    // In a real implementation, this would export the metrics data
-    // For now, just log the action
+
+    // Get current metrics data
+    const metricsData = {
+        timestamp: new Date().toISOString(),
+        totalValidations: document.getElementById('total-validations')?.textContent || '0',
+        successRate: document.getElementById('success-rate')?.textContent || '0%',
+        failureRate: document.getElementById('failure-rate')?.textContent || '0%',
+        activeIssuers: document.getElementById('active-issuers')?.textContent || '0',
+        avgResponseTime: document.getElementById('avg-response-time')?.textContent || '0 ms',
+        minResponseTime: document.getElementById('min-response-time')?.textContent || '0 ms',
+        maxResponseTime: document.getElementById('max-response-time')?.textContent || '0 ms',
+        p95ResponseTime: document.getElementById('p95-response-time')?.textContent || '0 ms',
+        lastMetricsData: lastMetricsData
+    };
+
+    let content = '';
+    let mimeType = '';
+    let filename = '';
+
+    switch (format) {
+        case 'json':
+            content = JSON.stringify(metricsData, null, 2);
+            mimeType = 'application/json';
+            filename = `jwt-metrics-${Date.now()}.json`;
+            break;
+
+        case 'csv':
+            content = 'Metric,Value\n';
+            content += `Timestamp,${metricsData.timestamp}\n`;
+            content += `Total Validations,${metricsData.totalValidations}\n`;
+            content += `Success Rate,${metricsData.successRate}\n`;
+            content += `Failure Rate,${metricsData.failureRate}\n`;
+            content += `Active Issuers,${metricsData.activeIssuers}\n`;
+            content += `Average Response Time,${metricsData.avgResponseTime}\n`;
+            content += `Min Response Time,${metricsData.minResponseTime}\n`;
+            content += `Max Response Time,${metricsData.maxResponseTime}\n`;
+            content += `P95 Response Time,${metricsData.p95ResponseTime}\n`;
+            mimeType = 'text/csv';
+            filename = `jwt-metrics-${Date.now()}.csv`;
+            break;
+
+        case 'prometheus':
+            content = '# HELP jwt_total_validations Total number of JWT validations\n';
+            content += '# TYPE jwt_total_validations counter\n';
+            content += `jwt_total_validations ${metricsData.totalValidations.replace(/,/g, '')}\n\n`;
+            content += '# HELP jwt_success_rate JWT validation success rate\n';
+            content += '# TYPE jwt_success_rate gauge\n';
+            content += `jwt_success_rate ${parseFloat(metricsData.successRate) / 100}\n\n`;
+            content += '# HELP jwt_active_issuers Number of active JWT issuers\n';
+            content += '# TYPE jwt_active_issuers gauge\n';
+            content += `jwt_active_issuers ${metricsData.activeIssuers}\n`;
+            mimeType = 'text/plain';
+            filename = `jwt-metrics-${Date.now()}.txt`;
+            break;
+
+        default:
+            logger.error(`Unknown export format: ${format}`);
+            return;
+    }
+
+    // Create and trigger download
+    const blob = new Blob([content], { type: mimeType });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+
+    logger.info(`Exported metrics as ${filename}`);
 };
 
 /**
@@ -348,6 +421,9 @@ const fetchMetricsData = async () => {
  * @param {Object} data - Metrics data
  */
 const updateMetricsDisplay = (data) => {
+    // Store the data for export
+    lastMetricsData = data;
+
     // Update summary metrics
     const totalValidationsEl = document.getElementById('total-validations');
     if (totalValidationsEl) totalValidationsEl.textContent = formatNumber(data.totalValidations);
