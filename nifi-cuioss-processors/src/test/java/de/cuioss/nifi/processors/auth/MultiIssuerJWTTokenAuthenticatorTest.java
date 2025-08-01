@@ -28,12 +28,15 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
 import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.*;
 import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Properties;
 import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Test class for {@link MultiIssuerJWTTokenAuthenticator}.
@@ -741,6 +744,114 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Verify error attributes are present
             flowFile.assertAttributeExists("jwt.error.reason");
             flowFile.assertAttributeExists("jwt.error.code");
+        }
+    }
+    
+    @Nested
+    @DisplayName("API Key Management Tests")
+    class ApiKeyManagementTests {
+
+        @Test
+        @DisplayName("Test API key generation on processor initialization")
+        void apiKeyGenerationOnInitialization() {
+            try {
+                // Clear any existing API keys using reflection
+                Class<?> apiKeyFilterClass = Class.forName("de.cuioss.nifi.ui.servlets.ApiKeyAuthenticationFilter");
+                Method clearAllApiKeysMethod = apiKeyFilterClass.getMethod("clearAllApiKeys");
+                clearAllApiKeysMethod.invoke(null);
+                
+                // Get the processor identifier (this will be set after init)
+                testRunner.run(0); // Initialize processor without running
+                
+                // Verify API key was generated
+                String processorId = processor.getIdentifier();
+                assertNotNull(processorId, "Processor ID should not be null");
+                
+                Method hasApiKeyMethod = apiKeyFilterClass.getMethod("hasApiKeyForProcessor", String.class);
+                boolean hasApiKey = (Boolean) hasApiKeyMethod.invoke(null, processorId);
+                assertTrue(hasApiKey, "API key should exist for processor");
+                
+                Method getApiKeyMethod = apiKeyFilterClass.getMethod("getApiKeyForProcessor", String.class);
+                String apiKey = (String) getApiKeyMethod.invoke(null, processorId);
+                assertNotNull(apiKey, "API key should not be null");
+                assertFalse(apiKey.isEmpty(), "API key should not be empty");
+            } catch (ClassNotFoundException e) {
+                // Skip test if UI module not available
+                assumeTrue(false, "Skipping test - UI module not available");
+            } catch (Exception e) {
+                fail("Failed to test API key generation: " + e.getMessage());
+            }
+        }
+
+        @Test
+        @DisplayName("Test API key cleanup on processor stop")
+        void apiKeyCleanupOnStop() {
+            try {
+                Class<?> apiKeyFilterClass = Class.forName("de.cuioss.nifi.ui.servlets.ApiKeyAuthenticationFilter");
+                Method hasApiKeyMethod = apiKeyFilterClass.getMethod("hasApiKeyForProcessor", String.class);
+                
+                // Initialize processor and verify API key exists
+                testRunner.run(0);
+                
+                String processorId = processor.getIdentifier();
+                boolean hasApiKey = (Boolean) hasApiKeyMethod.invoke(null, processorId);
+                assertTrue(hasApiKey, "API key should exist before stopping");
+                
+                // Stop the processor
+                testRunner.shutdown();
+                
+                // Verify API key is cleaned up
+                boolean hasApiKeyAfterStop = (Boolean) hasApiKeyMethod.invoke(null, processorId);
+                assertFalse(hasApiKeyAfterStop, "API key should be removed after stopping processor");
+            } catch (ClassNotFoundException e) {
+                // Skip test if UI module not available
+                assumeTrue(false, "Skipping test - UI module not available");
+            } catch (Exception e) {
+                fail("Failed to test API key cleanup: " + e.getMessage());
+            }
+        }
+
+        @Test
+        @DisplayName("Test API key generation with multiple processor instances")
+        void apiKeyGenerationWithMultipleInstances() {
+            try {
+                Class<?> apiKeyFilterClass = Class.forName("de.cuioss.nifi.ui.servlets.ApiKeyAuthenticationFilter");
+                Method clearAllApiKeysMethod = apiKeyFilterClass.getMethod("clearAllApiKeys");
+                Method getApiKeyMethod = apiKeyFilterClass.getMethod("getApiKeyForProcessor", String.class);
+                
+                // Clear any existing API keys
+                clearAllApiKeysMethod.invoke(null);
+                
+                // Create second processor instance
+                MultiIssuerJWTTokenAuthenticator processor2 = new MultiIssuerJWTTokenAuthenticator();
+                TestRunner testRunner2 = TestRunners.newTestRunner(processor2);
+                testRunner2.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
+                
+                // Initialize both processors
+                testRunner.run(0);
+                testRunner2.run(0);
+                
+                // Verify both have different API keys
+                String processorId1 = processor.getIdentifier();
+                String processorId2 = processor2.getIdentifier();
+                
+                assertNotEquals(processorId1, processorId2, "Processor IDs should be different");
+                
+                String apiKey1 = (String) getApiKeyMethod.invoke(null, processorId1);
+                String apiKey2 = (String) getApiKeyMethod.invoke(null, processorId2);
+                
+                assertNotNull(apiKey1, "First processor API key should not be null");
+                assertNotNull(apiKey2, "Second processor API key should not be null");
+                assertNotEquals(apiKey1, apiKey2, "API keys should be different");
+                
+                // Clean up
+                testRunner2.shutdown();
+            } catch (ClassNotFoundException e) {
+                // Skip test if UI module not available
+                assumeTrue(false, "Skipping test - UI module not available");
+            } catch (Exception e) {
+                fail("Failed to test multiple processor instances: " + e.getMessage());
+            }
         }
     }
 }
