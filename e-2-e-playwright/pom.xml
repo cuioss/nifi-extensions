@@ -80,6 +80,22 @@
                             <skip>${skip.lint}</skip>
                         </configuration>
                     </execution>
+                    <!-- Run accessibility tests during pre-commit checks -->
+                    <execution>
+                        <id>accessibility-tests</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>test</phase>
+                        <configuration>
+                            <arguments>run test:a11y:quick</arguments>
+                            <environmentVariables>
+                                <PLAYWRIGHT_BASE_URL>${nifi.base.url}</PLAYWRIGHT_BASE_URL>
+                                <PLAYWRIGHT_KEYCLOAK_URL>${keycloak.url}</PLAYWRIGHT_KEYCLOAK_URL>
+                            </environmentVariables>
+                            <skip>${skip.lint}</skip> <!-- Skip accessibility tests when linting is skipped -->
+                        </configuration>
+                    </execution>
                     <!-- Run Playwright tests (only active when integration-tests profile is enabled) -->
                     <execution>
                         <id>playwright-tests</id>
@@ -89,6 +105,22 @@
                         <phase>integration-test</phase>
                         <configuration>
                             <arguments>run playwright:test</arguments>
+                            <environmentVariables>
+                                <PLAYWRIGHT_BASE_URL>${nifi.base.url}</PLAYWRIGHT_BASE_URL>
+                                <PLAYWRIGHT_KEYCLOAK_URL>${keycloak.url}</PLAYWRIGHT_KEYCLOAK_URL>
+                            </environmentVariables>
+                            <skip>${skipPlaywrightTests}</skip>
+                        </configuration>
+                    </execution>
+                    <!-- Run full accessibility tests during integration testing -->
+                    <execution>
+                        <id>accessibility-tests-full</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>integration-test</phase>
+                        <configuration>
+                            <arguments>run test:a11y:full</arguments>
                             <environmentVariables>
                                 <PLAYWRIGHT_BASE_URL>${nifi.base.url}</PLAYWRIGHT_BASE_URL>
                                 <PLAYWRIGHT_KEYCLOAK_URL>${keycloak.url}</PLAYWRIGHT_KEYCLOAK_URL>

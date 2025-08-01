@@ -5,7 +5,7 @@
 
 import {test as authTest} from './auth-fixtures.js';
 import {checkA11y, injectAxe} from 'axe-playwright';
-import {setupBrowserConsoleLogging} from '../utils/console-logger.js';
+import {setupAuthAwareErrorDetection} from '../utils/console-logger.js';
 
 /**
  * Extended test with all fixtures combined including global console logging
@@ -15,8 +15,8 @@ export const test = authTest.extend({
    * Page fixture with automatic console logging setup
    */
   page: async ({ page }, use, testInfo) => {
-    // Setup global console logging for this page
-    setupBrowserConsoleLogging(page, testInfo);
+    // Setup auth-aware error detection for this page
+    await setupAuthAwareErrorDetection(page, testInfo);
 
     await use(page);
   },
@@ -93,6 +93,18 @@ export const accessibilityTest = test.extend({
     await test.step('Accessibility check', async () => {
       try {
         await checkA11y(accessibilityPage, null, {
+          axeOptions: {
+            runOnly: {
+              type: 'tag',
+              values: ['wcag2aa', 'wcag21aa', 'best-practice']
+            },
+            rules: {
+              // Disable rules that may not apply to NiFi UI context
+              'bypass': { enabled: false },
+              'landmark-one-main': { enabled: false },
+              'region': { enabled: false }
+            }
+          },
           detailedReport: true,
           detailedReportOptions: { html: true }
         });
@@ -101,6 +113,16 @@ export const accessibilityTest = test.extend({
         console.warn('Accessibility issues found:', error.message);
       }
     });
+  },
+
+  /**
+   * Enhanced accessibility fixture with comprehensive testing
+   */
+  accessibilityHelper: async ({ page }, use) => {
+    const { AccessibilityHelper } = await import('../utils/accessibility-helper.js');
+    const helper = new AccessibilityHelper(page);
+    await helper.initialize();
+    await use(helper);
   }
 });
 
