@@ -120,11 +120,17 @@ Remaining Areas:
   - **TEST VERIFICATION**: Manual JavaScript injection test demonstrates perfect functionality - dropdown is visible, selectable, and JWKS validation works without authentication errors
   - **REMAINING WORK**: Need to resolve JavaScript module loading issue to make fix permanent in codebase
 
-==== Skipped Test: Token Expiration Display
-* [ ] **Implement Token Expiration Status Display** - The UI should properly display token expiration status
-  - When an expired token is verified, the UI should show clear expiration messaging
-  - Test: `should display token expiration information` in `05-verify-all-tab-content-display.spec.js`
-  - Expected: Clear visual indication when a token has expired
+==== ✅ COMPLETED: Token Expiration Display
+* [x] **Implemented Token Expiration Status Display** - The UI now properly displays token expiration status
+  - **SOLUTION**: Enhanced token verification UI to prioritize expiration status with dedicated styling
+  - **IMPLEMENTATION COMPLETED**:
+    - Added `.verification-status.expired` CSS class with warning color scheme (amber/yellow)
+    - Modified `_displayVerificationResults` to check token expiration before validation
+    - Added dedicated expiration status with clock icon and "Token has expired" message
+    - Added i18n support for expiration messages in English and German
+    - Enhanced visual hierarchy with clear expiration labels
+  - **TEST VERIFICATION**: E2E test `should display token expiration status` now passes successfully
+  - **USER EXPERIENCE**: Expired tokens immediately show warning status with expiration date highlighted
 
 ==== Skipped Test: JWKS Validation Progress
 * [ ] **Fix JWKS Validation Progress Indicator** - The progress indicator during JWKS validation is not showing
@@ -166,38 +172,7 @@ Remaining Areas:
   - Fix dependency convergence issues
   - Ensure all dependencies are properly aligned
 
-=== 🟡 Medium Priority - Performance & Operations
-
-==== Performance Optimizations
-* [ ] **JWKS Caching** - Implement TTL-based cache for JWKS responses
-  - Reduce network calls to JWKS endpoints
-  - Add configurable cache TTL property
-  - Implement cache invalidation mechanism
-  
-* [ ] **Token Validation Cache** - Cache validation results for repeated tokens
-  - Implement LRU cache with configurable size
-  - Add cache hit/miss metrics
-  - Ensure proper cache invalidation on configuration changes
-
-==== Operational Improvements
-* [ ] **Structured Logging** - Standardize log output format
-  - Implement JSON logging for better parsing
-  - Add correlation IDs for request tracking
-  - Ensure sensitive data is not logged
-
 === 🟢 Low Priority - Documentation & Examples
-
-==== Documentation
-* [ ] **Integration Patterns** - Document common integration scenarios
-  - API Gateway integration example
-  - Service-to-service authentication pattern
-  - Multi-tenant routing configuration
-  - Kubernetes deployment guide
-
-* [ ] **Integration Testing Guide** - Document test setup and execution
-  - Docker Compose configuration for Keycloak
-  - E2E test execution guide
-  - Troubleshooting common issues
 
 ==== Accessibility
 * [ ] **WCAG Compliance** - Enhance accessibility testing

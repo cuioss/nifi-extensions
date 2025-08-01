@@ -149,3 +149,85 @@
 .token-error-category {
     margin-top: 5px;
 }
+
+/* Token expiration status styling */
+.verification-status {
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.verification-status.valid {
+    background-color: rgba(40, 167, 69, 0.1);
+    border: 1px solid #28a745;
+    color: #28a745;
+}
+
+.verification-status.invalid {
+    background-color: rgba(220, 53, 69, 0.1);
+    border: 1px solid #dc3545;
+    color: #dc3545;
+}
+
+.verification-status.expired {
+    background-color: rgba(255, 193, 7, 0.1);
+    border: 1px solid #ffc107;
+    color: #d39e00;
+}
+
+.verification-status i {
+    font-size: 20px;
+}
+
+/* Token expiration styling in claims */
+.claim.expired {
+    background-color: rgba(255, 193, 7, 0.1);
+    padding: 8px;
+    border-radius: 3px;
+    border-left: 4px solid #ffc107;
+}
+
+.expired-label {
+    color: #d39e00;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-left: 10px;
+}
+
+/* Token section styling */
+.token-section {
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: var(--background-color);
+    border-radius: 5px;
+}
+
+.token-section h4 {
+    margin: 0 0 10px 0;
+    color: var(--primary-color);
+}
+
+.token-claims {
+    margin-top: 15px;
+}
+
+.token-claims .claim {
+    margin-bottom: 8px;
+    padding: 5px;
+    border-radius: 3px;
+}
+
+/* Verification error styling */
+.verification-error {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: rgba(220, 53, 69, 0.1);
+    border: 1px solid #dc3545;
+    border-radius: 5px;
+    color: #dc3545;
+}

@@ -179,15 +179,30 @@ const _initializeTokenVerifier = async (element, callback) => {
  * @private
  */
 const _displayVerificationResults = (result, container, i18n) => {
-    const isValid = result.valid === true;
-    const statusClass = isValid ? 'valid' : 'invalid';
-    const statusText = isValid
-        ? (i18n['processor.jwt.tokenValid'] || 'Token is valid')
-        : (i18n['processor.jwt.tokenInvalid'] || 'Token is invalid');
+    // Check if token is expired first
+    let isExpired = false;
+    if (result.decoded && result.decoded.payload && result.decoded.payload.exp) {
+        const expDate = new Date(result.decoded.payload.exp * 1000);
+        isExpired = expDate < new Date();
+    }
+
+    const statusClass = isExpired ? 'expired' : (result.valid ? 'valid' : 'invalid');
+    let statusText;
+    let statusIcon;
+    if (isExpired) {
+        statusText = i18n['processor.jwt.tokenExpired'] || 'Token has expired';
+        statusIcon = 'fa-clock';
+    } else if (result.valid) {
+        statusText = i18n['processor.jwt.tokenValid'] || 'Token is valid';
+        statusIcon = 'fa-check-circle';
+    } else {
+        statusText = i18n['processor.jwt.tokenInvalid'] || 'Token is invalid';
+        statusIcon = 'fa-times-circle';
+    }
 
     let html = `
         <div class="verification-status ${statusClass}">
-            <i class="fa ${isValid ? 'fa-check-circle' : 'fa-times-circle'}"></i>
+            <i class="fa ${statusIcon}"></i>
             <span>${statusText}</span>
         </div>
     `;
