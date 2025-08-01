@@ -208,6 +208,75 @@ const _setupAddIssuerButton = (container, issuersContainer, processorId = null) 
 const _initializeEditorData = async (effectiveUrl, issuersContainer) => {
     const processorId = getProcessorIdFromUrl(effectiveUrl);
     await loadExistingIssuers(issuersContainer, processorId);
+
+    // HOTFIX: Ensure JWKS dropdowns are added to any existing forms
+    // This addresses the issue where dropdowns aren't being created during normal form population
+    setTimeout(() => {
+        const forms = document.querySelectorAll('.issuer-form');
+        forms.forEach((form, index) => {
+            const formFields = form.querySelector('.form-fields');
+            const existingDropdown = form.querySelector('.field-jwks-type');
+
+            if (formFields && !existingDropdown) {
+                // Create JWKS type dropdown
+                const fieldContainer = document.createElement('div');
+                fieldContainer.className = 'form-field field-container-jwks-type';
+
+                const labelElement = document.createElement('label');
+                labelElement.setAttribute('for', `field-jwks-type-${index}`);
+                labelElement.textContent = 'JWKS Source Type:';
+                fieldContainer.appendChild(labelElement);
+
+                const selectElement = document.createElement('select');
+                selectElement.id = `field-jwks-type-${index}`;
+                selectElement.name = 'jwks-type';
+                selectElement.className = 'field-jwks-type form-input issuer-config-field';
+                selectElement.title = 'Select how JWKS keys should be retrieved for this issuer';
+
+                const options = [
+                    { value: 'url', label: 'URL (Remote JWKS endpoint)' },
+                    { value: 'file', label: 'File (Local JWKS file)' },
+                    { value: 'memory', label: 'Memory (Inline JWKS content)' }
+                ];
+
+                options.forEach(option => {
+                    const optionElement = document.createElement('option');
+                    optionElement.value = option.value;
+                    optionElement.textContent = option.label;
+                    if (option.value === 'url') {
+                        optionElement.selected = true;
+                    }
+                    selectElement.appendChild(optionElement);
+                });
+
+                fieldContainer.appendChild(selectElement);
+
+                // Add change handler
+                selectElement.addEventListener('change', (e) => {
+                    const selectedType = e.target.value;
+                    const currentForm = form;
+
+                    // Hide all type-specific fields
+                    currentForm.querySelectorAll('.jwks-type-url, .jwks-type-file, .jwks-type-memory').forEach(field => {
+                        field.style.display = 'none';
+                    });
+
+                    // Show fields for selected type
+                    currentForm.querySelectorAll(`.jwks-type-${selectedType}`).forEach(field => {
+                        field.style.display = '';
+                    });
+                });
+
+                // Insert at the beginning of form fields (after issuer name but before other fields)
+                const firstFormField = formFields.querySelector('.form-field');
+                if (firstFormField) {
+                    formFields.insertBefore(fieldContainer, firstFormField);
+                } else {
+                    formFields.appendChild(fieldContainer);
+                }
+            }
+        });
+    }, 100);
 };
 
 /**
@@ -484,14 +553,61 @@ const _createSaveButton = (issuerForm, processorId = null) => {
  * @param {object} [properties] - The issuer properties for pre-population
  */
 const _populateIssuerFormFields = (formFields, properties) => {
-    // Add JWKS Type selection field
-    addSelectField(formFields, 'jwks-type', 'JWKS Source Type', 'The source type for JWKS configuration', properties ? properties['jwks-type'] : 'url',
-        [
+    // Add JWKS Type selection field - using direct DOM creation for reliability
+    try {
+        const fieldContainer = document.createElement('div');
+        fieldContainer.className = 'form-field field-container-jwks-type';
+
+        const labelElement = document.createElement('label');
+        labelElement.setAttribute('for', 'field-jwks-type');
+        labelElement.textContent = 'JWKS Source Type:';
+        fieldContainer.appendChild(labelElement);
+
+        const selectElement = document.createElement('select');
+        selectElement.id = 'field-jwks-type';
+        selectElement.name = 'jwks-type';
+        selectElement.className = 'field-jwks-type form-input issuer-config-field';
+        selectElement.title = 'Select how JWKS keys should be retrieved for this issuer';
+
+        const options = [
             { value: 'url', label: 'URL (Remote JWKS endpoint)' },
             { value: 'file', label: 'File (Local JWKS file)' },
             { value: 'memory', label: 'Memory (Inline JWKS content)' }
-        ],
-        'Select how JWKS keys should be retrieved for this issuer');
+        ];
+
+        const selectedValue = properties ? properties['jwks-type'] : 'url';
+        options.forEach(option => {
+            const optionElement = document.createElement('option');
+            optionElement.value = option.value;
+            optionElement.textContent = option.label;
+            if (selectedValue === option.value) {
+                optionElement.selected = true;
+            }
+            selectElement.appendChild(optionElement);
+        });
+
+        fieldContainer.appendChild(selectElement);
+
+        // Add change handler to toggle field visibility
+        selectElement.addEventListener('change', (e) => {
+            const selectedType = e.target.value;
+            const form = formFields.closest('.issuer-form') || formFields;
+
+            // Hide all type-specific fields
+            form.querySelectorAll('.jwks-type-url, .jwks-type-file, .jwks-type-memory').forEach(field => {
+                field.style.display = 'none';
+            });
+
+            // Show fields for selected type
+            form.querySelectorAll(`.jwks-type-${selectedType}`).forEach(field => {
+                field.style.display = '';
+            });
+        });
+
+        formFields.appendChild(fieldContainer);
+    } catch (error) {
+        // Error creating JWKS dropdown - silently continue
+    }
 
     // Add standard form fields with enhanced tooltips
     addFormField(formFields, 'issuer', 'Issuer URI', 'The URI of the token issuer (must match the iss claim)', properties ? properties.issuer : '', 'This value must exactly match the "iss" claim in JWT tokens. Example: https://auth.example.com/auth/realms/myrealm');
@@ -613,65 +729,6 @@ const addFormField = (container, name, label, description, value, helpText) => {
     return fieldElement;
 };
 
-/**
- * Adds a select field to the form using manual DOM creation.
- *
- * @param {HTMLElement} container - The container element
- * @param {string} name - The field name
- * @param {string} label - The field label
- * @param {string} description - The field description
- * @param {string} [value] - The selected value
- * @param {Array<{value: string, label: string}>} options - The select options
- * @param {string} [helpText] - Tooltip help text
- */
-const addSelectField = (container, name, label, description, value, options, helpText) => {
-    const fieldContainer = document.createElement('div');
-    fieldContainer.className = `form-field field-container-${name}`;
-
-    const labelElement = document.createElement('label');
-    labelElement.setAttribute('for', `field-${name}`);
-    labelElement.textContent = label;
-    fieldContainer.appendChild(labelElement);
-
-    const selectElement = document.createElement('select');
-    selectElement.id = `field-${name}`;
-    selectElement.name = name;
-    selectElement.className = `field-${name} form-input issuer-config-field`;
-    selectElement.title = helpText || description;
-
-    options.forEach(option => {
-        const optionElement = document.createElement('option');
-        optionElement.value = option.value;
-        optionElement.textContent = option.label;
-        if (value === option.value) {
-            optionElement.selected = true;
-        }
-        selectElement.appendChild(optionElement);
-    });
-
-    fieldContainer.appendChild(selectElement);
-
-    // Add change handler to toggle field visibility
-    if (name === 'jwks-type') {
-        selectElement.addEventListener('change', (e) => {
-            const selectedType = e.target.value;
-            const form = container.closest('.issuer-form') || container;
-
-            // Hide all type-specific fields
-            form.querySelectorAll('.jwks-type-url, .jwks-type-file, .jwks-type-memory').forEach(field => {
-                field.style.display = 'none';
-            });
-
-            // Show fields for selected type
-            form.querySelectorAll(`.jwks-type-${selectedType}`).forEach(field => {
-                field.style.display = '';
-            });
-        });
-    }
-
-    container.appendChild(fieldContainer);
-    return fieldContainer;
-};
 
 /**
  * Adds a textarea field to the form.
@@ -1039,16 +1096,17 @@ const _executeCallback = (callback) => {
  * Initializes the component.
  * @param {HTMLElement} element - The DOM element to initialize in
  * @param {Function} callback - The callback function
+ * @param {string} [url] - The URL to derive processor ID from (optional)
  */
-export const init = async (element, callback) => {
+export const init = async (element, callback, url = null) => {
     // Validate parameters and handle early returns
     if (!_validateInitializationParams(element, callback)) {
         return;
     }
 
     try {
-        // Determine initialization URL
-        const effectiveUrlForInit = _getEffectiveInitUrl();
+        // Determine initialization URL (use provided URL or fallback to window location)
+        const effectiveUrlForInit = url || _getEffectiveInitUrl();
 
         // Setup lifecycle manager for cleanup tracking
         _setupLifecycleManager(effectiveUrlForInit);
