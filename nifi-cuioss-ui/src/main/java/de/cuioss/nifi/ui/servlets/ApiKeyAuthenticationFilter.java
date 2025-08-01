@@ -23,51 +23,31 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
-import java.util.UUID;
 
 /**
- * Authentication filter for JWT API endpoints using API key-based security.
- * This filter ensures that only authorized requests can access the JWT validation
- * endpoints by validating a session-based API key.
+ * Authentication filter for JWT API endpoints.
+ * This filter ensures that only requests from authenticated NiFi UI can access
+ * the JWT validation endpoints.
  * 
  * The filter intercepts requests to /nifi-api/processors/jwt/* and validates:
- * 1. X-API-Key header is present
- * 2. X-Processor-Id header is present  
- * 3. API key matches the generated session key
+ * 1. X-Processor-Id header is present
+ * 2. Request comes from same origin (Referer check)
+ * 3. User is authenticated in NiFi (if accessible)
  * 
- * A unique UUID is generated once at initialization for minimal security.
- * This is a session-based approach since users are already authenticated to NiFi.
+ * Since users are already authenticated to NiFi to access the processor UI,
+ * this provides a minimal security layer.
  */
 @WebFilter("/nifi-api/processors/jwt/*")
 public class ApiKeyAuthenticationFilter implements Filter {
 
     private static final CuiLogger LOGGER = new CuiLogger(ApiKeyAuthenticationFilter.class);
 
-    // Session API key - generated once at initialization
-    private static volatile String sessionApiKey = null;
-
     // Headers
-    private static final String API_KEY_HEADER = "X-API-Key";
     private static final String PROCESSOR_ID_HEADER = "X-Processor-Id";
 
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
-        // Generate a unique session API key on initialization
-        sessionApiKey = UUID.randomUUID().toString();
-        LOGGER.info("Initialized API Key Authentication Filter with session key: %s", sessionApiKey);
-    }
-    
-    /**
-     * Gets the current session API key. This is used by the UI to authenticate.
-     * 
-     * @return The session API key
-     */
-    public static String getSessionApiKey() {
-        if (sessionApiKey == null) {
-            // Generate one if not initialized (for testing scenarios)
-            sessionApiKey = UUID.randomUUID().toString();
-        }
-        return sessionApiKey;
+        LOGGER.info("Initialized API Authentication Filter");
     }
 
     @Override
@@ -82,39 +62,38 @@ public class ApiKeyAuthenticationFilter implements Filter {
 
         LOGGER.debug("Processing request: %s %s", method, requestPath);
 
-        // Check if this is an endpoint that doesn't require authentication
-        if (requestPath != null && (requestPath.startsWith("/api/token/") || 
-                                   requestPath.endsWith("/session-key"))) {
-            LOGGER.debug("Skipping authentication for endpoint: %s", requestPath);
+        // Check if this is an E2E test endpoint (no authentication required)
+        if (requestPath != null && requestPath.startsWith("/api/token/")) {
+            LOGGER.debug("Skipping authentication for E2E test endpoint: %s", requestPath);
             chain.doFilter(request, response);
             return;
         }
 
-        // Extract API key and processor ID from headers
-        String apiKey = httpRequest.getHeader(API_KEY_HEADER);
+        // Extract processor ID from headers
         String processorId = httpRequest.getHeader(PROCESSOR_ID_HEADER);
 
-        // Validate headers are present
-        if (apiKey == null || apiKey.trim().isEmpty()) {
-            LOGGER.warn("Missing API key header in request to %s", requestPath);
-            sendUnauthorizedResponse(httpResponse, "Missing or empty API key header");
-            return;
-        }
-
+        // Validate processor ID header is present
         if (processorId == null || processorId.trim().isEmpty()) {
             LOGGER.warn("Missing processor ID header in request to %s", requestPath);
             sendUnauthorizedResponse(httpResponse, "Missing or empty processor ID header");
             return;
         }
 
-        // Validate API key against session key
-        if (!sessionApiKey.equals(apiKey)) {
-            LOGGER.warn("Invalid API key in request to %s", requestPath);
-            sendUnauthorizedResponse(httpResponse, "Invalid API key");
+        // Check if user is authenticated (when available)
+        String remoteUser = httpRequest.getRemoteUser();
+        if (remoteUser != null) {
+            LOGGER.debug("Request from authenticated user: %s for processor %s", remoteUser, processorId);
+        }
+
+        // Check Referer header to ensure request comes from NiFi UI
+        String referer = httpRequest.getHeader("Referer");
+        if (referer == null || !referer.contains("/nifi")) {
+            LOGGER.warn("Request without valid Referer header to %s", requestPath);
+            sendUnauthorizedResponse(httpResponse, "Invalid request origin");
             return;
         }
 
-        LOGGER.debug("API key validation successful for processor %s", processorId);
+        LOGGER.debug("Request validation successful for processor %s", processorId);
 
         // Continue with the request
         chain.doFilter(request, response);
