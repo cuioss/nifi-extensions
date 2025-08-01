@@ -61,6 +61,8 @@ export const I18nKeys = Object.freeze({
     JWKS_VALIDATION_ERROR: 'jwks.validation.error',
     PROCESSOR_JWT_FAILED: 'processor.jwt.failed',
     PROCESSOR_JWT_OK: 'processor.jwt.ok',
+    PROCESSOR_JWT_TESTING: 'processor.jwt.testing',
+    PROCESSOR_JWT_TEST_CONNECTION: 'processor.jwt.testConnection',
 
     // Issuer Configuration
     ISSUER_CONFIG_TITLE: 'issuer.config.title',

@@ -52,6 +52,8 @@ const translations = {
         'jwks.validation.error': 'JWKS URL is invalid',
         'processor.jwt.failed': 'Failed',
         'processor.jwt.ok': 'OK',
+        'processor.jwt.testing': 'Testing...',
+        'processor.jwt.testConnection': 'Test Connection',
 
         // Issuer Configuration
         'issuer.config.title': 'Issuer Configuration',
@@ -116,6 +118,8 @@ const translations = {
         'jwks.validation.error': 'JWKS-URL ist ungültig',
         'processor.jwt.failed': 'Fehler',
         'processor.jwt.ok': 'OK',
+        'processor.jwt.testing': 'Wird getestet...',
+        'processor.jwt.testConnection': 'Verbindung testen',
 
         // Issuer Configuration
         'issuer.config.title': 'Aussteller-Konfiguration',
@@ -224,5 +228,8 @@ export const translate = function (key, params) {
 
 // Initialize the language based on browser preference
 setLanguage(detectBrowserLanguage());
+
+// Export translations for testing purposes
+export const getTranslations = () => translations;
 
 // No explicit default export, only named exports.

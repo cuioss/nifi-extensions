@@ -133,10 +133,16 @@ Remaining Areas:
   - **USER EXPERIENCE**: Expired tokens immediately show warning status with expiration date highlighted
 
 ==== Skipped Test: JWKS Validation Progress
-* [ ] **Fix JWKS Validation Progress Indicator** - The progress indicator during JWKS validation is not showing
-  - When clicking "Test Connection", should show "Testing..." before showing result
-  - Test: `should show validation progress` in `05-verify-all-tab-content-display.spec.js`
-  - Expected: Loading/progress state during async validation
+* [x] **Fix JWKS Validation Progress Indicator** - The progress indicator during JWKS validation is now working
+  - When clicking "Test Connection", now shows "Testing..." before showing result
+  - Test: `should display validation progress indicator` in `03-verify-jwks-validation-button.spec.js`
+  - Fixed by: 
+    * Added CSS styling for `.loading` class in `jwksValidator.css` with pulse animation
+    * Added i18n entries for "processor.jwt.testing" (English: "Testing...", German: "Wird getestet...")
+    * Added i18n entries for "processor.jwt.testConnection" (English: "Test Connection", German: "Verbindung testen")
+    * Updated `I18nKeys.js` with new constants `PROCESSOR_JWT_TESTING` and `PROCESSOR_JWT_TEST_CONNECTION`
+    * Fixed i18n test coverage by adding missing translations in test file
+  - **VERIFICATION**: E2E test now passes successfully, build succeeds with `mvn -Ppre-commit clean install`
 
 ==== Skipped Test: Error Message Formatting
 * [ ] **Standardize Error Message Display** - Error messages should follow consistent formatting

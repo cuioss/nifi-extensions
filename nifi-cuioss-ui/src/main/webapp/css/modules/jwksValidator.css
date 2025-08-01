@@ -118,3 +118,10 @@
     color: var(--info-color);
     font-style: italic;
 }
+
+/* Loading state styles */
+.loading {
+    color: var(--text-color-secondary);
+    font-style: italic;
+    animation: pulse 1.5s ease-in-out infinite;
+}
