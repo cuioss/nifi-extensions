@@ -15,33 +15,73 @@ import { createXhrErrorObject } from '../utils/errorHandler.js';
 
 const BASE_URL = API.BASE_URL;
 
+// Session API key - will be fetched dynamically
+let sessionApiKey = null;
+
+/**
+ * Fetches the session API key from the server.
+ * This is called once on initialization to get the unique session key.
+ * 
+ * @returns {Promise<string>} The session API key
+ */
+const fetchSessionApiKey = async () => {
+    if (sessionApiKey) {
+        return sessionApiKey;
+    }
+    
+    try {
+        const response = await fetch(`${BASE_URL}/session-key`, {
+            method: 'GET',
+            credentials: 'same-origin'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to fetch session key: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        sessionApiKey = data.sessionKey;
+        return sessionApiKey;
+    } catch (error) {
+        console.error('Failed to fetch session API key:', error);
+        // Generate a client-side fallback for development
+        sessionApiKey = 'client-generated-' + Date.now();
+        return sessionApiKey;
+    }
+};
+
 /**
  * Gets authentication configuration from URL parameters or stored config.
- * This retrieves the processor ID and API key needed for authentication.
+ * This retrieves the processor ID needed for authentication.
+ * The API key is fetched dynamically from the server - NEVER from URL parameters.
  *
- * @returns {Object} Authentication configuration
+ * @returns {Promise<Object>} Authentication configuration
  * @returns {string} returns.processorId - The processor ID
  * @returns {string} returns.apiKey - The API key for authentication
  */
-const getAuthConfig = () => {
+const getAuthConfig = async () => {
+    // Ensure we have the session API key
+    const apiKey = await fetchSessionApiKey();
+    
     // First check if we have stored auth config
-    if (window.jwtAuthConfig && window.jwtAuthConfig.processorId && window.jwtAuthConfig.apiKey) {
+    if (window.jwtAuthConfig && window.jwtAuthConfig.processorId) {
+        // Update with current session key
+        window.jwtAuthConfig.apiKey = apiKey;
         return window.jwtAuthConfig;
     }
 
-    // Otherwise try to get from URL parameters
+    // Get processor ID from URL parameters (this is safe - it's just an identifier)
     const urlParams = new URLSearchParams(window.location.search);
     const processorId = urlParams.get('id') || urlParams.get('processorId');  // NiFi uses 'id' parameter
-    const apiKey = urlParams.get('apiKey');
 
     if (processorId) {
-        // Store for future use (apiKey is optional)
-        window.jwtAuthConfig = { processorId, apiKey: apiKey || '' };
+        // Use dynamically fetched session API key - NEVER from URL parameters for security
+        window.jwtAuthConfig = { processorId, apiKey };
         return window.jwtAuthConfig;
     }
 
-    // Return empty config if not available (for standalone testing)
-    return { processorId: '', apiKey: '' };
+    // Return default config if not available (for standalone testing)
+    return { processorId: '', apiKey };
 };
 
 /**
@@ -65,7 +105,7 @@ const getAuthConfig = () => {
  * // POST request with data
  * const result = await apiCall('POST', '/api/submit', {name: 'test'});
  */
-const apiCall = (method, endpoint, data = null, includeAuth = true) => {
+const apiCall = async (method, endpoint, data = null, includeAuth = true) => {
     const config = {
         method,
         url: endpoint,
@@ -75,7 +115,7 @@ const apiCall = (method, endpoint, data = null, includeAuth = true) => {
 
     // Add authentication headers for JWT API endpoints
     if (includeAuth && endpoint.includes('/jwt/')) {
-        const authConfig = getAuthConfig();
+        const authConfig = await getAuthConfig();
         config.headers = {
             'X-API-Key': authConfig.apiKey,
             'X-Processor-Id': authConfig.processorId

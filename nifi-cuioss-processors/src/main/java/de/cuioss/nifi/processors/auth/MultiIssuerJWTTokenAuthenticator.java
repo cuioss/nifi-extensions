@@ -43,7 +43,6 @@ import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
 import org.apache.nifi.processor.util.StandardValidators;
 
-import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
@@ -139,10 +138,6 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private final Map<String, AuthorizationValidator.AuthorizationConfig> authorizationConfigCache = new ConcurrentHashMap<>();
 
     private I18nResolver i18nResolver;
-
-    // API key for UI authentication
-    private volatile String generatedApiKey;
-    private volatile String processorId;
 
     @Getter
     private List<PropertyDescriptor> supportedPropertyDescriptors;
@@ -318,27 +313,6 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      */
     @OnScheduled
     public void onScheduled(final ProcessContext context) {
-        // Store processor ID for API key generation
-        // NiFi processors need their component ID which can be obtained from the identifier
-        processorId = getIdentifier();
-        if (processorId == null || processorId.isEmpty()) {
-            // Fallback to processor name or generate a unique ID
-            processorId = this.getClass().getSimpleName() + "-" + System.currentTimeMillis();
-        }
-
-        // Generate API key for custom UI authentication using reflection
-        try {
-            Class<?> apiKeyFilterClass = Class.forName("de.cuioss.nifi.ui.servlets.ApiKeyAuthenticationFilter");
-            Method generateApiKeyMethod = apiKeyFilterClass.getMethod("generateApiKeyForProcessor", String.class);
-            generatedApiKey = (String) generateApiKeyMethod.invoke(null, processorId);
-            LOGGER.info("Generated API key for processor %s", processorId);
-        } catch (ClassNotFoundException e) {
-            LOGGER.warn("ApiKeyAuthenticationFilter class not found - UI functionality may not be available");
-        } catch (Exception e) {
-            LOGGER.error(e, "Failed to generate API key for processor %s: %s", processorId, e.getMessage());
-            // Don't fail the processor initialization due to API key generation failure
-        }
-
         // Initialize the ConfigurationManager
         configurationManager = new ConfigurationManager();
         LOGGER.info("Configuration manager initialized, external configuration loaded: %s",
@@ -361,24 +335,6 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     @OnStopped
     public void onStopped() {
         synchronized (tokenValidatorLock) {
-            // Clean up API key using reflection
-            if (processorId != null) {
-                try {
-                    Class<?> apiKeyFilterClass = Class.forName("de.cuioss.nifi.ui.servlets.ApiKeyAuthenticationFilter");
-                    Method revokeApiKeyMethod = apiKeyFilterClass.getMethod("revokeApiKeyForProcessor", String.class);
-                    boolean revoked = (Boolean) revokeApiKeyMethod.invoke(null, processorId);
-                    if (revoked) {
-                        LOGGER.info("Revoked API key for processor %s", processorId);
-                    }
-                } catch (ClassNotFoundException e) {
-                    LOGGER.debug("ApiKeyAuthenticationFilter class not found during cleanup - UI functionality not available");
-                } catch (Exception e) {
-                    LOGGER.warn("Failed to revoke API key for processor %s: %s", processorId, e.getMessage());
-                }
-                generatedApiKey = null;
-                processorId = null;
-            }
-
             if (tokenValidator.get() != null) {
                 // No explicit cleanup needed for TokenValidator in current version
                 tokenValidator.set(null);
