@@ -746,7 +746,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             flowFile.assertAttributeExists("jwt.error.code");
         }
     }
-    
+
     @Nested
     @DisplayName("API Key Management Tests")
     class ApiKeyManagementTests {
@@ -759,18 +759,18 @@ class MultiIssuerJWTTokenAuthenticatorTest {
                 Class<?> apiKeyFilterClass = Class.forName("de.cuioss.nifi.ui.servlets.ApiKeyAuthenticationFilter");
                 Method clearAllApiKeysMethod = apiKeyFilterClass.getMethod("clearAllApiKeys");
                 clearAllApiKeysMethod.invoke(null);
-                
+
                 // Get the processor identifier (this will be set after init)
                 testRunner.run(0); // Initialize processor without running
                 
                 // Verify API key was generated
                 String processorId = processor.getIdentifier();
                 assertNotNull(processorId, "Processor ID should not be null");
-                
+
                 Method hasApiKeyMethod = apiKeyFilterClass.getMethod("hasApiKeyForProcessor", String.class);
                 boolean hasApiKey = (Boolean) hasApiKeyMethod.invoke(null, processorId);
                 assertTrue(hasApiKey, "API key should exist for processor");
-                
+
                 Method getApiKeyMethod = apiKeyFilterClass.getMethod("getApiKeyForProcessor", String.class);
                 String apiKey = (String) getApiKeyMethod.invoke(null, processorId);
                 assertNotNull(apiKey, "API key should not be null");
@@ -789,17 +789,17 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             try {
                 Class<?> apiKeyFilterClass = Class.forName("de.cuioss.nifi.ui.servlets.ApiKeyAuthenticationFilter");
                 Method hasApiKeyMethod = apiKeyFilterClass.getMethod("hasApiKeyForProcessor", String.class);
-                
+
                 // Initialize processor and verify API key exists
                 testRunner.run(0);
-                
+
                 String processorId = processor.getIdentifier();
                 boolean hasApiKey = (Boolean) hasApiKeyMethod.invoke(null, processorId);
                 assertTrue(hasApiKey, "API key should exist before stopping");
-                
+
                 // Stop the processor
                 testRunner.shutdown();
-                
+
                 // Verify API key is cleaned up
                 boolean hasApiKeyAfterStop = (Boolean) hasApiKeyMethod.invoke(null, processorId);
                 assertFalse(hasApiKeyAfterStop, "API key should be removed after stopping processor");
@@ -818,32 +818,32 @@ class MultiIssuerJWTTokenAuthenticatorTest {
                 Class<?> apiKeyFilterClass = Class.forName("de.cuioss.nifi.ui.servlets.ApiKeyAuthenticationFilter");
                 Method clearAllApiKeysMethod = apiKeyFilterClass.getMethod("clearAllApiKeys");
                 Method getApiKeyMethod = apiKeyFilterClass.getMethod("getApiKeyForProcessor", String.class);
-                
+
                 // Clear any existing API keys
                 clearAllApiKeysMethod.invoke(null);
-                
+
                 // Create second processor instance
                 MultiIssuerJWTTokenAuthenticator processor2 = new MultiIssuerJWTTokenAuthenticator();
                 TestRunner testRunner2 = TestRunners.newTestRunner(processor2);
                 testRunner2.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
-                
+
                 // Initialize both processors
                 testRunner.run(0);
                 testRunner2.run(0);
-                
+
                 // Verify both have different API keys
                 String processorId1 = processor.getIdentifier();
                 String processorId2 = processor2.getIdentifier();
-                
+
                 assertNotEquals(processorId1, processorId2, "Processor IDs should be different");
-                
+
                 String apiKey1 = (String) getApiKeyMethod.invoke(null, processorId1);
                 String apiKey2 = (String) getApiKeyMethod.invoke(null, processorId2);
-                
+
                 assertNotNull(apiKey1, "First processor API key should not be null");
                 assertNotNull(apiKey2, "Second processor API key should not be null");
                 assertNotEquals(apiKey1, apiKey2, "API keys should be different");
-                
+
                 // Clean up
                 testRunner2.shutdown();
             } catch (ClassNotFoundException e) {

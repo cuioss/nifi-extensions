@@ -267,6 +267,7 @@ test.describe("Help Tab", () => {
 
             // Verify each example has a code block
             for (let i = 0; i < Math.min(exampleConfigs.length, 3); i++) {
+                // eslint-disable-next-line security/detect-object-injection
                 const example = exampleConfigs[i];
                 await expect(example).toBeVisible();
 

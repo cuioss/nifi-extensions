@@ -325,7 +325,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             // Fallback to processor name or generate a unique ID
             processorId = this.getClass().getSimpleName() + "-" + System.currentTimeMillis();
         }
-        
+
         // Generate API key for custom UI authentication using reflection
         try {
             Class<?> apiKeyFilterClass = Class.forName("de.cuioss.nifi.ui.servlets.ApiKeyAuthenticationFilter");
@@ -338,7 +338,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             LOGGER.error(e, "Failed to generate API key for processor %s: %s", processorId, e.getMessage());
             // Don't fail the processor initialization due to API key generation failure
         }
-        
+
         // Initialize the ConfigurationManager
         configurationManager = new ConfigurationManager();
         LOGGER.info("Configuration manager initialized, external configuration loaded: %s",
@@ -378,7 +378,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 generatedApiKey = null;
                 processorId = null;
             }
-            
+
             if (tokenValidator.get() != null) {
                 // No explicit cleanup needed for TokenValidator in current version
                 tokenValidator.set(null);

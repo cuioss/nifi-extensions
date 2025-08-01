@@ -36,6 +36,105 @@ Remaining Areas:
 
 == Remaining Tasks by Priority
 
+=== 🚨 HIGHEST PRIORITY - Critical Application Bug Preventing UI Functionality
+
+==== ⚠️ BLOCKING: Processor Missing API Key Generation for Custom UI
+* [ ] **URGENT: Implement API Key Generation in MultiIssuerJWTTokenAuthenticator** - The processor fails to generate and provide API keys for its custom UI
+  - **IMPACT**: **COMPLETE UI FAILURE** - All custom UI functionality is broken due to authentication failures
+  - **SYMPTOMS**: All UI calls to `/nifi-api/processors/jwt/*` endpoints fail with 401/403 errors
+  - **ROOT CAUSE**: Processor doesn't call `ApiKeyAuthenticationFilter.generateApiKeyForProcessor(processorId)` during initialization
+  - **REQUIRED IMPLEMENTATION**:
+    - Add API key generation in `@OnScheduled` method in `MultiIssuerJWTTokenAuthenticator.java`
+    - Store generated API key for UI provisioning
+    - Ensure NiFi passes the API key to custom UI via URL parameters (e.g., `?id=processorId&apiKey=generatedKey`)
+    - Add API key cleanup in `@OnStopped` method using `ApiKeyAuthenticationFilter.revokeApiKeyForProcessor(processorId)`
+  - **VERIFICATION**: After fix, all E2E tests should pass without authentication errors
+  - **BLOCKING**: This bug prevents ALL custom UI functionality from working in any environment
+
+==== Add Negative Authentication Tests to E2E Tests
+* [ ] **Add negative test cases** - Verify API endpoints properly reject requests without valid API keys
+  - **AFFECTED TESTS**: `03-verify-jwks-validation-button.spec.js`, `04-verify-token-verification-tab.spec.js`, `08-verify-jwks-validation-complete.spec.js`
+  - **SIMPLE ADDITION**: Add one test per file that sends requests without API key and expects 401/403 response
+
+=== ⚠️ URGENT CRITICAL PRIORITY - E2E Tests Not Actually Testing Functionality
+
+These critical issues were discovered during E2E testing and indicate fundamental problems with the integration test environment and actual functionality failures:
+
+==== ⚠️ CRITICAL: UI ↔ Processor API Key Authentication Failure in Integration Tests
+* [ ] **Fix E2E Test UI-to-Processor API Communication** - Integration tests fail due to missing API key authentication between UI and processor servlets
+  - **PROBLEM**: UI JavaScript calls to `/nifi-api/processors/jwt/*` endpoints fail with 401/403 because required headers are missing
+  - **IMPACT**: Tests are not actually testing JWT authentication functionality, just UI error handling
+  - **AFFECTED TESTS**:
+    - `03-verify-jwks-validation-button.spec.js` - JWKS URL validation fails with 403 Forbidden  
+    - `04-verify-token-verification-tab.spec.js` - Token verification fails with "Missing or empty API key"
+    - `08-verify-jwks-validation-complete.spec.js` - All JWKS operations fail with authentication errors
+  - **ROOT CAUSE**: `ApiKeyAuthenticationFilter` requires `X-API-Key` and `X-Processor-Id` headers, but the **processor is not generating and providing API keys to the UI**:
+    - UI expects `apiKey` URL parameter: `const apiKey = urlParams.get('apiKey');`
+    - If no `apiKey` parameter, UI sends empty string, causing 401/403 errors
+    - Processor should call `ApiKeyAuthenticationFilter.generateApiKeyForProcessor(processorId)` during initialization
+    - Processor should include the generated API key when launching the advanced UI
+  - **ARCHITECTURAL FLOW**: Processor generates API key → Passes to UI via URL → UI sends in headers → `ApiKeyAuthenticationFilter` validates → Servlet processes
+  - **REQUIRED FIX**: 
+    - **Processor must generate API key** during `@OnScheduled` or initialization
+    - **Processor must pass API key to advanced UI** when NiFi loads the custom UI
+    - **Verify UI correctly reads and sends** the API key in headers
+    - Set up mock JWKS endpoints for testing (not using `https://example.com/.well-known/jwks.json`)
+    - Remove all "standalone mode" error acceptance patterns from tests
+  - **SPECIFIC CODE PATTERNS TO REMOVE**:
+    - All comments mentioning "standalone mode" (this doesn't exist in integration tests)
+    - Error acceptance: `resultText.includes("401") || resultText.includes("Unauthorized")`  
+    - Success logging for failures: `"✓ Got expected authentication error in standalone mode"`
+    - All conditional logic that treats authentication errors as acceptable test outcomes
+
+==== ⚠️ CRITICAL: Core JWT Functionality Not Actually Tested
+* [ ] **Implement Real JWT Token Verification Testing** - Tests currently only verify error handling, not actual JWT functionality
+  - **PROBLEM**: Token verification tests fail with authentication errors instead of verifying JWT tokens
+  - **AFFECTED FUNCTIONALITY**: 
+    - JWT token validation against JWKS
+    - Token expiration checking
+    - Claims extraction and display
+    - Multi-issuer support
+  - **REQUIRED**: Set up proper test environment where JWT verification actually works
+  - **EXPECTED BEHAVIOR**: 
+    - Valid JWT tokens should be verified successfully against configured JWKS
+    - Invalid tokens should show specific validation errors (not authentication errors)  
+    - Expired tokens should be detected and displayed with clear expiration messages
+    - Token claims should be extracted and displayed in the UI
+
+==== ⚠️ CRITICAL: JWKS Validation Not Actually Working
+* [ ] **Fix JWKS URL/File/Memory Validation in Integration Tests** - JWKS validation fails with 403 errors
+  - **PROBLEM**: "Test Connection" button fails with HTTP 403 Forbidden instead of validating JWKS sources
+  - **AFFECTED TESTS**: All JWKS validation tests accept errors instead of testing functionality
+  - **REQUIRED**: Configure test environment to allow outbound HTTP requests for JWKS validation
+  - **EXPECTED BEHAVIOR**:
+    - JWKS URL validation should successfully fetch and validate JWKS from test endpoints
+    - Invalid URLs should show network/validation errors (not authentication errors)
+    - JWKS file validation should work with test files
+    - JWKS memory validation should work with pasted JSON
+
+==== JWKS Type Dropdown Missing
+* [ ] **Fix JWKS Type Selection UI** - The `.field-jwks-type` dropdown is not being rendered in the issuer configuration form
+  - The dropdown should allow selection between: URL, File, and Memory sources
+  - Tests failing: `should validate JWKS file paths`, `should validate JWKS content structure`
+  - Root cause: The UI component may not be properly initialized or the field is conditionally rendered but condition not met
+
+==== Skipped Test: Token Expiration Display
+* [ ] **Implement Token Expiration Status Display** - The UI should properly display token expiration status
+  - When an expired token is verified, the UI should show clear expiration messaging
+  - Test: `should display token expiration information` in `05-verify-all-tab-content-display.spec.js`
+  - Expected: Clear visual indication when a token has expired
+
+==== Skipped Test: JWKS Validation Progress
+* [ ] **Fix JWKS Validation Progress Indicator** - The progress indicator during JWKS validation is not showing
+  - When clicking "Test Connection", should show "Testing..." before showing result
+  - Test: `should show validation progress` in `05-verify-all-tab-content-display.spec.js`
+  - Expected: Loading/progress state during async validation
+
+==== Skipped Test: Error Message Formatting
+* [ ] **Standardize Error Message Display** - Error messages should follow consistent formatting
+  - Test: `should display error messages correctly` in `05-verify-all-tab-content-display.spec.js`
+  - Expected: All error messages should use consistent CSS classes and structure
+
 === 🔴 High Priority - Security & Production Readiness
 
 ==== Security Hardening

@@ -283,9 +283,13 @@ test.describe("Self-Test: Browser Console Logging", () => {
 
         // Inject test console messages directly
         await page.evaluate((id) => {
+            // eslint-disable-next-line no-console
             console.log(`Direct log test - INFO message - ${id}`);
+            // eslint-disable-next-line no-console
             console.warn(`Direct log test - WARNING message - ${id}`);
+            // eslint-disable-next-line no-console
             console.error(`Direct log test - ERROR message - ${id}`);
+            // eslint-disable-next-line no-console
             console.debug(`Direct log test - DEBUG message - ${id}`);
         }, testId);
 
