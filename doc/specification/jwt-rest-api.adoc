@@ -228,7 +228,6 @@ Servlets access processor configuration via NiFi's REST API to ensure consistenc
 == Related Documentation
 
 * link:../Requirements.adoc[Requirements Document]
-* link:../../IMPLEMENTATION-PLAN.adoc[Implementation Plan]
 * link:configuration.adoc[Configuration Specification]
 * link:token-validation.adoc[Token Validation Specification]
 * link:security.adoc[Security Specification]
