@@ -18,9 +18,12 @@ package de.cuioss.nifi.ui.servlets;
 
 import de.cuioss.nifi.ui.service.JwtValidationService;
 import de.cuioss.nifi.ui.service.JwtValidationService.TokenValidationResult;
+import jakarta.servlet.ReadListener;
+import jakarta.servlet.ServletInputStream;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.WriteListener;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.easymock.EasyMock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -31,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.easymock.EasyMock.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JwtVerificationServletTest {
 
@@ -57,7 +60,7 @@ class JwtVerificationServletTest {
     }
 
     @Test
-    void testValidTokenVerification() throws Exception {
+    void validTokenVerification() throws Exception {
         // Arrange
         String requestJson = """
             {
@@ -98,7 +101,7 @@ class JwtVerificationServletTest {
     }
 
     @Test
-    void testInvalidTokenVerification() throws Exception {
+    void invalidTokenVerification() throws Exception {
         // Arrange
         String requestJson = """
             {
@@ -132,7 +135,7 @@ class JwtVerificationServletTest {
     }
 
     @Test
-    void testExpiredTokenVerification() throws Exception {
+    void expiredTokenVerification() throws Exception {
         // Arrange
         String requestJson = """
             {
@@ -166,7 +169,7 @@ class JwtVerificationServletTest {
     }
 
     @Test
-    void testMissingTokenField() throws Exception {
+    void missingTokenField() throws Exception {
         // Arrange
         String requestJson = """
             {
@@ -193,7 +196,7 @@ class JwtVerificationServletTest {
     }
 
     @Test
-    void testMissingProcessorIdForNonE2ETest() throws Exception {
+    void missingProcessorIdForNonE2ETest() throws Exception {
         // Arrange
         String requestJson = """
             {
@@ -222,7 +225,7 @@ class JwtVerificationServletTest {
     }
 
     @Test
-    void testE2ETestCompatibility() throws Exception {
+    void e2eTestCompatibility() throws Exception {
         // Arrange
         String requestJson = """
             {
@@ -264,7 +267,7 @@ class JwtVerificationServletTest {
     }
 
     @Test
-    void testInvalidJsonRequest() throws Exception {
+    void invalidJsonRequest() throws Exception {
         // Arrange
         String invalidJson = "{ invalid json }";
         expect(request.getInputStream()).andReturn(new TestServletInputStream(invalidJson));
@@ -286,7 +289,7 @@ class JwtVerificationServletTest {
     }
 
     @Test
-    void testServiceException() throws Exception {
+    void serviceException() throws Exception {
         // Arrange
         String requestJson = """
             {
@@ -319,7 +322,7 @@ class JwtVerificationServletTest {
     }
 
     // Helper classes for testing
-    private static class TestServletInputStream extends jakarta.servlet.ServletInputStream {
+    private static class TestServletInputStream extends ServletInputStream {
         private final ByteArrayInputStream inputStream;
 
         public TestServletInputStream(String content) {
@@ -342,12 +345,12 @@ class JwtVerificationServletTest {
         }
 
         @Override
-        public void setReadListener(jakarta.servlet.ReadListener readListener) {
+        public void setReadListener(ReadListener readListener) {
             // Not implemented for testing
         }
     }
 
-    private static class TestServletOutputStream extends jakarta.servlet.ServletOutputStream {
+    private static class TestServletOutputStream extends ServletOutputStream {
         private final ByteArrayOutputStream outputStream;
 
         public TestServletOutputStream(ByteArrayOutputStream outputStream) {
@@ -365,7 +368,7 @@ class JwtVerificationServletTest {
         }
 
         @Override
-        public void setWriteListener(jakarta.servlet.WriteListener writeListener) {
+        public void setWriteListener(WriteListener writeListener) {
             // Not implemented for testing
         }
     }

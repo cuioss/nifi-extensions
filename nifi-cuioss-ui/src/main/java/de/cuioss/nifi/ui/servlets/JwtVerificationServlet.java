@@ -82,7 +82,7 @@ public class JwtVerificationServlet extends HttpServlet {
             LOGGER.warn("Invalid JSON format in request: %s", e.getMessage());
             sendErrorResponse(resp, 400, "Invalid JSON format", false);
             return;
-        } catch (Exception e) {
+        } catch (IOException e) {
             LOGGER.error(e, "Error reading request body");
             sendErrorResponse(resp, 500, "Error reading request", false);
             return;
@@ -181,7 +181,7 @@ public class JwtVerificationServlet extends HttpServlet {
             LOGGER.error(e, "Communication error for processor %s", processorId);
             sendErrorResponse(resp, 500, "Communication error: " + e.getMessage(), false);
             return;
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             LOGGER.error(e, "Unexpected error during token verification for processor %s", processorId);
             sendErrorResponse(resp, 500, "Internal server error", false);
             return;

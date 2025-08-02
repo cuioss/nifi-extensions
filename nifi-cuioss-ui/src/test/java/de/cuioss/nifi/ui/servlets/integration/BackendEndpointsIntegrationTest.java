@@ -43,7 +43,7 @@ class BackendEndpointsIntegrationTest {
     }
 
     @Test
-    void testJwtVerificationEndpointAccessible() {
+    void jwtVerificationEndpointAccessible() {
         String requestBody = """
             {
                 "token": "test-token",
@@ -66,7 +66,7 @@ class BackendEndpointsIntegrationTest {
     }
 
     @Test
-    void testMetricsEndpointAccessible() {
+    void metricsEndpointAccessible() {
         given()
                 .accept(ContentType.JSON)
                 .when()
@@ -83,7 +83,7 @@ class BackendEndpointsIntegrationTest {
     }
 
     @Test
-    void testJwksContentValidationEndpointAccessible() {
+    void jwksContentValidationEndpointAccessible() {
         String requestBody = """
             {
                 "jwksContent": "{\\"keys\\":[{\\"kty\\":\\"RSA\\",\\"kid\\":\\"test\\",\\"n\\":\\"test\\",\\"e\\":\\"AQAB\\"}]}",
@@ -107,7 +107,7 @@ class BackendEndpointsIntegrationTest {
     }
 
     @Test
-    void testJwksUrlValidationEndpointAccessible() {
+    void jwksUrlValidationEndpointAccessible() {
         String requestBody = """
             {
                 "jwksUrl": "https://example.com/.well-known/jwks.json",
@@ -131,7 +131,7 @@ class BackendEndpointsIntegrationTest {
     }
 
     @Test
-    void testJwksFileValidationEndpointAccessible() {
+    void jwksFileValidationEndpointAccessible() {
         String requestBody = """
             {
                 "jwksFilePath": "/nonexistent/path/jwks.json",
@@ -155,7 +155,7 @@ class BackendEndpointsIntegrationTest {
     }
 
     @Test
-    void testE2ETokenVerificationEndpointAccessible() {
+    void e2eTokenVerificationEndpointAccessible() {
         String requestBody = """
             {
                 "token": "test-token",
@@ -178,7 +178,7 @@ class BackendEndpointsIntegrationTest {
     }
 
     @Test
-    void testJwtVerificationWithValidToken() {
+    void jwtVerificationWithValidToken() {
         String requestBody = """
             {
                 "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
@@ -201,7 +201,7 @@ class BackendEndpointsIntegrationTest {
     }
 
     @Test
-    void testJwtVerificationWithMissingToken() {
+    void jwtVerificationWithMissingToken() {
         String requestBody = """
             {
                 "processorId": "test-processor-id"
@@ -222,7 +222,7 @@ class BackendEndpointsIntegrationTest {
     }
 
     @Test
-    void testJwtVerificationWithMissingProcessorId() {
+    void jwtVerificationWithMissingProcessorId() {
         String requestBody = """
             {
                 "token": "test-token"
@@ -243,7 +243,7 @@ class BackendEndpointsIntegrationTest {
     }
 
     @Test
-    void testJwksContentValidationWithValidContent() {
+    void jwksContentValidationWithValidContent() {
         String requestBody = """
             {
                 "jwksContent": "{\\"keys\\":[{\\"kty\\":\\"RSA\\",\\"kid\\":\\"test-key\\",\\"use\\":\\"sig\\",\\"n\\":\\"test-modulus\\",\\"e\\":\\"AQAB\\"}]}",
@@ -267,7 +267,7 @@ class BackendEndpointsIntegrationTest {
     }
 
     @Test
-    void testJwksContentValidationWithInvalidContent() {
+    void jwksContentValidationWithInvalidContent() {
         String requestBody = """
             {
                 "jwksContent": "{\\"invalid\\": \\"structure\\"}",
@@ -289,7 +289,7 @@ class BackendEndpointsIntegrationTest {
     }
 
     @Test
-    void testInvalidJsonRequest() {
+    void invalidJsonRequest() {
         given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
@@ -304,7 +304,7 @@ class BackendEndpointsIntegrationTest {
     }
 
     @Test
-    void testMetricsEndpointStructure() {
+    void metricsEndpointStructure() {
         given()
                 .accept(ContentType.JSON)
                 .when()
@@ -320,7 +320,7 @@ class BackendEndpointsIntegrationTest {
     }
 
     @Test
-    void testUnknownEndpoint() {
+    void unknownEndpoint() {
         given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
@@ -332,7 +332,7 @@ class BackendEndpointsIntegrationTest {
     }
 
     @Test
-    void testCorsHeaders() {
+    void corsHeaders() {
         given()
                 .header("Origin", "http://localhost:3000")
                 .accept(ContentType.JSON)
@@ -344,7 +344,7 @@ class BackendEndpointsIntegrationTest {
     }
 
     @Test
-    void testEndpointResponseTimes() {
+    void endpointResponseTimes() {
         given()
                 .accept(ContentType.JSON)
                 .when()

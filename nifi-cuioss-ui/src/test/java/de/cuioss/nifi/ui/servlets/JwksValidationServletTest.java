@@ -16,6 +16,10 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import jakarta.servlet.ReadListener;
+import jakarta.servlet.ServletInputStream;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.WriteListener;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,7 +30,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import static org.easymock.EasyMock.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JwksValidationServletTest {
 
@@ -50,7 +54,7 @@ class JwksValidationServletTest {
     }
 
     @Test
-    void testValidJwksContentValidation() throws Exception {
+    void validJwksContentValidation() throws Exception {
         // Arrange
         String validJwksContent = """
             {
@@ -94,7 +98,7 @@ class JwksValidationServletTest {
     }
 
     @Test
-    void testInvalidJwksContentMissingKeys() throws Exception {
+    void invalidJwksContentMissingKeys() throws Exception {
         // Arrange
         String invalidJwksContent = """
             {
@@ -129,7 +133,7 @@ class JwksValidationServletTest {
     }
 
     @Test
-    void testInvalidJwksContentEmptyKeys() throws Exception {
+    void invalidJwksContentEmptyKeys() throws Exception {
         // Arrange
         String emptyKeysJwksContent = """
             {
@@ -164,7 +168,7 @@ class JwksValidationServletTest {
     }
 
     @Test
-    void testMissingRequiredFields() throws Exception {
+    void missingRequiredFields() throws Exception {
         // Test missing jwksContent
         String requestJson = """
             {
@@ -188,7 +192,7 @@ class JwksValidationServletTest {
     }
 
     @Test
-    void testUnknownEndpoint() throws Exception {
+    void unknownEndpoint() throws Exception {
         // Arrange
         String requestJson = """
             {
@@ -215,7 +219,7 @@ class JwksValidationServletTest {
     }
 
     @Test
-    void testInvalidJsonRequest() throws Exception {
+    void invalidJsonRequest() throws Exception {
         // Arrange
         String invalidJson = "{ invalid json }";
         expect(request.getInputStream()).andReturn(new TestServletInputStream(invalidJson));
@@ -238,7 +242,7 @@ class JwksValidationServletTest {
     }
 
     // Helper classes for testing
-    private static class TestServletInputStream extends jakarta.servlet.ServletInputStream {
+    private static class TestServletInputStream extends ServletInputStream {
         private final ByteArrayInputStream inputStream;
 
         public TestServletInputStream(String content) {
@@ -261,12 +265,12 @@ class JwksValidationServletTest {
         }
 
         @Override
-        public void setReadListener(jakarta.servlet.ReadListener readListener) {
+        public void setReadListener(ReadListener readListener) {
             // Not implemented for testing
         }
     }
 
-    private static class TestServletOutputStream extends jakarta.servlet.ServletOutputStream {
+    private static class TestServletOutputStream extends ServletOutputStream {
         private final ByteArrayOutputStream outputStream;
 
         public TestServletOutputStream(ByteArrayOutputStream outputStream) {
@@ -284,7 +288,7 @@ class JwksValidationServletTest {
         }
 
         @Override
-        public void setWriteListener(jakarta.servlet.WriteListener writeListener) {
+        public void setWriteListener(WriteListener writeListener) {
             // Not implemented for testing
         }
     }

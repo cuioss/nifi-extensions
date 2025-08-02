@@ -17,10 +17,7 @@
 package de.cuioss.nifi.ui.util;
 
 import de.cuioss.tools.logging.CuiLogger;
-import jakarta.json.Json;
-import jakarta.json.JsonObject;
-import jakarta.json.JsonReader;
-import jakarta.json.JsonReaderFactory;
+import jakarta.json.*;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -45,10 +42,10 @@ public class ProcessorConfigReader {
     /**
      * Retrieves processor properties from NiFi REST API.
      * 
-     * @param processorId The processor ID
-     * @return Map of processor properties
+     * @param processorId The processor ID (must not be null)
+     * @return Map of processor properties (never null)
      * @throws IOException If unable to fetch processor configuration
-     * @throws IllegalArgumentException If processor ID is invalid
+     * @throws IllegalArgumentException If processor ID is invalid or null
      */
     public Map<String, String> getProcessorProperties(String processorId)
             throws IOException, IllegalArgumentException {
@@ -79,7 +76,10 @@ public class ProcessorConfigReader {
                     .build();
 
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Request to NiFi API was interrupted: " + e.getMessage(), e);
+        } catch (IOException e) {
             throw new IOException("Failed to send request to NiFi API: " + e.getMessage(), e);
         }
 
@@ -156,8 +156,10 @@ public class ProcessorConfigReader {
             LOGGER.debug("Successfully parsed %d properties for processor %s", propertyMap.size(), processorId);
             return propertyMap;
 
-        } catch (Exception e) {
+        } catch (JsonException e) {
             throw new IOException("Failed to parse processor response JSON: " + e.getMessage(), e);
+        } catch (ClassCastException e) {
+            throw new IOException("Invalid JSON structure in processor response: " + e.getMessage(), e);
         }
     }
 }

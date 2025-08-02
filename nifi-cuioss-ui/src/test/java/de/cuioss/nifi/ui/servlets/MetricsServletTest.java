@@ -16,6 +16,8 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import jakarta.servlet.*;
+import jakarta.servlet.http.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -48,7 +50,7 @@ class MetricsServletTest {
     }
 
     @Test
-    void testInitialMetricsAllZero() throws Exception {
+    void initialMetricsAllZero() throws Exception {
         // Act
         servlet.doGet(request, response);
 
@@ -66,7 +68,7 @@ class MetricsServletTest {
     }
 
     @Test
-    void testMetricsAfterValidTokens() throws Exception {
+    void metricsAfterValidTokens() throws Exception {
         // Arrange - Record some valid tokens
         MetricsServlet.recordValidToken();
         MetricsServlet.recordValidToken();
@@ -87,7 +89,7 @@ class MetricsServletTest {
     }
 
     @Test
-    void testMetricsAfterInvalidTokens() throws Exception {
+    void metricsAfterInvalidTokens() throws Exception {
         // Arrange - Record some invalid tokens
         MetricsServlet.recordInvalidToken("Token expired");
         MetricsServlet.recordInvalidToken("Invalid signature");
@@ -113,7 +115,7 @@ class MetricsServletTest {
     }
 
     @Test
-    void testMetricsWithMixedTokens() throws Exception {
+    void metricsWithMixedTokens() throws Exception {
         // Arrange - Record mixed valid and invalid tokens
         MetricsServlet.recordValidToken();
         MetricsServlet.recordValidToken();
@@ -139,7 +141,7 @@ class MetricsServletTest {
     }
 
     @Test
-    void testCurrentMetricsStaticMethod() {
+    void currentMetricsStaticMethod() {
         // Arrange - Record some metrics
         MetricsServlet.recordValidToken();
         MetricsServlet.recordInvalidToken("Test error");
@@ -159,7 +161,7 @@ class MetricsServletTest {
     }
 
     @Test
-    void testResetMetrics() {
+    void resetMetrics() {
         // Arrange - Record some metrics
         MetricsServlet.recordValidToken();
         MetricsServlet.recordInvalidToken("Test error");
@@ -182,7 +184,7 @@ class MetricsServletTest {
     }
 
     @Test
-    void testTopErrorsSorting() throws Exception {
+    void topErrorsSorting() throws Exception {
         // Arrange - Record errors with different frequencies
         MetricsServlet.recordInvalidToken("Error A");
         MetricsServlet.recordInvalidToken("Error B");
@@ -217,7 +219,7 @@ class MetricsServletTest {
     }
 
     @Test
-    void testErrorWithNullMessage() throws Exception {
+    void errorWithNullMessage() throws Exception {
         // Arrange - Record error with null message (should be ignored)
         MetricsServlet.recordInvalidToken(null);
         MetricsServlet.recordInvalidToken("");
@@ -247,15 +249,15 @@ class MetricsServletTest {
     }
 
     // Test helper classes (reuse from JwtVerificationServletTest)
-    private static class TestHttpServletRequest implements jakarta.servlet.http.HttpServletRequest {
+    private static class TestHttpServletRequest implements HttpServletRequest {
         @Override
         public String getAuthType() {
             return null;
         }
 
         @Override
-        public jakarta.servlet.http.Cookie[] getCookies() {
-            return new jakarta.servlet.http.Cookie[0];
+        public Cookie[] getCookies() {
+            return new Cookie[0];
         }
 
         @Override
@@ -344,12 +346,12 @@ class MetricsServletTest {
         }
 
         @Override
-        public jakarta.servlet.http.HttpSession getSession(boolean create) {
+        public HttpSession getSession(boolean create) {
             return null;
         }
 
         @Override
-        public jakarta.servlet.http.HttpSession getSession() {
+        public HttpSession getSession() {
             return null;
         }
 
@@ -374,7 +376,7 @@ class MetricsServletTest {
         }
 
         @Override
-        public boolean authenticate(jakarta.servlet.http.HttpServletResponse response) {
+        public boolean authenticate(HttpServletResponse response) {
             return false;
         }
 
@@ -387,17 +389,17 @@ class MetricsServletTest {
         }
 
         @Override
-        public Collection<jakarta.servlet.http.Part> getParts() {
+        public Collection<Part> getParts() {
             return null;
         }
 
         @Override
-        public jakarta.servlet.http.Part getPart(String name) {
+        public Part getPart(String name) {
             return null;
         }
 
         @Override
-        public <T extends jakarta.servlet.http.HttpUpgradeHandler> T upgrade(Class<T> handlerClass) {
+        public <T extends HttpUpgradeHandler> T upgrade(Class<T> handlerClass) {
             return null;
         }
 
@@ -436,7 +438,7 @@ class MetricsServletTest {
         }
 
         @Override
-        public jakarta.servlet.ServletInputStream getInputStream() {
+        public ServletInputStream getInputStream() {
             return null;
         }
 
@@ -519,7 +521,7 @@ class MetricsServletTest {
         }
 
         @Override
-        public jakarta.servlet.RequestDispatcher getRequestDispatcher(String path) {
+        public RequestDispatcher getRequestDispatcher(String path) {
             return null;
         }
 
@@ -544,17 +546,17 @@ class MetricsServletTest {
         }
 
         @Override
-        public jakarta.servlet.ServletContext getServletContext() {
+        public ServletContext getServletContext() {
             return null;
         }
 
         @Override
-        public jakarta.servlet.AsyncContext startAsync() {
+        public AsyncContext startAsync() {
             return null;
         }
 
         @Override
-        public jakarta.servlet.AsyncContext startAsync(jakarta.servlet.ServletRequest servletRequest, jakarta.servlet.ServletResponse servletResponse) {
+        public AsyncContext startAsync(ServletRequest servletRequest, ServletResponse servletResponse) {
             return null;
         }
 
@@ -569,12 +571,12 @@ class MetricsServletTest {
         }
 
         @Override
-        public jakarta.servlet.AsyncContext getAsyncContext() {
+        public AsyncContext getAsyncContext() {
             return null;
         }
 
         @Override
-        public jakarta.servlet.DispatcherType getDispatcherType() {
+        public DispatcherType getDispatcherType() {
             return null;
         }
 
@@ -589,17 +591,17 @@ class MetricsServletTest {
         }
 
         @Override
-        public jakarta.servlet.ServletConnection getServletConnection() {
+        public ServletConnection getServletConnection() {
             return null;
         }
 
         @Override
-        public jakarta.servlet.http.HttpServletMapping getHttpServletMapping() {
+        public HttpServletMapping getHttpServletMapping() {
             return null;
         }
     }
 
-    private static class TestHttpServletResponse implements jakarta.servlet.http.HttpServletResponse {
+    private static class TestHttpServletResponse implements HttpServletResponse {
         private final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         private final TestServletOutputStream servletOutputStream = new TestServletOutputStream(outputStream);
         private int status = 200;
@@ -641,13 +643,13 @@ class MetricsServletTest {
         }
 
         @Override
-        public jakarta.servlet.ServletOutputStream getOutputStream() throws IOException {
+        public ServletOutputStream getOutputStream() throws IOException {
             return servletOutputStream;
         }
 
         // Minimal implementations for other methods
         @Override
-        public void addCookie(jakarta.servlet.http.Cookie cookie) {
+        public void addCookie(Cookie cookie) {
         }
 
         @Override
@@ -765,7 +767,7 @@ class MetricsServletTest {
         }
     }
 
-    private static class TestServletOutputStream extends jakarta.servlet.ServletOutputStream {
+    private static class TestServletOutputStream extends ServletOutputStream {
         private final ByteArrayOutputStream outputStream;
 
         public TestServletOutputStream(ByteArrayOutputStream outputStream) {
@@ -783,7 +785,7 @@ class MetricsServletTest {
         }
 
         @Override
-        public void setWriteListener(jakarta.servlet.WriteListener writeListener) {
+        public void setWriteListener(WriteListener writeListener) {
             // Not implemented for testing
         }
     }

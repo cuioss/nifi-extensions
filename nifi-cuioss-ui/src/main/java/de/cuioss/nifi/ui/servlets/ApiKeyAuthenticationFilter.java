@@ -131,6 +131,9 @@ public class ApiKeyAuthenticationFilter implements Filter {
 
     /**
      * Escapes a string for safe inclusion in JSON.
+     * 
+     * @param str The string to escape (must not be null)
+     * @return The escaped string (never null)
      */
     private String escapeJsonString(String str) {
         if (str == null) return "";

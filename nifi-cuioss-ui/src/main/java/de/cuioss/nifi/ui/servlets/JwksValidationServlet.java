@@ -60,18 +60,10 @@ public class JwksValidationServlet extends HttpServlet {
         LOGGER.debug("Received JWKS validation request for path: %s", requestPath);
 
         switch (requestPath) {
-            case "/nifi-api/processors/jwt/validate-jwks-url":
-                handleJwksUrlValidation(req, resp);
-                break;
-            case "/nifi-api/processors/jwt/validate-jwks-file":
-                handleJwksFileValidation(req, resp);
-                break;
-            case "/nifi-api/processors/jwt/validate-jwks-content":
-                handleJwksContentValidation(req, resp);
-                break;
-            default:
-                sendErrorResponse(resp, 404, "Endpoint not found");
-                break;
+            case "/nifi-api/processors/jwt/validate-jwks-url" -> handleJwksUrlValidation(req, resp);
+            case "/nifi-api/processors/jwt/validate-jwks-file" -> handleJwksFileValidation(req, resp);
+            case "/nifi-api/processors/jwt/validate-jwks-content" -> handleJwksContentValidation(req, resp);
+            default -> sendErrorResponse(resp, 404, "Endpoint not found");
         }
     }
 
@@ -212,7 +204,12 @@ public class JwksValidationServlet extends HttpServlet {
             String error = "Invalid JWKS URL format: " + e.getMessage();
             LOGGER.debug("JWKS URL validation failed: %s - %s", jwksUrl, error);
             return JwksValidationResult.failure(error);
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            String error = "JWKS URL validation interrupted: " + e.getMessage();
+            LOGGER.warn(e, "JWKS URL validation failed: %s", jwksUrl);
+            return JwksValidationResult.failure(error);
+        } catch (IOException e) {
             String error = "JWKS URL validation error: " + e.getMessage();
             LOGGER.warn(e, "JWKS URL validation failed: %s", jwksUrl);
             return JwksValidationResult.failure(error);
@@ -242,7 +239,7 @@ public class JwksValidationServlet extends HttpServlet {
             String content = Files.readString(path);
             return validateJwksContent(content);
 
-        } catch (Exception e) {
+        } catch (IOException e) {
             String error = "JWKS file validation error: " + e.getMessage();
             LOGGER.warn(e, "JWKS file validation failed: %s", jwksFilePath);
             return JwksValidationResult.failure(error);
@@ -275,7 +272,7 @@ public class JwksValidationServlet extends HttpServlet {
             String error = "Invalid JWKS JSON format: " + e.getMessage();
             LOGGER.debug("JWKS content validation failed: %s", error);
             return JwksValidationResult.failure(error);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             String error = "JWKS content validation error: " + e.getMessage();
             LOGGER.warn(e, "JWKS content validation failed");
             return JwksValidationResult.failure(error);
@@ -292,7 +289,7 @@ public class JwksValidationServlet extends HttpServlet {
             LOGGER.warn("Invalid JSON format in request: %s", e.getMessage());
             sendErrorResponse(resp, 400, "Invalid JSON format");
             return null;
-        } catch (Exception e) {
+        } catch (IOException e) {
             LOGGER.error(e, "Error reading request body");
             sendErrorResponse(resp, 500, "Error reading request");
             return null;
@@ -356,19 +353,12 @@ public class JwksValidationServlet extends HttpServlet {
     /**
      * Result of JWKS validation.
      */
-    private static class JwksValidationResult {
-        private final boolean valid;
-        private final String error;
-        private final int keyCount;
-        private final List<String> algorithms;
-
-        private JwksValidationResult(boolean valid, String error, int keyCount, List<String> algorithms) {
-            this.valid = valid;
-            this.error = error;
-            this.keyCount = keyCount;
-            this.algorithms = algorithms;
-        }
-
+    private record JwksValidationResult(
+    boolean valid,
+    String error,
+    int keyCount,
+    List<String> algorithms
+    ) {
         public static JwksValidationResult success(String message, int keyCount, List<String> algorithms) {
             return new JwksValidationResult(true, null, keyCount, algorithms);
         }

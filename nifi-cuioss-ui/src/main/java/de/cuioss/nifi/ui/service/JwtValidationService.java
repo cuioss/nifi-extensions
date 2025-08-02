@@ -46,9 +46,9 @@ public class JwtValidationService {
     /**
      * Verifies a JWT token using the processor's configuration.
      * 
-     * @param token The JWT token to verify
-     * @param processorId The processor ID to get configuration from
-     * @return TokenValidationResult containing validation results
+     * @param token The JWT token to verify (must not be null)
+     * @param processorId The processor ID to get configuration from (can be null for test mode)
+     * @return TokenValidationResult containing validation results (never null)
      * @throws IOException If unable to fetch processor configuration
      * @throws IllegalArgumentException If processor configuration is invalid
      * @throws IllegalStateException If processor configuration is not available
@@ -91,7 +91,7 @@ public class JwtValidationService {
                     .parserConfig(parserConfig)
                     .issuerConfigs(issuerConfigs)
                     .build();
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             LOGGER.error(e, "Failed to create TokenValidator for processor %s", processorId);
             throw new IllegalStateException("Failed to create TokenValidator: " + e.getMessage(), e);
         }
@@ -112,7 +112,7 @@ public class JwtValidationService {
             MetricsServlet.recordInvalidToken(e.getMessage());
 
             return TokenValidationResult.failure(e.getMessage());
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             LOGGER.error(e, "Unexpected error during token validation for processor %s", processorId);
 
             String errorMessage = "Unexpected validation error: " + e.getMessage();
