@@ -16,757 +16,387 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
-import jakarta.servlet.*;
-import jakarta.servlet.http.*;
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.WriteListener;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.easymock.EasyMockExtension;
+import org.easymock.Mock;
+import org.easymock.TestSubject;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.security.Principal;
-import java.util.Collection;
-import java.util.Enumeration;
-import java.util.Locale;
-import java.util.Map;
 
+import static org.easymock.EasyMock.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+@EnableGeneratorController
+@ExtendWith(EasyMockExtension.class)
+@DisplayName("MetricsServlet tests")
 class MetricsServletTest {
 
-    private MetricsServlet servlet;
-    private TestHttpServletRequest request;
-    private TestHttpServletResponse response;
+    @TestSubject
+    private MetricsServlet servlet = new MetricsServlet();
+
+    @Mock
+    private HttpServletRequest request;
+
+    @Mock
+    private HttpServletResponse response;
+
+    private ByteArrayOutputStream outputStream;
+    private TestServletOutputStream servletOutputStream;
 
     @BeforeEach
-    void setUp() {
-        servlet = new MetricsServlet();
-        request = new TestHttpServletRequest();
-        response = new TestHttpServletResponse();
+    void setUp() throws IOException {
+        outputStream = new ByteArrayOutputStream();
+        servletOutputStream = new TestServletOutputStream(outputStream);
 
-        // Reset metrics before each test
         MetricsServlet.resetMetrics();
     }
 
-    @Test
-    void initialMetricsAllZero() throws Exception {
-        // Act
-        servlet.doGet(request, response);
-
-        // Assert
-        assertEquals(200, response.getStatus());
-        assertEquals("application/json", response.getContentType());
-
-        String responseJson = response.getOutputAsString();
-        assertTrue(responseJson.contains("\"totalTokensValidated\":0"));
-        assertTrue(responseJson.contains("\"validTokens\":0"));
-        assertTrue(responseJson.contains("\"invalidTokens\":0"));
-        assertTrue(responseJson.contains("\"errorRate\":0.0"));
-        assertTrue(responseJson.contains("\"lastValidation\":\"\""));
-        assertTrue(responseJson.contains("\"topErrors\":[]"));
-    }
-
-    @Test
-    void metricsAfterValidTokens() throws Exception {
-        // Arrange - Record some valid tokens
-        MetricsServlet.recordValidToken();
-        MetricsServlet.recordValidToken();
-        MetricsServlet.recordValidToken();
-
-        // Act
-        servlet.doGet(request, response);
-
-        // Assert
-        assertEquals(200, response.getStatus());
-
-        String responseJson = response.getOutputAsString();
-        assertTrue(responseJson.contains("\"totalTokensValidated\":3"));
-        assertTrue(responseJson.contains("\"validTokens\":3"));
-        assertTrue(responseJson.contains("\"invalidTokens\":0"));
-        assertTrue(responseJson.contains("\"errorRate\":0.0"));
-        assertFalse(responseJson.contains("\"lastValidation\":\"\""));
-    }
-
-    @Test
-    void metricsAfterInvalidTokens() throws Exception {
-        // Arrange - Record some invalid tokens
-        MetricsServlet.recordInvalidToken("Token expired");
-        MetricsServlet.recordInvalidToken("Invalid signature");
-        MetricsServlet.recordInvalidToken("Token expired");
-
-        // Act
-        servlet.doGet(request, response);
-
-        // Assert
-        assertEquals(200, response.getStatus());
-
-        String responseJson = response.getOutputAsString();
-        assertTrue(responseJson.contains("\"totalTokensValidated\":3"));
-        assertTrue(responseJson.contains("\"validTokens\":0"));
-        assertTrue(responseJson.contains("\"invalidTokens\":3"));
-        assertTrue(responseJson.contains("\"errorRate\":1.0"));
-
-        // Check top errors are included
-        assertTrue(responseJson.contains("\"Token expired\""));
-        assertTrue(responseJson.contains("\"Invalid signature\""));
-        assertTrue(responseJson.contains("\"count\":2")); // Token expired appears twice
-        assertTrue(responseJson.contains("\"count\":1")); // Invalid signature appears once
-    }
-
-    @Test
-    void metricsWithMixedTokens() throws Exception {
-        // Arrange - Record mixed valid and invalid tokens
-        MetricsServlet.recordValidToken();
-        MetricsServlet.recordValidToken();
-        MetricsServlet.recordInvalidToken("Token expired");
-        MetricsServlet.recordValidToken();
-        MetricsServlet.recordInvalidToken("Invalid audience");
-
-        // Act
-        servlet.doGet(request, response);
-
-        // Assert
-        assertEquals(200, response.getStatus());
-
-        String responseJson = response.getOutputAsString();
-        assertTrue(responseJson.contains("\"totalTokensValidated\":5"));
-        assertTrue(responseJson.contains("\"validTokens\":3"));
-        assertTrue(responseJson.contains("\"invalidTokens\":2"));
-        assertTrue(responseJson.contains("\"errorRate\":0.4")); // 2/5 = 0.4
-        
-        // Check error types are recorded
-        assertTrue(responseJson.contains("\"Token expired\""));
-        assertTrue(responseJson.contains("\"Invalid audience\""));
-    }
-
-    @Test
-    void currentMetricsStaticMethod() {
-        // Arrange - Record some metrics
-        MetricsServlet.recordValidToken();
-        MetricsServlet.recordInvalidToken("Test error");
-
-        // Act
-        MetricsServlet.SecurityMetrics metrics = MetricsServlet.getCurrentMetrics();
-
-        // Assert
-        assertEquals(2, metrics.totalTokensValidated);
-        assertEquals(1, metrics.validTokens);
-        assertEquals(1, metrics.invalidTokens);
-        assertEquals(0.5, metrics.errorRate, 0.001);
-        assertNotNull(metrics.lastValidation);
-        assertEquals(1, metrics.topErrors.size());
-        assertEquals("Test error", metrics.topErrors.getFirst().error);
-        assertEquals(1, metrics.topErrors.getFirst().count);
-    }
-
-    @Test
-    void resetMetrics() {
-        // Arrange - Record some metrics
-        MetricsServlet.recordValidToken();
-        MetricsServlet.recordInvalidToken("Test error");
-
-        // Verify metrics are recorded
-        MetricsServlet.SecurityMetrics beforeReset = MetricsServlet.getCurrentMetrics();
-        assertEquals(2, beforeReset.totalTokensValidated);
-
-        // Act - Reset metrics
-        MetricsServlet.resetMetrics();
-
-        // Assert - Metrics should be back to zero
-        MetricsServlet.SecurityMetrics afterReset = MetricsServlet.getCurrentMetrics();
-        assertEquals(0, afterReset.totalTokensValidated);
-        assertEquals(0, afterReset.validTokens);
-        assertEquals(0, afterReset.invalidTokens);
-        assertEquals(0.0, afterReset.errorRate, 0.001);
-        assertNull(afterReset.lastValidation);
-        assertTrue(afterReset.topErrors.isEmpty());
-    }
-
-    @Test
-    void topErrorsSorting() throws Exception {
-        // Arrange - Record errors with different frequencies
-        MetricsServlet.recordInvalidToken("Error A");
-        MetricsServlet.recordInvalidToken("Error B");
-        MetricsServlet.recordInvalidToken("Error A");
-        MetricsServlet.recordInvalidToken("Error C");
-        MetricsServlet.recordInvalidToken("Error A");
-        MetricsServlet.recordInvalidToken("Error B");
-
-        // Act
-        servlet.doGet(request, response);
-
-        // Assert
-        String responseJson = response.getOutputAsString();
-
-        // Error A should appear first (3 occurrences)
-        int errorAIndex = responseJson.indexOf("\"Error A\"");
-        int errorBIndex = responseJson.indexOf("\"Error B\"");
-        int errorCIndex = responseJson.indexOf("\"Error C\"");
-
-        assertTrue(errorAIndex > 0);
-        assertTrue(errorBIndex > 0);
-        assertTrue(errorCIndex > 0);
-
-        // Error A should come before Error B and C in the response
-        assertTrue(errorAIndex < errorBIndex);
-        assertTrue(errorAIndex < errorCIndex);
-
-        // Check counts
-        assertTrue(responseJson.contains("\"count\":3")); // Error A
-        assertTrue(responseJson.contains("\"count\":2")); // Error B
-        assertTrue(responseJson.contains("\"count\":1")); // Error C
-    }
-
-    @Test
-    void errorWithNullMessage() throws Exception {
-        // Arrange - Record error with null message (should be ignored)
-        MetricsServlet.recordInvalidToken(null);
-        MetricsServlet.recordInvalidToken("");
-        MetricsServlet.recordInvalidToken("   ");
-        MetricsServlet.recordInvalidToken("Valid error");
-
-        // Act
-        servlet.doGet(request, response);
-
-        // Assert
-        String responseJson = response.getOutputAsString();
-        assertTrue(responseJson.contains("\"totalTokensValidated\":4"));
-        assertTrue(responseJson.contains("\"invalidTokens\":4"));
-
-        // Only the "Valid error" should appear in top errors
-        assertTrue(responseJson.contains("\"Valid error\""));
-        assertTrue(responseJson.contains("\"count\":1"));
-
-        // The topErrors array should only have one entry
-        int topErrorsStart = responseJson.indexOf("\"topErrors\":[");
-        int topErrorsEnd = responseJson.indexOf("]", topErrorsStart);
-        String topErrorsSection = responseJson.substring(topErrorsStart, topErrorsEnd + 1);
-
-        // Count the number of error objects (each has a "count" field)
-        int errorObjectCount = topErrorsSection.split("\"count\":").length - 1;
-        assertEquals(1, errorObjectCount);
-    }
-
-    // Test helper classes (reuse from JwtVerificationServletTest)
-    private static class TestHttpServletRequest implements HttpServletRequest {
-        @Override
-        public String getAuthType() {
-            return null;
-        }
-
-        @Override
-        public Cookie[] getCookies() {
-            return new Cookie[0];
-        }
-
-        @Override
-        public long getDateHeader(String name) {
-            return 0;
-        }
-
-        @Override
-        public String getHeader(String name) {
-            return null;
-        }
-
-        @Override
-        public Enumeration<String> getHeaders(String name) {
-            return null;
-        }
-
-        @Override
-        public Enumeration<String> getHeaderNames() {
-            return null;
-        }
-
-        @Override
-        public int getIntHeader(String name) {
-            return 0;
-        }
-
-        @Override
-        public String getMethod() {
-            return "GET";
-        }
-
-        @Override
-        public String getPathInfo() {
-            return null;
-        }
-
-        @Override
-        public String getPathTranslated() {
-            return null;
-        }
-
-        @Override
-        public String getContextPath() {
-            return null;
-        }
-
-        @Override
-        public String getQueryString() {
-            return null;
-        }
-
-        @Override
-        public String getRemoteUser() {
-            return null;
-        }
-
-        @Override
-        public boolean isUserInRole(String role) {
-            return false;
-        }
-
-        @Override
-        public Principal getUserPrincipal() {
-            return null;
-        }
-
-        @Override
-        public String getRequestedSessionId() {
-            return null;
-        }
-
-        @Override
-        public String getRequestURI() {
-            return null;
-        }
-
-        @Override
-        public StringBuffer getRequestURL() {
-            return null;
-        }
-
-        @Override
-        public String getServletPath() {
-            return null;
-        }
-
-        @Override
-        public HttpSession getSession(boolean create) {
-            return null;
-        }
-
-        @Override
-        public HttpSession getSession() {
-            return null;
-        }
-
-        @Override
-        public String changeSessionId() {
-            return null;
-        }
-
-        @Override
-        public boolean isRequestedSessionIdValid() {
-            return false;
-        }
-
-        @Override
-        public boolean isRequestedSessionIdFromCookie() {
-            return false;
-        }
-
-        @Override
-        public boolean isRequestedSessionIdFromURL() {
-            return false;
-        }
-
-        @Override
-        public boolean authenticate(HttpServletResponse response) {
-            return false;
-        }
-
-        @Override
-        public void login(String username, String password) {
-        }
-
-        @Override
-        public void logout() {
-        }
-
-        @Override
-        public Collection<Part> getParts() {
-            return null;
-        }
-
-        @Override
-        public Part getPart(String name) {
-            return null;
-        }
-
-        @Override
-        public <T extends HttpUpgradeHandler> T upgrade(Class<T> handlerClass) {
-            return null;
-        }
-
-        @Override
-        public Object getAttribute(String name) {
-            return null;
-        }
-
-        @Override
-        public Enumeration<String> getAttributeNames() {
-            return null;
-        }
-
-        @Override
-        public String getCharacterEncoding() {
-            return null;
-        }
-
-        @Override
-        public void setCharacterEncoding(String env) {
-        }
-
-        @Override
-        public int getContentLength() {
-            return 0;
-        }
-
-        @Override
-        public long getContentLengthLong() {
-            return 0;
-        }
-
-        @Override
-        public String getContentType() {
-            return null;
-        }
-
-        @Override
-        public ServletInputStream getInputStream() {
-            return null;
-        }
-
-        @Override
-        public String getParameter(String name) {
-            return null;
-        }
-
-        @Override
-        public Enumeration<String> getParameterNames() {
-            return null;
-        }
-
-        @Override
-        public String[] getParameterValues(String name) {
-            return null;
-        }
-
-        @Override
-        public Map<String, String[]> getParameterMap() {
-            return null;
-        }
-
-        @Override
-        public String getProtocol() {
-            return null;
-        }
-
-        @Override
-        public String getScheme() {
-            return null;
-        }
-
-        @Override
-        public String getServerName() {
-            return null;
-        }
-
-        @Override
-        public int getServerPort() {
-            return 0;
-        }
-
-        @Override
-        public BufferedReader getReader() {
-            return null;
-        }
-
-        @Override
-        public String getRemoteAddr() {
-            return null;
-        }
-
-        @Override
-        public String getRemoteHost() {
-            return null;
-        }
-
-        @Override
-        public void setAttribute(String name, Object o) {
-        }
-
-        @Override
-        public void removeAttribute(String name) {
-        }
-
-        @Override
-        public Locale getLocale() {
-            return null;
-        }
-
-        @Override
-        public Enumeration<Locale> getLocales() {
-            return null;
-        }
-
-        @Override
-        public boolean isSecure() {
-            return false;
-        }
-
-        @Override
-        public RequestDispatcher getRequestDispatcher(String path) {
-            return null;
-        }
-
-        @Override
-        public int getRemotePort() {
-            return 0;
-        }
-
-        @Override
-        public String getLocalName() {
-            return null;
-        }
-
-        @Override
-        public String getLocalAddr() {
-            return null;
-        }
-
-        @Override
-        public int getLocalPort() {
-            return 0;
-        }
-
-        @Override
-        public ServletContext getServletContext() {
-            return null;
-        }
-
-        @Override
-        public AsyncContext startAsync() {
-            return null;
-        }
-
-        @Override
-        public AsyncContext startAsync(ServletRequest servletRequest, ServletResponse servletResponse) {
-            return null;
-        }
-
-        @Override
-        public boolean isAsyncStarted() {
-            return false;
-        }
-
-        @Override
-        public boolean isAsyncSupported() {
-            return false;
-        }
-
-        @Override
-        public AsyncContext getAsyncContext() {
-            return null;
-        }
-
-        @Override
-        public DispatcherType getDispatcherType() {
-            return null;
-        }
-
-        @Override
-        public String getRequestId() {
-            return null;
-        }
-
-        @Override
-        public String getProtocolRequestId() {
-            return null;
-        }
-
-        @Override
-        public ServletConnection getServletConnection() {
-            return null;
-        }
-
-        @Override
-        public HttpServletMapping getHttpServletMapping() {
-            return null;
+    @Nested
+    @DisplayName("Initial metrics state")
+    class InitialMetricsState {
+
+        @Test
+        @DisplayName("Should return all zeros for initial metrics")
+        void shouldReturnAllZerosForInitialMetrics() throws Exception {
+            expect(response.getOutputStream()).andReturn(servletOutputStream);
+            response.setContentType("application/json");
+            expectLastCall();
+            response.setCharacterEncoding("UTF-8");
+            expectLastCall();
+            response.setStatus(200);
+            expectLastCall();
+
+            replay(request, response);
+
+            servlet.doGet(request, response);
+
+            verify(request, response);
+
+            String responseJson = outputStream.toString();
+            assertTrue(responseJson.contains("\"totalTokensValidated\":0"),
+                    "Total tokens validated should be 0 initially");
+            assertTrue(responseJson.contains("\"validTokens\":0"),
+                    "Valid tokens count should be 0 initially");
+            assertTrue(responseJson.contains("\"invalidTokens\":0"),
+                    "Invalid tokens count should be 0 initially");
+            assertTrue(responseJson.contains("\"errorRate\":0.0"),
+                    "Error rate should be 0.0 initially");
+            assertTrue(responseJson.contains("\"lastValidation\":\"\""),
+                    "Last validation should be empty initially");
+            assertTrue(responseJson.contains("\"topErrors\":[]"),
+                    "Top errors list should be empty initially");
         }
     }
 
-    private static class TestHttpServletResponse implements HttpServletResponse {
-        private final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        private final TestServletOutputStream servletOutputStream = new TestServletOutputStream(outputStream);
-        private int status = 200;
-        private String contentType;
-        private String characterEncoding = "UTF-8";
+    @Nested
+    @DisplayName("Valid token metrics")
+    class ValidTokenMetrics {
 
-        public String getOutputAsString() {
-            return outputStream.toString();
-        }
+        @Test
+        @DisplayName("Should track valid tokens correctly")
+        void shouldTrackValidTokensCorrectly() throws Exception {
+            final int validTokenCount = 3;
+            for (int i = 0; i < validTokenCount; i++) {
+                MetricsServlet.recordValidToken();
+            }
 
-        @Override
-        public int getStatus() {
-            return status;
-        }
+            expect(response.getOutputStream()).andReturn(servletOutputStream);
+            response.setContentType("application/json");
+            expectLastCall();
+            response.setCharacterEncoding("UTF-8");
+            expectLastCall();
+            response.setStatus(200);
+            expectLastCall();
 
-        @Override
-        public void setStatus(int sc) {
-            this.status = sc;
-        }
+            replay(request, response);
 
-        @Override
-        public String getContentType() {
-            return contentType;
-        }
+            servlet.doGet(request, response);
 
-        @Override
-        public void setContentType(String type) {
-            this.contentType = type;
-        }
+            verify(request, response);
 
-        @Override
-        public void setCharacterEncoding(String charset) {
-            this.characterEncoding = charset;
-        }
-
-        @Override
-        public String getCharacterEncoding() {
-            return characterEncoding;
-        }
-
-        @Override
-        public ServletOutputStream getOutputStream() throws IOException {
-            return servletOutputStream;
-        }
-
-        // Minimal implementations for other methods
-        @Override
-        public void addCookie(Cookie cookie) {
-        }
-
-        @Override
-        public boolean containsHeader(String name) {
-            return false;
-        }
-
-        @Override
-        public String encodeURL(String url) {
-            return url;
-        }
-
-        @Override
-        public String encodeRedirectURL(String url) {
-            return url;
-        }
-
-        @Override
-        public void sendError(int sc, String msg) {
-        }
-
-        @Override
-        public void sendError(int sc) {
-        }
-
-        @Override
-        public void sendRedirect(String location) {
-        }
-
-        @Override
-        public void setDateHeader(String name, long date) {
-        }
-
-        @Override
-        public void addDateHeader(String name, long date) {
-        }
-
-        @Override
-        public void setHeader(String name, String value) {
-        }
-
-        @Override
-        public void addHeader(String name, String value) {
-        }
-
-        @Override
-        public void setIntHeader(String name, int value) {
-        }
-
-        @Override
-        public void addIntHeader(String name, int value) {
-        }
-
-        @Override
-        public PrintWriter getWriter() {
-            return null;
-        }
-
-        @Override
-        public void setContentLength(int len) {
-        }
-
-        @Override
-        public void setContentLengthLong(long len) {
-        }
-
-        @Override
-        public void setBufferSize(int size) {
-        }
-
-        @Override
-        public int getBufferSize() {
-            return 0;
-        }
-
-        @Override
-        public void flushBuffer() {
-        }
-
-        @Override
-        public void resetBuffer() {
-        }
-
-        @Override
-        public boolean isCommitted() {
-            return false;
-        }
-
-        @Override
-        public void reset() {
-        }
-
-        @Override
-        public void setLocale(Locale loc) {
-        }
-
-        @Override
-        public Locale getLocale() {
-            return null;
-        }
-
-        @Override
-        public Collection<String> getHeaders(String name) {
-            return null;
-        }
-
-        @Override
-        public Collection<String> getHeaderNames() {
-            return null;
-        }
-
-        @Override
-        public String getHeader(String name) {
-            return null;
+            String responseJson = outputStream.toString();
+            assertTrue(responseJson.contains("\"totalTokensValidated\":" + validTokenCount),
+                    "Total tokens should match recorded count");
+            assertTrue(responseJson.contains("\"validTokens\":" + validTokenCount),
+                    "Valid tokens should match recorded count");
+            assertTrue(responseJson.contains("\"invalidTokens\":0"),
+                    "Invalid tokens should remain 0 when only valid tokens recorded");
+            assertTrue(responseJson.contains("\"errorRate\":0.0"),
+                    "Error rate should be 0.0 when all tokens are valid");
+            assertFalse(responseJson.contains("\"lastValidation\":\"\""),
+                    "Last validation timestamp should be present after recording tokens");
         }
     }
 
+    @Nested
+    @DisplayName("Invalid token metrics")
+    class InvalidTokenMetrics {
+
+        @Test
+        @DisplayName("Should track invalid tokens and error types")
+        void shouldTrackInvalidTokensAndErrorTypes() throws Exception {
+            final String expiredError = "Token expired";
+            final String signatureError = "Invalid signature";
+
+            MetricsServlet.recordInvalidToken(expiredError);
+            MetricsServlet.recordInvalidToken(signatureError);
+            MetricsServlet.recordInvalidToken(expiredError);
+
+            expect(response.getOutputStream()).andReturn(servletOutputStream);
+            response.setContentType("application/json");
+            expectLastCall();
+            response.setCharacterEncoding("UTF-8");
+            expectLastCall();
+            response.setStatus(200);
+            expectLastCall();
+
+            replay(request, response);
+
+            servlet.doGet(request, response);
+
+            verify(request, response);
+
+            String responseJson = outputStream.toString();
+            assertTrue(responseJson.contains("\"totalTokensValidated\":3"),
+                    "Total tokens should be 3");
+            assertTrue(responseJson.contains("\"validTokens\":0"),
+                    "Valid tokens should be 0 when only invalid tokens recorded");
+            assertTrue(responseJson.contains("\"invalidTokens\":3"),
+                    "Invalid tokens count should match recorded count");
+            assertTrue(responseJson.contains("\"errorRate\":1.0"),
+                    "Error rate should be 1.0 when all tokens are invalid");
+
+            assertTrue(responseJson.contains("\"" + expiredError + "\""),
+                    "Response should include expired token error message");
+            assertTrue(responseJson.contains("\"" + signatureError + "\""),
+                    "Response should include signature error message");
+            assertTrue(responseJson.contains("\"count\":2"),
+                    "Token expired error should have count of 2");
+            assertTrue(responseJson.contains("\"count\":1"),
+                    "Invalid signature error should have count of 1");
+        }
+    }
+
+    @Nested
+    @DisplayName("Mixed token metrics")
+    class MixedTokenMetrics {
+
+        @Test
+        @DisplayName("Should calculate correct error rate for mixed tokens")
+        void shouldCalculateCorrectErrorRateForMixedTokens() throws Exception {
+            MetricsServlet.recordValidToken();
+            MetricsServlet.recordValidToken();
+            MetricsServlet.recordInvalidToken("Token expired");
+            MetricsServlet.recordValidToken();
+            MetricsServlet.recordInvalidToken("Invalid audience");
+
+            expect(response.getOutputStream()).andReturn(servletOutputStream);
+            response.setContentType("application/json");
+            expectLastCall();
+            response.setCharacterEncoding("UTF-8");
+            expectLastCall();
+            response.setStatus(200);
+            expectLastCall();
+
+            replay(request, response);
+
+            servlet.doGet(request, response);
+
+            verify(request, response);
+
+            String responseJson = outputStream.toString();
+            assertTrue(responseJson.contains("\"totalTokensValidated\":5"),
+                    "Total tokens should be 5 (3 valid + 2 invalid)");
+            assertTrue(responseJson.contains("\"validTokens\":3"),
+                    "Valid tokens count should be 3");
+            assertTrue(responseJson.contains("\"invalidTokens\":2"),
+                    "Invalid tokens count should be 2");
+            assertTrue(responseJson.contains("\"errorRate\":0.4"),
+                    "Error rate should be 0.4 (2 invalid / 5 total)");
+
+            assertTrue(responseJson.contains("\"Token expired\""),
+                    "Should track 'Token expired' error");
+            assertTrue(responseJson.contains("\"Invalid audience\""),
+                    "Should track 'Invalid audience' error");
+        }
+    }
+
+    @Nested
+    @DisplayName("Static metrics methods")
+    class StaticMetricsMethods {
+
+        @Test
+        @DisplayName("Should provide current metrics snapshot")
+        void shouldProvideCurrentMetricsSnapshot() {
+            final String testError = Generators.letterStrings(10, 20).next();
+
+            MetricsServlet.recordValidToken();
+            MetricsServlet.recordInvalidToken(testError);
+
+            MetricsServlet.SecurityMetrics metrics = MetricsServlet.getCurrentMetrics();
+
+            assertEquals(2, metrics.totalTokensValidated,
+                    "Total tokens should be 2 (1 valid + 1 invalid)");
+            assertEquals(1, metrics.validTokens,
+                    "Valid tokens count should be 1");
+            assertEquals(1, metrics.invalidTokens,
+                    "Invalid tokens count should be 1");
+            assertEquals(0.5, metrics.errorRate, 0.001,
+                    "Error rate should be 0.5 (50% failure rate)");
+            assertNotNull(metrics.lastValidation,
+                    "Last validation timestamp should be set");
+            assertEquals(1, metrics.topErrors.size(),
+                    "Should have exactly one error type");
+            assertEquals(testError, metrics.topErrors.getFirst().error,
+                    "Error message should match recorded error");
+            assertEquals(1, metrics.topErrors.getFirst().count,
+                    "Error count should be 1");
+        }
+
+        @Test
+        @DisplayName("Should reset all metrics to initial state")
+        void shouldResetAllMetricsToInitialState() {
+            MetricsServlet.recordValidToken();
+            MetricsServlet.recordInvalidToken("Test error");
+
+            MetricsServlet.SecurityMetrics beforeReset = MetricsServlet.getCurrentMetrics();
+            assertEquals(2, beforeReset.totalTokensValidated,
+                    "Should have recorded 2 tokens before reset");
+
+            MetricsServlet.resetMetrics();
+
+            MetricsServlet.SecurityMetrics afterReset = MetricsServlet.getCurrentMetrics();
+            assertEquals(0, afterReset.totalTokensValidated,
+                    "Total tokens should be 0 after reset");
+            assertEquals(0, afterReset.validTokens,
+                    "Valid tokens should be 0 after reset");
+            assertEquals(0, afterReset.invalidTokens,
+                    "Invalid tokens should be 0 after reset");
+            assertEquals(0.0, afterReset.errorRate, 0.001,
+                    "Error rate should be 0.0 after reset");
+            assertNull(afterReset.lastValidation,
+                    "Last validation should be null after reset");
+            assertTrue(afterReset.topErrors.isEmpty(),
+                    "Top errors list should be empty after reset");
+        }
+    }
+
+    @Nested
+    @DisplayName("Error sorting and ranking")
+    class ErrorSortingAndRanking {
+
+        @Test
+        @DisplayName("Should sort errors by frequency in descending order")
+        void shouldSortErrorsByFrequencyDescending() throws Exception {
+            MetricsServlet.recordInvalidToken("Error A");
+            MetricsServlet.recordInvalidToken("Error B");
+            MetricsServlet.recordInvalidToken("Error A");
+            MetricsServlet.recordInvalidToken("Error C");
+            MetricsServlet.recordInvalidToken("Error A");
+            MetricsServlet.recordInvalidToken("Error B");
+
+            expect(response.getOutputStream()).andReturn(servletOutputStream);
+            response.setContentType("application/json");
+            expectLastCall();
+            response.setCharacterEncoding("UTF-8");
+            expectLastCall();
+            response.setStatus(200);
+            expectLastCall();
+
+            replay(request, response);
+
+            servlet.doGet(request, response);
+
+            verify(request, response);
+
+            String responseJson = outputStream.toString();
+
+            int errorAIndex = responseJson.indexOf("\"Error A\"");
+            int errorBIndex = responseJson.indexOf("\"Error B\"");
+            int errorCIndex = responseJson.indexOf("\"Error C\"");
+
+            assertTrue(errorAIndex > 0,
+                    "Error A should be present in response");
+            assertTrue(errorBIndex > 0,
+                    "Error B should be present in response");
+            assertTrue(errorCIndex > 0,
+                    "Error C should be present in response");
+
+            assertTrue(errorAIndex < errorBIndex,
+                    "Error A (3 occurrences) should appear before Error B (2 occurrences)");
+            assertTrue(errorAIndex < errorCIndex,
+                    "Error A (3 occurrences) should appear before Error C (1 occurrence)");
+
+            assertTrue(responseJson.contains("\"count\":3"),
+                    "Should show count of 3 for most frequent error");
+            assertTrue(responseJson.contains("\"count\":2"),
+                    "Should show count of 2 for second most frequent error");
+            assertTrue(responseJson.contains("\"count\":1"),
+                    "Should show count of 1 for least frequent error");
+        }
+    }
+
+    @Nested
+    @DisplayName("Edge cases")
+    class EdgeCases {
+
+        @Test
+        @DisplayName("Should handle null and empty error messages gracefully")
+        void shouldHandleNullAndEmptyErrorMessages() throws Exception {
+            MetricsServlet.recordInvalidToken(null);
+            MetricsServlet.recordInvalidToken("");
+            MetricsServlet.recordInvalidToken("   ");
+            MetricsServlet.recordInvalidToken("Valid error");
+
+            expect(response.getOutputStream()).andReturn(servletOutputStream);
+            response.setContentType("application/json");
+            expectLastCall();
+            response.setCharacterEncoding("UTF-8");
+            expectLastCall();
+            response.setStatus(200);
+            expectLastCall();
+
+            replay(request, response);
+
+            servlet.doGet(request, response);
+
+            verify(request, response);
+
+            String responseJson = outputStream.toString();
+            assertTrue(responseJson.contains("\"totalTokensValidated\":4"),
+                    "Should count all tokens including those with null/empty errors");
+            assertTrue(responseJson.contains("\"invalidTokens\":4"),
+                    "Should count all invalid tokens");
+
+            assertTrue(responseJson.contains("\"Valid error\""),
+                    "Should include non-empty error message");
+            assertTrue(responseJson.contains("\"count\":1"),
+                    "Valid error should have count of 1");
+
+            int topErrorsStart = responseJson.indexOf("\"topErrors\":[");
+            int topErrorsEnd = responseJson.indexOf("]", topErrorsStart);
+            String topErrorsSection = responseJson.substring(topErrorsStart, topErrorsEnd + 1);
+
+            int errorObjectCount = topErrorsSection.split("\"count\":").length - 1;
+            assertEquals(1, errorObjectCount,
+                    "Should only include valid error messages in top errors list");
+        }
+    }
+
+    /**
+     * Minimal ServletOutputStream implementation for testing.
+     */
     private static class TestServletOutputStream extends ServletOutputStream {
         private final ByteArrayOutputStream outputStream;
 
