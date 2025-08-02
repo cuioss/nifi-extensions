@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { expect, test } from "@playwright/test";
+import { test, expect } from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 import {

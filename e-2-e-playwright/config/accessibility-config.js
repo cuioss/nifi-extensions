@@ -180,13 +180,6 @@ export const EXECUTION_CONFIG = {
 
     // Default mode
     defaultMode: "standard",
-
-    // Retry configuration
-    retries: {
-        enabled: true,
-        maxRetries: 2,
-        retryDelay: 1000,
-    },
 };
 
 /**

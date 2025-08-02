@@ -5,7 +5,8 @@
 
 import {test as authTest} from './auth-fixtures.js';
 import {checkA11y, injectAxe} from 'axe-playwright';
-import {setupAuthAwareErrorDetection} from '../utils/console-logger.js';
+import {setupAuthAwareErrorDetection, saveTestBrowserLogs} from '../utils/console-logger.js';
+import {logTestWarning} from '../utils/test-error-handler.js';
 
 /**
  * Extended test with all fixtures combined including global console logging
@@ -19,6 +20,13 @@ export const test = authTest.extend({
     await setupAuthAwareErrorDetection(page, testInfo);
 
     await use(page);
+
+    // Save browser logs after each test
+    try {
+      await saveTestBrowserLogs(testInfo);
+    } catch (error) {
+      logTestWarning('page fixture cleanup', `Failed to save console logs: ${error.message}`);
+    }
   },
   /**
    * Accessibility testing fixture using axe-playwright
@@ -86,8 +94,15 @@ export const test = authTest.extend({
  * Accessibility-focused test with automatic checks
  */
 export const accessibilityTest = test.extend({
-  page: async ({ accessibilityPage }, use) => {
+  page: async ({ accessibilityPage }, use, testInfo) => {
     await use(accessibilityPage);
+
+    // Save browser logs after each test
+    try {
+      await saveTestBrowserLogs(testInfo);
+    } catch (error) {
+      logTestWarning('accessibilityTest cleanup', `Failed to save console logs: ${error.message}`);
+    }
 
     // Run accessibility check after each test
     await test.step('Accessibility check', async () => {

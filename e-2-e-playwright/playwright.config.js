@@ -36,11 +36,11 @@ module.exports = defineConfig({
   globalTeardown: './scripts/global-teardown.js',
   /* Enhanced parallel execution for better performance */
   fullyParallel: true,
-  workers: process.env.CI ? 2 : undefined,
+  workers: process.env.CI ? 2 : 1,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Enhanced retry strategy with intelligent retry logic */
-  retries: process.env.CI ? 3 : (process.env.E2E_RETRIES ? parseInt(process.env.E2E_RETRIES) : 1),
+  /* Disable retries - tests should be deterministic */
+  retries: 0,
   /* Modern reporter configuration with accessibility reports */
   reporter: [
     ['html', { outputFolder: REPORTS_DIR, open: 'never' }],
@@ -52,6 +52,8 @@ module.exports = defineConfig({
   ],
   /* Output directories for test artifacts */
   outputDir: TEST_RESULTS_DIR,
+  /* Preserve output from test runs */
+  preserveOutput: 'always',
   /* Screenshot and video directories */
   screenshotsDir: SCREENSHOTS_DIR,
   videosDir: VIDEOS_DIR,
@@ -61,13 +63,16 @@ module.exports = defineConfig({
     baseURL: BASE_URL,
 
     /* Enhanced tracing - always collect for better debugging */
-    trace: 'on-first-retry',
+    /* Options: 'off', 'on', 'retain-on-failure', 'on-first-retry', 'on-all-retries' */
+    trace: process.env.PLAYWRIGHT_TRACE || 'on',
 
     /* Take screenshot on failure and for debugging */
-    screenshot: 'only-on-failure',
+    /* Options: 'off', 'on', 'only-on-failure' */
+    screenshot: process.env.PLAYWRIGHT_SCREENSHOT || 'on',
 
     /* Record video for better debugging */
-    video: 'retain-on-failure',
+    /* Options: 'off', 'on', 'retain-on-failure', 'on-first-retry' */
+    video: process.env.PLAYWRIGHT_VIDEO || 'on',
 
     /* Ignore HTTPS errors for development environments */
     ignoreHTTPSErrors: true,

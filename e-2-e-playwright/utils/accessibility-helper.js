@@ -345,27 +345,46 @@ export class AccessibilityHelper {
      * Check keyboard navigation
      */
     async checkKeyboardNavigation() {
+        // Ensure we have a valid page reference
+        if (!this.page) {
+            console.error("AccessibilityHelper: No page reference available");
+            return {
+                passed: false,
+                message: "No page reference available for keyboard navigation check",
+                results: []
+            };
+        }
+
         const results = [];
 
-        // Get all focusable elements
-        const focusableElements = await this.page
-            .locator(
-                'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-            )
-            .all();
+        try {
+            // Get all focusable elements
+            const focusableElements = await this.page
+                .locator(
+                    'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+                )
+                .all();
 
-        // Test tab navigation order
-        for (let i = 0; i < focusableElements.length; i++) {
-            await this.page.keyboard.press("Tab");
-            const focusedElement = await this.page.evaluate(
-                () => document.activeElement.outerHTML,
-            );
+            // Test tab navigation order
+            for (let i = 0; i < focusableElements.length; i++) {
+                await this.page.keyboard.press("Tab");
+                const focusedElement = await this.page.evaluate(
+                    () => document.activeElement.outerHTML,
+                );
 
-            results.push({
-                index: i,
-                element: focusedElement.substring(0, 100),
-                accessible: true,
-            });
+                results.push({
+                    index: i,
+                    element: focusedElement.substring(0, 100),
+                    accessible: true,
+                });
+            }
+        } catch (error) {
+            console.error("Error during keyboard navigation check:", error);
+            return {
+                passed: false,
+                message: `Keyboard navigation check failed: ${error.message}`,
+                results: []
+            };
         }
 
         return {

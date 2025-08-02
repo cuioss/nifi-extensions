@@ -3,7 +3,7 @@
  * Validates that the token service can fetch valid tokens and handle errors appropriately
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../fixtures/test-fixtures.js";
 import {
     KeycloakTokenService,
     getValidAccessToken,
