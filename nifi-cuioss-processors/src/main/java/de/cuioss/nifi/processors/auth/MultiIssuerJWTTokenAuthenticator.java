@@ -27,13 +27,16 @@ import de.cuioss.jwt.validation.security.SecurityEventCounter.EventType;
 import de.cuioss.jwt.validation.security.SignatureAlgorithmPreferences;
 import de.cuioss.nifi.processors.auth.config.ConfigurationManager;
 import de.cuioss.nifi.processors.auth.config.IssuerConfigurationParser;
+import de.cuioss.nifi.processors.auth.config.IssuerPropertyDescriptorFactory;
 import de.cuioss.nifi.processors.auth.i18n.I18nResolver;
 import de.cuioss.nifi.processors.auth.i18n.NiFiI18nResolver;
 import de.cuioss.nifi.processors.auth.util.AuthorizationValidator;
 import de.cuioss.nifi.processors.auth.util.ErrorContext;
+import de.cuioss.nifi.processors.auth.util.ProcessingError;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.NonNull;
 import org.apache.nifi.annotation.behavior.*;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.SeeAlso;
@@ -144,6 +147,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     private I18nResolver i18nResolver;
 
+    private IssuerPropertyDescriptorFactory propertyDescriptorFactory;
+
     @Getter
     private List<PropertyDescriptor> supportedPropertyDescriptors;
 
@@ -151,9 +156,10 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private Set<Relationship> relationships;
 
     @Override
-    protected void init(final ProcessorInitializationContext context) {
+    protected void init(@NonNull final ProcessorInitializationContext context) {
         // Initialize i18n resolver
         i18nResolver = NiFiI18nResolver.createDefault(context.getLogger());
+        propertyDescriptorFactory = new IssuerPropertyDescriptorFactory(i18nResolver);
 
         LOGGER.info("Initializing MultiIssuerJWTTokenAuthenticator processor");
 
@@ -181,126 +187,46 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     }
 
     @Override
-    protected PropertyDescriptor getSupportedDynamicPropertyDescriptor(final String propertyDescriptorName) {
+    protected PropertyDescriptor getSupportedDynamicPropertyDescriptor(@NonNull final String propertyDescriptorName) {
         // Support dynamic properties for issuer configuration
         if (propertyDescriptorName.startsWith(ISSUER_PREFIX)) {
-            String issuerProperty = propertyDescriptorName.substring(ISSUER_PREFIX.length());
-            int dotIndex = issuerProperty.indexOf('.');
-
-            if (dotIndex > 0) {
-                String issuerName = issuerProperty.substring(0, dotIndex);
-                String propertyKey = issuerProperty.substring(dotIndex + 1);
-
-                // Create a more descriptive display name and description
-                String displayName = i18nResolver.getTranslatedString(Property.Issuer.DYNAMIC_NAME, issuerName, propertyKey);
-
-
-                // Add specific validators based on property key
-                switch (propertyKey) {
-                    case Issuer.JWKS_TYPE -> {
-                        return new PropertyDescriptor.Builder()
-                                .name(propertyDescriptorName)
-                                .displayName(displayName)
-                                .description("JWKS source type for this issuer (url, file, or memory)")
-                                .required(false)
-                                .dynamic(true)
-                                .allowableValues("url", "file", "memory")
-                                .defaultValue("url")
-                                .build();
-                    }
-                    case Issuer.JWKS_URL -> {
-                        return new PropertyDescriptor.Builder()
-                                .name(propertyDescriptorName)
-                                .displayName(displayName)
-                                .description(i18nResolver.getTranslatedString(Property.Issuer.JWKS_URL_DESCRIPTION, propertyKey, issuerName))
-                                .required(false)
-                                .dynamic(true)
-                                .addValidator(StandardValidators.URL_VALIDATOR)
-                                .build();
-                    }
-                    case Issuer.JWKS_FILE -> {
-                        return new PropertyDescriptor.Builder()
-                                .name(propertyDescriptorName)
-                                .displayName(displayName)
-                                .description("File path to JWKS JSON file for this issuer")
-                                .required(false)
-                                .dynamic(true)
-                                .addValidator(StandardValidators.FILE_EXISTS_VALIDATOR)
-                                .build();
-                    }
-                    case Issuer.JWKS_CONTENT -> {
-                        return new PropertyDescriptor.Builder()
-                                .name(propertyDescriptorName)
-                                .displayName(displayName)
-                                .description("JWKS JSON content for this issuer (for in-memory configuration)")
-                                .required(false)
-                                .dynamic(true)
-                                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-                                .build();
-                    }
-                    case Issuer.ISSUER_NAME -> {
-                        return new PropertyDescriptor.Builder()
-                                .name(propertyDescriptorName)
-                                .displayName(displayName)
-                                .description(i18nResolver.getTranslatedString(Property.Issuer.ISSUER_DESCRIPTION, propertyKey, issuerName))
-                                .required(false)
-                                .dynamic(true)
-                                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-                                .build();
-                    }
-                    case Issuer.AUDIENCE, Issuer.CLIENT_ID -> {
-                        return new PropertyDescriptor.Builder()
-                                .name(propertyDescriptorName)
-                                .displayName(displayName)
-                                .description(i18nResolver.getTranslatedString(
-                                        Issuer.AUDIENCE.equals(propertyKey) ? Property.Issuer.AUDIENCE_DESCRIPTION : Property.Issuer.CLIENT_ID_DESCRIPTION,
-                                        propertyKey, issuerName))
-                                .required(false)
-                                .dynamic(true)
-                                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-                                .build();
-                    }
-                    case Issuer.REQUIRED_SCOPES, Issuer.REQUIRED_ROLES -> {
-                        return new PropertyDescriptor.Builder()
-                                .name(propertyDescriptorName)
-                                .displayName(displayName)
-                                .description(i18nResolver.getTranslatedString(
-                                        Issuer.REQUIRED_SCOPES.equals(propertyKey) ? "Required scopes for authorization (comma-separated)" : "Required roles for authorization (comma-separated)",
-                                        propertyKey, issuerName))
-                                .required(false)
-                                .dynamic(true)
-                                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-                                .build();
-                    }
-                    case Issuer.REQUIRE_ALL_SCOPES, Issuer.REQUIRE_ALL_ROLES, Issuer.CASE_SENSITIVE_MATCHING, Issuer.BYPASS_AUTHORIZATION -> {
-                        return new PropertyDescriptor.Builder()
-                                .name(propertyDescriptorName)
-                                .displayName(displayName)
-                                .description(i18nResolver.getTranslatedString(
-                                        Issuer.BYPASS_AUTHORIZATION.equals(propertyKey) ?
-                                                "Bypass all authorization checks for this issuer (WARNING: security risk)" :
-                                                "Boolean property for authorization configuration",
-                                        propertyKey, issuerName))
-                                .required(false)
-                                .dynamic(true)
-                                .allowableValues("true", "false")
-                                .defaultValue("false")
-                                .addValidator(StandardValidators.BOOLEAN_VALIDATOR)
-                                .build();
-                    }
-                    default -> new PropertyDescriptor.Builder()
-                            .name(propertyDescriptorName)
-                            .displayName(propertyDescriptorName)
-                            .description("Dynamic property for issuer configuration")
-                            .required(false)
-                            .dynamic(true)
-                            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-                            .build();
-                }
-            }
+            return createIssuerPropertyDescriptor(propertyDescriptorName);
         }
 
         // Support other dynamic properties
+        return createDefaultPropertyDescriptor(propertyDescriptorName);
+    }
+
+    /**
+     * Creates a property descriptor for issuer-specific properties.
+     *
+     * @param propertyDescriptorName The full property descriptor name
+     * @return The created PropertyDescriptor
+     */
+    @NonNull
+    private PropertyDescriptor createIssuerPropertyDescriptor(@NonNull final String propertyDescriptorName) {
+        String issuerProperty = propertyDescriptorName.substring(ISSUER_PREFIX.length());
+        int dotIndex = issuerProperty.indexOf('.');
+
+        if (dotIndex > 0) {
+            String issuerName = issuerProperty.substring(0, dotIndex);
+            String propertyKey = issuerProperty.substring(dotIndex + 1);
+            String displayName = i18nResolver.getTranslatedString(Property.Issuer.DYNAMIC_NAME, issuerName, propertyKey);
+
+            return propertyDescriptorFactory.createDescriptor(propertyDescriptorName, issuerName, propertyKey, displayName);
+        }
+
+        return createDefaultPropertyDescriptor(propertyDescriptorName);
+    }
+
+    /**
+     * Creates a default property descriptor for non-issuer properties.
+     *
+     * @param propertyDescriptorName The property descriptor name
+     * @return The created PropertyDescriptor
+     */
+    @NonNull
+    private PropertyDescriptor createDefaultPropertyDescriptor(@NonNull final String propertyDescriptorName) {
         return new PropertyDescriptor.Builder()
                 .name(propertyDescriptorName)
                 .displayName(propertyDescriptorName)
@@ -317,7 +243,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param context The process context
      */
     @OnScheduled
-    public void onScheduled(final ProcessContext context) {
+    public void onScheduled(@NonNull final ProcessContext context) {
         // Initialize the ConfigurationManager
         configurationManager = new ConfigurationManager();
         LOGGER.info("Configuration manager initialized, external configuration loaded: %s",
@@ -574,9 +500,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param currentIssuerNames  Set to track current issuer names
      */
     private void loadIssuerConfigurations(
-        final ProcessContext context,
-        Map<String, Map<String, String>> issuerPropertiesMap,
-        Set<String> currentIssuerNames) {
+            final ProcessContext context,
+            Map<String, Map<String, String>> issuerPropertiesMap,
+            Set<String> currentIssuerNames) {
 
         // First, load external configuration if available (highest precedence)
         loadExternalConfigurations(issuerPropertiesMap, currentIssuerNames);
@@ -592,8 +518,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param currentIssuerNames  Set to track current issuer names
      */
     private void loadExternalConfigurations(
-        Map<String, Map<String, String>> issuerPropertiesMap,
-        Set<String> currentIssuerNames) {
+            Map<String, Map<String, String>> issuerPropertiesMap,
+            Set<String> currentIssuerNames) {
 
         if (configurationManager != null && configurationManager.isConfigurationLoaded()) {
             LOGGER.info("Loading issuer configurations from external configuration");
@@ -623,9 +549,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param currentIssuerNames  Set to track current issuer names
      */
     private void loadUIConfigurations(
-        final ProcessContext context,
-        Map<String, Map<String, String>> issuerPropertiesMap,
-        Set<String> currentIssuerNames) {
+            final ProcessContext context,
+            Map<String, Map<String, String>> issuerPropertiesMap,
+            Set<String> currentIssuerNames) {
 
         // Get all properties that start with the issuer prefix
         for (PropertyDescriptor propertyDescriptor : context.getProperties().keySet()) {
@@ -674,8 +600,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @return List of valid IssuerConfig objects
      */
     private List<IssuerConfig> processIssuerConfigurations(
-        Map<String, Map<String, String>> issuerPropertiesMap,
-        final ProcessContext context) {
+            Map<String, Map<String, String>> issuerPropertiesMap,
+            final ProcessContext context) {
 
         List<IssuerConfig> issuerConfigs = new ArrayList<>();
 
@@ -710,9 +636,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @return The IssuerConfig object, or null if invalid
      */
     private IssuerConfig getOrCreateIssuerConfig(
-        String issuerName,
-        Map<String, String> properties,
-        final ProcessContext context) {
+            String issuerName,
+            Map<String, String> properties,
+            final ProcessContext context) {
 
         // Generate a hash for this issuer's properties to detect changes
         String issuerPropertiesHash = generateIssuerPropertiesHash(properties);
@@ -945,25 +871,20 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     /**
      * Helper method to handle error cases and route to failure relationship.
      *
-     * @param session       The process session
-     * @param flowFile      The flow file to process
-     * @param errorCode     The error code to set
-     * @param errorReason   The error reason message
-     * @param errorCategory The error category
+     * @param session The process session
+     * @param flowFile The flow file to process
+     * @param error The processing error details
      * @return The updated flow file with error attributes
      */
-    private FlowFile handleError(
-        ProcessSession session,
-        FlowFile flowFile,
-        String errorCode,
-        String errorReason,
-        String errorCategory) {
-
+    @NonNull
+    private FlowFile handleError(@NonNull ProcessSession session,
+            @NonNull FlowFile flowFile,
+            @NonNull ProcessingError error) {
         // Add error attributes
         Map<String, String> attributes = new HashMap<>();
-        attributes.put(JWTAttributes.Error.CODE, errorCode);
-        attributes.put(JWTAttributes.Error.REASON, errorReason);
-        attributes.put(JWTAttributes.Error.CATEGORY, errorCategory);
+        attributes.put(JWTAttributes.Error.CODE, error.getErrorCode());
+        attributes.put(JWTAttributes.Error.REASON, error.getErrorReason());
+        attributes.put(JWTAttributes.Error.CATEGORY, error.getErrorCategory());
 
         // Update flow file with error attributes
         flowFile = session.putAllAttributes(flowFile, attributes);
@@ -974,8 +895,32 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         return flowFile;
     }
 
+    /**
+     * Helper method to handle error cases and route to failure relationship (backward compatibility).
+     *
+     * @param session The process session
+     * @param flowFile The flow file to process
+     * @param errorCode The error code to set
+     * @param errorReason The error reason message
+     * @param errorCategory The error category
+     * @return The updated flow file with error attributes
+     */
+    @NonNull
+    private FlowFile handleError(@NonNull ProcessSession session,
+            @NonNull FlowFile flowFile,
+            @NonNull String errorCode,
+            @NonNull String errorReason,
+            @NonNull String errorCategory) {
+        ProcessingError error = ProcessingError.builder()
+                .errorCode(errorCode)
+                .errorReason(errorReason)
+                .errorCategory(errorCategory)
+                .build();
+        return handleError(session, flowFile, error);
+    }
+
     @Override
-    public void onTrigger(final ProcessContext context, final ProcessSession session) {
+    public void onTrigger(@NonNull final ProcessContext context, @NonNull final ProcessSession session) {
         FlowFile flowFile = session.get();
         if (flowFile == null) {
             return;

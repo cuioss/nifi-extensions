@@ -59,7 +59,7 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
         try {
             // Store the page reference for use in tests
             currentPage = page;
-            
+
             // Navigate to JWT Authenticator UI
             const customUIFrame = await navigateToJWTAuthenticatorUI(
                 page,
@@ -102,7 +102,9 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
                 return accessibilityHelper;
             }
         } catch (error) {
-            console.log("Existing accessibility helper is invalid, creating new one");
+            console.log(
+                "Existing accessibility helper is invalid, creating new one",
+            );
         }
 
         // Re-acquire frame and create new helper
@@ -117,11 +119,13 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
             await a11yUtils.waitForA11yReady(frameContext);
             return newHelper;
         }
-        
+
         throw new Error("No valid page reference available");
     }
 
-    test("Full page WCAG compliance check", async ({ page: _page }, testInfo) => {
+    test("Full page WCAG compliance check", async ({
+        page: _page,
+    }, testInfo) => {
         await test.step("Run comprehensive WCAG check", async () => {
             const helper = await ensureValidAccessibilityHelper(testInfo);
             const results = await helper.runWCAGCheck();
@@ -219,7 +223,9 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
         });
     });
 
-    test("Keyboard navigation and focus management", async ({ page }, testInfo) => {
+    test("Keyboard navigation and focus management", async ({
+        page,
+    }, testInfo) => {
         await test.step("Test tab order through all interactive elements", async () => {
             const helper = await ensureValidAccessibilityHelper(testInfo);
             const results = await helper.checkKeyboardNavigation();
@@ -292,8 +298,7 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
 
         await test.step("Verify live regions for dynamic content", async () => {
             const helper = await ensureValidAccessibilityHelper(testInfo);
-            const results =
-                await helper.checkScreenReaderAnnouncements();
+            const results = await helper.checkScreenReaderAnnouncements();
 
             expect(results.passed).toBe(true);
             expect(results.announcements.length).toBeGreaterThan(0);
@@ -418,7 +423,9 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
         });
     });
 
-    test("Generate comprehensive accessibility report", async ({ page }, testInfo) => {
+    test("Generate comprehensive accessibility report", async ({
+        page,
+    }, testInfo) => {
         const helper = await ensureValidAccessibilityHelper(testInfo);
         const report = await helper.generateReport();
 

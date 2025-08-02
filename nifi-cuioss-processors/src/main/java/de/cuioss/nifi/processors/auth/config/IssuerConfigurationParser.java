@@ -53,7 +53,7 @@ public class IssuerConfigurationParser {
      * @return List of IssuerConfig objects
      */
     public static List<IssuerConfig> parseIssuerConfigs(Map<String, String> properties,
-                                                        ConfigurationManager configurationManager) {
+            ConfigurationManager configurationManager) {
         Map<String, Map<String, String>> issuerPropertiesMap = new HashMap<>();
         Set<String> currentIssuerNames = new HashSet<>();
 
@@ -86,8 +86,8 @@ public class IssuerConfigurationParser {
      * Loads issuer configurations from external configuration source.
      */
     private static void loadExternalConfigurations(ConfigurationManager configurationManager,
-                                                   Map<String, Map<String, String>> issuerPropertiesMap,
-                                                   Set<String> currentIssuerNames) {
+            Map<String, Map<String, String>> issuerPropertiesMap,
+            Set<String> currentIssuerNames) {
         LOGGER.info("Loading issuer configurations from external configuration");
 
         List<String> externalIssuerIds = configurationManager.getIssuerIds();
@@ -103,8 +103,8 @@ public class IssuerConfigurationParser {
      * Loads issuer configurations from UI properties.
      */
     private static void loadUIConfigurations(Map<String, String> properties,
-                                             Map<String, Map<String, String>> issuerPropertiesMap,
-                                             Set<String> currentIssuerNames) {
+            Map<String, Map<String, String>> issuerPropertiesMap,
+            Set<String> currentIssuerNames) {
 
         // Parse dynamic properties that follow the pattern "issuer.N.property"
         for (Map.Entry<String, String> entry : properties.entrySet()) {
@@ -121,8 +121,8 @@ public class IssuerConfigurationParser {
      * Parses an individual issuer property from UI configuration.
      */
     private static void parseIssuerProperty(String propertyName, String propertyValue,
-                                            Map<String, Map<String, String>> issuerPropertiesMap,
-                                            Set<String> currentIssuerNames) {
+            Map<String, Map<String, String>> issuerPropertiesMap,
+            Set<String> currentIssuerNames) {
         // Format: issuer.N.property (e.g., "issuer.1.name", "issuer.1.jwks.url")
         String issuerPart = propertyName.substring(ISSUER_PREFIX.length());
         int dotIndex = issuerPart.indexOf('.');
