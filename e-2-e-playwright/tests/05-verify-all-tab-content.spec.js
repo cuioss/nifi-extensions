@@ -59,7 +59,7 @@ test.describe("Comprehensive JWT Tab Content Verification", () => {
             });
 
         await page.screenshot({
-            path: "target/test-results/comprehensive-tab-config.png",
+            path: `${testInfo.outputDir}/comprehensive-tab-config.png`,
             fullPage: true,
         });
 
@@ -85,7 +85,7 @@ test.describe("Comprehensive JWT Tab Content Verification", () => {
             });
 
         await page.screenshot({
-            path: "target/test-results/comprehensive-tab-token.png",
+            path: `${testInfo.outputDir}/comprehensive-tab-token.png`,
             fullPage: true,
         });
 
@@ -105,7 +105,7 @@ test.describe("Comprehensive JWT Tab Content Verification", () => {
         expect(metricsContent).not.toContain("Metrics Not Available");
 
         await page.screenshot({
-            path: "target/test-results/comprehensive-tab-metrics.png",
+            path: `${testInfo.outputDir}/comprehensive-tab-metrics.png`,
             fullPage: true,
         });
 
@@ -121,7 +121,7 @@ test.describe("Comprehensive JWT Tab Content Verification", () => {
         );
 
         await page.screenshot({
-            path: "target/test-results/comprehensive-tab-help.png",
+            path: `${testInfo.outputDir}/comprehensive-tab-help.png`,
             fullPage: true,
         });
 

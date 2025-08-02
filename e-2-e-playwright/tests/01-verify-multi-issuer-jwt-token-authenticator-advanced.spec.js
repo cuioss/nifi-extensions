@@ -107,7 +107,7 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
 
         // Take screenshot of advanced configuration
         await page.screenshot({
-            path: `target/test-results/jwt-advanced-configuration-${Date.now()}.png`,
+            path: `${testInfo.outputDir}/jwt-advanced-configuration.png`,
             fullPage: true,
         });
         processorLogger.info("Screenshot of JWT advanced configuration saved");

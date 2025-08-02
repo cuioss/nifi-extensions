@@ -55,7 +55,7 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
 
         // Take initial screenshot
         await page.screenshot({
-            path: `target/test-results/jwt-custom-ui-initial-${Date.now()}.png`,
+            path: `${testInfo.outputDir}/jwt-custom-ui-initial.png`,
             fullPage: true,
         });
 
@@ -127,7 +127,7 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
 
                     // Take screenshot of each tab
                     await page.screenshot({
-                        path: `target/test-results/jwt-tab-${tab.name.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}.png`,
+                        path: `${testInfo.outputDir}/jwt-tab-${tab.name.toLowerCase().replace(/\s+/g, "-")}.png`,
                         fullPage: true,
                     });
 
@@ -220,7 +220,7 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
 
                 // Take screenshot after trying to show tabs
                 await page.screenshot({
-                    path: `target/test-results/jwt-tabs-after-show-${Date.now()}.png`,
+                    path: `${testInfo.outputDir}/jwt-tabs-after-show.png`,
                     fullPage: true,
                 });
             }

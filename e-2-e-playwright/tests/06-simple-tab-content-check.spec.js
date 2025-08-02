@@ -142,7 +142,7 @@ test.describe("Simple Tab Content Check", () => {
 
             // Take screenshot
             await page.screenshot({
-                path: `target/test-results/simple-tab-${tab.name.toLowerCase().replace(" ", "-")}.png`,
+                path: `${testInfo.outputDir}/simple-tab-${tab.name.toLowerCase().replace(" ", "-")}.png`,
                 fullPage: true,
             });
         }

@@ -68,7 +68,7 @@ test.describe("JWT Custom UI Tabs Verification", () => {
 
         // Take screenshot of the custom UI
         await page.screenshot({
-            path: `target/test-results/jwt-custom-ui-tabs-${Date.now()}.png`,
+            path: `${testInfo.outputDir}/jwt-custom-ui-tabs.png`,
             fullPage: true,
         });
 
@@ -110,7 +110,7 @@ test.describe("JWT Custom UI Tabs Verification", () => {
 
                 // Take screenshot of each tab
                 await page.screenshot({
-                    path: `target/test-results/jwt-tab-${tab.name.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}.png`,
+                    path: `${testInfo.outputDir}/jwt-tab-${tab.name.toLowerCase().replace(/\s+/g, "-")}.png`,
                     fullPage: true,
                 });
             }
