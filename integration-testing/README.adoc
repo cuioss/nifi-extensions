@@ -31,6 +31,8 @@ cd ../../..
 [source,bash]
 ----
 ./integration-testing/src/main/docker/start-nifi.sh
+
+docker compose -f integration-testing/src/main/docker/docker-compose.yml logs nifi
 ----
 
 3. Access services:
