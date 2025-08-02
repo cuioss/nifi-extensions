@@ -107,6 +107,18 @@ class Logger {
   success(message, ...args) {
     console.log(this.formatMessage('success', message, ...args));
   }
+
+  /**
+   * Log a debug message
+   * @param {string} message - The message to log
+   * @param {...any} args - Additional arguments to format into the message
+   */
+  debug(message, ...args) {
+    // Only log debug messages if DEBUG environment variable is set
+    if (process.env.DEBUG || process.env.PLAYWRIGHT_DEBUG) {
+      console.log(this.formatMessage('debug', message, ...args));
+    }
+  }
 }
 
 // Create and export the loggers that are actually used in the codebase

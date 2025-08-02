@@ -317,7 +317,7 @@ export class ProcessorService {
   }
 
   async openAdvancedUI(processor) {
-    processorLogger.info("Opening Advanced UI via right-click menu");
+    processorLogger.debug("Opening Advanced UI via right-click menu");
     
     // Right-click on processor
     await this.interact(processor, { action: "rightclick" });
@@ -327,7 +327,7 @@ export class ProcessorService {
     
     if (await advancedMenuItem.isVisible({ timeout: 2000 })) {
       await advancedMenuItem.click();
-      processorLogger.info("Clicked Advanced menu item");
+      processorLogger.debug("Clicked Advanced menu item");
       
       // Wait for navigation
       await this.page.waitForLoadState("networkidle");

@@ -20,7 +20,7 @@ export class AuthService {
    * Check if services are accessible using modern request API
    */
   async checkServiceAccessibility(serviceUrl, serviceName, timeout = 5000) {
-    authLogger.info(`Checking ${serviceName} accessibility...`);
+    authLogger.debug(`Checking ${serviceName} accessibility...`);
 
     try {
       const response = await this.page.request.get(serviceUrl, {
@@ -33,7 +33,7 @@ export class AuthService {
         ((response.status() >= 200 && response.status() < 400) || response.status() === 401);
 
       if (isAccessible) {
-        authLogger.success(`${serviceName} service is accessible`);
+        authLogger.debug(`${serviceName} service is accessible`);
       } else {
         authLogger.warn(`${serviceName} not accessible - Status: %s`, response?.status() || 'unknown');
       }
@@ -102,7 +102,7 @@ export class AuthService {
     }
 
     const start = Date.now();
-    authLogger.info(`Starting login for user: ${CONSTANTS.AUTH.USERNAME}...`);
+    authLogger.debug(`Starting login for user: ${CONSTANTS.AUTH.USERNAME}...`);
     try {
       const result = await (async () => {
       // Navigate to login page
@@ -187,7 +187,7 @@ export class AuthService {
           }
         }
 
-        authLogger.success(`Successfully logged in as ${CONSTANTS.AUTH.USERNAME}`);
+        authLogger.debug(`Successfully logged in as ${CONSTANTS.AUTH.USERNAME}`);
         return true;
       } catch (error) {
         // Check for error messages
@@ -203,7 +203,7 @@ export class AuthService {
       }
       })();
       const duration = Date.now() - start;
-      authLogger.success(`Login for user: ${CONSTANTS.AUTH.USERNAME} completed in ${duration}ms`);
+      authLogger.debug(`Login for user: ${CONSTANTS.AUTH.USERNAME} completed in ${duration}ms`);
       return result;
     } catch (error) {
       const duration = Date.now() - start;
@@ -270,7 +270,7 @@ export class AuthService {
    * Ensure NiFi is ready for testing with modern patterns
    */
   async ensureReady() {
-    authLogger.info('Ensuring NiFi is ready for testing...');
+    authLogger.debug('Ensuring NiFi is ready for testing...');
 
     // Check service accessibility
     const isAccessible = await this.checkNiFiAccessibility();
@@ -295,7 +295,7 @@ export class AuthService {
 
     await expect(this.page).toHaveTitle(/NiFi/);
 
-    authLogger.success('NiFi is ready for testing');
+    authLogger.debug('NiFi is ready for testing');
   }
 
   /**
