@@ -4,6 +4,7 @@
   "description": "End-to-End Playwright tests for NiFi Extensions - Implements centralized JavaScript/ESLint standards",
   "scripts": {
     "playwright:test": "playwright test",
+    "playwright:test:simple": "node scripts/run-tests-simple.js",
     "playwright:test:headed": "playwright test --headed",
     "playwright:test:ui": "playwright test --ui",
     "playwright:report": "playwright show-report",

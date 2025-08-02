@@ -49,26 +49,47 @@ ls -la target/test-results/*/
 
 === 3. Run Tests
 
-==== Test Orchestration with Pre-checks
+==== Maven Orchestration (Recommended)
 
-The test suite includes self-tests that validate the testing environment before running actual tests. This ensures all prerequisites are met.
+The test suite is orchestrated by Maven with proper fail-fast behavior and separate result directories:
 
 [source,bash]
 ----
-# Run tests with automatic pre-checks (recommended)
-npm run test
+# Run full integration test suite (self-tests → functional → accessibility)
+./mvnw -pl e-2-e-playwright -Pintegration-tests clean verify
 
-# Run specific JWT tests with pre-checks
-npm run test:jwt
+# Run specific test executions using Maven @ syntax:
 
-# Run all tests with pre-checks
-npm run test:all
+# Start containers only
+./mvnw -pl e-2-e-playwright exec:exec@start-containers
 
-# Run tests without pre-checks (not recommended)
-npm run test:no-precheck
+# Run only self-tests (assumes containers are running)
+./mvnw -pl e-2-e-playwright exec:exec@run-selftests
+
+# Run only functional tests (assumes containers are running)
+./mvnw -pl e-2-e-playwright exec:exec@run-functional-tests
+
+# Run only accessibility tests (assumes containers are running)
+./mvnw -pl e-2-e-playwright exec:exec@run-accessibility-tests
+
+# Stop containers only
+./mvnw -pl e-2-e-playwright exec:exec@stop-containers
+
+# Test results will be in separate directories:
+# - target/results-selftests/       (self-test results)
+# - target/results-functional-tests/ (functional test results)  
+# - target/results-accessibility-tests/ (accessibility test results)
 ----
 
-==== Direct Test Execution
+The Maven orchestration:
+
+* Starts containers (NiFi and Keycloak) once
+* Runs tests in order: self-tests → functional → accessibility
+* Fails fast - if one test phase fails, subsequent phases don't run
+* Stops containers after all tests complete
+* Preserves all test artifacts in separate directories
+
+==== Direct Test Execution (for development)
 
 [source,bash]
 ----
@@ -87,7 +108,8 @@ npm run test:self
 
 ==== Test Commands
 
-* `npm run test` - Runs tests with self-test pre-checks
+* `mvnw -pl e-2-e-playwright -Pintegration-tests verify` - Run full test suite via Maven
+* `npm run test` - Runs tests with self-test pre-checks (Playwright orchestration)
 * `npm run test:self` - Runs only self-tests
 * `npm run test:jwt` - Runs JWT-related tests with pre-checks
 * `npm run test:all` - Runs all tests with pre-checks
@@ -96,37 +118,51 @@ npm run test:self
 ==== Pre-check Validation
 
 Self-tests validate:
+
 * NiFi accessibility and login functionality
 * Navigation patterns
 * Critical error detection
 * Browser console logging
 * Processor interaction capabilities
 
-If self-tests fail, the actual tests won't run and you'll see clear error messages about what needs to be fixed.
+If self-tests fail, the subsequent test phases won't run and you'll see clear error messages about what needs to be fixed.
 
 === 4. Analyze Failures
 
-Test artifacts in `target/test-results/[test-dir]/`:
-* `console-logs.log` - Browser console output
-* `test-failed-*.png` - Failure screenshots
-* `video.webm` - Test execution recording
-* `trace.zip` - Detailed execution trace
+Test artifacts are stored in separate directories per test phase:
+
+* `target/results-selftests/` - Self-test artifacts
+* `target/results-functional-tests/` - Functional test artifacts
+* `target/results-accessibility-tests/` - Accessibility test artifacts
+
+Each directory contains:
+
+* `test-results/` - Test execution artifacts
+  * `console-logs.log` - Browser console output
+  * `test-failed-*.png` - Failure screenshots
+  * `video.webm` - Test execution recording
+  * `trace.zip` - Detailed execution trace
+* `playwright-report/` - HTML report
 
 [source,bash]
 ----
-# Find errors
-grep -n "ERROR" target/test-results/*/console-logs.log
+# Find errors in specific test phase
+grep -n "ERROR" target/results-functional-tests/test-results/*/console-logs.log
 
-# View screenshot
-open target/test-results/*/test-failed-*.png
+# View screenshot from failed functional test
+open target/results-functional-tests/test-results/*/test-failed-*.png
 
-# Analyze trace
-npx playwright show-trace target/test-results/*/trace.zip
+# Analyze trace from accessibility test
+npx playwright show-trace target/results-accessibility-tests/test-results/*/trace.zip
+
+# Open HTML report for functional tests
+npx playwright show-report target/results-functional-tests/playwright-report
 ----
 
 === 5. Fix and Repeat
 
 Based on failure analysis:
+
 * JavaScript errors → Fix in source files
 * Missing elements → Update selectors or wait conditions
 * 404 errors → Fix resource paths

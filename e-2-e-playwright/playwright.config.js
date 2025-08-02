@@ -10,12 +10,13 @@ const KEYCLOAK_URL = process.env.PLAYWRIGHT_KEYCLOAK_URL || 'http://localhost:90
 
 /**
  * Define paths for test artifacts (following Maven standard)
+ * Support environment variables for Maven-controlled output directories
  */
-const TARGET_DIR = path.join(__dirname, 'target');
-const TEST_RESULTS_DIR = path.join(TARGET_DIR, 'test-results');
-const REPORTS_DIR = path.join(TARGET_DIR, 'playwright-report');
-const SCREENSHOTS_DIR = path.join(TARGET_DIR, 'screenshots');
-const VIDEOS_DIR = path.join(TARGET_DIR, 'videos');
+const TARGET_DIR = process.env.PLAYWRIGHT_OUTPUT_DIR || path.join(__dirname, 'target');
+const TEST_RESULTS_DIR = process.env.TEST_RESULTS_DIR || path.join(TARGET_DIR, 'test-results');
+const REPORTS_DIR = process.env.PLAYWRIGHT_REPORT_DIR || path.join(TARGET_DIR, 'playwright-report');
+const SCREENSHOTS_DIR = path.join(TEST_RESULTS_DIR, 'screenshots');
+const VIDEOS_DIR = path.join(TEST_RESULTS_DIR, 'videos');
 
 /**
  * Modern Playwright Configuration - 2025 Best Practices
@@ -41,14 +42,11 @@ module.exports = defineConfig({
   forbidOnly: !!process.env.CI,
   /* Disable retries - tests should be deterministic */
   retries: 0,
-  /* Modern reporter configuration with accessibility reports */
+  /* Modern reporter configuration - NO HTML REPORTER TO PREVENT SERVER */
   reporter: [
-    ['html', { outputFolder: REPORTS_DIR, open: 'never' }],
     ['json', { outputFile: path.join(TARGET_DIR, 'test-results.json') }],
     ['junit', { outputFile: path.join(TARGET_DIR, 'junit-results.xml') }],
-    ['list'],
-    // Add accessibility reporter if violations are found
-    ...(process.env.ACCESSIBILITY_REPORTS ? [['json', { outputFile: path.join(TARGET_DIR, 'accessibility-results.json') }]] : [])
+    ['list']
   ],
   /* Output directories for test artifacts */
   outputDir: TEST_RESULTS_DIR,
