@@ -17,37 +17,33 @@
 package de.cuioss.nifi.processors.auth.util;
 
 import de.cuioss.jwt.validation.domain.token.AccessTokenContent;
+import de.cuioss.nifi.processors.auth.test.SimpleAccessTokenContent;
 import de.cuioss.nifi.processors.auth.util.AuthorizationValidator.AuthorizationConfig;
 import de.cuioss.nifi.processors.auth.util.AuthorizationValidator.AuthorizationResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
 
 class AuthorizationValidatorTest {
 
-    @Mock
-    private AccessTokenContent mockToken;
-
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
-        when(mockToken.getSubject()).thenReturn(Optional.of("test-user"));
+        // No setup needed - using AccessTokenContent.builder() directly in each test
     }
 
     @Test
     void validateWithNoRequiredScopesOrRoles() {
         // Given
-        when(mockToken.getScopes()).thenReturn(Arrays.asList("read", "write"));
-        when(mockToken.getRoles()).thenReturn(Arrays.asList("user", "admin"));
+        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
+                .subject("test-user")
+                .scopes(Arrays.asList("read", "write"))
+                .roles(Arrays.asList("user", "admin"))
+                .build();
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredScopes(null)
@@ -55,104 +51,119 @@ class AuthorizationValidatorTest {
                 .build();
 
         // When
-        AuthorizationResult result = AuthorizationValidator.validate(mockToken, config);
+        AuthorizationResult result = AuthorizationValidator.validate(testToken, config);
 
         // Then
-        assertTrue(result.isAuthorized());
-        assertNull(result.getReason());
-        assertTrue(result.getMatchedScopes().isEmpty());
-        assertTrue(result.getMatchedRoles().isEmpty());
-        assertTrue(result.getMissingScopes().isEmpty());
-        assertTrue(result.getMissingRoles().isEmpty());
+        assertTrue(result.isAuthorized(), "Authorization should succeed when no scopes or roles are required");
+        assertNull(result.getReason(), "No reason should be provided for successful authorization");
+        assertTrue(result.getMatchedScopes().isEmpty(), "No scopes should be matched when none are required");
+        assertTrue(result.getMatchedRoles().isEmpty(), "No roles should be matched when none are required");
+        assertTrue(result.getMissingScopes().isEmpty(), "No scopes should be missing when none are required");
+        assertTrue(result.getMissingRoles().isEmpty(), "No roles should be missing when none are required");
     }
 
     @Test
     void validateWithMatchingScopes() {
         // Given
-        when(mockToken.getScopes()).thenReturn(Arrays.asList("read", "write"));
-        when(mockToken.getRoles()).thenReturn(Collections.emptyList());
+        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
+                .subject("test-user")
+                .scopes(Arrays.asList("read", "write"))
+                .roles(Collections.emptyList())
+                .build();
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredScopes(Set.of("read"))
                 .build();
 
         // When
-        AuthorizationResult result = AuthorizationValidator.validate(mockToken, config);
+        AuthorizationResult result = AuthorizationValidator.validate(testToken, config);
 
         // Then
-        assertTrue(result.isAuthorized());
-        assertNull(result.getReason());
-        assertEquals(Set.of("read"), result.getMatchedScopes());
-        assertTrue(result.getMissingScopes().isEmpty());
+        assertTrue(result.isAuthorized(), "Authorization should succeed when required scopes are present");
+        assertNull(result.getReason(), "No reason should be provided for successful authorization");
+        assertEquals(Set.of("read"), result.getMatchedScopes(), "Should match the required 'read' scope");
+        assertTrue(result.getMissingScopes().isEmpty(), "No scopes should be missing when all required scopes are present");
     }
 
     @Test
     void validateWithMissingScopes() {
         // Given
-        when(mockToken.getScopes()).thenReturn(Arrays.asList("read"));
-        when(mockToken.getRoles()).thenReturn(Collections.emptyList());
+        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
+                .subject("test-user")
+                .scopes(Arrays.asList("read"))
+                .roles(Collections.emptyList())
+                .build();
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredScopes(Set.of("admin"))
                 .build();
 
         // When
-        AuthorizationResult result = AuthorizationValidator.validate(mockToken, config);
+        AuthorizationResult result = AuthorizationValidator.validate(testToken, config);
 
         // Then
-        assertFalse(result.isAuthorized());
-        assertNotNull(result.getReason());
-        assertTrue(result.getReason().contains("required scopes"));
-        assertTrue(result.getMatchedScopes().isEmpty());
-        assertEquals(Set.of("admin"), result.getMissingScopes());
+        assertFalse(result.isAuthorized(), "Authorization should fail when required scopes are missing");
+        assertNotNull(result.getReason(), "A reason should be provided for failed authorization");
+        assertTrue(result.getReason().contains("required scopes"), "Reason should mention missing required scopes");
+        assertTrue(result.getMatchedScopes().isEmpty(), "No scopes should be matched when required scope is not present");
+        assertEquals(Set.of("admin"), result.getMissingScopes(), "Should identify 'admin' as the missing scope");
     }
 
     @Test
     void validateWithMatchingRoles() {
         // Given
-        when(mockToken.getScopes()).thenReturn(Collections.emptyList());
-        when(mockToken.getRoles()).thenReturn(Arrays.asList("user", "admin"));
+        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
+                .subject("test-user")
+                .scopes(Collections.emptyList())
+                .roles(Arrays.asList("user", "admin"))
+                .build();
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredRoles(Set.of("user"))
                 .build();
 
         // When
-        AuthorizationResult result = AuthorizationValidator.validate(mockToken, config);
+        AuthorizationResult result = AuthorizationValidator.validate(testToken, config);
 
         // Then
-        assertTrue(result.isAuthorized());
-        assertNull(result.getReason());
-        assertEquals(Set.of("user"), result.getMatchedRoles());
-        assertTrue(result.getMissingRoles().isEmpty());
+        assertTrue(result.isAuthorized(), "Authorization should succeed when required roles are present");
+        assertNull(result.getReason(), "No reason should be provided for successful authorization");
+        assertEquals(Set.of("user"), result.getMatchedRoles(), "Should match the required 'user' role");
+        assertTrue(result.getMissingRoles().isEmpty(), "No roles should be missing when all required roles are present");
     }
 
     @Test
     void validateWithMissingRoles() {
         // Given
-        when(mockToken.getScopes()).thenReturn(Collections.emptyList());
-        when(mockToken.getRoles()).thenReturn(Arrays.asList("user"));
+        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
+                .subject("test-user")
+                .scopes(Collections.emptyList())
+                .roles(Arrays.asList("user"))
+                .build();
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredRoles(Set.of("admin"))
                 .build();
 
         // When
-        AuthorizationResult result = AuthorizationValidator.validate(mockToken, config);
+        AuthorizationResult result = AuthorizationValidator.validate(testToken, config);
 
         // Then
-        assertFalse(result.isAuthorized());
-        assertNotNull(result.getReason());
-        assertTrue(result.getReason().contains("required roles"));
-        assertTrue(result.getMatchedRoles().isEmpty());
-        assertEquals(Set.of("admin"), result.getMissingRoles());
+        assertFalse(result.isAuthorized(), "Authorization should fail when required roles are missing");
+        assertNotNull(result.getReason(), "A reason should be provided for failed authorization");
+        assertTrue(result.getReason().contains("required roles"), "Reason should mention missing required roles");
+        assertTrue(result.getMatchedRoles().isEmpty(), "No roles should be matched when required role is not present");
+        assertEquals(Set.of("admin"), result.getMissingRoles(), "Should identify 'admin' as the missing role");
     }
 
     @Test
     void validateWithRequireAllScopes() {
         // Given
-        when(mockToken.getScopes()).thenReturn(Arrays.asList("read", "write"));
-        when(mockToken.getRoles()).thenReturn(Collections.emptyList());
+        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
+                .subject("test-user")
+                .scopes(Arrays.asList("read", "write"))
+                .roles(Collections.emptyList())
+                .build();
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredScopes(Set.of("read", "write", "admin"))
@@ -160,21 +171,24 @@ class AuthorizationValidatorTest {
                 .build();
 
         // When
-        AuthorizationResult result = AuthorizationValidator.validate(mockToken, config);
+        AuthorizationResult result = AuthorizationValidator.validate(testToken, config);
 
         // Then
-        assertFalse(result.isAuthorized());
-        assertNotNull(result.getReason());
-        assertTrue(result.getReason().contains("Missing required scopes"));
-        assertEquals(Set.of("read", "write"), result.getMatchedScopes());
-        assertEquals(Set.of("admin"), result.getMissingScopes());
+        assertFalse(result.isAuthorized(), "Authorization should fail when not all required scopes are present");
+        assertNotNull(result.getReason(), "A reason should be provided for failed authorization");
+        assertTrue(result.getReason().contains("Missing required scopes"), "Reason should mention missing required scopes");
+        assertEquals(Set.of("read", "write"), result.getMatchedScopes(), "Should match 'read' and 'write' scopes");
+        assertEquals(Set.of("admin"), result.getMissingScopes(), "Should identify 'admin' as the missing scope");
     }
 
     @Test
     void validateWithRequireAllRoles() {
         // Given
-        when(mockToken.getScopes()).thenReturn(Collections.emptyList());
-        when(mockToken.getRoles()).thenReturn(Arrays.asList("user", "moderator"));
+        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
+                .subject("test-user")
+                .scopes(Collections.emptyList())
+                .roles(Arrays.asList("user", "moderator"))
+                .build();
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredRoles(Set.of("user", "moderator", "admin"))
@@ -182,21 +196,24 @@ class AuthorizationValidatorTest {
                 .build();
 
         // When
-        AuthorizationResult result = AuthorizationValidator.validate(mockToken, config);
+        AuthorizationResult result = AuthorizationValidator.validate(testToken, config);
 
         // Then
-        assertFalse(result.isAuthorized());
-        assertNotNull(result.getReason());
-        assertTrue(result.getReason().contains("Missing required roles"));
-        assertEquals(Set.of("user", "moderator"), result.getMatchedRoles());
-        assertEquals(Set.of("admin"), result.getMissingRoles());
+        assertFalse(result.isAuthorized(), "Authorization should fail when not all required roles are present");
+        assertNotNull(result.getReason(), "A reason should be provided for failed authorization");
+        assertTrue(result.getReason().contains("Missing required roles"), "Reason should mention missing required roles");
+        assertEquals(Set.of("user", "moderator"), result.getMatchedRoles(), "Should match 'user' and 'moderator' roles");
+        assertEquals(Set.of("admin"), result.getMissingRoles(), "Should identify 'admin' as the missing role");
     }
 
     @Test
     void validateWithCaseInsensitiveScopes() {
         // Given
-        when(mockToken.getScopes()).thenReturn(Arrays.asList("READ", "Write"));
-        when(mockToken.getRoles()).thenReturn(Collections.emptyList());
+        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
+                .subject("test-user")
+                .scopes(Arrays.asList("READ", "Write"))
+                .roles(Collections.emptyList())
+                .build();
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredScopes(Set.of("read", "write"))
@@ -204,20 +221,23 @@ class AuthorizationValidatorTest {
                 .build();
 
         // When
-        AuthorizationResult result = AuthorizationValidator.validate(mockToken, config);
+        AuthorizationResult result = AuthorizationValidator.validate(testToken, config);
 
         // Then
-        assertTrue(result.isAuthorized());
-        assertNull(result.getReason());
-        assertEquals(Set.of("read", "write"), result.getMatchedScopes());
-        assertTrue(result.getMissingScopes().isEmpty());
+        assertTrue(result.isAuthorized(), "Authorization should succeed with case-insensitive scope matching");
+        assertNull(result.getReason(), "No reason should be provided for successful authorization");
+        assertEquals(Set.of("read", "write"), result.getMatchedScopes(), "Should match scopes case-insensitively");
+        assertTrue(result.getMissingScopes().isEmpty(), "No scopes should be missing with case-insensitive matching");
     }
 
     @Test
     void validateWithCaseInsensitiveRoles() {
         // Given
-        when(mockToken.getScopes()).thenReturn(Collections.emptyList());
-        when(mockToken.getRoles()).thenReturn(Arrays.asList("USER", "Admin"));
+        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
+                .subject("test-user")
+                .scopes(Collections.emptyList())
+                .roles(Arrays.asList("USER", "Admin"))
+                .build();
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredRoles(Set.of("user", "admin"))
@@ -225,20 +245,23 @@ class AuthorizationValidatorTest {
                 .build();
 
         // When
-        AuthorizationResult result = AuthorizationValidator.validate(mockToken, config);
+        AuthorizationResult result = AuthorizationValidator.validate(testToken, config);
 
         // Then
-        assertTrue(result.isAuthorized());
-        assertNull(result.getReason());
-        assertEquals(Set.of("user", "admin"), result.getMatchedRoles());
-        assertTrue(result.getMissingRoles().isEmpty());
+        assertTrue(result.isAuthorized(), "Authorization should succeed with case-insensitive role matching");
+        assertNull(result.getReason(), "No reason should be provided for successful authorization");
+        assertEquals(Set.of("user", "admin"), result.getMatchedRoles(), "Should match roles case-insensitively");
+        assertTrue(result.getMissingRoles().isEmpty(), "No roles should be missing with case-insensitive matching");
     }
 
     @Test
     void validateWithBothScopesAndRoles() {
         // Given
-        when(mockToken.getScopes()).thenReturn(Arrays.asList("read", "write"));
-        when(mockToken.getRoles()).thenReturn(Arrays.asList("user"));
+        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
+                .subject("test-user")
+                .scopes(Arrays.asList("read", "write"))
+                .roles(Arrays.asList("user"))
+                .build();
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredScopes(Set.of("read"))
@@ -246,20 +269,23 @@ class AuthorizationValidatorTest {
                 .build();
 
         // When
-        AuthorizationResult result = AuthorizationValidator.validate(mockToken, config);
+        AuthorizationResult result = AuthorizationValidator.validate(testToken, config);
 
         // Then
-        assertTrue(result.isAuthorized());
-        assertNull(result.getReason());
-        assertEquals(Set.of("read"), result.getMatchedScopes());
-        assertEquals(Set.of("user"), result.getMatchedRoles());
+        assertTrue(result.isAuthorized(), "Authorization should succeed when both required scopes and roles are present");
+        assertNull(result.getReason(), "No reason should be provided for successful authorization");
+        assertEquals(Set.of("read"), result.getMatchedScopes(), "Should match the required 'read' scope");
+        assertEquals(Set.of("user"), result.getMatchedRoles(), "Should match the required 'user' role");
     }
 
     @Test
     void validateWithFailingBothScopesAndRoles() {
         // Given
-        when(mockToken.getScopes()).thenReturn(Arrays.asList("write"));
-        when(mockToken.getRoles()).thenReturn(Arrays.asList("guest"));
+        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
+                .subject("test-user")
+                .scopes(Arrays.asList("write"))
+                .roles(Arrays.asList("guest"))
+                .build();
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredScopes(Set.of("admin"))
@@ -267,24 +293,27 @@ class AuthorizationValidatorTest {
                 .build();
 
         // When
-        AuthorizationResult result = AuthorizationValidator.validate(mockToken, config);
+        AuthorizationResult result = AuthorizationValidator.validate(testToken, config);
 
         // Then
-        assertFalse(result.isAuthorized());
-        assertNotNull(result.getReason());
-        assertTrue(result.getReason().contains("required scopes"));
-        assertTrue(result.getReason().contains("required roles"));
-        assertTrue(result.getMatchedScopes().isEmpty());
-        assertTrue(result.getMatchedRoles().isEmpty());
-        assertEquals(Set.of("admin"), result.getMissingScopes());
-        assertEquals(Set.of("moderator"), result.getMissingRoles());
+        assertFalse(result.isAuthorized(), "Authorization should fail when both required scopes and roles are missing");
+        assertNotNull(result.getReason(), "A reason should be provided for failed authorization");
+        assertTrue(result.getReason().contains("required scopes"), "Reason should mention missing required scopes");
+        assertTrue(result.getReason().contains("required roles"), "Reason should mention missing required roles");
+        assertTrue(result.getMatchedScopes().isEmpty(), "No scopes should be matched when required scope is not present");
+        assertTrue(result.getMatchedRoles().isEmpty(), "No roles should be matched when required role is not present");
+        assertEquals(Set.of("admin"), result.getMissingScopes(), "Should identify 'admin' as the missing scope");
+        assertEquals(Set.of("moderator"), result.getMissingRoles(), "Should identify 'moderator' as the missing role");
     }
 
     @Test
     void validateWithBypassAuthorization() {
         // Given
-        when(mockToken.getScopes()).thenReturn(Collections.emptyList());
-        when(mockToken.getRoles()).thenReturn(Collections.emptyList());
+        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
+                .subject("test-user")
+                .scopes(Collections.emptyList())
+                .roles(Collections.emptyList())
+                .build();
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredScopes(Set.of("admin"))
@@ -293,14 +322,14 @@ class AuthorizationValidatorTest {
                 .build();
 
         // When
-        AuthorizationResult result = AuthorizationValidator.validate(mockToken, config);
+        AuthorizationResult result = AuthorizationValidator.validate(testToken, config);
 
-        // Then - bypass should allow access regardless of missing scopes/roles
-        assertTrue(result.isAuthorized());
-        assertEquals("Authorization bypassed", result.getReason());
-        assertTrue(result.getMatchedScopes().isEmpty());
-        assertTrue(result.getMatchedRoles().isEmpty());
-        assertTrue(result.getMissingScopes().isEmpty());
-        assertTrue(result.getMissingRoles().isEmpty());
+        // Then
+        assertTrue(result.isAuthorized(), "Authorization should succeed when bypass is enabled");
+        assertEquals("Authorization bypassed", result.getReason(), "Reason should indicate authorization was bypassed");
+        assertTrue(result.getMatchedScopes().isEmpty(), "No scopes should be matched when authorization is bypassed");
+        assertTrue(result.getMatchedRoles().isEmpty(), "No roles should be matched when authorization is bypassed");
+        assertTrue(result.getMissingScopes().isEmpty(), "No missing scopes should be reported when authorization is bypassed");
+        assertTrue(result.getMissingRoles().isEmpty(), "No missing roles should be reported when authorization is bypassed");
     }
 }
