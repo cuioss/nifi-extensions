@@ -103,7 +103,8 @@ export class KeycloakTokenService {
    */
   async isKeycloakAccessible() {
     try {
-      const healthUrl = `${this.keycloakBase}/health`;
+      // Use the dedicated health endpoint on port 9086
+      const healthUrl = CONSTANTS.SERVICE_URLS.KEYCLOAK_HEALTH;
       const response = await fetch(healthUrl, {
         method: 'GET',
         // Allow self-signed certificates in test environment
