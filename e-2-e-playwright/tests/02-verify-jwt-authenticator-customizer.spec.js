@@ -24,7 +24,6 @@ test.describe("JWT Authenticator Customizer UI", () => {
             await authService.ensureReady();
             
             // Ensure processor is on canvas before each test
-            processorLogger.info('Ensuring MultiIssuerJWTTokenAuthenticator is on canvas...');
             const ready = await processorManager.ensureProcessorOnCanvas();
             if (!ready) {
                 throw new Error(
@@ -32,7 +31,7 @@ test.describe("JWT Authenticator Customizer UI", () => {
                     'The processor must be deployed in NiFi for tests to run.'
                 );
             }
-            processorLogger.success('Processor is ready on canvas for test');
+            processorLogger.info('All preconditions met');
         } catch (error) {
             try {
                 await saveTestBrowserLogs(testInfo);

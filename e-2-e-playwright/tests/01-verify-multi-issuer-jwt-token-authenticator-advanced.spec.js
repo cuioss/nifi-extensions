@@ -29,7 +29,6 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
             await authService.verifyCanvasVisible();
             
             // Ensure processor is on canvas before each test
-            processorLogger.info('Ensuring MultiIssuerJWTTokenAuthenticator is on canvas...');
             const ready = await processorManager.ensureProcessorOnCanvas();
             if (!ready) {
                 throw new Error(
@@ -37,7 +36,7 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
                     'The processor must be deployed in NiFi for tests to run.'
                 );
             }
-            processorLogger.success('Processor is ready on canvas for test');
+            processorLogger.info('All preconditions met');
         } catch (error) {
             // Save console logs immediately if beforeEach fails
             try {

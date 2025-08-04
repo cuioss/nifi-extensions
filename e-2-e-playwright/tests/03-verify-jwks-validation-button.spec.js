@@ -22,7 +22,6 @@ test.describe("JWKS Validation Button", () => {
         await authService.ensureReady();
         
         // Ensure processor is on canvas before each test
-        processorLogger.info('Ensuring MultiIssuerJWTTokenAuthenticator is on canvas...');
         const ready = await processorManager.ensureProcessorOnCanvas();
         if (!ready) {
             throw new Error(
@@ -30,7 +29,7 @@ test.describe("JWKS Validation Button", () => {
                 'The processor must be deployed in NiFi for tests to run.'
             );
         }
-        processorLogger.success('Processor is ready on canvas for test');
+        processorLogger.info('All preconditions met');
     });
 
     test.afterEach(async ({ page: _ }, testInfo) => {
