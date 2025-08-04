@@ -247,7 +247,8 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
 
             // Verify processor is still visible after interaction
             // Use processor.locator if available, otherwise use first() to avoid strict mode violation
-            const locator = processor.locator || page.locator(processor.element).first();
+            const locator =
+                processor.locator || page.locator(processor.element).first();
             await expect(locator).toBeVisible({
                 timeout: 5000,
             });

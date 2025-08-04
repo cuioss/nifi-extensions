@@ -1,10 +1,10 @@
-# ProcessorApiManager - API-Based Processor Management Guide
+= ProcessorApiManager - API-Based Processor Management Guide
 
-## Overview
+== Overview
 
 The `ProcessorApiManager` utility provides reliable, API-based management of the MultiIssuerJWTTokenAuthenticator processor on the NiFi canvas. This approach replaces unreliable UI-based interactions with direct NiFi REST API calls, ensuring consistent test execution.
 
-## Why API-Based Management?
+== Why API-Based Management?
 
 The previous UI-based approach for placing processors on the canvas had several issues:
 - Unreliable element selection due to dynamic UI rendering
@@ -18,37 +18,38 @@ The API-based approach provides:
 - Consistent behavior across all environments
 - Better error handling and recovery
 
-## Key Components
+== Key Components
 
-### 1. ProcessorApiManager (`utils/processor-api-manager.js`)
+=== 1. ProcessorApiManager (`utils/processor-api-manager.js`)
 
 The main utility class that provides all processor management functionality via the NiFi REST API.
 
-#### Core Methods:
+==== Core Methods:
 
-- **`verifyMultiIssuerJWTTokenAuthenticatorIsDeployed()`**: Checks if the processor type is available in NiFi
-- **`verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas()`**: Checks if the processor is currently on the canvas
-- **`addMultiIssuerJWTTokenAuthenticatorOnCanvas(position)`**: Adds the processor to the canvas at specified position
-- **`removeMultiIssuerJWTTokenAuthenticatorFromCanvas()`**: Removes the processor from the canvas
-- **`ensureProcessorOnCanvas()`**: Ensures processor is on canvas (adds if missing)
-- **`startProcessor()`**: Starts the processor
-- **`stopProcessor()`**: Stops the processor
+* *`verifyMultiIssuerJWTTokenAuthenticatorIsDeployed()`*: Checks if the processor type is available in NiFi
+* *`verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas()`*: Checks if the processor is currently on the canvas
+* *`addMultiIssuerJWTTokenAuthenticatorOnCanvas(position)`*: Adds the processor to the canvas at specified position
+* *`removeMultiIssuerJWTTokenAuthenticatorFromCanvas()`*: Removes the processor from the canvas
+* *`ensureProcessorOnCanvas()`*: Ensures processor is on canvas (adds if missing)
+* *`startProcessor()`*: Starts the processor
+* *`stopProcessor()`*: Stops the processor
 
-### 2. Setup Helper (`utils/processor-setup-helper.js`)
+=== 2. Setup Helper (`utils/processor-setup-helper.js`)
 
 Provides simplified integration functions for use in test setup/teardown.
 
-#### Helper Functions:
+==== Helper Functions:
 
-- **`setupMultiIssuerJWTAuthenticator(page, options)`**: Ensures processor is ready on canvas
-- **`cleanupMultiIssuerJWTAuthenticator(page)`**: Removes processor after tests
-- **`verifyProcessorStatus(page)`**: Gets detailed processor status
+* *`setupMultiIssuerJWTAuthenticator(page, options)`*: Ensures processor is ready on canvas
+* *`cleanupMultiIssuerJWTAuthenticator(page)`*: Removes processor after tests
+* *`verifyProcessorStatus(page)`*: Gets detailed processor status
 
-## Usage Examples
+== Usage Examples
 
-### Basic Usage in Tests
+=== Basic Usage in Tests
 
-```javascript
+[source,javascript]
+----
 import { test, expect } from '@playwright/test';
 import { ProcessorApiManager } from '../utils/processor-api-manager.js';
 import { AuthService } from '../utils/auth-service.js';
@@ -69,11 +70,12 @@ test('My test that needs the processor', async ({ page }) => {
   
   // Your test logic here...
 });
-```
+----
 
-### Using the Setup Helper
+=== Using the Setup Helper
 
-```javascript
+[source,javascript]
+----
 import { test } from '@playwright/test';
 import { setupMultiIssuerJWTAuthenticator } from '../utils/processor-setup-helper.js';
 import { AuthService } from '../utils/auth-service.js';
@@ -94,11 +96,12 @@ test('Test with processor ready', async ({ page }) => {
   // Processor is guaranteed to be on canvas
   // Continue with your test...
 });
-```
+----
 
-### Full Lifecycle Management
+=== Full Lifecycle Management
 
-```javascript
+[source,javascript]
+----
 import { ProcessorApiManager } from '../utils/processor-api-manager.js';
 
 test('Full processor lifecycle', async ({ page }) => {
@@ -129,34 +132,39 @@ test('Full processor lifecycle', async ({ page }) => {
   const removed = await manager.removeMultiIssuerJWTTokenAuthenticatorFromCanvas();
   expect(removed).toBe(true);
 });
-```
+----
 
-## Migration Guide
+== Migration Guide
 
-### Updating Existing Tests
+=== Updating Existing Tests
 
 Replace UI-based processor setup with API-based approach:
 
-#### Before (UI-based):
-```javascript
+==== Before (UI-based):
+
+[source,javascript]
+----
 // Unreliable UI-based approach
 const processor = await findProcessor(page, 'MultiIssuerJWTTokenAuthenticator');
 await processor.click();
 // ... complex UI interactions
-```
+----
 
-#### After (API-based):
-```javascript
+==== After (API-based):
+
+[source,javascript]
+----
 // Reliable API-based approach
 const manager = new ProcessorApiManager(page);
 await manager.ensureProcessorOnCanvas();
-```
+----
 
-### Test Setup Pattern
+=== Test Setup Pattern
 
 For tests that require the processor:
 
-```javascript
+[source,javascript]
+----
 test.describe('Tests requiring MultiIssuerJWTTokenAuthenticator', () => {
   let processorManager;
   
@@ -188,61 +196,62 @@ test.describe('Tests requiring MultiIssuerJWTTokenAuthenticator', () => {
   
   // Your tests here...
 });
-```
+----
 
-## Troubleshooting
+== Troubleshooting
 
-### Processor Not Deployed
+=== Processor Not Deployed
 
 If `verifyMultiIssuerJWTTokenAuthenticatorIsDeployed()` returns false:
 1. Ensure the processor NAR file is installed in NiFi
 2. Restart NiFi after installing the NAR
 3. Check NiFi logs for any deployment errors
 
-### Authentication Issues
+=== Authentication Issues
 
 If API calls fail with 401/403:
 1. Ensure proper authentication before API calls
 2. Check that the token is being passed correctly
 3. Verify user has permissions to manage processors
 
-### Processor Not Found on Canvas
+=== Processor Not Found on Canvas
 
 If processor operations fail:
 1. Use `verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas()` to check current state
 2. Try removing and re-adding the processor
 3. Check NiFi UI manually to verify actual state
 
-## Running the Self-Test
+== Running the Self-Test
 
 To verify the ProcessorApiManager is working correctly:
 
-```bash
+[source,bash]
+----
 npm test -- self-processor-api-manager.spec.js
-```
+----
 
 This runs comprehensive tests of all API operations.
 
-## API Endpoints Used
+== API Endpoints Used
 
 The utility uses these NiFi REST API endpoints:
 
-- `GET /nifi-api/flow/processor-types` - List available processor types
-- `GET /nifi-api/process-groups/{id}/processors` - List processors on canvas
-- `POST /nifi-api/process-groups/{id}/processors` - Add processor to canvas
-- `DELETE /nifi-api/processors/{id}` - Remove processor from canvas
-- `PUT /nifi-api/processors/{id}/run-status` - Start/stop processor
-- `GET /nifi-api/processors/{id}` - Get processor details
+* `GET /nifi-api/flow/processor-types` - List available processor types
+* `GET /nifi-api/process-groups/{id}/processors` - List processors on canvas
+* `POST /nifi-api/process-groups/{id}/processors` - Add processor to canvas
+* `DELETE /nifi-api/processors/{id}` - Remove processor from canvas
+* `PUT /nifi-api/processors/{id}/run-status` - Start/stop processor
+* `GET /nifi-api/processors/{id}` - Get processor details
 
-## Best Practices
+== Best Practices
 
-1. **Always authenticate first**: Ensure proper authentication before using ProcessorApiManager
-2. **Check deployment**: Verify processor is deployed before attempting to add to canvas
-3. **Handle failures gracefully**: Use test.skip() when processor is not available
-4. **Clean up in tests**: Remove test processors after completion when appropriate
-5. **Use the helper functions**: Leverage processor-setup-helper.js for common patterns
+. *Always authenticate first*: Ensure proper authentication before using ProcessorApiManager
+. *Check deployment*: Verify processor is deployed before attempting to add to canvas
+. *Handle failures gracefully*: Use test.skip() when processor is not available
+. *Clean up in tests*: Remove test processors after completion when appropriate
+. *Use the helper functions*: Leverage processor-setup-helper.js for common patterns
 
-## Support
+== Support
 
 For issues or questions:
 1. Check the self-test output for diagnostic information

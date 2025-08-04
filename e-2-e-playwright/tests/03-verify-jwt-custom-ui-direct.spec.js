@@ -20,7 +20,7 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
         await setupAuthAwareErrorDetection(page, testInfo);
         const authService = new AuthService(page);
         await authService.ensureReady();
-        
+
         // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
         await processorManager.ensureProcessorOnCanvas();
     });
@@ -40,7 +40,9 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
         cleanupCriticalErrorDetection();
     });
 
-    test("should display all four tabs in custom UI", async ({ page }, testInfo) => {
+    test("should display all four tabs in custom UI", async ({
+        page,
+    }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT processor using the verified utility
@@ -228,7 +230,9 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
         }
     });
 
-    test("should test tab switching functionality", async ({ page }, testInfo) => {
+    test("should test tab switching functionality", async ({
+        page,
+    }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT processor using the verified utility

@@ -13,7 +13,7 @@ test.describe("Simple Tab Content Check", () => {
         await setupAuthAwareErrorDetection(page, testInfo);
         const authService = new AuthService(page);
         await authService.ensureReady();
-        
+
         // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
         await processorManager.ensureProcessorOnCanvas();
     });

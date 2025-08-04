@@ -24,7 +24,7 @@ test.describe("Keycloak Token Service", () => {
         if (!isAccessible) {
             throw new Error(
                 "PRECONDITION FAILED: Keycloak is not accessible. " +
-                "Run ./integration-testing/src/main/docker/run-and-deploy.sh to start containers."
+                    "Run ./integration-testing/src/main/docker/run-and-deploy.sh to start containers.",
             );
         }
 
@@ -37,7 +37,7 @@ test.describe("Keycloak Token Service", () => {
         if (!isAccessible) {
             throw new Error(
                 "PRECONDITION FAILED: Keycloak is not accessible. " +
-                "Run ./integration-testing/src/main/docker/run-and-deploy.sh to start containers."
+                    "Run ./integration-testing/src/main/docker/run-and-deploy.sh to start containers.",
             );
         }
 
@@ -68,10 +68,10 @@ test.describe("Keycloak Token Service", () => {
 
     test("should fail loudly when Keycloak is not accessible", async () => {
         // Temporarily suppress error logging for this test since we expect it to fail
-        const { authLogger } = await import('../utils/shared-logger.js');
+        const { authLogger } = await import("../utils/shared-logger.js");
         const originalError = authLogger.error;
         authLogger.error = () => {}; // Suppress error logging
-        
+
         try {
             // Create a service with invalid endpoint
             const badService = new KeycloakTokenService();
@@ -97,7 +97,7 @@ test.describe("Keycloak Token Service", () => {
         if (!isAccessible) {
             throw new Error(
                 "PRECONDITION FAILED: Keycloak is not accessible. " +
-                "Run ./integration-testing/src/main/docker/run-and-deploy.sh to start containers."
+                    "Run ./integration-testing/src/main/docker/run-and-deploy.sh to start containers.",
             );
         }
 

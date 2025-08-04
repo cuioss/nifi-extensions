@@ -20,7 +20,7 @@ test.describe("JWKS Validation Button", () => {
 
         const authService = new AuthService(page);
         await authService.ensureReady();
-        
+
         // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
         await processorManager.ensureProcessorOnCanvas();
     });

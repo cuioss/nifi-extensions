@@ -26,7 +26,7 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         await authService.ensureReady();
 
         await authService.verifyCanvasVisible();
-        
+
         // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
         await processorManager.ensureProcessorOnCanvas();
     });

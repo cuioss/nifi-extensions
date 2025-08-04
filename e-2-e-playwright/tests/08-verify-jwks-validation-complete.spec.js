@@ -22,7 +22,7 @@ test.describe("JWKS Validation Complete", () => {
         await setupAuthAwareErrorDetection(page, testInfo);
         const authService = new AuthService(page);
         await authService.ensureReady();
-        
+
         // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
         await processorManager.ensureProcessorOnCanvas();
     });
@@ -288,7 +288,7 @@ test.describe("JWKS Validation Complete", () => {
 
         // Get the custom UI frame
         const customUIFrame = await processorService.getAdvancedUIFrame();
-        
+
         // Navigate to Configuration tab
         await processorService.clickTab(customUIFrame, "Configuration");
         processorLogger.info("Clicked Configuration tab");
@@ -313,7 +313,7 @@ test.describe("JWKS Validation Complete", () => {
 
         // Look for JWKS type dropdown or radio buttons
         processorLogger.info("Looking for JWKS type selector");
-        
+
         // Try to find and select JWKS type option
         const jwksTypeSelectors = [
             'select[name="jwks-type"]',
@@ -321,7 +321,7 @@ test.describe("JWKS Validation Complete", () => {
             'input[type="radio"][value="content"]',
             'button:has-text("JWKS URL")',
             'button:has-text("JWKS Content")',
-            '[data-testid="jwks-type-dropdown"]'
+            '[data-testid="jwks-type-dropdown"]',
         ];
 
         let jwksTypeFound = false;
@@ -329,28 +329,32 @@ test.describe("JWKS Validation Complete", () => {
             try {
                 const element = customUIFrame.locator(selector);
                 if (await element.isVisible({ timeout: 2000 })) {
-                    processorLogger.info(`Found JWKS type selector: ${selector}`);
-                    
+                    processorLogger.info(
+                        `Found JWKS type selector: ${selector}`,
+                    );
+
                     // If it's a select dropdown
-                    if (selector.includes('select')) {
-                        await element.selectOption('content');
-                    } 
+                    if (selector.includes("select")) {
+                        await element.selectOption("content");
+                    }
                     // If it's a radio button for content
-                    else if (selector.includes('content')) {
+                    else if (selector.includes("content")) {
                         await element.click();
                     }
                     // If it's a button
-                    else if (selector.includes('button')) {
+                    else if (selector.includes("button")) {
                         await element.click();
                         // Wait for any dropdown menu
                         await page.waitForTimeout(500);
                         // Try to click on "JWKS Content" option
-                        const contentOption = customUIFrame.locator('text="JWKS Content"');
+                        const contentOption = customUIFrame.locator(
+                            'text="JWKS Content"',
+                        );
                         if (await contentOption.isVisible({ timeout: 1000 })) {
                             await contentOption.click();
                         }
                     }
-                    
+
                     jwksTypeFound = true;
                     break;
                 }
@@ -360,7 +364,9 @@ test.describe("JWKS Validation Complete", () => {
         }
 
         if (!jwksTypeFound) {
-            processorLogger.warn("JWKS type selector not found, looking for content textarea directly");
+            processorLogger.warn(
+                "JWKS type selector not found, looking for content textarea directly",
+            );
         }
 
         // Wait for UI to update
@@ -372,9 +378,9 @@ test.describe("JWKS Validation Complete", () => {
             'textarea[name="jwks-content"]',
             'textarea[placeholder*="JWKS"]',
             'textarea[placeholder*="JSON"]',
-            'textarea.jwks-content',
-            'textarea',
-            '[contenteditable="true"]'
+            "textarea.jwks-content",
+            "textarea",
+            '[contenteditable="true"]',
         ];
 
         let contentTextarea = null;
@@ -382,7 +388,9 @@ test.describe("JWKS Validation Complete", () => {
             try {
                 const element = customUIFrame.locator(selector);
                 if (await element.isVisible({ timeout: 2000 })) {
-                    processorLogger.info(`Found content textarea with selector: ${selector}`);
+                    processorLogger.info(
+                        `Found content textarea with selector: ${selector}`,
+                    );
                     contentTextarea = element;
                     break;
                 }
@@ -393,63 +401,83 @@ test.describe("JWKS Validation Complete", () => {
 
         if (!contentTextarea) {
             // If we can't find the textarea, let's check what's actually on the page
-            const visibleInputs = await customUIFrame.locator('input:visible, textarea:visible, select:visible').all();
-            processorLogger.info(`Found ${visibleInputs.length} visible input elements`);
-            
+            const visibleInputs = await customUIFrame
+                .locator("input:visible, textarea:visible, select:visible")
+                .all();
+            processorLogger.info(
+                `Found ${visibleInputs.length} visible input elements`,
+            );
+
             // Log details about each element to help debug
             for (let i = 0; i < Math.min(visibleInputs.length, 5); i++) {
                 const element = visibleInputs[i];
-                const tagName = await element.evaluate(el => el.tagName);
-                const name = await element.getAttribute('name');
-                const placeholder = await element.getAttribute('placeholder');
-                const className = await element.getAttribute('class');
-                processorLogger.info(`Element ${i}: ${tagName} name="${name}" placeholder="${placeholder}" class="${className}"`);
+                const tagName = await element.evaluate((el) => el.tagName);
+                const name = await element.getAttribute("name");
+                const placeholder = await element.getAttribute("placeholder");
+                const className = await element.getAttribute("class");
+                processorLogger.info(
+                    `Element ${i}: ${tagName} name="${name}" placeholder="${placeholder}" class="${className}"`,
+                );
             }
-            
-            // Since we can't find a dedicated JWKS content textarea, 
+
+            // Since we can't find a dedicated JWKS content textarea,
             // let's look for any input that might be for JWKS URL
             processorLogger.info("Looking for JWKS URL input as alternative");
-            const jwksUrlInput = await customUIFrame.locator('input[name="jwks-url"]').first();
-            
+            const jwksUrlInput = await customUIFrame
+                .locator('input[name="jwks-url"]')
+                .first();
+
             if (await jwksUrlInput.isVisible({ timeout: 1000 })) {
-                processorLogger.info("Found JWKS URL input - using URL validation instead of content");
-                
+                processorLogger.info(
+                    "Found JWKS URL input - using URL validation instead of content",
+                );
+
                 // Test with a valid JWKS URL instead
                 await jwksUrlInput.clear();
-                await jwksUrlInput.fill("https://example.com/.well-known/jwks.json");
-                
+                await jwksUrlInput.fill(
+                    "https://example.com/.well-known/jwks.json",
+                );
+
                 processorLogger.info("Filled JWKS URL input with test URL");
-                
+
                 // Verify the URL was accepted
                 const currentValue = await jwksUrlInput.inputValue();
                 expect(currentValue).toContain("https://");
                 expect(currentValue).toContain("jwks");
-                
-                processorLogger.success("JWKS URL validation completed successfully");
+
+                processorLogger.success(
+                    "JWKS URL validation completed successfully",
+                );
                 return; // Exit the test successfully
             }
-            
+
             throw new Error(
                 "Neither JWKS content textarea nor JWKS URL input found. " +
-                "The UI may not support JWKS content entry or there's an issue with the issuer configuration form. " +
-                "Check the UI implementation for JWKS configuration options."
+                    "The UI may not support JWKS content entry or there's an issue with the issuer configuration form. " +
+                    "Check the UI implementation for JWKS configuration options.",
             );
         }
 
         // Test JWKS content structure validation
-        const validJWKS = JSON.stringify({
-            keys: [{
-                kty: "RSA",
-                use: "sig",
-                kid: "test-key-1",
-                n: "test-modulus",
-                e: "AQAB"
-            }]
-        }, null, 2);
+        const validJWKS = JSON.stringify(
+            {
+                keys: [
+                    {
+                        kty: "RSA",
+                        use: "sig",
+                        kid: "test-key-1",
+                        n: "test-modulus",
+                        e: "AQAB",
+                    },
+                ],
+            },
+            null,
+            2,
+        );
 
         await contentTextarea.clear();
         await contentTextarea.fill(validJWKS);
-        
+
         processorLogger.info("Filled JWKS content with valid structure");
 
         // Verify the content was accepted
@@ -458,7 +486,9 @@ test.describe("JWKS Validation Complete", () => {
         expect(currentValue).toContain('"kty"');
         expect(currentValue).toContain('"RSA"');
 
-        processorLogger.success("JWKS content structure validation completed successfully");
+        processorLogger.success(
+            "JWKS content structure validation completed successfully",
+        );
     });
 
     test("should perform end-to-end JWKS validation", async ({
