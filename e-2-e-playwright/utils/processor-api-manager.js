@@ -402,18 +402,40 @@ export class ProcessorApiManager {
 
   /**
    * Ensure MultiIssuerJWTTokenAuthenticator is on canvas
-   * This is a convenience method that adds the processor if it's not already there
+   * This method handles all preconditions: verification, adding if needed, error handling, and logging
+   * Throws an error if preconditions cannot be met
    */
   async ensureProcessorOnCanvas() {
-    const { exists } = await this.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
-    
-    if (!exists) {
-      processorLogger.info('Processor not on canvas, adding it...');
-      return await this.addMultiIssuerJWTTokenAuthenticatorOnCanvas();
+    try {
+      const { exists } = await this.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
+      
+      if (!exists) {
+        processorLogger.debug('Processor not on canvas, adding it...');
+        const added = await this.addMultiIssuerJWTTokenAuthenticatorOnCanvas();
+        if (!added) {
+          throw new Error(
+            'PRECONDITION FAILED: Cannot add MultiIssuerJWTTokenAuthenticator to canvas. ' +
+            'The processor must be deployed in NiFi for tests to run.'
+          );
+        }
+      } else {
+        processorLogger.debug('Processor already on canvas');
+      }
+      
+      processorLogger.info('All preconditions met');
+      
+    } catch (error) {
+      // Re-throw with clear error message for test failure
+      if (error.message.includes('PRECONDITION FAILED')) {
+        throw error; // Already has proper error message
+      }
+      
+      throw new Error(
+        'PRECONDITION FAILED: Cannot ensure MultiIssuerJWTTokenAuthenticator is on canvas. ' +
+        'The processor must be deployed in NiFi for tests to run. ' +
+        `Details: ${error.message}`
+      );
     }
-    
-    processorLogger.debug('Processor already on canvas');
-    return true;
   }
 
   /**

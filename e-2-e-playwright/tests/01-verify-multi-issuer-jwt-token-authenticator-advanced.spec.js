@@ -18,37 +18,17 @@ import { logTestWarning } from "../utils/test-error-handler.js";
 test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     // Make sure we're logged in before each test
     test.beforeEach(async ({ page, processorManager }, testInfo) => {
-        try {
-            // Setup auth-aware error detection
-            await setupAuthAwareErrorDetection(page, testInfo);
+        // Setup auth-aware error detection
+        await setupAuthAwareErrorDetection(page, testInfo);
 
-            // Login first before going to JWT UI
-            const authService = new AuthService(page);
-            await authService.ensureReady();
+        // Login first before going to JWT UI
+        const authService = new AuthService(page);
+        await authService.ensureReady();
 
-            await authService.verifyCanvasVisible();
-            
-            // Ensure processor is on canvas before each test
-            const ready = await processorManager.ensureProcessorOnCanvas();
-            if (!ready) {
-                throw new Error(
-                    'Cannot ensure MultiIssuerJWTTokenAuthenticator is on canvas. ' +
-                    'The processor must be deployed in NiFi for tests to run.'
-                );
-            }
-            processorLogger.info('All preconditions met');
-        } catch (error) {
-            // Save console logs immediately if beforeEach fails
-            try {
-                await saveTestBrowserLogs(testInfo);
-            } catch (logError) {
-                logTestWarning(
-                    "beforeEach",
-                    `Failed to save console logs during beforeEach error: ${logError.message}`,
-                );
-            }
-            throw error; // Re-throw the original error
-        }
+        await authService.verifyCanvasVisible();
+        
+        // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
+        await processorManager.ensureProcessorOnCanvas();
     });
 
     test.afterEach(async ({ page: _page }, testInfo) => {

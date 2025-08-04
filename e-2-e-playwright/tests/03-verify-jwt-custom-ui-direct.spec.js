@@ -21,15 +21,8 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
         const authService = new AuthService(page);
         await authService.ensureReady();
         
-        // Ensure processor is on canvas before each test
-        const ready = await processorManager.ensureProcessorOnCanvas();
-        if (!ready) {
-            throw new Error(
-                'Cannot ensure MultiIssuerJWTTokenAuthenticator is on canvas. ' +
-                'The processor must be deployed in NiFi for tests to run.'
-            );
-        }
-        processorLogger.info('All preconditions met');
+        // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
+        await processorManager.ensureProcessorOnCanvas();
     });
 
     test.afterEach(async ({ page: _ }, testInfo) => {
