@@ -15,6 +15,7 @@ import {
 test.describe("Browser Console Error Capture", () => {
     test("should capture and validate browser console errors", async ({
         page,
+        processorManager,
     }, testInfo) => {
         // Setup unified console logging system instead of custom implementation
         // Skip initial canvas checks since processor UI page doesn't have a canvas
@@ -24,6 +25,9 @@ test.describe("Browser Console Error Capture", () => {
         console.log("Authenticating to NiFi...");
         const authService = new AuthService(page);
         await authService.ensureReady();
+
+        // Ensure processor is on canvas first
+        await processorManager.ensureProcessorOnCanvas();
 
         // Find and open a JWT processor instead of hardcoded URL
         const processorService = new ProcessorService(page, testInfo);

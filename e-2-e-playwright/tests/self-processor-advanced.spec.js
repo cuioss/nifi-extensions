@@ -18,12 +18,15 @@ import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.
 import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("Self-Test: Processor Advanced Configuration", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page, processorManager }, testInfo) => {
         // Setup auth-aware error detection (skips initial canvas checks)
         await setupAuthAwareErrorDetection(page, testInfo);
 
         const authService = new AuthService(page);
         await authService.ensureReady();
+
+        // Ensure processor is on canvas for all tests
+        await processorManager.ensureProcessorOnCanvas();
 
         // Don't check for critical errors here - authentication may have transient 401s
     });
@@ -243,7 +246,9 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
             await processorService.interact(processor, { action: "hover" });
 
             // Verify processor is still visible after interaction
-            await expect(page.locator(processor.element)).toBeVisible({
+            // Use processor.locator if available, otherwise use first() to avoid strict mode violation
+            const locator = processor.locator || page.locator(processor.element).first();
+            await expect(locator).toBeVisible({
                 timeout: 5000,
             });
 

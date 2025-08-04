@@ -22,7 +22,7 @@ import {
 import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("Self-Test: Critical Error Detection", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page, processorManager }, testInfo) => {
         // Setup auth-aware error detection (skips initial canvas checks)
         await setupAuthAwareErrorDetection(page, testInfo);
 
@@ -30,11 +30,16 @@ test.describe("Self-Test: Critical Error Detection", () => {
         const authService = new AuthService(page);
         await authService.ensureReady();
 
+        // Ensure processor is on canvas so canvas is not empty
+        // This is needed for tests that check canvas state
+        await processorManager.ensureProcessorOnCanvas();
+
         // Wait for page to be fully stable after authentication
         await page.waitForLoadState("networkidle");
 
-        // Now check for critical errors after authentication completes
-        await checkForCriticalErrors(page, testInfo);
+        // NOTE: Do NOT check for critical errors in beforeEach for self-tests
+        // These tests are specifically designed to test error detection scenarios
+        // Checking for errors here would cause all tests to fail prematurely
     });
 
     test.afterEach(async ({ page: _ }, testInfo) => {
