@@ -142,7 +142,7 @@ export async function verifyProcessorStatus(page) {
  *   // Ensure processor is on canvas before test
  *   const ready = await setupMultiIssuerJWTAuthenticator(page);
  *   if (!ready) {
- *     test.skip('Processor could not be setup');
+ *     throw new Error('PRECONDITION FAILED: Processor could not be setup');
  *   }
  * });
  * 

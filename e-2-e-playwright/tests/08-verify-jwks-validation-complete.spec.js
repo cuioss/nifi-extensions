@@ -271,13 +271,15 @@ test.describe("JWKS Validation Complete", () => {
         processorLogger.success("JWKS connectivity test completed");
     });
 
-    test.skip("should validate JWKS content structure", async ({
+    test("should validate JWKS content structure", async ({
         page: _page,
     }, _testInfo) => {
-        // Skip this test as the JWKS content textarea is not yet available in the current UI state
+        // Fail this test as the JWKS content textarea is not yet available in the current UI state
         // This test will be enabled once the JWKS type dropdown timing issue is resolved
-        processorLogger.info(
-            "Skipping JWKS content structure validation test - UI component timing issue",
+        throw new Error(
+            "UI COMPONENT ISSUE: JWKS content structure validation cannot be completed - " +
+            "JWKS type dropdown timing issue prevents access to content textarea. " +
+            "This functionality needs to be fixed in the UI component."
         );
     });
 

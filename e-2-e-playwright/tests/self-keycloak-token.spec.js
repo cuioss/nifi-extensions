@@ -22,10 +22,9 @@ test.describe("Keycloak Token Service", () => {
         const isAccessible = await tokenService.isKeycloakAccessible();
 
         if (!isAccessible) {
-            test.skip(
-                true,
-                "Keycloak is not accessible. " +
-                    "Run ./integration-testing/src/main/docker/run-and-deploy.sh to start containers.",
+            throw new Error(
+                "PRECONDITION FAILED: Keycloak is not accessible. " +
+                "Run ./integration-testing/src/main/docker/run-and-deploy.sh to start containers."
             );
         }
 
@@ -33,13 +32,12 @@ test.describe("Keycloak Token Service", () => {
     });
 
     test("should fetch a valid access token from Keycloak", async () => {
-        // Skip if Keycloak is not accessible
+        // Fail if Keycloak is not accessible
         const isAccessible = await tokenService.isKeycloakAccessible();
         if (!isAccessible) {
-            test.skip(
-                true,
-                "Keycloak is not accessible. " +
-                    "Run ./integration-testing/src/main/docker/run-and-deploy.sh to start containers.",
+            throw new Error(
+                "PRECONDITION FAILED: Keycloak is not accessible. " +
+                "Run ./integration-testing/src/main/docker/run-and-deploy.sh to start containers."
             );
         }
 
@@ -94,13 +92,12 @@ test.describe("Keycloak Token Service", () => {
     });
 
     test("should fail loudly with invalid credentials", async () => {
-        // Skip if Keycloak is not accessible
+        // Fail if Keycloak is not accessible
         const isAccessible = await tokenService.isKeycloakAccessible();
         if (!isAccessible) {
-            test.skip(
-                true,
-                "Keycloak is not accessible. " +
-                    "Run ./integration-testing/src/main/docker/run-and-deploy.sh to start containers.",
+            throw new Error(
+                "PRECONDITION FAILED: Keycloak is not accessible. " +
+                "Run ./integration-testing/src/main/docker/run-and-deploy.sh to start containers."
             );
         }
 

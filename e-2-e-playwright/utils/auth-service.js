@@ -95,10 +95,11 @@ export class AuthService {
     // Check if NiFi is accessible before attempting login
     const isAccessible = await this.checkNiFiAccessibility();
     if (!isAccessible) {
-      authLogger.warn('NiFi is not accessible - skipping login attempt');
-      const { test } = await import('@playwright/test');
-      test.skip(true, 'NiFi service is not accessible - cannot perform login');
-      return;
+      authLogger.error('NiFi is not accessible - cannot perform login');
+      throw new Error(
+        'PRECONDITION FAILED: NiFi service is not accessible - cannot perform login. ' +
+        'Make sure NiFi is running at https://localhost:9095/nifi'
+      );
     }
 
     const start = Date.now();
