@@ -160,6 +160,8 @@ export class AuthService {
       // Store the authorization header in window for API manager to use
       await this.page.evaluate((authHeader) => {
         window.__authorizationHeader = authHeader;
+        // Also store just the token for easier access
+        window.__jwtToken = authHeader.replace('Bearer ', '');
       }, `Bearer ${token}`);
 
       // Navigate to main canvas after successful authentication

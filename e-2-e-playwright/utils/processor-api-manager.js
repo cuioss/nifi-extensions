@@ -20,34 +20,84 @@ export class ProcessorApiManager {
   }
 
   /**
-   * Get authorization headers for API requests
-   * Extracts the Bearer token from page headers if available
+   * Get authentication headers from the page context
+   * This is kept for backward compatibility
    */
   async getAuthHeaders() {
-    // Get the current extra HTTP headers from the page
-    // These are set by AuthService after successful login
-    const currentHeaders = await this.page.evaluate(() => {
-      // Check if there's an Authorization header stored in window
-      return window.__authorizationHeader || null;
-    }).catch(() => null);
-
-    if (currentHeaders) {
-      return { 'Authorization': currentHeaders };
-    }
-
-    // Try to get token from cookies for CSRF protection
-    const cookies = await this.page.context().cookies();
-    const requestTokenCookie = cookies.find(c => c.name === '__Secure-Request-Token');
+    // Get headers that were set with setExtraHTTPHeaders during login
+    // The AuthService sets these headers after successful authentication
     
-    const headers = {};
-    if (requestTokenCookie) {
-      headers['Request-Token'] = requestTokenCookie.value;
-    }
-
-    // Add common headers
-    headers['Accept'] = 'application/json';
+    // Try to get JWT token from window object (set during login)
+    const token = await this.page.evaluate(() => window.__jwtToken).catch(() => null);
     
-    return headers;
+    if (token) {
+      processorLogger.debug('Using JWT token for authentication');
+      return {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      };
+    }
+    
+    processorLogger.debug('No JWT token found, relying on session cookies');
+    // Fallback to empty headers (will rely on cookies)
+    return {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    };
+  }
+
+  /**
+   * Make an authenticated API call using the page's browser context
+   * This ensures cookies and session are properly used
+   * IMPORTANT: Uses page.evaluate with fetch because page.request doesn't share cookie context
+   */
+  async makeApiCall(path, options = {}) {
+    const { method = 'GET', body = null } = options;
+    
+    // Convert path to relative URL if it's absolute
+    const relativePath = path.replace(/^https?:\/\/[^\/]+/, '').replace('/nifi/nifi-api', '/nifi-api');
+    
+    return await this.page.evaluate(async ({relativePath, method, body}) => {
+      try {
+        const fetchOptions = {
+          method: method,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include' // This ensures cookies are sent
+        };
+        
+        if (body) {
+          fetchOptions.body = JSON.stringify(body);
+        }
+        
+        const response = await fetch(relativePath, fetchOptions);
+        
+        const contentType = response.headers.get('content-type');
+        let data = null;
+        
+        if (contentType && contentType.includes('application/json')) {
+          data = await response.json();
+        } else {
+          data = await response.text();
+        }
+        
+        return {
+          ok: response.ok,
+          status: response.status,
+          statusText: response.statusText,
+          data: data
+        };
+      } catch (error) {
+        return {
+          ok: false,
+          error: error.message,
+          data: null
+        };
+      }
+    }, {relativePath, method, body});
   }
 
   /**
@@ -55,14 +105,10 @@ export class ProcessorApiManager {
    */
   async getRootProcessGroupId() {
     try {
-      const response = await this.page.request.get(`${this.baseUrl}/nifi-api/flow/process-groups/root`, {
-        headers: await this.getAuthHeaders(),
-        failOnStatusCode: false
-      });
-
-      if (response.ok()) {
-        const data = await response.json();
-        return data.processGroupFlow?.id || data.id || 'root';
+      const result = await this.makeApiCall('/nifi-api/flow/process-groups/root');
+      
+      if (result.ok && result.data) {
+        return result.data.processGroupFlow?.id || result.data.id || 'root';
       }
 
       // Fallback to 'root' if API call fails
@@ -82,18 +128,30 @@ export class ProcessorApiManager {
     processorLogger.info('Verifying MultiIssuerJWTTokenAuthenticator deployment...');
     
     try {
-      const response = await this.page.request.get(`${this.baseUrl}/nifi-api/flow/processor-types`, {
-        headers: await this.getAuthHeaders(),
-        failOnStatusCode: false
-      });
-
-      if (!response.ok()) {
-        processorLogger.error(`Failed to get processor types: ${response.status()}`);
+      // Use makeApiCall which uses page.evaluate with fetch (works with cookies)
+      const result = await this.makeApiCall('/nifi-api/flow/processor-types');
+      
+      if (!result.ok) {
+        processorLogger.error(`Failed to get processor types: ${result.status || result.error}`);
+        if (result.status === 401) {
+          processorLogger.error('Authentication failed - ensure login was successful');
+        }
         return false;
       }
-
-      const data = await response.json();
-      const processorTypes = data.processorTypes || [];
+      
+      // Check if we got JSON data
+      if (typeof result.data === 'string') {
+        processorLogger.error('Received text instead of JSON object');
+        if (result.data.startsWith('<!') || result.data.includes('<html')) {
+          processorLogger.error('Received HTML instead of JSON - authentication may have failed');
+        }
+        return false;
+      }
+      
+      const processorTypes = result.data?.processorTypes || [];
+      
+      // Log total number of processor types found
+      processorLogger.debug(`Found ${processorTypes.length} total processor types`);
       
       // Check if our processor type is available
       const isDeployed = processorTypes.some(type => 
@@ -106,7 +164,29 @@ export class ProcessorApiManager {
         processorLogger.success('MultiIssuerJWTTokenAuthenticator is deployed');
       } else {
         processorLogger.warn('MultiIssuerJWTTokenAuthenticator is NOT deployed');
-        processorLogger.debug('Available processor types:', processorTypes.map(t => t.type).filter(t => t?.includes('JWT') || t?.includes('Auth')));
+        
+        // Log all JWT/Auth related processors for debugging
+        const relevantTypes = processorTypes.filter(t => 
+          t.type?.includes('JWT') || 
+          t.type?.includes('Auth') || 
+          t.type?.includes('Token') ||
+          t.bundle?.artifact?.includes('cuioss') ||
+          t.bundle?.artifact?.includes('auth')
+        );
+        
+        if (relevantTypes.length > 0) {
+          processorLogger.debug('Found potentially related processor types:');
+          relevantTypes.forEach(t => {
+            processorLogger.debug(`  - ${t.type} (artifact: ${t.bundle?.artifact})`);
+          });
+        } else {
+          processorLogger.debug('No JWT/Auth/Token related processors found');
+          // Log first few processor types as sample
+          processorLogger.debug('Sample of available processor types:');
+          processorTypes.slice(0, 5).forEach(t => {
+            processorLogger.debug(`  - ${t.type} (artifact: ${t.bundle?.artifact})`);
+          });
+        }
       }
 
       return isDeployed;
@@ -122,18 +202,14 @@ export class ProcessorApiManager {
   async getProcessorsOnCanvas() {
     try {
       const rootGroupId = await this.getRootProcessGroupId();
-      const response = await this.page.request.get(`${this.baseUrl}/nifi-api/process-groups/${rootGroupId}/processors`, {
-        headers: await this.getAuthHeaders(),
-        failOnStatusCode: false
-      });
-
-      if (!response.ok()) {
-        processorLogger.error(`Failed to get processors: ${response.status()}`);
+      const result = await this.makeApiCall(`/nifi-api/process-groups/${rootGroupId}/processors`);
+      
+      if (!result.ok) {
+        processorLogger.error(`Failed to get processors: ${result.status || result.error}`);
         return [];
       }
 
-      const data = await response.json();
-      return data.processors || [];
+      return result.data?.processors || [];
     } catch (error) {
       processorLogger.error('Error getting processors on canvas:', error.message);
       return [];
@@ -191,39 +267,34 @@ export class ProcessorApiManager {
       if (processor.status?.runStatus === 'Running') {
         processorLogger.debug('Stopping processor before deletion...');
         
-        const stopResponse = await this.page.request.put(`${this.baseUrl}/nifi-api/processors/${processor.id}/run-status`, {
-          headers: {
-            ...await this.getAuthHeaders(),
-            'Content-Type': 'application/json'
-          },
-          data: {
-            revision: {
-              version: processor.revision?.version || 0
-            },
-            state: 'STOPPED'
-          },
-          failOnStatusCode: false
-        });
+        const stopResult = await this.makeApiCall(
+          `/nifi-api/processors/${processor.id}/run-status`,
+          {
+            method: 'PUT',
+            body: {
+              revision: {
+                version: processor.revision?.version || 0
+              },
+              state: 'STOPPED'
+            }
+          }
+        );
 
-        if (!stopResponse.ok()) {
-          processorLogger.warn(`Could not stop processor: ${stopResponse.status()}`);
+        if (!stopResult.ok) {
+          processorLogger.warn(`Could not stop processor: ${stopResult.status || stopResult.error}`);
         }
       }
 
       // Delete the processor
-      const deleteUrl = `${this.baseUrl}/nifi-api/processors/${processor.id}?version=${processor.revision?.version || 0}`;
-      const deleteResponse = await this.page.request.delete(deleteUrl, {
-        headers: await this.getAuthHeaders(),
-        failOnStatusCode: false
-      });
+      const deleteUrl = `/nifi-api/processors/${processor.id}?version=${processor.revision?.version || 0}`;
+      const deleteResult = await this.makeApiCall(deleteUrl, { method: 'DELETE' });
 
-      if (deleteResponse.ok()) {
+      if (deleteResult.ok) {
         processorLogger.success('MultiIssuerJWTTokenAuthenticator removed from canvas');
         return true;
       } else {
-        processorLogger.error(`Failed to delete processor: ${deleteResponse.status()}`);
-        const errorText = await deleteResponse.text().catch(() => '');
-        processorLogger.debug('Delete error:', errorText);
+        processorLogger.error(`Failed to delete processor: ${deleteResult.status || deleteResult.error}`);
+        processorLogger.debug('Delete error:', deleteResult.data);
         return false;
       }
     } catch (error) {
@@ -256,15 +327,11 @@ export class ProcessorApiManager {
       const rootGroupId = await this.getRootProcessGroupId();
       
       // Get available processor types to find the exact type and bundle info
-      const typesResponse = await this.page.request.get(`${this.baseUrl}/nifi-api/flow/processor-types`, {
-        headers: await this.getAuthHeaders(),
-        failOnStatusCode: false
-      });
+      const typesResult = await this.makeApiCall('/nifi-api/flow/processor-types');
 
       let processorTypeInfo = null;
-      if (typesResponse.ok()) {
-        const typesData = await typesResponse.json();
-        processorTypeInfo = typesData.processorTypes?.find(type => 
+      if (typesResult.ok && typesResult.data) {
+        processorTypeInfo = typesResult.data.processorTypes?.find(type => 
           type.type === this.processorType ||
           type.type?.includes('MultiIssuerJWTTokenAuthenticator')
         );
@@ -276,37 +343,37 @@ export class ProcessorApiManager {
       }
 
       // Create the processor
-      const createResponse = await this.page.request.post(`${this.baseUrl}/nifi-api/process-groups/${rootGroupId}/processors`, {
-        headers: {
-          ...await this.getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
-        data: {
-          revision: {
-            version: 0
-          },
-          component: {
-            type: processorTypeInfo.type,
-            bundle: processorTypeInfo.bundle,
-            name: this.processorName,
-            position: position,
-            config: {
-              properties: {},
-              autoTerminatedRelationships: []
+      const createResult = await this.makeApiCall(
+        `/nifi-api/process-groups/${rootGroupId}/processors`,
+        {
+          method: 'POST',
+          body: {
+            revision: {
+              version: 0
+            },
+            component: {
+              type: processorTypeInfo.type,
+              bundle: processorTypeInfo.bundle,
+              name: this.processorName,
+              position: position,
+              config: {
+                properties: {},
+                autoTerminatedRelationships: []
+              }
             }
           }
-        },
-        failOnStatusCode: false
-      });
+        }
+      );
 
-      if (createResponse.ok()) {
-        const createdProcessor = await createResponse.json();
-        processorLogger.success(`MultiIssuerJWTTokenAuthenticator added to canvas with ID: ${createdProcessor.id}`);
+      if (createResult.ok) {
+        processorLogger.success(`MultiIssuerJWTTokenAuthenticator added to canvas with ID: ${createResult.data?.id}`);
         return true;
       } else {
-        processorLogger.error(`Failed to create processor: ${createResponse.status()}`);
-        const errorText = await createResponse.text().catch(() => '');
-        processorLogger.debug('Create error:', errorText);
+        processorLogger.error(`Failed to create processor: ${createResult.status || createResult.error}`);
+        if (createResult.status === 403) {
+          processorLogger.error('Permission denied - user may not have rights to add processors');
+        }
+        processorLogger.debug('Create error response:', JSON.stringify(createResult.data, null, 2));
         return false;
       }
     } catch (error) {
@@ -336,13 +403,10 @@ export class ProcessorApiManager {
    */
   async getProcessorDetails(processorId) {
     try {
-      const response = await this.page.request.get(`${this.baseUrl}/nifi-api/processors/${processorId}`, {
-        headers: await this.getAuthHeaders(),
-        failOnStatusCode: false
-      });
-
-      if (response.ok()) {
-        return await response.json();
+      const result = await this.makeApiCall(`/nifi-api/processors/${processorId}`);
+      
+      if (result.ok && result.data) {
+        return result.data;
       }
       
       return null;
@@ -366,25 +430,24 @@ export class ProcessorApiManager {
         return false;
       }
 
-      const response = await this.page.request.put(`${this.baseUrl}/nifi-api/processors/${processor.id}/run-status`, {
-        headers: {
-          ...await this.getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
-        data: {
-          revision: {
-            version: processor.revision?.version || 0
-          },
-          state: 'RUNNING'
-        },
-        failOnStatusCode: false
-      });
+      const result = await this.makeApiCall(
+        `/nifi-api/processors/${processor.id}/run-status`,
+        {
+          method: 'PUT',
+          body: {
+            revision: {
+              version: processor.revision?.version || 0
+            },
+            state: 'RUNNING'
+          }
+        }
+      );
 
-      if (response.ok()) {
+      if (result.ok) {
         processorLogger.success('Processor started successfully');
         return true;
       } else {
-        processorLogger.error(`Failed to start processor: ${response.status()}`);
+        processorLogger.error(`Failed to start processor: ${result.status || result.error}`);
         return false;
       }
     } catch (error) {
@@ -407,25 +470,24 @@ export class ProcessorApiManager {
         return false;
       }
 
-      const response = await this.page.request.put(`${this.baseUrl}/nifi-api/processors/${processor.id}/run-status`, {
-        headers: {
-          ...await this.getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
-        data: {
-          revision: {
-            version: processor.revision?.version || 0
-          },
-          state: 'STOPPED'
-        },
-        failOnStatusCode: false
-      });
+      const result = await this.makeApiCall(
+        `/nifi-api/processors/${processor.id}/run-status`,
+        {
+          method: 'PUT',
+          body: {
+            revision: {
+              version: processor.revision?.version || 0
+            },
+            state: 'STOPPED'
+          }
+        }
+      );
 
-      if (response.ok()) {
+      if (result.ok) {
         processorLogger.success('Processor stopped successfully');
         return true;
       } else {
-        processorLogger.error(`Failed to stop processor: ${response.status()}`);
+        processorLogger.error(`Failed to stop processor: ${result.status || result.error}`);
         return false;
       }
     } catch (error) {
