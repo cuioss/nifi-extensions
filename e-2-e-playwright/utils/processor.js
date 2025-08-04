@@ -329,15 +329,22 @@ export class ProcessorService {
       await advancedMenuItem.click();
       processorLogger.debug("Clicked Advanced menu item");
       
-      // Wait for navigation
-      await this.page.waitForLoadState("networkidle");
-      await this.page.waitForTimeout(2000);
-      
-      // Verify we're on the advanced page
-      const url = this.page.url();
-      if (url.includes("/advanced")) {
+      // Wait for navigation to advanced page
+      try {
+        await this.page.waitForURL('**/advanced', { timeout: 10000 });
         processorLogger.debug("Successfully navigated to Advanced UI");
+        
+        // Wait for iframe to be injected into the page
+        await this.page.waitForSelector('iframe', { timeout: 5000 });
+        processorLogger.debug("Advanced UI iframe detected in DOM");
+        
+        // Give iframe time to start loading
+        await this.page.waitForTimeout(1000);
+        
         return true;
+      } catch (error) {
+        processorLogger.error(`Failed to navigate to Advanced UI: ${error.message}`);
+        return false;
       }
     }
     
@@ -346,34 +353,114 @@ export class ProcessorService {
   }
 
   async getAdvancedUIFrame() {
-    // Find the custom UI frame
-    const frames = this.page.frames();
-    
-    // Debug log all frames
-    processorLogger.info(`Found ${frames.length} frames on page`);
-    frames.forEach((frame, index) => {
-      processorLogger.info(`Frame ${index}: ${frame.url()}`);
-    });
-    
-    // Try multiple patterns to find the custom UI frame
-    // IMPORTANT: The custom UI is served from nifi-cuioss-ui-1.0-SNAPSHOT
-    let customUIFrame = frames.find(f => 
-      f.url().includes("nifi-cuioss-ui")
-    );
-    
-    // If not found, try the second frame (first is usually the main page)
-    if (!customUIFrame && frames.length > 1) {
-      customUIFrame = frames[1];
-      processorLogger.info(`Using second frame as fallback: ${customUIFrame.url()}`);
-    }
-    
-    if (!customUIFrame) {
-      processorLogger.error("Could not find custom UI iframe");
+    // Ensure we're on the advanced page first
+    const url = this.page.url();
+    if (!url.includes("/advanced")) {
+      processorLogger.error("Not on advanced page, cannot get custom UI frame");
       return null;
     }
     
-    processorLogger.info(`Found custom UI frame: ${customUIFrame.url()}`);
-    return customUIFrame;
+    // Wait for iframe to exist in DOM
+    try {
+      await this.page.waitForSelector('iframe', { timeout: 5000 });
+    } catch (error) {
+      processorLogger.error("No iframe found in advanced page");
+      return null;
+    }
+    
+    // Try to find the custom UI frame with retries
+    let attempts = 0;
+    const maxAttempts = 5;
+    
+    while (attempts < maxAttempts) {
+      const frames = this.page.frames();
+      
+      // Log frame detection for debugging
+      processorLogger.info(`[Processor] Attempt ${attempts + 1}: Found ${frames.length} frames on page`);
+      
+      if (frames.length > 1) {
+        // Log all frame URLs for debugging
+        frames.forEach((frame, index) => {
+          processorLogger.info(`[Processor] Frame ${index}: ${frame.url()}`);
+        });
+        
+        // Find the custom UI frame (should contain nifi-cuioss-ui in URL)
+        const customUIFrame = frames.find(f => 
+          f.url().includes("nifi-cuioss-ui")
+        );
+        
+        if (customUIFrame) {
+          // Wait for frame to be ready
+          try {
+            await customUIFrame.waitForLoadState('domcontentloaded', { timeout: 3000 });
+            processorLogger.info(`[Processor] Found custom UI frame: ${customUIFrame.url()}`);
+            
+            // Use the stability check to ensure frame is ready
+            const isStable = await this.waitForFrameStability(customUIFrame);
+            
+            if (isStable) {
+              processorLogger.debug("[Processor] Custom UI frame is ready and stable");
+              return customUIFrame;
+            } else {
+              processorLogger.warn("[Processor] Frame found but not stable yet");
+            }
+          } catch (e) {
+            processorLogger.warn(`[Processor] Frame not ready yet: ${e.message}`);
+          }
+        }
+      }
+      
+      attempts++;
+      if (attempts < maxAttempts) {
+        processorLogger.debug(`[Processor] Waiting before retry ${attempts}/${maxAttempts}`);
+        await this.page.waitForTimeout(1000);
+      }
+    }
+    
+    processorLogger.error(`[Processor] Could not find custom UI frame after ${maxAttempts} attempts`);
+    return null;
+  }
+
+  /**
+   * Wait for frame to be stable and ready for interaction
+   * @param {Frame} frame - The frame to check
+   * @returns {Promise<boolean>} True if frame is stable, false otherwise
+   */
+  async waitForFrameStability(frame) {
+    try {
+      // Wait for frame to finish loading
+      await frame.waitForLoadState('networkidle', { timeout: 5000 });
+      
+      // Verify frame has content
+      const hasContent = await frame.evaluate(() => {
+        return document.body && 
+               document.body.children.length > 0 &&
+               document.readyState === 'complete';
+      });
+      
+      if (!hasContent) {
+        processorLogger.warn("Frame loaded but has no content or not ready");
+        return false;
+      }
+      
+      // Check if the JWT UI is initialized (specific to our custom UI)
+      const isUIReady = await frame.evaluate(() => {
+        // Check for JWT UI specific elements
+        return !!(document.querySelector('#jwt-validator-container') || 
+                  document.querySelector('[data-testid="jwt-customizer-container"]'));
+      });
+      
+      if (!isUIReady) {
+        processorLogger.warn("Frame loaded but JWT UI not initialized");
+        return false;
+      }
+      
+      processorLogger.debug("Frame is stable and ready");
+      return true;
+    } catch (error) {
+      processorLogger.error(`Frame stability check failed: ${error.message}`);
+      return false;
+    }
   }
 
   /**
@@ -382,6 +469,9 @@ export class ProcessorService {
    * @param {string} tabName - Name of the tab to click
    */
   async clickTab(customUIFrame, tabName) {
+    // Ensure frame is stable before interaction
+    await this.waitForFrameStability(customUIFrame);
+    
     const tab = customUIFrame.locator(`[role="tab"]:has-text("${tabName}")`);
     await tab.click();
     await this.page.waitForTimeout(1000);

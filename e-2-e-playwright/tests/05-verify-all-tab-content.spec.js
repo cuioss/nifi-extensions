@@ -1,7 +1,6 @@
 import { test, expect } from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
-import { processorLogger } from "../utils/shared-logger.js";
 import {
     saveTestBrowserLogs,
     setupAuthAwareErrorDetection,
@@ -13,7 +12,7 @@ test.describe("Comprehensive JWT Tab Content Verification", () => {
         await setupAuthAwareErrorDetection(page, testInfo);
         const authService = new AuthService(page);
         await authService.ensureReady();
-        
+
         // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
         await processorManager.ensureProcessorOnCanvas();
     });
