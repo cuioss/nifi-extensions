@@ -3,63 +3,66 @@
  * Tests the API-based processor management functionality
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../fixtures/test-fixtures.js";
 import { ProcessorApiManager } from "../utils/processor-api-manager.js";
 import { AuthService } from "../utils/auth-service.js";
 import { processorLogger } from "../utils/shared-logger.js";
 
 test.describe("ProcessorApiManager Self-Test", () => {
-    let page;
-    let authService;
-    let processorManager;
-    let nifiAccessible = false;
 
-    test.beforeAll(async ({ browser }) => {
-        // Create a new page for all tests
-        page = await browser.newPage();
-        authService = new AuthService(page);
-        processorManager = new ProcessorApiManager(page);
+    test("should verify MultiIssuerJWTTokenAuthenticator deployment", async ({ page }) => {
+        const authService = new AuthService(page);
+        const processorManager = new ProcessorApiManager(page);
         
         // Check if NiFi is accessible
-        nifiAccessible = await authService.checkNiFiAccessibility();
-        if (!nifiAccessible) {
-            processorLogger.warn('NiFi is not accessible - tests will be skipped');
+        const isAccessible = await authService.checkNiFiAccessibility();
+        if (!isAccessible) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not accessible. " +
+                "Cannot test processor API management. " +
+                "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh"
+            );
         }
-    });
-
-    test.afterAll(async () => {
-        await page.close();
-    });
-
-    test.beforeEach(async () => {
-        if (!nifiAccessible) {
-            test.skip();
-            return;
-        }
-        // Ensure we're authenticated before each test
+        
+        // Authenticate
         await authService.ensureReady();
-    });
-
-    test("should verify MultiIssuerJWTTokenAuthenticator deployment", async () => {
+        
         processorLogger.info("TEST: Verifying processor deployment...");
 
         const isDeployed =
             await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
 
-        // Log the result but don't fail if not deployed - this depends on the NiFi setup
+        // The method should return a boolean
+        expect(typeof isDeployed).toBe("boolean");
+        
         if (isDeployed) {
             processorLogger.success("TEST PASSED: Processor is deployed");
         } else {
-            processorLogger.warn(
-                "TEST WARNING: Processor is not deployed - this may be expected in some environments",
+            throw new Error(
+                "TEST FAILED: MultiIssuerJWTTokenAuthenticator is not deployed in NiFi. " +
+                "The processor NAR must be installed for these tests to run. " +
+                "Install the NAR file in NiFi's lib directory and restart NiFi."
             );
         }
-
-        // The method should return a boolean
-        expect(typeof isDeployed).toBe("boolean");
     });
 
-    test("should check if processor is on canvas", async () => {
+    test("should check if processor is on canvas", async ({ page }) => {
+        const authService = new AuthService(page);
+        const processorManager = new ProcessorApiManager(page);
+        
+        // Check if NiFi is accessible
+        const isAccessible = await authService.checkNiFiAccessibility();
+        if (!isAccessible) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not accessible. " +
+                "Cannot test processor API management. " +
+                "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh"
+            );
+        }
+        
+        // Authenticate
+        await authService.ensureReady();
+        
         processorLogger.info("TEST: Checking if processor is on canvas...");
 
         const result =
@@ -80,7 +83,23 @@ test.describe("ProcessorApiManager Self-Test", () => {
         }
     });
 
-    test("should add processor to canvas if not present", async () => {
+    test("should add processor to canvas if not present", async ({ page }) => {
+        const authService = new AuthService(page);
+        const processorManager = new ProcessorApiManager(page);
+        
+        // Check if NiFi is accessible
+        const isAccessible = await authService.checkNiFiAccessibility();
+        if (!isAccessible) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not accessible. " +
+                "Cannot test processor API management. " +
+                "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh"
+            );
+        }
+        
+        // Authenticate
+        await authService.ensureReady();
+        
         processorLogger.info("TEST: Testing add processor functionality...");
 
         // First check if processor is deployed
@@ -88,11 +107,10 @@ test.describe("ProcessorApiManager Self-Test", () => {
             await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
 
         if (!isDeployed) {
-            processorLogger.warn(
-                "TEST SKIPPED: Cannot add processor - not deployed in system",
+            throw new Error(
+                "TEST FAILED: Cannot add processor - MultiIssuerJWTTokenAuthenticator is not deployed. " +
+                "The processor NAR must be installed in NiFi for this test to run."
             );
-            test.skip();
-            return;
         }
 
         // Check current state
@@ -127,7 +145,23 @@ test.describe("ProcessorApiManager Self-Test", () => {
         );
     });
 
-    test("should remove processor from canvas", async () => {
+    test("should remove processor from canvas", async ({ page }) => {
+        const authService = new AuthService(page);
+        const processorManager = new ProcessorApiManager(page);
+        
+        // Check if NiFi is accessible
+        const isAccessible = await authService.checkNiFiAccessibility();
+        if (!isAccessible) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not accessible. " +
+                "Cannot test processor API management. " +
+                "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh"
+            );
+        }
+        
+        // Authenticate
+        await authService.ensureReady();
+        
         processorLogger.info("TEST: Testing remove processor functionality...");
 
         // First ensure processor is on canvas
@@ -139,21 +173,19 @@ test.describe("ProcessorApiManager Self-Test", () => {
             const isDeployed =
                 await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
             if (!isDeployed) {
-                processorLogger.warn(
-                    "TEST SKIPPED: Cannot test removal - processor not deployed",
+                throw new Error(
+                    "TEST FAILED: Cannot test removal - MultiIssuerJWTTokenAuthenticator is not deployed. " +
+                    "The processor NAR must be installed in NiFi for this test to run."
                 );
-                test.skip();
-                return;
             }
 
             const added =
                 await processorManager.addMultiIssuerJWTTokenAuthenticatorOnCanvas();
             if (!added) {
-                processorLogger.error(
-                    "TEST FAILED: Could not add processor for removal test",
+                throw new Error(
+                    "TEST FAILED: Could not add processor for removal test. " +
+                    "The processor could not be added to the canvas."
                 );
-                test.skip();
-                return;
             }
         }
 
@@ -172,7 +204,23 @@ test.describe("ProcessorApiManager Self-Test", () => {
         );
     });
 
-    test("should handle ensure processor on canvas", async () => {
+    test("should handle ensure processor on canvas", async ({ page }) => {
+        const authService = new AuthService(page);
+        const processorManager = new ProcessorApiManager(page);
+        
+        // Check if NiFi is accessible
+        const isAccessible = await authService.checkNiFiAccessibility();
+        if (!isAccessible) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not accessible. " +
+                "Cannot test processor API management. " +
+                "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh"
+            );
+        }
+        
+        // Authenticate
+        await authService.ensureReady();
+        
         processorLogger.info("TEST: Testing ensure processor on canvas...");
 
         // First check if processor is deployed
@@ -180,11 +228,10 @@ test.describe("ProcessorApiManager Self-Test", () => {
             await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
 
         if (!isDeployed) {
-            processorLogger.warn(
-                "TEST SKIPPED: Cannot ensure processor - not deployed in system",
+            throw new Error(
+                "TEST FAILED: Cannot ensure processor - MultiIssuerJWTTokenAuthenticator is not deployed. " +
+                "The processor NAR must be installed in NiFi for this test to run."
             );
-            test.skip();
-            return;
         }
 
         // Ensure processor is on canvas
@@ -205,7 +252,23 @@ test.describe("ProcessorApiManager Self-Test", () => {
         );
     });
 
-    test("should start and stop processor", async () => {
+    test("should start and stop processor", async ({ page }) => {
+        const authService = new AuthService(page);
+        const processorManager = new ProcessorApiManager(page);
+        
+        // Check if NiFi is accessible
+        const isAccessible = await authService.checkNiFiAccessibility();
+        if (!isAccessible) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not accessible. " +
+                "Cannot test processor API management. " +
+                "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh"
+            );
+        }
+        
+        // Authenticate
+        await authService.ensureReady();
+        
         processorLogger.info(
             "TEST: Testing start/stop processor functionality...",
         );
@@ -215,20 +278,18 @@ test.describe("ProcessorApiManager Self-Test", () => {
             await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
 
         if (!isDeployed) {
-            processorLogger.warn(
-                "TEST SKIPPED: Cannot test start/stop - processor not deployed",
+            throw new Error(
+                "TEST FAILED: Cannot test start/stop - MultiIssuerJWTTokenAuthenticator is not deployed. " +
+                "The processor NAR must be installed in NiFi for this test to run."
             );
-            test.skip();
-            return;
         }
 
         const ensured = await processorManager.ensureProcessorOnCanvas();
         if (!ensured) {
-            processorLogger.error(
-                "TEST FAILED: Could not ensure processor on canvas",
+            throw new Error(
+                "TEST FAILED: Could not ensure processor on canvas. " +
+                "The processor could not be placed on the canvas for testing."
             );
-            test.skip();
-            return;
         }
 
         // Stop the processor first (in case it's running)
@@ -251,7 +312,23 @@ test.describe("ProcessorApiManager Self-Test", () => {
         );
     });
 
-    test("should get root process group ID", async () => {
+    test("should get root process group ID", async ({ page }) => {
+        const authService = new AuthService(page);
+        const processorManager = new ProcessorApiManager(page);
+        
+        // Check if NiFi is accessible
+        const isAccessible = await authService.checkNiFiAccessibility();
+        if (!isAccessible) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not accessible. " +
+                "Cannot test processor API management. " +
+                "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh"
+            );
+        }
+        
+        // Authenticate
+        await authService.ensureReady();
+        
         processorLogger.info("TEST: Getting root process group ID...");
 
         const rootId = await processorManager.getRootProcessGroupId();
@@ -264,7 +341,23 @@ test.describe("ProcessorApiManager Self-Test", () => {
         );
     });
 
-    test("should get processors on canvas", async () => {
+    test("should get processors on canvas", async ({ page }) => {
+        const authService = new AuthService(page);
+        const processorManager = new ProcessorApiManager(page);
+        
+        // Check if NiFi is accessible
+        const isAccessible = await authService.checkNiFiAccessibility();
+        if (!isAccessible) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not accessible. " +
+                "Cannot test processor API management. " +
+                "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh"
+            );
+        }
+        
+        // Authenticate
+        await authService.ensureReady();
+        
         processorLogger.info("TEST: Getting all processors on canvas...");
 
         const processors = await processorManager.getProcessorsOnCanvas();
@@ -291,7 +384,23 @@ test.describe("ProcessorApiManager Self-Test", () => {
         );
     });
 
-    test("should handle authentication headers correctly", async () => {
+    test("should handle authentication headers correctly", async ({ page }) => {
+        const authService = new AuthService(page);
+        const processorManager = new ProcessorApiManager(page);
+        
+        // Check if NiFi is accessible
+        const isAccessible = await authService.checkNiFiAccessibility();
+        if (!isAccessible) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not accessible. " +
+                "Cannot test processor API management. " +
+                "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh"
+            );
+        }
+        
+        // Authenticate
+        await authService.ensureReady();
+        
         processorLogger.info("TEST: Testing authentication headers...");
 
         const headers = await processorManager.getAuthHeaders();
@@ -307,7 +416,23 @@ test.describe("ProcessorApiManager Self-Test", () => {
         );
     });
 
-    test("should handle processor details retrieval", async () => {
+    test("should handle processor details retrieval", async ({ page }) => {
+        const authService = new AuthService(page);
+        const processorManager = new ProcessorApiManager(page);
+        
+        // Check if NiFi is accessible
+        const isAccessible = await authService.checkNiFiAccessibility();
+        if (!isAccessible) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not accessible. " +
+                "Cannot test processor API management. " +
+                "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh"
+            );
+        }
+        
+        // Authenticate
+        await authService.ensureReady();
+        
         processorLogger.info("TEST: Testing processor details retrieval...");
 
         // First ensure we have a processor on canvas
@@ -318,21 +443,19 @@ test.describe("ProcessorApiManager Self-Test", () => {
             const isDeployed =
                 await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
             if (!isDeployed) {
-                processorLogger.warn(
-                    "TEST SKIPPED: No processor to get details for",
+                throw new Error(
+                    "TEST FAILED: No processor to get details for - MultiIssuerJWTTokenAuthenticator is not deployed. " +
+                    "The processor NAR must be installed in NiFi for this test to run."
                 );
-                test.skip();
-                return;
             }
 
             const added =
                 await processorManager.addMultiIssuerJWTTokenAuthenticatorOnCanvas();
             if (!added) {
-                processorLogger.error(
-                    "TEST FAILED: Could not add processor for details test",
+                throw new Error(
+                    "TEST FAILED: Could not add processor for details test. " +
+                    "The processor could not be added to the canvas."
                 );
-                test.skip();
-                return;
             }
 
             // Get the processor after adding
@@ -368,11 +491,13 @@ test.describe("ProcessorApiManager Integration Test", () => {
         const processorManager = new ProcessorApiManager(page);
 
         // Check if NiFi is accessible
-        const nifiAccessible = await authService.checkNiFiAccessibility();
-        if (!nifiAccessible) {
-            processorLogger.warn('INTEGRATION TEST SKIPPED: NiFi is not accessible');
-            test.skip();
-            return;
+        const isAccessible = await authService.checkNiFiAccessibility();
+        if (!isAccessible) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not accessible. " +
+                "Cannot test processor API management. " +
+                "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh"
+            );
         }
 
         // Authenticate
@@ -383,11 +508,10 @@ test.describe("ProcessorApiManager Integration Test", () => {
             await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
 
         if (!isDeployed) {
-            processorLogger.warn(
-                "INTEGRATION TEST SKIPPED: Processor not deployed",
+            throw new Error(
+                "INTEGRATION TEST FAILED: MultiIssuerJWTTokenAuthenticator is not deployed. " +
+                "The processor NAR must be installed in NiFi for this test to run."
             );
-            test.skip();
-            return;
         }
 
         // Remove if exists
