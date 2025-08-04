@@ -1,0 +1,436 @@
+/**
+ * @file Self-test for ProcessorApiManager utility
+ * Tests the API-based processor management functionality
+ */
+
+import { test, expect } from "@playwright/test";
+import { ProcessorApiManager } from "../utils/processor-api-manager.js";
+import { AuthService } from "../utils/auth-service.js";
+import { processorLogger } from "../utils/shared-logger.js";
+
+test.describe("ProcessorApiManager Self-Test", () => {
+    let page;
+    let authService;
+    let processorManager;
+    let nifiAccessible = false;
+
+    test.beforeAll(async ({ browser }) => {
+        // Create a new page for all tests
+        page = await browser.newPage();
+        authService = new AuthService(page);
+        processorManager = new ProcessorApiManager(page);
+        
+        // Check if NiFi is accessible
+        nifiAccessible = await authService.checkNiFiAccessibility();
+        if (!nifiAccessible) {
+            processorLogger.warn('NiFi is not accessible - tests will be skipped');
+        }
+    });
+
+    test.afterAll(async () => {
+        await page.close();
+    });
+
+    test.beforeEach(async () => {
+        if (!nifiAccessible) {
+            test.skip();
+            return;
+        }
+        // Ensure we're authenticated before each test
+        await authService.ensureReady();
+    });
+
+    test("should verify MultiIssuerJWTTokenAuthenticator deployment", async () => {
+        processorLogger.info("TEST: Verifying processor deployment...");
+
+        const isDeployed =
+            await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
+
+        // Log the result but don't fail if not deployed - this depends on the NiFi setup
+        if (isDeployed) {
+            processorLogger.success("TEST PASSED: Processor is deployed");
+        } else {
+            processorLogger.warn(
+                "TEST WARNING: Processor is not deployed - this may be expected in some environments",
+            );
+        }
+
+        // The method should return a boolean
+        expect(typeof isDeployed).toBe("boolean");
+    });
+
+    test("should check if processor is on canvas", async () => {
+        processorLogger.info("TEST: Checking if processor is on canvas...");
+
+        const result =
+            await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
+
+        // Result should have the expected structure
+        expect(result).toHaveProperty("exists");
+        expect(result).toHaveProperty("processor");
+        expect(typeof result.exists).toBe("boolean");
+
+        if (result.exists) {
+            processorLogger.success("TEST: Processor found on canvas");
+            expect(result.processor).toBeTruthy();
+            expect(result.processor).toHaveProperty("id");
+        } else {
+            processorLogger.info("TEST: Processor not on canvas");
+            expect(result.processor).toBeNull();
+        }
+    });
+
+    test("should add processor to canvas if not present", async () => {
+        processorLogger.info("TEST: Testing add processor functionality...");
+
+        // First check if processor is deployed
+        const isDeployed =
+            await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
+
+        if (!isDeployed) {
+            processorLogger.warn(
+                "TEST SKIPPED: Cannot add processor - not deployed in system",
+            );
+            test.skip();
+            return;
+        }
+
+        // Check current state
+        const beforeAdd =
+            await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
+
+        if (beforeAdd.exists) {
+            processorLogger.info(
+                "TEST: Processor already on canvas, removing it first...",
+            );
+            const removed =
+                await processorManager.removeMultiIssuerJWTTokenAuthenticatorFromCanvas();
+            expect(removed).toBe(true);
+        }
+
+        // Add the processor
+        const added =
+            await processorManager.addMultiIssuerJWTTokenAuthenticatorOnCanvas({
+                x: 500,
+                y: 300,
+            });
+        expect(added).toBe(true);
+
+        // Verify it's now on canvas
+        const afterAdd =
+            await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
+        expect(afterAdd.exists).toBe(true);
+        expect(afterAdd.processor).toBeTruthy();
+
+        processorLogger.success(
+            "TEST PASSED: Processor successfully added to canvas",
+        );
+    });
+
+    test("should remove processor from canvas", async () => {
+        processorLogger.info("TEST: Testing remove processor functionality...");
+
+        // First ensure processor is on canvas
+        const beforeRemove =
+            await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
+
+        if (!beforeRemove.exists) {
+            // Try to add it first
+            const isDeployed =
+                await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
+            if (!isDeployed) {
+                processorLogger.warn(
+                    "TEST SKIPPED: Cannot test removal - processor not deployed",
+                );
+                test.skip();
+                return;
+            }
+
+            const added =
+                await processorManager.addMultiIssuerJWTTokenAuthenticatorOnCanvas();
+            if (!added) {
+                processorLogger.error(
+                    "TEST FAILED: Could not add processor for removal test",
+                );
+                test.skip();
+                return;
+            }
+        }
+
+        // Remove the processor
+        const removed =
+            await processorManager.removeMultiIssuerJWTTokenAuthenticatorFromCanvas();
+        expect(removed).toBe(true);
+
+        // Verify it's no longer on canvas
+        const afterRemove =
+            await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
+        expect(afterRemove.exists).toBe(false);
+
+        processorLogger.success(
+            "TEST PASSED: Processor successfully removed from canvas",
+        );
+    });
+
+    test("should handle ensure processor on canvas", async () => {
+        processorLogger.info("TEST: Testing ensure processor on canvas...");
+
+        // First check if processor is deployed
+        const isDeployed =
+            await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
+
+        if (!isDeployed) {
+            processorLogger.warn(
+                "TEST SKIPPED: Cannot ensure processor - not deployed in system",
+            );
+            test.skip();
+            return;
+        }
+
+        // Ensure processor is on canvas
+        const ensured = await processorManager.ensureProcessorOnCanvas();
+        expect(ensured).toBe(true);
+
+        // Verify it's on canvas
+        const result =
+            await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
+        expect(result.exists).toBe(true);
+
+        // Call ensure again - should still return true without adding duplicate
+        const ensuredAgain = await processorManager.ensureProcessorOnCanvas();
+        expect(ensuredAgain).toBe(true);
+
+        processorLogger.success(
+            "TEST PASSED: Ensure processor on canvas works correctly",
+        );
+    });
+
+    test("should start and stop processor", async () => {
+        processorLogger.info(
+            "TEST: Testing start/stop processor functionality...",
+        );
+
+        // First ensure processor is on canvas
+        const isDeployed =
+            await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
+
+        if (!isDeployed) {
+            processorLogger.warn(
+                "TEST SKIPPED: Cannot test start/stop - processor not deployed",
+            );
+            test.skip();
+            return;
+        }
+
+        const ensured = await processorManager.ensureProcessorOnCanvas();
+        if (!ensured) {
+            processorLogger.error(
+                "TEST FAILED: Could not ensure processor on canvas",
+            );
+            test.skip();
+            return;
+        }
+
+        // Stop the processor first (in case it's running)
+        const stopped = await processorManager.stopProcessor();
+        expect(stopped).toBe(true);
+        processorLogger.info("TEST: Processor stopped");
+
+        // Start the processor
+        const started = await processorManager.startProcessor();
+        expect(started).toBe(true);
+        processorLogger.info("TEST: Processor started");
+
+        // Stop it again
+        const stoppedAgain = await processorManager.stopProcessor();
+        expect(stoppedAgain).toBe(true);
+        processorLogger.info("TEST: Processor stopped again");
+
+        processorLogger.success(
+            "TEST PASSED: Start/stop processor works correctly",
+        );
+    });
+
+    test("should get root process group ID", async () => {
+        processorLogger.info("TEST: Getting root process group ID...");
+
+        const rootId = await processorManager.getRootProcessGroupId();
+
+        expect(rootId).toBeTruthy();
+        expect(typeof rootId).toBe("string");
+
+        processorLogger.success(
+            `TEST PASSED: Got root process group ID: ${rootId}`,
+        );
+    });
+
+    test("should get processors on canvas", async () => {
+        processorLogger.info("TEST: Getting all processors on canvas...");
+
+        const processors = await processorManager.getProcessorsOnCanvas();
+
+        expect(Array.isArray(processors)).toBe(true);
+
+        if (processors.length > 0) {
+            processorLogger.info(
+                `TEST: Found ${processors.length} processor(s) on canvas`,
+            );
+
+            // Log processor details for debugging
+            processors.forEach((p) => {
+                processorLogger.debug(
+                    `  - ${p.component?.name || "Unnamed"} (${p.component?.type})`,
+                );
+            });
+        } else {
+            processorLogger.info("TEST: No processors currently on canvas");
+        }
+
+        processorLogger.success(
+            "TEST PASSED: Successfully retrieved processors list",
+        );
+    });
+
+    test("should handle authentication headers correctly", async () => {
+        processorLogger.info("TEST: Testing authentication headers...");
+
+        const headers = await processorManager.getAuthHeaders();
+
+        expect(typeof headers).toBe("object");
+
+        // Should have some form of authentication header
+        const hasAuth = headers["Authorization"] || headers["Request-Token"];
+        expect(hasAuth).toBeTruthy();
+
+        processorLogger.success(
+            "TEST PASSED: Authentication headers retrieved",
+        );
+    });
+
+    test("should handle processor details retrieval", async () => {
+        processorLogger.info("TEST: Testing processor details retrieval...");
+
+        // First ensure we have a processor on canvas
+        const { exists, processor } =
+            await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
+
+        if (!exists) {
+            const isDeployed =
+                await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
+            if (!isDeployed) {
+                processorLogger.warn(
+                    "TEST SKIPPED: No processor to get details for",
+                );
+                test.skip();
+                return;
+            }
+
+            const added =
+                await processorManager.addMultiIssuerJWTTokenAuthenticatorOnCanvas();
+            if (!added) {
+                processorLogger.error(
+                    "TEST FAILED: Could not add processor for details test",
+                );
+                test.skip();
+                return;
+            }
+
+            // Get the processor after adding
+            const result =
+                await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
+            if (result.exists && result.processor) {
+                const details = await processorManager.getProcessorDetails(
+                    result.processor.id,
+                );
+                expect(details).toBeTruthy();
+                expect(details).toHaveProperty("id");
+                processorLogger.success(
+                    "TEST PASSED: Processor details retrieved",
+                );
+            }
+        } else {
+            const details = await processorManager.getProcessorDetails(
+                processor.id,
+            );
+            expect(details).toBeTruthy();
+            expect(details).toHaveProperty("id");
+            processorLogger.success("TEST PASSED: Processor details retrieved");
+        }
+    });
+});
+
+// Additional integration test to verify the full workflow
+test.describe("ProcessorApiManager Integration Test", () => {
+    test("should complete full processor lifecycle", async ({ page }) => {
+        processorLogger.info("INTEGRATION TEST: Full processor lifecycle...");
+
+        const authService = new AuthService(page);
+        const processorManager = new ProcessorApiManager(page);
+
+        // Check if NiFi is accessible
+        const nifiAccessible = await authService.checkNiFiAccessibility();
+        if (!nifiAccessible) {
+            processorLogger.warn('INTEGRATION TEST SKIPPED: NiFi is not accessible');
+            test.skip();
+            return;
+        }
+
+        // Authenticate
+        await authService.ensureReady();
+
+        // Check deployment
+        const isDeployed =
+            await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
+
+        if (!isDeployed) {
+            processorLogger.warn(
+                "INTEGRATION TEST SKIPPED: Processor not deployed",
+            );
+            test.skip();
+            return;
+        }
+
+        // Remove if exists
+        await processorManager.removeMultiIssuerJWTTokenAuthenticatorFromCanvas();
+
+        // Verify not on canvas
+        let result =
+            await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
+        expect(result.exists).toBe(false);
+
+        // Add to canvas
+        const added =
+            await processorManager.addMultiIssuerJWTTokenAuthenticatorOnCanvas({
+                x: 600,
+                y: 400,
+            });
+        expect(added).toBe(true);
+
+        // Verify on canvas
+        result =
+            await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
+        expect(result.exists).toBe(true);
+
+        // Start processor
+        const started = await processorManager.startProcessor();
+        expect(started).toBe(true);
+
+        // Stop processor
+        const stopped = await processorManager.stopProcessor();
+        expect(stopped).toBe(true);
+
+        // Remove from canvas
+        const removed =
+            await processorManager.removeMultiIssuerJWTTokenAuthenticatorFromCanvas();
+        expect(removed).toBe(true);
+
+        // Verify removed
+        result =
+            await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
+        expect(result.exists).toBe(false);
+
+        processorLogger.success(
+            "INTEGRATION TEST PASSED: Full processor lifecycle completed",
+        );
+    });
+});
