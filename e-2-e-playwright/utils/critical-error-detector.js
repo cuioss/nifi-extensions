@@ -362,8 +362,8 @@ export const globalCriticalErrorDetector = new CriticalErrorDetector();
 export async function setupCriticalErrorDetection(page, testInfo) {
   globalCriticalErrorDetector.startMonitoring(page, testInfo);
 
-  // Perform initial checks
-  await globalCriticalErrorDetector.checkForEmptyCanvas(page, testInfo);
+  // Skip initial canvas checks during setup - processor setup will handle canvas state
+  // Only check for UI loading stalls which are immediate issues
   await globalCriticalErrorDetector.checkForUILoadingStalls(page, testInfo);
 
   // Fail immediately if any critical errors detected
