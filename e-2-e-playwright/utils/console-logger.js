@@ -192,17 +192,24 @@ export async function setupStrictErrorDetection(page, testInfo, skipInitialCheck
     page.on('response', (response) => {
         if (response.status() >= 400) {
             const message = `HTTP ${response.status()} - ${response.url()}`;
+            const url = response.url();
+            
             globalConsoleLogger.addLog({
                 type: 'network-error',
                 text: message,
                 status: response.status(),
-                url: response.url()
+                url: url
             });
             
             // Don't treat 401/403 as critical in auth-aware mode
             if (response.status() !== 401 && response.status() !== 403) {
-                // Check HTTP errors for critical patterns
-                globalCriticalErrorDetector.addCriticalError('HTTP_ERROR', message, testInfo);
+                // Skip FontAwesome v=4.7.0 font files - these are external NiFi UI dependencies we can't control
+                const isFontAwesome47 = url.includes('fontawesome-webfont') && url.includes('v=4.7.0');
+                
+                if (!isFontAwesome47) {
+                    // Check HTTP errors for critical patterns
+                    globalCriticalErrorDetector.addCriticalError('HTTP_ERROR', message, testInfo);
+                }
             }
         }
     });
