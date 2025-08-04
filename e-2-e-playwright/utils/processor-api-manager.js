@@ -55,10 +55,23 @@ export class ProcessorApiManager {
   async makeApiCall(path, options = {}) {
     const { method = 'GET', body = null } = options;
     
+    // Get CSRF token for POST/PUT/DELETE operations
+    // NiFi requires Request-Token header for state-changing operations
+    let requestToken = null;
+    if (['POST', 'PUT', 'DELETE'].includes(method.toUpperCase())) {
+      const cookies = await this.page.context().cookies();
+      const requestTokenCookie = cookies.find(c => c.name === '__Secure-Request-Token');
+      requestToken = requestTokenCookie?.value;
+      
+      if (!requestToken) {
+        processorLogger.warn('No CSRF token found for write operation - request may fail');
+      }
+    }
+    
     // Convert path to relative URL if it's absolute
     const relativePath = path.replace(/^https?:\/\/[^\/]+/, '').replace('/nifi/nifi-api', '/nifi-api');
     
-    return await this.page.evaluate(async ({relativePath, method, body}) => {
+    return await this.page.evaluate(async ({relativePath, method, body, requestToken}) => {
       try {
         const fetchOptions = {
           method: method,
@@ -68,6 +81,11 @@ export class ProcessorApiManager {
           },
           credentials: 'include' // This ensures cookies are sent
         };
+        
+        // Add CSRF token for write operations
+        if (requestToken && ['POST', 'PUT', 'DELETE'].includes(method.toUpperCase())) {
+          fetchOptions.headers['Request-Token'] = requestToken;
+        }
         
         if (body) {
           fetchOptions.body = JSON.stringify(body);
@@ -97,7 +115,7 @@ export class ProcessorApiManager {
           data: null
         };
       }
-    }, {relativePath, method, body});
+    }, {relativePath, method, body, requestToken});
   }
 
   /**
