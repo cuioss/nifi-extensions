@@ -336,7 +336,7 @@ export class ProcessorService {
       // Verify we're on the advanced page
       const url = this.page.url();
       if (url.includes("/advanced")) {
-        processorLogger.success("Successfully navigated to Advanced UI");
+        processorLogger.debug("Successfully navigated to Advanced UI");
         return true;
       }
     }

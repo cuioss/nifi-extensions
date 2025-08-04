@@ -157,7 +157,6 @@ export const accessibilityTest = test.extend({
    */
   withProcessorOnCanvas: async ({ page, processorManager }, use) => {
     // Ensure processor is on canvas before test
-    processorLogger.info('Ensuring processor is on canvas for test...');
     const ready = await processorManager.ensureProcessorOnCanvas();
     
     if (!ready) {
@@ -167,7 +166,7 @@ export const accessibilityTest = test.extend({
       );
     }
     
-    processorLogger.success('Processor is ready on canvas');
+    processorLogger.info('All preconditions met');
     
     // Run the test
     await use(page);
@@ -176,5 +175,6 @@ export const accessibilityTest = test.extend({
     // The processor can be shared across tests since it's stateless for our testing purposes
   }
 });
+
 
 export { expect } from '@playwright/test';

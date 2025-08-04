@@ -22,7 +22,6 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
         await authService.ensureReady();
         
         // Ensure processor is on canvas before each test
-        processorLogger.info('Ensuring MultiIssuerJWTTokenAuthenticator is on canvas...');
         const ready = await processorManager.ensureProcessorOnCanvas();
         if (!ready) {
             throw new Error(
@@ -30,7 +29,7 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
                 'The processor must be deployed in NiFi for tests to run.'
             );
         }
-        processorLogger.success('Processor is ready on canvas for test');
+        processorLogger.info('All preconditions met');
     });
 
     test.afterEach(async ({ page: _ }, testInfo) => {
@@ -48,9 +47,7 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
         cleanupCriticalErrorDetection();
     });
 
-    test("should display all four tabs in custom UI", async ({
-        page,
-    }, testInfo) => {
+    test("should display all four tabs in custom UI", async ({ page }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT processor using the verified utility
@@ -238,9 +235,7 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
         }
     });
 
-    test("should test tab switching functionality", async ({
-        page,
-    }, testInfo) => {
+    test("should test tab switching functionality", async ({ page }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT processor using the verified utility

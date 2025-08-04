@@ -238,7 +238,7 @@ export class ProcessorApiManager {
    * Verify if MultiIssuerJWTTokenAuthenticator is on the canvas
    */
   async verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas() {
-    processorLogger.info('Verifying MultiIssuerJWTTokenAuthenticator is on canvas...');
+    processorLogger.debug('Verifying MultiIssuerJWTTokenAuthenticator is on canvas...');
     
     try {
       const processors = await this.getProcessorsOnCanvas();
@@ -250,7 +250,7 @@ export class ProcessorApiManager {
       );
 
       if (found) {
-        processorLogger.success(`MultiIssuerJWTTokenAuthenticator found on canvas with ID: ${found.id}`);
+        processorLogger.debug(`MultiIssuerJWTTokenAuthenticator found on canvas with ID: ${found.id}`);
         return { exists: true, processor: found };
       } else {
         processorLogger.warn('MultiIssuerJWTTokenAuthenticator NOT found on canvas');
@@ -412,7 +412,7 @@ export class ProcessorApiManager {
       return await this.addMultiIssuerJWTTokenAuthenticatorOnCanvas();
     }
     
-    processorLogger.info('Processor already on canvas');
+    processorLogger.debug('Processor already on canvas');
     return true;
   }
 
