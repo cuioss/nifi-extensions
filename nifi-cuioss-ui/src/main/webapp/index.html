@@ -26,15 +26,24 @@
     <link rel="stylesheet" href="webjars/font-awesome/6.7.2/css/all.min.css">
     <link rel="stylesheet" href="webjars/font-awesome/6.7.2/css/v4-shims.min.css">
 
-    <!-- Load NiFi Common mock for standalone testing -->
-    <script type="text/javascript" src="js/nf-common-mock.js"></script>
-    
-    <!-- Make nf.Common available as global variable for bundle -->
+    <!-- NiFi will provide window.nf.Common in production -->
     <script type="text/javascript">
-        // Ensure nf.Common is available as a global for the bundle
-        // The nfCommon global is already set by nf-common-mock.js
-        if (typeof window.nfCommon === 'undefined') {
-            console.warn('nfCommon is not defined. This may cause issues with the bundle.');
+        // In production, NiFi provides the nf.Common object
+        // Map it to nfCommon for compatibility with our code
+        if (typeof window.nf !== 'undefined' && window.nf.Common) {
+            window.nfCommon = window.nf.Common;
+        } else if (typeof window.nfCommon === 'undefined') {
+            // Only log error if nfCommon is not already available from another source
+            console.warn('NiFi Common API not available. UI functionality may be limited.');
+            // Create a minimal stub to prevent errors
+            window.nfCommon = {
+                registerCustomUiTab: function() { console.warn('registerCustomUiTab called but NiFi API not available'); },
+                getI18n: function() { 
+                    return { 
+                        getProperty: function(key) { return key; }
+                    };
+                }
+            };
         }
     </script>
 </head>

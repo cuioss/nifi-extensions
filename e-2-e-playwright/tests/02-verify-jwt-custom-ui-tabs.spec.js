@@ -198,5 +198,32 @@ test.describe("JWT Custom UI Tabs Verification", () => {
         const helpContent = customUIFrame.locator("#help").first();
         await expect(helpContent).toBeVisible({ timeout: 5000 });
         processorLogger.info("✓ Help tab: Content found");
+
+        // Verify the Help tab title is properly translated (not showing the i18n key)
+        const helpTitle = customUIFrame.locator("#help h3, #help h2").first();
+        const helpTitleText = await helpTitle.textContent();
+        expect(helpTitleText).not.toContain("jwt.validator.help.title");
+        expect(helpTitleText).toMatch(
+            /JWT Authenticator Help|JWT-Authentifikator-Hilfe/,
+        );
+        processorLogger.info(
+            `✓ Help tab title properly translated: "${helpTitleText}"`,
+        );
+
+        // Go back to Metrics tab to verify its title
+        await metricsTab.click();
+        await page.waitForTimeout(500);
+
+        const metricsTitle = customUIFrame
+            .locator("#metrics h3, #metrics h2")
+            .first();
+        const metricsTitleText = await metricsTitle.textContent();
+        expect(metricsTitleText).not.toContain("jwt.validator.metrics.title");
+        expect(metricsTitleText).toMatch(
+            /JWT Validation Metrics|JWT-Validierungsmetriken/,
+        );
+        processorLogger.info(
+            `✓ Metrics tab title properly translated: "${metricsTitleText}"`,
+        );
     });
 });

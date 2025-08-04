@@ -76,7 +76,13 @@ const translations = {
         'property.maximum.token.size.help': 'Maximum allowed size of the JWT token in bytes',
         'property.allowed.algorithms.help': 'List of allowed signature algorithms for token validation',
         'property.require.https.jwks.help': 'Whether to require HTTPS for JWKS URLs',
-        'test.onlyInEnglish': 'English Only' // Added for the test case
+        'test.onlyInEnglish': 'English Only', // Added for the test case
+
+        // Tab titles
+        'jwt.validator.metrics.title': 'JWT Validation Metrics',
+        'jwt.validator.metrics.tab.name': 'Metrics',
+        'jwt.validator.help.title': 'JWT Authenticator Help',
+        'jwt.validator.help.tab.name': 'Help'
     },
     de: {
         // Common

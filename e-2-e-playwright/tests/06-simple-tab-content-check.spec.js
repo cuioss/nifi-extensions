@@ -121,9 +121,15 @@ test.describe("Simple Tab Content Check", () => {
                     break;
                 case "Metrics":
                     expect(html).toContain("data-testid");
+                    // Verify Metrics title is properly translated
+                    expect(content).not.toContain(
+                        "jwt.validator.metrics.title",
+                    );
                     break;
                 case "Help":
                     expect(html).toContain("h");
+                    // Verify Help title is properly translated
+                    expect(content).not.toContain("jwt.validator.help.title");
                     break;
             }
 

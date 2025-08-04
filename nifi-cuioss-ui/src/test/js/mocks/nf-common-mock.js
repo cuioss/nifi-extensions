@@ -200,7 +200,11 @@
                     'issuer.config.save.issuer': 'Save Issuer',
                     'issuer.config.test.connection': 'Test Connection',
                     'issuer.config.test.connection.tooltip': 'Test connectivity to the JWKS endpoint and verify it returns valid keys',
-                    'issuer.config.remove.tooltip': 'Delete this issuer configuration'
+                    'issuer.config.remove.tooltip': 'Delete this issuer configuration',
+
+                    // Tab titles
+                    'jwt.validator.metrics.title': 'JWT Validation Metrics',
+                    'jwt.validator.help.title': 'JWT Authenticator Help'
                 };
                 return translations[key] || key;
             }
