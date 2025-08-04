@@ -403,7 +403,7 @@ export class ProcessorApiManager {
   /**
    * Ensure MultiIssuerJWTTokenAuthenticator is on canvas
    * This method handles all preconditions: verification, adding if needed, error handling, and logging
-   * Throws an error if preconditions cannot be met
+   * Returns true on success, throws an error if preconditions cannot be met
    */
   async ensureProcessorOnCanvas() {
     try {
@@ -423,6 +423,7 @@ export class ProcessorApiManager {
       }
       
       processorLogger.info('All preconditions met');
+      return true;
       
     } catch (error) {
       // Re-throw with clear error message for test failure
