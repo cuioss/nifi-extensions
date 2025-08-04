@@ -19,12 +19,23 @@ import {
 import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("JWT Custom UI Tabs Verification", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page, processorManager }, testInfo) => {
         // Setup auth-aware error detection
         await setupAuthAwareErrorDetection(page, testInfo);
 
         const authService = new AuthService(page);
         await authService.ensureReady();
+        
+        // Ensure processor is on canvas before each test
+        processorLogger.info('Ensuring MultiIssuerJWTTokenAuthenticator is on canvas...');
+        const ready = await processorManager.ensureProcessorOnCanvas();
+        if (!ready) {
+            throw new Error(
+                'Cannot ensure MultiIssuerJWTTokenAuthenticator is on canvas. ' +
+                'The processor must be deployed in NiFi for tests to run.'
+            );
+        }
+        processorLogger.success('Processor is ready on canvas for test');
     });
 
     test.afterEach(async ({ page: _ }, testInfo) => {

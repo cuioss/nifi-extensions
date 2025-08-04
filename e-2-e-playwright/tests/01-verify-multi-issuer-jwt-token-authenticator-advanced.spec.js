@@ -17,7 +17,7 @@ import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     // Make sure we're logged in before each test
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page, processorManager }, testInfo) => {
         try {
             // Setup auth-aware error detection
             await setupAuthAwareErrorDetection(page, testInfo);
@@ -27,6 +27,17 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
             await authService.ensureReady();
 
             await authService.verifyCanvasVisible();
+            
+            // Ensure processor is on canvas before each test
+            processorLogger.info('Ensuring MultiIssuerJWTTokenAuthenticator is on canvas...');
+            const ready = await processorManager.ensureProcessorOnCanvas();
+            if (!ready) {
+                throw new Error(
+                    'Cannot ensure MultiIssuerJWTTokenAuthenticator is on canvas. ' +
+                    'The processor must be deployed in NiFi for tests to run.'
+                );
+            }
+            processorLogger.success('Processor is ready on canvas for test');
         } catch (error) {
             // Save console logs immediately if beforeEach fails
             try {

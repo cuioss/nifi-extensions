@@ -18,11 +18,22 @@ import { logTestWarning } from "../utils/test-error-handler.js";
 test.describe("JWKS Validation Complete", () => {
     // Note: This test suite has been updated to work with the actual UI implementation
     // which uses class-based selectors instead of data-testid attributes
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page, processorManager }, testInfo) => {
         try {
             await setupAuthAwareErrorDetection(page, testInfo);
             const authService = new AuthService(page);
             await authService.ensureReady();
+        
+        // Ensure processor is on canvas before each test
+        processorLogger.info('Ensuring MultiIssuerJWTTokenAuthenticator is on canvas...');
+        const ready = await processorManager.ensureProcessorOnCanvas();
+        if (!ready) {
+            throw new Error(
+                'Cannot ensure MultiIssuerJWTTokenAuthenticator is on canvas. ' +
+                'The processor must be deployed in NiFi for tests to run.'
+            );
+        }
+        processorLogger.success('Processor is ready on canvas for test');
         } catch (error) {
             try {
                 await saveTestBrowserLogs(testInfo);

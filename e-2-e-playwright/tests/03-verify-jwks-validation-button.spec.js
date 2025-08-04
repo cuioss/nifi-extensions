@@ -15,11 +15,22 @@ import {
 import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
 
 test.describe("JWKS Validation Button", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page, processorManager }, testInfo) => {
         await setupAuthAwareErrorDetection(page, testInfo);
 
         const authService = new AuthService(page);
         await authService.ensureReady();
+        
+        // Ensure processor is on canvas before each test
+        processorLogger.info('Ensuring MultiIssuerJWTTokenAuthenticator is on canvas...');
+        const ready = await processorManager.ensureProcessorOnCanvas();
+        if (!ready) {
+            throw new Error(
+                'Cannot ensure MultiIssuerJWTTokenAuthenticator is on canvas. ' +
+                'The processor must be deployed in NiFi for tests to run.'
+            );
+        }
+        processorLogger.success('Processor is ready on canvas for test');
     });
 
     test.afterEach(async ({ page: _ }, testInfo) => {
@@ -44,15 +55,10 @@ test.describe("JWKS Validation Button", () => {
         // Test JWKS validation button with valid URL
         const processorService = new ProcessorService(page, testInfo);
 
-        // Find and configure processor
-        // Try to find the processor first
-        const processor =
-            await processorService.findMultiIssuerJwtAuthenticator({
-                failIfNotFound: false,
-            });
-
-        // If processor not found, provide clear instructions
-        expect(processor).toBeTruthy();
+        // Find the processor (it should be on canvas from beforeEach)
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
         // Open Advanced UI via right-click menu
         const advancedOpened = await processorService.openAdvancedUI(processor);
 
@@ -150,14 +156,10 @@ test.describe("JWKS Validation Button", () => {
         // Testing JWKS validation button - invalid URL
         const processorService = new ProcessorService(page, testInfo);
 
-        // Try to find the processor first
-        const processor =
-            await processorService.findMultiIssuerJwtAuthenticator({
-                failIfNotFound: false,
-            });
-
-        // If processor not found, provide clear instructions
-        expect(processor).toBeTruthy();
+        // Find the processor (it should be on canvas from beforeEach)
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
 
         // Open Advanced UI via right-click menu
         const advancedOpened = await processorService.openAdvancedUI(processor);
@@ -236,14 +238,10 @@ test.describe("JWKS Validation Button", () => {
         // Testing JWKS validation button - file path
         const processorService = new ProcessorService(page, testInfo);
 
-        // Try to find the processor first
-        const processor =
-            await processorService.findMultiIssuerJwtAuthenticator({
-                failIfNotFound: false,
-            });
-
-        // If processor not found, provide clear instructions
-        expect(processor).toBeTruthy();
+        // Find the processor (it should be on canvas from beforeEach)
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
 
         // Open Advanced UI via right-click menu
         const advancedOpened = await processorService.openAdvancedUI(processor);
@@ -318,14 +316,10 @@ test.describe("JWKS Validation Button", () => {
         // Testing JWKS validation progress indicator
         const processorService = new ProcessorService(page, testInfo);
 
-        // Try to find the processor first
-        const processor =
-            await processorService.findMultiIssuerJwtAuthenticator({
-                failIfNotFound: false,
-            });
-
-        // If processor not found, provide clear instructions
-        expect(processor).toBeTruthy();
+        // Find the processor (it should be on canvas from beforeEach)
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
 
         // Open Advanced UI via right-click menu
         const advancedOpened = await processorService.openAdvancedUI(processor);

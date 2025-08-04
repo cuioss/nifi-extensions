@@ -7,6 +7,8 @@ import {test as authTest} from './auth-fixtures.js';
 import {checkA11y, injectAxe} from 'axe-playwright';
 import {setupAuthAwareErrorDetection, saveTestBrowserLogs} from '../utils/console-logger.js';
 import {logTestWarning} from '../utils/test-error-handler.js';
+import {ProcessorApiManager} from '../utils/processor-api-manager.js';
+import {processorLogger} from '../utils/shared-logger.js';
 
 /**
  * Extended test with all fixtures combined including global console logging
@@ -27,6 +29,15 @@ export const test = authTest.extend({
     } catch (error) {
       logTestWarning('page fixture cleanup', `Failed to save console logs: ${error.message}`);
     }
+  },
+  
+  /**
+   * Processor management fixture that provides ProcessorApiManager instance
+   * This fixture is available to all tests that import from test-fixtures.js
+   */
+  processorManager: async ({ page }, use) => {
+    const manager = new ProcessorApiManager(page);
+    await use(manager);
   },
   /**
    * Accessibility testing fixture using axe-playwright
@@ -138,6 +149,31 @@ export const accessibilityTest = test.extend({
     const helper = new AccessibilityHelper(page);
     await helper.initialize();
     await use(helper);
+  },
+
+  /**
+   * Auto-setup fixture that ensures processor is on canvas
+   * Use this fixture in tests that require the processor to be present
+   */
+  withProcessorOnCanvas: async ({ page, processorManager }, use) => {
+    // Ensure processor is on canvas before test
+    processorLogger.info('Ensuring processor is on canvas for test...');
+    const ready = await processorManager.ensureProcessorOnCanvas();
+    
+    if (!ready) {
+      throw new Error(
+        'PRECONDITION FAILED: Cannot ensure MultiIssuerJWTTokenAuthenticator is on canvas. ' +
+        'The processor must be deployed in NiFi for tests to run.'
+      );
+    }
+    
+    processorLogger.success('Processor is ready on canvas');
+    
+    // Run the test
+    await use(page);
+    
+    // Note: We don't remove the processor after test to avoid conflicts between parallel tests
+    // The processor can be shared across tests since it's stateless for our testing purposes
   }
 });
 

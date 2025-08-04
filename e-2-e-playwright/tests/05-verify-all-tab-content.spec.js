@@ -8,10 +8,21 @@ import {
 import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
 
 test.describe("Comprehensive JWT Tab Content Verification", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page, processorManager }, testInfo) => {
         await setupAuthAwareErrorDetection(page, testInfo);
         const authService = new AuthService(page);
         await authService.ensureReady();
+        
+        // Ensure processor is on canvas before each test
+        processorLogger.info('Ensuring MultiIssuerJWTTokenAuthenticator is on canvas...');
+        const ready = await processorManager.ensureProcessorOnCanvas();
+        if (!ready) {
+            throw new Error(
+                'Cannot ensure MultiIssuerJWTTokenAuthenticator is on canvas. ' +
+                'The processor must be deployed in NiFi for tests to run.'
+            );
+        }
+        processorLogger.success('Processor is ready on canvas for test');
     });
 
     test.afterEach(async ({ page: _ }, testInfo) => {

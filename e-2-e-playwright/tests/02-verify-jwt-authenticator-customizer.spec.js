@@ -16,12 +16,23 @@ import { processorLogger } from "../utils/shared-logger.js";
 import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("JWT Authenticator Customizer UI", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page, processorManager }, testInfo) => {
         try {
             await setupAuthAwareErrorDetection(page, testInfo);
 
             const authService = new AuthService(page);
             await authService.ensureReady();
+            
+            // Ensure processor is on canvas before each test
+            processorLogger.info('Ensuring MultiIssuerJWTTokenAuthenticator is on canvas...');
+            const ready = await processorManager.ensureProcessorOnCanvas();
+            if (!ready) {
+                throw new Error(
+                    'Cannot ensure MultiIssuerJWTTokenAuthenticator is on canvas. ' +
+                    'The processor must be deployed in NiFi for tests to run.'
+                );
+            }
+            processorLogger.success('Processor is ready on canvas for test');
         } catch (error) {
             try {
                 await saveTestBrowserLogs(testInfo);
@@ -66,25 +77,10 @@ test.describe("JWT Authenticator Customizer UI", () => {
 
             const processorService = new ProcessorService(page, testInfo);
 
-            // Try to find the processor first
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: false,
-                });
-
-            // If processor not found, provide clear instructions
-            if (!processor) {
-                throw new Error(
-                    "❌ MultiIssuerJWTTokenAuthenticator processor not found on canvas!\n\n" +
-                        "Please manually add the processor to the canvas before running E2E tests:\n" +
-                        "1. Navigate to NiFi UI at https://localhost:9095/nifi\n" +
-                        "2. Drag a 'Processor' component onto the canvas\n" +
-                        "3. Search for and select 'MultiIssuerJWTTokenAuthenticator'\n" +
-                        "4. Click 'Add' to place it on the canvas\n" +
-                        "5. Re-run the E2E tests\n\n" +
-                        "This is a prerequisite for E2E testing the custom UI components.",
-                );
-            }
+            // Find the processor (it should be on canvas from beforeEach)
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
             // Open Advanced UI via right-click menu
             const advancedOpened =
@@ -174,25 +170,10 @@ test.describe("JWT Authenticator Customizer UI", () => {
 
             const processorService = new ProcessorService(page, testInfo);
 
-            // Try to find the processor first
-            const processor =
-                await processorService.findMultiIssuerJwtAuthenticator({
-                    failIfNotFound: false,
-                });
-
-            // If processor not found, provide clear instructions
-            if (!processor) {
-                throw new Error(
-                    "❌ MultiIssuerJWTTokenAuthenticator processor not found on canvas!\n\n" +
-                        "Please manually add the processor to the canvas before running E2E tests:\n" +
-                        "1. Navigate to NiFi UI at https://localhost:9095/nifi\n" +
-                        "2. Drag a 'Processor' component onto the canvas\n" +
-                        "3. Search for and select 'MultiIssuerJWTTokenAuthenticator'\n" +
-                        "4. Click 'Add' to place it on the canvas\n" +
-                        "5. Re-run the E2E tests\n\n" +
-                        "This is a prerequisite for E2E testing the custom UI components.",
-                );
-            }
+            // Find the processor (it should be on canvas from beforeEach)
+            const processor = await processorService.findJwtAuthenticator({
+                failIfNotFound: true,
+            });
 
             // Open Advanced UI via right-click menu
             const advancedOpened =
