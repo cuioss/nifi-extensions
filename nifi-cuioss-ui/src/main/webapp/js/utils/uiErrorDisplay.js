@@ -124,7 +124,8 @@ export const displayUiError = ($targetElement, error, i18n, errorTypeKey = 'proc
     const closeButton = closable ? '<button class="close-error" aria-label="Close error">&times;</button>' : '';
 
     const errorHtml = `
-        <div class="error-message ${errorTypeClass} ${closableClass}">
+        <div class="error-message ${errorTypeClass} ${closableClass}" 
+             role="alert" aria-live="assertive">
             <div class="error-content">
                 <strong>${errorTypePrefix}:</strong> ${messageToDisplay}
             </div>
@@ -176,7 +177,7 @@ export const displayUiSuccess = ($targetElement, message, options = {}) => {
     const autoHideClass = autoHide ? 'auto-dismiss' : '';
 
     const successHtml = `
-        <div class="success-message ${autoHideClass}">
+        <div class="success-message ${autoHideClass}" role="status" aria-live="polite">
             <div class="success-content">${message}</div>
         </div>
     `;

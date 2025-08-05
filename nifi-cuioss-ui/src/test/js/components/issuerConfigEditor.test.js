@@ -120,7 +120,7 @@ describe('issuerConfigEditor', function () {
                 expect(container).toBeTruthy();
 
                 // Check for title
-                const title = container.querySelector('h3');
+                const title = container.querySelector('h2');
                 expect(title).toBeTruthy();
                 expect(title.textContent).toContain('Issuer Configurations');
 

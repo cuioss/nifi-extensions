@@ -8,12 +8,12 @@
 
     /* Success colors */
     --success-color: #2ecc40;
-    --success-color-dark: #29b739;
+    --success-color-dark: #1e7e34;  /* Darker green for better contrast */
     --success-color-rgb: 46, 204, 64;
 
     /* Error colors */
     --error-color: #ff4136;
-    --error-color-dark: #e60000;
+    --error-color-dark: #dc3545;  /* Darker red for better contrast */
     --error-color-rgb: 255, 65, 54;
 
     /* Neutral colors */

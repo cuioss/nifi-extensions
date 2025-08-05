@@ -30,6 +30,9 @@ const i18n = getI18n() || {};
 // Component lifecycle manager for cleanup
 let componentLifecycle = null;
 
+// Counter for generating unique IDs
+let issuerFormCounter = 0;
+
 /**
  * Returns a predefined sample issuer configuration object.
  * This is used for demonstration or as a default when loading fails.
@@ -158,7 +161,7 @@ const _createEditorStructure = (parentElement) => {
     parentElement.appendChild(container);
 
     const titleText = i18n['Jwt.Validation.Issuer.Configuration'] || 'Issuer Configurations';
-    const title = document.createElement('h3');
+    const title = document.createElement('h2');
     title.textContent = titleText;
     container.appendChild(title);
 
@@ -230,6 +233,7 @@ const _initializeEditorData = async (effectiveUrl, issuersContainer) => {
                 const selectElement = document.createElement('select');
                 selectElement.id = `field-jwks-type-${index}`;
                 selectElement.name = 'jwks-type';
+                selectElement.setAttribute('aria-label', 'JWKS Type');
                 selectElement.className = 'field-jwks-type form-input issuer-config-field';
                 selectElement.title = 'Select how JWKS keys should be retrieved for this issuer';
 
@@ -347,22 +351,27 @@ const loadExistingIssuers = async (container, processorId) => {
  * Creates the header section for an issuer form, including name input and remove button.
  * @param {string} [issuerName] - The initial name of the issuer, if any.
  * @param {function} onRemove - Callback function when the remove button is clicked.
+ * @param {number} index - The index of this issuer form.
  * @returns {HTMLElement} The header element.
  */
-const _createFormHeader = (issuerName, onRemove) => {
+const _createFormHeader = (issuerName, onRemove, index = 0) => {
     const formHeader = document.createElement('div');
     formHeader.className = 'form-header';
 
     const nameLabel = document.createElement('label');
     nameLabel.textContent = 'Issuer Name:';
+    const inputId = `issuer-name-${index}`;
+    nameLabel.setAttribute('for', inputId);
     formHeader.appendChild(nameLabel);
 
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
+    nameInput.id = inputId;
     nameInput.className = 'issuer-name';
     nameInput.placeholder = 'e.g., keycloak';
     nameInput.title = 'Unique identifier for this issuer configuration. Use alphanumeric characters and hyphens only.';
-    nameLabel.appendChild(nameInput);
+    nameInput.setAttribute('aria-label', 'Issuer Name');
+    formHeader.appendChild(nameInput);
 
     if (issuerName) {
         nameInput.value = issuerName;
@@ -568,6 +577,7 @@ const _populateIssuerFormFields = (formFields, properties) => {
         selectElement.name = 'jwks-type';
         selectElement.className = 'field-jwks-type form-input issuer-config-field';
         selectElement.title = 'Select how JWKS keys should be retrieved for this issuer';
+        selectElement.setAttribute('aria-label', 'JWKS Source Type');
 
         const options = [
             { value: 'url', label: 'URL (Remote JWKS endpoint)' },
@@ -664,10 +674,13 @@ const _createCompleteIssuerForm = (issuerName, properties, processorId = null) =
     const issuerForm = document.createElement('div');
     issuerForm.className = 'issuer-form';
 
+    // Get a unique index for this form
+    const formIndex = issuerFormCounter++;
+
     // Create and append form header
     const formHeader = _createFormHeader(issuerName, (clickedIssuerNameVal) => {
         removeIssuer(issuerForm, clickedIssuerNameVal);
-    });
+    }, formIndex);
     issuerForm.appendChild(formHeader);
 
     // Create form fields container

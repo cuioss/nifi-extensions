@@ -50,10 +50,11 @@
 <body>
     <div id="jwt-validator-container" data-testid="jwt-customizer-container">
         <!-- This container will be populated by the JavaScript UI components -->
+        <h1 class="sr-only">JWT Token Authenticator Configuration</h1>
         <div id="loading-indicator">Loading JWT Validator UI...</div>
         
         <!-- Tab structure for JWT configuration -->
-        <div id="jwt-validator-tabs" class="jwt-tabs-container" style="display:none;">
+        <div id="jwt-validator-tabs" class="jwt-tabs-container" style="display:none;" role="main">
             <div class="jwt-tabs-header" data-testid="jwt-config-tabs">
                 <ul class="tabs" role="tablist">
                     <li role="presentation" class="active">
