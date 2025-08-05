@@ -28,3 +28,6 @@ jest_stdout.log
 **/bundle.vite.umd.cjs
 **/bundle.webpack.js
 # But NOT bundle-wrapper.js (it's source code, not generated)
+
+# Claude Code configuration
+.claude/

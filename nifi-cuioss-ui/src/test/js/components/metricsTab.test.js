@@ -4,8 +4,7 @@
 
 describe('MetricsTab', () => {
     let metricsTab;
-    let mockGetI18n;
-    let mockGetProperty;
+    let mockTranslate;
     let mockGetSecurityMetrics;
 
     beforeEach(() => {
@@ -19,21 +18,17 @@ describe('MetricsTab', () => {
             <div id="jwt-validator-container"></div>
         `;
 
-        // Mock translations
-        mockGetProperty = jest.fn((key) => {
+        // Mock translate function
+        mockTranslate = jest.fn((key) => {
             const translations = {
-                'jwt.metrics.title': 'JWT Validation Metrics',
+                'jwt.validator.metrics.title': 'JWT Validation Metrics',
                 'jwt.validator.metrics.tab.name': 'Metrics'
             };
             return translations[key] || key;
         });
 
-        mockGetI18n = jest.fn(() => ({
-            getProperty: mockGetProperty
-        }));
-
-        jest.mock('nf.Common', () => ({
-            getI18n: mockGetI18n
+        jest.mock('../../../main/webapp/js/utils/i18n.js', () => ({
+            translate: mockTranslate
         }), { virtual: true });
 
         // Mock formatters
@@ -348,13 +343,13 @@ describe('MetricsTab', () => {
         it('should return translated metrics tab name', () => {
             const displayName = metricsTab.getDisplayName();
             expect(displayName).toBe('Metrics');
-            expect(mockGetProperty).toHaveBeenCalledWith('jwt.validator.metrics.tab.name');
+            expect(mockTranslate).toHaveBeenCalledWith('jwt.validator.metrics.tab.name');
         });
 
         it('should return default name when translation not available', () => {
-            mockGetProperty.mockReturnValue(null);
+            mockTranslate.mockReturnValue('jwt.validator.metrics.tab.name');
             const displayName = metricsTab.getDisplayName();
-            expect(displayName).toBe('Metrics');
+            expect(displayName).toBe('jwt.validator.metrics.tab.name');
         });
     });
 

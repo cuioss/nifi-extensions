@@ -12,8 +12,8 @@
 import { createLogger } from '../utils/logger.js';
 import { formatNumber, formatDate } from '../utils/formatters.js';
 import { UI_TEXT } from '../utils/constants.js';
-import * as nfCommon from 'nf.Common';
 import { getSecurityMetrics } from '../services/apiClient.js';
+import { translate } from '../utils/i18n.js';
 
 const logger = createLogger('MetricsTab');
 
@@ -63,8 +63,7 @@ const createMetricsContent = () => {
     const metricsHtml = `
         <div id="jwt-metrics-content" class="jwt-tab-content" data-testid="metrics-tab-content">
             <div class="metrics-header">
-                <h3>${nfCommon.getI18n().getProperty(UI_TEXT.I18N_KEYS.METRICS_TITLE) ||
-                'JWT Validation Metrics'}</h3>
+                <h2>${translate(UI_TEXT.I18N_KEYS.METRICS_TITLE)}</h2>
                 <div class="metrics-actions">
                     <button id="refresh-metrics-btn" class="btn btn-small" 
                     data-testid="refresh-metrics-button">
@@ -572,7 +571,7 @@ export const cleanup = () => {
  * @returns {string} Tab display name
  */
 export const getDisplayName = () => {
-    return nfCommon.getI18n().getProperty(UI_TEXT.I18N_KEYS.METRICS_TAB_NAME) || 'Metrics';
+    return translate(UI_TEXT.I18N_KEYS.METRICS_TAB_NAME);
 };
 
 // Export refreshMetrics for global access

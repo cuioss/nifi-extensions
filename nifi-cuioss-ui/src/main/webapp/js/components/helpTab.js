@@ -11,7 +11,7 @@
 
 import { createLogger } from '../utils/logger.js';
 import { UI_TEXT } from '../utils/constants.js';
-import * as nfCommon from 'nf.Common';
+import { translate } from '../utils/i18n.js';
 
 const logger = createLogger('HelpTab');
 
@@ -40,7 +40,7 @@ const createHelpContent = () => {
     const helpHtml = `
         <div id="jwt-help-content" class="jwt-tab-content help-tab" data-testid="help-tab-content">
             <div class="help-header">
-                <h3>${nfCommon.getI18n().getProperty(UI_TEXT.I18N_KEYS.HELP_TITLE) || 'JWT Authenticator Help'}</h3>
+                <h2>${translate(UI_TEXT.I18N_KEYS.HELP_TITLE)}</h2>
             </div>
             
             <div class="help-sections">
@@ -262,5 +262,5 @@ export const cleanup = () => {
  * @returns {string} Tab display name
  */
 export const getDisplayName = () => {
-    return nfCommon.getI18n().getProperty(UI_TEXT.I18N_KEYS.HELP_TAB_NAME) || 'Help';
+    return translate(UI_TEXT.I18N_KEYS.HELP_TAB_NAME);
 };

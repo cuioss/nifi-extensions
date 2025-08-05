@@ -4,8 +4,7 @@
 
 describe('HelpTab', () => {
     let helpTab;
-    let mockGetI18n;
-    let mockGetProperty;
+    let mockTranslate;
 
     beforeEach(() => {
         jest.resetModules();
@@ -17,21 +16,17 @@ describe('HelpTab', () => {
             <div id="jwt-validator-container"></div>
         `;
 
-        // Mock nf.Common
-        mockGetProperty = jest.fn((key) => {
+        // Mock translate function
+        mockTranslate = jest.fn((key) => {
             const translations = {
-                'jwt.help.title': 'JWT Authenticator Help',
+                'jwt.validator.help.title': 'JWT Authenticator Help',
                 'jwt.validator.help.tab.name': 'Help'
             };
             return translations[key] || key;
         });
 
-        mockGetI18n = jest.fn(() => ({
-            getProperty: mockGetProperty
-        }));
-
-        jest.mock('nf.Common', () => ({
-            getI18n: mockGetI18n
+        jest.mock('../../../main/webapp/js/utils/i18n.js', () => ({
+            translate: mockTranslate
         }), { virtual: true });
 
         helpTab = require('../../../main/webapp/js/components/helpTab.js');
@@ -161,13 +156,13 @@ describe('HelpTab', () => {
         it('should return translated help tab name', () => {
             const displayName = helpTab.getDisplayName();
             expect(displayName).toBe('Help');
-            expect(mockGetProperty).toHaveBeenCalledWith('jwt.validator.help.tab.name');
+            expect(mockTranslate).toHaveBeenCalledWith('jwt.validator.help.tab.name');
         });
 
         it('should return default name when translation not available', () => {
-            mockGetProperty.mockReturnValue(null);
+            mockTranslate.mockReturnValue('jwt.validator.help.tab.name');
             const displayName = helpTab.getDisplayName();
-            expect(displayName).toBe('Help');
+            expect(displayName).toBe('jwt.validator.help.tab.name');
         });
     });
 

@@ -77,7 +77,7 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         // Verify advanced configuration elements on the Configuration tab
         const configTabElements = [
             {
-                selector: 'h3:has-text("Issuer Configurations")',
+                selector: 'h2:has-text("Issuer Configurations")',
                 name: "Issuer Configurations header",
             },
             {
