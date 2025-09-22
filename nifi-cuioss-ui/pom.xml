@@ -31,7 +31,7 @@
         <sonar.coverage.exclusions>**/nf-common-mock.js</sonar.coverage.exclusions>
 
         <!-- WebJars versions -->
-        <version.webjars.font-awesome>6.7.2</version.webjars.font-awesome>
+        <version.webjars.font-awesome>7.0.1</version.webjars.font-awesome>
         <version.webjars.cash-dom>8.1.5</version.webjars.cash-dom>
         <version.webjars.tippy.js>6.3.7</version.webjars.tippy.js>
         <version.webjars.popperjs__core>2.11.8</version.webjars.popperjs__core>
