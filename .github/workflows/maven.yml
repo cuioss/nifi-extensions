@@ -45,7 +45,7 @@ jobs:
             ${{ runner.os }}-npm-
       
       - name: Build with Maven, Java ${{ matrix.version }}
-        run: ./mvnw -B --no-transfer-progress package -Dmaven.compiler.source=${{ matrix.version }} -Dmaven.compiler.target=${{ matrix.version }}
+        run: ./mvnw -B --no-transfer-progress package -Dmaven.compiler.release=${{ matrix.version }}
 
   sonar-build:
     needs: build
