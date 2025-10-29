@@ -110,7 +110,7 @@ public class MetricsServlet extends HttpServlet {
         } catch (IOException e) {
             LOGGER.error(e, "Error writing metrics response");
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             LOGGER.error(e, "Error collecting metrics");
             try {
                 sendErrorResponse(resp, 500, "Error collecting metrics");

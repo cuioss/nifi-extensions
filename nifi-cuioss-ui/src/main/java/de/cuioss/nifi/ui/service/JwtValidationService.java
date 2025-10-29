@@ -27,6 +27,7 @@ import de.cuioss.nifi.ui.servlets.MetricsServlet;
 import de.cuioss.nifi.ui.util.ProcessorConfigReader;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
+import jakarta.json.JsonException;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonReader;
 
@@ -328,13 +329,22 @@ public class JwtValidationService {
 
                 return result;
 
-            } catch (Exception e) {
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("Failed to decode token: %s", e.getMessage());
+                return TokenValidationResult.failure("Invalid token encoding: " + e.getMessage());
+            } catch (JsonException e) {
+                LOGGER.warn("Failed to parse token JSON: %s", e.getMessage());
+                return TokenValidationResult.failure("Invalid token JSON: " + e.getMessage());
+            } catch (RuntimeException e) {
                 LOGGER.warn("Failed to parse token payload: %s", e.getMessage());
                 return TokenValidationResult.failure("Invalid token: " + e.getMessage());
             }
 
-        } catch (Exception e) {
+        } catch (IllegalArgumentException | JsonException e) {
             LOGGER.error(e, "Error in test token verification");
+            return TokenValidationResult.failure("Token verification error: " + e.getMessage());
+        } catch (RuntimeException e) {
+            LOGGER.error(e, "Unexpected error in test token verification");
             return TokenValidationResult.failure("Token verification error: " + e.getMessage());
         }
     }
