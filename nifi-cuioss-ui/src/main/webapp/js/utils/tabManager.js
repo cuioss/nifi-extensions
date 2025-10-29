@@ -45,13 +45,17 @@ export const initTabs = () => {
         }
 
         // Update active tab
-        document.querySelectorAll('.jwt-tabs-header .tabs li').forEach(li => li.classList.remove('active'));
+        for (const li of document.querySelectorAll('.jwt-tabs-header .tabs li')) {
+            li.classList.remove('active');
+        }
         if (link.parentElement) {
             link.parentElement.classList.add('active');
         }
 
         // Update active content
-        document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+        for (const pane of document.querySelectorAll('.tab-pane')) {
+            pane.classList.remove('active');
+        }
         const targetElement = document.querySelector(targetId);
         if (targetElement) {
             targetElement.classList.add('active');
@@ -135,9 +139,9 @@ export const setTabState = (tabId, state) => {
             // Flash error state briefly
             tabLi.classList.add('error');
             setTimeout(() => {
-                document.querySelectorAll('.jwt-tabs-header .tabs li').forEach(li => {
+                for (const li of document.querySelectorAll('.jwt-tabs-header .tabs li')) {
                     li.classList.remove('error');
-                });
+                }
             }, 3000);
         }
         return true;

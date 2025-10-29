@@ -42,7 +42,9 @@ export const showConfirmationDialog = (options) => {
 
     return new Promise((resolve) => {
         // Remove any existing confirmation dialogs
-        document.querySelectorAll('.confirmation-dialog').forEach(dialog => dialog.remove());
+        for (const dialog of document.querySelectorAll('.confirmation-dialog')) {
+            dialog.remove();
+        }
 
         // Create dialog HTML
         const dialogHtml = createDialogHtml(title, message, confirmText, cancelText, type);

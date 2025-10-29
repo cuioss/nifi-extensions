@@ -36,14 +36,14 @@ export const createElement = (tag, options = {}) => {
 
     // Handle attributes
     if (options.attributes) {
-        Object.entries(options.attributes).forEach(([key, value]) => {
+        for (const [key, value] of Object.entries(options.attributes)) {
             // Special handling for boolean attributes like disabled, checked, etc.
             if (key === 'disabled' || key === 'checked' || key === 'readonly' || key === 'required') {
                 if (value === true || value === 'true' || value === '') {
                     element.setAttribute(key, '');
                 } else if (value === false || value === 'false' || value === null || value === undefined) {
                     // Don't set the attribute at all if it's false
-                    return;
+                    continue;
                 } else {
                     // For any other value, set it as is (e.g., disabled="disabled")
                     element.setAttribute(key, value);
@@ -51,25 +51,25 @@ export const createElement = (tag, options = {}) => {
             } else {
                 element.setAttribute(key, value);
             }
-        });
+        }
     }
 
     // Handle events
     if (options.events) {
-        Object.entries(options.events).forEach(([event, handler]) => {
+        for (const [event, handler] of Object.entries(options.events)) {
             element.addEventListener(event, handler);
-        });
+        }
     }
 
     // Handle children
     if (options.children) {
-        options.children.forEach(child => {
+        for (const child of options.children) {
             if (child instanceof Element) {
                 element.appendChild(child);
             } else if (typeof child === 'string') {
                 element.appendChild(document.createTextNode(child));
             }
-        });
+        }
     }
 
     return element;
@@ -136,10 +136,10 @@ export class SimpleDOMFieldBuilder {
 
     static createFields(fieldConfigs) {
         const builder = new DOMBuilder();
-        fieldConfigs.forEach(config => {
+        for (const config of fieldConfigs) {
             const fieldFragment = SimpleDOMFieldBuilder.createField(config);
             builder.addExisting(fieldFragment.firstElementChild);
-        });
+        }
         return builder.build();
     }
 }
@@ -217,26 +217,26 @@ export const DOMUtils = {
             domElement.appendChild(content);
         } else if (Array.isArray(content)) {
             const fragment = createFragment();
-            content.forEach(item => {
+            for (const item of content) {
                 if (item instanceof Element) {
                     fragment.appendChild(item);
                 } else if (typeof item === 'string') {
                     fragment.appendChild(document.createTextNode(item));
                 }
-            });
+            }
             domElement.appendChild(fragment);
         }
     },
 
     appendMultiple(parent, elements) {
         const builder = new DOMBuilder();
-        elements.forEach(config => {
+        for (const config of elements) {
             if (typeof config === 'string') {
                 builder.addElement('div', { text: config });
             } else {
                 builder.addElement(config.tag || 'div', config.options || {});
             }
-        });
+        }
         return builder.appendTo(parent);
     }
 };

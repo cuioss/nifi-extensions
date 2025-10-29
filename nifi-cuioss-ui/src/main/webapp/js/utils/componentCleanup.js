@@ -93,7 +93,9 @@ export class ComponentLifecycle {
      */
     destroy() {
         // Clear all timeouts for this component
-        this.timeouts.forEach(clearTimeout);
+        for (const timeoutId of this.timeouts) {
+            clearTimeout(timeoutId);
+        }
         this.timeouts.clear();
         this.initialized = false;
     }
@@ -103,8 +105,12 @@ export class ComponentLifecycle {
  * Clean up all global resources.
  */
 const cleanupAllResources = () => {
-    activeTimeouts.forEach(clearTimeout);
-    activeIntervals.forEach(clearInterval);
+    for (const timeoutId of activeTimeouts) {
+        clearTimeout(timeoutId);
+    }
+    for (const intervalId of activeIntervals) {
+        clearInterval(intervalId);
+    }
     activeTimeouts.clear();
     activeIntervals.clear();
 };
@@ -128,14 +134,14 @@ export const addCleanupFunction = (componentId, cleanupFn) => {
 export const cleanupComponent = (componentId) => {
     const cleanupFns = componentCleanupFunctions.get(componentId);
     if (cleanupFns) {
-        cleanupFns.forEach(fn => {
+        for (const fn of cleanupFns) {
             try {
                 fn();
             } catch (error) {
                 // eslint-disable-next-line no-console
                 console.debug(error);
             }
-        });
+        }
         cleanupFns.clear();
     }
 };
@@ -145,16 +151,16 @@ export const cleanupAll = () => {
     cleanupAllResources();
 
     // Clean up legacy component cleanup functions
-    componentCleanupFunctions.forEach((cleanupFns) => {
-        cleanupFns.forEach(fn => {
+    for (const cleanupFns of componentCleanupFunctions.values()) {
+        for (const fn of cleanupFns) {
             try {
                 fn();
             } catch (error) {
                 // eslint-disable-next-line no-console
                 console.debug(error);
             }
-        });
+        }
         cleanupFns.clear();
-    });
+    }
     componentCleanupFunctions.clear();
 };

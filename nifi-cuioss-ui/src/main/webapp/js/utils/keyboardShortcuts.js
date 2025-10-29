@@ -395,7 +395,9 @@ export const cleanup = () => {
         delete globalThis.__keyboardShortcutHandler;
     }
     activeHandlers.clear();
-    document.querySelectorAll('.keyboard-shortcuts-modal, .keyboard-action-feedback, .shortcuts-hint').forEach(el => el.remove());
+    for (const el of document.querySelectorAll('.keyboard-shortcuts-modal, .keyboard-action-feedback, .shortcuts-hint')) {
+        el.remove();
+    }
 };
 
 /**
@@ -405,7 +407,7 @@ export const cleanup = () => {
 export const getAvailableShortcuts = () => {
     const shortcuts = {};
 
-    Object.entries(SHORTCUTS).forEach(([key, action]) => {
+    for (const [key, action] of Object.entries(SHORTCUTS)) {
         switch (action) {
             case 'verify-token':
                 shortcuts[key] = 'Verify JWT token';
@@ -432,7 +434,7 @@ export const getAvailableShortcuts = () => {
                     shortcuts[key] = activeHandlers.get(action)?.description || 'Custom shortcut';
                 }
         }
-    });
+    }
 
     return shortcuts;
 };
