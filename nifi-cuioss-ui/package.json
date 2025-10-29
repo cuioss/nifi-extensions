@@ -72,10 +72,11 @@
     ],
     "moduleFileExtensions": [
       "js",
-      "json"
+      "json",
+      "cjs"
     ],
     "transform": {
-      "^.+\\.js$": "babel-jest"
+      "^.+\\.(js|cjs)$": "babel-jest"
     },
     "testMatch": [
       "**/test/js/**/*.test.js"
@@ -91,7 +92,7 @@
       "<rootDir>/src/test/js/mocks/",
       "<rootDir>/src/test/js/utils/testHelpers.js",
       "<rootDir>/src/main/webapp/js/nf-common-mock.js",
-      "<rootDir>/src/main/webapp/js/bundle.js"
+      "<rootDir>/src/main/webapp/js/bundle.umd.cjs"
     ],
     "coverageThreshold": {
       "global": {
@@ -113,7 +114,8 @@
       "^components/jwksValidator$": "<rootDir>/src/main/webapp/js/components/jwksValidator.js",
       "^cash$": "cash-dom",
       "^tippy$": "<rootDir>/src/test/js/mocks/tippy.js",
-      "\\.css$": "<rootDir>/src/test/js/mocks/cssMock.js"
+      "\\.css$": "<rootDir>/src/test/js/mocks/cssMock.js",
+      "^.*/js/bundle$": "<rootDir>/src/main/webapp/js/bundle.umd.cjs"
     },
     "setupFiles": [
       "<rootDir>/src/test/js/mocks/jquery-extended.js",
