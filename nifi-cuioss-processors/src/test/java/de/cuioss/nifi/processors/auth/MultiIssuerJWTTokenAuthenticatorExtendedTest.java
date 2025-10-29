@@ -298,45 +298,9 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
         }
     }
 
-    @Nested
-    @DisplayName("External Configuration Loading Tests")
-    class ExternalConfigurationTests {
-
-        @Test
-        @DisplayName("Test loadExternalConfigurations method")
-        void loadExternalConfigurations() throws Exception {
-            // Mock ConfigurationManager
-            ConfigurationManager mockConfigManager = mock(ConfigurationManager.class);
-            when(mockConfigManager.isConfigurationLoaded()).thenReturn(true);
-            when(mockConfigManager.getIssuerIds()).thenReturn(List.of("external-issuer"));
-            Map<String, String> issuerConfig = new HashMap<>();
-            issuerConfig.put("jwks-url", "https://external-issuer/.well-known/jwks.json");
-            issuerConfig.put("issuer", "external-issuer");
-            when(mockConfigManager.getIssuerProperties("external-issuer")).thenReturn(issuerConfig);
-
-            // Set the mock ConfigurationManager using reflection
-            Field configManagerField = MultiIssuerJWTTokenAuthenticator.class.getDeclaredField("configurationManager");
-            configManagerField.setAccessible(true);
-            configManagerField.set(processor, mockConfigManager);
-
-            // Use reflection to test private method
-            Method loadExternalMethod = MultiIssuerJWTTokenAuthenticator.class
-                    .getDeclaredMethod("loadExternalConfigurations", Map.class, Set.class);
-            loadExternalMethod.setAccessible(true);
-
-            Map<String, Map<String, String>> configurations = new HashMap<>();
-            Set<String> trackedKeys = new HashSet<>();
-
-            // Execute the method
-            loadExternalMethod.invoke(processor, configurations, trackedKeys);
-
-            // Verify external configuration was loaded
-            assertTrue(configurations.containsKey("external-issuer"));
-            assertEquals("https://external-issuer/.well-known/jwks.json",
-                    configurations.get("external-issuer").get("jwks-url"));
-            assertTrue(trackedKeys.contains("external-issuer"));
-        }
-    }
+    // Note: ExternalConfigurationTests removed as loadExternalConfigurations() method
+    // was refactored into IssuerConfigurationParser.parseIssuerConfigs()
+    // External configuration loading is now tested through integration tests
 
     @Nested
     @DisplayName("Cleanup Removed Issuers Tests")
