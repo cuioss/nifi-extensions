@@ -105,7 +105,8 @@ public class ConfigurationManager {
                     loadConfiguration();
                     lastLoadedTimestamp = lastModified;
                     return true;
-                } catch (Exception e) {
+                } catch (RuntimeException e) {
+                    // Catch configuration loading errors (IOException wrapped in RuntimeException, parsing errors, etc.)
                     String contextMessage = ErrorContext.forComponent("ConfigurationManager")
                             .operation("checkAndReloadConfiguration")
                             .errorCode(ErrorContext.ErrorCodes.CONFIGURATION_ERROR)
@@ -187,7 +188,8 @@ public class ConfigurationManager {
                 LOGGER.warn("Unsupported configuration file format: %s", fileName);
                 return false;
             }
-        } catch (Exception e) {
+        } catch (java.io.IOException e) {
+            // Catch file I/O errors
             String contextMessage = ErrorContext.forComponent("ConfigurationManager")
                     .operation("loadConfigurationFile")
                     .errorCode(ErrorContext.ErrorCodes.IO_ERROR)
@@ -196,6 +198,19 @@ public class ConfigurationManager {
                     .with("file", file.getAbsolutePath())
                     .with("fileFormat", fileName.substring(fileName.lastIndexOf('.') + 1))
                     .buildMessage("Error loading configuration file");
+
+            LOGGER.error(e, contextMessage);
+            return false;
+        } catch (RuntimeException e) {
+            // Catch parsing and other runtime errors
+            String contextMessage = ErrorContext.forComponent("ConfigurationManager")
+                    .operation("loadConfigurationFile")
+                    .errorCode(ErrorContext.ErrorCodes.CONFIGURATION_ERROR)
+                    .cause(e)
+                    .build()
+                    .with("file", file.getAbsolutePath())
+                    .with("fileFormat", fileName.substring(fileName.lastIndexOf('.') + 1))
+                    .buildMessage("Error parsing configuration file");
 
             LOGGER.error(e, contextMessage);
             return false;

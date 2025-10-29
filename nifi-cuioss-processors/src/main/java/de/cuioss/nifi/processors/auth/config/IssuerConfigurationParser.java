@@ -163,7 +163,8 @@ public class IssuerConfigurationParser {
                     issuerConfigs.add(issuerConfig);
                     LOGGER.info("Created issuer configuration for %s", issuerId);
                 }
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
+                // Catch configuration creation errors (IllegalArgumentException, NullPointerException, etc.)
                 String contextMessage = ErrorContext.forComponent("IssuerConfigurationParser")
                         .operation("parseIssuers")
                         .errorCode(ErrorContext.ErrorCodes.CONFIGURATION_ERROR)

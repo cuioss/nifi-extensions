@@ -388,7 +388,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 // For now, we just null out the references to allow garbage collection
                 tokenValidator.set(null);
                 securityEventCounter = null;
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
+                // Catch any unexpected errors during cleanup (NullPointerException, etc.)
                 LOGGER.warn(AuthLogMessages.WARN.RESOURCE_CLEANUP_ERROR.format(e.getMessage()));
             }
         }
@@ -678,7 +679,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 LOGGER.info(AuthLogMessages.INFO.CREATED_CACHED_CONFIG.format(issuerName));
             }
             return issuerConfig;
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
+            // Catch configuration errors during issuer config creation
             LOGGER.error(e, AuthLogMessages.ERROR.ISSUER_CONFIG_ERROR.format(issuerName, e.getMessage()));
             return null;
         }
@@ -871,7 +873,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             LOGGER.info(AuthLogMessages.INFO.ISSUER_CONFIG_CREATED.format(issuerName));
 
             return issuerConfig;
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
+            // Catch configuration errors (IllegalArgumentException, NullPointerException, etc.)
             LOGGER.error(e, AuthLogMessages.ERROR.ISSUER_CONFIG_ERROR.format(issuerName, e.getMessage()));
             return null;
         }
@@ -1094,7 +1097,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             }
 
             handleError(session, flowFile, errorCode, errorMessage, category);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
+            // Catch unexpected runtime exceptions (NullPointerException, IllegalStateException, etc.)
             String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
                     .operation("onTrigger")
                     .errorCode(ErrorContext.ErrorCodes.PROCESSING_ERROR)
@@ -1248,8 +1252,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     .buildMessage("Failed to decode JWT header");
             LOGGER.warn(contextMessage);
             throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED, "Invalid JWT token format - cannot decode header");
-        } catch (Exception e) {
-            // Any other parsing error
+        } catch (RuntimeException e) {
+            // Any other parsing error (excluding TokenValidationException which extends Exception, not RuntimeException)
             String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
                     .operation(VALIDATE_TOKEN_ALGORITHM_OP)
                     .errorCode(ErrorContext.ErrorCodes.TOKEN_ERROR)
@@ -1284,7 +1288,11 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             // If no algorithm found, this is suspicious
             throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED, "JWT header does not contain algorithm field");
 
-        } catch (Exception e) {
+        } catch (TokenValidationException e) {
+            // Re-throw validation exceptions as-is
+            throw e;
+        } catch (RuntimeException e) {
+            // Catch pattern matching exceptions and other runtime errors
             throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED, "Failed to parse JWT header for algorithm");
         }
     }
