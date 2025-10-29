@@ -113,7 +113,7 @@ All frontend configuration is centralized in the root POM properties.
 
 [IMPORTANT]
 ====
-All contributors and AI tools (including GitHub Copilot, Claude, and others) **must follow the AI Development Guidelines in** link:doc/ai-rules.md[doc/ai-rules.md].
+All contributors and AI tools (including GitHub Copilot, Claude, and others) **must follow the AI Development Guidelines in** link:agents.md[agents.md].
 
-These rules are mandatory for all code, documentation, and configuration changes. See the file for process, code style, testing, logging, and documentation standards.
+These guidelines are mandatory for all code, documentation, and configuration changes. See the file for project architecture, development environment, testing, code style, and process standards.
 ====
