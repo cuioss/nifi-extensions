@@ -252,7 +252,10 @@ public class JwksValidationServlet extends HttpServlet {
     private JwksValidationResult validateJwksContent(String jwksContent) {
         try {
             // Parse as JSON to validate format
-            JsonObject jwks = Json.createReader(new StringReader(jwksContent)).readObject();
+            JsonObject jwks;
+            try (JsonReader jsonReader = Json.createReader(new StringReader(jwksContent))) {
+                jwks = jsonReader.readObject();
+            }
 
             // Check for required "keys" field
             if (!jwks.containsKey("keys")) {

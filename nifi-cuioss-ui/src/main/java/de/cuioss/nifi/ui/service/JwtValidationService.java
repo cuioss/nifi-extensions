@@ -276,8 +276,10 @@ public class JwtValidationService {
                 LOGGER.debug("Token payload: %s", payload);
 
                 // Parse JSON payload
-                JsonReader jsonReader = Json.createReader(new StringReader(payload));
-                JsonObject claims = jsonReader.readObject();
+                JsonObject claims;
+                try (JsonReader jsonReader = Json.createReader(new StringReader(payload))) {
+                    claims = jsonReader.readObject();
+                }
 
                 // Check for expiration
                 if (claims.containsKey("exp")) {
