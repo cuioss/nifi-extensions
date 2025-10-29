@@ -1032,7 +1032,7 @@ const _removeIssuerFromServer = async (processorId, issuerName, globalErrorConta
 const removeIssuer = async (form, issuerNameFromClick) => {
     form.remove();
 
-    const processorId = getProcessorIdFromUrl(window.location.href);
+    const processorId = getProcessorIdFromUrl(globalThis.location.href);
     const issuerName = issuerNameFromClick;
     const globalErrorContainer = _findGlobalErrorContainer();
 
@@ -1075,7 +1075,7 @@ const _validateInitializationParams = (element, callback) => {
  * @returns {string} The effective URL to use for initialization
  */
 const _getEffectiveInitUrl = () => {
-    return window.location.href;
+    return globalThis.location.href;
 };
 
 /**

@@ -49,7 +49,7 @@ export const initKeyboardShortcuts = () => {
     document.addEventListener('keydown', handleKeydown);
 
     // Store handler reference for cleanup
-    window.__keyboardShortcutHandler = handleKeydown;
+    globalThis.__keyboardShortcutHandler = handleKeydown;
 
     // Show shortcuts hint
     showShortcutsHint();
@@ -390,9 +390,9 @@ export const unregisterShortcut = (shortcut) => {
  * Clean up keyboard shortcut handlers
  */
 export const cleanup = () => {
-    if (window.__keyboardShortcutHandler) {
-        document.removeEventListener('keydown', window.__keyboardShortcutHandler);
-        delete window.__keyboardShortcutHandler;
+    if (globalThis.__keyboardShortcutHandler) {
+        document.removeEventListener('keydown', globalThis.__keyboardShortcutHandler);
+        delete globalThis.__keyboardShortcutHandler;
     }
     activeHandlers.clear();
     document.querySelectorAll('.keyboard-shortcuts-modal, .keyboard-action-feedback, .shortcuts-hint').forEach(el => el.remove());

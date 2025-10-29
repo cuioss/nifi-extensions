@@ -26,17 +26,17 @@
     <link rel="stylesheet" href="webjars/font-awesome/6.7.2/css/all.min.css">
     <link rel="stylesheet" href="webjars/font-awesome/6.7.2/css/v4-shims.min.css">
 
-    <!-- NiFi will provide window.nf.Common in production -->
+    <!-- NiFi will provide globalThis.nf.Common in production -->
     <script type="text/javascript">
         // In production, NiFi provides the nf.Common object
         // Map it to nfCommon for compatibility with our code
-        if (typeof window.nf !== 'undefined' && window.nf.Common) {
-            window.nfCommon = window.nf.Common;
-        } else if (typeof window.nfCommon === 'undefined') {
+        if (typeof globalThis.nf !== 'undefined' && globalThis.nf.Common) {
+            globalThis.nfCommon = globalThis.nf.Common;
+        } else if (typeof globalThis.nfCommon === 'undefined') {
             // Only log error if nfCommon is not already available from another source
             console.warn('NiFi Common API not available. UI functionality may be limited.');
             // Create a minimal stub to prevent errors
-            window.nfCommon = {
+            globalThis.nfCommon = {
                 registerCustomUiTab: function() { console.warn('registerCustomUiTab called but NiFi API not available'); },
                 getI18n: function() { 
                     return { 
@@ -98,9 +98,9 @@
             console.log('DOM loaded, initializing JWT UI...');
             
             // Initialize the UI components - the bundle exposes nifiCuiossUI global variable
-            if (window.nifiCuiossUI && typeof window.nifiCuiossUI.init === 'function') {
+            if (globalThis.nifiCuiossUI && typeof globalThis.nifiCuiossUI.init === 'function') {
                 console.log('Initializing JWT UI from Vite bundle');
-                window.nifiCuiossUI.init().then(function(success) {
+                globalThis.nifiCuiossUI.init().then(function(success) {
                     if (success) {
                         console.log('JWT UI initialization completed successfully');
                     } else {
@@ -115,7 +115,7 @@
         });
         
         // Add global error handler for debugging
-        window.addEventListener('error', function(event) {
+        globalThis.addEventListener('error', function(event) {
             console.error('Global error:', event.error);
         });
     </script>

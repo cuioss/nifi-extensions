@@ -24,17 +24,17 @@ const BASE_URL = API.BASE_URL;
  */
 const getAuthConfig = () => {
     // First check if we have stored auth config
-    if (window.jwtAuthConfig && window.jwtAuthConfig.processorId) {
-        return window.jwtAuthConfig;
+    if (globalThis.jwtAuthConfig && globalThis.jwtAuthConfig.processorId) {
+        return globalThis.jwtAuthConfig;
     }
 
     // Get processor ID from URL parameters (this is safe - it's just an identifier)
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = new URLSearchParams(globalThis.location.search);
     const processorId = urlParams.get('id') || urlParams.get('processorId');  // NiFi uses 'id' parameter
 
     if (processorId) {
-        window.jwtAuthConfig = { processorId };
-        return window.jwtAuthConfig;
+        globalThis.jwtAuthConfig = { processorId };
+        return globalThis.jwtAuthConfig;
     }
 
     // Return default config if not available (for standalone testing)

@@ -55,9 +55,9 @@ const registerComponents = () => {
 
         // Skip registerCustomUiTab calls in standalone mode - tabs already exist in HTML
         // In production NiFi environment, these would register with the real NiFi framework
-        const isStandaloneMode = window.location.href.includes('nifi-cuioss-ui') ||
-                                 window.location.href.includes('localhost:9095') ||
-                                 window.location.pathname.includes('/nifi-cuioss-ui');
+        const isStandaloneMode = globalThis.location.href.includes('nifi-cuioss-ui') ||
+                                 globalThis.location.href.includes('localhost:9095') ||
+                                 globalThis.location.pathname.includes('/nifi-cuioss-ui');
         if (typeof nfCommon.registerCustomUiTab === 'function' && !isStandaloneMode) {
             // Only register tabs when running inside NiFi (not standalone)
             nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.ISSUER_CONFIG, issuerConfigEditor);
@@ -69,7 +69,7 @@ const registerComponents = () => {
         }
 
         // Set flag for test compatibility
-        window.jwtComponentsRegistered = true;
+        globalThis.jwtComponentsRegistered = true;
 
         // Components registered successfully
         return true;
@@ -177,7 +177,7 @@ const setupContinuousLoadingMonitoring = () => {
         });
 
         // Store observer for cleanup
-        window.jwtLoadingObserver = loadingObserver;
+        globalThis.jwtLoadingObserver = loadingObserver;
     }
 
     // Set up periodic monitoring as additional safety net
@@ -232,8 +232,8 @@ const setupTooltipObserver = () => {
         });
 
         // Store observer for cleanup
-        if (!window.nifiJwtTooltipObserver) {
-            window.nifiJwtTooltipObserver = observer;
+        if (!globalThis.nifiJwtTooltipObserver) {
+            globalThis.nifiJwtTooltipObserver = observer;
         }
     } catch (error) {
         // eslint-disable-next-line no-console
@@ -292,7 +292,7 @@ const setupUI = () => {
         updateTranslations();
 
         // Set a flag to indicate UI setup is complete
-        window.jwtUISetupComplete = true;
+        globalThis.jwtUISetupComplete = true;
     } catch (error) {
         console.error('Error in setupUI():', error);
         // Fallback: try basic hiding without additional logic
@@ -381,7 +381,7 @@ const initializeTabContent = () => {
         if (issuerConfigElement) {
             // Provide required parameters: element, callback, url
             const callback = () => logger.debug('Issuer config initialized');
-            const url = window.location.href;
+            const url = globalThis.location.href;
             issuerConfigEditor.init(issuerConfigElement, callback, url);
         } else {
             logger.warn('Issuer config tab element not found');
@@ -413,7 +413,7 @@ const initializeTabContent = () => {
                     const issuerElement = document.getElementById('issuer-config');
                     if (issuerElement) {
                         const callback = () => logger.debug('Issuer config re-initialized');
-                        const url = window.location.href;
+                        const url = globalThis.location.href;
                         issuerConfigEditor.init(issuerElement, callback, url);
                     }
                     break;
@@ -465,13 +465,13 @@ export const init = () => {
             logger.debug('JWT UI initialization starting...');
 
             // Prevent double initialization
-            if (window.jwtInitializationInProgress || window.jwtUISetupComplete) {
+            if (globalThis.jwtInitializationInProgress || globalThis.jwtUISetupComplete) {
                 logger.debug('Initialization already in progress or complete, skipping');
                 resolve(true);
                 return;
             }
 
-            window.jwtInitializationInProgress = true;
+            globalThis.jwtInitializationInProgress = true;
 
             // CRITICAL: Hide loading indicator immediately as first action
             logger.info('PRIORITY: Hiding loading indicator immediately');
@@ -522,7 +522,7 @@ export const init = () => {
                 updateTranslations();
             }, API.TIMEOUTS.DIALOG_DELAY);
 
-            window.jwtInitializationInProgress = false;
+            globalThis.jwtInitializationInProgress = false;
             resolve(success);
         } catch (error) {
             console.error('JWT UI initialization failed:', error);
@@ -531,7 +531,7 @@ export const init = () => {
             hideLoadingIndicatorRobust();
             setupUI();
 
-            window.jwtInitializationInProgress = false;
+            globalThis.jwtInitializationInProgress = false;
             resolve(false);
         }
     });
@@ -556,10 +556,10 @@ const hideLoadingIndicatorRobust = () => {
         hideLoadingByTextContent();
 
         // Set completion flag
-        window.jwtLoadingIndicatorHidden = true;
+        globalThis.jwtLoadingIndicatorHidden = true;
 
         // Expose hiding function for test access
-        window.jwtHideLoadingIndicator = hideLoadingIndicatorRobust;
+        globalThis.jwtHideLoadingIndicator = hideLoadingIndicatorRobust;
         logger.debug('hideLoadingIndicatorRobust: Comprehensive loading indicator removal completed');
     } catch (error) {
         console.warn('Error in hideLoadingIndicatorRobust:', error);
@@ -723,15 +723,15 @@ export const cleanup = () => {
         cleanupTabs();
 
         // Cleanup tooltip observer
-        if (window.nifiJwtTooltipObserver) {
-            window.nifiJwtTooltipObserver.disconnect();
-            window.nifiJwtTooltipObserver = null;
+        if (globalThis.nifiJwtTooltipObserver) {
+            globalThis.nifiJwtTooltipObserver.disconnect();
+            globalThis.nifiJwtTooltipObserver = null;
         }
 
         // Cleanup loading observer
-        if (window.jwtLoadingObserver) {
-            window.jwtLoadingObserver.disconnect();
-            window.jwtLoadingObserver = null;
+        if (globalThis.jwtLoadingObserver) {
+            globalThis.jwtLoadingObserver.disconnect();
+            globalThis.jwtLoadingObserver = null;
         }
 
         // JWT UI cleanup completed

@@ -28,7 +28,8 @@ module.exports = {
     'globals': {
         'define': 'readonly',
         'nf': 'readonly',
-        'module': 'writable'
+        'module': 'writable',
+        'globalThis': 'readonly'
     },
     'rules': {
         // Error prevention - Allow structured logging methods but fail on console.log

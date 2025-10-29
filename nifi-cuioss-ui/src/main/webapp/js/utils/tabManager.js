@@ -72,7 +72,7 @@ export const initTabs = () => {
     document.addEventListener('click', handleTabClick);
 
     // Store handler reference for cleanup
-    window.__tabClickHandler = handleTabClick;
+    globalThis.__tabClickHandler = handleTabClick;
 };
 
 /**
@@ -149,9 +149,9 @@ export const setTabState = (tabId, state) => {
  * Clean up tab event handlers
  */
 export const cleanupTabs = () => {
-    if (window.__tabClickHandler) {
-        document.removeEventListener('click', window.__tabClickHandler);
-        delete window.__tabClickHandler;
+    if (globalThis.__tabClickHandler) {
+        document.removeEventListener('click', globalThis.__tabClickHandler);
+        delete globalThis.__tabClickHandler;
     }
     logger.debug('Tab manager cleaned up');
 };

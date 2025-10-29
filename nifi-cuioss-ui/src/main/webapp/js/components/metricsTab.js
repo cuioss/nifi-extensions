@@ -329,14 +329,14 @@ const handleExport = (format) => {
 
     // Create and trigger download
     const blob = new Blob([content], { type: mimeType });
-    const url = window.URL.createObjectURL(blob);
+    const url = globalThis.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+    globalThis.URL.revokeObjectURL(url);
 
     logger.info(`Exported metrics as ${filename}`);
 };
@@ -575,4 +575,4 @@ export const getDisplayName = () => {
 };
 
 // Export refreshMetrics for global access
-window.metricsTab = { refreshMetrics };
+globalThis.metricsTab = { refreshMetrics };
