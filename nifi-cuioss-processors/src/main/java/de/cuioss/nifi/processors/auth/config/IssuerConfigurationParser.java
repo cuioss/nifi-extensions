@@ -38,11 +38,11 @@ public class IssuerConfigurationParser {
     private static final String ISSUER_PREFIX = "issuer.";
     private static final String NAME_SUFFIX = ".name";
     private static final String JWKS_URL_SUFFIX = ".jwks.url";
-    private static final String JWKS_FILE_SUFFIX = ".jwks.file";
-    private static final String JWKS_CONTENT_SUFFIX = ".jwks.content";
-    private static final String AUDIENCE_SUFFIX = ".audience";
-    private static final String CLIENT_ID_SUFFIX = ".client.id";
-    private static final String ENABLED_SUFFIX = ".enabled";
+
+    // Private constructor to prevent instantiation
+    private IssuerConfigurationParser() {
+        throw new UnsupportedOperationException("Utility class");
+    }
 
     /**
      * Extracts all issuer configurations from processor properties.

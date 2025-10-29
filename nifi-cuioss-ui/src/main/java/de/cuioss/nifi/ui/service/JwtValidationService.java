@@ -244,7 +244,7 @@ public class JwtValidationService {
 
                 return claims;
             }
-            return null;
+            return Collections.emptyMap();
         }
     }
 

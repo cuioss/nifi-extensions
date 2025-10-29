@@ -34,6 +34,11 @@ public class AuthorizationValidator {
 
     private static final CuiLogger LOGGER = new CuiLogger(AuthorizationValidator.class);
 
+    // Private constructor to prevent instantiation
+    private AuthorizationValidator() {
+        throw new UnsupportedOperationException("Utility class");
+    }
+
     /**
      * Configuration for authorization validation.
      */
