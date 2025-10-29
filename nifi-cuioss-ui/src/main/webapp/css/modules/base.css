@@ -684,7 +684,7 @@ button:hover {
 .error-message.validation-error {
     background-color: #fff3e0;
     border-color: #ffcc80;
-    color: #f57f17;
+    color: #e65100;
 }
 
 .error-message.validation-error::before {
@@ -785,7 +785,7 @@ button:hover {
     position: relative;
     padding: 12px 16px;
     border: 1px solid #90caf9;
-    color: #1976d2;
+    color: #0d47a1;
     background-color: #e3f2fd;
     border-radius: 6px;
     margin-bottom: 12px;
@@ -808,7 +808,7 @@ button:hover {
     position: relative;
     padding: 12px 16px;
     border: 1px solid #fff176;
-    color: #f57f17;
+    color: #e65100;
     background-color: #fffde7;
     border-radius: 6px;
     margin-bottom: 12px;
