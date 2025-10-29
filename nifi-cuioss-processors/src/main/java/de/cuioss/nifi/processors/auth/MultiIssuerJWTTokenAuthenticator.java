@@ -125,6 +125,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private static final String JWKS_TYPE_MEMORY = "memory";
     private static final String ISSUER_PREFIX_STRING = "Issuer ";
     private static final String ISSUER_CONFIG_PREFIX = "jwt.validation.issuer.";
+    private static final String BOOLEAN_FALSE = "false";
 
     // TokenValidator instance for token validation
     private final AtomicReference<TokenValidator> tokenValidator = new AtomicReference<>();
@@ -977,8 +978,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     // Set attributes to indicate no token was present
                     Map<String, String> attributes = new HashMap<>();
                     attributes.put(JWTAttributes.Error.REASON, "No token provided");
-                    attributes.put(JWTAttributes.Token.PRESENT, "false");
-                    attributes.put(JWTAttributes.Authorization.AUTHORIZED, "false");
+                    attributes.put(JWTAttributes.Token.PRESENT, BOOLEAN_FALSE);
+                    attributes.put(JWTAttributes.Authorization.AUTHORIZED, BOOLEAN_FALSE);
 
                     flowFile = session.putAllAttributes(flowFile, attributes);
                     session.transfer(flowFile, Relationships.SUCCESS);
@@ -1344,7 +1345,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      */
     private AuthorizationValidator.AuthorizationConfig createAuthorizationConfig(String issuerName, Map<String, String> properties) {
         // Check if bypass authorization is explicitly set
-        boolean bypassAuthorization = Boolean.parseBoolean(properties.getOrDefault(Issuer.BYPASS_AUTHORIZATION, "false"));
+        boolean bypassAuthorization = Boolean.parseBoolean(properties.getOrDefault(Issuer.BYPASS_AUTHORIZATION, BOOLEAN_FALSE));
 
         if (bypassAuthorization) {
             LOGGER.warn(AuthLogMessages.WARN.AUTHORIZATION_BYPASS_ENABLED.format(issuerName));
@@ -1380,8 +1381,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         }
 
         // Get boolean properties
-        boolean requireAllScopes = Boolean.parseBoolean(properties.getOrDefault(Issuer.REQUIRE_ALL_SCOPES, "false"));
-        boolean requireAllRoles = Boolean.parseBoolean(properties.getOrDefault(Issuer.REQUIRE_ALL_ROLES, "false"));
+        boolean requireAllScopes = Boolean.parseBoolean(properties.getOrDefault(Issuer.REQUIRE_ALL_SCOPES, BOOLEAN_FALSE));
+        boolean requireAllRoles = Boolean.parseBoolean(properties.getOrDefault(Issuer.REQUIRE_ALL_ROLES, BOOLEAN_FALSE));
         boolean caseSensitive = Boolean.parseBoolean(properties.getOrDefault(Issuer.CASE_SENSITIVE_MATCHING, "true"));
 
         return AuthorizationValidator.AuthorizationConfig.builder()

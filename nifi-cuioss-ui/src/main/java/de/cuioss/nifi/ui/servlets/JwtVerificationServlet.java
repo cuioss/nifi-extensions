@@ -57,6 +57,9 @@ public class JwtVerificationServlet extends HttpServlet {
     private static final JsonReaderFactory JSON_READER = Json.createReaderFactory(Map.of());
     private static final JsonWriterFactory JSON_WRITER = Json.createWriterFactory(Map.of());
 
+    private static final String JSON_KEY_ISSUER = "issuer";
+    private static final String JSON_KEY_CLAIMS = "claims";
+
     private final JwtValidationService validationService;
 
     public JwtVerificationServlet() {
@@ -97,7 +100,7 @@ public class JwtVerificationServlet extends HttpServlet {
 
         String token = requestJson.getString("token");
         String processorId = requestJson.containsKey("processorId") ? requestJson.getString("processorId") : null;
-        String expectedIssuer = requestJson.containsKey("issuer") ? requestJson.getString("issuer") : null;
+        String expectedIssuer = requestJson.containsKey(JSON_KEY_ISSUER) ? requestJson.getString(JSON_KEY_ISSUER) : null;
 
         LOGGER.info("Request received - processorId: %s, token: %s", processorId, token);
 
@@ -203,7 +206,7 @@ public class JwtVerificationServlet extends HttpServlet {
 
         // Add additional fields for E2E tests
         if (result.getIssuer() != null) {
-            responseBuilder.add("issuer", result.getIssuer());
+            responseBuilder.add(JSON_KEY_ISSUER, result.getIssuer());
         }
 
         if (result.getExpiredAt() != null) {
@@ -261,9 +264,9 @@ public class JwtVerificationServlet extends HttpServlet {
                 }
             }
 
-            responseBuilder.add("claims", claimsBuilder);
+            responseBuilder.add(JSON_KEY_CLAIMS, claimsBuilder);
         } else {
-            responseBuilder.add("claims", Json.createObjectBuilder());
+            responseBuilder.add(JSON_KEY_CLAIMS, Json.createObjectBuilder());
         }
 
         JsonObject responseJson = responseBuilder.build();
@@ -303,7 +306,7 @@ public class JwtVerificationServlet extends HttpServlet {
         JsonObject errorResponse = Json.createObjectBuilder()
                 .add("valid", valid)
                 .add("error", errorMessage)
-                .add("claims", Json.createObjectBuilder())
+                .add(JSON_KEY_CLAIMS, Json.createObjectBuilder())
                 .build();
 
         resp.setContentType("application/json");

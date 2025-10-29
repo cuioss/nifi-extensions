@@ -43,6 +43,9 @@ public class JwtValidationService {
 
     private static final CuiLogger LOGGER = new CuiLogger(JwtValidationService.class);
 
+    private static final String CLAIM_ROLES = "roles";
+    private static final String CLAIM_SCOPES = "scopes";
+
     /**
      * Verifies a JWT token using the processor's configuration.
      * 
@@ -230,13 +233,13 @@ public class JwtValidationService {
                 // Add roles as a list if available
                 List<String> roles = tokenContent.getRoles();
                 if (!roles.isEmpty()) {
-                    claims.put("roles", roles);
+                    claims.put(CLAIM_ROLES, roles);
                 }
 
                 // Add scopes as a list if available
                 List<String> scopes = tokenContent.getScopes();
                 if (!scopes.isEmpty()) {
-                    claims.put("scopes", scopes);
+                    claims.put(CLAIM_SCOPES, scopes);
                 }
 
                 return claims;
@@ -299,16 +302,16 @@ public class JwtValidationService {
                 claimsMap.put("exp", claims.containsKey("exp") ? claims.getJsonNumber("exp").toString() : "");
 
                 // Extract scopes and roles if present
-                if (claims.containsKey("scopes")) {
+                if (claims.containsKey(CLAIM_SCOPES)) {
                     List<String> scopes = new ArrayList<>();
-                    claims.getJsonArray("scopes").forEach(v -> scopes.add(v.toString().replace("\"", "")));
-                    claimsMap.put("scopes", scopes);
+                    claims.getJsonArray(CLAIM_SCOPES).forEach(v -> scopes.add(v.toString().replace("\"", "")));
+                    claimsMap.put(CLAIM_SCOPES, scopes);
                 }
 
-                if (claims.containsKey("roles")) {
+                if (claims.containsKey(CLAIM_ROLES)) {
                     List<String> roles = new ArrayList<>();
-                    claims.getJsonArray("roles").forEach(v -> roles.add(v.toString().replace("\"", "")));
-                    claimsMap.put("roles", roles);
+                    claims.getJsonArray(CLAIM_ROLES).forEach(v -> roles.add(v.toString().replace("\"", "")));
+                    claimsMap.put(CLAIM_ROLES, roles);
                 }
 
                 // Create successful result
@@ -317,10 +320,10 @@ public class JwtValidationService {
                 result.setIssuer(claims.getString("iss", "test-issuer"));
 
                 // Check authorization if requested
-                if (claims.containsKey("scopes") || claims.containsKey("roles")) {
+                if (claims.containsKey(CLAIM_SCOPES) || claims.containsKey(CLAIM_ROLES)) {
                     result.setAuthorized(true);
-                    result.setScopes((List<String>) claimsMap.get("scopes"));
-                    result.setRoles((List<String>) claimsMap.get("roles"));
+                    result.setScopes((List<String>) claimsMap.get(CLAIM_SCOPES));
+                    result.setRoles((List<String>) claimsMap.get(CLAIM_ROLES));
                 }
 
                 return result;

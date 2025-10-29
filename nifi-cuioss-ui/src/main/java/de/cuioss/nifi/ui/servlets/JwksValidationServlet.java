@@ -49,6 +49,7 @@ import java.util.Map;
 public class JwksValidationServlet extends HttpServlet {
 
     private static final CuiLogger LOGGER = new CuiLogger(JwksValidationServlet.class);
+    private static final String CONTENT_TYPE_JSON = "application/json";
     private static final JsonReaderFactory JSON_READER = Json.createReaderFactory(Map.of());
     private static final JsonWriterFactory JSON_WRITER = Json.createWriterFactory(Map.of());
 
@@ -173,7 +174,7 @@ public class JwksValidationServlet extends HttpServlet {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(uri)
                     .timeout(Duration.ofSeconds(10))
-                    .header("Accept", "application/json")
+                    .header("Accept", CONTENT_TYPE_JSON)
                     .GET()
                     .build();
 
@@ -314,7 +315,7 @@ public class JwksValidationServlet extends HttpServlet {
                         Json.createArrayBuilder(result.getAlgorithms()) : Json.createArrayBuilder())
                 .build();
 
-        resp.setContentType("application/json");
+        resp.setContentType(CONTENT_TYPE_JSON);
         resp.setCharacterEncoding("UTF-8");
         resp.setStatus(result.isValid() ? 200 : 400);
 
@@ -341,7 +342,7 @@ public class JwksValidationServlet extends HttpServlet {
                 .add("algorithms", Json.createArrayBuilder())
                 .build();
 
-        resp.setContentType("application/json");
+        resp.setContentType(CONTENT_TYPE_JSON);
         resp.setCharacterEncoding("UTF-8");
         resp.setStatus(statusCode);
 
