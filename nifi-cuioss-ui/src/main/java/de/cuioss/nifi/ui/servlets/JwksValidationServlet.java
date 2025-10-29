@@ -55,16 +55,21 @@ public class JwksValidationServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
-            throws ServletException, IOException {
+            throws ServletException {
 
         String requestPath = req.getServletPath();
         LOGGER.debug("Received JWKS validation request for path: %s", requestPath);
 
-        switch (requestPath) {
-            case "/nifi-api/processors/jwt/validate-jwks-url" -> handleJwksUrlValidation(req, resp);
-            case "/nifi-api/processors/jwt/validate-jwks-file" -> handleJwksFileValidation(req, resp);
-            case "/nifi-api/processors/jwt/validate-jwks-content" -> handleJwksContentValidation(req, resp);
-            default -> sendErrorResponse(resp, 404, "Endpoint not found");
+        try {
+            switch (requestPath) {
+                case "/nifi-api/processors/jwt/validate-jwks-url" -> handleJwksUrlValidation(req, resp);
+                case "/nifi-api/processors/jwt/validate-jwks-file" -> handleJwksFileValidation(req, resp);
+                case "/nifi-api/processors/jwt/validate-jwks-content" -> handleJwksContentValidation(req, resp);
+                default -> sendErrorResponse(resp, 404, "Endpoint not found");
+            }
+        } catch (IOException e) {
+            LOGGER.error(e, "Failed to handle JWKS validation request for path: %s", requestPath);
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }
 

@@ -86,7 +86,7 @@ public class MetricsServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
-            throws ServletException, IOException {
+            throws ServletException {
 
         LOGGER.debug("Received metrics request");
 
@@ -107,9 +107,17 @@ public class MetricsServlet extends HttpServlet {
                 LOGGER.debug("Sent metrics response");
             }
 
+        } catch (IOException e) {
+            LOGGER.error(e, "Error writing metrics response");
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         } catch (Exception e) {
             LOGGER.error(e, "Error collecting metrics");
-            sendErrorResponse(resp, 500, "Error collecting metrics");
+            try {
+                sendErrorResponse(resp, 500, "Error collecting metrics");
+            } catch (IOException ioException) {
+                LOGGER.error(ioException, "Failed to send error response");
+                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            }
         }
     }
 

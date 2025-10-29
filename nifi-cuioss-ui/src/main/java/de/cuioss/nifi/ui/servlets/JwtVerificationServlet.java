@@ -73,7 +73,7 @@ public class JwtVerificationServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
-            throws ServletException, IOException {
+            throws ServletException {
 
         LOGGER.debug("Received JWT verification request");
 
@@ -83,18 +83,33 @@ public class JwtVerificationServlet extends HttpServlet {
             requestJson = reader.readObject();
         } catch (JsonException e) {
             LOGGER.warn("Invalid JSON format in request: %s", e.getMessage());
-            sendErrorResponse(resp, 400, "Invalid JSON format", false);
+            try {
+                sendErrorResponse(resp, 400, "Invalid JSON format", false);
+            } catch (IOException ioException) {
+                LOGGER.error(ioException, "Failed to send error response");
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            }
             return;
         } catch (IOException e) {
             LOGGER.error(e, "Error reading request body");
-            sendErrorResponse(resp, 500, "Error reading request", false);
+            try {
+                sendErrorResponse(resp, 500, "Error reading request", false);
+            } catch (IOException ioException) {
+                LOGGER.error(ioException, "Failed to send error response");
+                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            }
             return;
         }
 
         // 2. Validate required fields
         if (!requestJson.containsKey("token")) {
             LOGGER.warn("Missing required field: token");
-            sendErrorResponse(resp, 400, "Missing required field: token", false);
+            try {
+                sendErrorResponse(resp, 400, "Missing required field: token", false);
+            } catch (IOException e) {
+                LOGGER.error(e, "Failed to send error response");
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            }
             return;
         }
 
@@ -123,7 +138,12 @@ public class JwtVerificationServlet extends HttpServlet {
         }
 
         if (token == null || token.trim().isEmpty()) {
-            sendErrorResponse(resp, 400, "Token cannot be empty", false);
+            try {
+                sendErrorResponse(resp, 400, "Token cannot be empty", false);
+            } catch (IOException e) {
+                LOGGER.error(e, "Failed to send error response");
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            }
             return;
         }
 
@@ -137,7 +157,12 @@ public class JwtVerificationServlet extends HttpServlet {
         boolean useTestMode = isE2ETest || (processorId != null && processorId.trim().isEmpty());
 
         if (!useTestMode && (processorId == null || processorId.trim().isEmpty())) {
-            sendErrorResponse(resp, 400, "Processor ID cannot be empty", false);
+            try {
+                sendErrorResponse(resp, 400, "Processor ID cannot be empty", false);
+            } catch (IOException e) {
+                LOGGER.error(e, "Failed to send error response");
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            }
             return;
         }
 
@@ -174,24 +199,49 @@ public class JwtVerificationServlet extends HttpServlet {
             }
         } catch (IllegalArgumentException e) {
             LOGGER.warn("Invalid request for processor %s: %s", processorId, e.getMessage());
-            sendErrorResponse(resp, 400, "Invalid request: " + e.getMessage(), false);
+            try {
+                sendErrorResponse(resp, 400, "Invalid request: " + e.getMessage(), false);
+            } catch (IOException ioException) {
+                LOGGER.error(ioException, "Failed to send error response");
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            }
             return;
         } catch (IllegalStateException e) {
             LOGGER.error("Service not available for processor %s: %s", processorId, e.getMessage());
-            sendErrorResponse(resp, 500, "Service not available: " + e.getMessage(), false);
+            try {
+                sendErrorResponse(resp, 500, "Service not available: " + e.getMessage(), false);
+            } catch (IOException ioException) {
+                LOGGER.error(ioException, "Failed to send error response");
+                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            }
             return;
         } catch (IOException e) {
             LOGGER.error(e, "Communication error for processor %s", processorId);
-            sendErrorResponse(resp, 500, "Communication error: " + e.getMessage(), false);
+            try {
+                sendErrorResponse(resp, 500, "Communication error: " + e.getMessage(), false);
+            } catch (IOException ioException) {
+                LOGGER.error(ioException, "Failed to send error response");
+                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            }
             return;
         } catch (RuntimeException e) {
             LOGGER.error(e, "Unexpected error during token verification for processor %s", processorId);
-            sendErrorResponse(resp, 500, "Internal server error", false);
+            try {
+                sendErrorResponse(resp, 500, "Internal server error", false);
+            } catch (IOException ioException) {
+                LOGGER.error(ioException, "Failed to send error response");
+                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            }
             return;
         }
 
         // 4. Build and send JSON response
-        sendValidationResponse(resp, result);
+        try {
+            sendValidationResponse(resp, result);
+        } catch (IOException e) {
+            LOGGER.error(e, "Failed to send validation response");
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
