@@ -55,7 +55,7 @@ class MetricsServletTest {
     private TestServletOutputStream servletOutputStream;
 
     @BeforeEach
-    void setUp() throws IOException {
+    void setUp() {
         outputStream = new ByteArrayOutputStream();
         servletOutputStream = new TestServletOutputStream(outputStream);
 

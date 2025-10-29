@@ -118,6 +118,14 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     private static final CuiLogger LOGGER = new CuiLogger(MultiIssuerJWTTokenAuthenticator.class);
 
+    // Constants for string literals used multiple times
+    private static final String COMPONENT_NAME = "MultiIssuerJWTTokenAuthenticator";
+    private static final String FLOW_FILE_UUID_KEY = "flowFileUuid";
+    private static final String VALIDATE_TOKEN_ALGORITHM_OP = "validateTokenAlgorithm";
+    private static final String JWKS_TYPE_MEMORY = "memory";
+    private static final String ISSUER_PREFIX_STRING = "Issuer ";
+    private static final String ISSUER_CONFIG_PREFIX = "jwt.validation.issuer.";
+
     // TokenValidator instance for token validation
     private final AtomicReference<TokenValidator> tokenValidator = new AtomicReference<>();
 
@@ -752,16 +760,16 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             case "file" -> {
                 // Check required properties for file type
                 if (!properties.containsKey(Issuer.JWKS_FILE) || properties.get(Issuer.JWKS_FILE).isEmpty()) {
-                    errors.add("Issuer " + issuerName + " is configured with jwks-type 'file' but missing jwks-file property");
+                    errors.add(ISSUER_PREFIX_STRING + issuerName + " is configured with jwks-type 'file' but missing jwks-file property");
                 }
             }
-            case "memory" -> {
+            case JWKS_TYPE_MEMORY -> {
                 // Check required properties for memory type
                 if (!properties.containsKey(Issuer.JWKS_CONTENT) || properties.get(Issuer.JWKS_CONTENT).isEmpty()) {
-                    errors.add("Issuer " + issuerName + " is configured with jwks-type 'memory' but missing jwks-content property");
+                    errors.add(ISSUER_PREFIX_STRING + issuerName + " is configured with jwks-type 'memory' but missing jwks-content property");
                 }
             }
-            default -> errors.add("Issuer " + issuerName + " has invalid jwks-type: " + jwksType);
+            default -> errors.add(ISSUER_PREFIX_STRING + issuerName + " has invalid jwks-type: " + jwksType);
         }
 
         // Check issuer property
@@ -814,7 +822,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     return null;
                 }
             }
-            case "memory" -> {
+            case JWKS_TYPE_MEMORY -> {
                 jwksSource = properties.get(Issuer.JWKS_CONTENT);
                 if (jwksSource == null || jwksSource.isEmpty()) {
                     LOGGER.warn("Missing jwks-content for issuer: %s", issuerName);
@@ -833,7 +841,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         // Log the properties for debugging
         LOGGER.info("Creating issuer configuration for %s with properties: jwksType=%s, jwksSource=%s, issuer=%s, audience=%s, clientId=%s",
-                issuerName, jwksType, "memory".equals(jwksType) ? "[CONTENT]" : jwksSource, issuer, audience, clientId);
+                issuerName, jwksType, JWKS_TYPE_MEMORY.equals(jwksType) ? "[CONTENT]" : jwksSource, issuer, audience, clientId);
 
         try {
             // Create issuer configuration using builder pattern
@@ -846,16 +854,16 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
             // Configure JWKS source based on type
             switch (jwksType) {
-                case "url", "file" -> {
+                case "url", "file" ->
                     // For both URL and file, use jwksFilePath (the library handles both)
                     builder.jwksFilePath(jwksSource);
-                }
-                case "memory" -> {
+                case JWKS_TYPE_MEMORY ->
                     // For memory, we need to use jwksContent directly
                     // Note: This assumes the library supports setting JWKS content directly
                     // If not, we may need to create a temporary file or use a different approach
                     builder.jwksFilePath(jwksSource); // This might need adjustment based on library capabilities
-                }
+                default ->
+                    LOGGER.warn("Unknown jwks-type '%s', attempting to use jwksFilePath", jwksType);
             }
 
             IssuerConfig issuerConfig = builder.build();
@@ -977,12 +985,12 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     return;
                 } else {
                     // If valid token is required, route to failure
-                    String contextMessage = ErrorContext.forComponent("MultiIssuerJWTTokenAuthenticator")
+                    String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
                             .operation("extractToken")
                             .errorCode(ErrorContext.ErrorCodes.VALIDATION_ERROR)
                             .build()
                             .with("tokenLocation", tokenLocation)
-                            .with("flowFileUuid", flowFile.getAttribute("uuid"))
+                            .with(FLOW_FILE_UUID_KEY, flowFile.getAttribute("uuid"))
                             .buildMessage("No token found in the specified location");
 
                     LOGGER.warn(contextMessage);
@@ -1000,13 +1008,13 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             // Check token size limits
             int maxTokenSize = context.getProperty(Properties.MAXIMUM_TOKEN_SIZE).asInteger();
             if (token.length() > maxTokenSize) {
-                String contextMessage = ErrorContext.forComponent("MultiIssuerJWTTokenAuthenticator")
+                String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
                         .operation("validateTokenSize")
                         .errorCode(ErrorContext.ErrorCodes.VALIDATION_ERROR)
                         .build()
                         .with("tokenSize", token.length())
                         .with("maxTokenSize", maxTokenSize)
-                        .with("flowFileUuid", flowFile.getAttribute("uuid"))
+                        .with(FLOW_FILE_UUID_KEY, flowFile.getAttribute("uuid"))
                         .buildMessage("Token exceeds maximum size limit");
 
                 LOGGER.warn(contextMessage);
@@ -1022,12 +1030,12 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
             // Check for obviously malformed tokens (should have at least 2 dots for header.payload.signature)
             if (!token.contains(".")) {
-                String contextMessage = ErrorContext.forComponent("MultiIssuerJWTTokenAuthenticator")
+                String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
                         .operation("validateTokenFormat")
                         .errorCode(ErrorContext.ErrorCodes.TOKEN_ERROR)
                         .build()
                         .with("tokenSegments", token.split("\\.").length)
-                        .with("flowFileUuid", flowFile.getAttribute("uuid"))
+                        .with(FLOW_FILE_UUID_KEY, flowFile.getAttribute("uuid"))
                         .buildMessage("Token is malformed (missing segments)");
 
                 LOGGER.warn(contextMessage);
@@ -1086,12 +1094,12 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
             handleError(session, flowFile, errorCode, errorMessage, category);
         } catch (Exception e) {
-            String contextMessage = ErrorContext.forComponent("MultiIssuerJWTTokenAuthenticator")
+            String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
                     .operation("onTrigger")
                     .errorCode(ErrorContext.ErrorCodes.PROCESSING_ERROR)
                     .cause(e)
                     .build()
-                    .with("flowFileUuid", flowFile.getAttribute("uuid"))
+                    .with(FLOW_FILE_UUID_KEY, flowFile.getAttribute("uuid"))
                     .with("tokenLocation", tokenLocation)
                     .buildMessage("Error processing flow file");
 
@@ -1204,7 +1212,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 List<String> configuredAlgorithms = Arrays.stream(allowedAlgorithmsConfig.split(","))
                         .map(String::trim)
                         .filter(s -> !s.isEmpty())
-                        .collect(Collectors.toList());
+                        .toList();
                 algorithmPreferences = new SignatureAlgorithmPreferences(configuredAlgorithms);
                 LOGGER.debug("Using configured signature algorithms: %s", configuredAlgorithms);
             } else {
@@ -1215,8 +1223,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
             // Validate the algorithm using SignatureAlgorithmPreferences
             if (!algorithmPreferences.isSupported(algorithm)) {
-                String contextMessage = ErrorContext.forComponent("MultiIssuerJWTTokenAuthenticator")
-                        .operation("validateTokenAlgorithm")
+                String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
+                        .operation(VALIDATE_TOKEN_ALGORITHM_OP)
                         .errorCode(ErrorContext.ErrorCodes.SECURITY_ERROR)
                         .build()
                         .with("algorithm", algorithm)
@@ -1231,8 +1239,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         } catch (IllegalArgumentException e) {
             // Base64 decoding failed
-            String contextMessage = ErrorContext.forComponent("MultiIssuerJWTTokenAuthenticator")
-                    .operation("validateTokenAlgorithm")
+            String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
+                    .operation(VALIDATE_TOKEN_ALGORITHM_OP)
                     .errorCode(ErrorContext.ErrorCodes.TOKEN_ERROR)
                     .cause(e)
                     .build()
@@ -1241,8 +1249,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED, "Invalid JWT token format - cannot decode header");
         } catch (Exception e) {
             // Any other parsing error
-            String contextMessage = ErrorContext.forComponent("MultiIssuerJWTTokenAuthenticator")
-                    .operation("validateTokenAlgorithm")
+            String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
+                    .operation(VALIDATE_TOKEN_ALGORITHM_OP)
                     .errorCode(ErrorContext.ErrorCodes.TOKEN_ERROR)
                     .cause(e)
                     .build()

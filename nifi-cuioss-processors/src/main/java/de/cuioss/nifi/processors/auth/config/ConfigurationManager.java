@@ -44,6 +44,7 @@ public class ConfigurationManager {
     // Environment variable prefixes
     private static final String ENV_PREFIX = "JWT_";
     private static final String ISSUER_ENV_PREFIX = "JWT_ISSUER_";
+    private static final String JWT_VALIDATION_ISSUER_PREFIX = "jwt.validation.issuer.";
 
     // Configuration file and timestamp
     private File configFile;
@@ -217,7 +218,7 @@ public class ConfigurationManager {
         for (String key : properties.stringPropertyNames()) {
             String value = properties.getProperty(key);
 
-            if (key.startsWith("jwt.validation.issuer.")) {
+            if (key.startsWith(JWT_VALIDATION_ISSUER_PREFIX)) {
                 // Parse issuer properties
                 parseIssuerProperty(key, value);
             } else {
@@ -275,7 +276,7 @@ public class ConfigurationManager {
                 processList(fullKey, list);
             } else if (value != null) {
                 // Store simple values
-                if (fullKey.startsWith("jwt.validation.issuer.")) {
+                if (fullKey.startsWith(JWT_VALIDATION_ISSUER_PREFIX)) {
                     parseIssuerProperty(fullKey, value.toString());
                 } else {
                     staticProperties.put(fullKey, value.toString());
@@ -336,7 +337,7 @@ public class ConfigurationManager {
     private void parseIssuerProperty(String key, String value) {
         // Format: jwt.validation.issuer.<index>.<property>
         // or: jwt.validation.issuer.<name>.<property>
-        String issuerPart = key.substring("jwt.validation.issuer.".length());
+        String issuerPart = key.substring(JWT_VALIDATION_ISSUER_PREFIX.length());
         int dotIndex = issuerPart.indexOf('.');
 
         if (dotIndex > 0) {

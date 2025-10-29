@@ -219,12 +219,8 @@ class ConfigurationManagerTest {
         assertEquals("true", configManager.getProperty("jwt.validation.enabled"));
         assertNull(configManager.getProperty("jwt.validation.newProperty"));
 
-        // Modify the file
-        try {
-            Thread.sleep(100); // Ensure file timestamp changes
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // Modify the file - set future timestamp to ensure change detection
+        long futureTime = System.currentTimeMillis() + 1000;
         String updatedYaml = """
             jwt:
               validation:
@@ -232,6 +228,7 @@ class ConfigurationManagerTest {
                 newProperty: added
             """;
         Files.writeString(yamlFile.toPath(), updatedYaml);
+        yamlFile.setLastModified(futureTime); // Ensure timestamp change is detected
 
         // Check and reload
         assertTrue(configManager.checkAndReloadConfiguration());

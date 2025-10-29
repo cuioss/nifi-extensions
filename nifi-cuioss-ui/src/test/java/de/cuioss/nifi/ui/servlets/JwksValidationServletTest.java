@@ -194,12 +194,6 @@ class JwksValidationServletTest {
     @Test
     void unknownEndpoint() throws Exception {
         // Arrange
-        String requestJson = """
-            {
-                "test": "data"
-            }
-            """;
-
         expect(request.getServletPath()).andReturn("/unknown/endpoint").anyTimes();
 
         response.setStatus(404);
