@@ -59,8 +59,9 @@ public class JwtVerificationServlet extends HttpServlet {
 
     private static final String JSON_KEY_ISSUER = "issuer";
     private static final String JSON_KEY_CLAIMS = "claims";
+    private static final String ERROR_MSG_FAILED_TO_SEND_RESPONSE = "Failed to send error response";
 
-    private final JwtValidationService validationService;
+    private final transient JwtValidationService validationService;
 
     public JwtVerificationServlet() {
         this.validationService = new JwtValidationService();
@@ -86,7 +87,7 @@ public class JwtVerificationServlet extends HttpServlet {
             try {
                 sendErrorResponse(resp, 400, "Invalid JSON format", false);
             } catch (IOException ioException) {
-                LOGGER.error(ioException, "Failed to send error response");
+                LOGGER.error(ioException, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             }
             return;
@@ -95,7 +96,7 @@ public class JwtVerificationServlet extends HttpServlet {
             try {
                 sendErrorResponse(resp, 500, "Error reading request", false);
             } catch (IOException ioException) {
-                LOGGER.error(ioException, "Failed to send error response");
+                LOGGER.error(ioException, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
                 resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }
             return;
@@ -107,7 +108,7 @@ public class JwtVerificationServlet extends HttpServlet {
             try {
                 sendErrorResponse(resp, 400, "Missing required field: token", false);
             } catch (IOException e) {
-                LOGGER.error(e, "Failed to send error response");
+                LOGGER.error(e, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             }
             return;
@@ -143,7 +144,7 @@ public class JwtVerificationServlet extends HttpServlet {
             try {
                 sendErrorResponse(resp, 400, "Token cannot be empty", false);
             } catch (IOException e) {
-                LOGGER.error(e, "Failed to send error response");
+                LOGGER.error(e, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             }
             return;
@@ -162,7 +163,7 @@ public class JwtVerificationServlet extends HttpServlet {
             try {
                 sendErrorResponse(resp, 400, "Processor ID cannot be empty", false);
             } catch (IOException e) {
-                LOGGER.error(e, "Failed to send error response");
+                LOGGER.error(e, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             }
             return;
@@ -204,7 +205,7 @@ public class JwtVerificationServlet extends HttpServlet {
             try {
                 sendErrorResponse(resp, 400, "Invalid request: " + e.getMessage(), false);
             } catch (IOException ioException) {
-                LOGGER.error(ioException, "Failed to send error response");
+                LOGGER.error(ioException, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             }
             return;
@@ -213,7 +214,7 @@ public class JwtVerificationServlet extends HttpServlet {
             try {
                 sendErrorResponse(resp, 500, "Service not available: " + e.getMessage(), false);
             } catch (IOException ioException) {
-                LOGGER.error(ioException, "Failed to send error response");
+                LOGGER.error(ioException, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
                 resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }
             return;
@@ -222,7 +223,7 @@ public class JwtVerificationServlet extends HttpServlet {
             try {
                 sendErrorResponse(resp, 500, "Communication error: " + e.getMessage(), false);
             } catch (IOException ioException) {
-                LOGGER.error(ioException, "Failed to send error response");
+                LOGGER.error(ioException, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
                 resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }
             return;
@@ -231,7 +232,7 @@ public class JwtVerificationServlet extends HttpServlet {
             try {
                 sendErrorResponse(resp, 500, "Internal server error", false);
             } catch (IOException ioException) {
-                LOGGER.error(ioException, "Failed to send error response");
+                LOGGER.error(ioException, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
                 resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }
             return;

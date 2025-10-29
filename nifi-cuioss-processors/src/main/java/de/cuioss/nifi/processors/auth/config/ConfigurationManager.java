@@ -32,6 +32,7 @@ import java.util.*;
 public class ConfigurationManager {
 
     private static final CuiLogger LOGGER = new CuiLogger(ConfigurationManager.class);
+    private static final String COMPONENT_NAME = "ConfigurationManager";
 
     // System property and environment variable names
     private static final String CONFIG_PATH_PROPERTY = "jwt.Config.path";
@@ -107,7 +108,7 @@ public class ConfigurationManager {
                     return true;
                 } catch (RuntimeException e) {
                     // Catch configuration loading errors (IOException wrapped in RuntimeException, parsing errors, etc.)
-                    String contextMessage = ErrorContext.forComponent("ConfigurationManager")
+                    String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
                             .operation("checkAndReloadConfiguration")
                             .errorCode(ErrorContext.ErrorCodes.CONFIGURATION_ERROR)
                             .cause(e)
@@ -190,7 +191,7 @@ public class ConfigurationManager {
             }
         } catch (java.io.IOException e) {
             // Catch file I/O errors
-            String contextMessage = ErrorContext.forComponent("ConfigurationManager")
+            String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
                     .operation("loadConfigurationFile")
                     .errorCode(ErrorContext.ErrorCodes.IO_ERROR)
                     .cause(e)
@@ -203,7 +204,7 @@ public class ConfigurationManager {
             return false;
         } catch (RuntimeException e) {
             // Catch parsing and other runtime errors
-            String contextMessage = ErrorContext.forComponent("ConfigurationManager")
+            String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
                     .operation("loadConfigurationFile")
                     .errorCode(ErrorContext.ErrorCodes.CONFIGURATION_ERROR)
                     .cause(e)
