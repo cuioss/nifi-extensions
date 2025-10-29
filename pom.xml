@@ -496,7 +496,7 @@
                                 </goals>
                                 <configuration>
                                     <executable>bash</executable>
-                                    <workingDirectory>${project.basedir}/integration-testing/src/main/docker</workingDirectory>
+                                    <workingDirectory>${maven.multiModuleProjectDirectory}/integration-testing/src/main/docker</workingDirectory>
                                     <arguments>
                                         <argument>./copy-deployment.sh</argument>
                                     </arguments>
@@ -511,7 +511,7 @@
                                 </goals>
                                 <configuration>
                                     <executable>docker</executable>
-                                    <workingDirectory>${project.basedir}/integration-testing/src/main/docker</workingDirectory>
+                                    <workingDirectory>${maven.multiModuleProjectDirectory}/integration-testing/src/main/docker</workingDirectory>
                                     <arguments>
                                         <argument>compose</argument>
                                         <argument>up</argument>
@@ -529,7 +529,7 @@
                                 </goals>
                                 <configuration>
                                     <executable>bash</executable>
-                                    <workingDirectory>${project.basedir}/integration-testing/src/main/docker</workingDirectory>
+                                    <workingDirectory>${maven.multiModuleProjectDirectory}/integration-testing/src/main/docker</workingDirectory>
                                     <arguments>
                                         <argument>-c</argument>
                                         <argument><![CDATA[
@@ -564,7 +564,7 @@
                                 </goals>
                                 <configuration>
                                     <executable>docker</executable>
-                                    <workingDirectory>${project.basedir}/integration-testing/src/main/docker</workingDirectory>
+                                    <workingDirectory>${maven.multiModuleProjectDirectory}/integration-testing/src/main/docker</workingDirectory>
                                     <arguments>
                                         <argument>compose</argument>
                                         <argument>down</argument>
