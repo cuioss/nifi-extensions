@@ -199,7 +199,7 @@ public class JwksValidationServlet extends HttpServlet {
 
             if (contentResult.isValid()) {
                 LOGGER.debug("JWKS URL validation successful: %s", jwksUrl);
-                return JwksValidationResult.success("JWKS URL is accessible and valid",
+                return JwksValidationResult.success(
                         contentResult.getKeyCount(),
                         contentResult.getAlgorithms());
             } else {
@@ -275,7 +275,7 @@ public class JwksValidationServlet extends HttpServlet {
             }
 
             LOGGER.debug("JWKS content validation successful, found %d keys", keys.size());
-            return JwksValidationResult.success("JWKS content is valid", keys.size(), null);
+            return JwksValidationResult.success(keys.size(), null);
 
         } catch (JsonException e) {
             String error = "Invalid JWKS JSON format: " + e.getMessage();
@@ -368,7 +368,7 @@ public class JwksValidationServlet extends HttpServlet {
     int keyCount,
     List<String> algorithms
     ) {
-        public static JwksValidationResult success(String message, int keyCount, List<String> algorithms) {
+        public static JwksValidationResult success(int keyCount, List<String> algorithms) {
             return new JwksValidationResult(true, null, keyCount, algorithms);
         }
 
