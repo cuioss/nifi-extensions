@@ -109,7 +109,7 @@ The processor categorizes errors into the following categories:
 
 === Error Codes and Messages
 
-For a comprehensive list of error messages, codes, and their explanations, refer to link:../LogMessage.md[Log Message Documentation].
+For a comprehensive list of error messages, codes, and their explanations, refer to link:../LogMessages.adoc[Log Message Documentation].
 
 === Integration with cui-jwt-validation
 
@@ -222,7 +222,7 @@ Failed to create issuer configuration [ErrorCode=CONFIGURATION_ERROR, Component=
 === Core Documentation
 * link:../Specification.adoc[Main Specification]
 * link:../Requirements.adoc[Requirements]
-* link:../LogMessage.md[Log Message Documentation]
+* link:../LogMessages.adoc[Log Message Documentation]
 
 === Related Implementation
 * link:token-validation.adoc[Token Validation]

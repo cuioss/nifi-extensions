@@ -133,7 +133,7 @@ private static final CuiLogger LOGGER = new CuiLogger(MultiIssuerJWTTokenAuthent
 LOGGER.error(exception, ERROR.UNKNOWN_ISSUER.format(issuer));
 ----
 
-For more information about log message structure, see link:../LogMessage.md[Log Message Documentation].
+For more information about log message structure, see link:../LogMessages.adoc[Log Message Documentation].
 
 === Custom UI Components
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-17.4[NIFI-AUTH-17.4: Custom UI]_
@@ -325,7 +325,7 @@ When adding new features:
 * link:../Specification.adoc[Main Specification]
 * link:../Requirements.adoc[Requirements]
 * link:../Requirements.adoc#NIFI-AUTH-17[Internationalization Requirements]
-* link:../LogMessage.md[Log Message Documentation]
+* link:../LogMessages.adoc[Log Message Documentation]
 
 === Related Implementation
 * link:configuration.adoc[Configuration]
