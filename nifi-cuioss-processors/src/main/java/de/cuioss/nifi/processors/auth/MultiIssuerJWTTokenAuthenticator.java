@@ -1334,11 +1334,13 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         }
 
         // Add all token claims with consistent "jwt.content." prefix, filtering out duplicates
-        token.getClaims().forEach((key, claimValue) -> {
+        var tokenClaims = token.getClaims();
+        for (String key : tokenClaims.keySet()) {
             if (!FILTERED_CLAIM_KEYS.contains(key)) {
+                var claimValue = tokenClaims.get(key);
                 claims.put(JWTAttributes.Content.PREFIX + key, claimValue.getOriginalString());
             }
-        });
+        }
 
         return claims;
     }

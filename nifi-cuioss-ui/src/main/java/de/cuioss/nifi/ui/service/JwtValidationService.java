@@ -305,13 +305,19 @@ public class JwtValidationService {
                 // Extract scopes and roles if present
                 if (claims.containsKey(CLAIM_SCOPES)) {
                     List<String> scopes = new ArrayList<>();
-                    claims.getJsonArray(CLAIM_SCOPES).forEach(v -> scopes.add(v.toString().replace("\"", "")));
+                    var scopesArray = claims.getJsonArray(CLAIM_SCOPES);
+                    for (int i = 0; i < scopesArray.size(); i++) {
+                        scopes.add(scopesArray.get(i).toString().replace("\"", ""));
+                    }
                     claimsMap.put(CLAIM_SCOPES, scopes);
                 }
 
                 if (claims.containsKey(CLAIM_ROLES)) {
                     List<String> roles = new ArrayList<>();
-                    claims.getJsonArray(CLAIM_ROLES).forEach(v -> roles.add(v.toString().replace("\"", "")));
+                    var rolesArray = claims.getJsonArray(CLAIM_ROLES);
+                    for (int i = 0; i < rolesArray.size(); i++) {
+                        roles.add(rolesArray.get(i).toString().replace("\"", ""));
+                    }
                     claimsMap.put(CLAIM_ROLES, roles);
                 }
 

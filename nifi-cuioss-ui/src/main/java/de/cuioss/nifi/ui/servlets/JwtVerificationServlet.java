@@ -125,16 +125,18 @@ public class JwtVerificationServlet extends HttpServlet {
 
         if (requestJson.containsKey("requiredScopes")) {
             requiredScopes = new ArrayList<>();
-            final List<String> scopesList = requiredScopes;
-            requestJson.getJsonArray("requiredScopes").forEach(v ->
-                    scopesList.add(v.toString().replace("\"", "")));
+            var scopesArray = requestJson.getJsonArray("requiredScopes");
+            for (int i = 0; i < scopesArray.size(); i++) {
+                requiredScopes.add(scopesArray.get(i).toString().replace("\"", ""));
+            }
         }
 
         if (requestJson.containsKey("requiredRoles")) {
             requiredRoles = new ArrayList<>();
-            final List<String> rolesList = requiredRoles;
-            requestJson.getJsonArray("requiredRoles").forEach(v ->
-                    rolesList.add(v.toString().replace("\"", "")));
+            var rolesArray = requestJson.getJsonArray("requiredRoles");
+            for (int i = 0; i < rolesArray.size(); i++) {
+                requiredRoles.add(rolesArray.get(i).toString().replace("\"", ""));
+            }
         }
 
         if (token == null || token.trim().isEmpty()) {

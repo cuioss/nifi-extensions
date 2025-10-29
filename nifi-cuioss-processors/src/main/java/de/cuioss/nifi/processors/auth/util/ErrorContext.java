@@ -93,14 +93,14 @@ public class ErrorContext {
         joiner.add("Operation=" + operation);
 
         // Add context information
-        context.forEach((key, value) -> {
-            String valueStr = value != null ? value.toString() : "null";
+        for (Map.Entry<String, Object> entry : context.entrySet()) {
+            String valueStr = entry.getValue() != null ? entry.getValue().toString() : "null";
             // Truncate long values
             if (valueStr.length() > 100) {
                 valueStr = valueStr.substring(0, 97) + "...";
             }
-            joiner.add(key + "=" + valueStr);
-        });
+            joiner.add(entry.getKey() + "=" + valueStr);
+        }
 
         // Build the complete message
         StringBuilder message = new StringBuilder();
