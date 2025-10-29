@@ -286,14 +286,14 @@ void testHighThroughputPerformance() {
 
 == Test Data Generation
 
-Test data for JWT validation is best generated using the cui-jwt-validation test utilities. These utilities provide:
+Test data for JWT validation is best generated using the oauth-sheriff-core test utilities. These utilities provide:
 
 * Easy creation of valid and invalid JWT tokens
 * In-memory key material and JWKS generation (no filesystem required)
 * Token tampering utilities for negative testing
 * Support for multiple algorithms (RS256, RS384, RS512)
 
-For full documentation, see link:../library/cui-jwt-validation/unit-testing.adoc[JWT Validation Test Utilities].
+For full documentation, see link:../library/oauth-sheriff-core/unit-testing.adoc[JWT Validation Test Utilities].
 
 === Example: Creating Test Tokens
 
@@ -410,4 +410,4 @@ Tests are run automatically as part of the build process:
 
 == JWT Validation Test Utilities
 
-For detailed documentation on the cui-jwt-validation test utilities, see link:../library/cui-jwt-validation/unit-testing.adoc[JWT Validation Test Utilities].
+For detailed documentation on the oauth-sheriff-core test utilities, see link:../library/oauth-sheriff-core/unit-testing.adoc[JWT Validation Test Utilities].

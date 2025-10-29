@@ -137,8 +137,8 @@
         <version.cui.test.generator>2.3.1</version.cui.test.generator>
         <version.cui.test.value.objects>2.0.1</version.cui.test.value.objects>
         <version.cui.test.mockwebserver>1.3.0</version.cui.test.mockwebserver>
-        <version.cui.java.tools>2.2.1</version.cui.java.tools>
-        <version.cui-jwt-validation>1.0.0-SNAPSHOT</version.cui-jwt-validation>
+        <version.cui.java.tools>2.6.1</version.cui.java.tools>
+        <version.oauth-sheriff>0.1.0</version.oauth-sheriff>
         <version.cui.test.keycloak.integration>1.0.1</version.cui.test.keycloak.integration>
     </properties>
 
@@ -226,19 +226,19 @@
                 <scope>test</scope>
             </dependency>
             <dependency>
-                <groupId>de.cuioss.jwt</groupId>
-                <artifactId>cui-jwt-validation</artifactId>
-                <version>${version.cui-jwt-validation}</version>
+                <groupId>de.cuioss.sheriff.oauth</groupId>
+                <artifactId>oauth-sheriff-core</artifactId>
+                <version>${version.oauth-sheriff}</version>
                 <scope>compile</scope>
             </dependency>
             <dependency>
-                <groupId>de.cuioss</groupId>
-                <artifactId>cui-jwt-validation</artifactId>
-                <version>${version.cui-jwt-validation}</version>
+                <groupId>de.cuioss.sheriff.oauth</groupId>
+                <artifactId>oauth-sheriff-core</artifactId>
+                <version>${version.oauth-sheriff}</version>
                 <classifier>generators</classifier>
                 <scope>test</scope>
             </dependency>
-            <!-- Implementation of jakarta.json-api: Used for cui-jwt-validation-->
+            <!-- Implementation of jakarta.json-api: Used for nifi-cuioss-ui servlets/services -->
             <dependency>
                 <groupId>org.eclipse.parsson</groupId>
                 <artifactId>parsson</artifactId>

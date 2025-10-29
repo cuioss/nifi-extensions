@@ -16,7 +16,7 @@
  */
 package de.cuioss.nifi.processors.auth.util;
 
-import de.cuioss.jwt.validation.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.Builder;
 import lombok.NonNull;

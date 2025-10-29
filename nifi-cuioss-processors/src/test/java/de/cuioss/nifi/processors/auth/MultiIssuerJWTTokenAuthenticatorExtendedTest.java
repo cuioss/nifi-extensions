@@ -16,10 +16,10 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import de.cuioss.jwt.validation.domain.claim.ClaimValue;
-import de.cuioss.jwt.validation.domain.token.AccessTokenContent;
-import de.cuioss.jwt.validation.exception.TokenValidationException;
-import de.cuioss.jwt.validation.security.SecurityEventCounter;
+import de.cuioss.sheriff.oauth.core.domain.claim.ClaimValue;
+import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
+import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
 import de.cuioss.nifi.processors.auth.config.ConfigurationManager;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.components.PropertyValue;

@@ -16,15 +16,15 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import de.cuioss.jwt.validation.IssuerConfig;
-import de.cuioss.jwt.validation.ParserConfig;
-import de.cuioss.jwt.validation.TokenValidator;
-import de.cuioss.jwt.validation.domain.token.AccessTokenContent;
-import de.cuioss.jwt.validation.exception.TokenValidationException;
-import de.cuioss.jwt.validation.metrics.TokenValidatorMonitor;
-import de.cuioss.jwt.validation.security.SecurityEventCounter;
-import de.cuioss.jwt.validation.security.SecurityEventCounter.EventType;
-import de.cuioss.jwt.validation.security.SignatureAlgorithmPreferences;
+import de.cuioss.sheriff.oauth.core.IssuerConfig;
+import de.cuioss.sheriff.oauth.core.ParserConfig;
+import de.cuioss.sheriff.oauth.core.TokenValidator;
+import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
+import de.cuioss.sheriff.oauth.core.metrics.TokenValidatorMonitor;
+import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
+import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter.EventType;
+import de.cuioss.sheriff.oauth.core.security.SignatureAlgorithmPreferences;
 import de.cuioss.nifi.processors.auth.config.ConfigurationManager;
 import de.cuioss.nifi.processors.auth.config.IssuerConfigurationParser;
 import de.cuioss.nifi.processors.auth.config.IssuerPropertyDescriptorFactory;
@@ -1071,7 +1071,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
             // Determine more specific error code based on event type
             String errorCode = "AUTH-002"; // Default error code
-            String category = e.getEventType().name();
+            String category = e.getCategory().name();
 
             // Map common validation failures to specific error codes
             if (category.contains("EXPIRED")) {

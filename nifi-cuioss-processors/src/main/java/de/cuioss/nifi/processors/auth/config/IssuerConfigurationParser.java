@@ -16,8 +16,8 @@
  */
 package de.cuioss.nifi.processors.auth.config;
 
-import de.cuioss.jwt.validation.IssuerConfig;
-import de.cuioss.jwt.validation.ParserConfig;
+import de.cuioss.sheriff.oauth.core.IssuerConfig;
+import de.cuioss.sheriff.oauth.core.ParserConfig;
 import de.cuioss.nifi.processors.auth.util.ErrorContext;
 import de.cuioss.tools.logging.CuiLogger;
 

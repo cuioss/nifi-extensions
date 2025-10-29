@@ -16,8 +16,9 @@
  */
 package de.cuioss.nifi.processors.auth.test;
 
-import de.cuioss.jwt.validation.domain.claim.ClaimValue;
-import de.cuioss.jwt.validation.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.oauth.core.domain.claim.ClaimValue;
+import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.oauth.core.json.MapRepresentation;
 
 import java.util.*;
 
@@ -32,7 +33,7 @@ public class SimpleAccessTokenContent extends AccessTokenContent {
     private final List<String> roles;
 
     public SimpleAccessTokenContent(String subject, List<String> scopes, List<String> roles) {
-        super(createClaims(subject, scopes, roles), "test-raw-token", "at+jwt");
+        super(createClaims(subject, scopes, roles), "test-raw-token", "at+jwt", new MapRepresentation(Collections.emptyMap()));
         this.subject = subject;
         this.scopes = scopes != null ? new ArrayList<>(scopes) : Collections.emptyList();
         this.roles = roles != null ? new ArrayList<>(roles) : Collections.emptyList();

@@ -32,7 +32,7 @@ The following tests verify the implementation:
 === Token Verification Endpoint
 
 ==== Overview
-Verifies JWT tokens using the cui-jwt-validation library with the same configuration as the processor.
+Verifies JWT tokens using the oauth-sheriff-core library with the same configuration as the processor.
 
 ==== Endpoint Details
 * *Path*: `/nifi-api/processors/jwt/verify-token`

@@ -13,7 +13,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Hand
 == Error Handling Implementation
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
 
-The MultiIssuerJWTTokenAuthenticator implements comprehensive error handling using the cui-jwt-validation library to detect and report validation issues in a consistent manner. Error handling has been enhanced with the `ErrorContext` utility class to provide structured, contextual error information.
+The MultiIssuerJWTTokenAuthenticator implements comprehensive error handling using the oauth-sheriff-core library to detect and report validation issues in a consistent manner. Error handling has been enhanced with the `ErrorContext` utility class to provide structured, contextual error information.
 
 === ErrorContext Utility
 
@@ -111,14 +111,14 @@ The processor categorizes errors into the following categories:
 
 For a comprehensive list of error messages, codes, and their explanations, refer to link:../LogMessages.adoc[Log Message Documentation].
 
-=== Integration with cui-jwt-validation
+=== Integration with oauth-sheriff-core
 
-The processor leverages the cui-jwt-validation library's error reporting capabilities, which are mapped to NiFi's error handling mechanisms:
+The processor leverages the oauth-sheriff-core library's error reporting capabilities, which are mapped to NiFi's error handling mechanisms:
 
 [source,java]
 ----
 /**
- * Maps cui-jwt-validation errors to processor error codes and messages.
+ * Maps oauth-sheriff-core errors to processor error codes and messages.
  */
 private void handleValidationError(FlowFile flowFile, ProcessSession session, ValidationError error) {
     String errorCode;

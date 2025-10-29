@@ -13,7 +13,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functio
 == Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
 
-This document describes the technical components of the MultiIssuerJWTTokenAuthenticator processor, their responsibilities, and how they interact to provide JWT token validation capabilities in NiFi. The processor is designed for NiFi 2.4.0 and leverages the cui-jwt-validation library for token validation functionality.
+This document describes the technical components of the MultiIssuerJWTTokenAuthenticator processor, their responsibilities, and how they interact to provide JWT token validation capabilities in NiFi. The processor is designed for NiFi 2.4.0 and leverages the oauth-sheriff-core library for token validation functionality.
 
 == Processor Implementation
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
@@ -39,7 +39,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: NiFi Integ
 |===
 |Component |Purpose
 
-|de.cuioss.portal.authentication:cui-jwt-validation
+|de.cuioss.portal.authentication:oauth-sheriff-core
 |Token validation framework
 
 |cui-java-tools
@@ -63,7 +63,7 @@ The TokenValidator serves as the primary entry point for token operations. It pr
 * Automatic key retrieval and caching
 * Claim validation including audience checks
 
-For detailed implementation of token validation, see link:library/cui-jwt-validation/Usage.adoc[Token Validation Specification].
+For detailed implementation of token validation, see link:library/oauth-sheriff-core/Usage.adoc[Token Validation Specification].
 
 === IssuerConfig
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
@@ -76,7 +76,7 @@ The IssuerConfig handles token validation for a specific issuer. It allows confi
 * Custom claim validation rules
 * Key refresh intervals
 
-For more configuration details, see link:library/cui-jwt-validation/Usage.adoc[Configuration Specification].
+For more configuration details, see link:library/oauth-sheriff-core/Usage.adoc[Configuration Specification].
 
 === Multi-Issuer Support
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
@@ -88,9 +88,9 @@ For detailed implementation examples and integration patterns, see link:integrat
 == TokenValidator Lifecycle in NiFi
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: NiFi Integration]_
 
-The cui-jwt-validation library's `TokenValidator` is designed to be stateful and maintain caches for performance optimization. In the MultiIssuerJWTTokenAuthenticator processor, the TokenValidator instance is managed with careful attention to NiFi's processor lifecycle.
+The oauth-sheriff-core library's `TokenValidator` is designed to be stateful and maintain caches for performance optimization. In the MultiIssuerJWTTokenAuthenticator processor, the TokenValidator instance is managed with careful attention to NiFi's processor lifecycle.
 
-For complete details on TokenValidator lifecycle management, including thread safety and resource management, see link:library/cui-jwt-validation/Usage.adoc#handling-tokenvalidator-lifecycle-in-nifi[Handling TokenValidator Lifecycle in NiFi].
+For complete details on TokenValidator lifecycle management, including thread safety and resource management, see link:library/oauth-sheriff-core/Usage.adoc#handling-tokenvalidator-lifecycle-in-nifi[Handling TokenValidator Lifecycle in NiFi].
 
 == Relationships
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-6[NIFI-AUTH-6: Output Requirements]_
@@ -140,15 +140,15 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requir
 === Output Attributes
 _See Requirements link:../Requirements.adoc#NIFI-AUTH-6.1[NIFI-AUTH-6.1: Success Path] and link:../Requirements.adoc#NIFI-AUTH-6.2[NIFI-AUTH-6.2: Failure Path]_
 
-For detailed information about attribute handling and token validation output, see link:library/cui-jwt-validation/Usage.adoc#flow-file-attribute-generation[Flow File Attribute Generation].
+For detailed information about attribute handling and token validation output, see link:library/oauth-sheriff-core/Usage.adoc#flow-file-attribute-generation[Flow File Attribute Generation].
 
 == Error Handling
 
-The processor implements comprehensive error handling using standardized error codes and consistent messages. For complete details on error handling strategies and implementation, see link:library/cui-jwt-validation/unit-testing.adoc[Error Handling Specification].
+The processor implements comprehensive error handling using standardized error codes and consistent messages. For complete details on error handling strategies and implementation, see link:library/oauth-sheriff-core/unit-testing.adoc[Error Handling Specification].
 
 == Security Considerations
 
-Security is paramount in JWT token validation. For information about security implementation, best practices, and threat mitigations, see link:library/cui-jwt-validation/Usage.adoc[Security Specification].
+Security is paramount in JWT token validation. For information about security implementation, best practices, and threat mitigations, see link:library/oauth-sheriff-core/Usage.adoc[Security Specification].
 
 == See Also
 
@@ -162,9 +162,9 @@ Security is paramount in JWT token validation. For information about security im
 * link:configuration-static.adoc[Static Configuration]
 
 === Implementation
-* link:library/cui-jwt-validation/Usage.adoc[Token Validation]
-* link:library/cui-jwt-validation/unit-testing.adoc[Error Handling]
-* link:library/cui-jwt-validation/Usage.adoc[Security]
+* link:library/oauth-sheriff-core/Usage.adoc[Token Validation]
+* link:library/oauth-sheriff-core/unit-testing.adoc[Error Handling]
+* link:library/oauth-sheriff-core/Usage.adoc[Security]
 * link:internationalization.adoc[Internationalization]
 * link:observability.adoc[Observability]
 

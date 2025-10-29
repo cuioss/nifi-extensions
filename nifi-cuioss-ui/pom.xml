@@ -46,8 +46,8 @@
         
         <!-- JWT Validation Dependencies for Servlets -->
         <dependency>
-            <groupId>de.cuioss.jwt</groupId>
-            <artifactId>cui-jwt-validation</artifactId>
+            <groupId>de.cuioss.sheriff.oauth</groupId>
+            <artifactId>oauth-sheriff-core</artifactId>
         </dependency>
         <dependency>
             <groupId>de.cuioss</groupId>

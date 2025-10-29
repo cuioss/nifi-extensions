@@ -8,7 +8,7 @@
 
 == Overview
 
-This document describes the test utilities provided by the `cui-jwt-validation` project for testing JWT validation functionality in your applications.
+This document describes the test utilities provided by the `oauth-sheriff-core` project for testing JWT validation functionality in your applications.
 
 == Test Artifact
 
@@ -21,8 +21,8 @@ To use the test utilities in your project, add the following dependency to your 
 [source,xml]
 ----
 <dependency>
-    <groupId>de.cuioss.jwt</groupId>
-    <artifactId>cui-jwt-validation</artifactId>
+    <groupId>de.cuioss.sheriff.oauth</groupId>
+    <artifactId>oauth-sheriff-core</artifactId>
     <version>${version}</version>
     <classifier>generators</classifier>
     <scope>test</scope>
@@ -33,10 +33,10 @@ To use the test utilities in your project, add the following dependency to your 
 
 The test artifact includes the following packages:
 
-* `de.cuioss.jwt.validation.test` - Core test utilities
-* `de.cuioss.jwt.validation.test.dispatcher` - Mock dispatchers for JWKS resolution
-* `de.cuioss.jwt.validation.test.generator` - Token and claim generators
-* `de.cuioss.jwt.validation.test.util` - Utility classes for testing
+* `de.cuioss.sheriff.oauth.core.test` - Core test utilities
+* `de.cuioss.sheriff.oauth.core.test.dispatcher` - Mock dispatchers for JWKS resolution
+* `de.cuioss.sheriff.oauth.core.test.generator` - Token and claim generators
+* `de.cuioss.sheriff.oauth.core.test.util` - Utility classes for testing
 
 == Key Test Utilities
 

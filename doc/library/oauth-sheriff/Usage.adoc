@@ -6,7 +6,7 @@
 
 == Overview
 
-This document provides usage examples for the cui-jwt-validation library. For detailed technical specifications, see the link:specification/technical-components.adoc[Technical Components] document.
+This document provides usage examples for the OAuth-Sheriff library. For detailed technical specifications, see the link:specification/technical-components.adoc[Technical Components] document.
 
 === Document Navigation
 
@@ -317,9 +317,9 @@ The library uses `TokenValidationException` to signal validation failures. This 
 ----
 // Import statements
 import de.cuioss.tools.logging.CuiLogger;
-import de.cuioss.jwt.validation.security.SecurityEventCounter;
-import de.cuioss.jwt.validation.exception.TokenValidationException;
-import de.cuioss.jwt.validation.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
+import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
+import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import java.util.Set;
 
 // Initialize logger

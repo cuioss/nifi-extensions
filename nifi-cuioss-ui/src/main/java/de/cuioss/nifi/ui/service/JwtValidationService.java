@@ -16,11 +16,11 @@
  */
 package de.cuioss.nifi.ui.service;
 
-import de.cuioss.jwt.validation.IssuerConfig;
-import de.cuioss.jwt.validation.ParserConfig;
-import de.cuioss.jwt.validation.TokenValidator;
-import de.cuioss.jwt.validation.domain.token.AccessTokenContent;
-import de.cuioss.jwt.validation.exception.TokenValidationException;
+import de.cuioss.sheriff.oauth.core.IssuerConfig;
+import de.cuioss.sheriff.oauth.core.ParserConfig;
+import de.cuioss.sheriff.oauth.core.TokenValidator;
+import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.nifi.processors.auth.config.ConfigurationManager;
 import de.cuioss.nifi.processors.auth.config.IssuerConfigurationParser;
 import de.cuioss.nifi.ui.servlets.MetricsServlet;

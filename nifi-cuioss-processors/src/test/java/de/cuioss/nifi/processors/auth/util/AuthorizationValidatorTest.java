@@ -16,7 +16,7 @@
  */
 package de.cuioss.nifi.processors.auth.util;
 
-import de.cuioss.jwt.validation.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.nifi.processors.auth.test.SimpleAccessTokenContent;
 import de.cuioss.nifi.processors.auth.util.AuthorizationValidator.AuthorizationConfig;
 import de.cuioss.nifi.processors.auth.util.AuthorizationValidator.AuthorizationResult;

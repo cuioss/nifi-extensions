@@ -16,7 +16,7 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import de.cuioss.jwt.validation.security.SignatureAlgorithmPreferences;
+import de.cuioss.sheriff.oauth.core.security.SignatureAlgorithmPreferences;
 import lombok.experimental.UtilityClass;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.processor.Relationship;
