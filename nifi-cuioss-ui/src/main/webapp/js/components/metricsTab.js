@@ -335,7 +335,7 @@ const handleExport = (format) => {
     a.download = filename;
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
+    a.remove();
     globalThis.URL.revokeObjectURL(url);
 
     logger.info(`Exported metrics as ${filename}`);

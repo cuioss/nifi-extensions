@@ -87,21 +87,17 @@ const _initializeJwksValidator = async (element, propertyValue, jwks_type, callb
             const inputValue = inputField ? inputField.value : null;
             const jwksValue = inputValue || currentJwksValue || 'https://example.com/.well-known/jwks.json';
 
-            try {
-                validateJwksUrl(jwksValue)
-                    .then(responseData => _handleAjaxSuccess(responseData, resultContainer, i18n))
-                    .catch(error => {
-                        // Convert error to jqXHR-like object for compatibility
-                        const jqXHRLike = error.jqXHR || {
-                            status: error.status || 500,
-                            statusText: error.statusText || 'Error',
-                            responseJSON: error.responseJSON || { error: error.message || 'Unknown error' }
-                        };
-                        _handleAjaxError(jqXHRLike, resultContainer, i18n);
-                    });
-            } catch (e) {
-                _handleSynchronousError(e, resultContainer, i18n);
-            }
+            validateJwksUrl(jwksValue)
+                .then(responseData => _handleAjaxSuccess(responseData, resultContainer, i18n))
+                .catch(error => {
+                    // Convert error to jqXHR-like object for compatibility
+                    const jqXHRLike = error.jqXHR || {
+                        status: error.status || 500,
+                        statusText: error.statusText || 'Error',
+                        responseJSON: error.responseJSON || { error: error.message || 'Unknown error' }
+                    };
+                    _handleAjaxError(jqXHRLike, resultContainer, i18n);
+                });
         });
 
         // Add a default text to the result container for better UX

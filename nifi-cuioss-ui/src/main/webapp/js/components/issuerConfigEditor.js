@@ -276,7 +276,7 @@ const _initializeEditorData = async (effectiveUrl, issuersContainer) => {
                 // Insert at the beginning of form fields (after issuer name but before other fields)
                 const firstFormField = formFields.querySelector('.form-field');
                 if (firstFormField) {
-                    formFields.insertBefore(fieldContainer, firstFormField);
+                    firstFormField.before(fieldContainer);
                 } else {
                     formFields.appendChild(fieldContainer);
                 }
@@ -439,7 +439,7 @@ const _positionJwksTestButton = (formFieldsContainer, testButtonWrapper) => {
     const jwksUrlFieldContainer = jwksUrlField ? jwksUrlField.closest('.form-field') : null;
 
     if (jwksUrlFieldContainer) {
-        jwksUrlFieldContainer.insertAdjacentElement('afterend', testButtonWrapper);
+        jwksUrlFieldContainer.after(testButtonWrapper);
     } else {
         // Fallback: append to container if specific field not found
         formFieldsContainer.appendChild(testButtonWrapper);

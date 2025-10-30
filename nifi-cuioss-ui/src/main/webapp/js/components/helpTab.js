@@ -229,7 +229,7 @@ const initializeCollapsibles = () => {
             this.classList.toggle('active');
 
             // Toggle content visibility
-            if (content && content.classList.contains('collapsible-content')) {
+            if (content?.classList.contains('collapsible-content')) {
                 content.classList.toggle('show');
             }
 
