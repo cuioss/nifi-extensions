@@ -399,6 +399,30 @@ describe('MetricsTab', () => {
             expect(issuerRows.length).toBe(1); // Should have 1 row saying "No issuer data available"
             expect(issuerRows[0].textContent).toContain('No issuer data available');
         });
+
+        it('should handle 404 endpoint not available error', async () => {
+            // Mock API to return 404 error
+            const notFoundError = new Error('Not Found');
+            notFoundError.status = 404;
+            mockGetSecurityMetrics.mockRejectedValueOnce(notFoundError);
+
+            metricsTab.init();
+            jest.advanceTimersByTime(100);
+            await Promise.resolve();
+            await Promise.resolve(); // Extra resolve for async handling
+
+            // Should show "Metrics Not Available" message
+            const metricsContent = document.getElementById('jwt-metrics-content');
+            expect(metricsContent.innerHTML).toContain('Metrics Not Available');
+            expect(metricsContent.innerHTML).toContain('not currently implemented');
+
+            // Subsequent refresh calls should be skipped (early return)
+            mockGetSecurityMetrics.mockClear();
+            await window.metricsTab.refreshMetrics();
+
+            // API should not be called again after 404
+            expect(mockGetSecurityMetrics).not.toHaveBeenCalled();
+        });
     });
 
     describe('export functionality', () => {
