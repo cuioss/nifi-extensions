@@ -52,6 +52,7 @@ public class JwksValidationServlet extends HttpServlet {
     private static final String CONTENT_TYPE_JSON = "application/json";
     private static final JsonReaderFactory JSON_READER = Json.createReaderFactory(Map.of());
     private static final JsonWriterFactory JSON_WRITER = Json.createWriterFactory(Map.of());
+    private static final String JWKS_VALIDATION_FAILED_MSG = "JWKS URL validation failed: %s - %s";
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
@@ -232,7 +233,7 @@ public class JwksValidationServlet extends HttpServlet {
         // Check status code
         if (response.statusCode() != 200) {
             String error = "JWKS URL returned status %d".formatted(response.statusCode());
-            LOGGER.debug("JWKS URL validation failed: %s - %s", jwksUrl, error);
+            LOGGER.debug(JWKS_VALIDATION_FAILED_MSG, jwksUrl, error);
             return null;
         }
 
@@ -268,9 +269,9 @@ public class JwksValidationServlet extends HttpServlet {
      */
     private JwksValidationResult handleValidationError(String jwksUrl, String errorMessage, boolean useWarnLevel) {
         if (useWarnLevel) {
-            LOGGER.warn("JWKS URL validation failed: %s - %s", jwksUrl, errorMessage);
+            LOGGER.warn(JWKS_VALIDATION_FAILED_MSG, jwksUrl, errorMessage);
         } else {
-            LOGGER.debug("JWKS URL validation failed: %s - %s", jwksUrl, errorMessage);
+            LOGGER.debug(JWKS_VALIDATION_FAILED_MSG, jwksUrl, errorMessage);
         }
         return JwksValidationResult.failure(errorMessage);
     }

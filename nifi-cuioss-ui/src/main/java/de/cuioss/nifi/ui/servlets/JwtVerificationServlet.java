@@ -59,6 +59,7 @@ public class JwtVerificationServlet extends HttpServlet {
 
     private static final String JSON_KEY_ISSUER = "issuer";
     private static final String JSON_KEY_CLAIMS = "claims";
+    private static final String JSON_KEY_VALID = "valid";
     private static final String ERROR_MSG_FAILED_TO_SEND_RESPONSE = "Failed to send error response";
 
     private final transient JwtValidationService validationService;
@@ -80,7 +81,7 @@ public class JwtVerificationServlet extends HttpServlet {
 
         // 1. Parse JSON request body
         JsonObject requestJson = parseJsonRequest(req, resp);
-        if (requestJson == null) {
+        if (requestJson.isEmpty()) {
             return; // Error already handled
         }
 
@@ -116,11 +117,11 @@ public class JwtVerificationServlet extends HttpServlet {
         } catch (JsonException e) {
             LOGGER.warn("Invalid JSON format in request: %s", e.getMessage());
             safelySendErrorResponse(resp, 400, "Invalid JSON format", false);
-            return null;
+            return Json.createObjectBuilder().build();
         } catch (IOException e) {
             LOGGER.error(e, "Error reading request body");
             safelySendErrorResponse(resp, 500, "Error reading request", false);
-            return null;
+            return Json.createObjectBuilder().build();
         }
     }
 
@@ -198,7 +199,7 @@ public class JwtVerificationServlet extends HttpServlet {
      */
     private List<String> extractJsonArray(JsonObject json, String fieldName) {
         if (!json.containsKey(fieldName)) {
-            return null;
+            return List.of();
         }
         List<String> result = new ArrayList<>();
         var array = json.getJsonArray(fieldName);
@@ -359,7 +360,7 @@ public class JwtVerificationServlet extends HttpServlet {
      */
     private JsonObjectBuilder buildJsonResponse(TokenValidationResult result) {
         JsonObjectBuilder responseBuilder = Json.createObjectBuilder()
-                .add("valid", result.isValid())
+                .add(JSON_KEY_VALID, result.isValid())
                 .add("error", result.getError() != null ? result.getError() : "");
 
         // Add E2E test fields
@@ -468,7 +469,7 @@ public class JwtVerificationServlet extends HttpServlet {
     private void writeJsonResponse(HttpServletResponse resp, JsonObject responseJson) throws IOException {
         try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
             writer.writeObject(responseJson);
-            LOGGER.debug("Sent validation response: valid=%s", responseJson.getBoolean("valid"));
+            LOGGER.debug("Sent validation response: valid=%s", responseJson.getBoolean(JSON_KEY_VALID));
         } catch (IOException e) {
             LOGGER.error(e, "Failed to write validation response");
             throw new IOException("Failed to write response", e);
@@ -482,7 +483,7 @@ public class JwtVerificationServlet extends HttpServlet {
             throws IOException {
 
         JsonObject errorResponse = Json.createObjectBuilder()
-                .add("valid", valid)
+                .add(JSON_KEY_VALID, valid)
                 .add("error", errorMessage)
                 .add(JSON_KEY_CLAIMS, Json.createObjectBuilder())
                 .build();
