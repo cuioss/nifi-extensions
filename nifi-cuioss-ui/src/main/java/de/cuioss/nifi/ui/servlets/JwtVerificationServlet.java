@@ -343,11 +343,42 @@ public class JwtVerificationServlet extends HttpServlet {
     private void sendValidationResponse(HttpServletResponse resp, TokenValidationResult result)
             throws IOException {
 
+        JsonObjectBuilder responseBuilder = buildJsonResponse(result);
+        JsonObject responseJson = responseBuilder.build();
+
+        // Set response headers and status
+        configureResponseHeaders(resp);
+        resp.setStatus(determineStatusCode(result));
+
+        // Write response
+        writeJsonResponse(resp, responseJson);
+    }
+
+    /**
+     * Builds JSON response object from validation result.
+     */
+    private JsonObjectBuilder buildJsonResponse(TokenValidationResult result) {
         JsonObjectBuilder responseBuilder = Json.createObjectBuilder()
                 .add("valid", result.isValid())
                 .add("error", result.getError() != null ? result.getError() : "");
 
-        // Add additional fields for E2E tests
+        // Add E2E test fields
+        addE2EFields(responseBuilder, result);
+
+        // Add authorization fields
+        responseBuilder.add("authorized", result.isAuthorized());
+        addScopesAndRoles(responseBuilder, result);
+
+        // Add claims
+        addClaims(responseBuilder, result);
+
+        return responseBuilder;
+    }
+
+    /**
+     * Adds E2E test specific fields to response.
+     */
+    private void addE2EFields(JsonObjectBuilder responseBuilder, TokenValidationResult result) {
         if (result.getIssuer() != null) {
             responseBuilder.add(JSON_KEY_ISSUER, result.getIssuer());
         }
@@ -355,74 +386,89 @@ public class JwtVerificationServlet extends HttpServlet {
         if (result.getExpiredAt() != null) {
             responseBuilder.add("expiredAt", result.getExpiredAt());
         }
+    }
 
-        // Add authorization fields
-        responseBuilder.add("authorized", result.isAuthorized());
-
+    /**
+     * Adds scopes and roles arrays to response.
+     */
+    private void addScopesAndRoles(JsonObjectBuilder responseBuilder, TokenValidationResult result) {
         if (result.getScopes() != null && !result.getScopes().isEmpty()) {
             JsonArrayBuilder scopesBuilder = Json.createArrayBuilder();
-            for (String scope : result.getScopes()) {
-                scopesBuilder.add(scope);
-            }
+            result.getScopes().forEach(scopesBuilder::add);
             responseBuilder.add("scopes", scopesBuilder);
         }
 
         if (result.getRoles() != null && !result.getRoles().isEmpty()) {
             JsonArrayBuilder rolesBuilder = Json.createArrayBuilder();
-            for (String role : result.getRoles()) {
-                rolesBuilder.add(role);
-            }
+            result.getRoles().forEach(rolesBuilder::add);
             responseBuilder.add("roles", rolesBuilder);
         }
+    }
 
-        // Add claims if token is valid
+    /**
+     * Adds token claims to response.
+     */
+    private void addClaims(JsonObjectBuilder responseBuilder, TokenValidationResult result) {
         if (result.isValid() && result.getClaims() != null) {
             JsonObjectBuilder claimsBuilder = Json.createObjectBuilder();
             Map<String, Object> claims = result.getClaims();
 
             for (Map.Entry<String, Object> entry : claims.entrySet()) {
-                String key = entry.getKey();
-                Object value = entry.getValue();
-
-                // Convert different types to JSON-compatible values
-                switch (value) {
-                    case null -> claimsBuilder.addNull(key);
-                    case String string -> claimsBuilder.add(key, string);
-                    case Integer integer -> claimsBuilder.add(key, integer);
-                    case Long long1 -> claimsBuilder.add(key, long1);
-                    case Double double1 -> claimsBuilder.add(key, double1);
-                    case Boolean boolean1 -> claimsBuilder.add(key, boolean1);
-                    default -> claimsBuilder.add(key, value.toString());
-                }
+                addClaimValue(claimsBuilder, entry.getKey(), entry.getValue());
             }
 
             responseBuilder.add(JSON_KEY_CLAIMS, claimsBuilder);
         } else {
             responseBuilder.add(JSON_KEY_CLAIMS, Json.createObjectBuilder());
         }
+    }
 
-        JsonObject responseJson = responseBuilder.build();
+    /**
+     * Adds a single claim value to JSON builder, handling different types.
+     */
+    private void addClaimValue(JsonObjectBuilder builder, String key, Object value) {
+        switch (value) {
+            case null -> builder.addNull(key);
+            case String string -> builder.add(key, string);
+            case Integer integer -> builder.add(key, integer);
+            case Long long1 -> builder.add(key, long1);
+            case Double double1 -> builder.add(key, double1);
+            case Boolean boolean1 -> builder.add(key, boolean1);
+            default -> builder.add(key, value.toString());
+        }
+    }
 
-        // Set response headers and status
+    /**
+     * Configures response headers for JSON.
+     */
+    private void configureResponseHeaders(HttpServletResponse resp) {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
+    }
 
-        // Set status code based on validation result and error type
-        int statusCode = 200;
-        if (!result.isValid()) {
-            // Check if token is expired (E2E test expects 401 for expired tokens)
-            if (result.getError() != null && result.getError().toLowerCase().contains("expired")) {
-                statusCode = 401;
-            } else {
-                statusCode = 400;
-            }
+    /**
+     * Determines HTTP status code based on validation result.
+     */
+    private int determineStatusCode(TokenValidationResult result) {
+        if (result.isValid()) {
+            return 200;
         }
-        resp.setStatus(statusCode);
 
-        // Write response
+        // Check if token is expired (E2E test expects 401 for expired tokens)
+        if (result.getError() != null && result.getError().toLowerCase().contains("expired")) {
+            return 401;
+        }
+
+        return 400;
+    }
+
+    /**
+     * Writes JSON response to output stream.
+     */
+    private void writeJsonResponse(HttpServletResponse resp, JsonObject responseJson) throws IOException {
         try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
             writer.writeObject(responseJson);
-            LOGGER.debug("Sent validation response: valid=%s", result.isValid());
+            LOGGER.debug("Sent validation response: valid=%s", responseJson.getBoolean("valid"));
         } catch (IOException e) {
             LOGGER.error(e, "Failed to write validation response");
             throw new IOException("Failed to write response", e);
