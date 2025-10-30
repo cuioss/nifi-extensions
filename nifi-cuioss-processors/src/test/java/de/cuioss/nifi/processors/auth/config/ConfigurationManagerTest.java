@@ -268,4 +268,32 @@ class ConfigurationManagerTest {
         assertEquals("https://www.googleapis.com/oauth2/v3/certs", google.get("jwksUri"));
         assertEquals("https://accounts.google.com", google.get("issuer"));
     }
+
+    @Test
+    void testIssuerPropertiesWithNullValues() throws IOException {
+        // Test handling of null values in issuer configuration
+        String yamlContent = """
+            jwt:
+              validation:
+                issuers:
+                  - id: test-issuer
+                    jwksUri: https://example.com/jwks
+                    audience: null
+                    description:
+            """;
+
+        File yamlFile = tempDir.resolve("jwt-null-values.yml").toFile();
+        Files.writeString(yamlFile.toPath(), yamlContent);
+
+        System.setProperty("jwt.Config.path", yamlFile.getAbsolutePath());
+        configManager = new ConfigurationManager();
+
+        // Verify issuer was loaded
+        Map<String, String> issuer = configManager.getIssuerProperties("test-issuer");
+        assertNotNull(issuer);
+        assertEquals("https://example.com/jwks", issuer.get("jwksUri"));
+        // Null values should not be stored
+        assertFalse(issuer.containsKey("audience"));
+        assertFalse(issuer.containsKey("description"));
+    }
 }
