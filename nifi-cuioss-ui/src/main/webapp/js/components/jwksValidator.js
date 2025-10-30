@@ -211,7 +211,8 @@ const _initializeJwksValidator = async (element, propertyValue, jwks_type, callb
                 }
 
                 // Validate each key has required fields
-                jwksData.keys.forEach((key, index) => {
+                let index = 0;
+                for (const key of jwksData.keys) {
                     if (!key.kty) {
                         throw new Error(`${i18n['processor.jwt.missingKeyType'] || 'Missing key type (kty)'} at index ${index}`);
                     }
@@ -220,7 +221,8 @@ const _initializeJwksValidator = async (element, propertyValue, jwks_type, callb
                             'Missing key usage (use or key_ops)';
                         throw new Error(`${errMsg} at index ${index}`);
                     }
-                });
+                    index++;
+                }
                 const okText = i18n['processor.jwt.ok'] || 'OK';
                 const validText = i18n['processor.jwt.validJwks'] || 'Valid JWKS';
                 const keysText = i18n['processor.jwt.keysFound'] || 'keys found';

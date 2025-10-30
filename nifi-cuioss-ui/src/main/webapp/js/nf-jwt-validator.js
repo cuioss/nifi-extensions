@@ -61,9 +61,9 @@ document.addEventListener('DOMContentLoaded', function () {
     try {
         const loadingIndicators = document.querySelectorAll('#loading-indicator, .loading-indicator, [id*="loading"]');
         if (loadingIndicators && loadingIndicators.length > 0) {
-            loadingIndicators.forEach(indicator => {
+            for (const indicator of loadingIndicators) {
                 indicator.style.display = 'none';
-            });
+            }
             window.jwtLoadingIndicatorHidden = true;
         } else {
             console.warn('No loading indicators found to hide');

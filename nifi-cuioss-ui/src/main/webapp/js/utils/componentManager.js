@@ -326,13 +326,13 @@ export class ComponentManager {
      * @private
      */
     _notifyErrorHandlers(componentId, error) {
-        this.errorHandlers.forEach(handler => {
+        for (const handler of this.errorHandlers) {
             try {
                 handler(componentId, error);
             } catch (handlerError) {
                 logger.error('Error in component error handler:', handlerError);
             }
-        });
+        }
     }
 
     /**

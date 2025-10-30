@@ -103,7 +103,7 @@ const registerComponents = () => {
 const setupHelpTooltips = () => {
     try {
         // Find property labels and add tooltips
-        document.querySelectorAll(CSS.SELECTORS.PROPERTY_LABEL).forEach(label => {
+        for (const label of document.querySelectorAll(CSS.SELECTORS.PROPERTY_LABEL)) {
             const propertyName = label.textContent.trim();
             const helpKey = UI_TEXT.PROPERTY_LABELS[propertyName];
 
@@ -117,7 +117,7 @@ const setupHelpTooltips = () => {
                     label.appendChild(tooltip);
                 }
             }
-        });
+        }
 
         // Initialize tooltips for help elements
         initTooltips(CSS.SELECTORS.HELP_TOOLTIP);
@@ -149,9 +149,9 @@ const setupContinuousLoadingMonitoring = () => {
     if (typeof MutationObserver !== 'undefined') {
         const loadingObserver = new MutationObserver((mutations) => {
             let needsHiding = false;
-            mutations.forEach((mutation) => {
+            for (const mutation of mutations) {
                 if (mutation.type === 'childList') {
-                    mutation.addedNodes.forEach((node) => {
+                    for (const node of mutation.addedNodes) {
                         if (node.nodeType === Node.ELEMENT_NODE) {
                             const textContent = node.textContent?.trim() || '';
                             if (textContent.includes('Loading JWT') ||
@@ -160,9 +160,9 @@ const setupContinuousLoadingMonitoring = () => {
                                 needsHiding = true;
                             }
                         }
-                    });
+                    }
                 }
-            });
+            }
 
             if (needsHiding) {
                 logger.debug('MutationObserver detected loading message, hiding immediately');
@@ -205,9 +205,9 @@ const setupContinuousLoadingMonitoring = () => {
 const setupTooltipObserver = () => {
     try {
         const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
+            for (const mutation of mutations) {
                 if (mutation.type === 'childList') {
-                    mutation.addedNodes.forEach((node) => {
+                    for (const node of mutation.addedNodes) {
                         if (node.nodeType === Node.ELEMENT_NODE) {
                             // Initialize tooltips for newly added elements
                             const elementsWithTitle = node.querySelectorAll('[title]');
@@ -221,9 +221,9 @@ const setupTooltipObserver = () => {
                                 initTooltips(Array.from(helpTooltips), { placement: 'right' });
                             }
                         }
-                    });
+                    }
                 }
-            });
+            }
         });
 
         observer.observe(document.body, {
@@ -601,20 +601,20 @@ const hideLoadingBySelectors = () => {
         '[class*="loading"]'
     ];
 
-    selectors.forEach(selector => {
+    for (const selector of selectors) {
         try {
             const elements = document.querySelectorAll(selector);
-            elements.forEach(element => {
+            for (const element of elements) {
                 element.style.setProperty('display', 'none', 'important');
                 element.style.setProperty('visibility', 'hidden', 'important');
                 element.style.setProperty('opacity', '0', 'important');
                 element.setAttribute('aria-hidden', 'true');
                 element.classList.add('hidden');
-            });
+            }
         } catch (selectorError) {
             console.debug('Selector ignored:', selector, selectorError);
         }
-    });
+    }
 };
 
 /**
@@ -645,7 +645,7 @@ const hideLoadingByTextContent = () => {
 
     // Also check for elements by various IDs that might contain loading messages
     const loadingIds = ['loading-indicator', 'simulated-loading', 'jwt-loading', 'validator-loading'];
-    loadingIds.forEach(id => {
+    for (const id of loadingIds) {
         const element = document.getElementById(id);
         if (element) {
             logger.debug(`Found element with ID ${id}:`, element.textContent?.trim());
@@ -654,7 +654,7 @@ const hideLoadingByTextContent = () => {
                 hiddenCount++;
             }
         }
-    });
+    }
 
     logger.debug(`hideLoadingByTextContent: Hidden ${hiddenCount} loading indicators`);
 };

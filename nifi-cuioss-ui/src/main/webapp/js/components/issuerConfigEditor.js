@@ -86,20 +86,21 @@ const _createJwksSuccessMessage = (keyCount, isSimulated = false) => {
 const _parseIssuerProperties = (properties) => {
     const issuerProperties = {};
 
-    Object.entries(properties)
-        .filter(([key]) => key.startsWith('issuer.'))
-        .forEach(([key, value]) => {
-            const parts = key.slice(7).split('.'); // Use slice instead of substring
-            if (parts.length === 2) {
-                const [issuerName, propertyName] = parts; // Destructuring
+    const issuerEntries = Object.entries(properties)
+        .filter(([key]) => key.startsWith('issuer.'));
 
-                if (!issuerProperties[issuerName]) {
-                    issuerProperties[issuerName] = {};
-                }
+    for (const [key, value] of issuerEntries) {
+        const parts = key.slice(7).split('.'); // Use slice instead of substring
+        if (parts.length === 2) {
+            const [issuerName, propertyName] = parts; // Destructuring
 
-                issuerProperties[issuerName][propertyName] = value;
+            if (!issuerProperties[issuerName]) {
+                issuerProperties[issuerName] = {};
             }
-        });
+
+            issuerProperties[issuerName][propertyName] = value;
+        }
+    }
 
     return issuerProperties;
 };
@@ -216,7 +217,8 @@ const _initializeEditorData = async (effectiveUrl, issuersContainer) => {
     // This addresses the issue where dropdowns aren't being created during normal form population
     setTimeout(() => {
         const forms = document.querySelectorAll('.issuer-form');
-        forms.forEach((form, index) => {
+        let index = 0;
+        for (const form of forms) {
             const formFields = form.querySelector('.form-fields');
             const existingDropdown = form.querySelector('.field-jwks-type');
 
@@ -243,7 +245,7 @@ const _initializeEditorData = async (effectiveUrl, issuersContainer) => {
                     { value: 'memory', label: 'Memory (Inline JWKS content)' }
                 ];
 
-                options.forEach(option => {
+                for (const option of options) {
                     const optionElement = document.createElement('option');
                     optionElement.value = option.value;
                     optionElement.textContent = option.label;
@@ -251,7 +253,7 @@ const _initializeEditorData = async (effectiveUrl, issuersContainer) => {
                         optionElement.selected = true;
                     }
                     selectElement.appendChild(optionElement);
-                });
+                }
 
                 fieldContainer.appendChild(selectElement);
 
@@ -261,14 +263,14 @@ const _initializeEditorData = async (effectiveUrl, issuersContainer) => {
                     const currentForm = form;
 
                     // Hide all type-specific fields
-                    currentForm.querySelectorAll('.jwks-type-url, .jwks-type-file, .jwks-type-memory').forEach(field => {
+                    for (const field of currentForm.querySelectorAll('.jwks-type-url, .jwks-type-file, .jwks-type-memory')) {
                         field.style.display = 'none';
-                    });
+                    }
 
                     // Show fields for selected type
-                    currentForm.querySelectorAll(`.jwks-type-${selectedType}`).forEach(field => {
+                    for (const field of currentForm.querySelectorAll(`.jwks-type-${selectedType}`)) {
                         field.style.display = '';
-                    });
+                    }
                 });
 
                 // Insert at the beginning of form fields (after issuer name but before other fields)
@@ -279,7 +281,8 @@ const _initializeEditorData = async (effectiveUrl, issuersContainer) => {
                     formFields.appendChild(fieldContainer);
                 }
             }
-        });
+            index++;
+        }
     }, 100);
 };
 
@@ -329,9 +332,9 @@ const loadExistingIssuers = async (container, processorId) => {
         const issuerProperties = _parseIssuerProperties(properties);
 
         // Create issuer forms for each issuer
-        Object.keys(issuerProperties).forEach(issuerName => {
+        for (const issuerName of Object.keys(issuerProperties)) {
             addIssuerForm(container, issuerName, issuerProperties[issuerName], processorId);
-        });
+        }
     } catch (error) {
         // eslint-disable-next-line no-console
         console.debug(error);
@@ -586,7 +589,7 @@ const _populateIssuerFormFields = (formFields, properties) => {
         ];
 
         const selectedValue = properties ? properties['jwks-type'] : 'url';
-        options.forEach(option => {
+        for (const option of options) {
             const optionElement = document.createElement('option');
             optionElement.value = option.value;
             optionElement.textContent = option.label;
@@ -594,7 +597,7 @@ const _populateIssuerFormFields = (formFields, properties) => {
                 optionElement.selected = true;
             }
             selectElement.appendChild(optionElement);
-        });
+        }
 
         fieldContainer.appendChild(selectElement);
 
@@ -604,14 +607,14 @@ const _populateIssuerFormFields = (formFields, properties) => {
             const form = formFields.closest('.issuer-form') || formFields;
 
             // Hide all type-specific fields
-            form.querySelectorAll('.jwks-type-url, .jwks-type-file, .jwks-type-memory').forEach(field => {
+            for (const field of form.querySelectorAll('.jwks-type-url, .jwks-type-file, .jwks-type-memory')) {
                 field.style.display = 'none';
-            });
+            }
 
             // Show fields for selected type
-            form.querySelectorAll(`.jwks-type-${selectedType}`).forEach(field => {
+            for (const field of form.querySelectorAll(`.jwks-type-${selectedType}`)) {
                 field.style.display = '';
-            });
+            }
         });
 
         formFields.appendChild(fieldContainer);
@@ -956,11 +959,11 @@ const saveIssuer = async (form, errorContainer, processorId = null) => {
  */
 const _createRemovalUpdates = (properties, issuerName) => {
     const updates = {};
-    Object.keys(properties).forEach(key => {
+    for (const key of Object.keys(properties)) {
         if (key.startsWith(`issuer.${issuerName}.`)) {
             updates[key] = null;
         }
-    });
+    }
     return updates;
 };
 
