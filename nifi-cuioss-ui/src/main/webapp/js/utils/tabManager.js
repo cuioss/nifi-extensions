@@ -38,7 +38,7 @@ export const initTabs = () => {
             setTimeout(() => clickingState.delete(link), 100);
         }
 
-        const targetId = link.getAttribute('href') || link.getAttribute('data-target');
+        const targetId = link.getAttribute('href') || link.dataset.target;
 
         if (!targetId || targetId === '#') {
             return;

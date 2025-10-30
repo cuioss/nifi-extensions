@@ -210,7 +210,7 @@ const createMetricsContent = () => {
     if (exportOptions) {
         exportOptions.addEventListener('click', (e) => {
             if (e.target.matches('[data-testid^="export-"]')) {
-                const format = e.target.getAttribute('data-testid').replace('export-', '');
+                const format = e.target.dataset.testid.replace('export-', '');
                 handleExport(format);
                 exportOptions.style.display = 'none';
             }
