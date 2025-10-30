@@ -220,7 +220,7 @@ const createHelpContent = () => {
  * Initializes collapsible sections behavior
  */
 const initializeCollapsibles = () => {
-    document.querySelectorAll('.collapsible-header').forEach(header => {
+    for (const header of document.querySelectorAll('.collapsible-header')) {
         header.addEventListener('click', function () {
             const content = this.nextElementSibling;
             const icon = this.querySelector('i.fa');
@@ -246,7 +246,7 @@ const initializeCollapsibles = () => {
 
             logger.debug('Toggled help section:', this.textContent.trim());
         });
-    });
+    }
 };
 
 /**
