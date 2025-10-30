@@ -295,81 +295,132 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @return The TokenValidator instance
      */
     private TokenValidator getTokenValidator(final ProcessContext context) {
-        // Check if configuration file has been modified
-        boolean configFileChanged = false;
-        if (configurationManager != null) {
-            configFileChanged = configurationManager.checkAndReloadConfiguration();
-            if (configFileChanged) {
-                LOGGER.info("External configuration file changed, forcing TokenValidator recreation");
-                configurationRefreshed = true;
-            }
-        }
-
-        // Generate a hash of the current configuration
+        boolean configFileChanged = checkExternalConfigurationChange();
         String currentConfigHash = generateConfigurationHash(context);
 
-        // Check if configuration has changed
-        if (tokenValidator.get() == null || !configurationHash.get().equals(currentConfigHash) || configFileChanged) {
+        if (shouldRecreateValidator(currentConfigHash, configFileChanged)) {
             synchronized (tokenValidatorLock) {
-                // Double-check inside synchronized block
-                if (tokenValidator.get() == null || !configurationHash.get().equals(currentConfigHash) || configFileChanged) {
-                    LOGGER.info(AuthLogMessages.INFO.CONFIG_CHANGE_DETECTED.format());
-
-                    // Log what changed if this is a reconfiguration (not initial setup)
-                    if (tokenValidator.get() != null) {
-                        LOGGER.info(AuthLogMessages.INFO.CONFIG_HASH_CHANGED.format(
-                                configurationHash.get(), currentConfigHash));
-
-                        // Clean up old resources before creating new ones
-                        cleanupResources();
-                    }
-
-                    // Create issuer configurations
-                    List<IssuerConfig> issuerConfigs = createIssuerConfigs(context);
-
-                    // Check if we have any issuer configurations
-                    if (issuerConfigs.isEmpty()) {
-                        // If no issuer configurations and require-valid-token is false, we can continue without a validator
-                        boolean requireValidToken = context.getProperty(Properties.REQUIRE_VALID_TOKEN).asBoolean();
-                        if (!requireValidToken) {
-                            LOGGER.warn("No issuer configurations found, but require-valid-token is false. TokenValidator will not be initialized.");
-                            tokenValidator.set(null);
-                            securityEventCounter = null;
-                            configurationHash.set(currentConfigHash);
-                            return null;
-                        } else {
-                            throw new IllegalArgumentException("At least one issuer configuration must be provided when require-valid-token is true");
-                        }
-                    }
-
-                    // Create a new TokenValidator with issuer configurations
-                    // Create parser configuration using shared parser
-                    Map<String, String> properties = convertContextToProperties(context);
-                    ParserConfig parserConfig = IssuerConfigurationParser.parseParserConfig(properties);
-
-                    // Use the TokenValidator builder pattern
-                    TokenValidator newValidator = TokenValidator.builder()
-                            .parserConfig(parserConfig)
-                            .issuerConfigs(issuerConfigs)
-                            .build();
-                    tokenValidator.set(newValidator);
-
-                    // Get the SecurityEventCounter for metrics
-                    securityEventCounter = tokenValidator.get().getSecurityEventCounter();
-
-                    // Update configuration hash
-                    configurationHash.set(currentConfigHash);
-
-                    LOGGER.info(AuthLogMessages.INFO.TOKEN_VALIDATOR_INITIALIZED.format(issuerConfigs.size()));
-
-                    // Clear the issuer Config cache to ensure we don't use stale configurations
-                    issuerConfigCache.clear();
-                    authorizationConfigCache.clear();
+                if (shouldRecreateValidator(currentConfigHash, configFileChanged)) {
+                    recreateTokenValidator(context, currentConfigHash);
                 }
             }
         }
 
         return tokenValidator.get();
+    }
+
+    /**
+     * Checks if external configuration file has changed.
+     *
+     * @return true if configuration file was modified, false otherwise
+     */
+    private boolean checkExternalConfigurationChange() {
+        if (configurationManager == null) {
+            return false;
+        }
+
+        boolean configFileChanged = configurationManager.checkAndReloadConfiguration();
+        if (configFileChanged) {
+            LOGGER.info("External configuration file changed, forcing TokenValidator recreation");
+            configurationRefreshed = true;
+        }
+
+        return configFileChanged;
+    }
+
+    /**
+     * Determines if the TokenValidator needs to be recreated.
+     *
+     * @param currentConfigHash The current configuration hash
+     * @param configFileChanged Whether the configuration file changed
+     * @return true if validator should be recreated, false otherwise
+     */
+    private boolean shouldRecreateValidator(String currentConfigHash, boolean configFileChanged) {
+        return tokenValidator.get() == null
+                || !configurationHash.get().equals(currentConfigHash)
+                || configFileChanged;
+    }
+
+    /**
+     * Recreates the TokenValidator with new configuration.
+     *
+     * @param context           The process context
+     * @param currentConfigHash The current configuration hash
+     */
+    private void recreateTokenValidator(ProcessContext context, String currentConfigHash) {
+        LOGGER.info(AuthLogMessages.INFO.CONFIG_CHANGE_DETECTED.format());
+
+        logConfigurationChange(currentConfigHash);
+        List<IssuerConfig> issuerConfigs = createIssuerConfigs(context);
+
+        if (issuerConfigs.isEmpty()) {
+            handleEmptyIssuerConfigs(context, currentConfigHash);
+            return;
+        }
+
+        buildAndConfigureTokenValidator(context, issuerConfigs, currentConfigHash);
+    }
+
+    /**
+     * Logs configuration change details if this is a reconfiguration.
+     *
+     * @param currentConfigHash The new configuration hash
+     */
+    private void logConfigurationChange(String currentConfigHash) {
+        if (tokenValidator.get() != null) {
+            LOGGER.info(AuthLogMessages.INFO.CONFIG_HASH_CHANGED.format(
+                    configurationHash.get(), currentConfigHash));
+            cleanupResources();
+        }
+    }
+
+    /**
+     * Handles the case when no issuer configurations are found.
+     *
+     * @param context           The process context
+     * @param currentConfigHash The current configuration hash
+     */
+    private void handleEmptyIssuerConfigs(ProcessContext context, String currentConfigHash) {
+        boolean requireValidToken = context.getProperty(Properties.REQUIRE_VALID_TOKEN).asBoolean();
+
+        if (!requireValidToken) {
+            LOGGER.warn("No issuer configurations found, but require-valid-token is false. " +
+                    "TokenValidator will not be initialized.");
+            tokenValidator.set(null);
+            securityEventCounter = null;
+            configurationHash.set(currentConfigHash);
+        } else {
+            throw new IllegalArgumentException(
+                    "At least one issuer configuration must be provided when require-valid-token is true");
+        }
+    }
+
+    /**
+     * Builds and configures a new TokenValidator instance.
+     *
+     * @param context           The process context
+     * @param issuerConfigs     The issuer configurations
+     * @param currentConfigHash The current configuration hash
+     */
+    private void buildAndConfigureTokenValidator(ProcessContext context,
+                                                 List<IssuerConfig> issuerConfigs,
+                                                 String currentConfigHash) {
+        Map<String, String> properties = convertContextToProperties(context);
+        ParserConfig parserConfig = IssuerConfigurationParser.parseParserConfig(properties);
+
+        TokenValidator newValidator = TokenValidator.builder()
+                .parserConfig(parserConfig)
+                .issuerConfigs(issuerConfigs)
+                .build();
+
+        tokenValidator.set(newValidator);
+        securityEventCounter = tokenValidator.get().getSecurityEventCounter();
+        configurationHash.set(currentConfigHash);
+
+        LOGGER.info(AuthLogMessages.INFO.TOKEN_VALIDATOR_INITIALIZED.format(issuerConfigs.size()));
+
+        issuerConfigCache.clear();
+        authorizationConfigCache.clear();
     }
 
     /**
@@ -589,185 +640,285 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             return;
         }
 
-        // Increment the processed flow files count
+        flowFile = handleMetricsAndConfiguration(flowFile, session);
+        String tokenLocation = context.getProperty(Properties.TOKEN_LOCATION).getValue();
+
+        try {
+            String token = extractTokenByLocation(flowFile, session, context, tokenLocation);
+
+            if (token == null || token.isEmpty()) {
+                handleMissingToken(session, flowFile, context, tokenLocation);
+                return;
+            }
+
+            if (!validateTokenFormat(session, flowFile, token, context)) {
+                return;
+            }
+
+            processValidToken(session, flowFile, token, context);
+
+        } catch (TokenValidationException e) {
+            handleTokenValidationException(session, flowFile, e);
+        } catch (RuntimeException e) {
+            handleRuntimeException(session, flowFile, e, tokenLocation);
+        }
+    }
+
+    /**
+     * Handles metrics logging and configuration refresh for the flow file.
+     *
+     * @param flowFile The flow file to process
+     * @param session  The process session
+     * @return The potentially modified flow file
+     */
+    private FlowFile handleMetricsAndConfiguration(FlowFile flowFile, ProcessSession session) {
         processedFlowFilesCount.incrementAndGet();
 
-        // Log metrics periodically
         if (processedFlowFilesCount.intValue() % LOG_METRICS_INTERVAL == 0) {
             logSecurityMetrics();
         }
 
-        // Add configuration refreshed attribute if configuration was reloaded
         if (configurationRefreshed) {
             flowFile = session.putAttribute(flowFile, JWTAttributes.Config.REFRESHED, "true");
             LOGGER.info("Added " + JWTAttributes.Config.REFRESHED + " attribute to flow file");
             configurationRefreshed = false;
         }
 
-        // Extract token from flow file
-        String tokenLocation = context.getProperty(Properties.TOKEN_LOCATION).getValue();
-        String token;
+        return flowFile;
+    }
 
-        // Extract token based on configured location
-        try {
-            token = switch (tokenLocation) {
-                case "AUTHORIZATION_HEADER" ->
-                    extractTokenFromHeader(flowFile, context.getProperty(Properties.TOKEN_HEADER).getValue());
-                case "CUSTOM_HEADER" ->
-                    extractTokenFromHeader(flowFile, context.getProperty(Properties.CUSTOM_HEADER_NAME).getValue());
-                case "FLOW_FILE_CONTENT" -> extractTokenFromContent(flowFile, session);
-                default ->
-                    // Default to Authorization header
-                    extractTokenFromHeader(flowFile, "Authorization");
-            };
+    /**
+     * Extracts token from the configured location.
+     *
+     * @param flowFile      The flow file containing the token
+     * @param session       The process session
+     * @param context       The process context
+     * @param tokenLocation The configured token location
+     * @return The extracted token, or null if not found
+     */
+    private String extractTokenByLocation(FlowFile flowFile, ProcessSession session,
+                                          ProcessContext context, String tokenLocation) {
+        return switch (tokenLocation) {
+            case "AUTHORIZATION_HEADER" ->
+                extractTokenFromHeader(flowFile, context.getProperty(Properties.TOKEN_HEADER).getValue());
+            case "CUSTOM_HEADER" ->
+                extractTokenFromHeader(flowFile, context.getProperty(Properties.CUSTOM_HEADER_NAME).getValue());
+            case "FLOW_FILE_CONTENT" -> extractTokenFromContent(flowFile, session);
+            default -> extractTokenFromHeader(flowFile, "Authorization");
+        };
+    }
 
-            // If no token found, check if valid token is required
-            if (token == null || token.isEmpty()) {
-                boolean requireValidToken = context.getProperty(Properties.REQUIRE_VALID_TOKEN).asBoolean();
+    /**
+     * Handles the case when no token is found in the flow file.
+     *
+     * @param session       The process session
+     * @param flowFile      The flow file
+     * @param context       The process context
+     * @param tokenLocation The configured token location
+     */
+    private void handleMissingToken(ProcessSession session, FlowFile flowFile,
+                                    ProcessContext context, String tokenLocation) {
+        boolean requireValidToken = context.getProperty(Properties.REQUIRE_VALID_TOKEN).asBoolean();
 
-                if (!requireValidToken) {
-                    // If valid token is not required, route to success
-                    LOGGER.info("No token found but valid token not required, routing to success");
+        if (!requireValidToken) {
+            routeFlowFileWithoutToken(session, flowFile);
+        } else {
+            handleMissingRequiredToken(session, flowFile, tokenLocation);
+        }
+    }
 
-                    // Set attributes to indicate no token was present
-                    Map<String, String> attributes = new HashMap<>();
-                    attributes.put(JWTAttributes.Error.REASON, "No token provided");
-                    attributes.put(JWTAttributes.Token.PRESENT, BOOLEAN_FALSE);
-                    attributes.put(JWTAttributes.Authorization.AUTHORIZED, BOOLEAN_FALSE);
+    /**
+     * Routes a flow file to success when no token is present but not required.
+     *
+     * @param session  The process session
+     * @param flowFile The flow file
+     */
+    private void routeFlowFileWithoutToken(ProcessSession session, FlowFile flowFile) {
+        LOGGER.info("No token found but valid token not required, routing to success");
 
-                    flowFile = session.putAllAttributes(flowFile, attributes);
-                    session.transfer(flowFile, Relationships.SUCCESS);
-                    return;
-                } else {
-                    // If valid token is required, route to failure
-                    String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
-                            .operation("extractToken")
-                            .errorCode(ErrorContext.ErrorCodes.VALIDATION_ERROR)
-                            .build()
-                            .with("tokenLocation", tokenLocation)
-                            .with(FLOW_FILE_UUID_KEY, flowFile.getAttribute("uuid"))
-                            .buildMessage("No token found in the specified location");
+        Map<String, String> attributes = new HashMap<>();
+        attributes.put(JWTAttributes.Error.REASON, "No token provided");
+        attributes.put(JWTAttributes.Token.PRESENT, BOOLEAN_FALSE);
+        attributes.put(JWTAttributes.Authorization.AUTHORIZED, BOOLEAN_FALSE);
 
-                    LOGGER.warn(contextMessage);
-                    handleError(
-                            session,
-                            flowFile,
-                            "AUTH-001",
-                            i18nResolver.getTranslatedString(JWTTranslationKeys.Error.NO_TOKEN_FOUND, tokenLocation),
-                            "EXTRACTION_ERROR"
-                    );
-                    return;
-                }
-            }
+        flowFile = session.putAllAttributes(flowFile, attributes);
+        session.transfer(flowFile, Relationships.SUCCESS);
+    }
 
-            // Check token size limits
-            int maxTokenSize = context.getProperty(Properties.MAXIMUM_TOKEN_SIZE).asInteger();
-            if (token.length() > maxTokenSize) {
-                String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
-                        .operation("validateTokenSize")
-                        .errorCode(ErrorContext.ErrorCodes.VALIDATION_ERROR)
-                        .build()
-                        .with("tokenSize", token.length())
-                        .with("maxTokenSize", maxTokenSize)
-                        .with(FLOW_FILE_UUID_KEY, flowFile.getAttribute("uuid"))
-                        .buildMessage("Token exceeds maximum size limit");
+    /**
+     * Handles error when a required token is missing.
+     *
+     * @param session       The process session
+     * @param flowFile      The flow file
+     * @param tokenLocation The configured token location
+     */
+    private void handleMissingRequiredToken(ProcessSession session, FlowFile flowFile, String tokenLocation) {
+        String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
+                .operation("extractToken")
+                .errorCode(ErrorContext.ErrorCodes.VALIDATION_ERROR)
+                .build()
+                .with("tokenLocation", tokenLocation)
+                .with(FLOW_FILE_UUID_KEY, flowFile.getAttribute("uuid"))
+                .buildMessage("No token found in the specified location");
 
-                LOGGER.warn(contextMessage);
-                handleError(
-                        session,
-                        flowFile,
-                        "AUTH-003",
-                        i18nResolver.getTranslatedString(JWTTranslationKeys.Error.TOKEN_SIZE_LIMIT, maxTokenSize),
-                        "TOKEN_SIZE_VIOLATION"
-                );
-                return;
-            }
+        LOGGER.warn(contextMessage);
+        handleError(
+                session,
+                flowFile,
+                "AUTH-001",
+                i18nResolver.getTranslatedString(JWTTranslationKeys.Error.NO_TOKEN_FOUND, tokenLocation),
+                "EXTRACTION_ERROR"
+        );
+    }
 
-            // Check for obviously malformed tokens (should have at least 2 dots for header.payload.signature)
-            if (!token.contains(".")) {
-                String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
-                        .operation("validateTokenFormat")
-                        .errorCode(ErrorContext.ErrorCodes.TOKEN_ERROR)
-                        .build()
-                        .with("tokenSegments", token.split("\\.").length)
-                        .with(FLOW_FILE_UUID_KEY, flowFile.getAttribute("uuid"))
-                        .buildMessage("Token is malformed (missing segments)");
+    /**
+     * Validates token format including size and structure.
+     *
+     * @param session  The process session
+     * @param flowFile The flow file
+     * @param token    The token to validate
+     * @param context  The process context
+     * @return true if token format is valid, false if error was handled
+     */
+    private boolean validateTokenFormat(ProcessSession session, FlowFile flowFile,
+                                       String token, ProcessContext context) {
+        int maxTokenSize = context.getProperty(Properties.MAXIMUM_TOKEN_SIZE).asInteger();
 
-                LOGGER.warn(contextMessage);
-                handleError(
-                        session,
-                        flowFile,
-                        "AUTH-004",
-                        i18nResolver.getTranslatedString(JWTTranslationKeys.Error.TOKEN_MALFORMED),
-                        "MALFORMED_TOKEN"
-                );
-                return;
-            }
-
-            // Validate token using the TokenValidator - will throw TokenValidationException if invalid
-            AccessTokenContent accessToken = validateToken(token, context);
-
-            // Perform authorization check
-            AuthorizationCheckResult authResult = performAuthorizationCheckWithDetails(accessToken);
-
-            // Token is valid, add claims as attributes
-            Map<String, String> attributes = extractClaims(accessToken);
-
-            // Add token presence indicator
-            attributes.put(JWTAttributes.Token.PRESENT, "true");
-
-            // Add authorization result
-            attributes.put(JWTAttributes.Authorization.AUTHORIZED, String.valueOf(authResult.isAuthorized()));
-            if (authResult.isBypassed()) {
-                attributes.put(JWTAttributes.Authorization.BYPASSED, "true");
-            }
-
-            flowFile = session.putAllAttributes(flowFile, attributes);
-
-            // Transfer to success relationship
-            session.transfer(flowFile, Relationships.SUCCESS);
-
-        } catch (TokenValidationException e) {
-            // Token validation failed
-            LOGGER.warn("Token validation failed: %s", e.getMessage());
-            String errorMessage = i18nResolver.getTranslatedString(JWTTranslationKeys.Error.TOKEN_VALIDATION_FAILED, e.getMessage());
-
-            // Determine more specific error code based on event type
-            String errorCode = "AUTH-002"; // Default error code
-            String category = e.getCategory().name();
-
-            // Map common validation failures to specific error codes
-            if (category.contains("EXPIRED")) {
-                errorCode = "AUTH-005";
-            } else if (category.contains("SIGNATURE")) {
-                errorCode = "AUTH-006";
-            } else if (category.contains("ISSUER")) {
-                errorCode = "AUTH-007";
-            } else if (category.contains("AUDIENCE")) {
-                errorCode = "AUTH-008";
-            }
-
-            handleError(session, flowFile, errorCode, errorMessage, category);
-        } catch (RuntimeException e) {
-            // Catch unexpected runtime exceptions (NullPointerException, IllegalStateException, etc.)
+        if (token.length() > maxTokenSize) {
             String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
-                    .operation("onTrigger")
-                    .errorCode(ErrorContext.ErrorCodes.PROCESSING_ERROR)
-                    .cause(e)
+                    .operation("validateTokenSize")
+                    .errorCode(ErrorContext.ErrorCodes.VALIDATION_ERROR)
                     .build()
+                    .with("tokenSize", token.length())
+                    .with("maxTokenSize", maxTokenSize)
                     .with(FLOW_FILE_UUID_KEY, flowFile.getAttribute("uuid"))
-                    .with("tokenLocation", tokenLocation)
-                    .buildMessage("Error processing flow file");
+                    .buildMessage("Token exceeds maximum size limit");
 
-            LOGGER.error(e, contextMessage);
+            LOGGER.warn(contextMessage);
             handleError(
                     session,
                     flowFile,
-                    "AUTH-999",
-                    i18nResolver.getTranslatedString(JWTTranslationKeys.Error.UNKNOWN, e.getMessage()),
-                    "PROCESSING_ERROR"
+                    "AUTH-003",
+                    i18nResolver.getTranslatedString(JWTTranslationKeys.Error.TOKEN_SIZE_LIMIT, maxTokenSize),
+                    "TOKEN_SIZE_VIOLATION"
             );
+            return false;
         }
+
+        if (!token.contains(".")) {
+            String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
+                    .operation("validateTokenFormat")
+                    .errorCode(ErrorContext.ErrorCodes.TOKEN_ERROR)
+                    .build()
+                    .with("tokenSegments", token.split("\\.").length)
+                    .with(FLOW_FILE_UUID_KEY, flowFile.getAttribute("uuid"))
+                    .buildMessage("Token is malformed (missing segments)");
+
+            LOGGER.warn(contextMessage);
+            handleError(
+                    session,
+                    flowFile,
+                    "AUTH-004",
+                    i18nResolver.getTranslatedString(JWTTranslationKeys.Error.TOKEN_MALFORMED),
+                    "MALFORMED_TOKEN"
+            );
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Processes a valid token and routes the flow file appropriately.
+     *
+     * @param session  The process session
+     * @param flowFile The flow file
+     * @param token    The token to validate
+     * @param context  The process context
+     * @throws TokenValidationException if token validation fails
+     */
+    private void processValidToken(ProcessSession session, FlowFile flowFile,
+                                   String token, ProcessContext context) throws TokenValidationException {
+        AccessTokenContent accessToken = validateToken(token, context);
+        AuthorizationCheckResult authResult = performAuthorizationCheckWithDetails(accessToken);
+
+        Map<String, String> attributes = extractClaims(accessToken);
+        attributes.put(JWTAttributes.Token.PRESENT, "true");
+        attributes.put(JWTAttributes.Authorization.AUTHORIZED, String.valueOf(authResult.isAuthorized()));
+
+        if (authResult.isBypassed()) {
+            attributes.put(JWTAttributes.Authorization.BYPASSED, "true");
+        }
+
+        flowFile = session.putAllAttributes(flowFile, attributes);
+        session.transfer(flowFile, Relationships.SUCCESS);
+    }
+
+    /**
+     * Handles TokenValidationException by mapping to specific error codes.
+     *
+     * @param session  The process session
+     * @param flowFile The flow file
+     * @param e        The validation exception
+     */
+    private void handleTokenValidationException(ProcessSession session, FlowFile flowFile,
+                                                TokenValidationException e) {
+        LOGGER.warn("Token validation failed: %s", e.getMessage());
+        String errorMessage = i18nResolver.getTranslatedString(
+                JWTTranslationKeys.Error.TOKEN_VALIDATION_FAILED, e.getMessage());
+
+        String category = e.getCategory().name();
+        String errorCode = mapValidationCategoryToErrorCode(category);
+
+        handleError(session, flowFile, errorCode, errorMessage, category);
+    }
+
+    /**
+     * Maps validation exception category to specific error code.
+     *
+     * @param category The exception category
+     * @return The corresponding error code
+     */
+    private String mapValidationCategoryToErrorCode(String category) {
+        if (category.contains("EXPIRED")) {
+            return "AUTH-005";
+        } else if (category.contains("SIGNATURE")) {
+            return "AUTH-006";
+        } else if (category.contains("ISSUER")) {
+            return "AUTH-007";
+        } else if (category.contains("AUDIENCE")) {
+            return "AUTH-008";
+        }
+        return "AUTH-002"; // Default error code
+    }
+
+    /**
+     * Handles unexpected runtime exceptions during token processing.
+     *
+     * @param session       The process session
+     * @param flowFile      The flow file
+     * @param e             The runtime exception
+     * @param tokenLocation The configured token location
+     */
+    private void handleRuntimeException(ProcessSession session, FlowFile flowFile,
+                                       RuntimeException e, String tokenLocation) {
+        String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
+                .operation("onTrigger")
+                .errorCode(ErrorContext.ErrorCodes.PROCESSING_ERROR)
+                .cause(e)
+                .build()
+                .with(FLOW_FILE_UUID_KEY, flowFile.getAttribute("uuid"))
+                .with("tokenLocation", tokenLocation)
+                .buildMessage("Error processing flow file");
+
+        LOGGER.error(e, contextMessage);
+        handleError(
+                session,
+                flowFile,
+                "AUTH-999",
+                i18nResolver.getTranslatedString(JWTTranslationKeys.Error.UNKNOWN, e.getMessage()),
+                "PROCESSING_ERROR"
+        );
     }
 
     /**
