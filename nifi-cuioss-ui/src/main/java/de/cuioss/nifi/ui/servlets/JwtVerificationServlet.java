@@ -78,167 +78,244 @@ public class JwtVerificationServlet extends HttpServlet {
 
         LOGGER.debug("Received JWT verification request");
 
-        // 1. Parse JSON request body using Jakarta JSON API
-        JsonObject requestJson;
-        try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
-            requestJson = reader.readObject();
-        } catch (JsonException e) {
-            LOGGER.warn("Invalid JSON format in request: %s", e.getMessage());
-            try {
-                sendErrorResponse(resp, 400, "Invalid JSON format", false);
-            } catch (IOException ioException) {
-                LOGGER.error(ioException, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
-                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            }
-            return;
-        } catch (IOException e) {
-            LOGGER.error(e, "Error reading request body");
-            try {
-                sendErrorResponse(resp, 500, "Error reading request", false);
-            } catch (IOException ioException) {
-                LOGGER.error(ioException, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
-                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            }
-            return;
+        // 1. Parse JSON request body
+        JsonObject requestJson = parseJsonRequest(req, resp);
+        if (requestJson == null) {
+            return; // Error already handled
         }
 
-        // 2. Validate required fields
+        // 2. Validate and extract request parameters
+        TokenVerificationRequest verificationRequest = extractVerificationRequest(requestJson, req, resp);
+        if (verificationRequest == null) {
+            return; // Error already handled
+        }
+
+        // 3. Verify token using service
+        TokenValidationResult result = performTokenVerification(
+                verificationRequest,
+                resp
+        );
+        if (result == null) {
+            return; // Error already handled
+        }
+
+        // 4. Build and send JSON response
+        safelySendValidationResponse(resp, result);
+    }
+
+    /**
+     * Parses the JSON request body.
+     *
+     * @param req HTTP request
+     * @param resp HTTP response
+     * @return Parsed JSON object, or null if parsing failed (error already sent)
+     */
+    private JsonObject parseJsonRequest(HttpServletRequest req, HttpServletResponse resp) {
+        try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
+            return reader.readObject();
+        } catch (JsonException e) {
+            LOGGER.warn("Invalid JSON format in request: %s", e.getMessage());
+            safelySendErrorResponse(resp, 400, "Invalid JSON format", false);
+            return null;
+        } catch (IOException e) {
+            LOGGER.error(e, "Error reading request body");
+            safelySendErrorResponse(resp, 500, "Error reading request", false);
+            return null;
+        }
+    }
+
+    /**
+     * Extracts and validates token verification request parameters.
+     *
+     * @param requestJson Parsed JSON request
+     * @param req HTTP request
+     * @param resp HTTP response
+     * @return Token verification request, or null if validation failed (error already sent)
+     */
+    private TokenVerificationRequest extractVerificationRequest(
+            JsonObject requestJson,
+            HttpServletRequest req,
+            HttpServletResponse resp) {
+
+        // Validate required fields
         if (!requestJson.containsKey("token")) {
             LOGGER.warn("Missing required field: token");
-            try {
-                sendErrorResponse(resp, 400, "Missing required field: token", false);
-            } catch (IOException e) {
-                LOGGER.error(e, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
-                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            }
-            return;
+            safelySendErrorResponse(resp, 400, "Missing required field: token", false);
+            return null;
         }
 
         String token = requestJson.getString("token");
-        String processorId = requestJson.containsKey("processorId") ? requestJson.getString("processorId") : null;
-        String expectedIssuer = requestJson.containsKey(JSON_KEY_ISSUER) ? requestJson.getString(JSON_KEY_ISSUER) : null;
+        if (token == null || token.trim().isEmpty()) {
+            safelySendErrorResponse(resp, 400, "Token cannot be empty", false);
+            return null;
+        }
+
+        String processorId = requestJson.containsKey("processorId") ?
+                requestJson.getString("processorId") : null;
+        String expectedIssuer = requestJson.containsKey(JSON_KEY_ISSUER) ?
+                requestJson.getString(JSON_KEY_ISSUER) : null;
 
         LOGGER.info("Request received - processorId: %s, token: %s", processorId, token);
 
-        // Extract authorization requirements if present
-        List<String> requiredScopes = null;
-        List<String> requiredRoles = null;
+        // Extract authorization requirements
+        List<String> requiredScopes = extractJsonArray(requestJson, "requiredScopes");
+        List<String> requiredRoles = extractJsonArray(requestJson, "requiredRoles");
 
-        if (requestJson.containsKey("requiredScopes")) {
-            requiredScopes = new ArrayList<>();
-            var scopesArray = requestJson.getJsonArray("requiredScopes");
-            for (int i = 0; i < scopesArray.size(); i++) {
-                requiredScopes.add(scopesArray.get(i).toString().replace("\"", ""));
-            }
-        }
-
-        if (requestJson.containsKey("requiredRoles")) {
-            requiredRoles = new ArrayList<>();
-            var rolesArray = requestJson.getJsonArray("requiredRoles");
-            for (int i = 0; i < rolesArray.size(); i++) {
-                requiredRoles.add(rolesArray.get(i).toString().replace("\"", ""));
-            }
-        }
-
-        if (token == null || token.trim().isEmpty()) {
-            try {
-                sendErrorResponse(resp, 400, "Token cannot be empty", false);
-            } catch (IOException e) {
-                LOGGER.error(e, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
-                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            }
-            return;
-        }
-
-        // For E2E tests, allow missing processorId (use test mode)
-        String servletPath = req.getServletPath();
-        String requestURI = req.getRequestURI();
-        boolean isE2ETest = (servletPath != null && servletPath.startsWith("/api/token/")) ||
-                (requestURI != null && requestURI.contains("/api/token/"));
-
-        // Also enable test mode if processorId is explicitly empty (for standalone UI testing)
+        // Determine test mode
+        boolean isE2ETest = isE2ETestRequest(req);
         boolean useTestMode = isE2ETest || (processorId != null && processorId.trim().isEmpty());
 
         if (!useTestMode && (processorId == null || processorId.trim().isEmpty())) {
-            try {
-                sendErrorResponse(resp, 400, "Processor ID cannot be empty", false);
-            } catch (IOException e) {
-                LOGGER.error(e, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
-                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            }
-            return;
+            safelySendErrorResponse(resp, 400, "Processor ID cannot be empty", false);
+            return null;
         }
 
         LOGGER.debug("Verifying token for processor: %s", processorId);
 
-        // 3. Verify token using service
-        TokenValidationResult result;
+        return new TokenVerificationRequest(
+                token,
+                processorId,
+                expectedIssuer,
+                requiredScopes,
+                requiredRoles,
+                isE2ETest,
+                useTestMode
+        );
+    }
+
+    /**
+     * Checks if this is an E2E test request.
+     */
+    private boolean isE2ETestRequest(HttpServletRequest req) {
+        String servletPath = req.getServletPath();
+        String requestURI = req.getRequestURI();
+        return (servletPath != null && servletPath.startsWith("/api/token/")) ||
+                (requestURI != null && requestURI.contains("/api/token/"));
+    }
+
+    /**
+     * Extracts a JSON array field as a list of strings.
+     */
+    private List<String> extractJsonArray(JsonObject json, String fieldName) {
+        if (!json.containsKey(fieldName)) {
+            return null;
+        }
+        List<String> result = new ArrayList<>();
+        var array = json.getJsonArray(fieldName);
+        for (int i = 0; i < array.size(); i++) {
+            result.add(array.get(i).toString().replace("\"", ""));
+        }
+        return result;
+    }
+
+    /**
+     * Performs token verification and additional validation for E2E tests.
+     *
+     * @param verificationRequest Token verification request parameters
+     * @param resp HTTP response
+     * @return Token validation result, or null if verification failed (error already sent)
+     */
+    private TokenValidationResult performTokenVerification(
+            TokenVerificationRequest verificationRequest,
+            HttpServletResponse resp) {
+
         try {
             // Use null processorId for test mode to trigger test configuration
-            String validationProcessorId = useTestMode ? null : processorId;
-            result = validationService.verifyToken(token, validationProcessorId);
+            String validationProcessorId = verificationRequest.useTestMode() ?
+                    null : verificationRequest.processorId();
+            TokenValidationResult result = validationService.verifyToken(
+                    verificationRequest.token(),
+                    validationProcessorId
+            );
 
             // For E2E tests, perform additional validation
-            if (isE2ETest && result.isValid()) {
-                // Check issuer if specified
-                if (expectedIssuer != null && !expectedIssuer.equals(result.getIssuer())) {
-                    result = TokenValidationResult.failure("Issuer mismatch");
-                }
-
-                // Check authorization if scopes/roles are required
-                if ((requiredScopes != null || requiredRoles != null) && result.isValid()) {
-                    boolean authorized = true;
-
-                    if (requiredScopes != null && result.getScopes() != null) {
-                        authorized = result.getScopes().containsAll(requiredScopes);
-                    }
-
-                    if (authorized && requiredRoles != null && result.getRoles() != null) {
-                        authorized = result.getRoles().containsAll(requiredRoles);
-                    }
-
-                    result.setAuthorized(authorized);
-                }
+            if (verificationRequest.isE2ETest() && result.isValid()) {
+                result = performE2EValidation(result, verificationRequest);
             }
+
+            return result;
         } catch (IllegalArgumentException e) {
-            LOGGER.warn("Invalid request for processor %s: %s", processorId, e.getMessage());
-            try {
-                sendErrorResponse(resp, 400, "Invalid request: " + e.getMessage(), false);
-            } catch (IOException ioException) {
-                LOGGER.error(ioException, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
-                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            }
-            return;
+            LOGGER.warn("Invalid request for processor %s: %s",
+                    verificationRequest.processorId(), e.getMessage());
+            safelySendErrorResponse(resp, 400, "Invalid request: " + e.getMessage(), false);
+            return null;
         } catch (IllegalStateException e) {
-            LOGGER.error("Service not available for processor %s: %s", processorId, e.getMessage());
-            try {
-                sendErrorResponse(resp, 500, "Service not available: " + e.getMessage(), false);
-            } catch (IOException ioException) {
-                LOGGER.error(ioException, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
-                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            }
-            return;
+            LOGGER.error("Service not available for processor %s: %s",
+                    verificationRequest.processorId(), e.getMessage());
+            safelySendErrorResponse(resp, 500, "Service not available: " + e.getMessage(), false);
+            return null;
         } catch (IOException e) {
-            LOGGER.error(e, "Communication error for processor %s", processorId);
-            try {
-                sendErrorResponse(resp, 500, "Communication error: " + e.getMessage(), false);
-            } catch (IOException ioException) {
-                LOGGER.error(ioException, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
-                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            }
-            return;
+            LOGGER.error(e, "Communication error for processor %s", verificationRequest.processorId());
+            safelySendErrorResponse(resp, 500, "Communication error: " + e.getMessage(), false);
+            return null;
         } catch (RuntimeException e) {
-            LOGGER.error(e, "Unexpected error during token verification for processor %s", processorId);
-            try {
-                sendErrorResponse(resp, 500, "Internal server error", false);
-            } catch (IOException ioException) {
-                LOGGER.error(ioException, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
-                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            }
-            return;
+            LOGGER.error(e, "Unexpected error during token verification for processor %s",
+                    verificationRequest.processorId());
+            safelySendErrorResponse(resp, 500, "Internal server error", false);
+            return null;
+        }
+    }
+
+    /**
+     * Performs E2E-specific validation (issuer and authorization checks).
+     */
+    private TokenValidationResult performE2EValidation(
+            TokenValidationResult result,
+            TokenVerificationRequest verificationRequest) {
+
+        // Check issuer if specified
+        if (verificationRequest.expectedIssuer() != null &&
+                !verificationRequest.expectedIssuer().equals(result.getIssuer())) {
+            return TokenValidationResult.failure("Issuer mismatch");
         }
 
-        // 4. Build and send JSON response
+        // Check authorization if scopes/roles are required
+        if ((verificationRequest.requiredScopes() != null ||
+                verificationRequest.requiredRoles() != null) && result.isValid()) {
+            boolean authorized = checkAuthorization(result, verificationRequest);
+            result.setAuthorized(authorized);
+        }
+
+        return result;
+    }
+
+    /**
+     * Checks if token has required scopes and roles.
+     */
+    private boolean checkAuthorization(
+            TokenValidationResult result,
+            TokenVerificationRequest verificationRequest) {
+
+        boolean authorized = true;
+
+        if (verificationRequest.requiredScopes() != null && result.getScopes() != null) {
+            authorized = result.getScopes().containsAll(verificationRequest.requiredScopes());
+        }
+
+        if (authorized && verificationRequest.requiredRoles() != null && result.getRoles() != null) {
+            authorized = result.getRoles().containsAll(verificationRequest.requiredRoles());
+        }
+
+        return authorized;
+    }
+
+    /**
+     * Safely sends error response, handling IOException.
+     */
+    private void safelySendErrorResponse(HttpServletResponse resp, int statusCode,
+            String errorMessage, boolean valid) {
+        try {
+            sendErrorResponse(resp, statusCode, errorMessage, valid);
+        } catch (IOException e) {
+            LOGGER.error(e, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
+            resp.setStatus(statusCode);
+        }
+    }
+
+    /**
+     * Safely sends validation response, handling IOException.
+     */
+    private void safelySendValidationResponse(HttpServletResponse resp, TokenValidationResult result) {
         try {
             sendValidationResponse(resp, result);
         } catch (IOException e) {
@@ -246,6 +323,19 @@ public class JwtVerificationServlet extends HttpServlet {
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }
+
+    /**
+     * Internal record for token verification request parameters.
+     */
+    private record TokenVerificationRequest(
+            String token,
+            String processorId,
+            String expectedIssuer,
+            List<String> requiredScopes,
+            List<String> requiredRoles,
+            boolean isE2ETest,
+            boolean useTestMode
+    ) {}
 
     /**
      * Sends a validation response with token verification results.

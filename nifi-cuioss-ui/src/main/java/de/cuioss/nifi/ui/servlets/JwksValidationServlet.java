@@ -166,60 +166,113 @@ public class JwksValidationServlet extends HttpServlet {
     private JwksValidationResult validateJwksUrl(String jwksUrl) {
         try {
             // Validate URL format
-            URI uri = URI.create(jwksUrl);
-            if (!"http".equalsIgnoreCase(uri.getScheme()) && !"https".equalsIgnoreCase(uri.getScheme())) {
+            URI uri = validateUrlScheme(jwksUrl);
+            if (uri == null) {
                 return JwksValidationResult.failure("Invalid URL scheme, must be http or https");
             }
 
-            // Create HTTP client and request
-            HttpClient httpClient = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(5))
-                    .build();
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(uri)
-                    .timeout(Duration.ofSeconds(10))
-                    .header("Accept", CONTENT_TYPE_JSON)
-                    .GET()
-                    .build();
-
-            // Send request
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-            // Check status code
-            if (response.statusCode() != 200) {
-                String error = "JWKS URL returned status %d".formatted(response.statusCode());
-                LOGGER.debug("JWKS URL validation failed: %s - %s", jwksUrl, error);
-                return JwksValidationResult.failure(error);
+            // Fetch JWKS content
+            String content = fetchJwksContent(uri, jwksUrl);
+            if (content == null) {
+                return JwksValidationResult.failure("Failed to fetch JWKS content");
             }
 
             // Validate content as JWKS
-            String content = response.body();
-            JwksValidationResult contentResult = validateJwksContent(content);
-
-            if (contentResult.isValid()) {
-                LOGGER.debug("JWKS URL validation successful: %s", jwksUrl);
-                return JwksValidationResult.success(
-                        contentResult.getKeyCount(),
-                        contentResult.getAlgorithms());
-            } else {
-                return contentResult; // Return the content validation error
-            }
+            return validateAndReturnResult(content, jwksUrl);
 
         } catch (IllegalArgumentException e) {
-            String error = "Invalid JWKS URL format: " + e.getMessage();
-            LOGGER.debug("JWKS URL validation failed: %s - %s", jwksUrl, error);
-            return JwksValidationResult.failure(error);
+            return handleValidationError(jwksUrl, "Invalid JWKS URL format: " + e.getMessage(), false);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            String error = "JWKS URL validation interrupted: " + e.getMessage();
-            LOGGER.warn(e, "JWKS URL validation failed: %s", jwksUrl);
-            return JwksValidationResult.failure(error);
+            return handleValidationError(jwksUrl, "JWKS URL validation interrupted: " + e.getMessage(), true);
         } catch (IOException e) {
-            String error = "JWKS URL validation error: " + e.getMessage();
-            LOGGER.warn(e, "JWKS URL validation failed: %s", jwksUrl);
-            return JwksValidationResult.failure(error);
+            return handleValidationError(jwksUrl, "JWKS URL validation error: " + e.getMessage(), true);
         }
+    }
+
+    /**
+     * Validates URL scheme (must be http or https).
+     *
+     * @param jwksUrl URL to validate
+     * @return URI if valid, null otherwise
+     */
+    private URI validateUrlScheme(String jwksUrl) {
+        URI uri = URI.create(jwksUrl);
+        if (!"http".equalsIgnoreCase(uri.getScheme()) && !"https".equalsIgnoreCase(uri.getScheme())) {
+            return null;
+        }
+        return uri;
+    }
+
+    /**
+     * Fetches JWKS content from URL.
+     *
+     * @param uri URI to fetch from
+     * @param jwksUrl Original URL string (for logging)
+     * @return JWKS content, or null if fetch failed
+     * @throws IOException if HTTP request fails
+     * @throws InterruptedException if HTTP request is interrupted
+     */
+    private String fetchJwksContent(URI uri, String jwksUrl) throws IOException, InterruptedException {
+        // Create HTTP client and request
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .build();
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(uri)
+                .timeout(Duration.ofSeconds(10))
+                .header("Accept", CONTENT_TYPE_JSON)
+                .GET()
+                .build();
+
+        // Send request
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        // Check status code
+        if (response.statusCode() != 200) {
+            String error = "JWKS URL returned status %d".formatted(response.statusCode());
+            LOGGER.debug("JWKS URL validation failed: %s - %s", jwksUrl, error);
+            return null;
+        }
+
+        return response.body();
+    }
+
+    /**
+     * Validates JWKS content and returns appropriate result.
+     *
+     * @param content JWKS content to validate
+     * @param jwksUrl Original URL string (for logging)
+     * @return Validation result
+     */
+    private JwksValidationResult validateAndReturnResult(String content, String jwksUrl) {
+        JwksValidationResult contentResult = validateJwksContent(content);
+
+        if (contentResult.isValid()) {
+            LOGGER.debug("JWKS URL validation successful: %s", jwksUrl);
+            return JwksValidationResult.success(
+                    contentResult.getKeyCount(),
+                    contentResult.getAlgorithms());
+        }
+        return contentResult; // Return the content validation error
+    }
+
+    /**
+     * Handles validation errors with appropriate logging.
+     *
+     * @param jwksUrl URL that failed validation
+     * @param errorMessage Error message
+     * @param useWarnLevel Whether to log at WARN level (true) or DEBUG level (false)
+     * @return Failure result
+     */
+    private JwksValidationResult handleValidationError(String jwksUrl, String errorMessage, boolean useWarnLevel) {
+        if (useWarnLevel) {
+            LOGGER.warn("JWKS URL validation failed: %s - %s", jwksUrl, errorMessage);
+        } else {
+            LOGGER.debug("JWKS URL validation failed: %s - %s", jwksUrl, errorMessage);
+        }
+        return JwksValidationResult.failure(errorMessage);
     }
 
     /**

@@ -313,42 +313,97 @@ public class JwtValidationService {
         }
 
         // Check for expiration
-        if (claims.containsKey("exp")) {
-            long exp = claims.getJsonNumber("exp").longValue();
-            long now = System.currentTimeMillis() / 1000;
-            if (exp < now) {
-                TokenValidationResult result = TokenValidationResult.failure("Token expired");
-                result.setExpiredAt(new Date(exp * 1000).toString());
-                return result;
-            }
+        TokenValidationResult expirationCheck = checkTokenExpiration(claims);
+        if (expirationCheck != null) {
+            return expirationCheck; // Token is expired
         }
 
-        // Extract claims for successful validation
+        // Extract claims and build result
+        Map<String, Object> claimsMap = extractBasicClaims(claims);
+        extractRolesAndScopes(claims, claimsMap);
+
+        // Create successful result
+        return buildSuccessfulResult(claims, claimsMap);
+    }
+
+    /**
+     * Checks if token is expired.
+     *
+     * @param claims JWT claims
+     * @return TokenValidationResult if token is expired, null otherwise
+     */
+    private TokenValidationResult checkTokenExpiration(JsonObject claims) {
+        if (!claims.containsKey("exp")) {
+            return null; // No expiration claim
+        }
+
+        long exp = claims.getJsonNumber("exp").longValue();
+        long now = System.currentTimeMillis() / 1000;
+
+        if (exp < now) {
+            TokenValidationResult result = TokenValidationResult.failure("Token expired");
+            result.setExpiredAt(new Date(exp * 1000).toString());
+            return result;
+        }
+
+        return null; // Not expired
+    }
+
+    /**
+     * Extracts basic claims (sub, iss, exp) from JWT payload.
+     *
+     * @param claims JWT claims
+     * @return Map of basic claims
+     */
+    private Map<String, Object> extractBasicClaims(JsonObject claims) {
         Map<String, Object> claimsMap = new HashMap<>();
         claimsMap.put("sub", claims.getString("sub", ""));
         claimsMap.put("iss", claims.getString("iss", ""));
-        claimsMap.put("exp", claims.containsKey("exp") ? claims.getJsonNumber("exp").toString() : "");
+        claimsMap.put("exp", claims.containsKey("exp") ?
+                claims.getJsonNumber("exp").toString() : "");
+        return claimsMap;
+    }
 
-        // Extract scopes and roles if present
+    /**
+     * Extracts scopes and roles from JWT claims.
+     *
+     * @param claims JWT claims
+     * @param claimsMap Map to populate with extracted scopes and roles
+     */
+    private void extractRolesAndScopes(JsonObject claims, Map<String, Object> claimsMap) {
         if (claims.containsKey(CLAIM_SCOPES)) {
-            List<String> scopes = new ArrayList<>();
-            var scopesArray = claims.getJsonArray(CLAIM_SCOPES);
-            for (int i = 0; i < scopesArray.size(); i++) {
-                scopes.add(scopesArray.get(i).toString().replace("\"", ""));
-            }
+            List<String> scopes = extractJsonArrayAsStrings(claims.getJsonArray(CLAIM_SCOPES));
             claimsMap.put(CLAIM_SCOPES, scopes);
         }
 
         if (claims.containsKey(CLAIM_ROLES)) {
-            List<String> tokenRoles = new ArrayList<>();
-            var rolesArray = claims.getJsonArray(CLAIM_ROLES);
-            for (int i = 0; i < rolesArray.size(); i++) {
-                tokenRoles.add(rolesArray.get(i).toString().replace("\"", ""));
-            }
+            List<String> tokenRoles = extractJsonArrayAsStrings(claims.getJsonArray(CLAIM_ROLES));
             claimsMap.put(CLAIM_ROLES, tokenRoles);
         }
+    }
 
-        // Create successful result
+    /**
+     * Extracts JSON array values as a list of strings.
+     *
+     * @param array JSON array
+     * @return List of strings
+     */
+    private List<String> extractJsonArrayAsStrings(jakarta.json.JsonArray array) {
+        List<String> result = new ArrayList<>();
+        for (int i = 0; i < array.size(); i++) {
+            result.add(array.get(i).toString().replace("\"", ""));
+        }
+        return result;
+    }
+
+    /**
+     * Builds successful token validation result.
+     *
+     * @param claims JWT claims
+     * @param claimsMap Extracted claims map
+     * @return Token validation result
+     */
+    private TokenValidationResult buildSuccessfulResult(JsonObject claims, Map<String, Object> claimsMap) {
         TokenValidationResult result = TokenValidationResult.success(null);
         result.setTestClaims(claimsMap);
         result.setIssuer(claims.getString("iss", "test-issuer"));
