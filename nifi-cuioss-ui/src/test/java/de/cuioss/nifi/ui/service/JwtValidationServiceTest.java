@@ -18,7 +18,6 @@ package de.cuioss.nifi.ui.service;
 
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
-import org.easymock.EasyMock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -380,8 +379,6 @@ class JwtValidationServiceTest {
         @DisplayName("Should accept valid test token with basic claims")
         void shouldAcceptValidTestTokenWithBasicClaims() throws Exception {
             // Arrange
-            // Create a valid JWT-like token for testing
-            // Header: {"alg":"HS256","typ":"JWT"}
             String header = Base64.getUrlEncoder().encodeToString("{\"alg\":\"HS256\",\"typ\":\"JWT\"}".getBytes());
 
             // Payload with basic claims and future expiration
