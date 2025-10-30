@@ -314,7 +314,7 @@ const handleExport = (format) => {
             content += `jwt_total_validations ${metricsData.totalValidations.replace(/,/g, '')}\n\n`;
             content += '# HELP jwt_success_rate JWT validation success rate\n';
             content += '# TYPE jwt_success_rate gauge\n';
-            content += `jwt_success_rate ${parseFloat(metricsData.successRate) / 100}\n\n`;
+            content += `jwt_success_rate ${Number.parseFloat(metricsData.successRate) / 100}\n\n`;
             content += '# HELP jwt_active_issuers Number of active JWT issuers\n';
             content += '# TYPE jwt_active_issuers gauge\n';
             content += `jwt_active_issuers ${metricsData.activeIssuers}\n`;

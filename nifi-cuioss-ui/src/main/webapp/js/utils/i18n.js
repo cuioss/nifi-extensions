@@ -224,9 +224,9 @@ export const translate = function (key, params) {
 
     // Substitute parameters if provided
     if (params) {
-        Object.keys(params).forEach(function (param) {
-            result = result.replace(new RegExp(`{${param}}`, 'g'), params[param]);
-        });
+        for (const param of Object.keys(params)) {
+            result = result.replaceAll(`{${param}}`, params[param]);
+        }
     }
 
     return result;

@@ -145,7 +145,7 @@ const executeAction = (action) => {
         case 'goto-tab-1':
         case 'goto-tab-2':
         case 'goto-tab-3':
-            switchToTab(parseInt(action.split('-')[2]) - 1);
+            switchToTab(Number.parseInt(action.split('-')[2]) - 1);
             break;
 
         case 'save-form':
