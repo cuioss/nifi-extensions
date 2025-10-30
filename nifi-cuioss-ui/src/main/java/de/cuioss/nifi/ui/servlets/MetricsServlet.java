@@ -125,20 +125,7 @@ public class MetricsServlet extends HttpServlet {
      * Collects current security metrics.
      */
     private SecurityMetrics collectMetrics() {
-        long total = totalTokensValidated.get();
-        long valid = validTokens.get();
-        long invalid = invalidTokens.get();
-
-        double errorRate = total > 0 ? (double) invalid / total : 0.0;
-
-        // Get top errors (sorted by count, descending)
-        List<ErrorCount> topErrors = errorCounts.entrySet().stream()
-                .map(entry -> new ErrorCount(entry.getKey(), entry.getValue().get()))
-                .sorted((a, b) -> Long.compare(b.count, a.count))
-                .limit(10) // Top 10 errors
-                .toList();
-
-        return new SecurityMetrics(total, valid, invalid, errorRate, lastValidation, topErrors);
+        return getCurrentMetrics();
     }
 
     /**

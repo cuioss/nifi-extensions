@@ -295,25 +295,14 @@ public class JwtVerificationServlet extends HttpServlet {
                 Object value = entry.getValue();
 
                 // Convert different types to JSON-compatible values
-                if (value == null) {
-                    claimsBuilder.addNull(key);
-                } else if (value instanceof String string) {
-                    claimsBuilder.add(key, string);
-                } else if (value instanceof Number) {
-                    if (value instanceof Integer integer) {
-                        claimsBuilder.add(key, integer);
-                    } else if (value instanceof Long long1) {
-                        claimsBuilder.add(key, long1);
-                    } else if (value instanceof Double double1) {
-                        claimsBuilder.add(key, double1);
-                    } else {
-                        claimsBuilder.add(key, value.toString());
-                    }
-                } else if (value instanceof Boolean boolean1) {
-                    claimsBuilder.add(key, boolean1);
-                } else {
-                    // For other types, convert to string
-                    claimsBuilder.add(key, value.toString());
+                switch (value) {
+                    case null -> claimsBuilder.addNull(key);
+                    case String string -> claimsBuilder.add(key, string);
+                    case Integer integer -> claimsBuilder.add(key, integer);
+                    case Long long1 -> claimsBuilder.add(key, long1);
+                    case Double double1 -> claimsBuilder.add(key, double1);
+                    case Boolean boolean1 -> claimsBuilder.add(key, boolean1);
+                    default -> claimsBuilder.add(key, value.toString());
                 }
             }
 

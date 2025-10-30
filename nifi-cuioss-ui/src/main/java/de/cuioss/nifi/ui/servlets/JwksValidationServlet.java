@@ -291,6 +291,7 @@ public class JwksValidationServlet extends HttpServlet {
     /**
      * Parses the JSON request body.
      */
+    @SuppressWarnings("java:S1168") // False positive - JsonObject is not a collection, null indicates error handled
     private JsonObject parseRequest(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
             return reader.readObject();

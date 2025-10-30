@@ -184,7 +184,10 @@ public class JwtValidationService {
         }
 
         public String getIssuer() {
-            return issuer != null ? issuer : (tokenContent != null ? tokenContent.getIssuer() : null);
+            if (issuer != null) {
+                return issuer;
+            }
+            return tokenContent != null ? tokenContent.getIssuer() : null;
         }
 
         public void setAuthorized(boolean authorized) {
@@ -200,7 +203,10 @@ public class JwtValidationService {
         }
 
         public List<String> getScopes() {
-            return scopes != null ? scopes : (tokenContent != null ? tokenContent.getScopes() : null);
+            if (scopes != null) {
+                return scopes;
+            }
+            return tokenContent != null ? tokenContent.getScopes() : null;
         }
 
         public void setRoles(List<String> roles) {
@@ -208,7 +214,10 @@ public class JwtValidationService {
         }
 
         public List<String> getRoles() {
-            return roles != null ? roles : (tokenContent != null ? tokenContent.getRoles() : null);
+            if (roles != null) {
+                return roles;
+            }
+            return tokenContent != null ? tokenContent.getRoles() : null;
         }
 
         /**
@@ -232,15 +241,15 @@ public class JwtValidationService {
                 claims.put("exp", tokenContent.getExpirationTime().toString());
 
                 // Add roles as a list if available
-                List<String> roles = tokenContent.getRoles();
-                if (!roles.isEmpty()) {
-                    claims.put(CLAIM_ROLES, roles);
+                List<String> tokenRoles = tokenContent.getRoles();
+                if (!tokenRoles.isEmpty()) {
+                    claims.put(CLAIM_ROLES, tokenRoles);
                 }
 
                 // Add scopes as a list if available
-                List<String> scopes = tokenContent.getScopes();
-                if (!scopes.isEmpty()) {
-                    claims.put(CLAIM_SCOPES, scopes);
+                List<String> tokenScopes = tokenContent.getScopes();
+                if (!tokenScopes.isEmpty()) {
+                    claims.put(CLAIM_SCOPES, tokenScopes);
                 }
 
                 return claims;
@@ -274,78 +283,8 @@ public class JwtValidationService {
                 return TokenValidationResult.failure("Invalid token format - expected 3 parts");
             }
 
-            // Try to decode the payload
-            try {
-                String payload = new String(Base64.getUrlDecoder().decode(parts[1]));
-                LOGGER.debug("Token payload: %s", payload);
-
-                // Parse JSON payload
-                JsonObject claims;
-                try (JsonReader jsonReader = Json.createReader(new StringReader(payload))) {
-                    claims = jsonReader.readObject();
-                }
-
-                // Check for expiration
-                if (claims.containsKey("exp")) {
-                    long exp = claims.getJsonNumber("exp").longValue();
-                    long now = System.currentTimeMillis() / 1000;
-                    if (exp < now) {
-                        TokenValidationResult result = TokenValidationResult.failure("Token expired");
-                        result.setExpiredAt(new Date(exp * 1000).toString());
-                        return result;
-                    }
-                }
-
-                // Extract claims for successful validation
-                Map<String, Object> claimsMap = new HashMap<>();
-                claimsMap.put("sub", claims.getString("sub", ""));
-                claimsMap.put("iss", claims.getString("iss", ""));
-                claimsMap.put("exp", claims.containsKey("exp") ? claims.getJsonNumber("exp").toString() : "");
-
-                // Extract scopes and roles if present
-                if (claims.containsKey(CLAIM_SCOPES)) {
-                    List<String> scopes = new ArrayList<>();
-                    var scopesArray = claims.getJsonArray(CLAIM_SCOPES);
-                    for (int i = 0; i < scopesArray.size(); i++) {
-                        scopes.add(scopesArray.get(i).toString().replace("\"", ""));
-                    }
-                    claimsMap.put(CLAIM_SCOPES, scopes);
-                }
-
-                if (claims.containsKey(CLAIM_ROLES)) {
-                    List<String> roles = new ArrayList<>();
-                    var rolesArray = claims.getJsonArray(CLAIM_ROLES);
-                    for (int i = 0; i < rolesArray.size(); i++) {
-                        roles.add(rolesArray.get(i).toString().replace("\"", ""));
-                    }
-                    claimsMap.put(CLAIM_ROLES, roles);
-                }
-
-                // Create successful result
-                TokenValidationResult result = TokenValidationResult.success(null);
-                result.setTestClaims(claimsMap);
-                result.setIssuer(claims.getString("iss", "test-issuer"));
-
-                // Check authorization if requested
-                if (claims.containsKey(CLAIM_SCOPES) || claims.containsKey(CLAIM_ROLES)) {
-                    result.setAuthorized(true);
-                    result.setScopes((List<String>) claimsMap.get(CLAIM_SCOPES));
-                    result.setRoles((List<String>) claimsMap.get(CLAIM_ROLES));
-                }
-
-                return result;
-
-            } catch (IllegalArgumentException e) {
-                LOGGER.warn("Failed to decode token: %s", e.getMessage());
-                return TokenValidationResult.failure("Invalid token encoding: " + e.getMessage());
-            } catch (JsonException e) {
-                LOGGER.warn("Failed to parse token JSON: %s", e.getMessage());
-                return TokenValidationResult.failure("Invalid token JSON: " + e.getMessage());
-            } catch (RuntimeException e) {
-                LOGGER.warn("Failed to parse token payload: %s", e.getMessage());
-                return TokenValidationResult.failure("Invalid token: " + e.getMessage());
-            }
-
+            // Decode and validate token payload
+            return parseAndValidateTestTokenPayload(parts[1]);
         } catch (IllegalArgumentException | JsonException e) {
             LOGGER.error(e, "Error in test token verification");
             return TokenValidationResult.failure("Token verification error: " + e.getMessage());
@@ -353,5 +292,74 @@ public class JwtValidationService {
             LOGGER.error(e, "Unexpected error in test token verification");
             return TokenValidationResult.failure("Token verification error: " + e.getMessage());
         }
+    }
+
+    /**
+     * Parses and validates the payload portion of a test JWT token.
+     *
+     * @param payloadPart The base64-encoded payload part of the JWT
+     * @return TokenValidationResult containing validation results
+     * @throws IllegalArgumentException if the payload cannot be decoded
+     * @throws JsonException if the payload is not valid JSON
+     */
+    private TokenValidationResult parseAndValidateTestTokenPayload(String payloadPart) {
+        String payload = new String(Base64.getUrlDecoder().decode(payloadPart));
+        LOGGER.debug("Token payload: %s", payload);
+
+        // Parse JSON payload
+        JsonObject claims;
+        try (JsonReader jsonReader = Json.createReader(new StringReader(payload))) {
+            claims = jsonReader.readObject();
+        }
+
+        // Check for expiration
+        if (claims.containsKey("exp")) {
+            long exp = claims.getJsonNumber("exp").longValue();
+            long now = System.currentTimeMillis() / 1000;
+            if (exp < now) {
+                TokenValidationResult result = TokenValidationResult.failure("Token expired");
+                result.setExpiredAt(new Date(exp * 1000).toString());
+                return result;
+            }
+        }
+
+        // Extract claims for successful validation
+        Map<String, Object> claimsMap = new HashMap<>();
+        claimsMap.put("sub", claims.getString("sub", ""));
+        claimsMap.put("iss", claims.getString("iss", ""));
+        claimsMap.put("exp", claims.containsKey("exp") ? claims.getJsonNumber("exp").toString() : "");
+
+        // Extract scopes and roles if present
+        if (claims.containsKey(CLAIM_SCOPES)) {
+            List<String> scopes = new ArrayList<>();
+            var scopesArray = claims.getJsonArray(CLAIM_SCOPES);
+            for (int i = 0; i < scopesArray.size(); i++) {
+                scopes.add(scopesArray.get(i).toString().replace("\"", ""));
+            }
+            claimsMap.put(CLAIM_SCOPES, scopes);
+        }
+
+        if (claims.containsKey(CLAIM_ROLES)) {
+            List<String> tokenRoles = new ArrayList<>();
+            var rolesArray = claims.getJsonArray(CLAIM_ROLES);
+            for (int i = 0; i < rolesArray.size(); i++) {
+                tokenRoles.add(rolesArray.get(i).toString().replace("\"", ""));
+            }
+            claimsMap.put(CLAIM_ROLES, tokenRoles);
+        }
+
+        // Create successful result
+        TokenValidationResult result = TokenValidationResult.success(null);
+        result.setTestClaims(claimsMap);
+        result.setIssuer(claims.getString("iss", "test-issuer"));
+
+        // Check authorization if requested
+        if (claims.containsKey(CLAIM_SCOPES) || claims.containsKey(CLAIM_ROLES)) {
+            result.setAuthorized(true);
+            result.setScopes((List<String>) claimsMap.get(CLAIM_SCOPES));
+            result.setRoles((List<String>) claimsMap.get(CLAIM_ROLES));
+        }
+
+        return result;
     }
 }
