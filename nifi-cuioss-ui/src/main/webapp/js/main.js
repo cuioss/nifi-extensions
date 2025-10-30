@@ -781,9 +781,7 @@ export {
 };
 
 // Export tab components for external access
-export {
-    helpTab,
-    metricsTab,
-    issuerConfigEditor,
-    tokenVerifier
-};
+export * as helpTab from './components/helpTab.js';
+export * as metricsTab from './components/metricsTab.js';
+export * as issuerConfigEditor from './components/issuerConfigEditor.js';
+export * as tokenVerifier from './components/tokenVerifier.js';
