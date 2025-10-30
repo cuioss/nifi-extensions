@@ -171,7 +171,7 @@
 .verification-status.invalid {
     background-color: rgba(220, 53, 69, 0.1);
     border: 1px solid #dc3545;
-    color: #370a10;
+    color: #1f0006;
 }
 
 .verification-status.expired {
@@ -229,5 +229,5 @@
     background-color: rgba(220, 53, 69, 0.1);
     border: 1px solid #dc3545;
     border-radius: 5px;
-    color: #370a10;
+    color: #1f0006;
 }

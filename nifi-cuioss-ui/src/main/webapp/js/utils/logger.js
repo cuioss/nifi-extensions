@@ -189,7 +189,7 @@ const createLogger = (component) => new NiFiLogger(component);
 const LOG_LEVELS = LogLevel;
 
 // Enable debug mode via browser console
-if (globalThis !== undefined && globalThis.localStorage !== undefined) {
+if (globalThis?.localStorage !== undefined) {
     globalThis.nifiDebug = {
         enable: () => {
             localStorage.setItem('nifi-debug', 'true');
