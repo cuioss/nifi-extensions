@@ -23,7 +23,7 @@ export const init = () => {
     logger.info('Initializing help tab');
 
     // Create the help tab content if it doesn't exist
-    if (!document.getElementById('jwt-help-content')) {
+    if (document.getElementById('jwt-help-content') === null) {
         logger.info('Creating help tab content...');
         createHelpContent();
         // Initialize collapsible sections only after creating content

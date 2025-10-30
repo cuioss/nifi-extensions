@@ -46,7 +46,7 @@ export const init = () => {
     logger.info('Initializing metrics tab');
 
     // Create the metrics tab content if it doesn't exist
-    if (!document.getElementById('jwt-metrics-content')) {
+    if (document.getElementById('jwt-metrics-content') === null) {
         logger.info('Creating metrics tab content...');
         createMetricsContent();
         // Start periodic metrics refresh only after creating content
@@ -311,7 +311,7 @@ const handleExport = (format) => {
         case 'prometheus':
             content = '# HELP jwt_total_validations Total number of JWT validations\n';
             content += '# TYPE jwt_total_validations counter\n';
-            content += `jwt_total_validations ${metricsData.totalValidations.replace(/,/g, '')}\n\n`;
+            content += `jwt_total_validations ${metricsData.totalValidations.replaceAll(',', '')}\n\n`;
             content += '# HELP jwt_success_rate JWT validation success rate\n';
             content += '# TYPE jwt_success_rate gauge\n';
             content += `jwt_success_rate ${Number.parseFloat(metricsData.successRate) / 100}\n\n`;

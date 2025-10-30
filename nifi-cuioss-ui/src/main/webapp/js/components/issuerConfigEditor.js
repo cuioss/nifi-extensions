@@ -620,6 +620,7 @@ const _populateIssuerFormFields = (formFields, properties) => {
         formFields.appendChild(fieldContainer);
     } catch (error) {
         // Error creating JWKS dropdown - silently continue
+        logger.debug('JWKS dropdown creation error:', error);
     }
 
     // Add standard form fields with enhanced tooltips
