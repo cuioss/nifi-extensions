@@ -30,9 +30,9 @@
     <script type="text/javascript">
         // In production, NiFi provides the nf.Common object
         // Map it to nfCommon for compatibility with our code
-        if (typeof globalThis.nf !== 'undefined' && globalThis.nf.Common) {
+        if (globalThis.nf !== undefined && globalThis.nf.Common) {
             globalThis.nfCommon = globalThis.nf.Common;
-        } else if (typeof globalThis.nfCommon === 'undefined') {
+        } else if (globalThis.nfCommon === undefined) {
             // Only log error if nfCommon is not already available from another source
             console.warn('NiFi Common API not available. UI functionality may be limited.');
             // Create a minimal stub to prevent errors
@@ -57,16 +57,16 @@
         <main id="jwt-validator-tabs" class="jwt-tabs-container" style="display:none;">
             <div class="jwt-tabs-header" data-testid="jwt-config-tabs">
                 <ul class="tabs" role="tablist">
-                    <li role="presentation" class="active">
+                    <li role="none" class="active">
                         <a href="#issuer-config" role="tab" data-toggle="tab">Configuration</a>
                     </li>
-                    <li role="presentation">
+                    <li role="none">
                         <a href="#token-verification" role="tab" data-toggle="tab">Token Verification</a>
                     </li>
-                    <li role="presentation">
+                    <li role="none">
                         <a href="#metrics" role="tab" data-toggle="tab">Metrics</a>
                     </li>
-                    <li role="presentation">
+                    <li role="none">
                         <a href="#help" role="tab" data-toggle="tab">Help</a>
                     </li>
                 </ul>
