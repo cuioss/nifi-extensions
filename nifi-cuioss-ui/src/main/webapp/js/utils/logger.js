@@ -21,8 +21,8 @@ const LogLevel = {
  */
 const isDevelopment = () => {
     // Check for development indicators
-    const hostname = window?.location?.hostname || '';
-    const search = window?.location?.search || '';
+    const hostname = globalThis?.location?.hostname || '';
+    const search = globalThis?.location?.search || '';
     return hostname === 'localhost' ||
            hostname === '127.0.0.1' ||
            hostname.startsWith('192.168.') ||
@@ -189,8 +189,8 @@ const createLogger = (component) => new NiFiLogger(component);
 const LOG_LEVELS = LogLevel;
 
 // Enable debug mode via browser console
-if (typeof window !== 'undefined') {
-    window.nifiDebug = {
+if (typeof globalThis !== 'undefined' && typeof globalThis.localStorage !== 'undefined') {
+    globalThis.nifiDebug = {
         enable: () => {
             localStorage.setItem('nifi-debug', 'true');
             logger.setLogLevel(LogLevel.DEBUG);
