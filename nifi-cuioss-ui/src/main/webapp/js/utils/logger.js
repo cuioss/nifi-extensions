@@ -21,12 +21,14 @@ const LogLevel = {
  */
 const isDevelopment = () => {
     // Check for development indicators
-    return window.location.hostname === 'localhost' ||
-           window.location.hostname === '127.0.0.1' ||
-           window.location.hostname.startsWith('192.168.') ||
-           window.location.hostname.endsWith('.local') ||
-           window.location.search.includes('debug=true') ||
-           localStorage.getItem('nifi-debug') === 'true';
+    const hostname = window?.location?.hostname || '';
+    const search = window?.location?.search || '';
+    return hostname === 'localhost' ||
+           hostname === '127.0.0.1' ||
+           hostname.startsWith('192.168.') ||
+           hostname.endsWith('.local') ||
+           search.includes('debug=true') ||
+           (typeof localStorage !== 'undefined' && localStorage.getItem('nifi-debug') === 'true');
 };
 
 /**
