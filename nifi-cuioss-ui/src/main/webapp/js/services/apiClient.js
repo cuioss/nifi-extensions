@@ -24,7 +24,7 @@ const BASE_URL = API.BASE_URL;
  */
 const getAuthConfig = () => {
     // First check if we have stored auth config
-    if (globalThis.jwtAuthConfig && globalThis.jwtAuthConfig.processorId) {
+    if (globalThis.jwtAuthConfig?.processorId) {
         return globalThis.jwtAuthConfig;
     }
 
