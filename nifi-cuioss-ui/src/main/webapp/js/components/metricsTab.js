@@ -416,90 +416,121 @@ const fetchMetricsData = async () => {
 };
 
 /**
+ * Update element text content if element exists
+ * @param {string} elementId - Element ID
+ * @param {string} text - Text content
+ */
+const updateElementText = (elementId, text) => {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.textContent = text;
+    }
+};
+
+/**
+ * Update summary validation metrics
+ * @param {Object} data - Metrics data
+ */
+const updateSummaryMetrics = (data) => {
+    updateElementText('total-validations', formatNumber(data.totalValidations));
+
+    const successRate = data.totalValidations > 0 ? data.successCount / data.totalValidations : 0;
+    const failureRate = data.totalValidations > 0 ? data.failureCount / data.totalValidations : 0;
+
+    updateElementText('success-rate', formatPercentage(successRate));
+    updateElementText('failure-rate', formatPercentage(failureRate));
+};
+
+/**
+ * Update performance metrics
+ * @param {Object} data - Metrics data
+ */
+const updatePerformanceMetrics = (data) => {
+    updateElementText('avg-response-time', `${data.avgResponseTime || 0} ms`);
+    updateElementText('min-response-time', `${data.minResponseTime || 0} ms`);
+    updateElementText('max-response-time', `${data.maxResponseTime || 0} ms`);
+    updateElementText('p95-response-time', `${data.p95ResponseTime || 0} ms`);
+    updateElementText('active-issuers', data.activeIssuers);
+};
+
+/**
+ * Build issuer metrics row HTML
+ * @param {Object} issuer - Issuer data
+ * @returns {string} HTML string
+ */
+const buildIssuerRow = (issuer) => {
+    return `
+        <tr data-testid="issuer-metrics-row">
+            <td data-testid="issuer-name">${issuer.name}</td>
+            <td>${formatNumber(issuer.totalRequests || issuer.validations || 0)}</td>
+            <td>${formatNumber(issuer.successCount || 0)}</td>
+            <td>${formatNumber(issuer.failureCount || 0)}</td>
+            <td>${formatPercentage((issuer.successRate || 0) / 100)}</td>
+            <td>${issuer.avgResponseTime || 0} ms</td>
+        </tr>
+    `;
+};
+
+/**
+ * Update issuer-specific metrics table
+ * @param {Object} data - Metrics data
+ */
+const updateIssuerMetrics = (data) => {
+    const issuerListEl = document.getElementById('issuer-metrics-list');
+    if (!issuerListEl) return;
+
+    if (data.issuerMetrics && data.issuerMetrics.length > 0) {
+        const issuerListHtml = data.issuerMetrics.map(buildIssuerRow).join('');
+        issuerListEl.innerHTML = issuerListHtml;
+    } else {
+        issuerListEl.innerHTML = '<tr><td colspan="6" class="no-data">No issuer data available</td></tr>';
+    }
+};
+
+/**
+ * Build error item HTML
+ * @param {Object} error - Error data
+ * @returns {string} HTML string
+ */
+const buildErrorItem = (error) => {
+    return `
+        <div class="error-metric-item">
+            <div class="error-details">
+                <span class="error-issuer">${error.issuer || 'Unknown'}</span>
+                <span class="error-message">${error.error}</span>
+                <span class="error-count">(${error.count} occurrences)</span>
+            </div>
+            <div class="error-time">${formatTime(error.timestamp)}</div>
+        </div>
+    `;
+};
+
+/**
+ * Update error metrics display
+ * @param {Object} data - Metrics data
+ */
+const updateErrorMetrics = (data) => {
+    const errorListEl = document.getElementById('error-metrics-list');
+    if (!errorListEl) return;
+
+    if (data.recentErrors && data.recentErrors.length > 0) {
+        const errorListHtml = data.recentErrors.map(buildErrorItem).join('');
+        errorListEl.innerHTML = errorListHtml;
+    } else {
+        errorListEl.innerHTML = '<div class="no-errors">No recent errors</div>';
+    }
+};
+
+/**
  * Updates the metrics display with new data
  * @param {Object} data - Metrics data
  */
 const updateMetricsDisplay = (data) => {
-    // Store the data for export
     lastMetricsData = data;
-
-    // Update summary metrics
-    const totalValidationsEl = document.getElementById('total-validations');
-    if (totalValidationsEl) totalValidationsEl.textContent = formatNumber(data.totalValidations);
-
-    // Calculate success and failure rates safely
-    const successRate = data.totalValidations > 0
-        ? data.successCount / data.totalValidations
-        : 0;
-    const failureRate = data.totalValidations > 0
-        ? data.failureCount / data.totalValidations
-        : 0;
-
-    const successRateEl = document.getElementById('success-rate');
-    if (successRateEl) successRateEl.textContent = formatPercentage(successRate);
-
-    const failureRateEl = document.getElementById('failure-rate');
-    if (failureRateEl) failureRateEl.textContent = formatPercentage(failureRate);
-
-    // Update performance metrics
-    const avgResponseTimeEl = document.getElementById('avg-response-time');
-    if (avgResponseTimeEl) avgResponseTimeEl.textContent = `${data.avgResponseTime || 0} ms`;
-
-    const minResponseTimeEl = document.getElementById('min-response-time');
-    if (minResponseTimeEl) minResponseTimeEl.textContent = `${data.minResponseTime || 0} ms`;
-
-    const maxResponseTimeEl = document.getElementById('max-response-time');
-    if (maxResponseTimeEl) maxResponseTimeEl.textContent = `${data.maxResponseTime || 0} ms`;
-
-    const p95ResponseTimeEl = document.getElementById('p95-response-time');
-    if (p95ResponseTimeEl) p95ResponseTimeEl.textContent = `${data.p95ResponseTime || 0} ms`;
-
-    const activeIssuersEl = document.getElementById('active-issuers');
-    if (activeIssuersEl) activeIssuersEl.textContent = data.activeIssuers;
-
-    // Update issuer-specific metrics table
-    if (data.issuerMetrics && data.issuerMetrics.length > 0) {
-        const issuerListHtml = data.issuerMetrics.map(issuer => `
-            <tr data-testid="issuer-metrics-row">
-                <td data-testid="issuer-name">${issuer.name}</td>
-                <td>${formatNumber(issuer.totalRequests || issuer.validations || 0)}</td>
-                <td>${formatNumber(issuer.successCount || 0)}</td>
-                <td>${formatNumber(issuer.failureCount || 0)}</td>
-                <td>${formatPercentage((issuer.successRate || 0) / 100)}</td>
-                <td>${issuer.avgResponseTime || 0} ms</td>
-            </tr>
-        `).join('');
-
-        const issuerListEl = document.getElementById('issuer-metrics-list');
-        if (issuerListEl) {
-            issuerListEl.innerHTML = issuerListHtml;
-        }
-    } else {
-        const issuerListEl = document.getElementById('issuer-metrics-list');
-        if (issuerListEl) {
-            issuerListEl.innerHTML = '<tr><td colspan="6" class="no-data">No issuer data available</td></tr>';
-        }
-    }
-
-    // Update error metrics
-    if (data.recentErrors && data.recentErrors.length > 0) {
-        const errorListHtml = data.recentErrors.map(error => `
-            <div class="error-metric-item">
-                <div class="error-details">
-                    <span class="error-issuer">${error.issuer || 'Unknown'}</span>
-                    <span class="error-message">${error.error}</span>
-                    <span class="error-count">(${error.count} occurrences)</span>
-                </div>
-                <div class="error-time">${formatTime(error.timestamp)}</div>
-            </div>
-        `).join('');
-
-        const errorListEl = document.getElementById('error-metrics-list');
-        if (errorListEl) errorListEl.innerHTML = errorListHtml;
-    } else {
-        const errorListEl = document.getElementById('error-metrics-list');
-        if (errorListEl) errorListEl.innerHTML = '<div class="no-errors">No recent errors</div>';
-    }
+    updateSummaryMetrics(data);
+    updatePerformanceMetrics(data);
+    updateIssuerMetrics(data);
+    updateErrorMetrics(data);
 };
 
 /**

@@ -302,6 +302,90 @@ public class ConfigurationManager {
     }
 
     /**
+     * Check if key represents an issuer list.
+     *
+     * @param key the property key
+     * @return true if issuer list key
+     */
+    private boolean isIssuerListKey(String key) {
+        return "jwt.validation.issuers".equals(key) || "issuers".equals(key);
+    }
+
+    /**
+     * Get issuer ID from config or use index.
+     *
+     * @param issuerConfig the issuer configuration map
+     * @param index the list index
+     * @return the issuer ID
+     */
+    @SuppressWarnings("unchecked")
+    private String getIssuerId(Map<String, Object> issuerConfig, int index) {
+        if (issuerConfig.containsKey("id")) {
+            return issuerConfig.get("id").toString();
+        }
+        if (issuerConfig.containsKey("name")) {
+            return issuerConfig.get("name").toString();
+        }
+        return String.valueOf(index);
+    }
+
+    /**
+     * Store issuer properties from config map.
+     *
+     * @param issuerId the issuer ID
+     * @param issuerConfig the issuer configuration map
+     */
+    private void storeIssuerProperties(String issuerId, Map<String, Object> issuerConfig) {
+        Map<String, String> issuerProps = issuerProperties.computeIfAbsent(issuerId, k -> new HashMap<>());
+        for (Map.Entry<String, Object> issuerEntry : issuerConfig.entrySet()) {
+            if (issuerEntry.getValue() != null) {
+                issuerProps.put(issuerEntry.getKey(), issuerEntry.getValue().toString());
+            }
+        }
+    }
+
+    /**
+     * Process single issuer item from list.
+     *
+     * @param item the list item
+     * @param index the list index
+     */
+    @SuppressWarnings("unchecked")
+    private void processIssuerItem(Object item, int index) {
+        if (item instanceof Map) {
+            Map<String, Object> issuerConfig = (Map<String, Object>) item;
+            String issuerId = getIssuerId(issuerConfig, index);
+            storeIssuerProperties(issuerId, issuerConfig);
+        }
+    }
+
+    /**
+     * Process issuer list from YAML.
+     *
+     * @param list the issuer list
+     */
+    private void processIssuerList(List<?> list) {
+        for (int i = 0; i < list.size(); i++) {
+            processIssuerItem(list.get(i), i);
+        }
+    }
+
+    /**
+     * Process non-issuer list as comma-separated values.
+     *
+     * @param key the property key
+     * @param list the list value
+     */
+    private void processGenericList(String key, List<?> list) {
+        String listValue = list.stream()
+                .filter(Objects::nonNull)
+                .map(Object::toString)
+                .reduce((a, b) -> a + "," + b)
+                .orElse("");
+        staticProperties.put(key, listValue);
+    }
+
+    /**
      * Processes a list from YAML configuration.
      *
      * @param key the property key
@@ -309,38 +393,10 @@ public class ConfigurationManager {
      */
     @SuppressWarnings("unchecked")
     private void processList(String key, List<?> list) {
-        if ("jwt.validation.issuers".equals(key) || "issuers".equals(key)) {
-            // Process issuer list
-            for (int i = 0; i < list.size(); i++) {
-                Object item = list.get(i);
-                if (item instanceof Map) {
-                    Map<String, Object> issuerConfig = (Map<String, Object>) item;
-                    String issuerId = String.valueOf(i);
-
-                    // Check if issuer has an id or name
-                    if (issuerConfig.containsKey("id")) {
-                        issuerId = issuerConfig.get("id").toString();
-                    } else if (issuerConfig.containsKey("name")) {
-                        issuerId = issuerConfig.get("name").toString();
-                    }
-
-                    // Store issuer properties
-                    Map<String, String> issuerProps = issuerProperties.computeIfAbsent(issuerId, k -> new HashMap<>());
-                    for (Map.Entry<String, Object> issuerEntry : issuerConfig.entrySet()) {
-                        if (issuerEntry.getValue() != null) {
-                            issuerProps.put(issuerEntry.getKey(), issuerEntry.getValue().toString());
-                        }
-                    }
-                }
-            }
+        if (isIssuerListKey(key)) {
+            processIssuerList(list);
         } else {
-            // For other lists, store as comma-separated values
-            String listValue = list.stream()
-                    .filter(Objects::nonNull)
-                    .map(Object::toString)
-                    .reduce((a, b) -> a + "," + b)
-                    .orElse("");
-            staticProperties.put(key, listValue);
+            processGenericList(key, list);
         }
     }
 

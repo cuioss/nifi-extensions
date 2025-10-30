@@ -5,15 +5,11 @@
 'use strict';
 
 /**
- * Simple element creation - replaces complex createElement patterns.
- * @param {string} tag - HTML tag name
- * @param {Object} options - Element options
- * @returns {HTMLElement} Created element
+ * Apply CSS classes to element
+ * @param {HTMLElement} element - The element
+ * @param {Object} options - Options containing css/className
  */
-export const createElement = (tag, options = {}) => {
-    const element = document.createElement(tag);
-
-    // Handle CSS classes
+const applyCssClasses = (element, options) => {
     if (options.css) {
         if (Array.isArray(options.css)) {
             element.classList.add(...options.css);
@@ -21,47 +17,88 @@ export const createElement = (tag, options = {}) => {
             element.className = options.css;
         }
     }
-    if (options.className) element.className = options.className;
+    if (options.className) {
+        element.className = options.className;
+    }
+};
 
-    // Handle content
-    if (options.text) element.textContent = options.text;
+/**
+ * Apply content to element
+ * @param {HTMLElement} element - The element
+ * @param {Object} options - Options containing text/html
+ */
+const applyContent = (element, options) => {
+    if (options.text) {
+        element.textContent = options.text;
+    }
     if (options.html) {
-        // Security: Only allow pre-sanitized HTML or use textContent for user input
         if (options.sanitized === true) {
             element.innerHTML = options.html;
         } else {
-            element.textContent = options.html; // Safer default: treat as text
+            element.textContent = options.html;
         }
     }
+};
 
-    // Handle attributes
+/**
+ * Check if attribute is boolean type
+ * @param {string} key - Attribute name
+ * @returns {boolean} True if boolean attribute
+ */
+const isBooleanAttribute = (key) => {
+    return key === 'disabled' || key === 'checked' || key === 'readonly' || key === 'required';
+};
+
+/**
+ * Apply single attribute to element
+ * @param {HTMLElement} element - The element
+ * @param {string} key - Attribute name
+ * @param {*} value - Attribute value
+ */
+const applyAttribute = (element, key, value) => {
+    if (isBooleanAttribute(key)) {
+        if (value === true || value === 'true' || value === '') {
+            element.setAttribute(key, '');
+        } else if (value !== false && value !== 'false' && value !== null && value !== undefined) {
+            element.setAttribute(key, value);
+        }
+    } else {
+        element.setAttribute(key, value);
+    }
+};
+
+/**
+ * Apply attributes to element
+ * @param {HTMLElement} element - The element
+ * @param {Object} options - Options containing attributes
+ */
+const applyAttributes = (element, options) => {
     if (options.attributes) {
         for (const [key, value] of Object.entries(options.attributes)) {
-            // Special handling for boolean attributes like disabled, checked, etc.
-            if (key === 'disabled' || key === 'checked' || key === 'readonly' || key === 'required') {
-                if (value === true || value === 'true' || value === '') {
-                    element.setAttribute(key, '');
-                } else if (value === false || value === 'false' || value === null || value === undefined) {
-                    // Don't set the attribute at all if it's false
-                    continue;
-                } else {
-                    // For any other value, set it as is (e.g., disabled="disabled")
-                    element.setAttribute(key, value);
-                }
-            } else {
-                element.setAttribute(key, value);
-            }
+            applyAttribute(element, key, value);
         }
     }
+};
 
-    // Handle events
+/**
+ * Apply event handlers to element
+ * @param {HTMLElement} element - The element
+ * @param {Object} options - Options containing events
+ */
+const applyEvents = (element, options) => {
     if (options.events) {
         for (const [event, handler] of Object.entries(options.events)) {
             element.addEventListener(event, handler);
         }
     }
+};
 
-    // Handle children
+/**
+ * Apply children to element
+ * @param {HTMLElement} element - The element
+ * @param {Object} options - Options containing children
+ */
+const applyChildren = (element, options) => {
     if (options.children) {
         for (const child of options.children) {
             if (child instanceof Element) {
@@ -71,6 +108,22 @@ export const createElement = (tag, options = {}) => {
             }
         }
     }
+};
+
+/**
+ * Simple element creation - replaces complex createElement patterns.
+ * @param {string} tag - HTML tag name
+ * @param {Object} options - Element options
+ * @returns {HTMLElement} Created element
+ */
+export const createElement = (tag, options = {}) => {
+    const element = document.createElement(tag);
+
+    applyCssClasses(element, options);
+    applyContent(element, options);
+    applyAttributes(element, options);
+    applyEvents(element, options);
+    applyChildren(element, options);
 
     return element;
 };

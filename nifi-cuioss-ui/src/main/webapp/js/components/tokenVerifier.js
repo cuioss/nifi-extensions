@@ -172,6 +172,155 @@ const _initializeTokenVerifier = async (element, callback) => {
 };
 
 /**
+ * Check if token is expired based on payload
+ * @param {Object} result - Verification result
+ * @returns {boolean} True if token is expired
+ */
+const isTokenExpired = (result) => {
+    if (!result.decoded?.payload?.exp) {
+        return false;
+    }
+    const expDate = new Date(result.decoded.payload.exp * 1000);
+    return expDate < new Date();
+};
+
+/**
+ * Get status information for token
+ * @param {Object} result - Verification result
+ * @param {boolean} isExpired - Whether token is expired
+ * @param {Object} i18n - Internationalization object
+ * @returns {Object} Status class, text, and icon
+ */
+const getTokenStatus = (result, isExpired, i18n) => {
+    if (isExpired) {
+        return {
+            statusClass: 'expired',
+            statusText: i18n['processor.jwt.tokenExpired'] || 'Token has expired',
+            statusIcon: 'fa-clock'
+        };
+    }
+    if (result.valid) {
+        return {
+            statusClass: 'valid',
+            statusText: i18n['processor.jwt.tokenValid'] || 'Token is valid',
+            statusIcon: 'fa-check-circle'
+        };
+    }
+    return {
+        statusClass: 'invalid',
+        statusText: i18n['processor.jwt.tokenInvalid'] || 'Token is invalid',
+        statusIcon: 'fa-times-circle'
+    };
+};
+
+/**
+ * Build status HTML
+ * @param {Object} status - Status information
+ * @returns {string} HTML string
+ */
+const buildStatusHtml = (status) => {
+    return `
+        <div class="verification-status ${status.statusClass}">
+            <i class="fa ${status.statusIcon}"></i>
+            <span>${status.statusText}</span>
+        </div>
+    `;
+};
+
+/**
+ * Build header section HTML
+ * @param {Object} header - Token header
+ * @param {Object} i18n - Internationalization object
+ * @returns {string} HTML string
+ */
+const buildHeaderHtml = (header, i18n) => {
+    if (!header) return '';
+    return `
+        <div class="token-section">
+            <h4>${i18n['processor.jwt.tokenHeader'] || 'Header'}</h4>
+            <pre>${JSON.stringify(header, null, 2)}</pre>
+        </div>
+    `;
+};
+
+/**
+ * Build payload section HTML
+ * @param {Object} payload - Token payload
+ * @param {Object} i18n - Internationalization object
+ * @returns {string} HTML string
+ */
+const buildPayloadHtml = (payload, i18n) => {
+    if (!payload) return '';
+    return `
+        <div class="token-section">
+            <h4>${i18n['processor.jwt.tokenPayload'] || 'Payload'}</h4>
+            <pre>${JSON.stringify(payload, null, 2)}</pre>
+        </div>
+    `;
+};
+
+/**
+ * Build claims HTML
+ * @param {Object} payload - Token payload
+ * @param {Object} i18n - Internationalization object
+ * @returns {string} HTML string
+ */
+const buildClaimsHtml = (payload, i18n) => {
+    if (!payload) return '';
+
+    let html = '<div class="token-claims">';
+
+    if (payload.exp) {
+        const expDate = new Date(payload.exp * 1000);
+        const expired = expDate < new Date();
+        html += `
+            <div class="claim ${expired ? 'expired' : ''}">
+                <strong>${i18n['processor.jwt.expiration'] || 'Expiration'}:</strong>
+                ${expDate.toLocaleString()}
+                ${expired ? ` <span class="expired-label">(${i18n['processor.jwt.expired'] || 'Expired'})</span>` : ''}
+            </div>
+        `;
+    }
+
+    if (payload.iss) {
+        html += `
+            <div class="claim">
+                <strong>${i18n['processor.jwt.issuer'] || 'Issuer'}:</strong>
+                ${payload.iss}
+            </div>
+        `;
+    }
+
+    if (payload.sub) {
+        html += `
+            <div class="claim">
+                <strong>${i18n['processor.jwt.subject'] || 'Subject'}:</strong>
+                ${payload.sub}
+            </div>
+        `;
+    }
+
+    html += '</div>';
+    return html;
+};
+
+/**
+ * Build error HTML
+ * @param {string} error - Error message
+ * @param {Object} i18n - Internationalization object
+ * @returns {string} HTML string
+ */
+const buildErrorHtml = (error, i18n) => {
+    if (!error) return '';
+    return `
+        <div class="verification-error">
+            <strong>${i18n['processor.jwt.error'] || 'Error'}:</strong>
+            ${error}
+        </div>
+    `;
+};
+
+/**
  * Display verification results in the UI.
  * @param {Object} result - The verification result
  * @param {HTMLElement} container - The container element
@@ -179,104 +328,20 @@ const _initializeTokenVerifier = async (element, callback) => {
  * @private
  */
 const _displayVerificationResults = (result, container, i18n) => {
-    // Check if token is expired first
-    let isExpired = false;
-    if (result.decoded && result.decoded.payload && result.decoded.payload.exp) {
-        const expDate = new Date(result.decoded.payload.exp * 1000);
-        isExpired = expDate < new Date();
-    }
+    const isExpired = isTokenExpired(result);
+    const status = getTokenStatus(result, isExpired, i18n);
 
-    const statusClass = isExpired ? 'expired' : (result.valid ? 'valid' : 'invalid');
-    let statusText;
-    let statusIcon;
-    if (isExpired) {
-        statusText = i18n['processor.jwt.tokenExpired'] || 'Token has expired';
-        statusIcon = 'fa-clock';
-    } else if (result.valid) {
-        statusText = i18n['processor.jwt.tokenValid'] || 'Token is valid';
-        statusIcon = 'fa-check-circle';
-    } else {
-        statusText = i18n['processor.jwt.tokenInvalid'] || 'Token is invalid';
-        statusIcon = 'fa-times-circle';
-    }
-
-    let html = `
-        <div class="verification-status ${statusClass}">
-            <i class="fa ${statusIcon}"></i>
-            <span>${statusText}</span>
-        </div>
-    `;
+    let html = buildStatusHtml(status);
 
     if (result.decoded) {
         html += '<div class="token-details">';
-
-        // Header
-        if (result.decoded.header) {
-            html += `
-                <div class="token-section">
-                    <h4>${i18n['processor.jwt.tokenHeader'] || 'Header'}</h4>
-                    <pre>${JSON.stringify(result.decoded.header, null, 2)}</pre>
-                </div>
-            `;
-        }
-
-        // Payload
-        if (result.decoded.payload) {
-            html += `
-                <div class="token-section">
-                    <h4>${i18n['processor.jwt.tokenPayload'] || 'Payload'}</h4>
-                    <pre>${JSON.stringify(result.decoded.payload, null, 2)}</pre>
-                </div>
-            `;
-
-            // Extract and display specific claims
-            const payload = result.decoded.payload;
-            html += '<div class="token-claims">';
-
-            if (payload.exp) {
-                const expDate = new Date(payload.exp * 1000);
-                const isExpired = expDate < new Date();
-                html += `
-                    <div class="claim ${isExpired ? 'expired' : ''}">
-                        <strong>${i18n['processor.jwt.expiration'] || 'Expiration'}:</strong>
-                        ${expDate.toLocaleString()}
-                        ${isExpired ? ` <span class="expired-label">(${i18n['processor.jwt.expired'] || 'Expired'})</span>` : ''}
-                    </div>
-                `;
-            }
-
-            if (payload.iss) {
-                html += `
-                    <div class="claim">
-                        <strong>${i18n['processor.jwt.issuer'] || 'Issuer'}:</strong>
-                        ${payload.iss}
-                    </div>
-                `;
-            }
-
-            if (payload.sub) {
-                html += `
-                    <div class="claim">
-                        <strong>${i18n['processor.jwt.subject'] || 'Subject'}:</strong>
-                        ${payload.sub}
-                    </div>
-                `;
-            }
-
-            html += '</div>';
-        }
-
+        html += buildHeaderHtml(result.decoded.header, i18n);
+        html += buildPayloadHtml(result.decoded.payload, i18n);
+        html += buildClaimsHtml(result.decoded.payload, i18n);
         html += '</div>';
     }
 
-    if (result.error) {
-        html += `
-            <div class="verification-error">
-                <strong>${i18n['processor.jwt.error'] || 'Error'}:</strong>
-                ${result.error}
-            </div>
-        `;
-    }
+    html += buildErrorHtml(result.error, i18n);
 
     container.innerHTML = html;
 };

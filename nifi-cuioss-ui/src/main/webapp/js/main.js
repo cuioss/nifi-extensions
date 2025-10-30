@@ -140,6 +140,57 @@ const setupHelpTooltips = () => {
 };
 
 /**
+ * Check if node contains loading text
+ * @param {Node} node - The node to check
+ * @returns {boolean} True if node contains loading text
+ */
+const nodeContainsLoadingText = (node) => {
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+        return false;
+    }
+    const textContent = node.textContent?.trim() || '';
+    return textContent.includes('Loading JWT') ||
+           textContent.includes('Loading Validator') ||
+           textContent.includes('Loading JWT Validator UI');
+};
+
+/**
+ * Process mutation for loading indicators
+ * @param {MutationRecord} mutation - The mutation record
+ * @returns {boolean} True if loading indicator found
+ */
+const processMutationForLoading = (mutation) => {
+    if (mutation.type !== 'childList') {
+        return false;
+    }
+    for (const node of mutation.addedNodes) {
+        if (nodeContainsLoadingText(node)) {
+            return true;
+        }
+    }
+    return false;
+};
+
+/**
+ * Handle mutation observer callback for loading indicators
+ * @param {MutationRecord[]} mutations - Array of mutations
+ */
+const handleLoadingMutations = (mutations) => {
+    let needsHiding = false;
+    for (const mutation of mutations) {
+        if (processMutationForLoading(mutation)) {
+            needsHiding = true;
+            break;
+        }
+    }
+
+    if (needsHiding) {
+        logger.debug('MutationObserver detected loading message, hiding immediately');
+        hideLoadingIndicatorRobust();
+    }
+};
+
+/**
  * Sets up continuous monitoring for loading indicators that might appear at any time.
  * This is critical for catching loading messages that appear after initialization.
  * Enhanced to follow roundtrip testing requirements for immediate feedback.
@@ -147,28 +198,7 @@ const setupHelpTooltips = () => {
 const setupContinuousLoadingMonitoring = () => {
     // Set up mutation observer to catch dynamically added loading elements
     if (typeof MutationObserver !== 'undefined') {
-        const loadingObserver = new MutationObserver((mutations) => {
-            let needsHiding = false;
-            for (const mutation of mutations) {
-                if (mutation.type === 'childList') {
-                    for (const node of mutation.addedNodes) {
-                        if (node.nodeType === Node.ELEMENT_NODE) {
-                            const textContent = node.textContent?.trim() || '';
-                            if (textContent.includes('Loading JWT') ||
-                                textContent.includes('Loading Validator') ||
-                                textContent.includes('Loading JWT Validator UI')) {
-                                needsHiding = true;
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (needsHiding) {
-                logger.debug('MutationObserver detected loading message, hiding immediately');
-                hideLoadingIndicatorRobust();
-            }
-        });
+        const loadingObserver = new MutationObserver(handleLoadingMutations);
 
         loadingObserver.observe(document.body, {
             childList: true,
@@ -199,6 +229,39 @@ const setupContinuousLoadingMonitoring = () => {
 };
 
 /**
+ * Initialize tooltips for a single node
+ * @param {Node} node - The node to process
+ */
+const initializeTooltipsForNode = (node) => {
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+        return;
+    }
+
+    const elementsWithTitle = node.querySelectorAll('[title]');
+    const helpTooltips = node.querySelectorAll('.help-tooltip');
+
+    if (elementsWithTitle.length > 0) {
+        initTooltips(Array.from(elementsWithTitle), { placement: 'bottom' });
+    }
+
+    if (helpTooltips.length > 0) {
+        initTooltips(Array.from(helpTooltips), { placement: 'right' });
+    }
+};
+
+/**
+ * Process mutation for tooltip initialization
+ * @param {MutationRecord} mutation - The mutation record
+ */
+const processMutationForTooltips = (mutation) => {
+    if (mutation.type === 'childList') {
+        for (const node of mutation.addedNodes) {
+            initializeTooltipsForNode(node);
+        }
+    }
+};
+
+/**
  * Sets up mutation observer to initialize tooltips on dynamically added elements.
  * This ensures tooltips work on form fields created after initial page load.
  */
@@ -206,23 +269,7 @@ const setupTooltipObserver = () => {
     try {
         const observer = new MutationObserver((mutations) => {
             for (const mutation of mutations) {
-                if (mutation.type === 'childList') {
-                    for (const node of mutation.addedNodes) {
-                        if (node.nodeType === Node.ELEMENT_NODE) {
-                            // Initialize tooltips for newly added elements
-                            const elementsWithTitle = node.querySelectorAll('[title]');
-                            const helpTooltips = node.querySelectorAll('.help-tooltip');
-
-                            if (elementsWithTitle.length > 0) {
-                                initTooltips(Array.from(elementsWithTitle), { placement: 'bottom' });
-                            }
-
-                            if (helpTooltips.length > 0) {
-                                initTooltips(Array.from(helpTooltips), { placement: 'right' });
-                            }
-                        }
-                    }
-                }
+                processMutationForTooltips(mutation);
             }
         });
 
