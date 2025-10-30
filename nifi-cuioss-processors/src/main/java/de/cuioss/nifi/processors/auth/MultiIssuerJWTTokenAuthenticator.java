@@ -694,9 +694,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     builder.jwksFilePath(jwksSource);
                 case JWKS_TYPE_MEMORY ->
                     // For memory, we need to use jwksContent directly
-                    // Note: This assumes the library supports setting JWKS content directly
-                    // If not, we may need to create a temporary file or use a different approach
-                    builder.jwksFilePath(jwksSource); // This might need adjustment based on library capabilities
+                    builder.jwksContent(jwksSource);
                 default ->
                     LOGGER.warn("Unknown jwks-type '%s', attempting to use jwksFilePath", jwksType);
             }
