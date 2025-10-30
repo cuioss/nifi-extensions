@@ -281,12 +281,6 @@ const _handleAjaxError = (jqXHR, resultContainer, i18n) => {
     displayUiError(resultContainer, jqXHR, i18n);
 };
 
-// Private function to handle synchronous errors during AJAX setup or other issues
-const _handleSynchronousError = (exception, resultContainer, i18n) => {
-    // Always display the actual error (no localhost simulation)
-    displayUiError(resultContainer, exception, i18n);
-};
-
 /**
  * Cleanup function for the JWKS validator component.
  * Removes event listeners and cleans up resources.

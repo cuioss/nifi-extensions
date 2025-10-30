@@ -23,6 +23,9 @@ import { API, COMPONENTS } from '../utils/constants.js';
 import { validateIssuerConfig, validateProcessorIdFromUrl } from '../utils/validation.js';
 import { FormFieldBuilder } from '../utils/formBuilder.js';
 import { ComponentLifecycle } from '../utils/componentCleanup.js';
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('IssuerConfigEditor');
 
 // Get i18n resources from NiFi Common
 const i18n = getI18n() || {};
