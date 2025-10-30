@@ -28,13 +28,6 @@
     <properties>
         <enforcer.skip>true</enforcer.skip>
         <sonar.javascript.lcov.reportPaths>target/coverage/lcov.info</sonar.javascript.lcov.reportPaths>
-        <!-- Exclude entire UI module from coverage quality gate requirements
-             Module still analyzed for code smells, bugs, and security issues.
-             Local Jest coverage is 92%, but SonarCloud "new code coverage" is 67%
-             due to helper functions extracted for cognitive complexity fixes.
-             See: https://docs.sonarsource.com/sonarqube-server/latest/project-administration/setting-analysis-scope/exclude-from-coverage-duplication -->
-        <sonar.coverage.exclusions>**/*.*</sonar.coverage.exclusions>
-
     </properties>
 
     <dependencies>
