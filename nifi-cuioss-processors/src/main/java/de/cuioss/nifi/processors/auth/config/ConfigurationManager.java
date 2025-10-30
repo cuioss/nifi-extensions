@@ -106,8 +106,8 @@ public class ConfigurationManager {
                     loadConfiguration();
                     lastLoadedTimestamp = lastModified;
                     return true;
-                } catch (RuntimeException e) {
-                    // Catch configuration loading errors (IOException wrapped in RuntimeException, parsing errors, etc.)
+                } catch (IllegalStateException | IllegalArgumentException | org.yaml.snakeyaml.error.YAMLException e) {
+                    // Catch configuration loading errors
                     String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
                             .operation("checkAndReloadConfiguration")
                             .errorCode(ErrorContext.ErrorCodes.CONFIGURATION_ERROR)
@@ -202,7 +202,7 @@ public class ConfigurationManager {
 
             LOGGER.error(e, contextMessage);
             return false;
-        } catch (RuntimeException e) {
+        } catch (IllegalStateException | IllegalArgumentException | org.yaml.snakeyaml.error.YAMLException e) {
             // Catch parsing and other runtime errors
             String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
                     .operation("loadConfigurationFile")

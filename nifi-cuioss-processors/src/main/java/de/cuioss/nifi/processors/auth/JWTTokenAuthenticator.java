@@ -139,7 +139,7 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
             // Transfer to success relationship
             session.transfer(flowFile, Relationships.SUCCESS);
 
-        } catch (RuntimeException e) {
+        } catch (IllegalStateException | IllegalArgumentException e) {
             // Catch unexpected runtime exceptions during token extraction
             String contextMessage = ErrorContext.forComponent("JWTTokenAuthenticator")
                     .operation("onTrigger")

@@ -249,11 +249,6 @@ public class JwtVerificationServlet extends HttpServlet {
             LOGGER.error(e, "Communication error for processor %s", verificationRequest.processorId());
             safelySendErrorResponse(resp, 500, "Communication error: " + e.getMessage(), false);
             return null;
-        } catch (RuntimeException e) {
-            LOGGER.error(e, "Unexpected error during token verification for processor %s",
-                    verificationRequest.processorId());
-            safelySendErrorResponse(resp, 500, "Internal server error", false);
-            return null;
         }
     }
 

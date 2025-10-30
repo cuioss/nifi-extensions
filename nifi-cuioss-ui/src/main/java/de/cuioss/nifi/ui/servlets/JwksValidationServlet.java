@@ -335,7 +335,7 @@ public class JwksValidationServlet extends HttpServlet {
             String error = "Invalid JWKS JSON format: " + e.getMessage();
             LOGGER.debug("JWKS content validation failed: %s", error);
             return JwksValidationResult.failure(error);
-        } catch (RuntimeException e) {
+        } catch (IllegalStateException | IllegalArgumentException e) {
             String error = "JWKS content validation error: " + e.getMessage();
             LOGGER.warn(e, "JWKS content validation failed");
             return JwksValidationResult.failure(error);

@@ -95,7 +95,7 @@ public class JwtValidationService {
                     .parserConfig(parserConfig)
                     .issuerConfigs(issuerConfigs)
                     .build();
-        } catch (RuntimeException e) {
+        } catch (IllegalStateException | IllegalArgumentException e) {
             LOGGER.error(e, "Failed to create TokenValidator for processor %s", processorId);
             throw new IllegalStateException("Failed to create TokenValidator: " + e.getMessage(), e);
         }
@@ -116,7 +116,7 @@ public class JwtValidationService {
             MetricsServlet.recordInvalidToken(e.getMessage());
 
             return TokenValidationResult.failure(e.getMessage());
-        } catch (RuntimeException e) {
+        } catch (IllegalStateException | IllegalArgumentException e) {
             LOGGER.error(e, "Unexpected error during token validation for processor %s", processorId);
 
             String errorMessage = "Unexpected validation error: " + e.getMessage();
@@ -288,7 +288,7 @@ public class JwtValidationService {
         } catch (IllegalArgumentException | JsonException e) {
             LOGGER.error(e, "Error in test token verification");
             return TokenValidationResult.failure("Token verification error: " + e.getMessage());
-        } catch (RuntimeException e) {
+        } catch (IllegalStateException e) {
             LOGGER.error(e, "Unexpected error in test token verification");
             return TokenValidationResult.failure("Token verification error: " + e.getMessage());
         }

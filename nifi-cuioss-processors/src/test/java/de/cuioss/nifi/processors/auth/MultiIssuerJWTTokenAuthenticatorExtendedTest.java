@@ -377,7 +377,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
             assertInstanceOf(TokenValidationException.class, ex.getCause());
             String actualMessage = ex.getCause().getMessage();
             // HS256 is rejected by SignatureAlgorithmPreferences, causing algorithm validation to fail
-            assertTrue(actualMessage.contains("Failed to validate JWT algorithm"),
+            assertTrue(actualMessage.contains("is not supported"),
                     "Expected algorithm validation failure message, but got: " + actualMessage);
         }
     }

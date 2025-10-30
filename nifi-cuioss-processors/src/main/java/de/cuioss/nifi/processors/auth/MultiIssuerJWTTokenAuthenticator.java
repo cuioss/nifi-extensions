@@ -439,8 +439,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 // For now, we just null out the references to allow garbage collection
                 tokenValidator.set(null);
                 securityEventCounter = null;
-            } catch (RuntimeException e) {
-                // Catch any unexpected errors during cleanup (NullPointerException, etc.)
+            } catch (IllegalStateException e) {
+                // Catch any unexpected errors during cleanup
                 LOGGER.warn(AuthLogMessages.WARN.RESOURCE_CLEANUP_ERROR.format(e.getMessage()));
             }
         }
@@ -659,7 +659,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         } catch (TokenValidationException e) {
             handleTokenValidationException(session, flowFile, e);
-        } catch (RuntimeException e) {
+        } catch (IllegalStateException | IllegalArgumentException e) {
             handleRuntimeException(session, flowFile, e, tokenLocation);
         }
     }
@@ -1054,8 +1054,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     .buildMessage("Failed to decode JWT header");
             LOGGER.warn(contextMessage);
             throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED, "Invalid JWT token format - cannot decode header");
-        } catch (RuntimeException e) {
-            // Any other parsing error (excluding TokenValidationException which extends Exception, not RuntimeException)
+        } catch (IllegalStateException e) {
+            // Any other parsing error
             String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
                     .operation(VALIDATE_TOKEN_ALGORITHM_OP)
                     .errorCode(ErrorContext.ErrorCodes.TOKEN_ERROR)
@@ -1093,7 +1093,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         } catch (TokenValidationException e) {
             // Re-throw validation exceptions as-is
             throw e;
-        } catch (RuntimeException e) {
+        } catch (IllegalStateException | IllegalArgumentException e) {
             // Catch pattern matching exceptions and other runtime errors
             throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED, "Failed to parse JWT header for algorithm");
         }
