@@ -400,4 +400,110 @@ describe('MetricsTab', () => {
             expect(issuerRows[0].textContent).toContain('No issuer data available');
         });
     });
+
+    describe('export functionality', () => {
+        let createObjectURLSpy, revokeObjectURLSpy, clickSpy, removeSpy;
+
+        beforeEach(() => {
+            // Mock URL.createObjectURL and URL.revokeObjectURL
+            createObjectURLSpy = jest.fn(() => 'blob:mock-url');
+            revokeObjectURLSpy = jest.fn();
+            globalThis.URL = {
+                createObjectURL: createObjectURLSpy,
+                revokeObjectURL: revokeObjectURLSpy
+            };
+
+            // Mock createElement to spy on anchor click and remove
+            const originalCreateElement = document.createElement.bind(document);
+            jest.spyOn(document, 'createElement').mockImplementation((tag) => {
+                const element = originalCreateElement(tag);
+                if (tag === 'a') {
+                    clickSpy = jest.spyOn(element, 'click').mockImplementation(() => {});
+                    removeSpy = jest.spyOn(element, 'remove').mockImplementation(() => {});
+                }
+                return element;
+            });
+
+            // Initialize metrics tab to set up the export buttons
+            metricsTab.init();
+        });
+
+        afterEach(() => {
+            jest.restoreAllMocks();
+        });
+
+        it('should export metrics as JSON', () => {
+            // Find and click the export button to show options
+            const exportButton = document.querySelector('[data-testid="export-metrics-button"]');
+            exportButton.click();
+
+            // Click JSON export
+            const jsonExportButton = document.querySelector('[data-testid="export-json"]');
+            jsonExportButton.click();
+
+            // Verify blob creation
+            expect(createObjectURLSpy).toHaveBeenCalledWith(expect.any(Blob));
+            expect(clickSpy).toHaveBeenCalled();
+            expect(removeSpy).toHaveBeenCalled();
+            expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:mock-url');
+        });
+
+        it('should export metrics as CSV', () => {
+            const exportButton = document.querySelector('[data-testid="export-metrics-button"]');
+            exportButton.click();
+
+            const csvExportButton = document.querySelector('[data-testid="export-csv"]');
+            csvExportButton.click();
+
+            expect(createObjectURLSpy).toHaveBeenCalledWith(expect.any(Blob));
+            expect(clickSpy).toHaveBeenCalled();
+            expect(removeSpy).toHaveBeenCalled();
+            expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:mock-url');
+        });
+
+        it('should export metrics as Prometheus', () => {
+            const exportButton = document.querySelector('[data-testid="export-metrics-button"]');
+            exportButton.click();
+
+            const prometheusExportButton = document.querySelector('[data-testid="export-prometheus"]');
+            prometheusExportButton.click();
+
+            expect(createObjectURLSpy).toHaveBeenCalledWith(expect.any(Blob));
+            expect(clickSpy).toHaveBeenCalled();
+            expect(removeSpy).toHaveBeenCalled();
+            expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:mock-url');
+        });
+
+        it('should toggle export options visibility', () => {
+            const exportButton = document.querySelector('[data-testid="export-metrics-button"]');
+            const exportOptions = document.getElementById('export-options');
+
+            // Initially hidden
+            expect(exportOptions.style.display).toBe('none');
+
+            // Click to show
+            exportButton.click();
+            expect(exportOptions.style.display).toBe('block');
+
+            // Click to hide
+            exportButton.click();
+            expect(exportOptions.style.display).toBe('none');
+        });
+
+        it('should hide export options after selecting a format', () => {
+            const exportButton = document.querySelector('[data-testid="export-metrics-button"]');
+            const exportOptions = document.getElementById('export-options');
+
+            // Show options
+            exportButton.click();
+            expect(exportOptions.style.display).toBe('block');
+
+            // Select JSON export
+            const jsonExportButton = document.querySelector('[data-testid="export-json"]');
+            jsonExportButton.click();
+
+            // Options should be hidden after export
+            expect(exportOptions.style.display).toBe('none');
+        });
+    });
 });
