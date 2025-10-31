@@ -147,7 +147,7 @@ class ApiKeyAuthenticationFilterTest {
         @DisplayName("Should allow request with valid processor ID header")
         void shouldAllowRequestWithValidProcessorId() throws IOException, ServletException {
             // Arrange
-            String processorId = strings().next();
+            String processorId = "test-processor-" + System.nanoTime();
             String servletPath = "/nifi-api/processors/jwt/validate";
             String httpMethod = "POST";
 
@@ -367,8 +367,8 @@ class ApiKeyAuthenticationFilterTest {
         @DisplayName("Should log remote user when authenticated")
         void shouldLogRemoteUserWhenAuthenticated() throws IOException, ServletException {
             // Arrange
-            String processorId = strings().next();
-            String remoteUser = strings().next();
+            String processorId = "test-processor-" + System.nanoTime();
+            String remoteUser = "test-user-" + System.nanoTime();
             String servletPath = "/nifi-api/processors/jwt/validate";
             String httpMethod = "POST";
 
@@ -393,7 +393,7 @@ class ApiKeyAuthenticationFilterTest {
         @DisplayName("Should handle null remote user gracefully")
         void shouldHandleNullRemoteUserGracefully() throws IOException, ServletException {
             // Arrange
-            String processorId = strings().next();
+            String processorId = "test-processor-" + System.nanoTime();
             String servletPath = "/nifi-api/processors/jwt/validate";
             String httpMethod = "POST";
 
@@ -530,7 +530,7 @@ class ApiKeyAuthenticationFilterTest {
         @DisplayName("Should handle null servlet path gracefully")
         void shouldHandleNullServletPathGracefully() throws IOException, ServletException {
             // Arrange
-            String processorId = strings().next();
+            String processorId = "test-processor-" + System.nanoTime();
             String httpMethod = "POST";
 
             expect(mockRequest.getServletPath()).andReturn(null);
@@ -554,7 +554,7 @@ class ApiKeyAuthenticationFilterTest {
         @DisplayName("Should handle null request URI gracefully")
         void shouldHandleNullRequestURIGracefully() throws IOException, ServletException {
             // Arrange
-            String processorId = strings().next();
+            String processorId = "test-processor-" + System.nanoTime();
             String servletPath = "/nifi-api/processors/jwt/validate";
             String httpMethod = "POST";
 
