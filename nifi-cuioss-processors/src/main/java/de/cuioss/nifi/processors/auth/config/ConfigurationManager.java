@@ -251,7 +251,6 @@ public class ConfigurationManager {
      * @return true if configuration was loaded successfully, false otherwise
      * @throws IOException if an I/O error occurs
      */
-    @SuppressWarnings("unchecked")
     private boolean loadYamlFile(File file) throws IOException {
         Yaml yaml = new Yaml();
         Map<String, Object> yamlData;
@@ -318,7 +317,6 @@ public class ConfigurationManager {
      * @param index the list index
      * @return the issuer ID
      */
-    @SuppressWarnings("unchecked")
     private String getIssuerId(Map<String, Object> issuerConfig, int index) {
         if (issuerConfig.containsKey("id")) {
             return issuerConfig.get("id").toString();

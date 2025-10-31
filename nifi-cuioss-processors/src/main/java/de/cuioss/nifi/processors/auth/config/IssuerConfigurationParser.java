@@ -18,36 +18,32 @@ package de.cuioss.nifi.processors.auth.config;
 
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
+import de.cuioss.nifi.processors.auth.JWTPropertyKeys;
 import de.cuioss.nifi.processors.auth.util.ErrorContext;
 import de.cuioss.tools.logging.CuiLogger;
+import lombok.experimental.UtilityClass;
 
 import java.util.*;
 
 /**
  * Shared utility for parsing issuer configurations from processor properties.
  * This avoids duplicating logic between the processor and REST endpoints.
- * 
- * The parser supports both UI-based configuration (using dynamic properties) 
+ *
+ * The parser supports both UI-based configuration (using dynamic properties)
  * and external configuration files.
  */
+@UtilityClass
 public class IssuerConfigurationParser {
 
     private static final CuiLogger LOGGER = new CuiLogger(IssuerConfigurationParser.class);
 
-    // Property prefixes and suffixes for UI configuration
+    // Property prefixes for UI configuration
     private static final String ISSUER_PREFIX = "issuer.";
-    private static final String NAME_SUFFIX = ".name";
-    private static final String JWKS_URL_SUFFIX = ".jwks.url";
-
-    // Private constructor to prevent instantiation
-    private IssuerConfigurationParser() {
-        throw new UnsupportedOperationException("Utility class");
-    }
 
     /**
      * Extracts all issuer configurations from processor properties.
      * This method handles both UI-based dynamic properties and external configuration.
-     * 
+     *
      * @param properties The processor's property map
      * @param configurationManager Optional external configuration manager
      * @return List of IssuerConfig objects
@@ -71,7 +67,7 @@ public class IssuerConfigurationParser {
 
     /**
      * Extracts parser configuration from processor properties.
-     * 
+     *
      * @param properties The processor's property map
      * @return ParserConfig object
      */
@@ -171,8 +167,8 @@ public class IssuerConfigurationParser {
                         .cause(e)
                         .build()
                         .with("issuerId", issuerId)
-                        .with("issuerName", issuerProps.get(NAME_SUFFIX))
-                        .with("jwksUrl", issuerProps.get(JWKS_URL_SUFFIX))
+                        .with("issuerName", issuerProps.get("name"))
+                        .with("jwksUrl", issuerProps.get(JWTPropertyKeys.Issuer.JWKS_URL))
                         .buildMessage("Failed to create issuer configuration");
 
                 LOGGER.error(e, contextMessage);
@@ -193,22 +189,31 @@ public class IssuerConfigurationParser {
             return null;
         }
 
-        // Get issuer name (required)
+        // Get issuer name (required) - use either "name" or "issuer" property
         String issuerName = issuerProps.get("name");
+        if (issuerName == null || issuerName.trim().isEmpty()) {
+            issuerName = issuerProps.get(JWTPropertyKeys.Issuer.ISSUER_NAME);
+        }
         if (issuerName == null || issuerName.trim().isEmpty()) {
             LOGGER.warn("Issuer %s has no name configured, skipping", issuerId);
             return null;
         }
 
         // Create builder using the same pattern as the processor
-        String jwksUrl = issuerProps.get("jwks.url");
-        String jwksFile = issuerProps.get("jwks.file");
-        String jwksContent = issuerProps.get("jwks.content");
+        String jwksUrl = issuerProps.get(JWTPropertyKeys.Issuer.JWKS_URL);
+        String jwksFile = issuerProps.get(JWTPropertyKeys.Issuer.JWKS_FILE);
+        String jwksContent = issuerProps.get(JWTPropertyKeys.Issuer.JWKS_CONTENT);
+
+        // Also check for 'jwksUri' which is used in YAML external configuration
+        String jwksUri = issuerProps.get("jwksUri");
 
         // Determine JWKS source - at least one is required
         String jwksSource;
         if (jwksUrl != null && !jwksUrl.trim().isEmpty()) {
             jwksSource = jwksUrl.trim();
+        } else if (jwksUri != null && !jwksUri.trim().isEmpty()) {
+            // YAML configuration uses 'jwksUri' instead of 'jwks-url'
+            jwksSource = jwksUri.trim();
         } else if (jwksFile != null && !jwksFile.trim().isEmpty()) {
             jwksSource = jwksFile.trim();
         } else if (jwksContent != null && !jwksContent.trim().isEmpty()) {
@@ -226,12 +231,12 @@ public class IssuerConfigurationParser {
                 .jwksFilePath(jwksSource);
 
         // Add optional properties
-        String audience = issuerProps.get("audience");
+        String audience = issuerProps.get(JWTPropertyKeys.Issuer.AUDIENCE);
         if (audience != null && !audience.trim().isEmpty()) {
             builder.expectedAudience(audience.trim());
         }
 
-        String clientId = issuerProps.get("client.id");
+        String clientId = issuerProps.get(JWTPropertyKeys.Issuer.CLIENT_ID);
         if (clientId != null && !clientId.trim().isEmpty()) {
             builder.expectedClientId(clientId.trim());
         }
@@ -243,7 +248,7 @@ public class IssuerConfigurationParser {
      * Creates a map of processor properties from a ProcessContext.
      * This is a helper method for servlets that need to convert NiFi's ProcessContext
      * to a simple Map that can be used with this parser.
-     * 
+     *
      * @param processorProperties Map from NiFi REST API response
      * @return Simple property map
      */
