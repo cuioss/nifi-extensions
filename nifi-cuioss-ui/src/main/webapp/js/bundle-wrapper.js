@@ -1,6 +1,13 @@
 /**
- * Bundle wrapper to provide expected interface for tests
- * This wraps the main module to match test expectations
+ * Production UMD bundle entry point for Vite build
+ *
+ * This file serves as the entry point in vite.config.js and is built into bundle.umd.cjs,
+ * which is then loaded by NiFi's custom UI infrastructure.
+ *
+ * The wrapper provides a clean API surface for NiFi's plugin system by:
+ * - Re-exporting core functions from main.js
+ * - Providing backwards-compatible function aliases (e.g., hideLoadingIndicatorImmediate)
+ * - Ensuring UMD module compatibility for browser environments
  */
 'use strict';
 
@@ -17,7 +24,7 @@ export const hideLoadingIndicatorImmediate = () => {
     main.hideLoadingIndicatorRobust();
 };
 
-// Re-export other functions tests might need
+// Re-export other public API functions
 export { getComponentStatus, cleanup } from './main.js';
 
 // For UMD compatibility
