@@ -741,4 +741,65 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             flowFile.assertAttributeExists("jwt.error.code");
         }
     }
+
+    @Nested
+    @DisplayName("Token Algorithm Validation Tests")
+    class TokenAlgorithmValidationTests {
+
+        @Test
+        @DisplayName("Test token with malformed Base64 header")
+        void testMalformedBase64Header() {
+            // Create a token with invalid Base64 in the header part
+            // This should trigger IllegalArgumentException from Base64 decoder
+            String malformedToken = "not-valid-base64!!!.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
+
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Bearer " + malformedToken);
+            testRunner.enqueue("test data", attributes);
+
+            // Run the processor
+            testRunner.run();
+
+            // Verify token validation failed
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            // Get the output flow file
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+
+            // Verify error attributes indicate Base64 decoding failure
+            flowFile.assertAttributeExists("jwt.error.reason");
+            flowFile.assertAttributeExists("jwt.error.code");
+            flowFile.assertAttributeExists("jwt.error.category");
+
+            // The error should mention that the token format is invalid
+            String errorReason = flowFile.getAttribute("jwt.error.reason");
+            assert errorReason != null && errorReason.toLowerCase().contains("invalid");
+        }
+
+        @Test
+        @DisplayName("Test token with header containing special characters in Base64")
+        void testBase64WithInvalidCharacters() {
+            // Create a token with characters that are not valid in Base64
+            String tokenWithInvalidBase64 = "eyJ@#$%^&*()!.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
+
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Bearer " + tokenWithInvalidBase64);
+            testRunner.enqueue("test data", attributes);
+
+            // Run the processor
+            testRunner.run();
+
+            // Verify token validation failed
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            // Get the output flow file
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+
+            // Verify error attributes are present
+            flowFile.assertAttributeExists("jwt.error.reason");
+            flowFile.assertAttributeExists("jwt.error.code");
+        }
+    }
 }

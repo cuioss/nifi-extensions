@@ -432,17 +432,12 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         // Clean up TokenValidator resources if needed
         if (tokenValidator.get() != null) {
-            try {
-                // Note: The current TokenValidator implementation doesn't have explicit cleanup methods
-                // If future versions add cleanup methods, they should be called here
+            // Note: The current TokenValidator implementation doesn't have explicit cleanup methods
+            // If future versions add cleanup methods, they should be called here
 
-                // For now, we just null out the references to allow garbage collection
-                tokenValidator.set(null);
-                securityEventCounter = null;
-            } catch (IllegalStateException e) {
-                // Catch any unexpected errors during cleanup
-                LOGGER.warn(AuthLogMessages.WARN.RESOURCE_CLEANUP_ERROR.format(e.getMessage()));
-            }
+            // For now, we just null out the references to allow garbage collection
+            tokenValidator.set(null);
+            securityEventCounter = null;
         }
 
         // Clear the issuer Config cache to ensure we don't use stale configurations
@@ -659,8 +654,6 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         } catch (TokenValidationException e) {
             handleTokenValidationException(session, flowFile, e);
-        } catch (IllegalStateException | IllegalArgumentException e) {
-            handleRuntimeException(session, flowFile, e, tokenLocation);
         }
     }
 
@@ -1054,16 +1047,6 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     .buildMessage("Failed to decode JWT header");
             LOGGER.warn(contextMessage);
             throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED, "Invalid JWT token format - cannot decode header");
-        } catch (IllegalStateException e) {
-            // Any other parsing error
-            String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
-                    .operation(VALIDATE_TOKEN_ALGORITHM_OP)
-                    .errorCode(ErrorContext.ErrorCodes.TOKEN_ERROR)
-                    .cause(e)
-                    .build()
-                    .buildMessage("Failed to validate JWT algorithm");
-            LOGGER.warn(contextMessage);
-            throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED, "Failed to validate JWT algorithm");
         }
     }
 
@@ -1077,26 +1060,18 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private String extractAlgorithmFromHeader(String headerJson) throws TokenValidationException {
         // Simple JSON parsing to extract the "alg" field
         // Using a simple approach to avoid adding JSON parsing dependencies
-        try {
-            // Look for the "alg" field in the JSON
-            String algPattern = "\"alg\"\\s*:\\s*\"([^\"]+)\"";
-            Pattern pattern = Pattern.compile(algPattern);
-            Matcher matcher = pattern.matcher(headerJson);
 
-            if (matcher.find()) {
-                return matcher.group(1);
-            }
+        // Look for the "alg" field in the JSON
+        String algPattern = "\"alg\"\\s*:\\s*\"([^\"]+)\"";
+        Pattern pattern = Pattern.compile(algPattern);
+        Matcher matcher = pattern.matcher(headerJson);
 
-            // If no algorithm found, this is suspicious
-            throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED, "JWT header does not contain algorithm field");
-
-        } catch (TokenValidationException e) {
-            // Re-throw validation exceptions as-is
-            throw e;
-        } catch (IllegalStateException | IllegalArgumentException e) {
-            // Catch pattern matching exceptions and other runtime errors
-            throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED, "Failed to parse JWT header for algorithm");
+        if (matcher.find()) {
+            return matcher.group(1);
         }
+
+        // If no algorithm found, this is suspicious
+        throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED, "JWT header does not contain algorithm field");
     }
 
 
