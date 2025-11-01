@@ -289,4 +289,196 @@ class ProcessorConfigReaderTest {
                     "Error message should explain that processor ID cannot be empty");
         }
     }
+
+    @Nested
+    @DisplayName("JSON Parsing Exception Tests")
+    class JsonParsingExceptionTests {
+
+        /**
+         * Tests that JsonException is properly handled when parsing malformed JSON.
+         * This uses reflection to test the parseProcessorResponse method directly.
+         */
+        @Test
+        @DisplayName("Should handle malformed JSON response gracefully")
+        void shouldHandleMalformedJsonResponse() throws Exception {
+            // Arrange
+            String malformedJson = "{ invalid json structure without proper closing";
+            String processorId = "test-processor-id";
+
+            // Use reflection to access private method
+            java.lang.reflect.Method parseMethod = ProcessorConfigReader.class
+                    .getDeclaredMethod("parseProcessorResponse", String.class, String.class);
+            parseMethod.setAccessible(true);
+
+            // Act & Assert
+            IOException exception = assertThrows(
+                    IOException.class,
+                    () -> {
+                        try {
+                            parseMethod.invoke(reader, malformedJson, processorId);
+                        } catch (java.lang.reflect.InvocationTargetException e) {
+                            throw e.getCause();
+                        }
+                    },
+                    "Should throw IOException for malformed JSON"
+            );
+
+            assertTrue(exception.getMessage().contains("Failed to parse processor response JSON"),
+                    "Exception message should indicate JSON parsing failure");
+        }
+
+        /**
+         * Tests that ClassCastException is properly handled when JSON structure has wrong types.
+         * For example, when 'component' is an array instead of an object.
+         */
+        @Test
+        @DisplayName("Should handle JSON with wrong type structure")
+        void shouldHandleJsonWithWrongTypeStructure() throws Exception {
+            // Arrange - 'component' is an array instead of object
+            String invalidStructureJson = """
+                {
+                    "component": [
+                        "this should be an object, not an array"
+                    ]
+                }
+                """;
+            String processorId = "test-processor-id";
+
+            // Use reflection to access private method
+            java.lang.reflect.Method parseMethod = ProcessorConfigReader.class
+                    .getDeclaredMethod("parseProcessorResponse", String.class, String.class);
+            parseMethod.setAccessible(true);
+
+            // Act & Assert
+            IOException exception = assertThrows(
+                    IOException.class,
+                    () -> {
+                        try {
+                            parseMethod.invoke(reader, invalidStructureJson, processorId);
+                        } catch (java.lang.reflect.InvocationTargetException e) {
+                            throw e.getCause();
+                        }
+                    },
+                    "Should throw IOException for invalid JSON structure"
+            );
+
+            assertTrue(exception.getMessage().contains("Invalid JSON structure"),
+                    "Exception message should indicate invalid JSON structure");
+        }
+
+        /**
+         * Tests that missing 'component' field is handled properly.
+         */
+        @Test
+        @DisplayName("Should handle JSON response missing component field")
+        void shouldHandleJsonMissingComponentField() throws Exception {
+            // Arrange - valid JSON but missing required 'component' field
+            String jsonMissingComponent = """
+                {
+                    "id": "some-processor-id",
+                    "status": "Running"
+                }
+                """;
+            String processorId = "test-processor-id";
+
+            // Use reflection to access private method
+            java.lang.reflect.Method parseMethod = ProcessorConfigReader.class
+                    .getDeclaredMethod("parseProcessorResponse", String.class, String.class);
+            parseMethod.setAccessible(true);
+
+            // Act & Assert
+            IOException exception = assertThrows(
+                    IOException.class,
+                    () -> {
+                        try {
+                            parseMethod.invoke(reader, jsonMissingComponent, processorId);
+                        } catch (java.lang.reflect.InvocationTargetException e) {
+                            throw e.getCause();
+                        }
+                    },
+                    "Should throw IOException for missing component field"
+            );
+
+            assertTrue(exception.getMessage().contains("missing 'component' field"),
+                    "Exception message should indicate missing component field");
+        }
+
+        /**
+         * Tests that missing 'config' field is handled properly.
+         */
+        @Test
+        @DisplayName("Should handle JSON response missing config field")
+        void shouldHandleJsonMissingConfigField() throws Exception {
+            // Arrange - has component but missing 'config'
+            String jsonMissingConfig = """
+                {
+                    "component": {
+                        "id": "some-processor-id"
+                    }
+                }
+                """;
+            String processorId = "test-processor-id";
+
+            // Use reflection to access private method
+            java.lang.reflect.Method parseMethod = ProcessorConfigReader.class
+                    .getDeclaredMethod("parseProcessorResponse", String.class, String.class);
+            parseMethod.setAccessible(true);
+
+            // Act & Assert
+            IOException exception = assertThrows(
+                    IOException.class,
+                    () -> {
+                        try {
+                            parseMethod.invoke(reader, jsonMissingConfig, processorId);
+                        } catch (java.lang.reflect.InvocationTargetException e) {
+                            throw e.getCause();
+                        }
+                    },
+                    "Should throw IOException for missing config field"
+            );
+
+            assertTrue(exception.getMessage().contains("missing 'config' field"),
+                    "Exception message should indicate missing config field");
+        }
+
+        /**
+         * Tests that missing 'properties' field is handled properly.
+         */
+        @Test
+        @DisplayName("Should handle JSON response missing properties field")
+        void shouldHandleJsonMissingPropertiesField() throws Exception {
+            // Arrange - has component and config but missing 'properties'
+            String jsonMissingProperties = """
+                {
+                    "component": {
+                        "config": {
+                            "schedulingStrategy": "TIMER_DRIVEN"
+                        }
+                    }
+                }
+                """;
+            String processorId = "test-processor-id";
+
+            // Use reflection to access private method
+            java.lang.reflect.Method parseMethod = ProcessorConfigReader.class
+                    .getDeclaredMethod("parseProcessorResponse", String.class, String.class);
+            parseMethod.setAccessible(true);
+
+            // Act & Assert
+            IOException exception = assertThrows(
+                    IOException.class,
+                    () -> {
+                        try {
+                            parseMethod.invoke(reader, jsonMissingProperties, processorId);
+                        } catch (java.lang.reflect.InvocationTargetException e) {
+                            throw e.getCause();
+                        }
+                    },
+                    "Should throw IOException for missing properties field"
+            );
+
+            assertTrue(exception.getMessage().contains("missing 'properties' field"),
+                    "Exception message should indicate missing properties field");
+        }
+    }
 }
