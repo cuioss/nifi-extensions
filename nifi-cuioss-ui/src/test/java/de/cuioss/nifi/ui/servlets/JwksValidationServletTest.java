@@ -235,6 +235,236 @@ class JwksValidationServletTest {
         assertTrue(responseJson.contains("Invalid JSON format"));
     }
 
+    @Test
+    void invalidUrlFormatValidation() throws Exception {
+        // Arrange - test invalid URL that triggers IllegalArgumentException
+        String requestJson = """
+            {
+                "jwksUrl": "not a valid url with spaces",
+                "processorId": "test-processor-id"
+            }
+            """;
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-url").anyTimes();
+
+        response.setStatus(400);
+        expectLastCall();
+
+        replay(request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(request, response);
+
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":false"));
+        assertTrue(responseJson.contains("Invalid JWKS URL format"));
+    }
+
+    @Test
+    void unsupportedUrlSchemeValidation() throws Exception {
+        // Arrange - test URL with unsupported scheme (not http/https)
+        String requestJson = """
+            {
+                "jwksUrl": "ftp://example.com/jwks.json",
+                "processorId": "test-processor-id"
+            }
+            """;
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-url").anyTimes();
+
+        response.setStatus(400);
+        expectLastCall();
+
+        replay(request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(request, response);
+
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":false"));
+        assertTrue(responseJson.contains("Invalid URL scheme"));
+    }
+
+    @Test
+    void emptyJwksUrlValidation() throws Exception {
+        // Arrange
+        String requestJson = """
+            {
+                "jwksUrl": "",
+                "processorId": "test-processor-id"
+            }
+            """;
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-url").anyTimes();
+
+        response.setStatus(400);
+        expectLastCall();
+
+        replay(request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(request, response);
+
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":false"));
+        assertTrue(responseJson.contains("JWKS URL cannot be empty"));
+    }
+
+    @Test
+    void missingJwksUrlField() throws Exception {
+        // Arrange
+        String requestJson = """
+            {
+                "processorId": "test-processor-id"
+            }
+            """;
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-url").anyTimes();
+
+        response.setStatus(400);
+        expectLastCall();
+
+        replay(request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(request, response);
+
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":false"));
+        assertTrue(responseJson.contains("Missing required field: jwksUrl"));
+    }
+
+    @Test
+    void emptyJwksContentValidation() throws Exception {
+        // Arrange
+        String requestJson = """
+            {
+                "jwksContent": "",
+                "processorId": "test-processor-id"
+            }
+            """;
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-content").anyTimes();
+
+        response.setStatus(400);
+        expectLastCall();
+
+        replay(request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(request, response);
+
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":false"));
+        assertTrue(responseJson.contains("JWKS content cannot be empty"));
+    }
+
+    @Test
+    void emptyJwksFilePathValidation() throws Exception {
+        // Arrange
+        String requestJson = """
+            {
+                "jwksFilePath": "",
+                "processorId": "test-processor-id"
+            }
+            """;
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-file").anyTimes();
+
+        response.setStatus(400);
+        expectLastCall();
+
+        replay(request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(request, response);
+
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":false"));
+        assertTrue(responseJson.contains("JWKS file path cannot be empty"));
+    }
+
+    @Test
+    void missingJwksFilePathField() throws Exception {
+        // Arrange
+        String requestJson = """
+            {
+                "processorId": "test-processor-id"
+            }
+            """;
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-file").anyTimes();
+
+        response.setStatus(400);
+        expectLastCall();
+
+        replay(request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(request, response);
+
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":false"));
+        assertTrue(responseJson.contains("Missing required field: jwksFilePath"));
+    }
+
+    @Test
+    void nonExistentJwksFileValidation() throws Exception {
+        // Arrange
+        String requestJson = """
+            {
+                "jwksFilePath": "/nonexistent/path/to/jwks.json",
+                "processorId": "test-processor-id"
+            }
+            """;
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-file").anyTimes();
+
+        response.setStatus(400);
+        expectLastCall();
+
+        replay(request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(request, response);
+
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":false"));
+        assertTrue(responseJson.contains("does not exist"));
+    }
+
     // Helper classes for testing
     private static class TestServletInputStream extends ServletInputStream {
         private final ByteArrayInputStream inputStream;
