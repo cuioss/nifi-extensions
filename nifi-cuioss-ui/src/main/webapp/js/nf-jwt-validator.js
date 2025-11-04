@@ -8,11 +8,11 @@
  * @returns {boolean} True if initialization should proceed
  */
 const canInitialize = () => {
-    if (window.jwtComponentsRegistered) {
+    if (globalThis.jwtComponentsRegistered) {
         console.info('[DEBUG_LOG] nf-jwt-validator.js: Components already registered, skipping initialization');
         return false;
     }
-    if (window.jwtInitializationInProgress) {
+    if (globalThis.jwtInitializationInProgress) {
         console.info('[DEBUG_LOG] nf-jwt-validator.js: Initialization already in progress, skipping');
         return false;
     }
@@ -27,16 +27,16 @@ const handleInitResult = (result) => {
     if (result && typeof result.then === 'function') {
         result.then(() => {
             console.info('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete');
-            window.jwtComponentsRegistered = true;
-            window.jwtInitializationInProgress = false;
+            globalThis.jwtComponentsRegistered = true;
+            globalThis.jwtInitializationInProgress = false;
         }).catch(error => {
             console.error('[DEBUG_LOG] nf-jwt-validator.js: Initialization failed', error);
-            window.jwtInitializationInProgress = false;
+            globalThis.jwtInitializationInProgress = false;
         });
     } else {
         console.info('[DEBUG_LOG] nf-jwt-validator.js: Initialization complete (non-Promise result)');
-        window.jwtComponentsRegistered = true;
-        window.jwtInitializationInProgress = false;
+        globalThis.jwtComponentsRegistered = true;
+        globalThis.jwtInitializationInProgress = false;
     }
 };
 
@@ -52,7 +52,7 @@ const initializeMainModule = () => {
         handleInitResult(main.init());
     } else {
         console.error('[DEBUG_LOG] nf-jwt-validator.js: Main module not available or missing init function');
-        window.jwtInitializationInProgress = false;
+        globalThis.jwtInitializationInProgress = false;
     }
 };
 
@@ -65,7 +65,7 @@ const hideLoadingIndicators = () => {
         for (const indicator of loadingIndicators) {
             indicator.style.display = 'none';
         }
-        window.jwtLoadingIndicatorHidden = true;
+        globalThis.jwtLoadingIndicatorHidden = true;
     } else {
         console.warn('No loading indicators found to hide');
     }
@@ -77,14 +77,14 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
-    window.jwtInitializationInProgress = true;
+    globalThis.jwtInitializationInProgress = true;
     console.info('[DEBUG_LOG] nf-jwt-validator.js: Document ready');
 
     try {
         initializeMainModule();
     } catch (error) {
         console.error('[DEBUG_LOG] nf-jwt-validator.js: Error during initialization', error);
-        window.jwtInitializationInProgress = false;
+        globalThis.jwtInitializationInProgress = false;
     }
 
     try {
