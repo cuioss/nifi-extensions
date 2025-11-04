@@ -22,7 +22,6 @@ import de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships;
 import de.cuioss.nifi.processors.auth.JWTProcessorConstants.TokenLocation;
 import de.cuioss.nifi.processors.auth.i18n.I18nResolver;
 import de.cuioss.nifi.processors.auth.i18n.NiFiI18nResolver;
-import de.cuioss.nifi.processors.auth.util.ErrorContext;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
