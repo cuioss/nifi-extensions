@@ -16,10 +16,10 @@
  */
 package de.cuioss.nifi.processors.auth.config;
 
-import de.cuioss.sheriff.oauth.core.IssuerConfig;
-import de.cuioss.sheriff.oauth.core.ParserConfig;
 import de.cuioss.nifi.processors.auth.JWTPropertyKeys;
 import de.cuioss.nifi.processors.auth.util.ErrorContext;
+import de.cuioss.sheriff.oauth.core.IssuerConfig;
+import de.cuioss.sheriff.oauth.core.ParserConfig;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.experimental.UtilityClass;
 

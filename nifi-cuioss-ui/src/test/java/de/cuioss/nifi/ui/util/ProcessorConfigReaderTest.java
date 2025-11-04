@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Unit tests for {@link ProcessorConfigReader}.
  *
- * Note: This class creates HttpClient internally without dependency injection,
+ * Note: This class creates HttpHandler internally without dependency injection,
  * which limits testability. Tests focus on input validation and behavior
  * that can be verified without mocking HTTP clients. Full HTTP communication
  * testing would require either:
@@ -59,14 +59,14 @@ class ProcessorConfigReaderTest {
             String nullProcessorId = null;
 
             // Act & Assert
-            IllegalArgumentException exception = assertThrows(
-                    IllegalArgumentException.class,
+            NullPointerException exception = assertThrows(
+                    NullPointerException.class,
                     () -> reader.getProcessorProperties(nullProcessorId),
-                    "Null processor ID should throw IllegalArgumentException"
+                    "Null processor ID should throw NullPointerException"
             );
 
-            assertTrue(exception.getMessage().contains("cannot be null or empty"),
-                    "Exception message should indicate processor ID cannot be null");
+            assertTrue(exception.getMessage().contains("processorId must not be null"),
+                    "Exception message should indicate processorId must not be null");
         }
 
         @Test
@@ -82,8 +82,8 @@ class ProcessorConfigReaderTest {
                     "Empty processor ID should throw IllegalArgumentException"
             );
 
-            assertTrue(exception.getMessage().contains("cannot be null or empty"),
-                    "Exception message should indicate processor ID cannot be empty");
+            assertTrue(exception.getMessage().contains("Processor ID cannot be empty"),
+                    "Exception message should indicate Processor ID cannot be empty");
         }
 
         @Test
@@ -99,8 +99,8 @@ class ProcessorConfigReaderTest {
                     "Whitespace processor ID should throw IllegalArgumentException"
             );
 
-            assertTrue(exception.getMessage().contains("cannot be null or empty"),
-                    "Exception message should indicate processor ID cannot be empty");
+            assertTrue(exception.getMessage().contains("Processor ID cannot be empty"),
+                    "Exception message should indicate Processor ID cannot be empty");
         }
     }
 
@@ -256,18 +256,18 @@ class ProcessorConfigReaderTest {
             String nullProcessorId = null;
 
             // Act & Assert
-            IllegalArgumentException exception = assertThrows(
-                    IllegalArgumentException.class,
+            NullPointerException exception = assertThrows(
+                    NullPointerException.class,
                     () -> reader.getProcessorProperties(nullProcessorId),
-                    "Should throw exception for null processor ID"
+                    "Should throw NullPointerException for null processor ID"
             );
 
             String message = exception.getMessage();
             assertNotNull(message, "Error message should not be null");
-            assertTrue(message.toLowerCase().contains("processor id"),
-                    "Error message should mention processor ID");
-            assertTrue(message.toLowerCase().contains("null") || message.toLowerCase().contains("empty"),
-                    "Error message should explain the validation failure");
+            assertTrue(message.contains("processorId"),
+                    "Error message should mention processorId");
+            assertTrue(message.contains("must not be null"),
+                    "Error message should explain that processorId must not be null");
         }
 
         @Test
@@ -285,8 +285,8 @@ class ProcessorConfigReaderTest {
 
             String message = exception.getMessage();
             assertNotNull(message, "Error message should not be null");
-            assertTrue(message.toLowerCase().contains("empty"),
-                    "Error message should explain that processor ID cannot be empty");
+            assertTrue(message.contains("Processor ID cannot be empty"),
+                    "Error message should explain that Processor ID cannot be empty");
         }
     }
 

@@ -369,19 +369,19 @@ class IssuerPropertyDescriptorFactoryTest {
         void shouldHandleAllKnownPropertyKeys() {
             // Arrange
             String[] knownKeys = {
-                Issuer.JWKS_TYPE,
-                Issuer.JWKS_URL,
-                Issuer.JWKS_FILE,
-                Issuer.JWKS_CONTENT,
-                Issuer.ISSUER_NAME,
-                Issuer.AUDIENCE,
-                Issuer.CLIENT_ID,
-                Issuer.REQUIRED_SCOPES,
-                Issuer.REQUIRED_ROLES,
-                Issuer.REQUIRE_ALL_SCOPES,
-                Issuer.REQUIRE_ALL_ROLES,
-                Issuer.CASE_SENSITIVE_MATCHING,
-                Issuer.BYPASS_AUTHORIZATION
+                    Issuer.JWKS_TYPE,
+                    Issuer.JWKS_URL,
+                    Issuer.JWKS_FILE,
+                    Issuer.JWKS_CONTENT,
+                    Issuer.ISSUER_NAME,
+                    Issuer.AUDIENCE,
+                    Issuer.CLIENT_ID,
+                    Issuer.REQUIRED_SCOPES,
+                    Issuer.REQUIRED_ROLES,
+                    Issuer.REQUIRE_ALL_SCOPES,
+                    Issuer.REQUIRE_ALL_ROLES,
+                    Issuer.CASE_SENSITIVE_MATCHING,
+                    Issuer.BYPASS_AUTHORIZATION
             };
 
             // Act & Assert

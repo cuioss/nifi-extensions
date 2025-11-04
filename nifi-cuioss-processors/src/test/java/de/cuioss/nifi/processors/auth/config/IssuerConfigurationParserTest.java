@@ -24,7 +24,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -54,14 +53,14 @@ class IssuerConfigurationParserTest {
         List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 
         assertEquals(1, configs.size());
-        IssuerConfig config = configs.get(0);
+        IssuerConfig config = configs.getFirst();
         assertEquals("test-issuer", config.getIssuerIdentifier());
         // Note: IssuerConfig is from external library, some getters may not be publicly accessible
         assertNotNull(config);
     }
 
     private String getAbsolutePath(String relativePath) {
-        return Paths.get(relativePath).toAbsolutePath().toString();
+        return Path.of(relativePath).toAbsolutePath().toString();
     }
 
     @Test
@@ -95,7 +94,7 @@ class IssuerConfigurationParserTest {
         List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 
         assertEquals(1, configs.size());
-        IssuerConfig config = configs.get(0);
+        IssuerConfig config = configs.getFirst();
         assertEquals("test-issuer", config.getIssuerIdentifier());
         // Verify that issuer was created with optional fields (actual values not accessible via getters)
         assertNotNull(config);
@@ -110,7 +109,7 @@ class IssuerConfigurationParserTest {
         List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 
         assertEquals(1, configs.size());
-        IssuerConfig config = configs.get(0);
+        IssuerConfig config = configs.getFirst();
         assertEquals("file-issuer", config.getIssuerIdentifier());
         assertNotNull(config);
     }
@@ -199,7 +198,7 @@ class IssuerConfigurationParserTest {
         List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 
         assertEquals(1, configs.size());
-        IssuerConfig config = configs.get(0);
+        IssuerConfig config = configs.getFirst();
         // Verify whitespace is trimmed from issuer identifier
         assertEquals("test-issuer", config.getIssuerIdentifier());
         assertNotNull(config);
@@ -469,7 +468,7 @@ class IssuerConfigurationParserTest {
 
         // Should only parse the valid issuer with proper index
         assertEquals(1, configs.size());
-        assertEquals("valid-issuer", configs.get(0).getIssuerIdentifier());
+        assertEquals("valid-issuer", configs.getFirst().getIssuerIdentifier());
     }
 
     @Test
@@ -486,7 +485,7 @@ class IssuerConfigurationParserTest {
         // Should still create the issuer, but audience might be missing
         // depending on property iteration order
         assertEquals(1, configs.size());
-        assertEquals("test-issuer", configs.get(0).getIssuerIdentifier());
+        assertEquals("test-issuer", configs.getFirst().getIssuerIdentifier());
     }
 
     @Test
@@ -500,7 +499,7 @@ class IssuerConfigurationParserTest {
 
         assertEquals(1, configs.size());
         // URL should be preferred over file (verified by code logic, not getter)
-        assertEquals("multi-source", configs.get(0).getIssuerIdentifier());
+        assertEquals("multi-source", configs.getFirst().getIssuerIdentifier());
     }
 
     @Test

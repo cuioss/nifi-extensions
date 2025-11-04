@@ -189,7 +189,7 @@ public class ConfigurationManager {
                 LOGGER.warn("Unsupported configuration file format: %s", fileName);
                 return false;
             }
-        } catch (java.io.IOException e) {
+        } catch (IOException e) {
             // Catch file I/O errors
             String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
                     .operation("loadConfigurationFile")

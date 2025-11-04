@@ -324,14 +324,15 @@ public class JwtVerificationServlet extends HttpServlet {
      * Internal record for token verification request parameters.
      */
     private record TokenVerificationRequest(
-            String token,
-            String processorId,
-            String expectedIssuer,
-            List<String> requiredScopes,
-            List<String> requiredRoles,
-            boolean isE2ETest,
-            boolean useTestMode
-    ) {}
+    String token,
+    String processorId,
+    String expectedIssuer,
+    List<String> requiredScopes,
+    List<String> requiredRoles,
+    boolean isE2ETest,
+    boolean useTestMode
+    ) {
+    }
 
     /**
      * Sends a validation response with token verification results.

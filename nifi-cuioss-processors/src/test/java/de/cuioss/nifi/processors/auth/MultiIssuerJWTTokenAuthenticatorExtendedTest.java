@@ -124,8 +124,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
             when(mockToken.getClaims()).thenReturn(claims);
 
             // Execute the method
-            @SuppressWarnings("unchecked")
-            Map<String, String> result = (Map<String, String>) extractClaimsMethod.invoke(processor, mockToken);
+            @SuppressWarnings("unchecked") Map<String, String> result = (Map<String, String>) extractClaimsMethod.invoke(processor, mockToken);
 
             // Verify results
             assertNotNull(result);
@@ -159,8 +158,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
             when(mockToken.getClaims()).thenReturn(Collections.emptyMap());
 
             // Execute the method
-            @SuppressWarnings("unchecked")
-            Map<String, String> result = (Map<String, String>) extractClaimsMethod.invoke(processor, mockToken);
+            @SuppressWarnings("unchecked") Map<String, String> result = (Map<String, String>) extractClaimsMethod.invoke(processor, mockToken);
 
             // Verify results
             assertNotNull(result);

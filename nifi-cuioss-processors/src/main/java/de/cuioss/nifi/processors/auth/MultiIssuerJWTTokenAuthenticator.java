@@ -16,6 +16,14 @@
  */
 package de.cuioss.nifi.processors.auth;
 
+import de.cuioss.nifi.processors.auth.config.ConfigurationManager;
+import de.cuioss.nifi.processors.auth.config.IssuerConfigurationParser;
+import de.cuioss.nifi.processors.auth.config.IssuerPropertyDescriptorFactory;
+import de.cuioss.nifi.processors.auth.i18n.I18nResolver;
+import de.cuioss.nifi.processors.auth.i18n.NiFiI18nResolver;
+import de.cuioss.nifi.processors.auth.util.AuthorizationValidator;
+import de.cuioss.nifi.processors.auth.util.ErrorContext;
+import de.cuioss.nifi.processors.auth.util.ProcessingError;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
 import de.cuioss.sheriff.oauth.core.TokenValidator;
@@ -25,14 +33,6 @@ import de.cuioss.sheriff.oauth.core.metrics.TokenValidatorMonitor;
 import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
 import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter.EventType;
 import de.cuioss.sheriff.oauth.core.security.SignatureAlgorithmPreferences;
-import de.cuioss.nifi.processors.auth.config.ConfigurationManager;
-import de.cuioss.nifi.processors.auth.config.IssuerConfigurationParser;
-import de.cuioss.nifi.processors.auth.config.IssuerPropertyDescriptorFactory;
-import de.cuioss.nifi.processors.auth.i18n.I18nResolver;
-import de.cuioss.nifi.processors.auth.i18n.NiFiI18nResolver;
-import de.cuioss.nifi.processors.auth.util.AuthorizationValidator;
-import de.cuioss.nifi.processors.auth.util.ErrorContext;
-import de.cuioss.nifi.processors.auth.util.ProcessingError;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -403,8 +403,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param currentConfigHash The current configuration hash
      */
     private void buildAndConfigureTokenValidator(ProcessContext context,
-                                                 List<IssuerConfig> issuerConfigs,
-                                                 String currentConfigHash) {
+            List<IssuerConfig> issuerConfigs,
+            String currentConfigHash) {
         Map<String, String> properties = convertContextToProperties(context);
         ParserConfig parserConfig = IssuerConfigurationParser.parseParserConfig(properties);
 
@@ -690,7 +690,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @return The extracted token, or null if not found
      */
     private String extractTokenByLocation(FlowFile flowFile, ProcessSession session,
-                                          ProcessContext context, String tokenLocation) {
+            ProcessContext context, String tokenLocation) {
         return switch (tokenLocation) {
             case "AUTHORIZATION_HEADER" ->
                 extractTokenFromHeader(flowFile, context.getProperty(Properties.TOKEN_HEADER).getValue());
@@ -710,7 +710,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param tokenLocation The configured token location
      */
     private void handleMissingToken(ProcessSession session, FlowFile flowFile,
-                                    ProcessContext context, String tokenLocation) {
+            ProcessContext context, String tokenLocation) {
         boolean requireValidToken = context.getProperty(Properties.REQUIRE_VALID_TOKEN).asBoolean();
 
         if (!requireValidToken) {
@@ -774,7 +774,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @return true if token format is valid, false if error was handled
      */
     private boolean validateTokenFormat(ProcessSession session, FlowFile flowFile,
-                                       String token, ProcessContext context) {
+            String token, ProcessContext context) {
         int maxTokenSize = context.getProperty(Properties.MAXIMUM_TOKEN_SIZE).asInteger();
 
         if (token.length() > maxTokenSize) {
@@ -831,7 +831,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @throws TokenValidationException if token validation fails
      */
     private void processValidToken(ProcessSession session, FlowFile flowFile,
-                                   String token, ProcessContext context) throws TokenValidationException {
+            String token, ProcessContext context) throws TokenValidationException {
         AccessTokenContent accessToken = validateToken(token, context);
         AuthorizationCheckResult authResult = performAuthorizationCheckWithDetails(accessToken);
 
@@ -855,7 +855,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param e        The validation exception
      */
     private void handleTokenValidationException(ProcessSession session, FlowFile flowFile,
-                                                TokenValidationException e) {
+            TokenValidationException e) {
         LOGGER.warn("Token validation failed: %s", e.getMessage());
         String errorMessage = i18nResolver.getTranslatedString(
                 JWTTranslationKeys.Error.TOKEN_VALIDATION_FAILED, e.getMessage());
@@ -894,7 +894,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param tokenLocation The configured token location
      */
     private void handleRuntimeException(ProcessSession session, FlowFile flowFile,
-                                       RuntimeException e, String tokenLocation) {
+            RuntimeException e, String tokenLocation) {
         String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
                 .operation("onTrigger")
                 .errorCode(ErrorContext.ErrorCodes.PROCESSING_ERROR)

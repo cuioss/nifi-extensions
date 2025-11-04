@@ -51,7 +51,11 @@
             <groupId>de.cuioss</groupId>
             <artifactId>cui-java-tools</artifactId>
         </dependency>
-        
+        <dependency>
+            <groupId>de.cuioss</groupId>
+            <artifactId>cui-http</artifactId>
+        </dependency>
+
         <!-- Jakarta JSON API for Servlet Processing -->
         <dependency>
             <groupId>jakarta.json</groupId>
@@ -122,6 +126,11 @@
         <dependency>
             <groupId>org.hamcrest</groupId>
             <artifactId>hamcrest</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>de.cuioss.test</groupId>
+            <artifactId>cui-test-mockwebserver-junit5</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

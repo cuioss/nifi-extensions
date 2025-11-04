@@ -16,10 +16,10 @@
  */
 package de.cuioss.nifi.processors.auth.util;
 
-import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.nifi.processors.auth.test.SimpleAccessTokenContent;
 import de.cuioss.nifi.processors.auth.util.AuthorizationValidator.AuthorizationConfig;
 import de.cuioss.nifi.processors.auth.util.AuthorizationValidator.AuthorizationResult;
+import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

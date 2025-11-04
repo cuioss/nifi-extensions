@@ -16,23 +16,27 @@
  */
 package de.cuioss.nifi.ui.util;
 
+import de.cuioss.http.client.handler.HttpHandler;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.*;
 
 import java.io.IOException;
 import java.io.StringReader;
-import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Utility class for reading processor configuration via NiFi's REST API.
  * This class handles the communication with NiFi to retrieve processor properties
  * that are needed for JWT validation.
+ *
+ * <p><strong>Design Decision:</strong> Uses cuiHttp's HttpHandler for HTTP communication
+ * instead of direct HttpClient usage. This provides automatic SSL context management
+ * and consistent timeout handling across the application.</p>
  */
 public class ProcessorConfigReader {
 
@@ -41,7 +45,7 @@ public class ProcessorConfigReader {
 
     /**
      * Retrieves processor properties from NiFi REST API.
-     * 
+     *
      * @param processorId The processor ID (must not be null)
      * @return Map of processor properties (never null)
      * @throws IOException If unable to fetch processor configuration
@@ -50,27 +54,30 @@ public class ProcessorConfigReader {
     public Map<String, String> getProcessorProperties(String processorId)
             throws IOException, IllegalArgumentException {
 
-        if (processorId == null || processorId.trim().isEmpty()) {
-            throw new IllegalArgumentException("Processor ID cannot be null or empty");
+        Objects.requireNonNull(processorId, "processorId must not be null");
+        if (processorId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Processor ID cannot be empty");
         }
 
         // Build NiFi API URL
         String nifiApiUrl = buildNiFiApiUrl(processorId);
         LOGGER.debug("Fetching processor configuration from: %s", nifiApiUrl);
 
-        // Create HTTP client and request
+        // Create HTTP handler with appropriate timeouts
+        HttpHandler httpHandler = HttpHandler.builder()
+                .uri(nifiApiUrl)
+                .connectionTimeoutSeconds(5)
+                .readTimeoutSeconds(10)
+                .build();
+
+        // Execute HTTP request
         HttpClient httpClient;
         HttpRequest request;
         HttpResponse<String> response;
 
         try {
-            httpClient = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(5))
-                    .build();
-
-            request = HttpRequest.newBuilder()
-                    .uri(URI.create(nifiApiUrl))
-                    .timeout(Duration.ofSeconds(10))
+            httpClient = httpHandler.createHttpClient();
+            request = httpHandler.requestBuilder()
                     .header("Accept", "application/json")
                     .GET()
                     .build();
@@ -78,9 +85,7 @@ public class ProcessorConfigReader {
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IOException("Request to NiFi API was interrupted: " + e.getMessage(), e);
-        } catch (IOException e) {
-            throw new IOException("Failed to send request to NiFi API: " + e.getMessage(), e);
+            throw new IOException("Request to NiFi API was interrupted", e);
         }
 
         // Check response status
