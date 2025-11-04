@@ -192,17 +192,8 @@ class ProcessorConfigReaderTest {
 
             try {
                 // Act & Assert
-                // May throw IOException or IllegalArgumentException depending on URL parsing
-                Exception exception = assertThrows(
-                        Exception.class,
-                        () -> reader.getProcessorProperties(processorId),
-                        "Should throw exception when unable to connect"
-                );
-
-                assertTrue(exception.getMessage() != null && !exception.getMessage().isEmpty(),
-                        "Exception message should provide connection failure details");
-                assertTrue(exception instanceof IOException || exception instanceof IllegalArgumentException,
-                        "Should throw IOException or IllegalArgumentException");
+                assertThrows(IllegalArgumentException.class,
+                        () -> reader.getProcessorProperties(processorId));
             } finally {
                 // Clean up system properties
                 System.clearProperty("nifi.web.http.host");
