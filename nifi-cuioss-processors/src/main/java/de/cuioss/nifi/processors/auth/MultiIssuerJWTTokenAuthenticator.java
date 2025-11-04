@@ -886,35 +886,6 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     }
 
     /**
-     * Handles unexpected runtime exceptions during token processing.
-     *
-     * @param session       The process session
-     * @param flowFile      The flow file
-     * @param e             The runtime exception
-     * @param tokenLocation The configured token location
-     */
-    private void handleRuntimeException(ProcessSession session, FlowFile flowFile,
-            RuntimeException e, String tokenLocation) {
-        String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
-                .operation("onTrigger")
-                .errorCode(ErrorContext.ErrorCodes.PROCESSING_ERROR)
-                .cause(e)
-                .build()
-                .with(FLOW_FILE_UUID_KEY, flowFile.getAttribute("uuid"))
-                .with("tokenLocation", tokenLocation)
-                .buildMessage("Error processing flow file");
-
-        LOGGER.error(e, contextMessage);
-        handleError(
-                session,
-                flowFile,
-                "AUTH-999",
-                i18nResolver.getTranslatedString(JWTTranslationKeys.Error.UNKNOWN, e.getMessage()),
-                "PROCESSING_ERROR"
-        );
-    }
-
-    /**
      * Extracts a token from a header in the flow file.
      *
      * @param flowFile   The flow file containing the header
