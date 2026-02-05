@@ -444,7 +444,7 @@
                 <module>nifi-cuioss-ui</module>
                 <module>nifi-cuioss-nar</module>
                 <module>integration-testing</module>
-                <!-- e-2-e-playwright module excluded from sonar analysis -->
+                <module>e-2-e-playwright</module>
             </modules>
             <build>
                 <plugins>

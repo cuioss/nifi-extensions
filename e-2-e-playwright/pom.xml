@@ -74,7 +74,7 @@
                         <goals>
                             <goal>npm</goal>
                         </goals>
-                        <phase>compile</phase>
+                        <phase>verify</phase>
                         <configuration>
                             <arguments>run lint:strict</arguments>
                             <skip>${skip.lint}</skip>

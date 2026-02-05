@@ -58,13 +58,6 @@ jobs:
       - name: Build NAR files and prepare deployment
         run: ./mvnw -B --no-transfer-progress clean package -DskipTests
 
-      - name: Run Code Quality Checks (Linting)
-        run: |
-          ./mvnw -B --no-transfer-progress compile -pl e-2-e-playwright
-          cd e-2-e-playwright
-          npm ci
-          npm run lint
-
       - name: Run E2E Integration Tests with Maven-managed Containers
         # This runs the full E2E test suite with Maven managing container lifecycle:
         # 1. pre-integration-test: Start containers via start-integration-containers.sh
@@ -80,7 +73,7 @@ jobs:
         run: |
           cd e-2-e-playwright
           # Run log analysis if available
-          npm run analyze:logs || echo "Log analysis completed with warnings"
+          node scripts/log-analyzer.js --enhanced || echo "Log analysis completed with warnings"
           # Create a simple site structure for deployment
           mkdir -p ../target/site/e2e-reports
           # Copy Playwright reports
