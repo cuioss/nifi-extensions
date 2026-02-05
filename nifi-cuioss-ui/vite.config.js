@@ -13,8 +13,8 @@ export default defineConfig({
             entry: path.resolve(__dirname, 'src/main/webapp/js/bundle-wrapper.js'),
             // Library name (global variable name when included as script)
             name: 'nifiCuiossUI',
-            // Output file name
-            fileName: 'bundle',
+            // Output file name (function to avoid Vite appending format suffix)
+            fileName: () => 'bundle.js',
             // Format: UMD for compatibility with existing NiFi infrastructure
             formats: ['umd']
         },
