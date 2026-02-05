@@ -1,17 +1,52 @@
-# Claude Code Configuration
+# Claude Code Configuration — NiFi Extensions
 
-All AI development guidelines for this project are located in: **`agents.md`**
+## Project
 
-This file contains:
-- Project overview and architecture
-- Development environment setup
-- Testing instructions and standards
-- Code style guidelines (Java and JavaScript)
-- Pre-commit checklist and PR instructions
-- Common development tasks
-- Quick reference commands
+Custom Apache NiFi processors for JWT authentication and validation with a web-based configuration UI.
 
-Please refer to `agents.md` for complete guidance when working on this NiFi Extensions project.
+### Modules
+- **nifi-cuioss-processors** (JAR) — Core JWT authentication processors
+- **nifi-cuioss-ui** (WAR) — Web UI for processor configuration (Java servlets + JavaScript)
+- **nifi-cuioss-nar** (NAR) — NiFi Archive bundle for deployment
+- **integration-testing** (JAR) — Docker-based integration tests (NiFi + Keycloak)
+- **e-2-e-playwright** (Node.js) — Playwright E2E and WCAG accessibility tests
+
+## Build Commands
+
+```bash
+./mvnw clean install                                    # Full build + tests
+./mvnw -Ppre-commit clean install -DskipTests           # Pre-commit quality checks (MANDATORY before commits)
+./mvnw clean verify -Psonar                             # SonarQube analysis
+./mvnw integration-test -Plocal-integration-tests -Dintegration.test.local=true  # Integration tests
+
+# Frontend (from nifi-cuioss-ui/)
+npm test                                                # Jest tests
+npm run lint                                            # ESLint check
+
+# E2E (from e-2-e-playwright/)
+npm run playwright:test                                 # Playwright tests
+```
+
+## Conventions
+
+- **Java 21** — Records, switch expressions, text blocks, pattern matching, sealed classes
+- **Lombok** — @Builder, @Value, @NonNull, @UtilityClass
+- **CuiLogger** — `de.cuioss.tools.logging.CuiLogger`, constant name `LOGGER`, `%s` substitutions, LogRecord for templates
+- **JUnit 5** with CUI test utilities (cui-test-generator, cui-test-value-objects, cui-test-juli-logger)
+- **AAA test pattern**, `@DisplayName`, `@Nested`, parameterized tests for 3+ similar variants
+- **80% coverage minimum** (Java line coverage; JS: 80% lines, 75% branches, 78% functions)
+- **ESLint + Prettier** for JavaScript, `const` over `let`
+- **AsciiDoc** (.adoc) for documentation
+
+## Forbidden Practices
+
+- **No Mockito, PowerMock, Hamcrest** — use CUI test alternatives
+- **No log4j, slf4j, System.out/err** — use CuiLogger
+- **No `var`** keyword in JavaScript — use `const`/`let`
+- **No console.log** — use structured logging
+- **No commits without pre-commit checks** — always run `./mvnw -Ppre-commit clean install -DskipTests` then `./mvnw clean install`
+- **No hardcoded credentials or secrets**
+- **No null returns** in Java — use Optional or empty collections
 
 ## Git Workflow
 
@@ -28,3 +63,7 @@ All cuioss repositories have branch protection on `main`. Direct pushes to `main
 ## Temporary Files
 
 - Use `.plan/temp/` for ALL temporary files (covered by `Write(.plan/**)` permission - avoids permission prompts)
+
+## Deep Reference
+
+See `agents.md` for detailed architecture, Maven profiles, step-by-step tasks (adding classes/components/tests), debugging instructions, and commonly modified files.
