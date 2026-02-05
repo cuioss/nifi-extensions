@@ -239,3 +239,4 @@ public class JwtValidationService {
         return token.substring(0, 8) + "...[" + token.length() + " chars]";
     }
 }
+
