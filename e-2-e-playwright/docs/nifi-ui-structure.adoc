@@ -11,7 +11,7 @@ Reference for NiFi UI structure, selectors, and authentication flow used in E2E 
 
 *Current Version*: Apache NiFi 2.4.0 (Angular Material UI)
 
-*UI Sources*: https://gitingest.com/apache/nifi/tree/rel/nifi-2.4.0/nifi-web/nifi-web-ui
+*UI Sources*: https://github.com/apache/nifi/tree/rel/nifi-2.4.0/nifi-web/nifi-web-frontend
 
 == Authentication Flow
 
@@ -178,16 +178,30 @@ Prefer selectors in this priority order:
 |`http://localhost:9080`
 |===
 
-=== Container Health Check
+=== Container Health Checks
+
+NiFi health check (curl-based, HTTPS):
 
 [source,yaml]
 ----
 healthcheck:
-  test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/localhost/8080' || exit 1"]
-  interval: 30s
-  timeout: 10s
-  retries: 3
-  start_period: 60s
+  test: ["CMD-SHELL", "curl -k --fail --max-time 3 https://localhost:8443/nifi/ || exit 1"]
+  interval: 10s
+  timeout: 5s
+  retries: 12
+  start_period: 30s
+----
+
+Keycloak health check (TCP socket-based, port 9000):
+
+[source,yaml]
+----
+healthcheck:
+  test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && ... | grep -q 'UP' ..."]
+  interval: 10s
+  timeout: 5s
+  retries: 12
+  start_period: 30s
 ----
 
 == Related Documentation

@@ -58,16 +58,11 @@ test('My test that needs the processor', async ({ page }) => {
   // Authenticate first
   const authService = new AuthService(page);
   await authService.ensureReady();
-  
-  // Setup processor
+
+  // Setup processor — throws if processor cannot be placed on canvas
   const processorManager = new ProcessorApiManager(page);
-  
-  // Ensure processor is on canvas
-  const ready = await processorManager.ensureProcessorOnCanvas();
-  if (!ready) {
-    test.skip('Processor not available');
-  }
-  
+  await processorManager.ensureProcessorOnCanvas();
+
   // Your test logic here...
 });
 ----
@@ -84,8 +79,8 @@ test.beforeEach(async ({ page }) => {
   // Authenticate
   const authService = new AuthService(page);
   await authService.ensureReady();
-  
-  // Ensure processor is on canvas
+
+  // Ensure processor is on canvas (returns false if setup fails)
   const ready = await setupMultiIssuerJWTAuthenticator(page);
   if (!ready) {
     test.skip('Processor setup failed');
@@ -97,6 +92,9 @@ test('Test with processor ready', async ({ page }) => {
   // Continue with your test...
 });
 ----
+
+NOTE: `setupMultiIssuerJWTAuthenticator()` returns `true`/`false` and does not throw.
+In contrast, `ProcessorApiManager.ensureProcessorOnCanvas()` throws on failure and always returns `true` on success.
 
 === Full Lifecycle Management
 
@@ -172,14 +170,11 @@ test.describe('Tests requiring MultiIssuerJWTTokenAuthenticator', () => {
     const page = await browser.newPage();
     const authService = new AuthService(page);
     await authService.ensureReady();
-    
+
+    // ensureProcessorOnCanvas() throws if processor cannot be placed
     processorManager = new ProcessorApiManager(page);
-    const ready = await processorManager.ensureProcessorOnCanvas();
-    
-    if (!ready) {
-      throw new Error('Required processor not available');
-    }
-    
+    await processorManager.ensureProcessorOnCanvas();
+
     await page.close();
   });
   

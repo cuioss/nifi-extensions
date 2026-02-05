@@ -27,8 +27,15 @@ e-2-e-playwright/
 │   ├── auth-service.js          # API token-based authentication
 │   ├── processor.js             # Processor discovery/verification
 │   ├── processor-api-manager.js # NiFi REST API processor management
+│   ├── processor-setup-helper.js# Test setup/teardown helpers
 │   ├── navigation-utils.js      # Page navigation
-│   └── constants.js             # Selectors, credentials, URLs
+│   ├── constants.js             # Selectors, credentials, URLs
+│   ├── keycloak-token-service.js# Keycloak token acquisition
+│   ├── accessibility-helper.js  # axe-playwright integration
+│   ├── console-logger.js        # Browser console capture
+│   ├── critical-error-detector.js# Critical error pattern matching
+│   ├── shared-logger.js         # Structured logging utilities
+│   └── test-error-handler.js    # Test error handling
 └── config/                       # Configuration
     ├── accessibility-config.js  # WCAG axe-core rules
     └── console-error-config.js  # Console error patterns
@@ -59,10 +66,23 @@ The `test-fixtures.js` provides extended fixtures with automatic console logging
 ----
 import { test, expect } from '../fixtures/test-fixtures.js';
 
-test('Test with full instrumentation', async ({ page, accessibilityHelper }) => {
+test('Test with full instrumentation', async ({ page, processorManager }) => {
   // Console logs are captured automatically
   // Critical errors are detected automatically
   // Browser logs are saved to files after each test
+  // processorManager provides ProcessorApiManager instance
+});
+----
+
+For accessibility testing with the `accessibilityHelper` fixture, use the `accessibilityTest` export:
+
+[source,javascript]
+----
+import { accessibilityTest, expect } from '../fixtures/test-fixtures.js';
+
+accessibilityTest('Accessibility check', async ({ page, accessibilityHelper }) => {
+  // accessibilityHelper is only available via accessibilityTest, not test
+  const results = await accessibilityHelper.runWCAGCheck();
 });
 ----
 
