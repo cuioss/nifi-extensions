@@ -263,11 +263,11 @@ export class FormFieldFactory {
         });
 
         // Add content elements
-        content.forEach(element => {
+        for (const element of content) {
             if (element instanceof Element) {
                 contentArea.appendChild(element);
             }
-        });
+        }
 
         section.appendChild(contentArea);
         return section;
@@ -291,7 +291,7 @@ export class FormFieldFactory {
         const errors = [];
         let isValid = true;
 
-        inputs.forEach(input => {
+        for (const input of inputs) {
             if (input._validate) {
                 const result = input._validate();
                 if (!result.isValid) {
@@ -302,7 +302,7 @@ export class FormFieldFactory {
                     });
                 }
             }
-        });
+        }
 
         return { isValid, errors };
     }
@@ -318,7 +318,7 @@ export class FormFieldFactory {
      */
     resetContainer(container) {
         const inputs = container.querySelectorAll('input, textarea, select');
-        inputs.forEach(input => {
+        for (const input of inputs) {
             input.value = '';
             input.classList.remove('valid', 'invalid');
 
@@ -327,7 +327,7 @@ export class FormFieldFactory {
                 errorContainer.classList.add('hidden');
                 errorContainer.textContent = '';
             }
-        });
+        }
     }
 
     // Private helper methods
@@ -368,9 +368,13 @@ export class FormFieldFactory {
             id: `field-${name}`,
             name: name,
             placeholder: placeholder,
-            disabled: disabled,
             ...additionalAttributes
         };
+
+        // Only add disabled attribute if it's true
+        if (disabled === true) {
+            baseAttributes.disabled = disabled;
+        }
 
         const inputElement = createElement(type === 'textarea' ? 'textarea' : 'input', {
             css: [`field-${name}`, 'form-input'],
@@ -478,11 +482,11 @@ export class FormFieldFactory {
      * @private
      */
     _attachEventHandlers(element, events) {
-        Object.entries(events).forEach(([event, handler]) => {
+        for (const [event, handler] of Object.entries(events)) {
             if (typeof handler === 'function') {
                 element.addEventListener(event, handler);
             }
-        });
+        }
     }
 
     /**

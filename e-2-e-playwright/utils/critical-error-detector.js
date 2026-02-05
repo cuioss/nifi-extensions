@@ -362,8 +362,8 @@ export const globalCriticalErrorDetector = new CriticalErrorDetector();
 export async function setupCriticalErrorDetection(page, testInfo) {
   globalCriticalErrorDetector.startMonitoring(page, testInfo);
 
-  // Perform initial checks
-  await globalCriticalErrorDetector.checkForEmptyCanvas(page, testInfo);
+  // Skip initial canvas checks during setup - processor setup will handle canvas state
+  // Only check for UI loading stalls which are immediate issues
   await globalCriticalErrorDetector.checkForUILoadingStalls(page, testInfo);
 
   // Fail immediately if any critical errors detected
@@ -383,16 +383,19 @@ export async function checkCriticalErrors(page, testInfo) {
     const isAccessible = response && ((response.status() >= 200 && response.status() < 400) || response.status() === 401);
 
     if (!isAccessible) {
-      // NiFi is not accessible, skip critical error checks as they would give false positives
-      const { test } = await import('@playwright/test');
-      test.skip(true, 'NiFi service is not accessible - skipping critical error checks to avoid false positives');
-      return;
+      // NiFi is not accessible, fail the test
+      throw new Error(
+        'PRECONDITION FAILED: NiFi service is not accessible - cannot perform critical error checks. ' +
+        'Make sure NiFi is running at https://localhost:9095/nifi'
+      );
     }
   } catch (error) {
-    // NiFi is not accessible, skip critical error checks
-    const { test } = await import('@playwright/test');
-    test.skip(true, 'NiFi service is not accessible - skipping critical error checks to avoid false positives');
-    return;
+    // NiFi is not accessible, fail the test
+    throw new Error(
+      'PRECONDITION FAILED: NiFi service is not accessible - cannot perform critical error checks. ' +
+      'Make sure NiFi is running at https://localhost:9095/nifi. ' +
+      `Error: ${error.message}`
+    );
   }
 
   await globalCriticalErrorDetector.checkForEmptyCanvas(page, testInfo);

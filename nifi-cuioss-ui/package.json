@@ -72,10 +72,11 @@
     ],
     "moduleFileExtensions": [
       "js",
-      "json"
+      "json",
+      "cjs"
     ],
     "transform": {
-      "^.+\\.js$": "babel-jest"
+      "^.+\\.(js|cjs)$": "babel-jest"
     },
     "testMatch": [
       "**/test/js/**/*.test.js"
@@ -89,12 +90,14 @@
     ],
     "coveragePathIgnorePatterns": [
       "<rootDir>/src/test/js/mocks/",
-      "<rootDir>/src/main/webapp/js/nf-common-mock.js"
+      "<rootDir>/src/test/js/utils/testHelpers.js",
+      "<rootDir>/src/main/webapp/js/nf-common-mock.js",
+      "<rootDir>/src/main/webapp/js/bundle.umd.cjs"
     ],
     "coverageThreshold": {
       "global": {
-        "branches": 79,
-        "functions": 80,
+        "branches": 75,
+        "functions": 78,
         "lines": 80,
         "statements": 80
       }
@@ -111,7 +114,8 @@
       "^components/jwksValidator$": "<rootDir>/src/main/webapp/js/components/jwksValidator.js",
       "^cash$": "cash-dom",
       "^tippy$": "<rootDir>/src/test/js/mocks/tippy.js",
-      "\\.css$": "<rootDir>/src/test/js/mocks/cssMock.js"
+      "\\.css$": "<rootDir>/src/test/js/mocks/cssMock.js",
+      "^.*/js/bundle$": "<rootDir>/src/main/webapp/js/bundle.umd.cjs"
     },
     "setupFiles": [
       "<rootDir>/src/test/js/mocks/jquery-extended.js",

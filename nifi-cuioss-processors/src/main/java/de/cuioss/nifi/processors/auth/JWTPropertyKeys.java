@@ -37,6 +37,21 @@ public final class JWTPropertyKeys {
         public static final String JWKS_URL = "jwks-url";
 
         /**
+         * JWKS file path property key.
+         */
+        public static final String JWKS_FILE = "jwks-file";
+
+        /**
+         * JWKS content property key for in-memory JWKS.
+         */
+        public static final String JWKS_CONTENT = "jwks-content";
+
+        /**
+         * JWKS source type property key.
+         */
+        public static final String JWKS_TYPE = "jwks-type";
+
+        /**
          * Issuer property key.
          */
         public static final String ISSUER_NAME = "issuer";
@@ -50,5 +65,36 @@ public final class JWTPropertyKeys {
          * Client ID property key.
          */
         public static final String CLIENT_ID = "client-id";
+
+        /**
+         * Required scopes property key.
+         */
+        public static final String REQUIRED_SCOPES = "required-scopes";
+
+        /**
+         * Required roles property key.
+         */
+        public static final String REQUIRED_ROLES = "required-roles";
+
+        /**
+         * Require all scopes property key.
+         */
+        public static final String REQUIRE_ALL_SCOPES = "require-all-scopes";
+
+        /**
+         * Require all roles property key.
+         */
+        public static final String REQUIRE_ALL_ROLES = "require-all-roles";
+
+        /**
+         * Case sensitive matching property key.
+         */
+        public static final String CASE_SENSITIVE_MATCHING = "case-sensitive-matching";
+
+        /**
+         * Bypass authorization property key.
+         * Must be explicitly set to true to bypass all authorization checks.
+         */
+        public static final String BYPASS_AUTHORIZATION = "bypass-authorization";
     }
 }

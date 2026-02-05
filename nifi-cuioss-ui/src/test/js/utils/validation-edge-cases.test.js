@@ -12,7 +12,6 @@ import {
     validateRequired,
     validateUrl
 } from '../../../main/webapp/js/utils/validation.js';
-import { getIsLocalhost } from '../../../main/webapp/js/utils/constants.js';
 
 describe('Validation Edge Cases', () => {
     describe('validateRequired edge cases', () => {
@@ -212,73 +211,6 @@ describe('Validation Edge Cases', () => {
             };
             const result = validateIssuerConfig(validConfig);
             expect(result.isValid).toBe(true);
-        });
-    });
-
-    describe('getIsLocalhost edge cases', () => {
-        const originalWindow = global.window;
-        const originalLocation = window.location;
-
-        afterEach(() => {
-            global.window = originalWindow;
-            Object.defineProperty(window, 'location', {
-                value: originalLocation,
-                writable: true
-            });
-        });
-
-        it('should handle missing location object', () => {
-            Object.defineProperty(window, 'location', {
-                value: null,
-                writable: true
-            });
-            const result = getIsLocalhost();
-            expect(result).toBe(false);
-        });
-
-        it('should detect localhost hostname', () => {
-            Object.defineProperty(window, 'location', {
-                value: { hostname: 'localhost' },
-                writable: true
-            });
-            const result = getIsLocalhost();
-            expect(result).toBe(true);
-        });
-
-        it('should detect 127.0.0.1 hostname', () => {
-            Object.defineProperty(window, 'location', {
-                value: { hostname: '127.0.0.1' },
-                writable: true
-            });
-            const result = getIsLocalhost();
-            expect(result).toBe(true);
-        });
-
-        it('should detect 192.168.x.x network', () => {
-            Object.defineProperty(window, 'location', {
-                value: { hostname: '192.168.1.100' },
-                writable: true
-            });
-            const result = getIsLocalhost();
-            expect(result).toBe(true);
-        });
-
-        it('should detect .local domain', () => {
-            Object.defineProperty(window, 'location', {
-                value: { hostname: 'mydev.local' },
-                writable: true
-            });
-            const result = getIsLocalhost();
-            expect(result).toBe(true);
-        });
-
-        it('should reject production hostnames', () => {
-            Object.defineProperty(window, 'location', {
-                value: { hostname: 'production.example.com' },
-                writable: true
-            });
-            const result = getIsLocalhost();
-            expect(result).toBe(false);
         });
     });
 });

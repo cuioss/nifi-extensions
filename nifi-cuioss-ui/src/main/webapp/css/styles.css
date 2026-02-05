@@ -9,8 +9,25 @@
 /* Import base styles */
 @import url('modules/base.css');
 
+/* Import icon definitions */
+@import url('modules/icons.css');
+
 /* Import component-specific styles */
 @import url('modules/jwksValidator.css');
 @import url('modules/tokenVerifier.css');
 @import url('modules/metrics.css');
 @import url('modules/issuerConfigEditor.css');
+@import url('modules/help.css');
+
+/* Accessibility utility classes */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

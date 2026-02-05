@@ -35,16 +35,21 @@
             <artifactId>cui-java-tools</artifactId>
         </dependency>
         <dependency>
-            <groupId>de.cuioss.jwt</groupId>
-            <artifactId>cui-jwt-validation</artifactId>
+            <groupId>de.cuioss.sheriff.oauth</groupId>
+            <artifactId>oauth-sheriff-core</artifactId>
             <scope>compile</scope>
         </dependency>
-        <!-- Implementation of jakarta.json-api: Used for cui-jwt-validation
-             Required by cui-jwt-validation even though token validation is not fully implemented yet -->
+        <!-- Implementation of jakarta.json-api: Used for oauth-sheriff-core
+             Required by oauth-sheriff-core even though token validation is not fully implemented yet -->
         <dependency>
             <groupId>org.eclipse.parsson</groupId>
             <artifactId>parsson</artifactId>
             <scope>runtime</scope>
+        </dependency>
+        <!-- YAML parsing support -->
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.nifi</groupId>
@@ -86,7 +91,7 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <configuration>
                     <ignoredDependencies>
-                        <!-- Required by cui-jwt-validation at runtime but not directly referenced in code -->
+                        <!-- Required by oauth-sheriff-core at runtime but not directly referenced in code -->
                         <ignoredDependency>org.eclipse.parsson:parsson</ignoredDependency>
                     </ignoredDependencies>
                 </configuration>

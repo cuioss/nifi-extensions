@@ -5,7 +5,7 @@
  * @version 1.0.0
  */
 
-import { expect, test } from "@playwright/test";
+import { test, expect } from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 
 test.describe("Self-Test: Login", () => {
@@ -16,10 +16,13 @@ test.describe("Self-Test: Login", () => {
 
         // Check if NiFi is accessible before attempting navigation
         const isAccessible = await authService.checkNiFiAccessibility();
-        test.skip(
-            !isAccessible,
-            "NiFi service is not accessible - cannot test authentication",
-        );
+        if (!isAccessible) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not accessible. " +
+                    "Cannot test authentication. " +
+                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+            );
+        }
 
         // Navigate to login page
         await page.goto("/nifi");
@@ -34,15 +37,8 @@ test.describe("Self-Test: Login", () => {
         await expect(page).toHaveTitle(/NiFi/);
     });
 
-    test("should reject invalid credentials", async ({ page: _ }) => {
-        // This test is no longer relevant since we use constants directly
-        // Invalid credentials would be a configuration issue, not a runtime test
-        // Skipping this test as passwords are never passed as parameters
-        test.skip(
-            true,
-            "Test not applicable - credentials are always from constants",
-        );
-    });
+    // Test for invalid credentials removed - credentials come from constants
+    // and invalid credentials would be a configuration issue, not a runtime test
 
     test("should logout successfully when authenticated", async ({ page }) => {
         const authService = new AuthService(page);
@@ -82,10 +78,13 @@ test.describe("Self-Test: Login", () => {
 
         // Check if NiFi is accessible before attempting navigation
         const isAccessible = await authService.checkNiFiAccessibility();
-        test.skip(
-            !isAccessible,
-            "NiFi service is not accessible - cannot test authentication status",
-        );
+        if (!isAccessible) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not accessible. " +
+                    "Cannot test authentication status. " +
+                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+            );
+        }
 
         // Initially should not be authenticated
         await page.goto("/nifi");

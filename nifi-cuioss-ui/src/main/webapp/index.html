@@ -18,29 +18,78 @@
     <script type="text/javascript" src="webjars/tippy.js/6.3.7/dist/tippy.umd.min.js"></script>
     <link rel="stylesheet" href="webjars/tippy.js/6.3.7/dist/tippy.css">
 
-    <!-- Load FontAwesome CSS -->
+    <!-- Load FontAwesome CSS - we need our own copy because:
+         1. We run in an iframe that might not inherit parent styles reliably
+         2. NiFi's dynamically injected FA 4.7.0 CSS has broken font paths (404 errors)
+         3. Ensures consistent icon availability across all contexts
+         Note: The 404 errors from NiFi's broken paths are harmless -->
     <link rel="stylesheet" href="webjars/font-awesome/6.7.2/css/all.min.css">
+    <link rel="stylesheet" href="webjars/font-awesome/6.7.2/css/v4-shims.min.css">
 
-    <!-- Load NiFi Common mock for standalone testing -->
-    <script type="text/javascript" src="js/nf-common-mock.js"></script>
-    
-    <!-- Make nf.Common available as global variable for bundle -->
+    <!-- NiFi will provide globalThis.nf.Common in production -->
     <script type="text/javascript">
-        // Ensure nf.Common is available as a global for the bundle
-        // The nfCommon global is already set by nf-common-mock.js
-        if (typeof window.nfCommon === 'undefined') {
-            console.warn('nfCommon is not defined. This may cause issues with the bundle.');
+        // In production, NiFi provides the nf.Common object
+        // Map it to nfCommon for compatibility with our code
+        if (globalThis.nf !== undefined && globalThis.nf.Common) {
+            globalThis.nfCommon = globalThis.nf.Common;
+        } else if (globalThis.nfCommon === undefined) {
+            // Only log error if nfCommon is not already available from another source
+            console.warn('NiFi Common API not available. UI functionality may be limited.');
+            // Create a minimal stub to prevent errors
+            globalThis.nfCommon = {
+                registerCustomUiTab: function() { console.warn('registerCustomUiTab called but NiFi API not available'); },
+                getI18n: function() { 
+                    return { 
+                        getProperty: function(key) { return key; }
+                    };
+                }
+            };
         }
     </script>
 </head>
 <body>
-    <div id="jwt-validator-container">
+    <div id="jwt-validator-container" data-testid="jwt-customizer-container">
         <!-- This container will be populated by the JavaScript UI components -->
+        <h1 class="sr-only">JWT Token Authenticator Configuration</h1>
         <div id="loading-indicator">Loading JWT Validator UI...</div>
+        
+        <!-- Tab structure for JWT configuration -->
+        <main id="jwt-validator-tabs" class="jwt-tabs-container" style="display:none;">
+            <div class="jwt-tabs-header" data-testid="jwt-config-tabs">
+                <ul class="tabs" role="tablist">
+                    <li class="active">
+                        <a href="#issuer-config" role="tab" data-toggle="tab">Configuration</a>
+                    </li>
+                    <li>
+                        <a href="#token-verification" role="tab" data-toggle="tab">Token Verification</a>
+                    </li>
+                    <li>
+                        <a href="#metrics" role="tab" data-toggle="tab">Metrics</a>
+                    </li>
+                    <li>
+                        <a href="#help" role="tab" data-toggle="tab">Help</a>
+                    </li>
+                </ul>
+            </div>
+            <div class="jwt-tabs-content">
+                <div id="issuer-config" class="tab-pane active" role="tabpanel" data-testid="issuer-config-panel">
+                    <!-- Issuer configuration content will be injected here -->
+                </div>
+                <div id="token-verification" class="tab-pane" role="tabpanel">
+                    <!-- Token verification content will be injected here -->
+                </div>
+                <div id="metrics" class="tab-pane" role="tabpanel">
+                    <!-- Metrics content will be injected here -->
+                </div>
+                <div id="help" class="tab-pane" role="tabpanel">
+                    <!-- Help content will be injected here -->
+                </div>
+            </div>
+        </main>
     </div>
 
     <!-- Load our modern ES6 bundle built with Vite -->
-    <script type="text/javascript" src="js/bundle.vite.umd.js"></script>
+    <script type="text/javascript" src="js/bundle.js?v=20250730"></script>
     
     <!-- Initialize the JWT UI -->
     <script type="text/javascript">
@@ -49,9 +98,9 @@
             console.log('DOM loaded, initializing JWT UI...');
             
             // Initialize the UI components - the bundle exposes nifiCuiossUI global variable
-            if (window.nifiCuiossUI && typeof window.nifiCuiossUI.init === 'function') {
+            if (globalThis.nifiCuiossUI && typeof globalThis.nifiCuiossUI.init === 'function') {
                 console.log('Initializing JWT UI from Vite bundle');
-                window.nifiCuiossUI.init().then(function(success) {
+                globalThis.nifiCuiossUI.init().then(function(success) {
                     if (success) {
                         console.log('JWT UI initialization completed successfully');
                     } else {
@@ -66,7 +115,7 @@
         });
         
         // Add global error handler for debugging
-        window.addEventListener('error', function(event) {
+        globalThis.addEventListener('error', function(event) {
             console.error('Global error:', event.error);
         });
     </script>

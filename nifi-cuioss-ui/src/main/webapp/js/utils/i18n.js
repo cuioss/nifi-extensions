@@ -52,6 +52,8 @@ const translations = {
         'jwks.validation.error': 'JWKS URL is invalid',
         'processor.jwt.failed': 'Failed',
         'processor.jwt.ok': 'OK',
+        'processor.jwt.testing': 'Testing...',
+        'processor.jwt.testConnection': 'Test Connection',
 
         // Issuer Configuration
         'issuer.config.title': 'Issuer Configuration',
@@ -74,7 +76,13 @@ const translations = {
         'property.maximum.token.size.help': 'Maximum allowed size of the JWT token in bytes',
         'property.allowed.algorithms.help': 'List of allowed signature algorithms for token validation',
         'property.require.https.jwks.help': 'Whether to require HTTPS for JWKS URLs',
-        'test.onlyInEnglish': 'English Only' // Added for the test case
+        'test.onlyInEnglish': 'English Only', // Added for the test case
+
+        // Tab titles
+        'jwt.validator.metrics.title': 'JWT Validation Metrics',
+        'jwt.validator.metrics.tab.name': 'Metrics',
+        'jwt.validator.help.title': 'JWT Authenticator Help',
+        'jwt.validator.help.tab.name': 'Help'
     },
     de: {
         // Common
@@ -116,6 +124,8 @@ const translations = {
         'jwks.validation.error': 'JWKS-URL ist ungültig',
         'processor.jwt.failed': 'Fehler',
         'processor.jwt.ok': 'OK',
+        'processor.jwt.testing': 'Wird getestet...',
+        'processor.jwt.testConnection': 'Verbindung testen',
 
         // Issuer Configuration
         'issuer.config.title': 'Aussteller-Konfiguration',
@@ -137,7 +147,13 @@ const translations = {
         'property.jwks.refresh.interval.help': 'Wie oft die JWKS-Schlüssel vom Server aktualisiert werden sollen',
         'property.maximum.token.size.help': 'Maximal zulässige Größe des JWT-Tokens in Bytes',
         'property.allowed.algorithms.help': 'Liste der erlaubten Signaturalgorithmen für die Token-Validierung',
-        'property.require.https.jwks.help': 'Ob HTTPS für JWKS-URLs erforderlich ist'
+        'property.require.https.jwks.help': 'Ob HTTPS für JWKS-URLs erforderlich ist',
+
+        // Missing i18n keys identified from constants.js
+        'jwt.validator.metrics.title': 'JWT-Validierungsmetriken',
+        'jwt.validator.metrics.tab.name': 'Metriken',
+        'jwt.validator.help.title': 'JWT-Authentifikator-Hilfe',
+        'jwt.validator.help.tab.name': 'Hilfe'
     }
 };
 
@@ -208,9 +224,9 @@ export const translate = function (key, params) {
 
     // Substitute parameters if provided
     if (params) {
-        Object.keys(params).forEach(function (param) {
-            result = result.replace(new RegExp(`{${param}}`, 'g'), params[param]);
-        });
+        for (const param of Object.keys(params)) {
+            result = result.replaceAll(`{${param}}`, params[param]);
+        }
     }
 
     return result;
@@ -218,5 +234,8 @@ export const translate = function (key, params) {
 
 // Initialize the language based on browser preference
 setLanguage(detectBrowserLanguage());
+
+// Export translations for testing purposes
+export const getTranslations = () => translations;
 
 // No explicit default export, only named exports.

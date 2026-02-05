@@ -73,8 +73,8 @@ services:
       - "9085:8443"  # HTTPS port
       - "9086:9000"  # Management port (health checks)
     environment:
-      - KEYCLOAK_ADMIN=admin
-      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
       - KC_HEALTH_ENABLED=true
       - KC_METRICS_ENABLED=true
       - KC_DB=dev-mem
@@ -89,8 +89,9 @@ services:
       - start-dev
       - --import-realm
     healthcheck:
-      # Use the health/ready endpoint on management port
-      test: ["CMD-SHELL", "curl -f http://localhost:9000/health/ready || exit 1"]
+      # TCP socket-based health check (works with minimal Keycloak images v21+)
+      # Keycloak's minimal container doesn't include curl, so we use bash TCP sockets
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost:9000\\r\\nConnection: close\\r\\n\\r\\n' >&3 && timeout 2 cat <&3 | grep -q 'UP' && exec 3<&- && exec 3>&- && exit 0 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 12

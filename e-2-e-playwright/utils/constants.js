@@ -24,6 +24,16 @@ export const AUTH = {
 };
 
 /**
+ * Keycloak configuration constants
+ * These values match the oauth_integration_tests realm configuration
+ */
+export const KEYCLOAK_CONFIG = {
+  REALM: 'oauth_integration_tests',
+  CLIENT_ID: 'test_client',
+  CLIENT_SECRET: 'yTKslWLtf4giJcWCaoVJ20H8sy6STexM'
+};
+
+/**
  * Service URLs
  */
 export const SERVICE_URLS = {
@@ -32,7 +42,8 @@ export const SERVICE_URLS = {
   NIFI_CANVAS: (process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:9095/nifi') + '#/canvas',
   NIFI_SYSTEM_DIAGNOSTICS: (process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:9095/nifi') + '/nifi-api/system-diagnostics',
   KEYCLOAK_BASE: process.env.PLAYWRIGHT_KEYCLOAK_URL || 'http://localhost:9080',
-  KEYCLOAK_HEALTH: (process.env.PLAYWRIGHT_KEYCLOAK_URL || 'http://localhost:9080') + '/health'
+  KEYCLOAK_HEALTH: 'http://localhost:9086/health',
+  KEYCLOAK_TOKEN: (process.env.PLAYWRIGHT_KEYCLOAK_URL || 'http://localhost:9080') + '/realms/oauth_integration_tests/protocol/openid-connect/token'
 };
 
 /**
@@ -114,6 +125,33 @@ export const PROCESSOR_TYPES = {
 };
 
 /**
+ * Test JWT tokens for verification tests
+ * These tokens are designed for E2E testing and use basic JWT structure
+ * without requiring signature verification (test mode only).
+ * 
+ * Token payloads decoded:
+ * - VALID: Valid token with future expiration
+ * - EXPIRED: Token with past expiration date  
+ * - INVALID: Malformed token string
+ * - MALFORMED: Not a JWT structure at all
+ */
+export const TEST_TOKENS = {
+  // Valid token with exp: 2030-01-01 (far future), iss: test-issuer, sub: test-user
+  // Payload: {"sub":"test-user","iss":"test-issuer","exp":1893456000,"iat":1735689600,"scopes":["read","write"],"roles":["user"]}
+  VALID: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXIiLCJpc3MiOiJ0ZXN0LWlzc3VlciIsImV4cCI6MTg5MzQ1NjAwMCwiaWF0IjoxNzM1Njg5NjAwLCJzY29wZXMiOlsicmVhZCIsIndyaXRlIl0sInJvbGVzIjpbInVzZXIiXX0.fake-signature-for-testing',
+  
+  // Expired token with exp: 2020-01-01 (past), iss: test-issuer, sub: expired-user
+  // Payload: {"sub":"expired-user","iss":"test-issuer","exp":1577836800,"iat":1577836800,"scopes":["read"],"roles":["user"]}
+  EXPIRED: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJleHBpcmVkLXVzZXIiLCJpc3MiOiJ0ZXN0LWlzc3VlciIsImV4cCI6MTU3NzgzNjgwMCwiaWF0IjoxNTc3ODM2ODAwLCJzY29wZXMiOlsicmVhZCJdLCJyb2xlcyI6WyJ1c2VyIl19.fake-signature-for-testing',
+  
+  // Invalid token - recognized by service as invalid
+  INVALID: 'invalid.jwt.token',
+  
+  // Malformed token - not JWT structure
+  MALFORMED: 'not-even-close-to-jwt'
+};
+
+/**
  * Error patterns for console monitoring
  */
 export const ERROR_PATTERNS = {
@@ -139,10 +177,12 @@ export const BROWSER_ERROR_PATTERNS = ERROR_PATTERNS.CRITICAL;
 export const CONSTANTS = {
   PAGE_TYPES,
   AUTH,
+  KEYCLOAK_CONFIG,
   SERVICE_URLS,
   TIMEOUTS,
   SELECTORS,
   PAGE_DEFINITIONS,
   PROCESSOR_TYPES,
-  ERROR_PATTERNS
+  ERROR_PATTERNS,
+  TEST_TOKENS
 };

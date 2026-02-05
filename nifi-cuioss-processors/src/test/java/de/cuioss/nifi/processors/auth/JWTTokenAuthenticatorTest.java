@@ -65,7 +65,7 @@ class JWTTokenAuthenticatorTest {
         testRunner.assertTransferCount(Relationships.FAILURE, 0);
 
         // Get the output flow file
-        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).get(0);
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
 
         // Verify attributes
         flowFile.assertAttributeExists("jwt.token");
@@ -96,7 +96,7 @@ class JWTTokenAuthenticatorTest {
         testRunner.assertTransferCount(Relationships.FAILURE, 0);
 
         // Get the output flow file
-        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).get(0);
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
 
         // Verify attributes
         flowFile.assertAttributeExists("jwt.token");
@@ -124,7 +124,7 @@ class JWTTokenAuthenticatorTest {
         testRunner.assertTransferCount(Relationships.FAILURE, 0);
 
         // Get the output flow file
-        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).get(0);
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
 
         // Verify attributes
         flowFile.assertAttributeExists("jwt.token");
@@ -150,7 +150,7 @@ class JWTTokenAuthenticatorTest {
         testRunner.assertTransferCount(Relationships.FAILURE, 1);
 
         // Get the output flow file
-        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.FAILURE).get(0);
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.FAILURE).getFirst();
 
         // Verify attributes
         flowFile.assertAttributeExists("jwt.error.reason");
@@ -181,10 +181,82 @@ class JWTTokenAuthenticatorTest {
         testRunner.assertTransferCount(Relationships.FAILURE, 0);
 
         // Get the output flow file
-        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).get(0);
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
 
         // Verify attributes
         flowFile.assertAttributeExists("jwt.token");
         assertEquals(token, flowFile.getAttribute("jwt.token"));
+    }
+
+    @Test
+    @DisplayName("Test failure when token is empty string")
+    void failureWhenTokenIsEmpty() {
+        // Setup
+        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
+        testRunner.setProperty(Properties.TOKEN_HEADER, Http.AUTHORIZATION_HEADER);
+
+        // Create flow file with empty Authorization header
+        Map<String, String> attributes = new HashMap<>();
+        attributes.put("http.headers.authorization", "");
+        testRunner.enqueue("test data", attributes);
+
+        // Run the processor
+        testRunner.run();
+
+        // Verify results
+        testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+        testRunner.assertTransferCount(Relationships.FAILURE, 1);
+
+        // Get the output flow file
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.FAILURE).getFirst();
+
+        // Verify error attributes are set
+        flowFile.assertAttributeExists("jwt.error.code");
+        flowFile.assertAttributeExists("jwt.error.reason");
+        flowFile.assertAttributeExists("jwt.error.category");
+        assertEquals(JWTProcessorConstants.Error.Code.NO_TOKEN_FOUND, flowFile.getAttribute("jwt.error.code"));
+        assertEquals(JWTProcessorConstants.Error.Category.EXTRACTION_ERROR, flowFile.getAttribute("jwt.error.category"));
+    }
+
+    @Test
+    @DisplayName("Test failure when empty content in flow file")
+    void failureWhenEmptyContent() {
+        // Setup
+        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.FLOW_FILE_CONTENT);
+
+        // Create flow file with empty content
+        testRunner.enqueue("");
+
+        // Run the processor
+        testRunner.run();
+
+        // Verify results
+        testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+        testRunner.assertTransferCount(Relationships.FAILURE, 1);
+
+        // Get the output flow file
+        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.FAILURE).getFirst();
+
+        // Verify error attributes
+        flowFile.assertAttributeExists("jwt.error.code");
+        flowFile.assertAttributeExists("jwt.error.reason");
+        flowFile.assertAttributeExists("jwt.error.category");
+    }
+
+    @Test
+    @DisplayName("Test no flow file in queue")
+    void noFlowFileInQueue() {
+        // Setup
+        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
+        testRunner.setProperty(Properties.TOKEN_HEADER, Http.AUTHORIZATION_HEADER);
+
+        // Don't enqueue any flow file
+
+        // Run the processor
+        testRunner.run();
+
+        // Verify no transfers
+        testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+        testRunner.assertTransferCount(Relationships.FAILURE, 0);
     }
 }

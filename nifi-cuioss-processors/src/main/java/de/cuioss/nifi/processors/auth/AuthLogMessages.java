@@ -137,6 +137,18 @@ public final class AuthLogMessages {
                 .identifier(18)
                 .template("Successfully created issuer configuration for %s")
                 .build();
+
+        public static final LogRecord AUTHORIZATION_BYPASSED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(19)
+                .template("Authorization bypassed for issuer '%s' (explicitly configured)")
+                .build();
+
+        public static final LogRecord AUTHORIZATION_SUCCESSFUL = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(20)
+                .template("Authorization successful for token with subject '%s' from issuer '%s'")
+                .build();
     }
 
     @UtilityClass
@@ -206,6 +218,18 @@ public final class AuthLogMessages {
                 .identifier(109)
                 .template("IssuerConfig creation not yet fully implemented. Validation will fail.")
                 .build();
+
+        public static final LogRecord AUTHORIZATION_BYPASS_ENABLED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(111)
+                .template("Authorization bypass explicitly enabled for issuer %s. This is a security risk!")
+                .build();
+
+        public static final LogRecord AUTHORIZATION_FAILED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(112)
+                .template("Authorization failed for token with subject '%s' from issuer '%s': %s")
+                .build();
     }
 
     @UtilityClass
@@ -238,6 +262,19 @@ public final class AuthLogMessages {
                 .prefix(PREFIX)
                 .identifier(204)
                 .template("Token uses unsupported algorithm '%s'. Allowed algorithms: %s")
+                .build();
+
+        public static final LogRecord NO_AUTHORIZATION_CONFIG = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(205)
+                .template("No authorization configuration (required-scopes or required-roles) for issuer %s. " +
+                        "Set bypass-authorization=true to explicitly bypass authorization (NOT recommended).")
+                .build();
+
+        public static final LogRecord NO_ISSUER_CONFIG_FOR_TOKEN = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(206)
+                .template("No issuer configuration found for token issuer '%s'. Access denied (fail-secure).")
                 .build();
     }
 }

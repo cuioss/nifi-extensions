@@ -10,11 +10,11 @@ export default defineConfig({
         emptyOutDir: false,
         lib: {
             // Entry point
-            entry: path.resolve(__dirname, 'src/main/webapp/js/main.js'),
+            entry: path.resolve(__dirname, 'src/main/webapp/js/bundle-wrapper.js'),
             // Library name (global variable name when included as script)
             name: 'nifiCuiossUI',
             // Output file name
-            fileName: 'bundle.vite',
+            fileName: 'bundle',
             // Format: UMD for compatibility with existing NiFi infrastructure
             formats: ['umd']
         },

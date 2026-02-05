@@ -10,12 +10,13 @@ const KEYCLOAK_URL = process.env.PLAYWRIGHT_KEYCLOAK_URL || 'http://localhost:90
 
 /**
  * Define paths for test artifacts (following Maven standard)
+ * Support environment variables for Maven-controlled output directories
  */
-const TARGET_DIR = path.join(__dirname, 'target');
-const TEST_RESULTS_DIR = path.join(TARGET_DIR, 'test-results');
-const REPORTS_DIR = path.join(TARGET_DIR, 'playwright-report');
-const SCREENSHOTS_DIR = path.join(TARGET_DIR, 'screenshots');
-const VIDEOS_DIR = path.join(TARGET_DIR, 'videos');
+const TARGET_DIR = process.env.PLAYWRIGHT_OUTPUT_DIR || path.join(__dirname, 'target');
+const TEST_RESULTS_DIR = process.env.TEST_RESULTS_DIR || path.join(TARGET_DIR, 'test-results');
+const REPORTS_DIR = process.env.PLAYWRIGHT_REPORT_DIR || path.join(TARGET_DIR, 'playwright-report');
+const SCREENSHOTS_DIR = path.join(TEST_RESULTS_DIR, 'screenshots');
+const VIDEOS_DIR = path.join(TEST_RESULTS_DIR, 'videos');
 
 /**
  * Modern Playwright Configuration - 2025 Best Practices
@@ -23,34 +24,34 @@ const VIDEOS_DIR = path.join(TARGET_DIR, 'videos');
  */
 module.exports = defineConfig({
   testDir: './tests',
-  /* Maximum time one test can run for - increased for complex enterprise scenarios */
-  timeout: 60 * 1000,
+  /* Enhanced timeout configuration based on test complexity */
+  timeout: process.env.E2E_TIMEOUT ? parseInt(process.env.E2E_TIMEOUT) * 1000 : 60 * 1000,
   expect: {
     /**
      * Maximum time expect() should wait for the condition to be met
+     * Increased for complex enterprise UI interactions
      */
-    timeout: 10000
+    timeout: process.env.E2E_EXPECT_TIMEOUT ? parseInt(process.env.E2E_EXPECT_TIMEOUT) * 1000 : 15000
   },
   /* Global setup and teardown hooks */
   globalTeardown: './scripts/global-teardown.js',
   /* Enhanced parallel execution for better performance */
   fullyParallel: true,
-  workers: process.env.CI ? 2 : undefined,
+  workers: process.env.CI ? 2 : 1,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Enhanced retry strategy */
-  retries: process.env.CI ? 3 : 1,
-  /* Modern reporter configuration with accessibility reports */
+  /* Disable retries - tests should be deterministic */
+  retries: 0,
+  /* Modern reporter configuration - NO HTML REPORTER TO PREVENT SERVER */
   reporter: [
-    ['html', { outputFolder: REPORTS_DIR, open: 'never' }],
     ['json', { outputFile: path.join(TARGET_DIR, 'test-results.json') }],
     ['junit', { outputFile: path.join(TARGET_DIR, 'junit-results.xml') }],
-    ['list'],
-    // Add accessibility reporter if violations are found
-    ...(process.env.ACCESSIBILITY_REPORTS ? [['json', { outputFile: path.join(TARGET_DIR, 'accessibility-results.json') }]] : [])
+    ['list']
   ],
   /* Output directories for test artifacts */
   outputDir: TEST_RESULTS_DIR,
+  /* Preserve output from test runs */
+  preserveOutput: 'always',
   /* Screenshot and video directories */
   screenshotsDir: SCREENSHOTS_DIR,
   videosDir: VIDEOS_DIR,
@@ -60,13 +61,16 @@ module.exports = defineConfig({
     baseURL: BASE_URL,
 
     /* Enhanced tracing - always collect for better debugging */
-    trace: 'on-first-retry',
+    /* Options: 'off', 'on', 'retain-on-failure', 'on-first-retry', 'on-all-retries' */
+    trace: process.env.PLAYWRIGHT_TRACE || 'on',
 
     /* Take screenshot on failure and for debugging */
-    screenshot: 'only-on-failure',
+    /* Options: 'off', 'on', 'only-on-failure' */
+    screenshot: process.env.PLAYWRIGHT_SCREENSHOT || 'on',
 
     /* Record video for better debugging */
-    video: 'retain-on-failure',
+    /* Options: 'off', 'on', 'retain-on-failure', 'on-first-retry' */
+    video: process.env.PLAYWRIGHT_VIDEO || 'on',
 
     /* Ignore HTTPS errors for development environments */
     ignoreHTTPSErrors: true,

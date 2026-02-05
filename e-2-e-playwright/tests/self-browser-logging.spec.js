@@ -5,21 +5,20 @@
  * @version 1.0.0
  */
 
-import { expect, test } from "@playwright/test";
+import { test, expect } from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 import {
-    injectTestConsoleMessages,
-    saveAllBrowserLogs,
     saveTestBrowserLogs,
-    setupBrowserConsoleLogging,
+    setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
 import fs from "fs";
 import path from "path";
+import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("Self-Test: Browser Console Logging", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Setup console logging for each test
-        setupBrowserConsoleLogging(page, testInfo);
+        await setupAuthAwareErrorDetection(page, testInfo);
     });
 
     test.afterEach(async ({ page: _ }, testInfo) => {
@@ -27,9 +26,9 @@ test.describe("Self-Test: Browser Console Logging", () => {
         try {
             await saveTestBrowserLogs(testInfo);
         } catch (error) {
-            console.warn(
-                "Failed to save console logs in afterEach:",
-                error.message,
+            logTestWarning(
+                "afterEach",
+                `Failed to save console logs in afterEach: ${error.message}`,
             );
         }
     });
@@ -58,8 +57,11 @@ test.describe("Self-Test: Browser Console Logging", () => {
 
         // Navigate and interact to generate more console activity
         await page.evaluate(() => {
+            // eslint-disable-next-line no-console
             console.log("Test console log message");
+            // eslint-disable-next-line no-console
             console.warn("Test console warning message");
+            // eslint-disable-next-line no-console
             console.info("Test console info message");
         });
 
@@ -124,6 +126,7 @@ test.describe("Self-Test: Browser Console Logging", () => {
 
         // Intentionally trigger a console error
         await page.evaluate(() => {
+            // eslint-disable-next-line no-console
             console.error("Intentional test error for logging validation");
         });
 
@@ -162,7 +165,9 @@ test.describe("Self-Test: Browser Console Logging", () => {
 
         // Generate some console activity
         await page.evaluate(() => {
+            // eslint-disable-next-line no-console
             console.log("File system test message");
+            // eslint-disable-next-line no-console
             console.warn("File system test warning");
         });
 
@@ -235,6 +240,7 @@ test.describe("Self-Test: Browser Console Logging", () => {
         // Attempt to make a request to a non-existent endpoint
         await page.evaluate(() => {
             fetch("/nonexistent-endpoint").catch((err) =>
+                // eslint-disable-next-line no-console
                 console.warn("Expected network error:", err.message),
             );
         });
@@ -261,42 +267,43 @@ test.describe("Self-Test: Browser Console Logging", () => {
         // Check if NiFi is accessible before running this test
         const authService = new AuthService(page);
         const isAccessible = await authService.checkNiFiAccessibility();
-        test.skip(
-            !isAccessible,
-            "NiFi service is not accessible - cannot test browser logging with real navigation",
-        );
+        if (!isAccessible) {
+            throw new Error(
+                "PRECONDITION FAILED: NiFi service is not accessible. " +
+                    "Cannot test browser logging with real navigation. " +
+                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
+            );
+        }
 
         // Navigate and generate console activity
         await page.goto("/nifi");
 
         // Generate specific console messages to verify with unique identifier
         const testId = `direct-log-test-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
-        await injectTestConsoleMessages(page, testId);
+
+        // Inject test console messages directly
+        await page.evaluate((id) => {
+            // eslint-disable-next-line no-console
+            console.log(`Direct log test - INFO message - ${id}`);
+            // eslint-disable-next-line no-console
+            console.warn(`Direct log test - WARNING message - ${id}`);
+            // eslint-disable-next-line no-console
+            console.error(`Direct log test - ERROR message - ${id}`);
+            // eslint-disable-next-line no-console
+            console.debug(`Direct log test - DEBUG message - ${id}`);
+        }, testId);
 
         // Wait a moment for logs to be captured
         await page.waitForTimeout(500);
 
-        // Save logs to direct accessible file (returns array of results for each test)
-        const results = await saveAllBrowserLogs();
+        // Save logs using per-test logging approach
+        const logPath = await saveTestBrowserLogs(testInfo);
 
-        expect(results).toBeTruthy();
-        expect(Array.isArray(results)).toBeTruthy();
-        expect(results.length).toBeGreaterThan(0);
-
-        // Get the result for this specific test
-        const result = results[0]; // Since this is the only test running
-
-        expect(result.textLog).toBeTruthy();
-        expect(result.jsonLog).toBeTruthy();
-        expect(result.totalLogs).toBeGreaterThan(0);
-        expect(result.testId).toBeTruthy();
-
-        // Verify files exist and are accessible
-        expect(fs.existsSync(result.textLog)).toBeTruthy();
-        expect(fs.existsSync(result.jsonLog)).toBeTruthy();
+        expect(logPath).toBeTruthy();
+        expect(fs.existsSync(logPath)).toBeTruthy();
 
         // Verify content contains our test messages
-        const textContent = fs.readFileSync(result.textLog, "utf8");
+        const textContent = fs.readFileSync(logPath, "utf8");
         expect(textContent).toContain(
             `Direct log test - INFO message - ${testId}`,
         );
@@ -306,17 +313,15 @@ test.describe("Self-Test: Browser Console Logging", () => {
         expect(textContent).toContain(
             `Direct log test - ERROR message - ${testId}`,
         );
-        expect(textContent).toContain(result.testId); // Should contain test identifier
+        expect(textContent).toContain(testId); // Should contain test identifier
 
-        const jsonContent = JSON.parse(fs.readFileSync(result.jsonLog, "utf8"));
-        expect(jsonContent.length).toBeGreaterThan(0);
+        // Verify that we can read the log file content and it contains our test messages
+        expect(textContent.length).toBeGreaterThan(0);
 
-        const infoMsg = jsonContent.find((log) =>
-            log.text.includes("Direct log test - INFO"),
-        );
-        expect(infoMsg).toBeTruthy();
-        expect(infoMsg.type).toBe("log");
-        expect(infoMsg.test).toBe(testInfo.title);
+        // Verify that all our test messages are present
+        expect(textContent).toContain("Direct log test - INFO");
+        expect(textContent).toContain("Direct log test - WARNING");
+        expect(textContent).toContain("Direct log test - ERROR");
 
         // Test completed successfully
     });
@@ -329,9 +334,13 @@ test.describe("Self-Test: Browser Console Logging", () => {
 
         // Generate console activity without any external service dependencies
         await page.evaluate(() => {
+            // eslint-disable-next-line no-console
             console.log("Standalone test log message");
+            // eslint-disable-next-line no-console
             console.warn("Standalone test warning message");
+            // eslint-disable-next-line no-console
             console.info("Standalone test info message");
+            // eslint-disable-next-line no-console
             console.error("Standalone test error message");
         });
 

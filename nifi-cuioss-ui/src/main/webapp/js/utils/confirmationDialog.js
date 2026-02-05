@@ -15,9 +15,7 @@
  *
  * @fileoverview Confirmation dialog utilities for destructive actions
  * @module utils/confirmationDialog
- * @requires cash-dom
  */
-import $ from 'cash-dom';
 
 /**
  * Shows a confirmation dialog for destructive actions.
@@ -44,24 +42,43 @@ export const showConfirmationDialog = (options) => {
 
     return new Promise((resolve) => {
         // Remove any existing confirmation dialogs
-        $('.confirmation-dialog').remove();
+        for (const dialog of document.querySelectorAll('.confirmation-dialog')) {
+            dialog.remove();
+        }
 
         // Create dialog HTML
         const dialogHtml = createDialogHtml(title, message, confirmText, cancelText, type);
 
         // Add to page
-        const $dialog = $(dialogHtml);
-        $('body').append($dialog);
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = dialogHtml;
+        const dialog = tempDiv.firstElementChild;
+        document.body.appendChild(dialog);
 
         // Set up event handlers
-        setupDialogEventHandlers($dialog, resolve, onConfirm, onCancel);
+        setupDialogEventHandlers(dialog, resolve, onConfirm, onCancel);
 
         // Show dialog with animation
         requestAnimationFrame(() => {
-            $dialog.addClass('show');
-            $dialog.find('.confirm-button').focus();
+            dialog.classList.add('show');
+            const cancelButton = dialog.querySelector('.cancel-button');
+            if (cancelButton) {
+                cancelButton.focus();
+            }
         });
     });
+};
+
+/**
+ * Escapes HTML to prevent XSS attacks.
+ * @private
+ * @param {string} str - String to escape
+ * @returns {string} Escaped string
+ */
+const escapeHtml = (str) => {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
 };
 
 /**
@@ -83,14 +100,16 @@ const createDialogHtml = (title, message, confirmText, cancelText, type) => {
             <div class="dialog-content">
                 <div class="dialog-header">
                     <div class="dialog-icon">${icon}</div>
-                    <h3 class="dialog-title">${title}</h3>
+                    <h3 class="dialog-title">${escapeHtml(title)}</h3>
                 </div>
                 <div class="dialog-body">
-                    <p class="dialog-message">${message}</p>
+                    <p class="dialog-message">${escapeHtml(message)}</p>
                 </div>
                 <div class="dialog-footer">
-                    <button class="cancel-button">${cancelText}</button>
-                    <button class="confirm-button ${type}-button">${confirmText}</button>
+                    <button class="cancel-button">${escapeHtml(cancelText)}</button>
+                    <button class="confirm-button ${type}-button">
+                        ${escapeHtml(confirmText)}
+                    </button>
                 </div>
             </div>
         </div>
@@ -99,33 +118,36 @@ const createDialogHtml = (title, message, confirmText, cancelText, type) => {
 
 /**
  * Sets up event handlers for the dialog.
- * @param {Object} $dialog - jQuery dialog element
+ * @param {HTMLElement} dialog - Dialog element
  * @param {Function} resolve - Promise resolve function
  * @param {Function} onConfirm - Confirm callback
  * @param {Function} onCancel - Cancel callback
  */
-const setupDialogEventHandlers = ($dialog, resolve, onConfirm, onCancel) => {
+const setupDialogEventHandlers = (dialog, resolve, onConfirm, onCancel) => {
     const confirmAction = () => {
-        closeDialog($dialog);
+        closeDialog(dialog);
         if (onConfirm) onConfirm();
         resolve(true);
     };
 
     const cancelAction = () => {
-        closeDialog($dialog);
+        closeDialog(dialog);
         if (onCancel) onCancel();
         resolve(false);
     };
 
     // Button handlers
-    $dialog.find('.confirm-button').on('click', confirmAction);
-    $dialog.find('.cancel-button').on('click', cancelAction);
+    const confirmButton = dialog.querySelector('.confirm-button');
+    const cancelButton = dialog.querySelector('.cancel-button');
+    if (confirmButton) confirmButton.addEventListener('click', confirmAction);
+    if (cancelButton) cancelButton.addEventListener('click', cancelAction);
 
     // Overlay click to cancel
-    $dialog.find('.dialog-overlay').on('click', cancelAction);
+    const overlay = dialog.querySelector('.dialog-overlay');
+    if (overlay) overlay.addEventListener('click', cancelAction);
 
     // Keyboard handlers
-    $dialog.on('keydown', (e) => {
+    dialog.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             e.preventDefault();
             cancelAction();
@@ -136,43 +158,47 @@ const setupDialogEventHandlers = ($dialog, resolve, onConfirm, onCancel) => {
     });
 
     // Trap focus within dialog
-    trapFocus($dialog);
+    trapFocus(dialog);
 };
 
 /**
  * Closes and removes the dialog with animation.
- * @param {Object} $dialog - jQuery dialog element
+ * @param {HTMLElement} dialog - Dialog element
  */
-const closeDialog = ($dialog) => {
-    $dialog.removeClass('show');
+const closeDialog = (dialog) => {
+    dialog.classList.remove('show');
     setTimeout(() => {
-        $dialog.remove();
+        dialog.remove();
     }, 300);
 };
 
 /**
  * Traps focus within the dialog for accessibility.
- * @param {Object} $dialog - jQuery dialog element
+ * @param {HTMLElement} dialog - Dialog element
  */
-const trapFocus = ($dialog) => {
-    const focusableElements = $dialog.find('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-    const firstElement = focusableElements.first();
-    const lastElement = focusableElements.last();
+const trapFocus = (dialog) => {
+    const focusableElements = dialog.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
 
-    $dialog.on('keydown', (e) => {
+    dialog.addEventListener('keydown', (e) => {
         if (e.key === 'Tab') {
             if (e.shiftKey) {
                 // Shift + Tab
-                if (document.activeElement === firstElement[0]) {
+                if (document.activeElement === firstElement) {
                     e.preventDefault();
-                    lastElement.focus();
+                    if (lastElement) {
+                        lastElement.focus();
+                    }
                 }
             } else {
                 // Tab - handle focus for last element or let default behavior work
-                const isLastElementActive = document.activeElement === lastElement[0];
+                const isLastElementActive = document.activeElement === lastElement;
                 if (isLastElementActive) {
                     e.preventDefault();
-                    firstElement.focus();
+                    if (firstElement) {
+                        firstElement.focus();
+                    }
                 }
             }
         }
@@ -298,7 +324,9 @@ const _handleFocusTrapping = (e, firstElement, lastElement) => {
             // Shift + Tab
             if (document.activeElement === firstElement) {
                 e.preventDefault();
-                lastElement.focus();
+                if (lastElement) {
+                    lastElement.focus();
+                }
                 return true;
             }
         } else {
@@ -306,7 +334,9 @@ const _handleFocusTrapping = (e, firstElement, lastElement) => {
             const isLastElementActive = document.activeElement === lastElement;
             if (isLastElementActive) {
                 e.preventDefault();
-                firstElement.focus();
+                if (firstElement) {
+                    firstElement.focus();
+                }
                 return true;
             }
             // Return false to indicate focus was not trapped in this case
@@ -321,3 +351,9 @@ export const __test = {
     handleKeyboardEvent: _handleKeyboardEvent,
     handleFocusTrapping: _handleFocusTrapping
 };
+
+// Export createDialogHtml for testing
+export { createDialogHtml };
+
+// Alias for backward compatibility
+export const confirmDeleteIssuer = confirmRemoveIssuer;

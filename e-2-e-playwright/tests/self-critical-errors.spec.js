@@ -5,12 +5,11 @@
  * @version 1.0.0
  */
 
-import { expect, test } from "@playwright/test";
+import { test, expect } from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 // import { CONSTANTS } from "../utils/constants.js"; // Unused in current implementation
 import {
-    checkForCriticalErrors,
     saveTestBrowserLogs,
     setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
@@ -19,9 +18,10 @@ import {
     cleanupCriticalErrorDetection,
     globalCriticalErrorDetector,
 } from "../utils/critical-error-detector.js";
+import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("Self-Test: Critical Error Detection", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page, processorManager }, testInfo) => {
         // Setup auth-aware error detection (skips initial canvas checks)
         await setupAuthAwareErrorDetection(page, testInfo);
 
@@ -29,8 +29,16 @@ test.describe("Self-Test: Critical Error Detection", () => {
         const authService = new AuthService(page);
         await authService.ensureReady();
 
-        // Now check for critical errors after authentication completes
-        await checkForCriticalErrors(page, testInfo);
+        // Ensure processor is on canvas so canvas is not empty
+        // This is needed for tests that check canvas state
+        await processorManager.ensureProcessorOnCanvas();
+
+        // Wait for page to be fully stable after authentication
+        await page.waitForLoadState("networkidle");
+
+        // NOTE: Do NOT check for critical errors in beforeEach for self-tests
+        // These tests are specifically designed to test error detection scenarios
+        // Checking for errors here would cause all tests to fail prematurely
     });
 
     test.afterEach(async ({ page: _ }, testInfo) => {
@@ -38,9 +46,9 @@ test.describe("Self-Test: Critical Error Detection", () => {
         try {
             await saveTestBrowserLogs(testInfo);
         } catch (error) {
-            console.warn(
-                "Failed to save console logs in afterEach:",
-                error.message,
+            logTestWarning(
+                "afterEach",
+                `Failed to save console logs in afterEach: ${error.message}`,
             );
         }
 
@@ -221,7 +229,8 @@ test.describe("Self-Test: Critical Error Detection", () => {
         // For this specific test, we'll be more lenient
         // We'll report the status but not necessarily fail
         if (!hasProcessors && !processor) {
-            console.warn(
+            logTestWarning(
+                "test",
                 "⚠️  No processors found on canvas - this may indicate an empty canvas issue",
             );
 
@@ -236,6 +245,7 @@ test.describe("Self-Test: Critical Error Detection", () => {
             await authService.verifyCanvasVisible();
 
             // Log the finding for debugging
+            // eslint-disable-next-line no-console
             console.log(
                 "Canvas is empty but functional - this may be expected in some test scenarios",
             );
@@ -298,6 +308,7 @@ test.describe("Self-Test: Critical Error Detection", () => {
         const authService = new AuthService(page);
         await authService.verifyCanvasVisible();
 
+        // eslint-disable-next-line no-console
         console.log(
             "✅ Comprehensive critical error validation passed - application is healthy",
         );

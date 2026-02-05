@@ -124,7 +124,8 @@ export const displayUiError = ($targetElement, error, i18n, errorTypeKey = 'proc
     const closeButton = closable ? '<button class="close-error" aria-label="Close error">&times;</button>' : '';
 
     const errorHtml = `
-        <div class="error-message ${errorTypeClass} ${closableClass}">
+        <div class="error-message ${errorTypeClass} ${closableClass}" 
+             role="alert" aria-live="assertive">
             <div class="error-content">
                 <strong>${errorTypePrefix}:</strong> ${messageToDisplay}
             </div>
@@ -132,25 +133,34 @@ export const displayUiError = ($targetElement, error, i18n, errorTypeKey = 'proc
         </div>
     `;
 
-    $targetElement.html(errorHtml);
+    // Handle both jQuery objects and DOM elements
+    const element = $targetElement[0] || $targetElement;
+    element.innerHTML = errorHtml;
 
     // Add close button functionality
     if (closable) {
-        $targetElement.find('.close-error').on('click', () => {
-            $targetElement.find('.error-message').fadeOut(300, function () {
-                // Use the element directly instead of $(this)
-                this.remove();
+        const closeBtn = element.querySelector('.close-error');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                const errorMsg = element.querySelector('.error-message');
+                if (errorMsg) {
+                    errorMsg.style.transition = 'opacity 0.3s';
+                    errorMsg.style.opacity = '0';
+                    setTimeout(() => errorMsg.remove(), 300);
+                }
             });
-        });
+        }
     }
 
     // Auto-hide functionality
     if (autoHide) {
         setTimeout(() => {
-            $targetElement.find('.error-message').fadeOut(300, function () {
-                // Use the element directly instead of $(this)
-                this.remove();
-            });
+            const errorMsg = element.querySelector('.error-message');
+            if (errorMsg) {
+                errorMsg.style.transition = 'opacity 0.3s';
+                errorMsg.style.opacity = '0';
+                setTimeout(() => errorMsg.remove(), 300);
+            }
         }, 5000);
     }
 };
@@ -167,17 +177,22 @@ export const displayUiSuccess = ($targetElement, message, options = {}) => {
     const autoHideClass = autoHide ? 'auto-dismiss' : '';
 
     const successHtml = `
-        <div class="success-message ${autoHideClass}">
+        <div class="success-message ${autoHideClass}" role="status" aria-live="polite">
             <div class="success-content">${message}</div>
         </div>
     `;
 
-    $targetElement.html(successHtml);
+    // Handle both jQuery objects and DOM elements
+    const element = $targetElement[0] || $targetElement;
+    element.innerHTML = successHtml;
 
     // Auto-hide functionality
     if (autoHide) {
         setTimeout(() => {
-            $targetElement.find('.success-message').remove();
+            const successMsg = element.querySelector('.success-message');
+            if (successMsg) {
+                successMsg.remove();
+            }
         }, 5000);
     }
 };
@@ -198,14 +213,18 @@ export const displayUiInfo = ($targetElement, message, options = {}) => {
         </div>
     `;
 
-    $targetElement.html(infoHtml);
+    // Handle both jQuery objects and DOM elements
+    const element = $targetElement[0] || $targetElement;
+    element.innerHTML = infoHtml;
 
     if (autoHide) {
         setTimeout(() => {
-            $targetElement.find('.info-message').fadeOut(300, function () {
-                // Use the element directly instead of $(this)
-                this.remove();
-            });
+            const infoMsg = element.querySelector('.info-message');
+            if (infoMsg) {
+                infoMsg.style.transition = 'opacity 0.3s';
+                infoMsg.style.opacity = '0';
+                setTimeout(() => infoMsg.remove(), 300);
+            }
         }, 5000);
     }
 };
@@ -226,14 +245,18 @@ export const displayUiWarning = ($targetElement, message, options = {}) => {
         </div>
     `;
 
-    $targetElement.html(warningHtml);
+    // Handle both jQuery objects and DOM elements
+    const element = $targetElement[0] || $targetElement;
+    element.innerHTML = warningHtml;
 
     if (autoHide) {
         setTimeout(() => {
-            $targetElement.find('.warning-message').fadeOut(300, function () {
-                // Use the element directly instead of $(this)
-                this.remove();
-            });
+            const warningMsg = element.querySelector('.warning-message');
+            if (warningMsg) {
+                warningMsg.style.transition = 'opacity 0.3s';
+                warningMsg.style.opacity = '0';
+                setTimeout(() => warningMsg.remove(), 300);
+            }
         }, 5000);
     }
 };

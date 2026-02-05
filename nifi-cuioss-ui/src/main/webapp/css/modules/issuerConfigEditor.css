@@ -12,10 +12,11 @@
     background-color: var(--background-color);
 }
 
-.issuer-config-editor h3 {
+.issuer-config-editor h2 {
     margin-top: 0;
     margin-bottom: 10px;
     color: var(--text-color);
+    font-size: 1.3em;
 }
 
 .issuer-config-editor p {
@@ -60,13 +61,13 @@
     padding: 5px 10px;
     border: none;
     color: var(--container-background);
-    background-color: var(--error-color);
+    background-color: var(--error-color-dark);  /* Use darker color by default for better contrast */
     border-radius: 3px;
     cursor: pointer;
 }
 
 .remove-issuer-button:hover {
-    background-color: var(--error-color-dark);
+    background-color: #c82333;  /* Even darker on hover */
 }
 
 .form-fields {
@@ -113,13 +114,13 @@
     padding: 8px 15px;
     border: none;
     color: var(--container-background);
-    background-color: var(--success-color);
+    background-color: var(--success-color-dark);  /* Use darker color by default for better contrast */
     border-radius: 3px;
     cursor: pointer;
 }
 
 .save-issuer-button:hover {
-    background-color: var(--success-color-dark);
+    background-color: #1c6e2e;  /* Even darker on hover */
 }
 
 /* Message styles */

@@ -14,21 +14,27 @@
  * @requires nf.Common
  * @requires services/apiClient
  */
-import $ from 'cash-dom';
+// Removed cash-dom dependency - using vanilla JS
 import { getI18n } from 'nf.Common';
 import * as apiClient from '../services/apiClient.js';
 import { displayUiError, displayUiSuccess } from '../utils/uiErrorDisplay.js';
 import { confirmRemoveIssuer } from '../utils/confirmationDialog.js';
-import { API, COMPONENTS, getIsLocalhost } from '../utils/constants.js';
+import { API, COMPONENTS } from '../utils/constants.js';
 import { validateIssuerConfig, validateProcessorIdFromUrl } from '../utils/validation.js';
 import { FormFieldBuilder } from '../utils/formBuilder.js';
 import { ComponentLifecycle } from '../utils/componentCleanup.js';
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('IssuerConfigEditor');
 
 // Get i18n resources from NiFi Common
 const i18n = getI18n() || {};
 
 // Component lifecycle manager for cleanup
 let componentLifecycle = null;
+
+// Counter for generating unique IDs
+let issuerFormCounter = 0;
 
 /**
  * Returns a predefined sample issuer configuration object.
@@ -83,20 +89,21 @@ const _createJwksSuccessMessage = (keyCount, isSimulated = false) => {
 const _parseIssuerProperties = (properties) => {
     const issuerProperties = {};
 
-    Object.entries(properties)
-        .filter(([key]) => key.startsWith('issuer.'))
-        .forEach(([key, value]) => {
-            const parts = key.slice(7).split('.'); // Use slice instead of substring
-            if (parts.length === 2) {
-                const [issuerName, propertyName] = parts; // Destructuring
+    const issuerEntries = Object.entries(properties)
+        .filter(([key]) => key.startsWith('issuer.'));
 
-                if (!issuerProperties[issuerName]) {
-                    issuerProperties[issuerName] = {};
-                }
+    for (const [key, value] of issuerEntries) {
+        const parts = key.slice(7).split('.'); // Use slice instead of substring
+        if (parts.length === 2) {
+            const [issuerName, propertyName] = parts; // Destructuring
 
-                issuerProperties[issuerName][propertyName] = value;
+            if (!issuerProperties[issuerName]) {
+                issuerProperties[issuerName] = {};
             }
-        });
+
+            issuerProperties[issuerName][propertyName] = value;
+        }
+    }
 
     return issuerProperties;
 };
@@ -113,109 +120,187 @@ const _extractFieldValue = (elementArray) => {
 };
 
 /**
- * Extracts form field values from a cash-dom form object using direct DOM queries.
+ * Extracts form field values from a form element using direct DOM queries.
  * Simplified from domCache approach for better performance and maintainability.
  *
- * @param {object} $form - Cash-dom wrapped form element
+ * @param {HTMLElement} form - The form element
  * @returns {object} Object containing all form field values
  */
-const _extractFormFields = ($form) => {
-    // Helper function to safely extract field value from cash-dom element
-    const _extractSingleFieldValue = ($field) => {
-        if (!$field || $field.length === 0) return '';
-        if (typeof $field.val === 'function') {
-            return $field.val()?.trim() || '';
-        }
-        // Fallback for direct DOM element access
-        return $field[0]?.value?.trim() || '';
+const _extractFormFields = (form) => {
+    // Helper function to safely extract field value
+    const _extractSingleFieldValue = (selector) => {
+        const field = form.querySelector(selector);
+        return field ? field.value.trim() : '';
     };
 
     return {
-        issuerName: _extractSingleFieldValue($form.find('.issuer-name')),
-        issuer: _extractSingleFieldValue($form.find('.field-issuer')),
-        'jwks-url': _extractSingleFieldValue($form.find('.field-jwks-url')),
-        audience: _extractSingleFieldValue($form.find('.field-audience')),
-        'client-id': _extractSingleFieldValue($form.find('.field-client-id'))
+        issuerName: _extractSingleFieldValue('.issuer-name'),
+        issuer: _extractSingleFieldValue('.field-issuer'),
+        'jwks-type': _extractSingleFieldValue('.field-jwks-type'),
+        'jwks-url': _extractSingleFieldValue('.field-jwks-url'),
+        'jwks-file': _extractSingleFieldValue('.field-jwks-file'),
+        'jwks-content': _extractSingleFieldValue('.field-jwks-content'),
+        audience: _extractSingleFieldValue('.field-audience'),
+        'client-id': _extractSingleFieldValue('.field-client-id')
     };
 };
 
 /**
  * Finds the global error container for displaying removal errors.
  * Simplified from domCache approach for better performance and maintainability.
- * @returns {cash|null} The global error container or null if not found
+ * @returns {HTMLElement|null} The global error container or null if not found
  */
 const _findGlobalErrorContainer = () => {
-    return $('.global-error-messages');
+    return document.querySelector('.global-error-messages');
 };
 
 /**
  * Creates the basic DOM structure for the issuer config editor.
- * @param {object} $parentElement The cash-dom wrapped parent element to append the editor to.
- * @returns {{$container: object, $issuersContainer: object, $globalErrorContainer: object}} Cash-dom wrapped elements.
+ * @param {HTMLElement} parentElement The parent element to append the editor to.
+ * @returns {{container: HTMLElement, issuersContainer: HTMLElement, globalErrorContainer: HTMLElement}} DOM elements.
  */
-const _createEditorStructure = ($parentElement) => {
-    const $container = $('<div class="issuer-config-editor"></div>');
-    $parentElement.append($container);
+const _createEditorStructure = (parentElement) => {
+    const container = document.createElement('div');
+    container.className = 'issuer-config-editor';
+    parentElement.appendChild(container);
 
     const titleText = i18n['Jwt.Validation.Issuer.Configuration'] || 'Issuer Configurations';
-    const $title = $(`<h3>${titleText}</h3>`);
-    $container.append($title);
+    const title = document.createElement('h2');
+    title.textContent = titleText;
+    container.appendChild(title);
 
     const descriptionText = i18n['issuer.config.description'] || 'Configure JWT issuers for token validation. Each issuer requires a name and properties like jwks-url and issuer URI.';
-    const $description = $(`<p>${descriptionText}</p>`);
-    $container.append($description);
+    const description = document.createElement('p');
+    description.textContent = descriptionText;
+    container.appendChild(description);
 
     // Add a global error display area
-    const $globalErrorContainer = $('<div class="global-error-messages issuer-form-error-messages" style="display: none;"></div>');
-    $container.append($globalErrorContainer);
+    const globalErrorContainer = document.createElement('div');
+    globalErrorContainer.className = 'global-error-messages issuer-form-error-messages';
+    globalErrorContainer.style.display = 'none';
+    container.appendChild(globalErrorContainer);
 
-    const $issuersContainer = $('<div class="issuers-container"></div>');
-    $container.append($issuersContainer);
+    const issuersContainer = document.createElement('div');
+    issuersContainer.className = 'issuers-container';
+    container.appendChild(issuersContainer);
 
-    return { $container, $issuersContainer, $globalErrorContainer };
+    return { container, issuersContainer, globalErrorContainer };
 };
 
 /**
  * Sets up the "Add Issuer" button and its event listener.
- * @param {object} $container The cash-dom wrapped main container element for the editor.
- * @param {object} $issuersContainer The cash-dom wrapped container where issuer forms will be added.
+ * @param {HTMLElement} container The main container element for the editor.
+ * @param {HTMLElement} issuersContainer The container where issuer forms will be added.
  * @param {string} [processorId] The processor ID for server mode operations.
  */
-const _setupAddIssuerButton = ($container, $issuersContainer, processorId = null) => {
-    const $addButton = $('<button class="add-issuer-button">Add Issuer</button>');
-    $container.append($addButton);
+const _setupAddIssuerButton = (container, issuersContainer, processorId = null) => {
+    const addButton = document.createElement('button');
+    addButton.className = 'add-issuer-button';
+    addButton.textContent = 'Add Issuer';
+    container.appendChild(addButton);
+
     const addButtonHandler = () => {
         const sampleConfig = _getSampleIssuerConfig();
-        addIssuerForm($issuersContainer, sampleConfig.name + '-' + Date.now(), sampleConfig.properties, processorId);
+        addIssuerForm(issuersContainer, sampleConfig.name + '-' + Date.now(), sampleConfig.properties, processorId);
     };
 
-    $addButton.on('click', addButtonHandler);
-
-    // Note: Event listeners registered via cash-dom's .on() are automatically cleaned up when elements are removed
+    addButton.addEventListener('click', addButtonHandler);
 };
 
 /**
  * Initializes editor data, including loading existing issuers for the given processor.
  * @param {string} effectiveUrl The URL used to determine the processor ID.
- * @param {object} $issuersContainer The cash-dom wrapped container where issuer forms are managed.
+ * @param {HTMLElement} issuersContainer The container where issuer forms are managed.
  */
-const _initializeEditorData = async (effectiveUrl, $issuersContainer) => {
+const _initializeEditorData = async (effectiveUrl, issuersContainer) => {
     const processorId = getProcessorIdFromUrl(effectiveUrl);
-    await loadExistingIssuers($issuersContainer, processorId);
+    await loadExistingIssuers(issuersContainer, processorId);
+
+    // HOTFIX: Ensure JWKS dropdowns are added to any existing forms
+    // This addresses the issue where dropdowns aren't being created during normal form population
+    setTimeout(() => {
+        const forms = document.querySelectorAll('.issuer-form');
+        let index = 0;
+        for (const form of forms) {
+            const formFields = form.querySelector('.form-fields');
+            const existingDropdown = form.querySelector('.field-jwks-type');
+
+            if (formFields && !existingDropdown) {
+                // Create JWKS type dropdown
+                const fieldContainer = document.createElement('div');
+                fieldContainer.className = 'form-field field-container-jwks-type';
+
+                const labelElement = document.createElement('label');
+                labelElement.setAttribute('for', `field-jwks-type-${index}`);
+                labelElement.textContent = 'JWKS Source Type:';
+                fieldContainer.appendChild(labelElement);
+
+                const selectElement = document.createElement('select');
+                selectElement.id = `field-jwks-type-${index}`;
+                selectElement.name = 'jwks-type';
+                selectElement.setAttribute('aria-label', 'JWKS Type');
+                selectElement.className = 'field-jwks-type form-input issuer-config-field';
+                selectElement.title = 'Select how JWKS keys should be retrieved for this issuer';
+
+                const options = [
+                    { value: 'url', label: 'URL (Remote JWKS endpoint)' },
+                    { value: 'file', label: 'File (Local JWKS file)' },
+                    { value: 'memory', label: 'Memory (Inline JWKS content)' }
+                ];
+
+                for (const option of options) {
+                    const optionElement = document.createElement('option');
+                    optionElement.value = option.value;
+                    optionElement.textContent = option.label;
+                    if (option.value === 'url') {
+                        optionElement.selected = true;
+                    }
+                    selectElement.appendChild(optionElement);
+                }
+
+                fieldContainer.appendChild(selectElement);
+
+                // Add change handler
+                selectElement.addEventListener('change', (e) => {
+                    const selectedType = e.target.value;
+                    const currentForm = form;
+
+                    // Hide all type-specific fields
+                    for (const field of currentForm.querySelectorAll('.jwks-type-url, .jwks-type-file, .jwks-type-memory')) {
+                        field.style.display = 'none';
+                    }
+
+                    // Show fields for selected type
+                    const typeSelector = `.jwks-type-${selectedType}`;
+                    for (const field of currentForm.querySelectorAll(typeSelector)) {
+                        field.style.display = '';
+                    }
+                });
+
+                // Insert at the beginning of form fields (after issuer name but before other fields)
+                const firstFormField = formFields.querySelector('.form-field');
+                if (firstFormField) {
+                    firstFormField.before(fieldContainer);
+                } else {
+                    formFields.appendChild(fieldContainer);
+                }
+            }
+            index++;
+        }
+    }, 100);
 };
 
 /**
      * Initializes the component.
      *
-     * @param {object} element - The DOM element to initialize in
+     * @param {HTMLElement} element - The DOM element to initialize in
      * @param {string} effectiveUrl - The URL to derive processorId from
      */
 const initComponent = async (element, effectiveUrl) => {
-    const $element = $(element);
     const processorId = getProcessorIdFromUrl(effectiveUrl);
-    const { $container, $issuersContainer } = _createEditorStructure($element);
-    _setupAddIssuerButton($container, $issuersContainer, processorId);
-    await _initializeEditorData(effectiveUrl, $issuersContainer);
+    const { container, issuersContainer } = _createEditorStructure(element);
+    _setupAddIssuerButton(container, issuersContainer, processorId);
+    await _initializeEditorData(effectiveUrl, issuersContainer);
 };
 
 /**
@@ -232,13 +317,13 @@ const getProcessorIdFromUrl = (urlToParse) => {
 /**
      * Loads existing issuer configurations.
      *
-     * @param {object} $container - The cash-dom wrapped container element
+     * @param {HTMLElement} container - The container element
      * @param {string} processorId - The processor ID to load configurations for
      */
-const loadExistingIssuers = async ($container, processorId) => {
+const loadExistingIssuers = async (container, processorId) => {
     if (!processorId) {
         const sampleConfig = _getSampleIssuerConfig();
-        addIssuerForm($container, sampleConfig.name, sampleConfig.properties, processorId);
+        addIssuerForm(container, sampleConfig.name, sampleConfig.properties, processorId);
         return;
     }
 
@@ -251,14 +336,14 @@ const loadExistingIssuers = async ($container, processorId) => {
         const issuerProperties = _parseIssuerProperties(properties);
 
         // Create issuer forms for each issuer
-        Object.keys(issuerProperties).forEach(issuerName => {
-            addIssuerForm($container, issuerName, issuerProperties[issuerName], processorId);
-        });
+        for (const issuerName of Object.keys(issuerProperties)) {
+            addIssuerForm(container, issuerName, issuerProperties[issuerName], processorId);
+        }
     } catch (error) {
         // eslint-disable-next-line no-console
         console.debug(error);
         const sampleConfig = _getSampleIssuerConfig();
-        addIssuerForm($container, sampleConfig.name, sampleConfig.properties, processorId);
+        addIssuerForm(container, sampleConfig.name, sampleConfig.properties, processorId);
     }
 };
 
@@ -273,192 +358,317 @@ const loadExistingIssuers = async ($container, processorId) => {
  * Creates the header section for an issuer form, including name input and remove button.
  * @param {string} [issuerName] - The initial name of the issuer, if any.
  * @param {function} onRemove - Callback function when the remove button is clicked.
- * @returns {cash} The header element.
+ * @param {number} index - The index of this issuer form.
+ * @returns {HTMLElement} The header element.
  */
-const _createFormHeader = (issuerName, onRemove) => {
-    const $formHeader = $('<div class="form-header"></div>');
+const _createFormHeader = (issuerName, onRemove, index = 0) => {
+    const formHeader = document.createElement('div');
+    formHeader.className = 'form-header';
 
-    const $nameLabel = $('<label>Issuer Name:</label>');
-    $formHeader.append($nameLabel);
+    const nameLabel = document.createElement('label');
+    nameLabel.textContent = 'Issuer Name:';
+    const inputId = `issuer-name-${index}`;
+    nameLabel.setAttribute('for', inputId);
+    formHeader.appendChild(nameLabel);
 
-    const $nameInput = $('<input type="text" class="issuer-name" placeholder="e.g., keycloak" title="Unique identifier for this issuer configuration. Use alphanumeric characters and hyphens only.">');
-    $nameLabel.append($nameInput);
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.id = inputId;
+    nameInput.className = 'issuer-name';
+    nameInput.placeholder = 'e.g., keycloak';
+    nameInput.title = 'Unique identifier for this issuer configuration. Use alphanumeric characters and hyphens only.';
+    nameInput.setAttribute('aria-label', 'Issuer Name');
+    formHeader.appendChild(nameInput);
 
     if (issuerName) {
-        $nameInput.val(issuerName);
+        nameInput.value = issuerName;
     }
 
-    const $removeButton = $('<button class="remove-issuer-button" title="Delete this issuer configuration">Remove</button>');
-    $formHeader.append($removeButton);
+    const removeButton = document.createElement('button');
+    removeButton.className = 'remove-issuer-button';
+    removeButton.title = 'Delete this issuer configuration';
+    removeButton.textContent = 'Remove';
+    formHeader.appendChild(removeButton);
+
     const removeButtonHandler = async () => {
-        const issuerName = $nameInput.val() || 'Unnamed Issuer';
+        const issuerNameValue = nameInput.value || 'Unnamed Issuer';
 
         // Show confirmation dialog
-        await confirmRemoveIssuer(issuerName, () => {
+        await confirmRemoveIssuer(issuerNameValue, () => {
             // This callback is called when the user confirms
-            onRemove(issuerName);
+            onRemove(issuerNameValue);
         });
 
         // If the user clicked confirm in the dialog, the onConfirm callback
         // has already been executed. No additional action needed here.
     };
 
-    $removeButton.on('click', removeButtonHandler);
+    removeButton.addEventListener('click', removeButtonHandler);
 
-    // Note: Event listeners registered via cash-dom's .on() are automatically cleaned up when elements are removed
-
-    return $formHeader;
+    return formHeader;
 };
 
 /**
  * Creates the button wrapper and result container for JWKS validation.
- * @returns {{$testButtonWrapper: object, $testButton: object, $resultContainer: object}}
+ * @returns {{testButtonWrapper: HTMLElement, testButton: HTMLElement, resultContainer: HTMLElement}}
  */
 const _createJwksButtonElements = () => {
-    const $testButtonWrapper = $('<div class="jwks-button-wrapper"></div>');
-    const $testButton = $('<button type="button" class="verify-jwks-button" title="Test connectivity to the JWKS endpoint and verify it returns valid keys">Test Connection</button>');
+    const testButtonWrapper = document.createElement('div');
+    testButtonWrapper.className = 'jwks-button-wrapper';
+
+    const testButton = document.createElement('button');
+    testButton.type = 'button';
+    testButton.className = 'verify-jwks-button';
+    testButton.title = 'Test connectivity to the JWKS endpoint and verify it returns valid keys';
+    testButton.textContent = 'Test Connection';
+
     const initialResultText = `<em>${i18n['jwksValidator.initialInstructions'] || 'Click the button to validate JWKS'}</em>`;
-    const $resultContainer = $('<div class="verification-result"></div>');
-    $resultContainer.html(initialResultText);
+    const resultContainer = document.createElement('div');
+    resultContainer.className = 'verification-result';
+    resultContainer.innerHTML = initialResultText;
 
-    $testButtonWrapper.append($testButton).append($resultContainer);
+    testButtonWrapper.appendChild(testButton);
+    testButtonWrapper.appendChild(resultContainer);
 
-    return { $testButtonWrapper, $testButton, $resultContainer };
+    return { testButtonWrapper, testButton, resultContainer };
 };
 
 /**
  * Positions the JWKS test button relative to the JWKS URL field.
- * @param {object} $formFieldsContainer - The form fields container
- * @param {object} $testButtonWrapper - The button wrapper element
+ * @param {HTMLElement} formFieldsContainer - The form fields container
+ * @param {HTMLElement} testButtonWrapper - The button wrapper element
  */
-const _positionJwksTestButton = ($formFieldsContainer, $testButtonWrapper) => {
-    const $jwksUrlFieldContainer = $formFieldsContainer.find('.field-jwks-url').closest('.form-field');
+const _positionJwksTestButton = (formFieldsContainer, testButtonWrapper) => {
+    const jwksUrlField = formFieldsContainer.querySelector('.field-jwks-url');
+    const jwksUrlFieldContainer = jwksUrlField ? jwksUrlField.closest('.form-field') : null;
 
-    if ($jwksUrlFieldContainer.length) {
-        $jwksUrlFieldContainer.after($testButtonWrapper);
+    if (jwksUrlFieldContainer) {
+        jwksUrlFieldContainer.after(testButtonWrapper);
     } else {
         // Fallback: append to container if specific field not found
-        $formFieldsContainer.append($testButtonWrapper);
+        formFieldsContainer.appendChild(testButtonWrapper);
     }
 };
 
 /**
  * Handles JWKS validation response based on environment and response data.
- * @param {object} $resultContainer - The result display container
+ * @param {HTMLElement} resultContainer - The result display container
  * @param {object} responseData - The AJAX response data
  */
-const _handleJwksValidationResponse = ($resultContainer, responseData) => {
+const _handleJwksValidationResponse = (resultContainer, responseData) => {
     if (responseData.valid) {
-        $resultContainer.html(_createJwksSuccessMessage(responseData.keyCount));
+        resultContainer.innerHTML = _createJwksSuccessMessage(responseData.keyCount);
     } else {
-        displayUiError($resultContainer, { responseJSON: responseData }, i18n, 'processor.jwt.invalidJwks');
+        displayUiError(resultContainer, { responseJSON: responseData }, i18n, 'processor.jwt.invalidJwks');
     }
 };
 
 /**
  * Handles JWKS validation errors based on environment.
- * @param {object} $resultContainer - The result display container
+ * @param {HTMLElement} resultContainer - The result display container
  * @param {object} error - The error object
  * @param {boolean} isAjaxError - Whether this is an AJAX error vs synchronous error
  */
-const _handleJwksValidationError = ($resultContainer, error, isAjaxError = true) => {
-    if (getIsLocalhost()) {
-        const simulatedMessage = isAjaxError
-            ? _createJwksSuccessMessage(3, true)
-            : _createJwksSuccessMessage(3, true) + ' <em>(Simulated error path response)</em>';
-        $resultContainer.html(simulatedMessage);
-    } else {
-        displayUiError($resultContainer, error, i18n, 'processor.jwt.validationError');
-    }
+const _handleJwksValidationError = (resultContainer, error, _isAjaxError) => {
+    // Always display the actual error (no localhost simulation)
+    displayUiError(resultContainer, error, i18n, 'processor.jwt.validationError');
 };
 
 /**
- * Performs the JWKS URL validation via AJAX.
+ * Performs the JWKS URL validation via fetch API.
  * @param {string} jwksValue - The JWKS URL to validate
- * @param {object} $resultContainer - The result display container
+ * @param {HTMLElement} resultContainer - The result display container
  */
-const _performJwksValidation = (jwksValue, $resultContainer) => {
+const _performJwksValidation = (jwksValue, resultContainer) => {
     try {
-        $.ajax({
+        // Use fetch API instead of $.ajax
+        return fetch(API.ENDPOINTS.JWKS_VALIDATE_URL, {
             method: 'POST',
-            url: API.ENDPOINTS.JWKS_VALIDATE_URL,
-            data: JSON.stringify({ jwksValue: jwksValue }),
-            contentType: 'application/json',
-            dataType: 'json',
-            timeout: API.TIMEOUTS.DEFAULT
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ jwksValue: jwksValue }),
+            credentials: 'same-origin'
         })
-            .then(responseData => _handleJwksValidationResponse($resultContainer, responseData))
-            .catch(jqXHR => _handleJwksValidationError($resultContainer, jqXHR, true));
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        error.status = response.status;
+                        error.statusText = response.statusText;
+                        error.responseText = text;
+                        try {
+                            error.responseJSON = JSON.parse(text);
+                        } catch (e) {
+                            // Not JSON, that's ok
+                        }
+                        throw error;
+                    });
+                }
+                return response.json();
+            })
+            .then(responseData => _handleJwksValidationResponse(resultContainer, responseData))
+            .catch(error => _handleJwksValidationError(resultContainer, error, true));
     } catch (e) {
-        _handleJwksValidationError($resultContainer, e, false);
+        _handleJwksValidationError(resultContainer, e, false);
+        return Promise.reject(e);
     }
 };
 
 /**
  * Creates and configures the "Test Connection" button for JWKS URL validation.
- * @param {cash} $formFieldsContainer - The jQuery-wrapped container for form fields where the button will be appended or inserted after.
+ * @param {HTMLElement} formFieldsContainer - The container for form fields where the button will be appended or inserted after.
  * @param {function} getJwksUrlValue - A function that returns the current value of the JWKS URL input field.
  */
-const _createJwksTestConnectionButton = ($formFieldsContainer, getJwksUrlValue) => {
-    const { $testButtonWrapper, $testButton, $resultContainer } = _createJwksButtonElements();
+const _createJwksTestConnectionButton = (formFieldsContainer, getJwksUrlValue) => {
+    const { testButtonWrapper, testButton, resultContainer } = _createJwksButtonElements();
 
-    _positionJwksTestButton($formFieldsContainer, $testButtonWrapper);
+    _positionJwksTestButton(formFieldsContainer, testButtonWrapper);
 
     const testButtonHandler = () => {
-        $resultContainer.html(i18n['processor.jwt.testing'] || 'Testing...');
+        resultContainer.innerHTML = i18n['processor.jwt.testing'] || 'Testing...';
         const jwksValue = getJwksUrlValue();
-        _performJwksValidation(jwksValue, $resultContainer);
+        _performJwksValidation(jwksValue, resultContainer);
     };
 
-    $testButton.on('click', testButtonHandler);
-
-    // Note: Event listeners registered via cash-dom's .on() are automatically cleaned up when elements are removed
+    testButton.addEventListener('click', testButtonHandler);
 };
 
 /**
  * Creates the save button for an issuer form.
- * @param {object} $issuerForm - The cash-dom wrapped issuer form element.
+ * @param {HTMLElement} issuerForm - The issuer form element.
  * @param {string} [processorId] - The processor ID for server mode saves
  */
-const _createSaveButton = ($issuerForm, processorId = null) => {
+const _createSaveButton = (issuerForm, processorId = null) => {
     const tooltipText = processorId
         ? 'Save this issuer configuration to the NiFi processor'
         : 'Validate and save this issuer configuration (standalone mode)';
-    const $saveButton = $(
-        `<button class="save-issuer-button" title="${tooltipText}">Save Issuer</button>`
-    );
-    const $formErrorContainer = $('<div class="issuer-form-error-messages"></div>');
+
+    const saveButton = document.createElement('button');
+    saveButton.className = 'save-issuer-button';
+    saveButton.title = tooltipText;
+    saveButton.textContent = 'Save Issuer';
+
+    const formErrorContainer = document.createElement('div');
+    formErrorContainer.className = 'issuer-form-error-messages';
 
     const saveButtonHandler = () => {
-        $formErrorContainer.empty();
-        saveIssuer($issuerForm[0], $formErrorContainer, processorId);
+        formErrorContainer.innerHTML = '';
+        saveIssuer(issuerForm, formErrorContainer, processorId);
     };
 
-    $saveButton.on('click', saveButtonHandler);
+    saveButton.addEventListener('click', saveButtonHandler);
 
-    // Note: Event listeners registered via cash-dom's .on() are automatically cleaned up when elements are removed
-    $issuerForm.append($formErrorContainer);
-    return $saveButton;
+    issuerForm.appendChild(formErrorContainer);
+    return saveButton;
 };
 
 /**
  * Creates and populates the form fields for an issuer form.
- * @param {object} $formFields - The cash-dom wrapped form fields container
+ * @param {HTMLElement} formFields - The form fields container
  * @param {object} [properties] - The issuer properties for pre-population
  */
-const _populateIssuerFormFields = ($formFields, properties) => {
+const _populateIssuerFormFields = (formFields, properties) => {
+    // Add JWKS Type selection field - using direct DOM creation for reliability
+    try {
+        const fieldContainer = document.createElement('div');
+        fieldContainer.className = 'form-field field-container-jwks-type';
+
+        const labelElement = document.createElement('label');
+        labelElement.setAttribute('for', 'field-jwks-type');
+        labelElement.textContent = 'JWKS Source Type:';
+        fieldContainer.appendChild(labelElement);
+
+        const selectElement = document.createElement('select');
+        selectElement.id = 'field-jwks-type';
+        selectElement.name = 'jwks-type';
+        selectElement.className = 'field-jwks-type form-input issuer-config-field';
+        selectElement.title = 'Select how JWKS keys should be retrieved for this issuer';
+        selectElement.setAttribute('aria-label', 'JWKS Source Type');
+
+        const options = [
+            { value: 'url', label: 'URL (Remote JWKS endpoint)' },
+            { value: 'file', label: 'File (Local JWKS file)' },
+            { value: 'memory', label: 'Memory (Inline JWKS content)' }
+        ];
+
+        const selectedValue = properties ? properties['jwks-type'] : 'url';
+        for (const option of options) {
+            const optionElement = document.createElement('option');
+            optionElement.value = option.value;
+            optionElement.textContent = option.label;
+            if (selectedValue === option.value) {
+                optionElement.selected = true;
+            }
+            selectElement.appendChild(optionElement);
+        }
+
+        fieldContainer.appendChild(selectElement);
+
+        // Add change handler to toggle field visibility
+        selectElement.addEventListener('change', (e) => {
+            const selectedType = e.target.value;
+            const form = formFields.closest('.issuer-form') || formFields;
+
+            // Hide all type-specific fields
+            for (const field of form.querySelectorAll('.jwks-type-url, .jwks-type-file, .jwks-type-memory')) {
+                field.style.display = 'none';
+            }
+
+            // Show fields for selected type
+            for (const field of form.querySelectorAll(`.jwks-type-${selectedType}`)) {
+                field.style.display = '';
+            }
+        });
+
+        formFields.appendChild(fieldContainer);
+    } catch (error) {
+        // Error creating JWKS dropdown - silently continue
+        logger.debug('JWKS dropdown creation error:', error);
+    }
+
     // Add standard form fields with enhanced tooltips
-    addFormField($formFields, 'issuer', 'Issuer URI', 'The URI of the token issuer (must match the iss claim)', properties ? properties.issuer : '', 'This value must exactly match the "iss" claim in JWT tokens. Example: https://auth.example.com/auth/realms/myrealm');
-    addFormField($formFields, 'jwks-url', 'JWKS URL', 'The URL of the JWKS endpoint', properties ? properties['jwks-url'] : '', 'URL providing public keys for JWT signature verification. Usually ends with /.well-known/jwks.json');
+    addFormField(formFields, 'issuer', 'Issuer URI', 'The URI of the token issuer (must match the iss claim)', properties ? properties.issuer : '', 'This value must exactly match the "iss" claim in JWT tokens. Example: https://auth.example.com/auth/realms/myrealm');
+
+    // Add JWKS URL field (shown for URL type)
+    const jwksUrlField = addFormField(formFields, 'jwks-url', 'JWKS URL', 'The URL of the JWKS endpoint', properties ? properties['jwks-url'] : '', 'URL providing public keys for JWT signature verification. Usually ends with /.well-known/jwks.json');
+    jwksUrlField.classList.add('jwks-type-url');
+
+    // Add JWKS File field (shown for file type)
+    const jwksFileField = addFormField(formFields, 'jwks-file', 'JWKS File Path', 'Path to local JWKS JSON file', properties ? properties['jwks-file'] : '', 'Absolute or relative path to a JSON file containing JWKS keys');
+    jwksFileField.classList.add('jwks-type-file');
+    jwksFileField.style.display = properties && properties['jwks-type'] === 'file' ? '' : 'none';
+
+    // Add JWKS Content field (shown for memory type)
+    const jwksContentField = addTextAreaField(formFields, 'jwks-content', 'JWKS Content', 'Inline JWKS JSON content', properties ? properties['jwks-content'] : '', 'Paste the full JWKS JSON content here', 5);
+    jwksContentField.classList.add('jwks-type-memory');
+    jwksContentField.style.display = properties && properties['jwks-type'] === 'memory' ? '' : 'none';
 
     // Add JWKS Test Connection button
-    _createJwksTestConnectionButton($formFields, () => {
-        const $jwksInput = $formFields.find('.field-jwks-url');
-        return $jwksInput.length ? $jwksInput.val() : '';
+    _createJwksTestConnectionButton(formFields, () => {
+        const jwksTypeSelect = formFields.querySelector('.field-jwks-type');
+        const jwksType = jwksTypeSelect ? jwksTypeSelect.value : 'url';
+
+        switch (jwksType) {
+            case 'url': {
+                const jwksInput = formFields.querySelector('.field-jwks-url');
+                return jwksInput ? jwksInput.value : '';
+            }
+            case 'file': {
+                const jwksFileInput = formFields.querySelector('.field-jwks-file');
+                return jwksFileInput ? jwksFileInput.value : '';
+            }
+            case 'memory': {
+                const jwksContentInput = formFields.querySelector('.field-jwks-content');
+                return jwksContentInput ? jwksContentInput.value : '';
+            }
+            default:
+                return '';
+        }
     });
 
-    addFormField($formFields, 'audience', 'Audience', 'The expected audience claim value', properties ? properties.audience : '', 'Optional: Expected "aud" claim value in JWT tokens. Leave blank to accept any audience.');
-    addFormField($formFields, 'client-id', 'Client ID', 'The client ID for token validation', properties ? properties['client-id'] : '', 'Optional: Expected "azp" or "client_id" claim value. Used for additional token validation.');
+    addFormField(formFields, 'audience', 'Audience', 'The expected audience claim value', properties ? properties.audience : '', 'Optional: Expected "aud" claim value in JWT tokens. Leave blank to accept any audience.');
+    addFormField(formFields, 'client-id', 'Client ID', 'The client ID for token validation', properties ? properties['client-id'] : '', 'Optional: Expected "azp" or "client_id" claim value. Used for additional token validation.');
 };
 
 /**
@@ -466,55 +676,60 @@ const _populateIssuerFormFields = ($formFields, properties) => {
  * @param {string} [issuerName] - The issuer name for pre-population
  * @param {object} [properties] - The issuer properties for pre-population
  * @param {string} [processorId] - The processor ID for server mode operations
- * @returns {object} The constructed cash-dom wrapped issuer form element
+ * @returns {HTMLElement} The constructed issuer form element
  */
 const _createCompleteIssuerForm = (issuerName, properties, processorId = null) => {
-    const $issuerForm = $('<div class="issuer-form"></div>');
+    const issuerForm = document.createElement('div');
+    issuerForm.className = 'issuer-form';
+
+    // Get a unique index for this form
+    const formIndex = issuerFormCounter++;
 
     // Create and append form header
-    const $formHeader = _createFormHeader(issuerName, (clickedIssuerNameVal) => {
-        removeIssuer($issuerForm[0], clickedIssuerNameVal);
-    });
-    $issuerForm.append($formHeader);
+    const formHeader = _createFormHeader(issuerName, (clickedIssuerNameVal) => {
+        removeIssuer(issuerForm, clickedIssuerNameVal);
+    }, formIndex);
+    issuerForm.appendChild(formHeader);
 
     // Create form fields container
-    const $formFields = $('<div class="form-fields"></div>');
-    $issuerForm.append($formFields);
+    const formFields = document.createElement('div');
+    formFields.className = 'form-fields';
+    issuerForm.appendChild(formFields);
 
     // Populate form fields
-    _populateIssuerFormFields($formFields, properties);
+    _populateIssuerFormFields(formFields, properties);
 
     // Create and append save button
-    const $saveButton = _createSaveButton($issuerForm, processorId);
-    $issuerForm.append($saveButton);
+    const saveButton = _createSaveButton(issuerForm, processorId);
+    issuerForm.appendChild(saveButton);
 
-    return $issuerForm;
+    return issuerForm;
 };
 
 /**
      * Adds a new issuer form.
      *
-     * @param {object} $container - The cash-dom wrapped container element
+     * @param {HTMLElement} container - The container element
      * @param {string} [issuerName] - The issuer name (for existing issuers)
      * @param {object} [properties] - The issuer properties (for existing issuers)
      * @param {string} [processorId] - The processor ID for server mode operations
      */
-const addIssuerForm = ($container, issuerName, properties, processorId = null) => {
-    const $issuerForm = _createCompleteIssuerForm(issuerName, properties, processorId);
-    $container.append($issuerForm);
+const addIssuerForm = (container, issuerName, properties, processorId = null) => {
+    const issuerForm = _createCompleteIssuerForm(issuerName, properties, processorId);
+    container.appendChild(issuerForm);
 };
 
 /**
      * Adds a form field using the new factory pattern with enhanced validation and styling.
      *
-     * @param {object} $container - The cash-dom wrapped container element
+     * @param {HTMLElement} container - The container element
      * @param {string} name - The field name
      * @param {string} label - The field label
      * @param {string} description - The field description
      * @param {string} [value] - The field value
      * @param {string} [helpText] - Tooltip help text for advanced configuration guidance
      */
-const addFormField = ($container, name, label, description, value, helpText) => {
+const addFormField = (container, name, label, description, value, helpText) => {
     const fieldConfig = {
         name,
         label,
@@ -531,12 +746,39 @@ const addFormField = ($container, name, label, description, value, helpText) => 
     };
 
     const fieldElement = FormFieldBuilder.createField(fieldConfig);
+    container.appendChild(fieldElement);
+    return fieldElement;
+};
 
-    // Handle cash-dom wrapped elements safely - cash-dom uses array-like access
-    const containerElement = $container instanceof Element ? $container : $container[0];
-    if (containerElement) {
-        containerElement.appendChild(fieldElement);
-    }
+
+/**
+ * Adds a textarea field to the form.
+ *
+ * @param {HTMLElement} container - The container element
+ * @param {string} name - The field name
+ * @param {string} label - The field label
+ * @param {string} description - The field description
+ * @param {string} [value] - The field value
+ * @param {string} [helpText] - Tooltip help text
+ * @param {number} [rows=3] - Number of textarea rows
+ */
+const addTextAreaField = (container, name, label, description, value, helpText, rows = 3) => {
+    const fieldConfig = {
+        name,
+        label,
+        description,
+        value: value || '',
+        placeholder: description,
+        type: 'textarea',
+        required: false,
+        cssClass: 'issuer-config-field',
+        helpText: helpText || null,
+        attributes: { rows: rows.toString() }
+    };
+
+    const fieldElement = FormFieldBuilder.createField(fieldConfig);
+    container.appendChild(fieldElement);
+    return fieldElement;
 };
 
 /**
@@ -555,19 +797,41 @@ const _validateIssuerFormData = (formFields) => {
         };
     }
 
-    const properties = {
-        issuer: formFields.issuer,
-        'jwks-url': formFields['jwks-url'],
-        audience: formFields.audience,
-        'client-id': formFields['client-id']
-    };
-
-    // Validate required properties (maintaining original message format)
-    if (!properties.issuer || !properties['jwks-url']) {
+    // Validate issuer URI is always required
+    if (!formFields.issuer) {
         return {
             isValid: false,
-            error: new Error(i18n['issuerConfigEditor.error.requiredFields'] || 'Issuer URI and JWKS URL are required.')
+            error: new Error(i18n['issuerConfigEditor.error.issuerRequired'] || 'Issuer URI is required.')
         };
+    }
+
+    // Validate based on JWKS type
+    const jwksType = formFields['jwks-type'] || 'url';
+    switch (jwksType) {
+        case 'url':
+            if (!formFields['jwks-url']) {
+                return {
+                    isValid: false,
+                    error: new Error(i18n['issuerConfigEditor.error.jwksUrlRequired'] || 'JWKS URL is required when using URL source type.')
+                };
+            }
+            break;
+        case 'file':
+            if (!formFields['jwks-file']) {
+                return {
+                    isValid: false,
+                    error: new Error(i18n['issuerConfigEditor.error.jwksFileRequired'] || 'JWKS file path is required when using file source type.')
+                };
+            }
+            break;
+        case 'memory':
+            if (!formFields['jwks-content']) {
+                return {
+                    isValid: false,
+                    error: new Error(i18n['issuerConfigEditor.error.jwksContentRequired'] || 'JWKS content is required when using memory source type.')
+                };
+            }
+            break;
     }
 
     // Optional: Add enhanced validation for URL formats (but don't fail for now)
@@ -590,18 +854,50 @@ const _validateIssuerFormData = (formFields) => {
  */
 const _createPropertyUpdates = (issuerName, formFields) => {
     const properties = {
+        'jwks-type': formFields['jwks-type'] || 'url',
         issuer: formFields.issuer,
         'jwks-url': formFields['jwks-url'],
+        'jwks-file': formFields['jwks-file'],
+        'jwks-content': formFields['jwks-content'],
         audience: formFields.audience,
         'client-id': formFields['client-id']
     };
 
     const updates = {};
-    Object.keys(properties).forEach(key => {
-        if (properties[key]) {
-            updates[`issuer.${issuerName}.${key}`] = properties[key];
-        }
-    });
+    const jwksType = properties['jwks-type'];
+
+    // Always include jwks-type and issuer
+    updates[`issuer.${issuerName}.jwks-type`] = jwksType;
+    if (properties.issuer) {
+        updates[`issuer.${issuerName}.issuer`] = properties.issuer;
+    }
+
+    // Include only the relevant JWKS source based on type
+    switch (jwksType) {
+        case 'url':
+            if (properties['jwks-url']) {
+                updates[`issuer.${issuerName}.jwks-url`] = properties['jwks-url'];
+            }
+            break;
+        case 'file':
+            if (properties['jwks-file']) {
+                updates[`issuer.${issuerName}.jwks-file`] = properties['jwks-file'];
+            }
+            break;
+        case 'memory':
+            if (properties['jwks-content']) {
+                updates[`issuer.${issuerName}.jwks-content`] = properties['jwks-content'];
+            }
+            break;
+    }
+
+    // Include optional properties if present
+    if (properties.audience) {
+        updates[`issuer.${issuerName}.audience`] = properties.audience;
+    }
+    if (properties['client-id']) {
+        updates[`issuer.${issuerName}.client-id`] = properties['client-id'];
+    }
 
     return updates;
 };
@@ -611,42 +907,41 @@ const _createPropertyUpdates = (issuerName, formFields) => {
  * @param {string} processorId - The processor ID to save to
  * @param {string} issuerName - The issuer name
  * @param {object} updates - The property updates
- * @param {object} $errorContainer - The error display container
+ * @param {HTMLElement} errorContainer - The error display container
  */
-const _saveIssuerToServer = async (processorId, issuerName, updates, $errorContainer) => {
+const _saveIssuerToServer = async (processorId, issuerName, updates, errorContainer) => {
     try {
         await apiClient.updateProcessorProperties(processorId, updates);
-        displayUiSuccess($errorContainer, i18n['issuerConfigEditor.success.saved'] || 'Issuer configuration saved successfully.');
+        displayUiSuccess(errorContainer, i18n['issuerConfigEditor.success.saved'] || 'Issuer configuration saved successfully.');
     } catch (error) {
-        displayUiError($errorContainer, error, i18n, 'issuerConfigEditor.error.saveFailedTitle');
+        displayUiError(errorContainer, error, i18n, 'issuerConfigEditor.error.saveFailedTitle');
     }
 };
 
 /**
  * Handles the standalone mode save operation for issuer configuration.
- * @param {object} $errorContainer - The error display container
+ * @param {HTMLElement} errorContainer - The error display container
  */
-const _saveIssuerStandalone = ($errorContainer) => {
-    displayUiSuccess($errorContainer, i18n['issuerConfigEditor.success.savedStandalone'] || 'Issuer configuration saved successfully (standalone mode).');
+const _saveIssuerStandalone = (errorContainer) => {
+    displayUiSuccess(errorContainer, i18n['issuerConfigEditor.success.savedStandalone'] || 'Issuer configuration saved successfully (standalone mode).');
 };
 
 /**
      * Saves an issuer configuration.
      *
-     * @param {object} form - The issuer form
-     * @param {object} $errorContainer - The error display container
+     * @param {HTMLElement} form - The issuer form
+     * @param {HTMLElement} errorContainer - The error display container
      * @param {string} [processorId] - The processor ID (optional, for server mode)
      */
-const saveIssuer = async (form, $errorContainer, processorId = null) => {
-    $errorContainer.empty();
+const saveIssuer = async (form, errorContainer, processorId = null) => {
+    errorContainer.innerHTML = '';
 
     // Extract and validate form data
-    const $form = $(form);
-    const formFields = _extractFormFields($form);
+    const formFields = _extractFormFields(form);
     const validation = _validateIssuerFormData(formFields);
 
     if (!validation.isValid) {
-        displayUiError($errorContainer, validation.error, i18n, 'issuerConfigEditor.error.title');
+        displayUiError(errorContainer, validation.error, i18n, 'issuerConfigEditor.error.title');
         return;
     }
 
@@ -655,9 +950,9 @@ const saveIssuer = async (form, $errorContainer, processorId = null) => {
 
     // Save based on mode (server vs standalone)
     if (processorId) {
-        await _saveIssuerToServer(processorId, issuerName, updates, $errorContainer);
+        await _saveIssuerToServer(processorId, issuerName, updates, errorContainer);
     } else {
-        _saveIssuerStandalone($errorContainer);
+        _saveIssuerStandalone(errorContainer);
     }
 };
 
@@ -669,41 +964,41 @@ const saveIssuer = async (form, $errorContainer, processorId = null) => {
  */
 const _createRemovalUpdates = (properties, issuerName) => {
     const updates = {};
-    Object.keys(properties).forEach(key => {
+    for (const key of Object.keys(properties)) {
         if (key.startsWith(`issuer.${issuerName}.`)) {
             updates[key] = null;
         }
-    });
+    }
     return updates;
 };
 
 /**
  * Displays removal success message in the global error container.
- * @param {object} $globalErrorContainer - The global error display container
+ * @param {HTMLElement} globalErrorContainer - The global error display container
  * @param {string} issuerName - The name of the removed issuer
  * @param {boolean} isStandalone - Whether this is standalone mode
  */
-const _displayRemovalSuccess = ($globalErrorContainer, issuerName, isStandalone = false) => {
-    if (!$globalErrorContainer) return;
+const _displayRemovalSuccess = (globalErrorContainer, issuerName, isStandalone = false) => {
+    if (!globalErrorContainer) return;
 
     const message = isStandalone
         ? `Issuer "${issuerName}" removed (standalone mode).`
         : `Issuer "${issuerName}" removed successfully.`;
 
-    displayUiSuccess($globalErrorContainer, message);
-    $globalErrorContainer.show();
+    displayUiSuccess(globalErrorContainer, message);
+    globalErrorContainer.style.display = 'block';
 };
 
 /**
  * Displays removal error message in the global error container.
- * @param {object} $globalErrorContainer - The global error display container
+ * @param {HTMLElement} globalErrorContainer - The global error display container
  * @param {Error|string} error - The error to display
  */
-const _displayRemovalError = ($globalErrorContainer, error) => {
-    if ($globalErrorContainer) {
+const _displayRemovalError = (globalErrorContainer, error) => {
+    if (globalErrorContainer) {
         const errorObj = typeof error === 'string' ? new Error(error) : error;
-        displayUiError($globalErrorContainer, errorObj, i18n, 'issuerConfigEditor.error.removeFailedTitle');
-        $globalErrorContainer.show();
+        displayUiError(globalErrorContainer, errorObj, i18n, 'issuerConfigEditor.error.removeFailedTitle');
+        globalErrorContainer.style.display = 'block';
     } else {
         const message = typeof error === 'string' ? error : error.message;
         // eslint-disable-next-line no-console
@@ -715,9 +1010,9 @@ const _displayRemovalError = ($globalErrorContainer, error) => {
  * Removes issuer properties from the server.
  * @param {string} processorId - The processor ID
  * @param {string} issuerName - The issuer name to remove
- * @param {object} $globalErrorContainer - The global error display container
+ * @param {HTMLElement} globalErrorContainer - The global error display container
  */
-const _removeIssuerFromServer = async (processorId, issuerName, $globalErrorContainer) => {
+const _removeIssuerFromServer = async (processorId, issuerName, globalErrorContainer) => {
     try {
         const response = await apiClient.getProcessorProperties(processorId);
         const properties = response.properties || {};
@@ -730,47 +1025,43 @@ const _removeIssuerFromServer = async (processorId, issuerName, $globalErrorCont
         }
 
         await apiClient.updateProcessorProperties(processorId, updates);
-        _displayRemovalSuccess($globalErrorContainer, issuerName, false);
+        _displayRemovalSuccess(globalErrorContainer, issuerName, false);
     } catch (error) {
-        _displayRemovalError($globalErrorContainer, error);
+        _displayRemovalError(globalErrorContainer, error);
     }
 };
 
 /**
      * Removes an issuer configuration.
      *
-     * @param {object} form - The jQuery object for the issuer form.
+     * @param {HTMLElement} form - The issuer form element.
      * @param {string} issuerNameFromClick - The issuer name obtained from the input field at click time.
      */
 const removeIssuer = async (form, issuerNameFromClick) => {
-    $(form).remove();
+    form.remove();
 
-    const processorId = getProcessorIdFromUrl(window.location.href);
+    const processorId = getProcessorIdFromUrl(globalThis.location.href);
     const issuerName = issuerNameFromClick;
-    const $globalErrorContainer = _findGlobalErrorContainer();
+    const globalErrorContainer = _findGlobalErrorContainer();
 
     if (issuerName && processorId) {
         // Server mode: remove from processor properties
-        await _removeIssuerFromServer(processorId, issuerName, $globalErrorContainer);
+        await _removeIssuerFromServer(processorId, issuerName, globalErrorContainer);
     } else if (issuerName && !processorId) {
         // Standalone mode: just show success message
-        _displayRemovalSuccess($globalErrorContainer, issuerName, true);
+        _displayRemovalSuccess(globalErrorContainer, issuerName, true);
     } else {
         // Handle missing issuer name or processor ID
         const errorMessage = !issuerName
             ? 'Issuer name missing for removal'
             : 'Cannot remove issuer: no processor context found';
-        _displayRemovalError($globalErrorContainer, errorMessage);
+        _displayRemovalError(globalErrorContainer, errorMessage);
     }
 };
 
 /**
  * Initializes the component.
  *
- * @param {HTMLElement} element - The DOM element to initialize in
- * @param {Function} callback - The callback function
- * @param {string} currentTestUrlFromArg - URL for testing purposes (optional)
- */
 /**
  * Validates initialization parameters and handles early returns.
  * @param {HTMLElement} element - The DOM element to initialize in
@@ -789,11 +1080,10 @@ const _validateInitializationParams = (element, callback) => {
 
 /**
  * Determines the effective URL for initialization.
- * @param {string} [currentTestUrlFromArg] - URL for testing purposes (optional)
  * @returns {string} The effective URL to use for initialization
  */
-const _getEffectiveInitUrl = (currentTestUrlFromArg) => {
-    return currentTestUrlFromArg || window.location.href;
+const _getEffectiveInitUrl = () => {
+    return globalThis.location.href;
 };
 
 /**
@@ -827,17 +1117,17 @@ const _executeCallback = (callback) => {
  * Initializes the component.
  * @param {HTMLElement} element - The DOM element to initialize in
  * @param {Function} callback - The callback function
- * @param {string} currentTestUrlFromArg - URL for testing purposes (optional)
+ * @param {string} [url] - The URL to derive processor ID from (optional)
  */
-export const init = async (element, callback, currentTestUrlFromArg) => {
+export const init = async (element, callback, url = null) => {
     // Validate parameters and handle early returns
     if (!_validateInitializationParams(element, callback)) {
         return;
     }
 
     try {
-        // Determine initialization URL
-        const effectiveUrlForInit = _getEffectiveInitUrl(currentTestUrlFromArg);
+        // Determine initialization URL (use provided URL or fallback to window location)
+        const effectiveUrlForInit = url || _getEffectiveInitUrl();
 
         // Setup lifecycle manager for cleanup tracking
         _setupLifecycleManager(effectiveUrlForInit);

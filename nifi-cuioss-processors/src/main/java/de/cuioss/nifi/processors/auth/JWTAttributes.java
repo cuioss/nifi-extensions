@@ -65,6 +65,11 @@ public final class JWTAttributes {
          * Whether the token passed authorization checks.
          */
         public static final String AUTHORIZATION_PASSED = "jwt.authorization.passed";
+
+        /**
+         * Whether a JWT token is present in the request.
+         */
+        public static final String PRESENT = "jwt.present";
     }
 
     /**
@@ -144,6 +149,17 @@ public final class JWTAttributes {
          * Prefix for individual scopes with index.
          */
         public static final String SCOPES_PREFIX = "jwt.scopes.";
+
+        /**
+         * Whether the token is authorized based on scope/role checks.
+         */
+        public static final String AUTHORIZED = "jwt.authorized";
+
+        /**
+         * Whether authorization was bypassed (explicitly configured).
+         * BREAKING CHANGE: Added for fail-secure authorization feature.
+         */
+        public static final String BYPASSED = "jwt.authorization.bypassed";
     }
 
     /**

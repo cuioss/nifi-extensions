@@ -41,5 +41,85 @@
         <mime-type>image/svg+xml</mime-type>
     </mime-mapping>
 
+    <!-- API Key Authentication Filter -->
+    <filter>
+        <filter-name>ApiKeyAuthenticationFilter</filter-name>
+        <filter-class>de.cuioss.nifi.ui.servlets.ApiKeyAuthenticationFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>ApiKeyAuthenticationFilter</filter-name>
+        <url-pattern>/nifi-api/processors/jwt/*</url-pattern>
+    </filter-mapping>
+    <!-- Additional mapping for E2E test compatibility -->
+    <filter-mapping>
+        <filter-name>ApiKeyAuthenticationFilter</filter-name>
+        <url-pattern>/api/token/*</url-pattern>
+    </filter-mapping>
+    <!-- Mapping for JWT endpoints accessed directly -->
+    <filter-mapping>
+        <filter-name>ApiKeyAuthenticationFilter</filter-name>
+        <url-pattern>/jwt/*</url-pattern>
+    </filter-mapping>
+
+    <!-- JWT API Servlets -->
+    <servlet>
+        <servlet-name>JwtVerificationServlet</servlet-name>
+        <servlet-class>de.cuioss.nifi.ui.servlets.JwtVerificationServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>JwtVerificationServlet</servlet-name>
+        <url-pattern>/nifi-api/processors/jwt/verify-token</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>JwtVerificationServlet</servlet-name>
+        <url-pattern>/jwt/verify-token</url-pattern>
+    </servlet-mapping>
+    <!-- Additional mapping for E2E test compatibility -->
+    <servlet-mapping>
+        <servlet-name>JwtVerificationServlet</servlet-name>
+        <url-pattern>/api/token/verify</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>JwksValidationServlet</servlet-name>
+        <servlet-class>de.cuioss.nifi.ui.servlets.JwksValidationServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>JwksValidationServlet</servlet-name>
+        <url-pattern>/nifi-api/processors/jwt/validate-jwks-url</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>JwksValidationServlet</servlet-name>
+        <url-pattern>/nifi-api/processors/jwt/validate-jwks-file</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>JwksValidationServlet</servlet-name>
+        <url-pattern>/nifi-api/processors/jwt/validate-jwks-content</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>JwksValidationServlet</servlet-name>
+        <url-pattern>/jwt/validate-jwks-url</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>JwksValidationServlet</servlet-name>
+        <url-pattern>/jwt/validate-jwks-file</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>JwksValidationServlet</servlet-name>
+        <url-pattern>/jwt/validate-jwks-content</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>MetricsServlet</servlet-name>
+        <servlet-class>de.cuioss.nifi.ui.servlets.MetricsServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>MetricsServlet</servlet-name>
+        <url-pattern>/nifi-api/processors/jwt/metrics</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>MetricsServlet</servlet-name>
+        <url-pattern>/jwt/metrics</url-pattern>
+    </servlet-mapping>
 
 </web-app>

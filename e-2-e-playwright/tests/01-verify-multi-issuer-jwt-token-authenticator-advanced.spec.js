@@ -4,69 +4,45 @@
  * @version 2.0.0
  */
 
-import { test } from "@playwright/test";
+import { test, expect } from "../fixtures/test-fixtures.js";
 import { ProcessorService } from "../utils/processor.js";
 import { AuthService } from "../utils/auth-service.js";
 import {
     saveTestBrowserLogs,
-    setupStrictErrorDetection,
+    setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
 import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
 import { processorLogger } from "../utils/shared-logger.js";
+import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     // Make sure we're logged in before each test
-    test.beforeEach(async ({ page }, testInfo) => {
-        try {
-            // Setup error detection before login to catch any potential errors
-            await setupStrictErrorDetection(page, testInfo, false);
+    test.beforeEach(async ({ page, processorManager }, testInfo) => {
+        // Setup auth-aware error detection
+        await setupAuthAwareErrorDetection(page, testInfo);
 
-            // Login first before going to JWT UI
-            const authService = new AuthService(page);
-            await authService.ensureReady();
+        // Login first before going to JWT UI
+        const authService = new AuthService(page);
+        await authService.ensureReady();
 
-            // Skip critical error detection for this test since we navigate directly to JWT UI
-            // await checkCriticalErrors(page, testInfo);
-        } catch (error) {
-            // Save console logs immediately if beforeEach fails
-            try {
-                await saveTestBrowserLogs(testInfo);
-            } catch (logError) {
-                console.warn(
-                    "Failed to save console logs during beforeEach error:",
-                    logError.message,
-                );
-            }
-            throw error; // Re-throw the original error
-        }
+        await authService.verifyCanvasVisible();
+
+        // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
+        await processorManager.ensureProcessorOnCanvas();
     });
 
-    test.afterEach(async ({ page: _ }, testInfo) => {
+    test.afterEach(async ({ page: _page }, testInfo) => {
         // Always try to save console logs first, regardless of test outcome
         try {
             await saveTestBrowserLogs(testInfo);
         } catch (error) {
-            console.warn(
-                "Failed to save console logs in afterEach:",
-                error.message,
+            logTestWarning(
+                "afterEach",
+                `Failed to save console logs in afterEach: ${error.message}`,
             );
         }
 
-        // Skip critical error check for this test since we navigate directly to JWT UI
-        // Final check for critical errors before test completion (only if test passed)
-        // if (testInfo.status === 'passed') {
-        //     try {
-        //         await checkForCriticalErrors(page, testInfo);
-        //     } catch (error) {
-        //         // If critical errors are found, save logs again with the error info
-        //         try {
-        //             await saveTestBrowserLogs(testInfo);
-        //         } catch (logError) {
-        //             console.warn('Failed to save console logs after critical error:', logError.message);
-        //         }
-        //         throw error;
-        //     }
-        // }
+        // Critical error check is handled by setupAuthAwareErrorDetection
 
         // Cleanup critical error detection
         cleanupCriticalErrorDetection();
@@ -75,87 +51,93 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     test("should access and verify advanced configuration", async ({
         page,
     }, testInfo) => {
-        const _processorService = new ProcessorService(page, testInfo);
+        const processorService = new ProcessorService(page, testInfo);
 
-        // Navigate directly to JWT UI to test advanced configuration
-        // Note: We skip canvas verification since we're going directly to the JWT UI
-        processorLogger.info(
-            "Navigating directly to JWT UI advanced configuration",
-        );
+        // Find JWT processor using the verified utility
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
 
-        try {
-            await page.goto(
-                "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/",
-                {
-                    waitUntil: "networkidle",
-                    timeout: 15000,
-                },
-            );
+        processorLogger.info(`Found processor: ${processor.type}`);
 
-            await page.waitForTimeout(2000);
+        // Open Advanced UI using the verified utility
+        const advancedOpened = await processorService.openAdvancedUI(processor);
 
-            // Verify advanced configuration elements
-            const advancedElements = [
-                {
-                    selector: 'h3:has-text("Issuer Configurations")',
-                    name: "Issuer Configurations header",
-                },
-                {
-                    selector: 'button:has-text("Add Issuer")',
-                    name: "Add Issuer button",
-                },
-                {
-                    selector: 'input[placeholder*="Issuer Name"]',
-                    name: "Issuer Name input",
-                },
-                {
-                    selector: 'button:has-text("Verify Token")',
-                    name: "Verify Token button",
-                },
-                {
-                    selector: 'h3:has-text("Verification Results")',
-                    name: "Verification Results section",
-                },
-            ];
-
-            let elementsFound = 0;
-            for (const element of advancedElements) {
-                try {
-                    const el = page.locator(element.selector);
-                    if (await el.isVisible()) {
-                        elementsFound++;
-                        processorLogger.info(` Found: ${element.name}`);
-                    } else {
-                        processorLogger.warn(` Not found: ${element.name}`);
-                    }
-                } catch {
-                    processorLogger.warn(` Error checking: ${element.name}`);
-                }
-            }
-
-            // Take screenshot of advanced configuration
-            await page.screenshot({
-                path: `target/test-results/jwt-advanced-configuration-${Date.now()}.png`,
-                fullPage: true,
-            });
-            processorLogger.info(
-                "Screenshot of JWT advanced configuration saved",
-            );
-
-            if (elementsFound >= 3) {
-                processorLogger.success(
-                    `JWT UI advanced configuration verified with ${elementsFound}/${advancedElements.length} elements`,
-                );
-            } else {
-                processorLogger.warn(
-                    `Only ${elementsFound}/${advancedElements.length} advanced configuration elements found`,
-                );
-            }
-        } catch (navError) {
-            processorLogger.error(
-                `Failed to navigate to JWT UI: ${navError.message}`,
-            );
-            throw navError;
+        if (!advancedOpened) {
+            throw new Error("Failed to open Advanced UI via right-click menu");
         }
+
+        // Get the custom UI frame
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Could not find custom UI iframe");
+        }
+
+        // Verify advanced configuration elements on the Configuration tab
+        const configTabElements = [
+            {
+                selector: 'h2:has-text("Issuer Configurations")',
+                name: "Issuer Configurations header",
+            },
+            {
+                selector: 'button:has-text("Add Issuer")',
+                name: "Add Issuer button",
+            },
+        ];
+
+        // Verify all required elements are present - no workarounds
+        for (const element of configTabElements) {
+            const el = customUIFrame.locator(element.selector);
+            await expect(el).toBeVisible({
+                timeout: 5000,
+            });
+            processorLogger.info(` ✓ Found: ${element.name}`);
+        }
+
+        // Take screenshot of advanced configuration
+        await page.screenshot({
+            path: `${testInfo.outputDir}/jwt-advanced-configuration.png`,
+            fullPage: true,
+        });
+        processorLogger.info("Screenshot of JWT advanced configuration saved");
+
+        // All elements verified - test will fail if any are missing
+
+        // Test actual functionality - try to add an issuer
+        const addIssuerButton = customUIFrame.locator(
+            'button:has-text("Add Issuer")',
+        );
+        await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
+        await addIssuerButton.click();
+        processorLogger.info("Successfully clicked Add Issuer button");
+
+        // Wait for form to appear and check for new issuer name input
+        await page.waitForTimeout(1000); // Give form time to render
+
+        // Count issuer inputs to see if a new one was added
+        const issuerInputCount = await customUIFrame
+            .locator("input.issuer-name")
+            .count();
+        processorLogger.info(`Found ${issuerInputCount} issuer name input(s)`);
+
+        if (issuerInputCount > 0) {
+            processorLogger.info("Add Issuer form appeared successfully");
+
+            // Try to interact with the last (newest) input
+            const lastInput = customUIFrame.locator("input.issuer-name").last();
+            if (await lastInput.isVisible()) {
+                await lastInput.fill("test-issuer");
+                processorLogger.info("Filled in test issuer name");
+            }
+        } else {
+            processorLogger.info(
+                "Add Issuer form may be a modal or different structure",
+            );
+        }
+
+        processorLogger.success(
+            "JWT UI advanced configuration verified with all required elements and functionality tested",
+        );
     });
 });

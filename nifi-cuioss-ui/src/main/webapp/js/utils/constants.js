@@ -20,17 +20,16 @@
  *
  * @example
  * // Using API endpoints
- * $.ajax({
- *   url: API.ENDPOINTS.JWT_VERIFY_TOKEN,
- *   timeout: API.TIMEOUTS.DEFAULT
+ * fetch(API.ENDPOINTS.JWT_VERIFY_TOKEN, {
+ *   signal: AbortSignal.timeout(API.TIMEOUTS.DEFAULT)
  * });
  */
 export const API = {
-    /** @type {string} Base URL for JWT-specific API endpoints */
-    BASE_URL: '../nifi-api/processors/jwt',
+    /** @type {string} Base URL for JWT-specific API endpoints - relative to custom UI context */
+    BASE_URL: 'jwt',
 
     /** @type {string} Base URL for general NiFi processor endpoints */
-    NIFI_BASE_URL: '../nifi-api/processors',
+    NIFI_BASE_URL: 'nifi-api/processors',
 
     /**
      * API endpoint paths for various operations
@@ -50,10 +49,10 @@ export const API = {
         SET_ISSUER_CONFIG: '/issuer-config',
 
         /** @type {string} Full URL for JWKS validation endpoint */
-        JWKS_VALIDATE_URL: '../nifi-api/processors/jwks/validate-url',
+        JWKS_VALIDATE_URL: 'jwt/validate-jwks-url',
 
         /** @type {string} Full URL for JWT token verification endpoint */
-        JWT_VERIFY_TOKEN: '../nifi-api/processors/jwt/verify-token'
+        JWT_VERIFY_TOKEN: 'jwt/verify-token'
     },
 
     /**
@@ -236,7 +235,9 @@ export const COMPONENTS = {
 export const NIFI = {
     COMPONENT_TABS: {
         ISSUER_CONFIG: 'jwt.validation.issuer.configuration',
-        TOKEN_VERIFICATION: 'jwt.validation.token.verification'
+        TOKEN_VERIFICATION: 'jwt.validation.token.verification',
+        METRICS: 'jwt.validation.metrics',
+        HELP: 'jwt.validation.help'
     },
     PROCESSOR_TYPES: {
         MULTI_ISSUER_JWT_AUTHENTICATOR: 'MultiIssuerJWTTokenAuthenticator'
@@ -271,7 +272,11 @@ export const UI_TEXT = {
     },
     I18N_KEYS: {
         JWT_VALIDATOR_LOADING: 'jwt.validator.loading',
-        JWT_VALIDATOR_TITLE: 'jwt.validator.title'
+        JWT_VALIDATOR_TITLE: 'jwt.validator.title',
+        METRICS_TITLE: 'jwt.validator.metrics.title',
+        METRICS_TAB_NAME: 'jwt.validator.metrics.tab.name',
+        HELP_TITLE: 'jwt.validator.help.title',
+        HELP_TAB_NAME: 'jwt.validator.help.tab.name'
     }
 };
 
@@ -281,10 +286,11 @@ export const UI_TEXT = {
 export const VALIDATION = {
     PATTERNS: {
         PROCESSOR_ID: /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i,
-        URL: new RegExp('^https?:\\/\\/[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?' +
-                        '(\\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*([/?#].*)?$'),
-        HTTPS_URL: new RegExp('^https:\\/\\/[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?' +
-                               '(\\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*([/?#].*)?$'),
+        URL: new RegExp(String.raw`^https?:\/\/[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?` +
+                        String.raw`(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*([/?#].*)?$`),
+        HTTPS_URL: new RegExp(
+            String.raw`^https:\/\/[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?` +
+            String.raw`(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*([/?#].*)?$`),
         JWT_TOKEN: /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/,
         EMAIL: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
         SAFE_STRING: /^[a-zA-Z0-9._-]+$/
@@ -300,87 +306,3 @@ export const VALIDATION = {
     }
 };
 
-/**
- * Environment Detection utilities for determining runtime context.
- */
-
-/** @type {boolean|null} Test override for localhost detection (null = use auto-detection) */
-let isLocalhostOverride = null;
-
-/**
- * Unified localhost detection utility that consolidates multiple detection methods.
- *
- * This function provides a centralized way to determine if the application is running
- * in a localhost/development environment. It supports test overrides and multiple
- * detection strategies for maximum compatibility.
- *
- * Detection priority:
- * 1. Test override (if set via setIsLocalhostForTesting)
- * 2. Global test mock (for unit test compatibility)
- * 3. Automatic hostname/URL analysis
- *
- * @returns {boolean} True if running in localhost/development environment
- *
- * @example
- * // Check if in development environment
- * if (getIsLocalhost()) {
- *   console.log('Running in development mode');
- * }
- *
- * @example
- * // Use in conditional API calls
- * const apiUrl = getIsLocalhost() ? 'http://localhost:8080' : 'https://api.prod.com';
- */
-export const getIsLocalhost = () => {
-    // Test override takes precedence
-    if (isLocalhostOverride !== null) {
-        return isLocalhostOverride;
-    }
-
-    // Global test mock support (for issuerConfigEditor compatibility)
-    /* eslint-disable no-undef */
-    if (typeof global !== 'undefined' && typeof global.getIsLocalhost === 'function') {
-        return global.getIsLocalhost();
-    }
-    /* eslint-enable no-undef */
-
-    // Environment check
-    if (typeof window === 'undefined' || !window.location) {
-        return false;
-    }
-
-    const hostname = window.location.hostname || '';
-    const href = window.location.href || '';
-
-    // Comprehensive localhost detection
-    return hostname === 'localhost' ||
-           hostname === '127.0.0.1' ||
-           hostname.startsWith('192.168.') ||
-           hostname.endsWith('.local') ||
-           href.includes('localhost') ||
-           href.includes('127.0.0.1');
-};
-
-/**
- * Sets a test override for localhost detection to enable predictable testing.
- *
- * This function allows tests to override the automatic localhost detection
- * with a fixed value, ensuring consistent test behavior regardless of the
- * actual runtime environment.
- *
- * @param {boolean|null} value - Override value: true (force localhost),
- *                               false (force non-localhost), null (reset to auto-detection)
- *
- * @example
- * // Force localhost detection in tests
- * setIsLocalhostForTesting(true);
- * console.log(getIsLocalhost()); // Always returns true
- *
- * @example
- * // Reset to automatic detection
- * setIsLocalhostForTesting(null);
- * console.log(getIsLocalhost()); // Returns actual environment detection
- */
-export const setIsLocalhostForTesting = (value) => {
-    isLocalhostOverride = (value === null) ? null : !!value;
-};

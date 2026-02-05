@@ -19,8 +19,8 @@ describe('constants utility', () => {
             expect(constants.API.ENDPOINTS.VERIFY_TOKEN).toBe('/verify-token');
             expect(constants.API.ENDPOINTS.GET_ISSUER_CONFIG).toBe('/issuer-config');
             expect(constants.API.ENDPOINTS.SET_ISSUER_CONFIG).toBe('/issuer-config');
-            expect(constants.API.ENDPOINTS.JWKS_VALIDATE_URL).toBe('../nifi-api/processors/jwks/validate-url');
-            expect(constants.API.ENDPOINTS.JWT_VERIFY_TOKEN).toBe('../nifi-api/processors/jwt/verify-token');
+            expect(constants.API.ENDPOINTS.JWKS_VALIDATE_URL).toBe('jwt/validate-jwks-url');
+            expect(constants.API.ENDPOINTS.JWT_VERIFY_TOKEN).toBe('jwt/verify-token');
         });
 
         it('should have correct timeout values', () => {
@@ -123,88 +123,6 @@ describe('constants utility', () => {
         it('should have correct help text keys', () => {
             expect(constants.UI_TEXT.HELP_TEXT_KEYS.TOKEN_LOCATION).toBe('property.token.location.help');
             expect(constants.UI_TEXT.HELP_TEXT_KEYS.TOKEN_HEADER).toBe('property.token.header.help');
-        });
-    });
-
-    describe('getIsLocalhost function', () => {
-        const originalLocation = window.location;
-
-        beforeEach(() => {
-            // Mock window.location
-            delete window.location;
-            window.location = { hostname: '' };
-        });
-
-        afterEach(() => {
-            // Restore original window.location
-            window.location = originalLocation;
-        });
-
-        it('should return true for localhost', () => {
-            window.location.hostname = 'localhost';
-            expect(constants.getIsLocalhost()).toBe(true);
-        });
-
-        it('should return true for 127.0.0.1', () => {
-            window.location.hostname = '127.0.0.1';
-            expect(constants.getIsLocalhost()).toBe(true);
-        });
-
-        it('should return false for other hostnames', () => {
-            window.location.hostname = 'example.com';
-            expect(constants.getIsLocalhost()).toBe(false);
-        });
-
-        it('should handle missing hostname property', () => {
-            delete window.location.hostname;
-            window.location.href = 'https://example.com/test';
-            expect(constants.getIsLocalhost()).toBe(false);
-        });
-
-        it('should return true for localhost detected via href when hostname missing', () => {
-            delete window.location.hostname;
-            window.location.href = 'http://localhost:8080/nifi';
-            expect(constants.getIsLocalhost()).toBe(true);
-        });
-
-        it('should handle 192.168.x hostnames', () => {
-            window.location.hostname = '192.168.1.100';
-            expect(constants.getIsLocalhost()).toBe(true);
-        });
-
-        it('should handle .local hostnames', () => {
-            window.location.hostname = 'myhost.local';
-            expect(constants.getIsLocalhost()).toBe(true);
-        });
-    });
-
-    describe('setIsLocalhostForTesting function', () => {
-        afterEach(() => {
-            // Reset the override after each test
-            constants.setIsLocalhostForTesting(null);
-        });
-
-        it('should override getIsLocalhost when set to true', () => {
-            constants.setIsLocalhostForTesting(true);
-            expect(constants.getIsLocalhost()).toBe(true);
-        });
-
-        it('should override getIsLocalhost when set to false', () => {
-            constants.setIsLocalhostForTesting(false);
-            expect(constants.getIsLocalhost()).toBe(false);
-        });
-
-        it('should reset override when set to null', () => {
-            // First set an override
-            constants.setIsLocalhostForTesting(true);
-            expect(constants.getIsLocalhost()).toBe(true);
-
-            // Then reset it
-            constants.setIsLocalhostForTesting(null);
-
-            // Now it should use the actual hostname
-            const isActuallyLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-            expect(constants.getIsLocalhost()).toBe(isActuallyLocalhost);
         });
     });
 });

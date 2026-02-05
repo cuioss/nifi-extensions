@@ -25,6 +25,7 @@ image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-exten
 * link:nifi-cuioss-processors/README.md[NiFi CUI-OSS Processors]
 * link:integration-testing/README.adoc[Integration Testing Environment]
 * link:e-2-e-playwright/README.adoc[End-to-End Testing Documentation]
+* link:e-2-e-playwright/docs/accessibility-testing-guide.adoc[Accessibility Testing Guide]
 
 == Components
 
@@ -39,6 +40,7 @@ Complete Playwright-based end-to-end testing framework with:
 * Custom Playwright utilities for NiFi UI automation
 * Self-verification unit tests (24 tests) 
 * Comprehensive E2E test suites for processor configuration and token validation
+* **WCAG 2.1 Level AA accessibility testing** with automated compliance checks
 * Console error monitoring with allowlist management
 * **Complete CI/CD integration** with GitHub Actions
 * Docker-based test environment with NiFi and Keycloak
@@ -111,7 +113,7 @@ All frontend configuration is centralized in the root POM properties.
 
 [IMPORTANT]
 ====
-All contributors and AI tools (including GitHub Copilot, Claude, and others) **must follow the AI Development Guidelines in** link:doc/ai-rules.md[doc/ai-rules.md].
+All contributors and AI tools (including GitHub Copilot, Claude, and others) **must follow the AI Development Guidelines in** link:agents.md[agents.md].
 
-These rules are mandatory for all code, documentation, and configuration changes. See the file for process, code style, testing, logging, and documentation standards.
+These guidelines are mandatory for all code, documentation, and configuration changes. See the file for project architecture, development environment, testing, code style, and process standards.
 ====

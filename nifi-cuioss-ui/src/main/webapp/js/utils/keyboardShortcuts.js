@@ -4,7 +4,6 @@
  * Keyboard shortcuts utility for NiFi CUIOSS UI components.
  * Provides keyboard navigation and shortcuts for common actions.
  */
-import $ from 'cash-dom';
 
 /**
  * Map of keyboard shortcuts to actions
@@ -47,7 +46,10 @@ export const initKeyboardShortcuts = () => {
     cleanup();
 
     // Add global keydown listener
-    $(document).on('keydown.nifi-jwt-shortcuts', handleKeydown);
+    document.addEventListener('keydown', handleKeydown);
+
+    // Store handler reference for cleanup
+    globalThis.__keyboardShortcutHandler = handleKeydown;
 
     // Show shortcuts hint
     showShortcutsHint();
@@ -88,14 +90,14 @@ const getKeyString = (event) => {
     }
 
     // Add main key
-    const key = event.key.toLowerCase();
+    const key = event.key ? event.key.toLowerCase() : '';
     if (key === 'enter') {
         parts.push('enter');
     } else if (key === 'escape') {
         parts.push('escape');
     } else if (key === 'f1') {
         parts.push('f1');
-    } else if (key.match(/^[a-z0-9?]$/)) {
+    } else if (key?.match(/^[a-z0-9?]$/)) {
         parts.push(key);
     }
 
@@ -109,7 +111,7 @@ const getKeyString = (event) => {
  */
 const isValidContext = (event) => {
     const target = event.target;
-    const tagName = target.tagName.toLowerCase();
+    const tagName = target.tagName ? target.tagName.toLowerCase() : '';
 
     // Don't trigger shortcuts when typing in input fields (except for specific shortcuts)
     if (tagName === 'input' || tagName === 'textarea') {
@@ -126,6 +128,15 @@ const isValidContext = (event) => {
  * @param {string} action - The action to execute
  */
 const executeAction = (action) => {
+    // Check if it's a custom action
+    if (action?.startsWith('custom-')) {
+        const customHandler = activeHandlers.get(action);
+        if (customHandler && customHandler.handler) {
+            customHandler.handler();
+            return;
+        }
+    }
+
     switch (action) {
         case 'verify-token':
             triggerTokenVerification();
@@ -134,7 +145,7 @@ const executeAction = (action) => {
         case 'goto-tab-1':
         case 'goto-tab-2':
         case 'goto-tab-3':
-            switchToTab(parseInt(action.split('-')[2]) - 1);
+            switchToTab(Number.parseInt(action.split('-')[2]) - 1);
             break;
 
         case 'save-form':
@@ -163,9 +174,9 @@ const executeAction = (action) => {
  * Trigger token verification if verify button is available
  */
 const triggerTokenVerification = () => {
-    const $verifyButton = $('.verify-token-button:visible:not(:disabled)');
-    if ($verifyButton.length > 0) {
-        $verifyButton.trigger('click');
+    const verifyButton = document.querySelector('.verify-token-button:not(:disabled)');
+    if (verifyButton && verifyButton.offsetParent !== null) { // Check if visible
+        verifyButton.click();
         showActionFeedback('Token verification started');
     }
 };
@@ -175,9 +186,9 @@ const triggerTokenVerification = () => {
  * @param {number} tabIndex - 0-based tab index
  */
 const switchToTab = (tabIndex) => {
-    const $tabs = $('.tab-nav-item');
-    if ($tabs.length > tabIndex) {
-        $($tabs[tabIndex]).trigger('click');
+    const tabs = document.querySelectorAll('.tab-nav-item');
+    if (tabs.length > tabIndex) {
+        tabs[tabIndex].click();
         showActionFeedback(`Switched to tab ${tabIndex + 1}`);
     }
 };
@@ -186,9 +197,13 @@ const switchToTab = (tabIndex) => {
  * Trigger form save if save button is available
  */
 const triggerFormSave = () => {
-    const $saveButton = $('button:contains("Save"):visible:not(:disabled), button:contains("Apply"):visible:not(:disabled)');
-    if ($saveButton.length > 0) {
-        $saveButton.first().trigger('click');
+    const buttons = Array.from(document.querySelectorAll('button:not(:disabled)'));
+    const saveButton = buttons.find(btn =>
+        btn.offsetParent !== null && // Check if visible
+        (btn.textContent.includes('Save') || btn.textContent.includes('Apply'))
+    );
+    if (saveButton) {
+        saveButton.click();
         showActionFeedback('Form save triggered');
     }
 };
@@ -197,9 +212,13 @@ const triggerFormSave = () => {
  * Trigger form reset if reset button is available
  */
 const triggerFormReset = () => {
-    const $resetButton = $('button:contains("Reset"):visible:not(:disabled), button:contains("Clear"):visible:not(:disabled)');
-    if ($resetButton.length > 0) {
-        $resetButton.first().trigger('click');
+    const buttons = Array.from(document.querySelectorAll('button:not(:disabled)'));
+    const resetButton = buttons.find(btn =>
+        btn.offsetParent !== null && // Check if visible
+        (btn.textContent.includes('Reset') || btn.textContent.includes('Clear'))
+    );
+    if (resetButton) {
+        resetButton.click();
         showActionFeedback('Form reset triggered');
     }
 };
@@ -209,9 +228,14 @@ const triggerFormReset = () => {
  */
 const closeDialog = () => {
     // Try to find and click close buttons
-    const $closeButton = $('.ui-dialog-titlebar-close:visible, button:contains("Cancel"):visible, button:contains("Close"):visible');
-    if ($closeButton.length > 0) {
-        $closeButton.first().trigger('click');
+    const closeButton = document.querySelector('.ui-dialog-titlebar-close') ||
+        Array.from(document.querySelectorAll('button')).find(btn =>
+            btn.offsetParent !== null && // Check if visible
+            (btn.textContent.includes('Cancel') || btn.textContent.includes('Close'))
+        );
+
+    if (closeButton) {
+        closeButton.click();
         showActionFeedback('Dialog closed');
     }
 };
@@ -265,7 +289,7 @@ const showHelpDialog = () => {
     `;
 
     // Create help modal (simplified implementation)
-    const $modal = $(`
+    const modalHtml = `
         <div class="keyboard-shortcuts-modal">
             <div class="modal-overlay"></div>
             <div class="modal-content">
@@ -273,12 +297,17 @@ const showHelpDialog = () => {
                 <button class="close-help-btn">Close</button>
             </div>
         </div>
-    `);
+    `;
 
-    $('body').append($modal);
-    $modal.find('.close-help-btn, .modal-overlay').on('click', () => {
-        $modal.remove();
-    });
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = modalHtml;
+    const modal = tempDiv.firstElementChild;
+
+    document.body.appendChild(modal);
+
+    const closeModal = () => modal.remove();
+    modal.querySelector('.close-help-btn').addEventListener('click', closeModal);
+    modal.querySelector('.modal-overlay').addEventListener('click', closeModal);
 };
 
 /**
@@ -287,18 +316,16 @@ const showHelpDialog = () => {
  */
 const showActionFeedback = (message) => {
     // Create feedback toast
-    const $feedback = $(`
-        <div class="keyboard-action-feedback">
-            ${message}
-        </div>
-    `);
+    const feedback = document.createElement('div');
+    feedback.className = 'keyboard-action-feedback';
+    feedback.textContent = message;
 
-    $('body').append($feedback);
+    document.body.appendChild(feedback);
 
     // Auto-remove after 2 seconds
     setTimeout(() => {
-        $feedback.addClass('fade-out');
-        setTimeout(() => $feedback.remove(), 300);
+        feedback.classList.add('fade-out');
+        setTimeout(() => feedback.remove(), 300);
     }, 2000);
 };
 
@@ -312,20 +339,24 @@ const showShortcutsHint = () => {
     }
 
     setTimeout(() => {
-        const $hint = $(`
+        const hintHtml = `
             <div class="shortcuts-hint">
                 <span>💡 Press <kbd>F1</kbd> or <kbd>?</kbd> for keyboard shortcuts</span>
                 <button class="close-hint">×</button>
             </div>
-        `);
+        `;
 
-        $('body').append($hint);
-        $hint.find('.close-hint').on('click', () => $hint.remove());
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = hintHtml;
+        const hint = tempDiv.firstElementChild;
+
+        document.body.appendChild(hint);
+        hint.querySelector('.close-hint').addEventListener('click', () => hint.remove());
 
         // Auto-hide after 5 seconds
         setTimeout(() => {
-            $hint.addClass('fade-out');
-            setTimeout(() => $hint.remove(), 300);
+            hint.classList.add('fade-out');
+            setTimeout(() => hint.remove(), 300);
         }, 5000);
 
         sessionStorage.setItem('nifi-jwt-shortcuts-shown', 'true');
@@ -359,9 +390,14 @@ export const unregisterShortcut = (shortcut) => {
  * Clean up keyboard shortcut handlers
  */
 export const cleanup = () => {
-    $(document).off('keydown.nifi-jwt-shortcuts');
+    if (globalThis.__keyboardShortcutHandler) {
+        document.removeEventListener('keydown', globalThis.__keyboardShortcutHandler);
+        delete globalThis.__keyboardShortcutHandler;
+    }
     activeHandlers.clear();
-    $('.keyboard-shortcuts-modal, .keyboard-action-feedback, .shortcuts-hint').remove();
+    for (const el of document.querySelectorAll('.keyboard-shortcuts-modal, .keyboard-action-feedback, .shortcuts-hint')) {
+        el.remove();
+    }
 };
 
 /**
@@ -371,7 +407,7 @@ export const cleanup = () => {
 export const getAvailableShortcuts = () => {
     const shortcuts = {};
 
-    Object.entries(SHORTCUTS).forEach(([key, action]) => {
+    for (const [key, action] of Object.entries(SHORTCUTS)) {
         switch (action) {
             case 'verify-token':
                 shortcuts[key] = 'Verify JWT token';
@@ -398,7 +434,7 @@ export const getAvailableShortcuts = () => {
                     shortcuts[key] = activeHandlers.get(action)?.description || 'Custom shortcut';
                 }
         }
-    });
+    }
 
     return shortcuts;
 };

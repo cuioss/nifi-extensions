@@ -15,8 +15,10 @@
  */
 package de.cuioss.nifi.processors.auth.config;
 
+import de.cuioss.nifi.processors.auth.util.ErrorContext;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.Getter;
+import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -30,6 +32,7 @@ import java.util.*;
 public class ConfigurationManager {
 
     private static final CuiLogger LOGGER = new CuiLogger(ConfigurationManager.class);
+    private static final String COMPONENT_NAME = "ConfigurationManager";
 
     // System property and environment variable names
     private static final String CONFIG_PATH_PROPERTY = "jwt.Config.path";
@@ -42,6 +45,7 @@ public class ConfigurationManager {
     // Environment variable prefixes
     private static final String ENV_PREFIX = "JWT_";
     private static final String ISSUER_ENV_PREFIX = "JWT_ISSUER_";
+    private static final String JWT_VALIDATION_ISSUER_PREFIX = "jwt.validation.issuer.";
 
     // Configuration file and timestamp
     private File configFile;
@@ -102,8 +106,18 @@ public class ConfigurationManager {
                     loadConfiguration();
                     lastLoadedTimestamp = lastModified;
                     return true;
-                } catch (Exception e) {
-                    LOGGER.error(e, "Failed to reload configuration, using previous configuration");
+                } catch (IllegalStateException | IllegalArgumentException | org.yaml.snakeyaml.error.YAMLException e) {
+                    // Catch configuration loading errors
+                    String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
+                            .operation("checkAndReloadConfiguration")
+                            .errorCode(ErrorContext.ErrorCodes.CONFIGURATION_ERROR)
+                            .cause(e)
+                            .build()
+                            .with("configFile", configFile.getAbsolutePath())
+                            .with("lastModified", lastModified)
+                            .buildMessage("Failed to reload configuration, using previous configuration");
+
+                    LOGGER.error(e, contextMessage);
                 }
             }
         }
@@ -165,15 +179,41 @@ public class ConfigurationManager {
                 LOGGER.info("Loaded properties configuration from %s", file.getAbsolutePath());
                 return true;
             } else if (fileName.endsWith(".yml") || fileName.endsWith(".yaml")) {
-                LOGGER.warn("YAML configuration not yet implemented, skipping %s", file.getAbsolutePath());
-                // TODO: Implement YAML configuration loading
-                return false;
+                boolean loaded = loadYamlFile(file);
+                if (loaded) {
+                    lastLoadedTimestamp = file.lastModified();
+                    LOGGER.info("Loaded YAML configuration from %s", file.getAbsolutePath());
+                }
+                return loaded;
             } else {
                 LOGGER.warn("Unsupported configuration file format: %s", fileName);
                 return false;
             }
-        } catch (Exception e) {
-            LOGGER.error(e, "Error loading configuration from %s", file.getAbsolutePath());
+        } catch (IOException e) {
+            // Catch file I/O errors
+            String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
+                    .operation("loadConfigurationFile")
+                    .errorCode(ErrorContext.ErrorCodes.IO_ERROR)
+                    .cause(e)
+                    .build()
+                    .with("file", file.getAbsolutePath())
+                    .with("fileFormat", fileName.substring(fileName.lastIndexOf('.') + 1))
+                    .buildMessage("Error loading configuration file");
+
+            LOGGER.error(e, contextMessage);
+            return false;
+        } catch (IllegalStateException | IllegalArgumentException | org.yaml.snakeyaml.error.YAMLException e) {
+            // Catch parsing and other runtime errors
+            String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
+                    .operation("loadConfigurationFile")
+                    .errorCode(ErrorContext.ErrorCodes.CONFIGURATION_ERROR)
+                    .cause(e)
+                    .build()
+                    .with("file", file.getAbsolutePath())
+                    .with("fileFormat", fileName.substring(fileName.lastIndexOf('.') + 1))
+                    .buildMessage("Error parsing configuration file");
+
+            LOGGER.error(e, contextMessage);
             return false;
         }
     }
@@ -194,13 +234,167 @@ public class ConfigurationManager {
         for (String key : properties.stringPropertyNames()) {
             String value = properties.getProperty(key);
 
-            if (key.startsWith("jwt.validation.issuer.")) {
+            if (key.startsWith(JWT_VALIDATION_ISSUER_PREFIX)) {
                 // Parse issuer properties
                 parseIssuerProperty(key, value);
             } else {
                 // Store static property
                 staticProperties.put(key, value);
             }
+        }
+    }
+
+    /**
+     * Loads configuration from a YAML file.
+     *
+     * @param file the YAML file
+     * @return true if configuration was loaded successfully, false otherwise
+     * @throws IOException if an I/O error occurs
+     */
+    private boolean loadYamlFile(File file) throws IOException {
+        Yaml yaml = new Yaml();
+        Map<String, Object> yamlData;
+
+        try (FileInputStream fis = new FileInputStream(file)) {
+            yamlData = yaml.load(fis);
+        }
+
+        if (yamlData == null || yamlData.isEmpty()) {
+            LOGGER.warn("YAML file %s is empty or invalid", file.getAbsolutePath());
+            return false;
+        }
+
+        // Process YAML data
+        processYamlData(yamlData, "");
+        return true;
+    }
+
+    /**
+     * Recursively processes YAML data and stores properties.
+     *
+     * @param data the YAML data map
+     * @param prefix the current property prefix
+     */
+    @SuppressWarnings("unchecked")
+    private void processYamlData(Map<String, Object> data, String prefix) {
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+
+            String fullKey = prefix.isEmpty() ? key : prefix + "." + key;
+
+            if (value instanceof Map) {
+                // Recursively process nested maps
+                processYamlData((Map<String, Object>) value, fullKey);
+            } else if (value instanceof List<?> list) {
+                // Process lists (typically for issuer configurations)
+                processList(fullKey, list);
+            } else if (value != null) {
+                // Store simple values
+                if (fullKey.startsWith(JWT_VALIDATION_ISSUER_PREFIX)) {
+                    parseIssuerProperty(fullKey, value.toString());
+                } else {
+                    staticProperties.put(fullKey, value.toString());
+                }
+            }
+        }
+    }
+
+    /**
+     * Check if key represents an issuer list.
+     *
+     * @param key the property key
+     * @return true if issuer list key
+     */
+    private boolean isIssuerListKey(String key) {
+        return "jwt.validation.issuers".equals(key) || "issuers".equals(key);
+    }
+
+    /**
+     * Get issuer ID from config or use index.
+     *
+     * @param issuerConfig the issuer configuration map
+     * @param index the list index
+     * @return the issuer ID
+     */
+    private String getIssuerId(Map<String, Object> issuerConfig, int index) {
+        if (issuerConfig.containsKey("id")) {
+            return issuerConfig.get("id").toString();
+        }
+        if (issuerConfig.containsKey("name")) {
+            return issuerConfig.get("name").toString();
+        }
+        return String.valueOf(index);
+    }
+
+    /**
+     * Store issuer properties from config map.
+     *
+     * @param issuerId the issuer ID
+     * @param issuerConfig the issuer configuration map
+     */
+    private void storeIssuerProperties(String issuerId, Map<String, Object> issuerConfig) {
+        Map<String, String> issuerProps = issuerProperties.computeIfAbsent(issuerId, k -> new HashMap<>());
+        for (Map.Entry<String, Object> issuerEntry : issuerConfig.entrySet()) {
+            if (issuerEntry.getValue() != null) {
+                issuerProps.put(issuerEntry.getKey(), issuerEntry.getValue().toString());
+            }
+        }
+    }
+
+    /**
+     * Process single issuer item from list.
+     *
+     * @param item the list item
+     * @param index the list index
+     */
+    @SuppressWarnings("unchecked")
+    private void processIssuerItem(Object item, int index) {
+        if (item instanceof Map) {
+            Map<String, Object> issuerConfig = (Map<String, Object>) item;
+            String issuerId = getIssuerId(issuerConfig, index);
+            storeIssuerProperties(issuerId, issuerConfig);
+        }
+    }
+
+    /**
+     * Process issuer list from YAML.
+     *
+     * @param list the issuer list
+     */
+    private void processIssuerList(List<?> list) {
+        for (int i = 0; i < list.size(); i++) {
+            processIssuerItem(list.get(i), i);
+        }
+    }
+
+    /**
+     * Process non-issuer list as comma-separated values.
+     *
+     * @param key the property key
+     * @param list the list value
+     */
+    private void processGenericList(String key, List<?> list) {
+        String listValue = list.stream()
+                .filter(Objects::nonNull)
+                .map(Object::toString)
+                .reduce((a, b) -> a + "," + b)
+                .orElse("");
+        staticProperties.put(key, listValue);
+    }
+
+    /**
+     * Processes a list from YAML configuration.
+     *
+     * @param key the property key
+     * @param list the list value
+     */
+    @SuppressWarnings("unchecked")
+    private void processList(String key, List<?> list) {
+        if (isIssuerListKey(key)) {
+            processIssuerList(list);
+        } else {
+            processGenericList(key, list);
         }
     }
 
@@ -213,7 +407,7 @@ public class ConfigurationManager {
     private void parseIssuerProperty(String key, String value) {
         // Format: jwt.validation.issuer.<index>.<property>
         // or: jwt.validation.issuer.<name>.<property>
-        String issuerPart = key.substring("jwt.validation.issuer.".length());
+        String issuerPart = key.substring(JWT_VALIDATION_ISSUER_PREFIX.length());
         int dotIndex = issuerPart.indexOf('.');
 
         if (dotIndex > 0) {

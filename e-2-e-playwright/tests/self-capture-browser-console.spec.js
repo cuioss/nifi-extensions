@@ -1,49 +1,60 @@
 /* eslint-disable no-console */
-const { test } = require("@playwright/test");
-
+import { test, expect } from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
+import { ProcessorService } from "../utils/processor.js";
 import {
     checkLoadingIndicatorStatus,
     saveTestBrowserLogs,
     setupAuthAwareErrorDetection,
 } from "../utils/console-logger.js";
+import {
+    globalCriticalErrorDetector,
+    cleanupCriticalErrorDetection,
+} from "../utils/critical-error-detector.js";
 
 test.describe("Browser Console Error Capture", () => {
-    test("Capture Browser Console Errors", async ({ page }, testInfo) => {
+    test("should capture and validate browser console errors", async ({
+        page,
+        processorManager,
+    }, testInfo) => {
         // Setup unified console logging system instead of custom implementation
         // Skip initial canvas checks since processor UI page doesn't have a canvas
-        const errorDetection = await setupAuthAwareErrorDetection(
-            page,
-            testInfo,
-        );
+        await setupAuthAwareErrorDetection(page, testInfo);
 
         // First authenticate to NiFi
         console.log("Authenticating to NiFi...");
         const authService = new AuthService(page);
         await authService.ensureReady();
 
-        // Navigate to processor UI page after authentication
-        const processorUIUrl =
-            "https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT/?id=08e20549-0198-1000-65a2-24abdfb667a2&revision=1&clientId=346173ec-4c73-459a-8a73-91c523fb9162&editable=true&disconnectedNodeAcknowledged=false";
+        // Ensure processor is on canvas first
+        await processorManager.ensureProcessorOnCanvas();
 
-        console.log("Navigating to processor UI page...");
-        await page.goto(processorUIUrl);
+        // Find and open a JWT processor instead of hardcoded URL
+        const processorService = new ProcessorService(page, testInfo);
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+        await processorService.openAdvancedUI(processor);
 
-        // Wait for page to load and modules to attempt loading
-        await page.waitForTimeout(10000);
+        // Wait for page to load properly
+        await page.waitForLoadState("networkidle");
+        await page.waitForLoadState("domcontentloaded");
 
         // Check if loading indicator is visible using utility function
         const loadingStatus = await checkLoadingIndicatorStatus(page);
-        console.log(`\n=== LOADING INDICATOR STATUS ===`);
-        console.log(`Loading indicator visible: ${loadingStatus.isVisible}`);
+
+        // Loading indicator should NOT be visible - if it is, the UI is stuck
+        expect(loadingStatus.isVisible).toBe(false);
 
         if (loadingStatus.isVisible && loadingStatus.text) {
-            console.log(`Loading indicator text: "${loadingStatus.text}"`);
+            throw new Error(
+                `UI is stuck with loading indicator: "${loadingStatus.text}"`,
+            );
         }
 
         // Check for critical errors after navigation (skip canvas checks for processor UI page)
         // The processor UI page doesn't have a canvas, so we only check for console errors
-        const criticalErrors = errorDetection.getCriticalErrors();
+        const criticalErrors = globalCriticalErrorDetector.getDetectedErrors();
         if (criticalErrors.length > 0) {
             const jsErrors = criticalErrors.filter(
                 (error) =>
@@ -61,7 +72,6 @@ test.describe("Browser Console Error Capture", () => {
         await page.evaluate(
             (analysisData) => {
                 console.log("=== PROCESSOR UI ANALYSIS SUMMARY ===");
-                console.log(`URL: ${analysisData.url}`);
                 console.log(
                     `Loading indicator visible: ${analysisData.loadingIndicatorVisible}`,
                 );
@@ -76,7 +86,6 @@ test.describe("Browser Console Error Capture", () => {
                 console.log("=== END PROCESSOR UI ANALYSIS ===");
             },
             {
-                url: processorUIUrl,
                 loadingIndicatorVisible: loadingStatus.isVisible,
                 loadingIndicatorText: loadingStatus.text,
                 criticalErrors: criticalErrors.length,
@@ -98,6 +107,6 @@ test.describe("Browser Console Error Capture", () => {
         }
 
         // Cleanup
-        errorDetection.cleanup();
+        cleanupCriticalErrorDetection();
     });
 });

@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.processors.auth;
 
+import de.cuioss.sheriff.oauth.core.security.SignatureAlgorithmPreferences;
 import lombok.experimental.UtilityClass;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.processor.Relationship;
@@ -255,10 +256,10 @@ public final class JWTProcessorConstants {
                 .name(JWTAttributes.Properties.Validation.ALLOWED_ALGORITHMS)
                 .displayName("Allowed Algorithms")
                 .description("Comma-separated list of allowed JWT signing algorithms. " +
-                        "Recommended secure algorithms: RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512. " +
-                        "The 'none' algorithm is never allowed regardless of this setting.")
-                .required(true)
-                .defaultValue("RS256,RS384,RS512,ES256,ES384,ES512,PS256,PS384,PS512")
+                        "Uses secure defaults from SignatureAlgorithmPreferences if not specified. " +
+                        "The 'none' algorithm and weak HMAC algorithms are never allowed regardless of this setting.")
+                .required(false)
+                .defaultValue(String.join(",", SignatureAlgorithmPreferences.getDefaultPreferredAlgorithms()))
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
 
@@ -284,6 +285,18 @@ public final class JWTProcessorConstants {
                 .required(true)
                 .defaultValue("10")
                 .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
+                .build();
+
+        /**
+         * JWKS source type for issuers (URL, file, memory).
+         */
+        public static final PropertyDescriptor JWKS_SOURCE_TYPE = new PropertyDescriptor.Builder()
+                .name("jwks.source.type")
+                .displayName("JWKS Source Type")
+                .description("Default JWKS source type for issuers. Can be overridden per issuer.")
+                .required(true)
+                .defaultValue("url")
+                .allowableValues("url", "file", "memory")
                 .build();
     }
 }

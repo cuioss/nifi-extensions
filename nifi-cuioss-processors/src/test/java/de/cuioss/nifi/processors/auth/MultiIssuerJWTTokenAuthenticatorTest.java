@@ -16,7 +16,9 @@
  */
 package de.cuioss.nifi.processors.auth;
 
+import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.util.MockFlowFile;
+import org.apache.nifi.util.MockProcessContext;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import java.util.HashMap;
 import java.util.Map;
 
+import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.*;
 import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Properties;
 import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships;
 
@@ -41,17 +44,29 @@ import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships
 class MultiIssuerJWTTokenAuthenticatorTest {
 
     private TestRunner testRunner;
+    private MultiIssuerJWTTokenAuthenticator processor;
+    private Map<String, String> dynamicProperties = new HashMap<>();
 
     // Sample JWT tokens for testing
     private static final String VALID_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJpc3MiOiJ0ZXN0LWlzc3VlciJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
     private static final String INVALID_TOKEN = "invalid.token.format";
 
-    // Define a constant for issuer prefix since it's not yet implemented in the processor
-    private static final String ISSUER_PREFIX = "issuer.";
-
     @BeforeEach
     void setup() {
-        testRunner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
+        processor = new MultiIssuerJWTTokenAuthenticator() {
+            @Override
+            public void onScheduled(final ProcessContext context) {
+                // Override onScheduled to manually add dynamic properties before calling super
+                MockProcessContext mockContext = (MockProcessContext) context;
+
+                // Add our tracked dynamic properties
+                dynamicProperties.forEach(mockContext::setProperty);
+
+                // Now call the original onScheduled with all properties available
+                super.onScheduled(context);
+            }
+        };
+        testRunner = TestRunners.newTestRunner(processor);
 
         // Configure basic properties
         testRunner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
@@ -59,9 +74,14 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         testRunner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Bearer");
 
         // Configure issuer properties (using our test constant)
-        testRunner.setProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
-        testRunner.setProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
-        testRunner.setProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
+        setDynamicProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
+        setDynamicProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
+        setDynamicProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
+    }
+
+    private void setDynamicProperty(String key, String value) {
+        testRunner.setProperty(key, value);
+        dynamicProperties.put(key, value);
     }
 
     @Nested
@@ -84,7 +104,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -111,7 +131,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -135,7 +155,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -163,7 +183,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -174,9 +194,11 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         @DisplayName("Test multiple issuer configuration")
         void multipleIssuerConfiguration() {
             // Add a second issuer configuration
-            testRunner.setProperty(ISSUER_PREFIX + "second-issuer.jwks-url", "https://second-issuer/.well-known/jwks.json");
-            testRunner.setProperty(ISSUER_PREFIX + "second-issuer.issuer", "second-issuer");
-            testRunner.setProperty(ISSUER_PREFIX + "second-issuer.audience", "second-audience");
+            setDynamicProperty(ISSUER_PREFIX + "second-issuer.jwks-url", "https://second-issuer/.well-known/jwks.json");
+            setDynamicProperty(ISSUER_PREFIX + "second-issuer.issuer", "second-issuer");
+            setDynamicProperty(ISSUER_PREFIX + "second-issuer.audience", "second-audience");
+
+            // Properties are already tracked, TestRunner will handle initialization
 
             // Create flow file with Authorization header
             Map<String, String> attributes = new HashMap<>();
@@ -191,7 +213,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -199,8 +221,9 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         }
 
         @Test
-        @DisplayName("Test failure when no token is found")
-        void failureWhenNoTokenFound() {
+        @DisplayName("Test failure when no token is found with require-valid-token=true (default)")
+        void failureWhenNoTokenFoundWithRequireValidTokenTrue() {
+            // Default is require-valid-token=true
             // Create flow file without Authorization header
             testRunner.enqueue("test data");
 
@@ -212,7 +235,58 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+
+            // Verify error attributes
+            flowFile.assertAttributeExists("jwt.error.reason");
+            flowFile.assertAttributeExists("jwt.error.code");
+        }
+
+        @Test
+        @DisplayName("Test success when no token is found with require-valid-token=false")
+        void successWhenNoTokenFoundWithRequireValidTokenFalse() {
+            // Set require-valid-token to false
+            testRunner.setProperty(Properties.REQUIRE_VALID_TOKEN, "false");
+
+            // Create flow file without Authorization header
+            testRunner.enqueue("test data");
+
+            // Run the processor
+            testRunner.run();
+
+            // Verify results - should route to SUCCESS
+            testRunner.assertTransferCount(Relationships.SUCCESS, 1);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 0);
+
+            // Get the output flow file
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
+
+            // Verify attributes
+            flowFile.assertAttributeEquals("jwt.present", "false");
+            flowFile.assertAttributeEquals("jwt.authorized", "false");
+            flowFile.assertAttributeEquals("jwt.error.reason", "No token provided");
+        }
+
+        @Test
+        @DisplayName("Test failure when invalid token is found even with require-valid-token=false")
+        void failureWhenInvalidTokenFoundWithRequireValidTokenFalse() {
+            // Set require-valid-token to false
+            testRunner.setProperty(Properties.REQUIRE_VALID_TOKEN, "false");
+
+            // Create flow file with invalid token
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Bearer " + INVALID_TOKEN);
+            testRunner.enqueue("test data", attributes);
+
+            // Run the processor
+            testRunner.run();
+
+            // Verify results - should still route to AUTHENTICATION_FAILED for invalid tokens
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            // Get the output flow file
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -244,7 +318,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -254,9 +328,22 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         @Test
         @DisplayName("Test configuration without issuers")
         void configurationWithoutIssuers() {
-            // Create a new test runner without issuer configuration
-            TestRunner newTestRunner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
+            // Create a new processor and test runner without issuer configuration
+            MultiIssuerJWTTokenAuthenticator newProcessor = new MultiIssuerJWTTokenAuthenticator();
+            TestRunner newTestRunner = TestRunners.newTestRunner(newProcessor);
             newTestRunner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
+
+            // Set require-valid-token to false to allow running without issuers
+            newTestRunner.setProperty(Properties.REQUIRE_VALID_TOKEN, "false");
+
+            // Initialize processor with MockProcessContext (no issuers)
+            MockProcessContext context = new MockProcessContext(newProcessor);
+            newTestRunner.getProcessContext().getProperties().forEach((descriptor, value) -> {
+                if (value != null) {
+                    context.setProperty(descriptor, value);
+                }
+            });
+            newProcessor.onScheduled(context);
 
             // Create flow file with Authorization header
             Map<String, String> attributes = new HashMap<>();
@@ -266,12 +353,12 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Run the processor
             newTestRunner.run();
 
-            // Verify results - should fail without issuers
+            // Verify results - should fail because no issuers are configured to validate the token
             newTestRunner.assertTransferCount(Relationships.SUCCESS, 0);
             newTestRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             // Get the output flow file
-            MockFlowFile flowFile = newTestRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(0);
+            MockFlowFile flowFile = newTestRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
 
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
@@ -281,10 +368,38 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         @Test
         @DisplayName("Test configuration hash changes with issuer properties")
         void configurationHashChangesWithIssuerProperties() {
-            // Setup initial configuration
-            TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
+            // Track dynamic properties for this test
+            Map<String, String> testDynamicProperties = new HashMap<>();
+
+            // Setup processor with override to handle dynamic properties
+            MultiIssuerJWTTokenAuthenticator hashProcessor = new MultiIssuerJWTTokenAuthenticator() {
+                @Override
+                public void onScheduled(final ProcessContext context) {
+                    // Override onScheduled to manually add dynamic properties before calling super
+                    MockProcessContext mockContext = (MockProcessContext) context;
+
+                    // Add our tracked dynamic properties
+                    testDynamicProperties.forEach(mockContext::setProperty);
+
+                    // Now call the original onScheduled with all properties available
+                    super.onScheduled(context);
+                }
+            };
+
+            TestRunner runner = TestRunners.newTestRunner(hashProcessor);
             runner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
+            runner.setProperty(Properties.TOKEN_HEADER, "Authorization");
+            runner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Bearer");
+
+            // Set complete issuer configuration
             runner.setProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
+            runner.setProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
+            runner.setProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
+
+            // Track dynamic properties
+            testDynamicProperties.put(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
+            testDynamicProperties.put(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
+            testDynamicProperties.put(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
 
             // Create flow file with Authorization header
             Map<String, String> attributes = new HashMap<>();
@@ -297,6 +412,14 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Change issuer configuration
             runner.setProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://updated-issuer/.well-known/jwks.json");
             runner.setProperty(ISSUER_PREFIX + "new-issuer.jwks-url", "https://new-issuer/.well-known/jwks.json");
+            runner.setProperty(ISSUER_PREFIX + "new-issuer.issuer", "new-issuer");
+            runner.setProperty(ISSUER_PREFIX + "new-issuer.audience", "new-audience");
+
+            // Update tracked dynamic properties
+            testDynamicProperties.put(ISSUER_PREFIX + "test-issuer.jwks-url", "https://updated-issuer/.well-known/jwks.json");
+            testDynamicProperties.put(ISSUER_PREFIX + "new-issuer.jwks-url", "https://new-issuer/.well-known/jwks.json");
+            testDynamicProperties.put(ISSUER_PREFIX + "new-issuer.issuer", "new-issuer");
+            testDynamicProperties.put(ISSUER_PREFIX + "new-issuer.audience", "new-audience");
 
             // Second run with changed configuration
             runner.enqueue("test data", attributes);
@@ -308,6 +431,373 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // We can't directly test the hash functionality since it's private, but we can verify
             // that the processor still functions correctly after configuration changes
             MockFlowFile flowFile = runner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(1);
+            flowFile.assertAttributeExists("jwt.error.reason");
+            flowFile.assertAttributeExists("jwt.error.code");
+        }
+    }
+
+    @Nested
+    @DisplayName("Authorization Tests")
+    class AuthorizationTests {
+
+        @Test
+        @DisplayName("Test authorization with required scopes")
+        void authorizationWithRequiredScopes() {
+            // Setup issuer with required scopes
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read,write");
+
+            // Properties are already tracked, TestRunner will handle initialization
+
+            // Create flow file with Authorization header
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Bearer " + VALID_TOKEN);
+            testRunner.enqueue("test data", attributes);
+
+            // Run the processor
+            testRunner.run();
+
+            // Verify results - token validation will fail because we're not actually validating tokens yet
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            // Get the output flow file
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+
+            // Verify error attributes are present
+            flowFile.assertAttributeExists("jwt.error.reason");
+            flowFile.assertAttributeExists("jwt.error.code");
+        }
+
+        @Test
+        @DisplayName("Test authorization with required roles")
+        void authorizationWithRequiredRoles() {
+            // Setup issuer with required roles
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "user,admin");
+
+            // Properties are already tracked, TestRunner will handle initialization
+
+            // Create flow file with Authorization header
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Bearer " + VALID_TOKEN);
+            testRunner.enqueue("test data", attributes);
+
+            // Run the processor
+            testRunner.run();
+
+            // Verify results - token validation will fail because we're not actually validating tokens yet
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            // Get the output flow file
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+
+            // Verify error attributes are present
+            flowFile.assertAttributeExists("jwt.error.reason");
+            flowFile.assertAttributeExists("jwt.error.code");
+        }
+
+        @Test
+        @DisplayName("Test authorization with case-sensitive matching")
+        void authorizationWithCaseSensitiveMatching() {
+            // Setup issuer with case-sensitive matching enabled
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "READ,WRITE");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.CASE_SENSITIVE_MATCHING, "true");
+
+            // Properties are already tracked, TestRunner will handle initialization
+
+            // Create flow file with Authorization header
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Bearer " + VALID_TOKEN);
+            testRunner.enqueue("test data", attributes);
+
+            // Run the processor
+            testRunner.run();
+
+            // Verify results - token validation will fail because we're not actually validating tokens yet
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            // Get the output flow file
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+
+            // Verify error attributes are present
+            flowFile.assertAttributeExists("jwt.error.reason");
+            flowFile.assertAttributeExists("jwt.error.code");
+        }
+
+        @Test
+        @DisplayName("Test authorization with case-insensitive matching")
+        void authorizationWithCaseInsensitiveMatching() {
+            // Setup issuer with case-insensitive matching (default behavior)
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read,write");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.CASE_SENSITIVE_MATCHING, "false");
+
+            // Properties are already tracked, TestRunner will handle initialization
+
+            // Create flow file with Authorization header
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Bearer " + VALID_TOKEN);
+            testRunner.enqueue("test data", attributes);
+
+            // Run the processor
+            testRunner.run();
+
+            // Verify results - token validation will fail because we're not actually validating tokens yet
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            // Get the output flow file
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+
+            // Verify error attributes are present
+            flowFile.assertAttributeExists("jwt.error.reason");
+            flowFile.assertAttributeExists("jwt.error.code");
+        }
+
+        @Test
+        @DisplayName("Test authorization with require-all-scopes flag")
+        void authorizationWithRequireAllScopes() {
+            // Setup issuer with require-all-scopes enabled
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read,write,admin");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRE_ALL_SCOPES, "true");
+
+            // Properties are already tracked, TestRunner will handle initialization
+
+            // Create flow file with Authorization header
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Bearer " + VALID_TOKEN);
+            testRunner.enqueue("test data", attributes);
+
+            // Run the processor
+            testRunner.run();
+
+            // Verify results - token validation will fail because we're not actually validating tokens yet
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            // Get the output flow file
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+
+            // Verify error attributes are present
+            flowFile.assertAttributeExists("jwt.error.reason");
+            flowFile.assertAttributeExists("jwt.error.code");
+        }
+
+        @Test
+        @DisplayName("Test authorization with require-all-roles flag")
+        void authorizationWithRequireAllRoles() {
+            // Setup issuer with require-all-roles enabled
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "user,admin,moderator");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRE_ALL_ROLES, "true");
+
+            // Properties are already tracked, TestRunner will handle initialization
+
+            // Create flow file with Authorization header
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Bearer " + VALID_TOKEN);
+            testRunner.enqueue("test data", attributes);
+
+            // Run the processor
+            testRunner.run();
+
+            // Verify results - token validation will fail because we're not actually validating tokens yet
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            // Get the output flow file
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+
+            // Verify error attributes are present
+            flowFile.assertAttributeExists("jwt.error.reason");
+            flowFile.assertAttributeExists("jwt.error.code");
+        }
+
+        @Test
+        @DisplayName("Test that jwt.authorized attribute is properly set in flow files")
+        void jwtAuthorizedAttributeSetInFlowFiles() {
+            // Setup issuer with authorization requirements
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "user");
+
+            // Properties are already tracked, TestRunner will handle initialization
+
+            // Create flow file with Authorization header
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Bearer " + VALID_TOKEN);
+            testRunner.enqueue("test data", attributes);
+
+            // Run the processor
+            testRunner.run();
+
+            // Verify results - token validation will fail because we're not actually validating tokens yet
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            // Get the output flow file
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+
+            // Note: The jwt.authorized attribute would be set during actual token validation
+            // Since we're not actually validating tokens yet, we can only verify that
+            // the processor runs without error with authorization configuration
+            flowFile.assertAttributeExists("jwt.error.reason");
+            flowFile.assertAttributeExists("jwt.error.code");
+        }
+
+        @Test
+        @DisplayName("Test backward compatibility - no authorization config should pass")
+        void backwardCompatibilityNoAuthorizationConfig() {
+            // Setup issuer without any authorization requirements (backward compatibility)
+            // Only set basic required properties
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer.jwks-url", "https://test-issuer/.well-known/jwks.json");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer.issuer", "test-issuer");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer.audience", "test-audience");
+
+            // Properties are already set and tracked
+
+            // Create flow file with Authorization header
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Bearer " + VALID_TOKEN);
+            testRunner.enqueue("test data", attributes);
+
+            // Run the processor
+            testRunner.run();
+
+            // Verify results - token validation will fail because we're not actually validating tokens yet
+            // but it should fail on token validation, not on missing authorization config
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            // Get the output flow file 
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+
+            // Verify error attributes are present
+            flowFile.assertAttributeExists("jwt.error.reason");
+            flowFile.assertAttributeExists("jwt.error.code");
+        }
+
+        @Test
+        @DisplayName("Test authorization with both scopes and roles")
+        void authorizationWithBothScopesAndRoles() {
+            // Setup issuer with both scopes and roles
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read,write");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "user,admin");
+
+            // Properties are already tracked, TestRunner will handle initialization
+
+            // Create flow file with Authorization header
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Bearer " + VALID_TOKEN);
+            testRunner.enqueue("test data", attributes);
+
+            // Run the processor
+            testRunner.run();
+
+            // Verify results - token validation will fail because we're not actually validating tokens yet
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            // Get the output flow file
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+
+            // Verify error attributes are present
+            flowFile.assertAttributeExists("jwt.error.reason");
+            flowFile.assertAttributeExists("jwt.error.code");
+        }
+
+        @Test
+        @DisplayName("Test authorization with multiple issuers having different requirements")
+        void authorizationWithMultipleIssuersWithDifferentRequirements() {
+            // Setup first issuer with scope requirements
+            setDynamicProperty(ISSUER_PREFIX + "first-issuer.jwks-url", "https://first-issuer/.well-known/jwks.json");
+            setDynamicProperty(ISSUER_PREFIX + "first-issuer.issuer", "first-issuer");
+            setDynamicProperty(ISSUER_PREFIX + "first-issuer.audience", "first-audience");
+            setDynamicProperty(ISSUER_PREFIX + "first-issuer." + JWTPropertyKeys.Issuer.REQUIRED_SCOPES, "read");
+
+            // Setup second issuer with role requirements  
+            setDynamicProperty(ISSUER_PREFIX + "second-issuer.jwks-url", "https://second-issuer/.well-known/jwks.json");
+            setDynamicProperty(ISSUER_PREFIX + "second-issuer.issuer", "second-issuer");
+            setDynamicProperty(ISSUER_PREFIX + "second-issuer.audience", "second-audience");
+            setDynamicProperty(ISSUER_PREFIX + "second-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "admin");
+
+            // Properties are already tracked, TestRunner will handle initialization
+
+            // Create flow file with Authorization header
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Bearer " + VALID_TOKEN);
+            testRunner.enqueue("test data", attributes);
+
+            // Run the processor
+            testRunner.run();
+
+            // Verify results - token validation will fail because we're not actually validating tokens yet
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            // Get the output flow file
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+
+            // Verify error attributes are present
+            flowFile.assertAttributeExists("jwt.error.reason");
+            flowFile.assertAttributeExists("jwt.error.code");
+        }
+    }
+
+    @Nested
+    @DisplayName("Token Algorithm Validation Tests")
+    class TokenAlgorithmValidationTests {
+
+        @Test
+        @DisplayName("Test token with malformed Base64 header")
+        void testMalformedBase64Header() {
+            // Create a token with invalid Base64 in the header part
+            // This should trigger IllegalArgumentException from Base64 decoder
+            String malformedToken = "not-valid-base64!!!.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
+
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Bearer " + malformedToken);
+            testRunner.enqueue("test data", attributes);
+
+            // Run the processor
+            testRunner.run();
+
+            // Verify token validation failed
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            // Get the output flow file
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+
+            // Verify error attributes indicate Base64 decoding failure
+            flowFile.assertAttributeExists("jwt.error.reason");
+            flowFile.assertAttributeExists("jwt.error.code");
+            flowFile.assertAttributeExists("jwt.error.category");
+
+            // The error should mention that the token format is invalid
+            String errorReason = flowFile.getAttribute("jwt.error.reason");
+            assert errorReason != null && errorReason.toLowerCase().contains("invalid");
+        }
+
+        @Test
+        @DisplayName("Test token with header containing special characters in Base64")
+        void testBase64WithInvalidCharacters() {
+            // Create a token with characters that are not valid in Base64
+            String tokenWithInvalidBase64 = "eyJ@#$%^&*()!.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
+
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Bearer " + tokenWithInvalidBase64);
+            testRunner.enqueue("test data", attributes);
+
+            // Run the processor
+            testRunner.run();
+
+            // Verify token validation failed
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            // Get the output flow file
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+
+            // Verify error attributes are present
             flowFile.assertAttributeExists("jwt.error.reason");
             flowFile.assertAttributeExists("jwt.error.code");
         }

@@ -16,7 +16,7 @@ The MultiIssuerJWTTokenAuthenticator implements comprehensive observability feat
 === Available Metrics
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-18.1[NIFI-AUTH-18.1: Security Event Collection]_
 
-The processor leverages the SecurityEventCounter from the cui-jwt-validation library to track key security events:
+The processor leverages the SecurityEventCounter from the oauth-sheriff-core library to track key security events:
 
 [cols="2,4"]
 |===
@@ -52,7 +52,7 @@ The processor leverages the SecurityEventCounter from the cui-jwt-validation lib
 
 === Metrics Implementation
 
-The processor collects metrics using the SecurityEventCounter provided by the cui-jwt-validation library:
+The processor collects metrics using the SecurityEventCounter provided by the oauth-sheriff-core library:
 
 [source,java]
 ----
@@ -262,7 +262,7 @@ For more information on monitoring integration, see link:security.adoc#security-
 
 === SecurityEventCounter Integration
 
-The processor integrates with the cui-jwt-validation SecurityEventCounter as follows:
+The processor integrates with the oauth-sheriff-core SecurityEventCounter as follows:
 
 1. Initialize TokenValidator with SecurityEventCounter
 2. Track all validation events through TokenValidator
@@ -316,7 +316,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
 === NifiSecurityEventRegistry Class
 
-A dedicated class bridges the cui-jwt-validation SecurityEventCounter and NiFi's metrics system:
+A dedicated class bridges the oauth-sheriff-core SecurityEventCounter and NiFi's metrics system:
 
 [source,java]
 ----

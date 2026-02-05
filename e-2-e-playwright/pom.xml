@@ -30,10 +30,10 @@
         <skipPlaywrightTests>true</skipPlaywrightTests> <!-- Skip Playwright tests by default, run only in integration-tests profile -->
         <!-- Include this module in SonarQube analysis -->
         <sonar.skip>false</sonar.skip>
-        <!-- Frontend Maven Plugin -->
-        <frontend.maven.plugin.version>1.15.1</frontend.maven.plugin.version>
-        <frontend.node.version>v20.19.2</frontend.node.version>
-        <frontend.npm.version>10.5.0</frontend.npm.version>
+        <!-- Test output directories -->
+        <selftests.output.dir>${project.build.directory}/results-selftests</selftests.output.dir>
+        <functional.output.dir>${project.build.directory}/results-functional-tests</functional.output.dir>
+        <accessibility.output.dir>${project.build.directory}/results-accessibility-tests</accessibility.output.dir>
     </properties>
 
     <build>
@@ -80,19 +80,141 @@
                             <skip>${skip.lint}</skip>
                         </configuration>
                     </execution>
-                    <!-- Run Playwright tests (only active when integration-tests profile is enabled) -->
+                    <!-- Run accessibility tests during pre-commit checks -->
                     <execution>
-                        <id>playwright-tests</id>
+                        <id>accessibility-tests</id>
                         <goals>
                             <goal>npm</goal>
                         </goals>
-                        <phase>integration-test</phase>
+                        <phase>test</phase>
                         <configuration>
-                            <arguments>run playwright:test</arguments>
+                            <arguments>run test:a11y:quick</arguments>
                             <environmentVariables>
                                 <PLAYWRIGHT_BASE_URL>${nifi.base.url}</PLAYWRIGHT_BASE_URL>
                                 <PLAYWRIGHT_KEYCLOAK_URL>${keycloak.url}</PLAYWRIGHT_KEYCLOAK_URL>
                             </environmentVariables>
+                            <skip>${skipPlaywrightTests}</skip> <!-- Skip accessibility tests unless integration-tests profile is active -->
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            
+            <!-- Exec Maven Plugin for container management -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>${maven.exec.plugin.version}</version>
+                <executions>
+                    <!-- Start containers (NiFi and Keycloak) -->
+                    <execution>
+                        <id>start-containers</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <phase>pre-integration-test</phase>
+                        <configuration>
+                            <executable>${docker.script.dir}/start-nifi.sh</executable>
+                            <skip>${skipPlaywrightTests}</skip>
+                        </configuration>
+                    </execution>
+                    
+                    <!-- Run self-tests -->
+                    <execution>
+                        <id>run-selftests</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <phase>integration-test</phase>
+                        <configuration>
+                            <workingDirectory>${project.basedir}</workingDirectory>
+                            <executable>npx</executable>
+                            <arguments>
+                                <argument>--yes</argument>
+                                <argument>playwright</argument>
+                                <argument>test</argument>
+                                <argument>self-</argument>
+                                <argument>--reporter=dot</argument>
+                            </arguments>
+                            <environmentVariables>
+                                <PLAYWRIGHT_BASE_URL>${nifi.base.url}</PLAYWRIGHT_BASE_URL>
+                                <PLAYWRIGHT_KEYCLOAK_URL>${keycloak.url}</PLAYWRIGHT_KEYCLOAK_URL>
+                                <PLAYWRIGHT_OUTPUT_DIR>${selftests.output.dir}</PLAYWRIGHT_OUTPUT_DIR>
+                                <TEST_RESULTS_DIR>${selftests.output.dir}/test-results</TEST_RESULTS_DIR>
+                                <PLAYWRIGHT_REPORT_DIR>${selftests.output.dir}/playwright-report</PLAYWRIGHT_REPORT_DIR>
+                                <PW_TEST_HTML_REPORT_OPEN>never</PW_TEST_HTML_REPORT_OPEN>
+                            </environmentVariables>
+                            <skip>${skipPlaywrightTests}</skip>
+                        </configuration>
+                    </execution>
+                    
+                    <!-- Run functional tests -->
+                    <execution>
+                        <id>run-functional-tests</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <phase>integration-test</phase>
+                        <configuration>
+                            <workingDirectory>${project.basedir}</workingDirectory>
+                            <executable>npx</executable>
+                            <arguments>
+                                <argument>--yes</argument>
+                                <argument>playwright</argument>
+                                <argument>test</argument>
+                                <argument>--grep-invert</argument>
+                                <argument>self-|accessibility</argument>
+                                <argument>--reporter=dot</argument>
+                            </arguments>
+                            <environmentVariables>
+                                <PLAYWRIGHT_BASE_URL>${nifi.base.url}</PLAYWRIGHT_BASE_URL>
+                                <PLAYWRIGHT_KEYCLOAK_URL>${keycloak.url}</PLAYWRIGHT_KEYCLOAK_URL>
+                                <PLAYWRIGHT_OUTPUT_DIR>${functional.output.dir}</PLAYWRIGHT_OUTPUT_DIR>
+                                <TEST_RESULTS_DIR>${functional.output.dir}/test-results</TEST_RESULTS_DIR>
+                                <PLAYWRIGHT_REPORT_DIR>${functional.output.dir}/playwright-report</PLAYWRIGHT_REPORT_DIR>
+                                <PW_TEST_HTML_REPORT_OPEN>never</PW_TEST_HTML_REPORT_OPEN>
+                            </environmentVariables>
+                            <skip>${skipPlaywrightTests}</skip>
+                        </configuration>
+                    </execution>
+                    
+                    <!-- Run accessibility tests -->
+                    <execution>
+                        <id>run-accessibility-tests</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <phase>integration-test</phase>
+                        <configuration>
+                            <workingDirectory>${project.basedir}</workingDirectory>
+                            <executable>npx</executable>
+                            <arguments>
+                                <argument>--yes</argument>
+                                <argument>playwright</argument>
+                                <argument>test</argument>
+                                <argument>accessibility</argument>
+                                <argument>--reporter=dot</argument>
+                            </arguments>
+                            <environmentVariables>
+                                <PLAYWRIGHT_BASE_URL>${nifi.base.url}</PLAYWRIGHT_BASE_URL>
+                                <PLAYWRIGHT_KEYCLOAK_URL>${keycloak.url}</PLAYWRIGHT_KEYCLOAK_URL>
+                                <PLAYWRIGHT_OUTPUT_DIR>${accessibility.output.dir}</PLAYWRIGHT_OUTPUT_DIR>
+                                <TEST_RESULTS_DIR>${accessibility.output.dir}/test-results</TEST_RESULTS_DIR>
+                                <PLAYWRIGHT_REPORT_DIR>${accessibility.output.dir}/playwright-report</PLAYWRIGHT_REPORT_DIR>
+                                <PW_TEST_HTML_REPORT_OPEN>never</PW_TEST_HTML_REPORT_OPEN>
+                            </environmentVariables>
+                            <skip>${skipPlaywrightTests}</skip>
+                        </configuration>
+                    </execution>
+                    
+                    <!-- Stop containers -->
+                    <execution>
+                        <id>stop-containers</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <phase>post-integration-test</phase>
+                        <configuration>
+                            <executable>${docker.script.dir}/stop-test-container.sh</executable>
                             <skip>${skipPlaywrightTests}</skip>
                         </configuration>
                     </execution>

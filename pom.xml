@@ -7,17 +7,47 @@
     <parent>
         <groupId>org.apache.nifi</groupId>
         <artifactId>nifi-extension-bundles</artifactId>
-        <version>2.6.0</version>
+        <version>2.5.0</version>
     </parent>
 
     <groupId>de.cuioss.nifi</groupId>
     <artifactId>nifi-extensions</artifactId>
-    <name>Apache Nifi extensions</name>
     <version>1.0-SNAPSHOT</version>
-    <description>Some extensions for apache nifi</description>
     <packaging>pom</packaging>
+    <name>Apache Nifi extensions</name>
+    <description>Some extensions for apache nifi</description>
 
     <url>https://github.com/cuioss/nifi-extensions/</url>
+    <organization>
+        <url>https://github.com/cuioss</url>
+        <name>CUI-OpenSource-Software</name>
+    </organization>
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Oliver Wolff</name>
+            <url>https://github.com/cuioss</url>
+            <roles>
+                <role>owner</role>
+                <role>developer</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <modules>
+        <module>nifi-cuioss-processors</module>
+        <module>nifi-cuioss-ui</module>
+        <module>nifi-cuioss-nar</module>
+        <module>integration-testing</module>
+        <module>e-2-e-playwright</module>
+    </modules>
     <scm>
         <url>https://github.com/cuioss/nifi-extensions/</url>
         <connection>
@@ -32,84 +62,6 @@
         <url>https://github.com/cuioss/nifi-extensions/issues</url>
         <system>GitHub Issues</system>
     </issueManagement>
-
-    <properties>
-        <maven.compiler.target>21</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <version.nifi>2.5.0</version.nifi>
-        <!-- Sonar related-->
-        <sonar.organization>cuioss-github</sonar.organization>
-        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        <!-- Exclude e-2-e-playwright module from SonarQube analysis -->
-        <sonar.exclusions>e-2-e-playwright/**</sonar.exclusions>
-        <sonar.skip>false</sonar.skip>
-        <!-- Maven Plugins -->
-        <maven.compiler.plugin.version>3.14.0</maven.compiler.plugin.version>
-        <maven.gpg.plugin.version>3.2.7</maven.gpg.plugin.version>
-        <maven.exec.plugin.version>3.6.2</maven.exec.plugin.version>
-        <central-publishing-maven-plugin.version>0.8.0</central-publishing-maven-plugin.version>
-        <sonar.maven.plugin.version>5.1.0.4751</sonar.maven.plugin.version>
-        <jacoco.maven.plugin.version>0.8.13</jacoco.maven.plugin.version>
-        <!-- Sonatype -->
-
-        <!-- OpenRewrite -->
-        <open.rewrite.maven.plugin.version>6.11.0</open.rewrite.maven.plugin.version>
-        <rewrite-testing-frameworks.version>3.10.0</rewrite-testing-frameworks.version>
-        <rewrite-migrate-java.version>3.11.0</rewrite-migrate-java.version>
-        <project.build.outputTimestamp>2025-04-30T06:58:46Z</project.build.outputTimestamp>
-
-        <!-- Frontend Maven Plugin -->
-        <frontend.maven.plugin.version>1.15.1</frontend.maven.plugin.version>
-        <frontend.node.version>v20.19.2</frontend.node.version>
-        <frontend.npm.version>10.5.0</frontend.npm.version>
-
-        <!-- WebJars Dependencies -->
-        <version.jquery>3.7.1</version.jquery>
-        <version.jquery-ui>1.14.1</version.jquery-ui>
-        <version.requirejs>2.3.7</version.requirejs>
-        <version.cash-dom>8.1.5</version.cash-dom>
-        <version.tippy.js>6.3.7</version.tippy.js>
-        <version.popperjs__core>2.11.8</version.popperjs__core>
-
-        <!-- Logging Dependencies -->
-        <version.slf4j>2.0.17</version.slf4j>
-
-        <!-- The version needs to be aligned with the one defined within the nifi boms. Otherwise, it's getting messy-->
-        <version.junit.jupiter>5.11.3</version.junit.jupiter>
-        <version.lombok>1.18.38</version.lombok>
-        <version.parsson>1.1.7</version.parsson>
-        <!-- CUI-OSS -->
-        <version.cui.test.juli.logger>2.0.1</version.cui.test.juli.logger>
-        <version.cui.test.generator>2.3.1</version.cui.test.generator>
-        <version.cui.test.value.objects>2.0.1</version.cui.test.value.objects>
-        <version.cui.test.mockwebserver>1.3.0</version.cui.test.mockwebserver>
-        <version.cui.java.tools>2.2.1</version.cui.java.tools>
-        <version.cui-jwt-validation>1.0.0-SNAPSHOT</version.cui-jwt-validation>
-        <version.cui.test.keycloak.integration>1.0.1</version.cui.test.keycloak.integration>
-    </properties>
-
-    <licenses>
-        <license>
-            <name>The Apache Software License, Version 2.0</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-        </license>
-    </licenses>
-    <developers>
-        <developer>
-            <name>Oliver Wolff</name>
-            <url>https://github.com/cuioss</url>
-            <roles>
-                <role>owner</role>
-                <role>developer</role>
-            </roles>
-        </developer>
-    </developers>
-    <organization>
-        <url>https://github.com/cuioss</url>
-        <name>CUI-OpenSource-Software</name>
-    </organization>
 
     <distributionManagement>
         <snapshotRepository>
@@ -127,16 +79,69 @@
             <url>https://cuioss.github.io/</url>
         </site>
     </distributionManagement>
-    <repositories>
-        <repository>
-            <id>sonatype-snapshots</id>
-            <name>Sonatype Snapshot Repository</name>
-            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
+    <properties>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <version.nifi>2.5.0</version.nifi>
+        <!-- Sonar related-->
+        <sonar.organization>cuioss-github</sonar.organization>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <!-- Exclude e-2-e-playwright module from SonarQube analysis -->
+        <sonar.exclusions>e-2-e-playwright/**</sonar.exclusions>
+        <sonar.skip>false</sonar.skip>
+        <!-- Maven Plugins -->
+        <maven.compiler.plugin.version>3.14.1</maven.compiler.plugin.version>
+        <maven.gpg.plugin.version>3.2.8</maven.gpg.plugin.version>
+        <maven.exec.plugin.version>3.6.2</maven.exec.plugin.version>
+        <central-publishing-maven-plugin.version>0.9.0</central-publishing-maven-plugin.version>
+        <sonar.maven.plugin.version>5.2.0.4988</sonar.maven.plugin.version>
+        <jacoco.maven.plugin.version>0.8.14</jacoco.maven.plugin.version>
+        <!-- Sonatype -->
+
+        <!-- OpenRewrite -->
+        <open.rewrite.maven.plugin.version>6.22.1</open.rewrite.maven.plugin.version>
+        <rewrite-testing-frameworks.version>3.20.0</rewrite-testing-frameworks.version>
+        <rewrite-migrate-java.version>3.20.0</rewrite-migrate-java.version>
+        <project.build.outputTimestamp>2025-04-30T06:58:46Z</project.build.outputTimestamp>
+
+        <!-- Frontend Maven Plugin -->
+        <frontend.maven.plugin.version>1.15.4</frontend.maven.plugin.version>
+        <frontend.node.version>v20.19.2</frontend.node.version>
+        <frontend.npm.version>10.5.0</frontend.npm.version>
+
+        <!-- WebJars Dependencies -->
+        <version.jquery>3.7.1</version.jquery>
+        <version.jquery-ui>1.14.1</version.jquery-ui>
+        <version.requirejs>2.3.7</version.requirejs>
+        <version.cash-dom>8.1.5</version.cash-dom>
+        <version.tippy.js>6.3.7</version.tippy.js>
+        <version.popperjs__core>2.11.8</version.popperjs__core>
+
+        <!-- Logging Dependencies -->
+        <version.slf4j>2.0.17</version.slf4j>
+
+        <!-- The version needs to be aligned with the one defined within the nifi boms. Otherwise, it's getting messy-->
+        <version.junit.jupiter>5.14.1</version.junit.jupiter>
+        <version.lombok>1.18.42</version.lombok>
+        <version.parsson>1.1.7</version.parsson>
+        <version.snakeyaml>2.5</version.snakeyaml>
+        <version.easymock>5.6.0</version.easymock>
+        <version.rest-assured>5.5.6</version.rest-assured>
+        <version.hamcrest>3.0</version.hamcrest>
+        <version.jakarta.json-api>2.1.3</version.jakarta.json-api>
+        <version.jakarta.servlet-api>6.1.0</version.jakarta.servlet-api>
+        <version.webjars.font-awesome>7.0.1</version.webjars.font-awesome>
+        <!-- CUI-OSS -->
+        <version.cui.test.juli.logger>2.0.1</version.cui.test.juli.logger>
+        <version.cui.test.generator>2.3.1</version.cui.test.generator>
+        <version.cui.test.value.objects>2.0.1</version.cui.test.value.objects>
+        <version.cui.test.mockwebserver>1.3.0</version.cui.test.mockwebserver>
+        <version.cui.java.tools>2.6.1</version.cui.java.tools>
+        <version.cui.http>0.3.0</version.cui.http>
+        <version.oauth-sheriff>0.1.0</version.oauth-sheriff>
+        <version.cui.test.keycloak.integration>1.0.1</version.cui.test.keycloak.integration>
+    </properties>
 
     <dependencyManagement>
         <dependencies>
@@ -185,22 +190,33 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- Force correct junit-platform version to match junit-jupiter 5.14.1 -->
+            <dependency>
+                <groupId>org.junit.platform</groupId>
+                <artifactId>junit-platform-commons</artifactId>
+                <version>1.14.1</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.platform</groupId>
+                <artifactId>junit-platform-engine</artifactId>
+                <version>1.14.1</version>
+            </dependency>
             <dependency>
                 <groupId>org.apache.nifi</groupId>
                 <artifactId>nifi-utils</artifactId>
                 <version>${version.nifi}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.nifi</groupId>
-                <artifactId>nifi-mock</artifactId>
-                <version>${version.nifi}</version>
-                <scope>test</scope>
             </dependency>
             <!-- CUI-OSS -->
             <dependency>
                 <groupId>de.cuioss</groupId>
                 <artifactId>cui-java-tools</artifactId>
                 <version>${version.cui.java.tools}</version>
+                <scope>compile</scope>
+            </dependency>
+            <dependency>
+                <groupId>de.cuioss</groupId>
+                <artifactId>cui-http</artifactId>
+                <version>${version.cui.http}</version>
                 <scope>compile</scope>
             </dependency>
             <dependency>
@@ -228,24 +244,63 @@
                 <scope>test</scope>
             </dependency>
             <dependency>
-                <groupId>de.cuioss.jwt</groupId>
-                <artifactId>cui-jwt-validation</artifactId>
-                <version>${version.cui-jwt-validation}</version>
+                <groupId>de.cuioss.sheriff.oauth</groupId>
+                <artifactId>oauth-sheriff-core</artifactId>
+                <version>${version.oauth-sheriff}</version>
                 <scope>compile</scope>
             </dependency>
             <dependency>
-                <groupId>de.cuioss</groupId>
-                <artifactId>cui-jwt-validation</artifactId>
-                <version>${version.cui-jwt-validation}</version>
+                <groupId>de.cuioss.sheriff.oauth</groupId>
+                <artifactId>oauth-sheriff-core</artifactId>
+                <version>${version.oauth-sheriff}</version>
                 <classifier>generators</classifier>
                 <scope>test</scope>
             </dependency>
-            <!-- Implementation of jakarta.json-api: Used for cui-jwt-validation-->
+            <!-- Implementation of jakarta.json-api: Used for nifi-cuioss-ui servlets/services -->
             <dependency>
                 <groupId>org.eclipse.parsson</groupId>
                 <artifactId>parsson</artifactId>
                 <version>${version.parsson}</version>
                 <scope>runtime</scope>
+            </dependency>
+            <dependency>
+                <groupId>jakarta.json</groupId>
+                <artifactId>jakarta.json-api</artifactId>
+                <version>${version.jakarta.json-api}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.yaml</groupId>
+                <artifactId>snakeyaml</artifactId>
+                <version>${version.snakeyaml}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.easymock</groupId>
+                <artifactId>easymock</artifactId>
+                <version>${version.easymock}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.rest-assured</groupId>
+                <artifactId>rest-assured</artifactId>
+                <version>${version.rest-assured}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.rest-assured</groupId>
+                <artifactId>json-schema-validator</artifactId>
+                <version>${version.rest-assured}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.webjars</groupId>
+                <artifactId>font-awesome</artifactId>
+                <version>${version.webjars.font-awesome}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.hamcrest</groupId>
+                <artifactId>hamcrest</artifactId>
+                <version>${version.hamcrest}</version>
+                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>de.cuioss.test</groupId>
@@ -254,19 +309,7 @@
                 <scope>test</scope>
             </dependency>
             <!-- Simple implementation that is actually a bridge to juli logging. Used for test-containers slf4j -->
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-jdk14</artifactId>
-                <scope>test</scope>
-                <version>${version.slf4j}</version>
-            </dependency>
             <!-- Bridge jakarta-commons logging  to slf4j -->
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>jcl-over-slf4j</artifactId>
-                <scope>test</scope>
-                <version>${version.slf4j}</version>
-            </dependency>
             <!-- outgoing-->
             <dependency>
                 <groupId>de.cuioss.nifi</groupId>
@@ -288,20 +331,22 @@
         </dependencies>
     </dependencyManagement>
 
-    <modules>
-        <module>nifi-cuioss-processors</module>
-        <module>nifi-cuioss-ui</module>
-        <module>nifi-cuioss-nar</module>
-        <module>integration-testing</module>
-        <module>e-2-e-playwright</module>
-    </modules>
+    <repositories>
+        <repository>
+            <id>sonatype-snapshots</id>
+            <name>Sonatype Snapshot Repository</name>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
     <build>
         <pluginManagement>
             <plugins>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>${maven.compiler.plugin.version}</version>
                     <configuration>
                         <annotationProcessorPaths>
                             <annotationProcessorPath>
@@ -316,7 +361,6 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-gpg-plugin</artifactId>
-                    <version>${maven.gpg.plugin.version}</version>
                     <configuration>
                         <gpgArguments>
                             <arg>--pinentry-mode</arg>
@@ -352,7 +396,6 @@
                 <plugin>
                     <groupId>org.jacoco</groupId>
                     <artifactId>jacoco-maven-plugin</artifactId>
-                    <version>${jacoco.maven.plugin.version}</version>
                     <executions>
                         <execution>
                             <id>prepare-agent</id>
@@ -410,6 +453,7 @@
                         <artifactId>jacoco-maven-plugin</artifactId>
                     </plugin>
                     <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
                             <argLine>@{argLine} -Xms64m -Xmx1024m</argLine>
@@ -421,6 +465,71 @@
                     <plugin>
                         <groupId>org.sonarsource.scanner.maven</groupId>
                         <artifactId>sonar-maven-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>coverage</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>prepare-agent</id>
+                                <goals>
+                                    <goal>prepare-agent</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>report</id>
+                                <goals>
+                                    <goal>report</goal>
+                                </goals>
+                                <phase>test</phase>
+                                <configuration>
+                                    <formats>
+                                        <format>XML</format>
+                                        <format>HTML</format>
+                                    </formats>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>check</id>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                                <phase>verify</phase>
+                                <configuration>
+                                    <rules>
+                                        <rule>
+                                            <element>BUNDLE</element>
+                                            <limits>
+                                                <limit>
+                                                    <counter>INSTRUCTION</counter>
+                                                    <value>COVEREDRATIO</value>
+                                                    <minimum>0.80</minimum>
+                                                </limit>
+                                                <limit>
+                                                    <counter>BRANCH</counter>
+                                                    <value>COVEREDRATIO</value>
+                                                    <minimum>0.80</minimum>
+                                                </limit>
+                                            </limits>
+                                        </rule>
+                                    </rules>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <argLine>${argLine}</argLine>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>
@@ -464,7 +573,7 @@
                                 </goals>
                                 <configuration>
                                     <executable>bash</executable>
-                                    <workingDirectory>${project.basedir}/integration-testing/src/main/docker</workingDirectory>
+                                    <workingDirectory>${maven.multiModuleProjectDirectory}/integration-testing/src/main/docker</workingDirectory>
                                     <arguments>
                                         <argument>./copy-deployment.sh</argument>
                                     </arguments>
@@ -479,7 +588,7 @@
                                 </goals>
                                 <configuration>
                                     <executable>docker</executable>
-                                    <workingDirectory>${project.basedir}/integration-testing/src/main/docker</workingDirectory>
+                                    <workingDirectory>${maven.multiModuleProjectDirectory}/integration-testing/src/main/docker</workingDirectory>
                                     <arguments>
                                         <argument>compose</argument>
                                         <argument>up</argument>
@@ -497,7 +606,7 @@
                                 </goals>
                                 <configuration>
                                     <executable>bash</executable>
-                                    <workingDirectory>${project.basedir}/integration-testing/src/main/docker</workingDirectory>
+                                    <workingDirectory>${maven.multiModuleProjectDirectory}/integration-testing/src/main/docker</workingDirectory>
                                     <arguments>
                                         <argument>-c</argument>
                                         <argument><![CDATA[
@@ -532,7 +641,7 @@
                                 </goals>
                                 <configuration>
                                     <executable>docker</executable>
-                                    <workingDirectory>${project.basedir}/integration-testing/src/main/docker</workingDirectory>
+                                    <workingDirectory>${maven.multiModuleProjectDirectory}/integration-testing/src/main/docker</workingDirectory>
                                     <arguments>
                                         <argument>compose</argument>
                                         <argument>down</argument>
@@ -647,6 +756,32 @@
                     <plugin>
                         <groupId>org.sonatype.central</groupId>
                         <artifactId>central-publishing-maven-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <!-- Usage: ./mvnw -Prewrite-maven-clean rewrite:run -->
+            <!-- Unifies / cleans the maven-poms-->
+            <id>rewrite-maven-clean</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.openrewrite.maven</groupId>
+                        <artifactId>rewrite-maven-plugin</artifactId>
+                        <configuration>
+                            <activeRecipes>
+                                <recipe>org.openrewrite.maven.BestPractices</recipe>
+                            </activeRecipes>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>rewrite</id>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>

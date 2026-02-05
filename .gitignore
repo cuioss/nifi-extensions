@@ -21,7 +21,21 @@ jest_stdout.log
 /CLAUDE.md
 **/.claude
 
-# Build artifacts
+# Build artifacts - generated bundle files (keep bundle-wrapper.js as it's source code)
+**/bundle.js
+**/bundle.umd.cjs
 **/bundle.vite.umd.js
 **/bundle.vite.umd.cjs
 **/bundle.webpack.js
+# But NOT bundle-wrapper.js (it's source code, not generated)
+
+# Claude Code configuration
+.claude/
+
+# Planning system (managed by /marshall-steward)
+.plan/*
+!.plan/marshal.json
+!.plan/project-structure.json
+
+# Planning system (managed by /marshall-steward)
+!.plan/project-architecture/

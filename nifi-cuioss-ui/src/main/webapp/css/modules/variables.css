@@ -8,12 +8,12 @@
 
     /* Success colors */
     --success-color: #2ecc40;
-    --success-color-dark: #29b739;
+    --success-color-dark: #1e7e34;  /* Darker green for better contrast */
     --success-color-rgb: 46, 204, 64;
 
     /* Error colors */
     --error-color: #ff4136;
-    --error-color-dark: #e60000;
+    --error-color-dark: #dc3545;  /* Darker red for better contrast */
     --error-color-rgb: 255, 65, 54;
 
     /* Neutral colors */
@@ -26,4 +26,20 @@
     /* Button colors */
     --button-color: #4CAF50;
     --button-color-hover: #45a049;
+    
+    /* Tab colors */
+    --tab-background: #f0f0f0;
+    --tab-hover-background: #e8e8e8;
+    
+    /* Additional colors for new components */
+    --background-light: #fff;
+    --background-secondary: #f5f5f5;
+    --background-hover: #e8e8e8;
+    --border-color-light: #eee;
+    --text-primary: #333;
+    --text-secondary: #666;
+    --primary-color-light: #e3f2fd;
+    --primary-color-dark: #1565c0;
+    --code-background: #f8f8f8;
+    --code-color: #d14;
 }

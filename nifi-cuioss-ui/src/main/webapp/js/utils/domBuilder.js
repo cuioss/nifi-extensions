@@ -5,6 +5,112 @@
 'use strict';
 
 /**
+ * Apply CSS classes to element
+ * @param {HTMLElement} element - The element
+ * @param {Object} options - Options containing css/className
+ */
+const applyCssClasses = (element, options) => {
+    if (options.css) {
+        if (Array.isArray(options.css)) {
+            element.classList.add(...options.css);
+        } else if (typeof options.css === 'string') {
+            element.className = options.css;
+        }
+    }
+    if (options.className) {
+        element.className = options.className;
+    }
+};
+
+/**
+ * Apply content to element
+ * @param {HTMLElement} element - The element
+ * @param {Object} options - Options containing text/html
+ */
+const applyContent = (element, options) => {
+    if (options.text) {
+        element.textContent = options.text;
+    }
+    if (options.html) {
+        if (options.sanitized === true) {
+            element.innerHTML = options.html;
+        } else {
+            element.textContent = options.html;
+        }
+    }
+};
+
+/**
+ * Check if attribute is boolean type
+ * @param {string} key - Attribute name
+ * @returns {boolean} True if boolean attribute
+ */
+const isBooleanAttribute = (key) => {
+    return key === 'disabled' || key === 'checked' || key === 'readonly' || key === 'required';
+};
+
+/**
+ * Apply single attribute to element
+ * @param {HTMLElement} element - The element
+ * @param {string} key - Attribute name
+ * @param {*} value - Attribute value
+ */
+const applyAttribute = (element, key, value) => {
+    if (isBooleanAttribute(key)) {
+        if (value === true || value === 'true' || value === '') {
+            element.setAttribute(key, '');
+        } else if (value !== false && value !== 'false' && value !== null && value !== undefined) {
+            element.setAttribute(key, value);
+        }
+    } else {
+        element.setAttribute(key, value);
+    }
+};
+
+/**
+ * Apply attributes to element
+ * @param {HTMLElement} element - The element
+ * @param {Object} options - Options containing attributes
+ */
+const applyAttributes = (element, options) => {
+    if (options.attributes) {
+        for (const [key, value] of Object.entries(options.attributes)) {
+            applyAttribute(element, key, value);
+        }
+    }
+};
+
+/**
+ * Apply event handlers to element
+ * @param {HTMLElement} element - The element
+ * @param {Object} options - Options containing events
+ */
+const applyEvents = (element, options) => {
+    if (options.events) {
+        for (const [event, handler] of Object.entries(options.events)) {
+            element.addEventListener(event, handler);
+        }
+    }
+};
+
+/**
+ * Apply children to element
+ * @param {HTMLElement} element - The element
+ * @param {Object} options - Options containing children
+ */
+const applyChildren = (element, options) => {
+    if (options.children) {
+        for (const child of options.children) {
+            if (child instanceof Element) {
+                element.appendChild(child);
+            } else if (typeof child === 'string') {
+                element.appendChild(document.createTextNode(child));
+            }
+        }
+    }
+};
+
+/**
  * Simple element creation - replaces complex createElement patterns.
  * @param {string} tag - HTML tag name
  * @param {Object} options - Element options
@@ -13,51 +119,11 @@
 export const createElement = (tag, options = {}) => {
     const element = document.createElement(tag);
 
-    // Handle CSS classes
-    if (options.css) {
-        if (Array.isArray(options.css)) {
-            element.classList.add(...options.css);
-        } else if (typeof options.css === 'string') {
-            element.className = options.css;
-        }
-    }
-    if (options.className) element.className = options.className;
-
-    // Handle content
-    if (options.text) element.textContent = options.text;
-    if (options.html) {
-        // Security: Only allow pre-sanitized HTML or use textContent for user input
-        if (options.sanitized === true) {
-            element.innerHTML = options.html;
-        } else {
-            element.textContent = options.html; // Safer default: treat as text
-        }
-    }
-
-    // Handle attributes
-    if (options.attributes) {
-        Object.entries(options.attributes).forEach(([key, value]) => {
-            element.setAttribute(key, value);
-        });
-    }
-
-    // Handle events
-    if (options.events) {
-        Object.entries(options.events).forEach(([event, handler]) => {
-            element.addEventListener(event, handler);
-        });
-    }
-
-    // Handle children
-    if (options.children) {
-        options.children.forEach(child => {
-            if (child instanceof Element) {
-                element.appendChild(child);
-            } else if (typeof child === 'string') {
-                element.appendChild(document.createTextNode(child));
-            }
-        });
-    }
+    applyCssClasses(element, options);
+    applyContent(element, options);
+    applyAttributes(element, options);
+    applyEvents(element, options);
+    applyChildren(element, options);
 
     return element;
 };
@@ -112,25 +178,28 @@ export const createFormField = (config) => {
 };
 
 /**
- * FormFieldBuilder class for compatibility - simple wrapper around createFormField.
+ * SimpleDOMFieldBuilder class for compatibility - simple wrapper around createFormField.
+ * Note: This is a legacy implementation that returns DocumentFragments.
+ * For new code, use FormFieldBuilder from formBuilder.js which returns HTMLElements.
  */
-export class FormFieldBuilder {
+export class SimpleDOMFieldBuilder {
     static createField(config) {
         return createFormField(config);
     }
 
     static createFields(fieldConfigs) {
         const builder = new DOMBuilder();
-        fieldConfigs.forEach(config => {
-            const fieldFragment = FormFieldBuilder.createField(config);
+        for (const config of fieldConfigs) {
+            const fieldFragment = SimpleDOMFieldBuilder.createField(config);
             builder.addExisting(fieldFragment.firstElementChild);
-        });
+        }
         return builder.build();
     }
 }
 
 // Legacy compatibility exports
 export const createFragment = () => document.createDocumentFragment();
+export const FormFieldBuilder = SimpleDOMFieldBuilder;
 
 export class DOMBuilder {
     constructor() {
@@ -201,26 +270,26 @@ export const DOMUtils = {
             domElement.appendChild(content);
         } else if (Array.isArray(content)) {
             const fragment = createFragment();
-            content.forEach(item => {
+            for (const item of content) {
                 if (item instanceof Element) {
                     fragment.appendChild(item);
                 } else if (typeof item === 'string') {
                     fragment.appendChild(document.createTextNode(item));
                 }
-            });
+            }
             domElement.appendChild(fragment);
         }
     },
 
     appendMultiple(parent, elements) {
         const builder = new DOMBuilder();
-        elements.forEach(config => {
+        for (const config of elements) {
             if (typeof config === 'string') {
                 builder.addElement('div', { text: config });
             } else {
                 builder.addElement(config.tag || 'div', config.options || {});
             }
-        });
+        }
         return builder.appendTo(parent);
     }
 };

@@ -17,14 +17,16 @@
  * @author CUIOSS Team
  * @since 1.0.0
  */
-import $ from 'cash-dom';
 import { createLogger } from './utils/logger.js';
 import * as nfCommon from 'nf.Common';
 import * as tokenVerifier from './components/tokenVerifier.js';
 import * as issuerConfigEditor from './components/issuerConfigEditor.js';
+import * as metricsTab from './components/metricsTab.js';
+import * as helpTab from './components/helpTab.js';
 import * as i18n from './utils/i18n.js';
 import { initTooltips } from './utils/tooltip.js';
 import { cleanup as cleanupKeyboardShortcuts, initKeyboardShortcuts } from './utils/keyboardShortcuts.js';
+import { initTabs, cleanup as cleanupTabs } from './utils/tabManager.js';
 import { API, CSS, NIFI, UI_TEXT } from './utils/constants.js';
 
 const logger = createLogger('NiFi-Main');
@@ -51,12 +53,23 @@ const registerComponents = () => {
         // Initialize i18n
         i18n.getLanguage();
 
-        // Register the two main UI tabs
-        nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.ISSUER_CONFIG, issuerConfigEditor);
-        nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.TOKEN_VERIFICATION, tokenVerifier);
+        // Skip registerCustomUiTab calls in standalone mode - tabs already exist in HTML
+        // In production NiFi environment, these would register with the real NiFi framework
+        const isStandaloneMode = globalThis.location.href.includes('nifi-cuioss-ui') ||
+                                 globalThis.location.href.includes('localhost:9095') ||
+                                 globalThis.location.pathname.includes('/nifi-cuioss-ui');
+        if (typeof nfCommon.registerCustomUiTab === 'function' && !isStandaloneMode) {
+            // Only register tabs when running inside NiFi (not standalone)
+            nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.ISSUER_CONFIG, issuerConfigEditor);
+            nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.TOKEN_VERIFICATION, tokenVerifier);
+            nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.METRICS, metricsTab);
+            nfCommon.registerCustomUiTab(NIFI.COMPONENT_TABS.HELP, helpTab);
+        } else {
+            logger.info('Skipping tab registration in standalone mode');
+        }
 
         // Set flag for test compatibility
-        window.jwtComponentsRegistered = true;
+        globalThis.jwtComponentsRegistered = true;
 
         // Components registered successfully
         return true;
@@ -90,22 +103,21 @@ const registerComponents = () => {
 const setupHelpTooltips = () => {
     try {
         // Find property labels and add tooltips
-        $(CSS.SELECTORS.PROPERTY_LABEL).each((_index, label) => {
-            const propertyName = $(label).text().trim();
+        for (const label of document.querySelectorAll(CSS.SELECTORS.PROPERTY_LABEL)) {
+            const propertyName = label.textContent.trim();
             const helpKey = UI_TEXT.PROPERTY_LABELS[propertyName];
 
-            if (helpKey && $(label).find(CSS.SELECTORS.HELP_TOOLTIP).length === 0) {
+            if (helpKey && !label.querySelector(CSS.SELECTORS.HELP_TOOLTIP)) {
                 const helpText = nfCommon.getI18n().getProperty(helpKey);
                 if (helpText) {
-                    const tooltip = $(
-                        `<span class="${CSS.CLASSES.HELP_TOOLTIP} ` +
-                        `${CSS.CLASSES.FA} ${CSS.CLASSES.FA_QUESTION_CIRCLE}"></span>`
-                    );
-                    tooltip.attr('title', helpText);
-                    $(label).append(tooltip);
+                    const tooltip = document.createElement('span');
+                    tooltip.className = `${CSS.CLASSES.HELP_TOOLTIP} ` +
+                        `${CSS.CLASSES.FA} ${CSS.CLASSES.FA_QUESTION_CIRCLE}`;
+                    tooltip.setAttribute('title', helpText);
+                    label.appendChild(tooltip);
                 }
             }
-        });
+        }
 
         // Initialize tooltips for help elements
         initTooltips(CSS.SELECTORS.HELP_TOOLTIP);
@@ -128,6 +140,57 @@ const setupHelpTooltips = () => {
 };
 
 /**
+ * Check if node contains loading text
+ * @param {Node} node - The node to check
+ * @returns {boolean} True if node contains loading text
+ */
+const nodeContainsLoadingText = (node) => {
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+        return false;
+    }
+    const textContent = node.textContent?.trim() || '';
+    return textContent.includes('Loading JWT') ||
+           textContent.includes('Loading Validator') ||
+           textContent.includes('Loading JWT Validator UI');
+};
+
+/**
+ * Process mutation for loading indicators
+ * @param {MutationRecord} mutation - The mutation record
+ * @returns {boolean} True if loading indicator found
+ */
+const processMutationForLoading = (mutation) => {
+    if (mutation.type !== 'childList') {
+        return false;
+    }
+    for (const node of mutation.addedNodes) {
+        if (nodeContainsLoadingText(node)) {
+            return true;
+        }
+    }
+    return false;
+};
+
+/**
+ * Handle mutation observer callback for loading indicators
+ * @param {MutationRecord[]} mutations - Array of mutations
+ */
+const handleLoadingMutations = (mutations) => {
+    let needsHiding = false;
+    for (const mutation of mutations) {
+        if (processMutationForLoading(mutation)) {
+            needsHiding = true;
+            break;
+        }
+    }
+
+    if (needsHiding) {
+        logger.debug('MutationObserver detected loading message, hiding immediately');
+        hideLoadingIndicatorRobust();
+    }
+};
+
+/**
  * Sets up continuous monitoring for loading indicators that might appear at any time.
  * This is critical for catching loading messages that appear after initialization.
  * Enhanced to follow roundtrip testing requirements for immediate feedback.
@@ -135,28 +198,7 @@ const setupHelpTooltips = () => {
 const setupContinuousLoadingMonitoring = () => {
     // Set up mutation observer to catch dynamically added loading elements
     if (typeof MutationObserver !== 'undefined') {
-        const loadingObserver = new MutationObserver((mutations) => {
-            let needsHiding = false;
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'childList') {
-                    mutation.addedNodes.forEach((node) => {
-                        if (node.nodeType === Node.ELEMENT_NODE) {
-                            const textContent = node.textContent?.trim() || '';
-                            if (textContent.includes('Loading JWT') ||
-                                textContent.includes('Loading Validator') ||
-                                textContent.includes('Loading JWT Validator UI')) {
-                                needsHiding = true;
-                            }
-                        }
-                    });
-                }
-            });
-
-            if (needsHiding) {
-                logger.debug('MutationObserver detected loading message, hiding immediately');
-                hideLoadingIndicatorRobust();
-            }
-        });
+        const loadingObserver = new MutationObserver(handleLoadingMutations);
 
         loadingObserver.observe(document.body, {
             childList: true,
@@ -165,7 +207,7 @@ const setupContinuousLoadingMonitoring = () => {
         });
 
         // Store observer for cleanup
-        window.jwtLoadingObserver = loadingObserver;
+        globalThis.jwtLoadingObserver = loadingObserver;
     }
 
     // Set up periodic monitoring as additional safety net
@@ -187,32 +229,48 @@ const setupContinuousLoadingMonitoring = () => {
 };
 
 /**
+ * Initialize tooltips for a single node
+ * @param {Node} node - The node to process
+ */
+const initializeTooltipsForNode = (node) => {
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+        return;
+    }
+
+    const elementsWithTitle = node.querySelectorAll('[title]');
+    const helpTooltips = node.querySelectorAll('.help-tooltip');
+
+    if (elementsWithTitle.length > 0) {
+        initTooltips(Array.from(elementsWithTitle), { placement: 'bottom' });
+    }
+
+    if (helpTooltips.length > 0) {
+        initTooltips(Array.from(helpTooltips), { placement: 'right' });
+    }
+};
+
+/**
+ * Process mutation for tooltip initialization
+ * @param {MutationRecord} mutation - The mutation record
+ */
+const processMutationForTooltips = (mutation) => {
+    if (mutation.type === 'childList') {
+        for (const node of mutation.addedNodes) {
+            initializeTooltipsForNode(node);
+        }
+    }
+};
+
+/**
  * Sets up mutation observer to initialize tooltips on dynamically added elements.
  * This ensures tooltips work on form fields created after initial page load.
  */
 const setupTooltipObserver = () => {
     try {
         const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'childList') {
-                    mutation.addedNodes.forEach((node) => {
-                        if (node.nodeType === Node.ELEMENT_NODE) {
-                            // Initialize tooltips for newly added elements
-                            const $node = $(node);
-                            const elementsWithTitle = $node.find('[title]');
-                            const helpTooltips = $node.find('.help-tooltip');
-
-                            if (elementsWithTitle.length > 0) {
-                                initTooltips(elementsWithTitle.get(), { placement: 'bottom' });
-                            }
-
-                            if (helpTooltips.length > 0) {
-                                initTooltips(helpTooltips.get(), { placement: 'right' });
-                            }
-                        }
-                    });
-                }
-            });
+            for (const mutation of mutations) {
+                processMutationForTooltips(mutation);
+            }
         });
 
         observer.observe(document.body, {
@@ -221,8 +279,8 @@ const setupTooltipObserver = () => {
         });
 
         // Store observer for cleanup
-        if (!window.nifiJwtTooltipObserver) {
-            window.nifiJwtTooltipObserver = observer;
+        if (!globalThis.nifiJwtTooltipObserver) {
+            globalThis.nifiJwtTooltipObserver = observer;
         }
     } catch (error) {
         // eslint-disable-next-line no-console
@@ -281,7 +339,7 @@ const setupUI = () => {
         updateTranslations();
 
         // Set a flag to indicate UI setup is complete
-        window.jwtUISetupComplete = true;
+        globalThis.jwtUISetupComplete = true;
     } catch (error) {
         console.error('Error in setupUI():', error);
         // Fallback: try basic hiding without additional logic
@@ -310,15 +368,15 @@ const updateTranslations = () => {
     const i18nObj = nfCommon.getI18n();
 
     // Update loading text
-    const loadingIndicator = $(`#${CSS.IDS.LOADING_INDICATOR}`);
-    if (loadingIndicator.length) {
-        loadingIndicator.text(i18nObj.getProperty(UI_TEXT.I18N_KEYS.JWT_VALIDATOR_LOADING) || 'Loading...');
+    const loadingIndicator = document.getElementById(CSS.IDS.LOADING_INDICATOR);
+    if (loadingIndicator) {
+        loadingIndicator.textContent = i18nObj.getProperty(UI_TEXT.I18N_KEYS.JWT_VALIDATOR_LOADING) || 'Loading...';
     }
 
     // Update title
-    const title = $(CSS.SELECTORS.JWT_VALIDATOR_TITLE);
-    if (title.length) {
-        title.text(i18nObj.getProperty(UI_TEXT.I18N_KEYS.JWT_VALIDATOR_TITLE) || 'JWT Validator');
+    const title = document.querySelector(CSS.SELECTORS.JWT_VALIDATOR_TITLE);
+    if (title) {
+        title.textContent = i18nObj.getProperty(UI_TEXT.I18N_KEYS.JWT_VALIDATOR_TITLE) || 'JWT Validator';
     }
 };
 
@@ -334,7 +392,8 @@ const updateTranslations = () => {
  * setupDialogHandlers(); // Registers dialog open event listener
  */
 const setupDialogHandlers = () => {
-    $(document).on('dialogOpen', (_event, data) => {
+    document.addEventListener('dialogOpen', (event) => {
+        const data = event.detail;
         const dialogElement = Array.isArray(data) ? data[0] : data;
 
         const isProcessorDialog = dialogElement?.classList?.contains(
@@ -354,6 +413,81 @@ const setupDialogHandlers = () => {
             }, API.TIMEOUTS.DIALOG_DELAY);
         }
     });
+};
+
+/**
+ * Initializes tab content components when tabs are shown
+ */
+const initializeTabContent = () => {
+    try {
+        logger.info('Initializing tab content components...');
+
+        // Initialize all tabs immediately since they exist in the DOM
+        logger.info('Initializing issuer config tab');
+        const issuerConfigElement = document.getElementById('issuer-config');
+        if (issuerConfigElement) {
+            // Provide required parameters: element, callback, url
+            const callback = () => logger.debug('Issuer config initialized');
+            const url = globalThis.location.href;
+            issuerConfigEditor.init(issuerConfigElement, callback, url);
+        } else {
+            logger.warn('Issuer config tab element not found');
+        }
+
+        logger.info('Initializing token verification tab');
+        const tokenVerifierElement = document.getElementById('token-verification');
+        if (tokenVerifierElement) {
+            // Provide required parameters: element, config, type, callback
+            const callback = () => logger.debug('Token verifier initialized');
+            tokenVerifier.init(tokenVerifierElement, {}, 'jwt', callback);
+        } else {
+            logger.warn('Token verification tab element not found');
+        }
+
+        logger.info('Initializing metrics tab');
+        metricsTab.init();
+
+        logger.info('Initializing help tab');
+        helpTab.init();
+
+        // Also set up tab change handler for any re-initialization needs
+        document.addEventListener('tabChanged', (event) => {
+            const data = event.detail;
+            logger.debug('Tab changed to:', data.tabId);
+
+            switch (data.tabId) {
+                case '#issuer-config': {
+                    const issuerElement = document.getElementById('issuer-config');
+                    if (issuerElement) {
+                        const callback = () => logger.debug('Issuer config re-initialized');
+                        const url = globalThis.location.href;
+                        issuerConfigEditor.init(issuerElement, callback, url);
+                    }
+                    break;
+                }
+                case '#token-verification': {
+                    const tokenElement = document.getElementById('token-verification');
+                    if (tokenElement) {
+                        const callback = () => logger.debug('Token verifier re-initialized');
+                        tokenVerifier.init(tokenElement, {}, 'jwt', callback);
+                    }
+                    break;
+                }
+                case '#metrics':
+                    metricsTab.init();
+                    break;
+                case '#help':
+                    helpTab.init();
+                    break;
+                default:
+                    logger.warn('Unknown tab:', data.tabId);
+            }
+        });
+
+        logger.info('Tab content initialization setup complete');
+    } catch (error) {
+        logger.error('Failed to initialize tab content:', error);
+    }
 };
 
 /**
@@ -378,13 +512,13 @@ export const init = () => {
             logger.debug('JWT UI initialization starting...');
 
             // Prevent double initialization
-            if (window.jwtInitializationInProgress || window.jwtUISetupComplete) {
+            if (globalThis.jwtInitializationInProgress || globalThis.jwtUISetupComplete) {
                 logger.debug('Initialization already in progress or complete, skipping');
                 resolve(true);
                 return;
             }
 
-            window.jwtInitializationInProgress = true;
+            globalThis.jwtInitializationInProgress = true;
 
             // CRITICAL: Hide loading indicator immediately as first action
             logger.info('PRIORITY: Hiding loading indicator immediately');
@@ -397,15 +531,23 @@ export const init = () => {
             if (success) {
                 logger.debug('Component registration successful, setting up UI...');
                 setupUI();
+                initTabs();
                 registerHelpTooltips();
                 setupDialogHandlers();
                 initKeyboardShortcuts();
+
+                // Initialize tab content components
+                initializeTabContent();
                 logger.info('JWT UI initialization completed successfully');
             } else {
                 console.warn('Component registration failed, using fallback...');
                 setupUI();
+                initTabs();
                 registerHelpTooltips();
                 initKeyboardShortcuts();
+
+                // Initialize tab content components
+                initializeTabContent();
             }
 
             // Multiple safety checks to ensure loading indicator is hidden
@@ -427,7 +569,7 @@ export const init = () => {
                 updateTranslations();
             }, API.TIMEOUTS.DIALOG_DELAY);
 
-            window.jwtInitializationInProgress = false;
+            globalThis.jwtInitializationInProgress = false;
             resolve(success);
         } catch (error) {
             console.error('JWT UI initialization failed:', error);
@@ -436,7 +578,7 @@ export const init = () => {
             hideLoadingIndicatorRobust();
             setupUI();
 
-            window.jwtInitializationInProgress = false;
+            globalThis.jwtInitializationInProgress = false;
             resolve(false);
         }
     });
@@ -461,10 +603,10 @@ const hideLoadingIndicatorRobust = () => {
         hideLoadingByTextContent();
 
         // Set completion flag
-        window.jwtLoadingIndicatorHidden = true;
+        globalThis.jwtLoadingIndicatorHidden = true;
 
         // Expose hiding function for test access
-        window.jwtHideLoadingIndicator = hideLoadingIndicatorRobust;
+        globalThis.jwtHideLoadingIndicator = hideLoadingIndicatorRobust;
         logger.debug('hideLoadingIndicatorRobust: Comprehensive loading indicator removal completed');
     } catch (error) {
         console.warn('Error in hideLoadingIndicatorRobust:', error);
@@ -506,20 +648,20 @@ const hideLoadingBySelectors = () => {
         '[class*="loading"]'
     ];
 
-    selectors.forEach(selector => {
+    for (const selector of selectors) {
         try {
             const elements = document.querySelectorAll(selector);
-            elements.forEach(element => {
+            for (const element of elements) {
                 element.style.setProperty('display', 'none', 'important');
                 element.style.setProperty('visibility', 'hidden', 'important');
                 element.style.setProperty('opacity', '0', 'important');
                 element.setAttribute('aria-hidden', 'true');
                 element.classList.add('hidden');
-            });
+            }
         } catch (selectorError) {
             console.debug('Selector ignored:', selector, selectorError);
         }
-    });
+    }
 };
 
 /**
@@ -550,7 +692,7 @@ const hideLoadingByTextContent = () => {
 
     // Also check for elements by various IDs that might contain loading messages
     const loadingIds = ['loading-indicator', 'simulated-loading', 'jwt-loading', 'validator-loading'];
-    loadingIds.forEach(id => {
+    for (const id of loadingIds) {
         const element = document.getElementById(id);
         if (element) {
             logger.debug(`Found element with ID ${id}:`, element.textContent?.trim());
@@ -559,7 +701,7 @@ const hideLoadingByTextContent = () => {
                 hiddenCount++;
             }
         }
-    });
+    }
 
     logger.debug(`hideLoadingByTextContent: Hidden ${hiddenCount} loading indicators`);
 };
@@ -623,19 +765,20 @@ const emergencyFallbackHideLoading = () => {
 export const cleanup = () => {
     try {
         // Simple cleanup - just remove event handlers
-        $(document).off('dialogOpen');
+        // Note: Need to track and remove specific event listeners added with addEventListener
         cleanupKeyboardShortcuts();
+        cleanupTabs();
 
         // Cleanup tooltip observer
-        if (window.nifiJwtTooltipObserver) {
-            window.nifiJwtTooltipObserver.disconnect();
-            window.nifiJwtTooltipObserver = null;
+        if (globalThis.nifiJwtTooltipObserver) {
+            globalThis.nifiJwtTooltipObserver.disconnect();
+            globalThis.nifiJwtTooltipObserver = null;
         }
 
         // Cleanup loading observer
-        if (window.jwtLoadingObserver) {
-            window.jwtLoadingObserver.disconnect();
-            window.jwtLoadingObserver = null;
+        if (globalThis.jwtLoadingObserver) {
+            globalThis.jwtLoadingObserver.disconnect();
+            globalThis.jwtLoadingObserver = null;
         }
 
         // JWT UI cleanup completed
@@ -683,3 +826,9 @@ export {
     hideElement,
     setupHelpTooltips
 };
+
+// Export tab components for external access
+export * as helpTab from './components/helpTab.js';
+export * as metricsTab from './components/metricsTab.js';
+export * as issuerConfigEditor from './components/issuerConfigEditor.js';
+export * as tokenVerifier from './components/tokenVerifier.js';

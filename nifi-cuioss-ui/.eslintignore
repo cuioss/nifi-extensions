@@ -18,6 +18,8 @@ coverage/
 *.min.js
 src/main/webapp/js/bundle.webpack.js
 src/main/webapp/js/bundle.webpack.js.LICENSE.txt
+src/main/webapp/js/bundle.js
+src/main/webapp/js/bundle.umd.cjs
 
 # Configuration files (Node.js environment)
 webpack.config.js

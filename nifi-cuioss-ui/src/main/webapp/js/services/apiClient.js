@@ -10,11 +10,36 @@
  * @since 1.0.0
  */
 'use strict';
-import $ from 'cash-dom';
 import { API } from '../utils/constants.js';
 import { createXhrErrorObject } from '../utils/errorHandler.js';
 
 const BASE_URL = API.BASE_URL;
+
+/**
+ * Gets authentication configuration from URL parameters or stored config.
+ * This retrieves the processor ID needed for authentication.
+ *
+ * @returns {Object} Authentication configuration
+ * @returns {string} returns.processorId - The processor ID
+ */
+const getAuthConfig = () => {
+    // First check if we have stored auth config
+    if (globalThis.jwtAuthConfig?.processorId) {
+        return globalThis.jwtAuthConfig;
+    }
+
+    // Get processor ID from URL parameters (this is safe - it's just an identifier)
+    const urlParams = new URLSearchParams(globalThis.location.search);
+    const processorId = urlParams.get('id') || urlParams.get('processorId');  // NiFi uses 'id' parameter
+
+    if (processorId) {
+        globalThis.jwtAuthConfig = { processorId };
+        return globalThis.jwtAuthConfig;
+    }
+
+    // Return default config if not available (for standalone testing)
+    return { processorId: '' };
+};
 
 /**
  * Generic API call helper that eliminates duplicate AJAX setup across methods.
@@ -26,6 +51,7 @@ const BASE_URL = API.BASE_URL;
  * @param {string} method - HTTP method (GET, POST, PUT, DELETE)
  * @param {string} endpoint - API endpoint URL (relative or absolute)
  * @param {Object|null} [data=null] - Request data to be JSON serialized
+ * @param {boolean} [includeAuth=true] - Whether to include authentication headers
  * @returns {Promise<Object>} Promise that resolves to the API response data
  *
  * @example
@@ -36,7 +62,7 @@ const BASE_URL = API.BASE_URL;
  * // POST request with data
  * const result = await apiCall('POST', '/api/submit', {name: 'test'});
  */
-const apiCall = (method, endpoint, data = null) => {
+const apiCall = (method, endpoint, data = null, includeAuth = true) => {
     const config = {
         method,
         url: endpoint,
@@ -44,12 +70,51 @@ const apiCall = (method, endpoint, data = null) => {
         timeout: API.TIMEOUTS.DEFAULT
     };
 
+    // Add authentication headers for JWT API endpoints
+    if (includeAuth && endpoint.includes('/jwt/')) {
+        const authConfig = getAuthConfig();
+        config.headers = {
+            'X-Processor-Id': authConfig.processorId
+        };
+
+        // Also add processorId to the data if it's a JWT endpoint
+        if (data && authConfig.processorId) {
+            data.processorId = authConfig.processorId;
+        }
+    }
+
     if (data) {
         config.data = JSON.stringify(data);
         config.contentType = 'application/json';
     }
 
-    return $.ajax(config);
+    // Cash-DOM doesn't have ajax, use fetch API instead
+    const fetchOptions = {
+        method: config.method || 'GET',
+        headers: config.headers || {},
+        credentials: 'same-origin'
+    };
+
+    if (config.data) {
+        fetchOptions.body = config.data;
+        if (config.contentType) {
+            fetchOptions.headers['Content-Type'] = config.contentType;
+        }
+    }
+
+    return fetch(config.url, fetchOptions)
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw createXhrErrorObject({
+                        status: response.status,
+                        statusText: response.statusText,
+                        responseText: text
+                    });
+                });
+            }
+            return response.json();
+        });
 };
 
 /**
@@ -182,6 +247,8 @@ export const validateJwksContent = (jwksContent) => {
  * }
  */
 export const verifyToken = (token) => {
+    // Normal production path - make actual API call
+    // Note: localhost simulation is handled by the tokenVerifier component
     return apiCall('POST', `${BASE_URL}/verify-token`, { token })
         .catch(error => { throw createXhrErrorObject(error); });
 };
@@ -247,7 +314,7 @@ export const getSecurityMetrics = () => {
  * }
  */
 export const getProcessorProperties = (processorId) => {
-    return apiCall('GET', `../nifi-api/processors/${processorId}`);
+    return apiCall('GET', `nifi-api/processors/${processorId}`);
 };
 
 /**
@@ -293,6 +360,6 @@ export const updateProcessorProperties = (processorId, properties) => {
             }
         };
 
-        return apiCall('PUT', `../nifi-api/processors/${processorId}`, updateRequest);
+        return apiCall('PUT', `nifi-api/processors/${processorId}`, updateRequest);
     });
 };

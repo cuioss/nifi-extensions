@@ -1,5 +1,5 @@
 /**
- * Simple tests for validation utility functions.
+ * Enhanced tests for validation utility functions with improved error messages.
  */
 import {
     validateAudience,
@@ -11,20 +11,39 @@ import {
     validateRequired,
     validateUrl
 } from '../../../main/webapp/js/utils/validation.js';
-import { getIsLocalhost } from '../../../main/webapp/js/utils/constants.js';
+
+import {
+    expectWithContext,
+    validateDOMElement,
+    logTestState
+} from './testHelpers.js';
 
 describe('Validation utilities (simplified)', () => {
     describe('validateRequired', () => {
         it('should validate non-empty values', () => {
-            const result = validateRequired('valid value');
+            const testInput = 'valid value';
+            const testName = 'validateRequired with valid input';
+            logTestState('execution', { input: testInput }, testName);
+
+            const result = validateRequired(testInput);
+
             expect(result.isValid).toBe(true);
-            expect(result.sanitizedValue).toBe('valid value');
+            expect(result.sanitizedValue).toBe(testInput);
         });
 
         it('should reject empty values', () => {
-            const result = validateRequired('');
+            const testInput = '';
+            const testName = 'validateRequired with empty input';
+            logTestState('execution', { input: testInput }, testName);
+
+            const result = validateRequired(testInput);
+
             expect(result.isValid).toBe(false);
             expect(result.error).toBeTruthy();
+
+            if (!result.error) {
+                throw new Error(`Test failed: ${testName} - Expected error message but got: ${JSON.stringify(result)}`);
+            }
         });
 
         it('should handle optional fields', () => {
@@ -48,13 +67,87 @@ describe('Validation utilities (simplified)', () => {
 
     describe('validateUrl', () => {
         it('should validate basic HTTP URL', () => {
-            const result = validateUrl('http://example.com');
+            const testInput = 'http://example.com';
+            const testName = 'validateUrl with HTTP URL';
+            logTestState('execution', { input: testInput }, testName);
+
+            const result = validateUrl(testInput);
+
+            // Enhanced error context for debugging
             expect(result).toHaveProperty('isValid');
+
+            if (!result.isValid) {
+                throw new Error(`
+=== TEST FAILURE DETAILS ===
+Test: ${testName}
+Input: ${testInput}
+Expected: Valid HTTP URL should be accepted
+Actual Result: ${JSON.stringify(result, null, 2)}
+============================`);
+            }
         });
 
         it('should validate basic HTTPS URL', () => {
-            const result = validateUrl('https://example.com');
+            const testInput = 'https://example.com';
+            const testName = 'validateUrl with HTTPS URL';
+            logTestState('execution', { input: testInput }, testName);
+
+            const result = validateUrl(testInput);
+
+            // Enhanced assertions with better error context
             expect(result).toHaveProperty('isValid');
+
+            if (!result.isValid) {
+                throw new Error(`
+=== TEST FAILURE DETAILS ===
+Test: ${testName}
+Input: ${testInput}
+Expected: HTTPS URL should be valid
+Actual Result: ${JSON.stringify(result, null, 2)}
+============================`);
+            }
+
+            expect(result.isValid).toBe(true);
+            expect(result.sanitizedValue).toBe(testInput);
+        });
+
+        it('should reject invalid URL formats', () => {
+            const invalidUrls = [
+                'not-a-url',
+                'ftp://example.com',
+                'javascript:alert(1)',
+                'mailto:test@example.com'
+            ];
+
+            invalidUrls.forEach(testInput => {
+                const testName = `validateUrl with invalid URL: ${testInput}`;
+                logTestState('execution', { input: testInput }, testName);
+
+                const result = validateUrl(testInput);
+
+                if (result.isValid) {
+                    throw new Error(`
+=== TEST FAILURE DETAILS ===
+Test: ${testName}
+Input: ${testInput}
+Expected: Invalid URL should be rejected
+Actual Result: ${JSON.stringify(result, null, 2)}
+Error: URL was incorrectly validated as valid
+============================`);
+                }
+
+                expect(result.error).toBeTruthy();
+
+                if (!result.error) {
+                    throw new Error(`
+=== TEST FAILURE DETAILS ===
+Test: ${testName}
+Input: ${testInput}
+Expected: Error message should be present for invalid URL
+Actual Result: ${JSON.stringify(result, null, 2)}
+============================`);
+                }
+            });
         });
     });
 
@@ -95,13 +188,6 @@ describe('Validation utilities (simplified)', () => {
             };
             const result = validateIssuerConfig(config);
             expect(result).toHaveProperty('isValid');
-        });
-    });
-
-    describe('getIsLocalhost (from constants)', () => {
-        it('should return boolean value', () => {
-            const result = getIsLocalhost();
-            expect(typeof result).toBe('boolean');
         });
     });
 });

@@ -1,103 +1,12 @@
 /**
  * @file Simplified Processor Utilities
  * Consolidated processor operations using Playwright built-ins
- * @version 3.0.0
+ * @version 4.0.0 - Cleaned up unused methods
  */
 
 import {expect} from '@playwright/test';
 import {CONSTANTS} from './constants.js';
-
-/**
- * Add processor to canvas first
- */
-export async function addProcessorToCanvas(page, processorType = 'MultiIssuerJWTTokenAuthenticator') {
-  try {
-    // Check if the Add Processor dialog is already open
-    const dialog = page.locator('div[role="dialog"]:has(h2:has-text("Add Processor"))');
-    if (await dialog.isVisible({ timeout: 1000 }).catch(() => false)) {
-      console.log('Add Processor dialog is already open');
-    } else {
-      // Look for the actual draggable processor button (not the icon div)
-      const draggableProcessorButton = page.locator('button.cdk-drag[class*="icon-processor"]').first();
-
-      // Check if the draggable button is visible
-      if (await draggableProcessorButton.isVisible()) {
-        // Get canvas for drop target
-        const canvas = page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS || '#canvas, .canvas, svg');
-        await canvas.waitFor({ timeout: 5000 });
-
-        const canvasBounds = await canvas.boundingBox();
-
-        if (canvasBounds) {
-          const centerX = canvasBounds.width / 2;
-          const centerY = canvasBounds.height / 2;
-
-          // Drag processor to canvas center
-          await draggableProcessorButton.dragTo(canvas, {
-            targetPosition: { x: centerX, y: centerY },
-            force: true
-          });
-
-          // Wait for dialog to appear
-          await page.waitForTimeout(1000);
-        } else {
-          console.log('Could not get canvas bounds for drag target');
-          return false;
-        }
-      } else {
-        console.log('Draggable processor button not visible');
-        return false;
-      }
-    }
-
-    // Handle the Add Processor dialog
-    if (await dialog.isVisible({ timeout: 5000 }).catch(() => false)) {
-      // Filter for the specific processor type
-      const filterInput = page.locator('input[placeholder="Filter types"]');
-      await filterInput.fill(processorType);
-      await page.waitForTimeout(500);
-
-      // Click on the processor in the table
-      const processorRow = page.locator(`table tr:has(td:has-text("${processorType}"))`).first();
-      if (await processorRow.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await processorRow.click();
-
-        // Click the Add button
-        const addButton = page.locator('button:has-text("Add")').last();
-        await addButton.click();
-
-        // Wait for dialog to close and processor to appear
-        await dialog.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
-        await page.waitForTimeout(2000);
-
-        // Check if processor was added by looking for processor elements on canvas
-        const processorOnCanvas = page.locator('g.processor, rect.processor, [data-component-type="processor"]');
-        const processorExists = await processorOnCanvas.count() > 0;
-
-        if (processorExists) {
-          console.log('Successfully added processor to canvas');
-          return true;
-        } else {
-          console.log('Processor was selected but not found on canvas');
-          return false;
-        }
-      } else {
-        console.log(`Processor type "${processorType}" not found in dialog`);
-        // Cancel the dialog
-        const cancelButton = page.locator('button:has-text("Cancel")');
-        await cancelButton.click();
-        return false;
-      }
-    } else {
-      console.log('Add Processor dialog did not appear');
-      return false;
-    }
-  } catch (error) {
-    console.log('Could not add processor to canvas:', error.message);
-  }
-
-  return false;
-}
+import { processorLogger } from './shared-logger.js';
 
 /**
  * Find processor on canvas using modern Playwright patterns
@@ -180,29 +89,6 @@ export async function findJwtAuthenticator(page, options = {}) {
 
   if (options.failIfNotFound !== false) {
     throw new Error('JWT Authenticator not found on canvas (should already be present)');
-  }
-
-  return null;
-}
-
-/**
- * Find MultiIssuer JWT Token Authenticator specifically
- */
-export async function findMultiIssuerJwtAuthenticator(page, options = {}) {
-  // Find existing processor on canvas (should already be present)
-  const processor = await findProcessor(page, 'MultiIssuerJWTTokenAuthenticator', options);
-  return processor;
-}
-
-/**
- * Verify MultiIssuer JWT Token Authenticator deployment
- */
-export async function verifyMultiIssuerJwtAuthenticator(page, options = {}) {
-  const processor = await findMultiIssuerJwtAuthenticator(page, options);
-
-  if (processor) {
-    await verifyProcessorDeployment(page, 'MultiIssuerJWTTokenAuthenticator');
-    return { ...processor, name: 'MultiIssuerJWTTokenAuthenticator' };
   }
 
   return null;
@@ -302,7 +188,7 @@ export async function configureProcessor(page, processorIdentifier, options = {}
 
   // If processorIdentifier is a string, find the processor first
   if (typeof processorIdentifier === 'string') {
-    processor = await findProcessor(page, processorIdentifier, { addIfNotFound: true });
+    processor = await findProcessor(page, processorIdentifier);
     if (!processor) {
       throw new Error(`Cannot configure processor: ${processorIdentifier} not found`);
     }
@@ -402,7 +288,7 @@ export async function verifyProcessorDeployment(page, processorType) {
 }
 
 /**
- * Simplified ProcessorService class
+ * Simplified ProcessorService class with only used methods
  */
 export class ProcessorService {
   constructor(page, testInfo = null) {
@@ -419,11 +305,7 @@ export class ProcessorService {
   }
 
   async findMultiIssuerJwtAuthenticator(options = {}) {
-    return findMultiIssuerJwtAuthenticator(this.page, options);
-  }
-
-  async verifyMultiIssuerJwtAuthenticator(options = {}) {
-    return verifyMultiIssuerJwtAuthenticator(this.page, options);
+    return findProcessor(this.page, 'MultiIssuerJWTTokenAuthenticator', options);
   }
 
   async interact(processor, options = {}) {
@@ -434,75 +316,211 @@ export class ProcessorService {
     return configureProcessor(this.page, processor, { ...options, testInfo: this.testInfo });
   }
 
-  async openConfiguration(processor, options = {}) {
-    return configureProcessor(this.page, processor, { ...options, testInfo: this.testInfo });
-  }
-
-  async configureMultiIssuerJwtAuthenticator(processor, options = {}) {
-    return configureProcessor(this.page, processor, { ...options, testInfo: this.testInfo });
-  }
-
-  async accessAdvancedProperties(dialog, options = {}) {
-    // Look for Properties or Advanced tab with NiFi-compatible selectors
-    const advancedTab = this.page.getByRole("tab", {
-      name: /properties|advanced/i,
-    });
-
-    if (await advancedTab.isVisible({ timeout: 2000 })) {
-      await advancedTab.click();
-
-      // Verify advanced content is loaded using NiFi-compatible selectors
-      const advancedContent = this.page.locator(
-        '[role="tabpanel"]:not([hidden]), .tab-pane.active, [aria-expanded="true"]',
-      );
-      await expect(advancedContent.first()).toBeVisible({
-        timeout: 3000,
-      });
-
-      return true;
+  async openAdvancedUI(processor) {
+    processorLogger.debug("Opening Advanced UI via right-click menu");
+    
+    // Right-click on processor
+    await this.interact(processor, { action: "rightclick" });
+    
+    // Look for Advanced menu item
+    const advancedMenuItem = this.page.getByRole("menuitem", { name: /advanced/i });
+    
+    if (await advancedMenuItem.isVisible({ timeout: 2000 })) {
+      await advancedMenuItem.click();
+      processorLogger.debug("Clicked Advanced menu item");
+      
+      // Wait for navigation to advanced page
+      try {
+        await this.page.waitForURL('**/advanced', { timeout: 10000 });
+        processorLogger.debug("Successfully navigated to Advanced UI");
+        
+        // Wait for iframe to be injected into the page
+        await this.page.waitForSelector('iframe', { timeout: 5000 });
+        processorLogger.debug("Advanced UI iframe detected in DOM");
+        
+        // Give iframe time to start loading
+        await this.page.waitForTimeout(1000);
+        
+        return true;
+      } catch (error) {
+        processorLogger.error(`Failed to navigate to Advanced UI: ${error.message}`);
+        return false;
+      }
     }
-
+    
+    processorLogger.error("Could not find Advanced menu item");
     return false;
   }
 
-  async verifyDeployment(processorType) {
-    return verifyProcessorDeployment(this.page, processorType);
-  }
-
-  async waitForConfigurationDialog() {
-    const dialog = this.page.locator('[role="dialog"], .dialog, .configuration-dialog');
-    await expect(dialog).toBeVisible({ timeout: 3000 });
-    return dialog;
-  }
-
-  async findBackNavigationLink() {
-    const backLinks = [
-      this.page.getByRole("link", { name: /back to processor/i }),
-      this.page.getByRole("button", { name: /back to processor/i }),
-      this.page.getByText(/back to processor/i),
-      this.page.locator('[href*="processor"]'),
-      this.page.locator(".back-link, .return-link"),
-    ];
-
-    for (const backLink of backLinks) {
-      if (await backLink.isVisible({ timeout: 2000 })) {
-        return backLink;
+  async getAdvancedUIFrame() {
+    // Ensure we're on the advanced page first
+    const url = this.page.url();
+    if (!url.includes("/advanced")) {
+      processorLogger.error("Not on advanced page, cannot get custom UI frame");
+      return null;
+    }
+    
+    // Wait for iframe to exist in DOM
+    try {
+      await this.page.waitForSelector('iframe', { timeout: 5000 });
+    } catch (error) {
+      processorLogger.error("No iframe found in advanced page");
+      return null;
+    }
+    
+    // Try to find the custom UI frame with retries
+    let attempts = 0;
+    const maxAttempts = 5;
+    
+    while (attempts < maxAttempts) {
+      const frames = this.page.frames();
+      
+      // Log frame detection for debugging
+      processorLogger.info(`[Processor] Attempt ${attempts + 1}: Found ${frames.length} frames on page`);
+      
+      if (frames.length > 1) {
+        // Log all frame URLs for debugging
+        frames.forEach((frame, index) => {
+          processorLogger.info(`[Processor] Frame ${index}: ${frame.url()}`);
+        });
+        
+        // Find the custom UI frame (should contain nifi-cuioss-ui in URL)
+        const customUIFrame = frames.find(f => 
+          f.url().includes("nifi-cuioss-ui")
+        );
+        
+        if (customUIFrame) {
+          // Wait for frame to be ready
+          try {
+            await customUIFrame.waitForLoadState('domcontentloaded', { timeout: 3000 });
+            processorLogger.info(`[Processor] Found custom UI frame: ${customUIFrame.url()}`);
+            
+            // Use the stability check to ensure frame is ready
+            const isStable = await this.waitForFrameStability(customUIFrame);
+            
+            if (isStable) {
+              processorLogger.debug("[Processor] Custom UI frame is ready and stable");
+              return customUIFrame;
+            } else {
+              processorLogger.warn("[Processor] Frame found but not stable yet");
+            }
+          } catch (e) {
+            processorLogger.warn(`[Processor] Frame not ready yet: ${e.message}`);
+          }
+        }
+      }
+      
+      attempts++;
+      if (attempts < maxAttempts) {
+        processorLogger.debug(`[Processor] Waiting before retry ${attempts}/${maxAttempts}`);
+        await this.page.waitForTimeout(1000);
       }
     }
+    
+    processorLogger.error(`[Processor] Could not find custom UI frame after ${maxAttempts} attempts`);
     return null;
   }
 
-  async navigateBack() {
-    const backLink = await this.findBackNavigationLink();
-    if (backLink) {
-      await backLink.click();
-      await this.page.waitForLoadState("networkidle");
+  /**
+   * Wait for frame to be stable and ready for interaction
+   * @param {Frame} frame - The frame to check
+   * @returns {Promise<boolean>} True if frame is stable, false otherwise
+   */
+  async waitForFrameStability(frame) {
+    try {
+      // Wait for frame to finish loading
+      await frame.waitForLoadState('networkidle', { timeout: 5000 });
+      
+      // Verify frame has content
+      const hasContent = await frame.evaluate(() => {
+        return document.body && 
+               document.body.children.length > 0 &&
+               document.readyState === 'complete';
+      });
+      
+      if (!hasContent) {
+        processorLogger.warn("Frame loaded but has no content or not ready");
+        return false;
+      }
+      
+      // Check if the JWT UI is initialized (specific to our custom UI)
+      const isUIReady = await frame.evaluate(() => {
+        // Check for JWT UI specific elements
+        return !!(document.querySelector('#jwt-validator-container') || 
+                  document.querySelector('[data-testid="jwt-customizer-container"]'));
+      });
+      
+      if (!isUIReady) {
+        processorLogger.warn("Frame loaded but JWT UI not initialized");
+        return false;
+      }
+      
+      processorLogger.debug("Frame is stable and ready");
       return true;
-    } else {
-      // Fallback to browser back
-      await this.page.goBack();
-      await this.page.waitForLoadState("networkidle");
-      return false; // Indicates fallback was used
+    } catch (error) {
+      processorLogger.error(`Frame stability check failed: ${error.message}`);
+      return false;
     }
+  }
+
+  /**
+   * Click a tab in the custom UI
+   * @param {Frame} customUIFrame - The custom UI iframe
+   * @param {string} tabName - Name of the tab to click
+   */
+  async clickTab(customUIFrame, tabName) {
+    // Ensure frame is stable before interaction
+    await this.waitForFrameStability(customUIFrame);
+    
+    const tab = customUIFrame.locator(`[role="tab"]:has-text("${tabName}")`);
+    await tab.click();
+    await this.page.waitForTimeout(1000);
+    processorLogger.info(`Clicked ${tabName} tab`);
+  }
+
+  /**
+   * Find processor by type (used by one test)
+   * @param {string} processorType - Type of processor to find
+   * @returns {Promise<Object>} Processor object
+   */
+  async findProcessorByType(processorType) {
+    return findProcessor(this.page, processorType);
+  }
+
+  /**
+   * Navigate to the Advanced UI and return the iframe context
+   * @returns {Promise<Frame>} The custom UI frame
+   */
+  async navigateToAdvancedUI() {
+    // Find the MultiIssuerJWTTokenAuthenticator processor on canvas
+    const processor = await this.findProcessorByType(
+      "MultiIssuerJWTTokenAuthenticator",
+    );
+
+    if (!processor) {
+      throw new Error(
+        "MultiIssuerJWTTokenAuthenticator processor not found on canvas. Please add it manually.",
+      );
+    }
+
+    // Open Advanced UI via right-click menu
+    const advancedOpened = await this.openAdvancedUI(processor);
+
+    if (!advancedOpened) {
+      throw new Error("Failed to open Advanced UI via right-click menu");
+    }
+
+    // Wait for custom UI to load
+    await this.page.waitForTimeout(2000);
+
+    // Get the custom UI frame
+    const customUIFrame = await this.getAdvancedUIFrame();
+
+    if (!customUIFrame) {
+      throw new Error("Could not find custom UI iframe");
+    }
+
+    processorLogger.info("Successfully accessed custom UI iframe");
+    return customUIFrame;
   }
 }

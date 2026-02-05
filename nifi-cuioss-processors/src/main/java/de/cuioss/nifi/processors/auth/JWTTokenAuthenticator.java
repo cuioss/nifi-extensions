@@ -101,55 +101,41 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
         String tokenLocation = context.getProperty(Properties.TOKEN_LOCATION).getValue();
         String token;
 
-        try {
-            // Extract token based on configured location
-            token = switch (tokenLocation) {
-                case TokenLocation.AUTHORIZATION_HEADER ->
-                    extractTokenFromHeader(flowFile, context.getProperty(Properties.TOKEN_HEADER).getValue());
-                case TokenLocation.CUSTOM_HEADER ->
-                    extractTokenFromHeader(flowFile, context.getProperty(Properties.CUSTOM_HEADER_NAME).getValue());
-                case TokenLocation.FLOW_FILE_CONTENT -> extractTokenFromContent(flowFile, session);
-                default ->
-                    // Default to Authorization header
-                    extractTokenFromHeader(flowFile, Http.AUTHORIZATION_HEADER);
-            };
+        // Extract token based on configured location
+        token = switch (tokenLocation) {
+            case TokenLocation.AUTHORIZATION_HEADER ->
+                extractTokenFromHeader(flowFile, context.getProperty(Properties.TOKEN_HEADER).getValue());
+            case TokenLocation.CUSTOM_HEADER ->
+                extractTokenFromHeader(flowFile, context.getProperty(Properties.CUSTOM_HEADER_NAME).getValue());
+            case TokenLocation.FLOW_FILE_CONTENT -> extractTokenFromContent(flowFile, session);
+            default ->
+                // Default to Authorization header
+                extractTokenFromHeader(flowFile, Http.AUTHORIZATION_HEADER);
+        };
 
-            // If no token found, log warning and route to failure
-            if (token == null || token.isEmpty()) {
-                LOGGER.warn("No token found in the specified location: %s", tokenLocation);
-
-                // Add error attributes
-                Map<String, String> attributes = new HashMap<>();
-                attributes.put(JWTAttributes.Error.CODE, Error.Code.NO_TOKEN_FOUND);
-                attributes.put(JWTAttributes.Error.REASON, i18nResolver.getTranslatedString(JWTTranslationKeys.Error.NO_TOKEN_FOUND, tokenLocation));
-                attributes.put(JWTAttributes.Error.CATEGORY, Error.Category.EXTRACTION_ERROR);
-                flowFile = session.putAllAttributes(flowFile, attributes);
-
-                session.transfer(flowFile, Relationships.FAILURE);
-                return;
-            }
-
-            // Add token and extraction timestamp to flow file attributes
-            Map<String, String> attributes = new HashMap<>();
-            attributes.put(JWTAttributes.Token.VALUE, token);
-            attributes.put(JWTAttributes.Token.EXTRACTED_AT, Instant.now().toString());
-            flowFile = session.putAllAttributes(flowFile, attributes);
-
-            // Transfer to success relationship
-            session.transfer(flowFile, Relationships.SUCCESS);
-
-        } catch (Exception e) {
-            LOGGER.error(e, "Error processing flow file: %s", e.getMessage());
+        // If no token found, log warning and route to failure
+        if (token == null || token.isEmpty()) {
+            LOGGER.warn("No token found in the specified location: %s", tokenLocation);
 
             // Add error attributes
             Map<String, String> attributes = new HashMap<>();
-            attributes.put(JWTAttributes.Error.CODE, Error.Code.UNKNOWN);
-            attributes.put(JWTAttributes.Error.REASON, i18nResolver.getTranslatedString(JWTTranslationKeys.Error.UNKNOWN, e.getMessage()));
-            attributes.put(JWTAttributes.Error.CATEGORY, Error.Category.PROCESSING_ERROR);
+            attributes.put(JWTAttributes.Error.CODE, Error.Code.NO_TOKEN_FOUND);
+            attributes.put(JWTAttributes.Error.REASON, i18nResolver.getTranslatedString(JWTTranslationKeys.Error.NO_TOKEN_FOUND, tokenLocation));
+            attributes.put(JWTAttributes.Error.CATEGORY, Error.Category.EXTRACTION_ERROR);
             flowFile = session.putAllAttributes(flowFile, attributes);
 
             session.transfer(flowFile, Relationships.FAILURE);
+            return;
         }
+
+        // Add token and extraction timestamp to flow file attributes
+        Map<String, String> attributes = new HashMap<>();
+        attributes.put(JWTAttributes.Token.VALUE, token);
+        attributes.put(JWTAttributes.Token.EXTRACTED_AT, Instant.now().toString());
+        flowFile = session.putAllAttributes(flowFile, attributes);
+
+        // Transfer to success relationship
+        session.transfer(flowFile, Relationships.SUCCESS);
     }
 
     /**

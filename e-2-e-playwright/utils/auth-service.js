@@ -20,7 +20,7 @@ export class AuthService {
    * Check if services are accessible using modern request API
    */
   async checkServiceAccessibility(serviceUrl, serviceName, timeout = 5000) {
-    authLogger.info(`Checking ${serviceName} accessibility...`);
+    authLogger.debug(`Checking ${serviceName} accessibility...`);
 
     try {
       const response = await this.page.request.get(serviceUrl, {
@@ -33,7 +33,7 @@ export class AuthService {
         ((response.status() >= 200 && response.status() < 400) || response.status() === 401);
 
       if (isAccessible) {
-        authLogger.success(`${serviceName} service is accessible`);
+        authLogger.debug(`${serviceName} service is accessible`);
       } else {
         authLogger.warn(`${serviceName} not accessible - Status: %s`, response?.status() || 'unknown');
       }
@@ -95,14 +95,15 @@ export class AuthService {
     // Check if NiFi is accessible before attempting login
     const isAccessible = await this.checkNiFiAccessibility();
     if (!isAccessible) {
-      authLogger.warn('NiFi is not accessible - skipping login attempt');
-      const { test } = await import('@playwright/test');
-      test.skip(true, 'NiFi service is not accessible - cannot perform login');
-      return;
+      authLogger.error('NiFi is not accessible - cannot perform login');
+      throw new Error(
+        'PRECONDITION FAILED: NiFi service is not accessible - cannot perform login. ' +
+        'Make sure NiFi is running at https://localhost:9095/nifi'
+      );
     }
 
     const start = Date.now();
-    authLogger.info(`Starting login for user: ${CONSTANTS.AUTH.USERNAME}...`);
+    authLogger.debug(`Starting login for user: ${CONSTANTS.AUTH.USERNAME}...`);
     try {
       const result = await (async () => {
       // Navigate to login page
@@ -157,6 +158,13 @@ export class AuthService {
         'Authorization': `Bearer ${token}`
       });
 
+      // Store the authorization header in window for API manager to use
+      await this.page.evaluate((authHeader) => {
+        window.__authorizationHeader = authHeader;
+        // Also store just the token for easier access
+        window.__jwtToken = authHeader.replace('Bearer ', '');
+      }, `Bearer ${token}`);
+
       // Navigate to main canvas after successful authentication
       await this.page.goto('/nifi');
 
@@ -187,7 +195,7 @@ export class AuthService {
           }
         }
 
-        authLogger.success(`Successfully logged in as ${CONSTANTS.AUTH.USERNAME}`);
+        authLogger.debug(`Successfully logged in as ${CONSTANTS.AUTH.USERNAME}`);
         return true;
       } catch (error) {
         // Check for error messages
@@ -203,7 +211,7 @@ export class AuthService {
       }
       })();
       const duration = Date.now() - start;
-      authLogger.success(`Login for user: ${CONSTANTS.AUTH.USERNAME} completed in ${duration}ms`);
+      authLogger.debug(`Login for user: ${CONSTANTS.AUTH.USERNAME} completed in ${duration}ms`);
       return result;
     } catch (error) {
       const duration = Date.now() - start;
@@ -270,17 +278,18 @@ export class AuthService {
    * Ensure NiFi is ready for testing with modern patterns
    */
   async ensureReady() {
-    authLogger.info('Ensuring NiFi is ready for testing...');
+    authLogger.debug('Ensuring NiFi is ready for testing...');
 
     // Check service accessibility
     const isAccessible = await this.checkNiFiAccessibility();
 
     if (!isAccessible) {
-      authLogger.warn('NiFi is not accessible - skipping test due to service unavailability');
-      // Use Playwright's skip functionality to mark test as skipped instead of failed
-      const { test } = await import('@playwright/test');
-      test.skip(true, 'NiFi service is not accessible - integration tests require running NiFi instance');
-      return;
+      authLogger.error('NiFi is not accessible - test cannot proceed');
+      throw new Error(
+        'PRECONDITION FAILED: NiFi service is not accessible at ' + CONSTANTS.SERVICE_URLS.NIFI_SYSTEM_DIAGNOSTICS + 
+        '. Integration tests require a running NiFi instance. ' +
+        'Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh'
+      );
     }
 
     // Ensure authentication
@@ -294,7 +303,7 @@ export class AuthService {
 
     await expect(this.page).toHaveTitle(/NiFi/);
 
-    authLogger.success('NiFi is ready for testing');
+    authLogger.debug('NiFi is ready for testing');
   }
 
   /**

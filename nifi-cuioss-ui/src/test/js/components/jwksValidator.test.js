@@ -1,6 +1,6 @@
 /**
  * Tests for the JWKS Validator component.
- * Comprehensive test coverage for all functionality.
+ * Updated to test vanilla JavaScript implementation.
  */
 
 const mockI18n = {
@@ -11,613 +11,510 @@ const mockI18n = {
     'processor.jwt.keysFound': 'keys found',
     'processor.jwt.invalidJwks': 'Invalid JWKS',
     'jwksValidator.initialInstructions': 'Click the button to validate JWKS',
-    'processor.jwt.unknownError': 'Unknown error'
+    'processor.jwt.unknownError': 'Unknown error',
+    'processor.jwt.filePathDescription': 'Enter file path to JWKS file',
+    'processor.jwt.validateFile': 'Validate File',
+    'processor.jwt.noFilePathProvided': 'No file path provided',
+    'processor.jwt.validatingFile': 'Validating file...',
+    'processor.jwt.fileValidationNotImplemented': 'File validation not yet implemented',
+    'processor.jwt.memoryContentDescription': 'Enter JWKS JSON content directly',
+    'processor.jwt.validateContent': 'Validate JSON',
+    'processor.jwt.noContentProvided': 'No JWKS content provided',
+    'processor.jwt.validatingContent': 'Validating content...',
+    'processor.jwt.invalidJson': 'Invalid JSON',
+    'processor.jwt.invalidJwksStructure': 'Invalid JWKS structure: missing "keys" array',
+    'processor.jwt.noKeysInJwks': 'No keys found in JWKS',
+    'processor.jwt.missingKeyType': 'Missing key type (kty)',
+    'processor.jwt.missingKeyUsage': 'Missing key usage (use or key_ops)'
 };
 
-// Mock cash-dom with comprehensive functionality
-jest.mock('cash-dom', () => {
-    let eventHandlers = {};
-    let ajaxResolver = null;
-    let ajaxRejecter = null;
-    let hasInputField = true;
-
-    const mockElement = {
-        append: jest.fn().mockReturnThis(),
-        html: jest.fn().mockReturnThis(),
-        text: jest.fn().mockReturnThis(),
-        on: jest.fn((event, handler) => {
-            eventHandlers[event] = handler;
-            return mockElement;
-        }),
-        find: jest.fn().mockImplementation((selector) => {
-            if (selector === 'input') {
-                return {
-                    length: hasInputField ? 1 : 0,
-                    after: jest.fn().mockReturnThis()
-                };
-            }
-            return {
-                length: 1,
-                after: jest.fn().mockReturnThis()
-            };
-        }),
-        after: jest.fn().mockReturnThis(),
-        addClass: jest.fn().mockReturnThis(),
-        removeClass: jest.fn().mockReturnThis(),
-        prop: jest.fn().mockReturnThis(),
-        length: 1
-    };
-
-    const mockCash = jest.fn((selector) => {
-        if (typeof selector === 'string' && selector.includes('<')) {
-            // Creating new element from HTML
-            return mockElement;
-        }
-        return mockElement;
-    });
-
-    mockCash.ajax = jest.fn().mockImplementation(() => {
-        const promise = new Promise((resolve, reject) => {
-            ajaxResolver = resolve;
-            ajaxRejecter = reject;
-        });
-
-        return {
-            then: jest.fn().mockImplementation((callback) => {
-                promise.then(callback).catch(() => {}); // Suppress uncaught promise rejections
-                return {
-                    catch: jest.fn().mockImplementation((errorCallback) => {
-                        promise.catch(errorCallback);
-                    })
-                };
-            }),
-            catch: jest.fn().mockImplementation((errorCallback) => {
-                promise.catch(errorCallback);
-            })
-        };
-    });
-
-    // Helper functions for testing
-    mockCash.__triggerClick = () => {
-        if (eventHandlers['click']) {
-            eventHandlers['click']();
-        }
-    };
-    mockCash.__resolveAjax = (data) => {
-        if (ajaxResolver) ajaxResolver(data);
-    };
-    mockCash.__rejectAjax = (error) => {
-        if (ajaxRejecter) ajaxRejecter(error);
-    };
-    mockCash.__setHasInputField = (value) => { hasInputField = value; };
-    mockCash.__clearHandlers = () => { eventHandlers = {}; };
-
-    return { __esModule: true, default: mockCash };
-});
-
-// Mock dependencies
+// Mock nfCommon
 jest.mock('nf.Common', () => ({
-    getI18n: jest.fn().mockReturnValue(mockI18n)
-}));
+    getI18n: jest.fn(() => mockI18n)
+}), { virtual: true });
 
+// Mock displayUiError
 jest.mock('../../../main/webapp/js/utils/uiErrorDisplay.js', () => ({
     displayUiError: jest.fn()
 }));
 
-jest.mock('../../../main/webapp/js/utils/constants.js', () => ({
-    getIsLocalhost: jest.fn().mockReturnValue(false),
-    setIsLocalhostForTesting: jest.fn(),
-    API: {
-        ENDPOINTS: { JWKS_VALIDATE_URL: '/api/validate-jwks' },
-        TIMEOUTS: { DEFAULT: 5000 }
-    }
+// Mock validateJwksUrl and validateJwksFile
+jest.mock('../../../main/webapp/js/services/apiClient.js', () => ({
+    validateJwksUrl: jest.fn(),
+    validateJwksFile: jest.fn()
 }));
 
-describe('jwksValidator', () => {
+describe('JWKS Validator', () => {
     let jwksValidator;
-    let parentElement;
-    let callback;
+    let element;
+    let mockDisplayUiError;
+    let mockValidateJwksUrl;
+    let mockValidateJwksFile;
 
     beforeEach(() => {
-        jest.resetModules();
         jest.clearAllMocks();
+        jest.resetModules();
 
-        jwksValidator = require('components/jwksValidator');
-        parentElement = document.createElement('div');
-        parentElement.innerHTML = '<input type="text" value="https://example.com/.well-known/jwks.json" />';
-        document.body.appendChild(parentElement);
-        callback = jest.fn();
+        // Get the mocked functions
+        mockDisplayUiError = require('../../../main/webapp/js/utils/uiErrorDisplay.js').displayUiError;
+        mockValidateJwksUrl = require('../../../main/webapp/js/services/apiClient.js').validateJwksUrl;
+        mockValidateJwksFile = require('../../../main/webapp/js/services/apiClient.js').validateJwksFile;
+
+        // Import the module
+        jwksValidator = require('../../../main/webapp/js/components/jwksValidator.js');
+
+        // Create a container element with an input field
+        element = document.createElement('div');
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = 'https://example.com/.well-known/jwks.json';
+        element.appendChild(input);
+        document.body.appendChild(element);
     });
 
     afterEach(() => {
-        if (parentElement.parentNode === document.body) {
-            document.body.removeChild(parentElement);
-        }
+        document.body.innerHTML = '';
     });
 
-    describe('Basic Functionality', () => {
-        it('should initialize successfully for server type', async () => {
-            await jwksValidator.init(parentElement, 'https://example.com/.well-known/jwks.json', 'server', callback);
-            expect(callback).toHaveBeenCalled();
+    describe('init', () => {
+        it('should initialize the JWKS validator for server type', async () => {
+            const callback = jest.fn();
+
+            await jwksValidator.init(element, 'https://test.com/jwks', 'server', callback);
+
+            // Check button was created
+            const button = element.querySelector('.verify-jwks-button');
+            expect(button).toBeTruthy();
+            expect(button.textContent).toBe('Test Connection Button');
+
+            // Check result container was created
+            const resultContainer = element.querySelector('.verification-result');
+            expect(resultContainer).toBeTruthy();
+            expect(resultContainer.innerHTML).toContain('Click the button to validate JWKS');
+
+            // Check callback was called
+            expect(callback).toHaveBeenCalledWith({
+                validate: expect.any(Function),
+                getValue: expect.any(Function),
+                setValue: expect.any(Function),
+                jwks_type: 'server'
+            });
         });
 
-        it('should initialize successfully for non-server type', async () => {
-            await jwksValidator.init(parentElement, 'file://jwks.json', 'file', callback);
-            expect(callback).toHaveBeenCalled();
+        it('should not show button for non-server types', async () => {
+            const callback = jest.fn();
+
+            await jwksValidator.init(element, '/path/to/file', 'file', callback);
+
+            // Check no button was created
+            const button = element.querySelector('.verify-jwks-button');
+            expect(button).toBeFalsy();
         });
 
-        it('should handle missing element', async () => {
-            await expect(jwksValidator.init(null, 'https://example.com', 'server', callback)).rejects.toThrow();
-            expect(callback).toHaveBeenCalledWith(
-                expect.objectContaining({ error: expect.any(String) })
-            );
-        });
+        it('should handle missing element gracefully', async () => {
+            const callback = jest.fn();
 
-        it('should handle missing callback gracefully', async () => {
-            await expect(jwksValidator.init(parentElement, 'https://example.com', 'server', null)).resolves.not.toThrow();
-        });
+            await expect(jwksValidator.init(null, 'value', 'server', callback))
+                .rejects.toThrow('JWKS validator element is required');
 
-        it('should provide validate function', async () => {
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
-            const callbackArg = callback.mock.calls[0][0];
-            expect(callbackArg.validate()).toBe(true);
-        });
-
-        it('should provide getValue and setValue functions', async () => {
-            const initialValue = 'https://example.com/.well-known/jwks.json';
-            await jwksValidator.init(parentElement, initialValue, 'server', callback);
-            const callbackArg = callback.mock.calls[0][0];
-
-            expect(callbackArg.getValue()).toBe(initialValue);
-
-            const newValue = 'https://newdomain.com/.well-known/jwks.json';
-            callbackArg.setValue(newValue);
-            expect(callbackArg.getValue()).toBe(newValue);
-        });
-
-        it('should handle cleanup', () => {
-            expect(() => jwksValidator.cleanup()).not.toThrow();
-        });
-
-        it('should handle localhost testing override', () => {
-            expect(() => {
-                jwksValidator.__setIsLocalhostForTesting(true);
-                jwksValidator.__setIsLocalhostForTesting(false);
-                jwksValidator.__setIsLocalhostForTesting(null);
-            }).not.toThrow();
+            // Callback should still be called with error
+            expect(callback).toHaveBeenCalledWith({
+                validate: expect.any(Function),
+                error: 'JWKS validator element is required'
+            });
         });
     });
 
-    describe('UI Creation for Server Type', () => {
-        it('should create test connection button for server type', async () => {
-            const mockCash = require('cash-dom').default;
-            const mockElement = mockCash();
-
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
-
-            expect(mockElement.text).toHaveBeenCalledWith('Test Connection Button');
-        });
-
-        it('should display initial instructions', async () => {
-            const mockCash = require('cash-dom').default;
-            const mockElement = mockCash();
-
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
-
-            expect(mockElement.html).toHaveBeenCalledWith(
-                expect.stringContaining('Click the button to validate JWKS')
-            );
-        });
-
-        it('should handle element with input field properly', async () => {
-            const mockCash = require('cash-dom').default;
-            mockCash.__setHasInputField(true);
-
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
-
-            expect(mockCash().find).toHaveBeenCalledWith('input');
-            // The after method is called on the found input field, not the main element
-        });
-
-        it('should handle element without input field (fallback)', async () => {
-            const mockCash = require('cash-dom').default;
-            mockCash.__setHasInputField(false);
-
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
-
-            expect(mockCash().find).toHaveBeenCalledWith('input');
-            expect(mockCash().append).toHaveBeenCalled();
-        });
-
-        it('should handle button click and start JWKS validation', async () => {
-            const mockCash = require('cash-dom').default;
-
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
-
-            // Trigger button click
-            mockCash.__triggerClick();
-
-            // Should show testing message
-            expect(mockCash().html).toHaveBeenCalledWith('Testing JWKS...');
-            expect(mockCash.ajax).toHaveBeenCalled();
-        });
-    });
-
-    describe('UI Creation for Non-Server Types', () => {
-        it('should not create test connection button for file type', async () => {
-            const mockCash = require('cash-dom').default;
-            const mockElement = mockCash();
-
-            await jwksValidator.init(parentElement, 'file://jwks.json', 'file', callback);
-
-            expect(mockElement.text).not.toHaveBeenCalledWith('Test Connection Button');
-        });
-
-        it('should not create test connection button for memory type', async () => {
-            const mockCash = require('cash-dom').default;
-            const mockElement = mockCash();
-
-            await jwksValidator.init(parentElement, '{}', 'memory', callback);
-
-            expect(mockElement.text).not.toHaveBeenCalledWith('Test Connection Button');
-        });
-    });
-
-    describe('Error Handling', () => {
-        it('should handle missing i18n values gracefully', async () => {
-            const nfCommon = require('nf.Common');
-            nfCommon.getI18n.mockReturnValueOnce({});
-
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
-            expect(callback).toHaveBeenCalled();
-        });
-
-        it('should handle null i18n gracefully', async () => {
-            const nfCommon = require('nf.Common');
-            nfCommon.getI18n.mockReturnValueOnce(null);
-
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
-            expect(callback).toHaveBeenCalled();
-        });
-    });
-
-    describe('JWKS Validation', () => {
-        it('should handle valid JWKS response', async () => {
-            const mockCash = require('cash-dom').default;
-
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
-
-            // Trigger button click
-            mockCash.__triggerClick();
-
-            // Resolve with valid response
-            mockCash.__resolveAjax({
+    describe('Button click handling', () => {
+        it('should validate JWKS URL on button click', async () => {
+            const callback = jest.fn();
+            mockValidateJwksUrl.mockResolvedValue({
                 valid: true,
-                keyCount: 5
+                keyCount: 3
             });
 
-            // Wait for promise resolution
+            await jwksValidator.init(element, 'https://test.com/jwks', 'server', callback);
+
+            const button = element.querySelector('.verify-jwks-button');
+            const resultContainer = element.querySelector('.verification-result');
+
+            // Click the button
+            button.click();
+
+            // Wait for async operations
             await new Promise(resolve => setTimeout(resolve, 0));
 
-            // Should display success message
-            expect(mockCash().html).toHaveBeenCalledWith(
-                expect.stringContaining('Valid JWKS')
-            );
+            // Check that validateJwksUrl was called
+            expect(mockValidateJwksUrl).toHaveBeenCalledWith('https://example.com/.well-known/jwks.json');
+
+            // Check success message
+            expect(resultContainer.innerHTML).toContain('OK');
+            expect(resultContainer.innerHTML).toContain('Valid JWKS');
+            expect(resultContainer.innerHTML).toContain('3 keys found');
         });
 
-        it('should handle invalid JWKS response', async () => {
-            const mockCash = require('cash-dom').default;
+        it('should handle validation errors', async () => {
+            const callback = jest.fn();
+            const error = {
+                status: 404,
+                statusText: 'Not Found',
+                message: 'JWKS not found'
+            };
+            mockValidateJwksUrl.mockRejectedValue(error);
 
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
+            await jwksValidator.init(element, 'https://test.com/jwks', 'server', callback);
 
-            // Trigger button click
-            mockCash.__triggerClick();
+            const button = element.querySelector('.verify-jwks-button');
+            button.click();
 
-            // Resolve with invalid response
-            mockCash.__resolveAjax({ valid: false, message: 'JWKS is invalid' });
-
-            // Wait for promise resolution
+            // Wait for async operations
             await new Promise(resolve => setTimeout(resolve, 0));
 
-            // Should handle the invalid response (uiErrorDisplay is called)
-            const { displayUiError } = require('../../../main/webapp/js/utils/uiErrorDisplay.js');
-            expect(displayUiError).toHaveBeenCalled();
-        });
-
-        it('should handle AJAX errors', async () => {
-            const mockCash = require('cash-dom').default;
-
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
-
-            // Test that button click triggers ajax call
-            mockCash.__triggerClick();
-            expect(mockCash.ajax).toHaveBeenCalled();
-
-            // Test that initial testing message is shown
-            expect(mockCash().html).toHaveBeenCalledWith('Testing JWKS...');
-        });
-
-        it('should handle synchronous exceptions', async () => {
-            const mockCash = require('cash-dom').default;
-
-            // Mock ajax to throw synchronous error
-            mockCash.ajax.mockImplementationOnce(() => {
-                throw new Error('AJAX setup failed');
+            // Check that error was displayed
+            expect(mockDisplayUiError).toHaveBeenCalled();
+            const errorCall = mockDisplayUiError.mock.calls[0];
+            expect(errorCall[1]).toMatchObject({
+                status: 404,
+                statusText: 'Not Found'
             });
-
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
-
-            // Trigger button click (should handle sync exception)
-            expect(() => mockCash.__triggerClick()).not.toThrow();
         });
 
-        it('should use callback getValue if available', async () => {
-            const callbackWithGetValue = jest.fn();
-            callbackWithGetValue.getValue = jest.fn().mockReturnValue('https://custom-url.com');
-            const mockCash = require('cash-dom').default;
+        it('should use callback setValue and getValue properly', async () => {
+            const callback = jest.fn();
 
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callbackWithGetValue);
+            mockValidateJwksUrl.mockResolvedValue({ valid: true, keyCount: 1 });
 
-            // Trigger button click
-            mockCash.__triggerClick();
+            await jwksValidator.init(element, 'https://initial.com/jwks', 'server', callback);
 
-            // Should use getValue from callback
-            expect(callbackWithGetValue.getValue).toHaveBeenCalled();
-        });
+            // Get the callback object that was passed to the callback
+            const callbackArg = callback.mock.calls[0][0];
 
-        it('should fallback to propertyValue when callback getValue not available', async () => {
-            const callbackWithoutGetValue = jest.fn();
-            const mockCash = require('cash-dom').default;
+            // Clear the input field so callback value is used
+            const input = element.querySelector('input');
+            input.value = '';
 
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callbackWithoutGetValue);
+            // Update the value using setValue
+            callbackArg.setValue('https://updated.com/jwks');
 
-            // Trigger button click
-            mockCash.__triggerClick();
+            const button = element.querySelector('.verify-jwks-button');
+            button.click();
 
-            // Should use propertyValue as fallback
-            expect(mockCash.ajax).toHaveBeenCalledWith(expect.objectContaining({
-                data: JSON.stringify({ jwksValue: 'https://example.com' })
-            }));
-        });
+            await new Promise(resolve => setTimeout(resolve, 0));
 
-        it('should handle empty jwks value with default', async () => {
-            const mockCash = require('cash-dom').default;
-
-            await jwksValidator.init(parentElement, '', 'server', callback);
-
-            // Trigger button click
-            mockCash.__triggerClick();
-
-            // Should use default JWKS URL
-            expect(mockCash.ajax).toHaveBeenCalledWith(expect.objectContaining({
-                data: JSON.stringify({ jwksValue: 'https://example.com/.well-known/jwks.json' })
-            }));
+            // Should use the updated value from getValue
+            expect(mockValidateJwksUrl).toHaveBeenCalledWith('https://updated.com/jwks');
         });
     });
 
-    describe('Localhost Behavior', () => {
-        it('should show simulated response on AJAX error in localhost mode', async () => {
-            const constants = require('../../../main/webapp/js/utils/constants.js');
-            constants.getIsLocalhost.mockReturnValue(true);
-            const mockCash = require('cash-dom').default;
+    describe('Callback functionality', () => {
+        it('should provide working getValue and setValue functions', async () => {
+            const callback = jest.fn();
 
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
+            await jwksValidator.init(element, 'initial-value', 'server', callback);
 
-            // Trigger button click
-            mockCash.__triggerClick();
-
-            // Simulate error in localhost mode
-            try {
-                mockCash.__rejectAjax({ statusText: 'Connection refused', status: 0 });
-                await new Promise(resolve => setTimeout(resolve, 0));
-            } catch (e) {
-                // Expected error in localhost mode
-            }
-
-            // Should display simulated response in localhost
-            expect(mockCash().html).toHaveBeenCalled();
-        });
-
-        it('should show simulated response on synchronous exception in localhost mode', async () => {
-            const constants = require('../../../main/webapp/js/utils/constants.js');
-            constants.getIsLocalhost.mockReturnValue(true);
-            const mockCash = require('cash-dom').default;
-
-            // Mock ajax to throw synchronous error
-            mockCash.ajax.mockImplementationOnce(() => {
-                throw new Error('Connection failed');
-            });
-
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
-
-            // Trigger button click (should handle sync exception with localhost behavior)
-            mockCash.__triggerClick();
-
-            // Should display simulated response
-            expect(mockCash().html).toHaveBeenCalledWith(
-                expect.stringContaining('Valid JWKS')
-            );
-        });
-
-        it('should not show localhost behavior when not in localhost mode', async () => {
-            const constants = require('../../../main/webapp/js/utils/constants.js');
-            constants.getIsLocalhost.mockReturnValue(false);
-            const mockCash = require('cash-dom').default;
-
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
-
-            // Trigger button click
-            mockCash.__triggerClick();
-
-            // Simulate error in non-localhost mode
-            try {
-                mockCash.__rejectAjax({ statusText: 'Network Error', status: 500 });
-                await new Promise(resolve => setTimeout(resolve, 0));
-            } catch (e) {
-                // Expected error in non-localhost mode
-            }
-
-            // Should handle error normally (not simulated response)
-            expect(mockCash().html).toHaveBeenCalled();
-        });
-    });
-
-    describe('Integration Tests', () => {
-        it('should integrate with all required dependencies', async () => {
-            const constants = require('../../../main/webapp/js/utils/constants.js');
-            const { displayUiError } = require('../../../main/webapp/js/utils/uiErrorDisplay.js');
-            const nfCommon = require('nf.Common');
-
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
-
-            expect(constants.getIsLocalhost).toBeDefined();
-            expect(displayUiError).toBeDefined();
-            expect(nfCommon.getI18n).toBeDefined();
-        });
-
-        it('should pass jwks_type in callback data', async () => {
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
-            const callbackArg = callback.mock.calls[0][0];
-            expect(callbackArg.jwks_type).toBe('server');
-        });
-
-        it('should provide setValue and getValue functions in callback', async () => {
-            await jwksValidator.init(parentElement, 'initial-value', 'server', callback);
             const callbackArg = callback.mock.calls[0][0];
 
-            expect(typeof callbackArg.getValue).toBe('function');
-            expect(typeof callbackArg.setValue).toBe('function');
+            // Test getValue
             expect(callbackArg.getValue()).toBe('initial-value');
 
             // Test setValue
             callbackArg.setValue('new-value');
             expect(callbackArg.getValue()).toBe('new-value');
-        });
 
-        it('should handle null callback gracefully', async () => {
-            await expect(jwksValidator.init(parentElement, 'https://example.com', 'server', null)).resolves.not.toThrow();
-        });
-
-        it('should handle undefined callback gracefully', async () => {
-            await expect(jwksValidator.init(parentElement, 'https://example.com', 'server', undefined)).resolves.not.toThrow();
+            // Test validate
+            expect(callbackArg.validate()).toBe(true);
         });
     });
 
-    describe('Edge Cases and Error Handling', () => {
-        it('should handle malformed AJAX response', async () => {
-            const mockCash = require('cash-dom').default;
+    describe('Element structure', () => {
+        it('should insert button after input field when input exists', async () => {
+            await jwksValidator.init(element, 'https://test.com/jwks', 'server', jest.fn());
 
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
+            const input = element.querySelector('input');
+            const nextElement = input.nextSibling;
 
-            // Trigger button click
-            mockCash.__triggerClick();
+            expect(nextElement).toBeTruthy();
+            expect(nextElement.classList.contains('jwks-button-wrapper')).toBe(true);
+            expect(nextElement.querySelector('.verify-jwks-button')).toBeTruthy();
+        });
 
-            // Resolve with malformed response (empty object instead of null)
-            mockCash.__resolveAjax({});
+        it('should append to container when no input field exists', async () => {
+            // Remove input field
+            element.innerHTML = '';
 
-            // Wait for promise resolution
+            await jwksValidator.init(element, 'https://test.com/jwks', 'server', jest.fn());
+
+            const container = element.querySelector('.jwks-verification-container');
+            expect(container).toBeTruthy();
+            expect(container.querySelector('.verify-jwks-button')).toBeTruthy();
+        });
+    });
+
+    describe('cleanup', () => {
+        it('should be callable without errors', () => {
+            expect(() => jwksValidator.cleanup()).not.toThrow();
+        });
+    });
+
+    describe('File type JWKS validation', () => {
+        beforeEach(() => {
+            // Add input field to the element for file path
+            element.innerHTML = '<input type="text" value="/path/to/jwks.json" />';
+        });
+
+        it('should create file validation UI for file type', async () => {
+            await jwksValidator.init(element, '/path/to/jwks.json', 'file', jest.fn());
+
+            const fileContainer = element.querySelector('.jwks-file-container');
+            expect(fileContainer).toBeTruthy();
+
+            const filePathDisplay = fileContainer.querySelector('.file-path-display');
+            expect(filePathDisplay.textContent).toContain('Enter file path to JWKS file');
+
+            const validateButton = fileContainer.querySelector('.validate-file-button');
+            expect(validateButton).toBeTruthy();
+            expect(validateButton.textContent).toBe('Validate File');
+
+            const resultContainer = fileContainer.querySelector('.file-validation-result');
+            expect(resultContainer).toBeTruthy();
+        });
+
+        it('should show error when no file path provided', async () => {
+            element.innerHTML = '<input type="text" value="" />';
+            await jwksValidator.init(element, '', 'file', jest.fn());
+
+            const validateButton = element.querySelector('.validate-file-button');
+            const resultContainer = element.querySelector('.file-validation-result');
+
+            validateButton.click();
+
+            expect(resultContainer.innerHTML).toContain('No file path provided');
+            expect(resultContainer.querySelector('.error-message')).toBeTruthy();
+        });
+
+        it('should validate file successfully', async () => {
+            mockValidateJwksFile.mockResolvedValue({
+                valid: true,
+                keyCount: 2
+            });
+
+            await jwksValidator.init(element, '/path/to/jwks.json', 'file', jest.fn());
+
+            const validateButton = element.querySelector('.validate-file-button');
+            const resultContainer = element.querySelector('.file-validation-result');
+
+            validateButton.click();
+
+            // Should show validating message initially
+            expect(resultContainer.innerHTML).toContain('Validating file...');
+            expect(resultContainer.querySelector('.loading')).toBeTruthy();
+
+            // Wait for promise to resolve
             await new Promise(resolve => setTimeout(resolve, 0));
 
-            // Should handle gracefully
-            expect(mockCash().html).toHaveBeenCalled();
+            // Should show success message
+            expect(mockValidateJwksFile).toHaveBeenCalledWith('/path/to/jwks.json');
+            expect(resultContainer.innerHTML).toContain('OK');
+            expect(resultContainer.innerHTML).toContain('Valid JWKS file');
+            expect(resultContainer.innerHTML).toContain('2 keys found');
+            expect(resultContainer.querySelector('.success-message')).toBeTruthy();
         });
 
-        it('should handle AJAX response without valid field', async () => {
-            const mockCash = require('cash-dom').default;
+        it('should show error message when file validation fails', async () => {
+            mockValidateJwksFile.mockResolvedValue({
+                valid: false,
+                error: 'File not found'
+            });
 
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
+            await jwksValidator.init(element, '/path/to/jwks.json', 'file', jest.fn());
 
-            // Trigger button click
-            mockCash.__triggerClick();
+            const validateButton = element.querySelector('.validate-file-button');
+            const resultContainer = element.querySelector('.file-validation-result');
 
-            // Resolve with response missing valid field
-            mockCash.__resolveAjax({ message: 'Some response without valid field' });
+            validateButton.click();
 
-            // Wait for promise resolution
+            // Wait for promise to resolve
             await new Promise(resolve => setTimeout(resolve, 0));
 
-            // Should handle gracefully
-            expect(mockCash().html).toHaveBeenCalled();
+            expect(mockValidateJwksFile).toHaveBeenCalledWith('/path/to/jwks.json');
+            expect(resultContainer.innerHTML).toContain('File not found');
+            expect(resultContainer.querySelector('.error-message')).toBeTruthy();
         });
 
-        it('should handle AJAX timeout error', async () => {
-            const mockCash = require('cash-dom').default;
+        it('should show error message when file validation API fails', async () => {
+            mockValidateJwksFile.mockRejectedValue({
+                responseJSON: { error: 'API error occurred' },
+                statusText: 'Internal Server Error'
+            });
 
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
+            await jwksValidator.init(element, '/path/to/jwks.json', 'file', jest.fn());
 
-            // Trigger button click
-            mockCash.__triggerClick();
+            const validateButton = element.querySelector('.validate-file-button');
+            const resultContainer = element.querySelector('.file-validation-result');
 
-            // Simulate timeout error
-            try {
-                mockCash.__rejectAjax({ status: 0, statusText: 'timeout' });
-                await new Promise(resolve => setTimeout(resolve, 0));
-            } catch (e) {
-                // Expected timeout error
-            }
+            validateButton.click();
 
-            // Should handle timeout gracefully
-            expect(mockCash().html).toHaveBeenCalled();
-        });
-
-        it('should handle invalid keyCount in response', async () => {
-            const mockCash = require('cash-dom').default;
-
-            await jwksValidator.init(parentElement, 'https://example.com', 'server', callback);
-
-            // Trigger button click
-            mockCash.__triggerClick();
-
-            // Resolve with valid but no keyCount
-            mockCash.__resolveAjax({ valid: true });
-
-            // Wait for promise resolution
+            // Wait for promise to resolve
             await new Promise(resolve => setTimeout(resolve, 0));
 
-            // Should handle gracefully
-            expect(mockCash().html).toHaveBeenCalledWith(
-                expect.stringContaining('Valid JWKS')
-            );
+            expect(mockValidateJwksFile).toHaveBeenCalledWith('/path/to/jwks.json');
+            expect(resultContainer.innerHTML).toContain('API error occurred');
+            expect(resultContainer.querySelector('.error-message')).toBeTruthy();
+        });
+    });
+
+    describe('Memory type JWKS validation', () => {
+        const validJwks = JSON.stringify({
+            keys: [
+                {
+                    kty: 'RSA',
+                    use: 'sig',
+                    n: 'test',
+                    e: 'AQAB'
+                }
+            ]
         });
 
-        it('should handle different jwks_type values correctly', async () => {
-            const testTypes = ['file', 'memory', 'custom'];
-
-            for (const type of testTypes) {
-                callback.mockClear();
-                await jwksValidator.init(parentElement, 'test-value', type, callback);
-
-                const callbackArg = callback.mock.calls[0][0];
-                expect(callbackArg.jwks_type).toBe(type);
-            }
+        beforeEach(() => {
+            // Add textarea for JWKS content
+            element.innerHTML = `<textarea>${validJwks}</textarea>`;
         });
 
-        it('should handle very long JWKS URL', async () => {
-            const longUrl = 'https://example.com/' + 'a'.repeat(1000) + '/.well-known/jwks.json';
-            const mockCash = require('cash-dom').default;
+        it('should create memory validation UI for memory type', async () => {
+            await jwksValidator.init(element, validJwks, 'memory', jest.fn());
 
-            await jwksValidator.init(parentElement, longUrl, 'server', callback);
+            const memoryContainer = element.querySelector('.jwks-memory-container');
+            expect(memoryContainer).toBeTruthy();
 
-            // Trigger button click
-            mockCash.__triggerClick();
+            const contentDescription = memoryContainer.querySelector('.content-description');
+            expect(contentDescription.textContent).toContain('Enter JWKS JSON content directly');
 
-            // Should start validation process
-            expect(mockCash().html).toHaveBeenCalledWith('Testing JWKS...');
+            const validateButton = memoryContainer.querySelector('.validate-content-button');
+            expect(validateButton).toBeTruthy();
+            expect(validateButton.textContent).toBe('Validate JSON');
+
+            const resultContainer = memoryContainer.querySelector('.content-validation-result');
+            expect(resultContainer).toBeTruthy();
         });
 
-        it('should handle special characters in JWKS URL', async () => {
-            const specialUrl = 'https://example.com/jwks?param=value&other=test%20encoded';
-            const mockCash = require('cash-dom').default;
+        it('should show error when no content provided', async () => {
+            element.innerHTML = '<textarea></textarea>';
+            await jwksValidator.init(element, '', 'memory', jest.fn());
 
-            await jwksValidator.init(parentElement, specialUrl, 'server', callback);
+            const validateButton = element.querySelector('.validate-content-button');
+            const resultContainer = element.querySelector('.content-validation-result');
 
-            // Trigger button click
-            mockCash.__triggerClick();
+            validateButton.click();
 
-            // Should handle special characters
-            expect(mockCash.ajax).toHaveBeenCalledWith(expect.objectContaining({
-                data: JSON.stringify({ jwksValue: specialUrl })
-            }));
+            expect(resultContainer.innerHTML).toContain('No JWKS content provided');
+            expect(resultContainer.querySelector('.error-message')).toBeTruthy();
+        });
+
+        it('should validate valid JWKS content', async () => {
+            await jwksValidator.init(element, validJwks, 'memory', jest.fn());
+
+            const validateButton = element.querySelector('.validate-content-button');
+            const resultContainer = element.querySelector('.content-validation-result');
+
+            validateButton.click();
+
+            expect(resultContainer.innerHTML).toContain('OK');
+            expect(resultContainer.innerHTML).toContain('Valid JWKS');
+            expect(resultContainer.innerHTML).toContain('1 keys found');
+            expect(resultContainer.querySelector('.success-message')).toBeTruthy();
+        });
+
+        it('should show error for invalid JSON', async () => {
+            element.innerHTML = '<textarea>invalid json</textarea>';
+            await jwksValidator.init(element, 'invalid json', 'memory', jest.fn());
+
+            const validateButton = element.querySelector('.validate-content-button');
+            const resultContainer = element.querySelector('.content-validation-result');
+
+            validateButton.click();
+
+            expect(resultContainer.innerHTML).toContain('Invalid JSON');
+            expect(resultContainer.querySelector('.error-message')).toBeTruthy();
+        });
+
+        it('should show error for missing keys array', async () => {
+            element.innerHTML = '<textarea>{"notKeys": []}</textarea>';
+            await jwksValidator.init(element, '{"notKeys": []}', 'memory', jest.fn());
+
+            const validateButton = element.querySelector('.validate-content-button');
+            const resultContainer = element.querySelector('.content-validation-result');
+
+            validateButton.click();
+
+            expect(resultContainer.innerHTML).toContain('Invalid JWKS structure: missing "keys" array');
+            expect(resultContainer.querySelector('.error-message')).toBeTruthy();
+        });
+
+        it('should show error for empty keys array', async () => {
+            element.innerHTML = '<textarea>{"keys": []}</textarea>';
+            await jwksValidator.init(element, '{"keys": []}', 'memory', jest.fn());
+
+            const validateButton = element.querySelector('.validate-content-button');
+            const resultContainer = element.querySelector('.content-validation-result');
+
+            validateButton.click();
+
+            expect(resultContainer.innerHTML).toContain('No keys found in JWKS');
+            expect(resultContainer.querySelector('.error-message')).toBeTruthy();
+        });
+
+        it('should show error for missing key type', async () => {
+            const invalidJwks = JSON.stringify({
+                keys: [{ use: 'sig' }]
+            });
+            element.innerHTML = `<textarea>${invalidJwks}</textarea>`;
+            await jwksValidator.init(element, invalidJwks, 'memory', jest.fn());
+
+            const validateButton = element.querySelector('.validate-content-button');
+            const resultContainer = element.querySelector('.content-validation-result');
+
+            validateButton.click();
+
+            expect(resultContainer.innerHTML).toContain('Missing key type (kty) at index 0');
+            expect(resultContainer.querySelector('.error-message')).toBeTruthy();
+        });
+
+        it('should show error for missing key usage', async () => {
+            const invalidJwks = JSON.stringify({
+                keys: [{ kty: 'RSA' }]
+            });
+            element.innerHTML = `<textarea>${invalidJwks}</textarea>`;
+            await jwksValidator.init(element, invalidJwks, 'memory', jest.fn());
+
+            const validateButton = element.querySelector('.validate-content-button');
+            const resultContainer = element.querySelector('.content-validation-result');
+
+            validateButton.click();
+
+            expect(resultContainer.innerHTML).toContain('Missing key usage (use or key_ops) at index 0');
+            expect(resultContainer.querySelector('.error-message')).toBeTruthy();
+        });
+
+        it('should validate JWKS with key_ops instead of use', async () => {
+            const jwksWithKeyOps = JSON.stringify({
+                keys: [{
+                    kty: 'RSA',
+                    key_ops: ['sign', 'verify'],
+                    n: 'test',
+                    e: 'AQAB'
+                }]
+            });
+            element.innerHTML = `<textarea>${jwksWithKeyOps}</textarea>`;
+            await jwksValidator.init(element, jwksWithKeyOps, 'memory', jest.fn());
+
+            const validateButton = element.querySelector('.validate-content-button');
+            const resultContainer = element.querySelector('.content-validation-result');
+
+            validateButton.click();
+
+            expect(resultContainer.innerHTML).toContain('OK');
+            expect(resultContainer.innerHTML).toContain('Valid JWKS');
+            expect(resultContainer.innerHTML).toContain('1 keys found');
         });
     });
 });

@@ -59,6 +59,11 @@ jwt.validation.issuer.2.roles=viewer
 
 === YAML Format (.yaml, .yml)
 
+[NOTE]
+====
+YAML configuration support has been implemented as of version 1.0-SNAPSHOT. The processor now fully supports both properties and YAML file formats.
+====
+
 [source,yaml]
 ----
 jwt:
