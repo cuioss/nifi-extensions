@@ -1,1492 +1,234 @@
-= End-to-End Testing Implementation Guide
+= Test Implementation Guide
 :toc: left
 :toclevels: 3
 :toc-title: Table of Contents
 :sectnums:
 :source-highlighter: highlight.js
 
-== Purpose
+How to write, organize, and debug Playwright tests for this module.
 
-This document provides detailed implementation guidance for end-to-end testing of the MultiIssuerJWTTokenAuthenticator processor using Playwright. It focuses on HOW to implement the tests specified in the end-to-end testing specification document.
-
-== Related Documentation
-
-* xref:Testing-Scope.adoc[Testing Scope and Capabilities] - Detailed testing framework capabilities
-* xref:nifi-ui-structure.adoc[NiFi UI Structure Guide] - NiFi UI structure and selectors
-* xref:mcp-playwright-guide.adoc[MCP Playwright Guide] - MCP Playwright tool integration
-* xref:../README.adoc[E2E Playwright Tests] - Main module documentation
-* xref:../../doc/specification/end-to-end-testing.adoc[End-to-End Testing Specification] - What to test (specification)
-
-== Test Code Structure (2025 Modern Architecture)
-
-The end-to-end tests use modern Playwright patterns with service-oriented architecture and fixtures:
+== Architecture Overview
 
 [source]
 ----
 e-2-e-playwright/
-├── fixtures/                           # Modern Playwright fixtures
-│   ├── auth-fixtures.js               # Authentication fixtures
-│   └── test-fixtures.js               # Consolidated test fixtures
-├── pages/                              # Page Object Model classes
-│   ├── LoginPage.js                   # Login page interactions
-│   ├── CanvasPage.js                  # Main canvas interactions  
-│   └── index.js                       # Page fixture exports
-├── tests/                              # Focused test specifications (2025 best practices)
-│   ├── 01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js
-│   ├── self-login.spec.js             # Authentication flow validation
-│   ├── self-navigation.spec.js        # Navigation and page readiness
-│   ├── self-processor-advanced.spec.js # Processor configuration access
-│   └── self-browser-logging.spec.js   # Console logging and artifact storage
-├── utils/                              # Simplified utility services
-│   ├── auth-service.js                # Streamlined authentication service
-│   ├── processor.js                   # Consolidated processor operations
-│   ├── accessibility-helper.js        # Accessibility testing with axe
-│   └── constants.js                   # Modern constants with semantic selectors
-├── playwright.config.js               # Enhanced Playwright configuration
-├── scripts/                           # Utility scripts
-│   ├── selector-inspector.js         # Selector inspection utility
-│   └── verify-setup.js              # Setup verification
-└── package.json                      # NPM configuration with modern tooling
+├── fixtures/                     # Playwright test fixtures (setup/teardown)
+│   ├── auth-fixtures.js         # Authentication fixture
+│   └── test-fixtures.js         # Consolidated: logging, a11y, processor
+├── pages/                        # Page Object Model
+│   ├── LoginPage.js             # Login page interactions
+│   ├── CanvasPage.js            # Canvas page interactions
+│   └── index.js                 # Page fixtures + re-exports
+├── tests/                        # Test specifications
+│   ├── self-*.spec.js           # Self-tests (framework validation)
+│   ├── 0x-*.spec.js             # Functional tests (processor features)
+│   └── accessibility-*.spec.js  # WCAG compliance tests
+├── utils/                        # Service utilities
+│   ├── auth-service.js          # API token-based authentication
+│   ├── processor.js             # Processor discovery/verification
+│   ├── processor-api-manager.js # NiFi REST API processor management
+│   ├── navigation-utils.js      # Page navigation
+│   └── constants.js             # Selectors, credentials, URLs
+└── config/                       # Configuration
+    ├── accessibility-config.js  # WCAG axe-core rules
+    └── console-error-config.js  # Console error patterns
 ----
 
-This simplified architecture provides:
+== Writing Tests
 
-* **Fixtures-based setup/teardown** for better test isolation
-* **Minimal utility services** leveraging Playwright built-ins
-* **Page Object Model** integration with fixtures  
-* **Modern semantic locators** instead of complex CSS selectors
-* **Built-in logging/tracing** instead of custom implementations
-* **Automated accessibility testing** with axe-playwright
+=== Using Page Objects (recommended)
 
-== Test File Organization
+Page Objects are available as Playwright fixtures:
 
-The test files are organized by purpose and scope:
+[source,javascript]
+----
+import { test, expect } from '../pages/index.js';
 
-=== Focused Test Files (2025 Best Practices)
+test('Authentication and navigation', async ({ loginPage, canvasPage }) => {
+  await loginPage.login();
+  await loginPage.verifyLoginSuccess();
+  await canvasPage.verifyCanvasLoaded();
+});
+----
 
-* **`01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js`**: Tests specific functionality of the MultiIssuerJWTTokenAuthenticator processor, including deployment verification and configuration testing.
+=== Using Consolidated Fixtures
 
-* **`self-login.spec.js`**: Authentication flow validation with single responsibility focus:
-  - Valid credential authentication 
-  - Invalid credential rejection
-  - Logout functionality
-  - Authentication state persistence
-  - Authentication status detection
+The `test-fixtures.js` provides extended fixtures with automatic console logging and error detection:
 
-* **`self-navigation.spec.js`**: Navigation and page readiness validation:
-  - Main canvas navigation
-  - Error handling for invalid navigation
-  - Page accessibility verification
-  - URL structure validation
-  - Browser back/forward navigation
-  - Page readiness indicators
+[source,javascript]
+----
+import { test, expect } from '../fixtures/test-fixtures.js';
 
-* **`self-processor-advanced.spec.js`**: Processor configuration access with focus on:
-  - Configuration dialog opening
-  - Advanced properties access
-  - "Back to Processor" navigation links
-  - Configuration error handling
-  - Processor interaction reliability
+test('Test with full instrumentation', async ({ page, accessibilityHelper }) => {
+  // Console logs are captured automatically
+  // Critical errors are detected automatically
+  // Browser logs are saved to files after each test
+});
+----
 
-* **`self-browser-logging.spec.js`**: Console logging and artifact storage:
-  - Console message capture during test execution
-  - Error message filtering and capture
-  - Log file system storage
-  - Network error handling
-  - Log file cleanup and rotation
+=== Using the Processor API Manager
+
+For tests that need processor lifecycle control:
+
+[source,javascript]
+----
+import { test, expect } from '@playwright/test';
+import { ProcessorApiManager } from '../utils/processor-api-manager.js';
+import { AuthService } from '../utils/auth-service.js';
+
+test('Processor management via API', async ({ page }) => {
+  const authService = new AuthService(page);
+  await authService.ensureReady();
+
+  const manager = new ProcessorApiManager(page);
+  await manager.ensureProcessorOnCanvas();
+
+  // Test logic...
+});
+----
+
+== Test Organization
+
+=== Naming Convention
+
+* `self-*.spec.js` — Framework validation (prefixed `self-`)
+* `0x-*.spec.js` — Functional tests (numbered for execution order)
+* `accessibility-*.spec.js` — WCAG compliance tests
 
 === Test Categories
 
-**Validation Tests**: Verify that the testing framework utilities work correctly
-**Functional Tests**: Test specific NiFi processor functionality  
-**Demonstration Tests**: Show how to use modern testing patterns
-**Integration Tests**: Verify end-to-end workflows work correctly
+[cols="1,2,3"]
+|===
+|Category |Purpose |Example
 
-== Playwright UI Tests
+|Self-tests
+|Validate testing infrastructure
+|`self-login.spec.js`, `self-navigation.spec.js`
 
-Playwright tests form the foundation of our end-to-end testing strategy, focusing on UI interactions and user flows. We use data-testid attributes for more reliable selectors and implement utility functions for better test maintainability.
+|Functional
+|Test processor features
+|`01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js`
 
-=== Test Structure and Organization
+|Accessibility
+|WCAG 2.1 Level AA compliance
+|`accessibility-wcag-compliance.spec.js`
+|===
 
-Tests are organized by feature area in the following structure:
+=== Execution Order
 
-[source,javascript]
-----
-// Utility Functions - Reusable UI interaction patterns
-utils/
-  processor-tool.js       // Methods for processor discovery and verification
-  login-tool.js           // Authentication and session management
-  navigation-tool.js      // Page navigation and verification
+When run via Maven (`-Pintegration-tests`), tests execute in order:
 
-// Configuration and Constants
-utils/constants.js            // Selectors and configuration constants
+1. Self-tests — if these fail, subsequent phases are skipped
+2. Functional tests
+3. Accessibility tests
 
-// Tests organized by feature
-tests/
-  processor-deployment.spec.js  // Processor deployment tests
-  self-processor.spec.js        // Processor verification tests
-  self-login-tool.spec.js       // Authentication tests
-----
+When using `npm test`, the `run-tests-with-precheck.js` script gates functional tests behind self-test success.
 
-=== Test Implementation
+== Authentication
 
-A typical Playwright test follows this pattern:
+NiFi uses API token-based authentication (not form-based login):
 
 [source,javascript]
 ----
-test("should verify processor deployment and configuration", async ({ page }) => {
-  // Login to NiFi
-  await loginToNiFi(page);
+// AuthService handles CSRF token + API token flow
+const authService = new AuthService(page);
+await authService.login();
 
-  // Navigate to canvas
-  await navigateToCanvas(page);
-
-  // Verify processor is deployed and accessible
-  const verification = await verifyProcessorDeployment(page, "MultiIssuerJWTTokenAuthenticator");
-  expect(verification.found).toBeTruthy();
-  expect(verification.visible).toBeTruthy();
-  expect(verification.details.name).toContain("MultiIssuerJWTTokenAuthenticator");
-
-  // Attempt to open processor configuration
-  await interactWithProcessor(page, verification.element);
-
-  // Wait for configuration dialog
-  const configDialog = page.locator('[role="dialog"]');
-  await expect(configDialog).toBeVisible({ timeout: 10000 });
-
-  // Verify basic properties are present
-  await expect(page.locator('[data-testid="property-input"][name="jwt.validation.token.location"]')).toBeVisible();
-  await expect(page.locator('[data-testid="property-input"][name="jwt.validation.token.header"]')).toBeVisible();
-
-  // Verify JWKS configuration section is present
-  await expect(page.locator('[data-testid="dynamic-property-add-button"]')).toBeVisible();
-
-  // Close configuration dialog
-  await page.locator('[data-testid="processor-config-cancel-button"]').click();
+// Or use auth-fixtures.js for automatic setup
+import { test } from '../fixtures/auth-fixtures.js';
+test('Authenticated test', async ({ authenticatedPage }) => {
+  // Already authenticated
 });
 ----
 
-=== Modern Test Implementation Examples
+The authentication flow:
 
-==== Service-Based Architecture Pattern
+1. Navigate to NiFi to obtain CSRF token from cookies
+2. POST to `/nifi-api/access/token` with credentials
+3. Set JWT token for subsequent requests
+4. Navigate to main canvas and verify
 
-[source,javascript]
-----
-// Modern service-based approach with fixtures
-import { test, expect } from '../fixtures/test-fixtures.js';
-import { AuthService } from '../utils/auth-service.js';
-import { ProcessorService } from '../utils/processor-service.js';
+== Browser Configuration
 
-test('Modern processor verification', async ({ authenticatedPage }) => {
-  // Initialize modern services
-  const processorService = new ProcessorService(authenticatedPage);
-  
-  // Find processor using modern service
-  const processor = await processorService.findMultiIssuerJwtAuthenticator({
-    failIfNotFound: false
-  });
-  
-  if (processor) {
-    // Verify processor deployment using modern assertions
-    expect(processor.isVisible).toBeTruthy();
-    expect(processor.name).toContain('MultiIssuerJWTTokenAuthenticator');
-    
-    // Interact with processor using modern patterns
-    await processorService.interact(processor, { action: 'hover' });
-  }
-});
-----
+Chromium only, with these launch arguments:
 
-==== Page Object Model Integration
+* `--disable-web-security` — cross-origin for testing
+* `--no-sandbox` — CI compatibility
+* `--ignore-certificate-errors` — self-signed certs in dev
 
-[source,javascript]
-----
-// Page Object Model with fixtures
-import { LoginPage, CanvasPage } from '../pages/index.js';
+== Debugging
 
-test('Authentication flow with POM', async ({ page, pageVerifier }) => {
-  // Use Page Object Model
-  const loginPage = new LoginPage(page);
-  const canvasPage = new CanvasPage(page);
-  
-  // Modern authentication flow
-  await loginPage.login();
-  await loginPage.verifyLoginSuccess();
-  
-  // Verify canvas using POM
-  await canvasPage.verifyCanvasLoaded();
-  
-  // Use fixture-based verification
-  await pageVerifier.expectMainCanvas();
-});
-----
+=== Interactive Mode
 
-==== Modern Utility Services
-
-Modern utility services replace complex utility functions:
-
-[source,javascript]
-----
-// utils/auth-service.js - Consolidated authentication
-export class AuthService {
-  constructor(page) {
-    this.page = page;
-  }
-  
-  async login(credentials = {}) {
-    // Modern locator patterns
-    await this.page.getByLabel(/username/i).fill(credentials.username);
-    await this.page.getByLabel(/password/i).fill(credentials.password);
-    await this.page.getByRole('button', { name: /login/i }).click();
-    
-    // Auto-waiting instead of manual timeouts
-    await expect(this.page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS))
-      .toBeVisible({ timeout: 30000 });
-  }
-}
-    if (name && name.includes(processorName)) {
-      return {
-        element: processor,
-        name: name,
-        found: true,
-        visible: await processor.isVisible()
-      };
-    }
-  }
-
-  return { found: false };
-}
-
-/**
- * Verifies a processor is deployed and accessible
- * @param {Page} page - Playwright page object
- * @param {string} processorName - Name of the processor to verify
- * @returns {Promise<Object>} - Verification result
- */
-export async function verifyProcessorDeployment(page, processorName) {
-  const processor = await findProcessor(page, processorName);
-
-  if (!processor.found) {
-    console.log(`Processor ${processorName} not found on canvas`);
-    return { found: false };
-  }
-
-  return {
-    found: true,
-    visible: processor.visible,
-    element: processor.element,
-    details: {
-      name: processor.name
-    }
-  };
-}
-
-/**
- * Interacts with a processor to open its configuration
- * @param {Page} page - Playwright page object
- * @param {ElementHandle} processorElement - Processor element to interact with
- */
-export async function interactWithProcessor(page, processorElement) {
-  // Double-click to open configuration
-  await processorElement.dblclick();
-}
-----
-
-=== Using Utility Functions in Tests
-
-With utility functions, the tests become more readable and maintainable:
-
-[source,javascript]
-----
-// tests/processor-configuration.spec.js
-import { test, expect } from '@playwright/test';
-import { loginToNiFi } from '../utils/login-tool';
-import { navigateToCanvas } from '../utils/navigation-tool';
-import { 
-  findProcessor, 
-  verifyProcessorDeployment, 
-  interactWithProcessor 
-} from '../utils/processor-tool';
-
-test('should verify processor configuration', async ({ page }) => {
-  // Login and navigate to canvas
-  await loginToNiFi(page);
-  await navigateToCanvas(page);
-
-  // Find and verify processor
-  const processor = await verifyProcessorDeployment(page, 'MultiIssuerJWTTokenAuthenticator');
-  expect(processor.found).toBeTruthy();
-
-  // Open processor configuration
-  await interactWithProcessor(page, processor.element);
-
-  // Verify configuration dialog is open
-  const configDialog = page.locator('[role="dialog"]');
-  await expect(configDialog).toBeVisible();
-
-  // Verify processor properties
-  await expect(page.locator('[data-testid="property-input"][name="jwt.validation.token.location"]')).toBeVisible();
-
-  // Close configuration dialog
-  await page.locator('[data-testid="processor-config-cancel-button"]').click();
-});
-----
-
-=== Authentication and Navigation Utilities
-
-**IMPORTANT UPDATE (January 2025)**: NiFi authentication now uses API token-based authentication instead of form-based login.
-
-We implement authentication and navigation utilities for common operations:
-
-[source,javascript]
-----
-// utils/auth-service.js - Modern API Token Authentication
-export class AuthService {
-  constructor(page) {
-    this.page = page;
-  }
-
-  /**
-   * Modern API token-based authentication
-   * Uses CSRF token and POST to /nifi-api/access/token
-   */
-  async login() {
-    // Navigate to get CSRF token
-    await this.page.goto('/nifi');
-    await this.page.waitForLoadState('networkidle');
-
-    // Extract CSRF token from cookies
-    const cookies = await this.page.context().cookies();
-    const requestToken = cookies.find(c => c.name === '__Secure-Request-Token')?.value;
-
-    if (!requestToken) {
-      throw new Error('Could not obtain CSRF token');
-    }
-
-    // API-based authentication (POST to token endpoint)
-    const response = await this.page.request.post('/nifi-api/access/token', {
-      headers: {
-        'Request-Token': requestToken,
-        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-      },
-      form: {
-        username: CONSTANTS.AUTH.USERNAME,
-        password: CONSTANTS.AUTH.PASSWORD
-      }
-    });
-
-    if (!response.ok()) {
-      throw new Error(`API login failed: ${response.status()}`);
-    }
-
-    // Get JWT token and set authorization header
-    const token = await response.text();
-    await this.page.setExtraHTTPHeaders({
-      'Authorization': `Bearer ${token}`
-    });
-
-    // Navigate to main canvas
-    await this.page.goto('/nifi');
-    await this.page.waitForLoadState('networkidle');
-
-    // Verify authentication success
-    const authSuccess = await this.page.locator('#canvas-container').isVisible().catch(() => false) ||
-                       await this.page.locator(`text=${CONSTANTS.AUTH.USERNAME}`).isVisible().catch(() => false);
-
-    if (!authSuccess) {
-      throw new Error('Authentication verification failed');
-    }
-  }
-}
-
-// utils/navigation-tool.js
-/**
- * Navigates to the main canvas
- * @param {Page} page - Playwright page object
- */
-export async function navigateToCanvas(page) {
-  // Ensure we're on the main canvas
-  await page.goto('/');
-
-  // Wait for canvas to be ready
-  await page.waitForSelector('[data-testid="flow-status-container"]', { timeout: 10000 });
-}
-----
-
-=== Handling Asynchronous Operations
-
-NiFi operations can be asynchronous. We implement robust waiting strategies with Playwright:
-
-[source,javascript]
-----
-// Handling asynchronous operations
-test('should verify token processing results', async ({ page }) => {
-  // Submit token for processing
-  await page.click('[data-testid="process-token-button"]');
-
-  // Wait for processing to complete with configurable timeout
-  await expect(page.locator('[data-testid="processing-status"]')).toHaveText('Completed', { 
-    timeout: 30000 
-  });
-
-  // Use assertions with timeouts for potentially unstable elements
-  const tokenAttributes = page.locator('[data-testid="token-attributes"]');
-  await expect(tokenAttributes).toContainText('jwt.content.sub');
-  await expect(tokenAttributes).toContainText('testUser');
-});
-----
-
-=== Browser Configuration
-
-The framework uses Chromium as the single, sensible default browser for enterprise NiFi testing.
-
-==== Why Chromium Only?
-
-* **Enterprise Standard**: Most widely used browser in enterprise environments
-* **Best Playwright Support**: Most stable and performant browser for Playwright automation
-* **Consistent Environment**: Same behavior across development, CI, and production testing
-* **NiFi Optimization**: NiFi's UI is primarily tested and optimized for Chrome/Chromium
-* **Reduced Maintenance**: Single browser reduces test execution time and maintenance overhead
-* **Enterprise Reality**: Most enterprise users standardize on Chrome-based browsers
-
-[source,javascript]
-----
-// playwright.config.js - Focused browser configuration
-projects: [
-  {
-    name: 'chromium',
-    use: { 
-      ...devices['Desktop Chrome'],
-      // Enable modern Chrome features for enterprise NiFi testing
-      launchOptions: {
-        args: [
-          '--disable-web-security',
-          '--disable-features=VizDisplayCompositor',
-          '--enable-automation',
-          '--no-sandbox',
-          '--disable-dev-shm-usage',
-          '--ignore-certificate-errors'
-        ]
-      }
-    },
-  }
-]
-
-// Standard file upload handling
-test('should handle file uploads', async ({ page }) => {
-  const fileInput = page.locator('[data-testid="file-input"]');
-  const filePath = 'fixtures/jwks/keycloak-jwks.json';
-  
-  await fileInput.setInputFiles(filePath);
-  await expect(page.locator('[data-testid="file-name"]')).toContainText('keycloak-jwks.json');
-});
-----
-
-=== Visual Testing
-
-For UI components, Playwright provides built-in visual comparison capabilities:
-
-[source,javascript]
-----
-// Visual validation of UI components
-test('should display token claims correctly', async ({ page }) => {
-  // Load test data
-  const { validToken } = require('../fixtures/tokens/valid-tokens.json');
-
-  // Navigate to verification screen
-  await navigateToProcessorVerification(page);
-
-  // Input token and verify
-  await page.fill('[data-testid="token-input"]', validToken);
-  await page.click('[data-testid="verify-token-button"]');
-
-  // Check that claims table is displayed correctly
-  await expect(page.locator('[data-testid="claims-table"]')).toBeVisible();
-
-  // Take screenshot for visual comparison
-  await page.locator('[data-testid="claims-container"]').screenshot({ 
-    path: 'target/screenshots/token-claims-display.png' 
-  });
-});
-----
-
-=== Browser Console Logging with Direct File Access
-
-We use a minimal Playwright fixture to capture all browser console logs directly to files. This approach leverages Playwright's built-in features for enhanced console logging:
-
-[source,javascript]
-----
-// utils/logging-fixture.js - Simplified browser console logging
-import { test as base } from '@playwright/test';
-import fs from 'fs';
-import path from 'path';
-
-// Critical error patterns (minimal set)
-const CRITICAL_ERROR_PATTERNS = [
-  'Uncaught Error',
-  'TypeError',
-  'ReferenceError',
-  'SyntaxError',
-  'Network Error',
-  'Failed to load resource',
-  'jQuery is not defined'
-];
-
-/**
- * Enhanced test fixture with minimal console logging
- */
-export const test = base.extend({
-  page: async ({ page }, use, testInfo) => {
-    const logs = [];
-    const criticalErrors = [];
-    
-    // Capture console messages
-    page.on('console', msg => {
-      const logEntry = {
-        type: msg.type(),
-        text: msg.text(),
-        timestamp: new Date().toISOString()
-      };
-      
-      logs.push(logEntry);
-      
-      // Check for critical errors
-      if (msg.type() === 'error' || isCriticalError(msg.text())) {
-        criticalErrors.push(logEntry);
-      }
-    });
-    
-    // Capture page errors
-    page.on('pageerror', error => {
-      const errorEntry = {
-        type: 'pageerror',
-        text: error.message,
-        stack: error.stack,
-        timestamp: new Date().toISOString()
-      };
-      
-      logs.push(errorEntry);
-      criticalErrors.push(errorEntry);
-    });
-    
-    // Capture network failures
-    page.on('requestfailed', request => {
-      const failureEntry = {
-        type: 'requestfailed',
-        text: `Network Request Failed: ${request.method()} ${request.url()} - ${request.failure()?.errorText || 'Unknown error'}`,
-        timestamp: new Date().toISOString()
-      };
-      
-      logs.push(failureEntry);
-    });
-    
-    await use(page);
-    
-    // Create target/logs directory if it doesn't exist
-    const targetDir = path.join(process.cwd(), 'target');
-    const logsDir = path.join(targetDir, 'logs');
-    
-    if (!fs.existsSync(logsDir)) {
-      fs.mkdirSync(logsDir, { recursive: true });
-    }
-    
-    // Save browser console logs to direct files
-    if (logs.length > 0) {
-      const sanitizedTestName = testInfo.title.replace(/[^a-zA-Z0-9]/g, '_');
-      const logFileName = `${sanitizedTestName}-console-logs.json`;
-      const logFilePath = path.join(logsDir, logFileName);
-      
-      fs.writeFileSync(logFilePath, JSON.stringify(logs, null, 2));
-      console.log(`📝 Browser console logs saved to: ${logFilePath}`);
-    }
-    
-    // Save critical errors to separate file
-    if (criticalErrors.length > 0) {
-      const sanitizedTestName = testInfo.title.replace(/[^a-zA-Z0-9]/g, '_');
-      const errorFileName = `${sanitizedTestName}-critical-errors.json`;
-      const errorFilePath = path.join(logsDir, errorFileName);
-      
-      fs.writeFileSync(errorFilePath, JSON.stringify(criticalErrors, null, 2));
-      console.log(`🚨 Critical errors saved to: ${errorFilePath}`);
-    }
-  }
-});
-
-/**
- * Check if a message contains critical error patterns
- */
-function isCriticalError(text) {
-  return CRITICAL_ERROR_PATTERNS.some(pattern => 
-    text.toLowerCase().includes(pattern.toLowerCase())
-  );
-}
-----
-
-This simplified approach provides:
-
-1. **Direct File Access**: Browser console logs are saved to `target/logs/` directory as JSON files
-2. **Critical Error Detection**: Separate files for critical errors requiring immediate attention
-3. **Built-in Playwright Features**: Uses Playwright's native console event handling
-4. **Minimal Code**: Replaced 12 complex files with 3 simple utilities
-
-=== Using the Logging Fixture in Tests
-
-Import and use the enhanced test fixture in your tests:
-
-[source,javascript]
-----
-// tests/01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js
-import { test, expect } from '../utils/logging-fixture.js';
-import { loginToNiFi } from '../utils/login-tool.js';
-import { navigateToCanvas } from '../utils/navigation-tool.js';
-import { verifyProcessorDeployment } from '../utils/processor-tool.js';
-
-test('should verify processor deployment without console errors', async ({ page }) => {
-  // Login to NiFi
-  await loginToNiFi(page);
-
-  // Navigate to canvas
-  await navigateToCanvas(page);
-
-  // Verify processor deployment
-  const verification = await verifyProcessorDeployment(page, 'MultiIssuerJWTTokenAuthenticator');
-  expect(verification.found).toBeTruthy();
-
-  // Test automatically captures browser console logs
-  // Logs saved to: target/logs/should_verify_processor_deployment_without_console_errors-console-logs.json
-});
-----
-
-=== Console Log File Structure
-
-The console log files contain structured data for analysis:
-
-[source,json]
-----
-// target/logs/test-name-console-logs.json
-[
-  {
-    "type": "log",
-    "text": "Application initialized successfully",
-    "timestamp": "2024-01-15T10:30:15.123Z"
-  },
-  {
-    "type": "error",
-    "text": "Uncaught Error: Mismatched anonymous define() module: function(e){...}",
-    "timestamp": "2024-01-15T10:30:16.456Z"
-  },
-  {
-    "type": "requestfailed",
-    "text": "Network Request Failed: GET https://localhost:9095/nifi/api/flow/status - net::ERR_CERT_AUTHORITY_INVALID",
-    "timestamp": "2024-01-15T10:30:17.789Z"
-  }
-]
-----
-
-=== Browser Console Logging Configuration
-
-The Playwright configuration includes enhanced reporting for browser console analysis:
-
-[source,javascript]
-----
-// playwright.config.js - Enhanced reporting configuration
-module.exports = defineConfig({
-  reporter: [
-    ['html', { outputFolder: REPORTS_DIR, open: 'never' }],
-    ['json', { outputFile: path.join(TARGET_DIR, 'test-results.json') }],
-    ['list']
-  ],
-  trace: 'retain-on-failure',
-  screenshot: 'only-on-failure',
-  video: 'retain-on-failure'
-});
-----
-
-The allowed warnings list is maintained in a centralized constants file:
-
-[source,javascript]
-----
-// utils/constants.js
-export const ALLOWED_CONSOLE_WARNINGS = [
-  // Define a positive list of allowed warnings
-  'Warning: validateDOMNesting(...): <div> cannot appear as a descendant of <p>.',
-  'DevTools failed to load source map',
-  'Content Security Policy violation for inline script'
-];
-----
-
-This approach provides several benefits:
-
-1. **Prevent Test Noise**: Ignore known third-party library warnings that cannot be fixed
-2. **Focus on Real Issues**: Ensure actual application errors are caught and addressed
-3. **Document Technical Debt**: Clearly document known issues that are accepted
-
-The list of allowed warnings should be reviewed periodically, and items should be removed when the underlying issues are fixed.
-
-== Test Data Generation
-
-=== Playwright Test Fixtures
-
-Playwright tests use fixtures to provide test data. These fixtures are stored in the `fixtures` directory and include token examples and configuration data:
-
-[source,javascript]
-----
-// Example of valid tokens fixture
-const validTokens = {
-  validToken: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
-  adminToken: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
-  expectedSubject: "testUser",
-  expectedIssuer: "http://localhost:9080/realms/oauth_integration_tests"
-};
-
-// Example of invalid tokens fixture
-const invalidTokens = {
-  expiredToken: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
-  invalidSignatureToken: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
-};
-
-// Example of JWKS fixture
-const keycloakJwks = {
-  keys: [
-    {
-      kid: "YvGl1VhRlUe-Cf_9k3X6K2MI8JyFo5V0mGCK5U1QlXA",
-      kty: "RSA",
-      alg: "RS256",
-      use: "sig",
-      n: "pPr5h-b9VBQDI...",
-      e: "AQAB"
-    }
-  ]
-};
-----
-
-These fixtures can be loaded in Playwright tests:
-
-[source,javascript]
-----
-import { test, expect } from '@playwright/test';
-import { navigateToProcessorVerification } from '../utils/navigation-tool';
-import { loginToNiFi } from '../utils/login-tool';
-
-// Import test data directly
-const validTokens = require('../fixtures/tokens/valid-tokens.json');
-const invalidTokens = require('../fixtures/tokens/invalid-tokens.json');
-
-test.describe('Token Verification', () => {
-  test.beforeEach(async ({ page }) => {
-    // Login to NiFi before each test
-    await loginToNiFi(page);
-  });
-
-  test('should verify a valid token', async ({ page }) => {
-    // Navigate to verification UI
-    await navigateToProcessorVerification(page);
-
-    // Paste token and verify
-    await page.fill('[data-testid="token-input"]', validTokens.validToken);
-    await page.click('[data-testid="verify-token-button"]');
-
-    // Check results
-    await expect(page.locator('[data-testid="token-subject"]')).toContainText(validTokens.expectedSubject);
-    await expect(page.locator('[data-testid="token-issuer"]')).toContainText(validTokens.expectedIssuer);
-  });
-});
-----
-
-=== Token Generation Helper
-
-To generate real tokens for testing, we use a utility script that obtains tokens from the Keycloak instance:
-
-[source,javascript]
-----
-// utils/token-generator.js
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
-
-/**
- * Utility for obtaining real tokens from Keycloak for testing
- */
-class TokenGenerator {
-  constructor() {
-    // Get Keycloak URL from environment or use default
-    this.keycloakUrl = process.env.PLAYWRIGHT_KEYCLOAK_URL || 'http://localhost:9080';
-    this.realm = 'oauth_integration_tests';
-    this.clientId = 'test_client';
-    this.clientSecret = 'yTKslWLtf4giJcWCaoVJ20H8sy6STexM';
-    this.username = 'testUser';
-    this.password = 'drowssap';
-  }
-
-  /**
-   * Get a valid token from Keycloak
-   */
-  async getValidToken() {
-    return this.getToken(this.username, this.password);
-  }
-
-  /**
-   * Get a token with custom scopes
-   */
-  async getTokenWithScopes(scopes) {
-    return this.getToken(this.username, this.password, scopes.join(' '));
-  }
-
-  /**
-   * Get a token for a specific user
-   */
-  async getToken(username, password, scope = null) {
-    try {
-      // Build the token request
-      const params = new URLSearchParams();
-      params.append('grant_type', 'password');
-      params.append('client_id', this.clientId);
-      params.append('client_secret', this.clientSecret);
-      params.append('username', username);
-      params.append('password', password);
-
-      if (scope) {
-        params.append('scope', scope);
-      }
-
-      // Send request
-      const response = await axios.post(
-        `${this.keycloakUrl}/realms/${this.realm}/protocol/openid-connect/token`,
-        params,
-        {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          }
-        }
-      );
-
-      // Return access token
-      return response.data.access_token;
-    } catch (error) {
-      console.error('Failed to get token from Keycloak', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Save tokens to fixture files for Playwright tests
-   */
-  async saveTokensToFixtures() {
-    // Get tokens
-    const validToken = await this.getValidToken();
-    const adminToken = await this.getTokenWithScopes(['admin']);
-
-    // Create fixtures directory if it doesn't exist
-    const fixturesDir = path.join(__dirname, '..', 'fixtures', 'tokens');
-    if (!fs.existsSync(fixturesDir)) {
-      fs.mkdirSync(fixturesDir, { recursive: true });
-    }
-
-    // Save valid token fixture
-    fs.writeFileSync(
-      path.join(fixturesDir, 'valid-tokens.json'),
-      JSON.stringify({
-        validToken,
-        adminToken,
-        expectedSubject: this.username,
-        expectedIssuer: `${this.keycloakUrl}/realms/${this.realm}`
-      }, null, 2)
-    );
-
-    // For invalid tokens, we can tamper with valid tokens
-    // In a real implementation, you'd need to implement token tampering
-    const expiredToken = validToken; // Replace with actual expired token
-    const invalidSignatureToken = validToken.slice(0, -5) + 'XXXXX'; // Simple tampering
-
-    // Save invalid token fixture
-    fs.writeFileSync(
-      path.join(fixturesDir, 'invalid-tokens.json'),
-      JSON.stringify({
-        expiredToken,
-        invalidSignatureToken
-      }, null, 2)
-    );
-
-    console.log('Token fixtures saved successfully');
-  }
-}
-
-module.exports = new TokenGenerator();
-----
-
-This generator can be run as a pre-test script to generate fresh tokens:
-
-[source,javascript]
-----
-// scripts/generate-test-tokens.js
-const tokenGenerator = require('../utils/token-generator');
-
-(async () => {
-  try {
-    await tokenGenerator.saveTokensToFixtures();
-    console.log('Test tokens generated successfully');
-  } catch (error) {
-    console.error('Error generating test tokens:', error);
-    process.exit(1);
-  }
-})();
-----
-
-=== JWKS Endpoints for Playwright
-
-The Keycloak instance provides real JWKS endpoints that can be used in Playwright tests:
-
-[source,javascript]
-----
-// utils/jwks-endpoints.js
-/**
- * Utility for working with real JWKS endpoints from Keycloak
- */
-export class JwksEndpoints {
-  /**
-   * Get the HTTP JWKS endpoint URL for local access
-   */
-  getLocalHttpJwksUrl() {
-    return 'http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/certs';
-  }
-
-  /**
-   * Get the HTTPS JWKS endpoint URL for local access
-   */
-  getLocalHttpsJwksUrl() {
-    return 'https://localhost:9085/realms/oauth_integration_tests/protocol/openid-connect/certs';
-  }
-
-  /**
-   * Get the HTTP JWKS endpoint URL for Docker container access
-   */
-  getContainerHttpJwksUrl() {
-    return 'http://keycloak:9080/realms/oauth_integration_tests/protocol/openid-connect/certs';
-  }
-
-  /**
-   * Get the HTTPS JWKS endpoint URL for Docker container access
-   */
-  getContainerHttpsJwksUrl() {
-    return 'https://keycloak:9085/realms/oauth_integration_tests/protocol/openid-connect/certs';
-  }
-}
-
-export const jwksEndpoints = new JwksEndpoints();
-----
-
-== Test Execution
-
-=== Local Execution
-
-To run Playwright end-to-end tests locally:
-
-1. Start the integration-testing environment:
-+
 [source,bash]
 ----
-# From the project root
-./integration-testing/src/main/docker/run-and-deploy.sh
-----
+# Playwright UI mode
+npm run playwright:test:ui
 
-2. Generate fresh test tokens (optional):
-+
-[source,bash]
-----
-# Generate fresh test tokens
-cd e-2-e-playwright
-npm run generate-tokens
-----
-
-3. Run the Playwright tests:
-+
-[source,bash]
-----
-# Run Playwright tests in headless mode
-cd e-2-e-playwright
-npm run playwright:test
-
-# Run Playwright tests in headed mode (with browser UI)
+# Headed mode (visible browser)
 npm run playwright:test:headed
 
-# Run Playwright tests in interactive UI mode
-npm run playwright:test:ui
+# Single test file
+npx playwright test tests/specific-test.spec.js
 ----
 
-4. View test results:
-+
-[source,bash]
-----
-# Playwright test results
-npm run playwright:report
-----
+=== In-Test Debugging
 
-5. Stop the test environment:
-+
-[source,bash]
-----
-./integration-testing/src/main/docker/stop-test-container.sh
-----
-
-=== Debugging Playwright Tests
-
-For debugging Playwright tests:
-
-1. Run tests in interactive UI mode:
-+
-[source,bash]
-----
-cd e-2-e-playwright
-npm run playwright:test:ui
-----
-
-2. Use Playwright debugging features:
-   * Use the Playwright UI Test Explorer to inspect and debug tests
-   * Add `await page.pause()` to pause test execution at specific points
-   * Use the browser's developer tools during test execution
-   * View screenshots and videos in the `target/screenshots` and `target/videos` directories
-   * Use the Playwright Inspector for step-by-step debugging
-   * View detailed traces with the Playwright Trace Viewer
-
-3. Add debug logging in tests:
-+
 [source,javascript]
 ----
-// Add debug logging
-test('should verify a token', async ({ page }) => {
-  console.log('Starting token verification test');
+// Pause execution and open Playwright Inspector
+await page.pause();
 
-  // Get token from fixture
-  const validTokens = require('../fixtures/tokens/valid-tokens.json');
-  console.log(`Using token with subject: ${validTokens.expectedSubject}`);
-
-  // Use the built-in Playwright logging function
-  await page.evaluate(() => {
-    console.log('[DEBUG_LOG] Token verification started in browser context');
-  });
-
-  // Test continues...
-});
+// Capture intermediate state
+await page.screenshot({ path: 'target/test-results/debug.png' });
 ----
 
-4. View logs from the NiFi container:
-+
+=== Test Artifacts
+
+After test runs, inspect:
+
+* *Traces*: `npx playwright show-trace target/test-results/*/trace.zip`
+* *Screenshots*: `target/test-results/screenshots/`
+* *Videos*: `target/test-results/videos/`
+* *Console logs*: Saved automatically by test fixtures to `target/logs/`
+
+=== Container Logs
+
 [source,bash]
 ----
-# View application log
+# NiFi logs
 docker compose -f integration-testing/src/main/docker/docker-compose.yml logs nifi
 
-# Follow logs
-docker compose -f integration-testing/src/main/docker/docker-compose.yml exec nifi tail -f /opt/nifi/nifi-current/logs/nifi-app.log
-----
-
-5. View logs from the Keycloak container:
-+
-[source,bash]
-----
+# Keycloak logs
 docker compose -f integration-testing/src/main/docker/docker-compose.yml logs keycloak
 ----
 
-=== CI/CD Integration
+== Common Failure Patterns
 
-Playwright tests are integrated into the CI/CD pipeline:
+[cols="1,2"]
+|===
+|Pattern |Resolution
 
-1. The integration-testing environment is started automatically in CI
-2. Playwright tests run in headless mode with trace recording enabled
-3. Test results are published as GitHub artifacts
-4. Test failures block merges to protected branches
+|`Timeout waiting for selector`
+|Verify selector matches rendered HTML; increase timeout
 
-The CI workflow includes these steps:
+|`Element is not visible`
+|Add explicit wait for visibility before interaction
 
-[source,yaml]
-----
-jobs:
-  playwright-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
+|`Navigation timeout exceeded`
+|Check NiFi startup status; increase `navigationTimeout`
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: e-2-e-playwright/package-lock.json
+|`API login failed: 401`
+|Verify Keycloak is running; check credentials in `constants.js`
 
-      - name: Start integration testing environment
-        run: ./integration-testing/src/main/docker/run-and-deploy.sh
+|Flaky test results
+|Add proper wait conditions; use `page.waitForLoadState('networkidle')`
+|===
 
-      - name: Install dependencies
-        run: |
-          cd e-2-e-playwright
-          npm ci
+== Related Documentation
 
-      - name: Install Playwright Chromium
-        run: |
-          cd e-2-e-playwright
-          npx playwright install --with-deps chromium
-
-      - name: Generate test tokens
-        run: |
-          cd e-2-e-playwright
-          npm run generate-tokens
-
-      - name: Run Playwright tests
-        run: |
-          cd e-2-e-playwright
-          npm run playwright:test
-        env:
-          PLAYWRIGHT_BASE_URL: https://localhost:9095/nifi
-          PLAYWRIGHT_KEYCLOAK_URL: http://localhost:9080
-
-      - name: Analyze console errors
-        run: |
-          cd e-2-e-playwright
-          node scripts/analyze-console-errors.js $(date +%Y%m%d%H%M%S)
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v3
-        with:
-          name: playwright-results
-          path: |
-            e-2-e-playwright/target/test-results/
-            e-2-e-playwright/target/playwright-report/
-            e-2-e-playwright/target/screenshots/
-            e-2-e-playwright/target/videos/
-----
-
-== Test Results Analysis
-
-=== Playwright Test Report Structure
-
-Playwright test reports are generated in the following locations:
-* **HTML Report**: `e-2-e-playwright/target/playwright-report/`
-* **Test Results**: `e-2-e-playwright/target/test-results/`
-* **Screenshots**: `e-2-e-playwright/target/screenshots/`
-* **Videos**: `e-2-e-playwright/target/videos/`
-* **Traces**: `e-2-e-playwright/target/test-results/*/trace.zip`
-
-The reports include the following key information:
-* Test execution times and durations
-* Failure details with stack traces
-* Screenshots for UI test failures
-* Video recordings of test runs (when configured)
-* Trace files for detailed step-by-step debugging
-
-Playwright generates comprehensive HTML reports that can be viewed in a browser, with features like:
-* Test run statistics and summaries
-* Failure details with contextual information
-* Timeline view of test execution
-* Environment details
-* Trace viewer for step-by-step replay of test execution
-* Visual comparison tools for screenshots
-
-=== Common Playwright Test Failure Patterns
-
-When analyzing Playwright test failures, look for these common patterns:
-
-1. **Element Interaction Issues**:
-   * Element not found errors (`Timeout waiting for selector`)
-   * Element not visible or not clickable errors (`Element is not visible`)
-   * Element state issues (e.g., disabled elements, elements in the wrong state)
-   * Detached DOM elements (`Element is detached from the DOM`)
-
-2. **Timing Issues**:
-   * Actions performed before page is ready
-   * Assertions running before UI has updated
-   * Network requests not completing in time
-   * Navigation timing issues (`Navigation timeout of 30000 ms exceeded`)
-
-3. **Authentication Problems**:
-   * Login failures
-   * Session expiration
-   * Token issues
-   * Cookie handling issues
-
-4. **UI Validation Failures**:
-   * Expected text or values not appearing
-   * Incorrect form validation behavior
-   * UI not updating as expected after actions
-   * Visual comparison failures
-
-5. **Console Error Failures**:
-   * Unexpected console errors appearing during test execution
-   * Console warnings not in the allowed warnings list
-   * Transient console errors that appear only under specific conditions
-   * Browser JavaScript errors
-
-=== Interpreting Playwright Test Results
-
-When evaluating Playwright test results, consider the following:
-
-1. **Test Stability**: Are failures consistent or intermittent?
-2. **Visual Evidence**: Review screenshots, videos, and trace files to understand the UI state
-3. **Error Messages**: Analyze error messages and stack traces for clues
-4. **Test Environment**: Check if failures are environment-specific
-5. **Browser Environment**: Check Chromium configuration and launch options
-
-To determine if a failure is a flaky test or a real issue:
-1. Rerun the failing test in isolation using `npx playwright test tests/path/to/spec.js`
-2. Use the Playwright UI mode for interactive debugging: `npx playwright test --ui`
-3. Examine trace files for step-by-step replay of test execution
-4. Check if the failure is consistent in the Chromium environment
-5. Examine network logs and response times using the Network tab in trace viewer
-6. Review application logs for related errors
-
-=== Console Error Analysis
-
-When tests fail due to console errors or warnings, follow this analysis process:
-
-1. **Categorize the Errors**:
-   * **Application Errors**: Issues in your application code
-   * **Framework Errors**: Issues related to React, Angular, or other frameworks
-   * **Third-Party Library Errors**: Issues from external dependencies
-   * **Network Errors**: Failed API calls or resource loading issues
-
-2. **Determine Severity**:
-   * **Critical**: Affects core functionality or security (always fix)
-   * **Major**: Affects important features (prioritize fixing)
-   * **Minor**: Affects non-critical features (schedule for later)
-   * **Cosmetic**: Does not affect functionality (consider for allowed list)
-
-3. **Analyze Root Cause**:
-   * Examine the error stack trace to identify source location
-   * Check the test step that triggered the error
-   * Verify if the error is reproducible outside of tests
-   * Verify the Chromium configuration is correct
-
-4. **Decision Process for Allowed Warnings**:
-   * Can the issue be fixed in our code? → Fix immediately
-   * Is it from a third-party library we maintain? → Update the library
-   * Is it from an external dependency we can't modify? → Consider for allowed list
-   * Is it a known framework limitation? → Document and add to allowed list
-
-5. **Documentation Requirements**:
-   * For each allowed warning, document:
-     * Exact warning pattern
-     * Source of the warning
-     * Reason it can't be fixed
-     * Impact assessment
-     * Future mitigation plan
-     * Review date
-
-The following tool helps generate console error reports from Playwright test runs:
-
-[source,javascript]
-----
-// scripts/analyze-console-errors.js
-const fs = require('fs');
-const path = require('path');
-const allowedWarnings = require('../utils/console-warnings-allowlist');
-
-// Parse Playwright console logs from test runs
-function analyzeConsoleErrors(runId) {
-  const logPath = path.join(__dirname, '..', 'target', 'test-results', `run-${runId}.json`);
-  const logs = JSON.parse(fs.readFileSync(logPath, 'utf8'));
-
-  const errors = [];
-  const unexpectedWarnings = [];
-  const allowedWarningInstances = [];
-
-  logs.forEach(log => {
-    if (log.type === 'error') {
-      errors.push({
-        message: log.message,
-        source: log.source,
-        timestamp: log.timestamp,
-        testFile: log.testFile,
-        testName: log.testName
-      });
-    } else if (log.type === 'warning') {
-      const isAllowed = allowedWarnings.some(pattern => 
-        log.message.includes(pattern)
-      );
-
-      if (isAllowed) {
-        allowedWarningInstances.push({
-          message: log.message,
-          pattern: allowedWarnings.find(pattern => log.message.includes(pattern)),
-          source: log.source,
-          testFile: log.testFile
-        });
-      } else {
-        unexpectedWarnings.push({
-          message: log.message,
-          source: log.source,
-          timestamp: log.timestamp,
-          testFile: log.testFile,
-          testName: log.testName
-        });
-      }
-    }
-  });
-
-  // Generate report
-  const report = {
-    summary: {
-      totalErrors: errors.length,
-      totalUnexpectedWarnings: unexpectedWarnings.length,
-      totalAllowedWarnings: allowedWarningInstances.length
-    },
-    errors,
-    unexpectedWarnings,
-    allowedWarningInstancesByPattern: groupByPattern(allowedWarningInstances)
-  };
-
-  // Write report
-  const reportPath = path.join(__dirname, '..', 'target', 'console-analysis', `run-${runId}.json`);
-  fs.mkdirSync(path.dirname(reportPath), { recursive: true });
-  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
-
-  console.log(`Console error analysis complete. Report saved to ${reportPath}`);
-  return report;
-}
-
-// Group allowed warnings by pattern for easier analysis
-function groupByPattern(allowedWarnings) {
-  const grouped = {};
-
-  allowedWarnings.forEach(warning => {
-    if (!grouped[warning.pattern]) {
-      grouped[warning.pattern] = [];
-    }
-    grouped[warning.pattern].push(warning);
-  });
-
-  return grouped;
-}
-
-// Example usage
-if (require.main === module) {
-  const runId = process.argv[2];
-  if (!runId) {
-    console.error('Please provide a run ID');
-    process.exit(1);
-  }
-
-  const report = analyzeConsoleErrors(runId);
-  console.log(`Found ${report.summary.totalErrors} errors and ${report.summary.totalUnexpectedWarnings} unexpected warnings`);
-}
-
-module.exports = { analyzeConsoleErrors };
-----
-
-This analysis provides insights into console errors and helps maintain the allowed warnings list over time.
-
-== Test Maintenance
-
-=== Best Practices
-
-1. **Keep Tests Independent**: Each test should be self-contained
-2. **Use Page Objects**: Abstract UI interactions into reusable components
-3. **Minimize Flakiness**: Use proper waiting and assertions
-4. **Maintain Test Data**: Keep test data up-to-date with application changes
-5. **Document Test Scenarios**: Each test should have clear documentation
-6. **Verify Console Output**: Ensure no unexpected errors or warnings appear in the browser console
-
-=== Console Error Management
-
-The browser console is an important indicator of application quality. Our tests actively monitor and verify console output:
-
-==== Allowed Warnings Policy
-
-We maintain a centralized "allowed warnings" list in the `console-warnings-allowlist.js` file:
-
-[source,javascript]
-----
-// utils/console-warnings-allowlist.js
-module.exports = [
-  // Third-party library warnings that cannot be fixed
-  'Warning: validateDOMNesting(...): <div> cannot appear as a descendant of <p>.',
-  'DevTools failed to load source map',
-  'Content Security Policy violation for inline script',
-
-  // Deprecated API usage warnings from third-party libraries
-  'Synchronous XMLHttpRequest on the main thread is deprecated',
-
-  // Chromium-specific warnings
-  '[Chrome] Provider for: vscode-resource',
-
-  // Playwright-specific warnings
-  'Insecure certificate warning',
-  'Browser context creation warning'
-];
-----
-
-==== Management Process
-
-1. **All Console Errors Fail Tests**: By default, any console error causes test failure
-2. **Limited Warning Allowlist**: Only documented, unavoidable warnings are allowed
-3. **Regular Reviews**: The allowed warnings list is reviewed quarterly
-4. **Clear Documentation**: Each allowed warning must have a documented justification
-5. **Root Cause Resolution**: Where possible, address warnings rather than allowing them
-
-==== Adding to the Allowlist
-
-To add a warning to the allowed list:
-
-1. Create a ticket documenting the warning
-2. Investigate the root cause
-3. Determine if it can be fixed in our code
-4. If unfixable, document justification
-5. Add to the allowlist with a comment explaining why it cannot be fixed
-6. Schedule periodic review date
-
-This process ensures we maintain high-quality code with minimal technical debt.
-
-=== Troubleshooting
-
-Common issues and solutions:
-
-1. **Flaky Tests**: 
-   * If tests are inconsistent, add more explicit waits
-   * Use proper wait conditions before interactions (e.g., `waitForSelector`, `waitForLoadState`)
-   * Use `page.waitForFunction()` for complex conditions
-   * Add logging to identify timing issues
-   * Tests should be deterministic - fix the root cause rather than adding retries
-
-2. **Selector Changes**: 
-   * If UI selectors change, update page objects in a single place
-   * Use data-testid attributes in the UI for more stable selectors
-   * Consider using more specific selectors to avoid accidental matches
-
-3. **Test Data Issues**: 
-   * If test data becomes invalid, regenerate using the provided utilities
-   * Create test data immediately before use to ensure freshness
-   * Use unique identifiers for test entities to prevent collision
-
-4. **Environment Problems**: 
-   * If the test environment fails to start, check Docker logs
-   * Verify network connectivity between containers
-   * Ensure sufficient system resources are available
-   * Check certificate validity and trust issues
-
-5. **Authentication Issues**: 
-   * If login fails, verify Keycloak configuration and credentials
-   * Check token expiration settings
-   * Validate that JWKS endpoints are accessible
-   * Monitor HTTP response codes for auth-related failures
-
-=== Test Data Cleanup
-
-After test execution, it's important to clean up test data to maintain a consistent environment:
-
-1. Reset Keycloak realm to initial state using the provided scripts
-2. Clean up any test data created in NiFi
-3. Remove generated test tokens and JWKS files
-4. Reset metrics and counters in the processor
-
-For automated cleanup in CI environments, use the provided cleanup script:
-
-[source,bash]
-----
-./integration-testing/src/main/docker/cleanup-test-environment.sh
-----
-
-== See Also
-
-* xref:Testing-Scope.adoc[Testing Scope and Capabilities] - Detailed testing framework capabilities
-* xref:nifi-ui-structure.adoc[NiFi UI Structure Guide] - NiFi UI structure and selectors
-* xref:mcp-playwright-guide.adoc[MCP Playwright Guide] - MCP Playwright tool integration
-* xref:../README.adoc[E2E Playwright Tests] - Main module documentation
-* xref:../../doc/specification/end-to-end-testing.adoc[End-to-End Testing Specification] - What to test (specification)
+* xref:../README.adoc[E2E Playwright Tests] — Module overview, npm scripts, env vars
+* xref:nifi-ui-structure.adoc[NiFi UI Structure Guide] — Selectors and authentication flow
+* xref:processor-api-manager-guide.adoc[Processor API Manager Guide] — REST API processor management
+* xref:accessibility-testing-guide.adoc[Accessibility Testing Guide] — WCAG compliance testing
+* xref:roundtrip-testing.adoc[Roundtrip Testing Guide] — Development workflow
