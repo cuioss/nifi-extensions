@@ -1,0 +1,24 @@
+# Supply-chain security analysis
+name: Scorecard supply-chain security
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: '20 7 * * 2'
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  analysis:
+    uses: cuioss/cuioss-organization/.github/workflows/reusable-scorecards.yml@d38bc3643f0d0faa34ece1c2d854cf97f9a0abd4 # v0.2.8
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read
+      actions: read
+      issues: read
+      pull-requests: read
+      checks: read

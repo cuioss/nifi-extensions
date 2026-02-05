@@ -18,7 +18,6 @@
 jest_stderr.log
 jest_stdout.log
 
-/CLAUDE.md
 **/.claude
 
 # Build artifacts - generated bundle files (keep bundle-wrapper.js as it's source code)
