@@ -271,7 +271,8 @@ const _initializeEditorData = async (effectiveUrl, issuersContainer) => {
                     }
 
                     // Show fields for selected type
-                    for (const field of currentForm.querySelectorAll(`.jwks-type-${selectedType}`)) {
+                    const typeSelector = `.jwks-type-${selectedType}`;
+                    for (const field of currentForm.querySelectorAll(typeSelector)) {
                         field.style.display = '';
                     }
                 });

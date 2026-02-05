@@ -97,7 +97,7 @@ const getKeyString = (event) => {
         parts.push('escape');
     } else if (key === 'f1') {
         parts.push('f1');
-    } else if (key && key.match(/^[a-z0-9?]$/)) {
+    } else if (key?.match(/^[a-z0-9?]$/)) {
         parts.push(key);
     }
 

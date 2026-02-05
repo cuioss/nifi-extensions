@@ -552,6 +552,10 @@ http://localhost:8080/auth/
 
 ## Important Notes for AI Agents
 
+### Temporary Files
+
+- Use `.plan/temp/` for ALL temporary files (covered by `Write(.plan/**)` permission - avoids permission prompts)
+
 ### Git & GitHub Integration
 
 - Use `gh` command-line tool for GitHub operations (not GitHub MCP)
