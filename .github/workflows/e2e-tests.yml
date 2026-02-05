@@ -11,10 +11,8 @@ name: End-to-End Tests
 on:
   workflow_dispatch:
   push:
-    tags: [ 'v*' ]
-  pull_request:
     branches: [ "main" ]
-    types: [ closed ]
+    tags: [ 'v*' ]
 
 permissions:
   contents: read
@@ -24,7 +22,7 @@ jobs:
 
     runs-on: ubuntu-latest
     timeout-minutes: 20  # Increased to account for Maven-managed container lifecycle
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || (github.event.pull_request.merged == true)
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
