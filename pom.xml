@@ -134,7 +134,7 @@
         <version.webjars.font-awesome>7.0.1</version.webjars.font-awesome>
         <!-- CUI-OSS -->
         <version.cui.test.juli.logger>2.0.1</version.cui.test.juli.logger>
-        <version.cui.test.generator>2.3.1</version.cui.test.generator>
+        <version.cui.test.generator>2.5.2</version.cui.test.generator>
         <version.cui.test.value.objects>2.0.1</version.cui.test.value.objects>
         <version.cui.test.mockwebserver>1.4.0</version.cui.test.mockwebserver>
         <version.cui.java.tools>2.6.1</version.cui.java.tools>
