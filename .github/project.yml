@@ -1,6 +1,28 @@
 name: nifi-extensions
-pages-reference: nifi-extensions
-sonar-project-key: cuioss_nifi-extensions
+description: CUI NiFi processor extensions with Keycloak OIDC authentication
+
 release:
   current-version: 1.0.0
   next-version: 1.1.0-SNAPSHOT
+  create-github-release: true
+
+maven-build:
+  java-versions: '["21","25"]'
+  java-version: '21'
+  enable-snapshot-deploy: true
+  maven-profiles-snapshot: 'release-snapshot,javadoc'
+  maven-profiles-release: 'release,javadoc'
+  npm-cache: true
+
+sonar:
+  project-key: cuioss_nifi-extensions
+  enabled: true
+  skip-on-dependabot: true
+
+pages:
+  reference: nifi-extensions
+  deploy-at-release: true
+
+github-automation:
+  auto-merge-build-versions: true
+  auto-merge-build-timeout: 300
