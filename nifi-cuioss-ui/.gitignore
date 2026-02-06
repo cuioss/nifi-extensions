@@ -2,9 +2,12 @@
 bundle.webpack.js
 bundle.webpack.js.map
 
-# Webpack build outputs
+# Webpack build outputs (legacy)
 src/main/webapp/js/bundle.webpack.js
 src/main/webapp/js/bundle.webpack.js.map
+
+# Vite build outputs
+src/main/webapp/js/bundle.umd.cjs
 
 # Node modules
 node_modules/
