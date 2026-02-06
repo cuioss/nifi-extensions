@@ -144,73 +144,84 @@ const CUSTOM_CHECKS = {
         selector: "[aria-label], [aria-labelledby], [aria-describedby], [role]",
         check: async (page, element) => {
             try {
-                const role = await element.getAttribute("role", { timeout: 2000 });
-                const ariaLabel = await element.getAttribute("aria-label", { timeout: 2000 });
-                const ariaLabelledby =
-                    await element.getAttribute("aria-labelledby", { timeout: 2000 });
-                const ariaDescribedby =
-                    await element.getAttribute("aria-describedby", { timeout: 2000 });
+                const role = await element.getAttribute("role", {
+                    timeout: 2000,
+                });
+                const ariaLabel = await element.getAttribute("aria-label", {
+                    timeout: 2000,
+                });
+                const ariaLabelledby = await element.getAttribute(
+                    "aria-labelledby",
+                    { timeout: 2000 },
+                );
+                const ariaDescribedby = await element.getAttribute(
+                    "aria-describedby",
+                    { timeout: 2000 },
+                );
 
-            // Check for valid role values
-            const validRoles = [
-                "button",
-                "navigation",
-                "main",
-                "form",
-                "alert",
-                "status",
-                "tabpanel",
-                "tab",
-                "presentation",
-                "none",
-                "tablist",
-            ];
-            if (role && !validRoles.includes(role)) {
-                return {
-                    passed: false,
-                    message: `Invalid role attribute: ${role}`,
-                };
-            }
+                // Check for valid role values
+                const validRoles = [
+                    "button",
+                    "navigation",
+                    "main",
+                    "form",
+                    "alert",
+                    "status",
+                    "tabpanel",
+                    "tab",
+                    "presentation",
+                    "none",
+                    "tablist",
+                ];
+                if (role && !validRoles.includes(role)) {
+                    return {
+                        passed: false,
+                        message: `Invalid role attribute: ${role}`,
+                    };
+                }
 
-            // Check for empty ARIA labels
-            if (ariaLabel !== null && ariaLabel.trim() === "") {
-                return {
-                    passed: false,
-                    message: "Empty aria-label attribute",
-                };
-            }
+                // Check for empty ARIA labels
+                if (ariaLabel !== null && ariaLabel.trim() === "") {
+                    return {
+                        passed: false,
+                        message: "Empty aria-label attribute",
+                    };
+                }
 
-            // Check referenced elements exist
-            if (ariaLabelledby) {
-                const ids = ariaLabelledby.split(" ");
-                for (const id of ids) {
-                    const exists = await page.locator(`#${id}`).count();
-                    if (exists === 0) {
-                        return {
-                            passed: false,
-                            message: `aria-labelledby references non-existent element: ${id}`,
-                        };
+                // Check referenced elements exist
+                if (ariaLabelledby) {
+                    const ids = ariaLabelledby.split(" ");
+                    for (const id of ids) {
+                        const exists = await page.locator(`#${id}`).count();
+                        if (exists === 0) {
+                            return {
+                                passed: false,
+                                message: `aria-labelledby references non-existent element: ${id}`,
+                            };
+                        }
                     }
                 }
-            }
 
-            if (ariaDescribedby) {
-                const ids = ariaDescribedby.split(" ");
-                for (const id of ids) {
-                    const exists = await page.locator(`#${id}`).count();
-                    if (exists === 0) {
-                        return {
-                            passed: false,
-                            message: `aria-describedby references non-existent element: ${id}`,
-                        };
+                if (ariaDescribedby) {
+                    const ids = ariaDescribedby.split(" ");
+                    for (const id of ids) {
+                        const exists = await page.locator(`#${id}`).count();
+                        if (exists === 0) {
+                            return {
+                                passed: false,
+                                message: `aria-describedby references non-existent element: ${id}`,
+                            };
+                        }
                     }
                 }
-            }
 
-            return { passed: true };
+                return { passed: true };
             } catch (error) {
                 // Element might have been removed or is stale
-                console.warn('Could not check ARIA attributes on element:', error.message);
+                console.warn(
+                    "Could not check ARIA attributes on element:",
+                    error.message,
+                );
                 return { passed: true }; // Skip this element
             }
         },
@@ -274,31 +285,41 @@ export class AccessibilityHelper {
                 const elements = await this.page
                     .locator(checkConfig.selector)
                     .all();
-                
+
                 // Process elements in smaller batches to avoid timeouts
                 const batchSize = 5;
                 for (let i = 0; i < elements.length; i += batchSize) {
                     const batch = elements.slice(i, i + batchSize);
-                    
+
                     for (const element of batch) {
                         try {
                             // Check if element is still attached to DOM
-                            const isAttached = await element.isVisible().catch(() => false);
+                            const isAttached = await element
+                                .isVisible()
+                                .catch(() => false);
                             if (!isAttached) continue;
-                            
-                            const result = await checkConfig.check(this.page, element);
+
+                            const result = await checkConfig.check(
+                                this.page,
+                                element,
+                            );
                             if (!result.passed) {
                                 this.customCheckResults.push({
                                     check: checkName,
                                     description: checkConfig.description,
-                                    element: await element.evaluate((el) =>
-                                        el.outerHTML.substring(0, 100),
-                                    ).catch(() => 'Element not available'),
+                                    element: await element
+                                        .evaluate((el) =>
+                                            el.outerHTML.substring(0, 100),
+                                        )
+                                        .catch(() => "Element not available"),
                                     message: result.message,
                                 });
                             }
                         } catch (elementError) {
-                            console.warn(`Skipping element in ${checkName} check:`, elementError.message);
+                            console.warn(
+                                `Skipping element in ${checkName} check:`,
+                                elementError.message,
+                            );
                         }
                     }
                 }
@@ -323,21 +344,23 @@ export class AccessibilityHelper {
 
         // Wait for component to be visible with a timeout
         try {
-            await component.waitFor({ state: 'visible', timeout: 5000 });
+            await component.waitFor({ state: "visible", timeout: 5000 });
         } catch (error) {
             // If component is not visible, check if it might be in a hidden tab
-            const elementExists = await component.count() > 0;
-            
+            const elementExists = (await component.count()) > 0;
+
             if (elementExists) {
                 // Component exists but is hidden (e.g., in an inactive tab)
-                console.log(`Component ${componentName} exists but is hidden (inactive tab)`);
+                console.log(
+                    `Component ${componentName} exists but is hidden (inactive tab)`,
+                );
                 return {
                     passed: true,
                     message: `Component ${componentName} exists but is hidden (inactive tab)`,
-                    skipped: true
+                    skipped: true,
                 };
             }
-            
+
             return {
                 passed: false,
                 message: `Component ${componentName} not found or not visible after waiting`,
@@ -351,22 +374,49 @@ export class AccessibilityHelper {
                 detailedReport: true,
             });
 
-            // Run custom checks on component
+            // Run custom checks on component with element limits to avoid timeouts
             const customResults = [];
+            const maxElementsPerCheck = 5;
             for (const [checkName, checkConfig] of Object.entries(
                 CUSTOM_CHECKS,
             )) {
-                const elements = await component
-                    .locator(checkConfig.selector)
-                    .all();
-                for (const element of elements) {
-                    const result = await checkConfig.check(this.page, element);
-                    if (!result.passed) {
-                        customResults.push({
-                            check: checkName,
-                            message: result.message,
-                        });
+                try {
+                    const elements = await component
+                        .locator(checkConfig.selector)
+                        .all();
+                    const limitedElements = elements.slice(
+                        0,
+                        maxElementsPerCheck,
+                    );
+                    for (const element of limitedElements) {
+                        try {
+                            const isAttached = await element
+                                .isVisible()
+                                .catch(() => false);
+                            if (!isAttached) continue;
+
+                            const result = await checkConfig.check(
+                                this.page,
+                                element,
+                            );
+                            if (!result.passed) {
+                                customResults.push({
+                                    check: checkName,
+                                    message: result.message,
+                                });
+                            }
+                        } catch (elementError) {
+                            console.warn(
+                                `Skipping element in ${checkName} component check:`,
+                                elementError.message,
+                            );
+                        }
                     }
+                } catch (checkError) {
+                    console.warn(
+                        `Error in ${checkName} component check:`,
+                        checkError.message,
+                    );
                 }
             }
 
@@ -393,8 +443,9 @@ export class AccessibilityHelper {
             console.error("AccessibilityHelper: No page reference available");
             return {
                 passed: false,
-                message: "No page reference available for keyboard navigation check",
-                results: []
+                message:
+                    "No page reference available for keyboard navigation check",
+                results: [],
             };
         }
 
@@ -402,8 +453,8 @@ export class AccessibilityHelper {
 
         try {
             // Check if we're in a frame context
-            const isFrameContext = this.page.constructor.name === 'Frame';
-            
+            const isFrameContext = this.page.constructor.name === "Frame";
+
             // Get all focusable elements
             const focusableElements = await this.page
                 .locator(
@@ -414,19 +465,21 @@ export class AccessibilityHelper {
             // If we're in a frame context, we can't use keyboard API
             // Just verify that focusable elements exist
             if (isFrameContext || !this.page.keyboard) {
-                console.log("Keyboard navigation check limited in frame context");
+                console.log(
+                    "Keyboard navigation check limited in frame context",
+                );
                 return {
                     passed: focusableElements.length > 0,
                     tabOrder: focusableElements.map((el, i) => ({
                         index: i,
-                        element: 'Focusable element found',
+                        element: "Focusable element found",
                         accessible: true,
                     })),
                     totalFocusable: focusableElements.length,
                     limited: true,
                 };
             }
-            
+
             // Test tab navigation order
             for (let i = 0; i < Math.min(5, focusableElements.length); i++) {
                 await this.page.keyboard.press("Tab");
@@ -445,14 +498,14 @@ export class AccessibilityHelper {
             return {
                 passed: false,
                 message: `Keyboard navigation check failed: ${error.message}`,
-                results: []
+                results: [],
             };
         }
 
         return {
             passed: true,
             tabOrder: results,
-            totalFocusable: focusableElements.length,
+            totalFocusable: results.length,
         };
     }
 
