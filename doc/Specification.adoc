@@ -84,7 +84,7 @@ The processor validates JWT tokens using the oauth-sheriff-core library with:
 * Support for all standard JWT algorithms including RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, and ES512
 
 === Static Configuration Support
-_See Requirement NIFI-AUTH-7.7: Static Configuration for Container Environments in xref:Requirements.adoc[Requirements Document]_
+_See Requirement NIFI-AUTH-7.6: Static Configuration for Container Environments in xref:Requirements.adoc[Requirements Document]_
 
 The processor supports static configuration for container deployments:
 

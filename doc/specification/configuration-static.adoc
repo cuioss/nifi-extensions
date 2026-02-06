@@ -8,7 +8,7 @@
 xref:../Specification.adoc[Back to Main Specification]
 
 == Static Configuration Overview
-_See Requirement xref:../Requirements.adoc#NIFI-AUTH-7.7[NIFI-AUTH-7.7: Static Configuration for Container Environments]_
+_See Requirement xref:../Requirements.adoc#NIFI-AUTH-7.6[NIFI-AUTH-7.6: Static Configuration for Container Environments]_
 
 This document covers static configuration options for the MultiIssuerJWTTokenAuthenticator processor, focusing on container environments and automated deployments. For general configuration properties and options, see xref:configuration.adoc[Configuration].
 
