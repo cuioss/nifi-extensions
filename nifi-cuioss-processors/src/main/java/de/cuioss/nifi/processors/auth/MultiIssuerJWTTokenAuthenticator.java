@@ -691,13 +691,15 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      */
     private String extractTokenByLocation(FlowFile flowFile, ProcessSession session,
             ProcessContext context, String tokenLocation) {
+        String bearerPrefix = context.getProperty(Properties.BEARER_TOKEN_PREFIX).getValue();
+        int maxTokenSize = context.getProperty(Properties.MAXIMUM_TOKEN_SIZE).asInteger();
         return switch (tokenLocation) {
             case "AUTHORIZATION_HEADER" ->
-                extractTokenFromHeader(flowFile, context.getProperty(Properties.TOKEN_HEADER).getValue());
+                extractTokenFromHeader(flowFile, context.getProperty(Properties.TOKEN_HEADER).getValue(), bearerPrefix);
             case "CUSTOM_HEADER" ->
-                extractTokenFromHeader(flowFile, context.getProperty(Properties.CUSTOM_HEADER_NAME).getValue());
-            case "FLOW_FILE_CONTENT" -> extractTokenFromContent(flowFile, session);
-            default -> extractTokenFromHeader(flowFile, "Authorization");
+                extractTokenFromHeader(flowFile, context.getProperty(Properties.CUSTOM_HEADER_NAME).getValue(), bearerPrefix);
+            case "FLOW_FILE_CONTENT" -> extractTokenFromContent(flowFile, session, maxTokenSize);
+            default -> extractTokenFromHeader(flowFile, "Authorization", bearerPrefix);
         };
     }
 
@@ -888,21 +890,22 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     /**
      * Extracts a token from a header in the flow file.
      *
-     * @param flowFile   The flow file containing the header
-     * @param headerName The name of the header containing the token
+     * @param flowFile     The flow file containing the header
+     * @param headerName   The name of the header containing the token
+     * @param bearerPrefix The configured bearer prefix (e.g. "Bearer")
      * @return The extracted token, or null if not found
      */
-    private String extractTokenFromHeader(FlowFile flowFile, String headerName) {
+    private String extractTokenFromHeader(FlowFile flowFile, String headerName, String bearerPrefix) {
         String headerValue = flowFile.getAttribute("http.headers." + headerName.toLowerCase());
 
         if (headerValue == null || headerValue.isEmpty()) {
             return null;
         }
 
-        // If header starts with Bearer prefix, strip it
-        String prefix = "Bearer ";
-        if (headerValue.startsWith(prefix)) {
-            return headerValue.substring(prefix.length()).trim();
+        // If header starts with configured prefix, strip it
+        String fullPrefix = bearerPrefix + " ";
+        if (headerValue.startsWith(fullPrefix)) {
+            return headerValue.substring(fullPrefix.length()).trim();
         }
 
         return headerValue.trim();
@@ -913,9 +916,16 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      *
      * @param flowFile The flow file containing the token
      * @param session  The process session
-     * @return The extracted token, or null if not found
+     * @param maxSize  The maximum allowed content size in bytes
+     * @return The extracted token, or null if content is empty or exceeds size limit
      */
-    private String extractTokenFromContent(FlowFile flowFile, ProcessSession session) {
+    private String extractTokenFromContent(FlowFile flowFile, ProcessSession session, int maxSize) {
+        if (flowFile.getSize() > maxSize) {
+            LOGGER.warn("Flow file content size %d exceeds maximum allowed size %d",
+                    flowFile.getSize(), maxSize);
+            return null;
+        }
+
         final StringBuilder contentBuilder = new StringBuilder();
 
         session.read(flowFile, inputStream -> {
@@ -1095,20 +1105,12 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     /**
      * Result of authorization check including bypass status.
      */
-    private static class AuthorizationCheckResult {
-        private final boolean authorized;
-        private final boolean bypassed;
-
-        public AuthorizationCheckResult(boolean authorized, boolean bypassed) {
-            this.authorized = authorized;
-            this.bypassed = bypassed;
-        }
-
-        public boolean isAuthorized() {
+    private record AuthorizationCheckResult(boolean authorized, boolean bypassed) {
+        boolean isAuthorized() {
             return authorized;
         }
 
-        public boolean isBypassed() {
+        boolean isBypassed() {
             return bypassed;
         }
     }

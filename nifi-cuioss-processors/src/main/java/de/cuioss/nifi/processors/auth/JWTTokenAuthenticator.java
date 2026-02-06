@@ -36,6 +36,7 @@ import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
 
@@ -63,6 +64,8 @@ import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Properties;
 public class JWTTokenAuthenticator extends AbstractProcessor {
 
     private static final CuiLogger LOGGER = new CuiLogger(JWTTokenAuthenticator.class);
+
+    private static final int DEFAULT_MAX_CONTENT_SIZE = 16384;
 
     private I18nResolver i18nResolver;
 
@@ -99,18 +102,19 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
 
         // Extract token from flow file
         String tokenLocation = context.getProperty(Properties.TOKEN_LOCATION).getValue();
+        String bearerPrefix = context.getProperty(Properties.BEARER_TOKEN_PREFIX).getValue();
         String token;
 
         // Extract token based on configured location
         token = switch (tokenLocation) {
             case TokenLocation.AUTHORIZATION_HEADER ->
-                extractTokenFromHeader(flowFile, context.getProperty(Properties.TOKEN_HEADER).getValue());
+                extractTokenFromHeader(flowFile, context.getProperty(Properties.TOKEN_HEADER).getValue(), bearerPrefix);
             case TokenLocation.CUSTOM_HEADER ->
-                extractTokenFromHeader(flowFile, context.getProperty(Properties.CUSTOM_HEADER_NAME).getValue());
+                extractTokenFromHeader(flowFile, context.getProperty(Properties.CUSTOM_HEADER_NAME).getValue(), bearerPrefix);
             case TokenLocation.FLOW_FILE_CONTENT -> extractTokenFromContent(flowFile, session);
             default ->
                 // Default to Authorization header
-                extractTokenFromHeader(flowFile, Http.AUTHORIZATION_HEADER);
+                extractTokenFromHeader(flowFile, Http.AUTHORIZATION_HEADER, bearerPrefix);
         };
 
         // If no token found, log warning and route to failure
@@ -143,18 +147,20 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
      *
      * @param flowFile The flow file containing the header
      * @param headerName The name of the header containing the token
+     * @param bearerPrefix The configured bearer prefix (e.g. "Bearer")
      * @return The extracted token, or null if not found
      */
-    private String extractTokenFromHeader(FlowFile flowFile, String headerName) {
+    private String extractTokenFromHeader(FlowFile flowFile, String headerName, String bearerPrefix) {
         String headerValue = flowFile.getAttribute(Http.HEADERS_PREFIX + headerName.toLowerCase());
 
         if (headerValue == null || headerValue.isEmpty()) {
             return null;
         }
 
-        // If header starts with Bearer prefix, strip it
-        if (headerValue.startsWith(Http.BEARER_PREFIX)) {
-            return headerValue.substring(Http.BEARER_PREFIX.length()).trim();
+        // If header starts with configured prefix, strip it
+        String fullPrefix = bearerPrefix + " ";
+        if (headerValue.startsWith(fullPrefix)) {
+            return headerValue.substring(fullPrefix.length()).trim();
         }
 
         return headerValue.trim();
@@ -165,16 +171,22 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
      *
      * @param flowFile The flow file containing the token
      * @param session The process session
-     * @return The extracted token, or null if not found
+     * @return The extracted token, or null if content is empty or exceeds size limit
      */
     private String extractTokenFromContent(FlowFile flowFile, ProcessSession session) {
+        if (flowFile.getSize() > DEFAULT_MAX_CONTENT_SIZE) {
+            LOGGER.warn("Flow file content size %d exceeds maximum allowed size %d",
+                    flowFile.getSize(), DEFAULT_MAX_CONTENT_SIZE);
+            return null;
+        }
+
         final StringBuilder contentBuilder = new StringBuilder();
 
         session.read(flowFile, inputStream -> {
             byte[] buffer = new byte[4096];
             int len;
             while ((len = inputStream.read(buffer)) != -1) {
-                contentBuilder.append(new String(buffer, 0, len));
+                contentBuilder.append(new String(buffer, 0, len, StandardCharsets.UTF_8));
             }
         });
 
