@@ -53,6 +53,7 @@ const EMPTY_CANVAS_SELECTORS = {
   ],
 
   CANVAS_SELECTORS: [
+    '#canvas-container',
     '#canvas',
     '.canvas',
     'svg',
@@ -256,9 +257,9 @@ export class CriticalErrorDetector {
   async checkForProcessors(page) {
     for (const selector of EMPTY_CANVAS_SELECTORS.PROCESSOR_ELEMENTS) {
       try {
-        const elements = page.locator(selector);
-        const count = await elements.count();
-        if (count > 0) {
+        const locator = page.locator(selector).first();
+        await locator.waitFor({ timeout: 2000 });
+        if (await locator.isVisible()) {
           return true;
         }
       } catch {
