@@ -168,8 +168,7 @@ const createMetricsContent = () => {
                 </span>
             </div>
             
-            <div id="export-options" class="export-options" data-testid="export-options"
-                 style="display:none;">
+            <div id="export-options" class="export-options" data-testid="export-options">
                 <h5>Export Format:</h5>
                 <button class="btn btn-small" data-testid="export-csv">CSV</button>
                 <button class="btn btn-small" data-testid="export-json">JSON</button>
@@ -209,10 +208,11 @@ const createMetricsContent = () => {
     const exportOptions = document.getElementById('export-options');
     if (exportOptions) {
         exportOptions.addEventListener('click', (e) => {
-            if (e.target.matches('[data-testid^="export-"]')) {
-                const format = e.target.dataset.testid.replace('export-', '');
+            const button = e.target.closest('[data-testid="export-csv"], [data-testid="export-json"], [data-testid="export-prometheus"]');
+            if (button) {
+                const format = button.dataset.testid.replace('export-', '');
                 handleExport(format);
-                exportOptions.style.display = 'none';
+                exportOptions.classList.remove('visible');
             }
         });
     }
@@ -258,7 +258,7 @@ const handleRefreshClick = async () => {
 const handleExportClick = () => {
     const exportOptions = document.getElementById('export-options');
     if (exportOptions) {
-        exportOptions.style.display = exportOptions.style.display === 'none' ? 'block' : 'none';
+        exportOptions.classList.toggle('visible');
     }
 };
 
