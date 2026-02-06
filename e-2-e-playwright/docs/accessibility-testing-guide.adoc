@@ -404,22 +404,24 @@ Reports include:
 
 === Maven Integration
 
-Accessibility tests run via the `frontend-maven-plugin` in the `test` phase (skipped unless the `integration-tests` profile is active):
+Accessibility tests run via the `exec-maven-plugin` in the `integration-test` phase, after Docker containers (NiFi and Keycloak) are started in `pre-integration-test`. They are skipped unless the `integration-tests` profile is active:
 
 [source,xml]
 ----
 <execution>
-  <id>accessibility-tests</id>
+  <id>run-accessibility-tests</id>
   <goals>
-    <goal>npm</goal>
+    <goal>exec</goal>
   </goals>
-  <phase>test</phase>
+  <phase>integration-test</phase>
   <configuration>
-    <arguments>run test:a11y:quick</arguments>
-    <environmentVariables>
-      <PLAYWRIGHT_BASE_URL>${nifi.base.url}</PLAYWRIGHT_BASE_URL>
-      <PLAYWRIGHT_KEYCLOAK_URL>${keycloak.url}</PLAYWRIGHT_KEYCLOAK_URL>
-    </environmentVariables>
+    <executable>npx</executable>
+    <arguments>
+      <argument>playwright</argument>
+      <argument>test</argument>
+      <argument>accessibility</argument>
+      <argument>--reporter=dot</argument>
+    </arguments>
     <skip>${skipPlaywrightTests}</skip>
   </configuration>
 </execution>
