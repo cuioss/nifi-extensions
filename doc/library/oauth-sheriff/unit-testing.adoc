@@ -12,7 +12,7 @@ This document describes the test utilities provided by the `oauth-sheriff-core` 
 
 == Test Artifact
 
-The project provides a test artifact with the classifier `test` that contains utility classes for testing JWT validation. This artifact is published alongside the main artifact and can be included in your project's test dependencies.
+The project provides a test artifact with the classifier `generators` that contains utility classes for testing JWT validation. This artifact is published alongside the main artifact and can be included in your project's test dependencies.
 
 === Maven Dependency
 
@@ -198,13 +198,16 @@ The test artifact includes various token generators for creating different types
 void shouldValidateToken() {
     // Arrange
     String token = TestTokenProducer.validSignedJWTWithClaims(TestTokenProducer.SOME_SCOPES);
-    TokenValidator validator = new TokenValidator();
+    // Create a TokenValidator with a test issuer configuration
+    TokenValidator validator = TokenValidator.builder()
+            .issuerConfig(testIssuerConfig)
+            .build();
 
-    // Act
-    ValidationResult result = validator.validate(token);
+    // Act - createAccessToken throws TokenValidationException if validation fails
+    AccessTokenContent accessToken = validator.createAccessToken(token);
 
     // Assert
-    assertTrue(result.isValid());
+    assertNotNull(accessToken);
 }
 ----
 
@@ -217,12 +220,12 @@ void shouldRejectTamperedToken() {
     // Arrange
     String validToken = TestTokenProducer.validSignedEmptyJWT();
     String tamperedToken = JwtTokenTamperingUtil.tamperWithClaim(validToken, "iss", "invalid-issuer");
-    TokenValidator validator = new TokenValidator();
+    TokenValidator validator = TokenValidator.builder()
+            .issuerConfig(testIssuerConfig)
+            .build();
 
-    // Act
-    ValidationResult result = validator.validate(tamperedToken);
-
-    // Assert
-    assertFalse(result.isValid());
+    // Act & Assert - tampered token should cause TokenValidationException
+    assertThrows(TokenValidationException.class,
+            () -> validator.createAccessToken(tamperedToken));
 }
 ----

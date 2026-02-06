@@ -9,10 +9,10 @@ link:../Specification.adoc[Back to Main Specification]
 
 == Testing Overview
 [.requirement]
-_See Requirement: link:../Requirements.adoc#NIFI-AUTH-12[NIFI-AUTH-12: Testing Requirements]_
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-14[NIFI-AUTH-14: Unit Testing]_
 
 == Testing Strategy
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-12[NIFI-AUTH-12: Testing]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-14[NIFI-AUTH-14: Unit Testing] and link:../Requirements.adoc#NIFI-AUTH-15[NIFI-AUTH-15: Integration Testing]_
 
 The MultiIssuerJWTTokenAuthenticator processor is tested through a comprehensive set of tests that cover various aspects of functionality, security, and performance.
 
@@ -97,17 +97,8 @@ void testProcessWithValidToken() {
     runner.setProperty("required.audience", "api://test");
     runner.setProperty("auth-server", "https://auth.example.com/.well-known/jwks.json");
 
-    // Mock the TokenValidator
-    TokenValidator mockValidator = mock(TokenValidator.class);
-    // Configure mock to return a test token instead of throwing exception
-    try {
-        when(mockValidator.createAccessToken(anyString())).thenReturn(createTestToken());
-    } catch (TokenValidationException e) {
-        fail("Mock setup should not throw exception");
-    }
-
-    // Set the mock validator on the processor using reflection
-    FieldUtils.writeField(runner.getProcessor(), "tokenValidator", mockValidator, true);
+    // Configure a test JWKS endpoint using cui-test-mockwebserver-junit5
+    // (CUI test utilities are used instead of Mockito — see project conventions)
 
     // Create a test flow file with a token
     Map<String, String> attributes = new HashMap<>();
@@ -277,10 +268,10 @@ void testHighThroughputPerformance() {
     // Calculate and log throughput
     long duration = endTime - startTime;
     double throughputPerSecond = (1000.0 / duration) * 1000;
-    System.out.println("Throughput: " + throughputPerSecond + " tokens/second");
+    LOGGER.info("Throughput: %s tokens/second", throughputPerSecond);
 
     // Assert minimum throughput requirement
-    assertTrue(throughputPerSecond > 100, "Throughput should exceed 100 tokens/second");
+    assertTrue(throughputPerSecond > 1000, "Throughput should exceed 1000 tokens/second");
 }
 ----
 
@@ -293,7 +284,7 @@ Test data for JWT validation is best generated using the oauth-sheriff-core test
 * Token tampering utilities for negative testing
 * Support for multiple algorithms (RS256, RS384, RS512)
 
-For full documentation, see link:../library/oauth-sheriff-core/unit-testing.adoc[JWT Validation Test Utilities].
+For full documentation, see link:../library/oauth-sheriff/unit-testing.adoc[JWT Validation Test Utilities].
 
 === Example: Creating Test Tokens
 
@@ -404,10 +395,9 @@ Tests are run automatically as part of the build process:
 * link:configuration.adoc[Configuration]
 * link:security.adoc[Security]
 * link:technical-components.adoc[Technical Components]
-* link:../../e-2-e-playwright/docs/mcp-playwright-guide.adoc[Playwright Testing Implementation Guide]
-* link:../Requirements.adoc#NIFI-AUTH-12[Testing Requirements]
+* link:../Requirements.adoc#NIFI-AUTH-14[Unit Testing Requirements]
 * link:../Specification.adoc[Back to Main Specification]
 
 == JWT Validation Test Utilities
 
-For detailed documentation on the oauth-sheriff-core test utilities, see link:../library/oauth-sheriff-core/unit-testing.adoc[JWT Validation Test Utilities].
+For detailed documentation on the oauth-sheriff-core test utilities, see link:../library/oauth-sheriff/unit-testing.adoc[JWT Validation Test Utilities].

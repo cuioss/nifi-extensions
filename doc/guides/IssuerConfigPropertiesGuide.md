@@ -13,7 +13,7 @@ This guide provides detailed instructions for working with the MultiIssuerJWTTok
 2. Navigate to the repository root
 3. Start the test environment:
    ```bash
-   ./integration-testing/src/main/docker/run-test-container.sh
+   ./integration-testing/src/main/docker/run-and-deploy.sh
    ```
 4. Access NiFi UI at https://localhost:9095/nifi/ (credentials: admin/adminadminadmin)
 
@@ -62,9 +62,9 @@ There are two ways to configure issuer properties:
    - Enter an issuer name (e.g., "keycloak")
    - Fill in the required fields:
      - Issuer URI: The URI of the token issuer (must match the "iss" claim in the JWT)
-       - Example: `http://keycloak:9080/realms/oauth_integration_tests`
+       - Example: `http://keycloak:8080/realms/oauth_integration_tests`
      - JWKS URL: The URL of the JWKS endpoint
-       - Example: `http://keycloak:9080/realms/oauth_integration_tests/protocol/openid-connect/certs`
+       - Example: `http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs`
      - Audience (optional): The expected audience claim value
      - Client ID (optional): The client ID for token validation
    - Click "Save Issuer"
@@ -76,9 +76,9 @@ If the custom tab is not visible or not functioning properly, you can configure 
 1. In the "Properties" tab, click the "+" button to add a new property
 2. Add properties in the format `issuer.<issuer-name>.<property-key>`:
    - `issuer.keycloak.issuer`: The URI of the token issuer
-     - Example: `http://keycloak:9080/realms/oauth_integration_tests`
+     - Example: `http://keycloak:8080/realms/oauth_integration_tests`
    - `issuer.keycloak.jwks-url`: The URL of the JWKS endpoint
-     - Example: `http://keycloak:9080/realms/oauth_integration_tests/protocol/openid-connect/certs`
+     - Example: `http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs`
    - `issuer.keycloak.audience` (optional): The expected audience claim value
    - `issuer.keycloak.client-id` (optional): The client ID for token validation
 3. Click "Apply" to save the properties

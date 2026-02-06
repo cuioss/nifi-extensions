@@ -8,7 +8,7 @@
 link:../Specification.adoc[Back to Main Specification]
 
 == Overview
-_See Requirement link:../Requirements.adoc#REQ-UI-001[REQ-UI-001: Custom UI Components]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
 
 This specification defines the REST API endpoints for JWT token verification, JWKS validation, and security metrics in the NiFi JWT Authenticator. These endpoints enable the custom UI components to interact with the backend JWT validation services.
 
@@ -217,7 +217,7 @@ This mode is only available in test environments and is automatically disabled i
 == Technical Standards
 
 === Jakarta EE 10 Compliance
-All servlets use Jakarta EE 10 APIs (`jakarta.servlet.*`) for compatibility with NiFi 2.4.0.
+All servlets use Jakarta EE 10 APIs (`jakarta.servlet.*`) for compatibility with NiFi 2.6.0.
 
 === JSON Processing
 Uses Jakarta JSON API for all JSON parsing and generation to maintain consistency with the Jakarta EE stack.

@@ -11,7 +11,7 @@ _See Requirement xref:Requirements.adoc#NIFI-AUTH-1[NIFI-AUTH-1: REST API Suppor
 This document provides the technical specification for implementing the MultiIssuerJWTTokenAuthenticator processor.
 For functional requirements, see xref:Requirements.adoc[Requirements Document].
 
-The MultiIssuerJWTTokenAuthenticator is compatible with NiFi 2.4.0 and leverages the oauth-sheriff-core library for token validation.
+The MultiIssuerJWTTokenAuthenticator is compatible with NiFi 2.6.0 and leverages the oauth-sheriff-core library for token validation.
 
 == Document Structure
 _See Requirement xref:Requirements.adoc#NIFI-AUTH-13[NIFI-AUTH-13: Documentation Requirements]_
@@ -26,12 +26,16 @@ This specification is organized into the following documents:
 * xref:specification/security.adoc[Security] - Security considerations
 * xref:specification/integration-patterns.adoc[Integration Patterns] - Integration examples
 * xref:specification/internationalization.adoc[Internationalization] - i18n implementation
+* xref:specification/configuration-ui.adoc[UI Configuration] - UI configuration details
+* xref:specification/configuration-static.adoc[Static Configuration] - Static/container configuration
 * xref:specification/jwt-rest-api.adoc[JWT REST API] - REST API endpoints for JWT token verification, JWKS validation, and metrics
+* xref:specification/end-to-end-testing.adoc[End-to-End Testing] - E2E testing specification
+* xref:specification/observability.adoc[Observability] - Security event monitoring and metrics
 * xref:LogMessages.adoc[Log Messages] - Log message documentation
 
 [NOTE]
 ====
-Log messages (as defined in LogMessage.md) are not internationalized. They are always written in English for consistency in logs and monitoring systems.
+Log messages (as defined in xref:LogMessages.adoc[]) are not internationalized. They are always written in English for consistency in logs and monitoring systems.
 ====
 
 == Libraries and Dependencies
@@ -40,8 +44,8 @@ The MultiIssuerJWTTokenAuthenticator uses the following key dependencies:
 
 === Runtime Dependencies
 
-* Apache NiFi 2.4.0
-* oauth-sheriff-core 1.0.0
+* Apache NiFi 2.6.0
+* oauth-sheriff-core 0.1.0
 * Caffeine 3.2.0 (for caching)
 * Jakarta JSON API 2.1.3
 * Parsson 1.1.7
@@ -53,7 +57,7 @@ The MultiIssuerJWTTokenAuthenticator uses the following key dependencies:
 * cui-test-keycloak-integration (for integration testing with real tokens)
 * JUnit 5 with JUnit Jupiter for modern testing approaches
 
-These libraries provide a robust foundation for implementing and testing JWT authentication in NiFi 2.4.0 environments.
+These libraries provide a robust foundation for implementing and testing JWT authentication in NiFi 2.6.0 environments.
 
 == Key Technical Features
 
@@ -80,11 +84,11 @@ The processor validates JWT tokens using the oauth-sheriff-core library with:
 * Support for all standard JWT algorithms including RS256, RS384, RS512, PS256, PS384, PS512, ES256, ES384, and ES512
 
 === Static Configuration Support
-_See Requirement NIFI-AUTH-7.7: Static Configuration for Container Environments in xref:Requirements.adoc[Requirements Document]_
+_See Requirement NIFI-AUTH-7.6: Static Configuration for Container Environments in xref:Requirements.adoc[Requirements Document]_
 
 The processor supports static configuration for container deployments:
 
-* Configuration via properties files (.properties), YAML (.yml, .yaml), or JSON (.json)
+* Configuration via properties files (.properties) or YAML (.yml, .yaml)
 * Active by default when present
 * Environment variable and system property support for configuration paths
 * Configuration displayed (read-only) in the UI when static configuration is active
@@ -139,9 +143,9 @@ image::plantuml/architecture.png[Architecture Diagram]
 
 == Implementation Notes
 
-=== NiFi 2.4.0 Compatibility
+=== NiFi 2.6.0 Compatibility
 
-The processor is designed specifically for NiFi 2.4.0 and takes advantage of its improved:
+The processor is designed specifically for NiFi 2.6.0 and takes advantage of its improved:
 
 * Processor API features
 * Expression language support

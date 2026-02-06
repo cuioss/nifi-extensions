@@ -48,10 +48,6 @@ The `!pragma layout smetana` directive tells PlantUML to use its own internal re
 
 === Generating PNG Images
 
-There are two ways to generate PNG images from PlantUML files:
-
-==== Option 1: Using the Local PlantUML Installation (Recommended)
-
 If you have PlantUML installed locally, you can use the provided script to generate PNG images:
 
 [source,bash]
@@ -66,21 +62,6 @@ This script will:
 3. Place the generated images in the same directory
 
 This method is faster and doesn't require a Maven build.
-
-==== Option 2: Using Maven
-
-Alternatively, you can use the `build-plantuml` Maven profile:
-
-[source,bash]
-----
-./mvnw generate-resources -Pbuild-plantuml
-----
-
-This command will:
-
-1. Process all `.puml` files in the `/doc/plantuml/` directory
-2. Generate corresponding PNG images with the same base name
-3. Place the generated images in the same directory
 
 === Referencing Images in Documentation
 
@@ -106,20 +87,6 @@ To add a new diagram:
 
 1. Create a new `.puml` file in the `/doc/plantuml/` directory
 2. Add your PlantUML content to the file
-3. Generate the PNG image using one of the following methods:
-   a. Run the `./doc/plantuml/generate-plantuml.sh` script (recommended if PlantUML is installed locally)
-   b. Run the Maven build with the `build-plantuml` profile
+3. Generate the PNG image by running the `./doc/plantuml/generate-plantuml.sh` script (requires PlantUML installed locally)
 4. Reference the generated PNG in your documentation
 
-=== Automated Reproducibility Verification
-
-The reproducibility of the build is automatically verified in the GitHub Actions pipeline. The "reproducible-build" workflow performs two builds with identical configuration and compares the generated artifacts using diffoscope. The build is considered reproducible only if no differences are detected. The result is displayed as a badge in the README.
-
-Workflow procedure:
-
-1. First build and storing the JAR artifact
-2. Second build with identical configuration
-3. Comparison of the two artifacts with diffoscope
-4. If differences are detected, the workflow fails
-
-The diffoscope output can be used for analysis in case of failure. More information can be found in the workflow under `.github/workflows/maven.yml` (Job: `reproducible-build`).

@@ -14,7 +14,7 @@ The MultiIssuerJWTTokenAuthenticator implements comprehensive observability feat
 == Security Event Metrics
 
 === Available Metrics
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-18.1[NIFI-AUTH-18.1: Security Event Collection]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-18.1[NIFI-AUTH-18.1: NiFi UI Integration]_
 
 The processor leverages the SecurityEventCounter from the oauth-sheriff-core library to track key security events:
 
@@ -74,10 +74,10 @@ private void logSecurityMetrics() {
 }
 ----
 
-For more information on token validation implementation, see link:token-validation.adoc#security-event-monitoring[Security Event Monitoring].
+For more information on token validation implementation, see link:token-validation.adoc#_security_event_monitoring[Security Event Monitoring].
 
 == NiFi UI Integration
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-18.2[NIFI-AUTH-18.2: UI Display]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-18.1[NIFI-AUTH-18.1: NiFi UI Integration]_
 
 The processor integrates metrics into the NiFi UI for operational visibility.
 
@@ -135,7 +135,7 @@ A dedicated "Metrics" tab in the processor configuration dialog provides:
 For more information on the UI components, see link:configuration-ui.adoc[UI Configuration].
 
 == NiFi Metrics Integration
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-18.3[NIFI-AUTH-18.3: Metrics Reporting]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-18.2[NIFI-AUTH-18.2: Metrics System Integration]_
 
 The processor registers metrics with NiFi's metrics system for integration with monitoring tools.
 
@@ -189,7 +189,7 @@ Example of full metric names:
 * `jwt-processor.security-events.invalid-tokens`
 
 == External Monitoring Integration
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-18.4[NIFI-AUTH-18.4: Monitoring Integration]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-18.3[NIFI-AUTH-18.3: External Monitoring System Support]_
 
 === Prometheus Integration
 
@@ -256,7 +256,7 @@ A sample Grafana dashboard template is provided with the following panels:
 4. Token validation trends over time (time series)
 5. Alert thresholds for high error rates
 
-For more information on monitoring integration, see link:security.adoc#security-event-monitoring[Security Event Monitoring].
+For more information on monitoring integration, see link:security.adoc#_security_event_monitoring[Security Event Monitoring].
 
 == Implementation Details
 

@@ -16,7 +16,7 @@ This document provides integration patterns and examples for the MultiIssuerJWTT
 == Common Integration Patterns
 
 === API Gateway Pattern
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-12.1[NIFI-AUTH-12.1: API Gateway Integration]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-12[NIFI-AUTH-12: Integration Examples]_
 
 The MultiIssuerJWTTokenAuthenticator can be used as part of an API Gateway pattern to authenticate and authorize incoming requests before routing them to backend services.
 
@@ -88,7 +88,7 @@ In this pattern, the processor:
 For more details on token validation in this scenario, see link:token-validation.adoc[Token Validation].
 
 === Service-to-Service Authentication
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-12.2[NIFI-AUTH-12.2: Service-to-Service Integration]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-12[NIFI-AUTH-12: Integration Examples]_
 
 The MultiIssuerJWTTokenAuthenticator can be used to authenticate service-to-service communication, where one service presents credentials to access another.
 
@@ -154,10 +154,10 @@ In this pattern, the processor:
 </flow>
 ----
 
-For more details on configuring service authentication, see link:configuration.adoc#authorization-configuration[Authorization Configuration].
+For more details on configuring service authentication, see link:configuration.adoc#_authorization_properties[Authorization Properties].
 
 === Multi-Tenant API Routing
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-12.3[NIFI-AUTH-12.3: Multi-Tenant Integration]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-12[NIFI-AUTH-12: Integration Examples]_
 
 The MultiIssuerJWTTokenAuthenticator can be used to route requests based on tenant information in JWT tokens for multi-tenant architectures.
 
@@ -225,7 +225,7 @@ In this pattern, the processor:
 </flow>
 ----
 
-For more details on multi-issuer support, see link:technical-components.adoc#multi-issuer-support[Multi-Issuer Support].
+For more details on multi-issuer support, see link:technical-components.adoc#_multi_issuer_support[Multi-Issuer Support].
 
 == Implementation Examples
 
@@ -310,7 +310,7 @@ void testRoleBasedAuthorization() {
 }
 ----
 
-For authorization implementation details, see link:token-validation.adoc#authorization-checking[Authorization Checking].
+For authorization implementation details, see link:token-validation.adoc#_authorization_checking[Authorization Checking].
 
 == Best Practices for Integration
 
@@ -333,7 +333,7 @@ For optimal performance in high-throughput environments:
 2. **Configure Maximum Token Size**: Limit token size to prevent resource exhaustion
 3. **Use Specific Required Claims**: Only require claims that are needed for authorization decisions
 
-For performance considerations, see link:configuration.adoc#performance-considerations[Performance Considerations].
+For performance considerations, see link:configuration.adoc#_performance_properties[Performance Properties].
 
 == See Also
 

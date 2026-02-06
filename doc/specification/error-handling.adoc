@@ -175,7 +175,7 @@ private void handleValidationError(FlowFile flowFile, ProcessSession session, Va
 
 === Security Event Monitoring
 
-The processor implements security event monitoring as described in link:token-validation.adoc#security-event-monitoring[Security Event Monitoring].
+The processor implements security event monitoring as described in xref:token-validation.adoc#_security_event_monitoring[Security Event Monitoring].
 
 === Error Response Generation
 

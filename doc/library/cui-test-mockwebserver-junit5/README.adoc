@@ -1,3 +1,8 @@
+= cui-test-mockwebserver-junit5
+:toc: macro
+:toclevels: 3
+:sectnumlevels: 1
+
 [.discrete]
 == What is it?
 
@@ -69,12 +74,13 @@ class MockWebServerTest {
 
     // This method will be called by the @ModuleDispatcher annotation
     ModuleDispatcherElement getModuleDispatcher() {
-        return new BaseAllAcceptDispatcher("/api/posts")
-                .withPostResponse(new mockwebserver3.MockResponse.Builder()
-                        .code(201)
-                        .addHeader("Content-Type", "application/json")
-                        .body("{\"id\":\"123\",\"status\":\"created\"}")
-                        .build());
+        var dispatcher = new BaseAllAcceptDispatcher("/api/posts");
+        dispatcher.getPostResult().setResponse(new mockwebserver3.MockResponse.Builder()
+                .code(201)
+                .addHeader("Content-Type", "application/json")
+                .body("{\"id\":\"123\",\"status\":\"created\"}")
+                .build());
+        return dispatcher;
     }
 }
 ----
@@ -194,8 +200,8 @@ class ManualStartTest {
         URI uri = uriBuilder.addPathSegment("api").build();
         assertEquals(server.getPort(), uri.getPort());
 
-        // Don't forget to shut down the server
-        server.shutdown();
+        // Don't forget to close the server
+        server.close();
     }
 }
 ----
