@@ -16,6 +16,12 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.http.client.handler.HttpHandler;
+import de.cuioss.http.security.config.SecurityConfiguration;
+import de.cuioss.http.security.core.HttpSecurityValidator;
+import de.cuioss.http.security.exceptions.UrlSecurityException;
+import de.cuioss.http.security.monitoring.SecurityEventCounter;
+import de.cuioss.http.security.pipeline.PipelineFactory;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.*;
 import jakarta.servlet.ServletException;
@@ -31,19 +37,18 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
 /**
  * Servlet for JWKS URL validation using the cui-jwt-validation library.
  * This servlet provides REST endpoints for validating JWKS URLs, files, and content.
- * 
+ *
  * Endpoints:
  * - /nifi-api/processors/jwt/validate-jwks-url - Validate JWKS URL accessibility
  * - /nifi-api/processors/jwt/validate-jwks-file - Validate JWKS file content
  * - /nifi-api/processors/jwt/validate-jwks-content - Validate inline JWKS content
- * 
+ *
  * All methods use POST and expect JSON request bodies.
  */
 public class JwksValidationServlet extends HttpServlet {
@@ -53,6 +58,9 @@ public class JwksValidationServlet extends HttpServlet {
     private static final JsonReaderFactory JSON_READER = Json.createReaderFactory(Map.of());
     private static final JsonWriterFactory JSON_WRITER = Json.createWriterFactory(Map.of());
     private static final String JWKS_VALIDATION_FAILED_MSG = "JWKS URL validation failed: %s - %s";
+
+    /** Default base path for JWKS files when no NiFi properties are available. */
+    private static final String DEFAULT_JWKS_BASE_PATH = "/opt/nifi/nifi-current/conf";
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
@@ -84,7 +92,7 @@ public class JwksValidationServlet extends HttpServlet {
         // Parse request
         JsonObject requestJson = parseRequest(req, resp);
         if (requestJson == null) return; // Error already sent
-        
+
         if (!requestJson.containsKey("jwksUrl")) {
             sendErrorResponse(resp, 400, "Missing required field: jwksUrl");
             return;
@@ -113,7 +121,7 @@ public class JwksValidationServlet extends HttpServlet {
         // Parse request
         JsonObject requestJson = parseRequest(req, resp);
         if (requestJson == null) return; // Error already sent
-        
+
         if (!requestJson.containsKey("jwksFilePath")) {
             sendErrorResponse(resp, 400, "Missing required field: jwksFilePath");
             return;
@@ -142,7 +150,7 @@ public class JwksValidationServlet extends HttpServlet {
         // Parse request
         JsonObject requestJson = parseRequest(req, resp);
         if (requestJson == null) return; // Error already sent
-        
+
         if (!requestJson.containsKey("jwksContent")) {
             sendErrorResponse(resp, 400, "Missing required field: jwksContent");
             return;
@@ -162,7 +170,7 @@ public class JwksValidationServlet extends HttpServlet {
     }
 
     /**
-     * Validates a JWKS URL using standard HTTP client.
+     * Validates a JWKS URL using cui-http's HttpHandler for secure HTTP communication.
      */
     private JwksValidationResult validateJwksUrl(String jwksUrl) {
         try {
@@ -172,8 +180,19 @@ public class JwksValidationServlet extends HttpServlet {
                 return JwksValidationResult.failure("Invalid URL scheme, must be http or https");
             }
 
-            // Fetch JWKS content
-            String content = fetchJwksContent(uri, jwksUrl);
+            // Validate URL path using cui-http security pipeline
+            SecurityEventCounter counter = new SecurityEventCounter();
+            SecurityConfiguration secConfig = SecurityConfiguration.strict();
+            HttpSecurityValidator urlValidator = PipelineFactory.createUrlPathPipeline(secConfig, counter);
+            try {
+                urlValidator.validate(jwksUrl);
+            } catch (UrlSecurityException e) {
+                LOGGER.warn("URL security violation for JWKS URL: %s - %s", jwksUrl, e.getFailureType());
+                return JwksValidationResult.failure("Invalid URL: " + e.getFailureType().getDescription());
+            }
+
+            // Fetch JWKS content using cui-http HttpHandler
+            String content = fetchJwksContent(jwksUrl);
             if (content == null) {
                 return JwksValidationResult.failure("Failed to fetch JWKS content");
             }
@@ -206,31 +225,29 @@ public class JwksValidationServlet extends HttpServlet {
     }
 
     /**
-     * Fetches JWKS content from URL.
+     * Fetches JWKS content from URL using cui-http HttpHandler for secure HTTP communication.
      *
-     * @param uri URI to fetch from
-     * @param jwksUrl Original URL string (for logging)
+     * @param jwksUrl URL to fetch from
      * @return JWKS content, or null if fetch failed
      * @throws IOException if HTTP request fails
      * @throws InterruptedException if HTTP request is interrupted
      */
-    private String fetchJwksContent(URI uri, String jwksUrl) throws IOException, InterruptedException {
-        // Create HTTP client and request
-        HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(5))
+    @SuppressWarnings("java:S2095") // S2095: java.net.http.HttpClient doesn't implement AutoCloseable
+    private String fetchJwksContent(String jwksUrl) throws IOException, InterruptedException {
+        HttpHandler httpHandler = HttpHandler.builder()
+                .uri(jwksUrl)
+                .connectionTimeoutSeconds(5)
+                .readTimeoutSeconds(10)
                 .build();
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(uri)
-                .timeout(Duration.ofSeconds(10))
+        HttpClient httpClient = httpHandler.createHttpClient();
+        HttpRequest request = httpHandler.requestBuilder()
                 .header("Accept", CONTENT_TYPE_JSON)
                 .GET()
                 .build();
 
-        // Send request
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-        // Check status code
         if (response.statusCode() != 200) {
             String error = "JWKS URL returned status %d".formatted(response.statusCode());
             LOGGER.debug(JWKS_VALIDATION_FAILED_MSG, jwksUrl, error);
@@ -277,26 +294,41 @@ public class JwksValidationServlet extends HttpServlet {
     }
 
     /**
-     * Validates a JWKS file.
-     * Note: This is a placeholder implementation. In a real scenario, you would
-     * use a file-based JWKS loader from cui-jwt-validation library.
+     * Validates a JWKS file with path traversal protection using cui-http security pipeline
+     * and base directory restriction.
      */
     private JwksValidationResult validateJwksFile(String jwksFilePath) {
         try {
-            // For now, this is a basic implementation
-            // In a full implementation, you would use cui-jwt-validation's file-based loader
-            Path path = Path.of(jwksFilePath);
+            // 1. Validate path using cui-http security pipeline for traversal detection
+            SecurityEventCounter counter = new SecurityEventCounter();
+            SecurityConfiguration secConfig = SecurityConfiguration.strict();
+            HttpSecurityValidator pathValidator = PipelineFactory.createUrlPathPipeline(secConfig, counter);
+            try {
+                pathValidator.validate(jwksFilePath);
+            } catch (UrlSecurityException e) {
+                LOGGER.warn("Path security violation for JWKS file: %s - %s", jwksFilePath, e.getFailureType());
+                return JwksValidationResult.failure("Invalid file path: " + e.getFailureType().getDescription());
+            }
 
-            if (!Files.exists(path)) {
+            // 2. Base directory restriction
+            Path requestedPath = Path.of(jwksFilePath).normalize().toAbsolutePath();
+            Path allowedBase = getJwksAllowedBasePath();
+            if (!requestedPath.startsWith(allowedBase)) {
+                LOGGER.warn("JWKS file path outside allowed base directory: %s (allowed: %s)", requestedPath, allowedBase);
+                return JwksValidationResult.failure("File path must be within: " + allowedBase);
+            }
+
+            // 3. Validate file exists and is readable
+            if (!Files.exists(requestedPath)) {
                 return JwksValidationResult.failure("JWKS file does not exist: " + jwksFilePath);
             }
 
-            if (!Files.isReadable(path)) {
+            if (!Files.isReadable(requestedPath)) {
                 return JwksValidationResult.failure("JWKS file is not readable: " + jwksFilePath);
             }
 
-            // Read and validate content
-            String content = Files.readString(path);
+            // 4. Read and validate content
+            String content = Files.readString(requestedPath);
             return validateJwksContent(content);
 
         } catch (IOException e) {
@@ -304,6 +336,31 @@ public class JwksValidationServlet extends HttpServlet {
             LOGGER.warn(e, "JWKS file validation failed: %s", jwksFilePath);
             return JwksValidationResult.failure(error);
         }
+    }
+
+    /**
+     * Resolves the allowed base path for JWKS files.
+     * Checks for NiFi properties file path first, then falls back to system property
+     * or default NiFi conf directory.
+     */
+    static Path getJwksAllowedBasePath() {
+        // Try NiFi properties file path (parent directory)
+        String nifiPropertiesPath = System.getProperty("nifi.properties.file.path");
+        if (nifiPropertiesPath != null && !nifiPropertiesPath.trim().isEmpty()) {
+            Path propertiesDir = Path.of(nifiPropertiesPath).getParent();
+            if (propertiesDir != null) {
+                return propertiesDir.normalize().toAbsolutePath();
+            }
+        }
+
+        // Try configurable system property
+        String jwksBasePath = System.getProperty("nifi.jwks.allowed.base.path");
+        if (jwksBasePath != null && !jwksBasePath.trim().isEmpty()) {
+            return Path.of(jwksBasePath).normalize().toAbsolutePath();
+        }
+
+        // Default NiFi conf directory
+        return Path.of(DEFAULT_JWKS_BASE_PATH).normalize().toAbsolutePath();
     }
 
     /**
@@ -414,10 +471,10 @@ public class JwksValidationServlet extends HttpServlet {
      * Result of JWKS validation.
      */
     private record JwksValidationResult(
-    boolean valid,
-    String error,
-    int keyCount,
-    List<String> algorithms
+            boolean valid,
+            String error,
+            int keyCount,
+            List<String> algorithms
     ) {
         public static JwksValidationResult success(int keyCount, List<String> algorithms) {
             return new JwksValidationResult(true, null, keyCount, algorithms);

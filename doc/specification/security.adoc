@@ -85,6 +85,60 @@ private HttpClient createSecureHttpClient() {
 
 For more details on JWKS configuration, see link:configuration.adoc#jwks-configuration[JWKS Configuration].
 
+== Custom UI Endpoint Security
+
+The processor's Custom UI is deployed as a WAR file within NiFi's web container and is accessed via an iframe within the authenticated NiFi session.
+
+=== Exposed Endpoints
+
+The Custom UI exposes these administration endpoints:
+
+[cols="2,3"]
+|===
+|Endpoint |Purpose
+
+|`/nifi-api/processors/jwt/verify-token`
+|JWT token verification
+
+|`/nifi-api/processors/jwt/validate-jwks-url`
+|JWKS URL validation
+
+|`/nifi-api/processors/jwt/validate-jwks-file`
+|JWKS file validation
+
+|`/nifi-api/processors/jwt/validate-jwks-content`
+|JWKS content validation
+
+|`/nifi-api/processors/jwt/metrics`
+|Validation metrics
+|===
+
+=== Security Model
+
+The endpoints are protected through multiple layers:
+
+1. **NiFi Session Authentication**: The Custom UI runs inside NiFi's web container as an iframe within an authenticated NiFi session. Unauthenticated users cannot reach the Custom UI at all.
+2. **Processor ID Validation**: The `ApiKeyAuthenticationFilter` requires an `X-Processor-Id` header on every request. This is a UUID passed to the iframe via URL parameter (`?id=<uuid>`), only available to authenticated NiFi users.
+3. **Security Response Headers**: The `SecurityHeadersFilter` adds defense-in-depth headers (`X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`) to all responses.
+4. **Full Signature Verification**: All token verification uses the processor's real configuration with full cryptographic signature verification. No test or bypass modes exist.
+
+=== JWKS File Path Protection
+
+JWKS file validation uses a two-layer defense against path traversal:
+
+1. **Security Pipeline Validation**: The `cui-http` library's `URLPathValidationPipeline` detects path traversal patterns including `../`, URL-encoded variants, and Unicode normalization attacks.
+2. **Base Directory Restriction**: File access is restricted to the NiFi configuration directory (resolved from `nifi.properties.file.path` or configurable via `nifi.jwks.allowed.base.path`).
+
+=== JWKS URL Protection
+
+JWKS URL validation uses the `cui-http` library's `HttpHandler` for secure HTTP communication with built-in timeouts and URL structure validation via `URLPathValidationPipeline`.
+
+=== Design Decisions
+
+* No test or E2E bypass endpoints exist in production deployments
+* `X-Frame-Options` is set to `SAMEORIGIN` (not `DENY`) because the Custom UI runs inside an iframe within NiFi
+* Token logging uses masking (first 8 characters only) to prevent sensitive data exposure
+
 == Multi-Issuer Security
 [.requirement]
 _See Requirement: link:../Requirements.adoc#NIFI-AUTH-8.3[NIFI-AUTH-8.3: Multi-Issuer Security]_

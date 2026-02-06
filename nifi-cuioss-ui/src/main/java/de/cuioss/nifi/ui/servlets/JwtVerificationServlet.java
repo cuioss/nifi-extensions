@@ -32,18 +32,18 @@ import java.util.Map;
 
 /**
  * Servlet for JWT token verification using the cui-jwt-validation library.
- * This servlet provides a REST endpoint that verifies JWT tokens using the 
+ * This servlet provides a REST endpoint that verifies JWT tokens using the
  * same configuration and logic as the MultiIssuerJWTTokenAuthenticator processor.
- * 
+ *
  * Endpoint: /nifi-api/processors/jwt/verify-token
  * Method: POST
- * 
+ *
  * Request format:
  * {
  *   "token": "eyJ...",
  *   "processorId": "uuid-of-processor"
  * }
- * 
+ *
  * Response format:
  * {
  *   "valid": true/false,
@@ -86,7 +86,7 @@ public class JwtVerificationServlet extends HttpServlet {
         }
 
         // 2. Validate and extract request parameters
-        TokenVerificationRequest verificationRequest = extractVerificationRequest(requestJson, req, resp);
+        TokenVerificationRequest verificationRequest = extractVerificationRequest(requestJson, resp);
         if (verificationRequest == null) {
             return; // Error already handled
         }
@@ -129,13 +129,11 @@ public class JwtVerificationServlet extends HttpServlet {
      * Extracts and validates token verification request parameters.
      *
      * @param requestJson Parsed JSON request
-     * @param req HTTP request
      * @param resp HTTP response
      * @return Token verification request, or null if validation failed (error already sent)
      */
     private TokenVerificationRequest extractVerificationRequest(
             JsonObject requestJson,
-            HttpServletRequest req,
             HttpServletResponse resp) {
 
         // Validate required fields
@@ -153,45 +151,17 @@ public class JwtVerificationServlet extends HttpServlet {
 
         String processorId = requestJson.containsKey("processorId") ?
                 requestJson.getString("processorId") : null;
-        String expectedIssuer = requestJson.containsKey(JSON_KEY_ISSUER) ?
-                requestJson.getString(JSON_KEY_ISSUER) : null;
 
-        LOGGER.info("Request received - processorId: %s, token: %s", processorId, token);
+        LOGGER.debug("Request received - processorId: %s, token: %s", processorId, maskToken(token));
 
-        // Extract authorization requirements
-        List<String> requiredScopes = extractJsonArray(requestJson, "requiredScopes");
-        List<String> requiredRoles = extractJsonArray(requestJson, "requiredRoles");
-
-        // Determine test mode
-        boolean isE2ETest = isE2ETestRequest(req);
-        boolean useTestMode = isE2ETest || (processorId != null && processorId.trim().isEmpty());
-
-        if (!useTestMode && (processorId == null || processorId.trim().isEmpty())) {
+        if (processorId == null || processorId.trim().isEmpty()) {
             safelySendErrorResponse(resp, 400, "Processor ID cannot be empty", false);
             return null;
         }
 
         LOGGER.debug("Verifying token for processor: %s", processorId);
 
-        return new TokenVerificationRequest(
-                token,
-                processorId,
-                expectedIssuer,
-                requiredScopes,
-                requiredRoles,
-                isE2ETest,
-                useTestMode
-        );
-    }
-
-    /**
-     * Checks if this is an E2E test request.
-     */
-    private boolean isE2ETestRequest(HttpServletRequest req) {
-        String servletPath = req.getServletPath();
-        String requestURI = req.getRequestURI();
-        return (servletPath != null && servletPath.startsWith("/api/token/")) ||
-                (requestURI != null && requestURI.contains("/api/token/"));
+        return new TokenVerificationRequest(token, processorId);
     }
 
     /**
@@ -210,7 +180,7 @@ public class JwtVerificationServlet extends HttpServlet {
     }
 
     /**
-     * Performs token verification and additional validation for E2E tests.
+     * Performs token verification.
      *
      * @param verificationRequest Token verification request parameters
      * @param resp HTTP response
@@ -221,20 +191,10 @@ public class JwtVerificationServlet extends HttpServlet {
             HttpServletResponse resp) {
 
         try {
-            // Use null processorId for test mode to trigger test configuration
-            String validationProcessorId = verificationRequest.useTestMode() ?
-                    null : verificationRequest.processorId();
-            TokenValidationResult result = validationService.verifyToken(
+            return validationService.verifyToken(
                     verificationRequest.token(),
-                    validationProcessorId
+                    verificationRequest.processorId()
             );
-
-            // For E2E tests, perform additional validation
-            if (verificationRequest.isE2ETest() && result.isValid()) {
-                result = performE2EValidation(result, verificationRequest);
-            }
-
-            return result;
         } catch (IllegalArgumentException e) {
             LOGGER.warn("Invalid request for processor %s: %s",
                     verificationRequest.processorId(), e.getMessage());
@@ -253,53 +213,10 @@ public class JwtVerificationServlet extends HttpServlet {
     }
 
     /**
-     * Performs E2E-specific validation (issuer and authorization checks).
-     */
-    private TokenValidationResult performE2EValidation(
-            TokenValidationResult result,
-            TokenVerificationRequest verificationRequest) {
-
-        // Check issuer if specified
-        if (verificationRequest.expectedIssuer() != null &&
-                !verificationRequest.expectedIssuer().equals(result.getIssuer())) {
-            return TokenValidationResult.failure("Issuer mismatch");
-        }
-
-        // Check authorization if scopes/roles are required
-        if ((verificationRequest.requiredScopes() != null ||
-                verificationRequest.requiredRoles() != null) && result.isValid()) {
-            boolean authorized = checkAuthorization(result, verificationRequest);
-            result.setAuthorized(authorized);
-        }
-
-        return result;
-    }
-
-    /**
-     * Checks if token has required scopes and roles.
-     */
-    private boolean checkAuthorization(
-            TokenValidationResult result,
-            TokenVerificationRequest verificationRequest) {
-
-        boolean authorized = true;
-
-        if (verificationRequest.requiredScopes() != null && result.getScopes() != null) {
-            authorized = result.getScopes().containsAll(verificationRequest.requiredScopes());
-        }
-
-        if (authorized && verificationRequest.requiredRoles() != null && result.getRoles() != null) {
-            authorized = result.getRoles().containsAll(verificationRequest.requiredRoles());
-        }
-
-        return authorized;
-    }
-
-    /**
      * Safely sends error response, handling IOException.
      */
     private void safelySendErrorResponse(HttpServletResponse resp, int statusCode,
-            String errorMessage, boolean valid) {
+                                         String errorMessage, boolean valid) {
         try {
             sendErrorResponse(resp, statusCode, errorMessage, valid);
         } catch (IOException e) {
@@ -324,13 +241,8 @@ public class JwtVerificationServlet extends HttpServlet {
      * Internal record for token verification request parameters.
      */
     private record TokenVerificationRequest(
-    String token,
-    String processorId,
-    String expectedIssuer,
-    List<String> requiredScopes,
-    List<String> requiredRoles,
-    boolean isE2ETest,
-    boolean useTestMode
+            String token,
+            String processorId
     ) {
     }
 
@@ -359,8 +271,10 @@ public class JwtVerificationServlet extends HttpServlet {
                 .add(JSON_KEY_VALID, result.isValid())
                 .add("error", result.getError() != null ? result.getError() : "");
 
-        // Add E2E test fields
-        addE2EFields(responseBuilder, result);
+        // Add issuer if available
+        if (result.getIssuer() != null) {
+            responseBuilder.add(JSON_KEY_ISSUER, result.getIssuer());
+        }
 
         // Add authorization fields
         responseBuilder.add("authorized", result.isAuthorized());
@@ -370,19 +284,6 @@ public class JwtVerificationServlet extends HttpServlet {
         addClaims(responseBuilder, result);
 
         return responseBuilder;
-    }
-
-    /**
-     * Adds E2E test specific fields to response.
-     */
-    private void addE2EFields(JsonObjectBuilder responseBuilder, TokenValidationResult result) {
-        if (result.getIssuer() != null) {
-            responseBuilder.add(JSON_KEY_ISSUER, result.getIssuer());
-        }
-
-        if (result.getExpiredAt() != null) {
-            responseBuilder.add("expiredAt", result.getExpiredAt());
-        }
     }
 
     /**
@@ -451,7 +352,6 @@ public class JwtVerificationServlet extends HttpServlet {
             return 200;
         }
 
-        // Check if token is expired (E2E test expects 401 for expired tokens)
         if (result.getError() != null && result.getError().toLowerCase().contains("expired")) {
             return 401;
         }
@@ -494,5 +394,15 @@ public class JwtVerificationServlet extends HttpServlet {
             LOGGER.error(e, "Failed to write error response");
             // Don't throw here to avoid masking the original error
         }
+    }
+
+    /**
+     * Masks a JWT token for safe logging, showing only the first 8 characters.
+     */
+    private static String maskToken(String token) {
+        if (token == null || token.length() <= 12) {
+            return "***";
+        }
+        return token.substring(0, 8) + "...[" + token.length() + " chars]";
     }
 }

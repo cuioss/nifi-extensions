@@ -39,7 +39,6 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * These tests focus on:
  * - TokenValidationResult data class functionality
- * - Test mode token validation (E2E test support)
  * - Error handling and edge cases
  */
 @EnableGeneratorController
@@ -89,39 +88,6 @@ class JwtValidationServiceTest {
             assertEquals(errorMessage, result.getError(),
                     "Error message should match provided message");
             assertNull(result.getTokenContent(), "Token content should be null for failed result");
-        }
-
-        @Test
-        @DisplayName("Should set and get expiredAt")
-        void shouldSetAndGetExpiredAt() {
-            // Arrange
-            JwtValidationService.TokenValidationResult result =
-                    JwtValidationService.TokenValidationResult.failure("Expired");
-            String expiredAt = new Date().toString();
-
-            // Act
-            result.setExpiredAt(expiredAt);
-
-            // Assert
-            assertEquals(expiredAt, result.getExpiredAt(), "ExpiredAt should match set value");
-        }
-
-        @Test
-        @DisplayName("Should set and get test claims")
-        void shouldSetAndGetTestClaims() {
-            // Arrange
-            JwtValidationService.TokenValidationResult result =
-                    JwtValidationService.TokenValidationResult.success(null);
-            Map<String, Object> testClaims = new HashMap<>();
-            testClaims.put("sub", "test-user");
-            testClaims.put("iss", "test-issuer");
-
-            // Act
-            result.setTestClaims(testClaims);
-            Map<String, Object> claims = result.getClaims();
-
-            // Assert
-            assertEquals(testClaims, claims, "Claims should match test claims");
         }
 
         @Test
@@ -340,179 +306,16 @@ class JwtValidationServiceTest {
     }
 
     @Nested
-    @DisplayName("Test Mode Token Validation Tests")
-    class TestModeValidationTests {
+    @DisplayName("Processor ID Validation Tests")
+    class ProcessorIdValidationTests {
 
         @Test
-        @DisplayName("Should reject hardcoded invalid test token")
-        void shouldRejectInvalidTestToken() throws Exception {
-            // Arrange
-            String invalidToken = "invalid.jwt.token";
-
-            // Act
-            JwtValidationService.TokenValidationResult result =
-                    service.verifyToken(invalidToken, null);
-
-            // Assert
-            assertFalse(result.isValid(), "Invalid test token should be rejected");
-            assertTrue(result.getError().contains("Invalid JWT token"),
-                    "Error message should indicate invalid token");
-        }
-
-        @Test
-        @DisplayName("Should reject token with invalid format")
-        void shouldRejectTokenWithInvalidFormat() throws Exception {
-            // Arrange
-            String invalidFormatToken = "only.two";
-
-            // Act
-            JwtValidationService.TokenValidationResult result =
-                    service.verifyToken(invalidFormatToken, null);
-
-            // Assert
-            assertFalse(result.isValid(), "Token with invalid format should be rejected");
-            assertNotNull(result.getError(), "Error message should be present");
-            assertFalse(result.getError().isEmpty(), "Error message should not be empty");
-        }
-
-        @Test
-        @DisplayName("Should accept valid test token with basic claims")
-        void shouldAcceptValidTestTokenWithBasicClaims() throws Exception {
-            // Arrange
-            String header = Base64.getUrlEncoder().encodeToString("{\"alg\":\"HS256\",\"typ\":\"JWT\"}".getBytes());
-
-            // Payload with basic claims and future expiration
-            long futureExp = (System.currentTimeMillis() / 1000) + 3600;
-            String payload = Base64.getUrlEncoder().encodeToString(
-                    ("{\"sub\":\"test-user\",\"iss\":\"test-issuer\",\"exp\":" + futureExp + "}").getBytes());
-
-            // Signature (not validated in test mode)
-            String signature = Base64.getUrlEncoder().encodeToString("test-signature".getBytes());
-
-            String validToken = header + "." + payload + "." + signature;
-
-            // Act
-            JwtValidationService.TokenValidationResult result =
-                    service.verifyToken(validToken, null);
-
-            // Assert
-            assertTrue(result.isValid(), "Valid test token should be accepted");
-            assertNull(result.getError(), "No error should be present");
-            Map<String, Object> claims = result.getClaims();
-            assertEquals("test-user", claims.get("sub"), "Subject should match");
-            assertEquals("test-issuer", claims.get("iss"), "Issuer should match");
-        }
-
-        @Test
-        @DisplayName("Should reject expired test token")
-        void shouldRejectExpiredTestToken() throws Exception {
-            // Arrange
-            String header = Base64.getUrlEncoder().encodeToString("{\"alg\":\"HS256\",\"typ\":\"JWT\"}".getBytes());
-
-            // Payload with past expiration
-            long pastExp = (System.currentTimeMillis() / 1000) - 3600;
-            String payload = Base64.getUrlEncoder().encodeToString(
-                    ("{\"sub\":\"test-user\",\"iss\":\"test-issuer\",\"exp\":" + pastExp + "}").getBytes());
-
-            String signature = Base64.getUrlEncoder().encodeToString("test-signature".getBytes());
-            String expiredToken = header + "." + payload + "." + signature;
-
-            // Act
-            JwtValidationService.TokenValidationResult result =
-                    service.verifyToken(expiredToken, null);
-
-            // Assert
-            assertFalse(result.isValid(), "Expired token should be rejected");
-            assertTrue(result.getError().contains("Token expired"),
-                    "Error message should indicate expiration");
-            assertNotNull(result.getExpiredAt(), "ExpiredAt should be set");
-        }
-
-        @Test
-        @DisplayName("Should accept test token without expiration claim")
-        void shouldAcceptTestTokenWithoutExpiration() throws Exception {
-            // Arrange
-            String header = Base64.getUrlEncoder().encodeToString("{\"alg\":\"HS256\",\"typ\":\"JWT\"}".getBytes());
-
-            // Payload without expiration
-            String payload = Base64.getUrlEncoder().encodeToString(
-                    "{\"sub\":\"test-user\",\"iss\":\"test-issuer\"}".getBytes());
-
-            String signature = Base64.getUrlEncoder().encodeToString("test-signature".getBytes());
-            String tokenWithoutExp = header + "." + payload + "." + signature;
-
-            // Act
-            JwtValidationService.TokenValidationResult result =
-                    service.verifyToken(tokenWithoutExp, null);
-
-            // Assert
-            assertTrue(result.isValid(), "Token without expiration should be accepted");
-            assertNull(result.getError(), "No error should be present");
-        }
-
-        @Test
-        @DisplayName("Should extract scopes and roles from test token")
-        void shouldExtractScopesAndRolesFromTestToken() throws Exception {
-            // Arrange
-            String header = Base64.getUrlEncoder().encodeToString("{\"alg\":\"HS256\",\"typ\":\"JWT\"}".getBytes());
-
-            long futureExp = (System.currentTimeMillis() / 1000) + 3600;
-            String payload = Base64.getUrlEncoder().encodeToString(
-                    ("{\"sub\":\"test-user\",\"iss\":\"test-issuer\",\"exp\":" + futureExp +
-                            ",\"scopes\":[\"read\",\"write\"],\"roles\":[\"admin\",\"user\"]}").getBytes());
-
-            String signature = Base64.getUrlEncoder().encodeToString("test-signature".getBytes());
-            String tokenWithScopesAndRoles = header + "." + payload + "." + signature;
-
-            // Act
-            JwtValidationService.TokenValidationResult result =
-                    service.verifyToken(tokenWithScopesAndRoles, null);
-
-            // Assert
-            assertTrue(result.isValid(), "Token with scopes and roles should be accepted");
-            assertTrue(result.isAuthorized(), "Token should be marked as authorized");
-            assertNotNull(result.getScopes(), "Scopes should not be null");
-            assertNotNull(result.getRoles(), "Roles should not be null");
-            assertTrue(result.getScopes().contains("read"), "Should contain read scope");
-            assertTrue(result.getRoles().contains("admin"), "Should contain admin role");
-        }
-
-        @Test
-        @DisplayName("Should handle token with invalid base64 payload")
-        void shouldHandleTokenWithInvalidBase64Payload() throws Exception {
-            // Arrange
-            String header = Base64.getUrlEncoder().encodeToString("{\"alg\":\"HS256\",\"typ\":\"JWT\"}".getBytes());
-            String invalidPayload = "not-valid-base64!!!";
-            String signature = Base64.getUrlEncoder().encodeToString("test-signature".getBytes());
-            String tokenWithInvalidPayload = header + "." + invalidPayload + "." + signature;
-
-            // Act
-            JwtValidationService.TokenValidationResult result =
-                    service.verifyToken(tokenWithInvalidPayload, null);
-
-            // Assert
-            assertFalse(result.isValid(), "Token with invalid base64 should be rejected");
-            assertTrue(result.getError().contains("Token verification error"),
-                    "Error message should indicate verification error");
-        }
-
-        @Test
-        @DisplayName("Should handle token with invalid JSON payload")
-        void shouldHandleTokenWithInvalidJsonPayload() throws Exception {
-            // Arrange
-            String header = Base64.getUrlEncoder().encodeToString("{\"alg\":\"HS256\",\"typ\":\"JWT\"}".getBytes());
-            String invalidJsonPayload = Base64.getUrlEncoder().encodeToString("not-valid-json".getBytes());
-            String signature = Base64.getUrlEncoder().encodeToString("test-signature".getBytes());
-            String tokenWithInvalidJson = header + "." + invalidJsonPayload + "." + signature;
-
-            // Act
-            JwtValidationService.TokenValidationResult result =
-                    service.verifyToken(tokenWithInvalidJson, null);
-
-            // Assert
-            assertFalse(result.isValid(), "Token with invalid JSON should be rejected");
-            assertTrue(result.getError().contains("Token verification error"),
-                    "Error message should indicate verification error");
+        @DisplayName("Should reject null processor ID")
+        void shouldRejectNullProcessorId() {
+            // Arrange & Act & Assert
+            assertThrows(NullPointerException.class,
+                    () -> service.verifyToken("some-token", null),
+                    "Should throw NullPointerException for null processorId");
         }
     }
 
