@@ -19,8 +19,8 @@ describe('constants utility', () => {
             expect(constants.API.ENDPOINTS.VERIFY_TOKEN).toBe('/verify-token');
             expect(constants.API.ENDPOINTS.GET_ISSUER_CONFIG).toBe('/issuer-config');
             expect(constants.API.ENDPOINTS.SET_ISSUER_CONFIG).toBe('/issuer-config');
-            expect(constants.API.ENDPOINTS.JWKS_VALIDATE_URL).toBe('jwt/validate-jwks-url');
-            expect(constants.API.ENDPOINTS.JWT_VERIFY_TOKEN).toBe('jwt/verify-token');
+            expect(constants.API.ENDPOINTS.JWKS_VALIDATE_URL).toBe('nifi-api/processors/jwt/validate-jwks-url');
+            expect(constants.API.ENDPOINTS.JWT_VERIFY_TOKEN).toBe('nifi-api/processors/jwt/verify-token');
         });
 
         it('should have correct timeout values', () => {
