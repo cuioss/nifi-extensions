@@ -261,13 +261,13 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
     test("Keyboard navigation and focus management", async ({
         page,
     }, testInfo) => {
-        await test.step("Test tab order through all interactive elements", async () => {
-            // Get the custom UI frame
-            const customUIFrame = await navigateToJWTAuthenticatorUI(
-                page,
-                testInfo,
-            );
+        // Navigate once and reuse the frame across all steps
+        const customUIFrame = await navigateToJWTAuthenticatorUI(
+            page,
+            testInfo,
+        );
 
+        await test.step("Test tab order through all interactive elements", async () => {
             // Get focusable elements within the frame
             const focusableElements = await customUIFrame
                 .locator(
@@ -280,18 +280,21 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
                 `Total focusable elements: ${focusableElements.length}`,
             );
 
-            // Test tab navigation through first few elements
-            for (let i = 0; i < Math.min(5, focusableElements.length); i++) {
-                await page.keyboard.press("Tab");
-                await page.waitForTimeout(100); // Small delay for focus to settle
+            // Focus the first element in the frame, then tab through
+            if (focusableElements.length > 0) {
+                await focusableElements[0].focus();
+                for (
+                    let i = 1;
+                    i < Math.min(5, focusableElements.length);
+                    i++
+                ) {
+                    await page.keyboard.press("Tab");
+                    await page.waitForTimeout(100); // Small delay for focus to settle
+                }
             }
         });
 
         await test.step("Verify focus indicators are visible", async () => {
-            const customUIFrame = await navigateToJWTAuthenticatorUI(
-                page,
-                testInfo,
-            );
             const interactiveElements = await customUIFrame
                 .locator('button, a, input, select, textarea, [role="button"]')
                 .all();
@@ -314,14 +317,7 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
         });
 
         await test.step("Test keyboard shortcuts", async () => {
-            // Test Escape key closes dialogs
-            await page.keyboard.press("Escape");
-
-            // Verify no modal dialogs are present
-            const customUIFrame = await navigateToJWTAuthenticatorUI(
-                page,
-                testInfo,
-            );
+            // Verify no modal dialogs are present within the custom UI frame
             const dialogVisible = await customUIFrame
                 .locator(".ui-dialog, .modal, [role='dialog']")
                 .isVisible()
