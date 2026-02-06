@@ -170,9 +170,9 @@ const createMetricsContent = () => {
             
             <div id="export-options" class="export-options" data-testid="export-options">
                 <h5>Export Format:</h5>
-                <button class="btn btn-small" data-testid="export-csv">CSV</button>
-                <button class="btn btn-small" data-testid="export-json">JSON</button>
-                <button class="btn btn-small" data-testid="export-prometheus">Prometheus</button>
+                <button class="btn btn-small" data-format="csv" data-testid="export-csv">CSV</button>
+                <button class="btn btn-small" data-format="json" data-testid="export-json">JSON</button>
+                <button class="btn btn-small" data-format="prometheus" data-testid="export-prometheus">Prometheus</button>
             </div>
         </div>
     `;
@@ -208,9 +208,9 @@ const createMetricsContent = () => {
     const exportOptions = document.getElementById('export-options');
     if (exportOptions) {
         exportOptions.addEventListener('click', (e) => {
-            const button = e.target.closest('[data-testid="export-csv"], [data-testid="export-json"], [data-testid="export-prometheus"]');
+            const button = e.target.closest('[data-format]');
             if (button) {
-                const format = button.dataset.testid.replace('export-', '');
+                const format = button.dataset.format;
                 handleExport(format);
                 exportOptions.classList.remove('visible');
             }
