@@ -54,6 +54,8 @@ import java.util.concurrent.atomic.AtomicLong;
  *     {"error": "Invalid signature", "count": 25}
  *   ]
  * }
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
  */
 public class MetricsServlet extends HttpServlet {
 

@@ -32,6 +32,8 @@ import static org.hamcrest.Matchers.*;
  * 
  * Note: These tests are designed to run against a deployed instance of the application.
  * They require the web application to be running and accessible.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
  */
 class BackendEndpointsIntegrationTest {
 

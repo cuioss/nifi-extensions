@@ -50,6 +50,8 @@ import static de.cuioss.nifi.ui.util.TokenMasking.maskToken;
  *   "error": "error message if invalid",
  *   "claims": { ... token claims ... }
  * }
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
  */
 public class JwtVerificationServlet extends HttpServlet {
 

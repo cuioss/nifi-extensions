@@ -35,6 +35,11 @@ import java.util.List;
 import static org.easymock.EasyMock.*;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Tests for {@link JwtVerificationServlet}.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
+ */
 class JwtVerificationServletTest {
 
     private JwtValidationService validationService;

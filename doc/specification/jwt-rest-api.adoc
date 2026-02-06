@@ -24,7 +24,12 @@ The following classes implement this specification:
 
 The following tests verify the implementation:
 
-* Unit tests for servlets (pending)
+* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/JwtVerificationServletTest.java[JwtVerificationServletTest] -- Token verification endpoint unit tests
+* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/JwksValidationServletTest.java[JwksValidationServletTest] -- JWKS validation endpoint unit tests
+* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/MetricsServletTest.java[MetricsServletTest] -- Metrics endpoint unit tests
+* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/ApiKeyAuthenticationFilterTest.java[ApiKeyAuthenticationFilterTest] -- API key authentication filter unit tests
+* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/service/JwtValidationServiceTest.java[JwtValidationServiceTest] -- JWT validation service unit tests
+* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/integration/BackendEndpointsIntegrationTest.java[BackendEndpointsIntegrationTest] -- REST Assured integration tests for all endpoints
 * link:../../e-2-e-playwright/tests/07-verify-token-verification-api.spec.js[E2E Token Verification API Test] (currently skipped)
 
 == API Endpoints

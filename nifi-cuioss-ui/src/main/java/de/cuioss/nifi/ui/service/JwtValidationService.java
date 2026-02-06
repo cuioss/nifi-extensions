@@ -36,6 +36,8 @@ import static de.cuioss.nifi.ui.util.TokenMasking.maskToken;
  * Service for JWT token validation using the cui-jwt-validation library.
  * This service retrieves processor configuration via NiFi's REST API and
  * creates the same TokenValidator instance that the processor uses.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
  */
 public class JwtValidationService {
 

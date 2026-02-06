@@ -40,6 +40,8 @@ import java.util.UUID;
  * Since the custom UI runs within an authenticated NiFi session (iframe),
  * this provides a minimal security layer by ensuring requests include
  * the processor context.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
  */
 @WebFilter("/nifi-api/processors/jwt/*")
 public class ApiKeyAuthenticationFilter implements Filter {
