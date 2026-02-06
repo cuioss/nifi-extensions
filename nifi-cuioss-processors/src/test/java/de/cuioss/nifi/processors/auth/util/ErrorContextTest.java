@@ -25,6 +25,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for the ErrorContext utility class.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/error-handling.adoc">Error Handling Specification</a>
  */
 class ErrorContextTest {
 

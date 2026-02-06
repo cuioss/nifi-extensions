@@ -10,6 +10,16 @@ link:../Specification.adoc[Back to Main Specification]
 == Error Handling Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
 
+== Implementation Status
+
+=== Implementation Classes
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/util/ErrorContext.java[ErrorContext] -- Structured error context with component, operation, and error code
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/util/ProcessingError.java[ProcessingError] -- Value object for flow file processing failures
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/AuthLogMessages.java[AuthLogMessages] -- Standardized log messages with AUTH prefix
+
+=== Verification
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/util/ErrorContextTest.java[ErrorContextTest]
+
 == Error Handling Implementation
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
 
@@ -25,20 +35,7 @@ The `ErrorContext` utility class provides enhanced error reporting with:
 * **Contextual Information**: Includes relevant debugging data
 * **Exception Chain Analysis**: Tracks root causes through exception chains
 
-[source,java]
-----
-// Example usage
-String contextMessage = ErrorContext.forComponent("MultiIssuerJWTTokenAuthenticator")
-    .operation("validateTokenSize")
-    .errorCode(ErrorContext.ErrorCodes.VALIDATION_ERROR)
-    .build()
-    .with("tokenSize", token.length())
-    .with("maxTokenSize", maxTokenSize)
-    .with("flowFileUuid", flowFile.getAttribute("uuid"))
-    .buildMessage("Token exceeds maximum size limit");
-
-LOGGER.error(contextMessage);
-----
+See link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/util/ErrorContext.java[ErrorContext] for the builder API and usage patterns.
 
 === Standardized Error Codes
 
@@ -113,65 +110,7 @@ For a comprehensive list of error messages, codes, and their explanations, refer
 
 === Integration with oauth-sheriff-core
 
-The processor leverages the oauth-sheriff-core library's error reporting capabilities, which are mapped to NiFi's error handling mechanisms:
-
-[source,java]
-----
-/**
- * Maps oauth-sheriff-core errors to processor error codes and messages.
- */
-private void handleValidationError(FlowFile flowFile, ProcessSession session, ValidationError error) {
-    String errorCode;
-    String category;
-    String message;
-    
-    switch (error.getErrorType()) {
-        case TOKEN_EXPIRED:
-            errorCode = "AUTH-003";
-            category = "CLAIMS_VALIDATION";
-            message = ERROR.TOKEN_EXPIRED.format();
-            break;
-            
-        case INVALID_SIGNATURE:
-            errorCode = "AUTH-002";
-            category = "SIGNATURE_VALIDATION";
-            message = ERROR.INVALID_TOKEN_SIGNATURE.format(error.getIssuer().orElse("unknown"));
-            break;
-            
-        case INVALID_ISSUER:
-            errorCode = "AUTH-005";
-            category = "CLAIMS_VALIDATION";
-            message = ERROR.UNKNOWN_ISSUER.format(error.getIssuer().orElse("unknown"));
-            break;
-            
-        case INVALID_AUDIENCE:
-            errorCode = "AUTH-006";
-            category = "CLAIMS_VALIDATION";
-            message = ERROR.INVALID_AUDIENCE.format();
-            break;
-            
-        // Additional error types handled here...
-            
-        default:
-            errorCode = "AUTH-001";
-            category = "TOKEN_FORMAT";
-            message = ERROR.INVALID_TOKEN_FORMAT.format(error.getMessage());
-    }
-    
-    // Add error attributes to flow file
-    Map<String, String> attributes = new HashMap<>();
-    attributes.put("jwt.error.code", errorCode);
-    attributes.put("jwt.error.reason", message);
-    attributes.put("jwt.error.category", category);
-    session.putAllAttributes(flowFile, attributes);
-    
-    // Log the error
-    LOGGER.error("{}-{}: {}", "AUTH", errorCode.substring(5), message);
-    
-    // Transfer to failure relationship
-    session.transfer(flowFile, AUTHENTICATION_FAILED);
-}
-----
+The processor leverages the oauth-sheriff-core library's error reporting capabilities, which are mapped to NiFi's error handling mechanisms. See link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] for the validation error handling and flow file attribute mapping, and link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/AuthLogMessages.java[AuthLogMessages] for the standardized error message definitions.
 
 === Security Event Monitoring
 

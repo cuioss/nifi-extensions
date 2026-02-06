@@ -22,6 +22,8 @@ import lombok.experimental.UtilityClass;
 /**
  * Provides logging messages for the JWT authentication processors.
  * All messages follow the format: AUTH-[identifier]: [message]
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/error-handling.adoc">Error Handling Specification</a>
  */
 @UtilityClass
 public final class AuthLogMessages {

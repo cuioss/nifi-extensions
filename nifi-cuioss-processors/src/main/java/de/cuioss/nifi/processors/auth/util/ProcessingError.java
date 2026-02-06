@@ -23,6 +23,8 @@ import lombok.Value;
 /**
  * Value object representing a processing error with all necessary details.
  * This class encapsulates error information for flow file processing failures.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/error-handling.adoc">Error Handling Specification</a>
  */
 @Value
 @Builder
