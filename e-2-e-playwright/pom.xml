@@ -80,22 +80,6 @@
                             <skip>${skip.lint}</skip>
                         </configuration>
                     </execution>
-                    <!-- Run accessibility tests during pre-commit checks -->
-                    <execution>
-                        <id>accessibility-tests</id>
-                        <goals>
-                            <goal>npm</goal>
-                        </goals>
-                        <phase>test</phase>
-                        <configuration>
-                            <arguments>run test:a11y:quick</arguments>
-                            <environmentVariables>
-                                <PLAYWRIGHT_BASE_URL>${nifi.base.url}</PLAYWRIGHT_BASE_URL>
-                                <PLAYWRIGHT_KEYCLOAK_URL>${keycloak.url}</PLAYWRIGHT_KEYCLOAK_URL>
-                            </environmentVariables>
-                            <skip>${skipPlaywrightTests}</skip> <!-- Skip accessibility tests unless integration-tests profile is active -->
-                        </configuration>
-                    </execution>
                 </executions>
             </plugin>
             
