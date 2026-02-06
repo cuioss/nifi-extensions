@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.net.InetAddress;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -196,14 +197,17 @@ public class JwksValidationServlet extends HttpServlet {
                 return JwksValidationResult.failure("Invalid URL: " + e.getFailureType().getDescription());
             }
 
-            // SSRF protection: reject private/loopback IPs
-            if (isPrivateOrLoopbackAddress(uri.getHost())) {
+            // SSRF protection: resolve DNS once and validate all resolved addresses.
+            // The resolved IP is used directly for the HTTP request to prevent
+            // DNS rebinding TOCTOU attacks.
+            InetAddress resolvedAddress = resolveAndValidateAddress(uri.getHost());
+            if (resolvedAddress == null) {
                 LOGGER.warn("SSRF attempt blocked for JWKS URL: %s", jwksUrl);
                 return JwksValidationResult.failure("URL must not point to a private or loopback address");
             }
 
-            // Fetch JWKS content using cui-http HttpHandler
-            String content = fetchJwksContent(jwksUrl);
+            // Fetch JWKS content using the resolved IP to prevent DNS rebinding
+            String content = fetchJwksContentByResolvedAddress(jwksUrl, uri, resolvedAddress);
             if (content == null) {
                 return JwksValidationResult.failure("Failed to fetch JWKS content");
             }
@@ -222,26 +226,32 @@ public class JwksValidationServlet extends HttpServlet {
     }
 
     /**
-     * Checks whether the given host resolves to a private, loopback, or link-local address.
-     * Used for SSRF protection.
+     * Resolves a hostname and validates that ALL resolved addresses are public.
+     * Returns the first resolved address if all pass validation, or null if any are private.
+     * This performs DNS resolution once to prevent DNS rebinding TOCTOU attacks.
      *
-     * @param host hostname to check
-     * @return true if the address is private/loopback/link-local
+     * @param host hostname to resolve and validate
+     * @return the first resolved InetAddress if all are public, null otherwise
      */
-    private boolean isPrivateOrLoopbackAddress(String host) {
+    private InetAddress resolveAndValidateAddress(String host) {
         if (host == null || host.isEmpty()) {
-            return true;
+            return null;
         }
         try {
-            InetAddress address = InetAddress.getByName(host);
-            return address.isLoopbackAddress()
-                    || address.isSiteLocalAddress()
-                    || address.isLinkLocalAddress()
-                    || address.isAnyLocalAddress();
+            InetAddress[] addresses = InetAddress.getAllByName(host);
+            for (InetAddress address : addresses) {
+                if (address.isLoopbackAddress()
+                        || address.isSiteLocalAddress()
+                        || address.isLinkLocalAddress()
+                        || address.isAnyLocalAddress()) {
+                    LOGGER.debug("Private/loopback address detected for host %s: %s", host, address);
+                    return null;
+                }
+            }
+            return addresses[0];
         } catch (UnknownHostException e) {
-            // If we can't resolve the host, reject it for safety
             LOGGER.debug("Cannot resolve host for SSRF check: %s", host);
-            return true;
+            return null;
         }
     }
 
@@ -260,17 +270,33 @@ public class JwksValidationServlet extends HttpServlet {
     }
 
     /**
-     * Fetches JWKS content from URL using cui-http HttpHandler for secure HTTP communication.
+     * Fetches JWKS content using a pre-resolved IP address to prevent DNS rebinding attacks.
+     * The HTTP request is made to the resolved IP with the original Host header,
+     * ensuring the same IP validated by {@link #resolveAndValidateAddress} is used.
      *
-     * @param jwksUrl URL to fetch from
+     * @param jwksUrl          Original URL (for logging and Host header)
+     * @param originalUri      Parsed URI of the original URL
+     * @param resolvedAddress  Pre-validated IP address to connect to
      * @return JWKS content, or null if fetch failed
      * @throws IOException if HTTP request fails
      * @throws InterruptedException if HTTP request is interrupted
      */
     @SuppressWarnings("java:S2095") // S2095: java.net.http.HttpClient doesn't implement AutoCloseable
-    private String fetchJwksContent(String jwksUrl) throws IOException, InterruptedException {
+    private String fetchJwksContentByResolvedAddress(String jwksUrl, URI originalUri,
+            InetAddress resolvedAddress) throws IOException, InterruptedException {
+        // Build URL using resolved IP to prevent DNS rebinding TOCTOU attacks
+        URI ipBasedUri;
+        try {
+            int port = originalUri.getPort();
+            ipBasedUri = new URI(originalUri.getScheme(), null, resolvedAddress.getHostAddress(),
+                    port, originalUri.getPath(), originalUri.getQuery(), null);
+        } catch (URISyntaxException e) {
+            LOGGER.warn("Failed to construct IP-based URI for JWKS URL: %s", jwksUrl);
+            return null;
+        }
+
         HttpHandler httpHandler = HttpHandler.builder()
-                .uri(jwksUrl)
+                .uri(ipBasedUri.toString())
                 .connectionTimeoutSeconds(5)
                 .readTimeoutSeconds(10)
                 .build();
@@ -278,6 +304,7 @@ public class JwksValidationServlet extends HttpServlet {
         HttpClient httpClient = httpHandler.createHttpClient();
         HttpRequest request = httpHandler.requestBuilder()
                 .header("Accept", CONTENT_TYPE_JSON)
+                .header("Host", originalUri.getHost())
                 .GET()
                 .build();
 

@@ -38,7 +38,7 @@ public class SecurityHeadersFilter implements Filter {
         httpResponse.setHeader("X-Frame-Options", "SAMEORIGIN");
         httpResponse.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
         httpResponse.setHeader("Content-Security-Policy",
-                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+                "default-src 'self'; script-src 'self'; style-src 'self'; " +
                         "img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'self'");
         chain.doFilter(request, response);
     }
