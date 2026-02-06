@@ -214,6 +214,28 @@
 }
 
 /* Metrics not available state - consistent with error-message styling */
+/* Export options panel - hidden by default, shown via JS class toggle */
+.export-options {
+    display: none;
+    margin-top: 15px;
+    padding: 10px;
+    background: var(--background-light, #f5f5f5);
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+}
+
+.export-options.visible {
+    display: block;
+}
+
+.export-options h5 {
+    margin: 0 0 10px 0;
+}
+
+.export-options .btn {
+    margin-right: 8px;
+}
+
 .metrics-not-available {
     display: flex;
     position: relative;

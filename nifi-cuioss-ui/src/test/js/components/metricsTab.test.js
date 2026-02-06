@@ -510,16 +510,16 @@ describe('MetricsTab', () => {
             const exportButton = document.querySelector('[data-testid="export-metrics-button"]');
             const exportOptions = document.getElementById('export-options');
 
-            // Initially hidden
-            expect(exportOptions.style.display).toBe('none');
+            // Initially hidden (no 'visible' class)
+            expect(exportOptions.classList.contains('visible')).toBe(false);
 
             // Click to show
             exportButton.click();
-            expect(exportOptions.style.display).toBe('block');
+            expect(exportOptions.classList.contains('visible')).toBe(true);
 
             // Click to hide
             exportButton.click();
-            expect(exportOptions.style.display).toBe('none');
+            expect(exportOptions.classList.contains('visible')).toBe(false);
         });
 
         it('should hide export options after selecting a format', () => {
@@ -528,14 +528,14 @@ describe('MetricsTab', () => {
 
             // Show options
             exportButton.click();
-            expect(exportOptions.style.display).toBe('block');
+            expect(exportOptions.classList.contains('visible')).toBe(true);
 
             // Select JSON export
             const jsonExportButton = document.querySelector('[data-testid="export-json"]');
             jsonExportButton.click();
 
             // Options should be hidden after export
-            expect(exportOptions.style.display).toBe('none');
+            expect(exportOptions.classList.contains('visible')).toBe(false);
         });
     });
 });
