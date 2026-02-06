@@ -1,7 +1,7 @@
 /**
  * Production UMD bundle entry point for Vite build
  *
- * This file serves as the entry point in vite.config.js and is built into bundle.umd.cjs,
+ * This file serves as the entry point in vite.config.js and is built into bundle.js,
  * which is then loaded by NiFi's custom UI infrastructure.
  *
  * The wrapper provides a clean API surface for NiFi's plugin system by:

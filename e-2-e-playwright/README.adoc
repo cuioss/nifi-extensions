@@ -5,238 +5,339 @@
 :sectnums:
 :source-highlighter: highlight.js
 
-This module contains end-to-end tests for NiFi Extensions using Playwright.
+End-to-end tests for NiFi Extensions using the Playwright testing framework.
+Tests validate JWT processor functionality, custom UI components, and WCAG accessibility in a live NiFi + Keycloak environment.
 
 == Maven Coordinates
 
 [source,xml]
 ----
 <dependency>
-    <groupId>org.apache.nifi</groupId>
+    <groupId>de.cuioss.nifi</groupId>
     <artifactId>e-2-e-playwright</artifactId>
 </dependency>
 ----
 
-== Overview
+Packaging type is `pom` — this module is not consumed as a library dependency.
 
-The e-2-e-playwright module provides automated end-to-end testing for NiFi Extensions using the Playwright testing framework. These tests validate the functionality of NiFi Extensions in a real NiFi environment.
+== Module Structure
 
-== Core Concepts
+[source]
+----
+e-2-e-playwright/
+├── config/                    # Test configuration
+│   ├── accessibility-config.js   # WCAG 2.1 Level AA axe-core rules
+│   └── console-error-config.js   # Console error pattern definitions
+├── fixtures/                  # Playwright test fixtures
+│   ├── auth-fixtures.js          # Authentication fixtures
+│   └── test-fixtures.js          # Consolidated fixtures (logging, a11y, processor)
+├── pages/                     # Page Object Model
+│   ├── LoginPage.js              # Login page interactions
+│   ├── CanvasPage.js             # NiFi canvas interactions
+│   └── index.js                  # Page fixtures and exports
+├── tests/                     # Test specifications
+│   ├── self-*.spec.js            # Self-tests (framework validation)
+│   ├── 0x-*.spec.js              # Functional tests (processor features)
+│   └── accessibility-*.spec.js   # WCAG compliance tests
+├── utils/                     # Utility services
+│   ├── auth-service.js           # API token-based authentication
+│   ├── processor.js              # Processor discovery and verification
+│   ├── processor-api-manager.js  # REST API-based processor management
+│   ├── processor-setup-helper.js # Test setup/teardown helpers
+│   ├── navigation-utils.js       # Page navigation and verification
+│   ├── constants.js              # Selectors, credentials, URLs
+│   ├── keycloak-token-service.js # Keycloak token acquisition
+│   ├── accessibility-helper.js   # axe-playwright integration
+│   ├── console-logger.js         # Browser console capture
+│   ├── critical-error-detector.js# Critical error pattern matching
+│   ├── shared-logger.js          # Structured logging utilities
+│   └── test-error-handler.js     # Test error handling
+├── scripts/                   # Utility scripts
+│   ├── run-tests-with-precheck.js# Self-test gating before functional tests
+│   ├── global-teardown.js        # Post-test cleanup
+│   ├── selector-inspector.js     # Selector discovery tool
+│   ├── verify-setup.js           # Environment verification
+│   └── setup-accessibility-tests.js
+├── docs/                      # Detailed documentation
+├── playwright.config.js       # Playwright configuration
+├── package.json               # npm configuration
+└── pom.xml                    # Maven integration
+----
 
-=== ✅ Supported Capabilities
+== Test Categories
 
-The testing framework is capable of:
+Tests are organized into three categories, executed in order:
 
-* **Authentication** - Login to NiFi using test credentials
-* **Navigation** - Moving between NiFi pages and verifying page states
-* **Processor Discovery** - Finding existing processors deployed on the canvas
-* **Processor Interaction** - Accessing and interacting with deployed processors
-* **Canvas Analysis** - Analyzing the NiFi canvas and its components
-* **Configuration Verification** - Verifying processor configuration and properties
+=== Self-Tests (`self-*.spec.js`)
 
-For detailed information about testing scope and capabilities, see xref:docs/Testing-Scope.adoc[Testing Scope and Capabilities].
+Framework validation tests that verify prerequisites before functional tests run.
+Covers login, navigation, browser logging, critical error detection, and processor interaction.
 
-=== ❌ Technical Limitations
+=== Functional Tests (`0x-*.spec.js`)
 
-Due to the complexity of NiFi's Angular Material UI and drag-and-drop interactions, the following operations are **NOT supported**:
+Tests for specific JWT processor features: custom UI tabs, JWKS validation, token verification, metrics, and help content.
 
-* **Adding Processors** - Complex drag-and-drop from toolbar to canvas
-* **Removing Processors** - Complex context menu and confirmation workflows
-* **Component Creation** - Creating new canvas components
-* **Component Deletion** - Deleting existing canvas components
+=== Accessibility Tests (`accessibility-*.spec.js`)
 
-=== 🎯 Testing Strategy
+WCAG 2.1 Level AA compliance testing using axe-playwright.
+See xref:docs/accessibility-testing-guide.adoc[Accessibility Testing Guide] for details.
 
-The framework is designed to test **deployed processors** rather than processor lifecycle management. Tests should:
+== Prerequisites
 
-1. **Verify processor deployment** - Confirm processors are correctly deployed to NiFi
-2. **Test processor functionality** - Interact with existing processors to verify behavior
-3. **Validate configuration** - Check processor properties and settings
-4. **Monitor processor state** - Verify processor status and health
+Tests require a running NiFi + Keycloak environment:
 
-*Note: Processors should be deployed through the standard NiFi deployment process (NAR files) before running tests.*
+1. *NiFi* accessible at `PLAYWRIGHT_BASE_URL` (default: `https://localhost:9095/nifi`)
+2. *Keycloak* accessible at `PLAYWRIGHT_KEYCLOAK_URL` (default: `http://localhost:9080`)
+3. *Test credentials* configured in `utils/constants.js` must be valid
 
-== Detailed Component Documentation
+=== Starting the Test Environment
 
-=== Module Structure
+[source,bash]
+----
+# Build NAR, start Keycloak + NiFi containers (first time or after stop)
+./integration-testing/src/main/docker/run-and-deploy.sh
 
-* `tests/` - Contains the Playwright test files
-* `utils/` - Contains helper functions and utilities
-* `scripts/` - Contains scripts for log analysis and other utilities
+# Quick redeploy after code changes (preserves running containers)
+./integration-testing/src/main/docker/redeploy-nifi.sh
 
-=== Core Components
+# Stop all containers
+./integration-testing/src/main/docker/stop-test-container.sh
+----
 
-* **processor-tool.js** - Utilities for processor discovery and verification
-* **login-tool.js** - Authentication and session management
-* **navigation-tool.js** - Page navigation and verification
-* **constants.js** - Selectors and configuration constants
-
-For detailed information about the NiFi UI structure, see xref:docs/nifi-ui-structure.adoc[NiFi UI Structure Guide].
-
-== Configuration
-
-The Playwright configuration is defined in `playwright.config.js`. It includes settings for:
-
-* Test timeouts
-* Browser configuration
-* Screenshot and video capture
-* Reporting
-
-=== Maven Standard Directory Structure
-
-This module follows the Maven standard directory structure for test artifacts. All temporary files are stored in the `target` directory:
-
-* `target/test-results` - Contains test results and traces
-* `target/playwright-report` - Contains HTML reports
-* `target/screenshots` - Contains screenshots taken during tests
-* `target/videos` - Contains videos recorded during tests
-
-This ensures that all temporary artifacts are properly managed and can be cleaned up with `mvn clean`.
-
-== Test Requirements
-
-The Playwright tests in this module are designed to run against a live NiFi instance. Before running the tests, ensure that:
-
-1. NiFi is running and accessible at the URL specified in `PLAYWRIGHT_BASE_URL` (default: https://localhost:9095/nifi)
-2. Keycloak is running and accessible at the URL specified in `PLAYWRIGHT_KEYCLOAK_URL` (default: http://localhost:9080)
-3. The test user credentials in `utils/constants.js` are valid for the running NiFi instance
-
-The tests will fail if NiFi is not running or not accessible.
+The `run-and-deploy.sh` script builds the NAR file, starts Keycloak (with health check), then starts NiFi.
+Once running, NiFi is available at `https://localhost:9095/nifi` and Keycloak at `http://localhost:9080`.
 
 == Running Tests
 
-=== Via Maven
+=== Via Maven (recommended for CI)
 
-To run the tests via Maven:
+Tests are *skipped by default*. The `integration-tests` profile enables them and manages Docker containers automatically:
 
 [source,bash]
 ----
+# Full integration test suite: starts containers → self-tests → functional → accessibility → stops containers
 ./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests
 ----
 
-=== Via npm
+Maven separates results into distinct directories:
 
-To run the tests directly via npm:
+* `target/results-selftests/` — self-test artifacts
+* `target/results-functional-tests/` — functional test artifacts
+* `target/results-accessibility-tests/` — accessibility test artifacts
+
+=== Via npm (for development)
+
+Requires a running NiFi + Keycloak environment.
 
 [source,bash]
 ----
-cd e-2-e-playwright
+# All tests with self-test pre-check gating
+npm test
+
+# Direct Playwright execution
 npm run playwright:test
-----
 
-For headed mode (with browser UI):
-
-[source,bash]
-----
+# Headed mode (visible browser)
 npm run playwright:test:headed
-----
 
-For interactive UI mode:
-
-[source,bash]
-----
+# Interactive UI mode
 npm run playwright:test:ui
 ----
 
-== Viewing Reports
-
-After running tests, you can view the HTML report:
+=== Targeted Test Execution
 
 [source,bash]
 ----
-npm run playwright:report
+# Self-tests only
+npm run test:self
+
+# JWT-related tests with pre-checks
+npm run test:jwt
+
+# Accessibility tests
+npm run test:a11y              # Standard
+npm run test:a11y:full         # With HTML report
+npm run test:a11y:quick        # Quick WCAG check only
+
+# Skip self-test pre-checks
+npm run test:no-precheck
 ----
 
-== Generating Tests
-
-Playwright includes a code generation tool to help create tests:
+== Code Quality
 
 [source,bash]
 ----
-npm run playwright:codegen
+# ESLint
+npm run lint                   # Check
+npm run lint:fix               # Auto-fix
+npm run lint:strict            # Strict mode (max 25 warnings)
+
+# Prettier
+npm run format:check           # Verify formatting
+npm run format                 # Auto-format
+
+# Log analysis
+npm run analyze:console        # Basic console log analysis
+npm run analyze:logs           # Enhanced log analysis
 ----
+
+== Configuration
+
+=== Playwright (`playwright.config.js`)
+
+* *Browser*: Chromium only (enterprise standard, best Playwright support)
+* *Reporters*: JSON (`target/test-results.json`), JUnit (`target/junit-results.xml`), list
+* *Artifacts*: Trace, screenshots, and video are all `on` by default
+* *Parallel*: `fullyParallel: true`, 1 worker locally, 2 in CI
+* *Timeouts*: 60s test, 15s expect, 10s action, 30s navigation
+
+=== Test Artifacts
+
+All artifacts are stored under `target/`:
+
+[cols="1,2"]
+|===
+|Path |Contents
+
+|`target/test-results/`
+|Test execution artifacts (traces, screenshots, videos)
+
+|`target/test-results.json`
+|JSON test results
+
+|`target/junit-results.xml`
+|JUnit XML results for CI
+
+|`target/results-selftests/`
+|Self-test artifacts (Maven integration-tests profile)
+
+|`target/results-functional-tests/`
+|Functional test artifacts (Maven integration-tests profile)
+
+|`target/results-accessibility-tests/`
+|Accessibility test artifacts (Maven integration-tests profile)
+|===
+
+All artifacts are cleaned by `mvn clean`.
 
 == Environment Variables
 
-* `PLAYWRIGHT_BASE_URL` - Base URL for NiFi (default: https://localhost:9095/nifi)
-* `PLAYWRIGHT_KEYCLOAK_URL` - URL for Keycloak (default: http://localhost:9080)
+[cols="2,3,2"]
+|===
+|Variable |Description |Default
 
-== Usage Examples
+|`PLAYWRIGHT_BASE_URL`
+|NiFi base URL
+|`https://localhost:9095/nifi`
 
-=== Basic Processor Verification
+|`PLAYWRIGHT_KEYCLOAK_URL`
+|Keycloak URL
+|`http://localhost:9080`
+
+|`E2E_TIMEOUT`
+|Test timeout in seconds
+|`60`
+
+|`E2E_EXPECT_TIMEOUT`
+|Assertion timeout in seconds
+|`15`
+
+|`PLAYWRIGHT_TRACE`
+|Trace recording (`off`, `on`, `retain-on-failure`)
+|`on`
+
+|`PLAYWRIGHT_SCREENSHOT`
+|Screenshot capture (`off`, `on`, `only-on-failure`)
+|`on`
+
+|`PLAYWRIGHT_VIDEO`
+|Video recording (`off`, `on`, `retain-on-failure`)
+|`on`
+
+|`PLAYWRIGHT_OUTPUT_DIR`
+|Base output directory
+|`target/`
+
+|`TEST_RESULTS_DIR`
+|Test results directory
+|`target/test-results`
+
+|`PLAYWRIGHT_REPORT_DIR`
+|Report output directory
+|`target/playwright-report`
+
+|`CI`
+|CI environment flag (affects workers, `forbidOnly`)
+|(unset)
+|===
+
+== Architecture
+
+=== Page Object Model
+
+Tests use Page Objects (`pages/LoginPage.js`, `pages/CanvasPage.js`) available as Playwright fixtures:
 
 [source,javascript]
 ----
-// Example: Verify a processor is deployed and accessible
-test("should verify processor deployment", async ({ page }) => {
-  // Login to NiFi
-  await loginToNiFi(page);
+import { test, expect, LoginPage, CanvasPage } from '../pages/index.js';
 
-  // Navigate to canvas
-  await navigateToCanvas(page);
-
-  // Verify processor is deployed and accessible
-  const verification = await verifyProcessorDeployment(page, "MyProcessor");
-
-  expect(verification.found).toBeTruthy();
-  expect(verification.visible).toBeTruthy();
-  expect(verification.details.name).toContain("MyProcessor");
+test('Authentication flow', async ({ loginPage, canvasPage }) => {
+  await loginPage.login();
+  await loginPage.verifyLoginSuccess();
+  await canvasPage.verifyCanvasLoaded();
 });
 ----
 
-=== Authentication and Navigation
+=== Test Fixtures
 
-[source,javascript]
-----
-// Example: Login and navigate to different pages
-test("should navigate through NiFi UI", async ({ page }) => {
-  // Login to NiFi
-  await loginToNiFi(page);
+Fixtures in `fixtures/test-fixtures.js` provide automatic:
 
-  // Verify we're on the main canvas
-  await verifyPageType(page, "MAIN_CANVAS");
+* Authentication setup
+* Browser console log capture and file storage
+* Critical error detection
+* Accessibility helper injection
+* Processor API manager
 
-  // Take screenshot for documentation
-  await page.screenshot({ path: "target/screenshots/main-canvas.png" });
-});
-----
+=== Processor Management
 
-== Best Practices
+Two approaches for working with processors:
 
-* **Pre-deploy processors** - Deploy processors through standard NiFi deployment before testing
-* **Focus on verification** - Test processor functionality rather than UI operations
-* **Use reliable selectors** - Prefer data-testid attributes when available
-* **Handle timeouts** - Set appropriate timeouts for UI operations
-* **Capture screenshots** - Use screenshots for debugging and documentation
-* **Clean up resources** - Ensure tests clean up after themselves
-* **Isolate tests** - Each test should be independent and not rely on other tests
+* *UI-based* (`utils/processor.js`) — Discover and verify processors on the canvas
+* *API-based* (`utils/processor-api-manager.js`) — Manage processors via NiFi REST API (add, remove, start, stop)
 
-== Technical Details
+See xref:docs/processor-api-manager-guide.adoc[Processor API Manager Guide] for details.
 
-=== Thread Safety
+== Scope and Limitations
 
-* Tests run in isolated browser contexts
-* Each test gets a fresh page instance
-* No shared state between tests
+=== Supported Operations
 
-=== Performance Considerations
+* Authentication (Keycloak OAuth, API token-based)
+* Canvas navigation and page verification
+* Processor discovery, status checking, and property inspection
+* Processor lifecycle via REST API (`ProcessorApiManager`)
+* WCAG 2.1 Level AA accessibility testing
+* Browser console log analysis
 
-* Authentication is the slowest operation (~3-5 seconds)
-* Page navigation takes ~1-2 seconds
-* Processor verification is relatively fast (~0.5 seconds)
-* Screenshots add minimal overhead
+=== UI Automation Limitations
 
-=== Implementation Notes
+Due to NiFi's Angular Material UI complexity:
 
-* Built on Playwright 1.32.0+
-* Uses Jest-compatible assertions
-* Supports parallel test execution
-* Compatible with CI/CD pipelines
+* Drag-and-drop operations are unreliable (use API-based management instead)
+* Right-click context menus are inconsistent
+* Complex multi-step UI workflows may not work reliably
 
 == Related Documentation
 
-* xref:docs/Testing-Scope.adoc[Testing Scope and Capabilities] - Detailed testing framework capabilities
-* xref:docs/nifi-ui-structure.adoc[NiFi UI Structure Guide] - NiFi UI structure and selectors
-* xref:docs/mcp-playwright-guide.adoc[MCP Playwright Guide] - MCP Playwright tool integration
-* https://playwright.dev/docs/intro[Playwright Documentation] - Official Playwright documentation
-* https://nifi.apache.org/docs.html[Apache NiFi Documentation] - Official NiFi documentation
+=== Project Documentation
+
+* xref:docs/accessibility-testing-guide.adoc[Accessibility Testing Guide] — WCAG compliance testing with axe-playwright
+* xref:docs/processor-api-manager-guide.adoc[Processor API Manager Guide] — REST API-based processor management
+* xref:docs/roundtrip-testing.adoc[Roundtrip Testing Guide] — Development workflow: modify, deploy, test, analyze
+* xref:docs/nifi-ui-structure.adoc[NiFi UI Structure Guide] — NiFi UI selectors and authentication flow
+* xref:docs/implementation-guide.adoc[Implementation Guide] — Test architecture and patterns
+
+=== External Resources
+
+* https://playwright.dev/docs/intro[Playwright Documentation]
+* https://nifi.apache.org/docs.html[Apache NiFi Documentation]
+* https://github.com/abhinaba-ghosh/axe-playwright[axe-playwright Documentation]

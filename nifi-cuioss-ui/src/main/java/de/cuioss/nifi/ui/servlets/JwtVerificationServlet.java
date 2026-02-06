@@ -30,6 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static de.cuioss.nifi.ui.util.TokenMasking.maskToken;
+
 /**
  * Servlet for JWT token verification using the cui-jwt-validation library.
  * This servlet provides a REST endpoint that verifies JWT tokens using the
@@ -396,13 +398,4 @@ public class JwtVerificationServlet extends HttpServlet {
         }
     }
 
-    /**
-     * Masks a JWT token for safe logging, showing only the first 8 characters.
-     */
-    private static String maskToken(String token) {
-        if (token == null || token.length() <= 12) {
-            return "***";
-        }
-        return token.substring(0, 8) + "...[" + token.length() + " chars]";
-    }
 }

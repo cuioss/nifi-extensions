@@ -22,7 +22,6 @@ jest_stdout.log
 
 # Build artifacts - generated bundle files (keep bundle-wrapper.js as it's source code)
 **/bundle.js
-**/bundle.umd.cjs
 **/bundle.vite.umd.js
 **/bundle.vite.umd.cjs
 **/bundle.webpack.js

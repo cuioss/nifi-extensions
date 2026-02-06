@@ -17,7 +17,10 @@
 package de.cuioss.nifi.ui.servlets;
 
 import de.cuioss.test.generator.junit.EnableGeneratorController;
-import jakarta.servlet.*;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.FilterConfig;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.WriteListener;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +30,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.UUID;
 
 import static org.easymock.EasyMock.*;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -96,7 +100,7 @@ class ApiKeyAuthenticationFilterTest {
         @DisplayName("Should allow request with valid processor ID header")
         void shouldAllowRequestWithValidProcessorId() throws Exception {
             // Arrange
-            String processorId = "test-processor-" + System.nanoTime();
+            String processorId = UUID.randomUUID().toString();
             String servletPath = "/nifi-api/processors/jwt/validate";
             String httpMethod = "POST";
 
@@ -212,6 +216,37 @@ class ApiKeyAuthenticationFilterTest {
         }
 
         @Test
+        @DisplayName("Should reject request when processor ID is not a valid UUID")
+        void shouldRejectRequestWhenProcessorIdIsNotUuid() throws Exception {
+            // Arrange
+            String servletPath = "/nifi-api/processors/jwt/validate";
+            String httpMethod = "POST";
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+            expect(mockRequest.getServletPath()).andReturn(servletPath);
+            expect(mockRequest.getMethod()).andReturn(httpMethod);
+            expect(mockRequest.getHeader(PROCESSOR_ID_HEADER)).andReturn("not-a-valid-uuid");
+
+            mockResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            expectLastCall().once();
+            mockResponse.setContentType("application/json");
+            expectLastCall().once();
+            mockResponse.setCharacterEncoding("UTF-8");
+            expectLastCall().once();
+            expect(mockResponse.getOutputStream()).andReturn(new TestServletOutputStream(outputStream));
+
+            replay(mockRequest, mockResponse, mockChain);
+
+            // Act
+            filter.doFilter(mockRequest, mockResponse, mockChain);
+
+            // Assert
+            verify(mockRequest, mockResponse, mockChain);
+            String response = outputStream.toString();
+            assertTrue(response.contains("Invalid processor ID format"), "Response should contain format error message");
+        }
+
+        @Test
         @DisplayName("Should reject empty processor ID on verify-token endpoint")
         void shouldRejectEmptyProcessorIdOnVerifyToken() throws Exception {
             // Arrange
@@ -251,7 +286,7 @@ class ApiKeyAuthenticationFilterTest {
         @DisplayName("Should log remote user when authenticated")
         void shouldLogRemoteUserWhenAuthenticated() throws Exception {
             // Arrange
-            String processorId = "test-processor-" + System.nanoTime();
+            String processorId = UUID.randomUUID().toString();
             String remoteUser = "test-user-" + System.nanoTime();
             String servletPath = "/nifi-api/processors/jwt/validate";
             String httpMethod = "POST";
@@ -276,7 +311,7 @@ class ApiKeyAuthenticationFilterTest {
         @DisplayName("Should handle null remote user gracefully")
         void shouldHandleNullRemoteUserGracefully() throws Exception {
             // Arrange
-            String processorId = "test-processor-" + System.nanoTime();
+            String processorId = UUID.randomUUID().toString();
             String servletPath = "/nifi-api/processors/jwt/validate";
             String httpMethod = "POST";
 
@@ -374,7 +409,7 @@ class ApiKeyAuthenticationFilterTest {
         @DisplayName("Should handle null servlet path gracefully")
         void shouldHandleNullServletPathGracefully() throws Exception {
             // Arrange
-            String processorId = "test-processor-" + System.nanoTime();
+            String processorId = UUID.randomUUID().toString();
             String httpMethod = "POST";
 
             expect(mockRequest.getServletPath()).andReturn(null);

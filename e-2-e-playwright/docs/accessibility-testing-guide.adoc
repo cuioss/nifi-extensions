@@ -55,9 +55,10 @@ npm run test:a11y:full
 import { accessibilityTest, expect } from '../fixtures/test-fixtures.js';
 
 accessibilityTest('Component accessibility', async ({ page, accessibilityHelper }) => {
-  // Navigate to component
-  await page.goto('/jwt-authenticator');
-  
+  // Navigate to NiFi canvas (processor UI is accessed via the canvas)
+  await page.goto('/nifi');
+  await page.waitForLoadState('networkidle');
+
   // Run WCAG check
   const results = await accessibilityHelper.runWCAGCheck();
   expect(results.passed).toBe(true);
@@ -260,14 +261,18 @@ export const COMPONENT_CONFIG = {
 ----
 export const KNOWN_ISSUES = {
   skipRules: [
-    // 'color-contrast' - temporary exception
+    // 'color-contrast' - uncomment if color issues need time to fix
   ],
-  
+
+  skipElements: [
+    // '[data-component="legacy-element"]' - example
+  ],
+
   expectedViolations: [
-    {
-      rule: 'landmark-one-main',
-      reason: 'NiFi UI is embedded within existing layout'
-    }
+    // {
+    //   rule: 'landmark-one-main',
+    //   reason: 'NiFi UI is embedded within existing NiFi layout'
+    // }
   ]
 };
 ----
@@ -399,23 +404,25 @@ Reports include:
 
 === Maven Integration
 
+Accessibility tests run via the `frontend-maven-plugin` in the `test` phase (skipped unless the `integration-tests` profile is active):
+
 [source,xml]
 ----
-<plugin>
-  <groupId>com.github.eirslett</groupId>
-  <artifactId>frontend-maven-plugin</artifactId>
-  <executions>
-    <execution>
-      <id>accessibility-tests</id>
-      <goals>
-        <goal>npm</goal>
-      </goals>
-      <configuration>
-        <arguments>run test:a11y</arguments>
-      </configuration>
-    </execution>
-  </executions>
-</plugin>
+<execution>
+  <id>accessibility-tests</id>
+  <goals>
+    <goal>npm</goal>
+  </goals>
+  <phase>test</phase>
+  <configuration>
+    <arguments>run test:a11y:quick</arguments>
+    <environmentVariables>
+      <PLAYWRIGHT_BASE_URL>${nifi.base.url}</PLAYWRIGHT_BASE_URL>
+      <PLAYWRIGHT_KEYCLOAK_URL>${keycloak.url}</PLAYWRIGHT_KEYCLOAK_URL>
+    </environmentVariables>
+    <skip>${skipPlaywrightTests}</skip>
+  </configuration>
+</execution>
 ----
 
 == Best Practices

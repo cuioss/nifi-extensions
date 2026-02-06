@@ -4,186 +4,311 @@
 :toc-title: Table of Contents
 :sectnums:
 
-== Overview
-
-This document describes the Docker-based test environment for the MultiIssuerJWTTokenAuthenticator NiFi processor. The environment provides containerized NiFi and Keycloak instances for testing and validating the processor with real JWT tokens.
+Docker-based test environment for the MultiIssuerJWTTokenAuthenticator NiFi processor.
+Provides containerized NiFi (HTTPS) and Keycloak instances for testing with real JWT tokens.
 
 == Prerequisites
 
-* Docker
-* Docker Compose
-* curl (for helper scripts)
-* Maven (or use the included Maven wrapper)
+* Docker with Compose plugin (`docker compose`)
+* curl (for health check scripts)
+* Maven (or use the included `./mvnw` wrapper)
 
 == Quick Start
 
-1. Generate certificates (first time only, they are actually checked-in):
-+
 [source,bash]
 ----
-cd integration-testing/src/main/docker
-./maintenance/generate-certificates.sh
-cd ../../..
+# 1. Build NAR and start containers (Keycloak + NiFi)
+./integration-testing/src/main/docker/run-and-deploy.sh
+
+# 2. Access services
+#    NiFi UI:       https://localhost:9095/nifi/  (testUser / drowssap)
+#    Keycloak HTTP:  http://localhost:9080/admin/  (admin / admin)
+#    Keycloak HTTPS: https://localhost:9085/admin/ (admin / admin)
+
+# 3. Stop containers
+./integration-testing/src/main/docker/stop-test-container.sh
 ----
 
-2. Start the environment:
-+
-[source,bash]
+== Service Configuration
+
+=== NiFi
+
+[cols="1,2"]
+|===
+|Setting |Value
+
+|URL
+|`https://localhost:9095/nifi/`
+
+|API
+|`https://localhost:9095/nifi-api/`
+
+|Protocol
+|HTTPS (self-signed certificate, port 8443 internal -> 9095 host)
+
+|Authentication
+|SingleUserLoginIdentityProvider
+
+|Credentials
+|`testUser` / `drowssap`
+
+|Base image
+|`apache/nifi:2.4.0`
+
+|NAR mount
+|`target/nifi-deploy/` -> `/opt/nifi/nifi-current/nar_extensions`
+|===
+
+Custom configuration files are copied from `src/main/docker/nifi/conf/` into the container at build time.
+
+=== Keycloak
+
+[cols="1,2"]
+|===
+|Setting |Value
+
+|HTTP Admin
+|`http://localhost:9080` (port 8080 internal)
+
+|HTTPS
+|`https://localhost:9085` (port 8443 internal)
+
+|Health endpoint
+|`http://localhost:9086/health/ready` (port 9000 internal)
+
+|Admin credentials
+|`admin` / `admin`
+
+|Image
+|`quay.io/keycloak/keycloak:26.2.5`
+
+|Database
+|In-memory (`KC_DB=dev-mem`)
+|===
+
+==== Pre-configured Realm: `oauth_integration_tests`
+
+[cols="1,2"]
+|===
+|Setting |Value
+
+|Test user
+|`testUser` / `drowssap`
+
+|Test client ID
+|`test_client`
+
+|Client secret
+|`yTKslWLtf4giJcWCaoVJ20H8sy6STexM`
+
+|JWKS endpoint (from host)
+|`http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/certs`
+
+|JWKS endpoint (container-to-container)
+|`http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs`
+|===
+
+The realm is imported automatically from `src/main/docker/keycloak/oauth_integration_tests-realm.json`.
+
+== Scripts
+
+All scripts are in `src/main/docker/`. They can be run from any directory.
+
+=== Lifecycle Scripts
+
+[cols="1,3"]
+|===
+|Script |Description
+
+|`run-and-deploy.sh`
+|Full startup: builds NAR (`mvnw package`), copies to deploy dir, starts Keycloak (with health wait), starts NiFi (with health wait)
+
+|`start-nifi.sh`
+|Starts Keycloak first, then NiFi. Waits for both to be healthy (2-minute timeout). Does NOT build/deploy the NAR.
+
+|`start-keycloak.sh`
+|Starts Keycloak only and waits for health check via `http://localhost:9086/health/ready` (60-second timeout)
+
+|`stop-test-container.sh`
+|Runs `docker compose down` to stop and remove all containers
+
+|`redeploy-nifi.sh`
+|Rebuilds NAR, copies to deploy dir, restarts NiFi container (`docker compose restart nifi`)
+
+|`copy-deployment.sh`
+|Builds NAR with `./mvnw package -DskipTests -pl '!e-2-e-playwright'` and copies to `target/nifi-deploy/`
+|===
+
+=== Diagnostic Scripts
+
+[cols="1,3"]
+|===
+|Script |Description
+
+|`check-status.sh`
+|Fast health check of Docker containers and HTTP endpoints. Supports `--timeout`, `--quiet`, `--verbose` flags.
+
+|`debug-containers.sh`
+|Prints Docker system info, container status, logs, and resource usage
+
+|`debug-nar-deployment.sh`
+|Checks NAR file existence and deployment status in both host and container
+|===
+
+=== Maintenance Scripts (in `maintenance/`)
+
+[cols="1,3"]
+|===
+|Script |Description
+
+|`generate-certificates.sh`
+|Generates self-signed certificates for NiFi (PKCS12) and Keycloak (PEM)
+
+|`verify-certificates.sh`
+|Validates certificate files and their usage
+
+|`verify-login.sh`
+|Tests NiFi authentication flow
+
+|`setup-credentials.sh`
+|Sets NiFi SingleUser credentials via `nifi.sh set-single-user-credentials`
+|===
+
+== Directory Structure
+
+[source]
 ----
-./integration-testing/src/main/docker/start-nifi.sh
-
-docker compose -f integration-testing/src/main/docker/docker-compose.yml logs nifi
+src/main/docker/
+├── Dockerfile                     # NiFi container (based on apache/nifi:2.4.0)
+├── docker-compose.yml             # NiFi + Keycloak orchestration
+├── certificates/                  # Generated TLS certificates
+│   ├── keystore.p12              #   NiFi keystore
+│   ├── truststore.p12            #   NiFi truststore
+│   ├── localhost.crt             #   Keycloak certificate
+│   └── localhost.key             #   Keycloak private key
+├── nifi/conf/                     # NiFi configuration (copied into container)
+│   ├── nifi.properties           #   Main config (HTTPS on 8443)
+│   ├── login-identity-providers.xml  # SingleUser: testUser/drowssap
+│   ├── authorizers.xml           #   SingleUser authorizer
+│   ├── keystore.p12 / truststore.p12 # TLS keystores
+│   ├── flow.xml.gz               #   Pre-configured flow
+│   └── bootstrap.conf / logback.xml / state-management.xml
+├── keycloak/
+│   └── oauth_integration_tests-realm.json  # Realm import
+├── maintenance/                   # Certificate and credential utilities
+├── run-and-deploy.sh             # Full build + start
+├── start-nifi.sh                 # Start Keycloak + NiFi
+├── start-keycloak.sh             # Start Keycloak only
+├── stop-test-container.sh        # Stop all containers
+├── redeploy-nifi.sh              # Rebuild + restart NiFi
+├── copy-deployment.sh            # Build + copy NAR
+├── check-status.sh               # Health check
+├── debug-containers.sh           # Container diagnostics
+└── debug-nar-deployment.sh       # NAR deployment diagnostics
 ----
-
-3. Access services:
-* NiFi UI: https://localhost:9095/nifi/ (admin/adminadminadmin)
-* Keycloak Admin HTTP: http://localhost:9080/admin/ (admin/admin)
-* Keycloak Admin HTTPS: https://localhost:9085/admin/ (admin/admin)
-
-4. Stop the environment:
-+
-[source,bash]
-----
-docker compose down
-----
-
-== Environment Components
-
-=== Docker Configuration
-
-Located in `src/main/docker`:
-
-* `Dockerfile`: NiFi container configuration
-* `docker-compose.yml`: Container orchestration with HTTP NiFi (HTTPS variant available as comments)
-* Helper scripts:
-** `start-nifi.sh`: Starts containers and waits for services to be ready
-** `stop-test-container.sh`: Stops and removes containers
-** `copy-deployment.sh`: Builds NAR and copies to deployment location
-** `redeploy-nifi.sh`: Builds NAR, copies to deployment location, and restarts NiFi
-* Maintenance scripts (in `maintenance/`):
-** `generate-certificates.sh`: Creates certificates for NiFi and Keycloak
-** `verify-certificates.sh`: Validates certificate usage
-** `verify-login.sh`: Tests NiFi authentication
-** `setup-credentials.sh`: Sets up NiFi credentials
-
-=== NiFi Configuration
-
-* HTTP on port 9094 (optimized for testing and development)
-* Authentication with SingleUserLoginIdentityProvider
-* Credentials: admin/adminadminadmin
-* MultiIssuerJWTTokenAuthenticator processor mounted via volume
-* Configuration files in `src/main/docker/nifi/conf/`
-
-=== Keycloak Configuration
-
-* HTTP on port 9080, HTTPS on port 9085
-* Admin credentials: admin/admin
-* Pre-configured realm (`oauth_integration_tests`) with:
-** Test user: testUser/drowssap
-** Test client: test_client/yTKslWLtf4giJcWCaoVJ20H8sy6STexM
-
-=== Certificate Configuration
-
-* Self-signed certificate for localhost (1 year validity)
-* Generated by `maintenance/generate-certificates.sh`
-* NiFi: PKCS12 format (keystore.p12, truststore.p12)
-* Keycloak: PEM format (localhost.crt, localhost.key)
-
-=== Storage Configuration
-
-* Ephemeral storage for most data
-* Only NiFi configuration and NAR deployment preserved between restarts
-* Keycloak uses in-memory database
-
-== Using HTTPS for NiFi
-
-If you need HTTPS for production-like testing or security requirements:
-
-1. Edit `docker-compose.yml`:
-   * Comment out the `nifi` service (lines with HTTP configuration)
-   * Uncomment the `nifi-https` service (remove `#` from those lines)
-
-2. Update the service name in scripts if needed:
-+
-[source,bash]
-----
-# Change docker compose commands from 'nifi' to 'nifi-https'
-docker compose logs nifi-https
-docker compose restart nifi-https
-----
-
-3. Access NiFi via HTTPS:
-   * NiFi UI: https://localhost:9095/nifi/ (admin/adminadminadmin)
-   * Accept the self-signed certificate in your browser
-
-4. Update JWKS URLs in processor configuration:
-   * Use HTTPS Keycloak endpoint: `https://keycloak:9085/realms/oauth_integration_tests/protocol/openid-connect/certs`
-
-=== HTTPS Configuration Details
-
-* HTTPS on port 9095
-* Self-signed certificates (suitable for testing)
-* All SSL/TLS security features enabled
-* Certificate files mounted from `./certificates/` directory
-
-== Testing the Processor
-
-1. Drag the processor onto the NiFi canvas
-2. Configure the JWKS URL:
-   * For HTTP NiFi: `http://keycloak:9080/realms/oauth_integration_tests/protocol/openid-connect/certs`
-   * For HTTPS NiFi: `https://keycloak:9085/realms/oauth_integration_tests/protocol/openid-connect/certs`
-3. Obtain a token from Keycloak:
-+
-[source,bash]
-----
-curl -X POST \
-  http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/token \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'grant_type=password&client_id=test_client&client_secret=yTKslWLtf4giJcWCaoVJ20H8sy6STexM&username=testUser&password=drowssap'
-----
-4. Use the token in your NiFi flow
-5. Start the flow and observe results
 
 == Development Workflow
 
-1. Make changes to processor code
-2. Build the NAR file:
+=== Initial Setup
+
+[source,bash]
+----
+# Build NAR and start everything
+./integration-testing/src/main/docker/run-and-deploy.sh
+----
+
+=== Code Change Cycle
+
+[source,bash]
+----
+# After modifying processor code or UI:
+./integration-testing/src/main/docker/redeploy-nifi.sh
+----
+
+This rebuilds the NAR, copies it to the deploy directory, and restarts the NiFi container.
+
+=== Testing the Processor
+
+1. Open NiFi at https://localhost:9095/nifi/ and log in with `testUser` / `drowssap`
+2. Drag a processor onto the canvas, search for `MultiIssuerJWTTokenAuthenticator`
+3. Configure the JWKS URL: `http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs`
+4. Obtain a test token from Keycloak:
 +
 [source,bash]
 ----
-./mvnw clean package -DskipTests
+curl -s -X POST http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=password&client_id=test_client&client_secret=yTKslWLtf4giJcWCaoVJ20H8sy6STexM&username=testUser&password=drowssap'
 ----
-3. Changes are automatically available in the running container
 
-== Troubleshooting
+== Certificate Configuration
 
-=== Container Issues
+Self-signed certificates for localhost with 1-year validity:
 
-* Check container status: `docker ps | grep nifi` or `docker ps | grep keycloak`
-* View logs: `docker compose logs nifi`
-* Ensure ports 9080, 9085, and 9094 are available
+* *NiFi*: PKCS12 format (`keystore.p12`, `truststore.p12`), password: `password`
+* *Keycloak*: PEM format (`localhost.crt`, `localhost.key`)
 
-=== Certificate Issues
-
-* Verify certificates: `./integration-testing/src/main/docker/maintenance/verify-certificates.sh`
-* Ensure OpenSSL is installed: `which openssl && openssl version`
-* Regenerate certificates if needed
-
-=== Viewing Logs
+Certificates are checked into the repository. Regenerate if needed:
 
 [source,bash]
 ----
-# View application log
-docker compose exec nifi cat /opt/nifi/nifi-current/logs/nifi-app.log
-
-# Follow logs
-docker compose exec nifi tail -f /opt/nifi/nifi-current/logs/nifi-app.log
+./integration-testing/src/main/docker/maintenance/generate-certificates.sh
 ----
+
+== Troubleshooting
+
+=== Check Service Status
+
+[source,bash]
+----
+# Quick health check
+./integration-testing/src/main/docker/check-status.sh
+
+# Container status
+docker compose -f integration-testing/src/main/docker/docker-compose.yml ps
+----
+
+=== View Logs
+
+[source,bash]
+----
+# NiFi logs
+docker compose -f integration-testing/src/main/docker/docker-compose.yml logs nifi
+
+# Follow NiFi application log
+docker compose -f integration-testing/src/main/docker/docker-compose.yml exec nifi \
+  tail -f /opt/nifi/nifi-current/logs/nifi-app.log
+
+# Keycloak logs
+docker compose -f integration-testing/src/main/docker/docker-compose.yml logs keycloak
+----
+
+=== Common Issues
+
+[cols="1,2"]
+|===
+|Issue |Resolution
+
+|Port conflict on 9080, 9085, 9086, or 9095
+|Stop other services using those ports, or check with `lsof -i :9095`
+
+|NiFi fails to start
+|Check logs; ensure certificates exist in `nifi/conf/`; run `debug-containers.sh`
+
+|Keycloak health check fails
+|Verify port 9086 is reachable: `curl http://localhost:9086/health/ready`
+
+|NAR not loaded
+|Run `debug-nar-deployment.sh`; verify `target/nifi-deploy/` contains the NAR file
+
+|Certificate errors in browser
+|Expected with self-signed certs — accept the warning. Regenerate with `maintenance/generate-certificates.sh` if expired.
+|===
 
 == See Also
 
-* link:../doc/Specification.adoc[Main Specification]
+* link:../doc/Specification.adoc[Specification]
 * link:../doc/Requirements.adoc[Requirements]
 * link:../doc/specification/testing.adoc[Testing Specification]
-* link:../doc/plan.adoc[Implementation Plan]
 * link:../doc/library/cui-test-keycloak-integration/README.adoc[Keycloak Integration]
+* link:../e-2-e-playwright/README.adoc[E2E Playwright Tests]
