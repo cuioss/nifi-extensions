@@ -30,6 +30,8 @@ import de.cuioss.tools.logging.CuiLogger;
 import java.io.IOException;
 import java.util.*;
 
+import static de.cuioss.nifi.ui.util.TokenMasking.maskToken;
+
 /**
  * Service for JWT token validation using the cui-jwt-validation library.
  * This service retrieves processor configuration via NiFi's REST API and
@@ -229,14 +231,5 @@ public class JwtValidationService {
         }
     }
 
-    /**
-     * Masks a JWT token for safe logging, showing only the first 8 characters.
-     */
-    private static String maskToken(String token) {
-        if (token == null || token.length() <= 12) {
-            return "***";
-        }
-        return token.substring(0, 8) + "...[" + token.length() + " chars]";
-    }
 }
 

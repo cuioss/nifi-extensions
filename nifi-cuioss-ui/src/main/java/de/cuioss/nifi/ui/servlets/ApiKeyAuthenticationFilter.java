@@ -27,6 +27,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Authentication filter for JWT API endpoints.
@@ -69,10 +70,17 @@ public class ApiKeyAuthenticationFilter implements Filter {
         // Extract processor ID from headers
         String processorId = httpRequest.getHeader(PROCESSOR_ID_HEADER);
 
-        // Validate processor ID header is present
+        // Validate processor ID header is present and is a valid UUID
         if (processorId == null || processorId.trim().isEmpty()) {
             LOGGER.warn("Missing processor ID header in request to %s", requestPath);
             sendUnauthorizedResponse(httpResponse, "Missing or empty processor ID header");
+            return;
+        }
+        try {
+            UUID.fromString(processorId);
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Invalid processor ID format in request to %s", requestPath);
+            sendUnauthorizedResponse(httpResponse, "Invalid processor ID format");
             return;
         }
 
