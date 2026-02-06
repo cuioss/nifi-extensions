@@ -259,9 +259,7 @@ export class CriticalErrorDetector {
       try {
         const locator = page.locator(selector).first();
         await locator.waitFor({ timeout: 2000 });
-        if (await locator.isVisible()) {
-          return true;
-        }
+        return true;
       } catch {
         // Continue to next selector
       }
