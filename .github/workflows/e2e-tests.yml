@@ -57,17 +57,21 @@ jobs:
           restore-keys: ${{ runner.os }}-playwright-
 
       - name: Build NAR files and prepare deployment
-        run: ./mvnw -B --no-transfer-progress clean package -DskipTests
+        run: |
+          ./mvnw -B --no-transfer-progress clean package -DskipTests
+          mkdir -p target/nifi-deploy
+          cp nifi-cuioss-nar/target/nifi-cuioss-nar-*.nar target/nifi-deploy/
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: cd e-2-e-playwright && npx playwright install chromium
 
       - name: Run E2E Integration Tests with Maven-managed Containers
-        # This runs the full E2E test suite with Maven managing container lifecycle:
-        # 1. pre-integration-test: Start containers via start-integration-containers.sh
-        # 2. integration-test: Run playwright tests - linting skipped for speed
-        # 3. post-integration-test: Stop containers via stop-integration-containers.sh
+        # Maven manages the container lifecycle via exec-maven-plugin:
+        # 1. pre-integration-test: Start containers via start-nifi.sh
+        # 2. integration-test: Run playwright tests (self-tests, functional, accessibility)
+        # 3. post-integration-test: Stop containers via stop-test-container.sh
+        # Note: -pl limits clean to e-2-e-playwright only, preserving target/nifi-deploy
         run: ./mvnw -B --no-transfer-progress clean verify -pl e-2-e-playwright -Pintegration-tests
         env:
           PLAYWRIGHT_BASE_URL: https://localhost:9095/nifi
