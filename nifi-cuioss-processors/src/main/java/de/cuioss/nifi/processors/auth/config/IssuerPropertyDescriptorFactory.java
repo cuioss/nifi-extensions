@@ -29,6 +29,8 @@ import static de.cuioss.nifi.processors.auth.JWTTranslationKeys.Property;
  * Factory class for creating issuer-specific property descriptors.
  * This class encapsulates the logic for creating dynamic property descriptors
  * based on issuer configuration keys.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration-ui.adoc">UI Configuration Specification</a>
  */
 @RequiredArgsConstructor
 public class IssuerPropertyDescriptorFactory {

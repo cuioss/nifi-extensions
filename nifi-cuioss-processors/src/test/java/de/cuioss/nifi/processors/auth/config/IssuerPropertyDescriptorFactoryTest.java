@@ -29,6 +29,8 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Unit tests for {@link IssuerPropertyDescriptorFactory}.
  * Uses a simple I18nResolver stub instead of Mockito.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration-ui.adoc">UI Configuration Specification</a>
  */
 @DisplayName("IssuerPropertyDescriptorFactory Tests")
 class IssuerPropertyDescriptorFactoryTest {

@@ -14,6 +14,17 @@ This document covers the user interface elements and interaction patterns for co
 [.text-center]
 image::../plantuml/configuration-workflow.png[Configuration Workflow Diagram, align="center"]
 
+== Implementation Status
+
+=== Implementation Classes
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/config/IssuerPropertyDescriptorFactory.java[IssuerPropertyDescriptorFactory] -- Dynamic property descriptor creation for issuers
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTProcessorConstants.java[JWTProcessorConstants] -- Processor property definitions and relationships
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTPropertyKeys.java[JWTPropertyKeys] -- Property key constants for issuer configuration
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTTranslationKeys.java[JWTTranslationKeys] -- Translation key constants for UI labels
+
+=== Verification
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/config/IssuerPropertyDescriptorFactoryTest.java[IssuerPropertyDescriptorFactoryTest]
+
 == UI Property Organization
 
 The processor UI organizes properties into logical groups for better usability:
@@ -57,23 +68,7 @@ Validation of the selected Type is mandatory before an issuer can be saved. All 
 
 === Property Dependencies
 
-The processor implements property dependencies to enhance usability:
-
-[source,java]
-----
-@OnPropertyModified("jwt.validation.token.location")
-public void onTokenLocationModified(final PropertyConfiguration oldValue, 
-                                    final PropertyConfiguration newValue) {
-    String newLocation = newValue.getValue();
-    if ("CUSTOM_HEADER".equals(newLocation)) {
-        // Make Custom Header Name property visible and required
-        getPropertyConfiguration("jwt.validation.custom.header.name").setVisible(true).setRequired(true);
-    } else {
-        // Hide Custom Header Name property
-        getPropertyConfiguration("jwt.validation.custom.header.name").setVisible(false).setRequired(false);
-    }
-}
-----
+The processor implements property dependencies to enhance usability. See link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] for the property modification handling and link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTProcessorConstants.java[JWTProcessorConstants] for property definitions.
 
 == Custom UI Components
 
@@ -193,33 +188,7 @@ Provides inline documentation and usage examples specific to the processor.
 == Internationalized UI Elements
 _See Requirement xref:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
-All UI elements use internationalization through NiFi's I18nResolver API:
-
-[source,java]
-----
-/**
- * Initialize internationalization support.
- */
-@Override
-protected void init(final ProcessorInitializationContext context) {
-    // Create i18nResolver based on the logger
-    i18nResolver = NiFiI18nResolver.createDefault(context.getLogger());
-    
-    // Other initialization code...
-}
-
-/**
- * Define internationalized property descriptors.
- */
-public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Builder()
-    .name("Token Header")
-    .displayName(i18nResolver.getTranslatedString("property.token.header.name"))
-    .description(i18nResolver.getTranslatedString("property.token.header.description"))
-    .required(true)
-    .defaultValue("Authorization")
-    .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-    .build();
-----
+All UI elements use internationalization through NiFi's I18nResolver API. See link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/config/IssuerPropertyDescriptorFactory.java[IssuerPropertyDescriptorFactory] for how translated property descriptors are created using link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTTranslationKeys.java[JWTTranslationKeys].
 
 For more details on internationalization, see xref:internationalization.adoc[Internationalization].
 
