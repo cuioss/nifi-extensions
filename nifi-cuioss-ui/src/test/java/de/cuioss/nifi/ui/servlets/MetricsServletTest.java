@@ -41,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests for {@link MetricsServlet}.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/observability.adoc">Observability Specification</a>
  */
 @EnableGeneratorController
 @ExtendWith(EasyMockExtension.class)

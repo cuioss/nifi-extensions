@@ -11,6 +11,16 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-18[NIFI-AUTH-18: Security E
 
 The MultiIssuerJWTTokenAuthenticator implements comprehensive observability features for monitoring token validation, security events, and processor performance. This document outlines the metrics collection, monitoring integration, and security event tracking provided by the processor.
 
+== Implementation Status
+
+=== Implementation Classes
+* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/MetricsServlet.java[MetricsServlet] -- REST endpoint for security metrics retrieval
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] -- Token validation with security event tracking
+
+=== Verification
+* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/MetricsServletTest.java[MetricsServletTest]
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorTest.java[MultiIssuerJWTTokenAuthenticatorTest]
+
 == Security Event Metrics
 
 === Available Metrics
@@ -52,27 +62,7 @@ The processor leverages the SecurityEventCounter from the oauth-sheriff-core lib
 
 === Metrics Implementation
 
-The processor collects metrics using the SecurityEventCounter provided by the oauth-sheriff-core library:
-
-[source,java]
-----
-/**
- * Gets the security event counter from the TokenValidator to report metrics.
- */
-private void logSecurityMetrics() {
-    if (tokenValidator != null) {
-        SecurityEventCounter counter = tokenValidator.getSecurityEventCounter();
-        
-        LOGGER.info("Token validation metrics - " +
-            "Processed: %d, Valid: %d, Invalid: %d, Expired: %d, Malformed: %d",
-            counter.getTotalProcessedTokens(),
-            counter.getValidTokens(),
-            counter.getInvalidTokens(),
-            counter.getExpiredTokens(),
-            counter.getMalformedTokens());
-    }
-}
-----
+The processor collects metrics using the SecurityEventCounter provided by the oauth-sheriff-core library. See link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] for the metrics collection implementation.
 
 For more information on token validation implementation, see link:token-validation.adoc#_security_event_monitoring[Security Event Monitoring].
 
@@ -141,35 +131,7 @@ The processor registers metrics with NiFi's metrics system for integration with 
 
 === NiFi Metrics Registry
 
-The processor registers security event metrics with NiFi's metrics registry:
-
-[source,java]
-----
-/**
- * Registers metrics with NiFi metrics system during processor initialization.
- */
-@OnScheduled
-public void onScheduled(final ProcessContext context) {
-    // Register metrics with NiFi metrics system
-    MetricsRegistry metricsRegistry = context.getMetricsRegistry();
-    
-    // Register all security event counters
-    CounterMetric totalProcessedMetric = metricsRegistry.counter(
-            METRIC_NAMESPACE, 
-            METRIC_GROUP, 
-            "total-processed-tokens", 
-            "Total number of tokens processed");
-            
-    // ... register other metrics similarly
-    
-    // Link SecurityEventCounter to NiFi metrics system
-    securityEventRegistry = new NifiSecurityEventRegistry(
-            securityEventCounter,
-            metricsRegistry,
-            METRIC_NAMESPACE,
-            METRIC_GROUP);
-}
-----
+The processor registers security event metrics with NiFi's metrics registry during initialization. See the `onScheduled` method in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] for the registration implementation.
 
 === Metrics Naming Convention
 
@@ -269,106 +231,7 @@ The processor integrates with the oauth-sheriff-core SecurityEventCounter as fol
 3. Expose counter through NiFi metrics registry
 4. Periodically log metrics for operational visibility
 
-[source,java]
-----
-public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
-
-    private TokenValidator tokenValidator;
-    private SecurityEventCounter securityEventCounter;
-    private NifiSecurityEventRegistry securityEventRegistry;
-    
-    @Override
-    protected void init(final ProcessorInitializationContext context) {
-        // ... existing initialization code ...
-        
-        // Initialize token validator with security event tracking
-        tokenValidator = new TokenValidator(); 
-        securityEventCounter = tokenValidator.getSecurityEventCounter();
-    }
-    
-    @OnScheduled
-    public void onScheduled(final ProcessContext context) {
-        // ... existing scheduled code ...
-        
-        // Register with metrics registry
-        initializeMetrics(context);
-    }
-    
-    @OnUnscheduled
-    public void onUnscheduled(final ProcessContext context) {
-        // ... existing unscheduled code ...
-        
-        // Deregister metrics if needed
-        if (securityEventRegistry != null) {
-            securityEventRegistry.deregister();
-        }
-    }
-    
-    @Override
-    public void onTrigger(final ProcessContext context, final ProcessSession session) {
-        // ... existing processing code ...
-        
-        // Update metrics after token processing
-        updateMetrics();
-    }
-}
-----
-
-=== NifiSecurityEventRegistry Class
-
-A dedicated class bridges the oauth-sheriff-core SecurityEventCounter and NiFi's metrics system:
-
-[source,java]
-----
-/**
- * Bridges between SecurityEventCounter and NiFi's metrics registry
- */
-public class NifiSecurityEventRegistry {
-    
-    private final SecurityEventCounter securityEventCounter;
-    private final MetricsRegistry metricsRegistry;
-    private final String namespace;
-    private final String group;
-    
-    private final Map<String, CounterMetric> counterMetrics = new HashMap<>();
-    
-    public NifiSecurityEventRegistry(
-            SecurityEventCounter securityEventCounter,
-            MetricsRegistry metricsRegistry,
-            String namespace,
-            String group) {
-        
-        this.securityEventCounter = securityEventCounter;
-        this.metricsRegistry = metricsRegistry;
-        this.namespace = namespace;
-        this.group = group;
-        
-        initializeCounters();
-    }
-    
-    private void initializeCounters() {
-        // Register all counter metrics with NiFi
-        counterMetrics.put("total-processed-tokens", 
-                metricsRegistry.counter(namespace, group, "total-processed-tokens", 
-                "Total number of tokens processed"));
-        
-        // ... initialize other metrics
-    }
-    
-    public void updateMetrics() {
-        // Update NiFi metrics from the security event counter
-        counterMetrics.get("total-processed-tokens")
-                .setValue(securityEventCounter.getTotalProcessedTokens());
-        counterMetrics.get("valid-tokens")
-                .setValue(securityEventCounter.getValidTokens());
-        // ... update other metrics
-    }
-    
-    public void deregister() {
-        // Cleanup any resources
-    }
-}
-----
+See link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] for the full lifecycle implementation (`init`, `onScheduled`, `onUnscheduled`, `onTrigger`).
 
 == Security Considerations
 
@@ -392,29 +255,7 @@ For more information on security considerations, see link:security.adoc[Security
 
 === Audit Trail Integration
 
-Security events can be integrated with NiFi's Provenance Repository for compliance and auditing:
-
-[source,java]
-----
-@Override
-public void onTrigger(final ProcessContext context, final ProcessSession session) {
-    // ... existing processing code ...
-    
-    // Record validation failures to provenance
-    if (validationResult.isInvalid()) {
-        session.getProvenanceReporter().route(flowFile, 
-            AUTHENTICATION_FAILED, 
-            "JWT validation failed: " + validationResult.getReason(),
-            System.currentTimeMillis() - startTime);
-            
-        // Increment security event counter
-        securityEventCounter.incrementInvalidTokens();
-        
-        // Update metrics
-        updateMetrics();
-    }
-}
-----
+Security events can be integrated with NiFi's Provenance Repository for compliance and auditing. The `onTrigger` method in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] records validation failures to the provenance repository and increments security event counters.
 
 == See Also
 
