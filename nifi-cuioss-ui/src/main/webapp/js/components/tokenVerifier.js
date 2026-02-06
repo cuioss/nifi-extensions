@@ -239,7 +239,7 @@ const buildHeaderHtml = (header, i18n) => {
     return `
         <div class="token-section">
             <h4>${i18n['processor.jwt.tokenHeader'] || 'Header'}</h4>
-            <pre>${JSON.stringify(header, null, 2)}</pre>
+            <pre>${sanitizeHtml(JSON.stringify(header, null, 2))}</pre>
         </div>
     `;
 };
@@ -255,7 +255,7 @@ const buildPayloadHtml = (payload, i18n) => {
     return `
         <div class="token-section">
             <h4>${i18n['processor.jwt.tokenPayload'] || 'Payload'}</h4>
-            <pre>${JSON.stringify(payload, null, 2)}</pre>
+            <pre>${sanitizeHtml(JSON.stringify(payload, null, 2))}</pre>
         </div>
     `;
 };

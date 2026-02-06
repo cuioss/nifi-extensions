@@ -21,7 +21,6 @@ import org.apache.nifi.logging.ComponentLog;
 
 import java.util.Locale;
 import java.util.MissingResourceException;
-import java.util.Objects;
 import java.util.ResourceBundle;
 
 /**
@@ -83,7 +82,6 @@ public class NiFiI18nResolver implements I18nResolver {
 
     @Override
     public String getTranslatedString(@NonNull String key) {
-        Objects.requireNonNull(key, "key must not be null");
         if (resourceBundle == null) {
             return key;
         }
@@ -100,7 +98,6 @@ public class NiFiI18nResolver implements I18nResolver {
 
     @Override
     public String getTranslatedString(@NonNull String key, Object... args) {
-        Objects.requireNonNull(key, "key must not be null");
         String pattern = getTranslatedString(key);
         return MoreStrings.lenientFormat(pattern, args);
     }
