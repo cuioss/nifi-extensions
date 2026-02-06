@@ -79,6 +79,7 @@ import static de.cuioss.nifi.processors.auth.JWTTranslationKeys.Validation;
  * </ul>
  * <p>Set the JWKS source type using issuer.{name}.jwks-type property (url, file, or memory).</p>
  *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration.adoc">Configuration Specification</a>
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/observability.adoc">Observability Specification</a>
  */
 @Tags({"jwt", "oauth", "authentication", "authorization", "security", "token"})

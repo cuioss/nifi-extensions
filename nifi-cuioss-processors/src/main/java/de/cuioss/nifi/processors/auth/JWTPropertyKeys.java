@@ -23,6 +23,7 @@ import lombok.experimental.UtilityClass;
  * This class organizes all JWT-related property keys in a hierarchical structure
  * for better discoverability and type safety.
  *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration.adoc">Configuration Specification</a>
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration-ui.adoc">UI Configuration Specification</a>
  */
 @UtilityClass
