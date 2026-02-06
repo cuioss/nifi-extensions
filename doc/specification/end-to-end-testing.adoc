@@ -8,7 +8,7 @@
 xref:../Specification.adoc[Back to Main Specification]
 
 == End-to-End Testing Overview
-_See Requirement xref:../Requirements.adoc#NIFI-AUTH-16[NIFI-AUTH-16: Testing]_
+_See Requirement xref:../Requirements.adoc#NIFI-AUTH-15[NIFI-AUTH-15: Integration Testing]_
 
 This document outlines the end-to-end testing strategy for the MultiIssuerJWTTokenAuthenticator, focusing on automated UI testing with Playwright. The tests verify user flows through the application's user interface, ensuring that the entire application works as expected from a user's perspective with all UI components working together in a real environment.
 
@@ -298,7 +298,7 @@ The implementation of this end-to-end testing plan will significantly improve th
 * xref:../../e-2-e-playwright/docs/implementation-guide.adoc[End-to-End Testing Implementation Guide]
 * xref:configuration-ui.adoc[UI Configuration]
 * xref:token-validation.adoc[Token Validation]
-* xref:../Requirements.adoc#NIFI-AUTH-16[Testing Requirements]
+* xref:../Requirements.adoc#NIFI-AUTH-15[Integration Testing Requirements]
 * xref:../library/cui-test-keycloak-integration/README.adoc[Keycloak Integration Testing]
 * xref:../../integration-testing/README.adoc[Integration Testing Environment]
 * xref:../Specification.adoc[Back to Main Specification]

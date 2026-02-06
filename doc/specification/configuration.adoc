@@ -85,32 +85,34 @@ _See Requirement xref:../Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Performance 
 === Dynamic Properties (Issuers)
 _See Requirement xref:../Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
 
-The processor supports multiple issuers through dynamic properties:
+The processor supports multiple issuers through NiFi dynamic properties. In the NiFi UI, issuer properties use the prefix `issuer.<N>.<property>`:
 
 [cols="1,3,1"]
 |===
 |Property |Description |Example
 
-|jwt.validation.<issuer-name>
+|issuer.<N>.jwks-url
 |The JWKS URL or public key for the issuer
 |https://auth.example.com/.well-known/jwks.json
 
-|jwt.validation.<issuer-name>.enabled
+|issuer.<N>.enabled
 |Whether this issuer is enabled (true/false)
 |true
 
-|jwt.validation.<issuer-name>.audience
+|issuer.<N>.audience
 |Required audience for this specific issuer
 |api://my-service
 
-|jwt.validation.<issuer-name>.scopes
+|issuer.<N>.scopes
 |Comma-separated list of scopes required for this issuer
 |read,write
 
-|jwt.validation.<issuer-name>.roles
+|issuer.<N>.roles
 |Comma-separated list of roles required for this issuer
 |admin,user
 |===
+
+NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<N>.<property>` (see xref:configuration-static.adoc[Static Configuration]).
 
 == Configuration Methods
 
@@ -158,11 +160,11 @@ jwt.validation.token.location = AUTHORIZATION_HEADER
 jwt.validation.token.header = Authorization
 jwt.validation.bearer.token.prefix = Bearer
 jwt.validation.require.valid.token = true
-jwt.validation.required.audience = api://my-service
 jwt.validation.jwks.refresh.interval = 3600
 
-# Dynamic properties (issuers)
-jwt.validation.auth.server = https://auth-server.example.com/.well-known/jwks.json
+# Issuer configuration (static config file prefix)
+jwt.validation.issuer.1.jwks-url = https://auth-server.example.com/.well-known/jwks.json
+jwt.validation.issuer.1.audience = api://my-service
 ----
 
 === Advanced Configuration with Multiple Issuers
@@ -174,16 +176,16 @@ jwt.validation.token.location = AUTHORIZATION_HEADER
 jwt.validation.token.header = Authorization
 jwt.validation.bearer.token.prefix = Bearer
 jwt.validation.require.valid.token = true
-jwt.validation.required.scopes = read,write
 jwt.validation.jwks.refresh.interval = 1800
 
-# Dynamic properties (issuers)
-jwt.validation.auth.server.production = https://auth.example.com/.well-known/jwks.json
-jwt.validation.auth.server.production.audience = api://my-service-prod
+# Issuer configuration (static config file prefix)
+jwt.validation.issuer.1.jwks-url = https://auth.example.com/.well-known/jwks.json
+jwt.validation.issuer.1.audience = api://my-service-prod
+jwt.validation.issuer.1.scopes = read,write
 
-jwt.validation.auth.server.testing = https://auth-test.example.com/.well-known/jwks.json
-jwt.validation.auth.server.testing.audience = api://my-service-test
-jwt.validation.auth.server.testing.enabled = false  # Disabled in production
+jwt.validation.issuer.2.jwks-url = https://auth-test.example.com/.well-known/jwks.json
+jwt.validation.issuer.2.audience = api://my-service-test
+jwt.validation.issuer.2.enabled = false  # Disabled in production
 ----
 
 == See Also

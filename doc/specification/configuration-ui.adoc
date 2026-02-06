@@ -36,11 +36,11 @@ Properties in the UI are organized into sections:
    - jwt.validation.maximum.token.size
 
 3. **Dynamic Properties**: User-defined issuer configurations
-   - Each issuer has its own property entry with the issuer name as the property name
+   - Each issuer has its own property entry using `issuer.<N>.<property>` naming
    - Issuer-specific authorization settings:
-     - jwt.validation.<issuer-name>.audience
-     - jwt.validation.<issuer-name>.scopes
-     - jwt.validation.<issuer-name>.roles
+     - issuer.<N>.audience
+     - issuer.<N>.scopes
+     - issuer.<N>.roles
 
 === Dynamic Properties
 

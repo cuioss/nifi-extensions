@@ -26,7 +26,11 @@ This specification is organized into the following documents:
 * xref:specification/security.adoc[Security] - Security considerations
 * xref:specification/integration-patterns.adoc[Integration Patterns] - Integration examples
 * xref:specification/internationalization.adoc[Internationalization] - i18n implementation
+* xref:specification/configuration-ui.adoc[UI Configuration] - UI configuration details
+* xref:specification/configuration-static.adoc[Static Configuration] - Static/container configuration
 * xref:specification/jwt-rest-api.adoc[JWT REST API] - REST API endpoints for JWT token verification, JWKS validation, and metrics
+* xref:specification/end-to-end-testing.adoc[End-to-End Testing] - E2E testing specification
+* xref:specification/observability.adoc[Observability] - Security event monitoring and metrics
 * xref:LogMessages.adoc[Log Messages] - Log message documentation
 
 [NOTE]
@@ -84,7 +88,7 @@ _See Requirement NIFI-AUTH-7.7: Static Configuration for Container Environments 
 
 The processor supports static configuration for container deployments:
 
-* Configuration via properties files (.properties), YAML (.yml, .yaml), or JSON (.json)
+* Configuration via properties files (.properties) or YAML (.yml, .yaml)
 * Active by default when present
 * Environment variable and system property support for configuration paths
 * Configuration displayed (read-only) in the UI when static configuration is active

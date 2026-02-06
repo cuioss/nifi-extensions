@@ -226,7 +226,7 @@ For more details on configuration, see link:configuration.adoc[Configuration].
 
 == Testing Security
 [.requirement]
-_See Requirement: link:../Requirements.adoc#NIFI-AUTH-12[NIFI-AUTH-12: Integration Examples]_
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-14[NIFI-AUTH-14: Unit Testing]_
 
 The processor's security features are tested through:
 

@@ -8,7 +8,7 @@
 link:../Specification.adoc[Back to Main Specification]
 
 == Overview
-_See Requirement link:../Requirements.adoc#REQ-UI-001[REQ-UI-001: Custom UI Components]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
 
 This specification defines the REST API endpoints for JWT token verification, JWKS validation, and security metrics in the NiFi JWT Authenticator. These endpoints enable the custom UI components to interact with the backend JWT validation services.
 

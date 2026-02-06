@@ -14,7 +14,7 @@ The MultiIssuerJWTTokenAuthenticator implements comprehensive observability feat
 == Security Event Metrics
 
 === Available Metrics
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-18.1[NIFI-AUTH-18.1: Security Event Collection]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-18.1[NIFI-AUTH-18.1: NiFi UI Integration]_
 
 The processor leverages the SecurityEventCounter from the oauth-sheriff-core library to track key security events:
 

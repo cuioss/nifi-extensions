@@ -72,18 +72,26 @@ _Implementation details: xref:specification/technical-components.adoc[Technical 
 * Format: "Bearer <token>"
 * Support validation of header presence and format
 
+_Implementation details: xref:specification/token-validation.adoc[Token Validation]_
+
 [#NIFI-AUTH-5.2]
 ==== NIFI-AUTH-5.2: Dynamic Properties
 
 The processor must support dynamic properties for custom claim mapping.
+
+_Implementation details: xref:specification/configuration.adoc[Configuration]_
 
 [#NIFI-AUTH-5.3]
 ==== NIFI-AUTH-5.3: Advanced Properties
 
 The processor must support advanced properties that are only shown when explicitly requested by the user.
 
+_Implementation details: xref:specification/configuration-ui.adoc[UI Configuration]_
+
 [#NIFI-AUTH-6]
 === NIFI-AUTH-6: Output Requirements
+
+_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
 
 [#NIFI-AUTH-6.1]
 ==== NIFI-AUTH-6.1: Success Path
@@ -91,6 +99,8 @@ The processor must support advanced properties that are only shown when explicit
 * Route validated tokens to "success" relationship
 * Extract and provide token claims as flow file attributes
 * Include validation metadata (issuer, validation time)
+
+_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
 
 [#NIFI-AUTH-6.2]
 ==== NIFI-AUTH-6.2: Failure Path
@@ -103,6 +113,8 @@ The processor must support advanced properties that are only shown when explicit
   ** Invalid signature
   ** Unknown issuer
   ** Invalid claims
+
+_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
 
 [#NIFI-AUTH-7]
 === NIFI-AUTH-7: Configuration Requirements
@@ -120,6 +132,8 @@ _Implementation details: xref:specification/configuration.adoc[Configuration]_
   ** Provide immediate feedback on connection success/failure
   ** Display appropriate error messages for connection failures
 
+_Implementation details: xref:specification/configuration-ui.adoc[UI Configuration]_
+
 [#NIFI-AUTH-7.2]
 ==== NIFI-AUTH-7.2: Token Validation Configuration
 
@@ -132,6 +146,8 @@ _Implementation details: xref:specification/configuration.adoc[Configuration]_
 * Support dynamic addition/removal of issuers
 * Validate configuration inputs
 * Provide clear error messages for invalid configurations
+
+_Implementation details: xref:specification/configuration.adoc[Configuration]_
 
 [#NIFI-AUTH-7.3]
 ==== NIFI-AUTH-7.3: Verification
@@ -150,23 +166,20 @@ _Implementation details: xref:specification/configuration.adoc[Configuration]_
   ** Suggest possible fixes based on error type
 * Support testing without affecting processor state or flow files
 
+_Implementation details: xref:specification/configuration-ui.adoc[UI Configuration]_
+
 [#NIFI-AUTH-7.4]
 ==== NIFI-AUTH-7.4: Authorization Configuration
 
 * Require Valid Token (Boolean)
   ** When true: Valid token results in success relationship
   ** When false: Token validation result is informational only
-* Required Scopes (List of String)
-  ** List of OAuth scopes that must be present in token
-  ** Empty list means no specific scopes required
-* All configured requirements (scopes) must be met for success
+* Per-issuer authorization settings (configured per issuer, not globally):
+  ** Required Scopes (List of String) — OAuth scopes that must be present in token
+  ** Required Roles (List of String) — roles that must be present in token
+  ** All configured requirements (scopes, roles) for the matched issuer must be met for success
 
-[#NIFI-AUTH-7.5]
-==== NIFI-AUTH-7.5: Token Location
-
-* Extract token from Bearer Authorization header
-* Format: "Bearer <token>"
-* Support validation of header presence and format
+_Implementation details: xref:specification/configuration.adoc[Configuration]_
 
 [#NIFI-AUTH-7.6]
 ==== NIFI-AUTH-7.6: Configuration Properties
@@ -175,6 +188,8 @@ _Implementation details: xref:specification/configuration.adoc[Configuration]_
 * Per issuer configuration:
   ** Issuer Identifier
   ** JWKS endpoint URL or public key
+
+_Implementation details: xref:specification/configuration.adoc[Configuration]_
 
 [#NIFI-AUTH-7.7]
 ==== NIFI-AUTH-7.7: Static Configuration for Container Environments
@@ -249,6 +264,8 @@ _Implementation details: xref:specification/error-handling.adoc[Error Handling]_
 * Support for NiFi's configuration framework
 * Integration with NiFi's security features
 
+_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
+
 [#NIFI-AUTH-12]
 === NIFI-AUTH-12: Integration Examples
 
@@ -281,7 +298,6 @@ _Implementation details: xref:Specification.adoc[Specification Document]_
   ** Mock issuer configurations
   ** Error case generation
   ** Log message verification
-* Performance testing with >1000 tokens/sec throughput
 
 _Implementation details: xref:specification/testing.adoc[Testing]_
 
@@ -292,6 +308,9 @@ _Implementation details: xref:specification/testing.adoc[Testing]_
 * Multiple issuer scenarios
 * Error handling scenarios
 * Load testing
+* Performance testing with >1000 tokens/sec throughput
+
+_Implementation details: xref:specification/testing.adoc[Testing]_
 
 == Success Criteria
 
@@ -305,6 +324,8 @@ _Implementation details: xref:specification/testing.adoc[Testing]_
 * Passes all security requirements
 * Complete documentation
 * Test coverage meets standards
+
+_Implementation details: xref:Specification.adoc[Specification Document]_
 
 == Internationalization Requirements
 
@@ -355,6 +376,8 @@ _Implementation details: xref:specification/internationalization.adoc[Internatio
 * Provide metrics breakdown in the UI configuration dialog
 * Support runtime metric reset functionality
 
+_Implementation details: xref:specification/observability.adoc[Observability]_
+
 [#NIFI-AUTH-18.2]
 ==== NIFI-AUTH-18.2: Metrics System Integration
 
@@ -362,6 +385,8 @@ _Implementation details: xref:specification/internationalization.adoc[Internatio
 * Register all security event metrics as NiFi reportable metrics
 * Apply standard NiFi metric naming conventions
 * Support all NiFi metric aggregation mechanisms
+
+_Implementation details: xref:specification/observability.adoc[Observability]_
 
 [#NIFI-AUTH-18.3]
 ==== NIFI-AUTH-18.3: External Monitoring System Support
