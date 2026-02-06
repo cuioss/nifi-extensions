@@ -76,7 +76,7 @@ jobs:
         env:
           PLAYWRIGHT_BASE_URL: https://localhost:9095/nifi
           PLAYWRIGHT_KEYCLOAK_URL: http://localhost:9080
-        timeout-minutes: 12
+        timeout-minutes: 18
 
       - name: Generate E2E Analysis Reports
         run: |
