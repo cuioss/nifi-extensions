@@ -22,7 +22,6 @@ End-to-end testing typically takes 15-30 minutes for a complete test suite run, 
 This document focuses on WHAT to test (specification). For details on HOW to implement these tests, see the implementation guide in the e-2-e-playwright/docs directory:
 
 * xref:../../e-2-e-playwright/docs/implementation-guide.adoc[End-to-End Testing Implementation Guide]
-* xref:../../e-2-e-playwright/docs/Testing-Scope.adoc[Testing Scope and Capabilities]
 * xref:../../e-2-e-playwright/docs/nifi-ui-structure.adoc[NiFi UI Structure Guide]
 ====
 
@@ -301,5 +300,5 @@ The implementation of this end-to-end testing plan will significantly improve th
 * xref:token-validation.adoc[Token Validation]
 * xref:../Requirements.adoc#NIFI-AUTH-16[Testing Requirements]
 * xref:../library/cui-test-keycloak-integration/README.adoc[Keycloak Integration Testing]
-* xref:../integration-testing/README.adoc[Integration Testing Environment]
+* xref:../../integration-testing/README.adoc[Integration Testing Environment]
 * xref:../Specification.adoc[Back to Main Specification]

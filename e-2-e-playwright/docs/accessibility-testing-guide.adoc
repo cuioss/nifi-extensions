@@ -458,9 +458,10 @@ Accessibility tests run via the `frontend-maven-plugin` in the `test` phase (ski
 === Critical Prerequisites
 
 ==== NiFi Service Not Available
-```
-🚨 CRITICAL FAILURE: NiFi service is not available at https://localhost:9095/nifi
-```
+[source]
+----
+CRITICAL FAILURE: NiFi service is not available at https://localhost:9095/nifi
+----
 
 **Resolution**:
 1. Start NiFi: `./integration-testing/src/main/docker/run-and-deploy.sh`
@@ -468,9 +469,10 @@ Accessibility tests run via the `frontend-maven-plugin` in the `test` phase (ski
 3. Ensure authentication works
 
 ==== JWT Processor Not Found
-```
-🚨 CRITICAL FAILURE: MultiIssuerJWTTokenAuthenticator processor not found on canvas!
-```
+[source]
+----
+CRITICAL FAILURE: MultiIssuerJWTTokenAuthenticator processor not found on canvas!
+----
 
 **Resolution**:
 1. Navigate to NiFi UI at https://localhost:9095/nifi

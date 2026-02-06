@@ -4,12 +4,12 @@
 :toc-title: Table of Contents
 :sectnums:
 
-link:../Specification.adoc[Back to Main Specification]
+xref:../Specification.adoc[Back to Main Specification]
 
 == UI Configuration Overview
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
+_See Requirement xref:../Requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
 
-This document covers the user interface elements and interaction patterns for configuring the MultiIssuerJWTTokenAuthenticator processor. For general configuration properties and options, see link:configuration.adoc[Configuration].
+This document covers the user interface elements and interaction patterns for configuring the MultiIssuerJWTTokenAuthenticator processor. For general configuration properties and options, see xref:configuration.adoc[Configuration].
 
 [.text-center]
 image::../plantuml/configuration-workflow.png[Configuration Workflow Diagram, align="center"]
@@ -80,7 +80,7 @@ public void onTokenLocationModified(final PropertyConfiguration oldValue,
 The processor provides several custom UI components to aid in configuration and validation:
 
 === JWKS Validation Button
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: JWKS Verification]_
+_See Requirement xref:../Requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
 
 The processor includes a custom UI component to validate the JWKS configuration for the selected type:
 
@@ -130,8 +130,9 @@ define(['jquery', 'nf.Common'], function ($, nfCommon) {
     };
 }
 ----
+
 === Token Verification Interface
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
+_See Requirement xref:../Requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
 
 The processor includes a token verification interface to test JWT tokens:
 
@@ -147,7 +148,7 @@ This interface allows users to:
 
 ==== Backend Integration (REST Call)
 
-When the user clicks "Verify Token", the UI sends the JWT token to a backend REST endpoint (e.g., `/api/token/verify`). The backend:
+When the user clicks "Verify Token", the UI sends the JWT token to a backend REST endpoint (`/nifi-api/processors/jwt/verify-token`). The backend:
 
 - Retrieves the current IssuerConfig objects from the processor configuration.
 - Creates a new SecurityEventCounter for this request.
@@ -190,7 +191,7 @@ Displays security event metrics and validation statistics:
 Provides inline documentation and usage examples specific to the processor.
 
 == Internationalized UI Elements
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+_See Requirement xref:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
 All UI elements use internationalization through NiFi's I18nResolver API:
 
@@ -220,7 +221,7 @@ public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Bui
     .build();
 ----
 
-For more details on internationalization, see link:internationalization.adoc[Internationalization].
+For more details on internationalization, see xref:internationalization.adoc[Internationalization].
 
 == Custom Validators
 
@@ -250,7 +251,7 @@ public class JwksEndpointValidator implements Validator {
                 HttpJwksLoaderConfig config = HttpJwksLoaderConfig.builder()
                         .jwksUrl(input).requestTimeoutSeconds(2).build();
                 
-                loader = JwksLoaderFactory.createHttpLoader(config, counter)
+                loader = JwksLoaderFactory.createHttpLoader(config, counter);
                 break;
             case "file":
                 // TODO: Validate file existence and content
@@ -275,7 +276,7 @@ public class JwksEndpointValidator implements Validator {
                 .subject(subject)
                 .valid(true)
                 .build();
-        })
+        }
 
         var errorReasons = counter.getCounters()
             .stream()
@@ -316,7 +317,7 @@ When static configuration is active, the UI:
 
 == Related Topics
 
-* link:configuration.adoc[Configuration Overview]
-* link:configuration-static.adoc[Static Configuration]
-* link:token-validation.adoc[Token Validation]
-* link:internationalization.adoc[Internationalization]
+* xref:configuration.adoc[Configuration Overview]
+* xref:configuration-static.adoc[Static Configuration]
+* xref:token-validation.adoc[Token Validation]
+* xref:internationalization.adoc[Internationalization]

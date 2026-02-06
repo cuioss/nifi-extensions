@@ -322,7 +322,7 @@ _Implementation details: xref:specification/testing.adoc[Testing]_
 
 [NOTE]
 ====
-Log messages (as defined in LogMessage.md) are not internationalized. They are always written in English for consistency in logs and monitoring systems.
+Log messages (as defined in xref:LogMessages.adoc[LogMessages]) are not internationalized. They are always written in English for consistency in logs and monitoring systems.
 ====
 
 _Implementation details: xref:specification/internationalization.adoc[Internationalization]_

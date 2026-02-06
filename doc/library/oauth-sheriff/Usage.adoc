@@ -6,19 +6,17 @@
 
 == Overview
 
-This document provides usage examples for the OAuth-Sheriff library. For detailed technical specifications, see the link:specification/technical-components.adoc[Technical Components] document.
+This document provides usage examples for the OAuth-Sheriff library. For detailed technical specifications, see the link:../../specification/technical-components.adoc[Technical Components] document.
 
 === Document Navigation
 
-* link:../README.adoc[README] - Project overview and introduction
-* link:Requirements.adoc[Requirements] - Functional and non-functional requirements
-* link:Specification.adoc[Specification] - Technical specifications
-* link:LogMessages.adoc[Log Messages] - Reference for all log messages
-* link:threat-model/Threat-Model.adoc[Threat Model] - Security analysis and mitigations
-* link:Build.adoc[Building and Development] - Information for contributors
+* link:../../Requirements.adoc[Requirements] - Functional and non-functional requirements
+* link:../../Specification.adoc[Specification] - Technical specifications
+* link:../../LogMessages.adoc[Log Messages] - Reference for all log messages
+* link:../../Build.adoc[Building and Development] - Information for contributors
 
 == TokenValidator: The Main Entry Point
-_See link:specification/technical-components.adoc#_tokenvalidator[TokenValidator Technical Specification]_'
+_See link:../../specification/technical-components.adoc#_tokenvalidator[TokenValidator Technical Specification]_
 
 The `TokenValidator` serves as the primary entry point for token operations.
 It provides:
@@ -32,7 +30,7 @@ It provides:
 ----
 // Create issuer configurations
 IssuerConfig issuerConfig = IssuerConfig.builder()
-        .issuer("https://issuer1.com")
+        .issuerIdentifier("https://issuer1.com")
         .expectedAudience("client-id") // Can add multiple audiences with multiple calls
         .expectedClientId("client-id") // Can add multiple client IDs with multiple calls
         // Configure JWKS loading (one of the following options)
@@ -41,8 +39,10 @@ IssuerConfig issuerConfig = IssuerConfig.builder()
         // .jwksContent(jwksContent) // Option 3: In-memory JWKS content
         .build();
 
-// Create a validator with multiple issuer configurations
-TokenValidator validator = new TokenValidator(issuerConfig);
+// Create a validator with the issuer configuration
+TokenValidator validator = TokenValidator.builder()
+        .issuerConfig(issuerConfig)
+        .build();
 
 // Create and validate tokens
 // These methods will throw TokenValidationException if validation fails
@@ -52,7 +52,7 @@ RefreshTokenContent refreshToken = validator.createRefreshToken(tokenString);
 ----
 
 == Multi-Issuer Support
-_See link:specification/technical-components.adoc[Technical Specification] for details_
+_See link:../../specification/technical-components.adoc[Technical Specification] for details_
 
 The module provides robust support for multi-issuer environments:
 
@@ -67,31 +67,34 @@ HttpJwksLoaderConfig httpConfig = HttpJwksLoaderConfig.builder()
 
 // Create issuer configurations
 IssuerConfig issuerHttpConfig = IssuerConfig.builder()
-        .issuer("https://issuer1.com")
+        .issuerIdentifier("https://issuer1.com")
         .httpJwksLoaderConfig(httpConfig) // Configure HTTP-based JWKS loading
         .build();
 
 IssuerConfig issuerPathConfig = IssuerConfig.builder()
-        .issuer("https://issuer2.com")
+        .issuerIdentifier("https://issuer2.com")
         .jwksFilePath("/path/to/jwks.json") // Configure file-based JWKS loading
         .build();
 
 IssuerConfig issuerMemoryConfig = IssuerConfig.builder()
-        .issuer("https://issuer3.com")
+        .issuerIdentifier("https://issuer3.com")
         .jwksContent("{\"keys\":[{\"kty\":\"RSA\",\"kid\":\"key-id\",\"use\":\"sig\",\"alg\":\"RS256\",\"n\":\"...\",\"e\":\"...\"}]}") // Configure in-memory JWKS loading
         .build();
 
 // Create a validator supporting all issuers
 // The validator creates a SecurityEventCounter internally and passes it to all components
-TokenValidator validator = new TokenValidator(
-        issuerHttpConfig, issuerPathConfig, issuerMemoryConfig);
+TokenValidator validator = TokenValidator.builder()
+        .issuerConfig(issuerHttpConfig)
+        .issuerConfig(issuerPathConfig)
+        .issuerConfig(issuerMemoryConfig)
+        .build();
 
 // You can access the SecurityEventCounter for monitoring security events
 SecurityEventCounter securityEventCounter = validator.getSecurityEventCounter();
 ----
 
 == Custom Claim Mappers
-_See link:specification/technical-components.adoc[Technical Specification] for details_
+_See link:../../specification/technical-components.adoc[Technical Specification] for details_
 
 The module supports custom claim mappers that take precedence over the default ones:
 
@@ -106,14 +109,16 @@ ClaimMapper roleMapper = new JsonCollectionMapper();
 
 // Add the custom mapper to the issuer configuration
 IssuerConfig issuerConfig = IssuerConfig.builder()
-        .issuer("https://issuer.com")
+        .issuerIdentifier("https://issuer.com")
         .jwksLoader(jwksLoader)
         // Add custom claim mapper for "role" claim
         .claimMapper("role", roleMapper)
         .build();
 
 // Create a validator with the configured issuer
-TokenValidator validator = new TokenValidator(issuerConfig);
+TokenValidator validator = TokenValidator.builder()
+        .issuerConfig(issuerConfig)
+        .build();
 
 // The custom mapper will be used when processing tokens with the "role" claim
 // This method will throw TokenValidationException if validation fails
@@ -234,7 +239,7 @@ StringSplitterMapper colonMapper = new StringSplitterMapper(':');
 
 // Configure the issuer to use the custom mappers
 IssuerConfig issuerConfig = IssuerConfig.builder()
-        .issuer("https://issuer.com")
+        .issuerIdentifier("https://issuer.com")
         .jwksLoader(jwksLoader)
         .claimMapper("roles", commaMapper) // For comma-separated roles
         .claimMapper("groups", colonMapper) // For colon-separated groups
@@ -258,7 +263,7 @@ The mapper:
 You can also implement your own custom mappers for special formats:
 
 == Security Settings
-_See link:specification/technical-components.adoc[Technical Specification] for details_
+_See link:../../specification/technical-components.adoc[Technical Specification] for details_
 
 The `ParserConfig` class provides important security settings for token processing:
 
@@ -268,22 +273,21 @@ The `ParserConfig` class provides important security settings for token processi
 ParserConfig config = ParserConfig.builder()
         .maxTokenSize(4 * 1024)        // Limit token size to 4KB (default is 8KB)
         .maxPayloadSize(4 * 1024)      // Limit payload size to 4KB (default is 8KB)
-        .maxStringSize(2 * 1024)       // Limit JSON string size to 2KB (default is 4KB)
-        .maxArraySize(32)              // Limit JSON array size to 32 elements (default is 64)
-        .maxDepth(5)                   // Limit JSON parsing depth to 5 levels (default is 10)
-        .logWarningsOnDecodeFailure(true) // Log warnings when token decoding fails
+        .maxStringLength(2 * 1024)     // Limit JSON string length to 2KB (default is 4KB)
+        .maxBufferSize(64 * 1024)      // Limit JSON buffer size to 64KB (default is 128KB)
         .build();
 
-TokenValidator validator = new TokenValidator(
-        config,
-        issuerConfig);
+TokenValidator validator = TokenValidator.builder()
+        .parserConfig(config)
+        .issuerConfig(issuerConfig)
+        .build();
 ----
 
 These security settings help prevent various attacks:
 
 * `maxTokenSize`: Prevents memory exhaustion attacks from oversized tokens
 * `maxPayloadSize`: Prevents memory exhaustion attacks from oversized payloads
-* `maxStringSize`, `maxArraySize`, `maxDepth`: Prevent JSON parsing attacks
+* `maxStringLength`, `maxBufferSize`: Prevent JSON parsing attacks
 
 == Best Practices
 
@@ -318,6 +322,7 @@ The library uses `TokenValidationException` to signal validation failures. This 
 // Import statements
 import de.cuioss.tools.logging.CuiLogger;
 import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
+import de.cuioss.sheriff.oauth.core.security.EventCategory;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import java.util.Set;
@@ -330,7 +335,9 @@ try {
     AccessTokenContent accessToken = validator.createAccessToken(tokenString);
 
     // If validation succeeds, use the token
-    LOGGER.info("Token validated successfully for subject: %s", accessToken.getSubject());
+    // Note: getSubject() returns Optional<String>
+    accessToken.getSubject().ifPresent(
+            subject -> LOGGER.info("Token validated successfully for subject: %s", subject));
 
     // Check if token has required roles
     if (accessToken.providesRoles(requiredRoles)) {
@@ -344,7 +351,7 @@ try {
 } catch (TokenValidationException e) {
     // Handle validation failure based on the event category first, then type for finer control
     SecurityEventCounter.EventType eventType = e.getEventType();
-    SecurityEventCounter.EventCategory category = eventType.getCategory();
+    EventCategory category = eventType.getCategory();
 
     // First handle based on category
     switch (category) {
@@ -397,7 +404,6 @@ try {
             break;
     }
 }
-}
 ----
 
 This example demonstrates how to:
@@ -408,7 +414,7 @@ This example demonstrates how to:
 4. Implement specific handling for common validation failures
 5. Use the event category for broader classification of issues
 
-For a complete list of event types and categories, refer to the `SecurityEventCounter.EventType` and `SecurityEventCounter.EventCategory` enums.
+For a complete list of event types and categories, refer to the `SecurityEventCounter.EventType` enum and the `EventCategory` enum.
 
 === Performance Recommendations
 

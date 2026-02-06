@@ -52,7 +52,7 @@ jwt.validation.issuer.1.roles=admin,user
 
 ==== YAML Format (.yaml, .yml)
 
-YAML support is planned for a future release.
+YAML configuration support has been implemented as of version 1.0-SNAPSHOT. The processor now fully supports both properties and YAML file formats.
 
 === Environment Variables
 

@@ -28,6 +28,9 @@ All messages follow the format: [AUTH]-[identifier]: [message]
 |AUTH-015 |Processor |Token validation metrics - Processed flow files: %d |Logged when token validation metrics are reported
 |AUTH-016 |Processor |Security event counter is available for monitoring |Logged when security event counter is available
 |AUTH-017 |Processor |Security event counter is not available for monitoring |Logged when security event counter is not available
+|AUTH-018 |Processor |Successfully created issuer configuration for %s |Logged when an issuer configuration is successfully created
+|AUTH-019 |Processor |Authorization bypassed for issuer '%s' (explicitly configured) |Logged when authorization is bypassed for an issuer
+|AUTH-020 |Processor |Authorization successful for token with subject '%s' from issuer '%s' |Logged when authorization succeeds for a token
 |===
 
 == WARN Level (100-199)
@@ -46,6 +49,8 @@ All messages follow the format: [AUTH]-[identifier]: [message]
 |AUTH-108 |Processor |Missing required property 'jwks-url' for issuer %s |Logged when required property 'jwks-url' is missing
 |AUTH-109 |Processor |IssuerConfig creation not yet fully implemented. Validation will fail. |Logged when IssuerConfig creation is not yet fully implemented
 |AUTH-110 |Processor |Issuer configuration for %s is invalid and will be skipped |Logged when an issuer configuration is invalid and will be skipped
+|AUTH-111 |Processor |Authorization bypass explicitly enabled for issuer %s. This is a security risk! |Logged when authorization bypass is explicitly enabled for an issuer
+|AUTH-112 |Processor |Authorization failed for token with subject '%s' from issuer '%s': %s |Logged when authorization fails for a token
 |===
 
 == ERROR Level (200-299)
@@ -56,4 +61,16 @@ All messages follow the format: [AUTH]-[identifier]: [message]
 |AUTH-200 |Processor |Error creating issuer configuration for %s: %s |Logged when an error occurs creating issuer configuration
 |AUTH-201 |Processor |Error processing flow file: %s |Logged when an error occurs processing flow file
 |AUTH-202 |Processor |Error creating IssuerConfig for %s: %s |Logged when an error occurs creating IssuerConfig
+|AUTH-203 |Processor |HTTPS is required for JWKS URL but HTTP was provided for issuer %s. Use HTTPS for production environments. |Logged when HTTP is used instead of HTTPS for a JWKS URL
+|AUTH-204 |Processor |Token uses unsupported algorithm '%s'. Allowed algorithms: %s |Logged when a token uses an unsupported algorithm
+|AUTH-205 |Processor |No authorization configuration (required-scopes or required-roles) for issuer %s. Set bypass-authorization=true to explicitly bypass authorization (NOT recommended). |Logged when no authorization configuration is found for an issuer
+|AUTH-206 |Processor |No issuer configuration found for token issuer '%s'. Access denied (fail-secure). |Logged when no issuer configuration is found for a token's issuer
+|===
+
+== Special Codes
+
+[cols="1,1,2,2", options="header"]
+|===
+|ID |Component |Message |Description
+|AUTH-999 |Processor |Unknown error |Used as the default/fallback error code for unknown error conditions
 |===

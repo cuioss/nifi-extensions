@@ -38,7 +38,7 @@ A NiFi processor that authenticates JWT tokens from multiple issuers.
 Complete Playwright-based end-to-end testing framework with:
 
 * Custom Playwright utilities for NiFi UI automation
-* Self-verification unit tests (24 tests) 
+* Self-verification unit tests
 * Comprehensive E2E test suites for processor configuration and token validation
 * **WCAG 2.1 Level AA accessibility testing** with automated compliance checks
 * Console error monitoring with allowlist management
@@ -60,21 +60,24 @@ See link:e-2-e-playwright/README.adoc[E2E Testing Documentation] for details.
 
 == Building
 
-```bash
+[source,bash]
+----
 ./mvnw clean install
-```
+----
 
 To skip tests:
 
-```bash
+[source,bash]
+----
 ./mvnw clean install -DskipTests
-```
+----
 
 === Local Integration Testing
 
 Run the complete integration test suite locally with automated container management:
 
-```bash
+[source,bash]
+----
 # Full integration test suite with Maven
 ./mvnw integration-test -Plocal-integration-tests -Dintegration.test.local=true
 
@@ -83,7 +86,7 @@ cd e-2-e-playwright && npm run playwright:test
 
 # Interactive test development
 cd e-2-e-playwright && npm run playwright:test:ui
-```
+----
 
 See link:e-2-e-playwright/README.adoc[End-to-End Testing Documentation] for detailed instructions.
 
@@ -102,12 +105,12 @@ The project achieves **zero-warning builds** through strategic implementation of
 
 The project uses unified frontend configuration across modules:
 
-* Node.js v20.12.2
-* NPM 10.5.0  
-* Frontend Maven Plugin 1.15.1
+* Node.js v20.19.2
+* NPM 10.5.0
+* Frontend Maven Plugin 2.0.0
 * ESLint 8.57.1 with zero-warning policy (following centralized standards)
 * Prettier 3.4.2 for code formatting
-* Playwright 1.42.1 for E2E testing
+* Playwright 1.58.1 for E2E testing
 
 All frontend configuration is centralized in the root POM properties.
 

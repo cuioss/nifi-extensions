@@ -57,7 +57,7 @@ These files are located in the standard NiFi location:
 == Internationalized Components
 
 === Processor Properties
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-17.1[NIFI-AUTH-17.1: UI Elements]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
 All processor properties (names, descriptions, etc.) are internationalized:
 
@@ -76,7 +76,7 @@ public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Bui
 For more details on property configuration, see link:configuration.adoc[Configuration].
 
 === Error Messages
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-17.2[NIFI-AUTH-17.2: Error Messages]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
 All error messages are internationalized and consistently applied throughout the processor:
 
@@ -100,11 +100,11 @@ private void addErrorAttributes(FlowFile flowFile, String errorCode, String erro
 For more details on error handling, see link:error-handling.adoc[Error Handling].
 
 === Log Messages
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-17.3[NIFI-AUTH-17.3: Log Messages]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
 [NOTE]
 ====
-Log messages (as defined in LogMessage.md) are not internationalized. They are always written in English for consistency in logs and monitoring systems.
+Log messages (as defined in link:../LogMessages.adoc[LogMessages.adoc]) are not internationalized. They are always written in English for consistency in logs and monitoring systems.
 ====
 
 The processor uses the CuiLogger implementation for structured logging with internationalized messages:
@@ -136,7 +136,7 @@ LOGGER.error(exception, ERROR.UNKNOWN_ISSUER.format(issuer));
 For more information about log message structure, see link:../LogMessages.adoc[Log Message Documentation].
 
 === Custom UI Components
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-17.4[NIFI-AUTH-17.4: Custom UI]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
 Custom UI components like the Token Verification Interface also leverage NiFi's i18n support:
 
@@ -192,22 +192,22 @@ The English resource bundle includes base translations for all keys used in the 
 [source,properties]
 ----
 # Property descriptors
-property.token.header.name=Token Header Name
-property.token.header.description=Name of the header containing the JWT token
+property.token.header.name=Token Header
+property.token.header.description=The header name containing the token when using AUTHORIZATION_HEADER
 property.jwks.refresh.interval.name=JWKS Refresh Interval
-property.jwks.refresh.interval.description=How often to refresh the JWKS cache
+property.jwks.refresh.interval.description=Interval in seconds for refreshing JWKS keys
 property.require.valid.token.name=Require Valid Token
-property.require.valid.token.description=When true, only valid tokens result in success relationship
+property.require.valid.token.description=Whether to require a valid token for processing
 
 # Error messages
-error.token.expired=Token has expired
-error.unknown.issuer=Unknown token issuer: {0}
-error.jwks.retrieval.failed=Failed to retrieve JWKS from {0}: {1}
+error.no.token.found=No token found in the specified location: {0}
+error.token.size.limit=Token exceeds maximum size limit of {0} bytes
+error.token.malformed=Token is malformed (missing segments)
 
 # UI components
-processor.jwt.tokenPlaceholder=Paste JWT token here...
-processor.jwt.verifyButton=Verify Token
-processor.jwt.connectionSuccessful=Connection successful
+processor.jwt.tokenInputPlaceholder=Paste token here...
+processor.jwt.verifyToken=Verify Token
+processor.jwt.tokenValid=Token is valid
 ----
 
 === German
@@ -217,20 +217,20 @@ The German resource bundle provides translations for German-speaking users:
 [source,properties]
 ----
 # Property descriptors
-property.token.header.name=Token-Header-Name
-property.token.header.description=Name des Headers, der das JWT-Token enthält
+property.token.header.name=Token-Header
+property.token.header.description=Der Header-Name, der das Token enthält, wenn AUTHORIZATION_HEADER verwendet wird
 property.jwks.refresh.interval.name=JWKS-Aktualisierungsintervall
-property.jwks.refresh.interval.description=Wie oft der JWKS-Cache aktualisiert werden soll
+property.jwks.refresh.interval.description=Intervall in Sekunden für die Aktualisierung der JWKS-Schlüssel
 
 # Error messages
-error.token.expired=Token ist abgelaufen
-error.unknown.issuer=Unbekannter Token-Aussteller: {0}
-error.jwks.retrieval.failed=JWKS konnte nicht von {0} abgerufen werden: {1}
+error.no.token.found=Kein Token an der angegebenen Position gefunden: {0}
+error.token.size.limit=Token überschreitet die maximale Größenbeschränkung von {0} Bytes
+error.token.malformed=Token ist fehlerhaft formatiert (fehlende Segmente)
 
 # UI components
-processor.jwt.tokenPlaceholder=JWT-Token hier einfügen...
-processor.jwt.verifyButton=Token überprüfen
-processor.jwt.connectionSuccessful=Verbindung erfolgreich
+processor.jwt.tokenInputPlaceholder=Token hier einfügen...
+processor.jwt.verifyToken=Token verifizieren
+processor.jwt.tokenValid=Token ist gültig
 ----
 
 == Implementation Details
@@ -262,7 +262,7 @@ String message = i18nResolver.getTranslatedString("error.unknown.issuer", issuer
 
 To ensure all keys are properly maintained:
 
-1. A centralized `I18nKeys` class defines all used key constants
+1. A centralized `JWTTranslationKeys` class defines all used key constants
 2. Unit tests verify that all required keys exist in all bundles
 3. Documentation lists all required keys for translators
 

@@ -86,7 +86,7 @@ class TestMethodDispatcherTest {
 
 === Using a Custom Dispatcher with Path-Based Responses
 
-You can create a custom dispatcher that uses the `RecordedRequest.getPath()` method to return different responses based on the request path:
+You can create a custom dispatcher that uses `RecordedRequest.getUrl().encodedPath()` to return different responses based on the request path:
 
 [source,java]
 ----
@@ -104,7 +104,7 @@ class PathBasedDispatcherTest {
 
             @Override
             public Optional<MockResponse> handleGet(@NonNull RecordedRequest request) {
-                String path = request.getPath();
+                String path = request.getUrl().encodedPath();
 
                 // Return different responses based on the path
                 if (path.endsWith("/api/users/active")) {
@@ -306,7 +306,7 @@ public class CustomApiDispatcher implements ModuleDispatcherElement {
     @Override
     public Optional<MockResponse> handleGet(@NonNull RecordedRequest request) {
         // You can add custom logic here based on the request
-        if (request.getPath().endsWith("/special")) {
+        if (request.getUrl().encodedPath().endsWith("/special")) {
             return Optional.of(new MockResponse.Builder()
                 .code(200)
                 .body("{\"special\":true}")
@@ -335,6 +335,7 @@ public class CustomApiDispatcher implements ModuleDispatcherElement {
     }
 }
 ----
+
 Example JWKS endpoint dispatcher:
 
 [source,java]

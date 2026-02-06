@@ -293,7 +293,7 @@ Test data for JWT validation is best generated using the oauth-sheriff-core test
 * Token tampering utilities for negative testing
 * Support for multiple algorithms (RS256, RS384, RS512)
 
-For full documentation, see link:../library/oauth-sheriff-core/unit-testing.adoc[JWT Validation Test Utilities].
+For full documentation, see link:../library/oauth-sheriff/unit-testing.adoc[JWT Validation Test Utilities].
 
 === Example: Creating Test Tokens
 
@@ -404,10 +404,9 @@ Tests are run automatically as part of the build process:
 * link:configuration.adoc[Configuration]
 * link:security.adoc[Security]
 * link:technical-components.adoc[Technical Components]
-* link:../../e-2-e-playwright/docs/mcp-playwright-guide.adoc[Playwright Testing Implementation Guide]
 * link:../Requirements.adoc#NIFI-AUTH-12[Testing Requirements]
 * link:../Specification.adoc[Back to Main Specification]
 
 == JWT Validation Test Utilities
 
-For detailed documentation on the oauth-sheriff-core test utilities, see link:../library/oauth-sheriff-core/unit-testing.adoc[JWT Validation Test Utilities].
+For detailed documentation on the oauth-sheriff-core test utilities, see link:../library/oauth-sheriff/unit-testing.adoc[JWT Validation Test Utilities].

@@ -15,6 +15,7 @@ It provides:
 === Dependencies
 
 [source, xml]
+----
 <dependency>
     <groupId>de.cuioss.test</groupId>
     <artifactId>cui-test-keycloak-integration</artifactId>
@@ -32,6 +33,7 @@ It provides:
     <artifactId>jcl-over-slf4j</artifactId>
     <scope>test</scope>
 </dependency>
+----
 
 === Testing
 
@@ -70,10 +72,14 @@ Tested for keycloak 26.0.1
 For a Local Docker-Container You need a mounted persistent volume for the h2-DB:
 
 [source, shell]
+----
 mkdir -m 777 ./keycloak_data
+----
 
 [source, shell]
+----
 docker run -p 8080:8080 -v ./keycloak_data:/opt/keycloak/data/h2 -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin quay.io/keycloak/keycloak:26.0.1 start-dev
+----
 
 Precondition: Local Docker-Container, with mounted persistent volume for h2
 
@@ -82,4 +88,6 @@ Stop the keycloak if it is running.
 Start the keycloak exporter, as below:
 
 [source, shell]
+----
 docker run --rm --name keycloak_exporter -v ./keycloak_data:/opt/keycloak/data/h2 -e KC_DB_PASSWORD=admin -e KC_DB_USERNAME=admin quay.io/keycloak/keycloak:26.0.1 export --realm oauth_integration_tests --dir /opt/keycloak/data/h2/export --users realm_file
+----

@@ -9,11 +9,11 @@ link:../Specification.adoc[Back to Main Specification]
 
 == Security Overview
 [.requirement]
-_See Requirement: link:../Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Security Requirements]_
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
 
 == Token Validation Security
 [.requirement]
-_See Requirement: link:../Requirements.adoc#NIFI-AUTH-8.1[NIFI-AUTH-8.1: Token Validation Security]_
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
 
 === JWT Validation Best Practices
 
@@ -54,7 +54,7 @@ For more details on token validation implementation, see link:token-validation.a
 
 == JWKS Endpoint Security
 [.requirement]
-_See Requirement: link:../Requirements.adoc#NIFI-AUTH-8.2[NIFI-AUTH-8.2: JWKS Endpoint Security]_
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
 
 The processor implements these JWKS endpoint security measures:
 
@@ -83,7 +83,7 @@ private HttpClient createSecureHttpClient() {
 }
 ----
 
-For more details on JWKS configuration, see link:configuration.adoc#jwks-configuration[JWKS Configuration].
+For more details on JWKS configuration, see link:configuration.adoc[Configuration].
 
 == Custom UI Endpoint Security
 
@@ -126,12 +126,12 @@ The endpoints are protected through multiple layers:
 
 JWKS file validation uses a two-layer defense against path traversal:
 
-1. **Security Pipeline Validation**: The `cui-http` library's `URLPathValidationPipeline` detects path traversal patterns including `../`, URL-encoded variants, and Unicode normalization attacks.
+1. **Security Pipeline Validation**: The `cui-http` library's `PipelineFactory.createUrlPathPipeline()` detects path traversal patterns including `../`, URL-encoded variants, and Unicode normalization attacks.
 2. **Base Directory Restriction**: File access is restricted to the NiFi configuration directory (resolved from `nifi.properties.file.path` or configurable via `nifi.jwks.allowed.base.path`).
 
 === JWKS URL Protection
 
-JWKS URL validation uses the `cui-http` library's `HttpHandler` for secure HTTP communication with built-in timeouts and URL structure validation via `URLPathValidationPipeline`.
+JWKS URL validation uses the `cui-http` library's `HttpHandler` for secure HTTP communication with built-in timeouts and URL structure validation via `PipelineFactory.createUrlPathPipeline()`.
 
 === Design Decisions
 
@@ -141,7 +141,7 @@ JWKS URL validation uses the `cui-http` library's `HttpHandler` for secure HTTP 
 
 == Multi-Issuer Security
 [.requirement]
-_See Requirement: link:../Requirements.adoc#NIFI-AUTH-8.3[NIFI-AUTH-8.3: Multi-Issuer Security]_
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
 
 The multi-issuer support introduces additional security considerations:
 
@@ -165,11 +165,11 @@ auth server development = https://auth-dev.example.com/.well-known/jwks.json
 auth server development.enabled = false
 ----
 
-For more details on multi-issuer implementation, see link:technical-components.adoc#multi-issuer-support[Multi-Issuer Support].
+For more details on multi-issuer implementation, see link:technical-components.adoc[Technical Components].
 
 == Runtime Security
 [.requirement]
-_See Requirement: link:../Requirements.adoc#NIFI-AUTH-8.4[NIFI-AUTH-8.4: Runtime Security]_
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
 
 === Resource Protection
 
@@ -190,7 +190,7 @@ The processor protects against memory-related attacks:
 Maximum Token Size=16384
 ----
 
-For more details on performance and resource considerations, see link:configuration.adoc#performance-considerations[Performance Considerations].
+For more details on performance and resource considerations, see link:configuration.adoc[Configuration].
 
 == Security Event Monitoring
 [.requirement]
@@ -203,7 +203,7 @@ The processor tracks security events for monitoring and alerting:
 3. **Malformed Token Count**: Tracks unparseable tokens
 4. **Unauthorized Access Attempts**: Tracks authorization failures
 
-For details on security event monitoring implementation, see link:token-validation.adoc#security-event-monitoring[Security Event Monitoring].
+For details on security event monitoring implementation, see link:token-validation.adoc[Token Validation - Security Event Monitoring].
 
 == Security Recommendations
 
@@ -226,7 +226,7 @@ For more details on configuration, see link:configuration.adoc[Configuration].
 
 == Testing Security
 [.requirement]
-_See Requirement: link:../Requirements.adoc#NIFI-AUTH-12[NIFI-AUTH-12: Testing]_
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-12[NIFI-AUTH-12: Integration Examples]_
 
 The processor's security features are tested through:
 
