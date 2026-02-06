@@ -28,6 +28,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit tests for ConfigurationManager.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration-static.adoc">Static Configuration Specification</a>
  */
 class ConfigurationManagerTest {
 

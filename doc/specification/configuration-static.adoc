@@ -15,6 +15,16 @@ This document covers static configuration options for the MultiIssuerJWTTokenAut
 [.text-center]
 image::../plantuml/configuration-properties.png[Configuration Properties Hierarchy, align="center"]
 
+== Implementation Status
+
+=== Implementation Classes
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/config/ConfigurationManager.java[ConfigurationManager] -- Static config loading from files and environment variables
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/config/IssuerConfigurationParser.java[IssuerConfigurationParser] -- Parsing issuer configurations from properties and YAML
+
+=== Verification
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/config/ConfigurationManagerTest.java[ConfigurationManagerTest]
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/config/IssuerConfigurationParserTest.java[IssuerConfigurationParserTest]
+
 == Configuration File Formats
 
 [NOTE]
@@ -125,27 +135,7 @@ The processor looks for configuration files in the following locations (in order
 
 === Configuration Refresh Behavior
 
-[source,java]
-----
-/**
- * Checks if the configuration file has been modified and reloads if necessary.
- */
-private void checkAndReloadConfiguration() {
-    if (configFile != null && configFile.exists()) {
-        long lastModified = configFile.lastModified();
-        if (lastModified > lastLoadedTimestamp) {
-            getLogger().info("Configuration file {} has been modified, reloading", configFile);
-            try {
-                loadConfiguration(configFile);
-                lastLoadedTimestamp = lastModified;
-                configurationRefreshed = true;
-            } catch (Exception e) {
-                getLogger().error("Failed to reload configuration, using previous configuration", e);
-            }
-        }
-    }
-}
-----
+See the configuration refresh logic in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/config/ConfigurationManager.java[ConfigurationManager].
 
 Key features of dynamic configuration:
 
@@ -273,23 +263,7 @@ services:
 
 == Error Handling
 
-The processor implements robust error handling for configuration loading:
-
-[source,java]
-----
-/**
- * Handles a configuration error by adding error attributes and routing to failure.
- */
-private void handleConfigurationError(FlowFile flowFile, ProcessSession session, String errorCode, String message) {
-    Map<String, String> attributes = new HashMap<>();
-    attributes.put("jwt.config.error.code", errorCode);
-    attributes.put("jwt.config.error.reason", message);
-    flowFile = session.putAllAttributes(flowFile, attributes);
-
-    session.transfer(flowFile, CONFIGURATION_ERROR);
-    getLogger().error("Configuration error ({}): {}", errorCode, message);
-}
-----
+The processor implements robust error handling for configuration loading. See link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/config/ConfigurationManager.java[ConfigurationManager] for error handling implementation.
 
 Error handling features:
 

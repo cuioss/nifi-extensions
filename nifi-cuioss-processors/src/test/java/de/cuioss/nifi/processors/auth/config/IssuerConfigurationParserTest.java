@@ -33,6 +33,8 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Comprehensive unit tests for IssuerConfigurationParser.
  * Tests all public methods and edge cases for proper configuration parsing.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration-static.adoc">Static Configuration Specification</a>
  */
 class IssuerConfigurationParserTest {
 
