@@ -48,11 +48,11 @@ export const API = {
         /** @type {string} Endpoint for setting issuer configuration */
         SET_ISSUER_CONFIG: '/issuer-config',
 
-        /** @type {string} Full URL for JWKS validation endpoint */
-        JWKS_VALIDATE_URL: 'nifi-api/processors/jwt/validate-jwks-url',
+        /** @type {string} Full URL for JWKS validation endpoint - derived from BASE_URL */
+        get JWKS_VALIDATE_URL() { return `${API.BASE_URL}${this.VALIDATE_JWKS_URL}`; },
 
-        /** @type {string} Full URL for JWT token verification endpoint */
-        JWT_VERIFY_TOKEN: 'nifi-api/processors/jwt/verify-token'
+        /** @type {string} Full URL for JWT token verification endpoint - derived from BASE_URL */
+        get JWT_VERIFY_TOKEN() { return `${API.BASE_URL}${this.VERIFY_TOKEN}`; }
     },
 
     /**
