@@ -36,6 +36,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * testing would require either:
  * 1. Refactoring to use dependency injection (out of scope for coverage improvement)
  * 2. Integration tests with actual NiFi instance (belongs in *IT.java tests)
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
  */
 @EnableGeneratorController
 @DisplayName("Processor Config Reader Tests")

@@ -18,6 +18,8 @@ package de.cuioss.nifi.ui.util;
 
 /**
  * Utility for masking sensitive token values in log output.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
  */
 public final class TokenMasking {
 

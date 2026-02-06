@@ -25,6 +25,11 @@ import org.junit.jupiter.api.Test;
 
 import static org.easymock.EasyMock.*;
 
+/**
+ * Tests for {@link SecurityHeadersFilter}.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
+ */
 @DisplayName("Security Headers Filter Tests")
 class SecurityHeadersFilterTest {
 

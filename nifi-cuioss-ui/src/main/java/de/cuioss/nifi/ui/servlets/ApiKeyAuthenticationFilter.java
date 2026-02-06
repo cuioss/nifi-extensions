@@ -42,6 +42,7 @@ import java.util.UUID;
  * the processor context.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
  */
 @WebFilter("/nifi-api/processors/jwt/*")
 public class ApiKeyAuthenticationFilter implements Filter {

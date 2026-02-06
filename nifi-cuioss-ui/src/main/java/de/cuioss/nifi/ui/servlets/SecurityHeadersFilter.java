@@ -27,6 +27,8 @@ import java.io.IOException;
  *
  * <p>Note: {@code X-Frame-Options} is set to {@code SAMEORIGIN} rather than
  * {@code DENY} because the Custom UI runs inside an iframe within the NiFi web container.</p>
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
  */
 public class SecurityHeadersFilter implements Filter {
 
