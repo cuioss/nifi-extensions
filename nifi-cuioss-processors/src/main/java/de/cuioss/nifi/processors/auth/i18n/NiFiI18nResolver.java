@@ -26,6 +26,8 @@ import java.util.ResourceBundle;
 /**
  * Implementation of I18nResolver for NiFi processors.
  * Loads resource bundles and resolves translated strings.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/internationalization.adoc">Internationalization Specification</a>
  */
 public class NiFiI18nResolver implements I18nResolver {
 

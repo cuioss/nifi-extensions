@@ -22,6 +22,8 @@ import lombok.experimental.UtilityClass;
  * DSL-style nested constants for JWT-related translation keys.
  * This class organizes all JWT-related translation keys in a hierarchical structure
  * for better discoverability and type safety.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/internationalization.adoc">Internationalization Specification</a>
  */
 @UtilityClass
 public final class JWTTranslationKeys {
