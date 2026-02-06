@@ -51,6 +51,7 @@ class JwtVerificationServletTest {
         servlet = new JwtVerificationServlet(validationService);
         responseOutput = new ByteArrayOutputStream();
 
+        expect(request.getContentLength()).andReturn(100).anyTimes();
         expect(response.getOutputStream()).andReturn(new TestServletOutputStream(responseOutput)).anyTimes();
         response.setContentType("application/json");
         expectLastCall().anyTimes();

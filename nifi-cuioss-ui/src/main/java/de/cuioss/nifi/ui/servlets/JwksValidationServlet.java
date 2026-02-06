@@ -31,7 +31,9 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -58,6 +60,9 @@ public class JwksValidationServlet extends HttpServlet {
     private static final JsonReaderFactory JSON_READER = Json.createReaderFactory(Map.of());
     private static final JsonWriterFactory JSON_WRITER = Json.createWriterFactory(Map.of());
     private static final String JWKS_VALIDATION_FAILED_MSG = "JWKS URL validation failed: %s - %s";
+
+    /** Maximum request body size: 1 MB */
+    private static final int MAX_REQUEST_BODY_SIZE = 1024 * 1024;
 
     /** Default base path for JWKS files when no NiFi properties are available. */
     private static final String DEFAULT_JWKS_BASE_PATH = "/opt/nifi/nifi-current/conf";
@@ -191,6 +196,12 @@ public class JwksValidationServlet extends HttpServlet {
                 return JwksValidationResult.failure("Invalid URL: " + e.getFailureType().getDescription());
             }
 
+            // SSRF protection: reject private/loopback IPs
+            if (isPrivateOrLoopbackAddress(uri.getHost())) {
+                LOGGER.warn("SSRF attempt blocked for JWKS URL: %s", jwksUrl);
+                return JwksValidationResult.failure("URL must not point to a private or loopback address");
+            }
+
             // Fetch JWKS content using cui-http HttpHandler
             String content = fetchJwksContent(jwksUrl);
             if (content == null) {
@@ -207,6 +218,30 @@ public class JwksValidationServlet extends HttpServlet {
             return handleValidationError(jwksUrl, "JWKS URL validation interrupted: " + e.getMessage(), true);
         } catch (IOException e) {
             return handleValidationError(jwksUrl, "JWKS URL validation error: " + e.getMessage(), true);
+        }
+    }
+
+    /**
+     * Checks whether the given host resolves to a private, loopback, or link-local address.
+     * Used for SSRF protection.
+     *
+     * @param host hostname to check
+     * @return true if the address is private/loopback/link-local
+     */
+    private boolean isPrivateOrLoopbackAddress(String host) {
+        if (host == null || host.isEmpty()) {
+            return true;
+        }
+        try {
+            InetAddress address = InetAddress.getByName(host);
+            return address.isLoopbackAddress()
+                    || address.isSiteLocalAddress()
+                    || address.isLinkLocalAddress()
+                    || address.isAnyLocalAddress();
+        } catch (UnknownHostException e) {
+            // If we can't resolve the host, reject it for safety
+            LOGGER.debug("Cannot resolve host for SSRF check: %s", host);
+            return true;
         }
     }
 
@@ -320,11 +355,11 @@ public class JwksValidationServlet extends HttpServlet {
 
             // 3. Validate file exists and is readable
             if (!Files.exists(requestedPath)) {
-                return JwksValidationResult.failure("JWKS file does not exist: " + jwksFilePath);
+                return JwksValidationResult.failure("JWKS file does not exist at the specified path");
             }
 
             if (!Files.isReadable(requestedPath)) {
-                return JwksValidationResult.failure("JWKS file is not readable: " + jwksFilePath);
+                return JwksValidationResult.failure("JWKS file is not readable at the specified path");
             }
 
             // 4. Read and validate content
@@ -400,6 +435,10 @@ public class JwksValidationServlet extends HttpServlet {
      */
     @SuppressWarnings("java:S1168") // False positive - JsonObject is not a collection, null indicates error handled
     private JsonObject parseRequest(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        if (req.getContentLength() > MAX_REQUEST_BODY_SIZE) {
+            sendErrorResponse(resp, 413, "Request body too large");
+            return null;
+        }
         try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
             return reader.readObject();
         } catch (JsonException e) {

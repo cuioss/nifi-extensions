@@ -145,4 +145,17 @@ class NiFiI18nResolverTest {
         // Then it should handle the error gracefully
         assertNotEquals(key, result, "Should return the pattern even if formatting fails");
     }
+
+    @Test
+    @DisplayName("Should throw NullPointerException for null key in getTranslatedString")
+    void shouldThrowNpeForNullKey() {
+        assertThrows(NullPointerException.class, () -> defaultResolver.getTranslatedString(null));
+    }
+
+    @Test
+    @DisplayName("Should throw NullPointerException for null key in getTranslatedString with args")
+    void shouldThrowNpeForNullKeyWithArgs() {
+        assertThrows(NullPointerException.class,
+                () -> defaultResolver.getTranslatedString(null, "arg1"));
+    }
 }

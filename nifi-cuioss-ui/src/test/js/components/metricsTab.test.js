@@ -40,6 +40,14 @@ describe('MetricsTab', () => {
             formatDate: jest.fn((date) => {
                 if (!date) return '';
                 return new Date(date).toLocaleString();
+            }),
+            sanitizeHtml: jest.fn((str) => {
+                if (str === undefined || str === null) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
             })
         }));
 

@@ -21,6 +21,7 @@ import de.cuioss.tools.logging.CuiLogger;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.Value;
+import lombok.experimental.UtilityClass;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -30,14 +31,10 @@ import java.util.stream.Collectors;
  * This class provides functionality to validate if a token has the required scopes
  * and/or roles for authorization.
  */
+@UtilityClass
 public class AuthorizationValidator {
 
     private static final CuiLogger LOGGER = new CuiLogger(AuthorizationValidator.class);
-
-    // Private constructor to prevent instantiation
-    private AuthorizationValidator() {
-        throw new UnsupportedOperationException("Utility class");
-    }
 
     /**
      * Configuration for authorization validation.
@@ -184,17 +181,17 @@ public class AuthorizationValidator {
         RoleValidationResult roleResult = validateRoles(tokenRoles, config);
 
         // Determine overall authorization result
-        boolean isAuthorized = scopeResult.isValid() && roleResult.isValid();
+        boolean isAuthorized = scopeResult.valid() && roleResult.valid();
 
         // Build reason message if not authorized
         String reason = null;
         if (!isAuthorized) {
             List<String> reasons = new ArrayList<>();
-            if (!scopeResult.isValid()) {
-                reasons.add(scopeResult.getReason());
+            if (!scopeResult.valid()) {
+                reasons.add(scopeResult.reason());
             }
-            if (!roleResult.isValid()) {
-                reasons.add(roleResult.getReason());
+            if (!roleResult.valid()) {
+                reasons.add(roleResult.reason());
             }
             reason = String.join("; ", reasons);
         }
@@ -202,10 +199,10 @@ public class AuthorizationValidator {
         return AuthorizationResult.builder()
                 .authorized(isAuthorized)
                 .reason(reason)
-                .matchedScopes(scopeResult.getMatchedScopes())
-                .matchedRoles(roleResult.getMatchedRoles())
-                .missingScopes(scopeResult.getMissingScopes())
-                .missingRoles(roleResult.getMissingRoles())
+                .matchedScopes(scopeResult.matchedScopes())
+                .matchedRoles(roleResult.matchedRoles())
+                .missingScopes(scopeResult.missingScopes())
+                .missingRoles(roleResult.missingRoles())
                 .build();
     }
 
@@ -302,24 +299,16 @@ public class AuthorizationValidator {
     }
 
     /**
-     * Internal class for scope validation results.
+     * Internal record for scope validation results.
      */
-    @Value
-    private static class ScopeValidationResult {
-        boolean valid;
-        String reason;
-        Set<String> matchedScopes;
-        Set<String> missingScopes;
+    private record ScopeValidationResult(boolean valid, String reason,
+            Set<String> matchedScopes, Set<String> missingScopes) {
     }
 
     /**
-     * Internal class for role validation results.
+     * Internal record for role validation results.
      */
-    @Value
-    private static class RoleValidationResult {
-        boolean valid;
-        String reason;
-        Set<String> matchedRoles;
-        Set<String> missingRoles;
+    private record RoleValidationResult(boolean valid, String reason,
+            Set<String> matchedRoles, Set<String> missingRoles) {
     }
 }

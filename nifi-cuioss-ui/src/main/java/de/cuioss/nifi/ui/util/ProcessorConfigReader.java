@@ -28,6 +28,7 @@ import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * Utility class for reading processor configuration via NiFi's REST API.
@@ -58,6 +59,12 @@ public class ProcessorConfigReader {
         Objects.requireNonNull(processorId, "processorId must not be null");
         if (processorId.trim().isEmpty()) {
             throw new IllegalArgumentException("Processor ID cannot be empty");
+        }
+        // Validate processor ID is a valid UUID to prevent URL injection
+        try {
+            UUID.fromString(processorId);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Processor ID must be a valid UUID");
         }
 
         // Build NiFi API URL
@@ -95,8 +102,8 @@ public class ProcessorConfigReader {
         if (response.statusCode() == 404) {
             throw new IllegalArgumentException("Processor not found: " + processorId);
         } else if (response.statusCode() != 200) {
-            throw new IOException("Failed to fetch processor config: HTTP " + response.statusCode() +
-                    " - " + response.body());
+            LOGGER.debug("Failed to fetch processor config: HTTP %d - %s", response.statusCode(), response.body());
+            throw new IOException("Failed to fetch processor config: HTTP " + response.statusCode());
         }
 
         // Parse JSON response

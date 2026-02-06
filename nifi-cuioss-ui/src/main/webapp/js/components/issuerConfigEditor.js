@@ -18,6 +18,7 @@
 import { getI18n } from 'nf.Common';
 import * as apiClient from '../services/apiClient.js';
 import { displayUiError, displayUiSuccess } from '../utils/uiErrorDisplay.js';
+import { sanitizeHtml } from '../utils/formatters.js';
 import { confirmRemoveIssuer } from '../utils/confirmationDialog.js';
 import { API, COMPONENTS } from '../utils/constants.js';
 import { validateIssuerConfig, validateProcessorIdFromUrl } from '../utils/validation.js';
@@ -59,7 +60,7 @@ const _getSampleIssuerConfig = () => {
  * @returns {string} HTML string with success message styling
  */
 const _createSuccessMessage = (message) => {
-    return `<span class="success-message">${message}</span>`;
+    return `<span class="success-message">${sanitizeHtml(String(message))}</span>`;
 };
 
 /**

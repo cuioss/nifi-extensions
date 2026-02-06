@@ -105,7 +105,7 @@ public final class AuthLogMessages {
         public static final LogRecord CREATING_ISSUER_CONFIG = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(13)
-                .template("Creating issuer configuration for %s with properties: jwksUrl=%s, issuer=%s, audience=%s, clientId=%s")
+                .template("Creating issuer configuration for %s with properties: jwksUrl=%s, issuer=%s, audience=%s")
                 .build();
 
         public static final LogRecord TOKEN_VALIDATOR_INITIALIZED = LogRecordModel.builder()

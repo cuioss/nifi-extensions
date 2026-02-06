@@ -21,9 +21,11 @@ import de.cuioss.nifi.processors.auth.util.ErrorContext;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
 import de.cuioss.tools.logging.CuiLogger;
+import lombok.NonNull;
 import lombok.experimental.UtilityClass;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Shared utility for parsing issuer configurations from processor properties.
@@ -37,8 +39,54 @@ public class IssuerConfigurationParser {
 
     private static final CuiLogger LOGGER = new CuiLogger(IssuerConfigurationParser.class);
 
+    /**
+     * Property key for the maximum token size configuration.
+     */
+    static final String MAXIMUM_TOKEN_SIZE_KEY = "Maximum Token Size";
+
+    /**
+     * Default maximum token size in bytes.
+     */
+    private static final int DEFAULT_MAX_TOKEN_SIZE = 16384;
+
     // Property prefixes for UI configuration
     private static final String ISSUER_PREFIX = "issuer.";
+
+    /**
+     * Sensitive property keys whose values must be masked in log output.
+     */
+    private static final Set<String> SENSITIVE_KEYS = Set.of(
+            JWTPropertyKeys.Issuer.CLIENT_ID,
+            JWTPropertyKeys.Issuer.JWKS_CONTENT,
+            "client-secret"
+    );
+
+    /**
+     * Sanitizes a log value by stripping control characters (newline, carriage return, tab).
+     *
+     * @param value the value to sanitize
+     * @return the sanitized value
+     */
+    private static String sanitizeLogValue(String value) {
+        if (value == null) {
+            return "null";
+        }
+        return value.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");
+    }
+
+    /**
+     * Creates a sanitized summary of issuer properties for logging,
+     * masking sensitive values like client-id and jwks-content.
+     *
+     * @param issuerProps the properties map
+     * @return a sanitized string representation
+     */
+    private static String sanitizePropertiesForLog(Map<String, String> issuerProps) {
+        return issuerProps.entrySet().stream()
+                .map(e -> sanitizeLogValue(e.getKey()) + "="
+                        + (SENSITIVE_KEYS.contains(e.getKey()) ? "***" : sanitizeLogValue(e.getValue())))
+                .collect(Collectors.joining(", ", "{", "}"));
+    }
 
     /**
      * Extracts all issuer configurations from processor properties.
@@ -48,7 +96,7 @@ public class IssuerConfigurationParser {
      * @param configurationManager Optional external configuration manager
      * @return List of IssuerConfig objects
      */
-    public static List<IssuerConfig> parseIssuerConfigs(Map<String, String> properties,
+    public static List<IssuerConfig> parseIssuerConfigs(@NonNull Map<String, String> properties,
             ConfigurationManager configurationManager) {
         Map<String, Map<String, String>> issuerPropertiesMap = new HashMap<>();
         Set<String> currentIssuerNames = new HashSet<>();
@@ -71,10 +119,18 @@ public class IssuerConfigurationParser {
      * @param properties The processor's property map
      * @return ParserConfig object
      */
-    public static ParserConfig parseParserConfig(Map<String, String> properties) {
+    public static ParserConfig parseParserConfig(@NonNull Map<String, String> properties) {
+        int maxTokenSize = DEFAULT_MAX_TOKEN_SIZE;
+        String tokenSizeValue = properties.getOrDefault(MAXIMUM_TOKEN_SIZE_KEY,
+                String.valueOf(DEFAULT_MAX_TOKEN_SIZE));
+        try {
+            maxTokenSize = Integer.parseInt(tokenSizeValue);
+        } catch (NumberFormatException e) {
+            LOGGER.warn("Invalid value '%s' for %s, falling back to default %s",
+                    sanitizeLogValue(tokenSizeValue), MAXIMUM_TOKEN_SIZE_KEY, DEFAULT_MAX_TOKEN_SIZE);
+        }
         return ParserConfig.builder()
-                .maxTokenSize(Integer.parseInt(
-                        properties.getOrDefault("Maximum Token Size", "16384")))
+                .maxTokenSize(maxTokenSize)
                 .build();
     }
 
@@ -91,7 +147,8 @@ public class IssuerConfigurationParser {
             currentIssuerNames.add(issuerId);
             Map<String, String> issuerProps = configurationManager.getIssuerProperties(issuerId);
             issuerPropertiesMap.put(issuerId, new HashMap<>(issuerProps));
-            LOGGER.info("Loaded external configuration for issuer %s: %s", issuerId, issuerProps);
+            LOGGER.debug("Loaded external configuration for issuer %s: %s", sanitizeLogValue(issuerId),
+                    sanitizePropertiesForLog(issuerProps));
         }
     }
 
@@ -127,19 +184,16 @@ public class IssuerConfigurationParser {
             String issuerIndex = issuerPart.substring(0, dotIndex);
             String property = issuerPart.substring(dotIndex + 1);
 
-            // Skip if this is not a name property and we haven't seen this issuer yet
-            if (!"name".equals(property) && !issuerPropertiesMap.containsKey(issuerIndex)) {
-                return;
-            }
-
             // Track current issuer names for cache cleanup
             currentIssuerNames.add(issuerIndex);
 
-            // Store in issuer properties map
+            // Store in issuer properties map (always create entry regardless of property order)
             Map<String, String> issuerProps = issuerPropertiesMap.computeIfAbsent(issuerIndex, k -> new HashMap<>());
             issuerProps.put(property, propertyValue);
 
-            LOGGER.debug("Parsed UI property for issuer %s: %s = %s", issuerIndex, property, propertyValue);
+            LOGGER.debug("Parsed UI property for issuer %s: %s = %s", sanitizeLogValue(issuerIndex),
+                    sanitizeLogValue(property),
+                    SENSITIVE_KEYS.contains(property) ? "***" : sanitizeLogValue(propertyValue));
         }
     }
 
@@ -154,11 +208,10 @@ public class IssuerConfigurationParser {
             Map<String, String> issuerProps = entry.getValue();
 
             try {
-                IssuerConfig issuerConfig = createIssuerConfig(issuerId, issuerProps);
-                if (issuerConfig != null) {
+                createIssuerConfig(issuerId, issuerProps).ifPresent(issuerConfig -> {
                     issuerConfigs.add(issuerConfig);
-                    LOGGER.info("Created issuer configuration for %s", issuerId);
-                }
+                    LOGGER.info("Created issuer configuration for %s", sanitizeLogValue(issuerId));
+                });
             } catch (IllegalStateException | IllegalArgumentException e) {
                 // Catch configuration creation errors
                 String contextMessage = ErrorContext.forComponent("IssuerConfigurationParser")
@@ -180,13 +233,17 @@ public class IssuerConfigurationParser {
 
     /**
      * Creates an IssuerConfig from properties.
+     *
+     * @param issuerId    the issuer identifier
+     * @param issuerProps the issuer properties
+     * @return an Optional containing the IssuerConfig, or empty if the issuer should be skipped
      */
-    private static IssuerConfig createIssuerConfig(String issuerId, Map<String, String> issuerProps) {
+    private static Optional<IssuerConfig> createIssuerConfig(String issuerId, Map<String, String> issuerProps) {
         // Check if issuer is enabled (default to true if not specified)
         String enabledValue = issuerProps.get("enabled");
         if ("false".equalsIgnoreCase(enabledValue)) {
-            LOGGER.info("Issuer %s is disabled, skipping", issuerId);
-            return null;
+            LOGGER.info("Issuer %s is disabled, skipping", sanitizeLogValue(issuerId));
+            return Optional.empty();
         }
 
         // Get issuer name (required) - use either "name" or "issuer" property
@@ -195,8 +252,8 @@ public class IssuerConfigurationParser {
             issuerName = issuerProps.get(JWTPropertyKeys.Issuer.ISSUER_NAME);
         }
         if (issuerName == null || issuerName.trim().isEmpty()) {
-            LOGGER.warn("Issuer %s has no name configured, skipping", issuerId);
-            return null;
+            LOGGER.warn("Issuer %s has no name configured, skipping", sanitizeLogValue(issuerId));
+            return Optional.empty();
         }
 
         // Create builder using the same pattern as the processor
@@ -218,11 +275,13 @@ public class IssuerConfigurationParser {
             jwksSource = jwksFile.trim();
         } else if (jwksContent != null && !jwksContent.trim().isEmpty()) {
             // For content, we would need a different approach
-            LOGGER.warn("JWKS content configuration not yet supported in shared parser for issuer %s", issuerId);
-            return null;
+            LOGGER.warn("JWKS content configuration not yet supported in shared parser for issuer %s",
+                    sanitizeLogValue(issuerId));
+            return Optional.empty();
         } else {
-            LOGGER.warn("Issuer %s has no JWKS source configured (URL, file, or content), skipping", issuerId);
-            return null;
+            LOGGER.warn("Issuer %s has no JWKS source configured (URL, file, or content), skipping",
+                    sanitizeLogValue(issuerId));
+            return Optional.empty();
         }
 
         // Build the issuer config using the same pattern as the processor
@@ -241,7 +300,7 @@ public class IssuerConfigurationParser {
             builder.expectedClientId(clientId.trim());
         }
 
-        return builder.build();
+        return Optional.of(builder.build());
     }
 
     /**
@@ -252,7 +311,7 @@ public class IssuerConfigurationParser {
      * @param processorProperties Map from NiFi REST API response
      * @return Simple property map
      */
-    public static Map<String, String> extractPropertiesFromProcessorDTO(Map<String, String> processorProperties) {
+    public static Map<String, String> extractPropertiesFromProcessorDTO(@NonNull Map<String, String> processorProperties) {
         // The processor properties from REST API are already in the correct format
         return new HashMap<>(processorProperties);
     }

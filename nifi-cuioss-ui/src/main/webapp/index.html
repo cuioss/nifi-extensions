@@ -27,25 +27,7 @@
     <link rel="stylesheet" href="webjars/font-awesome/6.7.2/css/v4-shims.min.css">
 
     <!-- NiFi will provide globalThis.nf.Common in production -->
-    <script type="text/javascript">
-        // In production, NiFi provides the nf.Common object
-        // Map it to nfCommon for compatibility with our code
-        if (globalThis.nf !== undefined && globalThis.nf.Common) {
-            globalThis.nfCommon = globalThis.nf.Common;
-        } else if (globalThis.nfCommon === undefined) {
-            // Only log error if nfCommon is not already available from another source
-            console.warn('NiFi Common API not available. UI functionality may be limited.');
-            // Create a minimal stub to prevent errors
-            globalThis.nfCommon = {
-                registerCustomUiTab: function() { console.warn('registerCustomUiTab called but NiFi API not available'); },
-                getI18n: function() { 
-                    return { 
-                        getProperty: function(key) { return key; }
-                    };
-                }
-            };
-        }
-    </script>
+    <script type="text/javascript" src="js/nifi-common-init.js"></script>
 </head>
 <body>
     <div id="jwt-validator-container" data-testid="jwt-customizer-container">
@@ -92,32 +74,6 @@
     <script type="text/javascript" src="js/bundle.js?v=20250730"></script>
     
     <!-- Initialize the JWT UI -->
-    <script type="text/javascript">
-        // Initialize the JWT UI components when the page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, initializing JWT UI...');
-            
-            // Initialize the UI components - the bundle exposes nifiCuiossUI global variable
-            if (globalThis.nifiCuiossUI && typeof globalThis.nifiCuiossUI.init === 'function') {
-                console.log('Initializing JWT UI from Vite bundle');
-                globalThis.nifiCuiossUI.init().then(function(success) {
-                    if (success) {
-                        console.log('JWT UI initialization completed successfully');
-                    } else {
-                        console.warn('JWT UI initialization completed with warnings');
-                    }
-                }).catch(function(error) {
-                    console.error('JWT UI initialization failed:', error);
-                });
-            } else {
-                console.error('nifiCuiossUI not found in global scope. Bundle may not have loaded correctly.');
-            }
-        });
-        
-        // Add global error handler for debugging
-        globalThis.addEventListener('error', function(event) {
-            console.error('Global error:', event.error);
-        });
-    </script>
+    <script type="text/javascript" src="js/app-init.js"></script>
 </body>
 </html>

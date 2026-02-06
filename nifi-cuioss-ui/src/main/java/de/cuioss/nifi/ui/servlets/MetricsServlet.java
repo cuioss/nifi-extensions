@@ -60,29 +60,15 @@ public class MetricsServlet extends HttpServlet {
     private static final CuiLogger LOGGER = new CuiLogger(MetricsServlet.class);
     private static final JsonWriterFactory JSON_WRITER = Json.createWriterFactory(Map.of());
 
+    /** Maximum number of distinct error types tracked to prevent unbounded memory growth. */
+    private static final int MAX_ERROR_TYPES = 100;
+
     // Static metrics storage (in a real implementation, this might be injected or shared)
-    // For demo purposes, we'll use static counters
     private static final AtomicLong totalTokensValidated = new AtomicLong(0);
     private static final AtomicLong validTokens = new AtomicLong(0);
     private static final AtomicLong invalidTokens = new AtomicLong(0);
     private static volatile Instant lastValidation = null;
     private static final Map<String, AtomicLong> errorCounts = new ConcurrentHashMap<>();
-
-    // Initialize with some demo data for testing
-    static {
-        // Add some initial demo metrics data
-        totalTokensValidated.set(150);
-        validTokens.set(135);
-        invalidTokens.set(15);
-        lastValidation = Instant.now();
-
-        // Add some common error types
-        errorCounts.put("Token expired", new AtomicLong(8));
-        errorCounts.put("Invalid signature", new AtomicLong(5));
-        errorCounts.put("Unknown issuer", new AtomicLong(2));
-
-        LOGGER.info("Initialized MetricsServlet with demo data");
-    }
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
@@ -142,37 +128,9 @@ public class MetricsServlet extends HttpServlet {
             topErrorsBuilder.add(errorObj);
         }
 
-        // Calculate additional metrics the frontend expects
-        long successCount = metrics.validTokens;
-        long failureCount = metrics.invalidTokens;
-
-        // Generate demo performance metrics (in a real implementation, these would be tracked)
-        long avgResponseTime = metrics.totalTokensValidated > 0 ? 45 : 0;
-        long minResponseTime = metrics.totalTokensValidated > 0 ? 10 : 0;
-        long maxResponseTime = metrics.totalTokensValidated > 0 ? 120 : 0;
-        long p95ResponseTime = metrics.totalTokensValidated > 0 ? 85 : 0;
-
-        // For demo purposes, show some active issuers
-        int activeIssuers = metrics.totalTokensValidated > 0 ? 2 : 0;
-
-        // Create issuer metrics array (demo data)
+        // Performance metrics and issuer-level metrics require proper instrumentation.
+        // These fields are included with zero values so the frontend receives a valid structure.
         JsonArrayBuilder issuerMetricsBuilder = Json.createArrayBuilder();
-        if (metrics.totalTokensValidated > 0) {
-            issuerMetricsBuilder.add(Json.createObjectBuilder()
-                    .add("issuer", "https://keycloak.example.com")
-                    .add("totalRequests", Math.max(1, metrics.totalTokensValidated / 2))
-                    .add("success", Math.max(0, successCount / 2))
-                    .add("failed", Math.max(0, failureCount / 2))
-                    .add("avgResponseTime", 42)
-                    .build());
-            issuerMetricsBuilder.add(Json.createObjectBuilder()
-                    .add("issuer", "https://auth.example.com")
-                    .add("totalRequests", Math.max(1, metrics.totalTokensValidated / 2))
-                    .add("success", Math.max(0, successCount / 2))
-                    .add("failed", Math.max(0, failureCount / 2))
-                    .add("avgResponseTime", 48)
-                    .build());
-        }
 
         return Json.createObjectBuilder()
                 .add("totalTokensValidated", metrics.totalTokensValidated)
@@ -182,12 +140,12 @@ public class MetricsServlet extends HttpServlet {
                 .add("lastValidation", metrics.lastValidation != null ?
                         metrics.lastValidation.toString() : "")
                 .add("topErrors", topErrorsBuilder)
-                // Additional fields expected by frontend
-                .add("averageResponseTime", avgResponseTime)
-                .add("minResponseTime", minResponseTime)
-                .add("maxResponseTime", maxResponseTime)
-                .add("p95ResponseTime", p95ResponseTime)
-                .add("activeIssuers", activeIssuers)
+                // Additional fields expected by frontend (zeroed until proper instrumentation is added)
+                .add("averageResponseTime", 0)
+                .add("minResponseTime", 0)
+                .add("maxResponseTime", 0)
+                .add("p95ResponseTime", 0)
+                .add("activeIssuers", 0)
                 .add("issuerMetrics", issuerMetricsBuilder)
                 .build();
     }
@@ -242,7 +200,11 @@ public class MetricsServlet extends HttpServlet {
         lastValidation = Instant.now();
 
         if (errorMessage != null && !errorMessage.trim().isEmpty()) {
-            errorCounts.computeIfAbsent(errorMessage.trim(), k -> new AtomicLong(0)).incrementAndGet();
+            String key = errorMessage.trim();
+            // Only track new error types if under the cap, but always update existing ones
+            if (errorCounts.containsKey(key) || errorCounts.size() < MAX_ERROR_TYPES) {
+                errorCounts.computeIfAbsent(key, k -> new AtomicLong(0)).incrementAndGet();
+            }
         }
 
         LOGGER.debug("Recorded invalid token, total: %d, invalid: %d, error: %s",
