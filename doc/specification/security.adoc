@@ -203,7 +203,7 @@ The processor tracks security events for monitoring and alerting:
 3. **Malformed Token Count**: Tracks unparseable tokens
 4. **Unauthorized Access Attempts**: Tracks authorization failures
 
-For details on security event monitoring implementation, see link:token-validation.adoc[Token Validation - Security Event Monitoring].
+For details on security event monitoring implementation, see xref:token-validation.adoc#_security_event_monitoring[Security Event Monitoring].
 
 == Security Recommendations
 

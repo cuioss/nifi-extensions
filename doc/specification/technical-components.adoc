@@ -125,6 +125,15 @@ public static final Relationship FAILURE = new Relationship.Builder()
     .name("failure")
     .description("FlowFiles with extraction failures will be routed to this relationship")
     .build();
+
+@Override
+public Set<Relationship> getRelationships() {
+    final Set<Relationship> relationships = new HashSet<>();
+    relationships.add(SUCCESS);
+    relationships.add(AUTHENTICATION_FAILED);
+    relationships.add(FAILURE);
+    return relationships;
+}
 ----
 
 == Flow File Attribute Handling
