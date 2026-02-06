@@ -155,7 +155,7 @@ class BackendEndpointsIntegrationTest {
     }
 
     @Test
-    void e2eTokenVerificationEndpointAccessible() {
+    void removedE2eEndpointReturns404() {
         String requestBody = """
             {
                 "token": "test-token",
@@ -170,11 +170,7 @@ class BackendEndpointsIntegrationTest {
                 .when()
                 .post("/api/token/verify")
                 .then()
-                .statusCode(not(equalTo(404))) // Should not be Not Found
-                .contentType(ContentType.JSON)
-                .body("valid", notNullValue())
-                .body("error", notNullValue())
-                .body("claims", notNullValue());
+                .statusCode(equalTo(404)); // E2E endpoint removed for security
     }
 
     @Test

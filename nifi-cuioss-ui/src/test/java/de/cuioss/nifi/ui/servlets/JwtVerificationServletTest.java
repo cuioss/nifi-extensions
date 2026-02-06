@@ -31,7 +31,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 import static org.easymock.EasyMock.*;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -70,11 +69,8 @@ class JwtVerificationServletTest {
             """;
 
         expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/verify-token").anyTimes();
-        expect(request.getRequestURI()).andReturn("/nifi-api/processors/jwt/verify-token").anyTimes();
 
         TokenValidationResult validResult = TokenValidationResult.success(null);
-        validResult.setTestClaims(Map.of("sub", "user123", "iss", "test-issuer"));
         validResult.setIssuer("test-issuer");
         validResult.setScopes(List.of("read", "write"));
         validResult.setRoles(List.of("admin"));
@@ -111,8 +107,6 @@ class JwtVerificationServletTest {
             """;
 
         expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/verify-token").anyTimes();
-        expect(request.getRequestURI()).andReturn("/nifi-api/processors/jwt/verify-token").anyTimes();
 
         TokenValidationResult invalidResult = TokenValidationResult.failure("Invalid token signature");
         expect(validationService.verifyToken("invalid-token", "test-processor-id"))
@@ -145,8 +139,6 @@ class JwtVerificationServletTest {
             """;
 
         expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/verify-token").anyTimes();
-        expect(request.getRequestURI()).andReturn("/nifi-api/processors/jwt/verify-token").anyTimes();
 
         TokenValidationResult expiredResult = TokenValidationResult.failure("Token expired at 2025-01-01T00:00:00Z");
         expect(validationService.verifyToken("expired-token", "test-processor-id"))
@@ -196,7 +188,7 @@ class JwtVerificationServletTest {
     }
 
     @Test
-    void missingProcessorIdForNonE2ETest() throws Exception {
+    void missingProcessorId() throws Exception {
         // Arrange
         String requestJson = """
             {
@@ -205,8 +197,6 @@ class JwtVerificationServletTest {
             """;
 
         expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/verify-token").anyTimes();
-        expect(request.getRequestURI()).andReturn("/nifi-api/processors/jwt/verify-token").anyTimes();
 
         response.setStatus(400);
         expectLastCall();
@@ -222,48 +212,6 @@ class JwtVerificationServletTest {
         String responseJson = responseOutput.toString();
         assertTrue(responseJson.contains("\"valid\":false"));
         assertTrue(responseJson.contains("Processor ID cannot be empty"));
-    }
-
-    @Test
-    void e2eTestCompatibility() throws Exception {
-        // Arrange
-        String requestJson = """
-            {
-                "token": "test-token",
-                "issuer": "expected-issuer",
-                "requiredScopes": ["read"],
-                "requiredRoles": ["user"]
-            }
-            """;
-
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-        expect(request.getServletPath()).andReturn("/api/token/verify").anyTimes();
-        expect(request.getRequestURI()).andReturn("/api/token/verify").anyTimes();
-
-        TokenValidationResult validResult = TokenValidationResult.success(null);
-        validResult.setTestClaims(Map.of("sub", "user123", "iss", "expected-issuer"));
-        validResult.setIssuer("expected-issuer");
-        validResult.setScopes(List.of("read", "write"));
-        validResult.setRoles(List.of("user", "admin"));
-        validResult.setAuthorized(true);
-
-        expect(validationService.verifyToken("test-token", null))
-                .andReturn(validResult);
-
-        response.setStatus(200);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-
-        String responseJson = responseOutput.toString();
-        assertTrue(responseJson.contains("\"valid\":true"));
-        assertTrue(responseJson.contains("\"authorized\":true"));
     }
 
     @Test
@@ -299,8 +247,6 @@ class JwtVerificationServletTest {
             """;
 
         expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/verify-token").anyTimes();
-        expect(request.getRequestURI()).andReturn("/nifi-api/processors/jwt/verify-token").anyTimes();
 
         expect(validationService.verifyToken("test-token", "test-processor-id"))
                 .andThrow(new IllegalStateException("Service not available"));

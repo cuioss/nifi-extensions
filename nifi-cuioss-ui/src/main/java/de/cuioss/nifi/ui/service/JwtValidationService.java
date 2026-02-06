@@ -26,18 +26,13 @@ import de.cuioss.sheriff.oauth.core.TokenValidator;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.tools.logging.CuiLogger;
-import jakarta.json.Json;
-import jakarta.json.JsonException;
-import jakarta.json.JsonObject;
-import jakarta.json.JsonReader;
 
 import java.io.IOException;
-import java.io.StringReader;
 import java.util.*;
 
 /**
  * Service for JWT token validation using the cui-jwt-validation library.
- * This service retrieves processor configuration via NiFi's REST API and 
+ * This service retrieves processor configuration via NiFi's REST API and
  * creates the same TokenValidator instance that the processor uses.
  */
 public class JwtValidationService {
@@ -49,9 +44,9 @@ public class JwtValidationService {
 
     /**
      * Verifies a JWT token using the processor's configuration.
-     * 
+     *
      * @param token The JWT token to verify (must not be null)
-     * @param processorId The processor ID to get configuration from (can be null for test mode)
+     * @param processorId The processor ID to get configuration from (must not be null)
      * @return TokenValidationResult containing validation results (never null)
      * @throws IOException If unable to fetch processor configuration
      * @throws IllegalArgumentException If processor configuration is invalid
@@ -60,13 +55,8 @@ public class JwtValidationService {
     public TokenValidationResult verifyToken(String token, String processorId)
             throws IOException, IllegalArgumentException, IllegalStateException {
 
-        LOGGER.info("verifyToken called with processorId=%s, token=%s", processorId, token);
-
-        // For E2E tests, use test configuration when processorId is null
-        if (processorId == null) {
-            LOGGER.info("ProcessorId is null, using test configuration");
-            return verifyTokenWithTestConfig(token);
-        }
+        Objects.requireNonNull(processorId, "processorId must not be null");
+        LOGGER.debug("verifyToken called with processorId=%s, token=%s", processorId, maskToken(token));
 
         // 1. Get processor configuration via NiFi REST API
         ProcessorConfigReader configReader = new ProcessorConfigReader();
@@ -134,8 +124,6 @@ public class JwtValidationService {
         private final boolean valid;
         private final String error;
         private final AccessTokenContent tokenContent;
-        private String expiredAt;
-        private Map<String, Object> testClaims;
         private String issuer;
         private boolean authorized;
         private List<String> scopes;
@@ -165,18 +153,6 @@ public class JwtValidationService {
 
         public AccessTokenContent getTokenContent() {
             return tokenContent;
-        }
-
-        public void setExpiredAt(String expiredAt) {
-            this.expiredAt = expiredAt;
-        }
-
-        public String getExpiredAt() {
-            return expiredAt;
-        }
-
-        public void setTestClaims(Map<String, Object> claims) {
-            this.testClaims = claims;
         }
 
         public void setIssuer(String issuer) {
@@ -223,15 +199,10 @@ public class JwtValidationService {
         /**
          * Gets the claims from the token content as a Map.
          * This is used for JSON serialization in the servlet response.
-         * 
-         * @return Map of claims, or null if token is invalid
+         *
+         * @return Map of claims, or empty map if token is invalid
          */
         public Map<String, Object> getClaims() {
-            // For test mode, return test claims
-            if (testClaims != null) {
-                return testClaims;
-            }
-
             if (tokenContent != null) {
                 Map<String, Object> claims = new HashMap<>();
 
@@ -259,162 +230,12 @@ public class JwtValidationService {
     }
 
     /**
-     * Verifies a JWT token using a test configuration for E2E tests.
-     * This method uses a permissive configuration that accepts most tokens
-     * for testing purposes.
-     * 
-     * @param token The JWT token to verify
-     * @return TokenValidationResult containing validation results
+     * Masks a JWT token for safe logging, showing only the first 8 characters.
      */
-    private TokenValidationResult verifyTokenWithTestConfig(String token) {
-        LOGGER.info("Using test configuration for E2E token verification");
-
-        // Special handling for test tokens
-        if ("invalid.jwt.token".equals(token)) {
-            return TokenValidationResult.failure("Invalid JWT token");
+    private static String maskToken(String token) {
+        if (token == null || token.length() <= 12) {
+            return "***";
         }
-
-        // Create a simple test configuration that accepts tokens
-        try {
-            // For E2E tests, perform basic token parsing without signature verification
-            // This is ONLY for testing and should never be used in production
-            String[] parts = token.split("\\.");
-            if (parts.length != 3) {
-                return TokenValidationResult.failure("Invalid token format - expected 3 parts");
-            }
-
-            // Decode and validate token payload
-            return parseAndValidateTestTokenPayload(parts[1]);
-        } catch (IllegalArgumentException | JsonException e) {
-            LOGGER.error(e, "Error in test token verification");
-            return TokenValidationResult.failure("Token verification error: " + e.getMessage());
-        } catch (IllegalStateException e) {
-            LOGGER.error(e, "Unexpected error in test token verification");
-            return TokenValidationResult.failure("Token verification error: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Parses and validates the payload portion of a test JWT token.
-     *
-     * @param payloadPart The base64-encoded payload part of the JWT
-     * @return TokenValidationResult containing validation results
-     * @throws IllegalArgumentException if the payload cannot be decoded
-     * @throws JsonException if the payload is not valid JSON
-     */
-    private TokenValidationResult parseAndValidateTestTokenPayload(String payloadPart) {
-        String payload = new String(Base64.getUrlDecoder().decode(payloadPart));
-        LOGGER.debug("Token payload: %s", payload);
-
-        // Parse JSON payload
-        JsonObject claims;
-        try (JsonReader jsonReader = Json.createReader(new StringReader(payload))) {
-            claims = jsonReader.readObject();
-        }
-
-        // Check for expiration
-        TokenValidationResult expirationCheck = checkTokenExpiration(claims);
-        if (expirationCheck != null) {
-            return expirationCheck; // Token is expired
-        }
-
-        // Extract claims and build result
-        Map<String, Object> claimsMap = extractBasicClaims(claims);
-        extractRolesAndScopes(claims, claimsMap);
-
-        // Create successful result
-        return buildSuccessfulResult(claims, claimsMap);
-    }
-
-    /**
-     * Checks if token is expired.
-     *
-     * @param claims JWT claims
-     * @return TokenValidationResult if token is expired, null otherwise
-     */
-    private TokenValidationResult checkTokenExpiration(JsonObject claims) {
-        if (!claims.containsKey("exp")) {
-            return null; // No expiration claim
-        }
-
-        long exp = claims.getJsonNumber("exp").longValue();
-        long now = System.currentTimeMillis() / 1000;
-
-        if (exp < now) {
-            TokenValidationResult result = TokenValidationResult.failure("Token expired");
-            result.setExpiredAt(new Date(exp * 1000).toString());
-            return result;
-        }
-
-        return null; // Not expired
-    }
-
-    /**
-     * Extracts basic claims (sub, iss, exp) from JWT payload.
-     *
-     * @param claims JWT claims
-     * @return Map of basic claims
-     */
-    private Map<String, Object> extractBasicClaims(JsonObject claims) {
-        Map<String, Object> claimsMap = new HashMap<>();
-        claimsMap.put("sub", claims.getString("sub", ""));
-        claimsMap.put("iss", claims.getString("iss", ""));
-        claimsMap.put("exp", claims.containsKey("exp") ?
-                claims.getJsonNumber("exp").toString() : "");
-        return claimsMap;
-    }
-
-    /**
-     * Extracts scopes and roles from JWT claims.
-     *
-     * @param claims JWT claims
-     * @param claimsMap Map to populate with extracted scopes and roles
-     */
-    private void extractRolesAndScopes(JsonObject claims, Map<String, Object> claimsMap) {
-        if (claims.containsKey(CLAIM_SCOPES)) {
-            List<String> scopes = extractJsonArrayAsStrings(claims.getJsonArray(CLAIM_SCOPES));
-            claimsMap.put(CLAIM_SCOPES, scopes);
-        }
-
-        if (claims.containsKey(CLAIM_ROLES)) {
-            List<String> tokenRoles = extractJsonArrayAsStrings(claims.getJsonArray(CLAIM_ROLES));
-            claimsMap.put(CLAIM_ROLES, tokenRoles);
-        }
-    }
-
-    /**
-     * Extracts JSON array values as a list of strings.
-     *
-     * @param array JSON array
-     * @return List of strings
-     */
-    private List<String> extractJsonArrayAsStrings(jakarta.json.JsonArray array) {
-        List<String> result = new ArrayList<>();
-        for (int i = 0; i < array.size(); i++) {
-            result.add(array.get(i).toString().replace("\"", ""));
-        }
-        return result;
-    }
-
-    /**
-     * Builds successful token validation result.
-     *
-     * @param claims JWT claims
-     * @param claimsMap Extracted claims map
-     * @return Token validation result
-     */
-    private TokenValidationResult buildSuccessfulResult(JsonObject claims, Map<String, Object> claimsMap) {
-        TokenValidationResult result = TokenValidationResult.success(null);
-        result.setTestClaims(claimsMap);
-        result.setIssuer(claims.getString("iss", "test-issuer"));
-
-        // Check authorization if requested
-        if (claims.containsKey(CLAIM_SCOPES) || claims.containsKey(CLAIM_ROLES)) {
-            result.setAuthorized(true);
-            result.setScopes((List<String>) claimsMap.get(CLAIM_SCOPES));
-            result.setRoles((List<String>) claimsMap.get(CLAIM_ROLES));
-        }
-
-        return result;
+        return token.substring(0, 8) + "...[" + token.length() + " chars]";
     }
 }

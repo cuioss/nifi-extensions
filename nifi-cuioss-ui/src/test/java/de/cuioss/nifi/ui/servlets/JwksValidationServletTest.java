@@ -23,6 +23,8 @@ import jakarta.servlet.WriteListener;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
@@ -32,6 +34,7 @@ import java.io.IOException;
 import static org.easymock.EasyMock.*;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@DisplayName("JWKS Validation Servlet Tests")
 class JwksValidationServletTest {
 
     private HttpServletRequest request;
@@ -437,8 +440,9 @@ class JwksValidationServletTest {
     }
 
     @Test
+    @DisplayName("Should reject file path outside allowed base directory")
     void nonExistentJwksFileValidation() throws Exception {
-        // Arrange
+        // Arrange — path outside allowed base directory is now rejected by base directory restriction
         String requestJson = """
             {
                 "jwksFilePath": "/nonexistent/path/to/jwks.json",
@@ -462,7 +466,90 @@ class JwksValidationServletTest {
 
         String responseJson = responseOutput.toString();
         assertTrue(responseJson.contains("\"valid\":false"));
-        assertTrue(responseJson.contains("does not exist"));
+        assertTrue(responseJson.contains("File path must be within"));
+    }
+
+    @Nested
+    @DisplayName("Path Traversal Protection Tests")
+    class PathTraversalProtectionTests {
+
+        @Test
+        @DisplayName("Should reject path with parent directory traversal")
+        void shouldRejectPathWithParentTraversal() throws Exception {
+            String requestJson = """
+                {
+                    "jwksFilePath": "../../etc/passwd",
+                    "processorId": "test-processor-id"
+                }
+                """;
+
+            expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+            expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-file").anyTimes();
+
+            response.setStatus(400);
+            expectLastCall();
+
+            replay(request, response);
+
+            servlet.doPost(request, response);
+
+            verify(request, response);
+
+            String responseJson = responseOutput.toString();
+            assertTrue(responseJson.contains("\"valid\":false"));
+        }
+
+        @Test
+        @DisplayName("Should reject absolute path to system file")
+        void shouldRejectAbsoluteSystemPath() throws Exception {
+            String requestJson = """
+                {
+                    "jwksFilePath": "/etc/shadow",
+                    "processorId": "test-processor-id"
+                }
+                """;
+
+            expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+            expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-file").anyTimes();
+
+            response.setStatus(400);
+            expectLastCall();
+
+            replay(request, response);
+
+            servlet.doPost(request, response);
+
+            verify(request, response);
+
+            String responseJson = responseOutput.toString();
+            assertTrue(responseJson.contains("\"valid\":false"));
+        }
+
+        @Test
+        @DisplayName("Should reject path with encoded traversal")
+        void shouldRejectEncodedTraversal() throws Exception {
+            String requestJson = """
+                {
+                    "jwksFilePath": "..%2F..%2Fetc%2Fpasswd",
+                    "processorId": "test-processor-id"
+                }
+                """;
+
+            expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+            expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-file").anyTimes();
+
+            response.setStatus(400);
+            expectLastCall();
+
+            replay(request, response);
+
+            servlet.doPost(request, response);
+
+            verify(request, response);
+
+            String responseJson = responseOutput.toString();
+            assertTrue(responseJson.contains("\"valid\":false"));
+        }
     }
 
     // Helper classes for testing

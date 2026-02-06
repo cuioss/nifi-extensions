@@ -17,21 +17,25 @@
 package de.cuioss.nifi.ui.servlets;
 
 import de.cuioss.tools.logging.CuiLogger;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonWriterFactory;
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.util.Map;
 
 /**
  * Authentication filter for JWT API endpoints.
  * This filter ensures that only requests from the custom UI can access
  * the JWT validation endpoints.
- * 
+ *
  * The filter intercepts requests to /nifi-api/processors/jwt/* and validates:
  * 1. X-Processor-Id header is present (required for tracking)
- * 
+ *
  * Since the custom UI runs within an authenticated NiFi session (iframe),
  * this provides a minimal security layer by ensuring requests include
  * the processor context.
@@ -40,6 +44,7 @@ import java.io.IOException;
 public class ApiKeyAuthenticationFilter implements Filter {
 
     private static final CuiLogger LOGGER = new CuiLogger(ApiKeyAuthenticationFilter.class);
+    private static final JsonWriterFactory JSON_WRITER = Json.createWriterFactory(Map.of());
 
     // Headers
     private static final String PROCESSOR_ID_HEADER = "X-Processor-Id";
@@ -61,30 +66,14 @@ public class ApiKeyAuthenticationFilter implements Filter {
 
         LOGGER.debug("Processing request: %s %s", method, requestPath);
 
-        // Check if this is an E2E test endpoint (no authentication required)
-        if (requestPath != null && requestPath.startsWith("/api/token/")) {
-            LOGGER.debug("Skipping authentication for E2E test endpoint: %s", requestPath);
-            chain.doFilter(request, response);
-            return;
-        }
-
         // Extract processor ID from headers
         String processorId = httpRequest.getHeader(PROCESSOR_ID_HEADER);
 
-        // For test mode (standalone UI), allow empty processor ID
-        String requestURI = httpRequest.getRequestURI();
-        boolean isTestMode = (requestURI != null && requestURI.contains("/verify-token")) &&
-                (processorId == null || processorId.trim().isEmpty());
-
-        // Validate processor ID header is present (except in test mode)
-        if (!isTestMode && (processorId == null || processorId.trim().isEmpty())) {
+        // Validate processor ID header is present
+        if (processorId == null || processorId.trim().isEmpty()) {
             LOGGER.warn("Missing processor ID header in request to %s", requestPath);
             sendUnauthorizedResponse(httpResponse, "Missing or empty processor ID header");
             return;
-        }
-
-        if (isTestMode) {
-            LOGGER.debug("Test mode enabled for token verification - allowing empty processor ID");
         }
 
         // Check if user is authenticated (when available)
@@ -117,31 +106,18 @@ public class ApiKeyAuthenticationFilter implements Filter {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        // Send JSON error response that matches the servlet response format
-        String jsonResponse = "{\"error\":\"%s\",\"valid\":false,\"accessible\":false}".formatted(
-                escapeJsonString(message));
+        JsonObject errorResponse = Json.createObjectBuilder()
+                .add("error", message)
+                .add("valid", false)
+                .add("accessible", false)
+                .build();
 
-        try (var writer = response.getWriter()) {
-            writer.write(jsonResponse);
+        try (var writer = JSON_WRITER.createWriter(response.getOutputStream())) {
+            writer.writeObject(errorResponse);
         } catch (IOException e) {
             LOGGER.error(e, "Failed to write unauthorized response");
             throw e;
         }
-    }
-
-    /**
-     * Escapes a string for safe inclusion in JSON.
-     * 
-     * @param str The string to escape (must not be null)
-     * @return The escaped string (never null)
-     */
-    private String escapeJsonString(String str) {
-        if (str == null) return "";
-        return str.replace("\"", "\\\"")
-                .replace("\\", "\\\\")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
     }
 
 }

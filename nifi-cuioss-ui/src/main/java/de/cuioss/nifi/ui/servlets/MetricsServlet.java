@@ -291,7 +291,7 @@ public class MetricsServlet extends HttpServlet {
         public final List<ErrorCount> topErrors;
 
         public SecurityMetrics(long totalTokensValidated, long validTokens, long invalidTokens,
-                double errorRate, Instant lastValidation, List<ErrorCount> topErrors) {
+                               double errorRate, Instant lastValidation, List<ErrorCount> topErrors) {
             this.totalTokensValidated = totalTokensValidated;
             this.validTokens = validTokens;
             this.invalidTokens = invalidTokens;
