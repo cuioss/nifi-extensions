@@ -33,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests for {@link AuthorizationValidator}.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/technical-components.adoc">Technical Components Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>
  */
 class AuthorizationValidatorTest {
 

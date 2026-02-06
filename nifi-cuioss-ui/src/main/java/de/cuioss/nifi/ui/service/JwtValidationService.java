@@ -38,6 +38,7 @@ import static de.cuioss.nifi.ui.util.TokenMasking.maskToken;
  * creates the same TokenValidator instance that the processor uses.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>
  */
 public class JwtValidationService {
 

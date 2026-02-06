@@ -44,6 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * test actual token validation.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/observability.adoc">Observability Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>
  */
 class MultiIssuerJWTTokenAuthenticatorTest {
 

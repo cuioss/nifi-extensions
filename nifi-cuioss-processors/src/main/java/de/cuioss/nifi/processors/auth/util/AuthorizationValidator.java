@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
  * and/or roles for authorization.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/technical-components.adoc">Technical Components Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>
  */
 @UtilityClass
 public class AuthorizationValidator {

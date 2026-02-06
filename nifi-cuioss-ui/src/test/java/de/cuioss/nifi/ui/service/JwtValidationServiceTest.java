@@ -45,6 +45,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests for {@link JwtValidationService}.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>
  */
 @EnableGeneratorController
 @DisplayName("JWT Validation Service Tests")
