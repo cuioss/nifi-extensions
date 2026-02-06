@@ -450,13 +450,14 @@ export class AccessibilityHelper {
         }
 
         const results = [];
+        let focusableElements = [];
 
         try {
             // Check if we're in a frame context
             const isFrameContext = this.page.constructor.name === "Frame";
 
             // Get all focusable elements
-            const focusableElements = await this.page
+            focusableElements = await this.page
                 .locator(
                     'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
                 )
@@ -505,7 +506,7 @@ export class AccessibilityHelper {
         return {
             passed: true,
             tabOrder: results,
-            totalFocusable: results.length,
+            totalFocusable: focusableElements.length,
         };
     }
 
