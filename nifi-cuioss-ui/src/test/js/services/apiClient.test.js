@@ -421,8 +421,7 @@ describe('apiClient', () => {
         });
     });
 
-    // Note: The getAuthConfig function and auth header logic (lines 28-44, 78-86)
-    // are not covered because they only execute when endpoint.includes('/jwt/'),
-    // but all our endpoints use 'jwt/...' (without leading slash) pattern.
-    // This appears to be legacy code that may not be actively used.
+    // Note: The getAuthConfig function and auth header logic adds X-Processor-Id
+    // when endpoint.includes('/jwt/'). With BASE_URL 'nifi-api/processors/jwt',
+    // all JWT endpoints now correctly include '/jwt/' and receive auth headers.
 });
