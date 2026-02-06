@@ -50,8 +50,8 @@ const EMPTY_CANVAS_SELECTORS = {
     '[data-component-type="processor"]',
     'g.component',
     '.processor-component',
-    '[class*="processor"]',
-    'g[transform]'
+    'svg g[class*="processor"]',
+    'svg g[transform]'
   ],
 
   CANVAS_SELECTORS: [
