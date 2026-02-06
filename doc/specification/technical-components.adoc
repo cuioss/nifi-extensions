@@ -10,6 +10,20 @@ link:../Specification.adoc[Back to Main Specification]
 == Component Architecture
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
 
+== Implementation Status
+
+=== Implementation Classes
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] -- Main processor extending AbstractProcessor
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTTokenAuthenticator.java[JWTTokenAuthenticator] -- Simplified token extraction processor
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/util/AuthorizationValidator.java[AuthorizationValidator] -- Scope and role validation
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTAttributes.java[JWTAttributes] -- Flow file attribute key constants
+
+=== Verification
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorTest.java[MultiIssuerJWTTokenAuthenticatorTest]
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorExtendedTest.java[MultiIssuerJWTTokenAuthenticatorExtendedTest] -- RS256 signed token tests
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/JWTTokenAuthenticatorTest.java[JWTTokenAuthenticatorTest]
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/util/AuthorizationValidatorTest.java[AuthorizationValidatorTest]
+
 == Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
 
@@ -109,32 +123,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-6[NIFI-AUTH-6: Output Requi
 |FlowFiles that encountered extraction failures during processing
 |===
 
-[source,java]
-----
-public static final Relationship SUCCESS = new Relationship.Builder()
-    .name("success")
-    .description("FlowFiles with valid tokens will be routed to this relationship")
-    .build();
-
-public static final Relationship AUTHENTICATION_FAILED = new Relationship.Builder()
-    .name("authentication-failed")
-    .description("FlowFiles with invalid tokens will be routed to this relationship")
-    .build();
-
-public static final Relationship FAILURE = new Relationship.Builder()
-    .name("failure")
-    .description("FlowFiles with extraction failures will be routed to this relationship")
-    .build();
-
-@Override
-public Set<Relationship> getRelationships() {
-    final Set<Relationship> relationships = new HashSet<>();
-    relationships.add(SUCCESS);
-    relationships.add(AUTHENTICATION_FAILED);
-    relationships.add(FAILURE);
-    return relationships;
-}
-----
+See the relationship definitions in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTProcessorConstants.java[JWTProcessorConstants.Relationships].
 
 == Flow File Attribute Handling
 
