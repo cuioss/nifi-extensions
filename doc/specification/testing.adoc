@@ -7,6 +7,20 @@
 
 link:../Specification.adoc[Back to Main Specification]
 
+== Referenced Implementation
+
+=== Test Directories
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/[nifi-cuioss-processors tests] -- Processor unit tests
+* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/[nifi-cuioss-ui tests] -- UI service and servlet tests
+* link:../../integration-testing/[integration-testing module] -- Docker-based integration tests
+* link:../../e-2-e-playwright/[e-2-e-playwright module] -- Playwright E2E tests
+
+=== Key Test Classes
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorTest.java[MultiIssuerJWTTokenAuthenticatorTest]
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorExtendedTest.java[MultiIssuerJWTTokenAuthenticatorExtendedTest] -- RS256 signed token tests
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/util/AuthorizationValidatorTest.java[AuthorizationValidatorTest]
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/util/ErrorContextTest.java[ErrorContextTest]
+
 == Testing Overview
 [.requirement]
 _See Requirement: link:../Requirements.adoc#NIFI-AUTH-14[NIFI-AUTH-14: Unit Testing]_
@@ -37,41 +51,7 @@ Unit tests for the TokenValidator component verify:
 3. **Claim Validation**: Proper validation of token claims
 4. **Error Handling**: Proper handling of validation errors
 
-[source,java]
-----
-@Test
-void shouldValidateTokenWithCorrectSignature() {
-    // Arrange
-    String validToken = createValidToken();
-    TokenValidator validator = createTokenValidator();
-
-    try {
-        // Act
-        AccessTokenContent result = validator.createAccessToken(validToken);
-
-        // Assert
-        assertNotNull(result, "Valid token should be accepted");
-        assertEquals("test-subject", result.getSubject(), "Subject should match");
-    } catch (TokenValidationException e) {
-        fail("Valid token should not throw exception: " + e.getMessage());
-    }
-}
-
-@Test
-void shouldRejectTokenWithInvalidSignature() {
-    // Arrange
-    String invalidToken = createTokenWithInvalidSignature();
-    TokenValidator validator = createTokenValidator();
-
-    // Act & Assert
-    TokenValidationException exception = assertThrows(TokenValidationException.class, () -> {
-        validator.createAccessToken(invalidToken);
-    }, "Invalid signature should throw TokenValidationException");
-
-    // Verify the exception contains expected information
-    assertEquals(SecurityEventCounter.EventType.SIGNATURE_VALIDATION_FAILED, exception.getEventType());
-}
-----
+For examples of token validation testing with real RS256-signed tokens, see link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorExtendedTest.java[MultiIssuerJWTTokenAuthenticatorExtendedTest], which uses `TestTokenHolder` and `InMemoryJWKSFactory` from oauth-sheriff-core test utilities to generate real key material and signed tokens.
 
 For more details on TokenValidator implementation, see link:token-validation.adoc[Token Validation].
 
@@ -84,40 +64,7 @@ Unit tests for the processor verify:
 3. **Flow File Routing**: Proper routing of flow files to relationships
 4. **Attribute Generation**: Proper generation of output attributes
 
-[source,java]
-----
-@Test
-void testProcessWithValidToken() {
-    // Set up processor with mock services
-    final TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
-
-    // Configure processor
-    runner.setProperty("token.location", "AUTHORIZATION_HEADER");
-    runner.setProperty("token.header", "Authorization");
-    runner.setProperty("required.audience", "api://test");
-    runner.setProperty("auth-server", "https://auth.example.com/.well-known/jwks.json");
-
-    // Configure a test JWKS endpoint using cui-test-mockwebserver-junit5
-    // (CUI test utilities are used instead of Mockito — see project conventions)
-
-    // Create a test flow file with a token
-    Map<String, String> attributes = new HashMap<>();
-    attributes.put("http.headers.authorization", "Bearer eyJhbGciOiJS..."); 
-    runner.enqueue("test data".getBytes(), attributes);
-
-    // Run the processor
-    runner.run();
-
-    // Verify results
-    runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 1);
-
-    // Verify output attributes
-    MockFlowFile flowFile = runner.getFlowFilesForRelationship(MultiIssuerJWTTokenAuthenticator.SUCCESS).get(0);
-    flowFile.assertAttributeExists("jwt.content.sub");
-    flowFile.assertAttributeExists("jwt.content.iss");
-    flowFile.assertAttributeExists("jwt.validatedAt");
-}
-----
+For processor unit testing examples using NiFi's TestRunner, see link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorTest.java[MultiIssuerJWTTokenAuthenticatorTest] and link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorExtendedTest.java[MultiIssuerJWTTokenAuthenticatorExtendedTest]. These tests verify property validation, token extraction, flow file routing, and attribute generation.
 
 See link:technical-components.adoc[Technical Components] for processor implementation details.
 
@@ -129,30 +76,7 @@ Integration tests verify multiple components working together:
 2. **TokenValidator with JWKS Endpoints**: Testing with mock JWKS endpoints
 3. **TokenValidator with Multiple Issuers**: Testing with multiple token issuers
 
-[source,java]
-----
-@Test
-void testProcessorWithMultipleIssuersIntegration() {
-    // Set up processor
-    final TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
-
-    // Configure processor with multiple issuers
-    runner.setProperty("token.location", "AUTHORIZATION_HEADER");
-    runner.setProperty("token.header", "Authorization");
-    runner.setProperty("issuer1", getTestJwksUrl("/jwks1.json"));
-    runner.setProperty("issuer2", getTestJwksUrl("/jwks2.json"));
-
-
-    // Create test flow files with tokens from different issuers
-    createFlowFileWithToken(runner, createToken("issuer1"));
-
-    // Run the processor
-    runner.run(2); // Process 2 flow files
-
-    // Verify results
-    runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 2);
-}
-----
+For integration testing examples with multiple issuers, see link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorExtendedTest.java[MultiIssuerJWTTokenAuthenticatorExtendedTest], which tests with JWKS file-based issuer configurations and real RS256-signed tokens.
 
 === Integration Testing with Keycloak
 
@@ -199,34 +123,7 @@ Security tests focus on security aspects of the processor:
 3. **Resource Attack Testing**: Testing with very large tokens or high request rates
 4. **JWKS Security Testing**: Testing JWKS endpoint security
 
-[source,java]
-----
-@Test
-void testTokenSizeLimit() {
-    // Set up processor
-    final TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
-
-    // Configure processor with a small token size limit
-    runner.setProperty("token.location", "AUTHORIZATION_HEADER");
-    runner.setProperty("maximum.token.size", "100");
-    runner.setProperty("auth-server", getTestJwksUrl());
-
-    // Create a flow file with a token exceeding the size limit
-    String oversizedToken = "Bearer " + generateOversizedToken(200); // Generate token > 100 bytes
-    Map<String, String> attributes = new HashMap<>();
-    attributes.put("http.headers.authorization", oversizedToken);
-    runner.enqueue("test data".getBytes(), attributes);
-
-    // Run the processor
-    runner.run();
-
-    // Verify the token was rejected due to size
-    runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED, 1);
-    MockFlowFile flowFile = runner.getFlowFilesForRelationship(MultiIssuerJWTTokenAuthenticator.AUTHENTICATION_FAILED).get(0);
-    flowFile.assertAttributeExists("jwt.error.reason");
-    flowFile.assertAttributeEquals("jwt.error.code", "AUTH-001");
-}
-----
+Security testing for token size limits and related attack scenarios is covered in link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorTest.java[MultiIssuerJWTTokenAuthenticatorTest] and link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorExtendedTest.java[MultiIssuerJWTTokenAuthenticatorExtendedTest].
 
 For more details on security considerations, see link:security.adoc[Security].
 
@@ -239,41 +136,7 @@ Performance tests verify the processor under load:
 3. **Concurrent Processing Testing**: Testing with multiple threads
 4. **Cache Performance Testing**: Testing JWKS caching efficiency
 
-[source,java]
-----
-@Test
-void testHighThroughputPerformance() {
-    // Set up processor
-    final TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
-
-    // Configure processor
-    runner.setProperty("token.location", "AUTHORIZATION_HEADER");
-    runner.setProperty("auth-server", getTestJwksUrl());
-
-    // Create many flow files with tokens
-    for (int i = 0; i < 1000; i++) {
-        Map<String, String> attributes = new HashMap<>();
-        attributes.put("http.headers.authorization", "Bearer " + createTestToken());
-        runner.enqueue("test data".getBytes(), attributes);
-    }
-
-    // Run the processor with timing
-    long startTime = System.currentTimeMillis();
-    runner.run(1000);
-    long endTime = System.currentTimeMillis();
-
-    // Verify throughput
-    runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 1000);
-
-    // Calculate and log throughput
-    long duration = endTime - startTime;
-    double throughputPerSecond = (1000.0 / duration) * 1000;
-    LOGGER.info("Throughput: %s tokens/second", throughputPerSecond);
-
-    // Assert minimum throughput requirement
-    assertTrue(throughputPerSecond > 1000, "Throughput should exceed 1000 tokens/second");
-}
-----
+Performance testing patterns follow the same TestRunner approach used in link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorExtendedTest.java[MultiIssuerJWTTokenAuthenticatorExtendedTest], creating multiple flow files and measuring processing throughput.
 
 == Test Data Generation
 
