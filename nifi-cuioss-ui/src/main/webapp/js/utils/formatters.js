@@ -32,16 +32,18 @@ export const formatDate = function (dateString) {
         // eslint-disable-next-line no-console
         console.warn(`Error formatting date: ${dateString}`, e);
 
-        // Add error handling metadata to help with debugging
+        // Add error handling metadata to help with debugging (capped at 100 entries)
         if (window._formattersErrors === undefined) {
             window._formattersErrors = [];
         }
-        window._formattersErrors.push({
-            function: 'formatDate',
-            input: dateString,
-            error: e.message,
-            timestamp: new Date().toISOString()
-        });
+        if (window._formattersErrors.length < 100) {
+            window._formattersErrors.push({
+                function: 'formatDate',
+                input: dateString,
+                error: e.message,
+                timestamp: new Date().toISOString()
+            });
+        }
 
         return dateString;
     }
@@ -117,16 +119,18 @@ export const formatJwtToken = function (token) {
             // eslint-disable-next-line no-console
             console.warn(`Error decoding JWT token parts: ${e.message}`);
 
-            // Add error handling metadata to help with debugging
+            // Add error handling metadata to help with debugging (capped at 100 entries)
             if (window._formattersErrors === undefined) {
                 window._formattersErrors = [];
             }
-            window._formattersErrors.push({
-                function: 'formatJwtToken.decode',
-                input: { header, payload },
-                error: e.message,
-                timestamp: new Date().toISOString()
-            });
+            if (window._formattersErrors.length < 100) {
+                window._formattersErrors.push({
+                    function: 'formatJwtToken.decode',
+                    input: { header, payload },
+                    error: e.message,
+                    timestamp: new Date().toISOString()
+                });
+            }
 
             header = `Unable to decode header: ${header}`;
             payload = `Unable to decode payload: ${payload}`;
@@ -142,16 +146,18 @@ export const formatJwtToken = function (token) {
         // eslint-disable-next-line no-console
         console.warn(`Error parsing JWT token: ${e.message}`);
 
-        // Add error handling metadata to help with debugging
+        // Add error handling metadata to help with debugging (capped at 100 entries)
         if (window._formattersErrors === undefined) {
             window._formattersErrors = [];
         }
-        window._formattersErrors.push({
-            function: 'formatJwtToken',
-            input: token,
-            error: e.message,
-            timestamp: new Date().toISOString()
-        });
+        if (window._formattersErrors.length < 100) {
+            window._formattersErrors.push({
+                function: 'formatJwtToken',
+                input: token,
+                error: e.message,
+                timestamp: new Date().toISOString()
+            });
+        }
 
         return {
             header: 'Error: Invalid token format',

@@ -16,6 +16,7 @@
 package de.cuioss.nifi.processors.auth.i18n;
 
 import de.cuioss.tools.string.MoreStrings;
+import lombok.NonNull;
 import org.apache.nifi.logging.ComponentLog;
 
 import java.util.Locale;
@@ -80,7 +81,7 @@ public class NiFiI18nResolver implements I18nResolver {
     }
 
     @Override
-    public String getTranslatedString(String key) {
+    public String getTranslatedString(@NonNull String key) {
         if (resourceBundle == null) {
             return key;
         }
@@ -96,7 +97,7 @@ public class NiFiI18nResolver implements I18nResolver {
     }
 
     @Override
-    public String getTranslatedString(String key, Object... args) {
+    public String getTranslatedString(@NonNull String key, Object... args) {
         String pattern = getTranslatedString(key);
         return MoreStrings.lenientFormat(pattern, args);
     }

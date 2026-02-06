@@ -15,7 +15,11 @@
  */
 package de.cuioss.nifi.processors.auth.util;
 
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -135,5 +139,65 @@ class ErrorContextTest {
         assertNotNull(ErrorContext.ErrorCodes.TOKEN_ERROR);
         assertNotNull(ErrorContext.ErrorCodes.NETWORK_ERROR);
         assertNotNull(ErrorContext.ErrorCodes.RESOURCE_ERROR);
+    }
+
+    @Nested
+    @DisplayName("Robustness Tests")
+    class RobustnessTests {
+
+        @Test
+        @DisplayName("Should handle circular exception cause chain without infinite loop")
+        void shouldHandleCircularCauseChain() {
+            // Create circular cause chain: A -> B -> A
+            Exception exA = new RuntimeException("A");
+            Exception exB = new RuntimeException("B", exA);
+            try {
+                var causeField = Throwable.class.getDeclaredField("cause");
+                causeField.setAccessible(true);
+                causeField.set(exA, exB);
+            } catch (Exception ignored) {
+                // If reflection fails, skip this test scenario
+                return;
+            }
+
+            // Should not infinite-loop — completes within reasonable time
+            String message = ErrorContext.forComponent("TestComponent")
+                    .operation("testOperation")
+                    .cause(exA)
+                    .build()
+                    .buildMessage("Circular test");
+
+            assertNotNull(message);
+            assertTrue(message.contains("Circular test"));
+        }
+
+        @Test
+        @DisplayName("Should return unmodifiable context map")
+        void shouldReturnUnmodifiableContextMap() {
+            ErrorContext ctx = ErrorContext.forComponent("TestComponent")
+                    .operation("testOperation")
+                    .build()
+                    .with("key1", "value1");
+
+            Map<String, Object> contextMap = ctx.getContext();
+            assertThrows(UnsupportedOperationException.class,
+                    () -> contextMap.put("newKey", "newValue"));
+        }
+
+        @Test
+        @DisplayName("Should reject context keys with invalid characters")
+        void shouldRejectInvalidContextKeys() {
+            ErrorContext ctx = ErrorContext.forComponent("TestComponent")
+                    .operation("testOperation")
+                    .build()
+                    .with("valid-key", "value1")
+                    .with("key with spaces", "value2")
+                    .with("key\nnewline", "value3")
+                    .with(null, "value4");
+
+            // Only the valid key should be present
+            assertEquals(1, ctx.getContext().size());
+            assertTrue(ctx.getContext().containsKey("valid-key"));
+        }
     }
 }

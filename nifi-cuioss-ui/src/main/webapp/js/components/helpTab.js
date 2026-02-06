@@ -178,14 +178,17 @@ const createHelpContent = () => {
                     </h4>
                     <div class="collapsible-content">
                         <ul class="resource-links">
-                            <li><a href="https://jwt.io/introduction" target="_blank">
+                            <li><a href="https://jwt.io/introduction"
+                                   target="_blank" rel="noopener noreferrer">
                                 <i class="fa fa-external-link"></i> JWT Introduction
                             </a></li>
-                            <li><a href="https://tools.ietf.org/html/rfc7517" target="_blank">
-                                <i class="fa fa-external-link"></i> JSON Web Key (JWK) Specification
+                            <li><a href="https://tools.ietf.org/html/rfc7517"
+                                   target="_blank" rel="noopener noreferrer">
+                                <i class="fa fa-external-link"></i> JWK Specification
                             </a></li>
-                            <li><a href="https://nifi.apache.org/docs.html" target="_blank">
-                                <i class="fa fa-external-link"></i> Apache NiFi Documentation
+                            <li><a href="https://nifi.apache.org/docs.html"
+                                   target="_blank" rel="noopener noreferrer">
+                                <i class="fa fa-external-link"></i> Apache NiFi Docs
                             </a></li>
                         </ul>
                         

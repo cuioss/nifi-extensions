@@ -50,6 +50,8 @@ class SecurityHeadersFilterTest {
         expectLastCall().once();
         mockResponse.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
         expectLastCall().once();
+        mockResponse.setHeader(eq("Content-Security-Policy"), anyString());
+        expectLastCall().once();
         mockChain.doFilter(mockRequest, mockResponse);
         expectLastCall().once();
 
@@ -68,6 +70,8 @@ class SecurityHeadersFilterTest {
         mockResponse.setHeader("X-Frame-Options", "SAMEORIGIN");
         expectLastCall().once();
         mockResponse.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+        expectLastCall().once();
+        mockResponse.setHeader(eq("Content-Security-Policy"), anyString());
         expectLastCall().once();
         mockChain.doFilter(mockRequest, mockResponse);
         expectLastCall().once();

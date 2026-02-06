@@ -32,6 +32,8 @@ import java.util.Map;
 import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.*;
 import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Properties;
 import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Test class for {@link MultiIssuerJWTTokenAuthenticator}.
@@ -109,6 +111,30 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
             flowFile.assertAttributeExists("jwt.error.code");
+        }
+
+        @Test
+        @DisplayName("Should use configured bearer prefix for token extraction")
+        void shouldUseConfiguredBearerPrefix() {
+            // Set custom prefix
+            testRunner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Token");
+
+            // Send header with custom prefix
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Token " + VALID_TOKEN);
+            testRunner.enqueue("test data", attributes);
+
+            testRunner.run();
+
+            // Token should be extracted (validation will fail, but NOT with "no token found" AUTH-001)
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+            String errorCode = flowFile.getAttribute("jwt.error.code");
+            // Should NOT be AUTH-001 (no token found) — the token WAS extracted
+            assertNotNull(errorCode);
+            assertNotEquals("AUTH-001", errorCode,
+                    "Token should have been extracted with custom prefix; AUTH-001 means extraction failed");
         }
 
         @Test
@@ -739,6 +765,49 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Verify error attributes are present
             flowFile.assertAttributeExists("jwt.error.reason");
             flowFile.assertAttributeExists("jwt.error.code");
+        }
+    }
+
+    @Nested
+    @DisplayName("Content Size Bounding Tests")
+    class ContentSizeBoundingTests {
+
+        @Test
+        @DisplayName("Should bound content reading by max token size")
+        void shouldBoundContentReadingByMaxTokenSize() {
+            testRunner.setProperty(Properties.TOKEN_LOCATION, "FLOW_FILE_CONTENT");
+            testRunner.setProperty(Properties.MAXIMUM_TOKEN_SIZE, "1024");
+
+            // Enqueue content larger than max token size
+            String oversizedContent = "x".repeat(50_000);
+            testRunner.enqueue(oversizedContent);
+
+            testRunner.run();
+
+            // Should route to AUTHENTICATION_FAILED
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+        }
+
+        @Test
+        @DisplayName("Should accept content within max token size")
+        void shouldAcceptContentWithinMaxTokenSize() {
+            testRunner.setProperty(Properties.TOKEN_LOCATION, "FLOW_FILE_CONTENT");
+
+            // Normal JWT token (well within default 16KB limit)
+            testRunner.enqueue(VALID_TOKEN);
+
+            testRunner.run();
+
+            // Token will be extracted but fail validation (not size-related)
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+            String errorCode = flowFile.getAttribute("jwt.error.code");
+            // Should NOT be AUTH-003 (token size violation)
+            assertNotNull(errorCode);
+            assertNotEquals("AUTH-003", errorCode,
+                    "Normal-sized content should not trigger size violation");
         }
     }
 

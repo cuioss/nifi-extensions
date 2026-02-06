@@ -26,8 +26,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 import static de.cuioss.nifi.ui.util.TokenMasking.maskToken;
@@ -63,6 +61,9 @@ public class JwtVerificationServlet extends HttpServlet {
     private static final String JSON_KEY_CLAIMS = "claims";
     private static final String JSON_KEY_VALID = "valid";
     private static final String ERROR_MSG_FAILED_TO_SEND_RESPONSE = "Failed to send error response";
+
+    /** Maximum request body size: 1 MB */
+    private static final int MAX_REQUEST_BODY_SIZE = 1024 * 1024;
 
     private final transient JwtValidationService validationService;
 
@@ -114,6 +115,10 @@ public class JwtVerificationServlet extends HttpServlet {
      * @return Parsed JSON object, or null if parsing failed (error already sent)
      */
     private JsonObject parseJsonRequest(HttpServletRequest req, HttpServletResponse resp) {
+        if (req.getContentLength() > MAX_REQUEST_BODY_SIZE) {
+            safelySendErrorResponse(resp, 413, "Request body too large", false);
+            return Json.createObjectBuilder().build();
+        }
         try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
             return reader.readObject();
         } catch (JsonException e) {
@@ -164,21 +169,6 @@ public class JwtVerificationServlet extends HttpServlet {
         LOGGER.debug("Verifying token for processor: %s", processorId);
 
         return new TokenVerificationRequest(token, processorId);
-    }
-
-    /**
-     * Extracts a JSON array field as a list of strings.
-     */
-    private List<String> extractJsonArray(JsonObject json, String fieldName) {
-        if (!json.containsKey(fieldName)) {
-            return List.of();
-        }
-        List<String> result = new ArrayList<>();
-        var array = json.getJsonArray(fieldName);
-        for (int i = 0; i < array.size(); i++) {
-            result.add(array.get(i).toString().replace("\"", ""));
-        }
-        return result;
     }
 
     /**

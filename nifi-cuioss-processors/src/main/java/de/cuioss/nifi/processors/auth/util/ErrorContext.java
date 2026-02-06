@@ -18,7 +18,9 @@ package de.cuioss.nifi.processors.auth.util;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.experimental.UtilityClass;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -30,6 +32,11 @@ import java.util.StringJoiner;
 @Getter
 @Builder
 public class ErrorContext {
+
+    /**
+     * Maximum depth for traversing exception cause chains to prevent infinite loops.
+     */
+    private static final int MAX_CAUSE_CHAIN_DEPTH = 50;
 
     /**
      * The operation being performed when the error occurred
@@ -60,14 +67,23 @@ public class ErrorContext {
     private final String errorCode;
 
     /**
+     * Returns an unmodifiable view of the context map.
+     *
+     * @return unmodifiable context map
+     */
+    public Map<String, Object> getContext() {
+        return Collections.unmodifiableMap(context);
+    }
+
+    /**
      * Adds context information
      *
-     * @param key   the context key
+     * @param key   the context key (must contain only alphanumeric characters, dots, hyphens, underscores)
      * @param value the context value
      * @return this ErrorContext for chaining
      */
     public ErrorContext with(String key, Object value) {
-        if (value != null) {
+        if (key != null && key.matches("[a-zA-Z0-9._-]+") && value != null) {
             context.put(key, value);
         }
         return this;
@@ -135,8 +151,11 @@ public class ErrorContext {
      */
     private Throwable getRootCause(Throwable throwable) {
         Throwable rootCause = throwable;
-        while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
+        int depth = 0;
+        while (rootCause.getCause() != null && rootCause.getCause() != rootCause
+                && depth < MAX_CAUSE_CHAIN_DEPTH) {
             rootCause = rootCause.getCause();
+            depth++;
         }
         return rootCause;
     }
@@ -154,6 +173,7 @@ public class ErrorContext {
     /**
      * Common error codes for categorization
      */
+    @UtilityClass
     public static final class ErrorCodes {
         public static final String CONFIGURATION_ERROR = "CONFIG_ERROR";
         public static final String VALIDATION_ERROR = "VALIDATION_ERROR";
@@ -165,9 +185,5 @@ public class ErrorContext {
         public static final String TOKEN_ERROR = "TOKEN_ERROR";
         public static final String NETWORK_ERROR = "NETWORK_ERROR";
         public static final String RESOURCE_ERROR = "RESOURCE_ERROR";
-
-        private ErrorCodes() {
-            // Utility class
-        }
     }
 }

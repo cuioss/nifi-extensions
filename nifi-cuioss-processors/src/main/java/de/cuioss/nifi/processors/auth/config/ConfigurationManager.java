@@ -18,7 +18,9 @@ package de.cuioss.nifi.processors.auth.config;
 import de.cuioss.nifi.processors.auth.util.ErrorContext;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.Getter;
+import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -252,7 +254,7 @@ public class ConfigurationManager {
      * @throws IOException if an I/O error occurs
      */
     private boolean loadYamlFile(File file) throws IOException {
-        Yaml yaml = new Yaml();
+        Yaml yaml = new Yaml(new SafeConstructor(new LoaderOptions()));
         Map<String, Object> yamlData;
 
         try (FileInputStream fis = new FileInputStream(file)) {

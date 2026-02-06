@@ -31,7 +31,10 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -58,6 +61,9 @@ public class JwksValidationServlet extends HttpServlet {
     private static final JsonReaderFactory JSON_READER = Json.createReaderFactory(Map.of());
     private static final JsonWriterFactory JSON_WRITER = Json.createWriterFactory(Map.of());
     private static final String JWKS_VALIDATION_FAILED_MSG = "JWKS URL validation failed: %s - %s";
+
+    /** Maximum request body size: 1 MB */
+    private static final int MAX_REQUEST_BODY_SIZE = 1024 * 1024;
 
     /** Default base path for JWKS files when no NiFi properties are available. */
     private static final String DEFAULT_JWKS_BASE_PATH = "/opt/nifi/nifi-current/conf";
@@ -191,8 +197,17 @@ public class JwksValidationServlet extends HttpServlet {
                 return JwksValidationResult.failure("Invalid URL: " + e.getFailureType().getDescription());
             }
 
-            // Fetch JWKS content using cui-http HttpHandler
-            String content = fetchJwksContent(jwksUrl);
+            // SSRF protection: resolve DNS once and validate all resolved addresses.
+            // The resolved IP is used directly for the HTTP request to prevent
+            // DNS rebinding TOCTOU attacks.
+            InetAddress resolvedAddress = resolveAndValidateAddress(uri.getHost());
+            if (resolvedAddress == null) {
+                LOGGER.warn("SSRF attempt blocked for JWKS URL: %s", jwksUrl);
+                return JwksValidationResult.failure("URL must not point to a private or loopback address");
+            }
+
+            // Fetch JWKS content using the resolved IP to prevent DNS rebinding
+            String content = fetchJwksContentByResolvedAddress(jwksUrl, uri, resolvedAddress);
             if (content == null) {
                 return JwksValidationResult.failure("Failed to fetch JWKS content");
             }
@@ -211,6 +226,36 @@ public class JwksValidationServlet extends HttpServlet {
     }
 
     /**
+     * Resolves a hostname and validates that ALL resolved addresses are public.
+     * Returns the first resolved address if all pass validation, or null if any are private.
+     * This performs DNS resolution once to prevent DNS rebinding TOCTOU attacks.
+     *
+     * @param host hostname to resolve and validate
+     * @return the first resolved InetAddress if all are public, null otherwise
+     */
+    private InetAddress resolveAndValidateAddress(String host) {
+        if (host == null || host.isEmpty()) {
+            return null;
+        }
+        try {
+            InetAddress[] addresses = InetAddress.getAllByName(host);
+            for (InetAddress address : addresses) {
+                if (address.isLoopbackAddress()
+                        || address.isSiteLocalAddress()
+                        || address.isLinkLocalAddress()
+                        || address.isAnyLocalAddress()) {
+                    LOGGER.debug("Private/loopback address detected for host %s: %s", host, address);
+                    return null;
+                }
+            }
+            return addresses[0];
+        } catch (UnknownHostException e) {
+            LOGGER.debug("Cannot resolve host for SSRF check: %s", host);
+            return null;
+        }
+    }
+
+    /**
      * Validates URL scheme (must be http or https).
      *
      * @param jwksUrl URL to validate
@@ -225,17 +270,33 @@ public class JwksValidationServlet extends HttpServlet {
     }
 
     /**
-     * Fetches JWKS content from URL using cui-http HttpHandler for secure HTTP communication.
+     * Fetches JWKS content using a pre-resolved IP address to prevent DNS rebinding attacks.
+     * The HTTP request is made to the resolved IP with the original Host header,
+     * ensuring the same IP validated by {@link #resolveAndValidateAddress} is used.
      *
-     * @param jwksUrl URL to fetch from
+     * @param jwksUrl          Original URL (for logging and Host header)
+     * @param originalUri      Parsed URI of the original URL
+     * @param resolvedAddress  Pre-validated IP address to connect to
      * @return JWKS content, or null if fetch failed
      * @throws IOException if HTTP request fails
      * @throws InterruptedException if HTTP request is interrupted
      */
     @SuppressWarnings("java:S2095") // S2095: java.net.http.HttpClient doesn't implement AutoCloseable
-    private String fetchJwksContent(String jwksUrl) throws IOException, InterruptedException {
+    private String fetchJwksContentByResolvedAddress(String jwksUrl, URI originalUri,
+            InetAddress resolvedAddress) throws IOException, InterruptedException {
+        // Build URL using resolved IP to prevent DNS rebinding TOCTOU attacks
+        URI ipBasedUri;
+        try {
+            int port = originalUri.getPort();
+            ipBasedUri = new URI(originalUri.getScheme(), null, resolvedAddress.getHostAddress(),
+                    port, originalUri.getPath(), originalUri.getQuery(), null);
+        } catch (URISyntaxException e) {
+            LOGGER.warn("Failed to construct IP-based URI for JWKS URL: %s", jwksUrl);
+            return null;
+        }
+
         HttpHandler httpHandler = HttpHandler.builder()
-                .uri(jwksUrl)
+                .uri(ipBasedUri.toString())
                 .connectionTimeoutSeconds(5)
                 .readTimeoutSeconds(10)
                 .build();
@@ -243,6 +304,7 @@ public class JwksValidationServlet extends HttpServlet {
         HttpClient httpClient = httpHandler.createHttpClient();
         HttpRequest request = httpHandler.requestBuilder()
                 .header("Accept", CONTENT_TYPE_JSON)
+                .header("Host", originalUri.getHost())
                 .GET()
                 .build();
 
@@ -320,11 +382,11 @@ public class JwksValidationServlet extends HttpServlet {
 
             // 3. Validate file exists and is readable
             if (!Files.exists(requestedPath)) {
-                return JwksValidationResult.failure("JWKS file does not exist: " + jwksFilePath);
+                return JwksValidationResult.failure("JWKS file does not exist at the specified path");
             }
 
             if (!Files.isReadable(requestedPath)) {
-                return JwksValidationResult.failure("JWKS file is not readable: " + jwksFilePath);
+                return JwksValidationResult.failure("JWKS file is not readable at the specified path");
             }
 
             // 4. Read and validate content
@@ -400,6 +462,10 @@ public class JwksValidationServlet extends HttpServlet {
      */
     @SuppressWarnings("java:S1168") // False positive - JsonObject is not a collection, null indicates error handled
     private JsonObject parseRequest(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        if (req.getContentLength() > MAX_REQUEST_BODY_SIZE) {
+            sendErrorResponse(resp, 413, "Request body too large");
+            return null;
+        }
         try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
             return reader.readObject();
         } catch (JsonException e) {

@@ -340,25 +340,25 @@ class IssuerConfigurationParserTest {
     }
 
     @Test
-    void parseParserConfig_withInvalidMaxTokenSize() {
+    void parseParserConfig_withInvalidMaxTokenSize_shouldFallBackToDefault() {
         Map<String, String> properties = new LinkedHashMap<>();
         properties.put("Maximum Token Size", "not-a-number");
 
-        // Should throw NumberFormatException
-        assertThrows(NumberFormatException.class, () -> {
-            IssuerConfigurationParser.parseParserConfig(properties);
-        });
+        ParserConfig config = IssuerConfigurationParser.parseParserConfig(properties);
+
+        assertNotNull(config);
+        assertEquals(16384, config.getMaxTokenSize());
     }
 
     @Test
-    void parseParserConfig_withEmptyMaxTokenSize() {
+    void parseParserConfig_withEmptyMaxTokenSize_shouldFallBackToDefault() {
         Map<String, String> properties = new LinkedHashMap<>();
         properties.put("Maximum Token Size", "");
 
-        // Should throw NumberFormatException
-        assertThrows(NumberFormatException.class, () -> {
-            IssuerConfigurationParser.parseParserConfig(properties);
-        });
+        ParserConfig config = IssuerConfigurationParser.parseParserConfig(properties);
+
+        assertNotNull(config);
+        assertEquals(16384, config.getMaxTokenSize());
     }
 
     @Test
@@ -473,7 +473,7 @@ class IssuerConfigurationParserTest {
     @Test
     void parseIssuerConfigs_withNonNamePropertyBeforeNameProperty() {
         Map<String, String> properties = new LinkedHashMap<>();
-        // This property comes before the name property - should be skipped initially
+        // This property comes before the name property — must still be captured
         properties.put("issuer.1.audience", "my-api");
         // Name property comes after
         properties.put("issuer.1.name", "test-issuer");
@@ -481,8 +481,7 @@ class IssuerConfigurationParserTest {
 
         List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 
-        // Should still create the issuer, but audience might be missing
-        // depending on property iteration order
+        // Should create the issuer with all properties regardless of iteration order
         assertEquals(1, configs.size());
         assertEquals("test-issuer", configs.getFirst().getIssuerIdentifier());
     }

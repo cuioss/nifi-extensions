@@ -9,6 +9,7 @@ import { confirmClearForm } from '../utils/confirmationDialog.js';
 import { CSS } from '../utils/constants.js';
 import { FormFieldFactory } from '../utils/formBuilder.js';
 import { verifyToken } from '../services/apiClient.js';
+import { sanitizeHtml } from '../utils/formatters.js';
 
 /**
  * Initialize the custom UI with standardized error handling and async patterns.
@@ -238,7 +239,7 @@ const buildHeaderHtml = (header, i18n) => {
     return `
         <div class="token-section">
             <h4>${i18n['processor.jwt.tokenHeader'] || 'Header'}</h4>
-            <pre>${JSON.stringify(header, null, 2)}</pre>
+            <pre>${sanitizeHtml(JSON.stringify(header, null, 2))}</pre>
         </div>
     `;
 };
@@ -254,7 +255,7 @@ const buildPayloadHtml = (payload, i18n) => {
     return `
         <div class="token-section">
             <h4>${i18n['processor.jwt.tokenPayload'] || 'Payload'}</h4>
-            <pre>${JSON.stringify(payload, null, 2)}</pre>
+            <pre>${sanitizeHtml(JSON.stringify(payload, null, 2))}</pre>
         </div>
     `;
 };
@@ -286,7 +287,7 @@ const buildClaimsHtml = (payload, i18n) => {
         html += `
             <div class="claim">
                 <strong>${i18n['processor.jwt.issuer'] || 'Issuer'}:</strong>
-                ${payload.iss}
+                ${sanitizeHtml(String(payload.iss))}
             </div>
         `;
     }
@@ -295,7 +296,7 @@ const buildClaimsHtml = (payload, i18n) => {
         html += `
             <div class="claim">
                 <strong>${i18n['processor.jwt.subject'] || 'Subject'}:</strong>
-                ${payload.sub}
+                ${sanitizeHtml(String(payload.sub))}
             </div>
         `;
     }
@@ -315,7 +316,7 @@ const buildErrorHtml = (error, i18n) => {
     return `
         <div class="verification-error">
             <strong>${i18n['processor.jwt.error'] || 'Error'}:</strong>
-            ${error}
+            ${sanitizeHtml(String(error))}
         </div>
     `;
 };

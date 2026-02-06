@@ -22,34 +22,37 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 import static de.cuioss.nifi.processors.auth.JWTPropertyKeys.Issuer;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for {@link IssuerPropertyDescriptorFactory}.
+ * Uses a simple I18nResolver stub instead of Mockito.
  */
 @DisplayName("IssuerPropertyDescriptorFactory Tests")
 class IssuerPropertyDescriptorFactoryTest {
 
-    @Mock
-    private I18nResolver i18nResolver;
-
     private IssuerPropertyDescriptorFactory factory;
+
+    /**
+     * Simple I18nResolver stub that returns "Translated: " + key for testing.
+     */
+    private static final I18nResolver STUB_RESOLVER = new I18nResolver() {
+        @Override
+        public String getTranslatedString(String key) {
+            return "Translated: " + key;
+        }
+
+        @Override
+        public String getTranslatedString(String key, Object... args) {
+            return "Translated: " + key;
+        }
+    };
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
-
-        // Setup mock to return a default translation
-        when(i18nResolver.getTranslatedString(anyString(), anyString(), anyString()))
-                .thenAnswer(invocation -> "Translated: " + invocation.getArgument(0));
-
-        factory = new IssuerPropertyDescriptorFactory(i18nResolver);
+        factory = new IssuerPropertyDescriptorFactory(STUB_RESOLVER);
     }
 
     @Nested
@@ -89,11 +92,9 @@ class IssuerPropertyDescriptorFactoryTest {
         @Test
         @DisplayName("Should include description for JWKS type")
         void shouldIncludeDescriptionForJwksType() {
-            // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
                     "issuer.test.jwks-type", "test", Issuer.JWKS_TYPE, "Display Name");
 
-            // Assert
             assertNotNull(descriptor.getDescription(), "Description should not be null");
             assertTrue(descriptor.getDescription().contains("JWKS source type"),
                     "Description should mention JWKS source type");
@@ -107,22 +108,17 @@ class IssuerPropertyDescriptorFactoryTest {
         @Test
         @DisplayName("Should create JWKS file descriptor with correct properties")
         void shouldCreateJwksFileDescriptor() {
-            // Arrange
             String propertyName = "issuer.test.jwks-file";
             String displayName = "Test Issuer JWKS File";
 
-            // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
                     propertyName, "test", Issuer.JWKS_FILE, displayName);
 
-            // Assert
             assertNotNull(descriptor, "Descriptor should not be null");
             assertEquals(propertyName, descriptor.getName(), "Property name should match");
             assertEquals(displayName, descriptor.getDisplayName(), "Display name should match");
             assertFalse(descriptor.isRequired(), "Should not be required");
             assertTrue(descriptor.isDynamic(), "Should be dynamic");
-
-            // Verify validator
             assertNotNull(descriptor.getValidators(), "Should have validators");
             assertFalse(descriptor.getValidators().isEmpty(), "Should have at least one validator");
         }
@@ -130,11 +126,9 @@ class IssuerPropertyDescriptorFactoryTest {
         @Test
         @DisplayName("Should include description for JWKS file")
         void shouldIncludeDescriptionForJwksFile() {
-            // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
                     "issuer.test.jwks-file", "test", Issuer.JWKS_FILE, "Display Name");
 
-            // Assert
             assertNotNull(descriptor.getDescription(), "Description should not be null");
             assertTrue(descriptor.getDescription().contains("File path"),
                     "Description should mention file path");
@@ -150,22 +144,17 @@ class IssuerPropertyDescriptorFactoryTest {
         @Test
         @DisplayName("Should create JWKS content descriptor with correct properties")
         void shouldCreateJwksContentDescriptor() {
-            // Arrange
             String propertyName = "issuer.test.jwks-content";
             String displayName = "Test Issuer JWKS Content";
 
-            // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
                     propertyName, "test", Issuer.JWKS_CONTENT, displayName);
 
-            // Assert
             assertNotNull(descriptor, "Descriptor should not be null");
             assertEquals(propertyName, descriptor.getName(), "Property name should match");
             assertEquals(displayName, descriptor.getDisplayName(), "Display name should match");
             assertFalse(descriptor.isRequired(), "Should not be required");
             assertTrue(descriptor.isDynamic(), "Should be dynamic");
-
-            // Verify validator
             assertNotNull(descriptor.getValidators(), "Should have validators");
             assertFalse(descriptor.getValidators().isEmpty(), "Should have at least one validator");
         }
@@ -173,11 +162,9 @@ class IssuerPropertyDescriptorFactoryTest {
         @Test
         @DisplayName("Should include description for JWKS content")
         void shouldIncludeDescriptionForJwksContent() {
-            // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
                     "issuer.test.jwks-content", "test", Issuer.JWKS_CONTENT, "Display Name");
 
-            // Assert
             assertNotNull(descriptor.getDescription(), "Description should not be null");
             assertTrue(descriptor.getDescription().contains("JWKS JSON content"),
                     "Description should mention JWKS JSON content");
@@ -193,23 +180,18 @@ class IssuerPropertyDescriptorFactoryTest {
         @Test
         @DisplayName("Should create default descriptor for unknown property key")
         void shouldCreateDefaultDescriptor() {
-            // Arrange
             String propertyName = "issuer.test.unknown-property";
             String displayName = "Unknown Property";
 
-            // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
                     propertyName, "test", "unknown-key", displayName);
 
-            // Assert
             assertNotNull(descriptor, "Descriptor should not be null");
             assertEquals(propertyName, descriptor.getName(), "Property name should match");
             assertEquals(propertyName, descriptor.getDisplayName(),
                     "Display name should default to property name");
             assertFalse(descriptor.isRequired(), "Should not be required");
             assertTrue(descriptor.isDynamic(), "Should be dynamic");
-
-            // Verify validator
             assertNotNull(descriptor.getValidators(), "Should have validators");
             assertFalse(descriptor.getValidators().isEmpty(), "Should have at least one validator");
         }
@@ -217,11 +199,9 @@ class IssuerPropertyDescriptorFactoryTest {
         @Test
         @DisplayName("Should include generic description for default descriptor")
         void shouldIncludeGenericDescriptionForDefault() {
-            // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
                     "issuer.test.custom", "test", "custom-key", "Custom Property");
 
-            // Assert
             assertNotNull(descriptor.getDescription(), "Description should not be null");
             assertTrue(descriptor.getDescription().contains("Dynamic property"),
                     "Description should mention dynamic property");
@@ -237,15 +217,12 @@ class IssuerPropertyDescriptorFactoryTest {
         @Test
         @DisplayName("Should create JWKS URL descriptor with URL validator")
         void shouldCreateJwksUrlDescriptor() {
-            // Arrange
             String propertyName = "issuer.test.jwks-url";
             String displayName = "Test Issuer JWKS URL";
 
-            // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
                     propertyName, "test", Issuer.JWKS_URL, displayName);
 
-            // Assert
             assertNotNull(descriptor, "Descriptor should not be null");
             assertEquals(propertyName, descriptor.getName(), "Property name should match");
             assertFalse(descriptor.isRequired(), "Should not be required");
@@ -261,15 +238,12 @@ class IssuerPropertyDescriptorFactoryTest {
         @Test
         @DisplayName("Should create issuer name descriptor")
         void shouldCreateIssuerNameDescriptor() {
-            // Arrange
             String propertyName = "issuer.test.issuer";
             String displayName = "Test Issuer Name";
 
-            // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
                     propertyName, "test", Issuer.ISSUER_NAME, displayName);
 
-            // Assert
             assertNotNull(descriptor, "Descriptor should not be null");
             assertEquals(propertyName, descriptor.getName(), "Property name should match");
             assertFalse(descriptor.isRequired(), "Should not be required");
@@ -284,15 +258,12 @@ class IssuerPropertyDescriptorFactoryTest {
         @Test
         @DisplayName("Should create audience descriptor")
         void shouldCreateAudienceDescriptor() {
-            // Arrange
             String propertyName = "issuer.test.audience";
             String displayName = "Test Audience";
 
-            // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
                     propertyName, "test", Issuer.AUDIENCE, displayName);
 
-            // Assert
             assertNotNull(descriptor, "Descriptor should not be null");
             assertEquals(propertyName, descriptor.getName(), "Property name should match");
             assertFalse(descriptor.isRequired(), "Should not be required");
@@ -302,15 +273,12 @@ class IssuerPropertyDescriptorFactoryTest {
         @Test
         @DisplayName("Should create client ID descriptor")
         void shouldCreateClientIdDescriptor() {
-            // Arrange
             String propertyName = "issuer.test.client-id";
             String displayName = "Test Client ID";
 
-            // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
                     propertyName, "test", Issuer.CLIENT_ID, displayName);
 
-            // Assert
             assertNotNull(descriptor, "Descriptor should not be null");
             assertEquals(propertyName, descriptor.getName(), "Property name should match");
             assertFalse(descriptor.isRequired(), "Should not be required");
@@ -325,22 +293,18 @@ class IssuerPropertyDescriptorFactoryTest {
         @Test
         @DisplayName("Should create bypass authorization descriptor with boolean validator")
         void shouldCreateBypassAuthorizationDescriptor() {
-            // Arrange
             String propertyName = "issuer.test.bypass-authorization";
             String displayName = "Bypass Authorization";
 
-            // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
                     propertyName, "test", Issuer.BYPASS_AUTHORIZATION, displayName);
 
-            // Assert
             assertNotNull(descriptor, "Descriptor should not be null");
             assertEquals(propertyName, descriptor.getName(), "Property name should match");
             assertFalse(descriptor.isRequired(), "Should not be required");
             assertTrue(descriptor.isDynamic(), "Should be dynamic");
             assertEquals("false", descriptor.getDefaultValue(), "Default should be false");
 
-            // Verify allowable values
             assertNotNull(descriptor.getAllowableValues(), "Should have allowable values");
             assertEquals(2, descriptor.getAllowableValues().size(), "Should have 2 allowable values");
         }
@@ -348,12 +312,10 @@ class IssuerPropertyDescriptorFactoryTest {
         @Test
         @DisplayName("Should create case sensitive matching descriptor")
         void shouldCreateCaseSensitiveMatchingDescriptor() {
-            // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
                     "issuer.test.case-sensitive", "test",
                     Issuer.CASE_SENSITIVE_MATCHING, "Case Sensitive");
 
-            // Assert
             assertNotNull(descriptor, "Descriptor should not be null");
             assertEquals("false", descriptor.getDefaultValue(), "Default should be false");
             assertNotNull(descriptor.getAllowableValues(), "Should have allowable values");
@@ -367,7 +329,6 @@ class IssuerPropertyDescriptorFactoryTest {
         @Test
         @DisplayName("Should handle all known issuer property keys")
         void shouldHandleAllKnownPropertyKeys() {
-            // Arrange
             String[] knownKeys = {
                     Issuer.JWKS_TYPE,
                     Issuer.JWKS_URL,
@@ -384,7 +345,6 @@ class IssuerPropertyDescriptorFactoryTest {
                     Issuer.BYPASS_AUTHORIZATION
             };
 
-            // Act & Assert
             for (String key : knownKeys) {
                 PropertyDescriptor descriptor = factory.createDescriptor(
                         "issuer.test." + key, "test", key, "Display Name");

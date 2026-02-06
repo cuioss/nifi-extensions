@@ -39,6 +39,33 @@
             <artifactId>oauth-sheriff-core</artifactId>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>de.cuioss.sheriff.oauth</groupId>
+            <artifactId>oauth-sheriff-core</artifactId>
+            <classifier>generators</classifier>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>de.cuioss.test</groupId>
+            <artifactId>cui-test-generator</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Required by oauth-sheriff-core generators for JWT token creation in tests -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Implementation of jakarta.json-api: Used for oauth-sheriff-core
              Required by oauth-sheriff-core even though token validation is not fully implemented yet -->
         <dependency>

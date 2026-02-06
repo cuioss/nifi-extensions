@@ -3,6 +3,7 @@
  */
 import * as nfCommon from 'nf.Common';
 import { displayUiError } from '../utils/uiErrorDisplay.js';
+import { sanitizeHtml } from '../utils/formatters.js';
 import { validateJwksUrl, validateJwksFile } from '../services/apiClient.js';
 
 /**
@@ -127,7 +128,7 @@ const _initializeJwksValidator = async (element, propertyValue, jwks_type, callb
             const inputField = element.querySelector('input');
             const filePath = inputField ? inputField.value : propertyValue;
             if (!filePath) {
-                resultContainer.innerHTML = `<span class="error-message">${i18n['processor.jwt.noFilePathProvided'] || 'No file path provided'}</span>`;
+                resultContainer.innerHTML = `<span class="error-message">${sanitizeHtml(i18n['processor.jwt.noFilePathProvided'] || 'No file path provided')}</span>`;
                 return;
             }
 
@@ -151,14 +152,20 @@ const _initializeJwksValidator = async (element, propertyValue, jwks_type, callb
                     } else {
                         const errMsg = responseData.error ||
                             i18n['processor.jwt.invalidJwksFile'] || 'Invalid JWKS file';
-                        resultContainer.innerHTML = `<span class="error-message">${errMsg}</span>`;
+                        const escaped = sanitizeHtml(String(errMsg));
+                        resultContainer.innerHTML =
+                            `<span class="error-message">${escaped}</span>`;
                     }
                 })
                 .catch(error => {
                     // Handle API error
-                    const errorMessage = error.responseJSON?.error || error.statusText ||
-                        i18n['processor.jwt.fileValidationError'] || 'File validation error';
-                    const errorSpan = `<span class="error-message">${errorMessage}</span>`;
+                    const errorMessage = error.responseJSON?.error ||
+                        error.statusText ||
+                        i18n['processor.jwt.fileValidationError'] ||
+                        'File validation error';
+                    const escaped = sanitizeHtml(String(errorMessage));
+                    const errorSpan =
+                        `<span class="error-message">${escaped}</span>`;
                     resultContainer.innerHTML = errorSpan;
                 });
         });
@@ -186,7 +193,7 @@ const _initializeJwksValidator = async (element, propertyValue, jwks_type, callb
             const inputField = element.querySelector('textarea') || element.querySelector('input');
             const content = inputField ? inputField.value : propertyValue;
             if (!content) {
-                resultContainer.innerHTML = `<span class="error-message">${i18n['processor.jwt.noContentProvided'] || 'No JWKS content provided'}</span>`;
+                resultContainer.innerHTML = `<span class="error-message">${sanitizeHtml(i18n['processor.jwt.noContentProvided'] || 'No JWKS content provided')}</span>`;
                 return;
             }
 
@@ -231,8 +238,11 @@ const _initializeJwksValidator = async (element, propertyValue, jwks_type, callb
                     (${jwksData.keys.length} ${keysText})
                 `;
             } catch (error) {
-                const errMsg = i18n['processor.jwt.invalidJson'] || 'Invalid JSON';
-                const errorSpan = `<span class="error-message">${errMsg}: ${error.message}</span>`;
+                const errMsg = sanitizeHtml(
+                    i18n['processor.jwt.invalidJson'] || 'Invalid JSON');
+                const errDetail = sanitizeHtml(String(error.message));
+                const errorSpan =
+                    `<span class="error-message">${errMsg}: ${errDetail}</span>`;
                 resultContainer.innerHTML = errorSpan;
             }
         });

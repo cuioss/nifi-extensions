@@ -25,14 +25,15 @@ const applyCssClasses = (element, options) => {
 /**
  * Apply content to element
  * @param {HTMLElement} element - The element
- * @param {Object} options - Options containing text/html
+ * @param {Object} options - Options containing text/html. Set trustedHtml to true to allow
+ *     innerHTML assignment; otherwise html content is set as text (safe default).
  */
 const applyContent = (element, options) => {
     if (options.text) {
         element.textContent = options.text;
     }
     if (options.html) {
-        if (options.sanitized === true) {
+        if (options.trustedHtml === true) {
             element.innerHTML = options.html;
         } else {
             element.textContent = options.html;

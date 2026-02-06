@@ -55,10 +55,10 @@ describe('DOMBuilder Coverage Tests', () => {
             expect(element.innerHTML).toBe('&lt;strong&gt;Bold&lt;/strong&gt;');
         });
 
-        it('should create element with sanitized HTML content', () => {
+        it('should create element with trusted HTML content', () => {
             const element = createElement('div', {
                 html: '<strong>Bold</strong>',
-                sanitized: true
+                trustedHtml: true
             });
             expect(element.innerHTML).toBe('<strong>Bold</strong>');
         });

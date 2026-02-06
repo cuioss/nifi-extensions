@@ -2,6 +2,8 @@
  * Utility for displaying standardized error messages in the UI.
  */
 
+import { sanitizeHtml } from './formatters.js';
+
 /**
  * Extracts error messages from an errors array and joins them.
  * @param {Array} errors - Array of error objects or strings
@@ -124,10 +126,10 @@ export const displayUiError = ($targetElement, error, i18n, errorTypeKey = 'proc
     const closeButton = closable ? '<button class="close-error" aria-label="Close error">&times;</button>' : '';
 
     const errorHtml = `
-        <div class="error-message ${errorTypeClass} ${closableClass}" 
+        <div class="error-message ${errorTypeClass} ${closableClass}"
              role="alert" aria-live="assertive">
             <div class="error-content">
-                <strong>${errorTypePrefix}:</strong> ${messageToDisplay}
+                <strong>${sanitizeHtml(errorTypePrefix)}:</strong> ${sanitizeHtml(messageToDisplay)}
             </div>
             ${closeButton}
         </div>
@@ -178,7 +180,7 @@ export const displayUiSuccess = ($targetElement, message, options = {}) => {
 
     const successHtml = `
         <div class="success-message ${autoHideClass}" role="status" aria-live="polite">
-            <div class="success-content">${message}</div>
+            <div class="success-content">${sanitizeHtml(message)}</div>
         </div>
     `;
 
@@ -209,7 +211,7 @@ export const displayUiInfo = ($targetElement, message, options = {}) => {
 
     const infoHtml = `
         <div class="info-message">
-            <div class="info-content">${message}</div>
+            <div class="info-content">${sanitizeHtml(message)}</div>
         </div>
     `;
 
@@ -241,7 +243,7 @@ export const displayUiWarning = ($targetElement, message, options = {}) => {
 
     const warningHtml = `
         <div class="warning-message">
-            <div class="warning-content">${message}</div>
+            <div class="warning-content">${sanitizeHtml(message)}</div>
         </div>
     `;
 

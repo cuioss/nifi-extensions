@@ -10,7 +10,7 @@
  */
 
 import { createLogger } from '../utils/logger.js';
-import { formatNumber, formatDate } from '../utils/formatters.js';
+import { formatNumber, formatDate, sanitizeHtml } from '../utils/formatters.js';
 import { UI_TEXT } from '../utils/constants.js';
 import { getSecurityMetrics } from '../services/apiClient.js';
 import { translate } from '../utils/i18n.js';
@@ -461,7 +461,7 @@ const updatePerformanceMetrics = (data) => {
 const buildIssuerRow = (issuer) => {
     return `
         <tr data-testid="issuer-metrics-row">
-            <td data-testid="issuer-name">${issuer.name}</td>
+            <td data-testid="issuer-name">${sanitizeHtml(String(issuer.name || ''))}</td>
             <td>${formatNumber(issuer.totalRequests || issuer.validations || 0)}</td>
             <td>${formatNumber(issuer.successCount || 0)}</td>
             <td>${formatNumber(issuer.failureCount || 0)}</td>
@@ -496,8 +496,8 @@ const buildErrorItem = (error) => {
     return `
         <div class="error-metric-item">
             <div class="error-details">
-                <span class="error-issuer">${error.issuer || 'Unknown'}</span>
-                <span class="error-message">${error.error}</span>
+                <span class="error-issuer">${sanitizeHtml(String(error.issuer || 'Unknown'))}</span>
+                <span class="error-message">${sanitizeHtml(String(error.error || ''))}</span>
                 <span class="error-count">(${error.count} occurrences)</span>
             </div>
             <div class="error-time">${formatTime(error.timestamp)}</div>
@@ -555,10 +555,14 @@ const showMetricsError = () => {
                     <strong>Error:</strong> Unable to load metrics. Please try again later.
                 </div>
             </div>
-            <div style="text-align: center; margin-top: 20px;">
-                <button class="btn btn-primary" onclick="location.reload()">Reload Page</button>
+            <div id="metrics-error-actions" style="text-align: center; margin-top: 20px;">
+                <button class="btn btn-primary" id="metrics-reload-btn">Reload Page</button>
             </div>
         `;
+        const reloadBtn = document.getElementById('metrics-reload-btn');
+        if (reloadBtn) {
+            reloadBtn.addEventListener('click', () => location.reload());
+        }
     }
 };
 

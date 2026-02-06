@@ -21,6 +21,7 @@ import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -258,5 +259,102 @@ class JWTTokenAuthenticatorTest {
         // Verify no transfers
         testRunner.assertTransferCount(Relationships.SUCCESS, 0);
         testRunner.assertTransferCount(Relationships.FAILURE, 0);
+    }
+
+    @Nested
+    @DisplayName("Content Size Limit Tests")
+    class ContentSizeLimitTests {
+
+        @Test
+        @DisplayName("Should reject oversized flow file content")
+        void shouldRejectOversizedFlowFileContent() {
+            testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.FLOW_FILE_CONTENT);
+
+            // Create content larger than 16KB limit
+            String oversizedContent = "x".repeat(20_000);
+            testRunner.enqueue(oversizedContent);
+
+            testRunner.run();
+
+            // Should route to FAILURE
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.FAILURE, 1);
+
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.FAILURE).getFirst();
+            flowFile.assertAttributeExists(JWTAttributes.Error.REASON);
+        }
+
+        @Test
+        @DisplayName("Should accept content within size limit")
+        void shouldAcceptContentWithinSizeLimit() {
+            testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.FLOW_FILE_CONTENT);
+
+            // Normal JWT token content (well within 16KB)
+            String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
+            testRunner.enqueue(token);
+
+            testRunner.run();
+
+            testRunner.assertTransferCount(Relationships.SUCCESS, 1);
+            testRunner.assertTransferCount(Relationships.FAILURE, 0);
+
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
+            assertEquals(token, flowFile.getAttribute(JWTAttributes.Token.VALUE));
+        }
+    }
+
+    @Nested
+    @DisplayName("Bearer Prefix Tests")
+    class BearerPrefixTests {
+
+        @Test
+        @DisplayName("Should use configured bearer prefix")
+        void shouldUseConfiguredBearerPrefix() {
+            testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
+            testRunner.setProperty(Properties.TOKEN_HEADER, Http.AUTHORIZATION_HEADER);
+            testRunner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Token");
+
+            String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
+
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Token " + token);
+            testRunner.enqueue("test data", attributes);
+
+            testRunner.run();
+
+            testRunner.assertTransferCount(Relationships.SUCCESS, 1);
+            testRunner.assertTransferCount(Relationships.FAILURE, 0);
+
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
+            assertEquals(token, flowFile.getAttribute(JWTAttributes.Token.VALUE));
+        }
+
+        @Test
+        @DisplayName("Should not strip default prefix when custom prefix is configured")
+        void shouldNotStripDefaultPrefixWhenCustomConfigured() {
+            testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
+            testRunner.setProperty(Properties.TOKEN_HEADER, Http.AUTHORIZATION_HEADER);
+            testRunner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Token");
+
+            String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
+
+            // Send with "Bearer" prefix but custom is set to "Token"
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Bearer " + token);
+            testRunner.enqueue("test data", attributes);
+
+            testRunner.run();
+
+            testRunner.assertTransferCount(Relationships.SUCCESS, 1);
+            testRunner.assertTransferCount(Relationships.FAILURE, 0);
+
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
+            // The "Bearer " should NOT be stripped since configured prefix is "Token"
+            // The whole value "Bearer eyJ..." is returned as the token
+            String extractedToken = flowFile.getAttribute(JWTAttributes.Token.VALUE);
+            assertNotNull(extractedToken);
+            // Should contain "Bearer" as part of the token since it wasn't stripped
+            assertEquals("Bearer " + token, extractedToken);
+        }
     }
 }

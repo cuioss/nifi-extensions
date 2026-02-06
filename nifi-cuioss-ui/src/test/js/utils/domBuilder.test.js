@@ -57,10 +57,10 @@ describe('DOM Builder - Simple Coverage Tests', () => {
         expect(element.tagName).toBe('DIV');
     });
 
-    it('should handle sanitized HTML content', () => {
+    it('should handle trusted HTML content', () => {
         const element = createElement('div', {
             html: '<span>Safe HTML</span>',
-            sanitized: true
+            trustedHtml: true
         });
         expect(element.innerHTML).toBe('<span>Safe HTML</span>');
     });
