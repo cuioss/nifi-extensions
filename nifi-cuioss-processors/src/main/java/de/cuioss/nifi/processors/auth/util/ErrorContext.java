@@ -17,8 +17,8 @@ package de.cuioss.nifi.processors.auth.util;
 
 import lombok.Builder;
 import lombok.Getter;
-import lombok.NonNull;
 import lombok.experimental.UtilityClass;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -43,13 +43,11 @@ public class ErrorContext {
     /**
      * The operation being performed when the error occurred
      */
-    @NonNull
     private final String operation;
 
     /**
      * The component or class where the error occurred
      */
-    @NonNull
     private final String component;
 
     /**
@@ -61,11 +59,13 @@ public class ErrorContext {
     /**
      * The original exception if available
      */
+    @Nullable
     private final Throwable cause;
 
     /**
      * Error code for categorization
      */
+    @Nullable
     private final String errorCode;
 
     /**

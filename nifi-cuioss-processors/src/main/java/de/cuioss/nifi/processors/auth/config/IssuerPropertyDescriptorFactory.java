@@ -17,10 +17,10 @@
 package de.cuioss.nifi.processors.auth.config;
 
 import de.cuioss.nifi.processors.auth.i18n.I18nResolver;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.processor.util.StandardValidators;
+
+import java.util.Objects;
 
 import static de.cuioss.nifi.processors.auth.JWTPropertyKeys.Issuer;
 import static de.cuioss.nifi.processors.auth.JWTTranslationKeys.Property;
@@ -32,11 +32,18 @@ import static de.cuioss.nifi.processors.auth.JWTTranslationKeys.Property;
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration-ui.adoc">UI Configuration Specification</a>
  */
-@RequiredArgsConstructor
 public class IssuerPropertyDescriptorFactory {
 
-    @NonNull
     private final I18nResolver i18nResolver;
+
+    /**
+     * Creates a new IssuerPropertyDescriptorFactory with the specified I18n resolver.
+     *
+     * @param i18nResolver the resolver for internationalized messages, must not be null
+     */
+    public IssuerPropertyDescriptorFactory(I18nResolver i18nResolver) {
+        this.i18nResolver = Objects.requireNonNull(i18nResolver, "i18nResolver must not be null");
+    }
 
     /**
      * Creates a property descriptor for the given issuer property.
@@ -47,11 +54,14 @@ public class IssuerPropertyDescriptorFactory {
      * @param displayName The display name for the property
      * @return The created PropertyDescriptor
      */
-    @NonNull
-    public PropertyDescriptor createDescriptor(@NonNull String propertyDescriptorName,
-            @NonNull String issuerName,
-            @NonNull String propertyKey,
-            @NonNull String displayName) {
+    public PropertyDescriptor createDescriptor(String propertyDescriptorName,
+            String issuerName,
+            String propertyKey,
+            String displayName) {
+        Objects.requireNonNull(propertyDescriptorName, "propertyDescriptorName must not be null");
+        Objects.requireNonNull(issuerName, "issuerName must not be null");
+        Objects.requireNonNull(propertyKey, "propertyKey must not be null");
+        Objects.requireNonNull(displayName, "displayName must not be null");
         return switch (propertyKey) {
             case Issuer.JWKS_TYPE -> createJwksTypeDescriptor(propertyDescriptorName, displayName);
             case Issuer.JWKS_URL -> createJwksUrlDescriptor(propertyDescriptorName, displayName, issuerName, propertyKey);
@@ -66,8 +76,7 @@ public class IssuerPropertyDescriptorFactory {
         };
     }
 
-    @NonNull
-    private PropertyDescriptor createJwksTypeDescriptor(@NonNull String name, @NonNull String displayName) {
+    private PropertyDescriptor createJwksTypeDescriptor(String name, String displayName) {
         return new PropertyDescriptor.Builder()
                 .name(name)
                 .displayName(displayName)
@@ -79,9 +88,8 @@ public class IssuerPropertyDescriptorFactory {
                 .build();
     }
 
-    @NonNull
-    private PropertyDescriptor createJwksUrlDescriptor(@NonNull String name, @NonNull String displayName,
-            @NonNull String issuerName, @NonNull String propertyKey) {
+    private PropertyDescriptor createJwksUrlDescriptor(String name, String displayName,
+            String issuerName, String propertyKey) {
         return new PropertyDescriptor.Builder()
                 .name(name)
                 .displayName(displayName)
@@ -92,8 +100,7 @@ public class IssuerPropertyDescriptorFactory {
                 .build();
     }
 
-    @NonNull
-    private PropertyDescriptor createJwksFileDescriptor(@NonNull String name, @NonNull String displayName) {
+    private PropertyDescriptor createJwksFileDescriptor(String name, String displayName) {
         return new PropertyDescriptor.Builder()
                 .name(name)
                 .displayName(displayName)
@@ -104,8 +111,7 @@ public class IssuerPropertyDescriptorFactory {
                 .build();
     }
 
-    @NonNull
-    private PropertyDescriptor createJwksContentDescriptor(@NonNull String name, @NonNull String displayName) {
+    private PropertyDescriptor createJwksContentDescriptor(String name, String displayName) {
         return new PropertyDescriptor.Builder()
                 .name(name)
                 .displayName(displayName)
@@ -116,9 +122,8 @@ public class IssuerPropertyDescriptorFactory {
                 .build();
     }
 
-    @NonNull
-    private PropertyDescriptor createIssuerNameDescriptor(@NonNull String name, @NonNull String displayName,
-            @NonNull String issuerName, @NonNull String propertyKey) {
+    private PropertyDescriptor createIssuerNameDescriptor(String name, String displayName,
+            String issuerName, String propertyKey) {
         return new PropertyDescriptor.Builder()
                 .name(name)
                 .displayName(displayName)
@@ -129,9 +134,8 @@ public class IssuerPropertyDescriptorFactory {
                 .build();
     }
 
-    @NonNull
-    private PropertyDescriptor createAudienceOrClientIdDescriptor(@NonNull String name, @NonNull String displayName,
-            @NonNull String issuerName, @NonNull String propertyKey) {
+    private PropertyDescriptor createAudienceOrClientIdDescriptor(String name, String displayName,
+            String issuerName, String propertyKey) {
         String descriptionKey = Issuer.AUDIENCE.equals(propertyKey)
                 ? Property.Issuer.AUDIENCE_DESCRIPTION
                 : Property.Issuer.CLIENT_ID_DESCRIPTION;
@@ -146,9 +150,8 @@ public class IssuerPropertyDescriptorFactory {
                 .build();
     }
 
-    @NonNull
-    private PropertyDescriptor createRequiredScopesOrRolesDescriptor(@NonNull String name, @NonNull String displayName,
-            @NonNull String issuerName, @NonNull String propertyKey) {
+    private PropertyDescriptor createRequiredScopesOrRolesDescriptor(String name, String displayName,
+            String issuerName, String propertyKey) {
         String description = Issuer.REQUIRED_SCOPES.equals(propertyKey)
                 ? "Required scopes for authorization (comma-separated)"
                 : "Required roles for authorization (comma-separated)";
@@ -163,9 +166,8 @@ public class IssuerPropertyDescriptorFactory {
                 .build();
     }
 
-    @NonNull
-    private PropertyDescriptor createBooleanDescriptor(@NonNull String name, @NonNull String displayName,
-            @NonNull String issuerName, @NonNull String propertyKey) {
+    private PropertyDescriptor createBooleanDescriptor(String name, String displayName,
+            String issuerName, String propertyKey) {
         String description = Issuer.BYPASS_AUTHORIZATION.equals(propertyKey)
                 ? "Bypass all authorization checks for this issuer (WARNING: security risk)"
                 : "Boolean property for authorization configuration";
@@ -182,8 +184,7 @@ public class IssuerPropertyDescriptorFactory {
                 .build();
     }
 
-    @NonNull
-    private PropertyDescriptor createDefaultDescriptor(@NonNull String name) {
+    private PropertyDescriptor createDefaultDescriptor(String name) {
         return new PropertyDescriptor.Builder()
                 .name(name)
                 .displayName(name)

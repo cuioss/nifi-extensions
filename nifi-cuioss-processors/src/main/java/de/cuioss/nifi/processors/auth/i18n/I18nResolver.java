@@ -15,8 +15,6 @@
  */
 package de.cuioss.nifi.processors.auth.i18n;
 
-import lombok.NonNull;
-
 /**
  * Interface for resolving internationalized messages.
  * Provides methods to retrieve translated strings based on message keys.
@@ -31,7 +29,7 @@ public interface I18nResolver {
      * @param key The message key to look up, must not be null
      * @return The translated string, or the key itself if no translation is found
      */
-    String getTranslatedString(@NonNull String key);
+    String getTranslatedString(String key);
 
     /**
      * Gets a translated string for the given key with parameter substitution.
@@ -41,5 +39,5 @@ public interface I18nResolver {
      * @param args The arguments to substitute into the translated string
      * @return The translated string with parameters substituted, or the key itself if no translation is found
      */
-    String getTranslatedString(@NonNull String key, Object... args);
+    String getTranslatedString(String key, Object... args);
 }

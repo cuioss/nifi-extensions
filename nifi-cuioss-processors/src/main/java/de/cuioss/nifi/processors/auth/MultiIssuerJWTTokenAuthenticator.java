@@ -36,7 +36,6 @@ import de.cuioss.sheriff.oauth.core.security.SignatureAlgorithmPreferences;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import lombok.NonNull;
 import org.apache.nifi.annotation.behavior.*;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.SeeAlso;
@@ -47,6 +46,7 @@ import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
 import org.apache.nifi.processor.util.StandardValidators;
+import org.jspecify.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -136,6 +136,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private final AtomicReference<TokenValidator> tokenValidator = new AtomicReference<>();
 
     // Security event counter for tracking validation events
+    @Nullable
     private SecurityEventCounter securityEventCounter;
 
     // Lock object for thread-safe initialization
@@ -145,6 +146,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private final AtomicLong processedFlowFilesCount = new AtomicLong();
 
     // Configuration manager for static files and environment variables
+    @Nullable
     private ConfigurationManager configurationManager;
 
     // Flag to track if configuration was reloaded
@@ -159,8 +161,10 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     // Authorization configuration cache
     private final Map<String, AuthorizationValidator.AuthorizationConfig> authorizationConfigCache = new ConcurrentHashMap<>();
 
+    @Nullable
     private I18nResolver i18nResolver;
 
+    @Nullable
     private IssuerPropertyDescriptorFactory propertyDescriptorFactory;
 
     @Getter
@@ -170,7 +174,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private Set<Relationship> relationships;
 
     @Override
-    protected void init(@NonNull final ProcessorInitializationContext context) {
+    protected void init(final ProcessorInitializationContext context) {
         // Initialize i18n resolver
         i18nResolver = NiFiI18nResolver.createDefault(context.getLogger());
         propertyDescriptorFactory = new IssuerPropertyDescriptorFactory(i18nResolver);
@@ -201,7 +205,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     }
 
     @Override
-    protected PropertyDescriptor getSupportedDynamicPropertyDescriptor(@NonNull final String propertyDescriptorName) {
+    protected PropertyDescriptor getSupportedDynamicPropertyDescriptor(final String propertyDescriptorName) {
+        Objects.requireNonNull(propertyDescriptorName, "propertyDescriptorName must not be null");
         // Support dynamic properties for issuer configuration
         if (propertyDescriptorName.startsWith(ISSUER_PREFIX)) {
             return createIssuerPropertyDescriptor(propertyDescriptorName);
@@ -217,8 +222,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param propertyDescriptorName The full property descriptor name
      * @return The created PropertyDescriptor
      */
-    @NonNull
-    private PropertyDescriptor createIssuerPropertyDescriptor(@NonNull final String propertyDescriptorName) {
+    private PropertyDescriptor createIssuerPropertyDescriptor(final String propertyDescriptorName) {
         String issuerProperty = propertyDescriptorName.substring(ISSUER_PREFIX.length());
         int dotIndex = issuerProperty.indexOf('.');
 
@@ -239,8 +243,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param propertyDescriptorName The property descriptor name
      * @return The created PropertyDescriptor
      */
-    @NonNull
-    private PropertyDescriptor createDefaultPropertyDescriptor(@NonNull final String propertyDescriptorName) {
+    private PropertyDescriptor createDefaultPropertyDescriptor(final String propertyDescriptorName) {
         return new PropertyDescriptor.Builder()
                 .name(propertyDescriptorName)
                 .displayName(propertyDescriptorName)
@@ -257,7 +260,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param context The process context
      */
     @OnScheduled
-    public void onScheduled(@NonNull final ProcessContext context) {
+    public void onScheduled(final ProcessContext context) {
         // Initialize the ConfigurationManager
         configurationManager = new ConfigurationManager();
         LOGGER.info("Configuration manager initialized, external configuration loaded: %s",
@@ -590,10 +593,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param error The processing error details
      * @return The updated flow file with error attributes
      */
-    @NonNull
-    private FlowFile handleError(@NonNull ProcessSession session,
-            @NonNull FlowFile flowFile,
-            @NonNull ProcessingError error) {
+    private FlowFile handleError(ProcessSession session,
+            FlowFile flowFile,
+            ProcessingError error) {
         // Add error attributes
         Map<String, String> attributes = new HashMap<>();
         attributes.put(JWTAttributes.Error.CODE, error.getErrorCode());
@@ -619,12 +621,11 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param errorCategory The error category
      * @return The updated flow file with error attributes
      */
-    @NonNull
-    private FlowFile handleError(@NonNull ProcessSession session,
-            @NonNull FlowFile flowFile,
-            @NonNull String errorCode,
-            @NonNull String errorReason,
-            @NonNull String errorCategory) {
+    private FlowFile handleError(ProcessSession session,
+            FlowFile flowFile,
+            String errorCode,
+            String errorReason,
+            String errorCategory) {
         ProcessingError error = ProcessingError.builder()
                 .errorCode(errorCode)
                 .errorReason(errorReason)
@@ -634,7 +635,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     }
 
     @Override
-    public void onTrigger(@NonNull final ProcessContext context, @NonNull final ProcessSession session) {
+    public void onTrigger(final ProcessContext context, final ProcessSession session) {
         FlowFile flowFile = session.get();
         if (flowFile == null) {
             return;

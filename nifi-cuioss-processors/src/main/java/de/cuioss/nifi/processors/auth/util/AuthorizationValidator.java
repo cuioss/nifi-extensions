@@ -19,9 +19,9 @@ package de.cuioss.nifi.processors.auth.util;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.Builder;
-import lombok.NonNull;
 import lombok.Value;
 import lombok.experimental.UtilityClass;
+import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -49,12 +49,14 @@ public class AuthorizationValidator {
          * Required scopes for authorization. At least one must be present in the token.
          * Can be null or empty if no scope validation is required.
          */
+        @Nullable
         Set<String> requiredScopes;
 
         /**
          * Required roles for authorization. At least one must be present in the token.
          * Can be null or empty if no role validation is required.
          */
+        @Nullable
         Set<String> requiredRoles;
 
         /**
@@ -101,6 +103,7 @@ public class AuthorizationValidator {
         /**
          * Reason for authorization failure, if any.
          */
+        @Nullable
         String reason;
 
         /**
@@ -131,7 +134,9 @@ public class AuthorizationValidator {
      * @param config The authorization configuration
      * @return The authorization result
      */
-    public static AuthorizationResult validate(@NonNull AccessTokenContent token, @NonNull AuthorizationConfig config) {
+    public static AuthorizationResult validate(AccessTokenContent token, AuthorizationConfig config) {
+        Objects.requireNonNull(token, "token must not be null");
+        Objects.requireNonNull(config, "config must not be null");
         LOGGER.debug("Validating authorization for token with subject: %s", token.getSubject().orElse("unknown"));
 
         // Explicit bypass required to skip authorization

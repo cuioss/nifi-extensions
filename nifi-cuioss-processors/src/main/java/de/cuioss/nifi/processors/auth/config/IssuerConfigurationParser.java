@@ -21,7 +21,6 @@ import de.cuioss.nifi.processors.auth.util.ErrorContext;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
 import de.cuioss.tools.logging.CuiLogger;
-import lombok.NonNull;
 import lombok.experimental.UtilityClass;
 
 import java.util.*;
@@ -98,8 +97,9 @@ public class IssuerConfigurationParser {
      * @param configurationManager Optional external configuration manager
      * @return List of IssuerConfig objects
      */
-    public static List<IssuerConfig> parseIssuerConfigs(@NonNull Map<String, String> properties,
+    public static List<IssuerConfig> parseIssuerConfigs(Map<String, String> properties,
             ConfigurationManager configurationManager) {
+        Objects.requireNonNull(properties, "properties must not be null");
         Map<String, Map<String, String>> issuerPropertiesMap = new HashMap<>();
         Set<String> currentIssuerNames = new HashSet<>();
 
@@ -121,7 +121,8 @@ public class IssuerConfigurationParser {
      * @param properties The processor's property map
      * @return ParserConfig object
      */
-    public static ParserConfig parseParserConfig(@NonNull Map<String, String> properties) {
+    public static ParserConfig parseParserConfig(Map<String, String> properties) {
+        Objects.requireNonNull(properties, "properties must not be null");
         int maxTokenSize = DEFAULT_MAX_TOKEN_SIZE;
         String tokenSizeValue = properties.getOrDefault(MAXIMUM_TOKEN_SIZE_KEY,
                 String.valueOf(DEFAULT_MAX_TOKEN_SIZE));
@@ -313,7 +314,8 @@ public class IssuerConfigurationParser {
      * @param processorProperties Map from NiFi REST API response
      * @return Simple property map
      */
-    public static Map<String, String> extractPropertiesFromProcessorDTO(@NonNull Map<String, String> processorProperties) {
+    public static Map<String, String> extractPropertiesFromProcessorDTO(Map<String, String> processorProperties) {
+        Objects.requireNonNull(processorProperties, "processorProperties must not be null");
         // The processor properties from REST API are already in the correct format
         return new HashMap<>(processorProperties);
     }
