@@ -40,6 +40,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * These tests focus on:
  * - TokenValidationResult data class functionality
  * - Error handling and edge cases
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>
  */
 @EnableGeneratorController
 @DisplayName("JWT Validation Service Tests")

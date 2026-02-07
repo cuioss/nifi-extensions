@@ -53,6 +53,9 @@ import java.util.Map;
  * - /nifi-api/processors/jwt/validate-jwks-content - Validate inline JWKS content
  *
  * All methods use POST and expect JSON request bodies.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
  */
 public class JwksValidationServlet extends HttpServlet {
 

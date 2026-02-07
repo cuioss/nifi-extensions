@@ -30,6 +30,8 @@ import java.util.*;
 /**
  * Manages configuration for the MultiIssuerJWTTokenAuthenticator processor.
  * Handles loading configuration from static files and environment variables.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration-static.adoc">Static Configuration Specification</a>
  */
 public class ConfigurationManager {
 

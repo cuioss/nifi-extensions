@@ -28,6 +28,8 @@ import java.util.StringJoiner;
 /**
  * Provides context information for error messages to improve debugging.
  * This class helps create detailed error messages with relevant context.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/error-handling.adoc">Error Handling Specification</a>
  */
 @Getter
 @Builder
@@ -168,6 +170,14 @@ public class ErrorContext {
      */
     public static ErrorContextBuilder forComponent(String component) {
         return ErrorContext.builder().component(component);
+    }
+
+    /**
+     * Lombok-generated builder for {@link ErrorContext}.
+     * This stub allows Javadoc to resolve the return type of {@link #forComponent(String)}.
+     */
+    public static class ErrorContextBuilder {
+        // Lombok @Builder generates the full implementation
     }
 
     /**

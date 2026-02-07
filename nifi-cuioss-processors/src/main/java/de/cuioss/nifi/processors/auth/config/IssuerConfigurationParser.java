@@ -33,6 +33,8 @@ import java.util.stream.Collectors;
  *
  * The parser supports both UI-based configuration (using dynamic properties)
  * and external configuration files.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration-static.adoc">Static Configuration Specification</a>
  */
 @UtilityClass
 public class IssuerConfigurationParser {

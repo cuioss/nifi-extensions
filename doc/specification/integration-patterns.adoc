@@ -7,6 +7,16 @@
 
 link:../Specification.adoc[Back to Main Specification]
 
+== Referenced Implementation
+
+=== Implementation Classes
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] -- Main processor used in all integration patterns
+
+=== Verification
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorTest.java[MultiIssuerJWTTokenAuthenticatorTest]
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorExtendedTest.java[MultiIssuerJWTTokenAuthenticatorExtendedTest]
+* link:../../integration-testing/[integration-testing module] -- Docker-based integration tests
+
 == Integration Overview
 [.requirement]
 _See Requirement: link:../Requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: NiFi Integration]_
@@ -233,82 +243,13 @@ For more details on multi-issuer support, see link:technical-components.adoc#_mu
 
 ==== Basic JWT Authentication Test
 
-This example demonstrates how to test basic JWT authentication in a NiFi flow:
-
-[source,java]
-----
-/**
- * Tests basic JWT token authentication flow.
- */
-@Test
-void testBasicJwtAuthentication() {
-    // Configure the processor
-    TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
-    runner.setProperty(MultiIssuerJWTTokenAuthenticator.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
-    runner.setProperty(MultiIssuerJWTTokenAuthenticator.TOKEN_HEADER, "Authorization");
-    runner.setProperty(MultiIssuerJWTTokenAuthenticator.JWKS_REFRESH_INTERVAL, "3600");
-    runner.setProperty(MultiIssuerJWTTokenAuthenticator.REQUIRE_VALID_TOKEN, "true");
-    runner.setProperty("keycloak", "https://auth.example.com/realms/master/protocol/openid-connect/certs");
-
-    // Create a flow file with a JWT token
-    Map<String, String> attributes = new HashMap<>();
-    attributes.put("http.headers.authorization", "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...");
-    runner.enqueue("Request body".getBytes(), attributes);
-
-    // Run the processor
-    runner.run();
-
-    // Check the results
-    runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 1);
-    MockFlowFile resultFlowFile = runner.getFlowFilesForRelationship(
-        MultiIssuerJWTTokenAuthenticator.SUCCESS).get(0);
-
-    // Verify token attributes were added
-    assertEquals("keycloak", resultFlowFile.getAttribute("jwt.issuer"));
-    assertNotNull(resultFlowFile.getAttribute("jwt.content.sub"));
-    assertEquals("true", resultFlowFile.getAttribute("jwt.authorization.passed"));
-}
-----
+For examples of basic JWT authentication testing with the NiFi TestRunner, see link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorExtendedTest.java[MultiIssuerJWTTokenAuthenticatorExtendedTest], which uses real RS256-signed tokens with matching JWKS key material.
 
 For more details on testing, see link:testing.adoc[Testing].
 
 ==== Role-Based Authorization Test
 
-This example demonstrates how to test role-based authorization using JWT tokens:
-
-[source,java]
-----
-/**
- * Tests JWT token validation with role-based authorization.
- */
-@Test
-void testRoleBasedAuthorization() {
-    // Configure the processor with role requirements
-    TestRunner runner = TestRunners.newTestRunner(MultiIssuerJWTTokenAuthenticator.class);
-    runner.setProperty(MultiIssuerJWTTokenAuthenticator.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
-    runner.setProperty(MultiIssuerJWTTokenAuthenticator.TOKEN_HEADER, "Authorization");
-    runner.setProperty(MultiIssuerJWTTokenAuthenticator.JWKS_REFRESH_INTERVAL, "3600");
-    runner.setProperty(MultiIssuerJWTTokenAuthenticator.REQUIRE_VALID_TOKEN, "true");
-    runner.setProperty(MultiIssuerJWTTokenAuthenticator.REQUIRED_ROLES, "admin,power-user");
-    runner.setProperty("keycloak", "https://auth.example.com/realms/master/protocol/openid-connect/certs");
-
-    // Create a flow file with a JWT token containing roles
-    Map<String, String> attributes = new HashMap<>();
-    attributes.put("http.headers.authorization", "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...");
-    runner.enqueue("Request body".getBytes(), attributes);
-
-    // Run the processor
-    runner.run();
-
-    // Check the results - should succeed if token has required roles
-    runner.assertAllFlowFilesTransferred(MultiIssuerJWTTokenAuthenticator.SUCCESS, 1);
-    MockFlowFile resultFlowFile = runner.getFlowFilesForRelationship(
-        MultiIssuerJWTTokenAuthenticator.SUCCESS).get(0);
-
-    // Verify authorization attributes
-    assertEquals("true", resultFlowFile.getAttribute("jwt.authorization.passed"));
-}
-----
+For examples of role-based authorization testing, see link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/util/AuthorizationValidatorTest.java[AuthorizationValidatorTest], which tests scope and role validation with configurable AND/OR logic and case-sensitivity options.
 
 For authorization implementation details, see link:token-validation.adoc#_authorization_checking[Authorization Checking].
 

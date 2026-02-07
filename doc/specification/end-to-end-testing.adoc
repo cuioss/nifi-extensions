@@ -7,6 +7,16 @@
 
 xref:../Specification.adoc[Back to Main Specification]
 
+== Referenced Implementation
+
+=== Test Modules
+* link:../../e-2-e-playwright/[e-2-e-playwright] -- Playwright E2E and WCAG accessibility tests
+* link:../../integration-testing/[integration-testing] -- Docker-based integration tests (NiFi + Keycloak)
+
+=== Implementation Guides
+* link:../../e-2-e-playwright/docs/implementation-guide.adoc[End-to-End Testing Implementation Guide]
+* link:../../e-2-e-playwright/docs/nifi-ui-structure.adoc[NiFi UI Structure Guide]
+
 == End-to-End Testing Overview
 _See Requirement xref:../Requirements.adoc#NIFI-AUTH-15[NIFI-AUTH-15: Integration Testing]_
 

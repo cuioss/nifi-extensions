@@ -47,6 +47,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * Unlike the base test class which uses hardcoded HS256 tokens (always rejected),
  * these tests generate real RS256-signed tokens with matching JWKS key material,
  * enabling true SUCCESS path validation testing.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/technical-components.adoc">Technical Components Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>
  */
 class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 

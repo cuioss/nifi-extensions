@@ -16,6 +16,16 @@ The MultiIssuerJWTTokenAuthenticator processor provides comprehensive configurat
 [.text-center]
 image::../plantuml/configuration-overview.png[Configuration Overview Diagram, align="center"]
 
+== Implementation Status
+
+=== Implementation Classes
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTProcessorConstants.java[JWTProcessorConstants] -- Property definitions, relationships, and processor constants
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTPropertyKeys.java[JWTPropertyKeys] -- Property key constants for issuer configuration
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] -- Main processor with configuration handling
+
+=== Verification
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorTest.java[MultiIssuerJWTTokenAuthenticatorTest]
+
 === Configuration Methods
 
 The processor supports three configuration methods:

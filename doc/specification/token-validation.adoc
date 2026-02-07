@@ -7,6 +7,19 @@
 
 link:../Specification.adoc[Back to Main Specification]
 
+== Implementation Status
+
+=== Implementation Classes
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] -- Main processor with token validation
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/util/AuthorizationValidator.java[AuthorizationValidator] -- Scope and role validation
+* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/service/JwtValidationService.java[JwtValidationService] -- UI token verification service
+
+=== Verification
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorTest.java[MultiIssuerJWTTokenAuthenticatorTest]
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorExtendedTest.java[MultiIssuerJWTTokenAuthenticatorExtendedTest] -- RS256 signed token tests
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/util/AuthorizationValidatorTest.java[AuthorizationValidatorTest]
+* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/service/JwtValidationServiceTest.java[JwtValidationServiceTest]
+
 == Token Validation Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
@@ -21,31 +34,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requir
 
 The processor extracts JWT tokens from flow files based on the configured token location. In NiFi 2.6.0, there are multiple possible token locations: Authorization header, custom header, or flow file content.
 
-[source,java]
-----
-private Optional<String> extractToken(FlowFile flowFile, ProcessContext context) {
-    String tokenLocation = context.getProperty(TOKEN_LOCATION).getValue();
-    
-    switch (tokenLocation) {
-        case "AUTHORIZATION_HEADER":
-            String headerName = context.getProperty(TOKEN_HEADER).getValue();
-            return extractTokenFromHeader(flowFile, headerName);
-            
-        case "CUSTOM_HEADER":
-            String customHeaderName = context.getProperty(CUSTOM_HEADER_NAME).getValue();
-            return extractTokenFromHeader(flowFile, customHeaderName);
-            
-        case "FLOW_FILE_CONTENT":
-            return extractTokenFromContent(flowFile, context.getSession());
-            
-        default:
-            // Default to Authorization header
-            return extractTokenFromHeader(flowFile, "Authorization");
-    }
-}
-
-// ...existing code...
-----
+Token extraction is implemented in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] (`onTrigger` method), which delegates to `extractTokenFromHeader` and `extractTokenFromContent` based on the configured token location. See also link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTTokenAuthenticator.java[JWTTokenAuthenticator] for the simplified extraction-only processor.
 
 For more information about token location configuration, see link:configuration.adoc#token-location[Token Location Configuration].
 
@@ -68,22 +57,7 @@ For more details on the oauth-sheriff-core library, see link:../library/oauth-sh
 
 In NiFi 2.6.0, the processor initializes and uses the oauth-sheriff-core library as follows:
 
-[source,java]
-----
-/**
- * Validates a token using the TokenValidator from oauth-sheriff-core.
- * 
- * @param tokenString The JWT token string to validate
- * @return The parsed token if valid
- * @throws TokenValidationException if the token is invalid
- */
-private AccessTokenContent validateToken(String tokenString) {
-    // Get the TokenValidator
-    TokenValidator validator = getTokenValidator();
-    return validator.createAccessToken(tokenString);
-}
-----
-For more details on the TokenValidator initialization, see link:technical-components.adoc#tokenvalidator[TokenValidator Component].
+Token validation is implemented in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] using the `TokenValidator.createAccessToken()` method from oauth-sheriff-core. For details on the TokenValidator initialization, see link:technical-components.adoc#tokenvalidator[TokenValidator Component].
 
 == Handling TokenValidator Lifecycle in NiFi
 
@@ -137,53 +111,7 @@ For detailed implementation of this lifecycle management, see link:technical-com
 
 While the oauth-sheriff-core library handles basic token validation including issuer, expiration, and audience checks, the processor adds additional authorization checks for specific NiFi use cases:
 
-[source,java]
-----
-/**
- * Validates authorization rules based on token scopes and roles.
- * 
- * @param token The parsed access token to validate
- * @param context The process context
- * @return A ValidationResult indicating whether the authorization is valid
- */
-private ValidationResult validateAuthorization(AccessTokenContent token, ProcessContext context) {
-    // Only validate authorization if required
-    if (!context.getProperty(REQUIRE_VALID_TOKEN).asBoolean()) {
-        return ValidationResult.valid();
-    }
-    
-    // Check required scopes using determineMissingScopes from AccessTokenContent
-    String scopesProperty = context.getProperty(REQUIRED_SCOPES).getValue();
-    if (scopesProperty != null && !scopesProperty.isEmpty()) {
-        Set<String> requiredScopes = Arrays.stream(scopesProperty.split(","))
-            .map(String::trim)
-            .collect(Collectors.toSet());
-        
-        Set<String> missingScopes = token.determineMissingScopes(requiredScopes);
-        if (!missingScopes.isEmpty()) {
-            return ValidationResult.invalid("Token missing required scopes: " + 
-                String.join(", ", missingScopes));
-        }
-    }
-    
-    // Check required roles - leveraging determineMissingRoles if available
-    String rolesProperty = context.getProperty(REQUIRED_ROLES).getValue();
-    if (rolesProperty != null && !rolesProperty.isEmpty()) {
-        Set<String> requiredRoles = Arrays.stream(rolesProperty.split(","))
-            .map(String::trim)
-            .collect(Collectors.toSet());
-        
-        // Use determineMissingRoles if it exists, otherwise calculate manually
-        Set<String> missingRoles = token.determineMissingRoles(requiredRoles);
-        if (!missingRoles.isEmpty()) {
-            return ValidationResult.invalid("Token missing required roles: " + 
-                String.join(", ", missingRoles));
-        }
-    }
-    
-    return ValidationResult.valid();
-}
-----
+Authorization checking is implemented in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/util/AuthorizationValidator.java[AuthorizationValidator], which validates scopes and roles using configurable AND/OR logic with optional case-insensitive matching and explicit bypass support. The processor invokes `AuthorizationValidator.validate()` with an `AuthorizationConfig` and `AccessTokenContent`.
 
 For more information on authorization configuration, see link:configuration.adoc#authorization-configuration[Authorization Configuration].
 
@@ -191,29 +119,7 @@ For more information on authorization configuration, see link:configuration.adoc
 
 After token validation, the processor extracts token claims and adds them to the flow file's attributes, using a simplified consistent approach:
 
-[source,java]
-----
-/**
- * Extracts claims from a token and converts them to a map of attributes.
- * 
- * @param token The parsed access token
- * @return A map of claim names to string values
- */
-private Map<String, String> extractClaims(AccessTokenContent token) {
-    Map<String, String> claims = new HashMap<>();
-
-    // Add validation metadata
-    claims.put("jwt.validatedAt", Instant.now().toString());
-    claims.put("jwt.authorization.passed", "true");
-    
-    // Add all token claims with consistent "jwt.content." prefix
-    token.getClaims().forEach((key, claimValue) -> {
-        claims.put("jwt.content." + key, claimValue.getOriginalString());
-    });
-    
-    return claims;
-}
-----
+Flow file attribute generation is implemented in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] (`onTrigger` method), using attribute key constants from link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTAttributes.java[JWTAttributes].
 
 This approach:
 
@@ -248,27 +154,7 @@ For the Token Verification Interface (UI token testing), the processor must:
 
 This ensures that UI-driven token tests do not pollute the main processor's security metrics and provide detailed, isolated error feedback for the user.
 
-[source,java]
-----
-public TokenVerificationResult verifyTokenForUi(String tokenString, List<IssuerConfig> issuerConfigs) {
-    // 1. Create a new SecurityEventCounter for this request
-    SecurityEventCounter eventCounter = new SecurityEventCounter();
-
-    // 2. Create a new TokenValidator with the existing IssuerConfigs and the new counter
-    TokenValidator validator = new TokenValidator(eventCounter, issuerConfigs);
-
-    try {
-        // 3. Validate the token - will throw TokenValidationException if invalid
-        AccessTokenContent accessToken = validator.createAccessToken(tokenString);
-        
-        // 4. Token is valid, prepare successful response
-        return TokenVerificationResult.success(accessToken, eventCounter);
-    } catch (TokenValidationException e) {
-        // 5. Token is invalid, get error details from the exception
-        return TokenVerificationResult.failure(e.getMessage(), eventCounter, e.getEventType());
-    }
-}
-----
+UI token verification is implemented in link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/service/JwtValidationService.java[JwtValidationService] (`verifyToken` method), which creates an isolated `TokenValidator` instance per request using the processor's `IssuerConfig` objects.
 
 === UI REST Integration for Token Verification
 

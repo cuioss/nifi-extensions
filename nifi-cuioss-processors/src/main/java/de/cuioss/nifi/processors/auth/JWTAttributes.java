@@ -22,6 +22,8 @@ import lombok.experimental.UtilityClass;
  * DSL-style nested constants for JWT-related attribute keys.
  * This class organizes all JWT-related attribute keys in a hierarchical structure
  * for better discoverability and type safety.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/technical-components.adoc">Technical Components Specification</a>
  */
 @UtilityClass
 public final class JWTAttributes {

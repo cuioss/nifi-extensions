@@ -38,6 +38,8 @@ import java.util.UUID;
  * <p><strong>Design Decision:</strong> Uses cuiHttp's HttpHandler for HTTP communication
  * instead of direct HttpClient usage. This provides automatic SSL context management
  * and consistent timeout handling across the application.</p>
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
  */
 public class ProcessorConfigReader {
 

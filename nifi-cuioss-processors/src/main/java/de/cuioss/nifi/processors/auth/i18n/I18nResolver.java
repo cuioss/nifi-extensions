@@ -20,6 +20,8 @@ import lombok.NonNull;
 /**
  * Interface for resolving internationalized messages.
  * Provides methods to retrieve translated strings based on message keys.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/internationalization.adoc">Internationalization Specification</a>
  */
 public interface I18nResolver {
 

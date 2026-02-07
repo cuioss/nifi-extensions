@@ -25,6 +25,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test class for {@link NiFiI18nResolver}.
+ *
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/internationalization.adoc">Internationalization Specification</a>
  */
 @DisplayName("Tests for NiFiI18nResolver")
 class NiFiI18nResolverTest {
