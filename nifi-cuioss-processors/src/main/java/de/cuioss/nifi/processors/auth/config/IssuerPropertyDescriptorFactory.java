@@ -58,6 +58,10 @@ public class IssuerPropertyDescriptorFactory {
             String issuerName,
             String propertyKey,
             String displayName) {
+        Objects.requireNonNull(propertyDescriptorName, "propertyDescriptorName must not be null");
+        Objects.requireNonNull(issuerName, "issuerName must not be null");
+        Objects.requireNonNull(propertyKey, "propertyKey must not be null");
+        Objects.requireNonNull(displayName, "displayName must not be null");
         return switch (propertyKey) {
             case Issuer.JWKS_TYPE -> createJwksTypeDescriptor(propertyDescriptorName, displayName);
             case Issuer.JWKS_URL -> createJwksUrlDescriptor(propertyDescriptorName, displayName, issuerName, propertyKey);
