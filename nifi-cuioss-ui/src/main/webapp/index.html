@@ -6,18 +6,6 @@
     <title>MultiIssuerJWTTokenAuthenticator UI</title>
     <link rel="stylesheet" href="css/styles.css">
 
-    <!-- Load external dependencies from WebJars (maintained by Maven) -->
-    
-    <!-- Load Cash-DOM (jQuery alternative) -->
-    <script type="text/javascript" src="webjars/cash-dom/8.1.5/dist/cash.min.js"></script>
-
-    <!-- Load Popper.js (required by Tippy.js) -->
-    <script type="text/javascript" src="webjars/popperjs__core/2.11.8/dist/umd/popper.min.js"></script>
-
-    <!-- Load Tippy.js for tooltips -->
-    <script type="text/javascript" src="webjars/tippy.js/6.3.7/dist/tippy.umd.min.js"></script>
-    <link rel="stylesheet" href="webjars/tippy.js/6.3.7/dist/tippy.css">
-
     <!-- Load FontAwesome CSS - we need our own copy because:
          1. We run in an iframe that might not inherit parent styles reliably
          2. NiFi's dynamically injected FA 4.7.0 CSS has broken font paths (404 errors)
@@ -34,7 +22,7 @@
         <!-- This container will be populated by the JavaScript UI components -->
         <h1 class="sr-only">JWT Token Authenticator Configuration</h1>
         <div id="loading-indicator">Loading JWT Validator UI...</div>
-        
+
         <!-- Tab structure for JWT configuration -->
         <main id="jwt-validator-tabs" class="jwt-tabs-container" style="display:none;">
             <div class="jwt-tabs-header" data-testid="jwt-config-tabs">
@@ -64,16 +52,175 @@
                     <!-- Metrics content will be injected here -->
                 </div>
                 <div id="help" class="tab-pane" role="tabpanel">
-                    <!-- Help content will be injected here -->
+                    <!-- Help tab: static content, no JS needed -->
+                    <div id="jwt-help-content" class="jwt-tab-content help-tab" data-testid="help-tab-content">
+                        <div class="help-header">
+                            <h2>JWT Authenticator Help</h2>
+                        </div>
+
+                        <div class="help-sections">
+                            <div class="help-section" data-testid="help-accordion-item">
+                                <h4 class="collapsible-header active" data-testid="accordion-toggle">
+                                    <i class="fa fa-chevron-down"></i> Getting Started
+                                </h4>
+                                <div class="collapsible-content show" data-testid="accordion-content">
+                                    <p>The MultiIssuerJWTTokenAuthenticator processor validates JWT tokens from
+                                    multiple issuers. Follow these steps to configure:</p>
+                                    <ol>
+                                        <li>Add at least one issuer configuration</li>
+                                        <li>Configure the JWKS URL or file path for each issuer</li>
+                                        <li>Set up authorization rules (optional)</li>
+                                        <li>Test your configuration using the Token Verification tab</li>
+                                    </ol>
+                                </div>
+                            </div>
+
+                            <div class="help-section" data-testid="help-accordion-item">
+                                <h4 class="collapsible-header" data-testid="accordion-toggle">
+                                    <i class="fa fa-chevron-right"></i> Issuer Configuration
+                                </h4>
+                                <div class="collapsible-content" data-testid="accordion-content">
+                                    <h5>Dynamic Properties</h5>
+                                    <p>Each issuer is configured using dynamic properties with the pattern:</p>
+                                    <code>jwt.issuer.&lt;issuer-name&gt;.jwks.url</code>
+
+                                    <h5>Example Configurations</h5>
+                                    <div class="example-config">
+                                        <strong>Keycloak:</strong><br>
+                                        <code>jwt.issuer.keycloak.jwks.url =<br>
+                                            &nbsp;&nbsp;https://keycloak.example.com/realms/myrealm/<br>
+                                            &nbsp;&nbsp;protocol/openid-connect/certs
+                                        </code>
+                                    </div>
+
+                                    <div class="example-config">
+                                        <strong>Auth0:</strong><br>
+                                        <code>jwt.issuer.auth0.jwks.url =
+                                            https://yourdomain.auth0.com/.well-known/jwks.json</code>
+                                    </div>
+
+                                    <div class="example-config">
+                                        <strong>Local File:</strong><br>
+                                        <code>jwt.issuer.local.jwks.file = /path/to/jwks.json</code>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="help-section" data-testid="help-accordion-item">
+                                <h4 class="collapsible-header" data-testid="accordion-toggle">
+                                    <i class="fa fa-chevron-right"></i> Authorization Rules
+                                </h4>
+                                <div class="collapsible-content" data-testid="accordion-content">
+                                    <p>Control access based on JWT claims using these properties:</p>
+
+                                    <h5>Required Scopes</h5>
+                                    <p>Specify scopes that must be present in the token:</p>
+                                    <code>Required Scopes = read write admin</code>
+
+                                    <h5>Required Roles</h5>
+                                    <p>Specify roles that must be present in the token:</p>
+                                    <code>Required Roles = user manager</code>
+
+                                    <h5>Flow File Attributes</h5>
+                                    <p>The processor adds these attributes to flow files:</p>
+                                    <ul>
+                                        <li><code>jwt.subject</code> - Token subject (user)</li>
+                                        <li><code>jwt.issuer</code> - Token issuer</li>
+                                        <li><code>jwt.scopes</code> - Space-separated scopes</li>
+                                        <li><code>jwt.roles</code> - Space-separated roles</li>
+                                        <li><code>jwt.authorized</code> - true/false based on rules</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="help-section" data-testid="help-accordion-item">
+                                <h4 class="collapsible-header" data-testid="accordion-toggle">
+                                    <i class="fa fa-chevron-right"></i> Token Verification
+                                </h4>
+                                <div class="collapsible-content" data-testid="accordion-content">
+                                    <p>Use the Token Verification tab to test JWT tokens:</p>
+                                    <ol>
+                                        <li>Paste a JWT token in the input field</li>
+                                        <li>Click "Verify Token"</li>
+                                        <li>Review the validation results</li>
+                                    </ol>
+
+                                    <h5>Common Issues</h5>
+                                    <ul>
+                                        <li><strong>Invalid Signature:</strong> Check that the JWKS URL is
+                                        correct</li>
+                                        <li><strong>Token Expired:</strong> Generate a new token</li>
+                                        <li><strong>Unknown Issuer:</strong> Add the issuer configuration</li>
+                                        <li><strong>Missing Scopes:</strong> Ensure token contains required
+                                        scopes</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="help-section" data-testid="help-accordion-item">
+                                <h4 class="collapsible-header" data-testid="accordion-toggle">
+                                    <i class="fa fa-chevron-right"></i> Troubleshooting
+                                </h4>
+                                <div class="collapsible-content" data-testid="accordion-content">
+                                    <h5>JWKS Loading Issues</h5>
+                                    <ul>
+                                        <li>Verify network connectivity to JWKS endpoints</li>
+                                        <li>Check SSL/TLS certificates for HTTPS endpoints</li>
+                                        <li>Ensure file paths are absolute for local JWKS files</li>
+                                        <li>Use the JWKS Validation button to test endpoints</li>
+                                    </ul>
+
+                                    <h5>Performance Tips</h5>
+                                    <ul>
+                                        <li>JWKS are cached for 5 minutes by default</li>
+                                        <li>Use local JWKS files for better performance</li>
+                                        <li>Monitor the Metrics tab for performance data</li>
+                                    </ul>
+
+                                    <h5>Security Best Practices</h5>
+                                    <ul>
+                                        <li>Always use HTTPS for JWKS endpoints</li>
+                                        <li>Rotate signing keys regularly</li>
+                                        <li>Implement proper authorization rules</li>
+                                        <li>Monitor failed validations in the Metrics tab</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="help-section" data-testid="help-accordion-item">
+                                <h4 class="collapsible-header" data-testid="accordion-toggle">
+                                    <i class="fa fa-chevron-right"></i> Additional Resources
+                                </h4>
+                                <div class="collapsible-content" data-testid="accordion-content">
+                                    <ul class="resource-links">
+                                        <li><a href="https://jwt.io/introduction"
+                                               target="_blank" rel="noopener noreferrer">
+                                            <i class="fa fa-external-link"></i> JWT Introduction
+                                        </a></li>
+                                        <li><a href="https://tools.ietf.org/html/rfc7517"
+                                               target="_blank" rel="noopener noreferrer">
+                                            <i class="fa fa-external-link"></i> JWK Specification
+                                        </a></li>
+                                        <li><a href="https://nifi.apache.org/docs.html"
+                                               target="_blank" rel="noopener noreferrer">
+                                            <i class="fa fa-external-link"></i> Apache NiFi Docs
+                                        </a></li>
+                                    </ul>
+
+                                    <div class="help-footer">
+                                        <p><strong>Version:</strong> 1.0.0</p>
+                                        <p><strong>Support:</strong> support@cuioss.de</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- Load our modern ES6 bundle built with Vite -->
-    <script type="text/javascript" src="js/bundle.js?v=20250730"></script>
-    
-    <!-- Initialize the JWT UI -->
-    <script type="text/javascript" src="js/app-init.js"></script>
+    <!-- Load application as ES module (includes collapsible section handling) -->
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>

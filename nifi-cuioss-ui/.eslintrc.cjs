@@ -1,34 +1,26 @@
 module.exports = {
     'env': {
         'browser': true,
-        'amd': true,
-        'jquery': true,
         'es6': true,
         'jest': true,
         'node': true
     },
     'ignorePatterns': [
         'target/**',
-        'node_modules/**',
-        'src/main/webapp/js/bundle.vite.umd.js',
-        'src/main/webapp/js/bundle.webpack.js'
+        'node_modules/**'
     ],
     'extends': [
         'eslint:recommended',
         'plugin:jest/recommended'
     ],
     'plugins': [
-        'jest',
-        'jquery'
+        'jest'
     ],
     'parserOptions': {
         'ecmaVersion': 2020,
         'sourceType': 'module'
     },
     'globals': {
-        'define': 'readonly',
-        'nf': 'readonly',
-        'module': 'writable',
         'globalThis': 'readonly'
     },
     'rules': {
@@ -61,57 +53,14 @@ module.exports = {
         'array-bracket-spacing': ['error', 'never'],
         'block-spacing': 'error',
         'brace-style': ['error', '1tbs', { 'allowSingleLine': true }],
-        'camelcase': ['error', { 'properties': 'never', 'allow': ['jwks_type'] }],
+        'camelcase': ['error', { 'properties': 'never' }],
         'comma-spacing': ['error', { 'before': false, 'after': true }],
         'func-call-spacing': ['error', 'never'],
         'key-spacing': ['error', { 'beforeColon': false, 'afterColon': true }],
         'max-len': ['warn', { 'code': 100, 'ignoreComments': true, 'ignoreStrings': true }],
         'no-multiple-empty-lines': ['error', { 'max': 2, 'maxEOF': 1 }],
         'no-trailing-spaces': 'error',
-        'padded-blocks': ['error', 'never'],
-
-        // jQuery specific rules
-        'jquery/no-ajax': 'off',
-        'jquery/no-animate': 'off',
-        'jquery/no-attr': 'off',
-        'jquery/no-bind': 'warn',
-        'jquery/no-class': 'off',
-        'jquery/no-clone': 'off',
-        'jquery/no-closest': 'off',
-        'jquery/no-css': 'off',
-        'jquery/no-data': 'off',
-        'jquery/no-deferred': 'off',
-        'jquery/no-delegate': 'warn',
-        'jquery/no-each': 'off',
-        'jquery/no-fade': 'off',
-        'jquery/no-filter': 'off',
-        'jquery/no-find': 'off',
-        'jquery/no-global-eval': 'error',
-        'jquery/no-has': 'off',
-        'jquery/no-hide': 'off',
-        'jquery/no-html': 'off',
-        'jquery/no-in-array': 'off',
-        'jquery/no-is': 'off',
-        'jquery/no-map': 'off',
-        'jquery/no-merge': 'off',
-        'jquery/no-param': 'off',
-        'jquery/no-parent': 'off',
-        'jquery/no-parents': 'off',
-        'jquery/no-parse-html': 'off',
-        'jquery/no-prop': 'off',
-        'jquery/no-proxy': 'warn',
-        'jquery/no-serialize': 'off',
-        'jquery/no-show': 'off',
-        'jquery/no-size': 'error',
-        'jquery/no-sizzle': 'off',
-        'jquery/no-slide': 'off',
-        'jquery/no-submit': 'off',
-        'jquery/no-text': 'off',
-        'jquery/no-toggle': 'off',
-        'jquery/no-trigger': 'off',
-        'jquery/no-trim': 'off',
-        'jquery/no-val': 'off',
-        'jquery/no-wrap': 'off'
+        'padded-blocks': ['error', 'never']
     },
     'overrides': [
         {
@@ -119,7 +68,7 @@ module.exports = {
             'rules': {
                 'jest/expect-expect': 'error',
                 'jest/no-disabled-tests': 'warn',
-                'jest/no-standalone-expect': 'off', // Added this line
+                'jest/no-standalone-expect': 'off',
                 'jest/no-focused-tests': 'error',
                 'jest/no-identical-title': 'error',
                 'jest/valid-expect': 'error',

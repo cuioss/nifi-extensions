@@ -113,10 +113,7 @@
         <!-- WebJars Dependencies -->
         <version.jquery>3.7.1</version.jquery>
         <version.jquery-ui>1.14.1</version.jquery-ui>
-        <version.requirejs>2.3.7</version.requirejs>
-        <version.cash-dom>8.1.5</version.cash-dom>
-        <version.tippy.js>6.3.7</version.tippy.js>
-        <version.popperjs__core>2.11.8</version.popperjs__core>
+
 
         <!-- Logging Dependencies -->
         <version.slf4j>2.0.17</version.slf4j>
@@ -169,26 +166,6 @@
                 <groupId>org.webjars</groupId>
                 <artifactId>jquery-ui</artifactId>
                 <version>${version.jquery-ui}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.webjars</groupId>
-                <artifactId>requirejs</artifactId>
-                <version>${version.requirejs}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.webjars.npm</groupId>
-                <artifactId>cash-dom</artifactId>
-                <version>${version.cash-dom}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.webjars.npm</groupId>
-                <artifactId>tippy.js</artifactId>
-                <version>${version.tippy.js}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.webjars.npm</groupId>
-                <artifactId>popperjs__core</artifactId>
-                <version>${version.popperjs__core}</version>
             </dependency>
             <!-- Incoming-->
             <dependency>
