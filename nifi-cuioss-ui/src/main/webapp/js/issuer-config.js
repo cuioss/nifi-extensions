@@ -46,6 +46,7 @@ export const init = async (element) => {
         <p>Configure JWT issuers for token validation. Each issuer requires
            a name and properties like jwks-url and issuer URI.</p>
         <div class="global-error-messages issuer-form-error-messages"
+             role="alert" aria-live="assertive"
              style="display:none;"></div>
         <div class="issuers-container"></div>`;
 
@@ -188,7 +189,8 @@ const addIssuerForm = (container, issuerName, properties, processorId) => {
     testWrapper.innerHTML = `
         <button type="button" class="verify-jwks-button"
                 title="Test connectivity to the JWKS endpoint">Test Connection</button>
-        <div class="verification-result"><em>Click the button to validate JWKS</em></div>`;
+        <div class="verification-result" aria-live="polite"
+             role="status"><em>Click the button to validate JWKS</em></div>`;
 
     // Position after jwks-url field
     const jwksUrlField = fields.querySelector('.jwks-type-url');
@@ -219,6 +221,8 @@ const addIssuerForm = (container, issuerName, properties, processorId) => {
     // ---- save button ----
     const errorContainer = document.createElement('div');
     errorContainer.className = 'issuer-form-error-messages';
+    errorContainer.setAttribute('role', 'alert');
+    errorContainer.setAttribute('aria-live', 'assertive');
     form.appendChild(errorContainer);
 
     const saveBtn = document.createElement('button');
@@ -244,7 +248,7 @@ const addField = (container, idx, name, label, placeholder, value, extraClass, h
     if (hidden) div.style.display = 'none';
     div.innerHTML = `
         <label for="field-${name}-${idx}">${sanitizeHtml(label)}:</label>
-        <input type="text" id="field-${name}-${idx}"
+        <input type="text" id="field-${name}-${idx}" name="${name}"
                class="field-${name} form-input issuer-config-field"
                placeholder="${sanitizeHtml(placeholder)}"
                value="${sanitizeHtml(value || '')}"
@@ -260,7 +264,7 @@ const addTextArea = (container, idx, name, label, placeholder, value, extraClass
     if (hidden) div.style.display = 'none';
     div.innerHTML = `
         <label for="field-${name}-${idx}">${sanitizeHtml(label)}:</label>
-        <textarea id="field-${name}-${idx}"
+        <textarea id="field-${name}-${idx}" name="${name}"
                   class="field-${name} form-input issuer-config-field"
                   placeholder="${sanitizeHtml(placeholder)}"
                   rows="5" aria-label="${sanitizeHtml(label)}"
@@ -291,8 +295,9 @@ const performJwksValidation = async (type, value, resultEl) => {
         }
 
         if (data.valid) {
+            const count = data.keyCount || 0;
             resultEl.innerHTML =
-                `<span class="success-message">OK</span> Valid JWKS (${data.keyCount || 0} keys found)`;
+                `<span class="success-message">OK</span> Valid JWKS (${count} keys found)`;
         } else {
             displayUiError(resultEl, { responseJSON: data }, {}, 'processor.jwt.invalidJwks');
         }

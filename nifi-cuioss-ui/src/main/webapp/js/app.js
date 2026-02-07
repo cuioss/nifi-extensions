@@ -17,6 +17,23 @@ import { log } from './utils.js';
 // Tab switching
 // ---------------------------------------------------------------------------
 
+const initCollapsibles = () => {
+    for (const header of document.querySelectorAll('.collapsible-header')) {
+        header.addEventListener('click', function () {
+            const content = this.nextElementSibling;
+            const icon = this.querySelector('i.fa');
+            this.classList.toggle('active');
+            if (content?.classList.contains('collapsible-content')) {
+                content.classList.toggle('show');
+            }
+            if (icon) {
+                icon.classList.toggle('fa-chevron-right', !this.classList.contains('active'));
+                icon.classList.toggle('fa-chevron-down', this.classList.contains('active'));
+            }
+        });
+    }
+};
+
 const initTabs = () => {
     const tabLinks = document.querySelectorAll('.tabs a[data-toggle="tab"]');
     const tabPanes = document.querySelectorAll('.tab-pane');
@@ -79,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
     log.info('JWT UI initialising…');
     hideLoading();
     initTabs();
+    initCollapsibles();
     initComponents();
     log.info('JWT UI ready');
 });

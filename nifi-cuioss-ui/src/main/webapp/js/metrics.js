@@ -95,8 +95,10 @@ export const init = (container) => {
             </div>
 
             <div class="metrics-footer">
-                <span class="last-updated" data-testid="last-updated">Last updated: Never</span>
+                <span class="last-updated" data-testid="last-updated"
+                      aria-live="polite" role="status">Last updated: Never</span>
                 <span class="refresh-indicator" data-testid="refresh-indicator"
+                      aria-live="polite"
                       style="display:none;">
                     <i class="fa fa-spinner fa-spin"></i> Refreshing...
                 </span>

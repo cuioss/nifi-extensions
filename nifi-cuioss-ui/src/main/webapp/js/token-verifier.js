@@ -36,7 +36,7 @@ export const init = (container) => {
             </div>
             <div class="token-results-section">
                 <h3>Verification Results</h3>
-                <div class="token-results-content"></div>
+                <div class="token-results-content" aria-live="polite" role="status"></div>
             </div>
         </div>`;
 

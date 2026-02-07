@@ -59,11 +59,11 @@
                         </div>
 
                         <div class="help-sections">
-                            <div class="help-section">
-                                <h4 class="collapsible-header active">
+                            <div class="help-section" data-testid="help-accordion-item">
+                                <h4 class="collapsible-header active" data-testid="accordion-toggle">
                                     <i class="fa fa-chevron-down"></i> Getting Started
                                 </h4>
-                                <div class="collapsible-content show">
+                                <div class="collapsible-content show" data-testid="accordion-content">
                                     <p>The MultiIssuerJWTTokenAuthenticator processor validates JWT tokens from
                                     multiple issuers. Follow these steps to configure:</p>
                                     <ol>
@@ -75,11 +75,11 @@
                                 </div>
                             </div>
 
-                            <div class="help-section">
-                                <h4 class="collapsible-header">
+                            <div class="help-section" data-testid="help-accordion-item">
+                                <h4 class="collapsible-header" data-testid="accordion-toggle">
                                     <i class="fa fa-chevron-right"></i> Issuer Configuration
                                 </h4>
-                                <div class="collapsible-content">
+                                <div class="collapsible-content" data-testid="accordion-content">
                                     <h5>Dynamic Properties</h5>
                                     <p>Each issuer is configured using dynamic properties with the pattern:</p>
                                     <code>jwt.issuer.&lt;issuer-name&gt;.jwks.url</code>
@@ -106,11 +106,11 @@
                                 </div>
                             </div>
 
-                            <div class="help-section">
-                                <h4 class="collapsible-header">
+                            <div class="help-section" data-testid="help-accordion-item">
+                                <h4 class="collapsible-header" data-testid="accordion-toggle">
                                     <i class="fa fa-chevron-right"></i> Authorization Rules
                                 </h4>
-                                <div class="collapsible-content">
+                                <div class="collapsible-content" data-testid="accordion-content">
                                     <p>Control access based on JWT claims using these properties:</p>
 
                                     <h5>Required Scopes</h5>
@@ -133,11 +133,11 @@
                                 </div>
                             </div>
 
-                            <div class="help-section">
-                                <h4 class="collapsible-header">
+                            <div class="help-section" data-testid="help-accordion-item">
+                                <h4 class="collapsible-header" data-testid="accordion-toggle">
                                     <i class="fa fa-chevron-right"></i> Token Verification
                                 </h4>
-                                <div class="collapsible-content">
+                                <div class="collapsible-content" data-testid="accordion-content">
                                     <p>Use the Token Verification tab to test JWT tokens:</p>
                                     <ol>
                                         <li>Paste a JWT token in the input field</li>
@@ -157,11 +157,11 @@
                                 </div>
                             </div>
 
-                            <div class="help-section">
-                                <h4 class="collapsible-header">
+                            <div class="help-section" data-testid="help-accordion-item">
+                                <h4 class="collapsible-header" data-testid="accordion-toggle">
                                     <i class="fa fa-chevron-right"></i> Troubleshooting
                                 </h4>
-                                <div class="collapsible-content">
+                                <div class="collapsible-content" data-testid="accordion-content">
                                     <h5>JWKS Loading Issues</h5>
                                     <ul>
                                         <li>Verify network connectivity to JWKS endpoints</li>
@@ -187,11 +187,11 @@
                                 </div>
                             </div>
 
-                            <div class="help-section">
-                                <h4 class="collapsible-header">
+                            <div class="help-section" data-testid="help-accordion-item">
+                                <h4 class="collapsible-header" data-testid="accordion-toggle">
                                     <i class="fa fa-chevron-right"></i> Additional Resources
                                 </h4>
-                                <div class="collapsible-content">
+                                <div class="collapsible-content" data-testid="accordion-content">
                                     <ul class="resource-links">
                                         <li><a href="https://jwt.io/introduction"
                                                target="_blank" rel="noopener noreferrer">
@@ -220,28 +220,7 @@
         </main>
     </div>
 
-    <!-- Load application as ES module -->
+    <!-- Load application as ES module (includes collapsible section handling) -->
     <script type="module" src="js/app.js"></script>
-
-    <!-- Collapsible help sections (inline, no external JS needed) -->
-    <script>
-    'use strict';
-    document.addEventListener('DOMContentLoaded', () => {
-        for (const header of document.querySelectorAll('.collapsible-header')) {
-            header.addEventListener('click', function () {
-                const content = this.nextElementSibling;
-                const icon = this.querySelector('i.fa');
-                this.classList.toggle('active');
-                if (content?.classList.contains('collapsible-content')) {
-                    content.classList.toggle('show');
-                }
-                if (icon) {
-                    icon.classList.toggle('fa-chevron-right', !this.classList.contains('active'));
-                    icon.classList.toggle('fa-chevron-down', this.classList.contains('active'));
-                }
-            });
-        }
-    });
-    </script>
 </body>
 </html>
