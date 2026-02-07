@@ -39,9 +39,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Comprehensive unit tests for {@link ApiKeyAuthenticationFilter}.
  * Tests authentication scenarios including processor ID validation and error handling.
- */
-/**
- * Tests for {@link ApiKeyAuthenticationFilter}.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
