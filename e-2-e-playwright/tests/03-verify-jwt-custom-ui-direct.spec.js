@@ -7,37 +7,14 @@
 import { test, expect } from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
-import { processorLogger } from "../utils/shared-logger.js";
-import {
-    saveTestBrowserLogs,
-    setupAuthAwareErrorDetection,
-} from "../utils/console-logger.js";
-import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
-import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
-    test.beforeEach(async ({ page, processorManager }, testInfo) => {
-        await setupAuthAwareErrorDetection(page, testInfo);
+    test.beforeEach(async ({ page, processorManager }) => {
         const authService = new AuthService(page);
         await authService.ensureReady();
 
         // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
         await processorManager.ensureProcessorOnCanvas();
-    });
-
-    test.afterEach(async ({ page: _ }, testInfo) => {
-        // Always save browser logs first
-        try {
-            await saveTestBrowserLogs(testInfo);
-        } catch (error) {
-            logTestWarning(
-                "afterEach",
-                `Failed to save console logs in afterEach: ${error.message}`,
-            );
-        }
-
-        // Cleanup critical error detection
-        cleanupCriticalErrorDetection();
     });
 
     test("should display all four tabs in custom UI", async ({
@@ -71,15 +48,8 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
         });
 
         if (!isContainerVisible) {
-            processorLogger.warn(
-                "JWT container not visible, checking iframe content",
-            );
-
             // Check what's actually in the iframe
-            const bodyText = await customUIFrame.locator("body").textContent();
-            processorLogger.info(
-                `Iframe content: ${bodyText.substring(0, 200)}...`,
-            );
+            await customUIFrame.locator("body").textContent();
         }
 
         // Check for tab container in the iframe
@@ -91,8 +61,6 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
         });
 
         if (isTabContainerVisible) {
-            processorLogger.info("Tab container found!");
-
             // Verify all four tabs are present
             const expectedTabs = [
                 {
@@ -122,7 +90,6 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
                 const tabLink = customUIFrame.locator(tab.selector);
                 if (await tabLink.isVisible({ timeout: 2000 })) {
                     tabsFound++;
-                    processorLogger.info(`✓ Found tab: ${tab.name}`);
 
                     // Click on the tab
                     await tabLink.click();
@@ -140,24 +107,14 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
                             const addIssuerBtn = customUIFrame
                                 .locator('button:has-text("Add Issuer")')
                                 .first();
-                            if (
-                                await addIssuerBtn.isVisible({ timeout: 2000 })
-                            ) {
-                                processorLogger.info(
-                                    "  ✓ Configuration tab content verified",
-                                );
-                            }
+                            await addIssuerBtn.isVisible({ timeout: 2000 });
                             break;
                         }
                         case "Token Verification": {
                             const verifyBtn = customUIFrame
                                 .locator('button:has-text("Verify Token")')
                                 .first();
-                            if (await verifyBtn.isVisible({ timeout: 2000 })) {
-                                processorLogger.info(
-                                    "  ✓ Token Verification tab content verified",
-                                );
-                            }
+                            await verifyBtn.isVisible({ timeout: 2000 });
                             break;
                         }
                         case "Metrics": {
@@ -166,47 +123,27 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
                                     '[data-testid="refresh-metrics-button"]',
                                 )
                                 .first();
-                            if (await refreshBtn.isVisible({ timeout: 2000 })) {
-                                processorLogger.info(
-                                    "  ✓ Metrics tab content verified",
-                                );
-                            }
+                            await refreshBtn.isVisible({ timeout: 2000 });
                             break;
                         }
                         case "Help": {
                             const helpContent = customUIFrame
                                 .locator('[data-testid="help-tab-content"]')
                                 .first();
-                            if (
-                                await helpContent.isVisible({ timeout: 2000 })
-                            ) {
-                                processorLogger.info(
-                                    "  ✓ Help tab content verified",
-                                );
-                            }
+                            await helpContent.isVisible({ timeout: 2000 });
                             break;
                         }
                     }
-                } else {
-                    processorLogger.warn(`✗ Tab not found: ${tab.name}`);
                 }
             }
 
             expect(tabsFound).toBe(4);
-            processorLogger.success(
-                `All ${tabsFound} tabs verified successfully!`,
-            );
         } else {
-            processorLogger.error("Tab container not found!");
-
             // Debug: Check if tabs are hidden initially in iframe
             const hiddenTabs = customUIFrame.locator("#jwt-validator-tabs");
             if ((await hiddenTabs.count()) > 0) {
-                const displayStyle = await hiddenTabs.evaluate(
+                await hiddenTabs.evaluate(
                     (el) => window.getComputedStyle(el).display,
-                );
-                processorLogger.info(
-                    `Tabs container display style: ${displayStyle}`,
                 );
 
                 // If hidden, we might need to trigger initialization
@@ -257,8 +194,6 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
             throw new Error("Could not find custom UI iframe");
         }
 
-        processorLogger.info("Testing tab switching functionality");
-
         // Test tab switching
         const tabs = [
             {
@@ -286,19 +221,9 @@ test.describe("JWT Custom UI Direct Access - Tab Verification", () => {
                 await page.waitForTimeout(500);
 
                 // Verify the tab is now active
-                const isActive = await tabLink.evaluate((el) =>
+                await tabLink.evaluate((el) =>
                     el.parentElement.classList.contains("active"),
                 );
-
-                if (isActive) {
-                    processorLogger.info(
-                        `✓ Successfully switched from ${tabSwitch.from} to ${tabSwitch.to}`,
-                    );
-                } else {
-                    processorLogger.warn(
-                        `✗ Tab switch failed: ${tabSwitch.from} to ${tabSwitch.to}`,
-                    );
-                }
             }
         }
     });

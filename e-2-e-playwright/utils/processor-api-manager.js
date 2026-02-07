@@ -4,7 +4,7 @@
  * avoiding unreliable UI-based interactions.
  */
 
-import { processorLogger } from './shared-logger.js';
+import { testLogger } from './test-logger.js';
 import { CONSTANTS } from './constants.js';
 
 /**
@@ -31,7 +31,7 @@ export class ProcessorApiManager {
     const token = await this.page.evaluate(() => window.__jwtToken).catch(() => null);
     
     if (token) {
-      processorLogger.debug('Using JWT token for authentication');
+      testLogger.info('Processor','Using JWT token for authentication');
       return {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/json',
@@ -39,7 +39,7 @@ export class ProcessorApiManager {
       };
     }
     
-    processorLogger.debug('No JWT token found, relying on session cookies');
+    testLogger.info('Processor','No JWT token found, relying on session cookies');
     // Fallback to empty headers (will rely on cookies)
     return {
       'Accept': 'application/json',
@@ -64,7 +64,7 @@ export class ProcessorApiManager {
       requestToken = requestTokenCookie?.value;
       
       if (!requestToken) {
-        processorLogger.warn('No CSRF token found for write operation - request may fail');
+        testLogger.warn('Processor','No CSRF token found for write operation - request may fail');
       }
     }
     
@@ -130,10 +130,10 @@ export class ProcessorApiManager {
       }
 
       // Fallback to 'root' if API call fails
-      processorLogger.warn('Could not get root process group ID, using "root"');
+      testLogger.warn('Processor','Could not get root process group ID, using "root"');
       return 'root';
     } catch (error) {
-      processorLogger.error('Error getting root process group ID:', error.message);
+      testLogger.error('Processor','Error getting root process group ID:', error.message);
       return 'root';
     }
   }
@@ -143,25 +143,25 @@ export class ProcessorApiManager {
    * This checks if the processor type is available in NiFi
    */
   async verifyMultiIssuerJWTTokenAuthenticatorIsDeployed() {
-    processorLogger.info('Verifying MultiIssuerJWTTokenAuthenticator deployment...');
+    testLogger.info('Processor','Verifying MultiIssuerJWTTokenAuthenticator deployment...');
     
     try {
       // Use makeApiCall which uses page.evaluate with fetch (works with cookies)
       const result = await this.makeApiCall('/nifi-api/flow/processor-types');
       
       if (!result.ok) {
-        processorLogger.error(`Failed to get processor types: ${result.status || result.error}`);
+        testLogger.error('Processor',`Failed to get processor types: ${result.status || result.error}`);
         if (result.status === 401) {
-          processorLogger.error('Authentication failed - ensure login was successful');
+          testLogger.error('Processor','Authentication failed - ensure login was successful');
         }
         return false;
       }
       
       // Check if we got JSON data
       if (typeof result.data === 'string') {
-        processorLogger.error('Received text instead of JSON object');
+        testLogger.error('Processor','Received text instead of JSON object');
         if (result.data.startsWith('<!') || result.data.includes('<html')) {
-          processorLogger.error('Received HTML instead of JSON - authentication may have failed');
+          testLogger.error('Processor','Received HTML instead of JSON - authentication may have failed');
         }
         return false;
       }
@@ -169,7 +169,7 @@ export class ProcessorApiManager {
       const processorTypes = result.data?.processorTypes || [];
       
       // Log total number of processor types found
-      processorLogger.debug(`Found ${processorTypes.length} total processor types`);
+      testLogger.info('Processor',`Found ${processorTypes.length} total processor types`);
       
       // Check if our processor type is available
       const isDeployed = processorTypes.some(type => 
@@ -179,9 +179,9 @@ export class ProcessorApiManager {
       );
 
       if (isDeployed) {
-        processorLogger.success('MultiIssuerJWTTokenAuthenticator is deployed');
+        testLogger.info('Processor','MultiIssuerJWTTokenAuthenticator is deployed');
       } else {
-        processorLogger.warn('MultiIssuerJWTTokenAuthenticator is NOT deployed');
+        testLogger.warn('Processor','MultiIssuerJWTTokenAuthenticator is NOT deployed');
         
         // Log all JWT/Auth related processors for debugging
         const relevantTypes = processorTypes.filter(t => 
@@ -193,23 +193,23 @@ export class ProcessorApiManager {
         );
         
         if (relevantTypes.length > 0) {
-          processorLogger.debug('Found potentially related processor types:');
+          testLogger.info('Processor','Found potentially related processor types:');
           relevantTypes.forEach(t => {
-            processorLogger.debug(`  - ${t.type} (artifact: ${t.bundle?.artifact})`);
+            testLogger.info('Processor',`  - ${t.type} (artifact: ${t.bundle?.artifact})`);
           });
         } else {
-          processorLogger.debug('No JWT/Auth/Token related processors found');
+          testLogger.info('Processor','No JWT/Auth/Token related processors found');
           // Log first few processor types as sample
-          processorLogger.debug('Sample of available processor types:');
+          testLogger.info('Processor','Sample of available processor types:');
           processorTypes.slice(0, 5).forEach(t => {
-            processorLogger.debug(`  - ${t.type} (artifact: ${t.bundle?.artifact})`);
+            testLogger.info('Processor',`  - ${t.type} (artifact: ${t.bundle?.artifact})`);
           });
         }
       }
 
       return isDeployed;
     } catch (error) {
-      processorLogger.error('Error verifying processor deployment:', error.message);
+      testLogger.error('Processor','Error verifying processor deployment:', error.message);
       return false;
     }
   }
@@ -223,13 +223,13 @@ export class ProcessorApiManager {
       const result = await this.makeApiCall(`/nifi-api/process-groups/${rootGroupId}/processors`);
       
       if (!result.ok) {
-        processorLogger.error(`Failed to get processors: ${result.status || result.error}`);
+        testLogger.error('Processor',`Failed to get processors: ${result.status || result.error}`);
         return [];
       }
 
       return result.data?.processors || [];
     } catch (error) {
-      processorLogger.error('Error getting processors on canvas:', error.message);
+      testLogger.error('Processor','Error getting processors on canvas:', error.message);
       return [];
     }
   }
@@ -238,7 +238,7 @@ export class ProcessorApiManager {
    * Verify if MultiIssuerJWTTokenAuthenticator is on the canvas
    */
   async verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas() {
-    processorLogger.debug('Verifying MultiIssuerJWTTokenAuthenticator is on canvas...');
+    testLogger.info('Processor','Verifying MultiIssuerJWTTokenAuthenticator is on canvas...');
     
     try {
       const processors = await this.getProcessorsOnCanvas();
@@ -250,11 +250,11 @@ export class ProcessorApiManager {
       );
 
       if (found) {
-        processorLogger.debug(`MultiIssuerJWTTokenAuthenticator found on canvas with ID: ${found.id}`);
+        testLogger.info('Processor',`MultiIssuerJWTTokenAuthenticator found on canvas with ID: ${found.id}`);
         return { exists: true, processor: found };
       } else {
-        processorLogger.warn('MultiIssuerJWTTokenAuthenticator NOT found on canvas');
-        processorLogger.debug('Processors on canvas:', processors.map(p => ({
+        testLogger.warn('Processor','MultiIssuerJWTTokenAuthenticator NOT found on canvas');
+        testLogger.info('Processor','Processors on canvas:', processors.map(p => ({
           id: p.id,
           name: p.component?.name,
           type: p.component?.type
@@ -262,7 +262,7 @@ export class ProcessorApiManager {
         return { exists: false, processor: null };
       }
     } catch (error) {
-      processorLogger.error('Error verifying processor on canvas:', error.message);
+      testLogger.error('Processor','Error verifying processor on canvas:', error.message);
       return { exists: false, processor: null };
     }
   }
@@ -271,19 +271,19 @@ export class ProcessorApiManager {
    * Remove MultiIssuerJWTTokenAuthenticator from canvas
    */
   async removeMultiIssuerJWTTokenAuthenticatorFromCanvas() {
-    processorLogger.info('Removing MultiIssuerJWTTokenAuthenticator from canvas...');
+    testLogger.info('Processor','Removing MultiIssuerJWTTokenAuthenticator from canvas...');
     
     try {
       const { exists, processor } = await this.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
       
       if (!exists) {
-        processorLogger.info('MultiIssuerJWTTokenAuthenticator not on canvas, nothing to remove');
+        testLogger.info('Processor','MultiIssuerJWTTokenAuthenticator not on canvas, nothing to remove');
         return true;
       }
 
       // Stop the processor first if it's running
       if (processor.status?.runStatus === 'Running') {
-        processorLogger.debug('Stopping processor before deletion...');
+        testLogger.info('Processor','Stopping processor before deletion...');
         
         const stopResult = await this.makeApiCall(
           `/nifi-api/processors/${processor.id}/run-status`,
@@ -299,7 +299,7 @@ export class ProcessorApiManager {
         );
 
         if (!stopResult.ok) {
-          processorLogger.warn(`Could not stop processor: ${stopResult.status || stopResult.error}`);
+          testLogger.warn('Processor',`Could not stop processor: ${stopResult.status || stopResult.error}`);
         }
       }
 
@@ -308,15 +308,15 @@ export class ProcessorApiManager {
       const deleteResult = await this.makeApiCall(deleteUrl, { method: 'DELETE' });
 
       if (deleteResult.ok) {
-        processorLogger.success('MultiIssuerJWTTokenAuthenticator removed from canvas');
+        testLogger.info('Processor','MultiIssuerJWTTokenAuthenticator removed from canvas');
         return true;
       } else {
-        processorLogger.error(`Failed to delete processor: ${deleteResult.status || deleteResult.error}`);
-        processorLogger.debug('Delete error:', deleteResult.data);
+        testLogger.error('Processor',`Failed to delete processor: ${deleteResult.status || deleteResult.error}`);
+        testLogger.info('Processor','Delete error:', deleteResult.data);
         return false;
       }
     } catch (error) {
-      processorLogger.error('Error removing processor from canvas:', error.message);
+      testLogger.error('Processor','Error removing processor from canvas:', error.message);
       return false;
     }
   }
@@ -325,20 +325,20 @@ export class ProcessorApiManager {
    * Add MultiIssuerJWTTokenAuthenticator to canvas
    */
   async addMultiIssuerJWTTokenAuthenticatorOnCanvas(position = { x: 400, y: 200 }) {
-    processorLogger.info('Adding MultiIssuerJWTTokenAuthenticator to canvas...');
+    testLogger.info('Processor','Adding MultiIssuerJWTTokenAuthenticator to canvas...');
     
     try {
       // First check if it's already on canvas
       const { exists } = await this.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
       if (exists) {
-        processorLogger.info('MultiIssuerJWTTokenAuthenticator already on canvas');
+        testLogger.info('Processor','MultiIssuerJWTTokenAuthenticator already on canvas');
         return true;
       }
 
       // Check if the processor type is deployed
       const isDeployed = await this.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
       if (!isDeployed) {
-        processorLogger.error('MultiIssuerJWTTokenAuthenticator is not deployed in the system');
+        testLogger.error('Processor','MultiIssuerJWTTokenAuthenticator is not deployed in the system');
         return false;
       }
 
@@ -356,7 +356,7 @@ export class ProcessorApiManager {
       }
 
       if (!processorTypeInfo) {
-        processorLogger.error('Could not find processor type info');
+        testLogger.error('Processor','Could not find processor type info');
         return false;
       }
 
@@ -384,18 +384,18 @@ export class ProcessorApiManager {
       );
 
       if (createResult.ok) {
-        processorLogger.success(`MultiIssuerJWTTokenAuthenticator added to canvas with ID: ${createResult.data?.id}`);
+        testLogger.info('Processor',`MultiIssuerJWTTokenAuthenticator added to canvas with ID: ${createResult.data?.id}`);
         return true;
       } else {
-        processorLogger.error(`Failed to create processor: ${createResult.status || createResult.error}`);
+        testLogger.error('Processor',`Failed to create processor: ${createResult.status || createResult.error}`);
         if (createResult.status === 403) {
-          processorLogger.error('Permission denied - user may not have rights to add processors');
+          testLogger.error('Processor','Permission denied - user may not have rights to add processors');
         }
-        processorLogger.debug('Create error response:', JSON.stringify(createResult.data, null, 2));
+        testLogger.info('Processor','Create error response:', JSON.stringify(createResult.data, null, 2));
         return false;
       }
     } catch (error) {
-      processorLogger.error('Error adding processor to canvas:', error.message);
+      testLogger.error('Processor','Error adding processor to canvas:', error.message);
       return false;
     }
   }
@@ -410,7 +410,7 @@ export class ProcessorApiManager {
       const { exists } = await this.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
       
       if (!exists) {
-        processorLogger.debug('Processor not on canvas, adding it...');
+        testLogger.info('Processor','Processor not on canvas, adding it...');
         const added = await this.addMultiIssuerJWTTokenAuthenticatorOnCanvas();
         if (!added) {
           throw new Error(
@@ -419,10 +419,10 @@ export class ProcessorApiManager {
           );
         }
       } else {
-        processorLogger.debug('Processor already on canvas');
+        testLogger.info('Processor','Processor already on canvas');
       }
       
-      processorLogger.info('All preconditions met');
+      testLogger.info('Processor','All preconditions met');
       return true;
       
     } catch (error) {
@@ -452,7 +452,7 @@ export class ProcessorApiManager {
       
       return null;
     } catch (error) {
-      processorLogger.error('Error getting processor details:', error.message);
+      testLogger.error('Processor','Error getting processor details:', error.message);
       return null;
     }
   }
@@ -461,13 +461,13 @@ export class ProcessorApiManager {
    * Start the MultiIssuerJWTTokenAuthenticator processor
    */
   async startProcessor() {
-    processorLogger.info('Starting MultiIssuerJWTTokenAuthenticator processor...');
+    testLogger.info('Processor','Starting MultiIssuerJWTTokenAuthenticator processor...');
     
     try {
       const { exists, processor } = await this.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
       
       if (!exists) {
-        processorLogger.error('Cannot start processor - not on canvas');
+        testLogger.error('Processor','Cannot start processor - not on canvas');
         return false;
       }
 
@@ -485,14 +485,14 @@ export class ProcessorApiManager {
       );
 
       if (result.ok) {
-        processorLogger.success('Processor started successfully');
+        testLogger.info('Processor','Processor started successfully');
         return true;
       } else {
-        processorLogger.error(`Failed to start processor: ${result.status || result.error}`);
+        testLogger.error('Processor',`Failed to start processor: ${result.status || result.error}`);
         return false;
       }
     } catch (error) {
-      processorLogger.error('Error starting processor:', error.message);
+      testLogger.error('Processor','Error starting processor:', error.message);
       return false;
     }
   }
@@ -501,13 +501,13 @@ export class ProcessorApiManager {
    * Stop the MultiIssuerJWTTokenAuthenticator processor
    */
   async stopProcessor() {
-    processorLogger.info('Stopping MultiIssuerJWTTokenAuthenticator processor...');
+    testLogger.info('Processor','Stopping MultiIssuerJWTTokenAuthenticator processor...');
     
     try {
       const { exists, processor } = await this.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
       
       if (!exists) {
-        processorLogger.error('Cannot stop processor - not on canvas');
+        testLogger.error('Processor','Cannot stop processor - not on canvas');
         return false;
       }
 
@@ -525,14 +525,14 @@ export class ProcessorApiManager {
       );
 
       if (result.ok) {
-        processorLogger.success('Processor stopped successfully');
+        testLogger.info('Processor','Processor stopped successfully');
         return true;
       } else {
-        processorLogger.error(`Failed to stop processor: ${result.status || result.error}`);
+        testLogger.error('Processor',`Failed to stop processor: ${result.status || result.error}`);
         return false;
       }
     } catch (error) {
-      processorLogger.error('Error stopping processor:', error.message);
+      testLogger.error('Processor','Error stopping processor:', error.message);
       return false;
     }
   }

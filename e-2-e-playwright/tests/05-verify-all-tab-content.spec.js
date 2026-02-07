@@ -1,25 +1,14 @@
 import { test, expect } from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
-import {
-    saveTestBrowserLogs,
-    setupAuthAwareErrorDetection,
-} from "../utils/console-logger.js";
-import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
 
 test.describe("Comprehensive JWT Tab Content Verification", () => {
-    test.beforeEach(async ({ page, processorManager }, testInfo) => {
-        await setupAuthAwareErrorDetection(page, testInfo);
+    test.beforeEach(async ({ page, processorManager }) => {
         const authService = new AuthService(page);
         await authService.ensureReady();
 
         // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
         await processorManager.ensureProcessorOnCanvas();
-    });
-
-    test.afterEach(async ({ page: _ }, testInfo) => {
-        await saveTestBrowserLogs(testInfo);
-        cleanupCriticalErrorDetection();
     });
 
     test("all tabs should display their content properly", async ({
@@ -40,13 +29,11 @@ test.describe("Comprehensive JWT Tab Content Verification", () => {
         const customUIFrame = await processorService.getAdvancedUIFrame();
 
         // Configuration Tab
-        // Checking Configuration tab content
         await processorService.clickTab(customUIFrame, "Configuration");
 
         const _configContent = await customUIFrame
             .locator("#issuer-config")
             .textContent();
-        // Configuration tab content found
 
         // Check for specific config elements
         const configHasContent = await customUIFrame
@@ -67,13 +54,11 @@ test.describe("Comprehensive JWT Tab Content Verification", () => {
         });
 
         // Token Verification Tab
-        // Checking Token Verification tab content
         await processorService.clickTab(customUIFrame, "Token Verification");
 
         const _tokenContent = await customUIFrame
             .locator("#token-verification")
             .textContent();
-        // Token Verification tab content found
 
         const tokenHasContent = await customUIFrame
             .locator("#token-verification")
@@ -93,13 +78,11 @@ test.describe("Comprehensive JWT Tab Content Verification", () => {
         });
 
         // Metrics Tab
-        // Checking Metrics tab content
         await processorService.clickTab(customUIFrame, "Metrics");
 
         const metricsContent = await customUIFrame
             .locator("#metrics")
             .textContent();
-        // Metrics tab content found
         // Check for actual metrics data (not the error message)
         expect(metricsContent).toMatch(
             /Validation Metrics|jwt\.validator\.metrics\.title|Total Validations/,
@@ -113,11 +96,9 @@ test.describe("Comprehensive JWT Tab Content Verification", () => {
         });
 
         // Help Tab
-        // Checking Help tab content
         await processorService.clickTab(customUIFrame, "Help");
 
         const helpContent = await customUIFrame.locator("#help").textContent();
-        // Help tab content found
         // Check for either the translated text or the i18n key
         expect(helpContent).toMatch(
             /JWT Authenticator Help|jwt\.validator\.help\.title|Getting Started/,

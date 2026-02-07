@@ -67,28 +67,18 @@ test.describe("Keycloak Token Service", () => {
     });
 
     test("should fail loudly when Keycloak is not accessible", async () => {
-        // Temporarily suppress error logging for this test since we expect it to fail
-        const { authLogger } = await import("../utils/shared-logger.js");
-        const originalError = authLogger.error;
-        authLogger.error = () => {}; // Suppress error logging
+        // Create a service with invalid endpoint
+        const badService = new KeycloakTokenService();
+        badService.keycloakBase = "http://localhost:99999"; // Invalid port
+        badService.tokenEndpoint = `${badService.keycloakBase}/realms/${badService.realm}/protocol/openid-connect/token`;
 
-        try {
-            // Create a service with invalid endpoint
-            const badService = new KeycloakTokenService();
-            badService.keycloakBase = "http://localhost:99999"; // Invalid port
-            badService.tokenEndpoint = `${badService.keycloakBase}/realms/${badService.realm}/protocol/openid-connect/token`;
-
-            // Should throw with helpful error message
-            await expect(badService.getValidAccessToken()).rejects.toThrow(
-                /CRITICAL: Failed to obtain access token from Keycloak/,
-            );
-            await expect(badService.getValidAccessToken()).rejects.toThrow(
-                /run-and-deploy.sh/,
-            );
-        } finally {
-            // Restore original error logging
-            authLogger.error = originalError;
-        }
+        // Should throw with helpful error message
+        await expect(badService.getValidAccessToken()).rejects.toThrow(
+            /CRITICAL: Failed to obtain access token from Keycloak/,
+        );
+        await expect(badService.getValidAccessToken()).rejects.toThrow(
+            /run-and-deploy.sh/,
+        );
     });
 
     test("should fail loudly with invalid credentials", async () => {

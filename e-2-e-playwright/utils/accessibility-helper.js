@@ -4,23 +4,29 @@
  * @version 1.0.0
  */
 
-import { checkA11y, injectAxe } from "axe-playwright";
+import AxeBuilder from "@axe-core/playwright";
+
+/** WCAG tags to check */
+const WCAG_TAGS = ["wcag2aa", "wcag21aa", "best-practice"];
+
+/** Rules to disable in NiFi UI context */
+const DISABLED_RULES = ["bypass", "landmark-one-main", "region"];
 
 /**
- * WCAG 2.1 Level AA compliance rules configuration
+ * Create a pre-configured AxeBuilder for this page
+ * @param {import('@playwright/test').Page} page - Playwright page
+ * @param {string|null} selector - optional CSS selector to scope the check
+ * @returns {import('@axe-core/playwright').default} configured AxeBuilder
  */
-const WCAG_AA_RULES = {
-    runOnly: {
-        type: "tag",
-        values: ["wcag2aa", "wcag21aa", "best-practice"],
-    },
-    rules: {
-        // Disable rules that may not apply to NiFi UI context
-        bypass: { enabled: false }, // Skip bypass blocks in single-page apps
-        "landmark-one-main": { enabled: false }, // NiFi uses custom layout
-        region: { enabled: false }, // NiFi has complex region structure
-    },
-};
+function createAxeBuilder(page, selector = null) {
+    const builder = new AxeBuilder({ page })
+        .withTags(WCAG_TAGS)
+        .disableRules(DISABLED_RULES);
+    if (selector) {
+        builder.include(selector);
+    }
+    return builder;
+}
 
 /**
  * Custom accessibility checks specific to NiFi JWT UI
@@ -239,39 +245,24 @@ export class AccessibilityHelper {
     }
 
     /**
-     * Initialize accessibility testing
+     * Initialize accessibility testing (no-op with @axe-core/playwright; kept for API compatibility)
      */
     async initialize() {
-        await injectAxe(this.page);
+        // @axe-core/playwright injects axe automatically — no setup needed
     }
 
     /**
      * Run WCAG compliance check
-     * @param options
+     * @param options - unused, kept for API compatibility
      */
     async runWCAGCheck(options = {}) {
-        const config = {
-            ...WCAG_AA_RULES,
-            ...options,
-        };
-
-        try {
-            await checkA11y(this.page, null, {
-                axeOptions: config,
-                detailedReport: true,
-                detailedReportOptions: {
-                    html: true,
-                },
-            });
+        void options;
+        const results = await createAxeBuilder(this.page).analyze();
+        if (results.violations.length === 0) {
             return { passed: true };
-        } catch (error) {
-            // Parse axe violations from error
-            this.violations = this.parseAxeViolations(error);
-            return {
-                passed: false,
-                violations: this.violations,
-            };
         }
+        this.violations = results.violations;
+        return { passed: false, violations: this.violations };
     }
 
     /**
@@ -369,10 +360,17 @@ export class AccessibilityHelper {
 
         // Run axe on specific component
         try {
-            await checkA11y(this.page, selector, {
-                axeOptions: WCAG_AA_RULES,
-                detailedReport: true,
-            });
+            const axeResults = await createAxeBuilder(
+                this.page,
+                selector,
+            ).analyze();
+            if (axeResults.violations.length > 0) {
+                return {
+                    passed: false,
+                    component: componentName,
+                    violations: axeResults.violations,
+                };
+            }
 
             // Run custom checks on component with element limits to avoid timeouts
             const customResults = [];
@@ -574,24 +572,16 @@ export class AccessibilityHelper {
     }
 
     /**
-     * Parse axe violations from error
-     * @param error
+     * Parse axe violations from error (legacy compatibility)
+     * @param error - error object or axe results
+     * @returns {Array} violations array
      */
     parseAxeViolations(error) {
-        // Extract violations from error message
-        const violations = [];
-        const errorStr = error.toString();
-
-        // Basic parsing - in real implementation would parse structured data
-        if (errorStr.includes("violations")) {
-            violations.push({
-                rule: "Unknown",
-                impact: "Unknown",
-                description: errorStr,
-            });
-        }
-
-        return violations;
+        if (Array.isArray(error)) return error;
+        if (error?.violations) return error.violations;
+        return [
+            { rule: "Unknown", impact: "Unknown", description: String(error) },
+        ];
     }
 
     /**

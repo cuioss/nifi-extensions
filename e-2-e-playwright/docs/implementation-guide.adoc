@@ -31,14 +31,11 @@ e-2-e-playwright/
 │   ├── navigation-utils.js      # Page navigation
 │   ├── constants.js             # Selectors, credentials, URLs
 │   ├── keycloak-token-service.js# Keycloak token acquisition
-│   ├── accessibility-helper.js  # axe-playwright integration
-│   ├── console-logger.js        # Browser console capture
+│   ├── accessibility-helper.js  # @axe-core/playwright integration
 │   ├── critical-error-detector.js# Critical error pattern matching
-│   ├── shared-logger.js         # Structured logging utilities
-│   └── test-error-handler.js    # Test error handling
+│   └── test-logger.js           # Unified per-test logging via testInfo.attach()
 └── config/                       # Configuration
-    ├── accessibility-config.js  # WCAG axe-core rules
-    └── console-error-config.js  # Console error patterns
+    └── accessibility-config.js  # WCAG axe-core rules
 ----
 
 == Writing Tests

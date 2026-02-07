@@ -7,42 +7,14 @@
 import { test, expect } from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
-import { processorLogger } from "../utils/shared-logger.js";
-import {
-    saveTestBrowserLogs,
-    setupAuthAwareErrorDetection,
-} from "../utils/console-logger.js";
-import {
-    checkCriticalErrors as _checkCriticalErrors,
-    cleanupCriticalErrorDetection,
-} from "../utils/critical-error-detector.js";
-import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("JWT Custom UI Tabs Verification", () => {
-    test.beforeEach(async ({ page, processorManager }, testInfo) => {
-        // Setup auth-aware error detection
-        await setupAuthAwareErrorDetection(page, testInfo);
-
+    test.beforeEach(async ({ page, processorManager }) => {
         const authService = new AuthService(page);
         await authService.ensureReady();
 
         // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
         await processorManager.ensureProcessorOnCanvas();
-    });
-
-    test.afterEach(async ({ page: _ }, testInfo) => {
-        // Always save browser logs first
-        try {
-            await saveTestBrowserLogs(testInfo);
-        } catch (error) {
-            logTestWarning(
-                "afterEach",
-                `Failed to save console logs in afterEach: ${error.message}`,
-            );
-        }
-
-        // Cleanup critical error detection
-        cleanupCriticalErrorDetection();
     });
 
     test("should display all four tabs in custom UI", async ({
@@ -84,8 +56,6 @@ test.describe("JWT Custom UI Tabs Verification", () => {
         });
 
         if (isTabContainerVisible) {
-            processorLogger.info("Tab container found");
-
             // Verify all four tabs are present
             const expectedTabs = [
                 {
@@ -105,7 +75,6 @@ test.describe("JWT Custom UI Tabs Verification", () => {
                 const tabLink = customUIFrame.locator(tab.selector);
                 await expect(tabLink).toBeVisible({ timeout: 5000 });
                 tabsFound++;
-                processorLogger.info(`✓ Found tab: ${tab.name}`);
 
                 // Click on the tab to verify it works
                 await tabLink.click();
@@ -119,9 +88,6 @@ test.describe("JWT Custom UI Tabs Verification", () => {
             }
 
             expect(tabsFound).toBe(4);
-            processorLogger.success(
-                `All ${tabsFound} tabs verified successfully`,
-            );
         } else {
             throw new Error(
                 "Tab container with data-testid='jwt-config-tabs' not found in JWT Custom UI",
@@ -159,7 +125,6 @@ test.describe("JWT Custom UI Tabs Verification", () => {
             'button:has-text("Add Issuer")',
         );
         await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
-        processorLogger.info("✓ Configuration tab: Add Issuer button found");
 
         // Token Verification tab
         const tokenVerificationTab = customUIFrame.locator(
@@ -173,9 +138,6 @@ test.describe("JWT Custom UI Tabs Verification", () => {
             .locator('button:has-text("Verify Token")')
             .first();
         await expect(verifyButton).toBeVisible({ timeout: 5000 });
-        processorLogger.info(
-            "✓ Token Verification tab: Verify Token button found",
-        );
 
         // Metrics tab
         const metricsTab = customUIFrame.locator('a[href="#metrics"]');
@@ -186,7 +148,6 @@ test.describe("JWT Custom UI Tabs Verification", () => {
         // Look for any metrics content instead of specific button
         const metricsContent = customUIFrame.locator("#metrics").first();
         await expect(metricsContent).toBeVisible({ timeout: 5000 });
-        processorLogger.info("✓ Metrics tab: Content displayed");
 
         // Help tab
         const helpTab = customUIFrame.locator('a[href="#help"]');
@@ -197,7 +158,6 @@ test.describe("JWT Custom UI Tabs Verification", () => {
         // Look for any help content
         const helpContent = customUIFrame.locator("#help").first();
         await expect(helpContent).toBeVisible({ timeout: 5000 });
-        processorLogger.info("✓ Help tab: Content found");
 
         // Verify the Help tab title is properly translated (not showing the i18n key)
         const helpTitle = customUIFrame.locator("#help h3, #help h2").first();
@@ -205,9 +165,6 @@ test.describe("JWT Custom UI Tabs Verification", () => {
         expect(helpTitleText).not.toContain("jwt.validator.help.title");
         expect(helpTitleText).toMatch(
             /JWT Authenticator Help|JWT-Authentifikator-Hilfe/,
-        );
-        processorLogger.info(
-            `✓ Help tab title properly translated: "${helpTitleText}"`,
         );
 
         // Go back to Metrics tab to verify its title
@@ -221,9 +178,6 @@ test.describe("JWT Custom UI Tabs Verification", () => {
         expect(metricsTitleText).not.toContain("jwt.validator.metrics.title");
         expect(metricsTitleText).toMatch(
             /JWT Validation Metrics|JWT-Validierungsmetriken/,
-        );
-        processorLogger.info(
-            `✓ Metrics tab title properly translated: "${metricsTitleText}"`,
         );
     });
 });
