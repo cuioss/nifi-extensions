@@ -5,7 +5,7 @@
  */
 
 import { CONSTANTS } from './constants.js';
-import { authLogger } from './shared-logger.js';
+import { testLogger } from './test-logger.js';
 
 /**
  * Keycloak token service for obtaining access tokens
@@ -27,7 +27,7 @@ export class KeycloakTokenService {
    * @throws {Error} If token cannot be obtained
    */
   async getValidAccessToken() {
-    authLogger.info('Fetching valid access token from Keycloak...');
+    testLogger.info('Auth','Fetching valid access token from Keycloak...');
     
     try {
       // Make the token request using fetch
@@ -68,7 +68,7 @@ export class KeycloakTokenService {
         );
       }
 
-      authLogger.success('Successfully obtained valid access token from Keycloak');
+      testLogger.info('Auth','Successfully obtained valid access token from Keycloak');
       return tokenData.access_token;
       
     } catch (error) {
@@ -80,7 +80,7 @@ export class KeycloakTokenService {
         `Original error: ${error.message}`
       );
       
-      authLogger.error(enhancedError.message);
+      testLogger.error('Auth',enhancedError.message);
       throw enhancedError;
     }
   }
@@ -90,7 +90,7 @@ export class KeycloakTokenService {
    * @returns {string} Invalid JWT token
    */
   getInvalidAccessToken() {
-    authLogger.info('Returning invalid access token for testing');
+    testLogger.info('Auth','Returning invalid access token for testing');
     
     // Return a static invalid token that looks like a JWT but is invalid
     // This has correct JWT structure (header.payload.signature) but invalid signature
@@ -117,7 +117,7 @@ export class KeycloakTokenService {
       
       return response.ok || response.status === 200;
     } catch (error) {
-      authLogger.warn(`Keycloak not accessible: ${error.message}`);
+      testLogger.warn('Auth',`Keycloak not accessible: ${error.message}`);
       return false;
     }
   }

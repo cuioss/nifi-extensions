@@ -1,0 +1,82 @@
+= Test Logging Architecture
+:toc:
+
+== Goal
+
+Structured per-test log persistence for both browser and Node-side events, integrated with Playwright's built-in artifact system.
+
+== Idea
+
+Use Playwright's `testInfo.attach()` to persist a unified JSON log per test, combining browser console output, page errors, HTTP errors, and Node-side utility logs into one artifact.
+
+Playwright traces handle the rich debugging experience (DOM snapshots, timeline); the JSON log handles structured, greppable, machine-readable output.
+
+== Implementation
+
+=== TestLogger Singleton
+
+`utils/test-logger.js` exports a `testLogger` singleton wired via the `page` fixture in `fixtures/test-fixtures.js`.
+
+* *Browser events* captured via `page.on('console')`, `page.on('pageerror')`, and `page.on('response')` handlers
+* *Node-side logs* captured via `testLogger.info(source, message)`, `testLogger.warn(source, message)`, `testLogger.error(source, message)` calls from utility modules
+* *Persisted* as `test-logs` attachment per test via `testInfo.attach()` in the page fixture teardown
+
+=== Fixture Wiring
+
+[source,javascript]
+----
+page: async ({ page }, use, testInfo) => {
+    testLogger.startTest(testInfo.testId);
+    testLogger.setupBrowserCapture(page);
+    setupErrorMonitoring(page, testInfo);
+
+    await use(page);
+
+    await testLogger.attachToTest(testInfo);
+    cleanupCriticalErrorDetection();
+},
+----
+
+=== Per-Test Artifact Structure
+
+Each test gets its own directory at `testInfo.outputDir` containing:
+
+* `test-logs.json` -- structured log from TestLogger
+* `trace.zip` -- Playwright trace (on failure, with `retain-on-failure` setting)
+* Screenshots and video (on failure)
+
+=== JSON Log Format
+
+[source,json]
+----
+[
+  {
+    "timestamp": "2025-01-15T10:30:00.000Z",
+    "source": "browser",
+    "level": "log",
+    "message": "JWT Validator UI initialized"
+  },
+  {
+    "timestamp": "2025-01-15T10:30:01.000Z",
+    "source": "Processor",
+    "level": "info",
+    "message": "Verifying MultiIssuerJWTTokenAuthenticator deployment..."
+  }
+]
+----
+
+== Migration from Previous Logger
+
+[cols="1,1"]
+|===
+| Before | After
+
+| `processorLogger.info('message')`
+| `testLogger.info('Processor', 'message')`
+
+| `authLogger.info('message')`
+| `testLogger.info('Auth', 'message')`
+
+| `saveTestBrowserLogs(testInfo)` in afterEach
+| Handled automatically by page fixture
+|===

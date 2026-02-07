@@ -1,16 +1,9 @@
 import { test, expect } from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
-import { processorLogger } from "../utils/shared-logger.js";
-import {
-    setupAuthAwareErrorDetection,
-    saveTestBrowserLogs,
-} from "../utils/console-logger.js";
-import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
 
 test.describe("Simple Tab Content Check", () => {
-    test.beforeEach(async ({ page, processorManager }, testInfo) => {
-        await setupAuthAwareErrorDetection(page, testInfo);
+    test.beforeEach(async ({ page, processorManager }) => {
         const authService = new AuthService(page);
         await authService.ensureReady();
 
@@ -18,20 +11,7 @@ test.describe("Simple Tab Content Check", () => {
         await processorManager.ensureProcessorOnCanvas();
     });
 
-    test.afterEach(async ({ page: _ }, testInfo) => {
-        try {
-            await saveTestBrowserLogs(testInfo);
-        } catch (error) {
-            processorLogger.warn(
-                `Failed to save console logs in afterEach: ${error.message}`,
-            );
-        }
-        cleanupCriticalErrorDetection();
-    });
-
     test("check all tab content", async ({ page }, testInfo) => {
-        processorLogger.info("Starting simple tab content check");
-
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT processor using the verified utility
@@ -66,8 +46,6 @@ test.describe("Simple Tab Content Check", () => {
         ];
 
         for (const tab of tabs) {
-            processorLogger.info(`Checking ${tab.name} tab`);
-
             // Click the tab using ProcessorService
             await processorService.clickTab(customUIFrame, tab.name);
 
@@ -79,10 +57,6 @@ test.describe("Simple Tab Content Check", () => {
             // Get content from iframe context
             const content = await customUIFrame.locator(tab.pane).textContent();
             const html = await customUIFrame.locator(tab.pane).innerHTML();
-
-            processorLogger.info(
-                `${tab.name} content length: ${content?.length || 0} chars, HTML length: ${html?.length || 0} chars`,
-            );
 
             // Assert that tab content meets minimum requirements
             expect(content).toBeTruthy();
@@ -132,11 +106,6 @@ test.describe("Simple Tab Content Check", () => {
                     expect(content).not.toContain("jwt.validator.help.title");
                     break;
             }
-
-            // Log success for debugging
-            processorLogger.info(
-                `✓ ${tab.name} tab has sufficient content (${content.length} chars)`,
-            );
 
             // Take screenshot
             await page.screenshot({

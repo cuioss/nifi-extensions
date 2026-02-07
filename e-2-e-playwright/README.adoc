@@ -47,16 +47,11 @@ e-2-e-playwright/
 │   ├── navigation-utils.js       # Page navigation and verification
 │   ├── constants.js              # Selectors, credentials, URLs
 │   ├── keycloak-token-service.js # Keycloak token acquisition
-│   ├── accessibility-helper.js   # axe-playwright integration
-│   ├── console-logger.js         # Browser console capture
+│   ├── accessibility-helper.js   # @axe-core/playwright integration
 │   ├── critical-error-detector.js# Critical error pattern matching
-│   ├── shared-logger.js          # Structured logging utilities
-│   └── test-error-handler.js     # Test error handling
+│   └── test-logger.js            # Unified per-test logging via testInfo.attach()
 ├── scripts/                   # Utility scripts
 │   ├── run-tests-with-precheck.js# Self-test gating before functional tests
-│   ├── global-teardown.js        # Post-test cleanup
-│   ├── selector-inspector.js     # Selector discovery tool
-│   ├── verify-setup.js           # Environment verification
 │   └── setup-accessibility-tests.js
 ├── docs/                      # Detailed documentation
 ├── playwright.config.js       # Playwright configuration
@@ -79,7 +74,7 @@ Tests for specific JWT processor features: custom UI tabs, JWKS validation, toke
 
 === Accessibility Tests (`accessibility-*.spec.js`)
 
-WCAG 2.1 Level AA compliance testing using axe-playwright.
+WCAG 2.1 Level AA compliance testing using @axe-core/playwright.
 See xref:docs/accessibility-testing-guide.adoc[Accessibility Testing Guide] for details.
 
 == Prerequisites
@@ -330,7 +325,7 @@ Due to NiFi's Angular Material UI complexity:
 
 === Project Documentation
 
-* xref:docs/accessibility-testing-guide.adoc[Accessibility Testing Guide] — WCAG compliance testing with axe-playwright
+* xref:docs/accessibility-testing-guide.adoc[Accessibility Testing Guide] — WCAG compliance testing with @axe-core/playwright
 * xref:docs/processor-api-manager-guide.adoc[Processor API Manager Guide] — REST API-based processor management
 * xref:docs/roundtrip-testing.adoc[Roundtrip Testing Guide] — Development workflow: modify, deploy, test, analyze
 * xref:docs/nifi-ui-structure.adoc[NiFi UI Structure Guide] — NiFi UI selectors and authentication flow
@@ -340,4 +335,4 @@ Due to NiFi's Angular Material UI complexity:
 
 * https://playwright.dev/docs/intro[Playwright Documentation]
 * https://nifi.apache.org/docs.html[Apache NiFi Documentation]
-* https://github.com/abhinaba-ghosh/axe-playwright[axe-playwright Documentation]
+* https://github.com/dequelabs/axe-core-npm/tree/develop/packages/playwright[@axe-core/playwright Documentation]

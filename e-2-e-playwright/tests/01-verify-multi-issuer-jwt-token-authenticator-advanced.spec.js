@@ -7,20 +7,10 @@
 import { test, expect } from "../fixtures/test-fixtures.js";
 import { ProcessorService } from "../utils/processor.js";
 import { AuthService } from "../utils/auth-service.js";
-import {
-    saveTestBrowserLogs,
-    setupAuthAwareErrorDetection,
-} from "../utils/console-logger.js";
-import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
-import { processorLogger } from "../utils/shared-logger.js";
-import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
     // Make sure we're logged in before each test
-    test.beforeEach(async ({ page, processorManager }, testInfo) => {
-        // Setup auth-aware error detection
-        await setupAuthAwareErrorDetection(page, testInfo);
-
+    test.beforeEach(async ({ page, processorManager }) => {
         // Login first before going to JWT UI
         const authService = new AuthService(page);
         await authService.ensureReady();
@@ -29,23 +19,6 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
 
         // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
         await processorManager.ensureProcessorOnCanvas();
-    });
-
-    test.afterEach(async ({ page: _page }, testInfo) => {
-        // Always try to save console logs first, regardless of test outcome
-        try {
-            await saveTestBrowserLogs(testInfo);
-        } catch (error) {
-            logTestWarning(
-                "afterEach",
-                `Failed to save console logs in afterEach: ${error.message}`,
-            );
-        }
-
-        // Critical error check is handled by setupAuthAwareErrorDetection
-
-        // Cleanup critical error detection
-        cleanupCriticalErrorDetection();
     });
 
     test("should access and verify advanced configuration", async ({
@@ -57,8 +30,6 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         const processor = await processorService.findJwtAuthenticator({
             failIfNotFound: true,
         });
-
-        processorLogger.info(`Found processor: ${processor.type}`);
 
         // Open Advanced UI using the verified utility
         const advancedOpened = await processorService.openAdvancedUI(processor);
@@ -92,7 +63,6 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
             await expect(el).toBeVisible({
                 timeout: 5000,
             });
-            processorLogger.info(` ✓ Found: ${element.name}`);
         }
 
         // Take screenshot of advanced configuration
@@ -100,7 +70,6 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
             path: `${testInfo.outputDir}/jwt-advanced-configuration.png`,
             fullPage: true,
         });
-        processorLogger.info("Screenshot of JWT advanced configuration saved");
 
         // All elements verified - test will fail if any are missing
 
@@ -110,7 +79,6 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         );
         await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
         await addIssuerButton.click();
-        processorLogger.info("Successfully clicked Add Issuer button");
 
         // Wait for form to appear and check for new issuer name input
         await page.waitForTimeout(1000); // Give form time to render
@@ -119,25 +87,13 @@ test.describe("MultiIssuerJWTTokenAuthenticator Advanced Configuration", () => {
         const issuerInputCount = await customUIFrame
             .locator("input.issuer-name")
             .count();
-        processorLogger.info(`Found ${issuerInputCount} issuer name input(s)`);
 
         if (issuerInputCount > 0) {
-            processorLogger.info("Add Issuer form appeared successfully");
-
             // Try to interact with the last (newest) input
             const lastInput = customUIFrame.locator("input.issuer-name").last();
             if (await lastInput.isVisible()) {
                 await lastInput.fill("test-issuer");
-                processorLogger.info("Filled in test issuer name");
             }
-        } else {
-            processorLogger.info(
-                "Add Issuer form may be a modal or different structure",
-            );
         }
-
-        processorLogger.success(
-            "JWT UI advanced configuration verified with all required elements and functionality tested",
-        );
     });
 });

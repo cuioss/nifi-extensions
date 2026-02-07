@@ -6,7 +6,7 @@
 
 import {expect} from '@playwright/test';
 import {CONSTANTS} from './constants.js';
-import {authLogger} from './shared-logger.js';
+import {testLogger} from './test-logger.js';
 
 /**
  * Modern authentication service with 2025 Playwright patterns
@@ -20,7 +20,7 @@ export class AuthService {
    * Check if services are accessible using modern request API
    */
   async checkServiceAccessibility(serviceUrl, serviceName, timeout = 5000) {
-    authLogger.debug(`Checking ${serviceName} accessibility...`);
+    testLogger.info('Auth',`Checking ${serviceName} accessibility...`);
 
     try {
       const response = await this.page.request.get(serviceUrl, {
@@ -33,14 +33,14 @@ export class AuthService {
         ((response.status() >= 200 && response.status() < 400) || response.status() === 401);
 
       if (isAccessible) {
-        authLogger.debug(`${serviceName} service is accessible`);
+        testLogger.info('Auth',`${serviceName} service is accessible`);
       } else {
-        authLogger.warn(`${serviceName} not accessible - Status: %s`, response?.status() || 'unknown');
+        testLogger.warn('Auth', `${serviceName} not accessible - Status: ${response?.status() || 'unknown'}`);
       }
 
       return isAccessible;
     } catch (error) {
-      authLogger.error(`${serviceName} not accessible - %s`, error.message);
+      testLogger.error('Auth', `${serviceName} not accessible - ${error.message}`);
       return false;
     }
   }
@@ -95,7 +95,7 @@ export class AuthService {
     // Check if NiFi is accessible before attempting login
     const isAccessible = await this.checkNiFiAccessibility();
     if (!isAccessible) {
-      authLogger.error('NiFi is not accessible - cannot perform login');
+      testLogger.error('Auth','NiFi is not accessible - cannot perform login');
       throw new Error(
         'PRECONDITION FAILED: NiFi service is not accessible - cannot perform login. ' +
         'Make sure NiFi is running at https://localhost:9095/nifi'
@@ -103,7 +103,7 @@ export class AuthService {
     }
 
     const start = Date.now();
-    authLogger.debug(`Starting login for user: ${CONSTANTS.AUTH.USERNAME}...`);
+    testLogger.info('Auth',`Starting login for user: ${CONSTANTS.AUTH.USERNAME}...`);
     try {
       const result = await (async () => {
       // Navigate to login page
@@ -112,7 +112,7 @@ export class AuthService {
 
       // Check if already authenticated
       if (await this.isAuthenticated()) {
-        authLogger.info('Already authenticated');
+        testLogger.info('Auth','Already authenticated');
         return true;
       }
 
@@ -195,7 +195,7 @@ export class AuthService {
           }
         }
 
-        authLogger.debug(`Successfully logged in as ${CONSTANTS.AUTH.USERNAME}`);
+        testLogger.info('Auth',`Successfully logged in as ${CONSTANTS.AUTH.USERNAME}`);
         return true;
       } catch (error) {
         // Check for error messages
@@ -206,16 +206,16 @@ export class AuthService {
           ? `Login failed - ${errorText}`
           : `Login failed for user: ${CONSTANTS.AUTH.USERNAME}`;
 
-        authLogger.error(errorMsg);
+        testLogger.error('Auth',errorMsg);
         throw new Error(errorMsg);
       }
       })();
       const duration = Date.now() - start;
-      authLogger.debug(`Login for user: ${CONSTANTS.AUTH.USERNAME} completed in ${duration}ms`);
+      testLogger.info('Auth',`Login for user: ${CONSTANTS.AUTH.USERNAME} completed in ${duration}ms`);
       return result;
     } catch (error) {
       const duration = Date.now() - start;
-      authLogger.error(`Login for user: ${CONSTANTS.AUTH.USERNAME} failed after ${duration}ms: %s`, error.message);
+      testLogger.error('Auth', `Login for user: ${CONSTANTS.AUTH.USERNAME} failed after ${duration}ms: ${error.message}`);
       throw error;
     }
   }
@@ -224,7 +224,7 @@ export class AuthService {
    * Modern logout with proper cleanup
    */
   async logout() {
-    authLogger.info('Performing logout...');
+    testLogger.info('Auth','Performing logout...');
 
     // Clear authentication state
     await this.page.context().clearCookies();
@@ -244,7 +244,7 @@ export class AuthService {
     const isStillAuthenticated = await this.isAuthenticated();
 
     if (!isStillAuthenticated) {
-      authLogger.success('Successfully logged out');
+      testLogger.info('Auth','Successfully logged out');
     } else {
       throw new Error('Logout failed - Still appears to be authenticated');
     }
@@ -278,13 +278,13 @@ export class AuthService {
    * Ensure NiFi is ready for testing with modern patterns
    */
   async ensureReady() {
-    authLogger.debug('Ensuring NiFi is ready for testing...');
+    testLogger.info('Auth','Ensuring NiFi is ready for testing...');
 
     // Check service accessibility
     const isAccessible = await this.checkNiFiAccessibility();
 
     if (!isAccessible) {
-      authLogger.error('NiFi is not accessible - test cannot proceed');
+      testLogger.error('Auth','NiFi is not accessible - test cannot proceed');
       throw new Error(
         'PRECONDITION FAILED: NiFi service is not accessible at ' + CONSTANTS.SERVICE_URLS.NIFI_SYSTEM_DIAGNOSTICS + 
         '. Integration tests require a running NiFi instance. ' +
@@ -303,7 +303,7 @@ export class AuthService {
 
     await expect(this.page).toHaveTitle(/NiFi/);
 
-    authLogger.debug('NiFi is ready for testing');
+    testLogger.info('Auth','NiFi is ready for testing');
   }
 
   /**
@@ -316,7 +316,7 @@ export class AuthService {
       throw new Error(`Unknown page type: ${pageType}`);
     }
 
-    authLogger.info(`Navigating to ${pageConfig.description || pageType}`);
+    testLogger.info('Auth',`Navigating to ${pageConfig.description || pageType}`);
 
     await this.page.goto(pageConfig.path || pageConfig);
     await this.page.waitForLoadState('networkidle');
@@ -333,7 +333,7 @@ export class AuthService {
       expect(found, `Navigation to ${pageType} failed`).toBeTruthy();
     }
 
-    authLogger.success(`Successfully navigated to ${pageType}`);
+    testLogger.info('Auth',`Successfully navigated to ${pageType}`);
   }
 }
 

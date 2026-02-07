@@ -6,7 +6,7 @@
 
 import {expect} from '@playwright/test';
 import {CONSTANTS} from './constants.js';
-import { processorLogger } from './shared-logger.js';
+import { testLogger } from './test-logger.js';
 
 /**
  * Find processor on canvas using modern Playwright patterns
@@ -317,7 +317,7 @@ export class ProcessorService {
   }
 
   async openAdvancedUI(processor) {
-    processorLogger.debug("Opening Advanced UI via right-click menu");
+    testLogger.info('Processor',"Opening Advanced UI via right-click menu");
     
     // Right-click on processor
     await this.interact(processor, { action: "rightclick" });
@@ -327,28 +327,28 @@ export class ProcessorService {
     
     if (await advancedMenuItem.isVisible({ timeout: 2000 })) {
       await advancedMenuItem.click();
-      processorLogger.debug("Clicked Advanced menu item");
+      testLogger.info('Processor',"Clicked Advanced menu item");
       
       // Wait for navigation to advanced page
       try {
         await this.page.waitForURL('**/advanced', { timeout: 10000 });
-        processorLogger.debug("Successfully navigated to Advanced UI");
+        testLogger.info('Processor',"Successfully navigated to Advanced UI");
         
         // Wait for iframe to be injected into the page
         await this.page.waitForSelector('iframe', { timeout: 5000 });
-        processorLogger.debug("Advanced UI iframe detected in DOM");
+        testLogger.info('Processor',"Advanced UI iframe detected in DOM");
         
         // Give iframe time to start loading
         await this.page.waitForTimeout(1000);
         
         return true;
       } catch (error) {
-        processorLogger.error(`Failed to navigate to Advanced UI: ${error.message}`);
+        testLogger.error('Processor',`Failed to navigate to Advanced UI: ${error.message}`);
         return false;
       }
     }
     
-    processorLogger.error("Could not find Advanced menu item");
+    testLogger.error('Processor',"Could not find Advanced menu item");
     return false;
   }
 
@@ -356,7 +356,7 @@ export class ProcessorService {
     // Ensure we're on the advanced page first
     const url = this.page.url();
     if (!url.includes("/advanced")) {
-      processorLogger.error("Not on advanced page, cannot get custom UI frame");
+      testLogger.error('Processor',"Not on advanced page, cannot get custom UI frame");
       return null;
     }
     
@@ -364,7 +364,7 @@ export class ProcessorService {
     try {
       await this.page.waitForSelector('iframe', { timeout: 5000 });
     } catch (error) {
-      processorLogger.error("No iframe found in advanced page");
+      testLogger.error('Processor',"No iframe found in advanced page");
       return null;
     }
     
@@ -376,12 +376,12 @@ export class ProcessorService {
       const frames = this.page.frames();
       
       // Log frame detection for debugging
-      processorLogger.info(`[Processor] Attempt ${attempts + 1}: Found ${frames.length} frames on page`);
+      testLogger.info('Processor',`[Processor] Attempt ${attempts + 1}: Found ${frames.length} frames on page`);
       
       if (frames.length > 1) {
         // Log all frame URLs for debugging
         frames.forEach((frame, index) => {
-          processorLogger.info(`[Processor] Frame ${index}: ${frame.url()}`);
+          testLogger.info('Processor',`[Processor] Frame ${index}: ${frame.url()}`);
         });
         
         // Find the custom UI frame (should contain nifi-cuioss-ui in URL)
@@ -393,31 +393,31 @@ export class ProcessorService {
           // Wait for frame to be ready
           try {
             await customUIFrame.waitForLoadState('domcontentloaded', { timeout: 3000 });
-            processorLogger.info(`[Processor] Found custom UI frame: ${customUIFrame.url()}`);
+            testLogger.info('Processor',`[Processor] Found custom UI frame: ${customUIFrame.url()}`);
             
             // Use the stability check to ensure frame is ready
             const isStable = await this.waitForFrameStability(customUIFrame);
             
             if (isStable) {
-              processorLogger.debug("[Processor] Custom UI frame is ready and stable");
+              testLogger.info('Processor',"[Processor] Custom UI frame is ready and stable");
               return customUIFrame;
             } else {
-              processorLogger.warn("[Processor] Frame found but not stable yet");
+              testLogger.warn('Processor',"[Processor] Frame found but not stable yet");
             }
           } catch (e) {
-            processorLogger.warn(`[Processor] Frame not ready yet: ${e.message}`);
+            testLogger.warn('Processor',`[Processor] Frame not ready yet: ${e.message}`);
           }
         }
       }
       
       attempts++;
       if (attempts < maxAttempts) {
-        processorLogger.debug(`[Processor] Waiting before retry ${attempts}/${maxAttempts}`);
+        testLogger.info('Processor',`[Processor] Waiting before retry ${attempts}/${maxAttempts}`);
         await this.page.waitForTimeout(1000);
       }
     }
     
-    processorLogger.error(`[Processor] Could not find custom UI frame after ${maxAttempts} attempts`);
+    testLogger.error('Processor',`[Processor] Could not find custom UI frame after ${maxAttempts} attempts`);
     return null;
   }
 
@@ -439,7 +439,7 @@ export class ProcessorService {
       });
       
       if (!hasContent) {
-        processorLogger.warn("Frame loaded but has no content or not ready");
+        testLogger.warn('Processor',"Frame loaded but has no content or not ready");
         return false;
       }
       
@@ -451,14 +451,14 @@ export class ProcessorService {
       });
       
       if (!isUIReady) {
-        processorLogger.warn("Frame loaded but JWT UI not initialized");
+        testLogger.warn('Processor',"Frame loaded but JWT UI not initialized");
         return false;
       }
       
-      processorLogger.debug("Frame is stable and ready");
+      testLogger.info('Processor',"Frame is stable and ready");
       return true;
     } catch (error) {
-      processorLogger.error(`Frame stability check failed: ${error.message}`);
+      testLogger.error('Processor',`Frame stability check failed: ${error.message}`);
       return false;
     }
   }
@@ -475,7 +475,7 @@ export class ProcessorService {
     const tab = customUIFrame.locator(`[role="tab"]:has-text("${tabName}")`);
     await tab.click();
     await this.page.waitForTimeout(1000);
-    processorLogger.info(`Clicked ${tabName} tab`);
+    testLogger.info('Processor',`Clicked ${tabName} tab`);
   }
 
   /**
@@ -520,7 +520,7 @@ export class ProcessorService {
       throw new Error("Could not find custom UI iframe");
     }
 
-    processorLogger.info("Successfully accessed custom UI iframe");
+    testLogger.info('Processor',"Successfully accessed custom UI iframe");
     return customUIFrame;
   }
 }

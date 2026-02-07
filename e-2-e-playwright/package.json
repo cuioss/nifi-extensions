@@ -4,7 +4,6 @@
   "description": "End-to-End Playwright tests for NiFi Extensions - Implements centralized JavaScript/ESLint standards",
   "scripts": {
     "playwright:test": "playwright test",
-    "playwright:test:simple": "node scripts/run-tests-simple.js",
     "playwright:test:headed": "playwright test --headed",
     "playwright:test:ui": "playwright test --ui",
     "playwright:report": "playwright show-report",
@@ -15,9 +14,6 @@
     "test:jwt": "node scripts/run-tests-with-precheck.js tests/02-verify-jwt-authenticator-customizer.spec.js tests/03-verify-jwks-validation-button.spec.js",
     "test:all": "node scripts/run-tests-with-precheck.js",
     "test:no-precheck": "playwright test --grep-invert self- --reporter=list",
-    "analyze:console": "node scripts/log-analyzer.js --basic",
-    "analyze:logs": "node scripts/log-analyzer.js --enhanced",
-    "analyze:logs-verbose": "node scripts/log-analyzer.js --enhanced --verbose",
     "test:a11y": "playwright test tests/accessibility-wcag-compliance.spec.js --reporter=list",
     "test:a11y:full": "playwright test tests/accessibility-wcag-compliance.spec.js --reporter=html",
     "test:a11y:quick": "playwright test tests/accessibility-wcag-compliance.spec.js --grep 'Full page WCAG compliance' --reporter=list",
@@ -29,8 +25,8 @@
     "format:check": "prettier --check 'tests/**/*.js'"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.1",
     "@playwright/test": "^1.58.1",
-    "axe-playwright": "^2.0.1",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-jsdoc": "^46.8.0",

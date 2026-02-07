@@ -9,19 +9,9 @@ import { test, expect } from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 import { CONSTANTS } from "../utils/constants.js";
-import { processorLogger } from "../utils/shared-logger.js";
-import {
-    saveTestBrowserLogs,
-    setupAuthAwareErrorDetection,
-} from "../utils/console-logger.js";
-import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
-import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("Self-Test: Processor Advanced Configuration", () => {
-    test.beforeEach(async ({ page, processorManager }, testInfo) => {
-        // Setup auth-aware error detection (skips initial canvas checks)
-        await setupAuthAwareErrorDetection(page, testInfo);
-
+    test.beforeEach(async ({ page, processorManager }) => {
         const authService = new AuthService(page);
         await authService.ensureReady();
 
@@ -29,23 +19,6 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
         await processorManager.ensureProcessorOnCanvas();
 
         // Don't check for critical errors here - authentication may have transient 401s
-    });
-
-    test.afterEach(async ({ page: _ }, testInfo) => {
-        // Always save browser logs first, regardless of test outcome
-        try {
-            await saveTestBrowserLogs(testInfo);
-        } catch (error) {
-            logTestWarning(
-                "afterEach",
-                `Failed to save console logs in afterEach: ${error.message}`,
-            );
-        }
-
-        // No need to check for critical errors - this test focuses on processor functionality
-
-        // Cleanup critical error detection
-        cleanupCriticalErrorDetection();
     });
 
     test("should open processor configuration dialog", async ({
@@ -78,12 +51,6 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
 
         // Verify dialog is closed
         await expect(dialog).not.toBeVisible({ timeout: 5000 });
-
-        // Don't check critical errors here - test passed if we got this far
-
-        processorLogger.success(
-            "Configuration dialog test completed successfully",
-        );
     });
 
     test("should access advanced configuration properties", async ({
@@ -134,7 +101,7 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
         } else {
             // No JWT processor found
             throw new Error(
-                "🚨 CRITICAL ERROR: No JWT processor found for advanced configuration test!\n" +
+                "CRITICAL ERROR: No JWT processor found for advanced configuration test!\n" +
                     "This indicates either:\n" +
                     "1. Empty canvas (no processors deployed)\n" +
                     "2. JWT processors failed to load\n" +
@@ -201,9 +168,6 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
                 ).toBeVisible();
             }
         } else {
-            processorLogger.error(
-                "No processor found for back navigation test",
-            );
             throw new Error(
                 "Test failed: No processor found for back navigation test",
             );
@@ -264,7 +228,6 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
                 timeout: 5000,
             });
         } else {
-            processorLogger.error("No processor found for interaction test");
             throw new Error(
                 "Test failed: No processor found for interaction test",
             );
