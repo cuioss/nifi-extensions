@@ -13,12 +13,20 @@ const WCAG_TAGS = ["wcag2aa", "wcag21aa", "best-practice"];
 const DISABLED_RULES = ["bypass", "landmark-one-main", "region"];
 
 /**
- * Create a pre-configured AxeBuilder for this page
- * @param {import('@playwright/test').Page} page - Playwright page
+ * Create a pre-configured AxeBuilder for a page or frame.
+ * AxeBuilder requires a Page object (with mainFrame()). When a Frame is passed
+ * (e.g. custom UI iframe), we use its owning page and scope to the frame's URL.
+ * @param {import('@playwright/test').Page | import('@playwright/test').Frame} pageOrFrame
  * @param {string|null} selector - optional CSS selector to scope the check
  * @returns {import('@axe-core/playwright').default} configured AxeBuilder
  */
-function createAxeBuilder(page, selector = null) {
+function createAxeBuilder(pageOrFrame, selector = null) {
+    // AxeBuilder needs a Page, not a Frame. Detect Frames by checking for page().
+    const isFrame =
+        typeof pageOrFrame.page === "function" &&
+        typeof pageOrFrame.mainFrame !== "function";
+    const page = isFrame ? pageOrFrame.page() : pageOrFrame;
+
     const builder = new AxeBuilder({ page })
         .withTags(WCAG_TAGS)
         .disableRules(DISABLED_RULES);

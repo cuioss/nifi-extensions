@@ -3,6 +3,9 @@
  * Captures browser and Node-side logs per test, persists via testInfo.attach()
  */
 
+import { writeFileSync, mkdirSync } from "fs";
+import { join } from "path";
+
 /**
  * Unified logger that captures browser and Node-side logs per test.
  * Logs are persisted as structured JSON attached to each test via testInfo.attach().
@@ -91,8 +94,17 @@ class TestLogger {
      */
     async attachToTest(testInfo) {
         if (this.#logs.length === 0) return;
+        const json = JSON.stringify(this.#logs, null, 2);
+
+        // Write to disk so each test directory has a test-logs.json file
+        const outputDir = testInfo.outputDir;
+        mkdirSync(outputDir, { recursive: true });
+        const filePath = join(outputDir, "test-logs.json");
+        writeFileSync(filePath, json, "utf-8");
+
+        // Also attach to test report for Playwright trace viewer
         await testInfo.attach("test-logs", {
-            body: Buffer.from(JSON.stringify(this.#logs, null, 2)),
+            path: filePath,
             contentType: "application/json",
         });
         this.#logs = [];

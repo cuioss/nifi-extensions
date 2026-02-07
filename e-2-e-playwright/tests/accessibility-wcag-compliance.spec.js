@@ -62,7 +62,7 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
             // Accessibility tests must fail loudly when NiFi is not available
             // This ensures proper CI/CD validation and prevents silent failures
             throw new Error(
-                `🚨 ACCESSIBILITY TEST FAILURE: ${error.message}\n\n` +
+                `ACCESSIBILITY TEST FAILURE: ${error.message}\n\n` +
                     "Accessibility tests require a running NiFi instance with the JWT processor configured.\n" +
                     "This is a hard requirement for accessibility validation in CI/CD pipelines.\n\n" +
                     "To resolve:\n" +
