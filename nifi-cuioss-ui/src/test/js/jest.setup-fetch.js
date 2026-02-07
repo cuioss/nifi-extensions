@@ -1,3 +1,9 @@
-// This file is used to set up a global fetch mock for Jest tests
-// as JSDOM environment does not provide fetch by default.
-require('whatwg-fetch');
+// Provide a global fetch mock for Jest (jsdom does not include fetch)
+globalThis.fetch = jest.fn(() =>
+    Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({}),
+        text: () => Promise.resolve('')
+    })
+);

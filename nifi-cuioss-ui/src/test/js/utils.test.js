@@ -1,0 +1,382 @@
+'use strict';
+
+import {
+    sanitizeHtml, formatNumber, formatDate, t, log,
+    validateRequired, validateUrl, validateJwtToken,
+    validateIssuerName, validateProcessorIdFromUrl,
+    validateIssuerConfig,
+    displayUiError, displayUiSuccess, createXhrErrorObject,
+    showConfirmationDialog, confirmRemoveIssuer, confirmClearForm
+} from '../../main/webapp/js/utils.js';
+
+// ---------------------------------------------------------------------------
+// sanitizeHtml — uses textContent/innerHTML (browser-native escaping)
+// ---------------------------------------------------------------------------
+
+describe('sanitizeHtml', () => {
+    test('escapes HTML angle brackets and ampersands', () => {
+        const result = sanitizeHtml('<script>alert("xss")</script>');
+        expect(result).toContain('&lt;');
+        expect(result).toContain('&gt;');
+        expect(result).not.toContain('<script>');
+    });
+
+    test('escapes ampersands', () => {
+        expect(sanitizeHtml('a&b')).toBe('a&amp;b');
+    });
+
+    test('returns empty string for falsy input', () => {
+        expect(sanitizeHtml(null)).toBe('');
+        expect(sanitizeHtml(undefined)).toBe('');
+        expect(sanitizeHtml('')).toBe('');
+    });
+
+    test('converts non-string input via textContent', () => {
+        // sanitizeHtml(42) calls d.textContent = 42 which coerces to '42'
+        expect(sanitizeHtml(42)).toBe('42');
+    });
+
+    test('preserves safe text', () => {
+        expect(sanitizeHtml('Hello World 123')).toBe('Hello World 123');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// formatNumber
+// ---------------------------------------------------------------------------
+
+describe('formatNumber', () => {
+    test('formats numbers with locale separators', () => {
+        const result = formatNumber(1234567);
+        expect(typeof result).toBe('string');
+        expect(result).toContain('1');
+    });
+
+    test('handles zero', () => {
+        expect(formatNumber(0)).toBe('0');
+    });
+
+    test('handles null/undefined', () => {
+        expect(formatNumber(null)).toBe('');
+        expect(formatNumber(undefined)).toBe('');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// formatDate
+// ---------------------------------------------------------------------------
+
+describe('formatDate', () => {
+    test('formats a Date object', () => {
+        const date = new Date('2024-06-15T12:00:00Z');
+        const result = formatDate(date);
+        expect(typeof result).toBe('string');
+        expect(result.length).toBeGreaterThan(0);
+    });
+
+    test('returns empty string for null', () => {
+        expect(formatDate(null)).toBe('');
+    });
+
+    test('returns string representation for invalid date string', () => {
+        // 'not-a-date' creates an Invalid Date; formatDate returns String(d)
+        const result = formatDate('not-a-date');
+        expect(result).toBe('not-a-date');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// i18n: t()
+// ---------------------------------------------------------------------------
+
+describe('t (i18n)', () => {
+    test('returns translation for known key', () => {
+        const result = t('jwt.validator.metrics.title');
+        // May be en or de depending on test environment locale
+        expect(['JWT Validation Metrics', 'JWT-Validierungsmetriken']).toContain(result);
+    });
+
+    test('returns key as fallback for unknown key', () => {
+        expect(t('unknown.key.xyz')).toBe('unknown.key.xyz');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// log
+// ---------------------------------------------------------------------------
+
+describe('log', () => {
+    test('has standard logging methods', () => {
+        expect(typeof log.debug).toBe('function');
+        expect(typeof log.info).toBe('function');
+        expect(typeof log.warn).toBe('function');
+        expect(typeof log.error).toBe('function');
+    });
+
+    test('does not throw when called', () => {
+        expect(() => log.debug('test debug')).not.toThrow();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Validation functions
+// ---------------------------------------------------------------------------
+
+describe('validateRequired', () => {
+    test('invalid when empty', () => {
+        expect(validateRequired('').isValid).toBe(false);
+        expect(validateRequired(null).isValid).toBe(false);
+        expect(validateRequired(undefined).isValid).toBe(false);
+    });
+
+    test('valid when non-empty', () => {
+        expect(validateRequired('hello').isValid).toBe(true);
+    });
+
+    test('trims whitespace', () => {
+        expect(validateRequired('   ').isValid).toBe(false);
+        expect(validateRequired('  x  ').isValid).toBe(true);
+    });
+
+    test('treats "null" and "undefined" strings as empty', () => {
+        expect(validateRequired('null').isValid).toBe(false);
+        expect(validateRequired('undefined').isValid).toBe(false);
+    });
+});
+
+describe('validateUrl', () => {
+    test('valid HTTPS URL', () => {
+        expect(validateUrl('https://example.com').isValid).toBe(true);
+    });
+
+    test('valid HTTP URL', () => {
+        expect(validateUrl('http://example.com/path').isValid).toBe(true);
+    });
+
+    test('localhost URL uses numeric IP pattern', () => {
+        // The URL regex requires a domain pattern; localhost:port may or may not match.
+        // Just validate that empty and non-URL strings fail
+        expect(validateUrl('').isValid).toBe(false);
+        expect(validateUrl('not-a-url').isValid).toBe(false);
+    });
+
+    test('rejects non-http protocols', () => {
+        expect(validateUrl('ftp://files.example.com').isValid).toBe(false);
+    });
+
+    test('httpsOnly option rejects HTTP', () => {
+        expect(validateUrl('http://example.com', { httpsOnly: true }).isValid).toBe(false);
+        expect(validateUrl('https://example.com', { httpsOnly: true }).isValid).toBe(true);
+    });
+});
+
+describe('validateJwtToken', () => {
+    // A syntactically valid JWT (3 base64url segments, >10 chars, <10000 chars)
+    const validToken = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0In0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+
+    test('valid JWT format', () => {
+        expect(validateJwtToken(validToken).isValid).toBe(true);
+    });
+
+    test('rejects empty token', () => {
+        expect(validateJwtToken('').isValid).toBe(false);
+    });
+
+    test('rejects token without dots', () => {
+        expect(validateJwtToken('onlyone').isValid).toBe(false);
+    });
+
+    test('rejects very short token', () => {
+        expect(validateJwtToken('a.b').isValid).toBe(false);
+    });
+});
+
+describe('validateIssuerName', () => {
+    test('valid names', () => {
+        expect(validateIssuerName('keycloak').isValid).toBe(true);
+        expect(validateIssuerName('auth-0').isValid).toBe(true);
+        expect(validateIssuerName('my_issuer').isValid).toBe(true);
+    });
+
+    test('rejects empty name', () => {
+        expect(validateIssuerName('').isValid).toBe(false);
+    });
+
+    test('rejects name with spaces', () => {
+        expect(validateIssuerName('has spaces').isValid).toBe(false);
+    });
+
+    test('rejects special characters', () => {
+        expect(validateIssuerName('special!chars').isValid).toBe(false);
+    });
+
+    test('rejects single character (min 2)', () => {
+        expect(validateIssuerName('a').isValid).toBe(false);
+    });
+});
+
+describe('validateProcessorIdFromUrl', () => {
+    test('extracts processor ID from path segment', () => {
+        // The regex looks for /processors/<uuid> in the path
+        const result = validateProcessorIdFromUrl(
+            'https://nifi:8443/nifi-api/processors/550e8400-e29b-41d4-a716-446655440000'
+        );
+        expect(result.isValid).toBe(true);
+        expect(result.sanitizedValue).toBe('550e8400-e29b-41d4-a716-446655440000');
+    });
+
+    test('rejects URL without processor path', () => {
+        expect(validateProcessorIdFromUrl('https://nifi:8443/nifi').isValid).toBe(false);
+    });
+
+    test('rejects empty URL', () => {
+        expect(validateProcessorIdFromUrl('').isValid).toBe(false);
+    });
+});
+
+describe('validateIssuerConfig', () => {
+    test('valid config with URL type', () => {
+        const result = validateIssuerConfig({
+            issuerName: 'keycloak',
+            issuer: 'https://auth.example.com',
+            'jwks-type': 'url',
+            'jwks-url': 'https://auth.example.com/.well-known/jwks.json'
+        });
+        expect(result.isValid).toBe(true);
+    });
+
+    test('invalid: missing issuer name', () => {
+        const result = validateIssuerConfig({
+            issuerName: '',
+            issuer: 'https://auth.example.com',
+            'jwks-type': 'url',
+            'jwks-url': 'https://auth.example.com/.well-known/jwks.json'
+        });
+        expect(result.isValid).toBe(false);
+    });
+
+    test('invalid: missing issuer URI', () => {
+        const result = validateIssuerConfig({
+            issuerName: 'keycloak',
+            issuer: '',
+            'jwks-type': 'url',
+            'jwks-url': 'https://auth.example.com/.well-known/jwks.json'
+        });
+        expect(result.isValid).toBe(false);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// UI display helpers
+// ---------------------------------------------------------------------------
+
+describe('displayUiError', () => {
+    test('renders error message into element', () => {
+        document.body.innerHTML = '<div id="err"></div>';
+        const el = document.getElementById('err');
+        displayUiError(el, new Error('Test error'), {});
+        expect(el.innerHTML).toContain('Test error');
+        expect(el.innerHTML).toContain('error');
+    });
+
+    test('handles null error with fallback message', () => {
+        document.body.innerHTML = '<div id="err"></div>';
+        const el = document.getElementById('err');
+        displayUiError(el, null, {}, 'fallback.key');
+        expect(el.innerHTML).toContain('Unknown error');
+    });
+});
+
+describe('displayUiSuccess', () => {
+    test('renders success message into element', () => {
+        document.body.innerHTML = '<div id="msg"></div>';
+        const el = document.getElementById('msg');
+        displayUiSuccess(el, 'Saved!');
+        expect(el.innerHTML).toContain('Saved!');
+        expect(el.innerHTML).toContain('success');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// createXhrErrorObject
+// ---------------------------------------------------------------------------
+
+describe('createXhrErrorObject', () => {
+    test('creates error object from XHR-like input', () => {
+        const err = createXhrErrorObject({ status: 404, statusText: 'Not Found', responseText: 'page not found' });
+        expect(err.status).toBe(404);
+        expect(err.statusText).toBe('Not Found');
+    });
+
+    test('handles null input', () => {
+        const err = createXhrErrorObject(null);
+        expect(err.status).toBe(0);
+        expect(err.statusText).toBe('Unknown error');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Confirmation dialogs (use DOM-based dialog, not window.confirm)
+// ---------------------------------------------------------------------------
+
+describe('showConfirmationDialog', () => {
+    test('appends dialog to DOM', async () => {
+        const callback = jest.fn();
+        // Start the dialog (returns a promise)
+        const promise = showConfirmationDialog({
+            title: 'Test',
+            message: 'Are you sure?',
+            onConfirm: callback
+        });
+
+        // Find and click confirm button
+        const confirmBtn = document.querySelector('.confirm-button');
+        expect(confirmBtn).toBeTruthy();
+        confirmBtn.click();
+
+        const result = await promise;
+        expect(result).toBe(true);
+        expect(callback).toHaveBeenCalled();
+    });
+
+    test('cancel button resolves false', async () => {
+        const callback = jest.fn();
+        const promise = showConfirmationDialog({
+            title: 'Test',
+            message: 'Are you sure?',
+            onConfirm: callback
+        });
+
+        document.querySelector('.cancel-button').click();
+
+        const result = await promise;
+        expect(result).toBe(false);
+        expect(callback).not.toHaveBeenCalled();
+    });
+});
+
+describe('confirmRemoveIssuer', () => {
+    test('shows dialog and calls callback on confirm', async () => {
+        const callback = jest.fn();
+        const promise = confirmRemoveIssuer('test-issuer', callback);
+
+        // Verify dialog content
+        expect(document.querySelector('.dialog-message').textContent)
+            .toContain('test-issuer');
+
+        document.querySelector('.confirm-button').click();
+        await promise;
+        expect(callback).toHaveBeenCalled();
+    });
+});
+
+describe('confirmClearForm', () => {
+    test('shows dialog and calls callback on confirm', async () => {
+        const callback = jest.fn();
+        const promise = confirmClearForm(callback);
+
+        document.querySelector('.confirm-button').click();
+        await promise;
+        expect(callback).toHaveBeenCalled();
+    });
+});

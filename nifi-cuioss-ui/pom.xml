@@ -76,24 +76,7 @@
         <!-- WebJars dependencies -->
         <dependency>
             <groupId>org.webjars</groupId>
-            <artifactId>requirejs</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.webjars</groupId>
             <artifactId>font-awesome</artifactId>
-        </dependency>
-        <!-- Runtime JavaScript dependencies as WebJars -->
-        <dependency>
-            <groupId>org.webjars.npm</groupId>
-            <artifactId>cash-dom</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.webjars.npm</groupId>
-            <artifactId>tippy.js</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.webjars.npm</groupId>
-            <artifactId>popperjs__core</artifactId>
         </dependency>
         
         <!-- Test Dependencies -->
@@ -162,18 +145,7 @@
                     <packagingIncludes>
                         **/*.class,**/*.xml,**/*.properties,**/*.html,**/*.js,**/*.css,META-INF/**,WEB-INF/**,webjars/**
                     </packagingIncludes>
-                    <!-- Exclude the problematic double-slash directory entry -->
-                    <packagingExcludes>META-INF/resources/webjars/popperjs__core/2.11.8//</packagingExcludes>
                     <overlays>
-                        <overlay>
-                            <groupId>org.webjars</groupId>
-                            <artifactId>requirejs</artifactId>
-                            <type>jar</type>
-                            <includes>
-                                <include>META-INF/resources/webjars/**</include>
-                            </includes>
-                            <targetPath>webjars</targetPath>
-                        </overlay>
                         <overlay>
                             <groupId>org.webjars</groupId>
                             <artifactId>font-awesome</artifactId>
@@ -182,40 +154,6 @@
                                 <include>META-INF/resources/webjars/**</include>
                             </includes>
                             <targetPath>webjars</targetPath>
-                        </overlay>
-                        <overlay>
-                            <groupId>org.webjars.npm</groupId>
-                            <artifactId>cash-dom</artifactId>
-                            <type>jar</type>
-                            <includes>
-                                <include>META-INF/resources/webjars/**</include>
-                            </includes>
-                            <targetPath>webjars</targetPath>
-                        </overlay>
-                        <overlay>
-                            <groupId>org.webjars.npm</groupId>
-                            <artifactId>tippy.js</artifactId>
-                            <type>jar</type>
-                            <includes>
-                                <include>META-INF/resources/webjars/**</include>
-                            </includes>
-                            <targetPath>webjars</targetPath>
-                        </overlay>
-                        <overlay>
-                            <groupId>org.webjars.npm</groupId>
-                            <artifactId>popperjs__core</artifactId>
-                            <type>jar</type>
-                            <includes>
-                                <include>META-INF/resources/webjars/**</include>
-                            </includes>
-                            <excludes>
-                                <exclude>META-INF/resources/webjars/popperjs__core/2.11.8//</exclude>
-                            </excludes>
-                            <targetPath>webjars</targetPath>
-                            <!-- Known issue: This webjar contains a malformed directory entry 
-                                 'META-INF/resources/webjars/popperjs__core/2.11.8//' that causes
-                                 a harmless warning on case-insensitive filesystems. The warning
-                                 can be safely ignored as it doesn't affect functionality. -->
                         </overlay>
                     </overlays>
                 </configuration>
@@ -246,16 +184,6 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <id>npm-build</id>
-                        <goals>
-                            <goal>npm</goal>
-                        </goals>
-                        <phase>compile</phase>
-                        <configuration>
-                            <arguments>run build</arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
                         <id>npm-test</id>
                         <goals>
                             <goal>npm</goal>
@@ -273,16 +201,6 @@
                         <phase>verify</phase>
                         <configuration>
                             <arguments>run lint</arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>npm-validate-deps</id>
-                        <goals>
-                            <goal>npm</goal>
-                        </goals>
-                        <phase>verify</phase>
-                        <configuration>
-                            <arguments>run validate-deps</arguments>
                         </configuration>
                     </execution>
                 </executions>
