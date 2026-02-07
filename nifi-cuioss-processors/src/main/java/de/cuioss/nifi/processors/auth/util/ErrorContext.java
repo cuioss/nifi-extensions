@@ -173,6 +173,14 @@ public class ErrorContext {
     }
 
     /**
+     * Lombok-generated builder for {@link ErrorContext}.
+     * This stub allows Javadoc to resolve the return type of {@link #forComponent(String)}.
+     */
+    public static class ErrorContextBuilder {
+        // Lombok @Builder generates the full implementation
+    }
+
+    /**
      * Common error codes for categorization
      */
     @UtilityClass
