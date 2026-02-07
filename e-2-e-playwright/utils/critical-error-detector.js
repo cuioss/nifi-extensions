@@ -274,7 +274,7 @@ export class CriticalErrorDetector {
         this.detectedErrors.push(error);
 
         // Log the critical error immediately
-        console.error(`🚨 CRITICAL ERROR DETECTED: ${type} - ${message}`);
+        console.error(`CRITICAL ERROR DETECTED: ${type} - ${message}`);
     }
 
     /**
@@ -403,7 +403,7 @@ export class CriticalErrorDetector {
                 .join("\n");
 
             throw new Error(
-                `🚨 CRITICAL ERRORS DETECTED - Test failed immediately:\n\n${errorSummary}\n\n` +
+                `CRITICAL ERRORS DETECTED - Test failed immediately:\n\n${errorSummary}\n\n` +
                     `Total errors: ${this.detectedErrors.length}\n` +
                     `This test is designed to fail when critical UI or JavaScript errors are detected.`,
             );
