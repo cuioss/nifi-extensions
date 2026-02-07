@@ -205,7 +205,7 @@ const addIssuerForm = (container, issuerName, properties, processorId) => {
         else if (type === 'file') value = fields.querySelector('.field-jwks-file')?.value || '';
         else value = fields.querySelector('.field-jwks-content')?.value || '';
 
-        performJwksValidation(value, rc);
+        performJwksValidation(type, value, rc);
     });
 
     // Optional fields
@@ -273,26 +273,26 @@ const addTextArea = (container, idx, name, label, placeholder, value, extraClass
 // JWKS validation
 // ---------------------------------------------------------------------------
 
-const performJwksValidation = async (jwksValue, resultEl) => {
+const performJwksValidation = async (type, value, resultEl) => {
+    let data;
     try {
-        const res = await fetch('nifi-api/processors/jwt/validate-jwks-url', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ jwksValue }),
-            credentials: 'same-origin'
-        });
-        if (!res.ok) {
-            const text = await res.text();
-            const err = new Error(`HTTP ${res.status}`);
-            err.status = res.status;
-            err.responseText = text;
-            try { err.responseJSON = JSON.parse(text); } catch { /* ok */ }
-            throw err;
+        switch (type) {
+            case 'url':
+                data = await api.validateJwksUrl(value);
+                break;
+            case 'file':
+                data = await api.validateJwksFile(value);
+                break;
+            case 'memory':
+                data = await api.validateJwksContent(value);
+                break;
+            default:
+                throw new Error(`Unknown JWKS type: ${type}`);
         }
-        const data = await res.json();
+
         if (data.valid) {
             resultEl.innerHTML =
-                `<span class="success-message">OK</span> Valid JWKS (${data.keyCount} keys found)`;
+                `<span class="success-message">OK</span> Valid JWKS (${data.keyCount || 0} keys found)`;
         } else {
             displayUiError(resultEl, { responseJSON: data }, {}, 'processor.jwt.invalidJwks');
         }
