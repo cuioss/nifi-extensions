@@ -238,23 +238,32 @@ const updateDisplay = (d) => {
     if (lu) lu.textContent = `Last updated: ${formatDate(new Date())}`;
 };
 
+const showStatusBanner = (el, className, html) => {
+    // Insert a banner at the top of the dashboard without destroying the structure
+    const existing = el.querySelector('.metrics-status-banner');
+    if (existing) existing.remove();
+    const banner = document.createElement('div');
+    banner.className = `metrics-status-banner ${className}`;
+    banner.innerHTML = html;
+    el.prepend(banner);
+};
+
 const showError = () => {
     const el = document.getElementById('jwt-metrics-content');
-    if (el) el.innerHTML = `
-        <div class="error-message server-error">
-            <div class="error-content"><strong>Error:</strong> Unable to load metrics.</div>
-        </div>`;
+    if (el) {
+        showStatusBanner(el, 'server-error',
+            '<div class="error-content"><strong>Error:</strong> Unable to load metrics.</div>');
+    }
 };
 
 const showNotAvailable = () => {
     const el = document.getElementById('jwt-metrics-content');
-    if (el) el.innerHTML = `
-        <div class="metrics-not-available validation-error">
-            <div class="error-content">
-                <h3>Metrics Not Available</h3>
-                <p>The metrics endpoint is not currently implemented.</p>
-            </div>
-        </div>`;
+    if (el) {
+        showStatusBanner(el, 'validation-error',
+            '<div class="error-content">' +
+            '<strong>Metrics Not Available</strong> — ' +
+            'The metrics endpoint is not currently implemented.</div>');
+    }
     cleanup();
 };
 
