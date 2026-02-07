@@ -14,33 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.cuioss.nifi.processors.auth.util;
-
-import lombok.Builder;
-import lombok.Value;
 
 /**
- * Value object representing a processing error with all necessary details.
- * This class encapsulates error information for flow file processing failures.
+ * Error handling and authorization utilities for JWT authentication processors.
  *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/error-handling.adoc">Error Handling Specification</a>
+ * <p>All types in this package are non-null by default due to {@code @NullMarked}.
+ * Use {@code @Nullable} to explicitly mark nullable types.
  */
-@Value
-@Builder
-public class ProcessingError {
+@NullMarked
+package de.cuioss.nifi.processors.auth.util;
 
-    /**
-     * The error code identifying the type of error.
-     */
-    String errorCode;
-
-    /**
-     * The human-readable reason for the error.
-     */
-    String errorReason;
-
-    /**
-     * The category of the error (e.g., EXTRACTION_ERROR, VALIDATION_ERROR).
-     */
-    String errorCategory;
-}
+import org.jspecify.annotations.NullMarked;

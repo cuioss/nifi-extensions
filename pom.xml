@@ -142,6 +142,7 @@
         <version.oauth-sheriff>0.3.0</version.oauth-sheriff>
         <version.cui.test.keycloak.integration>1.0.1</version.cui.test.keycloak.integration>
         <version.jjwt>0.13.0</version.jjwt>
+        <version.jspecify>1.0.0</version.jspecify>
     </properties>
 
     <dependencyManagement>
@@ -150,6 +151,12 @@
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
                 <version>${version.lombok}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.jspecify</groupId>
+                <artifactId>jspecify</artifactId>
+                <version>${version.jspecify}</version>
                 <scope>provided</scope>
             </dependency>
             <!-- WebJars dependencies -->
