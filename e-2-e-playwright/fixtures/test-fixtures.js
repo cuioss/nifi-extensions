@@ -32,7 +32,7 @@ export const test = authTest.extend({
         mkdirSync(testInfo.outputDir, { recursive: true });
         await page
             .screenshot({
-                path: join(testInfo.outputDir, "end-tests.png"),
+                path: join(testInfo.outputDir, "after.png"),
                 fullPage: true,
             })
             .catch(() => {});

@@ -13,7 +13,7 @@ Every test produces exactly four files in its `testInfo.outputDir`:
 |===
 | File | Description
 
-| `start-test.png`
+| `before.png`
 | Screenshot taken after preconditions (login, processor setup), before test body
 
 | `browser.log`
@@ -22,7 +22,7 @@ Every test produces exactly four files in its `testInfo.outputDir`:
 | `test-run.log`
 | Node-side utility logs from AuthService, ProcessorApiManager, etc. (text format)
 
-| `end-tests.png`
+| `after.png`
 | Screenshot taken after test body completes (in page fixture teardown)
 |===
 
@@ -47,9 +47,9 @@ page: async ({ page }, use, testInfo) => {
 
     await use(page);
 
-    // Automatic end-tests screenshot + text logs
+    // Automatic after screenshot + text logs
     mkdirSync(testInfo.outputDir, { recursive: true });
-    await page.screenshot({ path: join(testInfo.outputDir, 'end-tests.png') }).catch(() => {});
+    await page.screenshot({ path: join(testInfo.outputDir, 'after.png'), fullPage: true }).catch(() => {});
     testLogger.writeLogs(testInfo);
     cleanupCriticalErrorDetection();
 },
@@ -103,5 +103,5 @@ test.beforeEach(async ({ page, processorManager }, testInfo) => {
 | `browser.log` + `test-run.log` text files
 
 | Ad-hoc screenshots in some tests
-| Consistent `start-test.png` + `end-tests.png` in every test
+| Consistent `before.png` + `after.png` in every test
 |===
