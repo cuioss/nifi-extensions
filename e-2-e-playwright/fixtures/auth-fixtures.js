@@ -97,6 +97,7 @@ export const test = base.extend({
   /**
    * Test data fixture - provides clean test data for each test
    */
+  // eslint-disable-next-line no-empty-pattern -- Playwright fixture convention
   testData: async ({}, use) => {
     const data = {
       // Generate unique test data

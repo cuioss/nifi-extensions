@@ -1,26 +1,28 @@
 {
   "name": "e-2-e-playwright",
   "version": "1.0.0",
-  "description": "End-to-End Playwright tests for NiFi Extensions - Implements centralized JavaScript/ESLint standards",
+  "private": true,
+  "type": "module",
+  "description": "End-to-End Playwright tests for NiFi Extensions",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "playwright:test": "playwright test",
     "playwright:test:headed": "playwright test --headed",
     "playwright:test:ui": "playwright test --ui",
     "playwright:report": "playwright show-report",
     "playwright:codegen": "playwright codegen",
-    "test:failfast": "playwright test --reporter=list",
     "test": "node scripts/run-tests-with-precheck.js",
     "test:self": "playwright test tests/self-*.spec.js --reporter=list",
     "test:jwt": "node scripts/run-tests-with-precheck.js tests/02-verify-jwt-authenticator-customizer.spec.js tests/03-verify-jwks-validation-button.spec.js",
-    "test:all": "node scripts/run-tests-with-precheck.js",
     "test:no-precheck": "playwright test --grep-invert self- --reporter=list",
     "test:a11y": "playwright test tests/accessibility-wcag-compliance.spec.js --reporter=list",
     "test:a11y:full": "playwright test tests/accessibility-wcag-compliance.spec.js --reporter=html",
     "test:a11y:quick": "playwright test tests/accessibility-wcag-compliance.spec.js --grep 'Full page WCAG compliance' --reporter=list",
-    "lint": "eslint 'tests/**/*.js'",
-    "lint:fix": "eslint 'tests/**/*.js' --fix",
-    "lint:check": "eslint 'tests/**/*.js' --max-warnings 0",
-    "lint:strict": "eslint 'tests/**/*.js' --max-warnings 25 --report-unused-disable-directives",
+    "lint": "eslint '{tests,utils,fixtures,scripts,config}/**/*.js'",
+    "lint:fix": "eslint '{tests,utils,fixtures,scripts,config}/**/*.js' --fix",
+    "lint:strict": "eslint '{tests,utils,fixtures,scripts,config}/**/*.js' --max-warnings 30 --report-unused-disable-directives",
     "format": "prettier --write 'tests/**/*.js'",
     "format:check": "prettier --check 'tests/**/*.js'"
   },
@@ -29,12 +31,7 @@
     "@playwright/test": "^1.58.1",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-jsdoc": "^46.8.0",
-    "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-security": "^2.1.1",
-    "eslint-plugin-sonarjs": "^0.25.1",
-    "eslint-plugin-unicorn": "^52.0.0",
-    "jwt-decode": "^4.0.0",
     "prettier": "^3.4.2"
   }
 }

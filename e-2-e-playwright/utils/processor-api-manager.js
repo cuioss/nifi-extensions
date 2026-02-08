@@ -69,7 +69,7 @@ export class ProcessorApiManager {
     }
     
     // Convert path to relative URL if it's absolute
-    const relativePath = path.replace(/^https?:\/\/[^\/]+/, '').replace('/nifi/nifi-api', '/nifi-api');
+    const relativePath = path.replace(/^https?:\/\/[^/]+/, '').replace('/nifi/nifi-api', '/nifi-api');
     
     return await this.page.evaluate(async ({relativePath, method, body, requestToken}) => {
       try {
