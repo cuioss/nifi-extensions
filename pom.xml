@@ -547,6 +547,10 @@
                     <name>integration.test.local</name>
                 </property>
             </activation>
+            <properties>
+                <!-- Enable Failsafe integration tests when containers are running -->
+                <skipITs>false</skipITs>
+            </properties>
             <build>
                 <plugins>
                     <!-- First, ensure NAR file is built and deployed -->
