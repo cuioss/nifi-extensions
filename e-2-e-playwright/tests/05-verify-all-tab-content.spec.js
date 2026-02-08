@@ -1,14 +1,19 @@
-import { test, expect } from "../fixtures/test-fixtures.js";
+import {
+    test,
+    expect,
+    takeStartScreenshot,
+} from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 
 test.describe("Comprehensive JWT Tab Content Verification", () => {
-    test.beforeEach(async ({ page, processorManager }) => {
+    test.beforeEach(async ({ page, processorManager }, testInfo) => {
         const authService = new AuthService(page);
         await authService.ensureReady();
 
         // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
         await processorManager.ensureProcessorOnCanvas();
+        await takeStartScreenshot(page, testInfo);
     });
 
     test("all tabs should display their content properly", async ({

@@ -5,10 +5,18 @@
  * @version 1.0.0
  */
 
-import { test, expect } from "../fixtures/test-fixtures.js";
+import {
+    test,
+    expect,
+    takeStartScreenshot,
+} from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 
 test.describe("Self-Test: Login", () => {
+    test.beforeEach(async ({ page }, testInfo) => {
+        await takeStartScreenshot(page, testInfo);
+    });
+
     test("should successfully authenticate with valid credentials", async ({
         page,
     }) => {

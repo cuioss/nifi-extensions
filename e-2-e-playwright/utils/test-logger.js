@@ -1,6 +1,6 @@
 /**
  * @file Unified Test Logger
- * Captures browser and Node-side logs per test, persists via testInfo.attach()
+ * Captures browser and Node-side logs per test, persists as text files
  */
 
 import { writeFileSync, mkdirSync } from "fs";
@@ -8,7 +8,7 @@ import { join } from "path";
 
 /**
  * Unified logger that captures browser and Node-side logs per test.
- * Logs are persisted as structured JSON attached to each test via testInfo.attach().
+ * Logs are persisted as separate text files: browser.log and test-run.log.
  */
 class TestLogger {
     #logs = [];
@@ -89,24 +89,39 @@ class TestLogger {
     }
 
     /**
-     * Persist logs as structured JSON attached to the test
+     * Write logs as separate text files: browser.log and test-run.log
      * @param {import('@playwright/test').TestInfo} testInfo - Playwright testInfo object
      */
-    async attachToTest(testInfo) {
-        if (this.#logs.length === 0) return;
-        const json = JSON.stringify(this.#logs, null, 2);
-
-        // Write to disk so each test directory has a test-logs.json file
+    writeLogs(testInfo) {
         const outputDir = testInfo.outputDir;
         mkdirSync(outputDir, { recursive: true });
-        const filePath = join(outputDir, "test-logs.json");
-        writeFileSync(filePath, json, "utf-8");
 
-        // Also attach to test report for Playwright trace viewer
-        await testInfo.attach("test-logs", {
-            path: filePath,
-            contentType: "application/json",
-        });
+        // browser.log — only browser-sourced entries
+        const browserLines = this.#logs
+            .filter((e) => e.source === "browser")
+            .map(
+                (e) =>
+                    `[${e.timestamp.substring(11, 23)}] [${e.level}] ${e.message}`,
+            );
+        writeFileSync(
+            join(outputDir, "browser.log"),
+            browserLines.join("\n") + "\n",
+            "utf-8",
+        );
+
+        // test-run.log — only Node-side utility entries
+        const testRunLines = this.#logs
+            .filter((e) => e.source !== "browser")
+            .map(
+                (e) =>
+                    `[${e.timestamp.substring(11, 23)}] [${e.source}] [${e.level}] ${e.message}`,
+            );
+        writeFileSync(
+            join(outputDir, "test-run.log"),
+            testRunLines.join("\n") + "\n",
+            "utf-8",
+        );
+
         this.#logs = [];
     }
 
@@ -117,6 +132,16 @@ class TestLogger {
     getLogs() {
         return [...this.#logs];
     }
+}
+
+/**
+ * Take a screenshot at the start of a test (after preconditions, before test body)
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @param {import('@playwright/test').TestInfo} testInfo - Playwright testInfo object
+ */
+export async function takeStartScreenshot(page, testInfo) {
+    mkdirSync(testInfo.outputDir, { recursive: true });
+    await page.screenshot({ path: join(testInfo.outputDir, "start-test.png") });
 }
 
 export const testLogger = new TestLogger();

@@ -4,19 +4,24 @@
  * @version 1.0.0
  */
 
-import { test, expect } from "../fixtures/test-fixtures.js";
+import {
+    test,
+    expect,
+    takeStartScreenshot,
+} from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 
 test.describe("JWKS Validation Complete", () => {
     // Note: This test suite has been updated to work with the actual UI implementation
     // which uses class-based selectors instead of data-testid attributes
-    test.beforeEach(async ({ page, processorManager }) => {
+    test.beforeEach(async ({ page, processorManager }, testInfo) => {
         const authService = new AuthService(page);
         await authService.ensureReady();
 
         // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
         await processorManager.ensureProcessorOnCanvas();
+        await takeStartScreenshot(page, testInfo);
     });
 
     test("should validate JWKS URL format", async ({ page }, testInfo) => {

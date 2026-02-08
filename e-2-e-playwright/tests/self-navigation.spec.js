@@ -5,14 +5,19 @@
  * @version 1.0.0
  */
 
-import { test, expect } from "../fixtures/test-fixtures.js";
+import {
+    test,
+    expect,
+    takeStartScreenshot,
+} from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 import { CONSTANTS } from "../utils/constants.js";
 
 test.describe("Self-Test: Navigation", () => {
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({ page }, testInfo) => {
         const authService = new AuthService(page);
         await authService.ensureReady();
+        await takeStartScreenshot(page, testInfo);
     });
 
     test("should navigate to main canvas successfully", async ({ page }) => {

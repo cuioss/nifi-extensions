@@ -1,8 +1,9 @@
 /**
  * @fileoverview Consolidated test fixtures for Playwright tests
- * Uses testLogger for structured per-test log persistence and @axe-core/playwright for accessibility
+ * Uses testLogger for per-test text log persistence and @axe-core/playwright for accessibility
  */
 
+import { mkdirSync } from "fs";
 import { test as authTest } from "./auth-fixtures.js";
 import AxeBuilder from "@axe-core/playwright";
 import { testLogger } from "../utils/test-logger.js";
@@ -11,6 +12,7 @@ import {
     cleanupCriticalErrorDetection,
 } from "../utils/critical-error-detector.js";
 import { ProcessorApiManager } from "../utils/processor-api-manager.js";
+import { join } from "path";
 
 /**
  * Extended test with all fixtures combined including structured test logging
@@ -26,7 +28,14 @@ export const test = authTest.extend({
 
         await use(page);
 
-        await testLogger.attachToTest(testInfo);
+        // Automatic end-tests screenshot + text logs
+        mkdirSync(testInfo.outputDir, { recursive: true });
+        await page
+            .screenshot({
+                path: join(testInfo.outputDir, "end-tests.png"),
+            })
+            .catch(() => {});
+        testLogger.writeLogs(testInfo);
         cleanupCriticalErrorDetection();
     },
 
@@ -112,3 +121,4 @@ export const accessibilityTest = test.extend({
 });
 
 export { expect } from "@playwright/test";
+export { takeStartScreenshot } from "../utils/test-logger.js";

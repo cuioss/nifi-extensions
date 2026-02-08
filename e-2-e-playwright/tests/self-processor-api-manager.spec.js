@@ -3,11 +3,19 @@
  * Tests the API-based processor management functionality
  */
 
-import { test, expect } from "../fixtures/test-fixtures.js";
+import {
+    test,
+    expect,
+    takeStartScreenshot,
+} from "../fixtures/test-fixtures.js";
 import { ProcessorApiManager } from "../utils/processor-api-manager.js";
 import { AuthService } from "../utils/auth-service.js";
 
 test.describe("ProcessorApiManager Self-Test", () => {
+    test.beforeEach(async ({ page }, testInfo) => {
+        await takeStartScreenshot(page, testInfo);
+    });
+
     test("should verify MultiIssuerJWTTokenAuthenticator deployment", async ({
         page,
     }) => {
@@ -405,6 +413,10 @@ test.describe("ProcessorApiManager Self-Test", () => {
 
 // Additional integration test to verify the full workflow
 test.describe("ProcessorApiManager Integration Test", () => {
+    test.beforeEach(async ({ page }, testInfo) => {
+        await takeStartScreenshot(page, testInfo);
+    });
+
     test("should complete full processor lifecycle", async ({ page }) => {
         const authService = new AuthService(page);
         const processorManager = new ProcessorApiManager(page);

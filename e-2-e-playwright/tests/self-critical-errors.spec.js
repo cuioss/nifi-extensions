@@ -5,7 +5,11 @@
  * @version 1.0.0
  */
 
-import { test, expect } from "../fixtures/test-fixtures.js";
+import {
+    test,
+    expect,
+    takeStartScreenshot,
+} from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 import {
@@ -15,7 +19,7 @@ import {
 } from "../utils/critical-error-detector.js";
 
 test.describe("Self-Test: Critical Error Detection", () => {
-    test.beforeEach(async ({ page, processorManager }) => {
+    test.beforeEach(async ({ page, processorManager }, testInfo) => {
         // Authenticate first
         const authService = new AuthService(page);
         await authService.ensureReady();
@@ -30,6 +34,7 @@ test.describe("Self-Test: Critical Error Detection", () => {
         // NOTE: Do NOT check for critical errors in beforeEach for self-tests
         // These tests are specifically designed to test error detection scenarios
         // Checking for errors here would cause all tests to fail prematurely
+        await takeStartScreenshot(page, testInfo);
     });
 
     test.afterEach(() => {

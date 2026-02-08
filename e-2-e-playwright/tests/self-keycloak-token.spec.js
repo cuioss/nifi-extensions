@@ -3,7 +3,11 @@
  * Validates that the token service can fetch valid tokens and handle errors appropriately
  */
 
-import { test, expect } from "../fixtures/test-fixtures.js";
+import {
+    test,
+    expect,
+    takeStartScreenshot,
+} from "../fixtures/test-fixtures.js";
 import {
     KeycloakTokenService,
     getValidAccessToken,
@@ -14,8 +18,9 @@ import { CONSTANTS } from "../utils/constants.js";
 test.describe("Keycloak Token Service", () => {
     let tokenService;
 
-    test.beforeEach(() => {
+    test.beforeEach(async ({ page }, testInfo) => {
         tokenService = new KeycloakTokenService();
+        await takeStartScreenshot(page, testInfo);
     });
 
     test("should check if Keycloak is accessible", async () => {

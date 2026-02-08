@@ -5,13 +5,17 @@
  * @version 1.0.0
  */
 
-import { test, expect } from "../fixtures/test-fixtures.js";
+import {
+    test,
+    expect,
+    takeStartScreenshot,
+} from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 import { CONSTANTS } from "../utils/constants.js";
 
 test.describe("Self-Test: Processor Advanced Configuration", () => {
-    test.beforeEach(async ({ page, processorManager }) => {
+    test.beforeEach(async ({ page, processorManager }, testInfo) => {
         const authService = new AuthService(page);
         await authService.ensureReady();
 
@@ -19,6 +23,7 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
         await processorManager.ensureProcessorOnCanvas();
 
         // Don't check for critical errors here - authentication may have transient 401s
+        await takeStartScreenshot(page, testInfo);
     });
 
     test("should open processor configuration dialog", async ({

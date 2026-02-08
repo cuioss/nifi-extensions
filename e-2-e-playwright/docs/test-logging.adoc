@@ -3,23 +3,38 @@
 
 == Goal
 
-Structured per-test log persistence for both browser and Node-side events, integrated with Playwright's built-in artifact system.
+Per-test artifact persistence with human-readable text logs and consistent screenshots, integrated with Playwright's output directory system.
 
-== Idea
+== Per-Test Artifact Structure
 
-Use Playwright's `testInfo.attach()` to persist a unified JSON log per test, combining browser console output, page errors, HTTP errors, and Node-side utility logs into one artifact.
+Every test produces exactly four files in its `testInfo.outputDir`:
 
-Playwright traces handle the rich debugging experience (DOM snapshots, timeline); the JSON log handles structured, greppable, machine-readable output.
+[cols="1,2"]
+|===
+| File | Description
+
+| `start-test.png`
+| Screenshot taken after preconditions (login, processor setup), before test body
+
+| `browser.log`
+| Browser console output, page errors, and HTTP errors (text format)
+
+| `test-run.log`
+| Node-side utility logs from AuthService, ProcessorApiManager, etc. (text format)
+
+| `end-tests.png`
+| Screenshot taken after test body completes (in page fixture teardown)
+|===
 
 == Implementation
 
 === TestLogger Singleton
 
-`utils/test-logger.js` exports a `testLogger` singleton wired via the `page` fixture in `fixtures/test-fixtures.js`.
+`utils/test-logger.js` exports a `testLogger` singleton and a `takeStartScreenshot` helper function.
 
 * *Browser events* captured via `page.on('console')`, `page.on('pageerror')`, and `page.on('response')` handlers
 * *Node-side logs* captured via `testLogger.info(source, message)`, `testLogger.warn(source, message)`, `testLogger.error(source, message)` calls from utility modules
-* *Persisted* as `test-logs` attachment per test via `testInfo.attach()` in the page fixture teardown
+* *Persisted* as two text files (`browser.log` and `test-run.log`) via `testLogger.writeLogs(testInfo)` in the page fixture teardown
 
 === Fixture Wiring
 
@@ -32,37 +47,47 @@ page: async ({ page }, use, testInfo) => {
 
     await use(page);
 
-    await testLogger.attachToTest(testInfo);
+    // Automatic end-tests screenshot + text logs
+    mkdirSync(testInfo.outputDir, { recursive: true });
+    await page.screenshot({ path: join(testInfo.outputDir, 'end-tests.png') }).catch(() => {});
+    testLogger.writeLogs(testInfo);
     cleanupCriticalErrorDetection();
 },
 ----
 
-=== Per-Test Artifact Structure
+=== Start Screenshot in beforeEach
 
-Each test gets its own directory at `testInfo.outputDir` containing:
+Each test file calls `takeStartScreenshot(page, testInfo)` as the last line of its `test.beforeEach`:
 
-* `test-logs.json` -- structured log from TestLogger
-* `trace.zip` -- Playwright trace (on failure, with `retain-on-failure` setting)
-* Screenshots and video (on failure)
-
-=== JSON Log Format
-
-[source,json]
+[source,javascript]
 ----
-[
-  {
-    "timestamp": "2025-01-15T10:30:00.000Z",
-    "source": "browser",
-    "level": "log",
-    "message": "JWT Validator UI initialized"
-  },
-  {
-    "timestamp": "2025-01-15T10:30:01.000Z",
-    "source": "Processor",
-    "level": "info",
-    "message": "Verifying MultiIssuerJWTTokenAuthenticator deployment..."
-  }
-]
+import { test, expect, takeStartScreenshot } from "../fixtures/test-fixtures.js";
+
+test.beforeEach(async ({ page, processorManager }, testInfo) => {
+    const authService = new AuthService(page);
+    await authService.ensureReady();
+    await processorManager.ensureProcessorOnCanvas();
+    await takeStartScreenshot(page, testInfo);
+});
+----
+
+=== Text Log Format
+
+`browser.log`:
+[source]
+----
+[22:37:17.172] [info] [JWT-UI] JWT UI initialising...
+[22:37:17.139] [warning] NiFi Common API not available. UI functionality may be limited.
+[22:37:17.134] [error] Refused to apply style from '...' because its MIME type...
+[22:37:06.180] [network-error] HTTP 401 - https://localhost:9095/nifi-api/flow/current-user
+----
+
+`test-run.log`:
+[source]
+----
+[22:37:05.953] [Auth] [info] Ensuring NiFi is ready for testing...
+[22:37:05.967] [Auth] [info] NiFi service is accessible
+[22:37:08.628] [Processor] [info] Verifying MultiIssuerJWTTokenAuthenticator is on canvas...
 ----
 
 == Migration from Previous Logger
@@ -71,12 +96,12 @@ Each test gets its own directory at `testInfo.outputDir` containing:
 |===
 | Before | After
 
-| `processorLogger.info('message')`
-| `testLogger.info('Processor', 'message')`
+| `testLogger.attachToTest(testInfo)` (JSON + testInfo.attach)
+| `testLogger.writeLogs(testInfo)` (text files)
 
-| `authLogger.info('message')`
-| `testLogger.info('Auth', 'message')`
+| `test-logs.json` artifact
+| `browser.log` + `test-run.log` text files
 
-| `saveTestBrowserLogs(testInfo)` in afterEach
-| Handled automatically by page fixture
+| Ad-hoc screenshots in some tests
+| Consistent `start-test.png` + `end-tests.png` in every test
 |===
