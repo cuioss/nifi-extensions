@@ -33,6 +33,7 @@ export const test = authTest.extend({
         await page
             .screenshot({
                 path: join(testInfo.outputDir, "end-tests.png"),
+                fullPage: true,
             })
             .catch(() => {});
         testLogger.writeLogs(testInfo);

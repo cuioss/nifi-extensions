@@ -71,7 +71,7 @@ module.exports = defineConfig({
     ignoreHTTPSErrors: true,
 
     /* Modern browser features */
-    viewport: { width: 1280, height: 720 },
+    viewport: { width: 1920, height: 1080 },
     actionTimeout: 10000,
     navigationTimeout: 30000,
 
@@ -101,6 +101,8 @@ module.exports = defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
+        // Full HD viewport to capture NiFi dialogs and Custom UI without clipping
+        viewport: { width: 1920, height: 1080 },
         // Enable modern Chrome features for enterprise NiFi testing
         launchOptions: {
           args: [

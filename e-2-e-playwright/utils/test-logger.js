@@ -141,7 +141,7 @@ class TestLogger {
  */
 export async function takeStartScreenshot(page, testInfo) {
     mkdirSync(testInfo.outputDir, { recursive: true });
-    await page.screenshot({ path: join(testInfo.outputDir, "start-test.png") });
+    await page.screenshot({ path: join(testInfo.outputDir, "start-test.png"), fullPage: true });
 }
 
 export const testLogger = new TestLogger();
