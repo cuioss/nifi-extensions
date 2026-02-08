@@ -28,6 +28,12 @@ import java.io.IOException;
  * <p>Note: {@code X-Frame-Options} is set to {@code SAMEORIGIN} rather than
  * {@code DENY} because the Custom UI runs inside an iframe within the NiFi web container.</p>
  *
+ * <p>The {@code style-src-elem} directive (CSP Level 3) allows {@code 'unsafe-inline'} to
+ * accommodate NiFi's {@code SystemTokensService.appendStyleSheet()} which injects a
+ * {@code <style>} element into the Custom UI iframe for theme propagation. The more restrictive
+ * {@code style-src 'self'} still applies as fallback for {@code style-src-attr}, keeping inline
+ * {@code style=""} attributes blocked.</p>
+ *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
  */
 public class SecurityHeadersFilter implements Filter {
@@ -40,7 +46,8 @@ public class SecurityHeadersFilter implements Filter {
         httpResponse.setHeader("X-Frame-Options", "SAMEORIGIN");
         httpResponse.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
         httpResponse.setHeader("Content-Security-Policy",
-                "default-src 'self'; script-src 'self'; style-src 'self'; " +
+                "default-src 'self'; script-src 'self'; " +
+                        "style-src 'self'; style-src-elem 'self' 'unsafe-inline'; " +
                         "img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-ancestors 'self'");
         chain.doFilter(request, response);
     }
