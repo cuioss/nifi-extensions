@@ -19,7 +19,7 @@
 @import url('modules/issuerConfigEditor.css');
 @import url('modules/help.css');
 
-/* Accessibility utility classes */
+/* Utility classes */
 .sr-only {
     position: absolute;
     width: 1px;
@@ -30,4 +30,8 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+}
+
+.hidden {
+    display: none;
 }

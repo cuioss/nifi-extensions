@@ -81,11 +81,11 @@ const initComponents = () => {
 const hideLoading = () => {
     const loading = document.getElementById('loading-indicator');
     if (loading) {
-        loading.style.display = 'none';
+        loading.classList.add('hidden');
         loading.setAttribute('aria-hidden', 'true');
     }
     const tabs = document.getElementById('jwt-validator-tabs');
-    if (tabs) tabs.style.display = '';
+    if (tabs) tabs.classList.remove('hidden');
 };
 
 // ---------------------------------------------------------------------------
