@@ -9,9 +9,6 @@
 /* Import base styles */
 @import url('modules/base.css');
 
-/* Import icon definitions */
-@import url('modules/icons.css');
-
 /* Import component-specific styles */
 @import url('modules/jwksValidator.css');
 @import url('modules/tokenVerifier.css');
