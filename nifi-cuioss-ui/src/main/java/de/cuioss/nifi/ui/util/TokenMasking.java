@@ -16,6 +16,8 @@
  */
 package de.cuioss.nifi.ui.util;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Utility for masking sensitive token values in log output.
  *
@@ -33,7 +35,7 @@ public final class TokenMasking {
      * @param token the token to mask, may be null
      * @return a masked representation of the token
      */
-    public static String maskToken(String token) {
+    public static String maskToken(@Nullable String token) {
         if (token == null || token.length() <= 12) {
             return "***";
         }

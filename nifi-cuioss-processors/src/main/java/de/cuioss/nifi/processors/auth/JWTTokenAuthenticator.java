@@ -105,10 +105,9 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
         // Extract token from flow file
         String tokenLocation = context.getProperty(Properties.TOKEN_LOCATION).getValue();
         String bearerPrefix = context.getProperty(Properties.BEARER_TOKEN_PREFIX).getValue();
-        String token;
 
         // Extract token based on configured location
-        token = switch (tokenLocation) {
+        Optional<String> tokenOpt = switch (tokenLocation) {
             case TokenLocation.AUTHORIZATION_HEADER ->
                 extractTokenFromHeader(flowFile, context.getProperty(Properties.TOKEN_HEADER).getValue(), bearerPrefix);
             case TokenLocation.CUSTOM_HEADER ->
@@ -120,7 +119,7 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
         };
 
         // If no token found, log warning and route to failure
-        if (token == null || token.isEmpty()) {
+        if (tokenOpt.isEmpty()) {
             LOGGER.warn("No token found in the specified location: %s", tokenLocation);
 
             // Add error attributes
@@ -135,6 +134,7 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
         }
 
         // Add token and extraction timestamp to flow file attributes
+        String token = tokenOpt.get();
         Map<String, String> attributes = new HashMap<>();
         attributes.put(JWTAttributes.Token.VALUE, token);
         attributes.put(JWTAttributes.Token.EXTRACTED_AT, Instant.now().toString());
@@ -150,22 +150,25 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
      * @param flowFile The flow file containing the header
      * @param headerName The name of the header containing the token
      * @param bearerPrefix The configured bearer prefix (e.g. "Bearer")
-     * @return The extracted token, or null if not found
+     * @return The extracted token, or empty if not found
      */
-    private String extractTokenFromHeader(FlowFile flowFile, String headerName, String bearerPrefix) {
+    private Optional<String> extractTokenFromHeader(FlowFile flowFile, String headerName, String bearerPrefix) {
         String headerValue = flowFile.getAttribute(Http.HEADERS_PREFIX + headerName.toLowerCase());
 
         if (headerValue == null || headerValue.isEmpty()) {
-            return null;
+            return Optional.empty();
         }
 
         // If header starts with configured prefix, strip it
         String fullPrefix = bearerPrefix + " ";
+        String token;
         if (headerValue.startsWith(fullPrefix)) {
-            return headerValue.substring(fullPrefix.length()).trim();
+            token = headerValue.substring(fullPrefix.length()).trim();
+        } else {
+            token = headerValue.trim();
         }
 
-        return headerValue.trim();
+        return token.isEmpty() ? Optional.empty() : Optional.of(token);
     }
 
     /**
@@ -173,13 +176,13 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
      *
      * @param flowFile The flow file containing the token
      * @param session The process session
-     * @return The extracted token, or null if content is empty or exceeds size limit
+     * @return The extracted token, or empty if content is empty or exceeds size limit
      */
-    private String extractTokenFromContent(FlowFile flowFile, ProcessSession session) {
+    private Optional<String> extractTokenFromContent(FlowFile flowFile, ProcessSession session) {
         if (flowFile.getSize() > DEFAULT_MAX_CONTENT_SIZE) {
             LOGGER.warn("Flow file content size %d exceeds maximum allowed size %d",
                     flowFile.getSize(), DEFAULT_MAX_CONTENT_SIZE);
-            return null;
+            return Optional.empty();
         }
 
         final StringBuilder contentBuilder = new StringBuilder();
@@ -193,6 +196,6 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
         });
 
         String content = contentBuilder.toString().trim();
-        return content.isEmpty() ? null : content;
+        return content.isEmpty() ? Optional.empty() : Optional.of(content);
     }
 }

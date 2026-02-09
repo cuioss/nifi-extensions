@@ -309,14 +309,14 @@ public class AuthorizationValidator {
     /**
      * Internal record for scope validation results.
      */
-    private record ScopeValidationResult(boolean valid, String reason,
+    private record ScopeValidationResult(boolean valid, @Nullable String reason,
             Set<String> matchedScopes, Set<String> missingScopes) {
     }
 
     /**
      * Internal record for role validation results.
      */
-    private record RoleValidationResult(boolean valid, String reason,
+    private record RoleValidationResult(boolean valid, @Nullable String reason,
             Set<String> matchedRoles, Set<String> missingRoles) {
     }
 }

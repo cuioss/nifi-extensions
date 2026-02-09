@@ -22,6 +22,7 @@ import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.experimental.UtilityClass;
+import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -68,7 +69,7 @@ public class IssuerConfigurationParser {
      * @param value the value to sanitize
      * @return the sanitized value
      */
-    private static String sanitizeLogValue(String value) {
+    private static String sanitizeLogValue(@Nullable String value) {
         if (value == null) {
             return "null";
         }
