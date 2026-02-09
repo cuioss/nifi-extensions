@@ -295,7 +295,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
         @Test
         @DisplayName("Should support adding a second issuer at runtime")
-        void shouldSupportAddingSecondIssuer() throws IOException {
+        void shouldSupportAddingSecondIssuer() {
             // First run succeeds with original issuer
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             enqueueWithToken(tokenHolder.getRawToken());

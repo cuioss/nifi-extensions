@@ -68,27 +68,6 @@ class SecurityHeadersFilterTest {
     }
 
     @Test
-    @DisplayName("Should set X-Frame-Options to SAMEORIGIN for NiFi iframe")
-    void shouldSetXFrameOptionsToSameOrigin() throws Exception {
-        mockResponse.setHeader("X-Content-Type-Options", "nosniff");
-        expectLastCall().once();
-        mockResponse.setHeader("X-Frame-Options", "SAMEORIGIN");
-        expectLastCall().once();
-        mockResponse.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-        expectLastCall().once();
-        mockResponse.setHeader(eq("Content-Security-Policy"), anyString());
-        expectLastCall().once();
-        mockChain.doFilter(mockRequest, mockResponse);
-        expectLastCall().once();
-
-        replay(mockRequest, mockResponse, mockChain);
-
-        filter.doFilter(mockRequest, mockResponse, mockChain);
-
-        verify(mockRequest, mockResponse, mockChain);
-    }
-
-    @Test
     @DisplayName("Should continue filter chain after setting headers")
     void shouldContinueFilterChain() throws Exception {
         mockResponse.setHeader(anyString(), anyString());

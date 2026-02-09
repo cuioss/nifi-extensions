@@ -26,6 +26,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -245,73 +247,20 @@ class JwksValidationServletTest {
         assertTrue(responseJson.contains("Invalid JSON format"));
     }
 
-    @Test
-    void invalidUrlFormatValidation() throws Exception {
-        // Arrange - test invalid URL that triggers IllegalArgumentException
-        String requestJson = """
-            {
-                "jwksUrl": "not a valid url with spaces",
-                "processorId": "test-processor-id"
-            }
-            """;
-
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-url").anyTimes();
-
-        response.setStatus(400);
-        expectLastCall();
-
-        replay(request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(request, response);
-
-        String responseJson = responseOutput.toString();
-        assertTrue(responseJson.contains("\"valid\":false"));
-        assertTrue(responseJson.contains("Invalid JWKS URL format"));
-    }
-
-    @Test
-    void unsupportedUrlSchemeValidation() throws Exception {
-        // Arrange - test URL with unsupported scheme (not http/https)
-        String requestJson = """
-            {
-                "jwksUrl": "ftp://example.com/jwks.json",
-                "processorId": "test-processor-id"
-            }
-            """;
-
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-        expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-url").anyTimes();
-
-        response.setStatus(400);
-        expectLastCall();
-
-        replay(request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(request, response);
-
-        String responseJson = responseOutput.toString();
-        assertTrue(responseJson.contains("\"valid\":false"));
-        assertTrue(responseJson.contains("Invalid URL scheme"));
-    }
-
-    @Test
-    void emptyJwksUrlValidation() throws Exception {
+    @ParameterizedTest(name = "URL validation: {0}")
+    @CsvSource({
+            "'not a valid url with spaces', Invalid JWKS URL format",
+            "'ftp://example.com/jwks.json', Invalid URL scheme",
+            "'', JWKS URL cannot be empty"
+    })
+    void invalidUrlValidation(String jwksUrl, String expectedError) throws Exception {
         // Arrange
         String requestJson = """
             {
-                "jwksUrl": "",
+                "jwksUrl": "%s",
                 "processorId": "test-processor-id"
             }
-            """;
+            """.formatted(jwksUrl);
 
         expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
         expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-url").anyTimes();
@@ -329,7 +278,7 @@ class JwksValidationServletTest {
 
         String responseJson = responseOutput.toString();
         assertTrue(responseJson.contains("\"valid\":false"));
-        assertTrue(responseJson.contains("JWKS URL cannot be empty"));
+        assertTrue(responseJson.contains(expectedError));
     }
 
     @Test
@@ -480,67 +429,19 @@ class JwksValidationServletTest {
     @DisplayName("Path Traversal Protection Tests")
     class PathTraversalProtectionTests {
 
-        @Test
-        @DisplayName("Should reject path with parent directory traversal")
-        void shouldRejectPathWithParentTraversal() throws Exception {
+        @ParameterizedTest(name = "Should reject path: {0}")
+        @CsvSource({
+                "'../../etc/passwd'",
+                "'/etc/shadow'",
+                "'..%2F..%2Fetc%2Fpasswd'"
+        })
+        void shouldRejectMaliciousPath(String maliciousPath) throws Exception {
             String requestJson = """
                 {
-                    "jwksFilePath": "../../etc/passwd",
+                    "jwksFilePath": "%s",
                     "processorId": "test-processor-id"
                 }
-                """;
-
-            expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-            expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-file").anyTimes();
-
-            response.setStatus(400);
-            expectLastCall();
-
-            replay(request, response);
-
-            servlet.doPost(request, response);
-
-            verify(request, response);
-
-            String responseJson = responseOutput.toString();
-            assertTrue(responseJson.contains("\"valid\":false"));
-        }
-
-        @Test
-        @DisplayName("Should reject absolute path to system file")
-        void shouldRejectAbsoluteSystemPath() throws Exception {
-            String requestJson = """
-                {
-                    "jwksFilePath": "/etc/shadow",
-                    "processorId": "test-processor-id"
-                }
-                """;
-
-            expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-            expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-file").anyTimes();
-
-            response.setStatus(400);
-            expectLastCall();
-
-            replay(request, response);
-
-            servlet.doPost(request, response);
-
-            verify(request, response);
-
-            String responseJson = responseOutput.toString();
-            assertTrue(responseJson.contains("\"valid\":false"));
-        }
-
-        @Test
-        @DisplayName("Should reject path with encoded traversal")
-        void shouldRejectEncodedTraversal() throws Exception {
-            String requestJson = """
-                {
-                    "jwksFilePath": "..%2F..%2Fetc%2Fpasswd",
-                    "processorId": "test-processor-id"
-                }
-                """;
+                """.formatted(maliciousPath);
 
             expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
             expect(request.getServletPath()).andReturn("/nifi-api/processors/jwt/validate-jwks-file").anyTimes();

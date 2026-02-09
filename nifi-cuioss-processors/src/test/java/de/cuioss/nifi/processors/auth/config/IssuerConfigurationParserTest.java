@@ -19,6 +19,9 @@ import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,6 +30,7 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -320,69 +324,29 @@ class IssuerConfigurationParserTest {
 
     // ========== Tests for parseParserConfig ==========
 
-    @Test
-    void parseParserConfig_withDefaultMaxTokenSize() {
-        Map<String, String> properties = new LinkedHashMap<>();
-
-        ParserConfig config = IssuerConfigurationParser.parseParserConfig(properties);
-
-        assertNotNull(config);
-        assertEquals(16384, config.getMaxTokenSize());
+    static Stream<Arguments> parseParserConfigCases() {
+        return Stream.of(
+                Arguments.of(null, 16384, "default when not set"),
+                Arguments.of("8192", 8192, "custom value"),
+                Arguments.of("not-a-number", 16384, "invalid falls back to default"),
+                Arguments.of("", 16384, "empty falls back to default"),
+                Arguments.of("0", 0, "zero value"),
+                Arguments.of("-1", -1, "negative value")
+        );
     }
 
-    @Test
-    void parseParserConfig_withCustomMaxTokenSize() {
+    @ParameterizedTest(name = "parseParserConfig: {2}")
+    @MethodSource("parseParserConfigCases")
+    void parseParserConfig_shouldReturnExpectedMaxTokenSize(String input, int expected, String description) {
         Map<String, String> properties = new LinkedHashMap<>();
-        properties.put("Maximum Token Size", "8192");
+        if (input != null) {
+            properties.put("Maximum Token Size", input);
+        }
 
         ParserConfig config = IssuerConfigurationParser.parseParserConfig(properties);
 
         assertNotNull(config);
-        assertEquals(8192, config.getMaxTokenSize());
-    }
-
-    @Test
-    void parseParserConfig_withInvalidMaxTokenSize_shouldFallBackToDefault() {
-        Map<String, String> properties = new LinkedHashMap<>();
-        properties.put("Maximum Token Size", "not-a-number");
-
-        ParserConfig config = IssuerConfigurationParser.parseParserConfig(properties);
-
-        assertNotNull(config);
-        assertEquals(16384, config.getMaxTokenSize());
-    }
-
-    @Test
-    void parseParserConfig_withEmptyMaxTokenSize_shouldFallBackToDefault() {
-        Map<String, String> properties = new LinkedHashMap<>();
-        properties.put("Maximum Token Size", "");
-
-        ParserConfig config = IssuerConfigurationParser.parseParserConfig(properties);
-
-        assertNotNull(config);
-        assertEquals(16384, config.getMaxTokenSize());
-    }
-
-    @Test
-    void parseParserConfig_withZeroMaxTokenSize() {
-        Map<String, String> properties = new LinkedHashMap<>();
-        properties.put("Maximum Token Size", "0");
-
-        ParserConfig config = IssuerConfigurationParser.parseParserConfig(properties);
-
-        assertNotNull(config);
-        assertEquals(0, config.getMaxTokenSize());
-    }
-
-    @Test
-    void parseParserConfig_withNegativeMaxTokenSize() {
-        Map<String, String> properties = new LinkedHashMap<>();
-        properties.put("Maximum Token Size", "-1");
-
-        ParserConfig config = IssuerConfigurationParser.parseParserConfig(properties);
-
-        assertNotNull(config);
-        assertEquals(-1, config.getMaxTokenSize());
+        assertEquals(expected, config.getMaxTokenSize());
     }
 
     // ========== Tests for extractPropertiesFromProcessorDTO ==========
