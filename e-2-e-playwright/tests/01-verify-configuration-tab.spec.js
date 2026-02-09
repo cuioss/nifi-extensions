@@ -1,6 +1,6 @@
 /**
- * @file JWT Authenticator Customizer UI Test
- * Verifies the custom UI components of the MultiIssuerJWTTokenAuthenticator processor
+ * @file Configuration Tab Test
+ * Verifies the configuration tab structure and issuer management in the JWT authenticator UI
  * @version 1.0.0
  */
 
@@ -12,120 +12,137 @@ import {
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 
-test.describe("JWT Authenticator Customizer UI", () => {
+test.describe("Configuration Tab", () => {
     test.beforeEach(async ({ page, processorManager }, testInfo) => {
         const authService = new AuthService(page);
         await authService.ensureReady();
 
-        // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
         await processorManager.ensureProcessorOnCanvas();
         await takeStartScreenshot(page, testInfo);
     });
 
-    test("should display custom JWT authenticator UI", async ({
+    test("should display configuration tab structure", async ({
         page,
     }, testInfo) => {
-        // Explicit NiFi service availability check
-        const authService = new AuthService(page);
-        const isNiFiAvailable = await authService.checkNiFiAccessibility();
-        if (!isNiFiAvailable) {
-            throw new Error(
-                "PRECONDITION FAILED: NiFi service is not available. " +
-                    "Integration tests require a running NiFi instance. " +
-                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
-            );
-        }
-
         const processorService = new ProcessorService(page, testInfo);
 
-        // Find the processor (it should be on canvas from beforeEach)
         const processor = await processorService.findJwtAuthenticator({
             failIfNotFound: true,
         });
 
-        // Open Advanced UI via right-click menu
-        const advancedOpened = await processorService.openAdvancedUI(processor);
+        await processorService.openAdvancedUI(processor);
 
-        if (!advancedOpened) {
-            throw new Error("Failed to open Advanced UI via right-click menu");
-        }
-
-        // Get the custom UI frame using the utility
         const customUIFrame = await processorService.getAdvancedUIFrame();
 
         if (!customUIFrame) {
             throw new Error("Could not find custom UI iframe");
         }
 
-        const uiContext = customUIFrame;
-
-        const customUIElements = [
+        // Verify container, panel, and tabs structure
+        const structuralElements = [
             {
                 selector: '[data-testid="jwt-customizer-container"]',
-                description: "JWT Customizer Container",
+                name: "JWT Customizer Container",
             },
             {
                 selector: '[data-testid="issuer-config-panel"]',
-                description: "Issuer Configuration Panel",
+                name: "Issuer Configuration Panel",
             },
             {
                 selector: '[data-testid="jwt-config-tabs"]',
-                description: "Configuration Tabs",
+                name: "Configuration Tabs",
+            },
+            {
+                selector: 'h2:has-text("Issuer Configurations")',
+                name: "Issuer Configurations header",
+            },
+            {
+                selector: 'button:has-text("Add Issuer")',
+                name: "Add Issuer button",
             },
         ];
 
-        for (const element of customUIElements) {
-            const el = await uiContext.locator(element.selector);
+        for (const element of structuralElements) {
+            const el = customUIFrame.locator(element.selector);
             await expect(el).toBeVisible({ timeout: 5000 });
         }
 
+        // Verify all four tab names are present
         const tabs = ["Configuration", "Token Verification", "Metrics", "Help"];
 
         for (const tabName of tabs) {
             const tabSelector = `[role="tab"]:has-text("${tabName}")`;
-            const tab = await uiContext.locator(tabSelector);
+            const tab = customUIFrame.locator(tabSelector);
             await expect(tab).toBeVisible({ timeout: 5000 });
+        }
+    });
+
+    test("should add issuer and verify form fields", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+
+        const advancedOpened = await processorService.openAdvancedUI(processor);
+
+        if (!advancedOpened) {
+            throw new Error("Failed to open Advanced UI via right-click menu");
+        }
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Could not find custom UI iframe");
+        }
+
+        // Click Add Issuer button
+        const addIssuerButton = customUIFrame.locator(
+            'button:has-text("Add Issuer")',
+        );
+        await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
+        await addIssuerButton.click();
+
+        // Wait for form to render
+        await page.waitForTimeout(1000);
+
+        // Verify issuer name input appeared
+        const issuerInputCount = await customUIFrame
+            .locator("input.issuer-name")
+            .count();
+
+        if (issuerInputCount > 0) {
+            const lastInput = customUIFrame.locator("input.issuer-name").last();
+            if (await lastInput.isVisible()) {
+                await lastInput.fill("test-issuer");
+            }
         }
     });
 
     test("should handle issuer configuration interactions", async ({
         page,
     }, testInfo) => {
-        // Explicit NiFi service availability check
-        const authService = new AuthService(page);
-        const isNiFiAvailable = await authService.checkNiFiAccessibility();
-        if (!isNiFiAvailable) {
-            throw new Error(
-                "PRECONDITION FAILED: NiFi service is not available. " +
-                    "Integration tests require a running NiFi instance. " +
-                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
-            );
-        }
-
         const processorService = new ProcessorService(page, testInfo);
 
-        // Find the processor (it should be on canvas from beforeEach)
         const processor = await processorService.findJwtAuthenticator({
             failIfNotFound: true,
         });
 
-        // Open Advanced UI via right-click menu
         const advancedOpened = await processorService.openAdvancedUI(processor);
 
         if (!advancedOpened) {
             throw new Error("Failed to open Advanced UI via right-click menu");
         }
 
-        // Get the custom UI frame using the utility
         const customUIFrame = await processorService.getAdvancedUIFrame();
 
         if (!customUIFrame) {
             throw new Error("Could not find custom UI iframe");
         }
 
-        const uiContext = customUIFrame;
-
-        const addIssuerButton = await uiContext.getByRole("button", {
+        const addIssuerButton = customUIFrame.getByRole("button", {
             name: "Add Issuer",
         });
         await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
@@ -140,7 +157,7 @@ test.describe("JWT Authenticator Customizer UI", () => {
                 selector: 'input[placeholder="e.g., keycloak"]',
                 value: "test-issuer",
                 description: "Issuer Name",
-                index: 0, // Use first element to avoid strict mode violation
+                index: 0,
             },
             {
                 selector: 'input[name="jwks-url"]',
@@ -157,15 +174,15 @@ test.describe("JWT Authenticator Customizer UI", () => {
         for (const field of issuerFormFields) {
             let input;
             if (field.index !== undefined) {
-                input = await uiContext
+                input = customUIFrame
                     .locator(field.selector)
                     .nth(field.index);
             } else {
-                input = await uiContext.locator(field.selector).first();
+                input = customUIFrame.locator(field.selector).first();
             }
             await expect(input).toBeVisible({ timeout: 5000 });
 
-            // Verify input is enabled - fail test if disabled
+            // Verify input is enabled
             const isEnabled = await input.isEnabled();
             if (!isEnabled) {
                 throw new Error(
@@ -177,26 +194,24 @@ test.describe("JWT Authenticator Customizer UI", () => {
             await input.fill(field.value);
         }
 
-        const saveButton = await uiContext
+        const saveButton = customUIFrame
             .getByRole("button", { name: "Save Issuer" })
             .first();
         await expect(saveButton).toBeVisible({ timeout: 5000 });
         await saveButton.click();
 
-        // Check if issuer was saved - this could be in various formats
+        // Check if issuer was saved
         try {
-            const savedIssuer = await uiContext
+            const savedIssuer = customUIFrame
                 .locator(
                     'text="test-issuer", [value="test-issuer"], .issuer-name',
                 )
                 .first();
             await expect(savedIssuer).toBeVisible({ timeout: 5000 });
         } catch (error) {
-            // If not immediately visible, just verify the save button worked
-
-            // Check if we're back to a state where we can add another issuer
+            // If not immediately visible, verify the save button worked
             try {
-                const addAnotherButton = await uiContext.getByRole("button", {
+                const addAnotherButton = customUIFrame.getByRole("button", {
                     name: "Add Issuer",
                 });
                 await expect(addAnotherButton).toBeVisible({

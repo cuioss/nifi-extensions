@@ -1,5 +1,5 @@
 /**
- * @file JWKS Validation Button Test
+ * @file JWKS Validation Test
  * Verifies the JWKS validation button functionality in the JWT authenticator UI
  * @version 1.0.0
  */
@@ -12,7 +12,7 @@ import {
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 
-test.describe("JWKS Validation Button", () => {
+test.describe("JWKS Validation", () => {
     test.beforeEach(async ({ page, processorManager }, testInfo) => {
         const authService = new AuthService(page);
         await authService.ensureReady();
@@ -25,38 +25,22 @@ test.describe("JWKS Validation Button", () => {
     test("should validate JWKS URL successfully", async ({
         page,
     }, testInfo) => {
-        // Explicit NiFi service availability check
-        const authService = new AuthService(page);
-        const isNiFiAvailable = await authService.checkNiFiAccessibility();
-        if (!isNiFiAvailable) {
-            throw new Error(
-                "PRECONDITION FAILED: NiFi service is not available. " +
-                    "Integration tests require a running NiFi instance. " +
-                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
-            );
-        }
-
-        // Test JWKS validation button with valid URL
         const processorService = new ProcessorService(page, testInfo);
 
-        // Find the processor (it should be on canvas from beforeEach)
         const processor = await processorService.findJwtAuthenticator({
             failIfNotFound: true,
         });
-        // Open Advanced UI via right-click menu
+
         const advancedOpened = await processorService.openAdvancedUI(processor);
 
         expect(advancedOpened).toBe(true);
 
-        // Get the custom UI frame using the utility
         const customUIFrame = await processorService.getAdvancedUIFrame();
 
         expect(customUIFrame).toBeTruthy();
 
-        const uiContext = customUIFrame;
-
         // First click "Add Issuer" to enable the form
-        const addIssuerButton = await uiContext.getByRole("button", {
+        const addIssuerButton = customUIFrame.getByRole("button", {
             name: "Add Issuer",
         });
         await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
@@ -65,7 +49,7 @@ test.describe("JWKS Validation Button", () => {
         // Wait longer for form to be fully enabled
         await page.waitForLoadState("networkidle");
 
-        const jwksUrlInput = await uiContext
+        const jwksUrlInput = customUIFrame
             .locator('input[name="jwks-url"]')
             .first();
         await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
@@ -73,13 +57,13 @@ test.describe("JWKS Validation Button", () => {
         // Fill the JWKS URL input
         await jwksUrlInput.fill("https://example.com/.well-known/jwks.json");
 
-        const validateButton = await uiContext
+        const validateButton = customUIFrame
             .getByRole("button", { name: "Test Connection" })
             .first();
         await expect(validateButton).toBeVisible({ timeout: 5000 });
         await validateButton.click();
 
-        const verificationResult = await uiContext
+        const verificationResult = customUIFrame
             .locator(".verification-result")
             .first();
         await expect(verificationResult).toBeVisible({ timeout: 10000 });
@@ -99,39 +83,22 @@ test.describe("JWKS Validation Button", () => {
     });
 
     test("should handle invalid JWKS URL", async ({ page }, testInfo) => {
-        // Explicit NiFi service availability check
-        const authService = new AuthService(page);
-        const isNiFiAvailable = await authService.checkNiFiAccessibility();
-        if (!isNiFiAvailable) {
-            throw new Error(
-                "PRECONDITION FAILED: NiFi service is not available. " +
-                    "Integration tests require a running NiFi instance. " +
-                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
-            );
-        }
-
-        // Testing JWKS validation button - invalid URL
         const processorService = new ProcessorService(page, testInfo);
 
-        // Find the processor (it should be on canvas from beforeEach)
         const processor = await processorService.findJwtAuthenticator({
             failIfNotFound: true,
         });
 
-        // Open Advanced UI via right-click menu
         const advancedOpened = await processorService.openAdvancedUI(processor);
 
         expect(advancedOpened).toBe(true);
 
-        // Get the custom UI frame using the utility
         const customUIFrame = await processorService.getAdvancedUIFrame();
 
         expect(customUIFrame).toBeTruthy();
 
-        const uiContext = customUIFrame;
-
         // First click "Add Issuer" to enable the form
-        const addIssuerButton = await uiContext.getByRole("button", {
+        const addIssuerButton = customUIFrame.getByRole("button", {
             name: "Add Issuer",
         });
         await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
@@ -140,7 +107,7 @@ test.describe("JWKS Validation Button", () => {
         // Wait for form to be fully enabled
         await page.waitForLoadState("networkidle");
 
-        const jwksUrlInput = await uiContext
+        const jwksUrlInput = customUIFrame
             .locator('input[name="jwks-url"]')
             .first();
         await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
@@ -154,14 +121,14 @@ test.describe("JWKS Validation Button", () => {
 
         await jwksUrlInput.fill("not-a-valid-url", { force: true });
 
-        const validateButton = await uiContext
+        const validateButton = customUIFrame
             .getByRole("button", { name: "Test Connection" })
             .first();
         await expect(validateButton).toBeVisible({ timeout: 5000 });
         await validateButton.click();
 
         // Wait for validation result to appear in the verification-result container
-        const verificationResult = await uiContext
+        const verificationResult = customUIFrame
             .locator(".verification-result")
             .first();
 
@@ -174,39 +141,22 @@ test.describe("JWKS Validation Button", () => {
     });
 
     test("should validate JWKS file path", async ({ page }, testInfo) => {
-        // Explicit NiFi service availability check
-        const authService = new AuthService(page);
-        const isNiFiAvailable = await authService.checkNiFiAccessibility();
-        if (!isNiFiAvailable) {
-            throw new Error(
-                "PRECONDITION FAILED: NiFi service is not available. " +
-                    "Integration tests require a running NiFi instance. " +
-                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
-            );
-        }
-
-        // Testing JWKS validation button - file path
         const processorService = new ProcessorService(page, testInfo);
 
-        // Find the processor (it should be on canvas from beforeEach)
         const processor = await processorService.findJwtAuthenticator({
             failIfNotFound: true,
         });
 
-        // Open Advanced UI via right-click menu
         const advancedOpened = await processorService.openAdvancedUI(processor);
 
         expect(advancedOpened).toBe(true);
 
-        // Get the custom UI frame using the utility
         const customUIFrame = await processorService.getAdvancedUIFrame();
 
         expect(customUIFrame).toBeTruthy();
 
-        const uiContext = customUIFrame;
-
         // First click "Add Issuer" to enable the form
-        const addIssuerButton = await uiContext.getByRole("button", {
+        const addIssuerButton = customUIFrame.getByRole("button", {
             name: "Add Issuer",
         });
         await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
@@ -216,7 +166,7 @@ test.describe("JWKS Validation Button", () => {
         await page.waitForLoadState("networkidle");
 
         // For file path test, we'll just use the JWKS URL input with a file path
-        const jwksUrlInput = await uiContext
+        const jwksUrlInput = customUIFrame
             .locator('input[name="jwks-url"]')
             .first();
         await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
@@ -230,13 +180,13 @@ test.describe("JWKS Validation Button", () => {
 
         await jwksUrlInput.fill("/path/to/jwks.json", { force: true });
 
-        const validateButton = await uiContext
+        const validateButton = customUIFrame
             .getByRole("button", { name: "Test Connection" })
             .first();
         await expect(validateButton).toBeVisible({ timeout: 5000 });
         await validateButton.click();
 
-        const validationResult = await uiContext
+        const validationResult = customUIFrame
             .locator(
                 '.validation-result, .verification-result, [class*="result"]',
             )
@@ -247,39 +197,22 @@ test.describe("JWKS Validation Button", () => {
     test("should display validation progress indicator", async ({
         page,
     }, testInfo) => {
-        // Explicit NiFi service availability check
-        const authService = new AuthService(page);
-        const isNiFiAvailable = await authService.checkNiFiAccessibility();
-        if (!isNiFiAvailable) {
-            throw new Error(
-                "PRECONDITION FAILED: NiFi service is not available. " +
-                    "Integration tests require a running NiFi instance. " +
-                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
-            );
-        }
-
-        // Testing JWKS validation progress indicator
         const processorService = new ProcessorService(page, testInfo);
 
-        // Find the processor (it should be on canvas from beforeEach)
         const processor = await processorService.findJwtAuthenticator({
             failIfNotFound: true,
         });
 
-        // Open Advanced UI via right-click menu
         const advancedOpened = await processorService.openAdvancedUI(processor);
 
         expect(advancedOpened).toBe(true);
 
-        // Get the custom UI frame using the utility
         const customUIFrame = await processorService.getAdvancedUIFrame();
 
         expect(customUIFrame).toBeTruthy();
 
-        const uiContext = customUIFrame;
-
         // First click "Add Issuer" to enable the form
-        const addIssuerButton = await uiContext.getByRole("button", {
+        const addIssuerButton = customUIFrame.getByRole("button", {
             name: "Add Issuer",
         });
         await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
@@ -288,7 +221,7 @@ test.describe("JWKS Validation Button", () => {
         // Wait for form to be fully enabled
         await page.waitForLoadState("networkidle");
 
-        const jwksUrlInput = await uiContext
+        const jwksUrlInput = customUIFrame
             .locator('input[name="jwks-url"]')
             .first();
         await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
@@ -304,14 +237,14 @@ test.describe("JWKS Validation Button", () => {
             force: true,
         });
 
-        const validateButton = await uiContext
+        const validateButton = customUIFrame
             .getByRole("button", { name: "Test Connection" })
             .first();
         await expect(validateButton).toBeVisible({ timeout: 5000 });
         await validateButton.click();
 
         // Check for the loading state
-        const verificationResult = await uiContext
+        const verificationResult = customUIFrame
             .locator(".verification-result")
             .first();
 

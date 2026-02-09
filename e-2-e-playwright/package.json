@@ -15,7 +15,7 @@
     "playwright:codegen": "playwright codegen",
     "test": "node scripts/run-tests-with-precheck.js",
     "test:self": "playwright test tests/self-*.spec.js --reporter=list",
-    "test:jwt": "node scripts/run-tests-with-precheck.js tests/02-verify-jwt-authenticator-customizer.spec.js tests/03-verify-jwks-validation-button.spec.js",
+    "test:jwt": "node scripts/run-tests-with-precheck.js tests/01-verify-configuration-tab.spec.js tests/03-verify-jwks-validation.spec.js",
     "test:no-precheck": "playwright test --grep-invert self- --reporter=list",
     "test:a11y": "playwright test tests/accessibility-wcag-compliance.spec.js --reporter=list",
     "test:a11y:full": "playwright test tests/accessibility-wcag-compliance.spec.js --reporter=html",

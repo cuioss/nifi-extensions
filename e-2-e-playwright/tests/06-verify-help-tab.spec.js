@@ -23,17 +23,6 @@ test.describe("Help Tab", () => {
     });
 
     test("should display help documentation", async ({ page }, testInfo) => {
-        // Explicit NiFi service availability check
-        const authService = new AuthService(page);
-        const isNiFiAvailable = await authService.checkNiFiAccessibility();
-        if (!isNiFiAvailable) {
-            throw new Error(
-                "PRECONDITION FAILED: NiFi service is not available. " +
-                    "Integration tests require a running NiFi instance. " +
-                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
-            );
-        }
-
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT processor using the verified utility
@@ -48,42 +37,31 @@ test.describe("Help Tab", () => {
         const customUIFrame = await processorService.getAdvancedUIFrame();
         await processorService.clickTab(customUIFrame, "Help");
 
-        const helpPanel = await customUIFrame.locator("#help");
+        const helpPanel = customUIFrame.locator("#help");
         await expect(helpPanel).toBeVisible({ timeout: 5000 });
 
         // Check for help content container
-        const helpContent = await customUIFrame.locator("#jwt-help-content");
+        const helpContent = customUIFrame.locator("#jwt-help-content");
         await expect(helpContent).toBeVisible({ timeout: 5000 });
 
         // Check for main help sections
-        const helpSections = await customUIFrame.locator(".help-section");
+        const helpSections = customUIFrame.locator(".help-section");
         const sectionCount = await helpSections.count();
         expect(sectionCount).toBeGreaterThan(0);
 
         // Check for specific content
-        const gettingStarted = await customUIFrame.locator(
+        const gettingStarted = customUIFrame.locator(
             '.help-section:has-text("Getting Started")',
         );
         await expect(gettingStarted).toBeVisible();
 
-        const issuerConfig = await customUIFrame
+        const issuerConfig = customUIFrame
             .locator('.help-section:has-text("Issuer Configuration")')
             .first();
         await expect(issuerConfig).toBeVisible();
     });
 
     test("should have expandable help sections", async ({ page }, testInfo) => {
-        // Explicit NiFi service availability check
-        const authService = new AuthService(page);
-        const isNiFiAvailable = await authService.checkNiFiAccessibility();
-        if (!isNiFiAvailable) {
-            throw new Error(
-                "PRECONDITION FAILED: NiFi service is not available. " +
-                    "Integration tests require a running NiFi instance. " +
-                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
-            );
-        }
-
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT processor using the verified utility
@@ -98,7 +76,7 @@ test.describe("Help Tab", () => {
         const customUIFrame = await processorService.getAdvancedUIFrame();
         await processorService.clickTab(customUIFrame, "Help");
 
-        const accordionItems = await customUIFrame.locator(
+        const accordionItems = customUIFrame.locator(
             '[data-testid="help-accordion-item"]',
         );
         const itemCount = await accordionItems.count();
@@ -144,17 +122,6 @@ test.describe("Help Tab", () => {
     test("should display configuration examples", async ({
         page,
     }, testInfo) => {
-        // Explicit NiFi service availability check
-        const authService = new AuthService(page);
-        const isNiFiAvailable = await authService.checkNiFiAccessibility();
-        if (!isNiFiAvailable) {
-            throw new Error(
-                "PRECONDITION FAILED: NiFi service is not available. " +
-                    "Integration tests require a running NiFi instance. " +
-                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
-            );
-        }
-
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT processor using the verified utility
@@ -170,7 +137,7 @@ test.describe("Help Tab", () => {
         await processorService.clickTab(customUIFrame, "Help");
 
         // First, ensure the Issuer Configuration section is expanded
-        const issuerConfigHeader = await customUIFrame
+        const issuerConfigHeader = customUIFrame
             .locator('.collapsible-header:has-text("Issuer Configuration")')
             .first();
 
@@ -184,7 +151,7 @@ test.describe("Help Tab", () => {
         }
 
         // Look for configuration examples in the help content
-        const examplesSection = await customUIFrame
+        const examplesSection = customUIFrame
             .locator(".example-config")
             .first();
         await expect(examplesSection).toBeVisible({ timeout: 5000 });
@@ -207,17 +174,6 @@ test.describe("Help Tab", () => {
     });
 
     test("should have copy code functionality", async ({ page }, testInfo) => {
-        // Explicit NiFi service availability check
-        const authService = new AuthService(page);
-        const isNiFiAvailable = await authService.checkNiFiAccessibility();
-        if (!isNiFiAvailable) {
-            throw new Error(
-                "PRECONDITION FAILED: NiFi service is not available. " +
-                    "Integration tests require a running NiFi instance. " +
-                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
-            );
-        }
-
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT processor using the verified utility
@@ -232,7 +188,7 @@ test.describe("Help Tab", () => {
         const customUIFrame = await processorService.getAdvancedUIFrame();
         await processorService.clickTab(customUIFrame, "Help");
 
-        const codeBlocks = await customUIFrame.locator(
+        const codeBlocks = customUIFrame.locator(
             '[data-testid="code-block"]',
         );
         const blockCount = await codeBlocks.count();
@@ -248,7 +204,7 @@ test.describe("Help Tab", () => {
 
             await copyButton.click();
 
-            const copyFeedback = await customUIFrame.locator(
+            const copyFeedback = customUIFrame.locator(
                 '[data-testid="copy-feedback"]',
             );
             await expect(copyFeedback).toBeVisible({ timeout: 5000 });
@@ -259,17 +215,6 @@ test.describe("Help Tab", () => {
     });
 
     test("should display troubleshooting guide", async ({ page }, testInfo) => {
-        // Explicit NiFi service availability check
-        const authService = new AuthService(page);
-        const isNiFiAvailable = await authService.checkNiFiAccessibility();
-        if (!isNiFiAvailable) {
-            throw new Error(
-                "PRECONDITION FAILED: NiFi service is not available. " +
-                    "Integration tests require a running NiFi instance. " +
-                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
-            );
-        }
-
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT processor using the verified utility
@@ -285,13 +230,13 @@ test.describe("Help Tab", () => {
         await processorService.clickTab(customUIFrame, "Help");
 
         // Look for Common Issues section
-        const commonIssuesSection = await customUIFrame.locator(
+        const commonIssuesSection = customUIFrame.locator(
             '.help-section:has-text("Common Issues")',
         );
         await expect(commonIssuesSection).toBeVisible({ timeout: 5000 });
 
         // Look for Troubleshooting section
-        const troubleshootingHeader = await customUIFrame.locator(
+        const troubleshootingHeader = customUIFrame.locator(
             '.collapsible-header:has-text("Troubleshooting")',
         );
         await expect(troubleshootingHeader).toBeVisible({ timeout: 5000 });
@@ -306,7 +251,7 @@ test.describe("Help Tab", () => {
         }
 
         // Check that troubleshooting content is visible
-        const troubleshootingContent = await customUIFrame.locator(
+        const troubleshootingContent = customUIFrame.locator(
             '.help-section:has(.collapsible-header:has-text("Troubleshooting")) .collapsible-content',
         );
         await expect(troubleshootingContent).toBeVisible({ timeout: 5000 });
@@ -325,17 +270,6 @@ test.describe("Help Tab", () => {
     });
 
     test("should have search functionality", async ({ page }, testInfo) => {
-        // Explicit NiFi service availability check
-        const authService = new AuthService(page);
-        const isNiFiAvailable = await authService.checkNiFiAccessibility();
-        if (!isNiFiAvailable) {
-            throw new Error(
-                "PRECONDITION FAILED: NiFi service is not available. " +
-                    "Integration tests require a running NiFi instance. " +
-                    "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
-            );
-        }
-
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT processor using the verified utility
@@ -352,7 +286,7 @@ test.describe("Help Tab", () => {
 
         // The help tab doesn't have search functionality, but we can verify
         // that the content is searchable by checking for keywords
-        const helpContent = await customUIFrame.locator("#help");
+        const helpContent = customUIFrame.locator("#help");
         await expect(helpContent).toBeVisible({ timeout: 5000 });
 
         const helpText = await helpContent.textContent();
@@ -369,7 +303,7 @@ test.describe("Help Tab", () => {
         }
 
         // Check for collapsible sections as interactive elements
-        const collapsibleHeaders = await customUIFrame.locator(
+        const collapsibleHeaders = customUIFrame.locator(
             ".collapsible-header",
         );
         const headerCount = await collapsibleHeaders.count();
