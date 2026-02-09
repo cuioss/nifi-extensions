@@ -156,20 +156,20 @@ const addIssuerForm = (container, issuerName, properties, processorId) => {
         </div>`;
 
     // Standard text fields
-    addField(fields, idx, 'issuer', 'Issuer URI',
-        'The URI of the token issuer (must match the iss claim)',
-        properties?.issuer);
-    addField(fields, idx, 'jwks-url', 'JWKS URL',
-        'The URL of the JWKS endpoint',
-        properties?.['jwks-url'], 'jwks-type-url');
-    addField(fields, idx, 'jwks-file', 'JWKS File Path',
-        'Path to local JWKS JSON file',
-        properties?.['jwks-file'], 'jwks-type-file',
-        jwksType !== 'file');
-    addTextArea(fields, idx, 'jwks-content', 'JWKS Content',
-        'Inline JWKS JSON content',
-        properties?.['jwks-content'], 'jwks-type-memory',
-        jwksType !== 'memory');
+    addField({ container: fields, idx, name: 'issuer', label: 'Issuer URI',
+        placeholder: 'The URI of the token issuer (must match the iss claim)',
+        value: properties?.issuer });
+    addField({ container: fields, idx, name: 'jwks-url', label: 'JWKS URL',
+        placeholder: 'The URL of the JWKS endpoint',
+        value: properties?.['jwks-url'], extraClass: 'jwks-type-url' });
+    addField({ container: fields, idx, name: 'jwks-file', label: 'JWKS File Path',
+        placeholder: 'Path to local JWKS JSON file',
+        value: properties?.['jwks-file'], extraClass: 'jwks-type-file',
+        hidden: jwksType !== 'file' });
+    addTextArea({ container: fields, idx, name: 'jwks-content', label: 'JWKS Content',
+        placeholder: 'Inline JWKS JSON content',
+        value: properties?.['jwks-content'], extraClass: 'jwks-type-memory',
+        hidden: jwksType !== 'memory' });
 
     // Toggle field visibility on type change
     fields.querySelector('.field-jwks-type').addEventListener('change', (e) => {
@@ -210,12 +210,12 @@ const addIssuerForm = (container, issuerName, properties, processorId) => {
     });
 
     // Optional fields
-    addField(fields, idx, 'audience', 'Audience',
-        'The expected audience claim value',
-        properties?.audience);
-    addField(fields, idx, 'client-id', 'Client ID',
-        'The client ID for token validation',
-        properties?.['client-id']);
+    addField({ container: fields, idx, name: 'audience', label: 'Audience',
+        placeholder: 'The expected audience claim value',
+        value: properties?.audience });
+    addField({ container: fields, idx, name: 'client-id', label: 'Client ID',
+        placeholder: 'The client ID for token validation',
+        value: properties?.['client-id'] });
 
     // ---- save button ----
     const errorContainer = document.createElement('div');
@@ -240,7 +240,7 @@ const addIssuerForm = (container, issuerName, properties, processorId) => {
 // Field helpers
 // ---------------------------------------------------------------------------
 
-const addField = (container, idx, name, label, placeholder, value, extraClass, hidden) => {
+const addField = ({ container, idx, name, label, placeholder, value, extraClass, hidden }) => {
     const div = document.createElement('div');
     div.className = `form-field field-container-${name}`;
     if (extraClass) div.classList.add(extraClass);
@@ -256,7 +256,7 @@ const addField = (container, idx, name, label, placeholder, value, extraClass, h
     return div;
 };
 
-const addTextArea = (container, idx, name, label, placeholder, value, extraClass, hidden) => {
+const addTextArea = ({ container, idx, name, label, placeholder, value, extraClass, hidden }) => {
     const div = document.createElement('div');
     div.className = `form-field field-container-${name}`;
     if (extraClass) div.classList.add(extraClass);
@@ -365,6 +365,18 @@ const saveIssuer = async (form, errEl, processorId) => {
     }
 };
 
+const clearIssuerProperties = async (processorId, issuerName) => {
+    const res = await api.getProcessorProperties(processorId);
+    const props = res.properties || {};
+    const updates = {};
+    for (const key of Object.keys(props)) {
+        if (key.startsWith(`issuer.${issuerName}.`)) updates[key] = null;
+    }
+    if (Object.keys(updates).length > 0) {
+        await api.updateProcessorProperties(processorId, updates);
+    }
+};
+
 const removeIssuer = async (form, issuerName) => {
     form.remove();
     const processorId = getProcessorIdFromUrl(globalThis.location.href);
@@ -372,15 +384,7 @@ const removeIssuer = async (form, issuerName) => {
 
     if (issuerName && processorId) {
         try {
-            const res = await api.getProcessorProperties(processorId);
-            const props = res.properties || {};
-            const updates = {};
-            for (const key of Object.keys(props)) {
-                if (key.startsWith(`issuer.${issuerName}.`)) updates[key] = null;
-            }
-            if (Object.keys(updates).length > 0) {
-                await api.updateProcessorProperties(processorId, updates);
-            }
+            await clearIssuerProperties(processorId, issuerName);
             if (globalErr) {
                 displayUiSuccess(globalErr, `Issuer "${issuerName}" removed successfully.`);
                 globalErr.classList.remove('hidden');

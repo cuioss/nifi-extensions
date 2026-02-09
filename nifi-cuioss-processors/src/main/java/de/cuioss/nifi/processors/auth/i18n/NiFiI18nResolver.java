@@ -17,6 +17,7 @@ package de.cuioss.nifi.processors.auth.i18n;
 
 import de.cuioss.tools.string.MoreStrings;
 import org.apache.nifi.logging.ComponentLog;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Locale;
 import java.util.MissingResourceException;
@@ -32,7 +33,9 @@ import java.util.ResourceBundle;
 public class NiFiI18nResolver implements I18nResolver {
 
     private static final String BUNDLE_NAME = "i18n/nifi-cuioss-processors-resources";
+    @Nullable
     private final ResourceBundle resourceBundle;
+    @Nullable
     private final ComponentLog logger;
 
     /**
@@ -41,7 +44,7 @@ public class NiFiI18nResolver implements I18nResolver {
      * @param locale The locale to use for translations
      * @param logger The logger to use for logging errors
      */
-    private NiFiI18nResolver(Locale locale, ComponentLog logger) {
+    private NiFiI18nResolver(Locale locale, @Nullable ComponentLog logger) {
         this.logger = logger;
         ResourceBundle bundle = null;
         try {

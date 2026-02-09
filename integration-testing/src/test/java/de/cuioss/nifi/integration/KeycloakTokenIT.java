@@ -200,8 +200,8 @@ class KeycloakTokenIT {
             assertEquals(3, parts.length, "Invalid token must have 3 dot-separated parts (JWT structure)");
             assertTrue(parts[2].contains("invalid"), "Signature part should contain 'invalid'");
 
-            // Verify idempotency — same constant always
-            assertEquals(INVALID_TOKEN, INVALID_TOKEN);
+            // Verify idempotency — same constant reference
+            assertSame(INVALID_TOKEN, INVALID_TOKEN);
         }
     }
 

@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.util.UUID;
 
 import static de.cuioss.test.generator.Generators.strings;
 import static org.junit.jupiter.api.Assertions.*;
@@ -113,16 +114,14 @@ class ProcessorConfigReaderTest {
         @Test
         @DisplayName("Should build HTTP URL when HTTPS properties not set")
         void shouldBuildHttpUrlWhenHttpsNotConfigured() {
-            // Arrange
-            String processorId = strings().next();
+            // Arrange — use valid UUID to pass ID validation and exercise URL building
+            String processorId = UUID.randomUUID().toString();
             System.clearProperty("nifi.web.https.host");
             System.clearProperty("nifi.web.https.port");
 
             // Act & Assert
-            // We can't directly test URL building without triggering HTTP call,
-            // but we can verify the method attempts to make a request
-            // (which will fail since no NiFi is running, but confirms URL was built)
-            assertThrows(Exception.class,
+            // URL is built and HTTP request attempted (fails since no NiFi running)
+            assertThrows(IOException.class,
                     () -> reader.getProcessorProperties(processorId),
                     "Should attempt HTTP request with generated URL");
         }
@@ -130,8 +129,8 @@ class ProcessorConfigReaderTest {
         @Test
         @DisplayName("Should build HTTPS URL when HTTPS properties are set")
         void shouldBuildHttpsUrlWhenHttpsConfigured() {
-            // Arrange
-            String processorId = strings().next();
+            // Arrange — use valid UUID to pass ID validation and exercise URL building
+            String processorId = UUID.randomUUID().toString();
             String httpsHost = "secure-nifi.example.com";
             String httpsPort = "8443";
 
@@ -139,8 +138,7 @@ class ProcessorConfigReaderTest {
             System.setProperty("nifi.web.https.port", httpsPort);
 
             try {
-                // Act & Assert
-                // Should attempt to connect via HTTPS
+                // Act & Assert — should reach HTTPS URL building and fail during HTTP
                 assertThrows(Exception.class,
                         () -> reader.getProcessorProperties(processorId),
                         "Should attempt HTTPS request with generated URL");
@@ -154,8 +152,8 @@ class ProcessorConfigReaderTest {
         @Test
         @DisplayName("Should use custom HTTP host and port when configured")
         void shouldUseCustomHttpHostAndPort() {
-            // Arrange
-            String processorId = strings().next();
+            // Arrange — use valid UUID to pass ID validation and exercise URL building
+            String processorId = UUID.randomUUID().toString();
             String customHost = "custom-nifi.local";
             String customPort = "9090";
 
@@ -165,8 +163,7 @@ class ProcessorConfigReaderTest {
             System.setProperty("nifi.web.http.port", customPort);
 
             try {
-                // Act & Assert
-                // Should attempt to connect with custom HTTP host/port
+                // Act & Assert — should reach URL building with custom host/port
                 assertThrows(Exception.class,
                         () -> reader.getProcessorProperties(processorId),
                         "Should attempt HTTP request with custom host and port");
@@ -185,17 +182,16 @@ class ProcessorConfigReaderTest {
         @Test
         @DisplayName("Should throw exception when unable to connect to invalid host")
         void shouldThrowExceptionWhenUnableToConnect() {
-            // Arrange
-            String processorId = strings().next();
+            // Arrange — use valid UUID to pass ID validation and exercise HTTP code
+            String processorId = UUID.randomUUID().toString();
             System.clearProperty("nifi.web.https.host");
             System.clearProperty("nifi.web.https.port");
             System.setProperty("nifi.web.http.host", "non-existent-host-12345");
             System.setProperty("nifi.web.http.port", "12345");
 
             try {
-                // Act & Assert - Exception type varies by environment:
-                // ConnectException on CI, IllegalArgumentException on some local setups
-                assertThrows(Exception.class,
+                // Act & Assert — DNS resolution fails → IOException
+                assertThrows(IOException.class,
                         () -> reader.getProcessorProperties(processorId));
             } finally {
                 // Clean up system properties
@@ -222,18 +218,18 @@ class ProcessorConfigReaderTest {
         @Test
         @DisplayName("Should be reusable for multiple requests")
         void shouldBeReusableForMultipleRequests() {
-            // Arrange
-            String processorId1 = strings().next();
-            String processorId2 = strings().next();
+            // Arrange — use valid UUIDs to exercise the full code path
+            String processorId1 = UUID.randomUUID().toString();
+            String processorId2 = UUID.randomUUID().toString();
 
             // Act & Assert
             // Both calls should fail with IOException (no NiFi running)
             // but should not fail due to reader state issues
-            assertThrows(Exception.class,
+            assertThrows(IOException.class,
                     () -> reader.getProcessorProperties(processorId1),
                     "First request should be processed");
 
-            assertThrows(Exception.class,
+            assertThrows(IOException.class,
                     () -> reader.getProcessorProperties(processorId2),
                     "Second request should be processed independently");
         }

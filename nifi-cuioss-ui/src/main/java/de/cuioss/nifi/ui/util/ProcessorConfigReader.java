@@ -54,7 +54,6 @@ public class ProcessorConfigReader {
      * @throws IOException If unable to fetch processor configuration
      * @throws IllegalArgumentException If processor ID is invalid or null
      */
-    @SuppressWarnings("java:S2095") // S2095: HttpClient from java.net.http doesn't require explicit closing
     public Map<String, String> getProcessorProperties(String processorId)
             throws IOException, IllegalArgumentException {
 
@@ -81,15 +80,10 @@ public class ProcessorConfigReader {
                 .build();
 
         // Execute HTTP request
-        HttpClient httpClient;
-        HttpRequest request;
         HttpResponse<String> response;
 
-        try {
-            @SuppressWarnings("java:S2095") // S2095: java.net.http.HttpClient doesn't implement AutoCloseable, no closing needed
-            HttpClient client = httpHandler.createHttpClient();
-            httpClient = client;
-            request = httpHandler.requestBuilder()
+        try (HttpClient httpClient = httpHandler.createHttpClient()) {
+            HttpRequest request = httpHandler.requestBuilder()
                     .header("Accept", "application/json")
                     .GET()
                     .build();

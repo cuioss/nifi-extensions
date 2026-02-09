@@ -47,6 +47,17 @@ public class JwtValidationService {
     private static final String CLAIM_ROLES = "roles";
     private static final String CLAIM_SCOPES = "scopes";
 
+    private final ProcessorConfigReader configReader;
+
+    public JwtValidationService() {
+        this.configReader = new ProcessorConfigReader();
+    }
+
+    // For testing - allows injection of config reader
+    JwtValidationService(ProcessorConfigReader configReader) {
+        this.configReader = configReader;
+    }
+
     /**
      * Verifies a JWT token using the processor's configuration.
      *
@@ -62,9 +73,6 @@ public class JwtValidationService {
 
         Objects.requireNonNull(processorId, "processorId must not be null");
         LOGGER.debug("verifyToken called with processorId=%s, token=%s", processorId, maskToken(token));
-
-        // 1. Get processor configuration via NiFi REST API
-        ProcessorConfigReader configReader = new ProcessorConfigReader();
         Map<String, String> properties;
 
         try {

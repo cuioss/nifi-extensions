@@ -22,6 +22,7 @@ import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.experimental.UtilityClass;
+import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -68,7 +69,7 @@ public class IssuerConfigurationParser {
      * @param value the value to sanitize
      * @return the sanitized value
      */
-    private static String sanitizeLogValue(String value) {
+    private static String sanitizeLogValue(@Nullable String value) {
         if (value == null) {
             return "null";
         }
@@ -249,48 +250,20 @@ public class IssuerConfigurationParser {
             return Optional.empty();
         }
 
-        // Get issuer name (required) - use either "name" or "issuer" property
-        String issuerName = issuerProps.get("name");
-        if (issuerName == null || issuerName.trim().isEmpty()) {
-            issuerName = issuerProps.get(JWTPropertyKeys.Issuer.ISSUER_NAME);
-        }
-        if (issuerName == null || issuerName.trim().isEmpty()) {
-            LOGGER.warn("Issuer %s has no name configured, skipping", sanitizeLogValue(issuerId));
+        Optional<String> issuerName = resolveIssuerName(issuerId, issuerProps);
+        if (issuerName.isEmpty()) {
             return Optional.empty();
         }
 
-        // Create builder using the same pattern as the processor
-        String jwksUrl = issuerProps.get(JWTPropertyKeys.Issuer.JWKS_URL);
-        String jwksFile = issuerProps.get(JWTPropertyKeys.Issuer.JWKS_FILE);
-        String jwksContent = issuerProps.get(JWTPropertyKeys.Issuer.JWKS_CONTENT);
-
-        // Also check for 'jwksUri' which is used in YAML external configuration
-        String jwksUri = issuerProps.get("jwksUri");
-
-        // Determine JWKS source - at least one is required
-        String jwksSource;
-        if (jwksUrl != null && !jwksUrl.trim().isEmpty()) {
-            jwksSource = jwksUrl.trim();
-        } else if (jwksUri != null && !jwksUri.trim().isEmpty()) {
-            // YAML configuration uses 'jwksUri' instead of 'jwks-url'
-            jwksSource = jwksUri.trim();
-        } else if (jwksFile != null && !jwksFile.trim().isEmpty()) {
-            jwksSource = jwksFile.trim();
-        } else if (jwksContent != null && !jwksContent.trim().isEmpty()) {
-            // For content, we would need a different approach
-            LOGGER.warn("JWKS content configuration not yet supported in shared parser for issuer %s",
-                    sanitizeLogValue(issuerId));
-            return Optional.empty();
-        } else {
-            LOGGER.warn("Issuer %s has no JWKS source configured (URL, file, or content), skipping",
-                    sanitizeLogValue(issuerId));
+        Optional<String> jwksSource = resolveJwksSource(issuerId, issuerProps);
+        if (jwksSource.isEmpty()) {
             return Optional.empty();
         }
 
-        // Build the issuer config using the same pattern as the processor
+        // Build the issuer config
         var builder = IssuerConfig.builder()
-                .issuerIdentifier(issuerName.trim())
-                .jwksFilePath(jwksSource);
+                .issuerIdentifier(issuerName.get())
+                .jwksFilePath(jwksSource.get());
 
         // Add optional properties
         String audience = issuerProps.get(JWTPropertyKeys.Issuer.AUDIENCE);
@@ -304,6 +277,61 @@ public class IssuerConfigurationParser {
         }
 
         return Optional.of(builder.build());
+    }
+
+    /**
+     * Resolves the issuer name from properties, checking "name" then the issuer-name key.
+     *
+     * @param issuerId    the issuer identifier for logging
+     * @param issuerProps the issuer properties
+     * @return the resolved issuer name, or empty if not configured
+     */
+    private static Optional<String> resolveIssuerName(String issuerId, Map<String, String> issuerProps) {
+        String issuerName = issuerProps.get("name");
+        if (issuerName == null || issuerName.trim().isEmpty()) {
+            issuerName = issuerProps.get(JWTPropertyKeys.Issuer.ISSUER_NAME);
+        }
+        if (issuerName == null || issuerName.trim().isEmpty()) {
+            LOGGER.warn("Issuer %s has no name configured, skipping", sanitizeLogValue(issuerId));
+            return Optional.empty();
+        }
+        return Optional.of(issuerName.trim());
+    }
+
+    /**
+     * Resolves the JWKS source from properties, checking URL, URI, file, and content keys.
+     *
+     * @param issuerId    the issuer identifier for logging
+     * @param issuerProps the issuer properties
+     * @return the resolved JWKS source path/URL, or empty if not configured
+     */
+    private static Optional<String> resolveJwksSource(String issuerId, Map<String, String> issuerProps) {
+        String jwksUrl = issuerProps.get(JWTPropertyKeys.Issuer.JWKS_URL);
+        if (jwksUrl != null && !jwksUrl.trim().isEmpty()) {
+            return Optional.of(jwksUrl.trim());
+        }
+
+        // YAML configuration uses 'jwksUri' instead of 'jwks-url'
+        String jwksUri = issuerProps.get("jwksUri");
+        if (jwksUri != null && !jwksUri.trim().isEmpty()) {
+            return Optional.of(jwksUri.trim());
+        }
+
+        String jwksFile = issuerProps.get(JWTPropertyKeys.Issuer.JWKS_FILE);
+        if (jwksFile != null && !jwksFile.trim().isEmpty()) {
+            return Optional.of(jwksFile.trim());
+        }
+
+        String jwksContent = issuerProps.get(JWTPropertyKeys.Issuer.JWKS_CONTENT);
+        if (jwksContent != null && !jwksContent.trim().isEmpty()) {
+            LOGGER.warn("JWKS content configuration not yet supported in shared parser for issuer %s",
+                    sanitizeLogValue(issuerId));
+            return Optional.empty();
+        }
+
+        LOGGER.warn("Issuer %s has no JWKS source configured (URL, file, or content), skipping",
+                sanitizeLogValue(issuerId));
+        return Optional.empty();
     }
 
     /**

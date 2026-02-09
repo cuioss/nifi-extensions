@@ -18,6 +18,7 @@ package de.cuioss.nifi.processors.auth.config;
 import de.cuioss.nifi.processors.auth.util.ErrorContext;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.Getter;
+import org.jspecify.annotations.Nullable;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
@@ -52,6 +53,7 @@ public class ConfigurationManager {
     private static final String JWT_VALIDATION_ISSUER_PREFIX = "jwt.validation.issuer.";
 
     // Configuration file and timestamp
+    @Nullable
     private File configFile;
     private long lastLoadedTimestamp = 0;
 

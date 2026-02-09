@@ -300,9 +300,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * Gets or creates the TokenValidator instance.
      *
      * @param context The process context
-     * @return The TokenValidator instance
+     * @return The TokenValidator instance, or empty if not configured
      */
-    private TokenValidator getTokenValidator(final ProcessContext context) {
+    private Optional<TokenValidator> getTokenValidator(final ProcessContext context) {
         boolean configFileChanged = checkExternalConfigurationChange();
         String currentConfigHash = generateConfigurationHash(context);
 
@@ -314,7 +314,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             }
         }
 
-        return tokenValidator.get();
+        return Optional.ofNullable(tokenValidator.get());
     }
 
     /**
@@ -645,13 +645,14 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         String tokenLocation = context.getProperty(Properties.TOKEN_LOCATION).getValue();
 
         try {
-            String token = extractTokenByLocation(flowFile, session, context, tokenLocation);
+            Optional<String> tokenOpt = extractTokenByLocation(flowFile, session, context, tokenLocation);
 
-            if (token == null || token.isEmpty()) {
+            if (tokenOpt.isEmpty()) {
                 handleMissingToken(session, flowFile, context, tokenLocation);
                 return;
             }
 
+            String token = tokenOpt.get();
             if (!validateTokenFormat(session, flowFile, token, context)) {
                 return;
             }
@@ -693,9 +694,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param session       The process session
      * @param context       The process context
      * @param tokenLocation The configured token location
-     * @return The extracted token, or null if not found
+     * @return The extracted token, or empty if not found
      */
-    private String extractTokenByLocation(FlowFile flowFile, ProcessSession session,
+    private Optional<String> extractTokenByLocation(FlowFile flowFile, ProcessSession session,
             ProcessContext context, String tokenLocation) {
         String bearerPrefix = context.getProperty(Properties.BEARER_TOKEN_PREFIX).getValue();
         int maxTokenSize = context.getProperty(Properties.MAXIMUM_TOKEN_SIZE).asInteger();
@@ -899,22 +900,25 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param flowFile     The flow file containing the header
      * @param headerName   The name of the header containing the token
      * @param bearerPrefix The configured bearer prefix (e.g. "Bearer")
-     * @return The extracted token, or null if not found
+     * @return The extracted token, or empty if not found
      */
-    private String extractTokenFromHeader(FlowFile flowFile, String headerName, String bearerPrefix) {
+    private Optional<String> extractTokenFromHeader(FlowFile flowFile, String headerName, String bearerPrefix) {
         String headerValue = flowFile.getAttribute("http.headers." + headerName.toLowerCase());
 
         if (headerValue == null || headerValue.isEmpty()) {
-            return null;
+            return Optional.empty();
         }
 
         // If header starts with configured prefix, strip it
         String fullPrefix = bearerPrefix + " ";
+        String token;
         if (headerValue.startsWith(fullPrefix)) {
-            return headerValue.substring(fullPrefix.length()).trim();
+            token = headerValue.substring(fullPrefix.length()).trim();
+        } else {
+            token = headerValue.trim();
         }
 
-        return headerValue.trim();
+        return token.isEmpty() ? Optional.empty() : Optional.of(token);
     }
 
     /**
@@ -923,13 +927,13 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param flowFile The flow file containing the token
      * @param session  The process session
      * @param maxSize  The maximum allowed content size in bytes
-     * @return The extracted token, or null if content is empty or exceeds size limit
+     * @return The extracted token, or empty if content is empty or exceeds size limit
      */
-    private String extractTokenFromContent(FlowFile flowFile, ProcessSession session, int maxSize) {
+    private Optional<String> extractTokenFromContent(FlowFile flowFile, ProcessSession session, int maxSize) {
         if (flowFile.getSize() > maxSize) {
             LOGGER.warn("Flow file content size %d exceeds maximum allowed size %d",
                     flowFile.getSize(), maxSize);
-            return null;
+            return Optional.empty();
         }
 
         final StringBuilder contentBuilder = new StringBuilder();
@@ -943,7 +947,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         });
 
         String content = contentBuilder.toString().trim();
-        return content.isEmpty() ? null : content;
+        return content.isEmpty() ? Optional.empty() : Optional.of(content);
     }
 
     /**
@@ -959,11 +963,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         validateTokenAlgorithm(tokenString, context);
 
         // Get the TokenValidator
-        TokenValidator validator = getTokenValidator(context);
-
-        if (validator == null) {
-            throw new IllegalStateException("No TokenValidator available - no issuer configurations provided");
-        }
+        TokenValidator validator = getTokenValidator(context)
+                .orElseThrow(() -> new IllegalStateException(
+                        "No TokenValidator available - no issuer configurations provided"));
 
         return validator.createAccessToken(tokenString);
     }

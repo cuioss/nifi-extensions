@@ -48,14 +48,11 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("MetricsServlet tests")
 class MetricsServletTest {
 
-    @TestSubject
-    private MetricsServlet servlet = new MetricsServlet();
+    @TestSubject private MetricsServlet servlet = new MetricsServlet();
 
-    @Mock
-    private HttpServletRequest request;
+    @Mock private HttpServletRequest request;
 
-    @Mock
-    private HttpServletResponse response;
+    @Mock private HttpServletResponse response;
 
     private ByteArrayOutputStream outputStream;
     private TestServletOutputStream servletOutputStream;
@@ -400,6 +397,69 @@ class MetricsServletTest {
         }
     }
 
+    @Nested
+    @DisplayName("Error handling")
+    class ErrorHandling {
+
+        @Test
+        @DisplayName("Should handle IOException from response output stream")
+        void shouldHandleIOExceptionFromOutputStream() throws Exception {
+            // Arrange — force IOException on getOutputStream() (called inside try-with-resources)
+            expect(response.getOutputStream()).andThrow(new IOException("Broken pipe"));
+            response.setContentType("application/json");
+            expectLastCall();
+            response.setCharacterEncoding("UTF-8");
+            expectLastCall();
+            response.setStatus(200);
+            expectLastCall();
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            expectLastCall();
+
+            replay(request, response);
+
+            // Act
+            servlet.doGet(request, response);
+
+            // Assert
+            verify(request, response);
+        }
+
+        @Test
+        @DisplayName("Should cap error types at MAX_ERROR_TYPES limit")
+        void shouldCapErrorTypesAtMaxLimit() {
+            // Arrange — record MAX_ERROR_TYPES (100) distinct error types
+            for (int i = 0; i < 100; i++) {
+                MetricsServlet.recordInvalidToken("Error type " + i);
+            }
+
+            // Act — adding a new error type beyond the cap should be ignored
+            MetricsServlet.recordInvalidToken("Error beyond cap");
+
+            // Assert
+            MetricsServlet.SecurityMetrics metrics = MetricsServlet.getCurrentMetrics();
+            assertEquals(101, metrics.invalidTokens, "All invalid tokens should be counted");
+            // topErrors is limited to 10 in getCurrentMetrics()
+            assertEquals(10, metrics.topErrors.size(), "Top errors limited to 10");
+        }
+    }
+
+    @Nested
+    @DisplayName("SecurityMetrics data class")
+    class SecurityMetricsTests {
+
+        @Test
+        @DisplayName("Should handle null topErrors in constructor")
+        void shouldHandleNullTopErrors() {
+            // Arrange & Act
+            MetricsServlet.SecurityMetrics metrics =
+                    new MetricsServlet.SecurityMetrics(0, 0, 0, 0.0, null, null);
+
+            // Assert
+            assertNotNull(metrics.topErrors, "topErrors should not be null");
+            assertTrue(metrics.topErrors.isEmpty(), "topErrors should be empty");
+        }
+    }
+
     /**
      * Minimal ServletOutputStream implementation for testing.
      */
@@ -425,4 +485,5 @@ class MetricsServletTest {
             // Not implemented for testing
         }
     }
+
 }
