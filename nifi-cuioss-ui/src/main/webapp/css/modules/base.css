@@ -41,11 +41,8 @@ body {
 }
 
 .jwt-tabs-header .tabs .tab-item {
-    margin-right: 2px;
-}
-
-.jwt-tabs-header .tabs .tab-item a {
     display: block;
+    margin-right: 2px;
     padding: 10px 20px;
     text-decoration: none;
     color: var(--text-color);
@@ -56,11 +53,11 @@ body {
     transition: all 0.2s ease;
 }
 
-.jwt-tabs-header .tabs .tab-item a:hover {
+.jwt-tabs-header .tabs .tab-item:hover {
     background-color: var(--tab-hover-background);
 }
 
-.jwt-tabs-header .tabs .tab-item.active a {
+.jwt-tabs-header .tabs .tab-item.active {
     background-color: var(--container-background);
     color: var(--primary-color);
     border-bottom: 2px solid var(--container-background);

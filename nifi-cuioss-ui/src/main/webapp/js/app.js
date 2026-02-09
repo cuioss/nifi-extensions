@@ -50,7 +50,7 @@ const initTabs = () => {
             for (const pane of tabPanes) pane.classList.remove('active');
 
             // Activate clicked
-            link.parentElement.classList.add('active');
+            link.classList.add('active');
             const targetPane = document.querySelector(target);
             if (targetPane) targetPane.classList.add('active');
         });
