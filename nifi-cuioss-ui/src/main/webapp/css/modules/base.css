@@ -574,6 +574,13 @@ kbd {
     color: #0d6efd;
 }
 
+/* Icon spacing in components */
+.metrics-error .fa,
+.token-valid .fa,
+.collapsible-header .fa {
+    margin-right: 8px;
+}
+
 /* Form elements */
 
 input, select, textarea {

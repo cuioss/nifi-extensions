@@ -33,8 +33,6 @@ module.exports = defineConfig({
      */
     timeout: process.env.E2E_EXPECT_TIMEOUT ? parseInt(process.env.E2E_EXPECT_TIMEOUT) * 1000 : 15000
   },
-  /* Global setup and teardown hooks */
-  globalTeardown: './scripts/global-teardown.js',
   /* Enhanced parallel execution for better performance */
   fullyParallel: true,
   workers: process.env.CI ? 2 : 1,
@@ -60,23 +58,20 @@ module.exports = defineConfig({
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: BASE_URL,
 
-    /* Enhanced tracing - always collect for better debugging */
-    /* Options: 'off', 'on', 'retain-on-failure', 'on-first-retry', 'on-all-retries' */
-    trace: process.env.PLAYWRIGHT_TRACE || 'on',
+    /* Tracing - retain on failure for efficient storage with full debugging */
+    trace: process.env.PLAYWRIGHT_TRACE || 'retain-on-failure',
 
-    /* Take screenshot on failure and for debugging */
-    /* Options: 'off', 'on', 'only-on-failure' */
-    screenshot: process.env.PLAYWRIGHT_SCREENSHOT || 'on',
+    /* Screenshot only on failure to reduce artifact size */
+    screenshot: process.env.PLAYWRIGHT_SCREENSHOT || 'only-on-failure',
 
-    /* Record video for better debugging */
-    /* Options: 'off', 'on', 'retain-on-failure', 'on-first-retry' */
-    video: process.env.PLAYWRIGHT_VIDEO || 'on',
+    /* Video - retain on failure for efficient storage */
+    video: process.env.PLAYWRIGHT_VIDEO || 'retain-on-failure',
 
     /* Ignore HTTPS errors for development environments */
     ignoreHTTPSErrors: true,
 
     /* Modern browser features */
-    viewport: { width: 1280, height: 720 },
+    viewport: { width: 1920, height: 1080 },
     actionTimeout: 10000,
     navigationTimeout: 30000,
 
@@ -106,6 +101,8 @@ module.exports = defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
+        // Full HD viewport to capture NiFi dialogs and Custom UI without clipping
+        viewport: { width: 1920, height: 1080 },
         // Enable modern Chrome features for enterprise NiFi testing
         launchOptions: {
           args: [

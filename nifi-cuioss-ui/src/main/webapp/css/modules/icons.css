@@ -1,81 +1,90 @@
 /**
- * FontAwesome icon definitions for consistent icon usage across components.
- * All FontAwesome icons used in the application should be defined here.
+ * Font Awesome font-family overrides.
+ *
+ * NiFi's SystemTokensService injects a massive <style> element (~230 KB) into
+ * the Custom UI iframe for theme propagation.  That injected CSS:
+ *   1. Sets content: "" on every FA ::before pseudo-element, wiping icon glyphs
+ *   2. Sets font-family: "Font Awesome 6 Free" via general .fa rules
+ *
+ * Since our WAR bundles FA 7, the browser cannot resolve "Font Awesome 6 Free"
+ * and falls back to sans-serif, rendering squares.  Even with the correct font,
+ * the empty content means nothing would render.
+ *
+ * The rules below use !important on all three properties (font-family,
+ * font-weight, content) to guarantee our FA 7 definitions win over NiFi's
+ * injected CSS regardless of document order or specificity.
+ *
+ * Only icons actually used in index.html and JS modules are listed here.
  */
 
-/* Help and Information Icons */
-.help-tooltip::before,
-.fa-question-circle::before {
-    font-family: "Font Awesome 6 Free", sans-serif;
-    font-weight: 900;
-    content: "\f059"; /* fa-circle-question (FA6) / fa-question-circle (FA4 compat) */
-}
-
-/* Navigation Icons */
+/* Navigation Icons (index.html, app.js) */
 .fa-chevron-down::before {
-    font-family: "Font Awesome 6 Free", sans-serif;
-    font-weight: 900;
-    content: "\f078";
+    font-family: "Font Awesome 7 Free", sans-serif !important;
+    font-weight: 900 !important;
+    content: "\f078" !important;
 }
 
 .fa-chevron-right::before {
-    font-family: "Font Awesome 6 Free", sans-serif;
-    font-weight: 900;
-    content: "\f054";
+    font-family: "Font Awesome 7 Free", sans-serif !important;
+    font-weight: 900 !important;
+    content: "\f054" !important;
 }
 
-/* Action Icons */
+/* Action Icons (token-verifier.js, metrics.js) */
 .fa-check::before {
-    font-family: "Font Awesome 6 Free", sans-serif;
-    font-weight: 900;
-    content: "\f00c";
+    font-family: "Font Awesome 7 Free", sans-serif !important;
+    font-weight: 900 !important;
+    content: "\f00c" !important;
 }
 
 .fa-check-circle::before {
-    font-family: "Font Awesome 6 Free", sans-serif;
-    font-weight: 900;
-    content: "\f058";
+    font-family: "Font Awesome 7 Free", sans-serif !important;
+    font-weight: 900 !important;
+    content: "\f058" !important;
+}
+
+.fa-times-circle::before {
+    font-family: "Font Awesome 7 Free", sans-serif !important;
+    font-weight: 900 !important;
+    content: "\f057" !important;
 }
 
 .fa-trash::before {
-    font-family: "Font Awesome 6 Free", sans-serif;
-    font-weight: 900;
-    content: "\f2ed";
+    font-family: "Font Awesome 7 Free", sans-serif !important;
+    font-weight: 900 !important;
+    content: "\f2ed" !important;
 }
 
 .fa-refresh::before {
-    font-family: "Font Awesome 6 Free", sans-serif;
-    font-weight: 900;
-    content: "\f021";
+    font-family: "Font Awesome 7 Free", sans-serif !important;
+    font-weight: 900 !important;
+    content: "\f021" !important;
 }
 
-/* Status Icons */
-.fa-exclamation-triangle::before {
-    font-family: "Font Awesome 6 Free", sans-serif;
-    font-weight: 900;
-    content: "\f071";
+/* Status Icons (token-verifier.js) */
+.fa-clock::before {
+    font-family: "Font Awesome 7 Free", sans-serif !important;
+    font-weight: 400 !important;
+    content: "\f017" !important;
 }
 
-/* Link Icons */
+/* Link Icons (index.html) */
 .fa-external-link::before {
-    font-family: "Font Awesome 6 Free", sans-serif;
-    font-weight: 900;
-    content: "\f35d";
+    font-family: "Font Awesome 7 Free", sans-serif !important;
+    font-weight: 900 !important;
+    content: "\f35d" !important;
 }
 
-/* Component-specific icon styles */
-.metrics-error .fa,
-.token-valid .fa,
-.collapsible-header .fa {
-    margin-right: 8px;
+/* Download Icon (metrics.js) */
+.fa-download::before {
+    font-family: "Font Awesome 7 Free", sans-serif !important;
+    font-weight: 900 !important;
+    content: "\f019" !important;
 }
 
-.help-tooltip {
-    margin-left: 5px;
-    color: #666;
-    cursor: help;
-}
-
-.help-tooltip:hover {
-    color: #0078d4;
+/* Spinner Icon (metrics.js) */
+.fa-spinner::before {
+    font-family: "Font Awesome 7 Free", sans-serif !important;
+    font-weight: 900 !important;
+    content: "\f110" !important;
 }

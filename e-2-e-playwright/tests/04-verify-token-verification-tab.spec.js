@@ -4,7 +4,11 @@
  * @version 1.0.0
  */
 
-import { test, expect } from "../fixtures/test-fixtures.js";
+import {
+    test,
+    expect,
+    takeStartScreenshot,
+} from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 import { CONSTANTS } from "../utils/constants.js";
@@ -12,44 +16,18 @@ import {
     getValidAccessToken,
     getInvalidAccessToken,
 } from "../utils/keycloak-token-service.js";
-import {
-    saveTestBrowserLogs,
-    setupAuthAwareErrorDetection,
-} from "../utils/console-logger.js";
-import { cleanupCriticalErrorDetection } from "../utils/critical-error-detector.js";
-import { processorLogger } from "../utils/shared-logger.js";
-import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("Token Verification Tab", () => {
     test.beforeEach(async ({ page, processorManager }, testInfo) => {
-        // Setup auth-aware error detection
-        await setupAuthAwareErrorDetection(page, testInfo);
-
         const authService = new AuthService(page);
         await authService.ensureReady();
 
         // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
         await processorManager.ensureProcessorOnCanvas();
-    });
-
-    test.afterEach(async ({ page: _ }, testInfo) => {
-        // Always save browser logs first
-        try {
-            await saveTestBrowserLogs(testInfo);
-        } catch (error) {
-            logTestWarning(
-                "afterEach",
-                `Failed to save console logs in afterEach: ${error.message}`,
-            );
-        }
-
-        // Cleanup critical error detection
-        cleanupCriticalErrorDetection();
+        await takeStartScreenshot(page, testInfo);
     });
 
     test("should access token verification tab", async ({ page }, testInfo) => {
-        processorLogger.info("Testing token verification tab access");
-
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT processor using the verified utility
@@ -68,7 +46,6 @@ test.describe("Token Verification Tab", () => {
 
         const tabPanel = customUIFrame.locator("#token-verification");
         await expect(tabPanel).toBeVisible({ timeout: 5000 });
-        processorLogger.info("✓ Token Verification tab panel displayed");
 
         // Wait for tab content to fully load
         await page.waitForTimeout(2000);
@@ -80,14 +57,9 @@ test.describe("Token Verification Tab", () => {
         // Token verification tab must have substantial content
         expect(contentText).toBeTruthy();
         expect(contentText.length).toBeGreaterThan(50);
-        processorLogger.info("✓ Token Verification tab content loaded");
-
-        processorLogger.success("Token verification tab accessed successfully");
     });
 
     test("should verify valid JWT token", async ({ page }, testInfo) => {
-        processorLogger.info("Testing valid JWT token verification");
-
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT processor using the verified utility
@@ -121,15 +93,12 @@ test.describe("Token Verification Tab", () => {
         let validToken = CONSTANTS.TEST_TOKENS.VALID;
         try {
             validToken = await getValidAccessToken();
-            processorLogger.info("Using real token from Keycloak");
         } catch (error) {
-            processorLogger.info("Keycloak not available, using test token");
+            // Keycloak not available, using test token
         }
 
         // Fill the token input
         await tokenInput.fill(validToken);
-
-        processorLogger.info("Entered valid JWT token");
 
         const verifyButton = tokenVerificationTab
             .locator(".verify-token-button")
@@ -137,7 +106,6 @@ test.describe("Token Verification Tab", () => {
 
         // Click the verify button
         await verifyButton.click();
-        processorLogger.info("Clicked verify button");
 
         // With the fixed servlet configuration, we should get actual JWT validation results
         const verificationResult = customUIFrame
@@ -149,45 +117,27 @@ test.describe("Token Verification Tab", () => {
 
         // Get the actual result text
         const resultText = await verificationResult.textContent();
-        processorLogger.info(`Verification result: ${resultText}`);
 
         // Now we expect actual JWT validation results, not authentication errors
         if (
             resultText.includes("Token is valid") ||
             resultText.includes("valid")
         ) {
-            processorLogger.info(
-                "✅ Token verified successfully - JWT validation working!",
-            );
-
             // Look for token details with the correct CSS class
             const tokenDetails = customUIFrame.locator(".token-details");
-            if (await tokenDetails.isVisible({ timeout: 2000 })) {
-                processorLogger.info("✅ Token details displayed");
-            }
+            await tokenDetails.isVisible({ timeout: 2000 });
         } else if (
             resultText.includes("Missing or empty API key") ||
             resultText.includes("401") ||
             resultText.includes("Unauthorized")
         ) {
-            processorLogger.error(
-                "❌ Still getting authentication errors - servlet configuration may not be working",
-            );
             throw new Error(
                 "Authentication error indicates servlet URL mapping issue",
             );
-        } else {
-            processorLogger.info(
-                "✅ Got JWT validation result (possibly invalid token)",
-            );
         }
-
-        processorLogger.success("Token verification UI tested successfully");
     });
 
     test("should handle invalid JWT token", async ({ page }, testInfo) => {
-        processorLogger.info("Testing invalid JWT token verification");
-
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT processor using the verified utility
@@ -216,7 +166,6 @@ test.describe("Token Verification Tab", () => {
             .first();
         // Fill the token input with invalid token from our utility
         await tokenInput.fill(getInvalidAccessToken());
-        processorLogger.info("Entered invalid JWT token");
 
         const verifyButton = tokenVerificationTab
             .locator(".verify-token-button")
@@ -224,7 +173,6 @@ test.describe("Token Verification Tab", () => {
 
         // Click the verify button
         await verifyButton.click();
-        processorLogger.info("Clicked verify button");
 
         // Wait a bit for the verification to complete
         await page.waitForTimeout(2000);
@@ -237,30 +185,12 @@ test.describe("Token Verification Tab", () => {
             .first();
         await expect(errorResult).toBeVisible({ timeout: 10000 });
 
-        const errorText = await errorResult.textContent();
-        processorLogger.info(`Error result: ${errorText}`);
-
-        // In standalone mode, we might get auth errors rather than token validation errors
-        if (
-            errorText.includes("401") ||
-            errorText.includes("Unauthorized") ||
-            errorText.includes("API key")
-        ) {
-            processorLogger.info(
-                "✓ Got expected authentication error in standalone mode",
-            );
-        } else {
-            processorLogger.info("✓ Error result displayed for invalid token");
-        }
-
-        processorLogger.success("Invalid JWT token UI tested successfully");
+        await errorResult.textContent();
     });
 
     test("should display token expiration status", async ({
         page,
     }, testInfo) => {
-        processorLogger.info("Testing token expiration status display");
-
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT processor using the verified utility
@@ -304,7 +234,6 @@ test.describe("Token Verification Tab", () => {
                 throw error;
             }
         }
-        processorLogger.info("Entered expired JWT token");
 
         const verifyButton = tokenVerificationTab
             .locator(".verify-token-button")
@@ -322,40 +251,20 @@ test.describe("Token Verification Tab", () => {
         await expect(verificationMessage).toBeVisible({ timeout: 10000 });
 
         const messageText = await verificationMessage.textContent();
-        processorLogger.info(`Verification result: ${messageText}`);
 
         // With the fixed servlet configuration, we should get actual expiration detection
         if (
-            messageText.includes("expired") ||
-            messageText.includes("Expired") ||
-            messageText.includes("Token expired")
-        ) {
-            processorLogger.info(
-                "✅ Token expiration detected correctly - JWT validation working!",
-            );
-        } else if (
             messageText.includes("401") ||
             messageText.includes("Unauthorized") ||
             messageText.includes("API key")
         ) {
-            processorLogger.error(
-                "❌ Still getting authentication errors - servlet configuration may not be working",
-            );
             throw new Error(
                 "Authentication error indicates servlet URL mapping issue",
             );
-        } else {
-            processorLogger.info(
-                "✅ Got JWT validation result: " + messageText,
-            );
         }
-
-        processorLogger.success("Token expiration UI tested successfully");
     });
 
     test("should clear token and results", async ({ page }, testInfo) => {
-        processorLogger.info("Testing clear token functionality");
-
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT processor using the verified utility
@@ -409,7 +318,6 @@ test.describe("Token Verification Tab", () => {
 
         // Click the clear button
         await clearButton.click();
-        processorLogger.info("Clicked clear button");
 
         // Handle confirmation dialog if it appears
         // Look for the dialog confirmation button, not the form clear button
@@ -418,11 +326,9 @@ test.describe("Token Verification Tab", () => {
             .first();
         if (await dialogConfirmButton.isVisible({ timeout: 2000 })) {
             await dialogConfirmButton.click();
-            processorLogger.info("Confirmed clear action in dialog");
         }
 
         await expect(tokenInput).toHaveValue("");
-        processorLogger.info("✓ Token input cleared");
 
         // Check that results are cleared or show initial instructions
         const resultsContent = tokenVerificationTab
@@ -433,6 +339,5 @@ test.describe("Token Verification Tab", () => {
         expect(resultsText).not.toMatch(
             /token is valid|token is invalid|error|expired|verification failed/i,
         );
-        processorLogger.success("Token and results cleared successfully");
     });
 });

@@ -138,24 +138,41 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>unpack-font-awesome</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>unpack</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.webjars</groupId>
+                                    <artifactId>font-awesome</artifactId>
+                                    <includes>META-INF/resources/webjars/**</includes>
+                                    <outputDirectory>${project.build.directory}/webjar-unpack</outputDirectory>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-war-plugin</artifactId>
                 <configuration>
                     <failOnMissingWebXml>false</failOnMissingWebXml>
                     <attachClasses>true</attachClasses>
                     <packagingIncludes>
-                        **/*.class,**/*.xml,**/*.properties,**/*.html,**/*.js,**/*.css,META-INF/**,WEB-INF/**,webjars/**
+                        **/*.class,**/*.xml,**/*.properties,**/*.html,**/*.js,**/*.css,**/*.woff2,META-INF/**,WEB-INF/**
                     </packagingIncludes>
-                    <overlays>
-                        <overlay>
-                            <groupId>org.webjars</groupId>
-                            <artifactId>font-awesome</artifactId>
-                            <type>jar</type>
-                            <includes>
-                                <include>META-INF/resources/webjars/**</include>
-                            </includes>
-                            <targetPath>webjars</targetPath>
-                        </overlay>
-                    </overlays>
+                    <webResources>
+                        <resource>
+                            <directory>${project.build.directory}/webjar-unpack/META-INF/resources</directory>
+                        </resource>
+                    </webResources>
                 </configuration>
             </plugin>
             <plugin>

@@ -97,9 +97,8 @@ export const init = (container) => {
             <div class="metrics-footer">
                 <span class="last-updated" data-testid="last-updated"
                       aria-live="polite" role="status">Last updated: Never</span>
-                <span class="refresh-indicator" data-testid="refresh-indicator"
-                      aria-live="polite"
-                      style="display:none;">
+                <span class="refresh-indicator hidden" data-testid="refresh-indicator"
+                      aria-live="polite">
                     <i class="fa fa-spinner fa-spin"></i> Refreshing...
                 </span>
             </div>
@@ -157,9 +156,9 @@ const pct = (v) => (v * 100).toFixed(1) + '%';
 
 const handleRefresh = async () => {
     const ind = document.querySelector('[data-testid="refresh-indicator"]');
-    if (ind) ind.style.display = 'inline-block';
+    if (ind) ind.classList.remove('hidden');
     await refreshMetrics();
-    if (ind) setTimeout(() => { ind.style.display = 'none'; }, 500);
+    if (ind) setTimeout(() => { ind.classList.add('hidden'); }, 500);
 };
 
 const refreshMetrics = async () => {

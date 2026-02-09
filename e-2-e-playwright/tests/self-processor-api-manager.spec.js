@@ -3,12 +3,19 @@
  * Tests the API-based processor management functionality
  */
 
-import { test, expect } from "../fixtures/test-fixtures.js";
+import {
+    test,
+    expect,
+    takeStartScreenshot,
+} from "../fixtures/test-fixtures.js";
 import { ProcessorApiManager } from "../utils/processor-api-manager.js";
 import { AuthService } from "../utils/auth-service.js";
-import { processorLogger } from "../utils/shared-logger.js";
 
 test.describe("ProcessorApiManager Self-Test", () => {
+    test.beforeEach(async ({ page }, testInfo) => {
+        await takeStartScreenshot(page, testInfo);
+    });
+
     test("should verify MultiIssuerJWTTokenAuthenticator deployment", async ({
         page,
     }) => {
@@ -28,17 +35,13 @@ test.describe("ProcessorApiManager Self-Test", () => {
         // Authenticate
         await authService.ensureReady();
 
-        processorLogger.info("TEST: Verifying processor deployment...");
-
         const isDeployed =
             await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
 
         // The method should return a boolean
         expect(typeof isDeployed).toBe("boolean");
 
-        if (isDeployed) {
-            processorLogger.success("TEST PASSED: Processor is deployed");
-        } else {
+        if (!isDeployed) {
             throw new Error(
                 "TEST FAILED: MultiIssuerJWTTokenAuthenticator is not deployed in NiFi. " +
                     "The processor NAR must be installed for these tests to run. " +
@@ -64,8 +67,6 @@ test.describe("ProcessorApiManager Self-Test", () => {
         // Authenticate
         await authService.ensureReady();
 
-        processorLogger.info("TEST: Checking if processor is on canvas...");
-
         const result =
             await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
 
@@ -75,11 +76,9 @@ test.describe("ProcessorApiManager Self-Test", () => {
         expect(typeof result.exists).toBe("boolean");
 
         if (result.exists) {
-            processorLogger.success("TEST: Processor found on canvas");
             expect(result.processor).toBeTruthy();
             expect(result.processor).toHaveProperty("id");
         } else {
-            processorLogger.info("TEST: Processor not on canvas");
             expect(result.processor).toBeNull();
         }
     });
@@ -101,8 +100,6 @@ test.describe("ProcessorApiManager Self-Test", () => {
         // Authenticate
         await authService.ensureReady();
 
-        processorLogger.info("TEST: Testing add processor functionality...");
-
         // First check if processor is deployed
         const isDeployed =
             await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
@@ -119,9 +116,6 @@ test.describe("ProcessorApiManager Self-Test", () => {
             await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
 
         if (beforeAdd.exists) {
-            processorLogger.info(
-                "TEST: Processor already on canvas, removing it first...",
-            );
             const removed =
                 await processorManager.removeMultiIssuerJWTTokenAuthenticatorFromCanvas();
             expect(removed).toBe(true);
@@ -140,10 +134,6 @@ test.describe("ProcessorApiManager Self-Test", () => {
             await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
         expect(afterAdd.exists).toBe(true);
         expect(afterAdd.processor).toBeTruthy();
-
-        processorLogger.success(
-            "TEST PASSED: Processor successfully added to canvas",
-        );
     });
 
     test("should remove processor from canvas", async ({ page }) => {
@@ -162,8 +152,6 @@ test.describe("ProcessorApiManager Self-Test", () => {
 
         // Authenticate
         await authService.ensureReady();
-
-        processorLogger.info("TEST: Testing remove processor functionality...");
 
         // First ensure processor is on canvas
         const beforeRemove =
@@ -199,10 +187,6 @@ test.describe("ProcessorApiManager Self-Test", () => {
         const afterRemove =
             await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
         expect(afterRemove.exists).toBe(false);
-
-        processorLogger.success(
-            "TEST PASSED: Processor successfully removed from canvas",
-        );
     });
 
     test("should handle ensure processor on canvas", async ({ page }) => {
@@ -221,8 +205,6 @@ test.describe("ProcessorApiManager Self-Test", () => {
 
         // Authenticate
         await authService.ensureReady();
-
-        processorLogger.info("TEST: Testing ensure processor on canvas...");
 
         // First check if processor is deployed
         const isDeployed =
@@ -247,10 +229,6 @@ test.describe("ProcessorApiManager Self-Test", () => {
         // Call ensure again - should still return true without adding duplicate
         const ensuredAgain = await processorManager.ensureProcessorOnCanvas();
         expect(ensuredAgain).toBe(true);
-
-        processorLogger.success(
-            "TEST PASSED: Ensure processor on canvas works correctly",
-        );
     });
 
     test("should start and stop processor", async ({ page }) => {
@@ -269,10 +247,6 @@ test.describe("ProcessorApiManager Self-Test", () => {
 
         // Authenticate
         await authService.ensureReady();
-
-        processorLogger.info(
-            "TEST: Testing start/stop processor functionality...",
-        );
 
         // First ensure processor is on canvas
         const isDeployed =
@@ -296,21 +270,14 @@ test.describe("ProcessorApiManager Self-Test", () => {
         // Stop the processor first (in case it's running)
         const stopped = await processorManager.stopProcessor();
         expect(stopped).toBe(true);
-        processorLogger.info("TEST: Processor stopped");
 
         // Start the processor
         const started = await processorManager.startProcessor();
         expect(started).toBe(true);
-        processorLogger.info("TEST: Processor started");
 
         // Stop it again
         const stoppedAgain = await processorManager.stopProcessor();
         expect(stoppedAgain).toBe(true);
-        processorLogger.info("TEST: Processor stopped again");
-
-        processorLogger.success(
-            "TEST PASSED: Start/stop processor works correctly",
-        );
     });
 
     test("should get root process group ID", async ({ page }) => {
@@ -330,16 +297,10 @@ test.describe("ProcessorApiManager Self-Test", () => {
         // Authenticate
         await authService.ensureReady();
 
-        processorLogger.info("TEST: Getting root process group ID...");
-
         const rootId = await processorManager.getRootProcessGroupId();
 
         expect(rootId).toBeTruthy();
         expect(typeof rootId).toBe("string");
-
-        processorLogger.success(
-            `TEST PASSED: Got root process group ID: ${rootId}`,
-        );
     });
 
     test("should get processors on canvas", async ({ page }) => {
@@ -359,30 +320,9 @@ test.describe("ProcessorApiManager Self-Test", () => {
         // Authenticate
         await authService.ensureReady();
 
-        processorLogger.info("TEST: Getting all processors on canvas...");
-
         const processors = await processorManager.getProcessorsOnCanvas();
 
         expect(Array.isArray(processors)).toBe(true);
-
-        if (processors.length > 0) {
-            processorLogger.info(
-                `TEST: Found ${processors.length} processor(s) on canvas`,
-            );
-
-            // Log processor details for debugging
-            processors.forEach((p) => {
-                processorLogger.debug(
-                    `  - ${p.component?.name || "Unnamed"} (${p.component?.type})`,
-                );
-            });
-        } else {
-            processorLogger.info("TEST: No processors currently on canvas");
-        }
-
-        processorLogger.success(
-            "TEST PASSED: Successfully retrieved processors list",
-        );
     });
 
     test("should handle authentication headers correctly", async ({ page }) => {
@@ -402,8 +342,6 @@ test.describe("ProcessorApiManager Self-Test", () => {
         // Authenticate
         await authService.ensureReady();
 
-        processorLogger.info("TEST: Testing authentication headers...");
-
         const headers = await processorManager.getAuthHeaders();
 
         expect(typeof headers).toBe("object");
@@ -411,10 +349,6 @@ test.describe("ProcessorApiManager Self-Test", () => {
         // Headers should at least have Accept header
         // Note: We use cookie-based auth, not header-based auth, so Authorization may be empty
         expect(headers["Accept"]).toBe("application/json");
-
-        processorLogger.success(
-            "TEST PASSED: Authentication headers retrieved",
-        );
     });
 
     test("should handle processor details retrieval", async ({ page }) => {
@@ -433,8 +367,6 @@ test.describe("ProcessorApiManager Self-Test", () => {
 
         // Authenticate
         await authService.ensureReady();
-
-        processorLogger.info("TEST: Testing processor details retrieval...");
 
         // First ensure we have a processor on canvas
         const { exists, processor } =
@@ -468,9 +400,6 @@ test.describe("ProcessorApiManager Self-Test", () => {
                 );
                 expect(details).toBeTruthy();
                 expect(details).toHaveProperty("id");
-                processorLogger.success(
-                    "TEST PASSED: Processor details retrieved",
-                );
             }
         } else {
             const details = await processorManager.getProcessorDetails(
@@ -478,16 +407,17 @@ test.describe("ProcessorApiManager Self-Test", () => {
             );
             expect(details).toBeTruthy();
             expect(details).toHaveProperty("id");
-            processorLogger.success("TEST PASSED: Processor details retrieved");
         }
     });
 });
 
 // Additional integration test to verify the full workflow
 test.describe("ProcessorApiManager Integration Test", () => {
-    test("should complete full processor lifecycle", async ({ page }) => {
-        processorLogger.info("INTEGRATION TEST: Full processor lifecycle...");
+    test.beforeEach(async ({ page }, testInfo) => {
+        await takeStartScreenshot(page, testInfo);
+    });
 
+    test("should complete full processor lifecycle", async ({ page }) => {
         const authService = new AuthService(page);
         const processorManager = new ProcessorApiManager(page);
 
@@ -553,9 +483,5 @@ test.describe("ProcessorApiManager Integration Test", () => {
         result =
             await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
         expect(result.exists).toBe(false);
-
-        processorLogger.success(
-            "INTEGRATION TEST PASSED: Full processor lifecycle completed",
-        );
     });
 });

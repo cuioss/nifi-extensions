@@ -5,7 +5,7 @@
  */
 
 import { ProcessorApiManager } from './processor-api-manager.js';
-import { processorLogger } from './shared-logger.js';
+import { testLogger } from './test-logger.js';
 
 /**
  * Setup helper to ensure MultiIssuerJWTTokenAuthenticator is on canvas
@@ -23,7 +23,7 @@ export async function setupMultiIssuerJWTAuthenticator(page, options = {}) {
     position = { x: 400, y: 200 } 
   } = options;
 
-  processorLogger.info('Setting up MultiIssuerJWTTokenAuthenticator on canvas...');
+  testLogger.info('Processor','Setting up MultiIssuerJWTTokenAuthenticator on canvas...');
   
   const manager = new ProcessorApiManager(page);
 
@@ -32,14 +32,14 @@ export async function setupMultiIssuerJWTAuthenticator(page, options = {}) {
     const isDeployed = await manager.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
     
     if (!isDeployed) {
-      processorLogger.error('MultiIssuerJWTTokenAuthenticator is not deployed in NiFi');
-      processorLogger.error('Please ensure the processor NAR file is properly installed');
+      testLogger.error('Processor','MultiIssuerJWTTokenAuthenticator is not deployed in NiFi');
+      testLogger.error('Processor','Please ensure the processor NAR file is properly installed');
       return false;
     }
 
     // Remove existing processor if requested
     if (removeFirst) {
-      processorLogger.info('Removing existing processor from canvas...');
+      testLogger.info('Processor','Removing existing processor from canvas...');
       await manager.removeMultiIssuerJWTTokenAuthenticatorFromCanvas();
     }
 
@@ -47,21 +47,21 @@ export async function setupMultiIssuerJWTAuthenticator(page, options = {}) {
     const result = await manager.ensureProcessorOnCanvas();
     
     if (result) {
-      processorLogger.success('MultiIssuerJWTTokenAuthenticator is ready on canvas');
+      testLogger.info('Processor','MultiIssuerJWTTokenAuthenticator is ready on canvas');
       
       // Verify it's actually there
       const verification = await manager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
       if (verification.exists) {
-        processorLogger.info(`Processor confirmed with ID: ${verification.processor.id}`);
+        testLogger.info('Processor',`Processor confirmed with ID: ${verification.processor.id}`);
         return true;
       }
     }
 
-    processorLogger.error('Failed to setup MultiIssuerJWTTokenAuthenticator on canvas');
+    testLogger.error('Processor','Failed to setup MultiIssuerJWTTokenAuthenticator on canvas');
     return false;
 
   } catch (error) {
-    processorLogger.error('Error during processor setup:', error.message);
+    testLogger.error('Processor','Error during processor setup:', error.message);
     return false;
   }
 }
@@ -74,7 +74,7 @@ export async function setupMultiIssuerJWTAuthenticator(page, options = {}) {
  * @returns {Promise<boolean>} True if processor was removed or wasn't present
  */
 export async function cleanupMultiIssuerJWTAuthenticator(page) {
-  processorLogger.info('Cleaning up MultiIssuerJWTTokenAuthenticator from canvas...');
+  testLogger.info('Processor','Cleaning up MultiIssuerJWTTokenAuthenticator from canvas...');
   
   const manager = new ProcessorApiManager(page);
 
@@ -82,15 +82,15 @@ export async function cleanupMultiIssuerJWTAuthenticator(page) {
     const removed = await manager.removeMultiIssuerJWTTokenAuthenticatorFromCanvas();
     
     if (removed) {
-      processorLogger.success('Processor removed from canvas');
+      testLogger.info('Processor','Processor removed from canvas');
     } else {
-      processorLogger.info('Processor was not on canvas or could not be removed');
+      testLogger.info('Processor','Processor was not on canvas or could not be removed');
     }
     
     return removed;
 
   } catch (error) {
-    processorLogger.error('Error during processor cleanup:', error.message);
+    testLogger.error('Processor','Error during processor cleanup:', error.message);
     return false;
   }
 }

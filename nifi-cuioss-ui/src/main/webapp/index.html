@@ -11,8 +11,13 @@
          2. NiFi's dynamically injected FA 4.7.0 CSS has broken font paths (404 errors)
          3. Ensures consistent icon availability across all contexts
          Note: The 404 errors from NiFi's broken paths are harmless -->
-    <link rel="stylesheet" href="webjars/font-awesome/6.7.2/css/all.min.css">
-    <link rel="stylesheet" href="webjars/font-awesome/6.7.2/css/v4-shims.min.css">
+    <link rel="stylesheet" href="webjars/font-awesome/7.0.1/css/all.min.css">
+    <link rel="stylesheet" href="webjars/font-awesome/7.0.1/css/v4-shims.min.css">
+
+    <!-- Override NiFi's injected FA 6 icon definitions with our FA 7 font-family.
+         Loaded as a separate <link> (not @import) to ensure !important rules
+         participate correctly in the cascade against NiFi's dynamically injected <style>. -->
+    <link rel="stylesheet" href="css/modules/icons.css">
 
     <!-- NiFi will provide globalThis.nf.Common in production -->
     <script type="text/javascript" src="js/nifi-common-init.js"></script>
@@ -24,7 +29,7 @@
         <div id="loading-indicator">Loading JWT Validator UI...</div>
 
         <!-- Tab structure for JWT configuration -->
-        <main id="jwt-validator-tabs" class="jwt-tabs-container" style="display:none;">
+        <main id="jwt-validator-tabs" class="jwt-tabs-container hidden">
             <div class="jwt-tabs-header" data-testid="jwt-config-tabs">
                 <ul class="tabs" role="tablist">
                     <li class="active">

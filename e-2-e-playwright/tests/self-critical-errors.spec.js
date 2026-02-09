@@ -5,26 +5,21 @@
  * @version 1.0.0
  */
 
-import { test, expect } from "../fixtures/test-fixtures.js";
+import {
+    test,
+    expect,
+    takeStartScreenshot,
+} from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
-// import { CONSTANTS } from "../utils/constants.js"; // Unused in current implementation
-import {
-    saveTestBrowserLogs,
-    setupAuthAwareErrorDetection,
-} from "../utils/console-logger.js";
 import {
     checkCriticalErrors,
     cleanupCriticalErrorDetection,
     globalCriticalErrorDetector,
 } from "../utils/critical-error-detector.js";
-import { logTestWarning } from "../utils/test-error-handler.js";
 
 test.describe("Self-Test: Critical Error Detection", () => {
     test.beforeEach(async ({ page, processorManager }, testInfo) => {
-        // Setup auth-aware error detection (skips initial canvas checks)
-        await setupAuthAwareErrorDetection(page, testInfo);
-
         // Authenticate first
         const authService = new AuthService(page);
         await authService.ensureReady();
@@ -39,19 +34,10 @@ test.describe("Self-Test: Critical Error Detection", () => {
         // NOTE: Do NOT check for critical errors in beforeEach for self-tests
         // These tests are specifically designed to test error detection scenarios
         // Checking for errors here would cause all tests to fail prematurely
+        await takeStartScreenshot(page, testInfo);
     });
 
-    test.afterEach(async ({ page: _ }, testInfo) => {
-        // Always save browser logs first, regardless of test outcome
-        try {
-            await saveTestBrowserLogs(testInfo);
-        } catch (error) {
-            logTestWarning(
-                "afterEach",
-                `Failed to save console logs in afterEach: ${error.message}`,
-            );
-        }
-
+    test.afterEach(() => {
         // Cleanup critical error detection
         cleanupCriticalErrorDetection();
     });
@@ -148,7 +134,7 @@ test.describe("Self-Test: Critical Error Detection", () => {
                 .map((error) => error.message)
                 .join("\n");
             throw new Error(
-                `🚨 JavaScript errors detected:\n${errorMessages}\n` +
+                `JavaScript errors detected:\n${errorMessages}\n` +
                     `Total JS errors: ${jsErrors.length}\n` +
                     `This test is designed to fail when JavaScript errors are present.`,
             );
@@ -191,7 +177,7 @@ test.describe("Self-Test: Critical Error Detection", () => {
                 .map((error) => error.message)
                 .join("\n");
             throw new Error(
-                `🚨 Module loading errors detected:\n${errorMessages}\n` +
+                `Module loading errors detected:\n${errorMessages}\n` +
                     `Total module errors: ${moduleErrors.length}\n` +
                     `This test is designed to fail when RequireJS/AMD module errors are present.`,
             );
@@ -229,11 +215,6 @@ test.describe("Self-Test: Critical Error Detection", () => {
         // For this specific test, we'll be more lenient
         // We'll report the status but not necessarily fail
         if (!hasProcessors && !processor) {
-            logTestWarning(
-                "test",
-                "⚠️  No processors found on canvas - this may indicate an empty canvas issue",
-            );
-
             // Verify that the canvas itself exists and is ready
             const canvasExists = await detector.checkCanvasExists(page);
             expect(canvasExists, "Canvas should exist even if empty").toBe(
@@ -244,7 +225,6 @@ test.describe("Self-Test: Critical Error Detection", () => {
             const authService = new AuthService(page);
             await authService.verifyCanvasVisible();
 
-            // Log the finding for debugging
             // eslint-disable-next-line no-console
             console.log(
                 "Canvas is empty but functional - this may be expected in some test scenarios",
@@ -291,7 +271,7 @@ test.describe("Self-Test: Critical Error Detection", () => {
                 .join(", ");
 
             throw new Error(
-                `🚨 COMPREHENSIVE CRITICAL ERROR CHECK FAILED:\n` +
+                `COMPREHENSIVE CRITICAL ERROR CHECK FAILED:\n` +
                     `Total critical errors detected: ${totalCriticalErrors}\n` +
                     `Error breakdown: ${errorSummary}\n` +
                     `This test validates that the application is free of fundamental issues.`,
@@ -310,7 +290,7 @@ test.describe("Self-Test: Critical Error Detection", () => {
 
         // eslint-disable-next-line no-console
         console.log(
-            "✅ Comprehensive critical error validation passed - application is healthy",
+            "Comprehensive critical error validation passed - application is healthy",
         );
     });
 });

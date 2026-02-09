@@ -112,7 +112,6 @@ npm run test:self
 * `npm run test` - Runs tests with self-test pre-checks (Playwright orchestration)
 * `npm run test:self` - Runs only self-tests
 * `npm run test:jwt` - Runs JWT-related tests with pre-checks
-* `npm run test:all` - Runs all tests with pre-checks
 * `npm run test:no-precheck` - Runs tests without pre-checks
 
 ==== Pre-check Validation
@@ -192,12 +191,6 @@ Repeat steps 1-4 until tests pass.
 |===
 
 == Debug Techniques
-
-**Disable strict error checking**:
-[source,javascript]
-----
-await setupStrictErrorDetection(page, testInfo, false);
-----
 
 **Interactive debugging**:
 [source,javascript]

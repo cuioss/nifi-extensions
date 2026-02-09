@@ -17,7 +17,7 @@ This guide covers WCAG 2.1 Level AA compliance testing for the NiFi JWT Authenti
 
 The accessibility testing framework uses:
 
-* **axe-playwright**: Core accessibility testing engine
+* **@axe-core/playwright**: Core accessibility testing engine
 * **Custom checks**: NiFi-specific accessibility validation
 * **Component testing**: Individual component accessibility verification
 * **Comprehensive reporting**: Detailed accessibility reports with recommendations
@@ -227,8 +227,6 @@ ariaAttributes: {
 
 [source,javascript]
 ----
-import { WCAG_CONFIG, COMPONENT_CONFIG } from '../config/accessibility-config.js';
-
 // Configure test execution
 const testConfig = {
   mode: 'standard', // quick, standard, comprehensive
@@ -524,7 +522,7 @@ button:focus, input:focus {
 
 === Documentation
 * https://www.w3.org/WAI/WCAG21/quickref/[WCAG 2.1 Quick Reference]
-* https://github.com/abhinaba-ghosh/axe-playwright[axe-playwright Documentation]
+* https://github.com/dequelabs/axe-core-npm/tree/develop/packages/playwright[@axe-core/playwright Documentation]
 * https://playwright.dev/docs/accessibility-testing[Playwright Accessibility Testing]
 
 === Tools

@@ -45,9 +45,8 @@ export const init = async (element) => {
         <h2>Issuer Configurations</h2>
         <p>Configure JWT issuers for token validation. Each issuer requires
            a name and properties like jwks-url and issuer URI.</p>
-        <div class="global-error-messages issuer-form-error-messages"
-             role="alert" aria-live="assertive"
-             style="display:none;"></div>
+        <div class="global-error-messages issuer-form-error-messages hidden"
+             role="alert" aria-live="assertive"></div>
         <div class="issuers-container"></div>`;
 
     const issuersContainer = container.querySelector('.issuers-container');
@@ -176,10 +175,10 @@ const addIssuerForm = (container, issuerName, properties, processorId) => {
     fields.querySelector('.field-jwks-type').addEventListener('change', (e) => {
         const t = e.target.value;
         for (const f of form.querySelectorAll('.jwks-type-url, .jwks-type-file, .jwks-type-memory')) {
-            f.style.display = 'none';
+            f.classList.add('hidden');
         }
         for (const f of form.querySelectorAll(`.jwks-type-${t}`)) {
-            f.style.display = '';
+            f.classList.remove('hidden');
         }
     });
 
@@ -245,7 +244,7 @@ const addField = (container, idx, name, label, placeholder, value, extraClass, h
     const div = document.createElement('div');
     div.className = `form-field field-container-${name}`;
     if (extraClass) div.classList.add(extraClass);
-    if (hidden) div.style.display = 'none';
+    if (hidden) div.classList.add('hidden');
     div.innerHTML = `
         <label for="field-${name}-${idx}">${sanitizeHtml(label)}:</label>
         <input type="text" id="field-${name}-${idx}" name="${name}"
@@ -261,7 +260,7 @@ const addTextArea = (container, idx, name, label, placeholder, value, extraClass
     const div = document.createElement('div');
     div.className = `form-field field-container-${name}`;
     if (extraClass) div.classList.add(extraClass);
-    if (hidden) div.style.display = 'none';
+    if (hidden) div.classList.add('hidden');
     div.innerHTML = `
         <label for="field-${name}-${idx}">${sanitizeHtml(label)}:</label>
         <textarea id="field-${name}-${idx}" name="${name}"
@@ -384,16 +383,16 @@ const removeIssuer = async (form, issuerName) => {
             }
             if (globalErr) {
                 displayUiSuccess(globalErr, `Issuer "${issuerName}" removed successfully.`);
-                globalErr.style.display = 'block';
+                globalErr.classList.remove('hidden');
             }
         } catch (error) {
             if (globalErr) {
                 displayUiError(globalErr, error, {}, 'issuerConfigEditor.error.removeFailedTitle');
-                globalErr.style.display = 'block';
+                globalErr.classList.remove('hidden');
             }
         }
     } else if (issuerName && globalErr) {
         displayUiSuccess(globalErr, `Issuer "${issuerName}" removed (standalone mode).`);
-        globalErr.style.display = 'block';
+        globalErr.classList.remove('hidden');
     }
 };

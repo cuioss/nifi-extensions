@@ -1,0 +1,107 @@
+= Test Logging Architecture
+:toc:
+
+== Goal
+
+Per-test artifact persistence with human-readable text logs and consistent screenshots, integrated with Playwright's output directory system.
+
+== Per-Test Artifact Structure
+
+Every test produces exactly four files in its `testInfo.outputDir`:
+
+[cols="1,2"]
+|===
+| File | Description
+
+| `before.png`
+| Screenshot taken after preconditions (login, processor setup), before test body
+
+| `browser.log`
+| Browser console output, page errors, and HTTP errors (text format)
+
+| `test-run.log`
+| Node-side utility logs from AuthService, ProcessorApiManager, etc. (text format)
+
+| `after.png`
+| Screenshot taken after test body completes (in page fixture teardown)
+|===
+
+== Implementation
+
+=== TestLogger Singleton
+
+`utils/test-logger.js` exports a `testLogger` singleton and a `takeStartScreenshot` helper function.
+
+* *Browser events* captured via `page.on('console')`, `page.on('pageerror')`, and `page.on('response')` handlers
+* *Node-side logs* captured via `testLogger.info(source, message)`, `testLogger.warn(source, message)`, `testLogger.error(source, message)` calls from utility modules
+* *Persisted* as two text files (`browser.log` and `test-run.log`) via `testLogger.writeLogs(testInfo)` in the page fixture teardown
+
+=== Fixture Wiring
+
+[source,javascript]
+----
+page: async ({ page }, use, testInfo) => {
+    testLogger.startTest(testInfo.testId);
+    testLogger.setupBrowserCapture(page);
+    setupErrorMonitoring(page, testInfo);
+
+    await use(page);
+
+    // Automatic after screenshot + text logs
+    mkdirSync(testInfo.outputDir, { recursive: true });
+    await page.screenshot({ path: join(testInfo.outputDir, 'after.png'), fullPage: true }).catch(() => {});
+    testLogger.writeLogs(testInfo);
+    cleanupCriticalErrorDetection();
+},
+----
+
+=== Start Screenshot in beforeEach
+
+Each test file calls `takeStartScreenshot(page, testInfo)` as the last line of its `test.beforeEach`:
+
+[source,javascript]
+----
+import { test, expect, takeStartScreenshot } from "../fixtures/test-fixtures.js";
+
+test.beforeEach(async ({ page, processorManager }, testInfo) => {
+    const authService = new AuthService(page);
+    await authService.ensureReady();
+    await processorManager.ensureProcessorOnCanvas();
+    await takeStartScreenshot(page, testInfo);
+});
+----
+
+=== Text Log Format
+
+`browser.log`:
+[source]
+----
+[22:37:17.172] [info] [JWT-UI] JWT UI initialising...
+[22:37:17.139] [warning] NiFi Common API not available. UI functionality may be limited.
+[22:37:17.134] [error] Refused to apply style from '...' because its MIME type...
+[22:37:06.180] [network-error] HTTP 401 - https://localhost:9095/nifi-api/flow/current-user
+----
+
+`test-run.log`:
+[source]
+----
+[22:37:05.953] [Auth] [info] Ensuring NiFi is ready for testing...
+[22:37:05.967] [Auth] [info] NiFi service is accessible
+[22:37:08.628] [Processor] [info] Verifying MultiIssuerJWTTokenAuthenticator is on canvas...
+----
+
+== Migration from Previous Logger
+
+[cols="1,1"]
+|===
+| Before | After
+
+| `testLogger.attachToTest(testInfo)` (JSON + testInfo.attach)
+| `testLogger.writeLogs(testInfo)` (text files)
+
+| `test-logs.json` artifact
+| `browser.log` + `test-run.log` text files
+
+| Ad-hoc screenshots in some tests
+| Consistent `before.png` + `after.png` in every test
+|===

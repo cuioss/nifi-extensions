@@ -12,18 +12,14 @@ How to write, organize, and debug Playwright tests for this module.
 [source]
 ----
 e-2-e-playwright/
-├── fixtures/                     # Playwright test fixtures (setup/teardown)
-│   ├── auth-fixtures.js         # Authentication fixture
-│   └── test-fixtures.js         # Consolidated: logging, a11y, processor
-├── pages/                        # Page Object Model
-│   ├── LoginPage.js             # Login page interactions
-│   ├── CanvasPage.js            # Canvas page interactions
-│   └── index.js                 # Page fixtures + re-exports
 ├── tests/                        # Test specifications
 │   ├── self-*.spec.js           # Self-tests (framework validation)
 │   ├── 0x-*.spec.js             # Functional tests (processor features)
 │   └── accessibility-*.spec.js  # WCAG compliance tests
-├── utils/                        # Service utilities
+├── fixtures/                     # Playwright test fixtures (setup/teardown)
+│   ├── auth-fixtures.js         # Authentication fixture
+│   └── test-fixtures.js         # Consolidated: logging, a11y, processor
+├── utils/                        # Service utilities and scripts
 │   ├── auth-service.js          # API token-based authentication
 │   ├── processor.js             # Processor discovery/verification
 │   ├── processor-api-manager.js # NiFi REST API processor management
@@ -31,34 +27,16 @@ e-2-e-playwright/
 │   ├── navigation-utils.js      # Page navigation
 │   ├── constants.js             # Selectors, credentials, URLs
 │   ├── keycloak-token-service.js# Keycloak token acquisition
-│   ├── accessibility-helper.js  # axe-playwright integration
-│   ├── console-logger.js        # Browser console capture
+│   ├── accessibility-helper.js  # @axe-core/playwright integration
 │   ├── critical-error-detector.js# Critical error pattern matching
-│   ├── shared-logger.js         # Structured logging utilities
-│   └── test-error-handler.js    # Test error handling
-└── config/                       # Configuration
-    ├── accessibility-config.js  # WCAG axe-core rules
-    └── console-error-config.js  # Console error patterns
+│   ├── test-logger.js           # Unified per-test logging via testInfo.attach()
+│   └── run-tests-with-precheck.js# Self-test gating before functional tests
+└── docs/                         # Detailed documentation
 ----
 
 == Writing Tests
 
-=== Using Page Objects (recommended)
-
-Page Objects are available as Playwright fixtures:
-
-[source,javascript]
-----
-import { test, expect } from '../pages/index.js';
-
-test('Authentication and navigation', async ({ loginPage, canvasPage }) => {
-  await loginPage.login();
-  await loginPage.verifyLoginSuccess();
-  await canvasPage.verifyCanvasLoaded();
-});
-----
-
-=== Using Consolidated Fixtures
+=== Using Consolidated Fixtures (recommended)
 
 The `test-fixtures.js` provides extended fixtures with automatic console logging and error detection:
 
@@ -127,7 +105,7 @@ test('Processor management via API', async ({ page }) => {
 
 |Functional
 |Test processor features
-|`01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js`
+|`01-verify-configuration-tab.spec.js`
 
 |Accessibility
 |WCAG 2.1 Level AA compliance
