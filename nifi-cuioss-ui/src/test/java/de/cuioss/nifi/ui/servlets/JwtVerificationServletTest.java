@@ -18,6 +18,7 @@ package de.cuioss.nifi.ui.servlets;
 
 import de.cuioss.nifi.ui.service.JwtValidationService;
 import de.cuioss.nifi.ui.service.JwtValidationService.TokenValidationResult;
+import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.ServletOutputStream;
@@ -30,7 +31,9 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.easymock.EasyMock.*;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -271,6 +274,243 @@ class JwtVerificationServletTest {
         String responseJson = responseOutput.toString();
         assertTrue(responseJson.contains("\"valid\":false"));
         assertTrue(responseJson.contains("Service not available"));
+    }
+
+    @Test
+    void emptyTokenVerification() throws Exception {
+        // Arrange
+        String requestJson = """
+            {
+                "token": "",
+                "processorId": "test-processor-id"
+            }
+            """;
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+
+        response.setStatus(400);
+        expectLastCall();
+
+        replay(validationService, request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(validationService, request, response);
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":false"));
+        assertTrue(responseJson.contains("Token cannot be empty"));
+    }
+
+    @Test
+    void emptyProcessorIdVerification() throws Exception {
+        // Arrange
+        String requestJson = """
+            {
+                "token": "test-token",
+                "processorId": ""
+            }
+            """;
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+
+        response.setStatus(400);
+        expectLastCall();
+
+        replay(validationService, request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(validationService, request, response);
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":false"));
+        assertTrue(responseJson.contains("Processor ID cannot be empty"));
+    }
+
+    @Test
+    void requestBodyTooLarge() throws Exception {
+        // Arrange - reset mocks to change contentLength behavior
+        reset(request, response, validationService);
+        responseOutput = new ByteArrayOutputStream();
+
+        expect(request.getContentLength()).andReturn(2 * 1024 * 1024).anyTimes();
+        expect(response.getOutputStream()).andReturn(new TestServletOutputStream(responseOutput)).anyTimes();
+        response.setContentType("application/json");
+        expectLastCall().anyTimes();
+        response.setCharacterEncoding("UTF-8");
+        expectLastCall().anyTimes();
+        response.setStatus(413);
+        expectLastCall();
+
+        replay(validationService, request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(validationService, request, response);
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":false"));
+        assertTrue(responseJson.contains("Request body too large"));
+    }
+
+    @Test
+    void ioExceptionReadingRequest() throws Exception {
+        // Arrange
+        expect(request.getInputStream()).andThrow(new IOException("Connection reset"));
+
+        response.setStatus(500);
+        expectLastCall();
+
+        replay(validationService, request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(validationService, request, response);
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":false"));
+        assertTrue(responseJson.contains("Error reading request"));
+    }
+
+    @Test
+    void illegalArgumentFromService() throws Exception {
+        // Arrange
+        String requestJson = """
+            {
+                "token": "test-token",
+                "processorId": "test-processor-id"
+            }
+            """;
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+        expect(validationService.verifyToken("test-token", "test-processor-id"))
+                .andThrow(new IllegalArgumentException("Invalid processor configuration"));
+
+        response.setStatus(400);
+        expectLastCall();
+
+        replay(validationService, request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(validationService, request, response);
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":false"));
+        assertTrue(responseJson.contains("Invalid request"));
+    }
+
+    @Test
+    void ioExceptionFromService() throws Exception {
+        // Arrange
+        String requestJson = """
+            {
+                "token": "test-token",
+                "processorId": "test-processor-id"
+            }
+            """;
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+        expect(validationService.verifyToken("test-token", "test-processor-id"))
+                .andThrow(new IOException("Connection refused"));
+
+        response.setStatus(500);
+        expectLastCall();
+
+        replay(validationService, request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(validationService, request, response);
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":false"));
+        assertTrue(responseJson.contains("Communication error"));
+    }
+
+    @Test
+    void validTokenWithClaimsMap() throws Exception {
+        // Arrange
+        String requestJson = """
+            {
+                "token": "eyJhbGciOiJSUzI1NiJ9.test.sig",
+                "processorId": "test-processor-id"
+            }
+            """;
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+
+        // Create mock token content with claims
+        AccessTokenContent mockTokenContent = createMock(AccessTokenContent.class);
+        expect(mockTokenContent.getSubject()).andReturn(Optional.of("test-subject")).anyTimes();
+        expect(mockTokenContent.getIssuer()).andReturn("test-issuer").anyTimes();
+        expect(mockTokenContent.getExpirationTime()).andReturn(OffsetDateTime.now().plusHours(1)).anyTimes();
+        expect(mockTokenContent.getRoles()).andReturn(List.of("admin")).anyTimes();
+        expect(mockTokenContent.getScopes()).andReturn(List.of("read")).anyTimes();
+        replay(mockTokenContent);
+
+        TokenValidationResult result = TokenValidationResult.success(mockTokenContent);
+        result.setAuthorized(true);
+
+        expect(validationService.verifyToken("eyJhbGciOiJSUzI1NiJ9.test.sig", "test-processor-id"))
+                .andReturn(result);
+
+        response.setStatus(200);
+        expectLastCall();
+
+        replay(validationService, request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(validationService, request, response);
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":true"));
+        assertTrue(responseJson.contains("\"authorized\":true"));
+        assertTrue(responseJson.contains("\"issuer\":\"test-issuer\""));
+        assertTrue(responseJson.contains("\"sub\":\"test-subject\""));
+    }
+
+    @Test
+    void validTokenWithNullIssuerAndEmptyScopes() throws Exception {
+        // Arrange
+        String requestJson = """
+            {
+                "token": "test-token-minimal",
+                "processorId": "test-processor-id"
+            }
+            """;
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+
+        // Success with null tokenContent — issuer/scopes/roles will be null
+        TokenValidationResult result = TokenValidationResult.success(null);
+
+        expect(validationService.verifyToken("test-token-minimal", "test-processor-id"))
+                .andReturn(result);
+
+        response.setStatus(200);
+        expectLastCall();
+
+        replay(validationService, request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(validationService, request, response);
+        String responseJson = responseOutput.toString();
+        assertTrue(responseJson.contains("\"valid\":true"));
+        assertTrue(responseJson.contains("\"authorized\":false"));
+        assertTrue(responseJson.contains("\"claims\":{}"));
     }
 
     // Helper classes for testing
