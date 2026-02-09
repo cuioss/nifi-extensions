@@ -35,17 +35,16 @@ body {
 }
 
 .jwt-tabs-header .tabs {
-    list-style: none;
     margin: 0;
     padding: 0;
     display: flex;
 }
 
-.jwt-tabs-header .tabs li {
+.jwt-tabs-header .tabs .tab-item {
     margin-right: 2px;
 }
 
-.jwt-tabs-header .tabs li a {
+.jwt-tabs-header .tabs .tab-item a {
     display: block;
     padding: 10px 20px;
     text-decoration: none;
@@ -57,11 +56,11 @@ body {
     transition: all 0.2s ease;
 }
 
-.jwt-tabs-header .tabs li a:hover {
+.jwt-tabs-header .tabs .tab-item a:hover {
     background-color: var(--tab-hover-background);
 }
 
-.jwt-tabs-header .tabs li.active a {
+.jwt-tabs-header .tabs .tab-item.active a {
     background-color: var(--container-background);
     color: var(--primary-color);
     border-bottom: 2px solid var(--container-background);

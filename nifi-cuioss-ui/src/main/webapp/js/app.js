@@ -44,8 +44,8 @@ const initTabs = () => {
             const target = link.getAttribute('href');
 
             // Deactivate all
-            for (const li of document.querySelectorAll('.tabs li')) {
-                li.classList.remove('active');
+            for (const item of document.querySelectorAll('.tabs .tab-item')) {
+                item.classList.remove('active');
             }
             for (const pane of tabPanes) pane.classList.remove('active');
 
