@@ -280,7 +280,6 @@ public class JwksValidationServlet extends HttpServlet {
      * @throws IOException if HTTP request fails
      * @throws InterruptedException if HTTP request is interrupted
      */
-    @SuppressWarnings("java:S2095") // S2095: java.net.http.HttpClient doesn't implement AutoCloseable
     private String fetchJwksContentByResolvedAddress(String jwksUrl, URI originalUri,
             InetAddress resolvedAddress) throws IOException, InterruptedException {
         // Build URL using resolved IP to prevent DNS rebinding TOCTOU attacks
@@ -300,22 +299,23 @@ public class JwksValidationServlet extends HttpServlet {
                 .readTimeoutSeconds(10)
                 .build();
 
-        HttpClient httpClient = httpHandler.createHttpClient();
-        HttpRequest request = httpHandler.requestBuilder()
-                .header("Accept", CONTENT_TYPE_JSON)
-                .header("Host", originalUri.getHost())
-                .GET()
-                .build();
+        try (HttpClient httpClient = httpHandler.createHttpClient()) {
+            HttpRequest request = httpHandler.requestBuilder()
+                    .header("Accept", CONTENT_TYPE_JSON)
+                    .header("Host", originalUri.getHost())
+                    .GET()
+                    .build();
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() != 200) {
-            String error = "JWKS URL returned status %d".formatted(response.statusCode());
-            LOGGER.debug(JWKS_VALIDATION_FAILED_MSG, jwksUrl, error);
-            return null;
+            if (response.statusCode() != 200) {
+                String error = "JWKS URL returned status %d".formatted(response.statusCode());
+                LOGGER.debug(JWKS_VALIDATION_FAILED_MSG, jwksUrl, error);
+                return null;
+            }
+
+            return response.body();
         }
-
-        return response.body();
     }
 
     /**
