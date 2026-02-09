@@ -513,6 +513,130 @@ class JwtVerificationServletTest {
         assertTrue(responseJson.contains("\"claims\":{}"));
     }
 
+    @Test
+    void validTokenWithNullIssuerInClaims() throws Exception {
+        // Arrange — exercise the null case in addClaimValue switch
+        String requestJson = """
+            {
+                "token": "test-token-null-issuer",
+                "processorId": "test-processor-id"
+            }
+            """;
+
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+
+        // Mock AccessTokenContent with null issuer to produce null in claims map
+        AccessTokenContent mockTokenContent = createMock(AccessTokenContent.class);
+        expect(mockTokenContent.getSubject()).andReturn(Optional.of("test-subject")).anyTimes();
+        expect(mockTokenContent.getIssuer()).andReturn(null).anyTimes();
+        expect(mockTokenContent.getExpirationTime()).andReturn(OffsetDateTime.now().plusHours(1)).anyTimes();
+        expect(mockTokenContent.getRoles()).andReturn(List.of()).anyTimes();
+        expect(mockTokenContent.getScopes()).andReturn(List.of()).anyTimes();
+        replay(mockTokenContent);
+
+        TokenValidationResult result = TokenValidationResult.success(mockTokenContent);
+        result.setAuthorized(true);
+
+        expect(validationService.verifyToken("test-token-null-issuer", "test-processor-id"))
+                .andReturn(result);
+
+        response.setStatus(200);
+        expectLastCall();
+
+        replay(validationService, request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(validationService, request, response);
+        String responseBody = responseOutput.toString();
+        assertTrue(responseBody.contains("\"valid\":true"));
+        // null issuer should produce "iss":null in JSON claims
+        assertTrue(responseBody.contains("\"iss\""),
+                "Claims should contain iss key even when null");
+    }
+
+    @Test
+    void ioExceptionWritingValidResponse() throws Exception {
+        // Arrange — valid flow but getOutputStream throws when writing response
+        reset(request, response, validationService);
+
+        expect(request.getContentLength()).andReturn(100).anyTimes();
+        // getOutputStream() will be called once for the response — throw IOException
+        expect(response.getOutputStream()).andThrow(new IOException("Broken pipe"));
+        response.setContentType("application/json");
+        expectLastCall().anyTimes();
+        response.setCharacterEncoding("UTF-8");
+        expectLastCall().anyTimes();
+
+        String requestJson = """
+            {
+                "token": "test-token",
+                "processorId": "test-processor-id"
+            }
+            """;
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+
+        TokenValidationResult validResult = TokenValidationResult.success(null);
+        validResult.setIssuer("test-issuer");
+        validResult.setAuthorized(true);
+
+        expect(validationService.verifyToken("test-token", "test-processor-id"))
+                .andReturn(validResult);
+
+        // IOException causes fallback to setStatus(500) in safelySendValidationResponse
+        response.setStatus(200);
+        expectLastCall();
+        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        expectLastCall();
+
+        replay(validationService, request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(validationService, request, response);
+    }
+
+    @Test
+    void ioExceptionWritingErrorResponse() throws Exception {
+        // Arrange — error flow but getOutputStream throws during error response writing
+        reset(request, response, validationService);
+
+        expect(request.getContentLength()).andReturn(100).anyTimes();
+        // getOutputStream() throws during error response
+        expect(response.getOutputStream()).andThrow(new IOException("Connection reset"));
+        response.setContentType("application/json");
+        expectLastCall().anyTimes();
+        response.setCharacterEncoding("UTF-8");
+        expectLastCall().anyTimes();
+
+        String requestJson = """
+            {
+                "token": "test-token",
+                "processorId": "test-processor-id"
+            }
+            """;
+        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+
+        expect(validationService.verifyToken("test-token", "test-processor-id"))
+                .andThrow(new IllegalStateException("Service not available"));
+
+        // safelySendErrorResponse catches IOException → sets status directly
+        response.setStatus(500);
+        expectLastCall();
+
+        replay(validationService, request, response);
+
+        // Act
+        servlet.doPost(request, response);
+
+        // Assert
+        verify(validationService, request, response);
+    }
+
     // Helper classes for testing
     private static class TestServletInputStream extends ServletInputStream {
         private final ByteArrayInputStream inputStream;
