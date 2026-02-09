@@ -84,7 +84,7 @@ public class ErrorContext {
      * @param value the context value
      * @return this ErrorContext for chaining
      */
-    public ErrorContext with(String key, Object value) {
+    public ErrorContext with(@Nullable String key, @Nullable Object value) {
         if (key != null && key.matches("[a-zA-Z0-9._-]+") && value != null) {
             context.put(key, value);
         }
@@ -176,6 +176,7 @@ public class ErrorContext {
      * Lombok-generated builder for {@link ErrorContext}.
      * This stub allows Javadoc to resolve the return type of {@link #forComponent(String)}.
      */
+    @SuppressWarnings("java:S2094") // Lombok @Builder generates the full implementation
     public static class ErrorContextBuilder {
         // Lombok @Builder generates the full implementation
     }
