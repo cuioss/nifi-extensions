@@ -38,9 +38,8 @@ const TRANSLATIONS = {
     }
 };
 
-const lang = (typeof navigator !== 'undefined'
-    ? (navigator.language || 'en')
-    : 'en').startsWith('de') ? 'de' : 'en';
+const browserLang = typeof navigator !== 'undefined' ? (navigator.language || 'en') : 'en';
+const lang = browserLang.startsWith('de') ? 'de' : 'en';
 
 /**
  * Translate a key to the current browser language.
