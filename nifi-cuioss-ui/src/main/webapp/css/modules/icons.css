@@ -13,17 +13,11 @@
  * The rules below use !important on all three properties (font-family,
  * font-weight, content) to guarantee our FA 7 definitions win over NiFi's
  * injected CSS regardless of document order or specificity.
+ *
+ * Only icons actually used in index.html and JS modules are listed here.
  */
 
-/* Help and Information Icons */
-.help-tooltip::before,
-.fa-question-circle::before {
-    font-family: "Font Awesome 7 Free", sans-serif !important;
-    font-weight: 900 !important;
-    content: "\f059" !important;
-}
-
-/* Navigation Icons */
+/* Navigation Icons (index.html, app.js) */
 .fa-chevron-down::before {
     font-family: "Font Awesome 7 Free", sans-serif !important;
     font-weight: 900 !important;
@@ -36,7 +30,7 @@
     content: "\f054" !important;
 }
 
-/* Action Icons */
+/* Action Icons (token-verifier.js, metrics.js) */
 .fa-check::before {
     font-family: "Font Awesome 7 Free", sans-serif !important;
     font-weight: 900 !important;
@@ -47,6 +41,12 @@
     font-family: "Font Awesome 7 Free", sans-serif !important;
     font-weight: 900 !important;
     content: "\f058" !important;
+}
+
+.fa-times-circle::before {
+    font-family: "Font Awesome 7 Free", sans-serif !important;
+    font-weight: 900 !important;
+    content: "\f057" !important;
 }
 
 .fa-trash::before {
@@ -61,28 +61,28 @@
     content: "\f021" !important;
 }
 
-/* Status Icons */
-.fa-exclamation-triangle::before {
+/* Status Icons (token-verifier.js) */
+.fa-clock::before {
     font-family: "Font Awesome 7 Free", sans-serif !important;
-    font-weight: 900 !important;
-    content: "\f071" !important;
+    font-weight: 400 !important;
+    content: "\f017" !important;
 }
 
-/* Link Icons */
+/* Link Icons (index.html) */
 .fa-external-link::before {
     font-family: "Font Awesome 7 Free", sans-serif !important;
     font-weight: 900 !important;
     content: "\f35d" !important;
 }
 
-/* Download Icon */
+/* Download Icon (metrics.js) */
 .fa-download::before {
     font-family: "Font Awesome 7 Free", sans-serif !important;
     font-weight: 900 !important;
     content: "\f019" !important;
 }
 
-/* Spinner Icon */
+/* Spinner Icon (metrics.js) */
 .fa-spinner::before {
     font-family: "Font Awesome 7 Free", sans-serif !important;
     font-weight: 900 !important;
