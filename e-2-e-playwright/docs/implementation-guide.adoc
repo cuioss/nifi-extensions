@@ -36,22 +36,7 @@ e-2-e-playwright/
 
 == Writing Tests
 
-=== Using Page Objects (recommended)
-
-Page Objects are available as Playwright fixtures:
-
-[source,javascript]
-----
-import { test, expect } from '../pages/index.js';
-
-test('Authentication and navigation', async ({ loginPage, canvasPage }) => {
-  await loginPage.login();
-  await loginPage.verifyLoginSuccess();
-  await canvasPage.verifyCanvasLoaded();
-});
-----
-
-=== Using Consolidated Fixtures
+=== Using Consolidated Fixtures (recommended)
 
 The `test-fixtures.js` provides extended fixtures with automatic console logging and error detection:
 
@@ -120,7 +105,7 @@ test('Processor management via API', async ({ page }) => {
 
 |Functional
 |Test processor features
-|`01-verify-multi-issuer-jwt-token-authenticator-advanced.spec.js`
+|`01-verify-configuration-tab.spec.js`
 
 |Accessibility
 |WCAG 2.1 Level AA compliance
