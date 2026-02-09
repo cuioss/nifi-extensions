@@ -116,6 +116,11 @@ describe('log', () => {
     test('does not throw when called', () => {
         expect(() => log.debug('test debug')).not.toThrow();
     });
+
+    test('warn and error methods output to console', () => {
+        expect(() => log.warn('test warning')).not.toThrow();
+        expect(() => log.error('test error')).not.toThrow();
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -168,6 +173,13 @@ describe('validateUrl', () => {
         expect(validateUrl('http://example.com', { httpsOnly: true }).isValid).toBe(false);
         expect(validateUrl('https://example.com', { httpsOnly: true }).isValid).toBe(true);
     });
+
+    test('rejects URL exceeding maxLength', () => {
+        const longUrl = 'https://example.com/' + 'a'.repeat(2050);
+        const result = validateUrl(longUrl);
+        expect(result.isValid).toBe(false);
+        expect(result.error).toContain('too long');
+    });
 });
 
 describe('validateJwtToken', () => {
@@ -188,6 +200,13 @@ describe('validateJwtToken', () => {
 
     test('rejects very short token', () => {
         expect(validateJwtToken('a.b').isValid).toBe(false);
+    });
+
+    test('rejects token exceeding max length', () => {
+        const longToken = 'a'.repeat(5001) + '.' + 'b'.repeat(5001);
+        const result = validateJwtToken(longToken);
+        expect(result.isValid).toBe(false);
+        expect(result.error).toContain('too long');
     });
 });
 
@@ -285,6 +304,31 @@ describe('displayUiError', () => {
         displayUiError(el, null, {}, 'fallback.key');
         expect(el.innerHTML).toContain('Unknown error');
     });
+
+    test('extracts message from responseJSON', () => {
+        document.body.innerHTML = '<div id="err"></div>';
+        const el = document.getElementById('err');
+        displayUiError(el, { responseJSON: { message: 'JSON error' } });
+        expect(el.innerHTML).toContain('JSON error');
+    });
+
+    test('extracts message from responseText JSON', () => {
+        document.body.innerHTML = '<div id="err"></div>';
+        const el = document.getElementById('err');
+        displayUiError(el, { responseText: '{"message":"Parsed error"}' });
+        expect(el.innerHTML).toContain('Parsed error');
+    });
+
+    test('uses responseText directly when not JSON', () => {
+        document.body.innerHTML = '<div id="err"></div>';
+        const el = document.getElementById('err');
+        displayUiError(el, { responseText: 'Plain text error' });
+        expect(el.innerHTML).toContain('Plain text error');
+    });
+
+    test('handles null element gracefully', () => {
+        expect(() => displayUiError(null, new Error('test'))).not.toThrow();
+    });
 });
 
 describe('displayUiSuccess', () => {
@@ -294,6 +338,19 @@ describe('displayUiSuccess', () => {
         displayUiSuccess(el, 'Saved!');
         expect(el.innerHTML).toContain('Saved!');
         expect(el.innerHTML).toContain('success');
+    });
+
+    test('auto-removes success message after timeout', () => {
+        jest.useFakeTimers();
+        document.body.innerHTML = '<div id="msg"></div>';
+        const el = document.getElementById('msg');
+        displayUiSuccess(el, 'Auto-clear');
+        expect(el.querySelector('.success-message')).not.toBeNull();
+
+        jest.advanceTimersByTime(5000);
+
+        expect(el.querySelector('.success-message')).toBeNull();
+        jest.useRealTimers();
     });
 });
 
@@ -337,6 +394,32 @@ describe('showConfirmationDialog', () => {
         const result = await promise;
         expect(result).toBe(true);
         expect(callback).toHaveBeenCalled();
+    });
+
+    test('Escape key closes dialog', async () => {
+        const promise = showConfirmationDialog({
+            title: 'Test',
+            message: 'Are you sure?'
+        });
+
+        const dialog = document.querySelector('.confirmation-dialog');
+        dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+        const result = await promise;
+        expect(result).toBe(false);
+        expect(document.querySelector('.confirmation-dialog')).toBeNull();
+    });
+
+    test('overlay click closes dialog', async () => {
+        const promise = showConfirmationDialog({
+            title: 'Test',
+            message: 'Are you sure?'
+        });
+
+        document.querySelector('.dialog-overlay').click();
+
+        const result = await promise;
+        expect(result).toBe(false);
     });
 
     test('cancel button resolves false', async () => {
