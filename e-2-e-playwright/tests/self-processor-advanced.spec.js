@@ -229,9 +229,7 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
             await page.waitForLoadState("networkidle");
 
             // Verify processor is still visible and functional
-            const verifyLocator =
-                processor.locator || page.locator(processor.element).first();
-            await expect(verifyLocator).toBeVisible({
+            await expect(locator).toBeVisible({
                 timeout: 5000,
             });
         } else {
