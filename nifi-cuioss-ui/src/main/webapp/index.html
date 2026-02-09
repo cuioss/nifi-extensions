@@ -14,6 +14,11 @@
     <link rel="stylesheet" href="webjars/font-awesome/7.0.1/css/all.min.css">
     <link rel="stylesheet" href="webjars/font-awesome/7.0.1/css/v4-shims.min.css">
 
+    <!-- Override NiFi's injected FA 6 icon definitions with our FA 7 font-family.
+         Loaded as a separate <link> (not @import) to ensure !important rules
+         participate correctly in the cascade against NiFi's dynamically injected <style>. -->
+    <link rel="stylesheet" href="css/modules/icons.css">
+
     <!-- NiFi will provide globalThis.nf.Common in production -->
     <script type="text/javascript" src="js/nifi-common-init.js"></script>
 </head>

@@ -9,6 +9,9 @@
 /* Import base styles */
 @import url('modules/base.css');
 
+/* icons.css is loaded via <link> in index.html (not @import) to ensure
+   !important rules correctly override NiFi's dynamically injected <style>. */
+
 /* Import component-specific styles */
 @import url('modules/jwksValidator.css');
 @import url('modules/tokenVerifier.css');
