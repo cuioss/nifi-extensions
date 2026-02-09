@@ -69,6 +69,7 @@ public class JwksValidationServlet extends HttpServlet {
     private static final int MAX_REQUEST_BODY_SIZE = 1024 * 1024;
 
     /** Default base path for JWKS files when no NiFi properties are available. */
+    @SuppressWarnings("java:S1075") // Intentional NiFi deployment default constant
     private static final String DEFAULT_JWKS_BASE_PATH = "/opt/nifi/nifi-current/conf";
 
     @Override
@@ -190,14 +191,9 @@ public class JwksValidationServlet extends HttpServlet {
             }
 
             // Validate URL path using cui-http security pipeline
-            SecurityEventCounter counter = new SecurityEventCounter();
-            SecurityConfiguration secConfig = SecurityConfiguration.strict();
-            HttpSecurityValidator urlValidator = PipelineFactory.createUrlPathPipeline(secConfig, counter);
-            try {
-                urlValidator.validate(jwksUrl);
-            } catch (UrlSecurityException e) {
-                LOGGER.warn("URL security violation for JWKS URL: %s - %s", jwksUrl, e.getFailureType());
-                return JwksValidationResult.failure("Invalid URL: " + e.getFailureType().getDescription());
+            JwksValidationResult urlSecurityResult = validateUrlSecurity(jwksUrl);
+            if (urlSecurityResult != null) {
+                return urlSecurityResult;
             }
 
             // SSRF protection: resolve DNS once and validate all resolved addresses.
@@ -365,14 +361,9 @@ public class JwksValidationServlet extends HttpServlet {
     private JwksValidationResult validateJwksFile(String jwksFilePath) {
         try {
             // 1. Validate path using cui-http security pipeline for traversal detection
-            SecurityEventCounter counter = new SecurityEventCounter();
-            SecurityConfiguration secConfig = SecurityConfiguration.strict();
-            HttpSecurityValidator pathValidator = PipelineFactory.createUrlPathPipeline(secConfig, counter);
-            try {
-                pathValidator.validate(jwksFilePath);
-            } catch (UrlSecurityException e) {
-                LOGGER.warn("Path security violation for JWKS file: %s - %s", jwksFilePath, e.getFailureType());
-                return JwksValidationResult.failure("Invalid file path: " + e.getFailureType().getDescription());
+            JwksValidationResult pathSecurityResult = validatePathSecurity(jwksFilePath);
+            if (pathSecurityResult != null) {
+                return pathSecurityResult;
             }
 
             // 2. Base directory restriction
@@ -426,6 +417,44 @@ public class JwksValidationServlet extends HttpServlet {
 
         // Default NiFi conf directory
         return Path.of(DEFAULT_JWKS_BASE_PATH).normalize().toAbsolutePath();
+    }
+
+    /**
+     * Validates URL security using cui-http security pipeline.
+     *
+     * @param jwksUrl the URL to validate
+     * @return a failure result if validation fails, or null if the URL is safe
+     */
+    private JwksValidationResult validateUrlSecurity(String jwksUrl) {
+        SecurityEventCounter counter = new SecurityEventCounter();
+        SecurityConfiguration secConfig = SecurityConfiguration.strict();
+        HttpSecurityValidator urlValidator = PipelineFactory.createUrlPathPipeline(secConfig, counter);
+        try {
+            urlValidator.validate(jwksUrl);
+        } catch (UrlSecurityException e) {
+            LOGGER.warn("URL security violation for JWKS URL: %s - %s", jwksUrl, e.getFailureType());
+            return JwksValidationResult.failure("Invalid URL: " + e.getFailureType().getDescription());
+        }
+        return null;
+    }
+
+    /**
+     * Validates file path security using cui-http security pipeline.
+     *
+     * @param jwksFilePath the file path to validate
+     * @return a failure result if validation fails, or null if the path is safe
+     */
+    private JwksValidationResult validatePathSecurity(String jwksFilePath) {
+        SecurityEventCounter counter = new SecurityEventCounter();
+        SecurityConfiguration secConfig = SecurityConfiguration.strict();
+        HttpSecurityValidator pathValidator = PipelineFactory.createUrlPathPipeline(secConfig, counter);
+        try {
+            pathValidator.validate(jwksFilePath);
+        } catch (UrlSecurityException e) {
+            LOGGER.warn("Path security violation for JWKS file: %s - %s", jwksFilePath, e.getFailureType());
+            return JwksValidationResult.failure("Invalid file path: " + e.getFailureType().getDescription());
+        }
+        return null;
     }
 
     /**
