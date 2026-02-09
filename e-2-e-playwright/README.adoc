@@ -25,21 +25,14 @@ Packaging type is `pom` — this module is not consumed as a library dependency.
 [source]
 ----
 e-2-e-playwright/
-├── config/                    # Test configuration
-│   ├── accessibility-config.js   # WCAG 2.1 Level AA axe-core rules
-│   └── console-error-config.js   # Console error pattern definitions
-├── fixtures/                  # Playwright test fixtures
-│   ├── auth-fixtures.js          # Authentication fixtures
-│   └── test-fixtures.js          # Consolidated fixtures (logging, a11y, processor)
-├── pages/                     # Page Object Model
-│   ├── LoginPage.js              # Login page interactions
-│   ├── CanvasPage.js             # NiFi canvas interactions
-│   └── index.js                  # Page fixtures and exports
-├── tests/                     # Test specifications
+├── tests/                        # Test specifications (12 spec files)
 │   ├── self-*.spec.js            # Self-tests (framework validation)
 │   ├── 0x-*.spec.js              # Functional tests (processor features)
 │   └── accessibility-*.spec.js   # WCAG compliance tests
-├── utils/                     # Utility services
+├── fixtures/                     # Playwright test fixtures
+│   ├── auth-fixtures.js          # Authentication fixtures
+│   └── test-fixtures.js          # Consolidated fixtures (logging, a11y, processor)
+├── utils/                        # Utility services and scripts (11 files)
 │   ├── auth-service.js           # API token-based authentication
 │   ├── processor.js              # Processor discovery and verification
 │   ├── processor-api-manager.js  # REST API-based processor management
@@ -49,14 +42,12 @@ e-2-e-playwright/
 │   ├── keycloak-token-service.js # Keycloak token acquisition
 │   ├── accessibility-helper.js   # @axe-core/playwright integration
 │   ├── critical-error-detector.js# Critical error pattern matching
-│   └── test-logger.js            # Unified per-test logging via testInfo.attach()
-├── scripts/                   # Utility scripts
-│   ├── run-tests-with-precheck.js# Self-test gating before functional tests
-│   └── setup-accessibility-tests.js
-├── docs/                      # Detailed documentation
-├── playwright.config.js       # Playwright configuration
-├── package.json               # npm configuration
-└── pom.xml                    # Maven integration
+│   ├── test-logger.js            # Unified per-test logging via testInfo.attach()
+│   └── run-tests-with-precheck.js# Self-test gating before functional tests
+├── docs/                         # Detailed documentation (6 guides)
+├── playwright.config.cjs        # Playwright configuration
+├── package.json                  # npm configuration
+└── pom.xml                       # Maven integration
 ----
 
 == Test Categories
@@ -165,20 +156,16 @@ npm run test:no-precheck
 # ESLint
 npm run lint                   # Check
 npm run lint:fix               # Auto-fix
-npm run lint:strict            # Strict mode (max 25 warnings)
+npm run lint:strict            # Strict mode (max 30 warnings)
 
 # Prettier
 npm run format:check           # Verify formatting
 npm run format                 # Auto-format
-
-# Log analysis
-npm run analyze:console        # Basic console log analysis
-npm run analyze:logs           # Enhanced log analysis
 ----
 
 == Configuration
 
-=== Playwright (`playwright.config.js`)
+=== Playwright (`playwright.config.cjs`)
 
 * *Browser*: Chromium only (enterprise standard, best Playwright support)
 * *Reporters*: JSON (`target/test-results.json`), JUnit (`target/junit-results.xml`), list
@@ -267,21 +254,6 @@ All artifacts are cleaned by `mvn clean`.
 |===
 
 == Architecture
-
-=== Page Object Model
-
-Tests use Page Objects (`pages/LoginPage.js`, `pages/CanvasPage.js`) available as Playwright fixtures:
-
-[source,javascript]
-----
-import { test, expect, LoginPage, CanvasPage } from '../pages/index.js';
-
-test('Authentication flow', async ({ loginPage, canvasPage }) => {
-  await loginPage.login();
-  await loginPage.verifyLoginSuccess();
-  await canvasPage.verifyCanvasLoaded();
-});
-----
 
 === Test Fixtures
 

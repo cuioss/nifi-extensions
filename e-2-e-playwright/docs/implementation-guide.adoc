@@ -12,18 +12,14 @@ How to write, organize, and debug Playwright tests for this module.
 [source]
 ----
 e-2-e-playwright/
-├── fixtures/                     # Playwright test fixtures (setup/teardown)
-│   ├── auth-fixtures.js         # Authentication fixture
-│   └── test-fixtures.js         # Consolidated: logging, a11y, processor
-├── pages/                        # Page Object Model
-│   ├── LoginPage.js             # Login page interactions
-│   ├── CanvasPage.js            # Canvas page interactions
-│   └── index.js                 # Page fixtures + re-exports
 ├── tests/                        # Test specifications
 │   ├── self-*.spec.js           # Self-tests (framework validation)
 │   ├── 0x-*.spec.js             # Functional tests (processor features)
 │   └── accessibility-*.spec.js  # WCAG compliance tests
-├── utils/                        # Service utilities
+├── fixtures/                     # Playwright test fixtures (setup/teardown)
+│   ├── auth-fixtures.js         # Authentication fixture
+│   └── test-fixtures.js         # Consolidated: logging, a11y, processor
+├── utils/                        # Service utilities and scripts
 │   ├── auth-service.js          # API token-based authentication
 │   ├── processor.js             # Processor discovery/verification
 │   ├── processor-api-manager.js # NiFi REST API processor management
@@ -33,9 +29,9 @@ e-2-e-playwright/
 │   ├── keycloak-token-service.js# Keycloak token acquisition
 │   ├── accessibility-helper.js  # @axe-core/playwright integration
 │   ├── critical-error-detector.js# Critical error pattern matching
-│   └── test-logger.js           # Unified per-test logging via testInfo.attach()
-└── config/                       # Configuration
-    └── accessibility-config.js  # WCAG axe-core rules
+│   ├── test-logger.js           # Unified per-test logging via testInfo.attach()
+│   └── run-tests-with-precheck.js# Self-test gating before functional tests
+└── docs/                         # Detailed documentation
 ----
 
 == Writing Tests
