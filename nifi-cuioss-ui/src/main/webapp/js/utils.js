@@ -38,7 +38,7 @@ const TRANSLATIONS = {
     }
 };
 
-const browserLang = typeof navigator !== 'undefined' ? (navigator.language || 'en') : 'en';
+const browserLang = typeof navigator === 'undefined' ? 'en' : (navigator.language || 'en');
 const lang = browserLang.startsWith('de') ? 'de' : 'en';
 
 /**

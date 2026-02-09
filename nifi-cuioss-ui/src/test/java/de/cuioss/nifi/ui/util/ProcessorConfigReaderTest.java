@@ -16,7 +16,6 @@
  */
 package de.cuioss.nifi.ui.util;
 
-import de.cuioss.test.generator.junit.EnableGeneratorController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -25,7 +24,6 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.util.UUID;
 
-import static de.cuioss.test.generator.Generators.strings;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -40,7 +38,6 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
  */
-@EnableGeneratorController
 @DisplayName("Processor Config Reader Tests")
 class ProcessorConfigReaderTest {
 

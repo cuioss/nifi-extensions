@@ -27,6 +27,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -34,6 +37,7 @@ import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static org.easymock.EasyMock.*;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -169,15 +173,20 @@ class JwtVerificationServletTest {
         assertTrue(responseJson.contains("expired"));
     }
 
-    @Test
-    void missingTokenField() throws Exception {
-        // Arrange
-        String requestJson = """
-            {
-                "processorId": "test-processor-id"
-            }
-            """;
+    static Stream<Arguments> badRequestProvider() {
+        return Stream.of(
+                Arguments.of("{\"processorId\": \"test-processor-id\"}", "Missing required field: token"),
+                Arguments.of("{\"token\": \"test-token\"}", "Processor ID cannot be empty"),
+                Arguments.of("{ invalid json }", "Invalid JSON format"),
+                Arguments.of("{\"token\": \"\", \"processorId\": \"test-processor-id\"}", "Token cannot be empty"),
+                Arguments.of("{\"token\": \"test-token\", \"processorId\": \"\"}", "Processor ID cannot be empty")
+        );
+    }
 
+    @ParameterizedTest(name = "Bad request: {1}")
+    @MethodSource("badRequestProvider")
+    void shouldRejectBadRequest(String requestJson, String expectedError) throws Exception {
+        // Arrange
         expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
 
         response.setStatus(400);
@@ -193,56 +202,7 @@ class JwtVerificationServletTest {
 
         String responseJson = responseOutput.toString();
         assertTrue(responseJson.contains("\"valid\":false"));
-        assertTrue(responseJson.contains("Missing required field: token"));
-    }
-
-    @Test
-    void missingProcessorId() throws Exception {
-        // Arrange
-        String requestJson = """
-            {
-                "token": "test-token"
-            }
-            """;
-
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-
-        response.setStatus(400);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-
-        String responseJson = responseOutput.toString();
-        assertTrue(responseJson.contains("\"valid\":false"));
-        assertTrue(responseJson.contains("Processor ID cannot be empty"));
-    }
-
-    @Test
-    void invalidJsonRequest() throws Exception {
-        // Arrange
-        String invalidJson = "{ invalid json }";
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(invalidJson));
-
-        response.setStatus(400);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-
-        String responseJson = responseOutput.toString();
-        assertTrue(responseJson.contains("\"valid\":false"));
-        assertTrue(responseJson.contains("Invalid JSON format"));
+        assertTrue(responseJson.contains(expectedError));
     }
 
     @Test
@@ -274,60 +234,6 @@ class JwtVerificationServletTest {
         String responseJson = responseOutput.toString();
         assertTrue(responseJson.contains("\"valid\":false"));
         assertTrue(responseJson.contains("Service not available"));
-    }
-
-    @Test
-    void emptyTokenVerification() throws Exception {
-        // Arrange
-        String requestJson = """
-            {
-                "token": "",
-                "processorId": "test-processor-id"
-            }
-            """;
-
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-
-        response.setStatus(400);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-        String responseJson = responseOutput.toString();
-        assertTrue(responseJson.contains("\"valid\":false"));
-        assertTrue(responseJson.contains("Token cannot be empty"));
-    }
-
-    @Test
-    void emptyProcessorIdVerification() throws Exception {
-        // Arrange
-        String requestJson = """
-            {
-                "token": "test-token",
-                "processorId": ""
-            }
-            """;
-
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-
-        response.setStatus(400);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-        String responseJson = responseOutput.toString();
-        assertTrue(responseJson.contains("\"valid\":false"));
-        assertTrue(responseJson.contains("Processor ID cannot be empty"));
     }
 
     @Test
