@@ -605,15 +605,21 @@ class JwksValidationServletTest {
 
     private static final class SystemPropertyResource implements AutoCloseable {
         private final String key;
+        private final String originalValue;
 
         SystemPropertyResource(String key, String value) {
             this.key = key;
+            this.originalValue = System.getProperty(key);
             System.setProperty(key, value);
         }
 
         @Override
         public void close() {
-            System.clearProperty(key);
+            if (originalValue == null) {
+                System.clearProperty(key);
+            } else {
+                System.setProperty(key, originalValue);
+            }
         }
     }
 }
