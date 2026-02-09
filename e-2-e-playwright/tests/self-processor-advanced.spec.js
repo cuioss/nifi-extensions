@@ -229,7 +229,7 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
             await page.waitForLoadState("networkidle");
 
             // Verify processor is still visible and functional
-            await expect(page.locator(processor.element)).toBeVisible({
+            await expect(locator).toBeVisible({
                 timeout: 5000,
             });
         } else {
