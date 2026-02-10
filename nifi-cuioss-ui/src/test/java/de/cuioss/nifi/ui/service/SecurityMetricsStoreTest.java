@@ -390,6 +390,42 @@ class SecurityMetricsStoreTest {
             assertTrue(snapshot.issuerMetrics().isEmpty(),
                     "Should not create issuer entry for null-issuer success");
         }
+
+        @Test
+        @DisplayName("Should cap issuer map at max size to prevent unbounded growth")
+        void shouldCapIssuerMapAtMaxSize() {
+            // Fill up to the limit (100 distinct issuers)
+            for (int i = 0; i < 100; i++) {
+                SecurityEventCounter perRequest = new SecurityEventCounter();
+                perRequest.increment(EventType.ACCESS_TOKEN_CREATED);
+                SecurityMetricsStore.recordValidation(perRequest, 1_000_000L,
+                        "https://issuer-" + i + ".example.com");
+            }
+
+            assertEquals(100, SecurityMetricsStore.getSnapshot().activeIssuers());
+
+            // Attempt to add one more — should be silently dropped
+            SecurityEventCounter overflow = new SecurityEventCounter();
+            overflow.increment(EventType.ACCESS_TOKEN_CREATED);
+            SecurityMetricsStore.recordValidation(overflow, 1_000_000L,
+                    "https://issuer-overflow.example.com");
+
+            assertEquals(100, SecurityMetricsStore.getSnapshot().activeIssuers(),
+                    "Should not exceed max tracked issuers limit");
+
+            // Existing issuers should still be updated
+            SecurityEventCounter existing = new SecurityEventCounter();
+            existing.increment(EventType.ACCESS_TOKEN_CREATED);
+            SecurityMetricsStore.recordValidation(existing, 1_000_000L,
+                    "https://issuer-0.example.com");
+
+            SecurityMetricsStore.IssuerMetricsEntry entry = SecurityMetricsStore.getSnapshot()
+                    .issuerMetrics().stream()
+                    .filter(e -> "https://issuer-0.example.com".equals(e.name()))
+                    .findFirst().orElseThrow();
+            assertEquals(2, entry.totalRequests(),
+                    "Existing issuers should still be updated when map is full");
+        }
     }
 
     @Nested

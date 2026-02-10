@@ -44,6 +44,7 @@ public final class SecurityMetricsStore {
     private static final CuiLogger LOGGER = new CuiLogger(SecurityMetricsStore.class);
 
     private static final int MAX_TOP_ERRORS = 10;
+    private static final int MAX_TRACKED_ISSUERS = 100;
 
     private static final Set<EventType> SUCCESS_TYPES = Set.of(
             EventType.ACCESS_TOKEN_CREATED,
@@ -104,19 +105,36 @@ public final class SecurityMetricsStore {
 
         if (issuer != null) {
             // Known issuer — track regardless of success/failure
-            IssuerMetrics metrics = issuerMetricsMap.computeIfAbsent(issuer, k ->
-                    new IssuerMetrics(TokenValidatorMonitorConfig.defaultEnabled().createMonitor()));
-            metrics.record(isSuccess, durationNanos);
+            trackIssuer(issuer, isSuccess, durationNanos);
         } else if (!isSuccess) {
             // Null issuer + failure → attribute to "Unknown"
-            IssuerMetrics metrics = issuerMetricsMap.computeIfAbsent(UNKNOWN_ISSUER, k ->
-                    new IssuerMetrics(TokenValidatorMonitorConfig.defaultEnabled().createMonitor()));
-            metrics.record(false, durationNanos);
+            trackIssuer(UNKNOWN_ISSUER, false, durationNanos);
         }
         // Null issuer + success → skip issuer tracking (shouldn't happen in practice)
 
         LOGGER.debug("Recorded validation metrics: duration=%dns, issuer=%s, events=%s",
                 durationNanos, issuer, perRequestCounter.getCounters());
+    }
+
+    /**
+     * Tracks per-issuer metrics, guarding against unbounded map growth from
+     * attacker-crafted issuer values. Existing issuers are always updated;
+     * new issuers are only added if the map has not reached the size limit.
+     */
+    private static void trackIssuer(String issuerKey, boolean isSuccess, long durationNanos) {
+        IssuerMetrics existing = issuerMetricsMap.get(issuerKey);
+        if (existing != null) {
+            existing.record(isSuccess, durationNanos);
+            return;
+        }
+        if (issuerMetricsMap.size() >= MAX_TRACKED_ISSUERS) {
+            LOGGER.debug("Issuer metrics map full (%d entries), skipping new issuer: %s",
+                    MAX_TRACKED_ISSUERS, issuerKey);
+            return;
+        }
+        issuerMetricsMap.computeIfAbsent(issuerKey, k ->
+                new IssuerMetrics(TokenValidatorMonitorConfig.defaultEnabled().createMonitor()))
+                .record(isSuccess, durationNanos);
     }
 
     /**
