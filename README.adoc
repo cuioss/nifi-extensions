@@ -1,11 +1,8 @@
-= NiFi Extensions
-
+= NiFi JWT Authentication Processor
 :toc:
 :toclevels: 2
 
-== Overview
-
-Custom extensions for https://nifi.apache.org/[Apache NiFi] developed by CUI-OSS.
+A custom https://nifi.apache.org/[Apache NiFi] processor that validates JWT tokens against multiple identity providers in a single flow. Built for NiFi 2.6.0.
 
 == Status
 
@@ -13,110 +10,410 @@ image:https://github.com/cuioss/nifi-extensions/actions/workflows/maven.yml/badg
 image:https://github.com/cuioss/nifi-extensions/actions/workflows/e2e-tests.yml/badge.svg[End-to-End Tests,link=https://github.com/cuioss/nifi-extensions/actions/workflows/e2e-tests.yml]
 image:http://img.shields.io/:license-apache-blue.svg[License,link=http://www.apache.org/licenses/LICENSE-2.0.html]
 image:https://img.shields.io/maven-central/v/de.cuioss.nifi/nifi-extensions.svg?label=Maven%20Central["Maven Central", link="https://search.maven.org/artifact/de.cuioss.nifi/nifi-extensions"]
+
 https://sonarcloud.io/summary/new_code?id=cuioss_nifi-extensions[image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-extensions&metric=alert_status[Quality Gate Status]]
 image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-extensions&metric=ncloc[Lines of Code,link=https://sonarcloud.io/summary/new_code?id=cuioss_nifi-extensions]
 image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-extensions&metric=coverage[Coverage,link=https://sonarcloud.io/summary/new_code?id=cuioss_nifi-extensions]
 
-== Documentation
+== The Problem
 
-* https://cuioss.github.io/nifi-extensions/about.html[Generated Documentation on github-pages]
-* link:doc/Requirements.adoc[Requirements]
-* link:doc/Specification.adoc[Specification]
-* link:nifi-cuioss-processors/README.md[NiFi CUI-OSS Processors]
-* link:integration-testing/README.adoc[Integration Testing Environment]
-* link:e-2-e-playwright/README.adoc[End-to-End Testing Documentation]
-* link:e-2-e-playwright/docs/accessibility-testing-guide.adoc[Accessibility Testing Guide]
+NiFi flows that consume REST APIs or process webhook payloads often receive JWT-authenticated requests. Out of the box, NiFi has no processor to validate these tokens. This forces teams to either:
+
+* write custom scripts inside `ExecuteScript` processors with no key rotation or caching,
+* call an external validation service, adding latency and a point of failure, or
+* skip token validation entirely and trust the upstream reverse proxy.
+
+This processor fills that gap. It validates JWT signatures, checks expiration and audience claims, and supports multiple identity providers (e.g. Keycloak, Entra ID, Auth0) simultaneously -- all within the NiFi flow, with automatic JWKS key rotation and caching.
+
+== Installation
+
+The only artifact you need is the **NAR file** (NiFi Archive). It bundles the processor, the configuration UI, and all dependencies.
+
+=== From a Release
+
+. Download `nifi-cuioss-nar-<version>.nar` from https://github.com/cuioss/nifi-extensions/releases[GitHub Releases] or https://search.maven.org/artifact/de.cuioss.nifi/nifi-cuioss-nar[Maven Central].
+. Copy the NAR into your NiFi extensions directory:
++
+[source,bash]
+----
+cp nifi-cuioss-nar-*.nar $NIFI_HOME/extensions/
+----
+. Restart NiFi (or wait for NiFi's auto-detection if configured).
+. The processor **MultiIssuerJWTTokenAuthenticator** appears in the "Add Processor" dialog under the tags `jwt`, `oauth`, `authentication`.
+
+=== From Source
+
+[source,bash]
+----
+git clone https://github.com/cuioss/nifi-extensions.git
+cd nifi-extensions
+./mvnw clean install -DskipTests
+cp nifi-cuioss-nar/target/nifi-cuioss-nar-*.nar $NIFI_HOME/extensions/
+----
+
+=== Docker / Kubernetes
+
+Mount or copy the NAR into the container's extensions directory:
+
+[source,yaml]
+----
+# Docker Compose example
+services:
+  nifi:
+    image: apache/nifi:2.6.0
+    volumes:
+      - ./nifi-cuioss-nar-1.0-SNAPSHOT.nar:/opt/nifi/nifi-current/extensions/nifi-cuioss-nar.nar:ro
+----
+
+== Configuration
+
+The processor can be configured through three methods (in order of precedence):
+
+. **Static configuration files** -- for automated / container deployments
+. **Environment variables** -- for container orchestration (Kubernetes, Docker)
+. **NiFi UI** -- interactive configuration with built-in JWKS validation and token testing
+
+=== Quick Start: Minimal Configuration via UI
+
+. Drag the **MultiIssuerJWTTokenAuthenticator** onto the canvas.
+. In the processor configuration dialog, the defaults work for the common case (Authorization header, Bearer prefix).
+. Add a dynamic property for your identity provider:
++
+[cols="1,2"]
+|===
+|Property Name |Value
+
+|`issuer.1.jwks-url`
+|`\https://your-auth-server/.well-known/jwks.json`
+
+|`issuer.1.audience` _(optional)_
+|`api://your-service`
+|===
+. Connect the three relationships: `success`, `authentication-failed`, `failure`.
+. Start the processor.
+
+=== Processor Properties
+
+[cols="2,1,1,4"]
+|===
+|Property |Default |Required |Description
+
+|Token Location
+|`AUTHORIZATION_HEADER`
+|Yes
+|Where to extract the JWT. Values: `AUTHORIZATION_HEADER`, `CUSTOM_HEADER`, `FLOW_FILE_CONTENT`
+
+|Token Header
+|`Authorization`
+|No
+|Header name when using `AUTHORIZATION_HEADER`
+
+|Custom Header Name
+|`X-Authorization`
+|No
+|Header name when using `CUSTOM_HEADER`
+
+|Bearer Token Prefix
+|`Bearer`
+|No
+|Prefix stripped before token parsing
+
+|Require Valid Token
+|`true`
+|Yes
+|When `true`, missing or invalid tokens route to `authentication-failed`
+
+|JWKS Refresh Interval
+|`3600`
+|Yes
+|Seconds between JWKS key refreshes
+
+|JWKS Connection Timeout
+|`10`
+|Yes
+|Seconds before a JWKS endpoint request times out
+
+|Maximum Token Size
+|`16384`
+|Yes
+|Maximum JWT size in bytes (rejects oversized tokens)
+
+|Allowed Algorithms
+|Secure defaults
+|No
+|Comma-separated list of permitted signing algorithms. Defaults to RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512. The `none` algorithm and weak HMAC algorithms are always blocked.
+
+|Require HTTPS for JWKS URLs
+|`true`
+|Yes
+|Enforces HTTPS for JWKS endpoint URLs. Disable only for development.
+
+|JWKS Source Type
+|`url`
+|Yes
+|How JWKS keys are loaded. Values: `url` (HTTP endpoint), `file` (local file), `memory` (inline content)
+|===
+
+=== Issuer Configuration (Dynamic Properties)
+
+Each identity provider is configured through dynamic properties with the prefix `issuer.<N>.`:
+
+[cols="2,3,1"]
+|===
+|Dynamic Property |Description |Example
+
+|`issuer.<N>.jwks-url`
+|JWKS endpoint URL, file path, or inline key content (depends on JWKS Source Type)
+|`\https://auth.example.com/.well-known/jwks.json`
+
+|`issuer.<N>.enabled`
+|Enable or disable this issuer without removing the configuration
+|`true`
+
+|`issuer.<N>.audience`
+|Required `aud` claim for tokens from this issuer
+|`api://my-service`
+
+|`issuer.<N>.scopes`
+|Comma-separated scopes required for authorization
+|`read,write`
+
+|`issuer.<N>.roles`
+|Comma-separated roles required for authorization
+|`admin,user`
+|===
+
+=== Relationships
+
+[cols="1,3"]
+|===
+|Relationship |Description
+
+|`success`
+|Token is present, signature is valid, and all claims pass validation
+
+|`authentication-failed`
+|Token is present but invalid (expired, wrong issuer, bad signature, insufficient scopes/roles)
+
+|`failure`
+|Token extraction failed (e.g. no token found when required, processing error)
+|===
+
+=== Output FlowFile Attributes
+
+On successful validation the processor sets these attributes on the FlowFile:
+
+[cols="2,3"]
+|===
+|Attribute |Description
+
+|`jwt.present`
+|`true` if a JWT was found in the request
+
+|`jwt.subject`
+|The `sub` claim
+
+|`jwt.issuer`
+|The `iss` claim
+
+|`jwt.expiration`
+|The `exp` claim
+
+|`jwt.roles`
+|Comma-separated roles from the token
+
+|`jwt.scopes`
+|Comma-separated scopes from the token
+
+|`jwt.authorized`
+|`true` if scope/role authorization passed
+
+|`jwt.content.<claim>`
+|Individual token claims (prefixed)
+
+|`jwt.error.code`
+|Error code on validation failure
+
+|`jwt.error.reason`
+|Human-readable error description
+|===
+
+=== Static Configuration Files
+
+For container or automated deployments, place a configuration file in one of these locations (checked in order):
+
+. Path from JVM system property `jwt.config.path`
+. Path from environment variable `JWT_CONFIG_PATH`
+. `$NIFI_HOME/conf/jwt-validation.properties` or `$NIFI_HOME/conf/jwt-validation.yml`
+
+.Example: `jwt-validation.properties`
+[source,properties]
+----
+jwt.validation.token.location=AUTHORIZATION_HEADER
+jwt.validation.bearer.token.prefix=Bearer
+jwt.validation.require.valid.token=true
+jwt.validation.jwks.refresh.interval=3600
+
+jwt.validation.issuer.1.jwksUrl=https://auth.example.com/.well-known/jwks.json
+jwt.validation.issuer.1.audience=api://my-service
+jwt.validation.issuer.1.enabled=true
+
+jwt.validation.issuer.2.jwksUrl=https://auth2.example.com/.well-known/jwks.json
+jwt.validation.issuer.2.audience=api://my-service
+jwt.validation.issuer.2.enabled=true
+jwt.validation.issuer.2.scopes=read,write
+----
+
+.Example: `jwt-validation.yml`
+[source,yaml]
+----
+jwt:
+  validation:
+    issuers:
+      - name: "Primary IdP"
+        enabled: true
+        jwksUrl: "https://auth.example.com/.well-known/jwks.json"
+        audience: "api://my-service"
+      - name: "Partner IdP"
+        enabled: true
+        jwksUrl: "https://partner-auth.example.com/.well-known/jwks.json"
+        audience: "api://my-service"
+        scopes: "read,write"
+        roles: "partner"
+----
+
+Static configuration takes precedence over UI settings and is displayed as read-only in the UI. The processor monitors the file for changes and reloads automatically.
+
+=== Environment Variables
+
+For Kubernetes and Docker deployments, core settings can also be provided through environment variables:
+
+[cols="2,1,3"]
+|===
+|Variable |Type |Description
+
+|`JWT_TOKEN_LOCATION`
+|String
+|`AUTHORIZATION_HEADER`, `CUSTOM_HEADER`, or `FLOW_FILE_CONTENT`
+
+|`JWT_TOKEN_HEADER_NAME`
+|String
+|Header name for token extraction
+
+|`JWT_JWKS_REFRESH_INTERVAL`
+|Duration
+|JWKS cache refresh (e.g. `30 minutes`, `1 hour`)
+
+|`JWT_REQUIRE_VALID_TOKEN`
+|Boolean
+|Require valid token for success routing
+
+|`JWT_ISSUER_{NAME}_JWKS_URL`
+|URL
+|JWKS endpoint for issuer `{NAME}`
+|===
+
+.Kubernetes ConfigMap example
+[source,yaml]
+----
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jwt-config
+data:
+  jwt-validation.yml: |
+    jwt:
+      validation:
+        issuers:
+          - name: "Keycloak"
+            enabled: true
+            jwksUrl: "https://keycloak.internal/realms/myapp/protocol/openid-connect/certs"
+            audience: "my-nifi-service"
+----
 
 == Components
 
-=== MultiIssuerJWTTokenAuthenticator
+[cols="1,3"]
+|===
+|Module |Purpose
 
-A NiFi processor that authenticates JWT tokens from multiple issuers.
+|link:nifi-cuioss-processors/[nifi-cuioss-processors]
+|JWT processor implementation, token validation, configuration management
 
-=== End-to-End Testing
+|link:nifi-cuioss-ui/[nifi-cuioss-ui]
+|Custom NiFi UI with JWKS validation, token verification, and metrics tabs
 
-Complete Playwright-based end-to-end testing framework with:
+|link:nifi-cuioss-nar/[nifi-cuioss-nar]
+|NiFi Archive (NAR) -- the deployable artifact bundling processors + UI
 
-* Custom Playwright utilities for NiFi UI automation
-* Self-verification unit tests
-* Comprehensive E2E test suites for processor configuration and token validation
-* **WCAG 2.1 Level AA accessibility testing** with automated compliance checks
-* Console error monitoring with allowlist management
-* **Complete CI/CD integration** with GitHub Actions
-* Docker-based test environment with NiFi and Keycloak
-* **Local integration testing** with automated container management
+|link:integration-testing/[integration-testing]
+|Docker-based test environment (NiFi + Keycloak)
 
-See link:e-2-e-playwright/README.adoc[E2E Testing Documentation] for details.
+|link:e-2-e-playwright/[e-2-e-playwright]
+|Playwright E2E and WCAG accessibility tests
+|===
 
-=== Maven Coordinates
+== Documentation
 
-[source,xml]
-----
-<dependency>
-    <groupId>de.cuioss.nifi</groupId>
-    <artifactId>nifi-extensions</artifactId>
-</dependency>
-----
+=== Specifications
+
+* https://cuioss.github.io/nifi-extensions/about.html[Generated Documentation (GitHub Pages)]
+* link:doc/Requirements.adoc[Requirements]
+* link:doc/Specification.adoc[Specification]
+* link:doc/specification/configuration.adoc[Configuration Reference]
+* link:doc/specification/configuration-static.adoc[Static Configuration & Container Deployment]
+* link:doc/specification/configuration-ui.adoc[UI Configuration]
+* link:doc/specification/security.adoc[Security]
+* link:doc/specification/token-validation.adoc[Token Validation]
+* link:doc/specification/technical-components.adoc[Technical Components]
+
+=== Testing
+
+* link:integration-testing/README.adoc[Integration Testing Environment] -- Docker setup with NiFi and Keycloak
+* link:e-2-e-playwright/README.adoc[End-to-End Testing] -- Playwright tests for processor UI and WCAG compliance
+* link:e-2-e-playwright/docs/accessibility-testing-guide.adoc[Accessibility Testing Guide]
+
+=== Development
+
+* link:doc/specification/error-handling.adoc[Error Handling]
+* link:doc/specification/internationalization.adoc[Internationalization]
+* link:doc/specification/observability.adoc[Observability & Metrics]
+* link:doc/LogMessages.adoc[Log Messages Reference]
 
 == Building
 
 [source,bash]
 ----
-./mvnw clean install
+./mvnw clean install                    # Full build with tests
+./mvnw clean install -DskipTests        # Build without tests
 ----
 
-To skip tests:
+=== Code Quality
 
 [source,bash]
 ----
-./mvnw clean install -DskipTests
+./mvnw -Ppre-commit clean install -DskipTests   # Pre-commit quality checks
+./mvnw clean verify -Psonar                      # SonarQube analysis
 ----
 
-=== Local Integration Testing
+This project follows centralized coding standards from https://github.com/cuioss/cui-llm-rules[cui-llm-rules] covering https://github.com/cuioss/cui-llm-rules/tree/main/standards/java[Java], https://github.com/cuioss/cui-llm-rules/tree/main/standards/javascript[JavaScript], https://github.com/cuioss/cui-llm-rules/tree/main/standards/testing[testing], and https://github.com/cuioss/cui-llm-rules/tree/main/standards/documentation[documentation].
 
-Run the complete integration test suite locally with automated container management:
+=== Integration & E2E Tests
 
 [source,bash]
 ----
-# Full integration test suite with Maven
+# Start Docker test environment (NiFi + Keycloak)
+./integration-testing/src/main/docker/run-and-deploy.sh
+
+# Run integration tests via Maven
 ./mvnw integration-test -Plocal-integration-tests -Dintegration.test.local=true
 
-# Quick test run using existing containers
+# Run Playwright E2E tests directly
 cd e-2-e-playwright && npm run playwright:test
-
-# Interactive test development
-cd e-2-e-playwright && npm run playwright:test:ui
 ----
 
-See link:e-2-e-playwright/README.adoc[End-to-End Testing Documentation] for detailed instructions.
+See link:integration-testing/README.adoc[Integration Testing] and link:e-2-e-playwright/README.adoc[E2E Testing] for detailed instructions.
 
-=== Code Quality Standards
+== License
 
-This project implements centralized coding standards defined in the organization's standards repository:
-
-* **JavaScript/ESLint Standards**: https://github.com/cuioss/cui-llm-rules/tree/main/standards/javascript[JavaScript Standards] - Complete linting configuration and best practices
-* **Java Standards**: https://github.com/cuioss/cui-llm-rules/tree/main/standards/java[Java Standards] - Java coding standards and conventions  
-* **Testing Standards**: https://github.com/cuioss/cui-llm-rules/tree/main/standards/testing[Testing Standards] - Comprehensive testing guidelines
-* **Documentation Standards**: https://github.com/cuioss/cui-llm-rules/tree/main/standards/documentation[Documentation Standards] - Documentation structure and requirements
-
-The project achieves **zero-warning builds** through strategic implementation of these centralized standards.
-
-=== Frontend Configuration
-
-The project uses unified frontend configuration across modules:
-
-* Node.js v20.19.2
-* NPM 10.5.0
-* Frontend Maven Plugin 2.0.0
-* ESLint 8.57.1 with zero-warning policy (following centralized standards)
-* Prettier 3.4.2 for code formatting
-* Playwright 1.58.1 for E2E testing
-
-All frontend configuration is centralized in the root POM properties.
-
-[IMPORTANT]
-====
-All contributors and AI tools (including GitHub Copilot, Claude, and others) **must follow the AI Development Guidelines in** link:agents.md[agents.md].
-
-These guidelines are mandatory for all code, documentation, and configuration changes. See the file for project architecture, development environment, testing, code style, and process standards.
-====
+https://www.apache.org/licenses/LICENSE-2.0[Apache License, Version 2.0]
