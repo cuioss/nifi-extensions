@@ -55,6 +55,8 @@ There are two ways to configure issuer properties:
 . The interface should display:
 * A list of existing issuer configurations (if any)
 * An "Add Issuer" button to create new configurations
+image::ui-configuration-tab.png[Issuer Configuration Tab]
+
 . To add a new issuer:
 * Click the "Add Issuer" button
 * Enter an issuer name (e.g., "keycloak")
@@ -129,6 +131,8 @@ If the issuer configuration is not being applied:
 === Token Validation Failures
 
 If tokens are not being validated correctly:
+
+image::ui-token-verification-tab.png[Token Verification Tab]
 
 . Check the token claims using the "Token Verification" tab (if available)
 . Verify that the token is not expired

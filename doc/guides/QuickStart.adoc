@@ -23,7 +23,11 @@ Get the MultiIssuerJWTTokenAuthenticator processor running in under 5 minutes.
 
 . Right-click the processor and select **Configure**.
 . In the **Properties** tab, review the defaults -- they work for the most common case (see <<processor-properties>> for all options).
-. Add a dynamic property for your identity provider by clicking the **+** button:
+. Switch to the **Configuration** tab in the custom UI to configure issuers visually:
+
+image::ui-configuration-tab.png[Configuration Tab - Issuer Configuration]
+
+. Alternatively, add a dynamic property for your identity provider by clicking the **+** button:
 +
 [cols="1,2"]
 |===
@@ -325,8 +329,13 @@ spec:
 
 The processor includes a custom web UI with additional tabs beyond the standard NiFi properties dialog:
 
-* **Verification** -- paste a JWT to test it against the current configuration
-* **Metrics** -- view validation statistics (success/failure counts)
+* **Token Verification** -- paste a JWT to test it against the current configuration
+
+image::ui-token-verification-tab.png[Token Verification Tab]
+
+* **Metrics** -- view validation statistics (success/failure counts, response times)
+
+image::ui-metrics-tab.png[Metrics Tab]
 
 These tabs appear automatically in the processor configuration dialog.
 
