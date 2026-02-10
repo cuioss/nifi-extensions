@@ -151,6 +151,108 @@ public final class AuthLogMessages {
                 .identifier(20)
                 .template("Authorization successful for token with subject '%s' from issuer '%s'")
                 .build();
+
+        public static final LogRecord CONFIG_LOADED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(21)
+                .template("Configuration loaded successfully")
+                .build();
+
+        public static final LogRecord NO_EXTERNAL_CONFIG = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(22)
+                .template("No external configuration found, using UI configuration")
+                .build();
+
+        public static final LogRecord CONFIG_FILE_RELOADING = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(23)
+                .template("Configuration file %s has been modified, reloading")
+                .build();
+
+        public static final LogRecord NO_CONFIG_FILE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(24)
+                .template("No configuration file found")
+                .build();
+
+        public static final LogRecord LOADED_PROPERTIES_CONFIG = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(25)
+                .template("Loaded properties configuration from %s")
+                .build();
+
+        public static final LogRecord LOADED_YAML_CONFIG = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(26)
+                .template("Loaded YAML configuration from %s")
+                .build();
+
+        public static final LogRecord LOADING_EXTERNAL_CONFIGS = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(27)
+                .template("Loading issuer configurations from external configuration")
+                .build();
+
+        public static final LogRecord CREATED_ISSUER_CONFIG_FOR = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(28)
+                .template("Created issuer configuration for %s")
+                .build();
+
+        public static final LogRecord ISSUER_DISABLED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(29)
+                .template("Issuer %s is disabled, skipping")
+                .build();
+
+        public static final LogRecord PROCESSOR_INITIALIZING = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(30)
+                .template("Initializing MultiIssuerJWTTokenAuthenticator processor")
+                .build();
+
+        public static final LogRecord PROCESSOR_INITIALIZED_WITH_DESCRIPTORS = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(31)
+                .template("MultiIssuerJWTTokenAuthenticator processor initialized with %s property descriptors")
+                .build();
+
+        public static final LogRecord CONFIG_MANAGER_INITIALIZED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(32)
+                .template("Configuration manager initialized, external configuration loaded: %s")
+                .build();
+
+        public static final LogRecord AVAILABLE_PROPERTY_DESCRIPTORS = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(33)
+                .template("Available property descriptors")
+                .build();
+
+        public static final LogRecord PROPERTY_DESCRIPTOR_DETAIL = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(34)
+                .template("Property: %s (Display: %s)")
+                .build();
+
+        public static final LogRecord EXTERNAL_CONFIG_CHANGED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(35)
+                .template("External configuration file changed, forcing TokenValidator recreation")
+                .build();
+
+        public static final LogRecord CONFIG_REFRESHED_ATTRIBUTE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(36)
+                .template("Added config-refreshed attribute to flow file")
+                .build();
+
+        public static final LogRecord NO_TOKEN_NOT_REQUIRED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(37)
+                .template("No token found but valid token not required, routing to success")
+                .build();
     }
 
     @UtilityClass
@@ -232,6 +334,72 @@ public final class AuthLogMessages {
                 .identifier(112)
                 .template("Authorization failed for token with subject '%s' from issuer '%s': %s")
                 .build();
+
+        public static final LogRecord CONFIG_FILE_NOT_FOUND = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(113)
+                .template("Configuration file not found at specified path: %s")
+                .build();
+
+        public static final LogRecord UNSUPPORTED_CONFIG_FORMAT = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(114)
+                .template("Unsupported configuration file format: %s")
+                .build();
+
+        public static final LogRecord YAML_EMPTY_OR_INVALID = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(115)
+                .template("YAML file %s is empty or invalid")
+                .build();
+
+        public static final LogRecord INVALID_CONFIG_VALUE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(116)
+                .template("Invalid value '%s' for %s, falling back to default %s")
+                .build();
+
+        public static final LogRecord ISSUER_NO_NAME = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(117)
+                .template("Issuer %s has no name configured, skipping")
+                .build();
+
+        public static final LogRecord JWKS_CONTENT_NOT_SUPPORTED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(118)
+                .template("JWKS content configuration not yet supported in shared parser for issuer %s")
+                .build();
+
+        public static final LogRecord ISSUER_NO_JWKS_SOURCE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(119)
+                .template("Issuer %s has no JWKS source configured (URL, file, or content), skipping")
+                .build();
+
+        public static final LogRecord NO_ISSUER_CONFIGS_NOT_REQUIRED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(120)
+                .template("No issuer configurations found, but require-valid-token is false. TokenValidator will not be initialized.")
+                .build();
+
+        public static final LogRecord TOKEN_VALIDATION_FAILED_MSG = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(121)
+                .template("Token validation failed: %s")
+                .build();
+
+        public static final LogRecord FLOW_FILE_SIZE_EXCEEDED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(122)
+                .template("Flow file content size %d exceeds maximum allowed size %d")
+                .build();
+
+        public static final LogRecord AUTHORIZATION_BYPASS_SECURITY_WARNING = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(123)
+                .template("SECURITY WARNING: Authorization bypassed for token with subject: %s")
+                .build();
     }
 
     @UtilityClass
@@ -277,6 +445,30 @@ public final class AuthLogMessages {
                 .prefix(PREFIX)
                 .identifier(206)
                 .template("No issuer configuration found for token issuer '%s'. Access denied (fail-secure).")
+                .build();
+
+        public static final LogRecord CONFIG_RELOAD_FAILED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(207)
+                .template("Failed to reload configuration, using previous configuration")
+                .build();
+
+        public static final LogRecord CONFIG_FILE_IO_ERROR = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(208)
+                .template("Error loading configuration file")
+                .build();
+
+        public static final LogRecord CONFIG_FILE_PARSE_ERROR = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(209)
+                .template("Error parsing configuration file")
+                .build();
+
+        public static final LogRecord ISSUER_CONFIG_PARSE_ERROR = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(210)
+                .template("Error creating issuer configuration")
                 .build();
     }
 }

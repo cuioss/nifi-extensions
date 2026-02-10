@@ -16,6 +16,9 @@
  */
 package de.cuioss.nifi.processors.auth;
 
+import de.cuioss.test.juli.LogAsserts;
+import de.cuioss.test.juli.TestLogLevel;
+import de.cuioss.test.juli.junit5.EnableTestLogger;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.MockProcessContext;
@@ -46,6 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/observability.adoc">Observability Specification</a>
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>
  */
+@EnableTestLogger
 class MultiIssuerJWTTokenAuthenticatorTest {
 
     private TestRunner testRunner;
@@ -114,6 +118,9 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
             flowFile.assertAttributeExists("jwt.error.code");
+
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO,
+                    AuthLogMessages.INFO.PROCESSOR_INITIALIZING.resolveIdentifierString());
         }
 
         @Test
@@ -217,6 +224,9 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
             flowFile.assertAttributeExists("jwt.error.code");
+
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN,
+                    AuthLogMessages.WARN.TOKEN_VALIDATION_FAILED_MSG.resolveIdentifierString());
         }
 
         @Test
@@ -269,6 +279,9 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
             flowFile.assertAttributeExists("jwt.error.code");
+
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN,
+                    AuthLogMessages.WARN.NO_TOKEN_FOUND.resolveIdentifierString());
         }
 
         @Test
@@ -294,6 +307,9 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             flowFile.assertAttributeEquals("jwt.present", "false");
             flowFile.assertAttributeEquals("jwt.authorized", "false");
             flowFile.assertAttributeEquals("jwt.error.reason", "No token provided");
+
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO,
+                    AuthLogMessages.INFO.NO_TOKEN_NOT_REQUIRED.resolveIdentifierString());
         }
 
         @Test
@@ -392,6 +408,9 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Verify error attributes
             flowFile.assertAttributeExists("jwt.error.reason");
             // We don't check the exact error message content since it might change
+
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN,
+                    AuthLogMessages.WARN.NO_ISSUER_CONFIGS_NOT_REQUIRED.resolveIdentifierString());
         }
 
         @Test
@@ -462,6 +481,9 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             MockFlowFile flowFile = runner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).get(1);
             flowFile.assertAttributeExists("jwt.error.reason");
             flowFile.assertAttributeExists("jwt.error.code");
+
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO,
+                    AuthLogMessages.INFO.CONFIG_CHANGE_DETECTED.resolveIdentifierString());
         }
     }
 

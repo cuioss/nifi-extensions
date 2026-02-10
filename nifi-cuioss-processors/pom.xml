@@ -54,6 +54,11 @@
             <artifactId>cui-test-generator</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>de.cuioss.test</groupId>
+            <artifactId>cui-test-juli-logger</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Required by oauth-sheriff-core generators for JWT token creation in tests -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

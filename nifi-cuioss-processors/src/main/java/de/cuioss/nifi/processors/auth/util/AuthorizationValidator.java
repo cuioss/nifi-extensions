@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.processors.auth.util;
 
+import de.cuioss.nifi.processors.auth.AuthLogMessages;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.Builder;
@@ -49,44 +50,38 @@ public class AuthorizationValidator {
          * Required scopes for authorization. At least one must be present in the token.
          * Can be null or empty if no scope validation is required.
          */
-        @Nullable
-        Set<String> requiredScopes;
+        @Nullable Set<String> requiredScopes;
 
         /**
          * Required roles for authorization. At least one must be present in the token.
          * Can be null or empty if no role validation is required.
          */
-        @Nullable
-        Set<String> requiredRoles;
+        @Nullable Set<String> requiredRoles;
 
         /**
          * Whether all required scopes must be present (AND) or at least one (OR).
          * Default is false (OR logic).
          */
-        @Builder.Default
-        boolean requireAllScopes = false;
+        @Builder.Default boolean requireAllScopes = false;
 
         /**
          * Whether all required roles must be present (AND) or at least one (OR).
          * Default is false (OR logic).
          */
-        @Builder.Default
-        boolean requireAllRoles = false;
+        @Builder.Default boolean requireAllRoles = false;
 
         /**
          * Whether to perform case-sensitive matching for scopes and roles.
          * Default is true (case-sensitive).
          */
-        @Builder.Default
-        boolean caseSensitive = true;
+        @Builder.Default boolean caseSensitive = true;
 
         /**
          * Explicit bypass flag to disable authorization entirely.
          * Must be explicitly set to true to bypass all authorization checks.
          * Default is false (authorization required).
          */
-        @Builder.Default
-        boolean bypassAuthorization = false;
+        @Builder.Default boolean bypassAuthorization = false;
     }
 
     /**
@@ -103,8 +98,7 @@ public class AuthorizationValidator {
         /**
          * Reason for authorization failure, if any.
          */
-        @Nullable
-        String reason;
+        @Nullable String reason;
 
         /**
          * Matched scopes from the token.
@@ -141,7 +135,7 @@ public class AuthorizationValidator {
 
         // Explicit bypass required to skip authorization
         if (config.bypassAuthorization) {
-            LOGGER.warn("SECURITY WARNING: Authorization bypassed for token with subject: %s",
+            LOGGER.warn(AuthLogMessages.WARN.AUTHORIZATION_BYPASS_SECURITY_WARNING,
                     token.getSubject().orElse("unknown"));
             return AuthorizationResult.builder()
                     .authorized(true)

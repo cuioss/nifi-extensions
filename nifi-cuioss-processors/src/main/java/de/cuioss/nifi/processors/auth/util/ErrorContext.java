@@ -53,20 +53,17 @@ public class ErrorContext {
     /**
      * Additional context information
      */
-    @Builder.Default
-    private final Map<String, Object> context = new HashMap<>();
+    @Builder.Default private final Map<String, Object> context = new HashMap<>();
 
     /**
      * The original exception if available
      */
-    @Nullable
-    private final Throwable cause;
+    @Nullable private final Throwable cause;
 
     /**
      * Error code for categorization
      */
-    @Nullable
-    private final String errorCode;
+    @Nullable private final String errorCode;
 
     /**
      * Returns an unmodifiable view of the context map.

@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.service.JwtValidationService;
 import de.cuioss.nifi.ui.service.JwtValidationService.TokenValidationResult;
 import de.cuioss.tools.logging.CuiLogger;
@@ -62,8 +63,6 @@ public class JwtVerificationServlet extends HttpServlet {
     private static final String JSON_KEY_ISSUER = "issuer";
     private static final String JSON_KEY_CLAIMS = "claims";
     private static final String JSON_KEY_VALID = "valid";
-    private static final String ERROR_MSG_FAILED_TO_SEND_RESPONSE = "Failed to send error response";
-
     /** Maximum request body size: 1 MB */
     private static final int MAX_REQUEST_BODY_SIZE = 1024 * 1024;
 
@@ -124,11 +123,11 @@ public class JwtVerificationServlet extends HttpServlet {
         try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
             return reader.readObject();
         } catch (JsonException e) {
-            LOGGER.warn("Invalid JSON format in request: %s", e.getMessage());
+            LOGGER.warn(UILogMessages.WARN.INVALID_JSON_FORMAT, e.getMessage());
             safelySendErrorResponse(resp, 400, "Invalid JSON format", false);
             return Json.createObjectBuilder().build();
         } catch (IOException e) {
-            LOGGER.error(e, "Error reading request body");
+            LOGGER.error(e, UILogMessages.ERROR.ERROR_READING_REQUEST_BODY);
             safelySendErrorResponse(resp, 500, "Error reading request", false);
             return Json.createObjectBuilder().build();
         }
@@ -147,7 +146,7 @@ public class JwtVerificationServlet extends HttpServlet {
 
         // Validate required fields
         if (!requestJson.containsKey("token")) {
-            LOGGER.warn("Missing required field: token");
+            LOGGER.warn(UILogMessages.WARN.MISSING_REQUIRED_FIELD_TOKEN);
             safelySendErrorResponse(resp, 400, "Missing required field: token", false);
             return null;
         }
@@ -190,17 +189,17 @@ public class JwtVerificationServlet extends HttpServlet {
                     verificationRequest.processorId()
             );
         } catch (IllegalArgumentException e) {
-            LOGGER.warn("Invalid request for processor %s: %s",
+            LOGGER.warn(UILogMessages.WARN.INVALID_REQUEST,
                     verificationRequest.processorId(), e.getMessage());
             safelySendErrorResponse(resp, 400, "Invalid request: " + e.getMessage(), false);
             return null;
         } catch (IllegalStateException e) {
-            LOGGER.error("Service not available for processor %s: %s",
+            LOGGER.error(UILogMessages.ERROR.SERVICE_NOT_AVAILABLE,
                     verificationRequest.processorId(), e.getMessage());
             safelySendErrorResponse(resp, 500, "Service not available: " + e.getMessage(), false);
             return null;
         } catch (IOException e) {
-            LOGGER.error(e, "Communication error for processor %s", verificationRequest.processorId());
+            LOGGER.error(e, UILogMessages.ERROR.COMMUNICATION_ERROR, verificationRequest.processorId());
             safelySendErrorResponse(resp, 500, "Communication error: " + e.getMessage(), false);
             return null;
         }
@@ -214,7 +213,7 @@ public class JwtVerificationServlet extends HttpServlet {
         try {
             sendErrorResponse(resp, statusCode, errorMessage, valid);
         } catch (IOException e) {
-            LOGGER.error(e, ERROR_MSG_FAILED_TO_SEND_RESPONSE);
+            LOGGER.error(e, UILogMessages.ERROR.FAILED_SEND_ERROR_RESPONSE);
             resp.setStatus(statusCode);
         }
     }
@@ -226,7 +225,7 @@ public class JwtVerificationServlet extends HttpServlet {
         try {
             sendValidationResponse(resp, result);
         } catch (IOException e) {
-            LOGGER.error(e, "Failed to send validation response");
+            LOGGER.error(e, UILogMessages.ERROR.FAILED_SEND_VALIDATION_RESPONSE);
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }
@@ -361,7 +360,7 @@ public class JwtVerificationServlet extends HttpServlet {
             writer.writeObject(responseJson);
             LOGGER.debug("Sent validation response: valid=%s", responseJson.getBoolean(JSON_KEY_VALID));
         } catch (IOException e) {
-            LOGGER.error(e, "Failed to write validation response");
+            LOGGER.error(e, UILogMessages.ERROR.FAILED_WRITE_VALIDATION_RESPONSE);
             throw new IOException("Failed to write response", e);
         }
     }
@@ -385,7 +384,7 @@ public class JwtVerificationServlet extends HttpServlet {
         try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
             writer.writeObject(errorResponse);
         } catch (IOException e) {
-            LOGGER.error(e, "Failed to write error response");
+            LOGGER.error(e, UILogMessages.ERROR.FAILED_WRITE_ERROR_RESPONSE);
             // Don't throw here to avoid masking the original error
         }
     }

@@ -15,6 +15,10 @@
  */
 package de.cuioss.nifi.processors.auth.config;
 
+import de.cuioss.nifi.processors.auth.AuthLogMessages;
+import de.cuioss.test.juli.LogAsserts;
+import de.cuioss.test.juli.TestLogLevel;
+import de.cuioss.test.juli.junit5.EnableTestLogger;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -31,10 +35,10 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration-static.adoc">Static Configuration Specification</a>
  */
+@EnableTestLogger
 class ConfigurationManagerTest {
 
-    @TempDir
-    Path tempDir;
+    @TempDir Path tempDir;
 
     private ConfigurationManager configManager;
     private String originalConfigPath;
@@ -105,6 +109,8 @@ class ConfigurationManagerTest {
         assertEquals("Test Issuer 2", issuer2.get("name"));
         assertEquals("https://example.com/jwks2", issuer2.get("jwksUri"));
         assertEquals("api2", issuer2.get("audience"));
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, AuthLogMessages.INFO.CONFIG_LOADED.resolveIdentifierString());
     }
 
     @Test
@@ -135,6 +141,8 @@ class ConfigurationManagerTest {
         Map<String, String> issuer2 = configManager.getIssuerProperties("1");
         assertEquals("https://example.com/jwks2", issuer2.get("jwksUri"));
         assertEquals("api2", issuer2.get("audience"));
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, AuthLogMessages.INFO.LOADED_YAML_CONFIG.resolveIdentifierString());
     }
 
     @Test
@@ -164,6 +172,8 @@ class ConfigurationManagerTest {
         assertEquals("2048", configManager.getProperty("jwt.validation.security.keySize"));
         assertEquals("true", configManager.getProperty("jwt.validation.cache.enabled"));
         assertEquals("300", configManager.getProperty("jwt.validation.cache.ttl"));
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, AuthLogMessages.INFO.CONFIG_LOADED.resolveIdentifierString());
     }
 
     @Test
@@ -177,6 +187,8 @@ class ConfigurationManagerTest {
 
         // Should handle gracefully
         assertFalse(configManager.isConfigurationLoaded());
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, AuthLogMessages.WARN.YAML_EMPTY_OR_INVALID.resolveIdentifierString());
     }
 
     @Test
@@ -199,6 +211,8 @@ class ConfigurationManagerTest {
             configManager = new ConfigurationManager();
         });
         assertFalse(configManager.isConfigurationLoaded());
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, AuthLogMessages.ERROR.CONFIG_FILE_PARSE_ERROR.resolveIdentifierString());
     }
 
     @Test
@@ -236,6 +250,8 @@ class ConfigurationManagerTest {
         // Verify updated values
         assertEquals("false", configManager.getProperty("jwt.validation.enabled"));
         assertEquals("added", configManager.getProperty("jwt.validation.newProperty"));
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, AuthLogMessages.INFO.CONFIG_FILE_RELOADING.resolveIdentifierString());
     }
 
     @Test
@@ -267,6 +283,8 @@ class ConfigurationManagerTest {
         Map<String, String> google = configManager.getIssuerProperties("google");
         assertEquals("https://www.googleapis.com/oauth2/v3/certs", google.get("jwksUri"));
         assertEquals("https://accounts.google.com", google.get("issuer"));
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, AuthLogMessages.INFO.CONFIG_LOADED.resolveIdentifierString());
     }
 
     @Nested
@@ -288,6 +306,8 @@ class ConfigurationManagerTest {
             assertDoesNotThrow(() -> configManager = new ConfigurationManager());
             assertFalse(configManager.isConfigurationLoaded(),
                     "YAML with custom tags should not be loaded successfully");
+
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, AuthLogMessages.ERROR.CONFIG_FILE_PARSE_ERROR.resolveIdentifierString());
         }
 
         @Test
@@ -321,6 +341,8 @@ class ConfigurationManagerTest {
 
             Map<String, String> issuer = configManager.getIssuerProperties("safe-issuer");
             assertEquals("https://example.com/jwks", issuer.get("jwksUri"));
+
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, AuthLogMessages.INFO.CONFIG_LOADED.resolveIdentifierString());
         }
     }
 
@@ -350,5 +372,7 @@ class ConfigurationManagerTest {
         // Null values should not be stored
         assertFalse(issuer.containsKey("audience"));
         assertFalse(issuer.containsKey("description"));
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, AuthLogMessages.INFO.CONFIG_LOADED.resolveIdentifierString());
     }
 }

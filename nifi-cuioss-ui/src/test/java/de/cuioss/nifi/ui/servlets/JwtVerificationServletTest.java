@@ -16,9 +16,13 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.service.JwtValidationService;
 import de.cuioss.nifi.ui.service.JwtValidationService.TokenValidationResult;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
+import de.cuioss.test.juli.LogAsserts;
+import de.cuioss.test.juli.TestLogLevel;
+import de.cuioss.test.juli.junit5.EnableTestLogger;
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.ServletOutputStream;
@@ -47,6 +51,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
  */
+@EnableTestLogger
 class JwtVerificationServletTest {
 
     private JwtValidationService validationService;
@@ -234,6 +239,8 @@ class JwtVerificationServletTest {
         String responseJson = responseOutput.toString();
         assertTrue(responseJson.contains("\"valid\":false"));
         assertTrue(responseJson.contains("Service not available"));
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, UILogMessages.ERROR.SERVICE_NOT_AVAILABLE.resolveIdentifierString());
     }
 
     @Test
@@ -281,6 +288,8 @@ class JwtVerificationServletTest {
         String responseJson = responseOutput.toString();
         assertTrue(responseJson.contains("\"valid\":false"));
         assertTrue(responseJson.contains("Error reading request"));
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, UILogMessages.ERROR.ERROR_READING_REQUEST_BODY.resolveIdentifierString());
     }
 
     @Test
@@ -339,6 +348,8 @@ class JwtVerificationServletTest {
         String responseJson = responseOutput.toString();
         assertTrue(responseJson.contains("\"valid\":false"));
         assertTrue(responseJson.contains("Communication error"));
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, UILogMessages.ERROR.COMMUNICATION_ERROR.resolveIdentifierString());
     }
 
     @Test

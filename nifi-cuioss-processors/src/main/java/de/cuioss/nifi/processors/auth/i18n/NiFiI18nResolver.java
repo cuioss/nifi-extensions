@@ -33,10 +33,8 @@ import java.util.ResourceBundle;
 public class NiFiI18nResolver implements I18nResolver {
 
     private static final String BUNDLE_NAME = "i18n/nifi-cuioss-processors-resources";
-    @Nullable
-    private final ResourceBundle resourceBundle;
-    @Nullable
-    private final ComponentLog logger;
+    @Nullable private final ResourceBundle resourceBundle;
+    @Nullable private final ComponentLog logger;
 
     /**
      * Creates a new NiFiI18nResolver with the specified locale.

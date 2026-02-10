@@ -19,6 +19,7 @@ package de.cuioss.nifi.ui.service;
 import de.cuioss.nifi.ui.util.ProcessorConfigReader;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.cuioss.test.juli.junit5.EnableTestLogger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -47,6 +48,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>
  */
 @EnableGeneratorController
+@EnableTestLogger
 @DisplayName("JWT Validation Service Tests")
 class JwtValidationServiceTest {
 

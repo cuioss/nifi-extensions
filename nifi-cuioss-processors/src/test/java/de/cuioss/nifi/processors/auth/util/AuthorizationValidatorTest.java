@@ -16,10 +16,14 @@
  */
 package de.cuioss.nifi.processors.auth.util;
 
+import de.cuioss.nifi.processors.auth.AuthLogMessages;
 import de.cuioss.nifi.processors.auth.test.SimpleAccessTokenContent;
 import de.cuioss.nifi.processors.auth.util.AuthorizationValidator.AuthorizationConfig;
 import de.cuioss.nifi.processors.auth.util.AuthorizationValidator.AuthorizationResult;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
+import de.cuioss.test.juli.LogAsserts;
+import de.cuioss.test.juli.TestLogLevel;
+import de.cuioss.test.juli.junit5.EnableTestLogger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -35,6 +39,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/technical-components.adoc">Technical Components Specification</a>
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>
  */
+@EnableTestLogger
 class AuthorizationValidatorTest {
 
     @BeforeEach
@@ -337,5 +342,7 @@ class AuthorizationValidatorTest {
         assertTrue(result.getMatchedRoles().isEmpty(), "No roles should be matched when authorization is bypassed");
         assertTrue(result.getMissingScopes().isEmpty(), "No missing scopes should be reported when authorization is bypassed");
         assertTrue(result.getMissingRoles().isEmpty(), "No missing roles should be reported when authorization is bypassed");
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, AuthLogMessages.WARN.AUTHORIZATION_BYPASS_SECURITY_WARNING.resolveIdentifierString());
     }
 }

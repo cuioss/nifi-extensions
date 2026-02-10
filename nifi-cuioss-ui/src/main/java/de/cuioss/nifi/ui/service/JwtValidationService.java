@@ -18,6 +18,7 @@ package de.cuioss.nifi.ui.service;
 
 import de.cuioss.nifi.processors.auth.config.ConfigurationManager;
 import de.cuioss.nifi.processors.auth.config.IssuerConfigurationParser;
+import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.servlets.MetricsServlet;
 import de.cuioss.nifi.ui.util.ProcessorConfigReader;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
@@ -78,7 +79,7 @@ public class JwtValidationService {
         try {
             properties = configReader.getProcessorProperties(processorId);
         } catch (IOException e) {
-            LOGGER.error(e, "Failed to fetch processor configuration for %s", processorId);
+            LOGGER.error(e, UILogMessages.ERROR.FAILED_FETCH_PROCESSOR_CONFIG, processorId);
             throw new IOException("Failed to fetch processor configuration: " + e.getMessage(), e);
         }
 
@@ -99,7 +100,7 @@ public class JwtValidationService {
                     .issuerConfigs(issuerConfigs)
                     .build();
         } catch (IllegalStateException | IllegalArgumentException e) {
-            LOGGER.error(e, "Failed to create TokenValidator for processor %s", processorId);
+            LOGGER.error(e, UILogMessages.ERROR.FAILED_CREATE_TOKEN_VALIDATOR, processorId);
             throw new IllegalStateException("Failed to create TokenValidator: " + e.getMessage(), e);
         }
 
@@ -120,7 +121,7 @@ public class JwtValidationService {
 
             return TokenValidationResult.failure(e.getMessage());
         } catch (IllegalStateException | IllegalArgumentException e) {
-            LOGGER.error(e, "Unexpected error during token validation for processor %s", processorId);
+            LOGGER.error(e, UILogMessages.ERROR.UNEXPECTED_VALIDATION_ERROR, processorId);
 
             String errorMessage = "Unexpected validation error: " + e.getMessage();
             // Record failed validation in metrics
