@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -51,10 +52,13 @@ public final class SecurityMetricsStore {
             EventType.ACCESS_TOKEN_CACHE_HIT
     );
 
+    private static final String UNKNOWN_ISSUER = "Unknown";
+
     private static final SecurityEventCounter globalCounter = new SecurityEventCounter();
     private static TokenValidatorMonitor monitor = TokenValidatorMonitorConfig.defaultEnabled().createMonitor();
     private static final AtomicLong totalValidations = new AtomicLong(0);
     private static volatile Instant lastValidation = null;
+    private static final ConcurrentHashMap<String, IssuerMetrics> issuerMetricsMap = new ConcurrentHashMap<>();
 
     private SecurityMetricsStore() {
         // utility class
@@ -68,6 +72,18 @@ public final class SecurityMetricsStore {
      * @param durationNanos     the validation duration in nanoseconds
      */
     public static void recordValidation(SecurityEventCounter perRequestCounter, long durationNanos) {
+        recordValidation(perRequestCounter, durationNanos, null);
+    }
+
+    /**
+     * Records a validation attempt with issuer information for per-issuer tracking.
+     *
+     * @param perRequestCounter the SecurityEventCounter from the TokenValidator for this request
+     * @param durationNanos     the validation duration in nanoseconds
+     * @param issuer            the issuer identifier, or null if unknown
+     */
+    public static void recordValidation(SecurityEventCounter perRequestCounter, long durationNanos,
+            String issuer) {
         Objects.requireNonNull(perRequestCounter, "perRequestCounter must not be null");
         // Merge per-request counter into global counter
         for (Map.Entry<EventType, Long> entry : perRequestCounter.getCounters().entrySet()) {
@@ -81,8 +97,26 @@ public final class SecurityMetricsStore {
         totalValidations.incrementAndGet();
         lastValidation = Instant.now();
 
-        LOGGER.debug("Recorded validation metrics: duration=%dns, events=%s",
-                durationNanos, perRequestCounter.getCounters());
+        // Per-issuer tracking
+        boolean isSuccess = perRequestCounter.getCounters()
+                .entrySet().stream()
+                .anyMatch(entry -> SUCCESS_TYPES.contains(entry.getKey()) && entry.getValue() > 0);
+
+        if (issuer != null) {
+            // Known issuer — track regardless of success/failure
+            IssuerMetrics metrics = issuerMetricsMap.computeIfAbsent(issuer, k ->
+                    new IssuerMetrics(TokenValidatorMonitorConfig.defaultEnabled().createMonitor()));
+            metrics.record(isSuccess, durationNanos);
+        } else if (!isSuccess) {
+            // Null issuer + failure → attribute to "Unknown"
+            IssuerMetrics metrics = issuerMetricsMap.computeIfAbsent(UNKNOWN_ISSUER, k ->
+                    new IssuerMetrics(TokenValidatorMonitorConfig.defaultEnabled().createMonitor()));
+            metrics.record(false, durationNanos);
+        }
+        // Null issuer + success → skip issuer tracking (shouldn't happen in practice)
+
+        LOGGER.debug("Recorded validation metrics: duration=%dns, issuer=%s, events=%s",
+                durationNanos, issuer, perRequestCounter.getCounters());
     }
 
     /**
@@ -106,7 +140,25 @@ public final class SecurityMetricsStore {
                 .getValidationMetrics(MeasurementType.COMPLETE_VALIDATION)
                 .orElse(null);
 
-        return new MetricsSnapshot(total, valid, invalid, errorRate, lastValidation, topErrors, stats);
+        List<IssuerMetricsEntry> issuerEntries = issuerMetricsMap.entrySet().stream()
+                .map(entry -> {
+                    IssuerMetrics m = entry.getValue();
+                    long issuerTotal = m.total.get();
+                    long issuerSuccess = m.success.get();
+                    long issuerFailure = m.failure.get();
+                    double rate = issuerTotal > 0 ? (double) issuerSuccess / issuerTotal * 100.0 : 0.0;
+                    long avgMs = m.monitor.getValidationMetrics(MeasurementType.COMPLETE_VALIDATION)
+                            .map(s -> s.sampleCount() > 0 ? s.p50().toMillis() : 0L)
+                            .orElse(0L);
+                    return new IssuerMetricsEntry(entry.getKey(), issuerTotal, issuerSuccess, issuerFailure, rate, avgMs);
+                })
+                .sorted((a, b) -> Long.compare(b.totalRequests(), a.totalRequests()))
+                .toList();
+
+        int activeIssuers = issuerMetricsMap.size();
+
+        return new MetricsSnapshot(total, valid, invalid, errorRate, lastValidation, topErrors, stats,
+                activeIssuers, issuerEntries);
     }
 
     /**
@@ -117,6 +169,7 @@ public final class SecurityMetricsStore {
         monitor = TokenValidatorMonitorConfig.defaultEnabled().createMonitor();
         totalValidations.set(0);
         lastValidation = null;
+        issuerMetricsMap.clear();
         LOGGER.debug("Reset all security metrics");
     }
 
@@ -130,7 +183,9 @@ public final class SecurityMetricsStore {
             double errorRate,
             Instant lastValidation,
             List<ErrorCount> topErrors,
-            StripedRingBufferStatistics validationStatistics
+            StripedRingBufferStatistics validationStatistics,
+            int activeIssuers,
+            List<IssuerMetricsEntry> issuerMetrics
     ) {
     }
 
@@ -141,5 +196,42 @@ public final class SecurityMetricsStore {
             String error,
             long count
     ) {
+    }
+
+    /**
+     * Per-issuer metrics summary for snapshot reporting.
+     */
+    public record IssuerMetricsEntry(
+            String name,
+            long totalRequests,
+            long successCount,
+            long failureCount,
+            double successRate,
+            long avgResponseTime
+    ) {
+    }
+
+    /**
+     * Mutable per-issuer metrics accumulator (thread-safe).
+     */
+    private static final class IssuerMetrics {
+        private final AtomicLong total = new AtomicLong(0);
+        private final AtomicLong success = new AtomicLong(0);
+        private final AtomicLong failure = new AtomicLong(0);
+        private final TokenValidatorMonitor monitor;
+
+        IssuerMetrics(TokenValidatorMonitor monitor) {
+            this.monitor = monitor;
+        }
+
+        void record(boolean isSuccess, long durationNanos) {
+            total.incrementAndGet();
+            if (isSuccess) {
+                success.incrementAndGet();
+            } else {
+                failure.incrementAndGet();
+            }
+            monitor.recordMeasurement(MeasurementType.COMPLETE_VALIDATION, durationNanos);
+        }
     }
 }

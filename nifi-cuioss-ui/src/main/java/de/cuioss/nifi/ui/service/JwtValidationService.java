@@ -104,10 +104,12 @@ public class JwtValidationService {
         }
 
         // 4. Validate token and record metrics
+        String resolvedIssuer = null;
         long startNanos = System.nanoTime();
         try {
             try {
                 AccessTokenContent tokenContent = validator.createAccessToken(token);
+                resolvedIssuer = tokenContent.getIssuer();
                 LOGGER.debug("Token validation successful for processor %s", processorId);
                 return TokenValidationResult.success(tokenContent);
             } catch (TokenValidationException e) {
@@ -119,7 +121,8 @@ public class JwtValidationService {
             }
         } finally {
             long durationNanos = System.nanoTime() - startNanos;
-            SecurityMetricsStore.recordValidation(validator.getSecurityEventCounter(), durationNanos);
+            SecurityMetricsStore.recordValidation(
+                    validator.getSecurityEventCounter(), durationNanos, resolvedIssuer);
         }
     }
 

@@ -394,6 +394,90 @@ class MetricsServletTest {
     }
 
     @Nested
+    @DisplayName("Issuer metrics in response")
+    class IssuerMetricsInResponse {
+
+        @Test
+        @DisplayName("Should include issuer metrics in response")
+        void shouldIncludeIssuerMetricsInResponse() throws Exception {
+            recordValidToken("https://test-issuer.example.com");
+            recordValidToken("https://test-issuer.example.com");
+            recordInvalidToken(EventType.TOKEN_EXPIRED, null);
+
+            expect(response.getOutputStream()).andReturn(servletOutputStream);
+            response.setContentType("application/json");
+            expectLastCall();
+            response.setCharacterEncoding("UTF-8");
+            expectLastCall();
+            response.setStatus(200);
+            expectLastCall();
+
+            replay(request, response);
+
+            servlet.doGet(request, response);
+
+            verify(request, response);
+
+            String responseJson = outputStream.toString();
+            assertTrue(responseJson.contains("\"issuerMetrics\":["),
+                    "Response should contain issuerMetrics array");
+            assertTrue(responseJson.contains("\"name\":\"https://test-issuer.example.com\""),
+                    "Issuer name should be in response");
+            assertTrue(responseJson.contains("\"name\":\"Unknown\""),
+                    "Unknown issuer should be in response for failed validations");
+        }
+
+        @Test
+        @DisplayName("Should show active issuers count")
+        void shouldShowActiveIssuersCount() throws Exception {
+            recordValidToken("https://issuer-a.example.com");
+            recordValidToken("https://issuer-b.example.com");
+
+            expect(response.getOutputStream()).andReturn(servletOutputStream);
+            response.setContentType("application/json");
+            expectLastCall();
+            response.setCharacterEncoding("UTF-8");
+            expectLastCall();
+            response.setStatus(200);
+            expectLastCall();
+
+            replay(request, response);
+
+            servlet.doGet(request, response);
+
+            verify(request, response);
+
+            String responseJson = outputStream.toString();
+            assertTrue(responseJson.contains("\"activeIssuers\":2"),
+                    "Active issuers should be 2 for two distinct issuers");
+        }
+
+        @Test
+        @DisplayName("Should show empty issuer metrics initially")
+        void shouldShowEmptyIssuerMetricsInitially() throws Exception {
+            expect(response.getOutputStream()).andReturn(servletOutputStream);
+            response.setContentType("application/json");
+            expectLastCall();
+            response.setCharacterEncoding("UTF-8");
+            expectLastCall();
+            response.setStatus(200);
+            expectLastCall();
+
+            replay(request, response);
+
+            servlet.doGet(request, response);
+
+            verify(request, response);
+
+            String responseJson = outputStream.toString();
+            assertTrue(responseJson.contains("\"activeIssuers\":0"),
+                    "Active issuers should be 0 initially");
+            assertTrue(responseJson.contains("\"issuerMetrics\":[]"),
+                    "Issuer metrics should be empty initially");
+        }
+    }
+
+    @Nested
     @DisplayName("Error handling")
     class ErrorHandling {
 
@@ -422,21 +506,35 @@ class MetricsServletTest {
     }
 
     /**
-     * Records a successful token validation via SecurityMetricsStore.
+     * Records a successful token validation via SecurityMetricsStore (no issuer tracking).
      */
     private static void recordValidToken() {
-        SecurityEventCounter counter = new SecurityEventCounter();
-        counter.increment(EventType.ACCESS_TOKEN_CREATED);
-        SecurityMetricsStore.recordValidation(counter, 1_000_000L);
+        recordValidToken(null);
     }
 
     /**
-     * Records a failed token validation via SecurityMetricsStore.
+     * Records a successful token validation with issuer tracking.
+     */
+    private static void recordValidToken(String issuer) {
+        SecurityEventCounter counter = new SecurityEventCounter();
+        counter.increment(EventType.ACCESS_TOKEN_CREATED);
+        SecurityMetricsStore.recordValidation(counter, 1_000_000L, issuer);
+    }
+
+    /**
+     * Records a failed token validation via SecurityMetricsStore (no issuer tracking).
      */
     private static void recordInvalidToken(EventType errorType) {
+        recordInvalidToken(errorType, null);
+    }
+
+    /**
+     * Records a failed token validation with issuer tracking.
+     */
+    private static void recordInvalidToken(EventType errorType, String issuer) {
         SecurityEventCounter counter = new SecurityEventCounter();
         counter.increment(errorType);
-        SecurityMetricsStore.recordValidation(counter, 1_000_000L);
+        SecurityMetricsStore.recordValidation(counter, 1_000_000L, issuer);
     }
 
     /**

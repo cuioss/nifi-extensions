@@ -19,6 +19,7 @@ package de.cuioss.nifi.ui.servlets;
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.service.SecurityMetricsStore;
 import de.cuioss.nifi.ui.service.SecurityMetricsStore.ErrorCount;
+import de.cuioss.nifi.ui.service.SecurityMetricsStore.IssuerMetricsEntry;
 import de.cuioss.nifi.ui.service.SecurityMetricsStore.MetricsSnapshot;
 import de.cuioss.tools.concurrent.StripedRingBufferStatistics;
 import de.cuioss.tools.logging.CuiLogger;
@@ -129,6 +130,15 @@ public class MetricsServlet extends HttpServlet {
         }
 
         JsonArrayBuilder issuerMetricsBuilder = Json.createArrayBuilder();
+        for (IssuerMetricsEntry entry : snapshot.issuerMetrics()) {
+            issuerMetricsBuilder.add(Json.createObjectBuilder()
+                    .add("name", entry.name())
+                    .add("totalRequests", entry.totalRequests())
+                    .add("successCount", entry.successCount())
+                    .add("failureCount", entry.failureCount())
+                    .add("successRate", entry.successRate())
+                    .add("avgResponseTime", entry.avgResponseTime()));
+        }
 
         return Json.createObjectBuilder()
                 .add("totalTokensValidated", snapshot.totalValidations())
@@ -142,7 +152,7 @@ public class MetricsServlet extends HttpServlet {
                 .add("minResponseTime", minResponseTime)
                 .add("maxResponseTime", maxResponseTime)
                 .add("p95ResponseTime", p95ResponseTime)
-                .add("activeIssuers", 0)
+                .add("activeIssuers", snapshot.activeIssuers())
                 .add("issuerMetrics", issuerMetricsBuilder)
                 .build();
     }
