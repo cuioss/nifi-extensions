@@ -106,27 +106,20 @@ public class JwtValidationService {
         // 4. Validate token and record metrics
         long startNanos = System.nanoTime();
         try {
-            AccessTokenContent tokenContent = validator.createAccessToken(token);
+            try {
+                AccessTokenContent tokenContent = validator.createAccessToken(token);
+                LOGGER.debug("Token validation successful for processor %s", processorId);
+                return TokenValidationResult.success(tokenContent);
+            } catch (TokenValidationException e) {
+                LOGGER.debug("Token validation failed for processor %s: %s", processorId, e.getMessage());
+                return TokenValidationResult.failure(e.getMessage());
+            } catch (IllegalStateException | IllegalArgumentException e) {
+                LOGGER.error(e, UILogMessages.ERROR.UNEXPECTED_VALIDATION_ERROR, processorId);
+                return TokenValidationResult.failure("Unexpected validation error: " + e.getMessage());
+            }
+        } finally {
             long durationNanos = System.nanoTime() - startNanos;
-            LOGGER.debug("Token validation successful for processor %s", processorId);
-
             SecurityMetricsStore.recordValidation(validator.getSecurityEventCounter(), durationNanos);
-
-            return TokenValidationResult.success(tokenContent);
-        } catch (TokenValidationException e) {
-            long durationNanos = System.nanoTime() - startNanos;
-            LOGGER.debug("Token validation failed for processor %s: %s", processorId, e.getMessage());
-
-            SecurityMetricsStore.recordValidation(validator.getSecurityEventCounter(), durationNanos);
-
-            return TokenValidationResult.failure(e.getMessage());
-        } catch (IllegalStateException | IllegalArgumentException e) {
-            long durationNanos = System.nanoTime() - startNanos;
-            LOGGER.error(e, UILogMessages.ERROR.UNEXPECTED_VALIDATION_ERROR, processorId);
-
-            SecurityMetricsStore.recordValidation(validator.getSecurityEventCounter(), durationNanos);
-
-            return TokenValidationResult.failure("Unexpected validation error: " + e.getMessage());
         }
     }
 
