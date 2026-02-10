@@ -49,6 +49,8 @@ import org.apache.nifi.processor.util.StandardValidators;
 import org.jspecify.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.*;
 import java.util.Base64;
@@ -445,24 +447,25 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     }
 
     /**
-     * Generates a hash of the current configuration.
+     * Generates a SHA-256 hash of the current configuration.
+     * Uses cryptographic hashing to avoid logging sensitive configuration values.
      *
      * @param context The process context
-     * @return A hash string representing the current configuration
+     * @return A SHA-256 hex string representing the current configuration
      */
     private String generateConfigurationHash(final ProcessContext context) {
-        StringBuilder hashBuilder = new StringBuilder();
+        StringBuilder configBuilder = new StringBuilder();
 
         // Add static properties to hash
-        hashBuilder.append(context.getProperty(Properties.JWKS_REFRESH_INTERVAL).getValue());
-        hashBuilder.append(context.getProperty(Properties.MAXIMUM_TOKEN_SIZE).getValue());
-        hashBuilder.append(context.getProperty(Properties.REQUIRE_VALID_TOKEN).getValue());
+        configBuilder.append(context.getProperty(Properties.JWKS_REFRESH_INTERVAL).getValue());
+        configBuilder.append(context.getProperty(Properties.MAXIMUM_TOKEN_SIZE).getValue());
+        configBuilder.append(context.getProperty(Properties.REQUIRE_VALID_TOKEN).getValue());
 
         // Add dynamic properties (issuers) to hash
         for (PropertyDescriptor propertyDescriptor : context.getProperties().keySet()) {
             String propertyName = propertyDescriptor.getName();
             if (propertyName.startsWith(ISSUER_PREFIX)) {
-                hashBuilder.append(propertyName)
+                configBuilder.append(propertyName)
                         .append("=")
                         .append(context.getProperty(propertyDescriptor).getValue())
                         .append(";");
@@ -473,7 +476,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         if (configurationManager != null && configurationManager.isConfigurationLoaded()) {
             // Add static properties from external configuration
             for (Map.Entry<String, String> entry : configurationManager.getStaticProperties().entrySet()) {
-                hashBuilder.append(entry.getKey())
+                configBuilder.append(entry.getKey())
                         .append("=")
                         .append(entry.getValue())
                         .append(";");
@@ -483,7 +486,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             for (String issuerId : configurationManager.getIssuerIds()) {
                 Map<String, String> issuerProps = configurationManager.getIssuerProperties(issuerId);
                 for (Map.Entry<String, String> entry : issuerProps.entrySet()) {
-                    hashBuilder.append("issuer.")
+                    configBuilder.append("issuer.")
                             .append(issuerId)
                             .append(".")
                             .append(entry.getKey())
@@ -494,7 +497,22 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             }
         }
 
-        return hashBuilder.toString();
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = digest.digest(configBuilder.toString().getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder(2 * hashBytes.length);
+            for (byte b : hashBytes) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) {
+                    hexString.append('0');
+                }
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            // SHA-256 is guaranteed to be available in every Java implementation
+            throw new IllegalStateException("SHA-256 algorithm not available", e);
+        }
     }
 
     /**
