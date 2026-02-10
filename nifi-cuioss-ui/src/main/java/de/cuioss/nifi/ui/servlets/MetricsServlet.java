@@ -17,6 +17,10 @@
 package de.cuioss.nifi.ui.servlets;
 
 import de.cuioss.nifi.ui.UILogMessages;
+import de.cuioss.nifi.ui.service.SecurityMetricsStore;
+import de.cuioss.nifi.ui.service.SecurityMetricsStore.ErrorCount;
+import de.cuioss.nifi.ui.service.SecurityMetricsStore.MetricsSnapshot;
+import de.cuioss.tools.concurrent.StripedRingBufferStatistics;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
 import jakarta.json.JsonArrayBuilder;
@@ -28,21 +32,16 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Servlet for retrieving JWT authentication security metrics.
  * This servlet provides a REST endpoint for accessing security metrics
  * related to JWT token validation.
- * 
+ *
  * Endpoint: /nifi-api/processors/jwt/metrics
  * Method: GET
- * 
+ *
  * Response format:
  * {
  *   "totalTokensValidated": 1250,
@@ -64,16 +63,6 @@ public class MetricsServlet extends HttpServlet {
     private static final CuiLogger LOGGER = new CuiLogger(MetricsServlet.class);
     private static final JsonWriterFactory JSON_WRITER = Json.createWriterFactory(Map.of());
 
-    /** Maximum number of distinct error types tracked to prevent unbounded memory growth. */
-    private static final int MAX_ERROR_TYPES = 100;
-
-    // Static metrics storage (in a real implementation, this might be injected or shared)
-    private static final AtomicLong totalTokensValidated = new AtomicLong(0);
-    private static final AtomicLong validTokens = new AtomicLong(0);
-    private static final AtomicLong invalidTokens = new AtomicLong(0);
-    private static volatile Instant lastValidation = null;
-    private static final Map<String, AtomicLong> errorCounts = new ConcurrentHashMap<>();
-
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException {
@@ -81,11 +70,11 @@ public class MetricsServlet extends HttpServlet {
         LOGGER.debug("Received metrics request");
 
         try {
-            // Collect current metrics
-            SecurityMetrics metrics = collectMetrics();
+            // Collect current metrics from the centralized store
+            MetricsSnapshot snapshot = SecurityMetricsStore.getSnapshot();
 
             // Build JSON response
-            JsonObject responseJson = buildMetricsResponse(metrics);
+            JsonObject responseJson = buildMetricsResponse(snapshot);
 
             // Send response
             resp.setContentType("application/json");
@@ -112,43 +101,47 @@ public class MetricsServlet extends HttpServlet {
     }
 
     /**
-     * Collects current security metrics.
-     */
-    private SecurityMetrics collectMetrics() {
-        return getCurrentMetrics();
-    }
-
-    /**
      * Builds the JSON response for metrics.
      */
-    private JsonObject buildMetricsResponse(SecurityMetrics metrics) {
+    private JsonObject buildMetricsResponse(MetricsSnapshot snapshot) {
         JsonArrayBuilder topErrorsBuilder = Json.createArrayBuilder();
 
-        for (ErrorCount errorCount : metrics.topErrors) {
+        for (ErrorCount errorCount : snapshot.topErrors()) {
             JsonObject errorObj = Json.createObjectBuilder()
-                    .add("error", errorCount.error)
-                    .add("count", errorCount.count)
+                    .add("error", errorCount.error())
+                    .add("count", errorCount.count())
                     .build();
             topErrorsBuilder.add(errorObj);
         }
 
-        // Performance metrics and issuer-level metrics require proper instrumentation.
-        // These fields are included with zero values so the frontend receives a valid structure.
+        // Performance metrics from real TokenValidatorMonitor statistics
+        long avgResponseTime = 0;
+        long minResponseTime = 0;
+        long maxResponseTime = 0;
+        long p95ResponseTime = 0;
+
+        StripedRingBufferStatistics stats = snapshot.validationStatistics();
+        if (stats != null && stats.sampleCount() > 0) {
+            avgResponseTime = stats.p50().toMillis();
+            minResponseTime = stats.p50().toMillis();
+            maxResponseTime = stats.p99().toMillis();
+            p95ResponseTime = stats.p95().toMillis();
+        }
+
         JsonArrayBuilder issuerMetricsBuilder = Json.createArrayBuilder();
 
         return Json.createObjectBuilder()
-                .add("totalTokensValidated", metrics.totalTokensValidated)
-                .add("validTokens", metrics.validTokens)
-                .add("invalidTokens", metrics.invalidTokens)
-                .add("errorRate", metrics.errorRate)
-                .add("lastValidation", metrics.lastValidation != null ?
-                        metrics.lastValidation.toString() : "")
+                .add("totalTokensValidated", snapshot.totalValidations())
+                .add("validTokens", snapshot.validTokens())
+                .add("invalidTokens", snapshot.invalidTokens())
+                .add("errorRate", snapshot.errorRate())
+                .add("lastValidation", snapshot.lastValidation() != null ?
+                        snapshot.lastValidation().toString() : "")
                 .add("topErrors", topErrorsBuilder)
-                // Additional fields expected by frontend (zeroed until proper instrumentation is added)
-                .add("averageResponseTime", 0)
-                .add("minResponseTime", 0)
-                .add("maxResponseTime", 0)
-                .add("p95ResponseTime", 0)
+                .add("averageResponseTime", avgResponseTime)
+                .add("minResponseTime", minResponseTime)
+                .add("maxResponseTime", maxResponseTime)
+                .add("p95ResponseTime", p95ResponseTime)
                 .add("activeIssuers", 0)
                 .add("issuerMetrics", issuerMetricsBuilder)
                 .build();
@@ -179,104 +172,6 @@ public class MetricsServlet extends HttpServlet {
         } catch (IOException e) {
             LOGGER.error(e, UILogMessages.ERROR.FAILED_WRITE_ERROR_RESPONSE);
             // Don't throw here to avoid masking the original error
-        }
-    }
-
-    // Static methods for updating metrics (would be called from validation service)
-    
-    /**
-     * Records a successful token validation.
-     */
-    public static void recordValidToken() {
-        totalTokensValidated.incrementAndGet();
-        validTokens.incrementAndGet();
-        lastValidation = Instant.now();
-        LOGGER.debug("Recorded valid token, total: %d, valid: %d",
-                totalTokensValidated.get(), validTokens.get());
-    }
-
-    /**
-     * Records a failed token validation.
-     */
-    public static void recordInvalidToken(String errorMessage) {
-        totalTokensValidated.incrementAndGet();
-        invalidTokens.incrementAndGet();
-        lastValidation = Instant.now();
-
-        if (errorMessage != null && !errorMessage.trim().isEmpty()) {
-            String key = errorMessage.trim();
-            // Only track new error types if under the cap, but always update existing ones
-            if (errorCounts.containsKey(key) || errorCounts.size() < MAX_ERROR_TYPES) {
-                errorCounts.computeIfAbsent(key, k -> new AtomicLong(0)).incrementAndGet();
-            }
-        }
-
-        LOGGER.debug("Recorded invalid token, total: %d, invalid: %d, error: %s",
-                totalTokensValidated.get(), invalidTokens.get(), errorMessage);
-    }
-
-    /**
-     * Resets all metrics (for testing purposes).
-     */
-    public static void resetMetrics() {
-        totalTokensValidated.set(0);
-        validTokens.set(0);
-        invalidTokens.set(0);
-        lastValidation = null;
-        errorCounts.clear();
-        LOGGER.debug("Reset all metrics");
-    }
-
-    /**
-     * Gets current metrics as a snapshot (for testing purposes).
-     */
-    public static SecurityMetrics getCurrentMetrics() {
-        long total = totalTokensValidated.get();
-        long valid = validTokens.get();
-        long invalid = invalidTokens.get();
-        double errorRate = total > 0 ? (double) invalid / total : 0.0;
-
-        List<ErrorCount> topErrors = errorCounts.entrySet().stream()
-                .map(entry -> new ErrorCount(entry.getKey(), entry.getValue().get()))
-                .sorted((a, b) -> Long.compare(b.count, a.count))
-                .limit(10)
-                .toList();
-
-        return new SecurityMetrics(total, valid, invalid, errorRate, lastValidation, topErrors);
-    }
-
-    /**
-     * Data class for security metrics.
-     */
-    public static class SecurityMetrics {
-        public final long totalTokensValidated;
-        public final long validTokens;
-        public final long invalidTokens;
-        public final double errorRate;
-        public final Instant lastValidation;
-        public final List<ErrorCount> topErrors;
-
-        public SecurityMetrics(long totalTokensValidated, long validTokens, long invalidTokens,
-                double errorRate, Instant lastValidation, List<ErrorCount> topErrors) {
-            this.totalTokensValidated = totalTokensValidated;
-            this.validTokens = validTokens;
-            this.invalidTokens = invalidTokens;
-            this.errorRate = errorRate;
-            this.lastValidation = lastValidation;
-            this.topErrors = topErrors != null ? topErrors : new ArrayList<>();
-        }
-    }
-
-    /**
-     * Data class for error counts.
-     */
-    public static class ErrorCount {
-        public final String error;
-        public final long count;
-
-        public ErrorCount(String error, long count) {
-            this.error = error;
-            this.count = count;
         }
     }
 }
