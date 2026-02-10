@@ -440,5 +440,5 @@ Changes require restarting the NiFi container for the new flow to take effect.
 * xref:end-to-end-testing.adoc[End-to-End Testing (Playwright)]
 * xref:token-validation.adoc[Token Validation]
 * xref:configuration.adoc[Configuration]
-* link:../../integration-testing/README.adoc[Integration Testing README]
+* xref:../../integration-testing/README.adoc[Integration Testing README]
 * xref:../Specification.adoc[Back to Main Specification]

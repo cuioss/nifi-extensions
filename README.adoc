@@ -80,6 +80,34 @@ The processor can be configured through three methods (in order of precedence):
 
 See the link:doc/guides/QuickStart.adoc[Quick Start Guide] for a step-by-step walkthrough covering processor properties, issuer configuration, relationships, output attributes, static files, and environment variables.
 
+=== Working Example: Integration Test Flow
+
+The integration tests include a complete NiFi flow definition that demonstrates the processor in action with a real Keycloak identity provider.
+The flow is defined in link:integration-testing/src/main/docker/nifi/conf/flow.json[flow.json] and implements a JWT authentication gateway:
+
+* **HandleHttpRequest** accepts incoming HTTP on port 7777
+* **MultiIssuerJWTTokenAuthenticator** validates the JWT and checks roles
+* Authorized requests (HTTP 200) and rejected requests (HTTP 401) are routed through separate paths
+* Response bodies contain the `jwt.*` attributes as JSON for inspection
+
+The authenticator is configured with one Keycloak issuer:
+
+[source]
+----
+issuer.keycloak.jwks-url = http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs
+issuer.keycloak.issuer    = http://keycloak:8080/realms/oauth_integration_tests
+issuer.keycloak.required-roles = read
+----
+
+To run the full integration test suite locally:
+
+[source,bash]
+----
+./mvnw verify -Pintegration-tests
+----
+
+See link:integration-testing/doc/flow-pipeline.adoc[Flow Pipeline Design] for the complete pipeline architecture and test scenarios.
+
 == Components
 
 [cols="1,3"]
