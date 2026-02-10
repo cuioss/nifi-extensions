@@ -16,7 +16,6 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import de.cuioss.nifi.processors.auth.AuthLogMessages;
 import de.cuioss.nifi.processors.auth.JWTProcessorConstants.Error;
 import de.cuioss.nifi.processors.auth.JWTProcessorConstants.Http;
 import de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships;

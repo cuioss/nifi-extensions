@@ -421,6 +421,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         issuerConfigCache.clear();
         authorizationConfigCache.clear();
+
+        // Populate caches from configured issuers and their properties
+        populateCaches(issuerConfigs, properties);
     }
 
     /**
@@ -578,6 +581,95 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 authorizationConfigCache.remove(cachedIssuerName);
             }
         }
+    }
+
+    /**
+     * Populates the issuer config cache and authorization config cache from the configured issuers.
+     *
+     * @param issuerConfigs The configured issuers
+     * @param allProperties All processor properties
+     */
+    private void populateCaches(List<IssuerConfig> issuerConfigs, Map<String, String> allProperties) {
+        // Populate issuer config cache keyed by issuer identifier
+        for (IssuerConfig config : issuerConfigs) {
+            issuerConfigCache.put(config.getIssuerIdentifier(), config);
+        }
+
+        // Group properties by issuer index to extract authorization config
+        Map<String, Map<String, String>> issuerPropertiesMap = new HashMap<>();
+        for (Map.Entry<String, String> entry : allProperties.entrySet()) {
+            String key = entry.getKey();
+            if (key.startsWith(ISSUER_PREFIX)) {
+                String remainder = key.substring(ISSUER_PREFIX.length());
+                int dotIndex = remainder.indexOf('.');
+                if (dotIndex > 0) {
+                    String issuerIndex = remainder.substring(0, dotIndex);
+                    String property = remainder.substring(dotIndex + 1);
+                    issuerPropertiesMap.computeIfAbsent(issuerIndex, k -> new HashMap<>())
+                            .put(property, entry.getValue());
+                }
+            }
+        }
+
+        // For each issuer index, resolve identifier and build authorization config
+        for (Map.Entry<String, Map<String, String>> entry : issuerPropertiesMap.entrySet()) {
+            Map<String, String> props = entry.getValue();
+
+            // Resolve issuer name (same logic as IssuerConfigurationParser.resolveIssuerName)
+            String issuerIdentifier = props.get("name");
+            if (issuerIdentifier == null || issuerIdentifier.trim().isEmpty()) {
+                issuerIdentifier = props.get(Issuer.ISSUER_NAME);
+            }
+            if (issuerIdentifier == null || issuerIdentifier.trim().isEmpty()) {
+                continue;
+            }
+            issuerIdentifier = issuerIdentifier.trim();
+
+            // Check for explicit bypass
+            if ("true".equalsIgnoreCase(props.get(Issuer.BYPASS_AUTHORIZATION))) {
+                // null authConfig means bypass in performAuthorizationCheck()
+                continue;
+            }
+
+            // Extract authorization requirements
+            Set<String> requiredRoles = parseCommaSeparated(props.get(Issuer.REQUIRED_ROLES));
+            Set<String> requiredScopes = parseCommaSeparated(props.get(Issuer.REQUIRED_SCOPES));
+
+            // Only create config if there are actual requirements
+            if (requiredRoles.isEmpty() && requiredScopes.isEmpty()) {
+                // No requirements configured — null authConfig means bypass
+                continue;
+            }
+
+            AuthorizationValidator.AuthorizationConfig authConfig = AuthorizationValidator.AuthorizationConfig.builder()
+                    .requiredRoles(requiredRoles)
+                    .requiredScopes(requiredScopes)
+                    .requireAllRoles("true".equalsIgnoreCase(props.get(Issuer.REQUIRE_ALL_ROLES)))
+                    .requireAllScopes("true".equalsIgnoreCase(props.get(Issuer.REQUIRE_ALL_SCOPES)))
+                    .caseSensitive(!"false".equalsIgnoreCase(props.get(Issuer.CASE_SENSITIVE_MATCHING)))
+                    .build();
+
+            authorizationConfigCache.put(issuerIdentifier, authConfig);
+        }
+
+        LOGGER.debug("Populated caches: %d issuer configs, %d authorization configs",
+                issuerConfigCache.size(), authorizationConfigCache.size());
+    }
+
+    /**
+     * Parses a comma-separated string into a Set of trimmed, non-empty strings.
+     *
+     * @param value The comma-separated string (may be null)
+     * @return A set of parsed values, empty if input is null or blank
+     */
+    private static Set<String> parseCommaSeparated(@Nullable String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return Collections.emptySet();
+        }
+        return Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toSet());
     }
 
     /**
@@ -864,7 +956,14 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         }
 
         flowFile = session.putAllAttributes(flowFile, attributes);
-        session.transfer(flowFile, Relationships.SUCCESS);
+
+        if (authResult.isAuthorized()) {
+            session.transfer(flowFile, Relationships.SUCCESS);
+        } else {
+            handleError(session, flowFile, "AUTH-010",
+                    "Authorization failed: required roles/scopes not present",
+                    "AUTHORIZATION_FAILED");
+        }
     }
 
     /**

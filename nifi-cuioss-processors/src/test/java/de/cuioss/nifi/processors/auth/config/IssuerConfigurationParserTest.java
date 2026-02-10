@@ -28,7 +28,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -252,7 +251,7 @@ class IssuerConfigurationParserTest {
     // ========== Tests for parseIssuerConfigs with External Configuration ==========
 
     @Test
-    void parseIssuerConfigs_withExternalConfiguration() throws IOException {
+    void parseIssuerConfigs_withExternalConfiguration() throws Exception {
         // Create external configuration with real JWKS file path
         String yamlContent = """
             jwt:
@@ -283,7 +282,7 @@ class IssuerConfigurationParserTest {
     }
 
     @Test
-    void parseIssuerConfigs_withBothUIAndExternalConfiguration() throws IOException {
+    void parseIssuerConfigs_withBothUIAndExternalConfiguration() throws Exception {
         // Create external configuration with real JWKS file path
         String yamlContent = """
             jwt:

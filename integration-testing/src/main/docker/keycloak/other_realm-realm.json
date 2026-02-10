@@ -1,9 +1,9 @@
 {
-  "realm": "oauth_integration_tests",
+  "realm": "other_realm",
   "enabled": true,
   "users": [
     {
-      "username": "testUser",
+      "username": "otherUser",
       "enabled": true,
       "credentials": [
         {
@@ -12,33 +12,18 @@
           "temporary": false
         }
       ],
-      "firstName": "Test",
+      "firstName": "Other",
       "lastName": "User",
-      "email": "testUser@example.com",
-      "realmRoles": ["user", "read"]
-    },
-    {
-      "username": "limitedUser",
-      "enabled": true,
-      "credentials": [
-        {
-          "type": "password",
-          "value": "drowssap",
-          "temporary": false
-        }
-      ],
-      "firstName": "Limited",
-      "lastName": "User",
-      "email": "limitedUser@example.com",
+      "email": "otherUser@example.com",
       "realmRoles": ["user"]
     }
   ],
   "clients": [
     {
-      "clientId": "test_client",
+      "clientId": "other_client",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "yTKslWLtf4giJcWCaoVJ20H8sy6STexM",
+      "secret": "otherClientSecretValue123456789",
       "redirectUris": ["*"],
       "webOrigins": ["*"],
       "publicClient": false,
@@ -51,10 +36,6 @@
       {
         "name": "user",
         "description": "User role"
-      },
-      {
-        "name": "read",
-        "description": "Read access role"
       }
     ]
   }

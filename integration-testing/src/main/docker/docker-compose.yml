@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "9095:8443"
+      - "7777:7777"
     environment:
       - NIFI_WEB_HTTP_PORT=
       - NIFI_WEB_HTTP_HOST=
@@ -82,7 +83,7 @@ services:
       # Hostname configuration for well-known discovery endpoint
       - KC_HOSTNAME_STRICT=false
       - KC_HTTP_ENABLED=true
-      - KC_HOSTNAME=localhost
+      - KC_HOSTNAME=keycloak
     volumes:
       - ./keycloak:/opt/keycloak/data/import:ro
     command: 

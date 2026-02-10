@@ -754,6 +754,32 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         }
 
         @Test
+        @DisplayName("Test authorization with bypass-authorization=true")
+        void authorizationWithBypassAuthorization() {
+            // Setup issuer with bypass-authorization=true and required roles
+            // Bypass should override role requirements
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.REQUIRED_ROLES, "admin");
+            setDynamicProperty(ISSUER_PREFIX + "test-issuer." + JWTPropertyKeys.Issuer.BYPASS_AUTHORIZATION, "true");
+
+            // Create flow file with Authorization header
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put("http.headers.authorization", "Bearer " + VALID_TOKEN);
+            testRunner.enqueue("test data", attributes);
+
+            // Run the processor
+            testRunner.run();
+
+            // Token validation will fail at the JWKS level (test token can't be validated),
+            // but the processor should not crash with bypass-authorization config
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+            flowFile.assertAttributeExists("jwt.error.reason");
+            flowFile.assertAttributeExists("jwt.error.code");
+        }
+
+        @Test
         @DisplayName("Test authorization with multiple issuers having different requirements")
         void authorizationWithMultipleIssuersWithDifferentRequirements() {
             // Setup first issuer with scope requirements
@@ -840,7 +866,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
 
         @Test
         @DisplayName("Test token with malformed Base64 header")
-        void testMalformedBase64Header() {
+        void malformedBase64Header() {
             // Create a token with invalid Base64 in the header part
             // This should trigger IllegalArgumentException from Base64 decoder
             String malformedToken = "not-valid-base64!!!.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
@@ -871,7 +897,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
 
         @Test
         @DisplayName("Test token with header containing special characters in Base64")
-        void testBase64WithInvalidCharacters() {
+        void base64WithInvalidCharacters() {
             // Create a token with characters that are not valid in Base64
             String tokenWithInvalidBase64 = "eyJ@#$%^&*()!.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
 
