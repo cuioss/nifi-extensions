@@ -26,8 +26,7 @@
         <playwright.timeout>120</playwright.timeout> <!-- 2 minutes for Playwright tests -->
         <!-- Code quality configuration -->
         <skip.lint>false</skip.lint> <!-- Run linting by default, skip only for integration tests -->
-        <!-- Playwright tests configuration -->
-        <skipPlaywrightTests>true</skipPlaywrightTests> <!-- Skip Playwright tests by default, run only in integration-tests profile -->
+        <!-- skipPlaywrightTests default inherited from root POM, overridden by integration-tests profile -->
         <!-- Include this module in SonarQube analysis -->
         <sonar.skip>false</sonar.skip>
         <!-- Test output directories -->

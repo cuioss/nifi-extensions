@@ -90,6 +90,9 @@
         <!-- Exclude e-2-e-playwright module from SonarQube analysis -->
         <sonar.exclusions>e-2-e-playwright/**</sonar.exclusions>
         <sonar.skip>false</sonar.skip>
+        <!-- Integration / E2E test defaults (overridden by integration-tests profile) -->
+        <skipITs>true</skipITs>
+        <skipPlaywrightTests>true</skipPlaywrightTests>
         <!-- Maven Plugins -->
         <maven.compiler.plugin.version>3.14.1</maven.compiler.plugin.version>
         <maven.gpg.plugin.version>3.2.8</maven.gpg.plugin.version>

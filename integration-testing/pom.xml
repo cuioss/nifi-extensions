@@ -17,8 +17,6 @@
         <!-- This module is for testing only and should never be released -->
         <maven.deploy.skip>true</maven.deploy.skip>
         <maven.install.skip>true</maven.install.skip>
-        <!-- Integration tests require Docker containers; skip by default -->
-        <skipITs>true</skipITs>
     </properties>
 
     <dependencies>
