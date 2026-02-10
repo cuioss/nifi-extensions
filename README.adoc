@@ -73,24 +73,14 @@ The processor can be configured through three methods (in order of precedence):
 . **Environment variables** -- for container orchestration (Kubernetes, Docker)
 . **NiFi UI** -- interactive configuration with built-in JWKS validation and token testing
 
-=== Quick Start: Minimal Configuration via UI
+=== Quick Start
 
-. Drag the **MultiIssuerJWTTokenAuthenticator** onto the canvas.
-. In the processor configuration dialog, the defaults work for the common case (Authorization header, Bearer prefix).
-. Add a dynamic property for your identity provider:
-+
-[cols="1,2"]
-|===
-|Property Name |Value
-
-|`issuer.1.jwks-url`
-|`\https://your-auth-server/.well-known/jwks.json`
-
-|`issuer.1.audience` _(optional)_
-|`api://your-service`
-|===
-. Connect the three relationships: `success`, `authentication-failed`, `failure`.
+. Add the **MultiIssuerJWTTokenAuthenticator** processor to your canvas.
+. Add a dynamic property `issuer.1.jwks-url` with your JWKS endpoint URL.
+. Connect the `success`, `authentication-failed`, and `failure` relationships.
 . Start the processor.
+
+All other properties have sensible defaults (Authorization header, Bearer prefix, HTTPS required). See the link:doc/guides/QuickStart.adoc[Quick Start Guide] for a detailed walkthrough with screenshots and multi-issuer examples.
 
 === Processor Properties
 
@@ -366,6 +356,11 @@ data:
 * link:doc/specification/security.adoc[Security]
 * link:doc/specification/token-validation.adoc[Token Validation]
 * link:doc/specification/technical-components.adoc[Technical Components]
+
+=== Guides
+
+* link:doc/guides/QuickStart.adoc[Quick Start Guide] -- get running in under 5 minutes
+* link:doc/guides/IssuerConfigPropertiesGuide.adoc[Issuer Configuration Walkthrough] -- step-by-step UI configuration with test environment and troubleshooting
 
 === Testing
 
