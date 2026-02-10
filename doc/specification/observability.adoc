@@ -210,7 +210,7 @@ scrape_configs:
 
 === Grafana Dashboard
 
-A sample Grafana dashboard template is provided with the following panels:
+When using Prometheus as a data source, a Grafana dashboard can visualize these panels:
 
 1. Total tokens processed (counter)
 2. Token validation success rate (gauge)

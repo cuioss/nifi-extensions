@@ -30,7 +30,7 @@ The following tests verify the implementation:
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/ApiKeyAuthenticationFilterTest.java[ApiKeyAuthenticationFilterTest] -- API key authentication filter unit tests
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/service/JwtValidationServiceTest.java[JwtValidationServiceTest] -- JWT validation service unit tests
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/integration/BackendEndpointsIntegrationTest.java[BackendEndpointsIntegrationTest] -- REST Assured integration tests for all endpoints
-* link:../../e-2-e-playwright/tests/07-verify-token-verification-api.spec.js[E2E Token Verification API Test] (currently skipped)
+* link:../../e-2-e-playwright/tests/04-verify-token-verification-tab.spec.js[E2E Token Verification Tab Test]
 
 == API Endpoints
 
