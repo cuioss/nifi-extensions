@@ -19,7 +19,6 @@ package de.cuioss.nifi.ui.service;
 import de.cuioss.nifi.processors.auth.config.ConfigurationManager;
 import de.cuioss.nifi.processors.auth.config.IssuerConfigurationParser;
 import de.cuioss.nifi.ui.UILogMessages;
-import de.cuioss.nifi.ui.servlets.MetricsServlet;
 import de.cuioss.nifi.ui.util.ProcessorConfigReader;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
@@ -104,30 +103,23 @@ public class JwtValidationService {
             throw new IllegalStateException("Failed to create TokenValidator: " + e.getMessage(), e);
         }
 
-        // 4. Validate token using the same logic as the processor
+        // 4. Validate token and record metrics
+        long startNanos = System.nanoTime();
         try {
-            AccessTokenContent tokenContent = validator.createAccessToken(token);
-            LOGGER.debug("Token validation successful for processor %s", processorId);
-
-            // Record successful validation in metrics
-            MetricsServlet.recordValidToken();
-
-            return TokenValidationResult.success(tokenContent);
-        } catch (TokenValidationException e) {
-            LOGGER.debug("Token validation failed for processor %s: %s", processorId, e.getMessage());
-
-            // Record failed validation in metrics
-            MetricsServlet.recordInvalidToken(e.getMessage());
-
-            return TokenValidationResult.failure(e.getMessage());
-        } catch (IllegalStateException | IllegalArgumentException e) {
-            LOGGER.error(e, UILogMessages.ERROR.UNEXPECTED_VALIDATION_ERROR, processorId);
-
-            String errorMessage = "Unexpected validation error: " + e.getMessage();
-            // Record failed validation in metrics
-            MetricsServlet.recordInvalidToken(errorMessage);
-
-            return TokenValidationResult.failure(errorMessage);
+            try {
+                AccessTokenContent tokenContent = validator.createAccessToken(token);
+                LOGGER.debug("Token validation successful for processor %s", processorId);
+                return TokenValidationResult.success(tokenContent);
+            } catch (TokenValidationException e) {
+                LOGGER.debug("Token validation failed for processor %s: %s", processorId, e.getMessage());
+                return TokenValidationResult.failure(e.getMessage());
+            } catch (IllegalStateException | IllegalArgumentException e) {
+                LOGGER.error(e, UILogMessages.ERROR.UNEXPECTED_VALIDATION_ERROR, processorId);
+                return TokenValidationResult.failure("Unexpected validation error: " + e.getMessage());
+            }
+        } finally {
+            long durationNanos = System.nanoTime() - startNanos;
+            SecurityMetricsStore.recordValidation(validator.getSecurityEventCounter(), durationNanos);
         }
     }
 

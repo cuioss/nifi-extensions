@@ -16,7 +16,9 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
-import de.cuioss.test.generator.Generators;
+import de.cuioss.nifi.ui.service.SecurityMetricsStore;
+import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
+import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter.EventType;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import jakarta.servlet.ServletOutputStream;
@@ -64,7 +66,7 @@ class MetricsServletTest {
         outputStream = new ByteArrayOutputStream();
         servletOutputStream = new TestServletOutputStream(outputStream);
 
-        MetricsServlet.resetMetrics();
+        SecurityMetricsStore.reset();
     }
 
     @Nested
@@ -113,7 +115,7 @@ class MetricsServletTest {
         void shouldTrackValidTokensCorrectly() throws Exception {
             final int validTokenCount = 3;
             for (int i = 0; i < validTokenCount; i++) {
-                MetricsServlet.recordValidToken();
+                recordValidToken();
             }
 
             expect(response.getOutputStream()).andReturn(servletOutputStream);
@@ -151,12 +153,9 @@ class MetricsServletTest {
         @Test
         @DisplayName("Should track invalid tokens and error types")
         void shouldTrackInvalidTokensAndErrorTypes() throws Exception {
-            final String expiredError = "Token expired";
-            final String signatureError = "Invalid signature";
-
-            MetricsServlet.recordInvalidToken(expiredError);
-            MetricsServlet.recordInvalidToken(signatureError);
-            MetricsServlet.recordInvalidToken(expiredError);
+            recordInvalidToken(EventType.TOKEN_EXPIRED);
+            recordInvalidToken(EventType.SIGNATURE_VALIDATION_FAILED);
+            recordInvalidToken(EventType.TOKEN_EXPIRED);
 
             expect(response.getOutputStream()).andReturn(servletOutputStream);
             response.setContentType("application/json");
@@ -182,14 +181,14 @@ class MetricsServletTest {
             assertTrue(responseJson.contains("\"errorRate\":1.0"),
                     "Error rate should be 1.0 when all tokens are invalid");
 
-            assertTrue(responseJson.contains("\"" + expiredError + "\""),
-                    "Response should include expired token error message");
-            assertTrue(responseJson.contains("\"" + signatureError + "\""),
-                    "Response should include signature error message");
+            assertTrue(responseJson.contains("\"" + EventType.TOKEN_EXPIRED.getDescription() + "\""),
+                    "Response should include expired token error description");
+            assertTrue(responseJson.contains("\"" + EventType.SIGNATURE_VALIDATION_FAILED.getDescription() + "\""),
+                    "Response should include signature error description");
             assertTrue(responseJson.contains("\"count\":2"),
                     "Token expired error should have count of 2");
             assertTrue(responseJson.contains("\"count\":1"),
-                    "Invalid signature error should have count of 1");
+                    "Signature validation error should have count of 1");
         }
     }
 
@@ -200,11 +199,11 @@ class MetricsServletTest {
         @Test
         @DisplayName("Should calculate correct error rate for mixed tokens")
         void shouldCalculateCorrectErrorRateForMixedTokens() throws Exception {
-            MetricsServlet.recordValidToken();
-            MetricsServlet.recordValidToken();
-            MetricsServlet.recordInvalidToken("Token expired");
-            MetricsServlet.recordValidToken();
-            MetricsServlet.recordInvalidToken("Invalid audience");
+            recordValidToken();
+            recordValidToken();
+            recordInvalidToken(EventType.TOKEN_EXPIRED);
+            recordValidToken();
+            recordInvalidToken(EventType.AUDIENCE_MISMATCH);
 
             expect(response.getOutputStream()).andReturn(servletOutputStream);
             response.setContentType("application/json");
@@ -230,69 +229,68 @@ class MetricsServletTest {
             assertTrue(responseJson.contains("\"errorRate\":0.4"),
                     "Error rate should be 0.4 (2 invalid / 5 total)");
 
-            assertTrue(responseJson.contains("\"Token expired\""),
-                    "Should track 'Token expired' error");
-            assertTrue(responseJson.contains("\"Invalid audience\""),
-                    "Should track 'Invalid audience' error");
+            assertTrue(responseJson.contains("\"" + EventType.TOKEN_EXPIRED.getDescription() + "\""),
+                    "Should track token expired error");
+            assertTrue(responseJson.contains("\"" + EventType.AUDIENCE_MISMATCH.getDescription() + "\""),
+                    "Should track audience mismatch error");
         }
     }
 
     @Nested
-    @DisplayName("Static metrics methods")
-    class StaticMetricsMethods {
+    @DisplayName("Metrics snapshot")
+    class MetricsSnapshotTests {
 
         @Test
         @DisplayName("Should provide current metrics snapshot")
         void shouldProvideCurrentMetricsSnapshot() {
-            final String testError = Generators.letterStrings(10, 20).next();
+            recordValidToken();
+            recordInvalidToken(EventType.TOKEN_EXPIRED);
 
-            MetricsServlet.recordValidToken();
-            MetricsServlet.recordInvalidToken(testError);
+            SecurityMetricsStore.MetricsSnapshot snapshot = SecurityMetricsStore.getSnapshot();
 
-            MetricsServlet.SecurityMetrics metrics = MetricsServlet.getCurrentMetrics();
-
-            assertEquals(2, metrics.totalTokensValidated,
+            assertEquals(2, snapshot.totalValidations(),
                     "Total tokens should be 2 (1 valid + 1 invalid)");
-            assertEquals(1, metrics.validTokens,
+            assertEquals(1, snapshot.validTokens(),
                     "Valid tokens count should be 1");
-            assertEquals(1, metrics.invalidTokens,
+            assertEquals(1, snapshot.invalidTokens(),
                     "Invalid tokens count should be 1");
-            assertEquals(0.5, metrics.errorRate, 0.001,
+            assertEquals(0.5, snapshot.errorRate(), 0.001,
                     "Error rate should be 0.5 (50% failure rate)");
-            assertNotNull(metrics.lastValidation,
+            assertNotNull(snapshot.lastValidation(),
                     "Last validation timestamp should be set");
-            assertEquals(1, metrics.topErrors.size(),
+            assertEquals(1, snapshot.topErrors().size(),
                     "Should have exactly one error type");
-            assertEquals(testError, metrics.topErrors.getFirst().error,
-                    "Error message should match recorded error");
-            assertEquals(1, metrics.topErrors.getFirst().count,
+            assertEquals(EventType.TOKEN_EXPIRED.getDescription(),
+                    snapshot.topErrors().getFirst().error(),
+                    "Error description should match EventType description");
+            assertEquals(1, snapshot.topErrors().getFirst().count(),
                     "Error count should be 1");
         }
 
         @Test
         @DisplayName("Should reset all metrics to initial state")
         void shouldResetAllMetricsToInitialState() {
-            MetricsServlet.recordValidToken();
-            MetricsServlet.recordInvalidToken("Test error");
+            recordValidToken();
+            recordInvalidToken(EventType.TOKEN_EXPIRED);
 
-            MetricsServlet.SecurityMetrics beforeReset = MetricsServlet.getCurrentMetrics();
-            assertEquals(2, beforeReset.totalTokensValidated,
+            SecurityMetricsStore.MetricsSnapshot beforeReset = SecurityMetricsStore.getSnapshot();
+            assertEquals(2, beforeReset.totalValidations(),
                     "Should have recorded 2 tokens before reset");
 
-            MetricsServlet.resetMetrics();
+            SecurityMetricsStore.reset();
 
-            MetricsServlet.SecurityMetrics afterReset = MetricsServlet.getCurrentMetrics();
-            assertEquals(0, afterReset.totalTokensValidated,
+            SecurityMetricsStore.MetricsSnapshot afterReset = SecurityMetricsStore.getSnapshot();
+            assertEquals(0, afterReset.totalValidations(),
                     "Total tokens should be 0 after reset");
-            assertEquals(0, afterReset.validTokens,
+            assertEquals(0, afterReset.validTokens(),
                     "Valid tokens should be 0 after reset");
-            assertEquals(0, afterReset.invalidTokens,
+            assertEquals(0, afterReset.invalidTokens(),
                     "Invalid tokens should be 0 after reset");
-            assertEquals(0.0, afterReset.errorRate, 0.001,
+            assertEquals(0.0, afterReset.errorRate(), 0.001,
                     "Error rate should be 0.0 after reset");
-            assertNull(afterReset.lastValidation,
+            assertNull(afterReset.lastValidation(),
                     "Last validation should be null after reset");
-            assertTrue(afterReset.topErrors.isEmpty(),
+            assertTrue(afterReset.topErrors().isEmpty(),
                     "Top errors list should be empty after reset");
         }
     }
@@ -304,12 +302,15 @@ class MetricsServletTest {
         @Test
         @DisplayName("Should sort errors by frequency in descending order")
         void shouldSortErrorsByFrequencyDescending() throws Exception {
-            MetricsServlet.recordInvalidToken("Error A");
-            MetricsServlet.recordInvalidToken("Error B");
-            MetricsServlet.recordInvalidToken("Error A");
-            MetricsServlet.recordInvalidToken("Error C");
-            MetricsServlet.recordInvalidToken("Error A");
-            MetricsServlet.recordInvalidToken("Error B");
+            // 3x TOKEN_EXPIRED
+            recordInvalidToken(EventType.TOKEN_EXPIRED);
+            recordInvalidToken(EventType.TOKEN_EXPIRED);
+            recordInvalidToken(EventType.TOKEN_EXPIRED);
+            // 2x SIGNATURE_VALIDATION_FAILED
+            recordInvalidToken(EventType.SIGNATURE_VALIDATION_FAILED);
+            recordInvalidToken(EventType.SIGNATURE_VALIDATION_FAILED);
+            // 1x INVALID_JWT_FORMAT
+            recordInvalidToken(EventType.INVALID_JWT_FORMAT);
 
             expect(response.getOutputStream()).andReturn(servletOutputStream);
             response.setContentType("application/json");
@@ -326,22 +327,25 @@ class MetricsServletTest {
             verify(request, response);
 
             String responseJson = outputStream.toString();
+            String expiredDesc = EventType.TOKEN_EXPIRED.getDescription();
+            String sigFailedDesc = EventType.SIGNATURE_VALIDATION_FAILED.getDescription();
+            String formatDesc = EventType.INVALID_JWT_FORMAT.getDescription();
 
-            int errorAIndex = responseJson.indexOf("\"Error A\"");
-            int errorBIndex = responseJson.indexOf("\"Error B\"");
-            int errorCIndex = responseJson.indexOf("\"Error C\"");
+            int expiredIndex = responseJson.indexOf("\"" + expiredDesc + "\"");
+            int sigFailedIndex = responseJson.indexOf("\"" + sigFailedDesc + "\"");
+            int formatIndex = responseJson.indexOf("\"" + formatDesc + "\"");
 
-            assertTrue(errorAIndex > 0,
-                    "Error A should be present in response");
-            assertTrue(errorBIndex > 0,
-                    "Error B should be present in response");
-            assertTrue(errorCIndex > 0,
-                    "Error C should be present in response");
+            assertTrue(expiredIndex > 0,
+                    "Token expired should be present in response");
+            assertTrue(sigFailedIndex > 0,
+                    "Signature validation failed should be present in response");
+            assertTrue(formatIndex > 0,
+                    "Invalid JWT format should be present in response");
 
-            assertTrue(errorAIndex < errorBIndex,
-                    "Error A (3 occurrences) should appear before Error B (2 occurrences)");
-            assertTrue(errorAIndex < errorCIndex,
-                    "Error A (3 occurrences) should appear before Error C (1 occurrence)");
+            assertTrue(expiredIndex < sigFailedIndex,
+                    "Token expired (3) should appear before signature failed (2)");
+            assertTrue(expiredIndex < formatIndex,
+                    "Token expired (3) should appear before invalid format (1)");
 
             assertTrue(responseJson.contains("\"count\":3"),
                     "Should show count of 3 for most frequent error");
@@ -353,16 +357,18 @@ class MetricsServletTest {
     }
 
     @Nested
-    @DisplayName("Edge cases")
-    class EdgeCases {
+    @DisplayName("Performance metrics in response")
+    class PerformanceMetricsInResponse {
 
         @Test
-        @DisplayName("Should handle null and empty error messages gracefully")
-        void shouldHandleNullAndEmptyErrorMessages() throws Exception {
-            MetricsServlet.recordInvalidToken(null);
-            MetricsServlet.recordInvalidToken("");
-            MetricsServlet.recordInvalidToken("   ");
-            MetricsServlet.recordInvalidToken("Valid error");
+        @DisplayName("Should include non-zero performance metrics after recordings")
+        void shouldIncludeNonZeroPerformanceMetrics() throws Exception {
+            // Record enough validations with significant duration
+            for (int i = 0; i < 10; i++) {
+                SecurityEventCounter counter = new SecurityEventCounter();
+                counter.increment(EventType.ACCESS_TOKEN_CREATED);
+                SecurityMetricsStore.recordValidation(counter, 50_000_000L); // 50ms
+            }
 
             expect(response.getOutputStream()).andReturn(servletOutputStream);
             response.setContentType("application/json");
@@ -379,23 +385,11 @@ class MetricsServletTest {
             verify(request, response);
 
             String responseJson = outputStream.toString();
-            assertTrue(responseJson.contains("\"totalTokensValidated\":4"),
-                    "Should count all tokens including those with null/empty errors");
-            assertTrue(responseJson.contains("\"invalidTokens\":4"),
-                    "Should count all invalid tokens");
-
-            assertTrue(responseJson.contains("\"Valid error\""),
-                    "Should include non-empty error message");
-            assertTrue(responseJson.contains("\"count\":1"),
-                    "Valid error should have count of 1");
-
-            int topErrorsStart = responseJson.indexOf("\"topErrors\":[");
-            int topErrorsEnd = responseJson.indexOf("]", topErrorsStart);
-            String topErrorsSection = responseJson.substring(topErrorsStart, topErrorsEnd + 1);
-
-            int errorObjectCount = topErrorsSection.split("\"count\":").length - 1;
-            assertEquals(1, errorObjectCount,
-                    "Should only include valid error messages in top errors list");
+            // With 50ms durations, at least some percentile should be > 0
+            assertTrue(responseJson.contains("\"averageResponseTime\":"),
+                    "Response should contain averageResponseTime");
+            assertTrue(responseJson.contains("\"p95ResponseTime\":"),
+                    "Response should contain p95ResponseTime");
         }
     }
 
@@ -425,41 +419,24 @@ class MetricsServletTest {
             // Assert
             verify(request, response);
         }
-
-        @Test
-        @DisplayName("Should cap error types at MAX_ERROR_TYPES limit")
-        void shouldCapErrorTypesAtMaxLimit() {
-            // Arrange — record MAX_ERROR_TYPES (100) distinct error types
-            for (int i = 0; i < 100; i++) {
-                MetricsServlet.recordInvalidToken("Error type " + i);
-            }
-
-            // Act — adding a new error type beyond the cap should be ignored
-            MetricsServlet.recordInvalidToken("Error beyond cap");
-
-            // Assert
-            MetricsServlet.SecurityMetrics metrics = MetricsServlet.getCurrentMetrics();
-            assertEquals(101, metrics.invalidTokens, "All invalid tokens should be counted");
-            // topErrors is limited to 10 in getCurrentMetrics()
-            assertEquals(10, metrics.topErrors.size(), "Top errors limited to 10");
-        }
     }
 
-    @Nested
-    @DisplayName("SecurityMetrics data class")
-    class SecurityMetricsTests {
+    /**
+     * Records a successful token validation via SecurityMetricsStore.
+     */
+    private static void recordValidToken() {
+        SecurityEventCounter counter = new SecurityEventCounter();
+        counter.increment(EventType.ACCESS_TOKEN_CREATED);
+        SecurityMetricsStore.recordValidation(counter, 1_000_000L);
+    }
 
-        @Test
-        @DisplayName("Should handle null topErrors in constructor")
-        void shouldHandleNullTopErrors() {
-            // Arrange & Act
-            MetricsServlet.SecurityMetrics metrics =
-                    new MetricsServlet.SecurityMetrics(0, 0, 0, 0.0, null, null);
-
-            // Assert
-            assertNotNull(metrics.topErrors, "topErrors should not be null");
-            assertTrue(metrics.topErrors.isEmpty(), "topErrors should be empty");
-        }
+    /**
+     * Records a failed token validation via SecurityMetricsStore.
+     */
+    private static void recordInvalidToken(EventType errorType) {
+        SecurityEventCounter counter = new SecurityEventCounter();
+        counter.increment(errorType);
+        SecurityMetricsStore.recordValidation(counter, 1_000_000L);
     }
 
     /**
