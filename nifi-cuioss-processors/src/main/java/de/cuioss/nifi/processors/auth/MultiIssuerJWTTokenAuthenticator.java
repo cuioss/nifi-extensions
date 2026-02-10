@@ -585,9 +585,10 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     /**
      * Populates the issuer config cache and authorization config cache from the configured issuers.
+     * Handles both UI properties and external configuration from ConfigurationManager.
      *
      * @param issuerConfigs The configured issuers
-     * @param allProperties All processor properties
+     * @param allProperties All processor properties (UI-based)
      */
     private void populateCaches(List<IssuerConfig> issuerConfigs, Map<String, String> allProperties) {
         // Populate issuer config cache keyed by issuer identifier
@@ -595,7 +596,31 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             issuerConfigCache.put(config.getIssuerIdentifier(), config);
         }
 
-        // Group properties by issuer index to extract authorization config
+        // 1. Load authorization config from external configuration (highest precedence)
+        if (configurationManager != null && configurationManager.isConfigurationLoaded()) {
+            for (String issuerId : configurationManager.getIssuerIds()) {
+                Map<String, String> issuerProps = configurationManager.getIssuerProperties(issuerId);
+                buildAndStoreAuthorizationConfig(issuerProps);
+            }
+        }
+
+        // 2. Load authorization config from UI properties (lower precedence, won't override)
+        Map<String, Map<String, String>> issuerPropertiesMap = groupPropertiesByIssuerIndex(allProperties);
+        for (Map.Entry<String, Map<String, String>> entry : issuerPropertiesMap.entrySet()) {
+            buildAndStoreAuthorizationConfig(entry.getValue());
+        }
+
+        LOGGER.debug("Populated caches: %d issuer configs, %d authorization configs",
+                issuerConfigCache.size(), authorizationConfigCache.size());
+    }
+
+    /**
+     * Groups flat issuer properties (e.g., "issuer.keycloak.required-roles") by issuer index.
+     *
+     * @param allProperties All processor properties
+     * @return Map of issuer index to their property maps
+     */
+    private static Map<String, Map<String, String>> groupPropertiesByIssuerIndex(Map<String, String> allProperties) {
         Map<String, Map<String, String>> issuerPropertiesMap = new HashMap<>();
         for (Map.Entry<String, String> entry : allProperties.entrySet()) {
             String key = entry.getKey();
@@ -610,50 +635,56 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 }
             }
         }
+        return issuerPropertiesMap;
+    }
 
-        // For each issuer index, resolve identifier and build authorization config
-        for (Map.Entry<String, Map<String, String>> entry : issuerPropertiesMap.entrySet()) {
-            Map<String, String> props = entry.getValue();
+    /**
+     * Builds and stores an AuthorizationConfig for the given issuer properties.
+     * Resolves the issuer identifier and only stores if authorization requirements exist.
+     * Does not override existing entries (external config takes precedence over UI).
+     *
+     * @param props The issuer property map
+     */
+    private void buildAndStoreAuthorizationConfig(Map<String, String> props) {
+        // Resolve issuer name (same logic as IssuerConfigurationParser.resolveIssuerName)
+        String issuerIdentifier = props.get("name");
+        if (issuerIdentifier == null || issuerIdentifier.trim().isEmpty()) {
+            issuerIdentifier = props.get(Issuer.ISSUER_NAME);
+        }
+        if (issuerIdentifier == null || issuerIdentifier.trim().isEmpty()) {
+            return;
+        }
+        issuerIdentifier = issuerIdentifier.trim();
 
-            // Resolve issuer name (same logic as IssuerConfigurationParser.resolveIssuerName)
-            String issuerIdentifier = props.get("name");
-            if (issuerIdentifier == null || issuerIdentifier.trim().isEmpty()) {
-                issuerIdentifier = props.get(Issuer.ISSUER_NAME);
-            }
-            if (issuerIdentifier == null || issuerIdentifier.trim().isEmpty()) {
-                continue;
-            }
-            issuerIdentifier = issuerIdentifier.trim();
-
-            // Check for explicit bypass
-            if ("true".equalsIgnoreCase(props.get(Issuer.BYPASS_AUTHORIZATION))) {
-                // null authConfig means bypass in performAuthorizationCheck()
-                continue;
-            }
-
-            // Extract authorization requirements
-            Set<String> requiredRoles = parseCommaSeparated(props.get(Issuer.REQUIRED_ROLES));
-            Set<String> requiredScopes = parseCommaSeparated(props.get(Issuer.REQUIRED_SCOPES));
-
-            // Only create config if there are actual requirements
-            if (requiredRoles.isEmpty() && requiredScopes.isEmpty()) {
-                // No requirements configured — null authConfig means bypass
-                continue;
-            }
-
-            AuthorizationValidator.AuthorizationConfig authConfig = AuthorizationValidator.AuthorizationConfig.builder()
-                    .requiredRoles(requiredRoles)
-                    .requiredScopes(requiredScopes)
-                    .requireAllRoles("true".equalsIgnoreCase(props.get(Issuer.REQUIRE_ALL_ROLES)))
-                    .requireAllScopes("true".equalsIgnoreCase(props.get(Issuer.REQUIRE_ALL_SCOPES)))
-                    .caseSensitive(!"false".equalsIgnoreCase(props.get(Issuer.CASE_SENSITIVE_MATCHING)))
-                    .build();
-
-            authorizationConfigCache.put(issuerIdentifier, authConfig);
+        // Don't override existing entry (external config has higher precedence)
+        if (authorizationConfigCache.containsKey(issuerIdentifier)) {
+            return;
         }
 
-        LOGGER.debug("Populated caches: %d issuer configs, %d authorization configs",
-                issuerConfigCache.size(), authorizationConfigCache.size());
+        // Check for explicit bypass
+        if ("true".equalsIgnoreCase(props.get(Issuer.BYPASS_AUTHORIZATION))) {
+            // null authConfig means bypass in performAuthorizationCheck()
+            return;
+        }
+
+        // Extract authorization requirements
+        Set<String> requiredRoles = parseCommaSeparated(props.get(Issuer.REQUIRED_ROLES));
+        Set<String> requiredScopes = parseCommaSeparated(props.get(Issuer.REQUIRED_SCOPES));
+
+        // Only create config if there are actual requirements
+        if (requiredRoles.isEmpty() && requiredScopes.isEmpty()) {
+            return;
+        }
+
+        AuthorizationValidator.AuthorizationConfig authConfig = AuthorizationValidator.AuthorizationConfig.builder()
+                .requiredRoles(requiredRoles)
+                .requiredScopes(requiredScopes)
+                .requireAllRoles("true".equalsIgnoreCase(props.get(Issuer.REQUIRE_ALL_ROLES)))
+                .requireAllScopes("true".equalsIgnoreCase(props.get(Issuer.REQUIRE_ALL_SCOPES)))
+                .caseSensitive(!"false".equalsIgnoreCase(props.get(Issuer.CASE_SENSITIVE_MATCHING)))
+                .build();
+
+        authorizationConfigCache.put(issuerIdentifier, authConfig);
     }
 
     /**
