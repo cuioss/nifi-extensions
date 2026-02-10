@@ -20,8 +20,6 @@ partition "Token Extraction" {
 
   if (Token present?) then (yes)
     :Set **jwt.present** = true;
-    :Set **jwt.token** = extracted value;
-    :Set **jwt.extractedAt** = timestamp;
   else (no)
     :Set **jwt.present** = false;
     :Route to failure;
@@ -73,7 +71,6 @@ partition "Authorization Check" {
   else (no)
     if (Meets requirements?) then (yes)
       :Set **jwt.authorized** = true;
-      :Set **jwt.authorization.passed** = true;
     else (no)
       :Set **jwt.authorized** = false;
       :Route to failure;
