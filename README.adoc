@@ -288,7 +288,11 @@ For Kubernetes and Docker deployments, core settings can also be provided throug
 
 |`JWT_TOKEN_HEADER_NAME`
 |String
-|Header name for token extraction
+|Header name when Token Location is `AUTHORIZATION_HEADER`
+
+|`JWT_CUSTOM_HEADER_NAME`
+|String
+|Header name when Token Location is `CUSTOM_HEADER`
 
 |`JWT_JWKS_REFRESH_INTERVAL`
 |Duration
@@ -300,25 +304,31 @@ For Kubernetes and Docker deployments, core settings can also be provided throug
 
 |`JWT_ISSUER_{NAME}_JWKS_URL`
 |URL
-|JWKS endpoint for issuer `{NAME}`
+|JWKS endpoint for an issuer. Replace `{NAME}` with a unique identifier (e.g. `KEYCLOAK`).
+
+|`JWT_ISSUER_{NAME}_PUBLIC_KEY`
+|String
+|PEM-encoded public key for an issuer. Replace `{NAME}` with a unique identifier.
 |===
 
-.Kubernetes ConfigMap example
+.Kubernetes Deployment example using environment variables
 [source,yaml]
 ----
-apiVersion: v1
-kind: ConfigMap
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: jwt-config
-data:
-  jwt-validation.yml: |
-    jwt:
-      validation:
-        issuers:
-          - name: "Keycloak"
-            enabled: true
-            jwksUrl: "https://keycloak.internal/realms/myapp/protocol/openid-connect/certs"
-            audience: "my-nifi-service"
+  name: nifi-deployment
+spec:
+  template:
+    spec:
+      containers:
+      - name: nifi
+        image: apache/nifi:2.6.0
+        env:
+        - name: JWT_TOKEN_LOCATION
+          value: "AUTHORIZATION_HEADER"
+        - name: JWT_ISSUER_KEYCLOAK_JWKS_URL
+          value: "https://keycloak.internal/realms/myapp/protocol/openid-connect/certs"
 ----
 
 == Components
@@ -327,7 +337,7 @@ data:
 |===
 |Module |Purpose
 
-|link:nifi-cuioss-processors/[nifi-cuioss-processors]
+|link:nifi-cuioss-processors/README.md[nifi-cuioss-processors]
 |JWT processor implementation, token validation, configuration management
 
 |link:nifi-cuioss-ui/[nifi-cuioss-ui]
@@ -336,10 +346,10 @@ data:
 |link:nifi-cuioss-nar/[nifi-cuioss-nar]
 |NiFi Archive (NAR) -- the deployable artifact bundling processors + UI
 
-|link:integration-testing/[integration-testing]
+|link:integration-testing/README.adoc[integration-testing]
 |Docker-based test environment (NiFi + Keycloak)
 
-|link:e-2-e-playwright/[e-2-e-playwright]
+|link:e-2-e-playwright/README.adoc[e-2-e-playwright]
 |Playwright E2E and WCAG accessibility tests
 |===
 
