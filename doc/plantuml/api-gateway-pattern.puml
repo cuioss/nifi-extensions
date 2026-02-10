@@ -1,4 +1,5 @@
 @startuml api-gateway-pattern
+!pragma layout smetana
 skinparam componentStyle rectangle
 
 actor "API Client" as client

@@ -1,0 +1,89 @@
+@startuml jwt-token-flow
+!pragma layout smetana
+skinparam defaultTextAlignment center
+skinparam componentStyle uml2
+
+title "JWT Token Processing Flow"
+
+start
+
+:FlowFile arrives with JWT token;
+
+partition "Token Extraction" {
+  :Extract token from configured location;
+  note right
+    Source (configurable):
+    - Authorization header
+    - Custom header
+    - FlowFile content
+  end note
+
+  if (Token present?) then (yes)
+    :Set **jwt.present** = true;
+    :Set **jwt.token** = extracted value;
+    :Set **jwt.extractedAt** = timestamp;
+  else (no)
+    :Set **jwt.present** = false;
+    :Route to failure;
+    stop
+  endif
+}
+
+partition "Token Validation (OAuth-Sheriff)" {
+  :Send token to TokenValidator;
+
+  if (Token valid?) then (yes)
+    :Set identity attributes;
+    note right
+      - **jwt.subject**
+      - **jwt.issuer**
+      - **jwt.expiration**
+    end note
+
+    :Set **jwt.validatedAt** = timestamp;
+
+    :Set custom claim attributes;
+    note right
+      **jwt.content.<claim-name>**
+      for each claim in token
+    end note
+  else (no)
+    :Set error attributes;
+    note right
+      - **jwt.error.code**
+      - **jwt.error.reason**
+      - **jwt.error.category**
+    end note
+    :Route to failure;
+    stop
+  endif
+}
+
+partition "Authorization Check" {
+  :Evaluate roles, groups, scopes;
+  note right
+    - **jwt.roles**
+    - **jwt.groups**
+    - **jwt.scopes**
+  end note
+
+  if (Authorization bypassed?) then (yes)
+    :Set **jwt.authorization.bypassed** = true;
+    :Set **jwt.authorized** = true;
+  else (no)
+    if (Meets requirements?) then (yes)
+      :Set **jwt.authorized** = true;
+      :Set **jwt.authorization.passed** = true;
+    else (no)
+      :Set **jwt.authorized** = false;
+      :Route to failure;
+      stop
+    endif
+  endif
+}
+
+:Route to success;
+
+stop
+
+@enduml

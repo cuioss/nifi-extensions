@@ -15,6 +15,8 @@ image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-exten
 
 A custom https://nifi.apache.org/[Apache NiFi] processor that validates JWT tokens against multiple identity providers in a single flow. It validates JWT signatures, checks expiration and audience claims, and supports multiple identity providers (e.g. Keycloak, Entra ID, Auth0) simultaneously -- with automatic JWKS key rotation and caching. Built for NiFi 2.6.0.
 
+image::doc/plantuml/jwt-token-flow.png[JWT Token Processing Flow]
+
 == The Problem
 
 NiFi flows that consume REST APIs or process webhook payloads often receive JWT-authenticated requests. Out of the box, NiFi has no processor to validate these tokens. This forces teams to either:

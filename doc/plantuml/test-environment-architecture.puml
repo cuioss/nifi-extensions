@@ -1,4 +1,5 @@
 @startuml
+!pragma layout smetana
 skinparam {
     BackgroundColor white
     ArrowColor #0072B2

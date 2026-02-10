@@ -42,9 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * Test class for {@link MultiIssuerJWTTokenAuthenticator}.
  *
  * Note: These tests are designed to work with the current implementation of the processor,
- * which doesn't actually validate tokens yet due to the cui-jwt-validation library being
- * in a SNAPSHOT state. Once the library is stable, these tests should be updated to
- * test actual token validation.
+ * which validates tokens using the OAuth-Sheriff library.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/observability.adoc">Observability Specification</a>
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>

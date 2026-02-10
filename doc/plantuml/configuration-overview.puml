@@ -1,4 +1,5 @@
 @startuml configuration-overview
+!pragma layout smetana
 skinparam backgroundColor white
 skinparam componentStyle rectangle
 skinparam defaultTextAlignment center

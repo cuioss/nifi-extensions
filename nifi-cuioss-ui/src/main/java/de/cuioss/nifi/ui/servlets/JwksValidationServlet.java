@@ -45,7 +45,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Servlet for JWKS URL validation using the cui-jwt-validation library.
+ * Servlet for JWKS URL validation using the OAuth-Sheriff library.
  * This servlet provides REST endpoints for validating JWKS URLs, files, and content.
  *
  * Endpoints:
