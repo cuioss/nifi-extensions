@@ -47,8 +47,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * processor for JWT validation, and returns HTTP responses (200 for valid tokens
  * with required roles, 401 for invalid/missing tokens or insufficient roles).
  *
+ * <p>The flow includes AttributesToJSON processors that write all {@code jwt.*}
+ * attributes as JSON into the response body, enabling verification of token
+ * extraction, validation, and authorization results.
+ *
  * <p>Requires Docker containers to be running (NiFi on port 7777, Keycloak on port 9080).
- * Activated via the {@code local-integration-tests} Maven profile.
+ * Activated via the {@code integration-tests} Maven profile.
  */
 @NullMarked
 @DisplayName("NiFi Flow Pipeline Integration Tests")
@@ -62,6 +66,9 @@ class NiFiFlowPipelineIT {
 
     // NiFi flow pipeline endpoint
     private static final String FLOW_ENDPOINT = "http://localhost:7777";
+
+    // Expected issuer value (as seen by NiFi inside Docker network)
+    private static final String EXPECTED_ISSUER = "http://keycloak:8080/realms/oauth_integration_tests";
 
     // Credentials for oauth_integration_tests realm
     private static final String CLIENT_ID = "test_client";
@@ -127,7 +134,7 @@ class NiFiFlowPipelineIT {
     class ValidTokenTests {
 
         @Test
-        @DisplayName("should return 200 for valid JWT with required 'read' role")
+        @DisplayName("should return 200 with jwt attributes for valid JWT with required 'read' role")
         void shouldReturn200ForValidJwtWithRequiredRoles() throws Exception {
             // testUser has roles: user, read — 'read' is required by the flow
             String token = fetchToken(KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET,
@@ -137,6 +144,23 @@ class NiFiFlowPipelineIT {
 
             assertEquals(200, response.statusCode(),
                     "Valid token with 'read' role should return 200. Response: " + response.body());
+
+            JsonObject body = parseJsonBody(response);
+            assertNotNull(body, "Response body should contain JSON with jwt attributes");
+            assertEquals("true", body.getString("jwt.present"),
+                    "jwt.present should be 'true' for valid token");
+            assertEquals("true", body.getString("jwt.authorized"),
+                    "jwt.authorized should be 'true' for authorized token");
+            assertTrue(body.containsKey("jwt.subject"),
+                    "jwt.subject should be present");
+            assertFalse(body.getString("jwt.subject").isBlank(),
+                    "jwt.subject should not be blank");
+            assertEquals(EXPECTED_ISSUER, body.getString("jwt.issuer"),
+                    "jwt.issuer should match the Keycloak realm issuer");
+            assertTrue(body.getString("jwt.roles").contains("read"),
+                    "jwt.roles should contain 'read'. Actual: " + body.getString("jwt.roles"));
+            assertTrue(body.containsKey("jwt.validatedAt"),
+                    "jwt.validatedAt should be present");
         }
     }
 
@@ -147,7 +171,7 @@ class NiFiFlowPipelineIT {
     class InvalidSignatureTests {
 
         @Test
-        @DisplayName("should return 401 for token signed by a different realm")
+        @DisplayName("should return 401 with error attributes for token signed by a different realm")
         void shouldReturn401ForTokenSignedByDifferentRealm() throws Exception {
             // Fetch a token from other_realm — signed with a different RSA key pair
             String otherToken = fetchToken(OTHER_REALM_TOKEN_ENDPOINT, OTHER_CLIENT_ID,
@@ -157,6 +181,13 @@ class NiFiFlowPipelineIT {
 
             assertEquals(401, response.statusCode(),
                     "Token from different realm should return 401. Response: " + response.body());
+
+            JsonObject body = parseJsonBody(response);
+            assertNotNull(body, "Response body should contain JSON with jwt attributes");
+            assertTrue(body.containsKey("jwt.error.code"),
+                    "jwt.error.code should be present for invalid signature");
+            assertTrue(body.containsKey("jwt.error.category"),
+                    "jwt.error.category should be present for invalid signature");
         }
     }
 
@@ -167,7 +198,7 @@ class NiFiFlowPipelineIT {
     class MissingAuthorizationTests {
 
         @Test
-        @DisplayName("should return 401 for token missing required 'read' role")
+        @DisplayName("should return 401 with authorization failure for token missing required 'read' role")
         void shouldReturn401ForTokenMissingRequiredRole() throws Exception {
             // limitedUser has only 'user' role — missing 'read' which is required
             String token = fetchToken(KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET,
@@ -177,6 +208,17 @@ class NiFiFlowPipelineIT {
 
             assertEquals(401, response.statusCode(),
                     "Token without 'read' role should return 401. Response: " + response.body());
+
+            JsonObject body = parseJsonBody(response);
+            assertNotNull(body, "Response body should contain JSON with jwt attributes");
+            assertEquals("true", body.getString("jwt.present"),
+                    "jwt.present should be 'true' — token was present but unauthorized");
+            assertEquals("false", body.getString("jwt.authorized"),
+                    "jwt.authorized should be 'false' for missing required role");
+            assertTrue(body.containsKey("jwt.subject"),
+                    "jwt.subject should be present for a valid but unauthorized token");
+            assertFalse(body.getString("jwt.roles", "").contains("read"),
+                    "jwt.roles should NOT contain 'read'. Actual: " + body.getString("jwt.roles", ""));
         }
     }
 
@@ -187,21 +229,33 @@ class NiFiFlowPipelineIT {
     class NoTokenTests {
 
         @Test
-        @DisplayName("should return 401 when no Authorization header is present")
+        @DisplayName("should return 401 with jwt.present=false when no Authorization header is present")
         void shouldReturn401WhenNoAuthorizationHeader() throws Exception {
             HttpResponse<String> response = sendToFlow(null);
 
             assertEquals(401, response.statusCode(),
                     "Request without Authorization header should return 401. Response: " + response.body());
+
+            JsonObject body = parseJsonBody(response);
+            assertNotNull(body, "Response body should contain JSON with jwt attributes");
+            assertEquals("false", body.getString("jwt.present"),
+                    "jwt.present should be 'false' when no token provided");
         }
 
         @Test
-        @DisplayName("should return 401 for malformed token")
+        @DisplayName("should return 401 with error attributes for malformed token")
         void shouldReturn401ForMalformedToken() throws Exception {
             HttpResponse<String> response = sendToFlow("Bearer not-a-valid-jwt");
 
             assertEquals(401, response.statusCode(),
                     "Malformed token should return 401. Response: " + response.body());
+
+            JsonObject body = parseJsonBody(response);
+            assertNotNull(body, "Response body should contain JSON with jwt attributes");
+            assertTrue(body.containsKey("jwt.error.code"),
+                    "jwt.error.code should be present for malformed token");
+            assertTrue(body.containsKey("jwt.error.category"),
+                    "jwt.error.category should be present for malformed token");
         }
     }
 
@@ -246,6 +300,24 @@ class NiFiFlowPipelineIT {
         }
 
         return HTTP_CLIENT.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    /**
+     * Parses the HTTP response body as a JSON object containing jwt.* attributes.
+     * Returns null if the body is empty or not valid JSON.
+     */
+    @Nullable
+    static JsonObject parseJsonBody(HttpResponse<String> response) {
+        String body = response.body();
+        if (body == null || body.isBlank()) {
+            return null;
+        }
+        try {
+            return Json.createReader(new StringReader(body)).readObject();
+        } catch (Exception e) {
+            fail("Failed to parse response body as JSON: " + body);
+            return null; // unreachable
+        }
     }
 
     private static String formEncode(Map<String, String> params) {

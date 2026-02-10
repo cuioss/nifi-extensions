@@ -33,7 +33,7 @@ This document supplements `CLAUDE.md` with detailed architecture, how-to tasks, 
 |---------|---------|-------|
 | `pre-commit` | OpenRewrite code formatting, imports, license headers, Java 21 migration | `./mvnw -Ppre-commit clean install -DskipTests` |
 | `sonar` | SonarQube analysis with JaCoCo coverage | `./mvnw clean verify -Psonar` |
-| `local-integration-tests` | Docker-based integration testing | `./mvnw integration-test -Plocal-integration-tests -Dintegration.test.local=true` |
+| `integration-tests` | Docker-based integration testing (Java ITs + Playwright E2E) | `./mvnw verify -Pintegration-tests` |
 | `release` / `release-snapshot` | Release builds (Javadoc, sources, GPG, Sonatype) | CI-managed |
 | `rewrite-maven-clean` | POM file cleanup | `./mvnw -Prewrite-maven-clean rewrite:run` |
 

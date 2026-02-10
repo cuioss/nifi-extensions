@@ -386,15 +386,15 @@ Lower-level integration tests that validate Keycloak token acquisition and JWT s
 ./integration-testing/src/main/docker/run-and-deploy.sh
 
 # 2. Run integration tests
-./mvnw integration-test -Plocal-integration-tests -Dintegration.test.local=true
+./mvnw verify -Pintegration-tests -pl integration-testing -am
 
 # 3. Run a specific test class
-./mvnw integration-test -Plocal-integration-tests -Dintegration.test.local=true \
+./mvnw verify -Pintegration-tests -pl integration-testing -am \
   -Dit.test=NiFiFlowPipelineIT
 ----
 
-Tests are activated via the `local-integration-tests` Maven profile and require `integration.test.local=true`.
-They are _not_ run in CI because they require running Docker containers.
+Tests are activated via the `integration-tests` Maven profile.
+They run in CI via the `integration-tests.yml` GitHub Actions workflow.
 
 === Manual Smoke Test
 

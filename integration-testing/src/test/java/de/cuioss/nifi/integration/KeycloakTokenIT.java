@@ -45,7 +45,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * {@code self-keycloak-token.spec.js} tests with pure Java HTTP tests.
  *
  * <p>Requires Docker containers to be running (Keycloak on port 9080, health on
- * port 9086). Activated via the {@code local-integration-tests} Maven profile.
+ * port 9086). Activated via the {@code integration-tests} Maven profile.
  */
 @NullMarked
 @DisplayName("Keycloak Token Integration Tests")

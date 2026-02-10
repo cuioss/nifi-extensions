@@ -9,10 +9,11 @@
 name: End-to-End Tests
 
 on:
-  workflow_dispatch:
   push:
-    branches: [ "main" ]
-    tags: [ 'v*' ]
+    branches: [main, "feature/*", "fix/*", "chore/*", "release/*", "dependabot/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -22,7 +23,9 @@ jobs:
 
     runs-on: ubuntu-latest
     timeout-minutes: 20  # Increased to account for Maven-managed container lifecycle
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    # Run on push events, OR on pull_request only if from a fork
+    # This prevents duplicate runs: push handles internal branches, PR handles forks
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -56,23 +59,12 @@ jobs:
           key: ${{ runner.os }}-playwright-${{ hashFiles('e-2-e-playwright/package-lock.json') }}
           restore-keys: ${{ runner.os }}-playwright-
 
-      - name: Build NAR files and prepare deployment
-        run: |
-          ./mvnw -B --no-transfer-progress clean package -DskipTests
-          mkdir -p target/nifi-deploy
-          cp nifi-cuioss-nar/target/nifi-cuioss-nar-*.nar target/nifi-deploy/
-
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: cd e-2-e-playwright && npx playwright install chromium
 
-      - name: Run E2E Integration Tests with Maven-managed Containers
-        # Maven manages the container lifecycle via exec-maven-plugin:
-        # 1. pre-integration-test: Start containers via start-nifi.sh
-        # 2. integration-test: Run playwright tests (self-tests, functional, accessibility)
-        # 3. post-integration-test: Stop containers via stop-test-container.sh
-        # Note: -pl limits clean to e-2-e-playwright only, preserving target/nifi-deploy
-        run: ./mvnw -B --no-transfer-progress clean verify -pl e-2-e-playwright -Pintegration-tests
+      - name: Run E2E Playwright Tests
+        run: ./mvnw -B --no-transfer-progress clean verify -Pintegration-tests -pl e-2-e-playwright -am
         env:
           PLAYWRIGHT_BASE_URL: https://localhost:9095/nifi
           PLAYWRIGHT_KEYCLOAK_URL: http://localhost:9080

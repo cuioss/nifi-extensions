@@ -320,6 +320,108 @@
         "maxBackoffPeriod": "10 mins"
       },
       {
+        "identifier": "proc-attrs-to-json-success-001",
+        "instanceIdentifier": "proc-attrs-to-json-success-inst-001",
+        "name": "AttributesToJSON (success)",
+        "type": "org.apache.nifi.processors.standard.AttributesToJSON",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "2.4.0"
+        },
+        "properties": {
+          "Attributes Regular Expression": "jwt\\..*",
+          "Destination": "flowfile-content",
+          "Include Core Attributes": "false"
+        },
+        "propertyDescriptors": {
+          "Attributes Regular Expression": {
+            "name": "Attributes Regular Expression",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "Destination": {
+            "name": "Destination",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "Include Core Attributes": {
+            "name": "Include Core Attributes",
+            "identifiesControllerService": false,
+            "sensitive": false
+          }
+        },
+        "scheduledState": "RUNNING",
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runDurationMillis": 0,
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": ["failure"],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "root-group-id-001",
+        "position": { "x": 0, "y": 900 },
+        "style": {},
+        "retriedRelationships": [],
+        "retryCount": 0,
+        "executionNode": "ALL",
+        "backoffMechanism": "PENALIZE_FLOWFILE",
+        "maxBackoffPeriod": "10 mins"
+      },
+      {
+        "identifier": "proc-attrs-to-json-failed-001",
+        "instanceIdentifier": "proc-attrs-to-json-failed-inst-001",
+        "name": "AttributesToJSON (failure)",
+        "type": "org.apache.nifi.processors.standard.AttributesToJSON",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "2.4.0"
+        },
+        "properties": {
+          "Attributes Regular Expression": "jwt\\..*",
+          "Destination": "flowfile-content",
+          "Include Core Attributes": "false"
+        },
+        "propertyDescriptors": {
+          "Attributes Regular Expression": {
+            "name": "Attributes Regular Expression",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "Destination": {
+            "name": "Destination",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "Include Core Attributes": {
+            "name": "Include Core Attributes",
+            "identifiesControllerService": false,
+            "sensitive": false
+          }
+        },
+        "scheduledState": "RUNNING",
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runDurationMillis": 0,
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": ["failure"],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "root-group-id-001",
+        "position": { "x": 400, "y": 900 },
+        "style": {},
+        "retriedRelationships": [],
+        "retryCount": 0,
+        "executionNode": "ALL",
+        "backoffMechanism": "PENALIZE_FLOWFILE",
+        "maxBackoffPeriod": "10 mins"
+      },
+      {
         "identifier": "proc-http-response-success-001",
         "instanceIdentifier": "proc-http-response-success-inst-001",
         "name": "HandleHttpResponse (200)",
@@ -356,7 +458,7 @@
         "autoTerminatedRelationships": ["success", "failure"],
         "componentType": "PROCESSOR",
         "groupIdentifier": "root-group-id-001",
-        "position": { "x": 0, "y": 1000 },
+        "position": { "x": 0, "y": 1100 },
         "style": {},
         "retriedRelationships": [],
         "retryCount": 0,
@@ -401,7 +503,7 @@
         "autoTerminatedRelationships": ["success", "failure"],
         "componentType": "PROCESSOR",
         "groupIdentifier": "root-group-id-001",
-        "position": { "x": 400, "y": 1000 },
+        "position": { "x": 400, "y": 1100 },
         "style": {},
         "retriedRelationships": [],
         "retryCount": 0,
@@ -554,14 +656,42 @@
         "zIndex": 0
       },
       {
-        "identifier": "conn-update-success-to-response-001",
-        "instanceIdentifier": "conn-update-success-to-response-inst-001",
-        "name": "UpdateAttribute 200 → HandleHttpResponse",
+        "identifier": "conn-update-success-to-attrs-json-001",
+        "instanceIdentifier": "conn-update-success-to-attrs-json-inst-001",
+        "name": "UpdateAttribute 200 → AttributesToJSON (success)",
         "source": {
           "id": "proc-update-success-001",
           "type": "PROCESSOR",
           "groupId": "root-group-id-001",
           "name": "UpdateAttribute (200)"
+        },
+        "destination": {
+          "id": "proc-attrs-to-json-success-001",
+          "type": "PROCESSOR",
+          "groupId": "root-group-id-001",
+          "name": "AttributesToJSON (success)"
+        },
+        "selectedRelationships": ["success"],
+        "backPressureObjectThreshold": 10000,
+        "backPressureDataSizeThreshold": "1 GB",
+        "flowFileExpiration": "0 sec",
+        "prioritizers": [],
+        "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+        "loadBalanceCompression": "DO_NOT_COMPRESS",
+        "componentType": "CONNECTION",
+        "groupIdentifier": "root-group-id-001",
+        "labelIndex": 1,
+        "zIndex": 0
+      },
+      {
+        "identifier": "conn-attrs-json-success-to-response-001",
+        "instanceIdentifier": "conn-attrs-json-success-to-response-inst-001",
+        "name": "AttributesToJSON (success) → HandleHttpResponse (200)",
+        "source": {
+          "id": "proc-attrs-to-json-success-001",
+          "type": "PROCESSOR",
+          "groupId": "root-group-id-001",
+          "name": "AttributesToJSON (success)"
         },
         "destination": {
           "id": "proc-http-response-success-001",
@@ -582,14 +712,42 @@
         "zIndex": 0
       },
       {
-        "identifier": "conn-update-failed-to-response-001",
-        "instanceIdentifier": "conn-update-failed-to-response-inst-001",
-        "name": "UpdateAttribute 401 → HandleHttpResponse",
+        "identifier": "conn-update-failed-to-attrs-json-001",
+        "instanceIdentifier": "conn-update-failed-to-attrs-json-inst-001",
+        "name": "UpdateAttribute 401 → AttributesToJSON (failure)",
         "source": {
           "id": "proc-update-failed-001",
           "type": "PROCESSOR",
           "groupId": "root-group-id-001",
           "name": "UpdateAttribute (401)"
+        },
+        "destination": {
+          "id": "proc-attrs-to-json-failed-001",
+          "type": "PROCESSOR",
+          "groupId": "root-group-id-001",
+          "name": "AttributesToJSON (failure)"
+        },
+        "selectedRelationships": ["success"],
+        "backPressureObjectThreshold": 10000,
+        "backPressureDataSizeThreshold": "1 GB",
+        "flowFileExpiration": "0 sec",
+        "prioritizers": [],
+        "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+        "loadBalanceCompression": "DO_NOT_COMPRESS",
+        "componentType": "CONNECTION",
+        "groupIdentifier": "root-group-id-001",
+        "labelIndex": 1,
+        "zIndex": 0
+      },
+      {
+        "identifier": "conn-attrs-json-failed-to-response-001",
+        "instanceIdentifier": "conn-attrs-json-failed-to-response-inst-001",
+        "name": "AttributesToJSON (failure) → HandleHttpResponse (401)",
+        "source": {
+          "id": "proc-attrs-to-json-failed-001",
+          "type": "PROCESSOR",
+          "groupId": "root-group-id-001",
+          "name": "AttributesToJSON (failure)"
         },
         "destination": {
           "id": "proc-http-response-failed-001",
