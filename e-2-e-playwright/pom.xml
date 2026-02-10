@@ -110,6 +110,38 @@
                             <skip>${skipPlaywrightTests}</skip>
                         </configuration>
                     </execution>
+                    <!-- Create deployment directory -->
+                    <execution>
+                        <id>create-deploy-dir</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <phase>pre-integration-test</phase>
+                        <configuration>
+                            <executable>mkdir</executable>
+                            <arguments>
+                                <argument>-p</argument>
+                                <argument>${maven.multiModuleProjectDirectory}/target/nifi-deploy</argument>
+                            </arguments>
+                            <skip>${skipPlaywrightTests}</skip>
+                        </configuration>
+                    </execution>
+                    <!-- Build and deploy NAR files -->
+                    <execution>
+                        <id>deploy-nar-files</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <phase>pre-integration-test</phase>
+                        <configuration>
+                            <executable>bash</executable>
+                            <workingDirectory>${docker.script.dir}</workingDirectory>
+                            <arguments>
+                                <argument>./copy-deployment.sh</argument>
+                            </arguments>
+                            <skip>${skipPlaywrightTests}</skip>
+                        </configuration>
+                    </execution>
                     <!-- Start containers (NiFi and Keycloak) -->
                     <execution>
                         <id>start-containers</id>
