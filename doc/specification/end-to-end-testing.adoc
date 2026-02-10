@@ -176,6 +176,7 @@ Verified scenarios:
 == See Also
 
 * xref:testing.adoc[Testing]
+* xref:integration-testing.adoc[Integration Testing — Flow Pipeline Design]
 * xref:configuration-ui.adoc[UI Configuration]
 * xref:token-validation.adoc[Token Validation]
 * xref:../Requirements.adoc#NIFI-AUTH-15[Integration Testing Requirements]

@@ -92,8 +92,8 @@ Custom configuration files are copied from `src/main/docker/nifi/conf/` into the
 |===
 |Setting |Value
 
-|Test user
-|`testUser` / `drowssap`
+|Test users
+|`testUser` / `drowssap` (roles: `user`, `read`), `limitedUser` / `drowssap` (roles: `user`)
 
 |Test client ID
 |`test_client`
@@ -109,6 +109,29 @@ Custom configuration files are copied from `src/main/docker/nifi/conf/` into the
 |===
 
 The realm is imported automatically from `src/main/docker/keycloak/oauth_integration_tests-realm.json`.
+
+==== Pre-configured Realm: `other_realm`
+
+Separate realm with its own RSA key pair, used for invalid-signature testing.
+
+[cols="1,2"]
+|===
+|Setting |Value
+
+|Test user
+|`otherUser` / `drowssap` (roles: `user`)
+
+|Test client ID
+|`other_client`
+
+|Client secret
+|`otherClientSecretValue123456789`
+
+|JWKS endpoint (from host)
+|`http://localhost:9080/realms/other_realm/protocol/openid-connect/certs`
+|===
+
+The realm is imported automatically from `src/main/docker/keycloak/other_realm-realm.json`.
 
 == Scripts
 
@@ -194,7 +217,8 @@ src/main/docker/
 │   ├── flow.xml.gz               #   Pre-configured flow
 │   └── bootstrap.conf / logback.xml / state-management.xml
 ├── keycloak/
-│   └── oauth_integration_tests-realm.json  # Realm import
+│   ├── oauth_integration_tests-realm.json  # Primary realm import
+│   └── other_realm-realm.json              # Secondary realm (signature testing)
 ├── maintenance/                   # Certificate and credential utilities
 ├── run-and-deploy.sh             # Full build + start
 ├── start-nifi.sh                 # Start Keycloak + NiFi
@@ -310,5 +334,6 @@ docker compose -f integration-testing/src/main/docker/docker-compose.yml logs ke
 * link:../doc/Specification.adoc[Specification]
 * link:../doc/Requirements.adoc[Requirements]
 * link:../doc/specification/testing.adoc[Testing Specification]
+* link:../doc/specification/integration-testing.adoc[Integration Testing — Flow Pipeline Design]
 * link:../doc/library/cui-test-keycloak-integration/README.adoc[Keycloak Integration]
 * link:../e-2-e-playwright/README.adoc[E2E Playwright Tests]
