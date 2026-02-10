@@ -136,8 +136,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private final AtomicReference<TokenValidator> tokenValidator = new AtomicReference<>();
 
     // Security event counter for tracking validation events
-    @Nullable
-    private SecurityEventCounter securityEventCounter;
+    @Nullable private SecurityEventCounter securityEventCounter;
 
     // Lock object for thread-safe initialization
     private final Object tokenValidatorLock = new Object();
@@ -146,8 +145,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private final AtomicLong processedFlowFilesCount = new AtomicLong();
 
     // Configuration manager for static files and environment variables
-    @Nullable
-    private ConfigurationManager configurationManager;
+    @Nullable private ConfigurationManager configurationManager;
 
     // Flag to track if configuration was reloaded
     private volatile boolean configurationRefreshed = false;
@@ -161,17 +159,13 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     // Authorization configuration cache
     private final Map<String, AuthorizationValidator.AuthorizationConfig> authorizationConfigCache = new ConcurrentHashMap<>();
 
-    @Nullable
-    private I18nResolver i18nResolver;
+    @Nullable private I18nResolver i18nResolver;
 
-    @Nullable
-    private IssuerPropertyDescriptorFactory propertyDescriptorFactory;
+    @Nullable private IssuerPropertyDescriptorFactory propertyDescriptorFactory;
 
-    @Getter
-    private List<PropertyDescriptor> supportedPropertyDescriptors;
+    @Getter private List<PropertyDescriptor> supportedPropertyDescriptors;
 
-    @Getter
-    private Set<Relationship> relationships;
+    @Getter private Set<Relationship> relationships;
 
     @Override
     protected void init(final ProcessorInitializationContext context) {
@@ -179,7 +173,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         i18nResolver = NiFiI18nResolver.createDefault(context.getLogger());
         propertyDescriptorFactory = new IssuerPropertyDescriptorFactory(i18nResolver);
 
-        LOGGER.info("Initializing MultiIssuerJWTTokenAuthenticator processor");
+        LOGGER.info(AuthLogMessages.INFO.PROCESSOR_INITIALIZING);
 
         final List<PropertyDescriptor> descriptors = new ArrayList<>();
         descriptors.add(Properties.TOKEN_LOCATION);
@@ -200,8 +194,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         rels.add(Relationships.AUTHENTICATION_FAILED);
         this.relationships = rels;
 
-        LOGGER.info("MultiIssuerJWTTokenAuthenticator processor initialized with {} property descriptors",
-                descriptors.size());
+        LOGGER.info(AuthLogMessages.INFO.PROCESSOR_INITIALIZED_WITH_DESCRIPTORS, descriptors.size());
     }
 
     @Override
@@ -263,18 +256,17 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     public void onScheduled(final ProcessContext context) {
         // Initialize the ConfigurationManager
         configurationManager = new ConfigurationManager();
-        LOGGER.info("Configuration manager initialized, external configuration loaded: %s",
-                configurationManager.isConfigurationLoaded());
+        LOGGER.info(AuthLogMessages.INFO.CONFIG_MANAGER_INITIALIZED, configurationManager.isConfigurationLoaded());
 
         // Log all available property descriptors to help with debugging
-        LOGGER.info("Available property descriptors:");
+        LOGGER.info(AuthLogMessages.INFO.AVAILABLE_PROPERTY_DESCRIPTORS);
         for (PropertyDescriptor descriptor : getSupportedPropertyDescriptors()) {
-            LOGGER.info(" - Property: %s (Display: %s)", descriptor.getName(), descriptor.getDisplayName());
+            LOGGER.info(AuthLogMessages.INFO.PROPERTY_DESCRIPTOR_DETAIL, descriptor.getName(), descriptor.getDisplayName());
         }
 
         // Initialize the TokenValidator
         getTokenValidator(context);
-        LOGGER.info(AuthLogMessages.INFO.PROCESSOR_INITIALIZED.format());
+        LOGGER.info(AuthLogMessages.INFO.PROCESSOR_INITIALIZED);
     }
 
     /**
@@ -287,7 +279,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 // No explicit cleanup needed for TokenValidator in current version
                 tokenValidator.set(null);
                 securityEventCounter = null;
-                LOGGER.info(AuthLogMessages.INFO.PROCESSOR_STOPPED.format());
+                LOGGER.info(AuthLogMessages.INFO.PROCESSOR_STOPPED);
             }
 
             // Clean up configuration manager
@@ -329,7 +321,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         boolean configFileChanged = configurationManager.checkAndReloadConfiguration();
         if (configFileChanged) {
-            LOGGER.info("External configuration file changed, forcing TokenValidator recreation");
+            LOGGER.info(AuthLogMessages.INFO.EXTERNAL_CONFIG_CHANGED);
             configurationRefreshed = true;
         }
 
@@ -356,7 +348,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param currentConfigHash The current configuration hash
      */
     private void recreateTokenValidator(ProcessContext context, String currentConfigHash) {
-        LOGGER.info(AuthLogMessages.INFO.CONFIG_CHANGE_DETECTED.format());
+        LOGGER.info(AuthLogMessages.INFO.CONFIG_CHANGE_DETECTED);
 
         logConfigurationChange(currentConfigHash);
         List<IssuerConfig> issuerConfigs = createIssuerConfigs(context);
@@ -376,8 +368,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      */
     private void logConfigurationChange(String currentConfigHash) {
         if (tokenValidator.get() != null) {
-            LOGGER.info(AuthLogMessages.INFO.CONFIG_HASH_CHANGED.format(
-                    configurationHash.get(), currentConfigHash));
+            LOGGER.info(AuthLogMessages.INFO.CONFIG_HASH_CHANGED, configurationHash.get(), currentConfigHash);
             cleanupResources();
         }
     }
@@ -392,8 +383,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         boolean requireValidToken = context.getProperty(Properties.REQUIRE_VALID_TOKEN).asBoolean();
 
         if (!requireValidToken) {
-            LOGGER.warn("No issuer configurations found, but require-valid-token is false. " +
-                    "TokenValidator will not be initialized.");
+            LOGGER.warn(AuthLogMessages.WARN.NO_ISSUER_CONFIGS_NOT_REQUIRED);
             tokenValidator.set(null);
             securityEventCounter = null;
             configurationHash.set(currentConfigHash);
@@ -425,7 +415,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         securityEventCounter = tokenValidator.get().getSecurityEventCounter();
         configurationHash.set(currentConfigHash);
 
-        LOGGER.info(AuthLogMessages.INFO.TOKEN_VALIDATOR_INITIALIZED.format(issuerConfigs.size()));
+        LOGGER.info(AuthLogMessages.INFO.TOKEN_VALIDATOR_INITIALIZED, issuerConfigs.size());
 
         issuerConfigCache.clear();
         authorizationConfigCache.clear();
@@ -436,7 +426,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * This ensures proper resource management during configuration changes.
      */
     private void cleanupResources() {
-        LOGGER.info(AuthLogMessages.INFO.CLEANING_RESOURCES.format());
+        LOGGER.info(AuthLogMessages.INFO.CLEANING_RESOURCES);
 
         // Clean up TokenValidator resources if needed
         if (tokenValidator.get() != null) {
@@ -565,7 +555,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         Set<String> cachedIssuerNames = new HashSet<>(issuerConfigCache.keySet());
         for (String cachedIssuerName : cachedIssuerNames) {
             if (!currentIssuerNames.contains(cachedIssuerName)) {
-                LOGGER.info(AuthLogMessages.INFO.REMOVING_ISSUER_CONFIG.format(cachedIssuerName));
+                LOGGER.info(AuthLogMessages.INFO.REMOVING_ISSUER_CONFIG, cachedIssuerName);
                 issuerConfigCache.remove(cachedIssuerName);
                 authorizationConfigCache.remove(cachedIssuerName);
             }
@@ -579,9 +569,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      */
     private void logConfigurationSummary(List<IssuerConfig> issuerConfigs) {
         if (issuerConfigs.isEmpty()) {
-            LOGGER.warn(AuthLogMessages.WARN.NO_VALID_ISSUER_CONFIGS.format());
+            LOGGER.warn(AuthLogMessages.WARN.NO_VALID_ISSUER_CONFIGS);
         } else {
-            LOGGER.info(AuthLogMessages.INFO.CREATED_ISSUER_CONFIGS.format(issuerConfigs.size()));
+            LOGGER.info(AuthLogMessages.INFO.CREATED_ISSUER_CONFIGS, issuerConfigs.size());
         }
     }
 
@@ -680,7 +670,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         if (configurationRefreshed) {
             flowFile = session.putAttribute(flowFile, JWTAttributes.Config.REFRESHED, "true");
-            LOGGER.info("Added " + JWTAttributes.Config.REFRESHED + " attribute to flow file");
+            LOGGER.info(AuthLogMessages.INFO.CONFIG_REFRESHED_ATTRIBUTE);
             configurationRefreshed = false;
         }
 
@@ -736,7 +726,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @param flowFile The flow file
      */
     private void routeFlowFileWithoutToken(ProcessSession session, FlowFile flowFile) {
-        LOGGER.info("No token found but valid token not required, routing to success");
+        LOGGER.info(AuthLogMessages.INFO.NO_TOKEN_NOT_REQUIRED);
 
         Map<String, String> attributes = new HashMap<>();
         attributes.put(JWTAttributes.Error.REASON, "No token provided");
@@ -763,7 +753,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 .with(FLOW_FILE_UUID_KEY, flowFile.getAttribute("uuid"))
                 .buildMessage("No token found in the specified location");
 
-        LOGGER.warn(contextMessage);
+        LOGGER.warn(AuthLogMessages.WARN.NO_TOKEN_FOUND, tokenLocation);
+        LOGGER.debug(contextMessage);
         handleError(
                 session,
                 flowFile,
@@ -796,7 +787,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     .with(FLOW_FILE_UUID_KEY, flowFile.getAttribute("uuid"))
                     .buildMessage("Token exceeds maximum size limit");
 
-            LOGGER.warn(contextMessage);
+            LOGGER.warn(AuthLogMessages.WARN.TOKEN_SIZE_EXCEEDED, maxTokenSize);
+            LOGGER.debug(contextMessage);
             handleError(
                     session,
                     flowFile,
@@ -816,7 +808,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     .with(FLOW_FILE_UUID_KEY, flowFile.getAttribute("uuid"))
                     .buildMessage("Token is malformed (missing segments)");
 
-            LOGGER.warn(contextMessage);
+            LOGGER.warn(AuthLogMessages.WARN.TOKEN_MALFORMED);
+            LOGGER.debug(contextMessage);
             handleError(
                     session,
                     flowFile,
@@ -865,7 +858,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      */
     private void handleTokenValidationException(ProcessSession session, FlowFile flowFile,
             TokenValidationException e) {
-        LOGGER.warn("Token validation failed: %s", e.getMessage());
+        LOGGER.warn(AuthLogMessages.WARN.TOKEN_VALIDATION_FAILED_MSG, e.getMessage());
         String errorMessage = i18nResolver.getTranslatedString(
                 JWTTranslationKeys.Error.TOKEN_VALIDATION_FAILED, e.getMessage());
 
@@ -931,8 +924,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      */
     private Optional<String> extractTokenFromContent(FlowFile flowFile, ProcessSession session, int maxSize) {
         if (flowFile.getSize() > maxSize) {
-            LOGGER.warn("Flow file content size %d exceeds maximum allowed size %d",
-                    flowFile.getSize(), maxSize);
+            LOGGER.warn(AuthLogMessages.WARN.FLOW_FILE_SIZE_EXCEEDED, flowFile.getSize(), maxSize);
             return Optional.empty();
         }
 
@@ -1019,7 +1011,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                         .with("algorithm", algorithm)
                         .with("supportedAlgorithms", algorithmPreferences.getPreferredAlgorithms())
                         .buildMessage("Token uses unsupported or insecure algorithm");
-                LOGGER.warn(contextMessage);
+                LOGGER.warn(AuthLogMessages.WARN.TOKEN_VALIDATION_FAILED_MSG, "Unsupported algorithm: " + algorithm);
+                LOGGER.debug(contextMessage);
                 throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED,
                         "Token algorithm '" + algorithm + "' is not supported. Supported algorithms: " + algorithmPreferences.getPreferredAlgorithms());
             }
@@ -1034,7 +1027,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                     .cause(e)
                     .build()
                     .buildMessage("Failed to decode JWT header");
-            LOGGER.warn(contextMessage);
+            LOGGER.warn(AuthLogMessages.WARN.TOKEN_VALIDATION_FAILED_MSG, "Failed to decode JWT header");
+            LOGGER.debug(contextMessage);
             throw new TokenValidationException(EventType.SIGNATURE_VALIDATION_FAILED, "Invalid JWT token format - cannot decode header");
         }
     }
@@ -1184,13 +1178,13 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         // BREAKING CHANGE: If no matching issuer found, deny access (fail-secure)
         if (!issuerFound) {
-            LOGGER.error(AuthLogMessages.ERROR.NO_ISSUER_CONFIG_FOR_TOKEN.format(tokenIssuer));
+            LOGGER.error(AuthLogMessages.ERROR.NO_ISSUER_CONFIG_FOR_TOKEN, tokenIssuer);
             return false;
         }
 
         // If authorization config is null, it means bypass was explicitly set
         if (authConfig == null) {
-            LOGGER.info(AuthLogMessages.INFO.AUTHORIZATION_BYPASSED.format(tokenIssuer));
+            LOGGER.info(AuthLogMessages.INFO.AUTHORIZATION_BYPASSED, tokenIssuer);
             return true;
         }
 
@@ -1198,11 +1192,10 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         AuthorizationValidator.AuthorizationResult result = AuthorizationValidator.validate(accessToken, authConfig);
 
         if (!result.isAuthorized()) {
-            LOGGER.warn(AuthLogMessages.WARN.AUTHORIZATION_FAILED.format(
-                    accessToken.getSubject().orElse("unknown"), tokenIssuer, result.getReason()));
+            LOGGER.warn(AuthLogMessages.WARN.AUTHORIZATION_FAILED, accessToken.getSubject().orElse("unknown"), tokenIssuer, result.getReason());
         } else {
-            LOGGER.debug(AuthLogMessages.INFO.AUTHORIZATION_SUCCESSFUL.format(
-                    accessToken.getSubject().orElse("unknown"), tokenIssuer));
+            LOGGER.debug("Authorization successful for token with subject '%s' from issuer '%s'",
+                    accessToken.getSubject().orElse("unknown"), tokenIssuer);
         }
 
         return result.isAuthorized();
@@ -1213,16 +1206,16 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * This provides visibility into token validation activity.
      */
     private void logSecurityMetrics() {
-        LOGGER.info("Token validation metrics - Processed flow files: %d", processedFlowFilesCount);
+        LOGGER.info(AuthLogMessages.INFO.TOKEN_VALIDATION_METRICS, processedFlowFilesCount);
 
         // Log information about the SecurityEventCounter if available
         if (securityEventCounter != null) {
-            LOGGER.info("Security event counter is available for monitoring");
+            LOGGER.info(AuthLogMessages.INFO.SECURITY_COUNTER_AVAILABLE);
 
             // Note: In future versions, more detailed metrics will be available from the SecurityEventCounter
             // For now, we just log that it's available
         } else {
-            LOGGER.info("Security event counter is not available for monitoring");
+            LOGGER.info(AuthLogMessages.INFO.SECURITY_COUNTER_UNAVAILABLE);
         }
 
     }

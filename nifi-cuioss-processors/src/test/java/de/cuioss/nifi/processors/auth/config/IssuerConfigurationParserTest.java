@@ -15,8 +15,12 @@
  */
 package de.cuioss.nifi.processors.auth.config;
 
+import de.cuioss.nifi.processors.auth.AuthLogMessages;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
+import de.cuioss.test.juli.LogAsserts;
+import de.cuioss.test.juli.TestLogLevel;
+import de.cuioss.test.juli.junit5.EnableTestLogger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -40,10 +44,10 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration-static.adoc">Static Configuration Specification</a>
  */
+@EnableTestLogger
 class IssuerConfigurationParserTest {
 
-    @TempDir
-    Path tempDir;
+    @TempDir Path tempDir;
 
     private static final String TEST_JWKS_FILE = "src/test/resources/jwks/test-jwks.json";
 
@@ -62,6 +66,8 @@ class IssuerConfigurationParserTest {
         assertEquals("test-issuer", config.getIssuerIdentifier());
         // Note: IssuerConfig is from external library, some getters may not be publicly accessible
         assertNotNull(config);
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, AuthLogMessages.INFO.CREATED_ISSUER_CONFIG_FOR.resolveIdentifierString());
     }
 
     private String getAbsolutePath(String relativePath) {
@@ -86,6 +92,8 @@ class IssuerConfigurationParserTest {
         assertTrue(configs.stream().anyMatch(c -> "issuer-one".equals(c.getIssuerIdentifier())));
         assertTrue(configs.stream().anyMatch(c -> "issuer-two".equals(c.getIssuerIdentifier())));
         assertTrue(configs.stream().anyMatch(c -> "issuer-three".equals(c.getIssuerIdentifier())));
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, AuthLogMessages.INFO.CREATED_ISSUER_CONFIG_FOR.resolveIdentifierString());
     }
 
     @Test
@@ -130,6 +138,8 @@ class IssuerConfigurationParserTest {
 
         // Disabled issuers should be skipped
         assertEquals(0, configs.size());
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, AuthLogMessages.INFO.ISSUER_DISABLED.resolveIdentifierString());
     }
 
     @Test
@@ -142,6 +152,8 @@ class IssuerConfigurationParserTest {
 
         // Issuers without name should be skipped
         assertEquals(0, configs.size());
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, AuthLogMessages.WARN.ISSUER_NO_NAME.resolveIdentifierString());
     }
 
     @Test
@@ -154,6 +166,8 @@ class IssuerConfigurationParserTest {
 
         // Issuers with empty/whitespace-only name should be skipped
         assertEquals(0, configs.size());
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, AuthLogMessages.WARN.ISSUER_NO_NAME.resolveIdentifierString());
     }
 
     @Test
@@ -166,6 +180,8 @@ class IssuerConfigurationParserTest {
 
         // Issuers without JWKS source should be skipped
         assertEquals(0, configs.size());
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, AuthLogMessages.WARN.ISSUER_NO_JWKS_SOURCE.resolveIdentifierString());
     }
 
     @Test
@@ -178,6 +194,8 @@ class IssuerConfigurationParserTest {
 
         // Issuers with empty JWKS source should be skipped
         assertEquals(0, configs.size());
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, AuthLogMessages.WARN.ISSUER_NO_JWKS_SOURCE.resolveIdentifierString());
     }
 
     @Test
@@ -190,6 +208,8 @@ class IssuerConfigurationParserTest {
 
         // JWKS content is not yet supported, should be skipped
         assertEquals(0, configs.size());
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, AuthLogMessages.WARN.JWKS_CONTENT_NOT_SUPPORTED.resolveIdentifierString());
     }
 
     @Test
@@ -258,6 +278,8 @@ class IssuerConfigurationParserTest {
 
         assertTrue(configs.size() > 0);
         assertTrue(configs.stream().anyMatch(c -> "External Issuer".equals(c.getIssuerIdentifier())));
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, AuthLogMessages.INFO.LOADING_EXTERNAL_CONFIGS.resolveIdentifierString());
     }
 
     @Test
@@ -420,6 +442,9 @@ class IssuerConfigurationParserTest {
         assertEquals(2, configs.size());
         assertTrue(configs.stream().anyMatch(c -> "valid-issuer".equals(c.getIssuerIdentifier())));
         assertTrue(configs.stream().anyMatch(c -> "file-issuer".equals(c.getIssuerIdentifier())));
+
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, AuthLogMessages.INFO.CREATED_ISSUER_CONFIG_FOR.resolveIdentifierString());
+        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, AuthLogMessages.WARN.ISSUER_NO_NAME.resolveIdentifierString());
     }
 
     @Test

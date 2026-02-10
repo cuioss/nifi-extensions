@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.processors.auth.config;
 
+import de.cuioss.nifi.processors.auth.AuthLogMessages;
 import de.cuioss.nifi.processors.auth.JWTPropertyKeys;
 import de.cuioss.nifi.processors.auth.util.ErrorContext;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
@@ -130,7 +131,7 @@ public class IssuerConfigurationParser {
         try {
             maxTokenSize = Integer.parseInt(tokenSizeValue);
         } catch (NumberFormatException e) {
-            LOGGER.warn("Invalid value '%s' for %s, falling back to default %s",
+            LOGGER.warn(AuthLogMessages.WARN.INVALID_CONFIG_VALUE,
                     sanitizeLogValue(tokenSizeValue), MAXIMUM_TOKEN_SIZE_KEY, DEFAULT_MAX_TOKEN_SIZE);
         }
         return ParserConfig.builder()
@@ -144,7 +145,7 @@ public class IssuerConfigurationParser {
     private static void loadExternalConfigurations(ConfigurationManager configurationManager,
             Map<String, Map<String, String>> issuerPropertiesMap,
             Set<String> currentIssuerNames) {
-        LOGGER.info("Loading issuer configurations from external configuration");
+        LOGGER.info(AuthLogMessages.INFO.LOADING_EXTERNAL_CONFIGS);
 
         List<String> externalIssuerIds = configurationManager.getIssuerIds();
         for (String issuerId : externalIssuerIds) {
@@ -214,7 +215,7 @@ public class IssuerConfigurationParser {
             try {
                 createIssuerConfig(issuerId, issuerProps).ifPresent(issuerConfig -> {
                     issuerConfigs.add(issuerConfig);
-                    LOGGER.info("Created issuer configuration for %s", sanitizeLogValue(issuerId));
+                    LOGGER.info(AuthLogMessages.INFO.CREATED_ISSUER_CONFIG_FOR, sanitizeLogValue(issuerId));
                 });
             } catch (IllegalStateException | IllegalArgumentException e) {
                 // Catch configuration creation errors
@@ -228,7 +229,8 @@ public class IssuerConfigurationParser {
                         .with("jwksUrl", issuerProps.get(JWTPropertyKeys.Issuer.JWKS_URL))
                         .buildMessage("Failed to create issuer configuration");
 
-                LOGGER.error(e, contextMessage);
+                LOGGER.error(e, AuthLogMessages.ERROR.ISSUER_CONFIG_PARSE_ERROR);
+                LOGGER.debug(contextMessage);
             }
         }
 
@@ -246,7 +248,7 @@ public class IssuerConfigurationParser {
         // Check if issuer is enabled (default to true if not specified)
         String enabledValue = issuerProps.get("enabled");
         if ("false".equalsIgnoreCase(enabledValue)) {
-            LOGGER.info("Issuer %s is disabled, skipping", sanitizeLogValue(issuerId));
+            LOGGER.info(AuthLogMessages.INFO.ISSUER_DISABLED, sanitizeLogValue(issuerId));
             return Optional.empty();
         }
 
@@ -292,7 +294,7 @@ public class IssuerConfigurationParser {
             issuerName = issuerProps.get(JWTPropertyKeys.Issuer.ISSUER_NAME);
         }
         if (issuerName == null || issuerName.trim().isEmpty()) {
-            LOGGER.warn("Issuer %s has no name configured, skipping", sanitizeLogValue(issuerId));
+            LOGGER.warn(AuthLogMessages.WARN.ISSUER_NO_NAME, sanitizeLogValue(issuerId));
             return Optional.empty();
         }
         return Optional.of(issuerName.trim());
@@ -324,13 +326,11 @@ public class IssuerConfigurationParser {
 
         String jwksContent = issuerProps.get(JWTPropertyKeys.Issuer.JWKS_CONTENT);
         if (jwksContent != null && !jwksContent.trim().isEmpty()) {
-            LOGGER.warn("JWKS content configuration not yet supported in shared parser for issuer %s",
-                    sanitizeLogValue(issuerId));
+            LOGGER.warn(AuthLogMessages.WARN.JWKS_CONTENT_NOT_SUPPORTED, sanitizeLogValue(issuerId));
             return Optional.empty();
         }
 
-        LOGGER.warn("Issuer %s has no JWKS source configured (URL, file, or content), skipping",
-                sanitizeLogValue(issuerId));
+        LOGGER.warn(AuthLogMessages.WARN.ISSUER_NO_JWKS_SOURCE, sanitizeLogValue(issuerId));
         return Optional.empty();
     }
 

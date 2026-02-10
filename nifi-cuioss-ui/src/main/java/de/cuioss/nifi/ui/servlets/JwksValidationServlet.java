@@ -22,6 +22,7 @@ import de.cuioss.http.security.core.HttpSecurityValidator;
 import de.cuioss.http.security.exceptions.UrlSecurityException;
 import de.cuioss.http.security.monitoring.SecurityEventCounter;
 import de.cuioss.http.security.pipeline.PipelineFactory;
+import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.*;
 import jakarta.servlet.ServletException;
@@ -87,7 +88,7 @@ public class JwksValidationServlet extends HttpServlet {
                 default -> sendErrorResponse(resp, 404, "Endpoint not found");
             }
         } catch (IOException e) {
-            LOGGER.error(e, "Failed to handle JWKS validation request for path: %s", requestPath);
+            LOGGER.error(e, UILogMessages.ERROR.FAILED_JWKS_REQUEST, requestPath);
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }
@@ -201,7 +202,7 @@ public class JwksValidationServlet extends HttpServlet {
             // DNS rebinding TOCTOU attacks.
             InetAddress resolvedAddress = resolveAndValidateAddress(uri.getHost());
             if (resolvedAddress == null) {
-                LOGGER.warn("SSRF attempt blocked for JWKS URL: %s", jwksUrl);
+                LOGGER.warn(UILogMessages.WARN.SSRF_BLOCKED, jwksUrl);
                 return JwksValidationResult.failure("URL must not point to a private or loopback address");
             }
 
@@ -289,7 +290,7 @@ public class JwksValidationServlet extends HttpServlet {
             ipBasedUri = new URI(originalUri.getScheme(), null, resolvedAddress.getHostAddress(),
                     port, originalUri.getPath(), originalUri.getQuery(), null);
         } catch (URISyntaxException e) {
-            LOGGER.warn("Failed to construct IP-based URI for JWKS URL: %s", jwksUrl);
+            LOGGER.warn(UILogMessages.WARN.JWKS_IP_URI_CONSTRUCTION_FAILED, jwksUrl);
             return null;
         }
 
@@ -347,7 +348,7 @@ public class JwksValidationServlet extends HttpServlet {
      */
     private JwksValidationResult handleValidationError(String jwksUrl, String errorMessage, boolean useWarnLevel) {
         if (useWarnLevel) {
-            LOGGER.warn(JWKS_VALIDATION_FAILED_MSG, jwksUrl, errorMessage);
+            LOGGER.warn(UILogMessages.WARN.JWKS_URL_VALIDATION_FAILED, jwksUrl, errorMessage);
         } else {
             LOGGER.debug(JWKS_VALIDATION_FAILED_MSG, jwksUrl, errorMessage);
         }
@@ -370,7 +371,7 @@ public class JwksValidationServlet extends HttpServlet {
             Path requestedPath = Path.of(jwksFilePath).normalize().toAbsolutePath();
             Path allowedBase = getJwksAllowedBasePath();
             if (!requestedPath.startsWith(allowedBase)) {
-                LOGGER.warn("JWKS file path outside allowed base directory: %s (allowed: %s)", requestedPath, allowedBase);
+                LOGGER.warn(UILogMessages.WARN.JWKS_FILE_OUTSIDE_BASE, requestedPath, allowedBase);
                 return JwksValidationResult.failure("File path must be within: " + allowedBase);
             }
 
@@ -389,7 +390,7 @@ public class JwksValidationServlet extends HttpServlet {
 
         } catch (IOException e) {
             String error = "JWKS file validation error: " + e.getMessage();
-            LOGGER.warn(e, "JWKS file validation failed: %s", jwksFilePath);
+            LOGGER.warn(e, UILogMessages.WARN.JWKS_FILE_VALIDATION_FAILED, jwksFilePath);
             return JwksValidationResult.failure(error);
         }
     }
@@ -432,7 +433,7 @@ public class JwksValidationServlet extends HttpServlet {
         try {
             urlValidator.validate(jwksUrl);
         } catch (UrlSecurityException e) {
-            LOGGER.warn("URL security violation for JWKS URL: %s - %s", jwksUrl, e.getFailureType());
+            LOGGER.warn(UILogMessages.WARN.URL_SECURITY_VIOLATION, jwksUrl, e.getFailureType());
             return JwksValidationResult.failure("Invalid URL: " + e.getFailureType().getDescription());
         }
         return null;
@@ -451,7 +452,7 @@ public class JwksValidationServlet extends HttpServlet {
         try {
             pathValidator.validate(jwksFilePath);
         } catch (UrlSecurityException e) {
-            LOGGER.warn("Path security violation for JWKS file: %s - %s", jwksFilePath, e.getFailureType());
+            LOGGER.warn(UILogMessages.WARN.PATH_SECURITY_VIOLATION, jwksFilePath, e.getFailureType());
             return JwksValidationResult.failure("Invalid file path: " + e.getFailureType().getDescription());
         }
         return null;
@@ -501,11 +502,11 @@ public class JwksValidationServlet extends HttpServlet {
         try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
             return reader.readObject();
         } catch (JsonException e) {
-            LOGGER.warn("Invalid JSON format in request: %s", e.getMessage());
+            LOGGER.warn(UILogMessages.WARN.INVALID_JSON_FORMAT, e.getMessage());
             sendErrorResponse(resp, 400, "Invalid JSON format");
             return null;
         } catch (IOException e) {
-            LOGGER.error(e, "Error reading request body");
+            LOGGER.error(e, UILogMessages.ERROR.ERROR_READING_REQUEST_BODY);
             sendErrorResponse(resp, 500, "Error reading request");
             return null;
         }
@@ -534,7 +535,7 @@ public class JwksValidationServlet extends HttpServlet {
             writer.writeObject(responseJson);
             LOGGER.debug("Sent JWKS validation response: valid=%s", result.isValid());
         } catch (IOException e) {
-            LOGGER.error(e, "Failed to write validation response");
+            LOGGER.error(e, UILogMessages.ERROR.FAILED_WRITE_VALIDATION_RESPONSE);
             throw new IOException("Failed to write response", e);
         }
     }
@@ -560,7 +561,7 @@ public class JwksValidationServlet extends HttpServlet {
         try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
             writer.writeObject(errorResponse);
         } catch (IOException e) {
-            LOGGER.error(e, "Failed to write error response");
+            LOGGER.error(e, UILogMessages.ERROR.FAILED_WRITE_ERROR_RESPONSE);
             // Don't throw here to avoid masking the original error
         }
     }

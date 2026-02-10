@@ -15,6 +15,7 @@
  */
 package de.cuioss.nifi.processors.auth.config;
 
+import de.cuioss.nifi.processors.auth.AuthLogMessages;
 import de.cuioss.nifi.processors.auth.util.ErrorContext;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.Getter;
@@ -53,19 +54,15 @@ public class ConfigurationManager {
     private static final String JWT_VALIDATION_ISSUER_PREFIX = "jwt.validation.issuer.";
 
     // Configuration file and timestamp
-    @Nullable
-    private File configFile;
+    @Nullable private File configFile;
     private long lastLoadedTimestamp = 0;
 
     // Configuration storage
-    @Getter
-    private final Map<String, String> staticProperties = new HashMap<>();
+    @Getter private final Map<String, String> staticProperties = new HashMap<>();
 
-    @Getter
-    private final Map<String, Map<String, String>> issuerProperties = new HashMap<>();
+    @Getter private final Map<String, Map<String, String>> issuerProperties = new HashMap<>();
 
-    @Getter
-    private boolean configurationLoaded = false;
+    @Getter private boolean configurationLoaded = false;
 
     /**
      * Creates a new ConfigurationManager and loads configuration from available sources.
@@ -92,9 +89,9 @@ public class ConfigurationManager {
         configurationLoaded = fileLoaded || !staticProperties.isEmpty() || !issuerProperties.isEmpty();
 
         if (configurationLoaded) {
-            LOGGER.info("Configuration loaded successfully");
+            LOGGER.info(AuthLogMessages.INFO.CONFIG_LOADED);
         } else {
-            LOGGER.info("No external configuration found, using UI configuration");
+            LOGGER.info(AuthLogMessages.INFO.NO_EXTERNAL_CONFIG);
         }
     }
 
@@ -107,7 +104,7 @@ public class ConfigurationManager {
         if (configFile != null && configFile.exists()) {
             long lastModified = configFile.lastModified();
             if (lastModified > lastLoadedTimestamp) {
-                LOGGER.info("Configuration file %s has been modified, reloading", configFile);
+                LOGGER.info(AuthLogMessages.INFO.CONFIG_FILE_RELOADING, configFile);
                 try {
                     loadConfiguration();
                     lastLoadedTimestamp = lastModified;
@@ -123,7 +120,8 @@ public class ConfigurationManager {
                             .with("lastModified", lastModified)
                             .buildMessage("Failed to reload configuration, using previous configuration");
 
-                    LOGGER.error(e, contextMessage);
+                    LOGGER.error(e, AuthLogMessages.ERROR.CONFIG_RELOAD_FAILED);
+                    LOGGER.debug(contextMessage);
                 }
             }
         }
@@ -149,7 +147,7 @@ public class ConfigurationManager {
                 configFile = file;
                 return loadConfigurationFile(file);
             } else {
-                LOGGER.warn("Configuration file not found at specified path: %s", configPath);
+                LOGGER.warn(AuthLogMessages.WARN.CONFIG_FILE_NOT_FOUND, configPath);
             }
         }
 
@@ -166,7 +164,7 @@ public class ConfigurationManager {
             return loadConfigurationFile(yamlFile);
         }
 
-        LOGGER.info("No configuration file found");
+        LOGGER.info(AuthLogMessages.INFO.NO_CONFIG_FILE);
         return false;
     }
 
@@ -182,44 +180,42 @@ public class ConfigurationManager {
             if (fileName.endsWith(".properties")) {
                 loadPropertiesFile(file);
                 lastLoadedTimestamp = file.lastModified();
-                LOGGER.info("Loaded properties configuration from %s", file.getAbsolutePath());
+                LOGGER.info(AuthLogMessages.INFO.LOADED_PROPERTIES_CONFIG, file.getAbsolutePath());
                 return true;
             } else if (fileName.endsWith(".yml") || fileName.endsWith(".yaml")) {
                 boolean loaded = loadYamlFile(file);
                 if (loaded) {
                     lastLoadedTimestamp = file.lastModified();
-                    LOGGER.info("Loaded YAML configuration from %s", file.getAbsolutePath());
+                    LOGGER.info(AuthLogMessages.INFO.LOADED_YAML_CONFIG, file.getAbsolutePath());
                 }
                 return loaded;
             } else {
-                LOGGER.warn("Unsupported configuration file format: %s", fileName);
+                LOGGER.warn(AuthLogMessages.WARN.UNSUPPORTED_CONFIG_FORMAT, fileName);
                 return false;
             }
         } catch (IOException e) {
             // Catch file I/O errors
-            String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
+            LOGGER.error(e, AuthLogMessages.ERROR.CONFIG_FILE_IO_ERROR);
+            LOGGER.debug(ErrorContext.forComponent(COMPONENT_NAME)
                     .operation("loadConfigurationFile")
                     .errorCode(ErrorContext.ErrorCodes.IO_ERROR)
                     .cause(e)
                     .build()
                     .with("file", file.getAbsolutePath())
                     .with("fileFormat", fileName.substring(fileName.lastIndexOf('.') + 1))
-                    .buildMessage("Error loading configuration file");
-
-            LOGGER.error(e, contextMessage);
+                    .buildMessage("Error loading configuration file"));
             return false;
         } catch (IllegalStateException | IllegalArgumentException | org.yaml.snakeyaml.error.YAMLException e) {
             // Catch parsing and other runtime errors
-            String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
+            LOGGER.error(e, AuthLogMessages.ERROR.CONFIG_FILE_PARSE_ERROR);
+            LOGGER.debug(ErrorContext.forComponent(COMPONENT_NAME)
                     .operation("loadConfigurationFile")
                     .errorCode(ErrorContext.ErrorCodes.CONFIGURATION_ERROR)
                     .cause(e)
                     .build()
                     .with("file", file.getAbsolutePath())
                     .with("fileFormat", fileName.substring(fileName.lastIndexOf('.') + 1))
-                    .buildMessage("Error parsing configuration file");
-
-            LOGGER.error(e, contextMessage);
+                    .buildMessage("Error parsing configuration file"));
             return false;
         }
     }
@@ -266,7 +262,7 @@ public class ConfigurationManager {
         }
 
         if (yamlData == null || yamlData.isEmpty()) {
-            LOGGER.warn("YAML file %s is empty or invalid", file.getAbsolutePath());
+            LOGGER.warn(AuthLogMessages.WARN.YAML_EMPTY_OR_INVALID, file.getAbsolutePath());
             return false;
         }
 

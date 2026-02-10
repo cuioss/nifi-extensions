@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.test.juli.junit5.EnableTestLogger;
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.ServletOutputStream;
@@ -49,6 +50,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
  */
+@EnableTestLogger
 @DisplayName("JWKS Validation Servlet Tests")
 class JwksValidationServletTest {
 

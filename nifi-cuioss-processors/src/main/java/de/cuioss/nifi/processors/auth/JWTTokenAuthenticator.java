@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.processors.auth;
 
+import de.cuioss.nifi.processors.auth.AuthLogMessages;
 import de.cuioss.nifi.processors.auth.JWTProcessorConstants.Error;
 import de.cuioss.nifi.processors.auth.JWTProcessorConstants.Http;
 import de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships;
@@ -71,11 +72,9 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
 
     private I18nResolver i18nResolver;
 
-    @Getter
-    private List<PropertyDescriptor> supportedPropertyDescriptors;
+    @Getter private List<PropertyDescriptor> supportedPropertyDescriptors;
 
-    @Getter
-    private Set<Relationship> relationships;
+    @Getter private Set<Relationship> relationships;
 
     @Override
     protected void init(final ProcessorInitializationContext context) {
@@ -120,7 +119,7 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
 
         // If no token found, log warning and route to failure
         if (tokenOpt.isEmpty()) {
-            LOGGER.warn("No token found in the specified location: %s", tokenLocation);
+            LOGGER.warn(AuthLogMessages.WARN.NO_TOKEN_FOUND, tokenLocation);
 
             // Add error attributes
             Map<String, String> attributes = new HashMap<>();
@@ -180,7 +179,7 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
      */
     private Optional<String> extractTokenFromContent(FlowFile flowFile, ProcessSession session) {
         if (flowFile.getSize() > DEFAULT_MAX_CONTENT_SIZE) {
-            LOGGER.warn("Flow file content size %d exceeds maximum allowed size %d",
+            LOGGER.warn(AuthLogMessages.WARN.FLOW_FILE_SIZE_EXCEEDED,
                     flowFile.getSize(), DEFAULT_MAX_CONTENT_SIZE);
             return Optional.empty();
         }

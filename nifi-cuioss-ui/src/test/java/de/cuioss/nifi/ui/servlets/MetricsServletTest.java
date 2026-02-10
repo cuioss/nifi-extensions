@@ -18,6 +18,7 @@ package de.cuioss.nifi.ui.servlets;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.cuioss.test.juli.junit5.EnableTestLogger;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.WriteListener;
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,6 +45,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/observability.adoc">Observability Specification</a>
  */
 @EnableGeneratorController
+@EnableTestLogger
 @ExtendWith(EasyMockExtension.class)
 @DisplayName("MetricsServlet tests")
 class MetricsServletTest {

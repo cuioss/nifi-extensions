@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
 import jakarta.json.JsonArrayBuilder;
@@ -97,14 +98,14 @@ public class MetricsServlet extends HttpServlet {
             }
 
         } catch (IOException e) {
-            LOGGER.error(e, "Error writing metrics response");
+            LOGGER.error(e, UILogMessages.ERROR.ERROR_WRITING_METRICS);
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         } catch (IllegalStateException e) {
-            LOGGER.error(e, "Error collecting metrics");
+            LOGGER.error(e, UILogMessages.ERROR.ERROR_COLLECTING_METRICS);
             try {
                 sendErrorResponse(resp, 500, "Error collecting metrics");
             } catch (IOException ioException) {
-                LOGGER.error(ioException, "Failed to send error response");
+                LOGGER.error(ioException, UILogMessages.ERROR.FAILED_SEND_METRICS_ERROR);
                 resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }
         }
@@ -176,7 +177,7 @@ public class MetricsServlet extends HttpServlet {
         try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
             writer.writeObject(errorResponse);
         } catch (IOException e) {
-            LOGGER.error(e, "Failed to write error response");
+            LOGGER.error(e, UILogMessages.ERROR.FAILED_WRITE_ERROR_RESPONSE);
             // Don't throw here to avoid masking the original error
         }
     }

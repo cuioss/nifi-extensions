@@ -20,6 +20,9 @@ import de.cuioss.sheriff.oauth.core.domain.claim.ClaimValue;
 import de.cuioss.sheriff.oauth.core.test.InMemoryJWKSFactory;
 import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
 import de.cuioss.sheriff.oauth.core.test.generator.TestTokenGenerators;
+import de.cuioss.test.juli.LogAsserts;
+import de.cuioss.test.juli.TestLogLevel;
+import de.cuioss.test.juli.junit5.EnableTestLogger;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.util.MockFlowFile;
@@ -51,10 +54,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/technical-components.adoc">Technical Components Specification</a>
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>
  */
+@EnableTestLogger
 class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
-    @TempDir
-    Path tempDir;
+    @TempDir Path tempDir;
 
     private TestRunner testRunner;
     private MultiIssuerJWTTokenAuthenticator processor;
@@ -122,6 +125,11 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
             flowFile.assertAttributeEquals(JWTAttributes.Token.PRESENT, "true");
             flowFile.assertAttributeExists(JWTAttributes.Token.VALIDATED_AT);
+
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO,
+                    AuthLogMessages.INFO.PROCESSOR_INITIALIZED.resolveIdentifierString());
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO,
+                    AuthLogMessages.INFO.TOKEN_VALIDATOR_INITIALIZED.resolveIdentifierString());
         }
 
         @Test
@@ -162,6 +170,8 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
             // Token without 'sub' claim fails validation in oauth-sheriff
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
             testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, AuthLogMessages.WARN.TOKEN_VALIDATION_FAILED_MSG.resolveIdentifierString());
         }
 
         @Test
@@ -251,6 +261,9 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
             // onStopped is public API — should not throw
             assertDoesNotThrow(() -> processor.onStopped());
+
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO,
+                    AuthLogMessages.INFO.PROCESSOR_STOPPED.resolveIdentifierString());
         }
 
         @Test
@@ -291,6 +304,9 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
             TestTokenHolder tokenHolder2 = TestTokenGenerators.accessTokens().next();
             enqueueWithToken(tokenHolder2.getRawToken());
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO,
+                    AuthLogMessages.INFO.CONFIG_CHANGE_DETECTED.resolveIdentifierString());
         }
 
         @Test

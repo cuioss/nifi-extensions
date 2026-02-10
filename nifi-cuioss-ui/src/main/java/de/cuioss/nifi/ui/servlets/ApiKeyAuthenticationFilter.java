@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
@@ -55,7 +56,7 @@ public class ApiKeyAuthenticationFilter implements Filter {
 
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
-        LOGGER.info("Initialized API Authentication Filter");
+        LOGGER.info(UILogMessages.INFO.FILTER_INITIALIZED);
     }
 
     @Override
@@ -75,14 +76,14 @@ public class ApiKeyAuthenticationFilter implements Filter {
 
         // Validate processor ID header is present and is a valid UUID
         if (processorId == null || processorId.trim().isEmpty()) {
-            LOGGER.warn("Missing processor ID header in request to %s", requestPath);
+            LOGGER.warn(UILogMessages.WARN.MISSING_PROCESSOR_ID, requestPath);
             sendUnauthorizedResponse(httpResponse, "Missing or empty processor ID header");
             return;
         }
         try {
             UUID.fromString(processorId);
         } catch (IllegalArgumentException e) {
-            LOGGER.warn("Invalid processor ID format in request to %s", requestPath);
+            LOGGER.warn(UILogMessages.WARN.INVALID_PROCESSOR_ID_FORMAT, requestPath);
             sendUnauthorizedResponse(httpResponse, "Invalid processor ID format");
             return;
         }
@@ -104,7 +105,7 @@ public class ApiKeyAuthenticationFilter implements Filter {
 
     @Override
     public void destroy() {
-        LOGGER.info("Destroying API Key Authentication Filter");
+        LOGGER.info(UILogMessages.INFO.FILTER_DESTROYED);
     }
 
     /**
@@ -126,7 +127,7 @@ public class ApiKeyAuthenticationFilter implements Filter {
         try (var writer = JSON_WRITER.createWriter(response.getOutputStream())) {
             writer.writeObject(errorResponse);
         } catch (IOException e) {
-            LOGGER.error(e, "Failed to write unauthorized response");
+            LOGGER.error(e, UILogMessages.ERROR.FAILED_WRITE_UNAUTHORIZED_RESPONSE);
             throw e;
         }
     }

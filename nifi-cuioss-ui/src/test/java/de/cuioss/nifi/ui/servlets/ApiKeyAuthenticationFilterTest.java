@@ -16,7 +16,11 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.cuioss.test.juli.LogAsserts;
+import de.cuioss.test.juli.TestLogLevel;
+import de.cuioss.test.juli.junit5.EnableTestLogger;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.FilterConfig;
 import jakarta.servlet.ServletOutputStream;
@@ -44,6 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
  */
 @EnableGeneratorController
+@EnableTestLogger
 @DisplayName("API Key Authentication Filter Tests")
 class ApiKeyAuthenticationFilterTest {
 
@@ -78,6 +83,8 @@ class ApiKeyAuthenticationFilterTest {
             // Assert
             // No exception thrown - filter initialized successfully
             assertNotNull(filter, "Filter should be initialized");
+
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, UILogMessages.INFO.FILTER_INITIALIZED.resolveIdentifierString());
         }
 
         @Test
@@ -92,6 +99,8 @@ class ApiKeyAuthenticationFilterTest {
             // Assert
             // No exception thrown - filter destroyed successfully
             assertNotNull(filter, "Filter should exist after destroy");
+
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, UILogMessages.INFO.FILTER_DESTROYED.resolveIdentifierString());
         }
     }
 
@@ -154,6 +163,8 @@ class ApiKeyAuthenticationFilterTest {
             assertTrue(response.contains("\"error\""), "Response should contain error field");
             assertTrue(response.contains("\"valid\":false"), "Response should indicate invalid");
             assertTrue(response.contains("\"accessible\":false"), "Response should indicate not accessible");
+
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, UILogMessages.WARN.MISSING_PROCESSOR_ID.resolveIdentifierString());
         }
 
         @Test
@@ -247,6 +258,8 @@ class ApiKeyAuthenticationFilterTest {
             verify(mockRequest, mockResponse, mockChain);
             String response = outputStream.toString();
             assertTrue(response.contains("Invalid processor ID format"), "Response should contain format error message");
+
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, UILogMessages.WARN.INVALID_PROCESSOR_ID_FORMAT.resolveIdentifierString());
         }
 
         @Test
