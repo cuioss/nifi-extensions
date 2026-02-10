@@ -961,7 +961,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     }
 
     /**
-     * Validates a token using the TokenValidator from cui-jwt-validation.
+     * Validates a token using the TokenValidator from OAuth-Sheriff.
      *
      * @param tokenString The JWT token string to validate
      * @param context     The process context

@@ -1,20 +1,21 @@
 @startuml
+!pragma layout smetana
 package "NiFi Framework" {
   [NiFi Core] as NiFiCore
   [Processor API] as ProcessorAPI
 }
 
-package "MultiIssuerJWTTokenAuthenticator" {
-  [JWT Processor] as JWTProcessor
-  [Configuration Handler] as ConfigHandler
-  [MultiIssuerJWTTokenProcessor] as MultiIssuerJWTTokenProcessor
-  [Error Handler] as ErrorHandler
+package "NiFi CUI OSS Processors" {
+  [MultiIssuerJWTToken\nAuthenticator] as MultiIssuer
+  [JWTToken\nAuthenticator] as SimpleAuth
+  [ConfigurationManager] as ConfigManager
+  [ErrorContext] as ErrorContext
 }
 
-package "cui-jwt-validation" {
+package "OAuth-Sheriff" {
   [TokenValidator] as TokenValidator
-  [JWKS Client] as JWKSClient
-  [Validation Pipeline] as ValidationPipeline
+  [HttpJwksLoaderConfig] as JwksLoader
+  [AccessTokenContent] as TokenContent
 }
 
 package "External Services" {
@@ -23,16 +24,19 @@ package "External Services" {
 }
 
 NiFiCore --> ProcessorAPI : uses
-ProcessorAPI --> JWTProcessor : extends
+ProcessorAPI --> MultiIssuer : extends
+ProcessorAPI --> SimpleAuth : extends
 
-JWTProcessor --> ConfigHandler : configures
-JWTProcessor --> MultiIssuerJWTTokenProcessor : validates tokens
-JWTProcessor --> ErrorHandler : handles errors
+MultiIssuer --> ConfigManager : reads configuration
+MultiIssuer --> TokenValidator : validates tokens
+MultiIssuer --> ErrorContext : captures errors
 
-MultiIssuerJWTTokenProcessor --> TokenValidator : uses
-TokenValidator --> JWKSClient : retrieves keys
-TokenValidator --> ValidationPipeline : creates tokens
+SimpleAuth --> TokenValidator : validates tokens
+SimpleAuth --> ErrorContext : captures errors
 
-JWKSClient --> IDP1 : retrieves JWKS
-JWKSClient --> IDP2 : retrieves JWKS
+TokenValidator --> JwksLoader : retrieves keys
+TokenValidator --> TokenContent : returns result
+
+JwksLoader --> IDP1 : retrieves JWKS
+JwksLoader --> IDP2 : retrieves JWKS
 @enduml

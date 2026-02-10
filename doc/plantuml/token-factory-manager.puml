@@ -1,4 +1,5 @@
 @startuml token-factory-manager
+!pragma layout smetana
 skinparam defaultTextAlignment center
 skinparam componentStyle uml2
 
@@ -8,7 +9,7 @@ package "NiFi Processor" {
   [MultiIssuerJWTTokenAuthenticator] as processor
 }
 
-package "cui-jwt-validation" {
+package "OAuth-Sheriff" {
   [TokenValidator] as validator
   [IssuerConfig] as config
   [AccessTokenContent] as token

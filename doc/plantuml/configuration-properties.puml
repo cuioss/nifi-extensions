@@ -1,4 +1,5 @@
 @startuml configuration-properties
+!pragma layout smetana
 skinparam backgroundColor white
 skinparam defaultTextAlignment left
 skinparam packageStyle rectangle

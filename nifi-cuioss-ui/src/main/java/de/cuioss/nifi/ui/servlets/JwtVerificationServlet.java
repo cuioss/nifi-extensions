@@ -32,7 +32,7 @@ import java.util.Map;
 import static de.cuioss.nifi.ui.util.TokenMasking.maskToken;
 
 /**
- * Servlet for JWT token verification using the cui-jwt-validation library.
+ * Servlet for JWT token verification using the OAuth-Sheriff library.
  * This servlet provides a REST endpoint that verifies JWT tokens using the
  * same configuration and logic as the MultiIssuerJWTTokenAuthenticator processor.
  *

@@ -34,7 +34,7 @@ import java.util.*;
 import static de.cuioss.nifi.ui.util.TokenMasking.maskToken;
 
 /**
- * Service for JWT token validation using the cui-jwt-validation library.
+ * Service for JWT token validation using the OAuth-Sheriff library.
  * This service retrieves processor configuration via NiFi's REST API and
  * creates the same TokenValidator instance that the processor uses.
  *

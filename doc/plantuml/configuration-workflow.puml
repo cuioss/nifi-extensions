@@ -1,4 +1,5 @@
 @startuml configuration-workflow
+!pragma layout smetana
 skinparam backgroundColor white
 skinparam activityDiamondBackgroundColor #f0f0f0
 skinparam activityDiamondBorderColor #cccccc

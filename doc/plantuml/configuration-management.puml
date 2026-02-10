@@ -1,4 +1,5 @@
 @startuml configuration-management
+!pragma layout smetana
 skinparam defaultTextAlignment center
 skinparam componentStyle uml2
 
@@ -6,8 +7,8 @@ title "JWT Processor Configuration Management Flow"
 
 package "Processor Configuration" {
   [NiFi Property Descriptor] as properties
-  [IssuerConfigLoader] as configLoader
-  [ConfigurationValidator] as configValidator
+  [IssuerConfigurationParser] as configParser
+  [ConfigurationManager] as configManager
 }
 
 package "Configuration Storage" {
@@ -18,10 +19,9 @@ package "Configuration Storage" {
   }
 }
 
-package "Configuration Components" {
-  [TokenValidatorFactory] as validatorFactory
-  [CachingStrategy] as cachingStrategy
-  [KeyRotationPolicy] as keyRotation
+package "OAuth-Sheriff" {
+  [TokenValidator] as tokenValidator
+  [HttpJwksLoaderConfig] as jwksLoader
 }
 
 package "External Resources" {
@@ -31,12 +31,11 @@ package "External Resources" {
 }
 
 ' Relationships
-properties --> configLoader : provides raw config
-configLoader --> configValidator : validates
-configValidator --> issuerConfigs : stores valid configs
-validatorFactory --> issuerConfigs : uses
-cachingStrategy --> issuerConfigs : applied to
-keyRotation --> issuerConfigs : applied to
+properties --> configParser : provides raw config
+configParser --> configManager : parsed configurations
+configManager --> issuerConfigs : stores valid configs
+tokenValidator --> issuerConfigs : uses
+jwksLoader --> issuerConfigs : configured from
 
 config1 --> jwks1 : fetches keys from
 config2 --> jwks2 : fetches keys from
@@ -50,25 +49,18 @@ note right of properties
   - Cache settings
 end note
 
-note bottom of configValidator
-  Validates:
-  - Well-formed URLs
-  - Reachable endpoints
-  - Logical claim rules
-end note
-
-note right of cachingStrategy
-  Controls:
-  - JWKS caching
-  - Validation result caching
-  - Cache expiration
-end note
-
-note right of keyRotation
+note bottom of configManager
   Manages:
-  - Key rotation schedule
-  - Force refresh policy
-  - Key ID tracking
+  - Configuration lifecycle
+  - Validation of settings
+  - Issuer registration
+end note
+
+note right of jwksLoader
+  Controls:
+  - JWKS key loading
+  - Key caching
+  - Key rotation
 end note
 
 @enduml

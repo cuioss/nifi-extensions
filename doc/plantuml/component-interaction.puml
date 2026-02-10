@@ -1,4 +1,5 @@
 @startuml component-interaction
+!pragma layout smetana
 
 skinparam componentStyle rectangle
 skinparam monochrome true
@@ -9,46 +10,40 @@ skinparam ArrowThickness 1.5
 
 title "Component Interaction Diagram - NiFi Extensions"
 
-!define COMPONENT(name) component name as "name"
-
 cloud "External Services" {
-  [Authentication Provider]
-  [API Services]
+  [Identity Provider] as IDP
 }
 
 package "Apache NiFi" {
   [NiFi Core] as NiFiCore
 
   package "CUI OSS Extensions" {
-    [Token Factory Manager] as TokenFactory
-    [JWT Token Extractor] as JWTExtractor
-    [Token Validator] as TokenValidator
-    [API Gateway] as APIGateway
-    [Error Handler] as ErrorHandler
-    [Configuration Manager] as ConfigManager
+    [MultiIssuerJWTToken\nAuthenticator] as MultiIssuer
+    [JWTToken\nAuthenticator] as SimpleAuth
+    [ConfigurationManager] as ConfigManager
+    [IssuerConfigurationParser] as ConfigParser
+    [ErrorContext] as ErrorContext
   }
+}
+
+package "OAuth-Sheriff" {
+  [TokenValidator] as TokenValidator
 }
 
 database "Properties Repository" as PropsRepo
 
 NiFiCore ..> [CUI OSS Extensions] : uses
-TokenFactory --> [Authentication Provider] : requests tokens
-JWTExtractor --> TokenFactory : gets token specs
-TokenValidator --> TokenFactory : validates tokens
-APIGateway --> [API Services] : routes requests
-APIGateway --> TokenValidator : validates requests
-ErrorHandler <-- TokenValidator : reports errors
-ErrorHandler <-- APIGateway : reports errors
+MultiIssuer --> TokenValidator : validates tokens
+SimpleAuth --> TokenValidator : validates tokens
+TokenValidator --> IDP : retrieves JWKS keys
+MultiIssuer --> ConfigManager : reads configuration
+SimpleAuth --> ConfigManager : reads configuration
+ConfigManager --> ConfigParser : parses issuer configs
 ConfigManager --> PropsRepo : loads/stores configs
-TokenFactory --> ConfigManager : reads configuration
-JWTExtractor --> ConfigManager : reads configuration
-TokenValidator --> ConfigManager : reads configuration
-APIGateway --> ConfigManager : reads configuration
+MultiIssuer --> ErrorContext : captures errors
+SimpleAuth --> ErrorContext : captures errors
 
-note right of TokenFactory: Manages token creation\nand lifecycle
-
+note right of MultiIssuer: Full JWT validation with\nmulti-issuer support
+note right of SimpleAuth: Simple token extraction\nand validation
 note bottom of ConfigManager: Provides centralized\nconfiguration management
-
-note right of APIGateway: Routes API requests and\nhandles multi-tenant scenarios
-
 @enduml

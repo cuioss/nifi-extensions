@@ -48,7 +48,7 @@ import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Properties;
  * It extracts JWT tokens from flow files and routes them based on validation results.
  * <p>
  * Note: This is a simplified version that only extracts tokens without validation.
- * Token validation will be implemented when the cui-jwt-validation library is available.
+ * Token validation is implemented using the OAuth-Sheriff library.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/technical-components.adoc">Technical Components Specification</a>
  */

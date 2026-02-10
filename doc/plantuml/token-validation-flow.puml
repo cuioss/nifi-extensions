@@ -1,7 +1,8 @@
 @startuml
+!pragma layout smetana
 skinparam componentStyle rectangle
 
-title "Token Validation with cui-jwt-validation Library"
+title "Token Validation with OAuth-Sheriff Library"
 
 actor "NiFi Flow" as Flow
 component "MultiIssuerJWTToken\nAuthenticator" as Processor

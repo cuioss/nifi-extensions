@@ -1,4 +1,5 @@
 @startuml error-handling-flow
+!pragma layout smetana
 skinparam defaultTextAlignment center
 skinparam componentStyle uml2
 
