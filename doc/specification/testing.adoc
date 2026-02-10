@@ -238,9 +238,8 @@ For advanced JWKS endpoint simulation and HTTP/HTTPS testing, see the MockWebSer
 
 The test suite aims for high coverage across all areas:
 
-1. **Line Coverage**: >90% line coverage for core components
-2. **Branch Coverage**: >85% branch coverage for decision points
-3. **Method Coverage**: >95% method coverage
+1. **Java Line Coverage**: 80% minimum
+2. **JavaScript Coverage**: 80% lines, 75% branches, 78% functions
 
 Test coverage is measured and reported during the build process.
 

@@ -85,46 +85,10 @@ The processor includes a custom UI component to validate the JWKS configuration 
 
 The validation button adapts to the selected JWKS type and always validates the current input.
 
-[source,javascript]
-----
-/**
- * JWKS Validation Button UI component.
- */
-define(['jquery', 'nf.Common'], function ($, nfCommon) {
-    return {
-        /**
-         * Initialize the custom UI.
-         */
-        init: function (element, propertyValue, jwks_type, callback) {
-            // Get i18n resources from NiFi Common
-            var i18n = nfCommon.getI18n();
-            
-            // Create UI elements
-            var container = $('<div class="jwks-verification-container"></div>');
-            var verifyButton = $('<button type="button" class="verify-jwks-button">' + 
-                               i18n['processor.jwt.testConnection'] + '</button>');
-            var resultContainer = $('<div class="verification-result"></div>');
-            
-            // Add elements to the DOM
-            container.append(verifyButton).append(resultContainer);
-            $(element).append(container);
-            
-            // Handle button click - simplified for documentation
-            verifyButton.on('click', function () {
-                // Implementation details depend on jwks_type ("server", "file", "memory")
-            });
-            
-            // Initialize callback
-            callback({
-                validate: function () { return true; },
-                getValue: function () { return propertyValue; },
-                setValue: function (newValue) { propertyValue = newValue; },
-                jwks_type: jwks_type
-            });
-        }
-    };
-}
-----
+The JWKS validation UI is implemented in the custom web application:
+
+* link:../../nifi-cuioss-ui/src/main/webapp/js/issuer-config.js[issuer-config.js] -- Issuer configuration form with JWKS type selection and validation button
+* link:../../nifi-cuioss-ui/src/main/webapp/js/api.js[api.js] -- API client that calls the backend validation endpoints
 
 === Token Verification Interface
 _See Requirement xref:../Requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
@@ -206,62 +170,7 @@ The JWKS Endpoint Validator is now type-aware and uses the JwksLoaderFactory dir
 - The loader is used to load and validate the JWKS, and any errors are reported using the SecurityEventCounter.
 - The ValidationResult reflects the outcome, including error details if validation fails.
 
-[source,java]
-----
-public class JwksEndpointValidator implements Validator {
-    @Override
-    public ValidationResult validate(String subject, String input, ValidationContext context) {
-        String jwksType = context.getProperty("jwksType"); // e.g., "server", "file", "memory"
-        SecurityEventCounter counter = new SecurityEventCounter();
-        JwksLoader loader = null;
-        switch (jwksType) {
-            case "server":
-                // TODO: Validate Correct URL
-                HttpJwksLoaderConfig config = HttpJwksLoaderConfig.builder()
-                        .jwksUrl(input).requestTimeoutSeconds(2).build();
-                
-                loader = JwksLoaderFactory.createHttpLoader(config, counter);
-                break;
-            case "file":
-                // TODO: Validate file existence and content
-                loader = JwksLoaderFactory.createFileLoader(input, counter);
-                break;
-            case "memory":
-                loader = JwksLoaderFactory.createInMemoryLoader(input, counter);
-                break;
-            default:
-                counter.incrementError("Unknown JWKS type");
-                return new ValidationResult.Builder()
-                    .input(input)
-                    .subject(subject)
-                    .valid(false)
-                    .explanation("Unknown JWKS type: " + jwksType)
-                    .build();
-        }
-        if(loader.getFirstKeyInfo().isPresent()) {
-            LOGGER.info("JWKS validation successful for type: %s", jwksType);
-            return new ValidationResult.Builder()
-                .input(input)
-                .subject(subject)
-                .valid(true)
-                .build();
-        }
-
-        var errorReasons = counter.getCounters()
-            .stream()
-            .map(SecurityEventCounter.EventType::getName).distinct()
-            .collect(Collectors.joining(", "));
-
-                        
-        return new ValidationResult.Builder()
-            .input(input)
-            .subject(subject)
-            .valid(false)
-            .explanation(errorReasons)
-            .build();    
-    }
-}
-----
+The actual JWKS validation is implemented in link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/JwksValidationServlet.java[JwksValidationServlet], which handles all three JWKS source types (URL, file, in-memory) with full error reporting via SecurityEventCounter.
 
 This approach ensures that the validator is flexible, robust, and provides detailed feedback for all supported JWKS types.
 

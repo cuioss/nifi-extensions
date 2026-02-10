@@ -108,9 +108,9 @@ The processor categorizes errors into the following categories:
 
 For a comprehensive list of error messages, codes, and their explanations, refer to link:../LogMessages.adoc[Log Message Documentation].
 
-=== Integration with oauth-sheriff-core
+=== Integration with OAuth-Sheriff
 
-The processor leverages the oauth-sheriff-core library's error reporting capabilities, which are mapped to NiFi's error handling mechanisms. See link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] for the validation error handling and flow file attribute mapping, and link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/AuthLogMessages.java[AuthLogMessages] for the standardized error message definitions.
+The processor leverages the OAuth-Sheriff library's error reporting capabilities, which are mapped to NiFi's error handling mechanisms. See link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] for the validation error handling and flow file attribute mapping, and link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/AuthLogMessages.java[AuthLogMessages] for the standardized error message definitions.
 
 === Security Event Monitoring
 

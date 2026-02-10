@@ -38,30 +38,30 @@ Token extraction is implemented in link:../../nifi-cuioss-processors/src/main/ja
 
 For more information about token location configuration, see link:configuration.adoc#token-location[Token Location Configuration].
 
-== Integration with oauth-sheriff-core Library
+== Integration with OAuth-Sheriff Library
 
-The MultiIssuerJWTTokenAuthenticator processor leverages the oauth-sheriff-core library rather than implementing token validation logic directly. The library handles token structure validation, signature verification, claim validation including audience checks, and other aspects of JWT token processing.
+The MultiIssuerJWTTokenAuthenticator processor leverages the OAuth-Sheriff library rather than implementing token validation logic directly. The library handles token structure validation, signature verification, claim validation including audience checks, and other aspects of JWT token processing.
 
 === Library Features Used
 
-The processor utilizes the following key features from the oauth-sheriff-core library:
+The processor utilizes the following key features from the OAuth-Sheriff library:
 
 * **TokenValidator**: Main entry point for token operations
 * **IssuerConfig**: Configuration for each trusted token issuer with customizable validation settings
 * **AccessTokenContent**: Parsed token with convenient access to claims and validation status
 * **HttpJwksLoaderConfig**: Configuration for JWKS key loading with automatic key rotation
 
-For more details on the oauth-sheriff-core library, see link:../library/oauth-sheriff/Usage.adoc[Library Documentation].
+For more details on the OAuth-Sheriff library, see link:../library/oauth-sheriff/Usage.adoc[Library Documentation].
 
-=== How the Processor Uses oauth-sheriff-core
+=== How the Processor Uses OAuth-Sheriff
 
-In NiFi 2.6.0, the processor initializes and uses the oauth-sheriff-core library as follows:
+In NiFi 2.6.0, the processor initializes and uses the OAuth-Sheriff library as follows:
 
-Token validation is implemented in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] using the `TokenValidator.createAccessToken()` method from oauth-sheriff-core. For details on the TokenValidator initialization, see link:technical-components.adoc#tokenvalidator[TokenValidator Component].
+Token validation is implemented in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] using the `TokenValidator.createAccessToken()` method from OAuth-Sheriff. For details on the TokenValidator initialization, see link:technical-components.adoc#tokenvalidator[TokenValidator Component].
 
 == Handling TokenValidator Lifecycle in NiFi
 
-The oauth-sheriff-core library's `TokenValidator` is designed to be stateful and maintain caches for performance optimization, particularly for JWKS keys and validation results. In a NiFi processor, it's important to preserve this instance between invocations while handling configuration changes appropriately.
+The OAuth-Sheriff library's `TokenValidator` is designed to be stateful and maintain caches for performance optimization, particularly for JWKS keys and validation results. In a NiFi processor, it's important to preserve this instance between invocations while handling configuration changes appropriately.
 
 === TokenValidator Stateful Behavior
 
@@ -109,7 +109,7 @@ For detailed implementation of this lifecycle management, see link:technical-com
 
 === Authorization Checking
 
-While the oauth-sheriff-core library handles basic token validation including issuer, expiration, and audience checks, the processor adds additional authorization checks for specific NiFi use cases:
+While the OAuth-Sheriff library handles basic token validation including issuer, expiration, and audience checks, the processor adds additional authorization checks for specific NiFi use cases:
 
 Authorization checking is implemented in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/util/AuthorizationValidator.java[AuthorizationValidator], which validates scopes and roles using configurable AND/OR logic with optional case-insensitive matching and explicit bypass support. The processor invokes `AuthorizationValidator.validate()` with an `AuthorizationConfig` and `AccessTokenContent`.
 
@@ -131,7 +131,7 @@ This approach:
 
 === Security Event Monitoring
 
-The processor uses the SecurityEventCounter from the oauth-sheriff-core library to track and report security events related to token validation:
+The processor uses the SecurityEventCounter from the OAuth-Sheriff library to track and report security events related to token validation:
 
 * Total tokens processed
 * Valid tokens
@@ -172,7 +172,7 @@ For more details, see the Token Verification Interface section in link:configura
 
 == Maven Integration
 
-To use the oauth-sheriff-core library in the NiFi processor, add the following dependency to the pom.xml file:
+To use the OAuth-Sheriff library in the NiFi processor, add the following dependency to the pom.xml file:
 
 [source,xml]
 ----
@@ -187,7 +187,7 @@ This will provide access to all the library features needed for token validation
 
 == Best Practices
 
-Based on the oauth-sheriff-core library recommendations, the processor follows these best practices:
+Based on the OAuth-Sheriff library recommendations, the processor follows these best practices:
 
 1. Uses the TokenValidator as the main entry point for all token operations
 2. Configures IssuerConfig with appropriate validation settings for each issuer

@@ -27,7 +27,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functio
 == Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
 
-This document describes the technical components of the MultiIssuerJWTTokenAuthenticator processor, their responsibilities, and how they interact to provide JWT token validation capabilities in NiFi. The processor is designed for NiFi 2.6.0 and leverages the oauth-sheriff-core library for token validation functionality.
+This document describes the technical components of the MultiIssuerJWTTokenAuthenticator processor, their responsibilities, and how they interact to provide JWT token validation capabilities in NiFi. The processor is designed for NiFi 2.6.0 and leverages the OAuth-Sheriff library for token validation functionality.
 
 == Processor Implementation
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
@@ -102,7 +102,7 @@ For detailed implementation examples and integration patterns, see link:integrat
 == TokenValidator Lifecycle in NiFi
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: NiFi Integration]_
 
-The oauth-sheriff-core library's `TokenValidator` is designed to be stateful and maintain caches for performance optimization. In the MultiIssuerJWTTokenAuthenticator processor, the TokenValidator instance is managed with careful attention to NiFi's processor lifecycle.
+The OAuth-Sheriff library's `TokenValidator` is designed to be stateful and maintain caches for performance optimization. In the MultiIssuerJWTTokenAuthenticator processor, the TokenValidator instance is managed with careful attention to NiFi's processor lifecycle.
 
 For complete details on TokenValidator lifecycle management, including thread safety and resource management, see link:../library/oauth-sheriff/Usage.adoc#handling-tokenvalidator-lifecycle-in-nifi[Handling TokenValidator Lifecycle in NiFi].
 
