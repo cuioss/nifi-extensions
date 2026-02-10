@@ -1,0 +1,119 @@
+= Quick Start Guide
+:toc: left
+:toclevels: 2
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+
+Get the MultiIssuerJWTTokenAuthenticator processor running in under 5 minutes.
+
+== Prerequisites
+
+* Apache NiFi 2.6.0+ running and accessible
+* The `nifi-cuioss-nar-<version>.nar` deployed to `$NIFI_HOME/extensions/` (see link:../../README.adoc#installation[Installation])
+* A JWKS endpoint URL from your identity provider (e.g. Keycloak, Entra ID, Auth0)
+
+== Step 1: Add the Processor
+
+. Open the NiFi UI.
+. Drag a new processor onto the canvas.
+. Search for **MultiIssuerJWTTokenAuthenticator** and select it.
+
+== Step 2: Configure the Processor
+
+. Right-click the processor and select **Configure**.
+. In the **Properties** tab, review the defaults -- they work for the most common case:
++
+[cols="2,2"]
+|===
+|Property |Default
+
+|Token Location |`AUTHORIZATION_HEADER`
+|Token Header |`Authorization`
+|Bearer Token Prefix |`Bearer`
+|Require Valid Token |`true`
+|JWKS Refresh Interval |`3600` (1 hour)
+|Maximum Token Size |`16384` (16 KB)
+|Require HTTPS for JWKS URLs |`true`
+|===
+
+. Add a dynamic property for your identity provider by clicking the **+** button:
++
+[cols="1,2"]
+|===
+|Property Name |Value
+
+|`issuer.1.jwks-url`
+|Your JWKS endpoint URL, e.g. `\https://auth.example.com/.well-known/jwks.json`
+|===
+
+. _(Optional)_ Add audience validation:
++
+[cols="1,2"]
+|===
+|Property Name |Value
+
+|`issuer.1.audience`
+|Your expected audience claim, e.g. `api://my-service`
+|===
+
+. Click **Apply**.
+
+== Step 3: Connect Relationships
+
+Connect all three relationships to downstream processors:
+
+[cols="1,3"]
+|===
+|Relationship |Route to
+
+|`success`
+|Your normal processing flow (token is valid)
+
+|`authentication-failed`
+|Error handling for rejected tokens (expired, wrong issuer, bad signature)
+
+|`failure`
+|Error handling for extraction failures (no token found, processing error)
+|===
+
+== Step 4: Start the Processor
+
+. Right-click the processor and select **Start**.
+. Send a FlowFile with an `Authorization: Bearer <token>` header through the processor.
+. Verify that valid tokens route to `success` and invalid tokens route to `authentication-failed`.
+
+== Adding Multiple Issuers
+
+To accept tokens from more than one identity provider, add additional dynamic properties:
+
+[source]
+----
+issuer.1.jwks-url  = https://keycloak.example.com/realms/myapp/protocol/openid-connect/certs
+issuer.1.audience  = api://my-service
+
+issuer.2.jwks-url  = https://login.microsoftonline.com/{tenant}/discovery/v2.0/keys
+issuer.2.audience  = api://my-service
+
+issuer.3.jwks-url  = https://your-domain.auth0.com/.well-known/jwks.json
+issuer.3.audience  = https://api.example.com
+----
+
+Each issuer can have its own audience, scopes, and roles. Issuers can be individually enabled/disabled with `issuer.<N>.enabled`.
+
+== Verifying with the Custom UI
+
+The processor includes a custom web UI with additional tabs beyond the standard NiFi properties dialog:
+
+* **Verification** -- paste a JWT to test it against the current configuration
+* **Metrics** -- view validation statistics (success/failure counts)
+
+These tabs appear automatically in the processor configuration dialog.
+
+== Next Steps
+
+* link:../../README.adoc#processor-properties[Full property reference] -- all processor properties with defaults and descriptions
+* link:../../README.adoc#static-configuration-files[Static configuration] -- deploy configuration via files or environment variables
+* link:IssuerConfigPropertiesGuide.adoc[Detailed issuer configuration walkthrough] -- step-by-step guide with test environment setup and troubleshooting
+* link:../../doc/specification/configuration.adoc[Configuration specification] -- complete configuration reference
+* link:../../doc/specification/security.adoc[Security specification] -- algorithm restrictions, SSRF protection, security headers
