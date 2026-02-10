@@ -11,7 +11,7 @@ _See Requirement xref:Requirements.adoc#NIFI-AUTH-1[NIFI-AUTH-1: REST API Suppor
 This document provides the technical specification for implementing the MultiIssuerJWTTokenAuthenticator processor.
 For functional requirements, see xref:Requirements.adoc[Requirements Document].
 
-The MultiIssuerJWTTokenAuthenticator is compatible with NiFi 2.6.0 and leverages the oauth-sheriff-core library for token validation.
+The MultiIssuerJWTTokenAuthenticator is compatible with NiFi 2.6.0 and leverages the OAuth-Sheriff library for token validation.
 
 == Document Structure
 _See Requirement xref:Requirements.adoc#NIFI-AUTH-13[NIFI-AUTH-13: Documentation Requirements]_
@@ -45,11 +45,7 @@ The MultiIssuerJWTTokenAuthenticator uses the following key dependencies:
 === Runtime Dependencies
 
 * Apache NiFi 2.6.0
-* oauth-sheriff-core 0.1.0
-* Caffeine 3.2.0 (for caching)
-* Jakarta JSON API 2.1.3
-* Parsson 1.1.7
-* Bouncy Castle (bcprov-jdk18on-1.80.jar) for cryptographic operations
+* OAuth-Sheriff
 
 === Test Dependencies
 
@@ -57,7 +53,6 @@ The MultiIssuerJWTTokenAuthenticator uses the following key dependencies:
 * cui-test-keycloak-integration (for integration testing with real tokens)
 * JUnit 5 with JUnit Jupiter for modern testing approaches
 
-These libraries provide a robust foundation for implementing and testing JWT authentication in NiFi 2.6.0 environments.
 
 == Key Technical Features
 
@@ -76,7 +71,7 @@ The processor supports configuring multiple JWT token issuers, each with its own
 === Token Validation
 _See Requirement xref:Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
 
-The processor validates JWT tokens using the oauth-sheriff-core library with:
+The processor validates JWT tokens using the OAuth-Sheriff library with:
 
 * Signature validation against JWKS keys
 * Standard JWT claims validation (exp, nbf, iat, iss, aud)
@@ -152,9 +147,9 @@ The processor is designed specifically for NiFi 2.6.0 and takes advantage of its
 * Security framework
 * Testing utilities
 
-=== oauth-sheriff-core Integration
+=== OAuth-Sheriff Integration
 
-The processor fully leverages the oauth-sheriff-core library's capabilities:
+The processor fully leverages the OAuth-Sheriff library's capabilities:
 
 * Standardized token validation
 * JWKS key retrieval and caching

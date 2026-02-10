@@ -26,7 +26,7 @@ The MultiIssuerJWTTokenAuthenticator implements comprehensive observability feat
 === Available Metrics
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-18.1[NIFI-AUTH-18.1: NiFi UI Integration]_
 
-The processor leverages the SecurityEventCounter from the oauth-sheriff-core library to track key security events:
+The processor leverages the SecurityEventCounter from the OAuth-Sheriff library to track key security events:
 
 [cols="2,4"]
 |===
@@ -62,7 +62,7 @@ The processor leverages the SecurityEventCounter from the oauth-sheriff-core lib
 
 === Metrics Implementation
 
-The processor collects metrics using the SecurityEventCounter provided by the oauth-sheriff-core library. See link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] for the metrics collection implementation.
+The processor collects metrics using the SecurityEventCounter provided by the OAuth-Sheriff library. See link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] for the metrics collection implementation.
 
 For more information on token validation implementation, see link:token-validation.adoc#_security_event_monitoring[Security Event Monitoring].
 
@@ -224,7 +224,7 @@ For more information on monitoring integration, see link:security.adoc#_security
 
 === SecurityEventCounter Integration
 
-The processor integrates with the oauth-sheriff-core SecurityEventCounter as follows:
+The processor integrates with the OAuth-Sheriff SecurityEventCounter as follows:
 
 1. Initialize TokenValidator with SecurityEventCounter
 2. Track all validation events through TokenValidator

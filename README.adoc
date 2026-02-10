@@ -105,7 +105,6 @@ See the link:doc/guides/QuickStart.adoc[Quick Start Guide] for a step-by-step wa
 
 === Specifications
 
-* https://cuioss.github.io/nifi-extensions/about.html[Generated Documentation (GitHub Pages)]
 * link:doc/Requirements.adoc[Requirements]
 * link:doc/Specification.adoc[Specification]
 * link:doc/specification/configuration.adoc[Configuration Reference]
