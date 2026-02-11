@@ -124,7 +124,7 @@ public final class SecurityMetricsStore {
     private static void trackIssuer(String issuerKey, boolean isSuccess, long durationNanos) {
         IssuerMetrics existing = issuerMetricsMap.get(issuerKey);
         if (existing != null) {
-            existing.record(isSuccess, durationNanos);
+            existing.recordValidation(isSuccess, durationNanos);
             return;
         }
         if (issuerMetricsMap.size() >= MAX_TRACKED_ISSUERS) {
@@ -134,7 +134,7 @@ public final class SecurityMetricsStore {
         }
         issuerMetricsMap.computeIfAbsent(issuerKey, k ->
                 new IssuerMetrics(TokenValidatorMonitorConfig.defaultEnabled().createMonitor()))
-                .record(isSuccess, durationNanos);
+                .recordValidation(isSuccess, durationNanos);
     }
 
     /**
@@ -242,7 +242,7 @@ public final class SecurityMetricsStore {
             this.monitor = monitor;
         }
 
-        void record(boolean isSuccess, long durationNanos) {
+        void recordValidation(boolean isSuccess, long durationNanos) {
             total.incrementAndGet();
             if (isSuccess) {
                 success.incrementAndGet();

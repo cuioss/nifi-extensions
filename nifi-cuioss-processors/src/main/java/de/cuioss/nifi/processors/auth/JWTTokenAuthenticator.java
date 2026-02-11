@@ -16,7 +16,6 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import de.cuioss.nifi.processors.auth.JWTProcessorConstants.Error;
 import de.cuioss.nifi.processors.auth.JWTProcessorConstants.Http;
 import de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships;
 import de.cuioss.nifi.processors.auth.JWTProcessorConstants.TokenLocation;
@@ -122,9 +121,9 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
 
             // Add error attributes
             Map<String, String> attributes = new HashMap<>();
-            attributes.put(JWTAttributes.Error.CODE, Error.Code.NO_TOKEN_FOUND);
+            attributes.put(JWTAttributes.Error.CODE, JWTProcessorConstants.Error.Code.NO_TOKEN_FOUND);
             attributes.put(JWTAttributes.Error.REASON, i18nResolver.getTranslatedString(JWTTranslationKeys.Error.NO_TOKEN_FOUND, tokenLocation));
-            attributes.put(JWTAttributes.Error.CATEGORY, Error.Category.EXTRACTION_ERROR);
+            attributes.put(JWTAttributes.Error.CATEGORY, JWTProcessorConstants.Error.Category.EXTRACTION_ERROR);
             flowFile = session.putAllAttributes(flowFile, attributes);
 
             session.transfer(flowFile, Relationships.FAILURE);

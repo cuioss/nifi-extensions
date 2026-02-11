@@ -585,15 +585,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hashBytes = digest.digest(configBuilder.toString().getBytes(StandardCharsets.UTF_8));
-            StringBuilder hexString = new StringBuilder(2 * hashBytes.length);
-            for (byte b : hashBytes) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) {
-                    hexString.append('0');
-                }
-                hexString.append(hex);
-            }
-            return hexString.toString();
+            return HexFormat.of().formatHex(hashBytes);
         } catch (NoSuchAlgorithmException e) {
             // SHA-256 is guaranteed to be available in every Java implementation
             throw new IllegalStateException("SHA-256 algorithm not available", e);
