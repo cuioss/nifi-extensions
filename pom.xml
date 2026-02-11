@@ -346,6 +346,16 @@
     <build>
         <pluginManagement>
             <plugins>
+                <!-- Disable nexus-staging-maven-plugin inherited from NiFi parent POM.
+                     It targets repository.apache.org which is not our deployment target.
+                     We use central-publishing-maven-plugin for Sonatype Central instead. -->
+                <plugin>
+                    <groupId>org.sonatype.plugins</groupId>
+                    <artifactId>nexus-staging-maven-plugin</artifactId>
+                    <configuration>
+                        <skipNexusStagingDeployMojo>true</skipNexusStagingDeployMojo>
+                    </configuration>
+                </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
