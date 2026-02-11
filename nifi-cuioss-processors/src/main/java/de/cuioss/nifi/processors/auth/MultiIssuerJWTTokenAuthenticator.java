@@ -54,7 +54,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.*;
 import java.util.Base64;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -352,15 +352,25 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private void recreateTokenValidator(ProcessContext context, String currentConfigHash) {
         LOGGER.info(AuthLogMessages.INFO.CONFIG_CHANGE_DETECTED);
 
-        logConfigurationChange(currentConfigHash);
-        List<IssuerConfig> issuerConfigs = createIssuerConfigs(context);
+        // NiFi NAR classloader isolates ServiceLoader, so DSL-JSON cannot find its
+        // compile-time generated converters. Setting the context classloader to the
+        // NAR classloader allows ServiceLoader.load() to discover them.
+        ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
+        try {
+            Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
 
-        if (issuerConfigs.isEmpty()) {
-            handleEmptyIssuerConfigs(context, currentConfigHash);
-            return;
+            logConfigurationChange(currentConfigHash);
+            List<IssuerConfig> issuerConfigs = createIssuerConfigs(context);
+
+            if (issuerConfigs.isEmpty()) {
+                handleEmptyIssuerConfigs(context, currentConfigHash);
+                return;
+            }
+
+            buildAndConfigureTokenValidator(context, issuerConfigs, currentConfigHash);
+        } finally {
+            Thread.currentThread().setContextClassLoader(originalClassLoader);
         }
-
-        buildAndConfigureTokenValidator(context, issuerConfigs, currentConfigHash);
     }
 
     /**
@@ -408,6 +418,21 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         Map<String, String> properties = convertContextToProperties(context);
         ParserConfig parserConfig = IssuerConfigurationParser.parseParserConfig(properties);
 
+        // Force eager initialization of DSL-JSON while the NAR classloader is active.
+        // ParserConfig uses @Getter(lazy=true) for dslJson, so without this call the
+        // DslJson instance would be created on a ForkJoinPool background thread during
+        // JWKS loading, where ServiceLoader cannot discover the compile-time converters.
+        parserConfig.getDslJson();
+
+        // Prepare ForkJoinPool common pool threads with the NAR classloader.
+        // TokenValidator.builder().build() triggers IssuerConfigResolver which calls
+        // HttpJwksLoader.initJWKSLoader() → CompletableFuture.supplyAsync() on the
+        // ForkJoinPool common pool. The async task creates JwksHttpContentConverter
+        // with a fresh ParserConfig/DslJson that calls ServiceLoader.load() to find
+        // DSL-JSON converters. ForkJoinPool threads default to the system classloader,
+        // so ServiceLoader can't discover NAR-isolated converters without this setup.
+        prepareForkJoinPoolClassLoader();
+
         TokenValidator newValidator = TokenValidator.builder()
                 .parserConfig(parserConfig)
                 .issuerConfigs(issuerConfigs)
@@ -424,6 +449,63 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         // Populate caches from configured issuers and their properties
         populateCaches(issuerConfigs, properties);
+    }
+
+    /**
+     * Sets the NAR classloader as the thread context classloader on ForkJoinPool
+     * common pool threads.
+     * <p>
+     * The OAuth-Sheriff library's {@code HttpJwksLoader.initJWKSLoader()} uses
+     * {@code CompletableFuture.supplyAsync()} which runs on the ForkJoinPool common
+     * pool. Inside that async task, a new {@code JwksHttpContentConverter} is created
+     * with a fresh {@code ParserConfig/DslJson} that calls
+     * {@code ServiceLoader.load(Configuration.class)} to discover DSL-JSON converters.
+     * ForkJoinPool threads default to the system classloader, so ServiceLoader cannot
+     * find the compile-time generated DSL-JSON converters that live in the NAR
+     * classloader. This method proactively sets the correct classloader on pool threads.
+     */
+    private void prepareForkJoinPoolClassLoader() {
+        ClassLoader targetClassLoader = getClass().getClassLoader();
+        int poolSize = ForkJoinPool.commonPool().getParallelism() + 1;
+
+        // Use a CountDownLatch to force tasks onto different threads.
+        // Without this, lightweight tasks would be work-stolen and all
+        // execute on 1-2 threads, missing the thread that later loads JWKS.
+        CountDownLatch allReady = new CountDownLatch(poolSize);
+        CountDownLatch release = new CountDownLatch(1);
+
+        List<CompletableFuture<Void>> tasks = new ArrayList<>();
+        for (int i = 0; i < poolSize; i++) {
+            tasks.add(CompletableFuture.supplyAsync(() -> {
+                Thread.currentThread().setContextClassLoader(targetClassLoader);
+                allReady.countDown();
+                try {
+                    release.await(3, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return null;
+            }));
+        }
+        try {
+            // Wait for all tasks to be running on separate threads
+            allReady.await(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.warn(AuthLogMessages.WARN.FORKJOINPOOL_CLASSLOADER_SETUP_INTERRUPTED);
+        } finally {
+            // Release all blocked tasks
+            release.countDown();
+        }
+        try {
+            CompletableFuture.allOf(tasks.toArray(new CompletableFuture[0]))
+                    .get(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.warn(AuthLogMessages.WARN.FORKJOINPOOL_CLASSLOADER_SETUP_INTERRUPTED);
+        } catch (ExecutionException | TimeoutException e) {
+            LOGGER.warn(AuthLogMessages.WARN.FORKJOINPOOL_CLASSLOADER_SETUP_FAILED, e.getMessage());
+        }
     }
 
     /**
@@ -1044,7 +1126,19 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @return The extracted token, or empty if not found
      */
     private Optional<String> extractTokenFromHeader(FlowFile flowFile, String headerName, String bearerPrefix) {
-        String headerValue = flowFile.getAttribute("http.headers." + headerName.toLowerCase());
+        // Try exact match first (e.g., "http.headers.Authorization")
+        String attributeKey = Http.HEADERS_PREFIX + headerName;
+        String headerValue = flowFile.getAttribute(attributeKey);
+
+        // HTTP header names are case-insensitive per RFC 7230 — try case-insensitive match
+        if (headerValue == null) {
+            for (Map.Entry<String, String> entry : flowFile.getAttributes().entrySet()) {
+                if (entry.getKey().equalsIgnoreCase(attributeKey)) {
+                    headerValue = entry.getValue();
+                    break;
+                }
+            }
+        }
 
         if (headerValue == null || headerValue.isEmpty()) {
             return Optional.empty();

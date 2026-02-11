@@ -229,7 +229,7 @@ class NiFiFlowPipelineIT {
     class NoTokenTests {
 
         @Test
-        @DisplayName("should return 401 with jwt.present=false when no Authorization header is present")
+        @DisplayName("should return 401 with EXTRACTION_ERROR when no Authorization header is present")
         void shouldReturn401WhenNoAuthorizationHeader() throws Exception {
             HttpResponse<String> response = sendToFlow(null);
 
@@ -238,8 +238,10 @@ class NiFiFlowPipelineIT {
 
             JsonObject body = parseJsonBody(response);
             assertNotNull(body, "Response body should contain JSON with jwt attributes");
-            assertEquals("false", body.getString("jwt.present"),
-                    "jwt.present should be 'false' when no token provided");
+            assertEquals("EXTRACTION_ERROR", body.getString("jwt.error.category"),
+                    "jwt.error.category should be 'EXTRACTION_ERROR' when no token provided");
+            assertEquals("AUTH-001", body.getString("jwt.error.code"),
+                    "jwt.error.code should be 'AUTH-001' for missing token");
         }
 
         @Test

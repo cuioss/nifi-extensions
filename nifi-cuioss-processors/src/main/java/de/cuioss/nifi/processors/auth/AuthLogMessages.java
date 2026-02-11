@@ -400,6 +400,18 @@ public final class AuthLogMessages {
                 .identifier(123)
                 .template("SECURITY WARNING: Authorization bypassed for token with subject: %s")
                 .build();
+
+        public static final LogRecord FORKJOINPOOL_CLASSLOADER_SETUP_INTERRUPTED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(124)
+                .template("Interrupted while setting NAR classloader on ForkJoinPool threads")
+                .build();
+
+        public static final LogRecord FORKJOINPOOL_CLASSLOADER_SETUP_FAILED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(125)
+                .template("Failed to set NAR classloader on ForkJoinPool threads: %s")
+                .build();
     }
 
     @UtilityClass

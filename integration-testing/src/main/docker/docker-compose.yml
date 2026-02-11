@@ -24,6 +24,9 @@ services:
       - NIFI_SECURITY_USER_LOGIN_IDENTITY_PROVIDER=
       - NIFI_SECURITY_KEYSTORE=
       - NIFI_SECURITY_TRUSTSTORE=
+    depends_on:
+      keycloak:
+        condition: service_healthy
     volumes:
       - ../../../../target/nifi-deploy:/opt/nifi/nifi-current/nar_extensions
     healthcheck:
@@ -83,7 +86,7 @@ services:
       # Hostname configuration for well-known discovery endpoint
       - KC_HOSTNAME_STRICT=false
       - KC_HTTP_ENABLED=true
-      - KC_HOSTNAME=keycloak
+      - KC_HOSTNAME=http://keycloak:8080
     volumes:
       - ./keycloak:/opt/keycloak/data/import:ro
     command: 

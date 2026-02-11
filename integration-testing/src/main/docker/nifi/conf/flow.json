@@ -330,13 +330,13 @@
           "version": "2.4.0"
         },
         "properties": {
-          "Attributes Regular Expression": "jwt\\..*",
+          "attributes-to-json-regex": "jwt\\..*",
           "Destination": "flowfile-content",
           "Include Core Attributes": "false"
         },
         "propertyDescriptors": {
-          "Attributes Regular Expression": {
-            "name": "Attributes Regular Expression",
+          "attributes-to-json-regex": {
+            "name": "attributes-to-json-regex",
             "identifiesControllerService": false,
             "sensitive": false
           },
@@ -381,13 +381,13 @@
           "version": "2.4.0"
         },
         "properties": {
-          "Attributes Regular Expression": "jwt\\..*",
+          "attributes-to-json-regex": "jwt\\..*",
           "Destination": "flowfile-content",
           "Include Core Attributes": "false"
         },
         "propertyDescriptors": {
-          "Attributes Regular Expression": {
-            "name": "Attributes Regular Expression",
+          "attributes-to-json-regex": {
+            "name": "attributes-to-json-regex",
             "identifiesControllerService": false,
             "sensitive": false
           },

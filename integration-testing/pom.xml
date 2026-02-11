@@ -174,15 +174,16 @@ while [ $elapsed -lt $timeout ]; do
         echo "Containers are running, checking NiFi UI..."
         if curl -k --fail --max-time 10 https://localhost:9095/nifi/ > /dev/null 2>&1; then
             echo "NiFi UI is accessible, waiting for flow pipeline on port 7777..."
-            # Wait for HandleHttpRequest processor to bind to port 7777
-            flow_timeout=120
+            # Wait for HandleHttpRequest processor to return an actual HTTP response
+            flow_timeout=180
             flow_elapsed=0
             while [ $flow_elapsed -lt $flow_timeout ]; do
-                if curl --fail --max-time 5 -o /dev/null -s -w '%{http_code}' http://localhost:7777 2>/dev/null | grep -qE '^[0-9]+$'; then
-                    echo "Flow pipeline is ready on port 7777!"
+                http_code=$(curl --max-time 10 -o /dev/null -s -w '%{http_code}' http://localhost:7777 2>/dev/null || true)
+                if [ "$http_code" != "000" ] && [ "$http_code" != "" ]; then
+                    echo "Flow pipeline is ready on port 7777 (HTTP $http_code)!"
                     exit 0
                 fi
-                echo "Waiting for flow pipeline... ($flow_elapsed/$flow_timeout seconds)"
+                echo "Waiting for flow pipeline... ($flow_elapsed/$flow_timeout seconds, last status: $http_code)"
                 sleep 5
                 flow_elapsed=$((flow_elapsed + 5))
             done

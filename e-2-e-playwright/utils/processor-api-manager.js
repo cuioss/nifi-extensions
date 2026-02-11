@@ -268,43 +268,105 @@ export class ProcessorApiManager {
   }
 
   /**
-   * Remove MultiIssuerJWTTokenAuthenticator from canvas
+   * Stop all processors in the root process group.
+   * Required before removing connections between processors.
+   */
+  async stopAllProcessors() {
+    const rootGroupId = await this.getRootProcessGroupId();
+    const result = await this.makeApiCall(
+      `/nifi-api/flow/process-groups/${rootGroupId}`,
+      {
+        method: 'PUT',
+        body: { id: rootGroupId, state: 'STOPPED' }
+      }
+    );
+
+    if (!result.ok) {
+      testLogger.warn('Processor', `Could not stop all processors: ${result.status || result.error}`);
+    }
+
+    // Brief pause for processors to finish stopping
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return result.ok;
+  }
+
+  /**
+   * Remove all connections to/from a processor.
+   * Drops queued FlowFiles and deletes each connection.
+   */
+  async removeConnectionsForProcessor(processorId) {
+    const rootGroupId = await this.getRootProcessGroupId();
+    const result = await this.makeApiCall(
+      `/nifi-api/process-groups/${rootGroupId}/connections`
+    );
+
+    if (!result.ok || !result.data?.connections) {
+      testLogger.warn('Processor', 'Could not retrieve connections');
+      return;
+    }
+
+    const related = result.data.connections.filter(c =>
+      c.component?.source?.id === processorId ||
+      c.component?.destination?.id === processorId
+    );
+
+    for (const conn of related) {
+      const connId = conn.id;
+      const connVersion = conn.revision?.version || 0;
+
+      // Drop queued FlowFiles
+      const dropResult = await this.makeApiCall(
+        `/nifi-api/flowfile-queues/${connId}/drop-requests`,
+        { method: 'POST' }
+      );
+
+      if (dropResult.ok && dropResult.data?.dropRequest?.id) {
+        // Wait briefly for the drop to complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      // Delete the connection
+      const deleteResult = await this.makeApiCall(
+        `/nifi-api/connections/${connId}?version=${connVersion}`,
+        { method: 'DELETE' }
+      );
+
+      if (deleteResult.ok) {
+        testLogger.info('Processor', `Deleted connection ${connId}`);
+      } else {
+        testLogger.warn('Processor', `Could not delete connection ${connId}: ${deleteResult.status || deleteResult.error}`);
+      }
+    }
+  }
+
+  /**
+   * Remove MultiIssuerJWTTokenAuthenticator from canvas.
+   * Handles processors with active connections by stopping all processors,
+   * removing connections, then deleting the target processor.
    */
   async removeMultiIssuerJWTTokenAuthenticatorFromCanvas() {
     testLogger.info('Processor','Removing MultiIssuerJWTTokenAuthenticator from canvas...');
-    
+
     try {
       const { exists, processor } = await this.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
-      
+
       if (!exists) {
         testLogger.info('Processor','MultiIssuerJWTTokenAuthenticator not on canvas, nothing to remove');
         return true;
       }
 
-      // Stop the processor first if it's running
-      if (processor.status?.runStatus === 'Running') {
-        testLogger.info('Processor','Stopping processor before deletion...');
-        
-        const stopResult = await this.makeApiCall(
-          `/nifi-api/processors/${processor.id}/run-status`,
-          {
-            method: 'PUT',
-            body: {
-              revision: {
-                version: processor.revision?.version || 0
-              },
-              state: 'STOPPED'
-            }
-          }
-        );
+      // Stop all processors in the group (required before removing connections)
+      await this.stopAllProcessors();
 
-        if (!stopResult.ok) {
-          testLogger.warn('Processor',`Could not stop processor: ${stopResult.status || stopResult.error}`);
-        }
-      }
+      // Remove all connections to/from this processor
+      await this.removeConnectionsForProcessor(processor.id);
+
+      // Re-fetch the processor to get the latest revision after state changes
+      const refreshed = await this.getProcessorDetails(processor.id);
+      const version = refreshed?.revision?.version || processor.revision?.version || 0;
 
       // Delete the processor
-      const deleteUrl = `/nifi-api/processors/${processor.id}?version=${processor.revision?.version || 0}`;
+      const deleteUrl = `/nifi-api/processors/${processor.id}?version=${version}`;
       const deleteResult = await this.makeApiCall(deleteUrl, { method: 'DELETE' });
 
       if (deleteResult.ok) {
