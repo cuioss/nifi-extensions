@@ -33,9 +33,9 @@ module.exports = defineConfig({
      */
     timeout: process.env.E2E_EXPECT_TIMEOUT ? parseInt(process.env.E2E_EXPECT_TIMEOUT) * 1000 : 15000
   },
-  /* Enhanced parallel execution for better performance */
-  fullyParallel: true,
-  workers: process.env.CI ? 2 : 1,
+  /* Sequential execution — all tests share a single NiFi instance */
+  fullyParallel: false,
+  workers: 1,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Disable retries - tests should be deterministic */

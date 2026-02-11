@@ -227,12 +227,7 @@ export class ProcessorApiManager {
         return [];
       }
 
-      const processors = result.data?.processors || [];
-      process.stderr.write(`[DEBUG-PM] getProcessorsOnCanvas: ${processors.length} processors\n`);
-      for (const p of processors) {
-        process.stderr.write(`[DEBUG-PM]   proc id=${p.id} uri=${p.uri} name=${p.component?.name} type=${p.component?.type?.split('.').pop()}\n`);
-      }
-      return processors;
+      return result.data?.processors || [];
     } catch (error) {
       testLogger.error('Processor','Error getting processors on canvas:', error.message);
       return [];
@@ -255,7 +250,6 @@ export class ProcessorApiManager {
       );
 
       if (found) {
-        process.stderr.write(`[DEBUG-PM] JWT processor found: id=${found.id} uri=${found.uri} component.id=${found.component?.id}\n`);
         testLogger.info('Processor',`MultiIssuerJWTTokenAuthenticator found on canvas with ID: ${found.id}`);
         return { exists: true, processor: found };
       } else {
@@ -311,19 +305,12 @@ export class ProcessorApiManager {
       return;
     }
 
-    // Log all connection source/dest IDs for debugging
-    const allConns = result.data.connections;
-    process.stderr.write(`[DEBUG-PM] All ${allConns.length} connections on canvas:\n`);
-    for (const c of allConns) {
-      process.stderr.write(`[DEBUG-PM]   conn.id=${c.id} src=${c.component?.source?.id} dst=${c.component?.destination?.id}\n`);
-    }
-
     const related = result.data.connections.filter(c =>
       c.component?.source?.id === processorId ||
       c.component?.destination?.id === processorId
     );
 
-    process.stderr.write(`[DEBUG-PM] Found ${related.length} connections for processor ${processorId}\n`);
+    testLogger.info('Processor', `Found ${related.length} connections for processor ${processorId}`);
 
     for (const conn of related) {
       const connId = conn.id;
@@ -337,9 +324,10 @@ export class ProcessorApiManager {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Delete the connection using the version from the listing
-      const connDeleteUrl = `/nifi-api/connections/${connId}?version=${connVersion}&disconnectedNodeAcknowledged=false`;
-      const deleteResult = await this.makeApiCall(connDeleteUrl, { method: 'DELETE' });
-      process.stderr.write(`[DEBUG-PM] DELETE ${connDeleteUrl}: ok=${deleteResult.ok}, status=${deleteResult.status}\n`);
+      const deleteResult = await this.makeApiCall(
+        `/nifi-api/connections/${connId}?version=${connVersion}&disconnectedNodeAcknowledged=false`,
+        { method: 'DELETE' }
+      );
 
       if (deleteResult.ok || deleteResult.status === 404) {
         testLogger.info('Processor', `Deleted connection ${connId}`);
@@ -385,13 +373,11 @@ export class ProcessorApiManager {
 
       // Re-fetch the processor to get the latest revision after state changes
       const refreshed = await this.getProcessorDetails(processor.id);
-      process.stderr.write(`[DEBUG-PM] getProcessorDetails(${processor.id}): ok=${refreshed != null}, version=${refreshed?.revision?.version}\n`);
       const version = refreshed?.revision?.version || processor.revision?.version || 0;
 
       // Delete the processor
       const deleteUrl = `/nifi-api/processors/${processor.id}?version=${version}`;
       const deleteResult = await this.makeApiCall(deleteUrl, { method: 'DELETE' });
-      process.stderr.write(`[DEBUG-PM] DELETE ${deleteUrl}: ok=${deleteResult.ok}, status=${deleteResult.status}, error=${deleteResult.error}\n`);
 
       if (deleteResult.ok || deleteResult.status === 404) {
         testLogger.info('Processor','MultiIssuerJWTTokenAuthenticator removed from canvas');
