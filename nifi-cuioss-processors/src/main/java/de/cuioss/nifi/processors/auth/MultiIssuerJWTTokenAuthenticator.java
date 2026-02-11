@@ -480,7 +480,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 Thread.currentThread().setContextClassLoader(targetClassLoader);
                 allReady.countDown();
                 try {
-                    release.await(3, TimeUnit.SECONDS);
+                    if (!release.await(3, TimeUnit.SECONDS)) {
+                        LOGGER.warn(AuthLogMessages.WARN.FORKJOINPOOL_LATCH_AWAIT_TIMEOUT, "release latch");
+                    }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -489,7 +491,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         }
         try {
             // Wait for all tasks to be running on separate threads
-            allReady.await(5, TimeUnit.SECONDS);
+            if (!allReady.await(5, TimeUnit.SECONDS)) {
+                LOGGER.warn(AuthLogMessages.WARN.FORKJOINPOOL_LATCH_AWAIT_TIMEOUT, "allReady latch");
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             LOGGER.warn(AuthLogMessages.WARN.FORKJOINPOOL_CLASSLOADER_SETUP_INTERRUPTED);
@@ -755,7 +759,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 .requiredScopes(requiredScopes)
                 .requireAllRoles("true".equalsIgnoreCase(props.get(Issuer.REQUIRE_ALL_ROLES)))
                 .requireAllScopes("true".equalsIgnoreCase(props.get(Issuer.REQUIRE_ALL_SCOPES)))
-                .caseSensitive(!"false".equalsIgnoreCase(props.get(Issuer.CASE_SENSITIVE_MATCHING)))
+                .caseSensitive(!BOOLEAN_FALSE.equalsIgnoreCase(props.get(Issuer.CASE_SENSITIVE_MATCHING)))
                 .build();
 
         authorizationConfigCache.put(issuerIdentifier, authConfig);

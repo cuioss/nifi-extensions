@@ -59,12 +59,6 @@ class KeycloakTokenIT {
     private static final String USERNAME = "testUser";
     private static final String PASSWORD = "drowssap";
 
-    /** Static invalid token matching {@code keycloak-token-service.js#getInvalidAccessToken()}. */
-    private static final String INVALID_TOKEN =
-            "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9"
-                    + ".eyJzdWIiOiJpbnZhbGlkLXVzZXIiLCJpc3MiOiJpbnZhbGlkLWlzc3VlciIsImF1ZCI6ImludmFsaWQtYXVkaWVuY2UiLCJleHAiOjE5OTk5OTk5OTksImlhdCI6MTAwMDAwMDAwMH0"
-                    + ".invalid-signature-that-will-never-validate";
-
     private HttpClient httpClient;
 
     @BeforeEach

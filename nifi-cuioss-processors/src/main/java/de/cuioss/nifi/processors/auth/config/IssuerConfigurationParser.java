@@ -269,13 +269,14 @@ public class IssuerConfigurationParser {
                 .issuerIdentifier(issuerName.get());
 
         String jwksType = resolveJwksType(issuerProps);
-        switch (jwksType) {
-            case "url" -> builder.httpJwksLoaderConfig(
+        if ("url".equals(jwksType)) {
+            builder.httpJwksLoaderConfig(
                     HttpJwksLoaderConfig.builder()
                             .jwksUrl(jwksSource.get())
                             .issuerIdentifier(issuerName.get())
                             .build());
-            default -> builder.jwksFilePath(jwksSource.get());
+        } else {
+            builder.jwksFilePath(jwksSource.get());
         }
 
         // Add optional properties

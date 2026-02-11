@@ -30,17 +30,14 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.io.StringReader;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -153,25 +150,10 @@ class NiFiProcessorMetricsIT {
 
     // ── Helper methods ─────────────────────────────────────────────────
 
+    @SuppressWarnings("java:S2925") // Thread.sleep is the standard retry-delay for NiFi status counter propagation
     private static void ensureFlowHasTraffic() throws Exception {
         // Wait for flow endpoint availability
-        long deadline = System.currentTimeMillis() + 120_000;
-        boolean ready = false;
-        while (System.currentTimeMillis() < deadline) {
-            try {
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(FLOW_ENDPOINT))
-                        .GET()
-                        .timeout(Duration.ofSeconds(10))
-                        .build();
-                plainClient.send(request, HttpResponse.BodyHandlers.ofString());
-                ready = true;
-                break;
-            } catch (Exception e) {
-                Thread.sleep(3000);
-            }
-        }
-        assertTrue(ready, "NiFi flow endpoint did not become available within 120 seconds");
+        IntegrationTestSupport.waitForEndpoint(plainClient, FLOW_ENDPOINT, Duration.ofSeconds(120));
 
         // Send a request without a token (triggers failure path)
         HttpRequest noTokenRequest = HttpRequest.newBuilder()
@@ -182,7 +164,8 @@ class NiFiProcessorMetricsIT {
         plainClient.send(noTokenRequest, HttpResponse.BodyHandlers.ofString());
 
         // Send a request with a valid token (triggers success path)
-        String token = fetchKeycloakToken();
+        String token = IntegrationTestSupport.fetchKeycloakToken(plainClient,
+                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET, "testUser", "drowssap");
         HttpRequest validTokenRequest = HttpRequest.newBuilder()
                 .uri(URI.create(FLOW_ENDPOINT))
                 .GET()
@@ -195,31 +178,8 @@ class NiFiProcessorMetricsIT {
         Thread.sleep(2000);
     }
 
-    private static String fetchKeycloakToken() throws Exception {
-        String body = formEncode(Map.of(
-                "grant_type", "password",
-                "client_id", CLIENT_ID,
-                "client_secret", CLIENT_SECRET,
-                "username", "testUser",
-                "password", "drowssap",
-                "scope", "openid"));
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(KEYCLOAK_TOKEN_ENDPOINT))
-                .POST(HttpRequest.BodyPublishers.ofString(body))
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .timeout(Duration.ofSeconds(10))
-                .build();
-
-        HttpResponse<String> response = plainClient.send(request, HttpResponse.BodyHandlers.ofString());
-        assertEquals(200, response.statusCode(), "Keycloak token request failed: " + response.body());
-
-        JsonObject json = Json.createReader(new StringReader(response.body())).readObject();
-        return json.getString("access_token");
-    }
-
     private static String authenticateToNifi() throws Exception {
-        String body = formEncode(Map.of(
+        String body = IntegrationTestSupport.formEncode(Map.of(
                 "username", NIFI_USERNAME,
                 "password", NIFI_PASSWORD));
 
@@ -291,12 +251,5 @@ class NiFiProcessorMetricsIT {
         SSLContext sslContext = SSLContext.getInstance("TLS");
         sslContext.init(null, trustAllManagers, new SecureRandom());
         return sslContext;
-    }
-
-    private static String formEncode(Map<String, String> params) {
-        return params.entrySet().stream()
-                .map(e -> URLEncoder.encode(e.getKey(), StandardCharsets.UTF_8)
-                        + "=" + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
-                .collect(Collectors.joining("&"));
     }
 }
