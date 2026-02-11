@@ -310,32 +310,39 @@ export class ProcessorApiManager {
       c.component?.destination?.id === processorId
     );
 
+    testLogger.info('Processor', `Found ${related.length} connections for processor ${processorId}`);
+
     for (const conn of related) {
       const connId = conn.id;
+      const connVersion = conn.revision?.version ?? 0;
 
-      // Drop queued FlowFiles
+      // Drop queued FlowFiles (ignore errors)
       await this.makeApiCall(
         `/nifi-api/flowfile-queues/${connId}/drop-requests`,
         { method: 'POST' }
       );
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Re-fetch connection to get current revision (version changes after stop)
-      const connDetails = await this.makeApiCall(`/nifi-api/connections/${connId}`);
-      if (!connDetails.ok) {
-        testLogger.info('Processor', `Connection ${connId} already gone (${connDetails.status})`);
-        continue;
-      }
-      const connVersion = connDetails.data?.revision?.version || 0;
-
-      // Delete the connection
+      // Delete the connection using the version from the listing
       const deleteResult = await this.makeApiCall(
-        `/nifi-api/connections/${connId}?version=${connVersion}`,
+        `/nifi-api/connections/${connId}?version=${connVersion}&disconnectedNodeAcknowledged=false`,
         { method: 'DELETE' }
       );
 
       if (deleteResult.ok || deleteResult.status === 404) {
         testLogger.info('Processor', `Deleted connection ${connId}`);
+      } else if (deleteResult.status === 409) {
+        // Version conflict — try with incremented version
+        testLogger.warn('Processor', `Version conflict on ${connId}, retrying with version ${connVersion + 1}`);
+        const retryResult = await this.makeApiCall(
+          `/nifi-api/connections/${connId}?version=${connVersion + 1}`,
+          { method: 'DELETE' }
+        );
+        if (retryResult.ok || retryResult.status === 404) {
+          testLogger.info('Processor', `Deleted connection ${connId} on retry`);
+        } else {
+          testLogger.warn('Processor', `Could not delete connection ${connId}: ${retryResult.status}`);
+        }
       } else {
         testLogger.warn('Processor', `Could not delete connection ${connId}: ${deleteResult.status || deleteResult.error}`);
       }
@@ -366,12 +373,7 @@ export class ProcessorApiManager {
 
       // Re-fetch the processor to get the latest revision after state changes
       const refreshed = await this.getProcessorDetails(processor.id);
-      if (!refreshed) {
-        // Processor already gone (deleted as side effect or race condition)
-        testLogger.info('Processor','Processor already removed (not found on re-fetch)');
-        return true;
-      }
-      const version = refreshed.revision?.version || 0;
+      const version = refreshed?.revision?.version || processor.revision?.version || 0;
 
       // Delete the processor
       const deleteUrl = `/nifi-api/processors/${processor.id}?version=${version}`;
@@ -380,11 +382,32 @@ export class ProcessorApiManager {
       if (deleteResult.ok || deleteResult.status === 404) {
         testLogger.info('Processor','MultiIssuerJWTTokenAuthenticator removed from canvas');
         return true;
-      } else {
-        testLogger.error('Processor',`Failed to delete processor: ${deleteResult.status || deleteResult.error}`);
-        testLogger.info('Processor','Delete error:', deleteResult.data);
-        return false;
       }
+
+      testLogger.warn('Processor',`Delete returned ${deleteResult.status}, verifying processor state...`);
+
+      // Delete failed — check if processor is actually gone despite the error
+      const verifyResult = await this.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
+      if (!verifyResult.exists) {
+        testLogger.info('Processor','Processor confirmed removed from canvas');
+        return true;
+      }
+
+      // Processor still exists — try one more time with a fresh version
+      const retryDetails = await this.getProcessorDetails(verifyResult.processor.id);
+      if (retryDetails) {
+        const retryVersion = retryDetails.revision?.version || 0;
+        const retryUrl = `/nifi-api/processors/${verifyResult.processor.id}?version=${retryVersion}`;
+        const retryResult = await this.makeApiCall(retryUrl, { method: 'DELETE' });
+        if (retryResult.ok || retryResult.status === 404) {
+          testLogger.info('Processor','Processor removed on retry');
+          return true;
+        }
+        testLogger.error('Processor',`Retry delete failed: ${retryResult.status} - ${JSON.stringify(retryResult.data)}`);
+      }
+
+      testLogger.error('Processor',`Failed to delete processor: ${deleteResult.status || deleteResult.error}`);
+      return false;
     } catch (error) {
       testLogger.error('Processor','Error removing processor from canvas:', error.message);
       return false;
@@ -515,11 +538,12 @@ export class ProcessorApiManager {
   async getProcessorDetails(processorId) {
     try {
       const result = await this.makeApiCall(`/nifi-api/processors/${processorId}`);
-      
+
       if (result.ok && result.data) {
         return result.data;
       }
-      
+
+      testLogger.warn('Processor', `getProcessorDetails(${processorId}): ${result.status || result.error}`);
       return null;
     } catch (error) {
       testLogger.error('Processor','Error getting processor details:', error.message);
