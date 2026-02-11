@@ -16,6 +16,8 @@
     <description>End-to-End Playwright tests for NiFi Extensions</description>
 
     <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <maven.install.skip>true</maven.install.skip>
         <docker.script.dir>${project.basedir}/../integration-testing/src/main/docker</docker.script.dir>
         <nifi.base.url>https://localhost:9095/nifi</nifi.base.url>
         <keycloak.url>http://localhost:9080</keycloak.url>
