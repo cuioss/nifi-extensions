@@ -346,6 +346,16 @@
     <build>
         <pluginManagement>
             <plugins>
+                <!-- Configure maven-release-plugin to pass release profiles to inner build.
+                     Without this, release:perform runs 'deploy' without -Prelease, causing
+                     all modules (including e-2-e-playwright) to be built and published. -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-release-plugin</artifactId>
+                    <configuration>
+                        <releaseProfiles>release,javadoc</releaseProfiles>
+                    </configuration>
+                </plugin>
                 <!-- Disable nexus-staging-maven-plugin inherited from NiFi parent POM.
                      It targets repository.apache.org which is not our deployment target.
                      We use central-publishing-maven-plugin for Sonatype Central instead. -->
