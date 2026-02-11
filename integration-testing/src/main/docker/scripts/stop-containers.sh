@@ -16,11 +16,13 @@ cd "${DOCKER_DIR}"
 # ---------------------------------------------------------------------------
 # Collect container logs (only when containers are still running)
 # ---------------------------------------------------------------------------
-if docker compose ps --status running 2>/dev/null | grep -q "nifi\|keycloak"; then
+running_services=$(docker compose ps --status running --services 2>/dev/null || true)
+if [ -n "${running_services}" ]; then
     echo "Collecting container logs before shutdown..."
     mkdir -p "${LOG_DIR}"
-    docker compose logs nifi     > "${LOG_DIR}/nifi-container.log"     2>&1 || true
-    docker compose logs keycloak > "${LOG_DIR}/keycloak-container.log" 2>&1 || true
+    for service in ${running_services}; do
+        docker compose logs "${service}" > "${LOG_DIR}/${service}-container.log" 2>&1 || true
+    done
     echo "Logs written to ${LOG_DIR}/"
 else
     echo "No running containers detected — skipping log collection."
