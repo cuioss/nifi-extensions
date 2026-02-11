@@ -21,7 +21,7 @@ sonar:
 
 pages:
   reference: nifi-extensions
-  deploy-at-release: true
+  deploy-at-release: false
 
 github-automation:
   auto-merge-build-versions: true
