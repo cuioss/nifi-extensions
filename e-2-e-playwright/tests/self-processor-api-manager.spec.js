@@ -486,5 +486,13 @@ test.describe("ProcessorApiManager Integration Test", () => {
         result =
             await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
         expect(result.exists).toBe(false);
+
+        // Restore processor on canvas for subsequent test suites (functional tests)
+        const restored =
+            await processorManager.addMultiIssuerJWTTokenAuthenticatorOnCanvas({
+                x: 600,
+                y: 400,
+            });
+        expect(restored).toBe(true);
     });
 });
