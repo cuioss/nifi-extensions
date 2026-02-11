@@ -90,7 +90,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>${maven.exec.plugin.version}</version>
                 <executions>
-                    <!-- Safety-net: stop any leftover containers from a previous run -->
+                    <!-- pre-clean: safety-net stop -->
                     <execution>
                         <id>stop-docker-containers</id>
                         <goals>
@@ -98,13 +98,14 @@
                         </goals>
                         <phase>pre-clean</phase>
                         <configuration>
-                            <executable>docker</executable>
+                            <executable>bash</executable>
                             <workingDirectory>${docker.script.dir}</workingDirectory>
                             <arguments>
-                                <argument>compose</argument>
-                                <argument>down</argument>
-                                <argument>-v</argument>
+                                <argument>./scripts/stop-containers.sh</argument>
                             </arguments>
+                            <environmentVariables>
+                                <LOG_DIR>${project.build.directory}</LOG_DIR>
+                            </environmentVariables>
                             <successCodes>
                                 <successCode>0</successCode>
                                 <successCode>1</successCode>
@@ -112,25 +113,9 @@
                             <skip>${skipPlaywrightTests}</skip>
                         </configuration>
                     </execution>
-                    <!-- Create deployment directory -->
+                    <!-- pre-integration-test: deploy NAR + start + wait -->
                     <execution>
-                        <id>create-deploy-dir</id>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <phase>pre-integration-test</phase>
-                        <configuration>
-                            <executable>mkdir</executable>
-                            <arguments>
-                                <argument>-p</argument>
-                                <argument>${maven.multiModuleProjectDirectory}/target/nifi-deploy</argument>
-                            </arguments>
-                            <skip>${skipPlaywrightTests}</skip>
-                        </configuration>
-                    </execution>
-                    <!-- Build and deploy NAR files -->
-                    <execution>
-                        <id>deploy-nar-files</id>
+                        <id>deploy-and-start</id>
                         <goals>
                             <goal>exec</goal>
                         </goals>
@@ -139,24 +124,15 @@
                             <executable>bash</executable>
                             <workingDirectory>${docker.script.dir}</workingDirectory>
                             <arguments>
-                                <argument>./copy-deployment.sh</argument>
+                                <argument>./scripts/deploy-and-start.sh</argument>
                             </arguments>
+                            <environmentVariables>
+                                <PROJECT_ROOT>${maven.multiModuleProjectDirectory}</PROJECT_ROOT>
+                            </environmentVariables>
                             <skip>${skipPlaywrightTests}</skip>
                         </configuration>
                     </execution>
-                    <!-- Start containers (NiFi and Keycloak) -->
-                    <execution>
-                        <id>start-containers</id>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <phase>pre-integration-test</phase>
-                        <configuration>
-                            <executable>${docker.script.dir}/start-nifi.sh</executable>
-                            <skip>${skipPlaywrightTests}</skip>
-                        </configuration>
-                    </execution>
-                    
+
                     <!-- Run self-tests -->
                     <execution>
                         <id>run-selftests</id>
@@ -245,15 +221,26 @@
                         </configuration>
                     </execution>
                     
-                    <!-- Stop containers -->
+                    <!-- post-integration-test: collect logs + stop -->
                     <execution>
-                        <id>stop-containers</id>
+                        <id>cleanup-containers</id>
                         <goals>
                             <goal>exec</goal>
                         </goals>
                         <phase>post-integration-test</phase>
                         <configuration>
-                            <executable>${docker.script.dir}/stop-test-container.sh</executable>
+                            <executable>bash</executable>
+                            <workingDirectory>${docker.script.dir}</workingDirectory>
+                            <arguments>
+                                <argument>./scripts/stop-containers.sh</argument>
+                            </arguments>
+                            <environmentVariables>
+                                <LOG_DIR>${project.build.directory}</LOG_DIR>
+                            </environmentVariables>
+                            <successCodes>
+                                <successCode>0</successCode>
+                                <successCode>1</successCode>
+                            </successCodes>
                             <skip>${skipPlaywrightTests}</skip>
                         </configuration>
                     </execution>
