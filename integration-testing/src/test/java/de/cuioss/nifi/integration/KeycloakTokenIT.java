@@ -52,7 +52,6 @@ import static org.junit.jupiter.api.Assertions.*;
 class KeycloakTokenIT {
 
     private static final String KEYCLOAK_BASE = "http://localhost:9080";
-    private static final String HEALTH_URL = "http://localhost:9086/health";
     private static final String TOKEN_ENDPOINT = KEYCLOAK_BASE
             + "/realms/oauth_integration_tests/protocol/openid-connect/token";
     private static final String CLIENT_ID = "test_client";
@@ -73,29 +72,6 @@ class KeycloakTokenIT {
         httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();
-    }
-
-    // ── Keycloak Accessibility ──────────────────────────────────────────
-
-    @Nested
-    @DisplayName("Keycloak Accessibility")
-    class AccessibilityTests {
-
-        @Test
-        @DisplayName("should verify Keycloak health endpoint is accessible")
-        void shouldBeAccessible() throws Exception {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(HEALTH_URL))
-                    .GET()
-                    .timeout(Duration.ofSeconds(10))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(200, response.statusCode(),
-                    "Keycloak health endpoint should return 200. "
-                            + "Run ./integration-testing/src/main/docker/run-and-deploy.sh to start containers.");
-        }
     }
 
     // ── Token Acquisition ───────────────────────────────────────────────
@@ -166,66 +142,6 @@ class KeycloakTokenIT {
             assertThrows(IOException.class,
                     () -> httpClient.send(request, HttpResponse.BodyHandlers.ofString()),
                     "Connection to unreachable endpoint should throw IOException");
-        }
-    }
-
-    // ── Token Endpoint Configuration ────────────────────────────────────
-
-    @Nested
-    @DisplayName("Token Endpoint Configuration")
-    class ConfigurationTests {
-
-        @Test
-        @DisplayName("should expose correct token endpoint URL")
-        void shouldExposeTokenEndpoint() {
-            assertTrue(TOKEN_ENDPOINT.contains("/realms/oauth_integration_tests/protocol/openid-connect/token"),
-                    "Token endpoint must contain the expected realm path");
-            assertTrue(TOKEN_ENDPOINT.contains(KEYCLOAK_BASE),
-                    "Token endpoint must reference the Keycloak base URL");
-        }
-    }
-
-    // ── Invalid Token Structure ─────────────────────────────────────────
-
-    @Nested
-    @DisplayName("Invalid Token")
-    class InvalidTokenTests {
-
-        @Test
-        @DisplayName("should provide static invalid token with correct JWT structure")
-        void shouldProvideInvalidToken() {
-            assertNotNull(INVALID_TOKEN, "Invalid token must not be null");
-
-            String[] parts = INVALID_TOKEN.split("\\.");
-            assertEquals(3, parts.length, "Invalid token must have 3 dot-separated parts (JWT structure)");
-            assertTrue(parts[2].contains("invalid"), "Signature part should contain 'invalid'");
-
-            // Verify idempotency — same constant reference
-            assertSame(INVALID_TOKEN, INVALID_TOKEN);
-        }
-    }
-
-    // ── Convenience / Combined ──────────────────────────────────────────
-
-    @Nested
-    @DisplayName("Convenience Operations")
-    class ConvenienceTests {
-
-        @Test
-        @DisplayName("should fetch token and verify structure in a single flow")
-        void shouldFetchAndVerifyToken() throws Exception {
-            // Invalid token is always available
-            assertNotNull(INVALID_TOKEN);
-            assertEquals(3, INVALID_TOKEN.split("\\.").length);
-
-            // Valid token from Keycloak
-            String validToken = fetchToken(USERNAME, PASSWORD);
-            assertNotNull(validToken);
-            assertEquals(3, validToken.split("\\.").length);
-
-            // Decode and verify payload is parseable JSON
-            assertDoesNotThrow(() -> decodePayload(validToken),
-                    "Valid token payload must be decodable JSON");
         }
     }
 

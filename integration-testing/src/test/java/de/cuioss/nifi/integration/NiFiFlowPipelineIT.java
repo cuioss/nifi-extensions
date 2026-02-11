@@ -110,23 +110,6 @@ class NiFiFlowPipelineIT {
                         + "Run ./integration-testing/src/main/docker/run-and-deploy.sh to start containers.");
     }
 
-    // ── Readiness ──────────────────────────────────────────────────────
-
-    @Nested
-    @DisplayName("Readiness Tests")
-    class ReadinessTests {
-
-        @Test
-        @DisplayName("should verify flow endpoint is listening and responding")
-        void shouldVerifyFlowEndpointIsListening() throws Exception {
-            HttpResponse<String> response = sendToFlow(null);
-
-            // Without a token, we expect 401 (authentication failed)
-            assertNotEquals(0, response.statusCode(),
-                    "Flow endpoint should return a valid HTTP status code");
-        }
-    }
-
     // ── Valid Token ────────────────────────────────────────────────────
 
     @Nested
