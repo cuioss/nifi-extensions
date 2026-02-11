@@ -26,6 +26,11 @@
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
         <!-- JSpecify null safety annotations -->
         <dependency>
             <groupId>org.jspecify</groupId>

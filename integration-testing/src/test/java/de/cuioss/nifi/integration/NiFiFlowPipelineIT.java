@@ -26,16 +26,11 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.io.StringReader;
-import java.net.ConnectException;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -88,26 +83,7 @@ class NiFiFlowPipelineIT {
 
     @BeforeAll
     static void waitForFlowEndpoint() throws Exception {
-        // Wait for the NiFi flow endpoint to become available (up to 120 seconds)
-        long deadline = System.currentTimeMillis() + 120_000;
-        boolean ready = false;
-
-        while (System.currentTimeMillis() < deadline) {
-            try {
-                HttpResponse<String> response = sendToFlow(null);
-                // Any response (even 401) means the flow is accepting connections
-                ready = true;
-                break;
-            } catch (ConnectException e) {
-                // Not ready yet, retry
-                Thread.sleep(3000);
-            }
-        }
-
-        assertTrue(ready,
-                "NiFi flow endpoint at %s did not become available within 120 seconds. "
-                        .formatted(FLOW_ENDPOINT)
-                        + "Run ./integration-testing/src/main/docker/run-and-deploy.sh to start containers.");
+        IntegrationTestSupport.waitForEndpoint(HTTP_CLIENT, FLOW_ENDPOINT, Duration.ofSeconds(120));
     }
 
     // ── Valid Token ────────────────────────────────────────────────────
@@ -120,8 +96,8 @@ class NiFiFlowPipelineIT {
         @DisplayName("should return 200 with jwt attributes for valid JWT with required 'read' role")
         void shouldReturn200ForValidJwtWithRequiredRoles() throws Exception {
             // testUser has roles: user, read — 'read' is required by the flow
-            String token = fetchToken(KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET,
-                    TEST_USER, PASSWORD);
+            String token = IntegrationTestSupport.fetchKeycloakToken(HTTP_CLIENT,
+                    KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET, TEST_USER, PASSWORD);
 
             HttpResponse<String> response = sendToFlow("Bearer " + token);
 
@@ -157,8 +133,9 @@ class NiFiFlowPipelineIT {
         @DisplayName("should return 401 with error attributes for token signed by a different realm")
         void shouldReturn401ForTokenSignedByDifferentRealm() throws Exception {
             // Fetch a token from other_realm — signed with a different RSA key pair
-            String otherToken = fetchToken(OTHER_REALM_TOKEN_ENDPOINT, OTHER_CLIENT_ID,
-                    OTHER_CLIENT_SECRET, OTHER_USER, PASSWORD);
+            String otherToken = IntegrationTestSupport.fetchKeycloakToken(HTTP_CLIENT,
+                    OTHER_REALM_TOKEN_ENDPOINT, OTHER_CLIENT_ID, OTHER_CLIENT_SECRET,
+                    OTHER_USER, PASSWORD);
 
             HttpResponse<String> response = sendToFlow("Bearer " + otherToken);
 
@@ -184,8 +161,8 @@ class NiFiFlowPipelineIT {
         @DisplayName("should return 401 with authorization failure for token missing required 'read' role")
         void shouldReturn401ForTokenMissingRequiredRole() throws Exception {
             // limitedUser has only 'user' role — missing 'read' which is required
-            String token = fetchToken(KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET,
-                    LIMITED_USER, PASSWORD);
+            String token = IntegrationTestSupport.fetchKeycloakToken(HTTP_CLIENT,
+                    KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET, LIMITED_USER, PASSWORD);
 
             HttpResponse<String> response = sendToFlow("Bearer " + token);
 
@@ -246,34 +223,6 @@ class NiFiFlowPipelineIT {
 
     // ── Helper methods ─────────────────────────────────────────────────
 
-    private static String fetchToken(String endpoint, String clientId, String clientSecret,
-            String username, String password) throws Exception {
-        String body = formEncode(Map.of(
-                "grant_type", "password",
-                "client_id", clientId,
-                "client_secret", clientSecret,
-                "username", username,
-                "password", password,
-                "scope", "openid"));
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(endpoint))
-                .POST(HttpRequest.BodyPublishers.ofString(body))
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .timeout(Duration.ofSeconds(10))
-                .build();
-
-        HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-        assertEquals(200, response.statusCode(),
-                "Token request to %s failed with status %d: %s"
-                        .formatted(endpoint, response.statusCode(), response.body()));
-
-        JsonObject json = Json.createReader(new StringReader(response.body())).readObject();
-        String accessToken = json.getString("access_token");
-        assertNotNull(accessToken, "Response must contain 'access_token'");
-        return accessToken;
-    }
-
     private static HttpResponse<String> sendToFlow(@Nullable String authorizationHeader) throws Exception {
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(FLOW_ENDPOINT))
@@ -303,12 +252,5 @@ class NiFiFlowPipelineIT {
             fail("Failed to parse response body as JSON: " + body);
             return null; // unreachable
         }
-    }
-
-    private static String formEncode(Map<String, String> params) {
-        return params.entrySet().stream()
-                .map(e -> URLEncoder.encode(e.getKey(), StandardCharsets.UTF_8)
-                        + "=" + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
-                .collect(Collectors.joining("&"));
     }
 }

@@ -412,6 +412,12 @@ public final class AuthLogMessages {
                 .identifier(125)
                 .template("Failed to set NAR classloader on ForkJoinPool threads: %s")
                 .build();
+
+        public static final LogRecord FORKJOINPOOL_LATCH_AWAIT_TIMEOUT = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(126)
+                .template("CountDownLatch await timed out during ForkJoinPool classloader setup: %s")
+                .build();
     }
 
     @UtilityClass

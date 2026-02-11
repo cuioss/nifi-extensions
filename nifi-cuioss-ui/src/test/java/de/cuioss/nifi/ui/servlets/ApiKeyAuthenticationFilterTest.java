@@ -31,10 +31,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.easymock.EasyMock.*;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -167,40 +171,19 @@ class ApiKeyAuthenticationFilterTest {
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, UILogMessages.WARN.MISSING_PROCESSOR_ID.resolveIdentifierString());
         }
 
-        @Test
-        @DisplayName("Should reject request when processor ID is empty string")
-        void shouldRejectRequestWhenProcessorIdIsEmpty() throws Exception {
-            // Arrange
-            String servletPath = "/nifi-api/processors/jwt/validate";
-            String httpMethod = "POST";
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
-            expect(mockRequest.getServletPath()).andReturn(servletPath);
-            expect(mockRequest.getMethod()).andReturn(httpMethod);
-            expect(mockRequest.getHeader(PROCESSOR_ID_HEADER)).andReturn("");
-
-            mockResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            expectLastCall().once();
-            mockResponse.setContentType("application/json");
-            expectLastCall().once();
-            mockResponse.setCharacterEncoding("UTF-8");
-            expectLastCall().once();
-            expect(mockResponse.getOutputStream()).andReturn(new TestServletOutputStream(outputStream));
-
-            replay(mockRequest, mockResponse, mockChain);
-
-            // Act
-            filter.doFilter(mockRequest, mockResponse, mockChain);
-
-            // Assert
-            verify(mockRequest, mockResponse, mockChain);
-            String response = outputStream.toString();
-            assertTrue(response.contains("Missing or empty processor ID header"), "Response should contain expected error message");
+        static Stream<Arguments> invalidProcessorIdCases() {
+            return Stream.of(
+                    Arguments.of("", "Missing or empty processor ID header", "empty string"),
+                    Arguments.of("   ", "Missing or empty processor ID header", "whitespace"),
+                    Arguments.of("not-a-valid-uuid", "Invalid processor ID format", "non-UUID")
+            );
         }
 
-        @Test
-        @DisplayName("Should reject request when processor ID is whitespace")
-        void shouldRejectRequestWhenProcessorIdIsWhitespace() throws Exception {
+        @ParameterizedTest(name = "Should reject request when processor ID is {2}")
+        @MethodSource("invalidProcessorIdCases")
+        @DisplayName("Should reject request with invalid processor ID")
+        void shouldRejectRequestWithInvalidProcessorId(String processorId,
+                String expectedMessage, String scenario) throws Exception {
             // Arrange
             String servletPath = "/nifi-api/processors/jwt/validate";
             String httpMethod = "POST";
@@ -208,7 +191,7 @@ class ApiKeyAuthenticationFilterTest {
 
             expect(mockRequest.getServletPath()).andReturn(servletPath);
             expect(mockRequest.getMethod()).andReturn(httpMethod);
-            expect(mockRequest.getHeader(PROCESSOR_ID_HEADER)).andReturn("   ");
+            expect(mockRequest.getHeader(PROCESSOR_ID_HEADER)).andReturn(processorId);
 
             mockResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             expectLastCall().once();
@@ -226,40 +209,8 @@ class ApiKeyAuthenticationFilterTest {
             // Assert
             verify(mockRequest, mockResponse, mockChain);
             String response = outputStream.toString();
-            assertTrue(response.contains("Missing or empty processor ID header"), "Response should contain expected error message");
-        }
-
-        @Test
-        @DisplayName("Should reject request when processor ID is not a valid UUID")
-        void shouldRejectRequestWhenProcessorIdIsNotUuid() throws Exception {
-            // Arrange
-            String servletPath = "/nifi-api/processors/jwt/validate";
-            String httpMethod = "POST";
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
-            expect(mockRequest.getServletPath()).andReturn(servletPath);
-            expect(mockRequest.getMethod()).andReturn(httpMethod);
-            expect(mockRequest.getHeader(PROCESSOR_ID_HEADER)).andReturn("not-a-valid-uuid");
-
-            mockResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            expectLastCall().once();
-            mockResponse.setContentType("application/json");
-            expectLastCall().once();
-            mockResponse.setCharacterEncoding("UTF-8");
-            expectLastCall().once();
-            expect(mockResponse.getOutputStream()).andReturn(new TestServletOutputStream(outputStream));
-
-            replay(mockRequest, mockResponse, mockChain);
-
-            // Act
-            filter.doFilter(mockRequest, mockResponse, mockChain);
-
-            // Assert
-            verify(mockRequest, mockResponse, mockChain);
-            String response = outputStream.toString();
-            assertTrue(response.contains("Invalid processor ID format"), "Response should contain format error message");
-
-            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, UILogMessages.WARN.INVALID_PROCESSOR_ID_FORMAT.resolveIdentifierString());
+            assertTrue(response.contains(expectedMessage),
+                    "Response for '%s' should contain '%s'".formatted(scenario, expectedMessage));
         }
 
         @Test
