@@ -24,6 +24,7 @@
     </parent>
 
     <artifactId>nifi-cuioss-nar</artifactId>
+    <name>nifi-cuioss-nar</name>
     <version>1.0-SNAPSHOT</version>
     <packaging>nar</packaging>
 
