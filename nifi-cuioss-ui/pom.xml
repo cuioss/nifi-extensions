@@ -23,6 +23,7 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
     <artifactId>nifi-cuioss-ui</artifactId>
+    <name>nifi-cuioss-ui</name>
     <packaging>war</packaging>
 
     <properties>

@@ -348,7 +348,7 @@
             <plugins>
                 <!-- Configure maven-release-plugin for Sonatype Central publishing.
                      - releaseProfiles: activate release/javadoc profiles in inner build
-                     - arguments: exclude e-2-e-playwright from reactor since Maven profile
+                     - arguments: exclude test-only modules from reactor since Maven profile
                        modules are additive (cannot remove modules from the default list).
                        The central-publishing-maven-plugin aggregates ALL reactor modules
                        and publishes them, so test-only modules must be excluded via -pl. -->
@@ -357,7 +357,7 @@
                     <artifactId>maven-release-plugin</artifactId>
                     <configuration>
                         <releaseProfiles>release,javadoc</releaseProfiles>
-                        <arguments>-pl !e-2-e-playwright</arguments>
+                        <arguments>-pl !e-2-e-playwright,!integration-testing</arguments>
                     </configuration>
                 </plugin>
                 <!-- Disable nexus-staging-maven-plugin inherited from NiFi parent POM.
