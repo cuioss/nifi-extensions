@@ -52,10 +52,11 @@ class IntegrationTestSupport {
      */
     @SuppressWarnings("java:S2925") // Thread.sleep is the standard retry-delay pattern for Docker polling loops
     static void waitForEndpoint(HttpClient client, String endpoint, Duration timeout) throws Exception {
-        long deadline = System.currentTimeMillis() + timeout.toMillis();
+        long startNanos = System.nanoTime();
+        long timeoutNanos = timeout.toNanos();
         boolean ready = false;
 
-        while (System.currentTimeMillis() < deadline) {
+        while (System.nanoTime() - startNanos < timeoutNanos) {
             try {
                 HttpRequest request = HttpRequest.newBuilder()
                         .uri(URI.create(endpoint))
