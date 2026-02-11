@@ -1,0 +1,444 @@
+= Integration Testing — Flow Pipeline Design
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+
+xref:../Specification.adoc[Back to Main Specification]
+
+== Referenced Implementation
+
+=== Test Modules
+* link:../../integration-testing/[integration-testing] -- Docker-based integration tests (NiFi + Keycloak)
+* link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/NiFiFlowPipelineIT.java[NiFiFlowPipelineIT] -- Flow pipeline end-to-end tests
+* link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/KeycloakTokenIT.java[KeycloakTokenIT] -- Keycloak token acquisition tests
+
+=== Configuration Files
+* link:../../integration-testing/src/main/docker/nifi/conf/flow.json[flow.json] -- NiFi flow definition (human-readable source)
+* link:../../integration-testing/src/main/docker/keycloak/oauth_integration_tests-realm.json[oauth_integration_tests-realm.json] -- Primary Keycloak realm
+* link:../../integration-testing/src/main/docker/keycloak/other_realm-realm.json[other_realm-realm.json] -- Secondary realm for signature testing
+* link:../../integration-testing/src/main/docker/docker-compose.yml[docker-compose.yml] -- Container orchestration
+
+== Overview
+_See Requirement xref:../Requirements.adoc#NIFI-AUTH-15[NIFI-AUTH-15: Integration Testing]_
+
+The integration testing module validates the `MultiIssuerJWTTokenAuthenticator` processor in a real NiFi environment with a real identity provider (Keycloak).
+Tests exercise the complete request lifecycle: HTTP request ingestion, JWT token validation, role-based authorization, and HTTP response generation.
+
+== Architecture
+
+=== Container Environment
+
+The test environment consists of two Docker containers on a shared bridge network (`nifi-keycloak-network`):
+
+[source]
+----
+┌──────────────────────────────────────────────────────────────┐
+│  Host                                                        │
+│                                                              │
+│  ┌──────────────────────┐    ┌─────────────────────────────┐ │
+│  │  NiFi                │    │  Keycloak                   │ │
+│  │  Ports: 9095, 7777   │    │  Ports: 9080, 9085, 9086   │ │
+│  │                      │◄───│                             │ │
+│  │  JWKS fetch:         │    │  Realms:                    │ │
+│  │  keycloak:8080/...   │    │  - oauth_integration_tests  │ │
+│  │                      │    │  - other_realm              │ │
+│  └──────────────────────┘    └─────────────────────────────┘ │
+│       ▲                           ▲                          │
+│       │ :7777 (flow pipeline)     │ :9080 (token endpoint)   │
+│       │                           │                          │
+│  ┌────┴───────────────────────────┴────────────────────────┐ │
+│  │  Integration Tests (JUnit 5 / Maven Failsafe)          │ │
+│  │  - NiFiFlowPipelineIT                                   │ │
+│  │  - KeycloakTokenIT                                      │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────┘
+----
+
+[cols="1,2,2"]
+|===
+|Component |Internal Address |Host Address
+
+|NiFi UI
+|`https://localhost:8443/nifi/`
+|`https://localhost:9095/nifi/`
+
+|NiFi Flow Pipeline
+|`http://localhost:7777`
+|`http://localhost:7777`
+
+|Keycloak Token Endpoint
+|`http://keycloak:8080/realms/{realm}/protocol/openid-connect/token`
+|`http://localhost:9080/realms/{realm}/protocol/openid-connect/token`
+
+|Keycloak JWKS Endpoint
+|`http://keycloak:8080/realms/{realm}/protocol/openid-connect/certs`
+|`http://localhost:9080/realms/{realm}/protocol/openid-connect/certs`
+|===
+
+=== Network Considerations
+
+NiFi fetches JWKS keys from Keycloak using the Docker network hostname `keycloak:8080`.
+The Keycloak `KC_HOSTNAME` is set to `keycloak` so that the `iss` (issuer) claim in tokens matches the issuer configured in the processor (`http://keycloak:8080/realms/oauth_integration_tests`).
+
+Tests acquire tokens from the host via `localhost:9080` and send them to the flow pipeline at `localhost:7777`.
+
+== Flow Pipeline Design
+
+=== Pipeline Overview
+
+The NiFi flow is a pre-configured pipeline loaded from `flow.json` (gzipped as `flow.xml.gz`).
+It implements a JWT authentication gateway: incoming HTTP requests are validated and routed based on token validity and authorization.
+
+[source]
+----
+                    ┌─────────────────────────┐
+                    │  StandardHttpContextMap  │
+                    │  (Controller Service)    │
+                    └──────────┬──────────────┘
+                               │
+                    ┌──────────▼──────────────┐
+                    │  HandleHttpRequest       │
+                    │  (port 7777)             │
+                    └──────────┬──────────────┘
+                               │ success
+                    ┌──────────▼──────────────┐
+                    │  MultiIssuerJWT          │
+                    │  TokenAuthenticator      │
+                    └────┬─────────────┬──────┘
+                         │             │
+                  success│             │authentication-failed
+                         │             │
+              ┌──────────▼──┐   ┌──────▼───────────┐
+              │ LogAttribute │   │ LogAttribute      │
+              │ (jwt-success)│   │ (jwt-failed)      │
+              └──────────┬──┘   └──────┬───────────┘
+                         │             │
+              ┌──────────▼──┐   ┌──────▼───────────┐
+              │ Update       │   │ UpdateAttribute   │
+              │ Attribute    │   │ (status.code=401) │
+              │ (status.code │   └──────┬───────────┘
+              │  =200)       │          │
+              └──────────┬──┘   ┌──────▼───────────┐
+                         │      │ HandleHttpResponse │
+              ┌──────────▼──┐   │ (sends 401)       │
+              │ HandleHttp   │   └──────────────────┘
+              │ Response     │
+              │ (sends 200)  │
+              └─────────────┘
+----
+
+=== Processors
+
+[cols="1,2,2"]
+|===
+|Processor |Purpose |Key Configuration
+
+|HandleHttpRequest
+|Accepts incoming HTTP requests on port 7777
+|`Listening Port: 7777`, references `StandardHttpContextMap`
+
+|MultiIssuerJWTTokenAuthenticator
+|Validates JWT tokens and checks role-based authorization
+|See <<jwt-auth-config>>
+
+|LogAttribute (jwt-success)
+|Logs FlowFile attributes for successful authentication
+|`Log prefix: jwt-success`
+
+|LogAttribute (jwt-failed)
+|Logs FlowFile attributes for failed authentication
+|`Log prefix: jwt-failed`
+
+|UpdateAttribute (200)
+|Sets `http.status.code=200` for successful responses
+|`http.status.code: 200`
+
+|UpdateAttribute (401)
+|Sets `http.status.code=401` for failed responses
+|`http.status.code: 401`
+
+|HandleHttpResponse (200)
+|Returns HTTP 200 to the client
+|`HTTP Status Code: ${http.status.code}`, references `StandardHttpContextMap`
+
+|HandleHttpResponse (401)
+|Returns HTTP 401 to the client
+|`HTTP Status Code: ${http.status.code}`, references `StandardHttpContextMap`
+|===
+
+=== Controller Services
+
+[cols="1,2"]
+|===
+|Service |Purpose
+
+|StandardHttpContextMap
+|Maintains HTTP request/response mapping between HandleHttpRequest and HandleHttpResponse processors. Configured with 1000 max outstanding requests and 1 minute expiration.
+|===
+
+[[jwt-auth-config]]
+=== JWT Authenticator Configuration
+
+[cols="1,2"]
+|===
+|Property |Value
+
+|Token Location
+|`AUTHORIZATION_HEADER`
+
+|Token Header
+|`Authorization`
+
+|Bearer Token Prefix
+|`Bearer`
+
+|Require Valid Token
+|`true`
+
+|Require HTTPS for JWKS
+|`false` (Keycloak runs HTTP in Docker)
+
+|`issuer.keycloak.jwks-type`
+|`url`
+
+|`issuer.keycloak.jwks-url`
+|`http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs`
+
+|`issuer.keycloak.issuer`
+|`http://keycloak:8080/realms/oauth_integration_tests`
+
+|`issuer.keycloak.required-roles`
+|`read`
+|===
+
+The `required-roles=read` configuration means only tokens with the `read` realm role are authorized.
+Tokens without this role are routed to the `authentication-failed` relationship.
+
+=== Routing Logic
+
+[cols="1,2,1"]
+|===
+|Scenario |Routing Path |HTTP Response
+
+|Valid token with `read` role
+|success -> LogAttribute -> UpdateAttribute(200) -> HandleHttpResponse
+|200
+
+|Valid token without `read` role
+|authentication-failed -> LogAttribute -> UpdateAttribute(401) -> HandleHttpResponse
+|401
+
+|Invalid token (bad signature, expired, malformed)
+|authentication-failed -> LogAttribute -> UpdateAttribute(401) -> HandleHttpResponse
+|401
+
+|No Authorization header
+|authentication-failed -> LogAttribute -> UpdateAttribute(401) -> HandleHttpResponse
+|401
+|===
+
+== Keycloak Realm Configuration
+
+=== Primary Realm: `oauth_integration_tests`
+
+Used for all primary test scenarios. Imported from `oauth_integration_tests-realm.json`.
+
+==== Users
+
+[cols="1,1,2"]
+|===
+|Username |Password |Realm Roles
+
+|`testUser`
+|`drowssap`
+|`user`, `read`
+
+|`limitedUser`
+|`drowssap`
+|`user`
+|===
+
+`testUser` has the `read` role required by the flow and receives HTTP 200.
+`limitedUser` lacks the `read` role and receives HTTP 401 (authorization failure).
+
+==== Client
+
+[cols="1,2"]
+|===
+|Setting |Value
+
+|Client ID
+|`test_client`
+
+|Client Secret
+|`yTKslWLtf4giJcWCaoVJ20H8sy6STexM`
+
+|Protocol
+|`openid-connect`
+
+|Direct Access Grants
+|Enabled (allows Resource Owner Password grant)
+|===
+
+=== Secondary Realm: `other_realm`
+
+Used exclusively for invalid signature testing. Imported from `other_realm-realm.json`.
+Each Keycloak realm has its own RSA key pair, so tokens from `other_realm` have a different signature that cannot be verified by the `oauth_integration_tests` JWKS keys.
+
+[cols="1,2"]
+|===
+|Setting |Value
+
+|User
+|`otherUser` / `drowssap`
+
+|Client ID
+|`other_client`
+
+|Client Secret
+|`otherClientSecretValue123456789`
+
+|Realm Roles
+|`user`
+|===
+
+== Integration Tests
+
+=== NiFiFlowPipelineIT
+
+**File:** link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/NiFiFlowPipelineIT.java[NiFiFlowPipelineIT.java]
+
+End-to-end tests that send HTTP requests to the NiFi flow pipeline (port 7777) and assert on the HTTP response status code.
+
+==== Setup
+
+The `@BeforeAll` method `waitForFlowEndpoint()` polls the flow endpoint with a 120-second timeout, retrying every 3 seconds until a connection is accepted (any HTTP status code, including 401, indicates readiness).
+
+==== Test Cases
+
+[cols="2,2,1,2"]
+|===
+|Test |Scenario |Expected |Rationale
+
+|`shouldVerifyFlowEndpointIsListening`
+|Send request without token
+|Non-zero status
+|Verifies the flow pipeline is operational
+
+|`shouldReturn200ForValidJwtWithRequiredRoles`
+|`testUser` token (has `read` role)
+|200
+|Valid authentication and authorization
+
+|`shouldReturn401ForTokenSignedByDifferentRealm`
+|Token from `other_realm`
+|401
+|Signature verification failure (different RSA key pair)
+
+|`shouldReturn401ForTokenMissingRequiredRole`
+|`limitedUser` token (no `read` role)
+|401
+|Authorization failure (missing required role)
+
+|`shouldReturn401WhenNoAuthorizationHeader`
+|No `Authorization` header
+|401
+|Missing token
+
+|`shouldReturn401ForMalformedToken`
+|`Bearer not-a-valid-jwt`
+|401
+|Token parsing failure
+|===
+
+==== Helper Methods
+
+* `fetchToken(endpoint, clientId, clientSecret, username, password)` -- Acquires an OAuth2 token using the Resource Owner Password grant
+* `sendToFlow(authorizationHeader)` -- Sends an HTTP GET to the flow endpoint with an optional `Authorization` header
+* `formEncode(params)` -- URL-encodes a parameter map for form POST bodies
+
+=== KeycloakTokenIT
+
+**File:** link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/KeycloakTokenIT.java[KeycloakTokenIT.java]
+
+Lower-level integration tests that validate Keycloak token acquisition and JWT structure without exercising the NiFi flow.
+
+==== Test Cases
+
+* Token acquisition from Keycloak via Resource Owner Password grant
+* JWT structure validation (header, payload, signature)
+* Token claims verification (`iss`, `sub`, `aud`, `exp`, `realm_access`)
+
+== Test Execution
+
+=== Prerequisites
+
+1. Docker containers must be running (NiFi + Keycloak)
+2. The NAR must be built and deployed to `target/nifi-deploy/`
+
+=== Running Tests
+
+[source,bash]
+----
+# 1. Build NAR and start containers
+./integration-testing/src/main/docker/run-and-deploy.sh
+
+# 2. Run integration tests
+./mvnw verify -Pintegration-tests -pl integration-testing -am
+
+# 3. Run a specific test class
+./mvnw verify -Pintegration-tests -pl integration-testing -am \
+  -Dit.test=NiFiFlowPipelineIT
+----
+
+Tests are activated via the `integration-tests` Maven profile.
+They run in CI via the `integration-tests.yml` GitHub Actions workflow.
+
+=== Manual Smoke Test
+
+[source,bash]
+----
+# Acquire a token from Keycloak
+TOKEN=$(curl -s -X POST \
+  http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/token \
+  -d 'grant_type=password&client_id=test_client&client_secret=yTKslWLtf4giJcWCaoVJ20H8sy6STexM&username=testUser&password=drowssap' \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# Valid token with 'read' role -> 200
+curl -v http://localhost:7777 -H "Authorization: Bearer $TOKEN"
+
+# No token -> 401
+curl -v http://localhost:7777
+
+# Malformed token -> 401
+curl -v http://localhost:7777 -H "Authorization: Bearer not-a-jwt"
+----
+
+== Flow Definition Maintenance
+
+The flow is defined in two files:
+
+1. **`flow.json`** -- Human-readable JSON source of truth
+2. **`flow.xml.gz`** -- Gzipped version loaded by NiFi (despite the `.xml.gz` filename, NiFi 2.x uses JSON internally)
+
+To update the flow:
+
+[source,bash]
+----
+# Edit flow.json, then regenerate the gzipped version
+cd integration-testing/src/main/docker/nifi/conf
+gzip -c flow.json > flow.xml.gz
+----
+
+Changes require restarting the NiFi container for the new flow to take effect.
+
+== See Also
+
+* xref:testing.adoc[Testing Specification]
+* xref:end-to-end-testing.adoc[End-to-End Testing (Playwright)]
+* xref:token-validation.adoc[Token Validation]
+* xref:configuration.adoc[Configuration]
+* xref:../../integration-testing/README.adoc[Integration Testing README]
+* xref:../Specification.adoc[Back to Main Specification]

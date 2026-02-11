@@ -17,8 +17,6 @@
         <!-- This module is for testing only and should never be released -->
         <maven.deploy.skip>true</maven.deploy.skip>
         <maven.install.skip>true</maven.install.skip>
-        <!-- Integration tests require Docker containers; skip by default -->
-        <skipITs>true</skipITs>
     </properties>
 
     <dependencies>
@@ -73,6 +71,136 @@
                             <goal>integration-test</goal>
                             <goal>verify</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Container lifecycle management -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>${maven.exec.plugin.version}</version>
+                <executions>
+                    <!-- Safety-net: stop any leftover containers from a previous run -->
+                    <execution>
+                        <id>stop-docker-containers</id>
+                        <phase>pre-clean</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>docker</executable>
+                            <workingDirectory>${project.basedir}/src/main/docker</workingDirectory>
+                            <arguments>
+                                <argument>compose</argument>
+                                <argument>down</argument>
+                                <argument>-v</argument>
+                            </arguments>
+                            <successCodes>
+                                <successCode>0</successCode>
+                                <successCode>1</successCode>
+                            </successCodes>
+                            <skip>${skipITs}</skip>
+                        </configuration>
+                    </execution>
+                    <!-- Create deployment directory -->
+                    <execution>
+                        <id>create-deploy-dir</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>mkdir</executable>
+                            <arguments>
+                                <argument>-p</argument>
+                                <argument>${maven.multiModuleProjectDirectory}/target/nifi-deploy</argument>
+                            </arguments>
+                            <skip>${skipITs}</skip>
+                        </configuration>
+                    </execution>
+                    <!-- Build and deploy NAR files -->
+                    <execution>
+                        <id>deploy-nar-files</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>bash</executable>
+                            <workingDirectory>${project.basedir}/src/main/docker</workingDirectory>
+                            <arguments>
+                                <argument>./copy-deployment.sh</argument>
+                            </arguments>
+                            <skip>${skipITs}</skip>
+                        </configuration>
+                    </execution>
+                    <!-- Start Docker containers -->
+                    <execution>
+                        <id>start-containers</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>docker</executable>
+                            <workingDirectory>${project.basedir}/src/main/docker</workingDirectory>
+                            <arguments>
+                                <argument>compose</argument>
+                                <argument>up</argument>
+                                <argument>-d</argument>
+                                <argument>--build</argument>
+                            </arguments>
+                            <skip>${skipITs}</skip>
+                        </configuration>
+                    </execution>
+                    <!-- Wait for containers to be healthy -->
+                    <execution>
+                        <id>wait-for-containers</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>bash</executable>
+                            <workingDirectory>${project.basedir}/src/main/docker</workingDirectory>
+                            <arguments>
+                                <argument>-c</argument>
+                                <argument><![CDATA[
+echo "Waiting for containers to start..."
+timeout=600
+elapsed=0
+while [ $elapsed -lt $timeout ]; do
+    if docker compose ps --filter "status=running" | grep -q "nifi\|keycloak"; then
+        echo "Containers are running, checking NiFi UI..."
+        if curl -k --fail --max-time 10 https://localhost:9095/nifi/ > /dev/null 2>&1; then
+            echo "NiFi UI is accessible, waiting for flow pipeline on port 7777..."
+            # Wait for HandleHttpRequest processor to return an actual HTTP response
+            flow_timeout=180
+            flow_elapsed=0
+            while [ $flow_elapsed -lt $flow_timeout ]; do
+                http_code=$(curl --max-time 10 -o /dev/null -s -w '%{http_code}' http://localhost:7777 2>/dev/null || true)
+                if [ "$http_code" != "000" ] && [ "$http_code" != "" ]; then
+                    echo "Flow pipeline is ready on port 7777 (HTTP $http_code)!"
+                    exit 0
+                fi
+                echo "Waiting for flow pipeline... ($flow_elapsed/$flow_timeout seconds, last status: $http_code)"
+                sleep 5
+                flow_elapsed=$((flow_elapsed + 5))
+            done
+            echo "NiFi UI is up but flow pipeline on port 7777 did not respond in time"
+            exit 1
+        fi
+    fi
+    echo "Waiting for containers... ($elapsed/$timeout seconds)"
+    sleep 10
+    elapsed=$((elapsed + 10))
+done
+echo "Timeout waiting for containers to be ready"
+exit 1
+                                ]]></argument>
+                            </arguments>
+                            <skip>${skipITs}</skip>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

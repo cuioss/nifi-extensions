@@ -54,7 +54,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.*;
 import java.util.Base64;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -352,15 +352,25 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private void recreateTokenValidator(ProcessContext context, String currentConfigHash) {
         LOGGER.info(AuthLogMessages.INFO.CONFIG_CHANGE_DETECTED);
 
-        logConfigurationChange(currentConfigHash);
-        List<IssuerConfig> issuerConfigs = createIssuerConfigs(context);
+        // NiFi NAR classloader isolates ServiceLoader, so DSL-JSON cannot find its
+        // compile-time generated converters. Setting the context classloader to the
+        // NAR classloader allows ServiceLoader.load() to discover them.
+        ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
+        try {
+            Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
 
-        if (issuerConfigs.isEmpty()) {
-            handleEmptyIssuerConfigs(context, currentConfigHash);
-            return;
+            logConfigurationChange(currentConfigHash);
+            List<IssuerConfig> issuerConfigs = createIssuerConfigs(context);
+
+            if (issuerConfigs.isEmpty()) {
+                handleEmptyIssuerConfigs(context, currentConfigHash);
+                return;
+            }
+
+            buildAndConfigureTokenValidator(context, issuerConfigs, currentConfigHash);
+        } finally {
+            Thread.currentThread().setContextClassLoader(originalClassLoader);
         }
-
-        buildAndConfigureTokenValidator(context, issuerConfigs, currentConfigHash);
     }
 
     /**
@@ -408,6 +418,21 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         Map<String, String> properties = convertContextToProperties(context);
         ParserConfig parserConfig = IssuerConfigurationParser.parseParserConfig(properties);
 
+        // Force eager initialization of DSL-JSON while the NAR classloader is active.
+        // ParserConfig uses @Getter(lazy=true) for dslJson, so without this call the
+        // DslJson instance would be created on a ForkJoinPool background thread during
+        // JWKS loading, where ServiceLoader cannot discover the compile-time converters.
+        parserConfig.getDslJson();
+
+        // Prepare ForkJoinPool common pool threads with the NAR classloader.
+        // TokenValidator.builder().build() triggers IssuerConfigResolver which calls
+        // HttpJwksLoader.initJWKSLoader() → CompletableFuture.supplyAsync() on the
+        // ForkJoinPool common pool. The async task creates JwksHttpContentConverter
+        // with a fresh ParserConfig/DslJson that calls ServiceLoader.load() to find
+        // DSL-JSON converters. ForkJoinPool threads default to the system classloader,
+        // so ServiceLoader can't discover NAR-isolated converters without this setup.
+        prepareForkJoinPoolClassLoader();
+
         TokenValidator newValidator = TokenValidator.builder()
                 .parserConfig(parserConfig)
                 .issuerConfigs(issuerConfigs)
@@ -421,6 +446,66 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         issuerConfigCache.clear();
         authorizationConfigCache.clear();
+
+        // Populate caches from configured issuers and their properties
+        populateCaches(issuerConfigs, properties);
+    }
+
+    /**
+     * Sets the NAR classloader as the thread context classloader on ForkJoinPool
+     * common pool threads.
+     * <p>
+     * The OAuth-Sheriff library's {@code HttpJwksLoader.initJWKSLoader()} uses
+     * {@code CompletableFuture.supplyAsync()} which runs on the ForkJoinPool common
+     * pool. Inside that async task, a new {@code JwksHttpContentConverter} is created
+     * with a fresh {@code ParserConfig/DslJson} that calls
+     * {@code ServiceLoader.load(Configuration.class)} to discover DSL-JSON converters.
+     * ForkJoinPool threads default to the system classloader, so ServiceLoader cannot
+     * find the compile-time generated DSL-JSON converters that live in the NAR
+     * classloader. This method proactively sets the correct classloader on pool threads.
+     */
+    private void prepareForkJoinPoolClassLoader() {
+        ClassLoader targetClassLoader = getClass().getClassLoader();
+        int poolSize = ForkJoinPool.commonPool().getParallelism() + 1;
+
+        // Use a CountDownLatch to force tasks onto different threads.
+        // Without this, lightweight tasks would be work-stolen and all
+        // execute on 1-2 threads, missing the thread that later loads JWKS.
+        CountDownLatch allReady = new CountDownLatch(poolSize);
+        CountDownLatch release = new CountDownLatch(1);
+
+        List<CompletableFuture<Void>> tasks = new ArrayList<>();
+        for (int i = 0; i < poolSize; i++) {
+            tasks.add(CompletableFuture.supplyAsync(() -> {
+                Thread.currentThread().setContextClassLoader(targetClassLoader);
+                allReady.countDown();
+                try {
+                    release.await(3, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return null;
+            }));
+        }
+        try {
+            // Wait for all tasks to be running on separate threads
+            allReady.await(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.warn(AuthLogMessages.WARN.FORKJOINPOOL_CLASSLOADER_SETUP_INTERRUPTED);
+        } finally {
+            // Release all blocked tasks
+            release.countDown();
+        }
+        try {
+            CompletableFuture.allOf(tasks.toArray(new CompletableFuture[0]))
+                    .get(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.warn(AuthLogMessages.WARN.FORKJOINPOOL_CLASSLOADER_SETUP_INTERRUPTED);
+        } catch (ExecutionException | TimeoutException e) {
+            LOGGER.warn(AuthLogMessages.WARN.FORKJOINPOOL_CLASSLOADER_SETUP_FAILED, e.getMessage());
+        }
     }
 
     /**
@@ -500,15 +585,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hashBytes = digest.digest(configBuilder.toString().getBytes(StandardCharsets.UTF_8));
-            StringBuilder hexString = new StringBuilder(2 * hashBytes.length);
-            for (byte b : hashBytes) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) {
-                    hexString.append('0');
-                }
-                hexString.append(hex);
-            }
-            return hexString.toString();
+            return HexFormat.of().formatHex(hashBytes);
         } catch (NoSuchAlgorithmException e) {
             // SHA-256 is guaranteed to be available in every Java implementation
             throw new IllegalStateException("SHA-256 algorithm not available", e);
@@ -578,6 +655,126 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 authorizationConfigCache.remove(cachedIssuerName);
             }
         }
+    }
+
+    /**
+     * Populates the issuer config cache and authorization config cache from the configured issuers.
+     * Handles both UI properties and external configuration from ConfigurationManager.
+     *
+     * @param issuerConfigs The configured issuers
+     * @param allProperties All processor properties (UI-based)
+     */
+    private void populateCaches(List<IssuerConfig> issuerConfigs, Map<String, String> allProperties) {
+        // Populate issuer config cache keyed by issuer identifier
+        for (IssuerConfig config : issuerConfigs) {
+            issuerConfigCache.put(config.getIssuerIdentifier(), config);
+        }
+
+        // 1. Load authorization config from external configuration (highest precedence)
+        if (configurationManager != null && configurationManager.isConfigurationLoaded()) {
+            for (String issuerId : configurationManager.getIssuerIds()) {
+                Map<String, String> issuerProps = configurationManager.getIssuerProperties(issuerId);
+                buildAndStoreAuthorizationConfig(issuerProps);
+            }
+        }
+
+        // 2. Load authorization config from UI properties (lower precedence, won't override)
+        Map<String, Map<String, String>> issuerPropertiesMap = groupPropertiesByIssuerIndex(allProperties);
+        for (Map.Entry<String, Map<String, String>> entry : issuerPropertiesMap.entrySet()) {
+            buildAndStoreAuthorizationConfig(entry.getValue());
+        }
+
+        LOGGER.debug("Populated caches: %d issuer configs, %d authorization configs",
+                issuerConfigCache.size(), authorizationConfigCache.size());
+    }
+
+    /**
+     * Groups flat issuer properties (e.g., "issuer.keycloak.required-roles") by issuer index.
+     *
+     * @param allProperties All processor properties
+     * @return Map of issuer index to their property maps
+     */
+    private static Map<String, Map<String, String>> groupPropertiesByIssuerIndex(Map<String, String> allProperties) {
+        Map<String, Map<String, String>> issuerPropertiesMap = new HashMap<>();
+        for (Map.Entry<String, String> entry : allProperties.entrySet()) {
+            String key = entry.getKey();
+            if (key.startsWith(ISSUER_PREFIX)) {
+                String remainder = key.substring(ISSUER_PREFIX.length());
+                int dotIndex = remainder.indexOf('.');
+                if (dotIndex > 0) {
+                    String issuerIndex = remainder.substring(0, dotIndex);
+                    String property = remainder.substring(dotIndex + 1);
+                    issuerPropertiesMap.computeIfAbsent(issuerIndex, k -> new HashMap<>())
+                            .put(property, entry.getValue());
+                }
+            }
+        }
+        return issuerPropertiesMap;
+    }
+
+    /**
+     * Builds and stores an AuthorizationConfig for the given issuer properties.
+     * Resolves the issuer identifier and only stores if authorization requirements exist.
+     * Does not override existing entries (external config takes precedence over UI).
+     *
+     * @param props The issuer property map
+     */
+    private void buildAndStoreAuthorizationConfig(Map<String, String> props) {
+        // Resolve issuer name (same logic as IssuerConfigurationParser.resolveIssuerName)
+        String issuerIdentifier = props.get("name");
+        if (issuerIdentifier == null || issuerIdentifier.trim().isEmpty()) {
+            issuerIdentifier = props.get(Issuer.ISSUER_NAME);
+        }
+        if (issuerIdentifier == null || issuerIdentifier.trim().isEmpty()) {
+            return;
+        }
+        issuerIdentifier = issuerIdentifier.trim();
+
+        // Don't override existing entry (external config has higher precedence)
+        if (authorizationConfigCache.containsKey(issuerIdentifier)) {
+            return;
+        }
+
+        // Check for explicit bypass
+        if ("true".equalsIgnoreCase(props.get(Issuer.BYPASS_AUTHORIZATION))) {
+            // null authConfig means bypass in performAuthorizationCheck()
+            return;
+        }
+
+        // Extract authorization requirements
+        Set<String> requiredRoles = parseCommaSeparated(props.get(Issuer.REQUIRED_ROLES));
+        Set<String> requiredScopes = parseCommaSeparated(props.get(Issuer.REQUIRED_SCOPES));
+
+        // Only create config if there are actual requirements
+        if (requiredRoles.isEmpty() && requiredScopes.isEmpty()) {
+            return;
+        }
+
+        AuthorizationValidator.AuthorizationConfig authConfig = AuthorizationValidator.AuthorizationConfig.builder()
+                .requiredRoles(requiredRoles)
+                .requiredScopes(requiredScopes)
+                .requireAllRoles("true".equalsIgnoreCase(props.get(Issuer.REQUIRE_ALL_ROLES)))
+                .requireAllScopes("true".equalsIgnoreCase(props.get(Issuer.REQUIRE_ALL_SCOPES)))
+                .caseSensitive(!"false".equalsIgnoreCase(props.get(Issuer.CASE_SENSITIVE_MATCHING)))
+                .build();
+
+        authorizationConfigCache.put(issuerIdentifier, authConfig);
+    }
+
+    /**
+     * Parses a comma-separated string into a Set of trimmed, non-empty strings.
+     *
+     * @param value The comma-separated string (may be null)
+     * @return A set of parsed values, empty if input is null or blank
+     */
+    private static Set<String> parseCommaSeparated(@Nullable String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return Collections.emptySet();
+        }
+        return Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toSet());
     }
 
     /**
@@ -864,7 +1061,14 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         }
 
         flowFile = session.putAllAttributes(flowFile, attributes);
-        session.transfer(flowFile, Relationships.SUCCESS);
+
+        if (authResult.isAuthorized()) {
+            session.transfer(flowFile, Relationships.SUCCESS);
+        } else {
+            handleError(session, flowFile, "AUTH-010",
+                    "Authorization failed: required roles/scopes not present",
+                    "AUTHORIZATION_FAILED");
+        }
     }
 
     /**
@@ -914,7 +1118,19 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
      * @return The extracted token, or empty if not found
      */
     private Optional<String> extractTokenFromHeader(FlowFile flowFile, String headerName, String bearerPrefix) {
-        String headerValue = flowFile.getAttribute("http.headers." + headerName.toLowerCase());
+        // Try exact match first (e.g., "http.headers.Authorization")
+        String attributeKey = Http.HEADERS_PREFIX + headerName;
+        String headerValue = flowFile.getAttribute(attributeKey);
+
+        // HTTP header names are case-insensitive per RFC 7230 — try case-insensitive match
+        if (headerValue == null) {
+            for (Map.Entry<String, String> entry : flowFile.getAttributes().entrySet()) {
+                if (entry.getKey().equalsIgnoreCase(attributeKey)) {
+                    headerValue = entry.getValue();
+                    break;
+                }
+            }
+        }
 
         if (headerValue == null || headerValue.isEmpty()) {
             return Optional.empty();

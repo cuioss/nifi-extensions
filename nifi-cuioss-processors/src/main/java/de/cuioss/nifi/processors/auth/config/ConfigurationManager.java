@@ -23,6 +23,7 @@ import org.jspecify.annotations.Nullable;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
+import org.yaml.snakeyaml.error.YAMLException;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -109,7 +110,7 @@ public class ConfigurationManager {
                     loadConfiguration();
                     lastLoadedTimestamp = lastModified;
                     return true;
-                } catch (IllegalStateException | IllegalArgumentException | org.yaml.snakeyaml.error.YAMLException e) {
+                } catch (IllegalStateException | IllegalArgumentException | YAMLException e) {
                     // Catch configuration loading errors
                     String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
                             .operation("checkAndReloadConfiguration")
@@ -205,7 +206,7 @@ public class ConfigurationManager {
                     .with("fileFormat", fileName.substring(fileName.lastIndexOf('.') + 1))
                     .buildMessage("Error loading configuration file"));
             return false;
-        } catch (IllegalStateException | IllegalArgumentException | org.yaml.snakeyaml.error.YAMLException e) {
+        } catch (IllegalStateException | IllegalArgumentException | YAMLException e) {
             // Catch parsing and other runtime errors
             LOGGER.error(e, AuthLogMessages.ERROR.CONFIG_FILE_PARSE_ERROR);
             LOGGER.debug(ErrorContext.forComponent(COMPONENT_NAME)

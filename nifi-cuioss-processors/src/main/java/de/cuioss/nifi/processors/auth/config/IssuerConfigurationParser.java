@@ -21,11 +21,13 @@ import de.cuioss.nifi.processors.auth.JWTPropertyKeys;
 import de.cuioss.nifi.processors.auth.util.ErrorContext;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
+import de.cuioss.sheriff.oauth.core.jwks.http.HttpJwksLoaderConfig;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -262,10 +264,19 @@ public class IssuerConfigurationParser {
             return Optional.empty();
         }
 
-        // Build the issuer config
+        // Build the issuer config with the correct JWKS loader type
         var builder = IssuerConfig.builder()
-                .issuerIdentifier(issuerName.get())
-                .jwksFilePath(jwksSource.get());
+                .issuerIdentifier(issuerName.get());
+
+        String jwksType = resolveJwksType(issuerProps);
+        switch (jwksType) {
+            case "url" -> builder.httpJwksLoaderConfig(
+                    HttpJwksLoaderConfig.builder()
+                            .jwksUrl(jwksSource.get())
+                            .issuerIdentifier(issuerName.get())
+                            .build());
+            default -> builder.jwksFilePath(jwksSource.get());
+        }
 
         // Add optional properties
         String audience = issuerProps.get(JWTPropertyKeys.Issuer.AUDIENCE);
@@ -332,6 +343,31 @@ public class IssuerConfigurationParser {
 
         LOGGER.warn(AuthLogMessages.WARN.ISSUER_NO_JWKS_SOURCE, sanitizeLogValue(issuerId));
         return Optional.empty();
+    }
+
+    /**
+     * Resolves the JWKS source type from properties.
+     * Checks for an explicit {@code jwks-type} property first, then infers the type
+     * from which source property is present (same resolution order as {@link #resolveJwksSource}).
+     *
+     * @param issuerProps the issuer properties
+     * @return the resolved type: "url" for HTTP-based JWKS, "file" for file-based JWKS
+     */
+    private static String resolveJwksType(Map<String, String> issuerProps) {
+        String explicitType = issuerProps.get(JWTPropertyKeys.Issuer.JWKS_TYPE);
+        if (explicitType != null && !explicitType.trim().isEmpty()) {
+            return explicitType.trim().toLowerCase(Locale.ROOT);
+        }
+        // Infer from which source property is present (same order as resolveJwksSource)
+        String jwksUrl = issuerProps.get(JWTPropertyKeys.Issuer.JWKS_URL);
+        if (jwksUrl != null && !jwksUrl.trim().isEmpty()) {
+            return "url";
+        }
+        String jwksUri = issuerProps.get("jwksUri");
+        if (jwksUri != null && !jwksUri.trim().isEmpty()) {
+            return "url";
+        }
+        return "file";
     }
 
     /**

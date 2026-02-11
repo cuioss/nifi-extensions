@@ -26,8 +26,7 @@
         <playwright.timeout>120</playwright.timeout> <!-- 2 minutes for Playwright tests -->
         <!-- Code quality configuration -->
         <skip.lint>false</skip.lint> <!-- Run linting by default, skip only for integration tests -->
-        <!-- Playwright tests configuration -->
-        <skipPlaywrightTests>true</skipPlaywrightTests> <!-- Skip Playwright tests by default, run only in integration-tests profile -->
+        <!-- skipPlaywrightTests default inherited from root POM, overridden by integration-tests profile -->
         <!-- Include this module in SonarQube analysis -->
         <sonar.skip>false</sonar.skip>
         <!-- Test output directories -->
@@ -89,6 +88,60 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>${maven.exec.plugin.version}</version>
                 <executions>
+                    <!-- Safety-net: stop any leftover containers from a previous run -->
+                    <execution>
+                        <id>stop-docker-containers</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <phase>pre-clean</phase>
+                        <configuration>
+                            <executable>docker</executable>
+                            <workingDirectory>${docker.script.dir}</workingDirectory>
+                            <arguments>
+                                <argument>compose</argument>
+                                <argument>down</argument>
+                                <argument>-v</argument>
+                            </arguments>
+                            <successCodes>
+                                <successCode>0</successCode>
+                                <successCode>1</successCode>
+                            </successCodes>
+                            <skip>${skipPlaywrightTests}</skip>
+                        </configuration>
+                    </execution>
+                    <!-- Create deployment directory -->
+                    <execution>
+                        <id>create-deploy-dir</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <phase>pre-integration-test</phase>
+                        <configuration>
+                            <executable>mkdir</executable>
+                            <arguments>
+                                <argument>-p</argument>
+                                <argument>${maven.multiModuleProjectDirectory}/target/nifi-deploy</argument>
+                            </arguments>
+                            <skip>${skipPlaywrightTests}</skip>
+                        </configuration>
+                    </execution>
+                    <!-- Build and deploy NAR files -->
+                    <execution>
+                        <id>deploy-nar-files</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <phase>pre-integration-test</phase>
+                        <configuration>
+                            <executable>bash</executable>
+                            <workingDirectory>${docker.script.dir}</workingDirectory>
+                            <arguments>
+                                <argument>./copy-deployment.sh</argument>
+                            </arguments>
+                            <skip>${skipPlaywrightTests}</skip>
+                        </configuration>
+                    </execution>
                     <!-- Start containers (NiFi and Keycloak) -->
                     <execution>
                         <id>start-containers</id>
@@ -207,16 +260,4 @@
         </plugins>
     </build>
 
-    <profiles>
-        <!-- Minimal Integration Tests Profile -->
-        <profile>
-            <id>integration-tests</id>
-            <properties>
-                <skipTests>false</skipTests>
-                <maven.test.skip>false</maven.test.skip>
-                <skip.lint>true</skip.lint>
-                <skipPlaywrightTests>false</skipPlaywrightTests> <!-- Enable Playwright tests in integration-tests profile -->
-            </properties>
-        </profile>
-    </profiles>
 </project>

@@ -30,6 +30,7 @@ This specification is organized into the following documents:
 * xref:specification/configuration-static.adoc[Static Configuration] - Static/container configuration
 * xref:specification/jwt-rest-api.adoc[JWT REST API] - REST API endpoints for JWT token verification, JWKS validation, and metrics
 * xref:specification/end-to-end-testing.adoc[End-to-End Testing] - E2E testing specification
+* xref:specification/integration-testing.adoc[Integration Testing] - Flow pipeline design and Docker-based integration tests
 * xref:specification/observability.adoc[Observability] - Security event monitoring and metrics
 * xref:LogMessages.adoc[Log Messages] - Log message documentation
 

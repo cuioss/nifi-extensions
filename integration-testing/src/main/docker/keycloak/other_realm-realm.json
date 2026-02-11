@@ -1,0 +1,42 @@
+{
+  "realm": "other_realm",
+  "enabled": true,
+  "users": [
+    {
+      "username": "otherUser",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "drowssap",
+          "temporary": false
+        }
+      ],
+      "firstName": "Other",
+      "lastName": "User",
+      "email": "otherUser@example.com",
+      "realmRoles": ["user"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "other_client",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "otherClientSecretValue123456789",
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "directAccessGrantsEnabled": true
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "user",
+        "description": "User role"
+      }
+    ]
+  }
+}

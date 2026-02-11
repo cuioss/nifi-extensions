@@ -99,5 +99,6 @@ public final class JWTPropertyKeys {
          * Must be explicitly set to true to bypass all authorization checks.
          */
         public static final String BYPASS_AUTHORIZATION = "bypass-authorization";
+
     }
 }

@@ -4,6 +4,7 @@
 
 image:https://github.com/cuioss/nifi-extensions/actions/workflows/maven.yml/badge.svg[Java CI with Maven,link=https://github.com/cuioss/nifi-extensions/actions/workflows/maven.yml]
 image:https://github.com/cuioss/nifi-extensions/actions/workflows/e2e-tests.yml/badge.svg[End-to-End Tests,link=https://github.com/cuioss/nifi-extensions/actions/workflows/e2e-tests.yml]
+image:https://github.com/cuioss/nifi-extensions/actions/workflows/integration-tests.yml/badge.svg[Integration Tests,link=https://github.com/cuioss/nifi-extensions/actions/workflows/integration-tests.yml]
 image:http://img.shields.io/:license-apache-blue.svg[License,link=http://www.apache.org/licenses/LICENSE-2.0.html]
 image:https://img.shields.io/maven-central/v/de.cuioss.nifi/nifi-extensions.svg?label=Maven%20Central["Maven Central", link="https://search.maven.org/artifact/de.cuioss.nifi/nifi-extensions"]
 
@@ -78,6 +79,34 @@ The processor can be configured through three methods (in order of precedence):
 . **NiFi UI** -- interactive configuration with built-in JWKS validation and token testing
 
 See the link:doc/guides/QuickStart.adoc[Quick Start Guide] for a step-by-step walkthrough covering processor properties, issuer configuration, relationships, output attributes, static files, and environment variables.
+
+=== Working Example: Integration Test Flow
+
+The integration tests include a complete NiFi flow definition that demonstrates the processor in action with a real Keycloak identity provider.
+The flow is defined in link:integration-testing/src/main/docker/nifi/conf/flow.json[flow.json] and implements a JWT authentication gateway:
+
+* **HandleHttpRequest** accepts incoming HTTP on port 7777
+* **MultiIssuerJWTTokenAuthenticator** validates the JWT and checks roles
+* Authorized requests (HTTP 200) and rejected requests (HTTP 401) are routed through separate paths
+* Response bodies contain the `jwt.*` attributes as JSON for inspection
+
+The authenticator is configured with one Keycloak issuer:
+
+[source]
+----
+issuer.keycloak.jwks-url = http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs
+issuer.keycloak.issuer    = http://keycloak:8080/realms/oauth_integration_tests
+issuer.keycloak.required-roles = read
+----
+
+To run the full integration test suite locally:
+
+[source,bash]
+----
+./mvnw verify -Pintegration-tests
+----
+
+See link:integration-testing/doc/flow-pipeline.adoc[Flow Pipeline Design] for the complete pipeline architecture and test scenarios.
 
 == Components
 
@@ -158,7 +187,7 @@ This project follows centralized coding standards from https://github.com/cuioss
 ./integration-testing/src/main/docker/run-and-deploy.sh
 
 # Run integration tests via Maven
-./mvnw integration-test -Plocal-integration-tests -Dintegration.test.local=true
+./mvnw verify -Pintegration-tests
 
 # Run Playwright E2E tests directly
 cd e-2-e-playwright && npm run playwright:test

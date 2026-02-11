@@ -1,0 +1,161 @@
+= Flow Pipeline Integration Tests
+
+The flow pipeline tests exercise the `MultiIssuerJWTTokenAuthenticator` processor inside a running NiFi instance.
+HTTP requests go in, JWT validation happens, HTTP responses come back — with full attribute inspection.
+
+== How It Works
+
+NiFi loads a pre-configured flow on startup (`flow.json`, gzipped as `flow.xml.gz`).
+The flow listens on port 7777 and acts as a JWT authentication gateway:
+
+----
+HTTP Request (port 7777)
+        │
+        ▼
+MultiIssuerJWTTokenAuthenticator
+        │
+   ┌────┴─────┐
+   │          │
+success   auth-failed
+   │          │
+   ▼          ▼
+LogAttribute LogAttribute
+   │          │
+   ▼          ▼
+UpdateAttr   UpdateAttr
+(200)        (401)
+   │          │
+   ▼          ▼
+AttrsToJSON  AttrsToJSON
+   │          │
+   ▼          ▼
+HTTP 200     HTTP 401
+(with JSON)  (with JSON)
+----
+
+The full flow has 10 processors. The extra steps exist so NiFi can set the response status code, log what happened, and return jwt attributes as JSON:
+
+. **HandleHttpRequest** -- accepts HTTP on port 7777
+. **MultiIssuerJWTTokenAuthenticator** -- validates the JWT and checks roles
+. **LogAttribute** (x2) -- logs attributes for debugging (one per path)
+. **UpdateAttribute** (x2) -- sets `http.status.code` to 200 or 401
+. **AttributesToJSON** (x2) -- writes `jwt.*` attributes as JSON into the FlowFile content
+. **HandleHttpResponse** (x2) -- sends the response back to the caller
+
+A **StandardHttpContextMap** controller service ties the request and response processors together.
+
+== Response Body
+
+The `AttributesToJSON` processors extract all FlowFile attributes matching `jwt\..*` and write them as JSON into the FlowFile content. This becomes the HTTP response body, enabling tests to verify exactly what the JWT processor did.
+
+Example response body for a valid, authorized token:
+
+[source,json]
+----
+{
+  "jwt.present": "true",
+  "jwt.authorized": "true",
+  "jwt.subject": "d1234-abcd-...",
+  "jwt.issuer": "http://keycloak:8080/realms/oauth_integration_tests",
+  "jwt.roles": "read,user",
+  "jwt.validatedAt": "2025-01-15T10:30:00Z"
+}
+----
+
+== JWT Configuration
+
+The authenticator is configured with one issuer pointing at Keycloak inside the Docker network:
+
+- JWKS URL: `http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs`
+- Issuer: `http://keycloak:8080/realms/oauth_integration_tests`
+- Required role: `read`
+- HTTPS for JWKS: disabled (Keycloak runs plain HTTP in Docker)
+
+Only tokens with the `read` realm role get through. Everything else returns 401.
+
+== Keycloak Setup
+
+Two realms are pre-configured and auto-imported on startup.
+
+=== `oauth_integration_tests` (primary)
+
+[cols="1,1,1"]
+|===
+|User |Password |Roles
+
+|testUser |drowssap |user, read
+|limitedUser |drowssap |user
+|===
+
+Client: `test_client` / `yTKslWLtf4giJcWCaoVJ20H8sy6STexM`
+
+=== `other_realm` (for signature testing)
+
+A separate realm with its own RSA key pair. Tokens signed here cannot be verified by the primary realm's JWKS keys.
+
+[cols="1,1,1"]
+|===
+|User |Password |Roles
+
+|otherUser |drowssap |user
+|===
+
+Client: `other_client` / `otherClientSecretValue123456789`
+
+== Tests
+
+=== NiFiFlowPipelineIT — Attribute Verification
+
+`NiFiFlowPipelineIT` sends HTTP requests to port 7777 and verifies both the status code and the JSON response body containing jwt attributes.
+
+[cols="2,1,3"]
+|===
+|Scenario |Expects |Key assertions on response body
+
+|testUser token (has `read` role) |200 |`jwt.present=true`, `jwt.authorized=true`, `jwt.subject` present, `jwt.issuer` matches Keycloak, `jwt.roles` contains `read`, `jwt.validatedAt` present
+|limitedUser token (no `read` role) |401 |`jwt.present=true`, `jwt.authorized=false`, `jwt.subject` present, `jwt.roles` does NOT contain `read`
+|Token from `other_realm` |401 |`jwt.error.code` present, `jwt.error.category` present
+|No Authorization header |401 |`jwt.present=false`
+|`Bearer not-a-valid-jwt` |401 |`jwt.error.code` present, `jwt.error.category` present
+|===
+
+`@BeforeAll` waits up to 120 seconds for the flow endpoint to accept connections before running any tests.
+
+=== NiFiProcessorMetricsIT — NiFi REST API Metrics
+
+`NiFiProcessorMetricsIT` queries the NiFi REST API (`https://localhost:9095/nifi-api/`) to verify processor statistics after the pipeline tests have run.
+
+- Authenticates to NiFi using single-user credentials (`testUser` / `drowssap`)
+- Queries process group status with `GET /flow/process-groups/root/status?recursive=true`
+- Verifies the JWT authenticator processor has `flowFilesIn > 0` and `flowFilesOut > 0`
+- Verifies both HandleHttpResponse processors received FlowFiles (success and failure paths)
+- Uses a trust-all SSL context for Docker's self-signed certificates
+
+== Running
+
+----
+# Start containers
+./integration-testing/src/main/docker/run-and-deploy.sh
+
+# Run the tests
+./mvnw verify -Pintegration-tests -pl integration-testing -am
+
+# Quick smoke test — should return JSON body with jwt.* attributes
+TOKEN=$(curl -s -X POST http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/token \
+  -d 'grant_type=password&client_id=test_client&client_secret=yTKslWLtf4giJcWCaoVJ20H8sy6STexM&username=testUser&password=drowssap' \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+curl -s http://localhost:7777 -H "Authorization: Bearer $TOKEN" | python3 -m json.tool   # 200 + JSON
+curl -s http://localhost:7777 | python3 -m json.tool                                       # 401 + JSON
+----
+
+== Updating the Flow
+
+Edit `flow.json`, then regenerate the gzipped file:
+
+----
+cd integration-testing/src/main/docker/nifi/conf
+gzip -c flow.json > flow.xml.gz
+----
+
+NiFi 2.x reads JSON despite the `.xml.gz` filename. Restart the NiFi container after changes.

@@ -28,7 +28,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -252,7 +251,7 @@ class IssuerConfigurationParserTest {
     // ========== Tests for parseIssuerConfigs with External Configuration ==========
 
     @Test
-    void parseIssuerConfigs_withExternalConfiguration() throws IOException {
+    void parseIssuerConfigs_withExternalConfiguration() throws Exception {
         // Create external configuration with real JWKS file path
         String yamlContent = """
             jwt:
@@ -260,7 +259,7 @@ class IssuerConfigurationParserTest {
                 issuers:
                   - id: external-issuer
                     name: External Issuer
-                    jwksUri: %s
+                    jwks-file: %s
                     audience: external-api
             """.formatted(getAbsolutePath(TEST_JWKS_FILE));
 
@@ -283,7 +282,7 @@ class IssuerConfigurationParserTest {
     }
 
     @Test
-    void parseIssuerConfigs_withBothUIAndExternalConfiguration() throws IOException {
+    void parseIssuerConfigs_withBothUIAndExternalConfiguration() throws Exception {
         // Create external configuration with real JWKS file path
         String yamlContent = """
             jwt:
@@ -291,7 +290,7 @@ class IssuerConfigurationParserTest {
                 issuers:
                   - id: external-issuer
                     name: External Issuer
-                    jwksUri: %s
+                    jwks-file: %s
             """.formatted(getAbsolutePath(TEST_JWKS_FILE));
 
         File yamlFile = tempDir.resolve("mixed-config.yml").toFile();
@@ -481,14 +480,27 @@ class IssuerConfigurationParserTest {
     void parseIssuerConfigs_withUrlPreferredOverFile() {
         Map<String, String> properties = new LinkedHashMap<>();
         properties.put("issuer.1.name", "multi-source");
-        properties.put("issuer.1.jwks-url", getAbsolutePath(TEST_JWKS_FILE));
+        properties.put("issuer.1.jwks-url", "https://example.com/.well-known/jwks.json");
         properties.put("issuer.1.jwks-file", getAbsolutePath(TEST_JWKS_FILE));
 
         List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 
         assertEquals(1, configs.size());
-        // URL should be preferred over file (verified by code logic, not getter)
+        // URL should be preferred over file — results in HttpJwksLoaderConfig
         assertEquals("multi-source", configs.getFirst().getIssuerIdentifier());
+    }
+
+    @Test
+    void parseIssuerConfigs_withExplicitJwksTypeUrl() {
+        Map<String, String> properties = new LinkedHashMap<>();
+        properties.put("issuer.1.name", "url-typed-issuer");
+        properties.put("issuer.1.jwks-type", "url");
+        properties.put("issuer.1.jwks-url", "https://example.com/.well-known/jwks.json");
+
+        List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
+
+        assertEquals(1, configs.size());
+        assertEquals("url-typed-issuer", configs.getFirst().getIssuerIdentifier());
     }
 
     @Test

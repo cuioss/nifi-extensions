@@ -22,6 +22,9 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
         // Ensure processor is on canvas for all tests
         await processorManager.ensureProcessorOnCanvas();
 
+        // Stop processor so configure option is available in context menu
+        await processorManager.stopProcessor();
+
         // Don't check for critical errors here - authentication may have transient 401s
         await takeStartScreenshot(page, testInfo);
     });
@@ -33,16 +36,11 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
 
         const processorService = new ProcessorService(page, testInfo);
 
-        // Find existing processor on canvas (should already be present)
-        const processor = await processorService.find("processor", {
+        // Find JWT authenticator on canvas (specific to avoid matching other flow processors)
+        const processor = await processorService.findJwtAuthenticator({
             failIfNotFound: true,
         });
 
-        // Note: Processor should already exist on canvas from manual setup
-
-        // Don't check critical errors here - let individual tests handle them
-
-        // Configuration must work
         // Open configuration dialog
         const dialog = await processorService.configure(processor);
 
@@ -205,8 +203,8 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
     }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
-        // Find existing processor on canvas
-        const processor = await processorService.find("processor", {
+        // Find JWT authenticator on canvas (specific to avoid matching other flow processors)
+        const processor = await processorService.findJwtAuthenticator({
             failIfNotFound: true,
         });
 

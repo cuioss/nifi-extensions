@@ -1,0 +1,43 @@
+# This workflow runs Docker-based Java integration tests (NiFi + Keycloak)
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
+
+name: Integration Tests
+
+on:
+  push:
+    branches: [main, "feature/*", "fix/*", "chore/*", "release/*", "dependabot/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration-tests:
+    # Run on push events, OR on pull_request only if from a fork
+    # This prevents duplicate runs: push handles internal branches, PR handles forks
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run Integration Tests
+        run: ./mvnw -B --no-transfer-progress clean verify -Pintegration-tests -pl integration-testing -am
+        timeout-minutes: 12
