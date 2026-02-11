@@ -198,49 +198,55 @@ export async function configureProcessor(page, processorIdentifier, options = {}
     throw new Error('Cannot configure processor: invalid processor object or missing element');
   }
 
+  const dialogSelectors = [
+    '[role="dialog"]',
+    '.dialog',
+    '.configuration-dialog',
+    '.processor-configuration',
+    '.configure-dialog',
+    '.mat-dialog-container'
+  ];
+
   try {
-    // Right-click to open context menu with force option
-    await interactWithProcessor(page, processor, { action: 'rightclick', timeout, testInfo });
+    // Approach 1: Right-click to open context menu, then click Configure
+    let dialogFound = false;
+    try {
+      await interactWithProcessor(page, processor, { action: 'rightclick', timeout, testInfo });
 
-    // Wait for context menu and find configure option
-    const configureSelectors = [
-      'menuitem:has-text("Configure")',
-      'button:has-text("Configure")',
-      '[role="menuitem"]:has-text("Configure")',
-      '.menu-item:has-text("Configure")',
-      'li:has-text("Configure")',
-      'a:has-text("Configure")'
-    ];
+      const configureSelectors = [
+        'menuitem:has-text("Configure")',
+        'button:has-text("Configure")',
+        '[role="menuitem"]:has-text("Configure")',
+        '.menu-item:has-text("Configure")',
+        'li:has-text("Configure")',
+        'a:has-text("Configure")'
+      ];
 
-    let configureOption = null;
-    for (const selector of configureSelectors) {
-      try {
-        configureOption = page.locator(selector).first();
-        await configureOption.waitFor({ timeout: 2000 });
-        if (await configureOption.isVisible()) {
-          break;
+      for (const selector of configureSelectors) {
+        try {
+          const option = page.locator(selector).first();
+          await option.waitFor({ timeout: 2000 });
+          if (await option.isVisible()) {
+            await option.click({ force: true });
+            dialogFound = true;
+            break;
+          }
+        } catch {
+          // Try next selector
         }
-      } catch {
-        // Try next selector
       }
+    } catch {
+      // Right-click approach failed, will try double-click fallback
     }
 
-    if (!configureOption || !(await configureOption.isVisible())) {
-      throw new Error('Configure option not found in context menu');
+    // Approach 2: Double-click processor to open configuration dialog directly
+    if (!dialogFound) {
+      // Dismiss any open context menu first
+      await page.keyboard.press('Escape');
+      await interactWithProcessor(page, processor, { action: 'doubleclick', timeout, testInfo });
     }
 
-    await configureOption.click({ force: true });
-
-    // Wait for dialog using NiFi-compatible selectors
-    const dialogSelectors = [
-      '[role="dialog"]',
-      '.dialog',
-      '.configuration-dialog',
-      '.processor-configuration',
-      '.configure-dialog',
-      '.mat-dialog-container'
-    ];
-
+    // Wait for configuration dialog
     let dialog = null;
     for (const selector of dialogSelectors) {
       try {
