@@ -30,6 +30,8 @@
 
     <properties>
         <!-- Enforcer plugin configuration will be handled by parent -->
+        <maven.source.skip>true</maven.source.skip>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
     </properties>
 
     <dependencies>
