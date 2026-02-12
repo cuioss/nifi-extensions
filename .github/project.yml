@@ -24,7 +24,7 @@ pages:
   deploy-at-release: false
 
 integration-tests:
-  deploy-reports: false
+  deploy-reports: true
   maven-profiles: integration-tests
 
 github-automation:

@@ -13,13 +13,14 @@ permissions:
 jobs:
   e2e-tests:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
-    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-integration-tests.yml@1840803ffeae7eb93bf9b673c1ab9d85da2e9594 # v0.3.1
+    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-integration-tests.yml@3372b1c09d07c22ca9a74cc100094e874bd61a10 # v0.3.2
     with:
       test-type: playwright-e2e
       maven-module: e-2-e-playwright
       timeout-minutes: 20
       npm-cache: true
-      deploy-reports: false
+      reports-folder: e-2-e-playwright/target/playwright-report
+      reports-subfolder: nifi-extensions/e2e-reports
     secrets:
       RELEASE_APP_ID: ${{ secrets.RELEASE_APP_ID }}
       RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
