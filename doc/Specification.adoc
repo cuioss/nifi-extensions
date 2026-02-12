@@ -11,7 +11,7 @@ _See Requirement xref:Requirements.adoc#NIFI-AUTH-1[NIFI-AUTH-1: REST API Suppor
 This document provides the technical specification for implementing the MultiIssuerJWTTokenAuthenticator processor.
 For functional requirements, see xref:Requirements.adoc[Requirements Document].
 
-The MultiIssuerJWTTokenAuthenticator is compatible with NiFi 2.6.0 and leverages the OAuth-Sheriff library for token validation.
+The MultiIssuerJWTTokenAuthenticator is compatible with Apache NiFi and leverages the OAuth-Sheriff library for token validation.
 
 == Document Structure
 _See Requirement xref:Requirements.adoc#NIFI-AUTH-13[NIFI-AUTH-13: Documentation Requirements]_
@@ -45,7 +45,7 @@ The MultiIssuerJWTTokenAuthenticator uses the following key dependencies:
 
 === Runtime Dependencies
 
-* Apache NiFi 2.6.0
+* Apache NiFi
 * OAuth-Sheriff
 
 === Test Dependencies
@@ -139,9 +139,9 @@ image::plantuml/architecture.png[Architecture Diagram]
 
 == Implementation Notes
 
-=== NiFi 2.6.0 Compatibility
+=== NiFi Compatibility
 
-The processor is designed specifically for NiFi 2.6.0 and takes advantage of its improved:
+The processor is designed for Apache NiFi 2.x and takes advantage of its improved:
 
 * Processor API features
 * Expression language support

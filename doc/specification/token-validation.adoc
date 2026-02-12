@@ -32,7 +32,7 @@ image::token-validation-flow.png[Token Validation Flow]
 === Token Extraction
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requirements]_
 
-The processor extracts JWT tokens from flow files based on the configured token location. In NiFi 2.6.0, there are multiple possible token locations: Authorization header, custom header, or flow file content.
+The processor extracts JWT tokens from flow files based on the configured token location. There are multiple possible token locations: Authorization header, custom header, or flow file content.
 
 Token extraction is implemented in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] (`onTrigger` method), which delegates to `extractTokenFromHeader` and `extractTokenFromContent` based on the configured token location. See also link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTTokenAuthenticator.java[JWTTokenAuthenticator] for the simplified extraction-only processor.
 
@@ -55,7 +55,7 @@ For more details on the OAuth-Sheriff library, see link:../library/oauth-sheriff
 
 === How the Processor Uses OAuth-Sheriff
 
-In NiFi 2.6.0, the processor initializes and uses the OAuth-Sheriff library as follows:
+The processor initializes and uses the OAuth-Sheriff library as follows:
 
 Token validation is implemented in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] using the `TokenValidator.createAccessToken()` method from OAuth-Sheriff. For details on the TokenValidator initialization, see link:technical-components.adoc#tokenvalidator[TokenValidator Component].
 

@@ -7,6 +7,8 @@ image:https://github.com/cuioss/nifi-extensions/actions/workflows/e2e-tests.yml/
 image:https://github.com/cuioss/nifi-extensions/actions/workflows/integration-tests.yml/badge.svg[Integration Tests,link=https://github.com/cuioss/nifi-extensions/actions/workflows/integration-tests.yml]
 image:http://img.shields.io/:license-apache-blue.svg[License,link=http://www.apache.org/licenses/LICENSE-2.0.html]
 image:https://img.shields.io/maven-central/v/de.cuioss.nifi/nifi-extensions.svg?label=Maven%20Central["Maven Central", link="https://search.maven.org/artifact/de.cuioss.nifi/nifi-extensions"]
+image:https://img.shields.io/badge/Apache%20NiFi-2.7.2-1f6aa5[Apache NiFi,link=https://nifi.apache.org/]
+image:https://img.shields.io/badge/Java-21-ed8b00[Java 21,link=https://openjdk.org/projects/jdk/21/]
 
 https://sonarcloud.io/summary/new_code?id=cuioss_nifi-extensions[image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-extensions&metric=alert_status[Quality Gate Status]]
 image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-extensions&metric=ncloc[Lines of Code,link=https://sonarcloud.io/summary/new_code?id=cuioss_nifi-extensions]
@@ -14,7 +16,7 @@ image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-exten
 
 == What is it?
 
-A custom https://nifi.apache.org/[Apache NiFi] processor that validates JWT tokens against multiple identity providers in a single flow. It validates JWT signatures, checks expiration and audience claims, and supports multiple identity providers (e.g. Keycloak, Entra ID, Auth0) simultaneously -- with automatic JWKS key rotation and caching. Built for NiFi 2.6.0.
+A custom https://nifi.apache.org/[Apache NiFi] processor that validates JWT tokens against multiple identity providers in a single flow. It validates JWT signatures, checks expiration and audience claims, and supports multiple identity providers (e.g. Keycloak, Entra ID, Auth0) simultaneously -- with automatic JWKS key rotation and caching.
 
 == The Problem
 
@@ -65,7 +67,7 @@ Mount or copy the NAR into the container's extensions directory:
 # Docker Compose example
 services:
   nifi:
-    image: apache/nifi:2.6.0
+    image: apache/nifi:2.7.2
     volumes:
       - ./nifi-cuioss-nar-1.0-SNAPSHOT.nar:/opt/nifi/nifi-current/extensions/nifi-cuioss-nar.nar:ro
 ----
