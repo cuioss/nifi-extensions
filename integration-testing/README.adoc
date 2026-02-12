@@ -53,7 +53,7 @@ Provides containerized NiFi (HTTPS) and Keycloak instances for testing with real
 |`testUser` / `drowssap`
 
 |Base image
-|`apache/nifi:2.6.0`
+|`apache/nifi:2.7.2`
 
 |NAR mount
 |`target/nifi-deploy/` -> `/opt/nifi/nifi-current/nar_extensions`
@@ -202,7 +202,7 @@ All scripts are in `src/main/docker/`. They can be run from any directory.
 [source]
 ----
 src/main/docker/
-├── Dockerfile                     # NiFi container (based on apache/nifi:2.6.0)
+├── Dockerfile                     # NiFi container (based on apache/nifi:2.7.2)
 ├── docker-compose.yml             # NiFi + Keycloak orchestration
 ├── certificates/                  # Generated TLS certificates
 │   ├── keystore.p12              #   NiFi keystore

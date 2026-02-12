@@ -9,9 +9,9 @@ Reference for NiFi UI structure, selectors, and authentication flow used in E2E 
 
 == NiFi Version
 
-*Current Version*: Apache NiFi 2.6.0 (Angular Material UI)
+*Current Version*: Apache NiFi (Angular Material UI)
 
-*UI Sources*: https://github.com/apache/nifi/tree/rel/nifi-2.6.0/nifi-web/nifi-web-frontend
+*UI Sources*: https://github.com/apache/nifi/tree/main/nifi-web/nifi-web-frontend
 
 == Authentication Flow
 

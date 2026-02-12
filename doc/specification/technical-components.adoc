@@ -27,7 +27,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functio
 == Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
 
-This document describes the technical components of the MultiIssuerJWTTokenAuthenticator processor, their responsibilities, and how they interact to provide JWT token validation capabilities in NiFi. The processor is designed for NiFi 2.6.0 and leverages the OAuth-Sheriff library for token validation functionality.
+This document describes the technical components of the MultiIssuerJWTTokenAuthenticator processor, their responsibilities, and how they interact to provide JWT token validation capabilities in NiFi. The processor leverages the OAuth-Sheriff library for token validation functionality.
 
 == Processor Implementation
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
