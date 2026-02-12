@@ -1,11 +1,3 @@
-# This workflow will run end-to-end tests for the NiFi extensions project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
-
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
 name: End-to-End Tests
 
 on:
@@ -20,78 +12,14 @@ permissions:
 
 jobs:
   e2e-tests:
-
-    runs-on: ubuntu-latest
-    timeout-minutes: 20  # Increased to account for Maven-managed container lifecycle
-    # Run on push events, OR on pull_request only if from a fork
-    # This prevents duplicate runs: push handles internal branches, PR handles forks
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
-
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
-        with:
-          egress-policy: audit
-
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 0
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: maven
-
-      - name: Cache npm packages
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: ${{ runner.os }}-npm-
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('e-2-e-playwright/package-lock.json') }}
-          restore-keys: ${{ runner.os }}-playwright-
-
-      - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: cd e-2-e-playwright && npx playwright install chromium
-
-      - name: Run E2E Playwright Tests
-        run: ./mvnw -B --no-transfer-progress clean verify -Pintegration-tests -pl e-2-e-playwright -am
-        env:
-          PLAYWRIGHT_BASE_URL: https://localhost:9095/nifi
-          PLAYWRIGHT_KEYCLOAK_URL: http://localhost:9080
-        timeout-minutes: 18
-
-      - name: Generate E2E Analysis Reports
-        run: |
-          cd e-2-e-playwright
-          # Run log analysis if available
-          node scripts/log-analyzer.js --enhanced || echo "Log analysis completed with warnings"
-          # Create a simple site structure for deployment
-          mkdir -p ../target/site/e2e-reports
-          # Copy Playwright reports
-          cp -r target/playwright-report/* ../target/site/e2e-reports/ 2>/dev/null || true
-          cp -r target/videos ../target/site/e2e-reports/ 2>/dev/null || true
-          cp -r target/screenshots ../target/site/e2e-reports/ 2>/dev/null || true
-          cp -r target/test-results ../target/site/e2e-reports/test-results 2>/dev/null || true
-          # Copy container logs if available
-          cp -r ../integration-testing/src/main/docker/logs ../target/site/e2e-reports/container-logs 2>/dev/null || true
-        if: always()
-
-      - name: Deploy E2E Reports to cuioss.github.io 🚀
-        uses: JamesIves/github-pages-deploy-action@6c2d9db40f9296374acc17b90404b6e8864128c8 # v4.7.3
-        if: always() && (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/'))
-        with:
-          folder: target/site/e2e-reports
-          repository-name: cuioss/cuioss.github.io
-          target-folder: nifi-extensions/e2e-reports/${{ github.run_number }}
-          branch: main
-          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-integration-tests.yml@1840803ffeae7eb93bf9b673c1ab9d85da2e9594 # v0.3.1
+    with:
+      test-type: playwright-e2e
+      maven-module: e-2-e-playwright
+      timeout-minutes: 20
+      npm-cache: true
+      reports-subfolder: nifi-extensions/e2e-reports
+    secrets:
+      RELEASE_APP_ID: ${{ secrets.RELEASE_APP_ID }}
+      RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
