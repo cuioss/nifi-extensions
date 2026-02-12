@@ -23,6 +23,10 @@ pages:
   reference: nifi-extensions
   deploy-at-release: false
 
+integration-tests:
+  deploy-reports: true
+  maven-profiles: integration-tests
+
 github-automation:
   auto-merge-build-versions: true
   auto-merge-build-timeout: 300
