@@ -18,7 +18,7 @@ jobs:
       test-type: java-it
       maven-module: integration-testing
       timeout-minutes: 15
-      reports-subfolder: nifi-extensions/integration-tests
+      deploy-reports: false
     secrets:
       RELEASE_APP_ID: ${{ secrets.RELEASE_APP_ID }}
       RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
