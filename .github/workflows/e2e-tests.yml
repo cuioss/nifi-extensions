@@ -19,7 +19,7 @@ jobs:
       maven-module: e-2-e-playwright
       timeout-minutes: 20
       npm-cache: true
-      reports-folder: e-2-e-playwright/target/playwright-report
+      reports-folder: e-2-e-playwright/target/test-results
       reports-subfolder: nifi-extensions/e2e-reports
     secrets:
       RELEASE_APP_ID: ${{ secrets.RELEASE_APP_ID }}
