@@ -162,9 +162,10 @@ public class AuthorizationValidator {
                     .build();
         }
 
-        // Extract scopes and roles from token
-        Set<String> tokenScopes = new HashSet<>(token.getScopes());
-        Set<String> tokenRoles = new HashSet<>(token.getRoles());
+        // Extract scopes and roles from token only when needed — AccessTokenContent
+        // throws IllegalStateException when the respective claim is absent
+        Set<String> tokenScopes = hasScopeRequirements ? new HashSet<>(token.getScopes()) : Collections.emptySet();
+        Set<String> tokenRoles = hasRoleRequirements ? new HashSet<>(token.getRoles()) : Collections.emptySet();
 
         // Convert to lowercase if case-insensitive matching
         if (!config.caseSensitive) {

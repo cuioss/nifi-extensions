@@ -17,18 +17,19 @@
 package de.cuioss.nifi.processors.auth.util;
 
 import de.cuioss.nifi.processors.auth.AuthLogMessages;
-import de.cuioss.nifi.processors.auth.test.SimpleAccessTokenContent;
 import de.cuioss.nifi.processors.auth.util.AuthorizationValidator.AuthorizationConfig;
 import de.cuioss.nifi.processors.auth.util.AuthorizationValidator.AuthorizationResult;
+import de.cuioss.sheriff.oauth.core.domain.claim.ClaimValue;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.oauth.core.json.MapRepresentation;
 import de.cuioss.test.juli.LogAsserts;
 import de.cuioss.test.juli.TestLogLevel;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -42,19 +43,30 @@ import static org.junit.jupiter.api.Assertions.*;
 @EnableTestLogger
 class AuthorizationValidatorTest {
 
-    @BeforeEach
-    void setUp() {
-        // No setup needed - using AccessTokenContent.builder() directly in each test
+    /**
+     * Creates an {@link AccessTokenContent} with specific scopes and roles.
+     * Uses the public {@link AccessTokenContent} constructor directly with a
+     * claims map matching the OAuth 2.0 token structure.
+     */
+    private static AccessTokenContent createToken(List<String> scopes, List<String> roles) {
+        Map<String, ClaimValue> claims = new HashMap<>();
+        claims.put("sub", ClaimValue.forPlainString("test-user"));
+
+        if (scopes != null && !scopes.isEmpty()) {
+            claims.put("scope", ClaimValue.forList(String.join(" ", scopes), scopes));
+        }
+
+        if (roles != null && !roles.isEmpty()) {
+            claims.put("roles", ClaimValue.forList("roles", roles));
+        }
+
+        return new AccessTokenContent(claims, "test-raw-token", "at+jwt", MapRepresentation.empty());
     }
 
     @Test
     void validateWithNoRequiredScopesOrRoles() {
         // Given
-        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
-                .subject("test-user")
-                .scopes(Arrays.asList("read", "write"))
-                .roles(Arrays.asList("user", "admin"))
-                .build();
+        AccessTokenContent testToken = createToken(List.of("read", "write"), List.of("user", "admin"));
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredScopes(null)
@@ -76,11 +88,7 @@ class AuthorizationValidatorTest {
     @Test
     void validateWithMatchingScopes() {
         // Given
-        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
-                .subject("test-user")
-                .scopes(Arrays.asList("read", "write"))
-                .roles(Collections.emptyList())
-                .build();
+        AccessTokenContent testToken = createToken(List.of("read", "write"), List.of());
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredScopes(Set.of("read"))
@@ -99,11 +107,7 @@ class AuthorizationValidatorTest {
     @Test
     void validateWithMissingScopes() {
         // Given
-        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
-                .subject("test-user")
-                .scopes(Arrays.asList("read"))
-                .roles(Collections.emptyList())
-                .build();
+        AccessTokenContent testToken = createToken(List.of("read"), List.of());
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredScopes(Set.of("admin"))
@@ -123,11 +127,7 @@ class AuthorizationValidatorTest {
     @Test
     void validateWithMatchingRoles() {
         // Given
-        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
-                .subject("test-user")
-                .scopes(Collections.emptyList())
-                .roles(Arrays.asList("user", "admin"))
-                .build();
+        AccessTokenContent testToken = createToken(List.of(), List.of("user", "admin"));
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredRoles(Set.of("user"))
@@ -146,11 +146,7 @@ class AuthorizationValidatorTest {
     @Test
     void validateWithMissingRoles() {
         // Given
-        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
-                .subject("test-user")
-                .scopes(Collections.emptyList())
-                .roles(Arrays.asList("user"))
-                .build();
+        AccessTokenContent testToken = createToken(List.of(), List.of("user"));
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredRoles(Set.of("admin"))
@@ -170,11 +166,7 @@ class AuthorizationValidatorTest {
     @Test
     void validateWithRequireAllScopes() {
         // Given
-        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
-                .subject("test-user")
-                .scopes(Arrays.asList("read", "write"))
-                .roles(Collections.emptyList())
-                .build();
+        AccessTokenContent testToken = createToken(List.of("read", "write"), List.of());
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredScopes(Set.of("read", "write", "admin"))
@@ -195,11 +187,7 @@ class AuthorizationValidatorTest {
     @Test
     void validateWithRequireAllRoles() {
         // Given
-        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
-                .subject("test-user")
-                .scopes(Collections.emptyList())
-                .roles(Arrays.asList("user", "moderator"))
-                .build();
+        AccessTokenContent testToken = createToken(List.of(), List.of("user", "moderator"));
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredRoles(Set.of("user", "moderator", "admin"))
@@ -220,11 +208,7 @@ class AuthorizationValidatorTest {
     @Test
     void validateWithCaseInsensitiveScopes() {
         // Given
-        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
-                .subject("test-user")
-                .scopes(Arrays.asList("READ", "Write"))
-                .roles(Collections.emptyList())
-                .build();
+        AccessTokenContent testToken = createToken(List.of("READ", "Write"), List.of());
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredScopes(Set.of("read", "write"))
@@ -244,11 +228,7 @@ class AuthorizationValidatorTest {
     @Test
     void validateWithCaseInsensitiveRoles() {
         // Given
-        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
-                .subject("test-user")
-                .scopes(Collections.emptyList())
-                .roles(Arrays.asList("USER", "Admin"))
-                .build();
+        AccessTokenContent testToken = createToken(List.of(), List.of("USER", "Admin"));
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredRoles(Set.of("user", "admin"))
@@ -268,11 +248,7 @@ class AuthorizationValidatorTest {
     @Test
     void validateWithBothScopesAndRoles() {
         // Given
-        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
-                .subject("test-user")
-                .scopes(Arrays.asList("read", "write"))
-                .roles(Arrays.asList("user"))
-                .build();
+        AccessTokenContent testToken = createToken(List.of("read", "write"), List.of("user"));
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredScopes(Set.of("read"))
@@ -292,11 +268,7 @@ class AuthorizationValidatorTest {
     @Test
     void validateWithFailingBothScopesAndRoles() {
         // Given
-        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
-                .subject("test-user")
-                .scopes(Arrays.asList("write"))
-                .roles(Arrays.asList("guest"))
-                .build();
+        AccessTokenContent testToken = createToken(List.of("write"), List.of("guest"));
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredScopes(Set.of("admin"))
@@ -319,12 +291,8 @@ class AuthorizationValidatorTest {
 
     @Test
     void validateWithBypassAuthorization() {
-        // Given
-        AccessTokenContent testToken = new SimpleAccessTokenContent.Builder()
-                .subject("test-user")
-                .scopes(Collections.emptyList())
-                .roles(Collections.emptyList())
-                .build();
+        // Given — token with no scopes or roles
+        AccessTokenContent testToken = createToken(List.of(), List.of());
 
         AuthorizationConfig config = AuthorizationConfig.builder()
                 .requiredScopes(Set.of("admin"))

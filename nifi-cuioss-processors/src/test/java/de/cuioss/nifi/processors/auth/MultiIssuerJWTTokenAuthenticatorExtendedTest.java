@@ -16,10 +16,14 @@
  */
 package de.cuioss.nifi.processors.auth;
 
+import de.cuioss.sheriff.oauth.core.TokenType;
 import de.cuioss.sheriff.oauth.core.domain.claim.ClaimValue;
 import de.cuioss.sheriff.oauth.core.test.InMemoryJWKSFactory;
+import de.cuioss.sheriff.oauth.core.test.JwtTokenTamperingUtil;
+import de.cuioss.sheriff.oauth.core.test.JwtTokenTamperingUtil.TamperingStrategy;
 import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
 import de.cuioss.sheriff.oauth.core.test.generator.TestTokenGenerators;
+import de.cuioss.sheriff.oauth.core.test.junit.TestTokenSource;
 import de.cuioss.test.juli.LogAsserts;
 import de.cuioss.test.juli.TestLogLevel;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
@@ -34,6 +38,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -177,15 +183,13 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, AuthLogMessages.WARN.TOKEN_VALIDATION_FAILED_MSG.resolveIdentifierString());
         }
 
-        @Test
-        @DisplayName("Should validate multiple different tokens in sequence")
-        void shouldValidateMultipleTokensInSequence() {
-            for (int i = 0; i < 3; i++) {
-                TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
-                enqueueWithToken(tokenHolder.getRawToken());
-            }
+        @ParameterizedTest
+        @TestTokenSource(value = TokenType.ACCESS_TOKEN, count = 5)
+        @DisplayName("Should validate diverse access tokens")
+        void shouldValidateDiverseAccessTokens(TestTokenHolder tokenHolder) {
+            enqueueWithToken(tokenHolder.getRawToken());
 
-            testRunner.assertTransferCount(Relationships.SUCCESS, 3);
+            testRunner.assertTransferCount(Relationships.SUCCESS, 1);
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 0);
         }
 
@@ -330,6 +334,92 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
             TestTokenHolder tokenHolder2 = TestTokenGenerators.accessTokens().next();
             enqueueWithToken(tokenHolder2.getRawToken());
             testRunner.assertTransferCount(Relationships.SUCCESS, 1);
+        }
+    }
+
+    @Nested
+    @DisplayName("Tampered Token Tests")
+    class TamperedTokenTests {
+
+        @ParameterizedTest
+        @EnumSource(TamperingStrategy.class)
+        @DisplayName("Should reject tampered token")
+        void shouldRejectTamperedToken(TamperingStrategy strategy) {
+            TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
+            String validToken = tokenHolder.getRawToken();
+
+            String tamperedToken = JwtTokenTamperingUtil.applyTamperingStrategy(validToken, strategy);
+            enqueueWithToken(tamperedToken);
+
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+        }
+
+        @Test
+        @DisplayName("Should reject token with corrupted signature")
+        void shouldRejectCorruptedSignature() {
+            TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
+            String tamperedToken = JwtTokenTamperingUtil.applyTamperingStrategy(
+                    tokenHolder.getRawToken(), TamperingStrategy.MODIFY_SIGNATURE_LAST_CHAR);
+
+            enqueueWithToken(tamperedToken);
+
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN,
+                    AuthLogMessages.WARN.TOKEN_VALIDATION_FAILED_MSG.resolveIdentifierString());
+        }
+
+        @Test
+        @DisplayName("Should reject token with algorithm 'none' attack")
+        void shouldRejectAlgorithmNoneAttack() {
+            TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
+            String tamperedToken = JwtTokenTamperingUtil.applyTamperingStrategy(
+                    tokenHolder.getRawToken(), TamperingStrategy.ALGORITHM_NONE);
+
+            enqueueWithToken(tamperedToken);
+
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+        }
+
+        @Test
+        @DisplayName("Should reject unsigned token")
+        void shouldRejectUnsignedToken() {
+            TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
+            String tamperedToken = JwtTokenTamperingUtil.applyTamperingStrategy(
+                    tokenHolder.getRawToken(), TamperingStrategy.REMOVE_SIGNATURE);
+
+            enqueueWithToken(tamperedToken);
+
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+        }
+
+        @Test
+        @DisplayName("Should reject token with invalid key ID")
+        void shouldRejectInvalidKeyId() {
+            TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
+            String tamperedToken = JwtTokenTamperingUtil.applyTamperingStrategy(
+                    tokenHolder.getRawToken(), TamperingStrategy.INVALID_KID);
+
+            enqueueWithToken(tamperedToken);
+
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+        }
+
+        @Test
+        @DisplayName("Should reject token with different signature")
+        void shouldRejectDifferentSignature() {
+            TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
+            String tamperedToken = JwtTokenTamperingUtil.applyTamperingStrategy(
+                    tokenHolder.getRawToken(), TamperingStrategy.DIFFERENT_SIGNATURE);
+
+            enqueueWithToken(tamperedToken);
+
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
         }
     }
 
