@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   analysis:
-    uses: cuioss/cuioss-organization/.github/workflows/reusable-scorecards.yml@71e589e53342c823c05a28bf7977675bc7dfcbb1 # v0.3.2
+    uses: cuioss/cuioss-organization/.github/workflows/reusable-scorecards.yml@d511175c0f6923f9de14c1c15830f2127b41e154 # v0.3.3
     permissions:
       security-events: write
       id-token: write
