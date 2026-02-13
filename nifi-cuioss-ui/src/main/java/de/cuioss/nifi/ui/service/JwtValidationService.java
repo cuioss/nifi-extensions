@@ -16,8 +16,8 @@
  */
 package de.cuioss.nifi.ui.service;
 
-import de.cuioss.nifi.processors.auth.config.ConfigurationManager;
-import de.cuioss.nifi.processors.auth.config.IssuerConfigurationParser;
+import de.cuioss.nifi.jwt.config.ConfigurationManager;
+import de.cuioss.nifi.jwt.config.IssuerConfigurationParser;
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.util.ProcessorConfigReader;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;

@@ -42,6 +42,7 @@
     </developers>
 
     <modules>
+        <module>nifi-cuioss-common</module>
         <module>nifi-cuioss-processors</module>
         <module>nifi-cuioss-ui</module>
         <module>nifi-cuioss-nar</module>
@@ -315,6 +316,11 @@
             <!-- outgoing-->
             <dependency>
                 <groupId>de.cuioss.nifi</groupId>
+                <artifactId>nifi-cuioss-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>de.cuioss.nifi</groupId>
                 <artifactId>nifi-cuioss-processors</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -476,6 +482,7 @@
         <profile>
             <id>sonar</id>
             <modules>
+                <module>nifi-cuioss-common</module>
                 <module>nifi-cuioss-processors</module>
                 <module>nifi-cuioss-ui</module>
                 <module>nifi-cuioss-nar</module>

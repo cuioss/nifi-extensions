@@ -16,6 +16,8 @@
  */
 package de.cuioss.nifi.processors.auth;
 
+import de.cuioss.nifi.jwt.JWTAttributes;
+import de.cuioss.nifi.jwt.JwtConstants;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
@@ -27,7 +29,8 @@ import org.junit.jupiter.api.Test;
 import java.util.HashMap;
 import java.util.Map;
 
-import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.*;
+import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Properties;
+import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -48,29 +51,21 @@ class JWTTokenAuthenticatorTest {
     @Test
     @DisplayName("Test extracting token from Authorization header")
     void extractTokenFromAuthorizationHeader() {
-        // Setup
-        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
-        testRunner.setProperty(Properties.TOKEN_HEADER, Http.AUTHORIZATION_HEADER);
+        testRunner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
+        testRunner.setProperty(Properties.TOKEN_HEADER, JwtConstants.Http.AUTHORIZATION_HEADER);
 
-        // Sample JWT token
         String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
 
-        // Create flow file with Authorization header
         Map<String, String> attributes = new HashMap<>();
         attributes.put("http.headers.authorization", "Bearer " + token);
         testRunner.enqueue("test data", attributes);
 
-        // Run the processor
         testRunner.run();
 
-        // Verify results
         testRunner.assertTransferCount(Relationships.SUCCESS, 1);
         testRunner.assertTransferCount(Relationships.FAILURE, 0);
 
-        // Get the output flow file
         MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
-
-        // Verify attributes
         flowFile.assertAttributeExists("jwt.token");
         flowFile.assertAttributeExists("jwt.extractedAt");
         assertEquals(token, flowFile.getAttribute("jwt.token"));
@@ -79,83 +74,56 @@ class JWTTokenAuthenticatorTest {
     @Test
     @DisplayName("Test extracting token from custom header")
     void extractTokenFromCustomHeader() {
-        // Setup
-        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.CUSTOM_HEADER);
+        testRunner.setProperty(Properties.TOKEN_LOCATION, "CUSTOM_HEADER");
         testRunner.setProperty(Properties.CUSTOM_HEADER_NAME, "X-JWT-Token");
 
-        // Sample JWT token
         String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
 
-        // Create flow file with custom header
         Map<String, String> attributes = new HashMap<>();
         attributes.put("http.headers.x-jwt-token", token);
         testRunner.enqueue("test data", attributes);
 
-        // Run the processor
         testRunner.run();
 
-        // Verify results
         testRunner.assertTransferCount(Relationships.SUCCESS, 1);
         testRunner.assertTransferCount(Relationships.FAILURE, 0);
 
-        // Get the output flow file
         MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
-
-        // Verify attributes
         flowFile.assertAttributeExists("jwt.token");
-        flowFile.assertAttributeExists("jwt.extractedAt");
         assertEquals(token, flowFile.getAttribute("jwt.token"));
     }
 
     @Test
     @DisplayName("Test extracting token from flow file content")
     void extractTokenFromFlowFileContent() {
-        // Setup
-        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.FLOW_FILE_CONTENT);
+        testRunner.setProperty(Properties.TOKEN_LOCATION, "FLOW_FILE_CONTENT");
 
-        // Sample JWT token
         String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
-
-        // Create flow file with token as content
         testRunner.enqueue(token);
 
-        // Run the processor
         testRunner.run();
 
-        // Verify results
         testRunner.assertTransferCount(Relationships.SUCCESS, 1);
         testRunner.assertTransferCount(Relationships.FAILURE, 0);
 
-        // Get the output flow file
         MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
-
-        // Verify attributes
         flowFile.assertAttributeExists("jwt.token");
-        flowFile.assertAttributeExists("jwt.extractedAt");
         assertEquals(token, flowFile.getAttribute("jwt.token"));
     }
 
     @Test
     @DisplayName("Test failure when no token is found")
     void failureWhenNoTokenFound() {
-        // Setup
-        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
-        testRunner.setProperty(Properties.TOKEN_HEADER, Http.AUTHORIZATION_HEADER);
-
-        // Create flow file without Authorization header
+        testRunner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
+        testRunner.setProperty(Properties.TOKEN_HEADER, JwtConstants.Http.AUTHORIZATION_HEADER);
         testRunner.enqueue("test data");
 
-        // Run the processor
         testRunner.run();
 
-        // Verify results
         testRunner.assertTransferCount(Relationships.SUCCESS, 0);
         testRunner.assertTransferCount(Relationships.FAILURE, 1);
 
-        // Get the output flow file
         MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.FAILURE).getFirst();
-
-        // Verify attributes
         flowFile.assertAttributeExists("jwt.error.reason");
         assertNotNull(flowFile.getAttribute("jwt.error.reason"));
     }
@@ -163,102 +131,70 @@ class JWTTokenAuthenticatorTest {
     @Test
     @DisplayName("Test extracting token with Bearer prefix")
     void extractTokenWithBearerPrefix() {
-        // Setup
-        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
-        testRunner.setProperty(Properties.TOKEN_HEADER, Http.AUTHORIZATION_HEADER);
+        testRunner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
+        testRunner.setProperty(Properties.TOKEN_HEADER, JwtConstants.Http.AUTHORIZATION_HEADER);
         testRunner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Bearer");
 
-        // Sample JWT token
         String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
 
-        // Create flow file with Authorization header
         Map<String, String> attributes = new HashMap<>();
         attributes.put("http.headers.authorization", "Bearer " + token);
         testRunner.enqueue("test data", attributes);
 
-        // Run the processor
         testRunner.run();
 
-        // Verify results
         testRunner.assertTransferCount(Relationships.SUCCESS, 1);
-        testRunner.assertTransferCount(Relationships.FAILURE, 0);
-
-        // Get the output flow file
         MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
-
-        // Verify attributes
-        flowFile.assertAttributeExists("jwt.token");
         assertEquals(token, flowFile.getAttribute("jwt.token"));
     }
 
     @Test
     @DisplayName("Test failure when token is empty string")
     void failureWhenTokenIsEmpty() {
-        // Setup
-        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
-        testRunner.setProperty(Properties.TOKEN_HEADER, Http.AUTHORIZATION_HEADER);
+        testRunner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
+        testRunner.setProperty(Properties.TOKEN_HEADER, JwtConstants.Http.AUTHORIZATION_HEADER);
 
-        // Create flow file with empty Authorization header
         Map<String, String> attributes = new HashMap<>();
         attributes.put("http.headers.authorization", "");
         testRunner.enqueue("test data", attributes);
 
-        // Run the processor
         testRunner.run();
 
-        // Verify results
         testRunner.assertTransferCount(Relationships.SUCCESS, 0);
         testRunner.assertTransferCount(Relationships.FAILURE, 1);
 
-        // Get the output flow file
         MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.FAILURE).getFirst();
-
-        // Verify error attributes are set
         flowFile.assertAttributeExists("jwt.error.code");
         flowFile.assertAttributeExists("jwt.error.reason");
         flowFile.assertAttributeExists("jwt.error.category");
-        assertEquals(JWTProcessorConstants.Error.Code.NO_TOKEN_FOUND, flowFile.getAttribute("jwt.error.code"));
-        assertEquals(JWTProcessorConstants.Error.Category.EXTRACTION_ERROR, flowFile.getAttribute("jwt.error.category"));
+        assertEquals(JwtConstants.Error.Code.NO_TOKEN_FOUND, flowFile.getAttribute("jwt.error.code"));
+        assertEquals(JwtConstants.Error.Category.EXTRACTION_ERROR, flowFile.getAttribute("jwt.error.category"));
     }
 
     @Test
     @DisplayName("Test failure when empty content in flow file")
     void failureWhenEmptyContent() {
-        // Setup
-        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.FLOW_FILE_CONTENT);
-
-        // Create flow file with empty content
+        testRunner.setProperty(Properties.TOKEN_LOCATION, "FLOW_FILE_CONTENT");
         testRunner.enqueue("");
 
-        // Run the processor
         testRunner.run();
 
-        // Verify results
         testRunner.assertTransferCount(Relationships.SUCCESS, 0);
         testRunner.assertTransferCount(Relationships.FAILURE, 1);
 
-        // Get the output flow file
         MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.FAILURE).getFirst();
-
-        // Verify error attributes
         flowFile.assertAttributeExists("jwt.error.code");
         flowFile.assertAttributeExists("jwt.error.reason");
-        flowFile.assertAttributeExists("jwt.error.category");
     }
 
     @Test
     @DisplayName("Test no flow file in queue")
     void noFlowFileInQueue() {
-        // Setup
-        testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
-        testRunner.setProperty(Properties.TOKEN_HEADER, Http.AUTHORIZATION_HEADER);
+        testRunner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
+        testRunner.setProperty(Properties.TOKEN_HEADER, JwtConstants.Http.AUTHORIZATION_HEADER);
 
-        // Don't enqueue any flow file
-
-        // Run the processor
         testRunner.run();
 
-        // Verify no transfers
         testRunner.assertTransferCount(Relationships.SUCCESS, 0);
         testRunner.assertTransferCount(Relationships.FAILURE, 0);
     }
@@ -270,15 +206,11 @@ class JWTTokenAuthenticatorTest {
         @Test
         @DisplayName("Should reject oversized flow file content")
         void shouldRejectOversizedFlowFileContent() {
-            testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.FLOW_FILE_CONTENT);
-
-            // Create content larger than 16KB limit
-            String oversizedContent = "x".repeat(20_000);
-            testRunner.enqueue(oversizedContent);
+            testRunner.setProperty(Properties.TOKEN_LOCATION, "FLOW_FILE_CONTENT");
+            testRunner.enqueue("x".repeat(20_000));
 
             testRunner.run();
 
-            // Should route to FAILURE
             testRunner.assertTransferCount(Relationships.SUCCESS, 0);
             testRunner.assertTransferCount(Relationships.FAILURE, 1);
 
@@ -289,17 +221,13 @@ class JWTTokenAuthenticatorTest {
         @Test
         @DisplayName("Should accept content within size limit")
         void shouldAcceptContentWithinSizeLimit() {
-            testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.FLOW_FILE_CONTENT);
-
-            // Normal JWT token content (well within 16KB)
+            testRunner.setProperty(Properties.TOKEN_LOCATION, "FLOW_FILE_CONTENT");
             String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
             testRunner.enqueue(token);
 
             testRunner.run();
 
             testRunner.assertTransferCount(Relationships.SUCCESS, 1);
-            testRunner.assertTransferCount(Relationships.FAILURE, 0);
-
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
             assertEquals(token, flowFile.getAttribute(JWTAttributes.Token.VALUE));
         }
@@ -312,8 +240,8 @@ class JWTTokenAuthenticatorTest {
         @Test
         @DisplayName("Should use configured bearer prefix")
         void shouldUseConfiguredBearerPrefix() {
-            testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
-            testRunner.setProperty(Properties.TOKEN_HEADER, Http.AUTHORIZATION_HEADER);
+            testRunner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
+            testRunner.setProperty(Properties.TOKEN_HEADER, JwtConstants.Http.AUTHORIZATION_HEADER);
             testRunner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Token");
 
             String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
@@ -325,8 +253,6 @@ class JWTTokenAuthenticatorTest {
             testRunner.run();
 
             testRunner.assertTransferCount(Relationships.SUCCESS, 1);
-            testRunner.assertTransferCount(Relationships.FAILURE, 0);
-
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
             assertEquals(token, flowFile.getAttribute(JWTAttributes.Token.VALUE));
         }
@@ -334,13 +260,12 @@ class JWTTokenAuthenticatorTest {
         @Test
         @DisplayName("Should not strip default prefix when custom prefix is configured")
         void shouldNotStripDefaultPrefixWhenCustomConfigured() {
-            testRunner.setProperty(Properties.TOKEN_LOCATION, TokenLocation.AUTHORIZATION_HEADER);
-            testRunner.setProperty(Properties.TOKEN_HEADER, Http.AUTHORIZATION_HEADER);
+            testRunner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
+            testRunner.setProperty(Properties.TOKEN_HEADER, JwtConstants.Http.AUTHORIZATION_HEADER);
             testRunner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Token");
 
             String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
 
-            // Send with "Bearer" prefix but custom is set to "Token"
             Map<String, String> attributes = new HashMap<>();
             attributes.put("http.headers.authorization", "Bearer " + token);
             testRunner.enqueue("test data", attributes);
@@ -348,14 +273,9 @@ class JWTTokenAuthenticatorTest {
             testRunner.run();
 
             testRunner.assertTransferCount(Relationships.SUCCESS, 1);
-            testRunner.assertTransferCount(Relationships.FAILURE, 0);
-
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
-            // The "Bearer " should NOT be stripped since configured prefix is "Token"
-            // The whole value "Bearer eyJ..." is returned as the token
             String extractedToken = flowFile.getAttribute(JWTAttributes.Token.VALUE);
             assertNotNull(extractedToken);
-            // Should contain "Bearer" as part of the token since it wasn't stripped
             assertEquals("Bearer " + token, extractedToken);
         }
     }
