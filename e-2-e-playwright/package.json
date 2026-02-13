@@ -27,11 +27,13 @@
     "format:check": "prettier --check 'tests/**/*.js'"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.10.1",
-    "@playwright/test": "^1.58.1",
-    "eslint": "^8.57.1",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-security": "^2.1.1",
-    "prettier": "^3.4.2"
+    "@axe-core/playwright": "^4.11.1",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.58.2",
+    "eslint": "^10.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-security": "^3.0.1",
+    "globals": "^17.3.0",
+    "prettier": "^3.8.1"
   }
 }

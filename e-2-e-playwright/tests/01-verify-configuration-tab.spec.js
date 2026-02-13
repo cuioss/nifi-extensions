@@ -174,9 +174,7 @@ test.describe("Configuration Tab", () => {
         for (const field of issuerFormFields) {
             let input;
             if (field.index !== undefined) {
-                input = customUIFrame
-                    .locator(field.selector)
-                    .nth(field.index);
+                input = customUIFrame.locator(field.selector).nth(field.index);
             } else {
                 input = customUIFrame.locator(field.selector).first();
             }
@@ -208,7 +206,7 @@ test.describe("Configuration Tab", () => {
                 )
                 .first();
             await expect(savedIssuer).toBeVisible({ timeout: 5000 });
-        } catch (error) {
+        } catch (_error) {
             // If not immediately visible, verify the save button worked
             try {
                 const addAnotherButton = customUIFrame.getByRole("button", {
@@ -217,7 +215,7 @@ test.describe("Configuration Tab", () => {
                 await expect(addAnotherButton).toBeVisible({
                     timeout: 5000,
                 });
-            } catch (e) {
+            } catch (_e) {
                 // Issuer configuration operation completed
             }
         }

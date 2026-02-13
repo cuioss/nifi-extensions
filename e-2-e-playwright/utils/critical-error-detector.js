@@ -482,6 +482,7 @@ export async function checkCriticalErrors(page, testInfo) {
             "PRECONDITION FAILED: NiFi service is not accessible - cannot perform critical error checks. " +
                 "Make sure NiFi is running at https://localhost:9095/nifi. " +
                 `Error: ${error.message}`,
+            { cause: error },
         );
     }
 

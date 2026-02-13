@@ -42,9 +42,7 @@ test.describe("Metrics Tab", () => {
         await expect(metricsTabContent).toBeVisible({ timeout: 5000 });
 
         // Check for actual metrics content
-        const metricsContent = customUIFrame.locator(
-            "#jwt-metrics-content",
-        );
+        const metricsContent = customUIFrame.locator("#jwt-metrics-content");
 
         // Wait for metrics content to be visible
         await expect(metricsContent).toBeVisible({ timeout: 10000 });
@@ -160,9 +158,7 @@ test.describe("Metrics Tab", () => {
         ];
 
         for (const metric of metricsElements) {
-            const metricElement = customUIFrame.locator(
-                `h5:text("${metric}")`,
-            );
+            const metricElement = customUIFrame.locator(`h5:text("${metric}")`);
             await expect(metricElement).toBeVisible({ timeout: 5000 });
         }
     });
@@ -240,12 +236,8 @@ test.describe("Metrics Tab", () => {
         await expect(exportOptions).toBeVisible({ timeout: 5000 });
 
         // Check that export format options are available
-        const csvButton = customUIFrame.locator(
-            '[data-testid="export-csv"]',
-        );
-        const jsonButton = customUIFrame.locator(
-            '[data-testid="export-json"]',
-        );
+        const csvButton = customUIFrame.locator('[data-testid="export-csv"]');
+        const jsonButton = customUIFrame.locator('[data-testid="export-json"]');
         const prometheusButton = customUIFrame.locator(
             '[data-testid="export-prometheus"]',
         );
@@ -269,7 +261,7 @@ test.describe("Metrics Tab", () => {
             // Verify download properties
             const filename = download.suggestedFilename();
             expect(filename).toMatch(/jwt-metrics.*\.json/i);
-        } catch (downloadError) {
+        } catch (_downloadError) {
             // If download doesn't trigger (e.g., in headless mode), just verify the options work
         }
     });

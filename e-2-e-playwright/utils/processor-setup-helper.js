@@ -20,7 +20,7 @@ import { testLogger } from './test-logger.js';
 export async function setupMultiIssuerJWTAuthenticator(page, options = {}) {
   const { 
     removeFirst = false, 
-    position = { x: 400, y: 200 } 
+    _position = { x: 400, y: 200 }
   } = options;
 
   testLogger.info('Processor','Setting up MultiIssuerJWTTokenAuthenticator on canvas...');
