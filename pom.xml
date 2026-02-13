@@ -137,7 +137,7 @@
         <version.cui.test.generator>2.5.2</version.cui.test.generator>
         <version.cui.test.value.objects>2.0.1</version.cui.test.value.objects>
         <version.cui.test.mockwebserver>1.5.0</version.cui.test.mockwebserver>
-        <version.cui.java.tools>2.6.1</version.cui.java.tools>
+        <version.cui.java.tools>2.6.2</version.cui.java.tools>
         <version.cui.http>0.3.0</version.cui.http>
         <version.oauth-sheriff>0.3.0</version.oauth-sheriff>
         <version.cui.test.keycloak.integration>1.0.1</version.cui.test.keycloak.integration>
