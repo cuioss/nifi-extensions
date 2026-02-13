@@ -22,15 +22,11 @@
         <artifactId>nifi-extensions</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
-    <artifactId>nifi-cuioss-processors</artifactId>
-    <name>nifi-cuioss-processors</name>
+    <artifactId>nifi-cuioss-common</artifactId>
+    <name>nifi-cuioss-common</name>
     <packaging>jar</packaging>
 
     <dependencies>
-        <dependency>
-            <groupId>de.cuioss.nifi</groupId>
-            <artifactId>nifi-cuioss-common</artifactId>
-        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -40,15 +36,45 @@
             <artifactId>jspecify</artifactId>
         </dependency>
         <dependency>
+            <groupId>de.cuioss</groupId>
+            <artifactId>cui-java-tools</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>de.cuioss.sheriff.oauth</groupId>
+            <artifactId>oauth-sheriff-core</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        <!-- Implementation of jakarta.json-api: Used by NiFiConfigReader and UI servlets -->
+        <dependency>
+            <groupId>org.eclipse.parsson</groupId>
+            <artifactId>parsson</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.json</groupId>
+            <artifactId>jakarta.json-api</artifactId>
+        </dependency>
+        <!-- YAML parsing support -->
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.apache.nifi</groupId>
             <artifactId>nifi-api</artifactId>
             <scope>provided</scope>
         </dependency>
+        <!-- HTTP client for NiFi config reader -->
+        <dependency>
+            <groupId>de.cuioss</groupId>
+            <artifactId>cui-http</artifactId>
+        </dependency>
+
+        <!-- Test Dependencies -->
         <dependency>
             <groupId>org.apache.nifi</groupId>
             <artifactId>nifi-mock</artifactId>
         </dependency>
-        <!-- Required by oauth-sheriff-core generators for JWT token creation in tests -->
         <dependency>
             <groupId>de.cuioss.sheriff.oauth</groupId>
             <artifactId>oauth-sheriff-core</artifactId>
@@ -81,11 +107,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
             <scope>test</scope>
@@ -93,6 +114,11 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -109,6 +135,12 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
+                <configuration>
+                    <ignoredDependencies>
+                        <!-- Required by oauth-sheriff-core at runtime but not directly referenced in code -->
+                        <ignoredDependency>org.eclipse.parsson:parsson</ignoredDependency>
+                    </ignoredDependencies>
+                </configuration>
             </plugin>
         </plugins>
     </build>
