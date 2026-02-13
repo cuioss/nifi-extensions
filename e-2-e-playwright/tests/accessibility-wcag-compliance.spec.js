@@ -77,6 +77,7 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
                     "3. Re-run the accessibility tests\n\n" +
                     "Original error: " +
                     error.message,
+                { cause: error },
             );
         }
     });
@@ -90,7 +91,7 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
                 await accessibilityHelper.page.evaluate(() => true);
                 return accessibilityHelper;
             }
-        } catch (error) {
+        } catch (_error) {
             console.log(
                 "Existing accessibility helper is invalid, creating new one",
             );

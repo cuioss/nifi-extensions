@@ -207,7 +207,7 @@ export class AuthService {
           : `Login failed for user: ${CONSTANTS.AUTH.USERNAME}`;
 
         testLogger.error('Auth',errorMsg);
-        throw new Error(errorMsg);
+        throw new Error(errorMsg, { cause: error });
       }
       })();
       const duration = Date.now() - start;

@@ -344,7 +344,7 @@ export class AccessibilityHelper {
         // Wait for component to be visible with a timeout
         try {
             await component.waitFor({ state: "visible", timeout: 5000 });
-        } catch (error) {
+        } catch (_error) {
             // If component is not visible, check if it might be in a hidden tab
             const elementExists = (await component.count()) > 0;
 
@@ -456,7 +456,7 @@ export class AccessibilityHelper {
         }
 
         const results = [];
-        let focusableElements = [];
+        let focusableElements;
 
         try {
             // Check if we're in a frame context
