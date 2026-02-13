@@ -13,7 +13,7 @@ permissions:
 jobs:
   e2e-tests:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
-    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-integration-tests.yml@45ce1276fe750b22df004f14c26f98cb65c02a01 # v0.3.7
+    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-integration-tests.yml@b1762e6052dfd4cfbb4a05d85804ec0a59e272d0 # v0.3.8
     with:
       report-name: e-2-e-playwright
       maven-args-input: verify -Pintegration-tests -pl e-2-e-playwright -am
