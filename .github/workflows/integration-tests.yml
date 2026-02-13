@@ -16,7 +16,7 @@ jobs:
     uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-integration-tests.yml@45ce1276fe750b22df004f14c26f98cb65c02a01 # v0.3.7
     with:
       report-name: integration-testing
-      maven-args: verify -Pintegration-tests -pl integration-testing -am
+      maven-args-input: verify -Pintegration-tests -pl integration-testing -am
       timeout-minutes: 15
       reports-folder: integration-testing/target/failsafe-reports
       report-logs: |
