@@ -13,7 +13,7 @@ permissions:
 jobs:
   integration-tests:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
-    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-integration-tests.yml@2b65864a7014d3e0b24af7d787ffcfc3f0dcc448 # v0.3.5
+    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-integration-tests.yml@3432f9e01cf089f24d3718468d28c5fbd9fe78d9 # v0.3.6
     with:
       report-name: integration-testing
       maven-args: verify -Pintegration-tests -pl integration-testing -am
