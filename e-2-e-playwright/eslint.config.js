@@ -48,17 +48,4 @@ export default [
       "security/detect-non-literal-regexp": "warn",
     },
   },
-  {
-    files: ["tests/**/*.spec.js", "tests/**/*.test.js"],
-    rules: {
-      "no-unused-vars": [
-        "warn",
-        {
-          argsIgnorePattern: "^_",
-          varsIgnorePattern: "^_",
-          caughtErrorsIgnorePattern: "^_",
-        },
-      ],
-    },
-  },
 ];
