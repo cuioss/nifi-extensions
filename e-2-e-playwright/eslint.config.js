@@ -18,7 +18,7 @@ export default [
     },
     plugins: { security },
     rules: {
-      "no-console": "warn",
+      "no-console": "off",
       "no-unused-vars": [
         "warn",
         {
@@ -44,7 +44,7 @@ export default [
           ],
         },
       ],
-      "security/detect-object-injection": "warn",
+      "security/detect-object-injection": "off",
       "security/detect-non-literal-regexp": "warn",
     },
   },

@@ -80,11 +80,11 @@ export const accessibilityTest = test.extend({
                                 `${v.id}: ${v.description} (${v.nodes.length} elements)`,
                         )
                         .join("\n");
-                    // eslint-disable-next-line no-console
+                     
                     console.warn("Accessibility issues found:\n" + summary);
                 }
             } catch (error) {
-                // eslint-disable-next-line no-console
+                 
                 console.warn("Accessibility check failed:", error.message);
             }
         });
