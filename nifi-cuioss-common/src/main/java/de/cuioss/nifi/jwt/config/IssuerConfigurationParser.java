@@ -65,6 +65,12 @@ public class IssuerConfigurationParser {
 
     public static List<IssuerConfig> parseIssuerConfigs(Map<String, String> properties,
             ConfigurationManager configurationManager) {
+        return parseIssuerConfigs(properties, configurationManager, null);
+    }
+
+    public static List<IssuerConfig> parseIssuerConfigs(Map<String, String> properties,
+            ConfigurationManager configurationManager,
+            @Nullable ParserConfig parserConfig) {
         Objects.requireNonNull(properties, "properties must not be null");
         Map<String, Map<String, String>> issuerPropertiesMap = new HashMap<>();
 
@@ -73,7 +79,7 @@ public class IssuerConfigurationParser {
         }
 
         loadUIConfigurations(properties, issuerPropertiesMap);
-        return processIssuerConfigurations(issuerPropertiesMap, properties);
+        return processIssuerConfigurations(issuerPropertiesMap, properties, parserConfig);
     }
 
     public static ParserConfig parseParserConfig(Map<String, String> properties) {
@@ -131,13 +137,14 @@ public class IssuerConfigurationParser {
     }
 
     private static List<IssuerConfig> processIssuerConfigurations(
-            Map<String, Map<String, String>> issuerPropertiesMap, Map<String, String> globalProperties) {
+            Map<String, Map<String, String>> issuerPropertiesMap, Map<String, String> globalProperties,
+            @Nullable ParserConfig parserConfig) {
         List<IssuerConfig> issuerConfigs = new ArrayList<>();
         for (Map.Entry<String, Map<String, String>> entry : issuerPropertiesMap.entrySet()) {
             String issuerId = entry.getKey();
             Map<String, String> issuerProps = entry.getValue();
             try {
-                createIssuerConfig(issuerId, issuerProps, globalProperties).ifPresent(issuerConfig -> {
+                createIssuerConfig(issuerId, issuerProps, globalProperties, parserConfig).ifPresent(issuerConfig -> {
                     issuerConfigs.add(issuerConfig);
                     LOGGER.info(JwtLogMessages.INFO.CREATED_ISSUER_CONFIG_FOR, sanitizeLogValue(issuerId));
                 });
@@ -159,7 +166,8 @@ public class IssuerConfigurationParser {
     }
 
     private static Optional<IssuerConfig> createIssuerConfig(String issuerId,
-            Map<String, String> issuerProps, Map<String, String> globalProperties) {
+            Map<String, String> issuerProps, Map<String, String> globalProperties,
+            @Nullable ParserConfig parserConfig) {
         String enabledValue = issuerProps.get("enabled");
         if ("false".equalsIgnoreCase(enabledValue)) {
             LOGGER.info(JwtLogMessages.INFO.ISSUER_DISABLED, sanitizeLogValue(issuerId));
@@ -180,6 +188,9 @@ public class IssuerConfigurationParser {
             var httpConfigBuilder = HttpJwksLoaderConfig.builder()
                     .jwksUrl(jwksSource.get())
                     .issuerIdentifier(issuerName.get());
+            if (parserConfig != null) {
+                httpConfigBuilder.parserConfig(parserConfig);
+            }
             applyGlobalJwksSettings(httpConfigBuilder, globalProperties);
             builder.httpJwksLoaderConfig(httpConfigBuilder.build());
         } else {

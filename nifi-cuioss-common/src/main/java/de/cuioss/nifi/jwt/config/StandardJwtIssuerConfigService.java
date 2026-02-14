@@ -39,28 +39,23 @@ import org.apache.nifi.processor.util.StandardValidators;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
-import java.util.concurrent.*;
 
 /**
  * Standard implementation of {@link JwtIssuerConfigService}.
  * <p>
- * Manages the lifecycle of a {@link TokenValidator}, including NAR classloader
- * workarounds required by the dsl-json ServiceLoader mechanism, JWKS key refresh,
- * and per-issuer authorization configuration.
+ * Manages the lifecycle of a {@link TokenValidator}, including JWKS key refresh
+ * and per-issuer configuration. During {@link #onEnabled(ConfigurationContext)},
+ * the NAR classloader is temporarily set as context classloader so that
+ * {@code ServiceLoader} finds dsl-json converters for {@link ParserConfig} initialization.
+ * The pre-initialized {@code ParserConfig} is then passed to each
+ * {@link de.cuioss.sheriff.oauth.core.jwks.http.HttpJwksLoaderConfig}, avoiding
+ * any classloader issues on async threads.
  * <p>
- * <b>Classloader workarounds (initialization-only):</b>
- * <ol>
- *   <li>{@code Thread.currentThread().setContextClassLoader(getClass().getClassLoader())}
- *       — sets NAR classloader so {@code ServiceLoader} finds dsl-json converters during init</li>
- *   <li>{@code parserConfig.getDslJson()} eager call — prevents lazy init on a ForkJoinPool thread</li>
- *   <li>{@link #prepareForkJoinPoolClassLoader()} — pre-warms {@code ForkJoinPool.commonPool()} threads
- *       with the NAR classloader for {@code HttpJwksLoader.initJWKSLoader()}</li>
- * </ol>
- * Runtime {@code validateToken()} calls do NOT use ServiceLoader or ForkJoinPool.
+ * Runtime {@code validateToken()} calls do NOT use ServiceLoader.
  * <p>
  * Metrics are tracked by the {@link TokenValidator} internally via its
- * {@link SecurityEventCounter} and performance monitor. This class reads from
- * those built-in facilities rather than duplicating the tracking.
+ * {@link SecurityEventCounter}. This class reads from those built-in facilities
+ * rather than duplicating the tracking.
  *
  * @see JwtIssuerConfigService
  */
@@ -168,31 +163,26 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
     public void onEnabled(ConfigurationContext context) {
         ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         try {
-            // Layer 1: Set NAR classloader so ServiceLoader finds dsl-json converters
+            // Set NAR classloader so ServiceLoader finds dsl-json converters during ParserConfig init
             Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
 
             configurationManager = new ConfigurationManager();
             authenticationConfig = buildAuthenticationConfig(context);
             Map<String, String> properties = convertContextToProperties(context);
 
-            // Parse issuer configurations
+            // Parse parser config and eagerly initialize dsl-json while NAR classloader is active
+            ParserConfig parserConfig = IssuerConfigurationParser.parseParserConfig(properties);
+            parserConfig.getDslJson();
+
+            // Parse issuer configurations, passing parserConfig so each HttpJwksLoaderConfig
+            // reuses the pre-initialized ParserConfig (avoids ServiceLoader on ForkJoinPool threads)
             List<IssuerConfig> issuerConfigs = IssuerConfigurationParser.parseIssuerConfigs(
-                    properties, configurationManager);
+                    properties, configurationManager, parserConfig);
 
             if (issuerConfigs.isEmpty()) {
                 LOGGER.warn(JwtLogMessages.WARN.NO_VALID_ISSUER_CONFIGS);
             }
 
-            // Parse parser config and force eager dsl-json initialization
-            ParserConfig parserConfig = IssuerConfigurationParser.parseParserConfig(properties);
-
-            // Layer 2: Force eager DslJson initialization while NAR classloader is active
-            parserConfig.getDslJson();
-
-            // Layer 3: Pre-warm ForkJoinPool threads with NAR classloader
-            prepareForkJoinPoolClassLoader();
-
-            // Build TokenValidator
             tokenValidator = TokenValidator.builder()
                     .parserConfig(parserConfig)
                     .issuerConfigs(issuerConfigs)
@@ -268,55 +258,4 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
         return properties;
     }
 
-    /**
-     * Sets the NAR classloader on ForkJoinPool common pool threads.
-     * Required because HttpJwksLoader.initJWKSLoader() uses CompletableFuture.supplyAsync()
-     * and the async task creates JwksHttpContentConverter with ServiceLoader.load().
-     */
-    private void prepareForkJoinPoolClassLoader() {
-        ClassLoader targetClassLoader = getClass().getClassLoader();
-        @SuppressWarnings("resource") //That's a false positive. ForkJoinPool.commonPool() — the JVM's shared singleton pool.
-        // Closing it via try-with-resources would shut down a JVM-wide shared resource. The rule applies when you create new ForkJoinPool(), not
-        // when referencing the common pool
-        int poolSize = ForkJoinPool.commonPool().getParallelism() + 1;
-
-        CountDownLatch allReady = new CountDownLatch(poolSize);
-        CountDownLatch release = new CountDownLatch(1);
-
-        List<CompletableFuture<Void>> tasks = new ArrayList<>();
-        for (int i = 0; i < poolSize; i++) {
-            tasks.add(CompletableFuture.supplyAsync(() -> {
-                Thread.currentThread().setContextClassLoader(targetClassLoader);
-                allReady.countDown();
-                try {
-                    if (!release.await(3, TimeUnit.SECONDS)) {
-                        LOGGER.warn(JwtLogMessages.WARN.FORKJOINPOOL_LATCH_AWAIT_TIMEOUT, "release latch");
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-                return null;
-            }));
-        }
-        try {
-            if (!allReady.await(5, TimeUnit.SECONDS)) {
-                LOGGER.warn(JwtLogMessages.WARN.FORKJOINPOOL_LATCH_AWAIT_TIMEOUT, "allReady latch");
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            LOGGER.warn(JwtLogMessages.WARN.FORKJOINPOOL_CLASSLOADER_SETUP_INTERRUPTED);
-        } finally {
-            release.countDown();
-        }
-        try {
-            CompletableFuture.allOf(tasks.toArray(new CompletableFuture[0]))
-                    .get(5, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            LOGGER.warn(JwtLogMessages.WARN.FORKJOINPOOL_CLASSLOADER_SETUP_INTERRUPTED);
-        } catch (ExecutionException | TimeoutException e) {
-            LOGGER.warn(JwtLogMessages.WARN.FORKJOINPOOL_CLASSLOADER_SETUP_FAILED, e.getMessage());
-        }
-        LOGGER.info(JwtLogMessages.INFO.CLASSLOADER_WORKAROUND_APPLIED);
-    }
 }

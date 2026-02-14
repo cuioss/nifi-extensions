@@ -108,12 +108,6 @@ public final class JwtLogMessages {
                 .template("JwtIssuerConfigService disabled, resources cleaned up")
                 .build();
 
-        public static final LogRecord CLASSLOADER_WORKAROUND_APPLIED = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(13)
-                .template("NAR classloader workaround applied for dsl-json ServiceLoader")
-                .build();
-
         public static final LogRecord METRICS_SNAPSHOT_CREATED = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(14)
@@ -189,23 +183,6 @@ public final class JwtLogMessages {
                 .template("Token validation failed: %s")
                 .build();
 
-        public static final LogRecord FORKJOINPOOL_CLASSLOADER_SETUP_INTERRUPTED = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(110)
-                .template("Interrupted while setting NAR classloader on ForkJoinPool threads")
-                .build();
-
-        public static final LogRecord FORKJOINPOOL_CLASSLOADER_SETUP_FAILED = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(111)
-                .template("Failed to set NAR classloader on ForkJoinPool threads: %s")
-                .build();
-
-        public static final LogRecord FORKJOINPOOL_LATCH_AWAIT_TIMEOUT = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(112)
-                .template("CountDownLatch await timed out during ForkJoinPool classloader setup: %s")
-                .build();
     }
 
     @UtilityClass

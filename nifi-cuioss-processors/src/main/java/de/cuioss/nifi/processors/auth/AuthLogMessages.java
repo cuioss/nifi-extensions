@@ -401,23 +401,6 @@ public final class AuthLogMessages {
                 .template("SECURITY WARNING: Authorization bypassed for token with subject: %s")
                 .build();
 
-        public static final LogRecord FORKJOINPOOL_CLASSLOADER_SETUP_INTERRUPTED = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(124)
-                .template("Interrupted while setting NAR classloader on ForkJoinPool threads")
-                .build();
-
-        public static final LogRecord FORKJOINPOOL_CLASSLOADER_SETUP_FAILED = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(125)
-                .template("Failed to set NAR classloader on ForkJoinPool threads: %s")
-                .build();
-
-        public static final LogRecord FORKJOINPOOL_LATCH_AWAIT_TIMEOUT = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(126)
-                .template("CountDownLatch await timed out during ForkJoinPool classloader setup: %s")
-                .build();
     }
 
     @UtilityClass
