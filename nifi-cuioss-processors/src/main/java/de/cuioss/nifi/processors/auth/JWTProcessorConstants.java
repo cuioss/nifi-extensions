@@ -19,6 +19,7 @@ package de.cuioss.nifi.processors.auth;
 import de.cuioss.nifi.jwt.JWTAttributes;
 import de.cuioss.nifi.jwt.JwtConstants;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
+import de.cuioss.nifi.jwt.util.AuthorizationRequirements;
 import lombok.experimental.UtilityClass;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.processor.Relationship;
@@ -139,15 +140,24 @@ public final class JWTProcessorConstants {
 
         /**
          * Whether to require a valid token for processing.
+         * Delegates to shared {@link AuthorizationRequirements#REQUIRE_VALID_TOKEN}.
          */
-        public static final PropertyDescriptor REQUIRE_VALID_TOKEN = new PropertyDescriptor.Builder()
-                .name(JWTAttributes.Properties.Validation.REQUIRE_VALID_TOKEN)
-                .displayName("Require Valid Token")
-                .description("Whether to require a valid token for processing")
-                .required(true)
-                .defaultValue("true")
-                .allowableValues("true", "false")
-                .build();
+        public static final PropertyDescriptor REQUIRE_VALID_TOKEN =
+                AuthorizationRequirements.REQUIRE_VALID_TOKEN;
+
+        /**
+         * Comma-separated list of required roles.
+         * Delegates to shared {@link AuthorizationRequirements#REQUIRED_ROLES}.
+         */
+        public static final PropertyDescriptor REQUIRED_ROLES =
+                AuthorizationRequirements.REQUIRED_ROLES;
+
+        /**
+         * Comma-separated list of required scopes.
+         * Delegates to shared {@link AuthorizationRequirements#REQUIRED_SCOPES}.
+         */
+        public static final PropertyDescriptor REQUIRED_SCOPES =
+                AuthorizationRequirements.REQUIRED_SCOPES;
 
         /**
          * Maximum token size in bytes.

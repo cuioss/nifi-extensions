@@ -22,6 +22,7 @@ import de.cuioss.nifi.jwt.JwtConstants;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
 import de.cuioss.nifi.jwt.i18n.I18nResolver;
 import de.cuioss.nifi.jwt.i18n.NiFiI18nResolver;
+import de.cuioss.nifi.jwt.util.AuthorizationRequirements;
 import de.cuioss.nifi.jwt.util.AuthorizationValidator;
 import de.cuioss.nifi.jwt.util.ErrorContext;
 import de.cuioss.nifi.jwt.util.ProcessingError;
@@ -76,9 +77,6 @@ import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships
         @WritesAttribute(attribute = JWTAttributes.Content.PREFIX + "*", description = "JWT token claims"),
         @WritesAttribute(attribute = JWTAttributes.Token.VALIDATED_AT, description = "Timestamp when the token was validated"),
         @WritesAttribute(attribute = JWTAttributes.Token.PRESENT, description = "Whether a JWT token is present"),
-        @WritesAttribute(attribute = JWTAttributes.Token.AUTHORIZATION_PASSED, description = "Whether the token passed authorization"),
-        @WritesAttribute(attribute = JWTAttributes.Authorization.AUTHORIZED, description = "Whether the token is authorized"),
-        @WritesAttribute(attribute = JWTAttributes.Authorization.BYPASSED, description = "Whether authorization was bypassed"),
         @WritesAttribute(attribute = JWTAttributes.Error.CODE, description = "Error code if validation failed"),
         @WritesAttribute(attribute = JWTAttributes.Error.REASON, description = "Error reason if validation failed"),
         @WritesAttribute(attribute = JWTAttributes.Error.CATEGORY, description = "Error category if validation failed")
@@ -97,6 +95,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private final AtomicLong processedFlowFilesCount = new AtomicLong();
 
     @Nullable private JwtIssuerConfigService jwtConfigService;
+    @Nullable private AuthorizationRequirements authorizationRequirements;
     @Nullable private I18nResolver i18nResolver;
 
     @Getter private List<PropertyDescriptor> supportedPropertyDescriptors;
@@ -113,6 +112,8 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 Properties.CUSTOM_HEADER_NAME,
                 Properties.BEARER_TOKEN_PREFIX,
                 Properties.REQUIRE_VALID_TOKEN,
+                Properties.REQUIRED_ROLES,
+                Properties.REQUIRED_SCOPES,
                 Properties.MAXIMUM_TOKEN_SIZE
         );
 
@@ -125,12 +126,14 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     public void onScheduled(ProcessContext context) {
         jwtConfigService = context.getProperty(Properties.JWT_ISSUER_CONFIG_SERVICE)
                 .asControllerService(JwtIssuerConfigService.class);
+        authorizationRequirements = AuthorizationRequirements.from(context);
         LOGGER.info(AuthLogMessages.INFO.PROCESSOR_INITIALIZED);
     }
 
     @OnStopped
     public void onStopped() {
         jwtConfigService = null;
+        authorizationRequirements = null;
         processedFlowFilesCount.set(0);
         LOGGER.info(AuthLogMessages.INFO.PROCESSOR_STOPPED);
     }
@@ -171,60 +174,31 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     private void processValidToken(ProcessSession session, FlowFile flowFile, String token)
             throws TokenValidationException {
-        // Validate token via Controller Service
         AccessTokenContent accessToken = jwtConfigService.validateToken(token);
 
-        // Perform authorization check
-        AuthorizationCheckResult authResult = performAuthorizationCheck(accessToken);
-
-        // Extract claims and build attributes
         Map<String, String> attributes = extractClaims(accessToken);
         attributes.put(JWTAttributes.Token.PRESENT, "true");
-        attributes.put(JWTAttributes.Authorization.AUTHORIZED, String.valueOf(authResult.authorized()));
 
-        if (authResult.bypassed()) {
-            attributes.put(JWTAttributes.Authorization.BYPASSED, "true");
+        // Authorization check using processor-level properties (cached in onScheduled)
+        if (authorizationRequirements.hasAuthorizationRequirements()) {
+            AuthorizationValidator.AuthorizationResult authResult =
+                    AuthorizationValidator.validate(accessToken, authorizationRequirements);
+            if (!authResult.isAuthorized()) {
+                LOGGER.warn(AuthLogMessages.WARN.AUTHORIZATION_FAILED,
+                        accessToken.getSubject().orElse("unknown"),
+                        accessToken.getIssuer(), authResult.getReason());
+                attributes.put(JWTAttributes.Authorization.AUTHORIZED, "false");
+                flowFile = session.putAllAttributes(flowFile, attributes);
+                handleError(session, flowFile, "AUTH-010",
+                        "Authorization failed: " + authResult.getReason(),
+                        "AUTHORIZATION_FAILED");
+                return;
+            }
+            attributes.put(JWTAttributes.Authorization.AUTHORIZED, "true");
         }
 
         flowFile = session.putAllAttributes(flowFile, attributes);
-
-        if (authResult.authorized()) {
-            session.transfer(flowFile, Relationships.SUCCESS);
-        } else {
-            handleError(session, flowFile, "AUTH-010",
-                    "Authorization failed: required roles/scopes not present",
-                    "AUTHORIZATION_FAILED");
-        }
-    }
-
-    /**
-     * Performs authorization check using the CS's authorization configuration.
-     */
-    private AuthorizationCheckResult performAuthorizationCheck(AccessTokenContent accessToken) {
-        String tokenIssuer = accessToken.getIssuer();
-
-        // Check if the CS has an authorization config for this issuer
-        Optional<AuthorizationValidator.AuthorizationConfig> authConfigOpt =
-                jwtConfigService.getAuthorizationConfig(tokenIssuer);
-
-        if (authConfigOpt.isEmpty()) {
-            // No auth config means bypass was explicitly set or no requirements configured
-            LOGGER.info(AuthLogMessages.INFO.AUTHORIZATION_BYPASSED, tokenIssuer);
-            return new AuthorizationCheckResult(true, true);
-        }
-
-        AuthorizationValidator.AuthorizationResult result =
-                AuthorizationValidator.validate(accessToken, authConfigOpt.get());
-
-        if (!result.isAuthorized()) {
-            LOGGER.warn(AuthLogMessages.WARN.AUTHORIZATION_FAILED,
-                    accessToken.getSubject().orElse("unknown"), tokenIssuer, result.getReason());
-        }
-
-        return new AuthorizationCheckResult(result.isAuthorized(), false);
-    }
-
-    private record AuthorizationCheckResult(boolean authorized, boolean bypassed) {
+        session.transfer(flowFile, Relationships.SUCCESS);
     }
 
     // --- Token Extraction ---
@@ -320,14 +294,13 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     private void handleMissingToken(ProcessSession session, FlowFile flowFile,
             ProcessContext context, String tokenLocation) {
-        boolean requireValidToken = context.getProperty(Properties.REQUIRE_VALID_TOKEN).asBoolean();
+        boolean requireValidToken = authorizationRequirements.requireValidToken();
 
         if (!requireValidToken) {
             LOGGER.info(AuthLogMessages.INFO.NO_TOKEN_NOT_REQUIRED);
             Map<String, String> attributes = new HashMap<>();
             attributes.put(JWTAttributes.Error.REASON, "No token provided");
             attributes.put(JWTAttributes.Token.PRESENT, "false");
-            attributes.put(JWTAttributes.Authorization.AUTHORIZED, "false");
             flowFile = session.putAllAttributes(flowFile, attributes);
             session.transfer(flowFile, Relationships.SUCCESS);
         } else {

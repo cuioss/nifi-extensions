@@ -17,10 +17,8 @@
 package de.cuioss.nifi.jwt.config;
 
 import de.cuioss.nifi.jwt.JWTAttributes;
-import de.cuioss.nifi.jwt.JWTPropertyKeys;
 import de.cuioss.nifi.jwt.JwtConstants;
 import de.cuioss.nifi.jwt.JwtLogMessages;
-import de.cuioss.nifi.jwt.util.AuthorizationValidator.AuthorizationConfig;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
 import de.cuioss.sheriff.oauth.core.TokenValidator;
@@ -42,7 +40,6 @@ import org.jspecify.annotations.Nullable;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 /**
  * Standard implementation of {@link JwtIssuerConfigService}.
@@ -147,7 +144,6 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
 
     private final AtomicReference<TokenValidator> tokenValidator = new AtomicReference<>();
     @Nullable private ConfigurationManager configurationManager;
-    private final Map<String, AuthorizationConfig> authorizationConfigCache = new ConcurrentHashMap<>();
 
     @Override
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
@@ -211,9 +207,6 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
 
             tokenValidator.set(newValidator);
 
-            // Populate authorization config cache
-            populateAuthorizationCache(properties);
-
             LOGGER.info(JwtLogMessages.INFO.CONTROLLER_SERVICE_ENABLED, issuerConfigs.size());
         } catch (Exception e) {
             LOGGER.error(e, JwtLogMessages.ERROR.CONTROLLER_SERVICE_ENABLE_FAILED, e.getMessage());
@@ -227,7 +220,6 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
     public void onDisabled() {
         tokenValidator.set(null);
         configurationManager = null;
-        authorizationConfigCache.clear();
         LOGGER.info(JwtLogMessages.INFO.CONTROLLER_SERVICE_DISABLED);
     }
 
@@ -241,11 +233,6 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
         }
 
         return validator.createAccessToken(rawToken);
-    }
-
-    @Override
-    public Optional<AuthorizationConfig> getAuthorizationConfig(String issuerName) {
-        return Optional.ofNullable(authorizationConfigCache.get(issuerName));
     }
 
     @Override
@@ -268,85 +255,6 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
             }
         }
         return properties;
-    }
-
-    private void populateAuthorizationCache(Map<String, String> allProperties) {
-        authorizationConfigCache.clear();
-
-        // Load from external configuration first (highest precedence)
-        if (configurationManager != null && configurationManager.isConfigurationLoaded()) {
-            for (String issuerId : configurationManager.getIssuerIds()) {
-                Map<String, String> issuerProps = configurationManager.getIssuerProperties(issuerId);
-                buildAndStoreAuthorizationConfig(issuerProps);
-            }
-        }
-
-        // Load from UI properties (lower precedence, won't override)
-        Map<String, Map<String, String>> issuerPropertiesMap = groupPropertiesByIssuerIndex(allProperties);
-        for (Map.Entry<String, Map<String, String>> entry : issuerPropertiesMap.entrySet()) {
-            buildAndStoreAuthorizationConfig(entry.getValue());
-        }
-    }
-
-    private void buildAndStoreAuthorizationConfig(Map<String, String> props) {
-        String issuerIdentifier = props.get("name");
-        if (issuerIdentifier == null || issuerIdentifier.isBlank()) {
-            issuerIdentifier = props.get(JWTPropertyKeys.Issuer.ISSUER_NAME);
-        }
-        if (issuerIdentifier == null || issuerIdentifier.isBlank()) {
-            return;
-        }
-        issuerIdentifier = issuerIdentifier.trim();
-
-        if (authorizationConfigCache.containsKey(issuerIdentifier)) {
-            return;
-        }
-
-        if ("true".equalsIgnoreCase(props.get(JWTPropertyKeys.Issuer.BYPASS_AUTHORIZATION))) {
-            return;
-        }
-
-        Set<String> requiredRoles = parseCommaSeparated(props.get(JWTPropertyKeys.Issuer.REQUIRED_ROLES));
-        Set<String> requiredScopes = parseCommaSeparated(props.get(JWTPropertyKeys.Issuer.REQUIRED_SCOPES));
-
-        if (requiredRoles.isEmpty() && requiredScopes.isEmpty()) {
-            return;
-        }
-
-        AuthorizationConfig authConfig = AuthorizationConfig.builder()
-                .requiredRoles(requiredRoles)
-                .requiredScopes(requiredScopes)
-                .build();
-
-        authorizationConfigCache.put(issuerIdentifier, authConfig);
-    }
-
-    private static Map<String, Map<String, String>> groupPropertiesByIssuerIndex(Map<String, String> allProperties) {
-        Map<String, Map<String, String>> issuerPropertiesMap = new HashMap<>();
-        for (Map.Entry<String, String> entry : allProperties.entrySet()) {
-            String key = entry.getKey();
-            if (key.startsWith(JwtConstants.ISSUER_PREFIX)) {
-                String remainder = key.substring(JwtConstants.ISSUER_PREFIX.length());
-                int dotIndex = remainder.indexOf('.');
-                if (dotIndex > 0) {
-                    String issuerIndex = remainder.substring(0, dotIndex);
-                    String property = remainder.substring(dotIndex + 1);
-                    issuerPropertiesMap.computeIfAbsent(issuerIndex, k -> new HashMap<>())
-                            .put(property, entry.getValue());
-                }
-            }
-        }
-        return issuerPropertiesMap;
-    }
-
-    private static Set<String> parseCommaSeparated(@Nullable String value) {
-        if (value == null || value.isBlank()) {
-            return Collections.emptySet();
-        }
-        return Arrays.stream(value.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toSet());
     }
 
     /**

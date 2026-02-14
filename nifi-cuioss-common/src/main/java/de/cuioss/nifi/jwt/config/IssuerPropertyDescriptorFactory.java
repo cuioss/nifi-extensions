@@ -49,9 +49,6 @@ public class IssuerPropertyDescriptorFactory {
             case Issuer.JWKS_CONTENT -> createJwksContentDescriptor(propertyDescriptorName, displayName);
             case Issuer.ISSUER_NAME -> createIssuerNameDescriptor(propertyDescriptorName, displayName, issuerName, propertyKey);
             case Issuer.AUDIENCE, Issuer.CLIENT_ID -> createAudienceOrClientIdDescriptor(propertyDescriptorName, displayName, issuerName, propertyKey);
-            case Issuer.REQUIRED_SCOPES, Issuer.REQUIRED_ROLES -> createRequiredScopesOrRolesDescriptor(propertyDescriptorName, displayName, issuerName, propertyKey);
-            case Issuer.REQUIRE_ALL_SCOPES, Issuer.REQUIRE_ALL_ROLES,
-                Issuer.CASE_SENSITIVE_MATCHING, Issuer.BYPASS_AUTHORIZATION -> createBooleanDescriptor(propertyDescriptorName, displayName, issuerName, propertyKey);
             default -> createDefaultDescriptor(propertyDescriptorName);
         };
     }
@@ -91,25 +88,6 @@ public class IssuerPropertyDescriptorFactory {
         return new PropertyDescriptor.Builder().name(name).displayName(displayName)
                 .description(i18nResolver.getTranslatedString(descriptionKey, propertyKey, issuerName))
                 .required(false).dynamic(true).addValidator(StandardValidators.NON_EMPTY_VALIDATOR).build();
-    }
-
-    private PropertyDescriptor createRequiredScopesOrRolesDescriptor(String name, String displayName, String issuerName, String propertyKey) {
-        String description = Issuer.REQUIRED_SCOPES.equals(propertyKey)
-                ? "Required scopes for authorization (comma-separated)"
-                : "Required roles for authorization (comma-separated)";
-        return new PropertyDescriptor.Builder().name(name).displayName(displayName)
-                .description(i18nResolver.getTranslatedString(description, propertyKey, issuerName))
-                .required(false).dynamic(true).addValidator(StandardValidators.NON_EMPTY_VALIDATOR).build();
-    }
-
-    private PropertyDescriptor createBooleanDescriptor(String name, String displayName, String issuerName, String propertyKey) {
-        String description = Issuer.BYPASS_AUTHORIZATION.equals(propertyKey)
-                ? "Bypass all authorization checks for this issuer (WARNING: security risk)"
-                : "Boolean property for authorization configuration";
-        return new PropertyDescriptor.Builder().name(name).displayName(displayName)
-                .description(i18nResolver.getTranslatedString(description, propertyKey, issuerName))
-                .required(false).dynamic(true).allowableValues("true", "false").defaultValue("false")
-                .addValidator(StandardValidators.BOOLEAN_VALIDATOR).build();
     }
 
     private PropertyDescriptor createDefaultDescriptor(String name) {

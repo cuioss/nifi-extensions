@@ -17,7 +17,6 @@
 package de.cuioss.nifi.processors.auth;
 
 import de.cuioss.nifi.jwt.JWTAttributes;
-import de.cuioss.nifi.jwt.util.AuthorizationValidator;
 import de.cuioss.sheriff.oauth.core.domain.claim.ClaimValue;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
@@ -39,11 +38,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Properties;
 import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships;
@@ -184,37 +181,32 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
     class AuthorizationWithTokenContentTests {
 
         @Test
-        @DisplayName("Should route valid token to SUCCESS with authorization attribute set")
-        void shouldRouteToSuccessWithAuthorizationAttribute() {
+        @DisplayName("Should route valid token to SUCCESS without authorization attribute when none configured")
+        void shouldRouteToSuccessWithoutAuthorizationAttribute() {
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
-            AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
-            mockConfigService.configureValidToken(tokenContent);
+            mockConfigService.configureValidToken(tokenHolder.asAccessTokenContent());
 
             enqueueWithToken(tokenHolder.getRawToken());
 
             testRunner.assertTransferCount(Relationships.SUCCESS, 1);
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
-            flowFile.assertAttributeExists(JWTAttributes.Authorization.AUTHORIZED);
+            flowFile.assertAttributeNotExists(JWTAttributes.Authorization.AUTHORIZED);
         }
 
         @Test
         @DisplayName("Should route token to SUCCESS with scope authorization")
         void shouldRouteToSuccessWithScopeAuthorization() {
+            testRunner.setProperty(Properties.REQUIRED_SCOPES, "read");
+
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             tokenHolder.withClaim("scope", ClaimValue.forList("read write", List.of("read", "write")));
-            AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
-            mockConfigService.configureValidToken(tokenContent);
-            mockConfigService.addIssuer(TestTokenHolder.TEST_ISSUER);
-            mockConfigService.addAuthorizationConfig(TestTokenHolder.TEST_ISSUER,
-                    AuthorizationValidator.AuthorizationConfig.builder()
-                            .requiredScopes(Set.of("read"))
-                            .build());
+            mockConfigService.configureValidToken(tokenHolder.asAccessTokenContent());
 
             enqueueWithToken(tokenHolder.getRawToken());
 
             testRunner.assertTransferCount(Relationships.SUCCESS, 1);
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
-            flowFile.assertAttributeExists(JWTAttributes.Authorization.AUTHORIZED);
+            flowFile.assertAttributeEquals(JWTAttributes.Authorization.AUTHORIZED, "true");
         }
     }
 

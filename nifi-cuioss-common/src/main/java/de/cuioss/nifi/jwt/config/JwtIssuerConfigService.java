@@ -16,7 +16,6 @@
  */
 package de.cuioss.nifi.jwt.config;
 
-import de.cuioss.nifi.jwt.util.AuthorizationValidator.AuthorizationConfig;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
@@ -46,15 +45,6 @@ public interface JwtIssuerConfigService extends ControllerService {
      * @throws TokenValidationException if the token is invalid, expired, or cannot be validated
      */
     AccessTokenContent validateToken(String rawToken);
-
-    /**
-     * Returns the authorization configuration for a specific issuer.
-     *
-     * @param issuerName the issuer name to look up
-     * @return the authorization config if configured, or empty if no authorization
-     *         requirements are set for this issuer (bypass or unconfigured)
-     */
-    Optional<AuthorizationConfig> getAuthorizationConfig(String issuerName);
 
     /**
      * Returns the security event counter from the underlying TokenValidator.

@@ -17,14 +17,11 @@
 package de.cuioss.nifi.processors.auth;
 
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
-import de.cuioss.nifi.jwt.util.AuthorizationValidator;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
 import org.apache.nifi.controller.AbstractControllerService;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -35,7 +32,6 @@ public class TestJwtIssuerConfigService extends AbstractControllerService implem
 
     private AccessTokenContent tokenToReturn;
     private TokenValidationException exceptionToThrow;
-    private final Map<String, AuthorizationValidator.AuthorizationConfig> authConfigs = new HashMap<>();
 
     public void configureValidToken(AccessTokenContent token) {
         this.tokenToReturn = token;
@@ -47,14 +43,6 @@ public class TestJwtIssuerConfigService extends AbstractControllerService implem
         this.tokenToReturn = null;
     }
 
-    public void addIssuer(String issuerName) {
-        authConfigs.putIfAbsent(issuerName, null);
-    }
-
-    public void addAuthorizationConfig(String issuerName, AuthorizationValidator.AuthorizationConfig config) {
-        authConfigs.put(issuerName, config);
-    }
-
     @Override
     public AccessTokenContent validateToken(String rawToken) throws TokenValidationException {
         if (exceptionToThrow != null) {
@@ -64,11 +52,6 @@ public class TestJwtIssuerConfigService extends AbstractControllerService implem
             throw new IllegalStateException("TestJwtIssuerConfigService not configured — call configureValidToken() or configureValidationFailure()");
         }
         return tokenToReturn;
-    }
-
-    @Override
-    public Optional<AuthorizationValidator.AuthorizationConfig> getAuthorizationConfig(String issuerName) {
-        return Optional.ofNullable(authConfigs.get(issuerName));
     }
 
     @Override

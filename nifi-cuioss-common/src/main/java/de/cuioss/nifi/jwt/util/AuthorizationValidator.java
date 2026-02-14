@@ -17,7 +17,6 @@
 package de.cuioss.nifi.jwt.util;
 
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
-import de.cuioss.tools.logging.CuiLogger;
 import lombok.Builder;
 import lombok.Value;
 import lombok.experimental.UtilityClass;
@@ -27,20 +26,12 @@ import java.util.*;
 
 /**
  * Validates JWT token authorization using the oauth-sheriff API
- * ({@link AccessTokenContent#providesScopes}, {@link AccessTokenContent#determineMissingScopes}, etc.).
+ * ({@link AccessTokenContent#determineMissingScopes}, {@link AccessTokenContent#determineMissingRoles}).
+ * <p>
+ * Pure stateless utility — takes a token and requirements, returns a result.
  */
 @UtilityClass
 public class AuthorizationValidator {
-
-    private static final CuiLogger LOGGER = new CuiLogger(AuthorizationValidator.class);
-
-    @Value
-    @Builder
-    public static class AuthorizationConfig {
-        @Nullable Set<String> requiredScopes;
-        @Nullable Set<String> requiredRoles;
-        @Builder.Default boolean bypassAuthorization = false;
-    }
 
     @Value
     @Builder
@@ -51,31 +42,36 @@ public class AuthorizationValidator {
         Set<String> missingRoles;
     }
 
-    public static AuthorizationResult validate(AccessTokenContent token, AuthorizationConfig config) {
+    /**
+     * Validates whether the given token satisfies the authorization requirements.
+     * <p>
+     * If no roles or scopes are required, the token is authorized.
+     *
+     * @param token        the validated access token (must not be null)
+     * @param requirements the authorization requirements (must not be null)
+     * @return the authorization result
+     */
+    public static AuthorizationResult validate(AccessTokenContent token, AuthorizationRequirements requirements) {
         Objects.requireNonNull(token, "token must not be null");
-        Objects.requireNonNull(config, "config must not be null");
+        Objects.requireNonNull(requirements, "requirements must not be null");
 
-        if (config.bypassAuthorization) {
-            return AuthorizationResult.builder()
-                    .authorized(true).reason("Authorization bypassed")
-                    .missingScopes(Collections.emptySet()).missingRoles(Collections.emptySet())
-                    .build();
-        }
-
-        boolean hasScopeReqs = config.requiredScopes != null && !config.requiredScopes.isEmpty();
-        boolean hasRoleReqs = config.requiredRoles != null && !config.requiredRoles.isEmpty();
-
-        if (!hasScopeReqs && !hasRoleReqs) {
+        if (!requirements.hasAuthorizationRequirements()) {
             return AuthorizationResult.builder()
                     .authorized(true)
                     .missingScopes(Collections.emptySet()).missingRoles(Collections.emptySet())
                     .build();
         }
 
+        Set<String> requiredScopes = requirements.requiredScopes();
+        Set<String> requiredRoles = requirements.requiredRoles();
+
+        boolean hasScopeReqs = !requiredScopes.isEmpty();
+        boolean hasRoleReqs = !requiredRoles.isEmpty();
+
         Set<String> missingScopes = hasScopeReqs
-                ? token.determineMissingScopes(config.requiredScopes) : Collections.emptySet();
+                ? token.determineMissingScopes(requiredScopes) : Collections.emptySet();
         Set<String> missingRoles = hasRoleReqs
-                ? token.determineMissingRoles(config.requiredRoles) : Collections.emptySet();
+                ? token.determineMissingRoles(requiredRoles) : Collections.emptySet();
 
         boolean scopesOk = !hasScopeReqs || missingScopes.isEmpty();
         boolean rolesOk = !hasRoleReqs || missingRoles.isEmpty();

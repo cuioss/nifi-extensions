@@ -17,7 +17,6 @@
 package de.cuioss.nifi.processors.auth;
 
 import de.cuioss.nifi.jwt.JWTAttributes;
-import de.cuioss.nifi.jwt.util.AuthorizationValidator;
 import de.cuioss.sheriff.oauth.core.domain.claim.ClaimValue;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
@@ -38,7 +37,6 @@ import org.junit.jupiter.api.Test;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Properties;
 import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships;
@@ -221,7 +219,6 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.SUCCESS, 1);
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
             flowFile.assertAttributeEquals(JWTAttributes.Token.PRESENT, "false");
-            flowFile.assertAttributeEquals(JWTAttributes.Authorization.AUTHORIZED, "false");
 
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO,
                     AuthLogMessages.INFO.NO_TOKEN_NOT_REQUIRED.resolveIdentifierString());
@@ -246,28 +243,10 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         @Test
         @DisplayName("Test authorization with required scopes - token has them")
         void authorizationWithRequiredScopesPresent() {
+            testRunner.setProperty(Properties.REQUIRED_SCOPES, "read");
+
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             tokenHolder.withClaim("scope", ClaimValue.forList("read write", List.of("read", "write")));
-            AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
-            mockConfigService.configureValidToken(tokenContent);
-            mockConfigService.addIssuer(TestTokenHolder.TEST_ISSUER);
-            mockConfigService.addAuthorizationConfig(TestTokenHolder.TEST_ISSUER,
-                    AuthorizationValidator.AuthorizationConfig.builder()
-                            .requiredScopes(Set.of("read"))
-                            .build());
-
-            enqueueWithToken(tokenHolder.getRawToken());
-            testRunner.run();
-
-            testRunner.assertTransferCount(Relationships.SUCCESS, 1);
-            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
-            flowFile.assertAttributeExists(JWTAttributes.Authorization.AUTHORIZED);
-        }
-
-        @Test
-        @DisplayName("Test authorization bypassed when no auth config")
-        void authorizationBypassedWhenNoAuthConfig() {
-            TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             mockConfigService.configureValidToken(tokenHolder.asAccessTokenContent());
 
             enqueueWithToken(tokenHolder.getRawToken());
@@ -276,19 +255,30 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.SUCCESS, 1);
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
             flowFile.assertAttributeEquals(JWTAttributes.Authorization.AUTHORIZED, "true");
-            flowFile.assertAttributeEquals(JWTAttributes.Authorization.BYPASSED, "true");
+        }
+
+        @Test
+        @DisplayName("Test no authorization check when no roles/scopes configured")
+        void noAuthorizationCheckWhenNotConfigured() {
+            TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
+            mockConfigService.configureValidToken(tokenHolder.asAccessTokenContent());
+
+            enqueueWithToken(tokenHolder.getRawToken());
+            testRunner.run();
+
+            testRunner.assertTransferCount(Relationships.SUCCESS, 1);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
+            // No AUTHORIZED attribute when no authorization is configured
+            flowFile.assertAttributeNotExists(JWTAttributes.Authorization.AUTHORIZED);
         }
 
         @Test
         @DisplayName("Test authorization failure when required roles missing")
         void authorizationFailureWhenRequiredRolesMissing() {
+            testRunner.setProperty(Properties.REQUIRED_ROLES, "admin");
+
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             mockConfigService.configureValidToken(tokenHolder.asAccessTokenContent());
-            mockConfigService.addIssuer(TestTokenHolder.TEST_ISSUER);
-            mockConfigService.addAuthorizationConfig(TestTokenHolder.TEST_ISSUER,
-                    AuthorizationValidator.AuthorizationConfig.builder()
-                            .requiredRoles(Set.of("admin"))
-                            .build());
 
             enqueueWithToken(tokenHolder.getRawToken());
             testRunner.run();
