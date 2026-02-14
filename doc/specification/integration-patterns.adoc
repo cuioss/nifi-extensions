@@ -64,11 +64,9 @@ In this pattern, the processor:
     <processor>
         <type>de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator</type>
         <properties>
-            <property name="token.location">AUTHORIZATION_HEADER</property>
-            <property name="token.header">Authorization</property>
-            <property name="jwks.refresh.interval">3600</property>
-            <property name="require.valid.token">true</property>
-            <property name="keycloak">https://auth.example.com/realms/master/protocol/openid-connect/certs</property>
+            <property name="jwt.issuer.config.service">jwt-config-service</property>
+            <property name="jwt.validation.token.attribute">jwt.token</property>
+            <property name="jwt.validation.require.valid.token">true</property>
         </properties>
         <relationships>
             <relationship name="success">RouteRequest</relationship>
@@ -135,13 +133,11 @@ In this pattern, the processor:
     <processor>
         <type>de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator</type>
         <properties>
-            <property name="token.location">CUSTOM_HEADER</property>
-            <property name="custom.header.name">X-Service-Auth</property>
-            <property name="jwks.refresh.interval">3600</property>
-            <property name="require.valid.token">true</property>
-            <property name="required.scopes">service:read,service:write</property>
-            <property name="required.roles">service-client</property>
-            <property name="internal-auth">https://internal-auth.example.com/jwks</property>
+            <property name="jwt.issuer.config.service">jwt-config-service</property>
+            <property name="jwt.validation.token.attribute">jwt.token</property>
+            <property name="jwt.validation.require.valid.token">true</property>
+            <property name="jwt.validation.required.scopes">service:read,service:write</property>
+            <property name="jwt.validation.required.roles">service-client</property>
         </properties>
         <relationships>
             <relationship name="success">ProcessRequest</relationship>
@@ -205,12 +201,9 @@ In this pattern, the processor:
     <processor>
         <type>de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator</type>
         <properties>
-            <property name="token.location">AUTHORIZATION_HEADER</property>
-            <property name="token.header">Authorization</property>
-            <property name="jwks.refresh.interval">3600</property>
-            <property name="require.valid.token">true</property>
-            <property name="tenant-a">https://auth.tenant-a.example.com/jwks</property>
-            <property name="tenant-b">https://auth.tenant-b.example.com/jwks</property>
+            <property name="jwt.issuer.config.service">jwt-config-service</property>
+            <property name="jwt.validation.token.attribute">jwt.token</property>
+            <property name="jwt.validation.require.valid.token">true</property>
         </properties>
         <relationships>
             <relationship name="success">RouteTenant</relationship>

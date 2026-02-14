@@ -17,13 +17,13 @@ image::../plantuml/configuration-workflow.png[Configuration Workflow Diagram, al
 == Implementation Status
 
 === Implementation Classes
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/config/IssuerPropertyDescriptorFactory.java[IssuerPropertyDescriptorFactory] -- Dynamic property descriptor creation for issuers
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/IssuerPropertyDescriptorFactory.java[IssuerPropertyDescriptorFactory] -- Dynamic property descriptor creation for issuers
 * link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTProcessorConstants.java[JWTProcessorConstants] -- Processor property definitions and relationships
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTPropertyKeys.java[JWTPropertyKeys] -- Property key constants for issuer configuration
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTTranslationKeys.java[JWTTranslationKeys] -- Translation key constants for UI labels
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/JWTPropertyKeys.java[JWTPropertyKeys] -- Property key constants for issuer configuration
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/JWTTranslationKeys.java[JWTTranslationKeys] -- Translation key constants for UI labels
 
 === Verification
-* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/config/IssuerPropertyDescriptorFactoryTest.java[IssuerPropertyDescriptorFactoryTest]
+* link:../../nifi-cuioss-common/src/test/java/de/cuioss/nifi/jwt/config/IssuerPropertyDescriptorFactoryTest.java[IssuerPropertyDescriptorFactoryTest]
 
 == UI Property Organization
 
@@ -37,14 +37,13 @@ image::../plantuml/configuration-properties-ui.png[Configuration Properties UI, 
 Properties in the UI are organized into sections:
 
 1. **Basic Properties**: Core settings displayed by default
-   - jwt.validation.token.location
-   - jwt.validation.custom.header.name
+   - jwt.issuer.config.service (Controller Service reference)
+   - jwt.validation.token.attribute
+   - jwt.validation.require.valid.token
 
 2. **Advanced Properties**: Additional settings available through the "Advanced" button
-   - jwt.validation.token.header
-   - jwt.validation.jwks.refresh.interval
-   - jwt.validation.require.valid.token
-   - jwt.validation.maximum.token.size
+   - jwt.validation.required.roles
+   - jwt.validation.required.scopes
 
 3. **Dynamic Properties**: User-defined issuer configurations
    - Each issuer has its own property entry using `issuer.<N>.<property>` naming
@@ -152,7 +151,7 @@ Provides inline documentation and usage examples specific to the processor.
 == Internationalized UI Elements
 _See Requirement xref:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
-All UI elements use internationalization through NiFi's I18nResolver API. See link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/config/IssuerPropertyDescriptorFactory.java[IssuerPropertyDescriptorFactory] for how translated property descriptors are created using link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTTranslationKeys.java[JWTTranslationKeys].
+All UI elements use internationalization through NiFi's I18nResolver API. See link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/IssuerPropertyDescriptorFactory.java[IssuerPropertyDescriptorFactory] for how translated property descriptors are created using link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/JWTTranslationKeys.java[JWTTranslationKeys].
 
 For more details on internationalization, see xref:internationalization.adoc[Internationalization].
 

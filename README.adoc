@@ -29,7 +29,7 @@ NiFi flows that consume REST APIs or process webhook payloads often receive JWT-
 
 == The Solution
 
-This processor drops into any NiFi flow as a single node. It extracts the JWT, validates it against one or more JWKS endpoints, and writes the token claims as FlowFile attributes -- ready for downstream routing and processing.
+This processor drops into any NiFi flow as a single node. It reads the JWT from a FlowFile attribute, validates it against one or more JWKS endpoints via a shared Controller Service, and writes the token claims as FlowFile attributes -- ready for downstream routing and processing.
 
 image::doc/plantuml/jwt-token-flow.png[JWT Token Processing Flow]
 
@@ -117,8 +117,11 @@ See link:integration-testing/doc/flow-pipeline.adoc[Flow Pipeline Design] for th
 |===
 |Module |Purpose
 
+|link:nifi-cuioss-common/[nifi-cuioss-common]
+|Shared JWT infrastructure: Controller Service, configuration, utilities
+
 |link:nifi-cuioss-processors/README.md[nifi-cuioss-processors]
-|JWT processor implementation, token validation, configuration management
+|JWT processor implementation
 
 |link:nifi-cuioss-ui/[nifi-cuioss-ui]
 |Custom NiFi UI with JWKS validation, token verification, and metrics tabs

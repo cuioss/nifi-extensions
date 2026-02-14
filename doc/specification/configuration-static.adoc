@@ -18,12 +18,12 @@ image::../plantuml/configuration-properties.png[Configuration Properties Hierarc
 == Implementation Status
 
 === Implementation Classes
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/config/ConfigurationManager.java[ConfigurationManager] -- Static config loading from files and environment variables
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/config/IssuerConfigurationParser.java[IssuerConfigurationParser] -- Parsing issuer configurations from properties and YAML
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/ConfigurationManager.java[ConfigurationManager] -- Static config loading from files and environment variables
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/IssuerConfigurationParser.java[IssuerConfigurationParser] -- Parsing issuer configurations from properties and YAML
 
 === Verification
-* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/config/ConfigurationManagerTest.java[ConfigurationManagerTest]
-* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/config/IssuerConfigurationParserTest.java[IssuerConfigurationParserTest]
+* link:../../nifi-cuioss-common/src/test/java/de/cuioss/nifi/jwt/config/ConfigurationManagerTest.java[ConfigurationManagerTest]
+* link:../../nifi-cuioss-common/src/test/java/de/cuioss/nifi/jwt/config/IssuerConfigurationParserTest.java[IssuerConfigurationParserTest]
 
 == Configuration File Formats
 
@@ -135,7 +135,7 @@ The processor looks for configuration files in the following locations (in order
 
 === Configuration Refresh Behavior
 
-See the configuration refresh logic in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/config/ConfigurationManager.java[ConfigurationManager].
+See the configuration refresh logic in link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/ConfigurationManager.java[ConfigurationManager].
 
 Key features of dynamic configuration:
 
@@ -161,10 +161,6 @@ For container environments, configuration can also be provided through environme
 |===
 |Environment Variable |Type |Description
 
-|JWT_TOKEN_HEADER_NAME
-|String
-|Name of the header containing the JWT token
-
 |JWT_JWKS_REFRESH_INTERVAL
 |Duration
 |How often to refresh the JWKS cache (format: "15 minutes", "1 hour", etc.)
@@ -172,14 +168,6 @@ For container environments, configuration can also be provided through environme
 |JWT_REQUIRE_VALID_TOKEN
 |Boolean
 |When true, only valid tokens result in success relationship
-
-|JWT_TOKEN_LOCATION
-|String
-|Where to find the token (AUTHORIZATION_HEADER, CUSTOM_HEADER, FLOW_FILE_CONTENT)
-
-|JWT_CUSTOM_HEADER_NAME
-|String
-|Name of custom header when Token Location is set to CUSTOM_HEADER
 
 |JWT_ISSUER_{name}_JWKS_URL
 |URL
@@ -195,10 +183,8 @@ For container environments, configuration can also be provided through environme
 [source,bash]
 ----
 # Basic configuration
-export JWT_TOKEN_HEADER_NAME=Authorization
 export JWT_JWKS_REFRESH_INTERVAL="30 minutes"
 export JWT_REQUIRE_VALID_TOKEN=true
-export JWT_TOKEN_LOCATION=AUTHORIZATION_HEADER
 
 # Issuer configurations
 export JWT_ISSUER_GOOGLE_JWKS_URL=https://www.googleapis.com/oauth2/v3/certs
@@ -263,12 +249,12 @@ services:
 
 == Error Handling
 
-The processor implements robust error handling for configuration loading. See link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/config/ConfigurationManager.java[ConfigurationManager] for error handling implementation.
+The processor implements robust error handling for configuration loading. See link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/ConfigurationManager.java[ConfigurationManager] for error handling implementation.
 
 Error handling features:
 
 1. If a configuration file cannot be parsed, an error is logged and the processor falls back to the last valid configuration
-2. If no valid configuration has been loaded, flowfiles are routed to the `failure` relationship
+2. If no valid configuration has been loaded, flowfiles are routed to the `authentication-failed` relationship
 3. Detailed error information is added to flowfile attributes with the prefix `jwt.config.error`
 
 == Security Considerations

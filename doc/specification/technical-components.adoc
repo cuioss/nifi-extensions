@@ -14,15 +14,14 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functio
 
 === Implementation Classes
 * link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] -- Main processor extending AbstractProcessor
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTTokenAuthenticator.java[JWTTokenAuthenticator] -- Simplified token extraction processor
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/util/AuthorizationValidator.java[AuthorizationValidator] -- Scope and role validation
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTAttributes.java[JWTAttributes] -- Flow file attribute key constants
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/JwtIssuerConfigService.java[JwtIssuerConfigService] -- Controller Service interface for JWT issuer configuration
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/util/AuthorizationValidator.java[AuthorizationValidator] -- Scope and role validation
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/JWTAttributes.java[JWTAttributes] -- Flow file attribute key constants
 
 === Verification
 * link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorTest.java[MultiIssuerJWTTokenAuthenticatorTest]
 * link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorExtendedTest.java[MultiIssuerJWTTokenAuthenticatorExtendedTest] -- RS256 signed token tests
-* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/JWTTokenAuthenticatorTest.java[JWTTokenAuthenticatorTest]
-* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/util/AuthorizationValidatorTest.java[AuthorizationValidatorTest]
+* link:../../nifi-cuioss-common/src/test/java/de/cuioss/nifi/jwt/util/AuthorizationValidatorTest.java[AuthorizationValidatorTest]
 
 == Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
@@ -117,10 +116,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-6[NIFI-AUTH-6: Output Requi
 |FlowFiles that have been successfully processed with valid token data attached
 
 |authentication-failed
-|FlowFiles that contained tokens that failed validation (expired, invalid signature, etc.)
-
-|failure
-|FlowFiles that encountered extraction failures during processing
+|FlowFiles that contained tokens that failed validation (expired, invalid signature, etc.), or FlowFiles with missing tokens when `require.valid.token` is true
 |===
 
 See the relationship definitions in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTProcessorConstants.java[JWTProcessorConstants.Relationships].
@@ -130,7 +126,7 @@ See the relationship definitions in link:../../nifi-cuioss-processors/src/main/j
 === Input Attributes
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requirements]_
 
-* None required - token extracted from HTTP header or configured location
+* `jwt.token` (default, configurable) -- FlowFile attribute containing the raw JWT token
 
 === Output Attributes
 _See Requirements link:../Requirements.adoc#NIFI-AUTH-6.1[NIFI-AUTH-6.1: Success Path] and link:../Requirements.adoc#NIFI-AUTH-6.2[NIFI-AUTH-6.2: Failure Path]_

@@ -13,12 +13,12 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Hand
 == Implementation Status
 
 === Implementation Classes
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/util/ErrorContext.java[ErrorContext] -- Structured error context with component, operation, and error code
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/util/ProcessingError.java[ProcessingError] -- Value object for flow file processing failures
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/util/ErrorContext.java[ErrorContext] -- Structured error context with component, operation, and error code
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/util/ProcessingError.java[ProcessingError] -- Value object for flow file processing failures
 * link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/AuthLogMessages.java[AuthLogMessages] -- Standardized log messages with AUTH prefix
 
 === Verification
-* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/util/ErrorContextTest.java[ErrorContextTest]
+* link:../../nifi-cuioss-common/src/test/java/de/cuioss/nifi/jwt/util/ErrorContextTest.java[ErrorContextTest]
 
 == Error Handling Implementation
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
@@ -35,7 +35,7 @@ The `ErrorContext` utility class provides enhanced error reporting with:
 * **Contextual Information**: Includes relevant debugging data
 * **Exception Chain Analysis**: Tracks root causes through exception chains
 
-See link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/util/ErrorContext.java[ErrorContext] for the builder API and usage patterns.
+See link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/util/ErrorContext.java[ErrorContext] for the builder API and usage patterns.
 
 === Standardized Error Codes
 
@@ -140,7 +140,7 @@ The implementation provides enhanced error messages with contextual information:
 [source,text]
 ----
 # Token validation error with context
-Error processing flow file [ErrorCode=PROCESSING_ERROR, Component=MultiIssuerJWTTokenAuthenticator, Operation=onTrigger, flowFileUuid=abc123, tokenLocation=AUTHORIZATION_HEADER] Caused by: JWTValidationException: Token signature is invalid
+Error processing flow file [ErrorCode=PROCESSING_ERROR, Component=MultiIssuerJWTTokenAuthenticator, Operation=onTrigger, flowFileUuid=abc123] Caused by: JWTValidationException: Token signature is invalid
 
 # Configuration error with file context  
 Error loading configuration file [ErrorCode=IO_ERROR, Component=ConfigurationManager, Operation=loadConfigurationFile, file=/opt/nifi/conf/jwt-validation.yaml, fileFormat=yaml] Caused by: YAMLException: Invalid syntax at line 10
