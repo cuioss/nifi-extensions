@@ -50,6 +50,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class MultiIssuerJWTTokenAuthenticatorTest {
 
     private static final String CS_ID = "jwt-config";
+    private static final String TOKEN_ATTR = "jwt.token";
 
     private TestRunner testRunner;
     private TestJwtIssuerConfigService mockConfigService;
@@ -63,10 +64,6 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         testRunner.enableControllerService(mockConfigService);
         testRunner.setProperty(Properties.JWT_ISSUER_CONFIG_SERVICE, CS_ID);
 
-        testRunner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
-        testRunner.setProperty(Properties.TOKEN_HEADER, "Authorization");
-        testRunner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Bearer");
-
         // Default: configure CS to reject tokens
         mockConfigService.configureValidationFailure(
                 new TokenValidationException(SecurityEventCounter.EventType.FAILED_TO_DECODE_JWT,
@@ -75,23 +72,23 @@ class MultiIssuerJWTTokenAuthenticatorTest {
 
     private void enqueueWithToken(String token) {
         Map<String, String> attributes = new HashMap<>();
-        attributes.put("http.headers.authorization", "Bearer " + token);
+        attributes.put(TOKEN_ATTR, token);
         testRunner.enqueue("test data", attributes);
     }
 
     @Nested
-    @DisplayName("Token Extraction Tests")
-    class TokenExtractionTests {
+    @DisplayName("Token Reading Tests")
+    class TokenReadingTests {
 
         @Test
-        @DisplayName("Test extracting token from Authorization header")
-        void extractTokenFromAuthorizationHeader() {
+        @DisplayName("Should read token from default attribute")
+        void shouldReadTokenFromDefaultAttribute() {
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             enqueueWithToken(tokenHolder.getRawToken());
 
             testRunner.run();
 
-            // Token extracted, but CS rejects it → routes to AUTHENTICATION_FAILED
+            // Token read, but CS rejects it → routes to AUTHENTICATION_FAILED
             testRunner.assertTransferCount(Relationships.SUCCESS, 0);
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
@@ -104,54 +101,24 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         }
 
         @Test
-        @DisplayName("Should use configured bearer prefix for token extraction")
-        void shouldUseConfiguredBearerPrefix() {
-            testRunner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Token");
+        @DisplayName("Should read token from custom attribute name")
+        void shouldReadTokenFromCustomAttribute() {
+            testRunner.setProperty(Properties.TOKEN_ATTRIBUTE, "my.custom.token");
 
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             Map<String, String> attributes = new HashMap<>();
-            attributes.put("http.headers.authorization", "Token " + tokenHolder.getRawToken());
+            attributes.put("my.custom.token", tokenHolder.getRawToken());
             testRunner.enqueue("test data", attributes);
 
             testRunner.run();
 
+            // Token extracted from custom attribute, CS rejects → AUTHENTICATION_FAILED
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
             String errorCode = flowFile.getAttribute(JWTAttributes.Error.CODE);
             assertNotNull(errorCode);
             assertNotEquals("AUTH-001", errorCode,
-                    "Token should have been extracted with custom prefix; AUTH-001 means extraction failed");
-        }
-
-        @Test
-        @DisplayName("Test extracting token from custom header")
-        void extractTokenFromCustomHeader() {
-            testRunner.setProperty(Properties.TOKEN_LOCATION, "CUSTOM_HEADER");
-            testRunner.setProperty(Properties.CUSTOM_HEADER_NAME, "X-JWT-Token");
-
-            TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
-            Map<String, String> attributes = new HashMap<>();
-            attributes.put("http.headers.x-jwt-token", tokenHolder.getRawToken());
-            testRunner.enqueue("test data", attributes);
-
-            testRunner.run();
-
-            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
-            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
-        }
-
-        @Test
-        @DisplayName("Test extracting token from flow file content")
-        void extractTokenFromFlowFileContent() {
-            testRunner.setProperty(Properties.TOKEN_LOCATION, "FLOW_FILE_CONTENT");
-
-            TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
-            testRunner.enqueue(tokenHolder.getRawToken());
-
-            testRunner.run();
-
-            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
-            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+                    "Token should have been read from custom attribute; AUTH-001 means no token found");
         }
     }
 
@@ -160,7 +127,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
     class TokenValidationTests {
 
         @Test
-        @DisplayName("Test successful token validation")
+        @DisplayName("Should route valid token to SUCCESS")
         void successfulTokenValidation() {
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
@@ -180,25 +147,37 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         }
 
         @Test
-        @DisplayName("Test validation failure with invalid token format")
-        void validationFailureWithInvalidTokenFormat() {
-            enqueueWithToken("invalid.token.format");
+        @DisplayName("Should reject malformed token (no dots)")
+        void validationFailureWithMalformedToken() {
+            enqueueWithToken("malformedtoken");
             testRunner.run();
 
             testRunner.assertTransferCount(Relationships.SUCCESS, 0);
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
-            flowFile.assertAttributeExists(JWTAttributes.Error.REASON);
-            flowFile.assertAttributeExists(JWTAttributes.Error.CODE);
+            assertEquals("AUTH-004", flowFile.getAttribute(JWTAttributes.Error.CODE));
 
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN,
-                    AuthLogMessages.WARN.TOKEN_VALIDATION_FAILED_MSG.resolveIdentifierString());
+                    AuthLogMessages.WARN.TOKEN_MALFORMED.resolveIdentifierString());
         }
 
         @Test
-        @DisplayName("Test failure when no token is found with require-valid-token=true (default)")
-        void failureWhenNoTokenFoundWithRequireValidTokenTrue() {
+        @DisplayName("Should reject token exceeding max size")
+        void validationFailureWithOversizedToken() {
+            enqueueWithToken("a.b." + "X".repeat(20000));
+            testRunner.run();
+
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+            assertEquals("AUTH-003", flowFile.getAttribute(JWTAttributes.Error.CODE));
+        }
+
+        @Test
+        @DisplayName("Should fail when no token attribute present with require-valid-token=true")
+        void failureWhenNoTokenWithRequireValidTokenTrue() {
             testRunner.enqueue("test data");
             testRunner.run();
 
@@ -210,8 +189,8 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         }
 
         @Test
-        @DisplayName("Test success when no token is found with require-valid-token=false")
-        void successWhenNoTokenFoundWithRequireValidTokenFalse() {
+        @DisplayName("Should succeed when no token with require-valid-token=false")
+        void successWhenNoTokenWithRequireValidTokenFalse() {
             testRunner.setProperty(Properties.REQUIRE_VALID_TOKEN, "false");
             testRunner.enqueue("test data");
             testRunner.run();
@@ -225,8 +204,8 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         }
 
         @Test
-        @DisplayName("Test failure when invalid token is found even with require-valid-token=false")
-        void failureWhenInvalidTokenFoundWithRequireValidTokenFalse() {
+        @DisplayName("Should fail when invalid token present even with require-valid-token=false")
+        void failureWhenInvalidTokenWithRequireValidTokenFalse() {
             testRunner.setProperty(Properties.REQUIRE_VALID_TOKEN, "false");
             enqueueWithToken("invalid.token.format");
             testRunner.run();
@@ -241,7 +220,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
     class AuthorizationTests {
 
         @Test
-        @DisplayName("Test authorization with required scopes - token has them")
+        @DisplayName("Should authorize token with required scopes present")
         void authorizationWithRequiredScopesPresent() {
             testRunner.setProperty(Properties.REQUIRED_SCOPES, "read");
 
@@ -258,7 +237,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         }
 
         @Test
-        @DisplayName("Test no authorization check when no roles/scopes configured")
+        @DisplayName("Should skip authorization when no roles/scopes configured")
         void noAuthorizationCheckWhenNotConfigured() {
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             mockConfigService.configureValidToken(tokenHolder.asAccessTokenContent());
@@ -268,12 +247,11 @@ class MultiIssuerJWTTokenAuthenticatorTest {
 
             testRunner.assertTransferCount(Relationships.SUCCESS, 1);
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
-            // No AUTHORIZED attribute when no authorization is configured
             flowFile.assertAttributeNotExists(JWTAttributes.Authorization.AUTHORIZED);
         }
 
         @Test
-        @DisplayName("Test authorization failure when required roles missing")
+        @DisplayName("Should reject token when required roles are missing")
         void authorizationFailureWhenRequiredRolesMissing() {
             testRunner.setProperty(Properties.REQUIRED_ROLES, "admin");
 
@@ -289,15 +267,14 @@ class MultiIssuerJWTTokenAuthenticatorTest {
     }
 
     @Nested
-    @DisplayName("Content Size Bounding Tests")
-    class ContentSizeBoundingTests {
+    @DisplayName("Token Size Bounding Tests")
+    class TokenSizeBoundingTests {
 
         @Test
-        @DisplayName("Should bound content reading by max token size")
-        void shouldBoundContentReadingByMaxTokenSize() {
-            testRunner.setProperty(Properties.TOKEN_LOCATION, "FLOW_FILE_CONTENT");
+        @DisplayName("Should reject token exceeding custom max size")
+        void shouldRejectTokenExceedingCustomMaxSize() {
             mockConfigService.configureMaxTokenSize(1024);
-            testRunner.enqueue("x".repeat(50_000));
+            enqueueWithToken("a." + "X".repeat(2000) + ".sig");
 
             testRunner.run();
 
@@ -306,19 +283,17 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         }
 
         @Test
-        @DisplayName("Should accept content within max token size")
-        void shouldAcceptContentWithinMaxTokenSize() {
-            testRunner.setProperty(Properties.TOKEN_LOCATION, "FLOW_FILE_CONTENT");
-
+        @DisplayName("Should accept token within max size")
+        void shouldAcceptTokenWithinMaxSize() {
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
-            testRunner.enqueue(tokenHolder.getRawToken());
+            enqueueWithToken(tokenHolder.getRawToken());
             testRunner.run();
 
             // Token will be extracted but fail validation (not size-related)
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
             assertNotEquals("AUTH-003", flowFile.getAttribute(JWTAttributes.Error.CODE),
-                    "Normal-sized content should not trigger size violation");
+                    "Normal-sized token should not trigger size violation");
         }
     }
 
@@ -327,7 +302,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
     class TokenAlgorithmValidationTests {
 
         @Test
-        @DisplayName("Test token with malformed Base64 header")
+        @DisplayName("Should reject token with malformed Base64 header")
         void malformedBase64Header() {
             enqueueWithToken("not-valid-base64!!!.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature");
             testRunner.run();
@@ -342,7 +317,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         }
 
         @Test
-        @DisplayName("Test token with invalid Base64 characters")
+        @DisplayName("Should reject token with invalid Base64 characters")
         void base64WithInvalidCharacters() {
             enqueueWithToken("eyJ@#$%^&*()!.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature");
             testRunner.run();

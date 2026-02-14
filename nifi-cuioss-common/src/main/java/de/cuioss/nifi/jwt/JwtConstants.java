@@ -40,58 +40,6 @@ public final class JwtConstants {
     public static final long LOG_METRICS_INTERVAL = 100;
 
     /**
-     * Token location values.
-     */
-    @UtilityClass
-    public static final class TokenLocation {
-        /**
-         * Extract token from Authorization header.
-         */
-        public static final String AUTHORIZATION_HEADER = "AUTHORIZATION_HEADER";
-
-        /**
-         * Extract token from custom header.
-         */
-        public static final String CUSTOM_HEADER = "CUSTOM_HEADER";
-
-        /**
-         * Extract token from flow file content.
-         */
-        public static final String FLOW_FILE_CONTENT = "FLOW_FILE_CONTENT";
-    }
-
-    /**
-     * HTTP related constants.
-     */
-    @UtilityClass
-    public static final class Http {
-        /**
-         * Prefix for HTTP headers in flow file attributes.
-         */
-        public static final String HEADERS_PREFIX = "http.headers.";
-
-        /**
-         * Default Authorization header name.
-         */
-        public static final String AUTHORIZATION_HEADER = "Authorization";
-
-        /**
-         * Bearer token prefix.
-         */
-        public static final String BEARER_PREFIX = "Bearer ";
-
-        /**
-         * HTTP protocol prefix.
-         */
-        public static final String HTTP_PROTOCOL = "http://";
-
-        /**
-         * HTTPS protocol prefix.
-         */
-        public static final String HTTPS_PROTOCOL = "https://";
-    }
-
-    /**
      * Error related constants.
      */
     @UtilityClass

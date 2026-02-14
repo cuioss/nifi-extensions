@@ -170,55 +170,14 @@ public final class JWTAttributes {
     @UtilityClass
     public static final class Properties {
         /**
-         * Basic JWT token properties.
-         */
-        @UtilityClass
-        public static final class Token {
-            /**
-             * Defines where to extract the token from.
-             */
-            public static final String LOCATION = "jwt.token.location";
-
-            /**
-             * The header name containing the token when using AUTHORIZATION_HEADER.
-             */
-            public static final String HEADER = "jwt.token.header";
-
-            /**
-             * The prefix to strip from the token (e.g., "Bearer ").
-             */
-            public static final String BEARER_PREFIX = "jwt.bearer.token.prefix";
-
-            /**
-             * The custom header name when using CUSTOM_HEADER.
-             */
-            public static final String CUSTOM_HEADER_NAME = "jwt.custom.header.name";
-        }
-
-        /**
          * JWT validation properties.
          */
         @UtilityClass
         public static final class Validation {
             /**
-             * Defines where to extract the token from.
+             * The FlowFile attribute name containing the raw JWT token.
              */
-            public static final String TOKEN_LOCATION = "jwt.validation.token.location";
-
-            /**
-             * The header name containing the token when using AUTHORIZATION_HEADER.
-             */
-            public static final String TOKEN_HEADER = "jwt.validation.token.header";
-
-            /**
-             * The custom header name when using CUSTOM_HEADER.
-             */
-            public static final String CUSTOM_HEADER_NAME = "jwt.validation.custom.header.name";
-
-            /**
-             * The prefix to strip from the token (e.g., "Bearer ").
-             */
-            public static final String BEARER_TOKEN_PREFIX = "jwt.validation.bearer.token.prefix";
+            public static final String TOKEN_ATTRIBUTE = "jwt.validation.token.attribute";
 
             /**
              * Whether to require a valid token for processing.

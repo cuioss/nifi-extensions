@@ -34,13 +34,12 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test class for internationalization aspects of {@link MultiIssuerJWTTokenAuthenticator}.
- *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/internationalization.adoc">Internationalization Specification</a>
  */
 @DisplayName("Tests for MultiIssuerJWTTokenAuthenticator Internationalization")
 class MultiIssuerJWTTokenAuthenticatorI18nTest {
 
     private static final String CS_ID = "jwt-config";
+    private static final String TOKEN_ATTR = "jwt.token";
 
     private TestRunner testRunner;
     private TestJwtIssuerConfigService mockConfigService;
@@ -53,10 +52,6 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
         testRunner.addControllerService(CS_ID, mockConfigService);
         testRunner.enableControllerService(mockConfigService);
         testRunner.setProperty(Properties.JWT_ISSUER_CONFIG_SERVICE, CS_ID);
-
-        testRunner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
-        testRunner.setProperty(Properties.TOKEN_HEADER, "Authorization");
-        testRunner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Bearer");
 
         // Default: configure CS to reject tokens
         mockConfigService.configureValidationFailure(
@@ -78,22 +73,16 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
 
         String errorReason = flowFile.getAttribute(JWTAttributes.Error.REASON);
         assertNotNull(errorReason, "Error reason should not be null");
-        assertTrue(errorReason.contains("AUTHORIZATION_HEADER"),
-                "Error message should contain the token location");
-        assertTrue(errorReason.contains("Token") || errorReason.contains("token") ||
-                errorReason.contains("Kein"),
-                "Error message should mention token");
+        assertTrue(errorReason.contains("jwt.token") || errorReason.contains("Token") ||
+                errorReason.contains("token") || errorReason.contains("Kein"),
+                "Error message should reference the token attribute or mention token");
     }
 
     @Test
     @DisplayName("Test internationalized error message for token size limit")
     void internationalizedErrorMessageForTokenSizeLimit() {
-        // Create a very large token (exceeding the default 16384 byte limit)
-        StringBuilder largeToken = new StringBuilder("Bearer ");
-        largeToken.append("X".repeat(20000));
-
         Map<String, String> attributes = new HashMap<>();
-        attributes.put("http.headers.authorization", largeToken.toString());
+        attributes.put(TOKEN_ATTR, "X".repeat(20000));
         testRunner.enqueue("test data", attributes);
 
         testRunner.run();
@@ -117,7 +106,7 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
     @DisplayName("Test internationalized error message for malformed token")
     void internationalizedErrorMessageForMalformedToken() {
         Map<String, String> attributes = new HashMap<>();
-        attributes.put("http.headers.authorization", "Bearer malformedtoken");
+        attributes.put(TOKEN_ATTR, "malformedtoken");
         testRunner.enqueue("test data", attributes);
 
         testRunner.run();

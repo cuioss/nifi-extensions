@@ -53,14 +53,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * Token validation is delegated to the {@link de.cuioss.nifi.jwt.config.JwtIssuerConfigService}
  * Controller Service. These tests use a mock CS to verify processor routing, attribute population,
  * and authorization logic with representative token content.
- *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/technical-components.adoc">Technical Components Specification</a>
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>
  */
 @EnableTestLogger
 class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
     private static final String CS_ID = "jwt-config";
+    private static final String TOKEN_ATTR = "jwt.token";
 
     private TestRunner testRunner;
     private MultiIssuerJWTTokenAuthenticator processor;
@@ -75,15 +73,11 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
         testRunner.addControllerService(CS_ID, mockConfigService);
         testRunner.enableControllerService(mockConfigService);
         testRunner.setProperty(Properties.JWT_ISSUER_CONFIG_SERVICE, CS_ID);
-
-        testRunner.setProperty(Properties.TOKEN_LOCATION, "AUTHORIZATION_HEADER");
-        testRunner.setProperty(Properties.TOKEN_HEADER, "Authorization");
-        testRunner.setProperty(Properties.BEARER_TOKEN_PREFIX, "Bearer");
     }
 
     private MockFlowFile enqueueWithToken(String token) {
         Map<String, String> attributes = new HashMap<>();
-        attributes.put("http.headers.authorization", "Bearer " + token);
+        attributes.put(TOKEN_ATTR, token);
         testRunner.enqueue("test data", attributes);
         testRunner.run();
         return null; // Caller retrieves from relationship
@@ -140,39 +134,6 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
             testRunner.assertTransferCount(Relationships.SUCCESS, 1);
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
             flowFile.assertAttributeEquals(JWTAttributes.Content.PREFIX + "tenant-id", "acme-corp");
-        }
-
-        @Test
-        @DisplayName("Should extract token from flow file content")
-        void shouldExtractTokenFromContent() {
-            testRunner.setProperty(Properties.TOKEN_LOCATION, "FLOW_FILE_CONTENT");
-
-            TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
-            AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
-            mockConfigService.configureValidToken(tokenContent);
-
-            testRunner.enqueue(tokenHolder.getRawToken());
-            testRunner.run();
-
-            testRunner.assertTransferCount(Relationships.SUCCESS, 1);
-        }
-
-        @Test
-        @DisplayName("Should extract token from custom header")
-        void shouldExtractTokenFromCustomHeader() {
-            testRunner.setProperty(Properties.TOKEN_LOCATION, "CUSTOM_HEADER");
-            testRunner.setProperty(Properties.CUSTOM_HEADER_NAME, "X-JWT-Token");
-
-            TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
-            AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
-            mockConfigService.configureValidToken(tokenContent);
-
-            Map<String, String> attributes = new HashMap<>();
-            attributes.put("http.headers.x-jwt-token", tokenHolder.getRawToken());
-            testRunner.enqueue("test data", attributes);
-            testRunner.run();
-
-            testRunner.assertTransferCount(Relationships.SUCCESS, 1);
         }
     }
 
@@ -267,7 +228,6 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
             String validToken = tokenHolder.getRawToken();
             String tamperedToken = JwtTokenTamperingUtil.applyTamperingStrategy(validToken, strategy);
 
-            // Configure CS to reject tampered tokens
             mockConfigService.configureValidationFailure(
                     new TokenValidationException(SecurityEventCounter.EventType.SIGNATURE_VALIDATION_FAILED,
                             "Token signature verification failed"));

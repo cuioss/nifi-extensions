@@ -24,7 +24,6 @@ import de.cuioss.nifi.jwt.i18n.I18nResolver;
 import de.cuioss.nifi.jwt.i18n.NiFiI18nResolver;
 import de.cuioss.nifi.jwt.util.AuthorizationRequirements;
 import de.cuioss.nifi.jwt.util.AuthorizationValidator;
-import de.cuioss.nifi.jwt.util.ErrorContext;
 import de.cuioss.nifi.jwt.util.ProcessingError;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
@@ -45,7 +44,6 @@ import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
 import org.jspecify.annotations.Nullable;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -57,21 +55,20 @@ import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships
  * NiFi processor that validates JWT tokens from multiple issuers using a shared
  * {@link JwtIssuerConfigService} Controller Service.
  * <p>
- * Extracts JWT tokens from flow files, validates them via the CS, performs authorization
- * checks, and routes flow files based on validation results.
+ * Reads the raw JWT token from a configurable FlowFile attribute (default: {@code jwt.token}),
+ * validates it via the CS, performs authorization checks, and routes flow files based on
+ * validation results.
  *
  * @see JwtIssuerConfigService
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration.adoc">Configuration Specification</a>
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>
  */
 @Tags({"jwt", "oauth", "authentication", "authorization", "security", "token"})
 @CapabilityDescription("Validates JWT tokens from multiple issuers using a shared JWT Issuer Config Service. " +
-        "Extracts JWT tokens from flow files, validates them against configured issuers, and routes " +
-        "flow files based on validation results.")
+        "Reads a raw JWT token from a configurable FlowFile attribute, validates it against configured issuers, " +
+        "and routes flow files based on validation results.")
 @SeeAlso()
 @ReadsAttributes({
-        @ReadsAttribute(attribute = "http.headers.authorization",
-                description = "HTTP Authorization header containing the JWT token")
+        @ReadsAttribute(attribute = "jwt.token",
+                description = "FlowFile attribute containing the raw JWT token (configurable via Token Attribute property)")
 })
 @WritesAttributes({
         @WritesAttribute(attribute = JWTAttributes.Content.PREFIX + "*", description = "JWT token claims"),
@@ -89,14 +86,13 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     ));
 
     private static final CuiLogger LOGGER = new CuiLogger(MultiIssuerJWTTokenAuthenticator.class);
-    private static final String COMPONENT_NAME = "MultiIssuerJWTTokenAuthenticator";
-    private static final String FLOW_FILE_UUID_KEY = "flowFileUuid";
 
     private final AtomicLong processedFlowFilesCount = new AtomicLong();
 
     @Nullable private JwtIssuerConfigService jwtConfigService;
     @Nullable private AuthorizationRequirements authorizationRequirements;
     @Nullable private I18nResolver i18nResolver;
+    @Nullable private String tokenAttributeName;
 
     @Getter private List<PropertyDescriptor> supportedPropertyDescriptors;
     @Getter private Set<Relationship> relationships;
@@ -107,10 +103,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         supportedPropertyDescriptors = List.of(
                 Properties.JWT_ISSUER_CONFIG_SERVICE,
-                Properties.TOKEN_LOCATION,
-                Properties.TOKEN_HEADER,
-                Properties.CUSTOM_HEADER_NAME,
-                Properties.BEARER_TOKEN_PREFIX,
+                Properties.TOKEN_ATTRIBUTE,
                 Properties.REQUIRE_VALID_TOKEN,
                 Properties.REQUIRED_ROLES,
                 Properties.REQUIRED_SCOPES
@@ -126,6 +119,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         jwtConfigService = context.getProperty(Properties.JWT_ISSUER_CONFIG_SERVICE)
                 .asControllerService(JwtIssuerConfigService.class);
         authorizationRequirements = AuthorizationRequirements.from(context);
+        tokenAttributeName = context.getProperty(Properties.TOKEN_ATTRIBUTE).getValue();
         LOGGER.info(AuthLogMessages.INFO.PROCESSOR_INITIALIZED);
     }
 
@@ -133,6 +127,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     public void onStopped() {
         jwtConfigService = null;
         authorizationRequirements = null;
+        tokenAttributeName = null;
         processedFlowFilesCount.set(0);
         LOGGER.info(AuthLogMessages.INFO.PROCESSOR_STOPPED);
     }
@@ -149,18 +144,15 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             LOGGER.info(AuthLogMessages.INFO.TOKEN_VALIDATION_METRICS, processedFlowFilesCount);
         }
 
-        String tokenLocation = context.getProperty(Properties.TOKEN_LOCATION).getValue();
-
         try {
-            Optional<String> tokenOpt = extractTokenByLocation(flowFile, session, context, tokenLocation);
+            String token = flowFile.getAttribute(tokenAttributeName);
 
-            if (tokenOpt.isEmpty()) {
-                handleMissingToken(session, flowFile, context, tokenLocation);
+            if (token == null || token.isBlank()) {
+                handleMissingToken(session, flowFile);
                 return;
             }
 
-            String token = tokenOpt.get();
-            if (!validateTokenFormat(session, flowFile, token, context)) {
+            if (!validateTokenFormat(session, flowFile, token)) {
                 return;
             }
 
@@ -178,7 +170,6 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         Map<String, String> attributes = extractClaims(accessToken);
         attributes.put(JWTAttributes.Token.PRESENT, "true");
 
-        // Authorization check using processor-level properties (cached in onScheduled)
         if (authorizationRequirements.hasAuthorizationRequirements()) {
             AuthorizationValidator.AuthorizationResult authResult =
                     AuthorizationValidator.validate(accessToken, authorizationRequirements);
@@ -200,74 +191,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         session.transfer(flowFile, Relationships.SUCCESS);
     }
 
-    // --- Token Extraction ---
-
-    private Optional<String> extractTokenByLocation(FlowFile flowFile, ProcessSession session,
-            ProcessContext context, String tokenLocation) {
-        String bearerPrefix = context.getProperty(Properties.BEARER_TOKEN_PREFIX).getValue();
-        int maxTokenSize = jwtConfigService.getAuthenticationConfig().maxTokenSize();
-        return switch (tokenLocation) {
-            case "AUTHORIZATION_HEADER" ->
-                extractTokenFromHeader(flowFile, context.getProperty(Properties.TOKEN_HEADER).getValue(), bearerPrefix);
-            case "CUSTOM_HEADER" ->
-                extractTokenFromHeader(flowFile, context.getProperty(Properties.CUSTOM_HEADER_NAME).getValue(), bearerPrefix);
-            case "FLOW_FILE_CONTENT" -> extractTokenFromContent(flowFile, session, maxTokenSize);
-            default -> extractTokenFromHeader(flowFile, "Authorization", bearerPrefix);
-        };
-    }
-
-    private Optional<String> extractTokenFromHeader(FlowFile flowFile, String headerName, String bearerPrefix) {
-        String attributeKey = JwtConstants.Http.HEADERS_PREFIX + headerName;
-        String headerValue = flowFile.getAttribute(attributeKey);
-
-        // HTTP header names are case-insensitive per RFC 7230
-        if (headerValue == null) {
-            for (Map.Entry<String, String> entry : flowFile.getAttributes().entrySet()) {
-                if (entry.getKey().equalsIgnoreCase(attributeKey)) {
-                    headerValue = entry.getValue();
-                    break;
-                }
-            }
-        }
-
-        if (headerValue == null || headerValue.isEmpty()) {
-            return Optional.empty();
-        }
-
-        String fullPrefix = bearerPrefix + " ";
-        String token;
-        if (headerValue.startsWith(fullPrefix)) {
-            token = headerValue.substring(fullPrefix.length()).trim();
-        } else {
-            token = headerValue.trim();
-        }
-
-        return token.isEmpty() ? Optional.empty() : Optional.of(token);
-    }
-
-    private Optional<String> extractTokenFromContent(FlowFile flowFile, ProcessSession session, int maxSize) {
-        if (flowFile.getSize() > maxSize) {
-            LOGGER.warn(AuthLogMessages.WARN.FLOW_FILE_SIZE_EXCEEDED, flowFile.getSize(), maxSize);
-            return Optional.empty();
-        }
-
-        final StringBuilder contentBuilder = new StringBuilder();
-        session.read(flowFile, inputStream -> {
-            byte[] buffer = new byte[4096];
-            int len;
-            while ((len = inputStream.read(buffer)) != -1) {
-                contentBuilder.append(new String(buffer, 0, len, StandardCharsets.UTF_8));
-            }
-        });
-
-        String content = contentBuilder.toString().trim();
-        return content.isEmpty() ? Optional.empty() : Optional.of(content);
-    }
-
     // --- Token Format Validation ---
 
-    private boolean validateTokenFormat(ProcessSession session, FlowFile flowFile,
-            String token, ProcessContext context) {
+    private boolean validateTokenFormat(ProcessSession session, FlowFile flowFile, String token) {
         int maxTokenSize = jwtConfigService.getAuthenticationConfig().maxTokenSize();
 
         if (token.length() > maxTokenSize) {
@@ -291,8 +217,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     // --- Missing Token Handling ---
 
-    private void handleMissingToken(ProcessSession session, FlowFile flowFile,
-            ProcessContext context, String tokenLocation) {
+    private void handleMissingToken(ProcessSession session, FlowFile flowFile) {
         boolean requireValidToken = authorizationRequirements.requireValidToken();
 
         if (!requireValidToken) {
@@ -303,9 +228,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             flowFile = session.putAllAttributes(flowFile, attributes);
             session.transfer(flowFile, Relationships.SUCCESS);
         } else {
-            LOGGER.warn(AuthLogMessages.WARN.NO_TOKEN_FOUND, tokenLocation);
+            LOGGER.warn(AuthLogMessages.WARN.NO_TOKEN_FOUND, tokenAttributeName);
             handleError(session, flowFile, "AUTH-001",
-                    i18nResolver.getTranslatedString(JWTTranslationKeys.Error.NO_TOKEN_FOUND, tokenLocation),
+                    i18nResolver.getTranslatedString(JWTTranslationKeys.Error.NO_TOKEN_FOUND, tokenAttributeName),
                     "EXTRACTION_ERROR");
         }
     }

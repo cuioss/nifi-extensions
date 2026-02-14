@@ -17,7 +17,6 @@
 package de.cuioss.nifi.processors.auth;
 
 import de.cuioss.nifi.jwt.JWTAttributes;
-import de.cuioss.nifi.jwt.JwtConstants;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
 import de.cuioss.nifi.jwt.util.AuthorizationRequirements;
 import lombok.experimental.UtilityClass;
@@ -29,14 +28,16 @@ import org.apache.nifi.processor.util.StandardValidators;
  * DSL-style nested constants for JWT processor configuration.
  * <p>
  * Contains only processor-specific constants (relationships, processor-level properties).
- * Shared JWT constants (token location, HTTP headers, error codes) are in
- * {@link JwtConstants} in the common module.
+ * Shared JWT constants are in {@link de.cuioss.nifi.jwt.JwtConstants} in the common module.
  *
- * @see JwtConstants
+ * @see de.cuioss.nifi.jwt.JwtConstants
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration.adoc">Configuration Specification</a>
  */
 @UtilityClass
 public final class JWTProcessorConstants {
+
+    /** Default FlowFile attribute name for the raw JWT token. */
+    public static final String DEFAULT_TOKEN_ATTRIBUTE = "jwt.token";
 
     /**
      * Processor relationships.
@@ -58,22 +59,14 @@ public final class JWTProcessorConstants {
                 .name("authentication-failed")
                 .description("FlowFiles with invalid tokens will be routed to this relationship")
                 .build();
-
-        /**
-         * FlowFiles with extraction failures will be routed to this relationship.
-         */
-        public static final Relationship FAILURE = new Relationship.Builder()
-                .name("failure")
-                .description("FlowFiles with extraction failures will be routed to this relationship")
-                .build();
     }
 
     /**
      * Property descriptors for processor configuration.
      * <p>
+     * The processor reads a raw JWT token from a FlowFile attribute (default: {@code jwt.token}).
      * Issuer-related properties (JWKS refresh, allowed algorithms, HTTPS requirement,
-     * connection timeout, source type) are now managed by the
-     * {@link JwtIssuerConfigService} Controller Service.
+     * connection timeout) are managed by the {@link JwtIssuerConfigService} Controller Service.
      */
     @UtilityClass
     public static final class Properties {
@@ -89,52 +82,14 @@ public final class JWTProcessorConstants {
                 .build();
 
         /**
-         * Defines where to extract the token from.
+         * The FlowFile attribute name containing the raw JWT token.
          */
-        public static final PropertyDescriptor TOKEN_LOCATION = new PropertyDescriptor.Builder()
-                .name(JWTAttributes.Properties.Validation.TOKEN_LOCATION)
-                .displayName("Token Location")
-                .description("Defines where to extract the token from")
+        public static final PropertyDescriptor TOKEN_ATTRIBUTE = new PropertyDescriptor.Builder()
+                .name(JWTAttributes.Properties.Validation.TOKEN_ATTRIBUTE)
+                .displayName("Token Attribute")
+                .description("The FlowFile attribute name containing the raw JWT token")
                 .required(true)
-                .allowableValues(JwtConstants.TokenLocation.AUTHORIZATION_HEADER,
-                        JwtConstants.TokenLocation.CUSTOM_HEADER,
-                        JwtConstants.TokenLocation.FLOW_FILE_CONTENT)
-                .defaultValue(JwtConstants.TokenLocation.AUTHORIZATION_HEADER)
-                .build();
-
-        /**
-         * The header name containing the token when using AUTHORIZATION_HEADER.
-         */
-        public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Builder()
-                .name(JWTAttributes.Properties.Validation.TOKEN_HEADER)
-                .displayName("Token Header")
-                .description("The header name containing the token when using AUTHORIZATION_HEADER")
-                .required(false)
-                .defaultValue(JwtConstants.Http.AUTHORIZATION_HEADER)
-                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-                .build();
-
-        /**
-         * The custom header name when using CUSTOM_HEADER.
-         */
-        public static final PropertyDescriptor CUSTOM_HEADER_NAME = new PropertyDescriptor.Builder()
-                .name(JWTAttributes.Properties.Validation.CUSTOM_HEADER_NAME)
-                .displayName("Custom Header Name")
-                .description("The custom header name when using CUSTOM_HEADER")
-                .required(false)
-                .defaultValue("X-Authorization")
-                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-                .build();
-
-        /**
-         * The prefix to strip from the token (e.g., "Bearer ").
-         */
-        public static final PropertyDescriptor BEARER_TOKEN_PREFIX = new PropertyDescriptor.Builder()
-                .name(JWTAttributes.Properties.Validation.BEARER_TOKEN_PREFIX)
-                .displayName("Bearer Token Prefix")
-                .description("The prefix to strip from the token (e.g., \"Bearer \")")
-                .required(false)
-                .defaultValue("Bearer")
+                .defaultValue(DEFAULT_TOKEN_ATTRIBUTE)
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
 
