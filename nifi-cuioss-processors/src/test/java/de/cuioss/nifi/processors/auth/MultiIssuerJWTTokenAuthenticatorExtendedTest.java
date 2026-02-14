@@ -44,7 +44,7 @@ import java.util.Map;
 
 import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Properties;
 import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 /**
  * Extended tests for {@link MultiIssuerJWTTokenAuthenticator} using realistic token content

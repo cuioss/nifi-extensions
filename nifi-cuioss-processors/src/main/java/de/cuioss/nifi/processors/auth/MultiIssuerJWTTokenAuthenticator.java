@@ -25,6 +25,7 @@ import de.cuioss.nifi.jwt.i18n.NiFiI18nResolver;
 import de.cuioss.nifi.jwt.util.AuthorizationRequirements;
 import de.cuioss.nifi.jwt.util.AuthorizationValidator;
 import de.cuioss.nifi.jwt.util.ProcessingError;
+import de.cuioss.nifi.jwt.util.TokenClaimMapper;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.tools.logging.CuiLogger;
@@ -44,8 +45,10 @@ import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
 import org.jspecify.annotations.Nullable;
 
-import java.time.Instant;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Properties;
@@ -80,10 +83,6 @@ import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships
 })
 @EqualsAndHashCode(callSuper = true)
 public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
-
-    private static final Set<String> FILTERED_CLAIM_KEYS = new TreeSet<>(Arrays.asList(
-            "sub", "iss", "exp", "roles", "groups", "scope", "scopes"
-    ));
 
     private static final CuiLogger LOGGER = new CuiLogger(MultiIssuerJWTTokenAuthenticator.class);
 
@@ -167,7 +166,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             throws TokenValidationException {
         AccessTokenContent accessToken = jwtConfigService.validateToken(token);
 
-        Map<String, String> attributes = extractClaims(accessToken);
+        Map<String, String> attributes = TokenClaimMapper.mapToAttributes(accessToken);
         attributes.put(JWTAttributes.Token.PRESENT, "true");
 
         if (authorizationRequirements.hasAuthorizationRequirements()) {
@@ -273,40 +272,4 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         return flowFile;
     }
 
-    // --- Claim Extraction ---
-
-    private Map<String, String> extractClaims(AccessTokenContent token) {
-        Map<String, String> claims = new HashMap<>();
-
-        claims.put(JWTAttributes.Token.VALIDATED_AT, Instant.now().toString());
-        claims.put(JWTAttributes.Token.SUBJECT, token.getSubject().orElse(""));
-        claims.put(JWTAttributes.Token.ISSUER, token.getIssuer());
-        claims.put(JWTAttributes.Token.EXPIRATION, token.getExpirationTime().toString());
-
-        List<String> roles = token.getRoles();
-        if (!roles.isEmpty()) {
-            claims.put(JWTAttributes.Authorization.ROLES, String.join(",", roles));
-        }
-
-        List<String> groups = token.getGroups();
-        if (!groups.isEmpty()) {
-            claims.put(JWTAttributes.Authorization.GROUPS, String.join(",", groups));
-        }
-
-        if (token.getClaims().containsKey("scope")) {
-            List<String> scopes = token.getScopes();
-            if (!scopes.isEmpty()) {
-                claims.put(JWTAttributes.Authorization.SCOPES, String.join(",", scopes));
-            }
-        }
-
-        var tokenClaims = token.getClaims();
-        for (var entry : tokenClaims.entrySet()) {
-            if (!FILTERED_CLAIM_KEYS.contains(entry.getKey())) {
-                claims.put(JWTAttributes.Content.PREFIX + entry.getKey(), entry.getValue().getOriginalString());
-            }
-        }
-
-        return claims;
-    }
 }
