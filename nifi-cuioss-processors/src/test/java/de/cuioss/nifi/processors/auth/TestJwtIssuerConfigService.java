@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.processors.auth;
 
+import de.cuioss.nifi.jwt.config.JwtAuthenticationConfig;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
@@ -23,6 +24,7 @@ import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
 import org.apache.nifi.controller.AbstractControllerService;
 
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Test implementation of {@link JwtIssuerConfigService} for processor unit tests.
@@ -30,8 +32,12 @@ import java.util.Optional;
  */
 public class TestJwtIssuerConfigService extends AbstractControllerService implements JwtIssuerConfigService {
 
+    private static final JwtAuthenticationConfig DEFAULT_CONFIG =
+            new JwtAuthenticationConfig(16384, Set.of(), true, 3600, 10, "url");
+
     private AccessTokenContent tokenToReturn;
     private TokenValidationException exceptionToThrow;
+    private JwtAuthenticationConfig authenticationConfig = DEFAULT_CONFIG;
 
     public void configureValidToken(AccessTokenContent token) {
         this.tokenToReturn = token;
@@ -43,6 +49,11 @@ public class TestJwtIssuerConfigService extends AbstractControllerService implem
         this.tokenToReturn = null;
     }
 
+    public void configureMaxTokenSize(int maxTokenSize) {
+        this.authenticationConfig = new JwtAuthenticationConfig(
+                maxTokenSize, Set.of(), true, 3600, 10, "url");
+    }
+
     @Override
     public AccessTokenContent validateToken(String rawToken) throws TokenValidationException {
         if (exceptionToThrow != null) {
@@ -52,6 +63,11 @@ public class TestJwtIssuerConfigService extends AbstractControllerService implem
             throw new IllegalStateException("TestJwtIssuerConfigService not configured — call configureValidToken() or configureValidationFailure()");
         }
         return tokenToReturn;
+    }
+
+    @Override
+    public JwtAuthenticationConfig getAuthenticationConfig() {
+        return authenticationConfig;
     }
 
     @Override

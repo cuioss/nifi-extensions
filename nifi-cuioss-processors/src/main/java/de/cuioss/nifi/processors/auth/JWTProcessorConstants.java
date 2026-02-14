@@ -158,17 +158,5 @@ public final class JWTProcessorConstants {
          */
         public static final PropertyDescriptor REQUIRED_SCOPES =
                 AuthorizationRequirements.REQUIRED_SCOPES;
-
-        /**
-         * Maximum token size in bytes.
-         */
-        public static final PropertyDescriptor MAXIMUM_TOKEN_SIZE = new PropertyDescriptor.Builder()
-                .name(JWTAttributes.Properties.Validation.MAXIMUM_TOKEN_SIZE)
-                .displayName("Maximum Token Size")
-                .description("Maximum token size in bytes")
-                .required(true)
-                .defaultValue("16384")
-                .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
-                .build();
     }
 }

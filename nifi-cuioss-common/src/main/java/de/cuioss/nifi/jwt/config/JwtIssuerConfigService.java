@@ -47,6 +47,15 @@ public interface JwtIssuerConfigService extends ControllerService {
     AccessTokenContent validateToken(String rawToken);
 
     /**
+     * Returns the immutable authentication configuration snapshot.
+     * Provides consistent access to centrally configured settings
+     * (max token size, allowed algorithms, JWKS settings, etc.).
+     *
+     * @return the current authentication configuration
+     */
+    JwtAuthenticationConfig getAuthenticationConfig();
+
+    /**
      * Returns the security event counter from the underlying TokenValidator.
      * Tracks success/failure counts by event type (expired, signature failed, etc.).
      *

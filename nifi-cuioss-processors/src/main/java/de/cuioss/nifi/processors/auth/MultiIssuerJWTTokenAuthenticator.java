@@ -113,8 +113,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 Properties.BEARER_TOKEN_PREFIX,
                 Properties.REQUIRE_VALID_TOKEN,
                 Properties.REQUIRED_ROLES,
-                Properties.REQUIRED_SCOPES,
-                Properties.MAXIMUM_TOKEN_SIZE
+                Properties.REQUIRED_SCOPES
         );
 
         relationships = Set.of(Relationships.SUCCESS, Relationships.AUTHENTICATION_FAILED);
@@ -206,7 +205,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private Optional<String> extractTokenByLocation(FlowFile flowFile, ProcessSession session,
             ProcessContext context, String tokenLocation) {
         String bearerPrefix = context.getProperty(Properties.BEARER_TOKEN_PREFIX).getValue();
-        int maxTokenSize = context.getProperty(Properties.MAXIMUM_TOKEN_SIZE).asInteger();
+        int maxTokenSize = jwtConfigService.getAuthenticationConfig().maxTokenSize();
         return switch (tokenLocation) {
             case "AUTHORIZATION_HEADER" ->
                 extractTokenFromHeader(flowFile, context.getProperty(Properties.TOKEN_HEADER).getValue(), bearerPrefix);
@@ -269,7 +268,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     private boolean validateTokenFormat(ProcessSession session, FlowFile flowFile,
             String token, ProcessContext context) {
-        int maxTokenSize = context.getProperty(Properties.MAXIMUM_TOKEN_SIZE).asInteger();
+        int maxTokenSize = jwtConfigService.getAuthenticationConfig().maxTokenSize();
 
         if (token.length() > maxTokenSize) {
             LOGGER.warn(AuthLogMessages.WARN.TOKEN_SIZE_EXCEEDED, maxTokenSize);

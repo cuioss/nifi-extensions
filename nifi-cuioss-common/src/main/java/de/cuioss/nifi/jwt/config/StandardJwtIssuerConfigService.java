@@ -143,6 +143,7 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
     // --- Internal State ---
 
     private final AtomicReference<TokenValidator> tokenValidator = new AtomicReference<>();
+    @Nullable private volatile JwtAuthenticationConfig authenticationConfig;
     @Nullable private ConfigurationManager configurationManager;
 
     @Override
@@ -180,6 +181,7 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
             Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
 
             configurationManager = new ConfigurationManager();
+            authenticationConfig = buildAuthenticationConfig(context);
             Map<String, String> properties = convertContextToProperties(context);
 
             // Parse issuer configurations
@@ -219,6 +221,7 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
     @OnDisabled
     public void onDisabled() {
         tokenValidator.set(null);
+        authenticationConfig = null;
         configurationManager = null;
         LOGGER.info(JwtLogMessages.INFO.CONTROLLER_SERVICE_DISABLED);
     }
@@ -236,6 +239,15 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
     }
 
     @Override
+    public JwtAuthenticationConfig getAuthenticationConfig() {
+        JwtAuthenticationConfig config = authenticationConfig;
+        if (config == null) {
+            throw new IllegalStateException("JwtIssuerConfigService is not enabled");
+        }
+        return config;
+    }
+
+    @Override
     public Optional<SecurityEventCounter> getSecurityEventCounter() {
         TokenValidator validator = tokenValidator.get();
         return validator != null
@@ -244,6 +256,23 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
     }
 
     // --- Internal Methods ---
+
+    private static JwtAuthenticationConfig buildAuthenticationConfig(ConfigurationContext context) {
+        int maxTokenSize = context.getProperty(MAXIMUM_TOKEN_SIZE).asInteger();
+        boolean requireHttps = context.getProperty(REQUIRE_HTTPS_FOR_JWKS).asBoolean();
+        int refreshInterval = context.getProperty(JWKS_REFRESH_INTERVAL).asInteger();
+        int connectionTimeout = context.getProperty(JWKS_CONNECTION_TIMEOUT).asInteger();
+        String sourceType = context.getProperty(JWKS_SOURCE_TYPE).getValue();
+
+        String algorithmsValue = context.getProperty(ALLOWED_ALGORITHMS).getValue();
+        Set<String> allowedAlgorithms = algorithmsValue != null
+                ? Set.of(algorithmsValue.split(","))
+                : Set.of();
+
+        return new JwtAuthenticationConfig(
+                maxTokenSize, allowedAlgorithms, requireHttps,
+                refreshInterval, connectionTimeout, sourceType);
+    }
 
     private Map<String, String> convertContextToProperties(ConfigurationContext context) {
         Map<String, String> properties = new HashMap<>();

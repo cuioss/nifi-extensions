@@ -296,7 +296,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         @DisplayName("Should bound content reading by max token size")
         void shouldBoundContentReadingByMaxTokenSize() {
             testRunner.setProperty(Properties.TOKEN_LOCATION, "FLOW_FILE_CONTENT");
-            testRunner.setProperty(Properties.MAXIMUM_TOKEN_SIZE, "1024");
+            mockConfigService.configureMaxTokenSize(1024);
             testRunner.enqueue("x".repeat(50_000));
 
             testRunner.run();
