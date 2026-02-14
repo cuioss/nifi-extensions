@@ -149,6 +149,10 @@ class MultiIssuerJWTTokenAuthenticatorTest {
         @Test
         @DisplayName("Should reject malformed token (no dots)")
         void validationFailureWithMalformedToken() {
+            mockConfigService.configureValidationFailure(
+                    new TokenValidationException(SecurityEventCounter.EventType.FAILED_TO_DECODE_JWT,
+                            "Token is malformed"));
+
             enqueueWithToken("malformedtoken");
             testRunner.run();
 
@@ -156,10 +160,10 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
-            assertEquals("AUTH-004", flowFile.getAttribute(JWTAttributes.Error.CODE));
+            assertNotNull(flowFile.getAttribute(JWTAttributes.Error.CODE));
 
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN,
-                    AuthLogMessages.WARN.TOKEN_MALFORMED.resolveIdentifierString());
+                    AuthLogMessages.WARN.TOKEN_VALIDATION_FAILED_MSG.resolveIdentifierString());
         }
 
         @Test

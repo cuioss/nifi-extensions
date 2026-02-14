@@ -64,6 +64,8 @@ import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships
  *
  * @see JwtIssuerConfigService
  */
+@SuppressWarnings("NotNullFieldNotInitialized")
+// Initialized in onScheduled, cleared in onStopped
 @Tags({"jwt", "oauth", "authentication", "authorization", "security", "token"})
 @CapabilityDescription("Validates JWT tokens from multiple issuers using a shared JWT Issuer Config Service. " +
         "Reads a raw JWT token from a configurable FlowFile attribute, validates it against configured issuers, " +
@@ -88,10 +90,10 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     private final AtomicLong processedFlowFilesCount = new AtomicLong();
 
-    @Nullable private JwtIssuerConfigService jwtConfigService;
-    @Nullable private AuthorizationRequirements authorizationRequirements;
-    @Nullable private I18nResolver i18nResolver;
-    @Nullable private String tokenAttributeName;
+    private JwtIssuerConfigService jwtConfigService;
+    private AuthorizationRequirements authorizationRequirements;
+    private I18nResolver i18nResolver;
+    private String tokenAttributeName;
 
     @Getter private List<PropertyDescriptor> supportedPropertyDescriptors;
     @Getter private Set<Relationship> relationships;
@@ -124,9 +126,6 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     @OnStopped
     public void onStopped() {
-        jwtConfigService = null;
-        authorizationRequirements = null;
-        tokenAttributeName = null;
         processedFlowFilesCount.set(0);
         LOGGER.info(AuthLogMessages.INFO.PROCESSOR_STOPPED);
     }
@@ -173,6 +172,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             AuthorizationValidator.AuthorizationResult authResult =
                     AuthorizationValidator.validate(accessToken, authorizationRequirements);
             if (!authResult.isAuthorized()) {
+                //noinspection DataFlowIssue
                 LOGGER.warn(AuthLogMessages.WARN.AUTHORIZATION_FAILED,
                         accessToken.getSubject().orElse("unknown"),
                         accessToken.getIssuer(), authResult.getReason());
@@ -200,14 +200,6 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             handleError(session, flowFile, "AUTH-003",
                     i18nResolver.getTranslatedString(JWTTranslationKeys.Error.TOKEN_SIZE_LIMIT, maxTokenSize),
                     "TOKEN_SIZE_VIOLATION");
-            return false;
-        }
-
-        if (!token.contains(".")) {
-            LOGGER.warn(AuthLogMessages.WARN.TOKEN_MALFORMED);
-            handleError(session, flowFile, "AUTH-004",
-                    i18nResolver.getTranslatedString(JWTTranslationKeys.Error.TOKEN_MALFORMED),
-                    "MALFORMED_TOKEN");
             return false;
         }
 
@@ -254,7 +246,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         return "AUTH-002";
     }
 
-    private FlowFile handleError(ProcessSession session, FlowFile flowFile,
+    private void handleError(ProcessSession session, FlowFile flowFile,
             String errorCode, String errorReason, String errorCategory) {
         ProcessingError error = ProcessingError.builder()
                 .errorCode(errorCode)
@@ -269,7 +261,6 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         flowFile = session.putAllAttributes(flowFile, attributes);
         session.transfer(flowFile, Relationships.AUTHENTICATION_FAILED);
-        return flowFile;
     }
 
 }
