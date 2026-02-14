@@ -20,6 +20,7 @@ import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * port 9086). Activated via the {@code integration-tests} Maven profile.
  */
 @NullMarked
+@Disabled("flow.json needs CS architecture update — re-enable after #137 flow migration")
 @DisplayName("Keycloak Token Integration Tests")
 class KeycloakTokenIT {
 

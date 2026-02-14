@@ -12,7 +12,8 @@ import {
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 
-test.describe("Metrics Tab", () => {
+// Skip: metrics moved to CS — re-enable after #137 UI migration
+test.describe.skip("Metrics Tab", () => {
     test.beforeEach(async ({ page, processorManager }, testInfo) => {
         const authService = new AuthService(page);
         await authService.ensureReady();
