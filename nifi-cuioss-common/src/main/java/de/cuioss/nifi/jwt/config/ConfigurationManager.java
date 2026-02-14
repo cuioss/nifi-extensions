@@ -259,7 +259,6 @@ public class ConfigurationManager {
         staticProperties.put(key, listValue);
     }
 
-    @SuppressWarnings("unchecked")
     private void processList(String key, List<?> list) {
         if (isIssuerListKey(key)) {
             processIssuerList(list);

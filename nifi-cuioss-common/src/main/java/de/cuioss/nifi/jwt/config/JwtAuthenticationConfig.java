@@ -19,29 +19,25 @@ package de.cuioss.nifi.jwt.config;
 import java.util.Set;
 
 /**
- * Immutable representation of the current JWT authentication configuration
- * as configured on the {@link JwtIssuerConfigService} Controller Service.
+ * Immutable representation of the issuer-invariant JWT authentication
+ * configuration as configured on the {@link JwtIssuerConfigService}
+ * Controller Service.
  * <p>
- * Shared across all consumers (processors, servlets, etc.) to provide
- * consistent access to the centrally configured authentication settings.
+ * Contains only settings that apply globally across all issuers.
+ * Per-issuer operational settings (JWKS refresh interval, connection timeout,
+ * source type) are passed directly to the oauth-sheriff
+ * {@link de.cuioss.sheriff.oauth.core.jwks.http.HttpJwksLoaderConfig} per issuer.
  *
- * @param maxTokenSize               maximum token size in bytes
- * @param allowedAlgorithms          allowed JWT signing algorithms
- * @param requireHttpsForJwks        whether HTTPS is required for JWKS URLs
- * @param jwksRefreshIntervalSeconds interval in seconds for refreshing JWKS keys
- * @param jwksConnectionTimeoutSeconds timeout in seconds for JWKS endpoint connections
- * @param jwksSourceType             default JWKS source type (url, file, memory)
+ * @param maxTokenSize        maximum token size in bytes
+ * @param allowedAlgorithms   allowed JWT signing algorithms
+ * @param requireHttpsForJwks whether HTTPS is required for JWKS URLs
  */
 public record JwtAuthenticationConfig(
         int maxTokenSize,
         Set<String> allowedAlgorithms,
-        boolean requireHttpsForJwks,
-        int jwksRefreshIntervalSeconds,
-        int jwksConnectionTimeoutSeconds,
-        String jwksSourceType) {
+        boolean requireHttpsForJwks) {
 
     public JwtAuthenticationConfig {
         allowedAlgorithms = allowedAlgorithms != null ? Set.copyOf(allowedAlgorithms) : Set.of();
-        jwksSourceType = jwksSourceType != null ? jwksSourceType : "url";
     }
 }

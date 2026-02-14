@@ -26,6 +26,7 @@ import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
 import de.cuioss.sheriff.oauth.core.security.SignatureAlgorithmPreferences;
 import de.cuioss.tools.logging.CuiLogger;
+import lombok.EqualsAndHashCode;
 import org.apache.nifi.annotation.behavior.RequiresInstanceClassLoading;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
@@ -39,7 +40,6 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Standard implementation of {@link JwtIssuerConfigService}.
@@ -69,6 +69,7 @@ import java.util.concurrent.atomic.AtomicReference;
         "Manages JWKS key retrieval, issuer configuration, and token validation lifecycle " +
         "so that multiple processors can share the same JWT configuration.")
 @RequiresInstanceClassLoading
+@EqualsAndHashCode(callSuper = true)
 public class StandardJwtIssuerConfigService extends AbstractControllerService implements JwtIssuerConfigService {
 
     private static final CuiLogger LOGGER = new CuiLogger(StandardJwtIssuerConfigService.class);
@@ -122,28 +123,18 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
             .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
             .build();
 
-    static final PropertyDescriptor JWKS_SOURCE_TYPE = new PropertyDescriptor.Builder()
-            .name("jwks.source.type")
-            .displayName("JWKS Source Type")
-            .description("Default JWKS source type for issuers. Can be overridden per issuer.")
-            .required(true)
-            .defaultValue("url")
-            .allowableValues("url", "file", "memory")
-            .build();
-
     private static final List<PropertyDescriptor> PROPERTY_DESCRIPTORS = List.of(
             JWKS_REFRESH_INTERVAL,
             MAXIMUM_TOKEN_SIZE,
             ALLOWED_ALGORITHMS,
             REQUIRE_HTTPS_FOR_JWKS,
-            JWKS_CONNECTION_TIMEOUT,
-            JWKS_SOURCE_TYPE
+            JWKS_CONNECTION_TIMEOUT
     );
 
     // --- Internal State ---
 
-    private final AtomicReference<TokenValidator> tokenValidator = new AtomicReference<>();
-    @Nullable private volatile JwtAuthenticationConfig authenticationConfig;
+    @Nullable private TokenValidator tokenValidator;
+    @Nullable private JwtAuthenticationConfig authenticationConfig;
     @Nullable private ConfigurationManager configurationManager;
 
     @Override
@@ -202,12 +193,10 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
             prepareForkJoinPoolClassLoader();
 
             // Build TokenValidator
-            TokenValidator newValidator = TokenValidator.builder()
+            tokenValidator = TokenValidator.builder()
                     .parserConfig(parserConfig)
                     .issuerConfigs(issuerConfigs)
                     .build();
-
-            tokenValidator.set(newValidator);
 
             LOGGER.info(JwtLogMessages.INFO.CONTROLLER_SERVICE_ENABLED, issuerConfigs.size());
         } catch (Exception e) {
@@ -220,7 +209,7 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
 
     @OnDisabled
     public void onDisabled() {
-        tokenValidator.set(null);
+        tokenValidator = null;
         authenticationConfig = null;
         configurationManager = null;
         LOGGER.info(JwtLogMessages.INFO.CONTROLLER_SERVICE_DISABLED);
@@ -230,12 +219,11 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
     public AccessTokenContent validateToken(String rawToken) {
         Objects.requireNonNull(rawToken, "rawToken must not be null");
 
-        TokenValidator validator = tokenValidator.get();
-        if (validator == null) {
+        if (tokenValidator == null) {
             throw new IllegalStateException("JwtIssuerConfigService is not enabled or has no configuration");
         }
 
-        return validator.createAccessToken(rawToken);
+        return tokenValidator.createAccessToken(rawToken);
     }
 
     @Override
@@ -249,9 +237,8 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
 
     @Override
     public Optional<SecurityEventCounter> getSecurityEventCounter() {
-        TokenValidator validator = tokenValidator.get();
-        return validator != null
-                ? Optional.of(validator.getSecurityEventCounter())
+        return tokenValidator != null
+                ? Optional.of(tokenValidator.getSecurityEventCounter())
                 : Optional.empty();
     }
 
@@ -260,18 +247,13 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
     private static JwtAuthenticationConfig buildAuthenticationConfig(ConfigurationContext context) {
         int maxTokenSize = context.getProperty(MAXIMUM_TOKEN_SIZE).asInteger();
         boolean requireHttps = context.getProperty(REQUIRE_HTTPS_FOR_JWKS).asBoolean();
-        int refreshInterval = context.getProperty(JWKS_REFRESH_INTERVAL).asInteger();
-        int connectionTimeout = context.getProperty(JWKS_CONNECTION_TIMEOUT).asInteger();
-        String sourceType = context.getProperty(JWKS_SOURCE_TYPE).getValue();
 
         String algorithmsValue = context.getProperty(ALLOWED_ALGORITHMS).getValue();
         Set<String> allowedAlgorithms = algorithmsValue != null
                 ? Set.of(algorithmsValue.split(","))
                 : Set.of();
 
-        return new JwtAuthenticationConfig(
-                maxTokenSize, allowedAlgorithms, requireHttps,
-                refreshInterval, connectionTimeout, sourceType);
+        return new JwtAuthenticationConfig(maxTokenSize, allowedAlgorithms, requireHttps);
     }
 
     private Map<String, String> convertContextToProperties(ConfigurationContext context) {
@@ -293,6 +275,9 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
      */
     private void prepareForkJoinPoolClassLoader() {
         ClassLoader targetClassLoader = getClass().getClassLoader();
+        @SuppressWarnings("resource") //That's a false positive. ForkJoinPool.commonPool() — the JVM's shared singleton pool.
+        // Closing it via try-with-resources would shut down a JVM-wide shared resource. The rule applies when you create new ForkJoinPool(), not
+        // when referencing the common pool
         int poolSize = ForkJoinPool.commonPool().getParallelism() + 1;
 
         CountDownLatch allReady = new CountDownLatch(poolSize);

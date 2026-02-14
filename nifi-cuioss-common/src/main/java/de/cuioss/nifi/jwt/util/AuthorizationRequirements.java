@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
  * {@link #getPropertyDescriptors()} in its supported properties and reads
  * the configuration via {@link #from(ProcessContext)}.
  */
-public record   AuthorizationRequirements(
+public record AuthorizationRequirements(
         boolean requireValidToken,
         Set<String> requiredRoles,
         Set<String> requiredScopes) {

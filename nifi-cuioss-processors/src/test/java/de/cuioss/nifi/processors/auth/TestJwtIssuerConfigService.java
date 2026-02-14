@@ -33,7 +33,7 @@ import java.util.Set;
 public class TestJwtIssuerConfigService extends AbstractControllerService implements JwtIssuerConfigService {
 
     private static final JwtAuthenticationConfig DEFAULT_CONFIG =
-            new JwtAuthenticationConfig(16384, Set.of(), true, 3600, 10, "url");
+            new JwtAuthenticationConfig(16384, Set.of(), true);
 
     private AccessTokenContent tokenToReturn;
     private TokenValidationException exceptionToThrow;
@@ -50,8 +50,7 @@ public class TestJwtIssuerConfigService extends AbstractControllerService implem
     }
 
     public void configureMaxTokenSize(int maxTokenSize) {
-        this.authenticationConfig = new JwtAuthenticationConfig(
-                maxTokenSize, Set.of(), true, 3600, 10, "url");
+        this.authenticationConfig = new JwtAuthenticationConfig(maxTokenSize, Set.of(), true);
     }
 
     @Override

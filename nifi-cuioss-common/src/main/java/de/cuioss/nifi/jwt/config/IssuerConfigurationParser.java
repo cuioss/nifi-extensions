@@ -16,7 +16,9 @@
  */
 package de.cuioss.nifi.jwt.config;
 
+import de.cuioss.nifi.jwt.JWTAttributes;
 import de.cuioss.nifi.jwt.JWTPropertyKeys;
+import de.cuioss.nifi.jwt.JwtConstants;
 import de.cuioss.nifi.jwt.JwtLogMessages;
 import de.cuioss.nifi.jwt.util.ErrorContext;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
@@ -40,7 +42,6 @@ public class IssuerConfigurationParser {
 
     static final String MAXIMUM_TOKEN_SIZE_KEY = "Maximum Token Size";
     private static final int DEFAULT_MAX_TOKEN_SIZE = 16384;
-    private static final String ISSUER_PREFIX = "issuer.";
 
     private static final Set<String> SENSITIVE_KEYS = Set.of(
             JWTPropertyKeys.Issuer.CLIENT_ID,
@@ -66,14 +67,13 @@ public class IssuerConfigurationParser {
             ConfigurationManager configurationManager) {
         Objects.requireNonNull(properties, "properties must not be null");
         Map<String, Map<String, String>> issuerPropertiesMap = new HashMap<>();
-        Set<String> currentIssuerNames = new HashSet<>();
 
         if (configurationManager != null && configurationManager.isConfigurationLoaded()) {
-            loadExternalConfigurations(configurationManager, issuerPropertiesMap, currentIssuerNames);
+            loadExternalConfigurations(configurationManager, issuerPropertiesMap);
         }
 
-        loadUIConfigurations(properties, issuerPropertiesMap, currentIssuerNames);
-        return processIssuerConfigurations(issuerPropertiesMap);
+        loadUIConfigurations(properties, issuerPropertiesMap);
+        return processIssuerConfigurations(issuerPropertiesMap, properties);
     }
 
     public static ParserConfig parseParserConfig(Map<String, String> properties) {
@@ -93,12 +93,10 @@ public class IssuerConfigurationParser {
     }
 
     private static void loadExternalConfigurations(ConfigurationManager configurationManager,
-            Map<String, Map<String, String>> issuerPropertiesMap,
-            Set<String> currentIssuerNames) {
+            Map<String, Map<String, String>> issuerPropertiesMap) {
         LOGGER.info(JwtLogMessages.INFO.LOADING_EXTERNAL_CONFIGS);
         List<String> externalIssuerIds = configurationManager.getIssuerIds();
         for (String issuerId : externalIssuerIds) {
-            currentIssuerNames.add(issuerId);
             Map<String, String> issuerProps = configurationManager.getIssuerProperties(issuerId);
             issuerPropertiesMap.put(issuerId, new HashMap<>(issuerProps));
             LOGGER.debug("Loaded external configuration for issuer %s: %s", sanitizeLogValue(issuerId),
@@ -107,26 +105,23 @@ public class IssuerConfigurationParser {
     }
 
     private static void loadUIConfigurations(Map<String, String> properties,
-            Map<String, Map<String, String>> issuerPropertiesMap,
-            Set<String> currentIssuerNames) {
+            Map<String, Map<String, String>> issuerPropertiesMap) {
         for (Map.Entry<String, String> entry : properties.entrySet()) {
             String propertyName = entry.getKey();
             String propertyValue = entry.getValue();
-            if (propertyName.startsWith(ISSUER_PREFIX)) {
-                parseIssuerProperty(propertyName, propertyValue, issuerPropertiesMap, currentIssuerNames);
+            if (propertyName.startsWith(JwtConstants.ISSUER_PREFIX)) {
+                parseIssuerProperty(propertyName, propertyValue, issuerPropertiesMap);
             }
         }
     }
 
     private static void parseIssuerProperty(String propertyName, String propertyValue,
-            Map<String, Map<String, String>> issuerPropertiesMap,
-            Set<String> currentIssuerNames) {
-        String issuerPart = propertyName.substring(ISSUER_PREFIX.length());
+            Map<String, Map<String, String>> issuerPropertiesMap) {
+        String issuerPart = propertyName.substring(JwtConstants.ISSUER_PREFIX.length());
         int dotIndex = issuerPart.indexOf('.');
         if (dotIndex > 0) {
             String issuerIndex = issuerPart.substring(0, dotIndex);
             String property = issuerPart.substring(dotIndex + 1);
-            currentIssuerNames.add(issuerIndex);
             Map<String, String> issuerProps = issuerPropertiesMap.computeIfAbsent(issuerIndex, k -> new HashMap<>());
             issuerProps.put(property, propertyValue);
             LOGGER.debug("Parsed UI property for issuer %s: %s = %s", sanitizeLogValue(issuerIndex),
@@ -135,13 +130,14 @@ public class IssuerConfigurationParser {
         }
     }
 
-    private static List<IssuerConfig> processIssuerConfigurations(Map<String, Map<String, String>> issuerPropertiesMap) {
+    private static List<IssuerConfig> processIssuerConfigurations(
+            Map<String, Map<String, String>> issuerPropertiesMap, Map<String, String> globalProperties) {
         List<IssuerConfig> issuerConfigs = new ArrayList<>();
         for (Map.Entry<String, Map<String, String>> entry : issuerPropertiesMap.entrySet()) {
             String issuerId = entry.getKey();
             Map<String, String> issuerProps = entry.getValue();
             try {
-                createIssuerConfig(issuerId, issuerProps).ifPresent(issuerConfig -> {
+                createIssuerConfig(issuerId, issuerProps, globalProperties).ifPresent(issuerConfig -> {
                     issuerConfigs.add(issuerConfig);
                     LOGGER.info(JwtLogMessages.INFO.CREATED_ISSUER_CONFIG_FOR, sanitizeLogValue(issuerId));
                 });
@@ -162,7 +158,8 @@ public class IssuerConfigurationParser {
         return issuerConfigs;
     }
 
-    private static Optional<IssuerConfig> createIssuerConfig(String issuerId, Map<String, String> issuerProps) {
+    private static Optional<IssuerConfig> createIssuerConfig(String issuerId,
+            Map<String, String> issuerProps, Map<String, String> globalProperties) {
         String enabledValue = issuerProps.get("enabled");
         if ("false".equalsIgnoreCase(enabledValue)) {
             LOGGER.info(JwtLogMessages.INFO.ISSUER_DISABLED, sanitizeLogValue(issuerId));
@@ -180,11 +177,11 @@ public class IssuerConfigurationParser {
                 .issuerIdentifier(issuerName.get());
         String jwksType = resolveJwksType(issuerProps);
         if ("url".equals(jwksType)) {
-            builder.httpJwksLoaderConfig(
-                    HttpJwksLoaderConfig.builder()
-                            .jwksUrl(jwksSource.get())
-                            .issuerIdentifier(issuerName.get())
-                            .build());
+            var httpConfigBuilder = HttpJwksLoaderConfig.builder()
+                    .jwksUrl(jwksSource.get())
+                    .issuerIdentifier(issuerName.get());
+            applyGlobalJwksSettings(httpConfigBuilder, globalProperties);
+            builder.httpJwksLoaderConfig(httpConfigBuilder.build());
         } else {
             builder.jwksFilePath(jwksSource.get());
         }
@@ -249,8 +246,27 @@ public class IssuerConfigurationParser {
         return "file";
     }
 
-    public static Map<String, String> extractPropertiesFromProcessorDTO(Map<String, String> processorProperties) {
-        Objects.requireNonNull(processorProperties, "processorProperties must not be null");
-        return new HashMap<>(processorProperties);
+    private static void applyGlobalJwksSettings(
+            HttpJwksLoaderConfig.HttpJwksLoaderConfigBuilder builder,
+            Map<String, String> globalProperties) {
+        String refreshInterval = globalProperties.get(JWTAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL);
+        if (refreshInterval != null && !refreshInterval.isBlank()) {
+            try {
+                builder.refreshIntervalSeconds(Integer.parseInt(refreshInterval));
+            } catch (NumberFormatException e) {
+                LOGGER.warn(JwtLogMessages.WARN.INVALID_CONFIG_VALUE,
+                        sanitizeLogValue(refreshInterval), "JWKS Refresh Interval", 3600);
+            }
+        }
+        String connectionTimeout = globalProperties.get(JWTAttributes.Properties.Validation.JWKS_CONNECTION_TIMEOUT);
+        if (connectionTimeout != null && !connectionTimeout.isBlank()) {
+            try {
+                builder.connectTimeoutSeconds(Integer.parseInt(connectionTimeout));
+            } catch (NumberFormatException e) {
+                LOGGER.warn(JwtLogMessages.WARN.INVALID_CONFIG_VALUE,
+                        sanitizeLogValue(connectionTimeout), "JWKS Connection Timeout", 10);
+            }
+        }
     }
+
 }
