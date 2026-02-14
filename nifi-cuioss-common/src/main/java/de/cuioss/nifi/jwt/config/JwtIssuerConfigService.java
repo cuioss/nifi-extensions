@@ -19,11 +19,10 @@ package de.cuioss.nifi.jwt.config;
 import de.cuioss.nifi.jwt.util.AuthorizationValidator.AuthorizationConfig;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
+import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
 import org.apache.nifi.controller.ControllerService;
 
-import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * NiFi Controller Service for shared JWT issuer configuration and token validation.
@@ -32,31 +31,21 @@ import java.util.Set;
  * so that multiple processors can share the same configuration without duplication.
  * <p>
  * Exposes oauth-sheriff's {@link AccessTokenContent} directly — no wrapping.
- * Both libraries are cuioss-owned, so no abstraction layer is needed.
+ * Metrics are exposed via the library's own {@link SecurityEventCounter} — no
+ * intermediate data structures.
  *
  * @see StandardJwtIssuerConfigService
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/technical-components.adoc">Technical Components Specification</a>
  */
 public interface JwtIssuerConfigService extends ControllerService {
 
     /**
      * Validates a raw JWT token string and returns the parsed token content.
-     * <p>
-     * Internally records metrics on each call (success/failure, duration, issuer, error type).
      *
-     * @param rawToken the raw JWT token string (must not be null or empty)
+     * @param rawToken the raw JWT token string (must not be null)
      * @return the parsed {@link AccessTokenContent} on successful validation
      * @throws TokenValidationException if the token is invalid, expired, or cannot be validated
-     * @throws IllegalArgumentException if rawToken is null or empty
      */
     AccessTokenContent validateToken(String rawToken);
-
-    /**
-     * Returns the names of all configured issuers.
-     *
-     * @return an unmodifiable set of issuer names (never null, may be empty)
-     */
-    Set<String> getIssuerNames();
 
     /**
      * Returns the authorization configuration for a specific issuer.
@@ -68,19 +57,10 @@ public interface JwtIssuerConfigService extends ControllerService {
     Optional<AuthorizationConfig> getAuthorizationConfig(String issuerName);
 
     /**
-     * Returns the list of allowed JWT signing algorithms.
+     * Returns the security event counter from the underlying TokenValidator.
+     * Tracks success/failure counts by event type (expired, signature failed, etc.).
      *
-     * @return an unmodifiable list of algorithm names (never null)
+     * @return the security event counter, or empty if the service is not enabled
      */
-    List<String> getAllowedAlgorithms();
-
-    /**
-     * Returns an immutable snapshot of aggregated validation metrics.
-     * <p>
-     * Includes total validations, error rates, per-issuer stats, and response time
-     * percentiles. Intended for use by the metrics servlet in the UI module.
-     *
-     * @return the current metrics snapshot (never null)
-     */
-    MetricsSnapshot getMetricsSnapshot();
+    Optional<SecurityEventCounter> getSecurityEventCounter();
 }

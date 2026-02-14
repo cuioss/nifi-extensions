@@ -57,7 +57,6 @@ class JwtValidationServiceTest {
     @BeforeEach
     void setUp() {
         service = new JwtValidationService();
-        SecurityMetricsStore.reset();
     }
 
     @Nested
@@ -412,11 +411,6 @@ class JwtValidationServiceTest {
                 assertNotNull(result, "Result should not be null");
                 assertFalse(result.isValid(), "Result should be invalid for bad token");
                 assertNotNull(result.getError(), "Error message should be present");
-
-                // Verify metrics were recorded
-                SecurityMetricsStore.MetricsSnapshot snapshot = SecurityMetricsStore.getSnapshot();
-                assertEquals(1, snapshot.totalValidations(),
-                        "Should have recorded one validation attempt");
             } catch (IllegalStateException e) {
                 // TokenValidator.build() may fail — this exercises the catch block
                 assertNotNull(e.getMessage(), "Exception should have a message");
@@ -497,13 +491,6 @@ class JwtValidationServiceTest {
             assertNotNull(result, "Result should not be null");
             assertFalse(result.isValid(), "Result should be invalid for bad token");
             assertNotNull(result.getError(), "Error message should be present");
-
-            // Verify metrics were recorded via SecurityMetricsStore
-            SecurityMetricsStore.MetricsSnapshot snapshot = SecurityMetricsStore.getSnapshot();
-            assertEquals(1, snapshot.totalValidations(),
-                    "Should have recorded one validation attempt");
-            assertNotNull(snapshot.lastValidation(),
-                    "Last validation timestamp should be set");
             verify(mockConfigReader);
         }
     }

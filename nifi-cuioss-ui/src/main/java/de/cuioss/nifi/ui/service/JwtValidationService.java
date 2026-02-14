@@ -103,26 +103,17 @@ public class JwtValidationService {
             throw new IllegalStateException("Failed to create TokenValidator: " + e.getMessage(), e);
         }
 
-        // 4. Validate token and record metrics
-        String resolvedIssuer = null;
-        long startNanos = System.nanoTime();
+        // 4. Validate token — metrics tracked by TokenValidator's SecurityEventCounter
         try {
-            try {
-                AccessTokenContent tokenContent = validator.createAccessToken(token);
-                resolvedIssuer = tokenContent.getIssuer();
-                LOGGER.debug("Token validation successful for processor %s", processorId);
-                return TokenValidationResult.success(tokenContent);
-            } catch (TokenValidationException e) {
-                LOGGER.debug("Token validation failed for processor %s: %s", processorId, e.getMessage());
-                return TokenValidationResult.failure(e.getMessage());
-            } catch (IllegalStateException | IllegalArgumentException e) {
-                LOGGER.error(e, UILogMessages.ERROR.UNEXPECTED_VALIDATION_ERROR, processorId);
-                return TokenValidationResult.failure("Unexpected validation error: " + e.getMessage());
-            }
-        } finally {
-            long durationNanos = System.nanoTime() - startNanos;
-            SecurityMetricsStore.recordValidation(
-                    validator.getSecurityEventCounter(), durationNanos, resolvedIssuer);
+            AccessTokenContent tokenContent = validator.createAccessToken(token);
+            LOGGER.debug("Token validation successful for processor %s", processorId);
+            return TokenValidationResult.success(tokenContent);
+        } catch (TokenValidationException e) {
+            LOGGER.debug("Token validation failed for processor %s: %s", processorId, e.getMessage());
+            return TokenValidationResult.failure(e.getMessage());
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            LOGGER.error(e, UILogMessages.ERROR.UNEXPECTED_VALIDATION_ERROR, processorId);
+            return TokenValidationResult.failure("Unexpected validation error: " + e.getMessage());
         }
     }
 

@@ -17,13 +17,15 @@
 package de.cuioss.nifi.processors.auth;
 
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
-import de.cuioss.nifi.jwt.config.MetricsSnapshot;
 import de.cuioss.nifi.jwt.util.AuthorizationValidator;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
+import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
 import org.apache.nifi.controller.AbstractControllerService;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * Test implementation of {@link JwtIssuerConfigService} for processor unit tests.
@@ -34,7 +36,6 @@ public class TestJwtIssuerConfigService extends AbstractControllerService implem
     private AccessTokenContent tokenToReturn;
     private TokenValidationException exceptionToThrow;
     private final Map<String, AuthorizationValidator.AuthorizationConfig> authConfigs = new HashMap<>();
-    private final Set<String> issuerNames = new HashSet<>();
 
     public void configureValidToken(AccessTokenContent token) {
         this.tokenToReturn = token;
@@ -47,7 +48,7 @@ public class TestJwtIssuerConfigService extends AbstractControllerService implem
     }
 
     public void addIssuer(String issuerName) {
-        issuerNames.add(issuerName);
+        authConfigs.putIfAbsent(issuerName, null);
     }
 
     public void addAuthorizationConfig(String issuerName, AuthorizationValidator.AuthorizationConfig config) {
@@ -66,22 +67,12 @@ public class TestJwtIssuerConfigService extends AbstractControllerService implem
     }
 
     @Override
-    public Set<String> getIssuerNames() {
-        return Collections.unmodifiableSet(issuerNames);
-    }
-
-    @Override
     public Optional<AuthorizationValidator.AuthorizationConfig> getAuthorizationConfig(String issuerName) {
         return Optional.ofNullable(authConfigs.get(issuerName));
     }
 
     @Override
-    public List<String> getAllowedAlgorithms() {
-        return List.of("RS256", "RS384", "RS512");
-    }
-
-    @Override
-    public MetricsSnapshot getMetricsSnapshot() {
-        return MetricsSnapshot.empty();
+    public Optional<SecurityEventCounter> getSecurityEventCounter() {
+        return Optional.empty();
     }
 }

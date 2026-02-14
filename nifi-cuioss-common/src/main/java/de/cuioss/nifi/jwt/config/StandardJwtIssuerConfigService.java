@@ -25,9 +25,7 @@ import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
 import de.cuioss.sheriff.oauth.core.TokenValidator;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
-import de.cuioss.sheriff.oauth.core.metrics.MeasurementType;
 import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
-import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter.EventType;
 import de.cuioss.sheriff.oauth.core.security.SignatureAlgorithmPreferences;
 import de.cuioss.tools.logging.CuiLogger;
 import org.apache.nifi.annotation.behavior.RequiresInstanceClassLoading;
@@ -78,14 +76,6 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
 
     private static final CuiLogger LOGGER = new CuiLogger(StandardJwtIssuerConfigService.class);
 
-    private static final int MAX_TOP_ERRORS = 10;
-
-    private static final Set<EventType> SUCCESS_TYPES = Set.of(
-            EventType.ACCESS_TOKEN_CREATED,
-            EventType.ID_TOKEN_CREATED,
-            EventType.REFRESH_TOKEN_CREATED,
-            EventType.ACCESS_TOKEN_CACHE_HIT
-    );
 
     // --- NiFi Property Descriptors ---
 
@@ -158,7 +148,6 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
     private final AtomicReference<TokenValidator> tokenValidator = new AtomicReference<>();
     @Nullable private ConfigurationManager configurationManager;
     private final Map<String, AuthorizationConfig> authorizationConfigCache = new ConcurrentHashMap<>();
-    private List<String> allowedAlgorithms = List.of();
 
     @Override
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
@@ -225,17 +214,6 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
             // Populate authorization config cache
             populateAuthorizationCache(properties);
 
-            // Parse allowed algorithms
-            String algorithmsStr = context.getProperty(ALLOWED_ALGORITHMS).getValue();
-            if (algorithmsStr != null && !algorithmsStr.isBlank()) {
-                allowedAlgorithms = Arrays.stream(algorithmsStr.split(","))
-                        .map(String::trim)
-                        .filter(s -> !s.isEmpty())
-                        .toList();
-            } else {
-                allowedAlgorithms = List.copyOf(SignatureAlgorithmPreferences.getDefaultPreferredAlgorithms());
-            }
-
             LOGGER.info(JwtLogMessages.INFO.CONTROLLER_SERVICE_ENABLED, issuerConfigs.size());
         } catch (Exception e) {
             LOGGER.error(e, JwtLogMessages.ERROR.CONTROLLER_SERVICE_ENABLE_FAILED, e.getMessage());
@@ -250,7 +228,6 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
         tokenValidator.set(null);
         configurationManager = null;
         authorizationConfigCache.clear();
-        allowedAlgorithms = List.of();
         LOGGER.info(JwtLogMessages.INFO.CONTROLLER_SERVICE_DISABLED);
     }
 
@@ -267,56 +244,16 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
     }
 
     @Override
-    public Set<String> getIssuerNames() {
-        return Set.copyOf(authorizationConfigCache.keySet());
-    }
-
-    @Override
     public Optional<AuthorizationConfig> getAuthorizationConfig(String issuerName) {
         return Optional.ofNullable(authorizationConfigCache.get(issuerName));
     }
 
     @Override
-    public List<String> getAllowedAlgorithms() {
-        return Collections.unmodifiableList(allowedAlgorithms);
-    }
-
-    @Override
-    public MetricsSnapshot getMetricsSnapshot() {
+    public Optional<SecurityEventCounter> getSecurityEventCounter() {
         TokenValidator validator = tokenValidator.get();
-        if (validator == null) {
-            return MetricsSnapshot.empty();
-        }
-
-        SecurityEventCounter counter = validator.getSecurityEventCounter();
-        Map<EventType, Long> counters = counter.getCounters();
-
-        long valid = counters.entrySet().stream()
-                .filter(e -> SUCCESS_TYPES.contains(e.getKey()))
-                .mapToLong(Map.Entry::getValue)
-                .sum();
-
-        long invalid = counters.entrySet().stream()
-                .filter(e -> !SUCCESS_TYPES.contains(e.getKey()))
-                .mapToLong(Map.Entry::getValue)
-                .sum();
-
-        long total = valid + invalid;
-        double errorRate = total > 0 ? (double) invalid / total : 0.0;
-
-        List<MetricsSnapshot.ErrorCount> topErrors = counters.entrySet().stream()
-                .filter(e -> !SUCCESS_TYPES.contains(e.getKey()))
-                .filter(e -> e.getValue() > 0)
-                .map(e -> new MetricsSnapshot.ErrorCount(e.getKey().getDescription(), e.getValue()))
-                .sorted((a, b) -> Long.compare(b.count(), a.count()))
-                .limit(MAX_TOP_ERRORS)
-                .toList();
-
-        var stats = validator.getPerformanceMonitor()
-                .getValidationMetrics(MeasurementType.COMPLETE_VALIDATION)
-                .orElse(null);
-
-        return new MetricsSnapshot(total, valid, invalid, errorRate, topErrors, stats);
+        return validator != null
+                ? Optional.of(validator.getSecurityEventCounter())
+                : Optional.empty();
     }
 
     // --- Internal Methods ---
