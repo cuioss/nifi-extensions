@@ -92,6 +92,8 @@ class RestApiGatewayProcessorTest {
             assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.JWT_ISSUER_CONFIG_SERVICE));
             assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.MAX_REQUEST_SIZE));
             assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE));
+            assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.SSL_CONTEXT_SERVICE));
+            assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.CORS_ALLOWED_ORIGINS));
         }
 
         @Test

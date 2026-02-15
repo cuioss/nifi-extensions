@@ -18,10 +18,12 @@ package de.cuioss.nifi.rest.server;
 
 import de.cuioss.nifi.rest.RestApiLogMessages;
 import de.cuioss.tools.logging.CuiLogger;
-import org.eclipse.jetty.server.Handler;
-import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.http.HttpVersion;
+import org.eclipse.jetty.server.*;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
+import org.jspecify.annotations.Nullable;
 
+import javax.net.ssl.SSLContext;
 import java.io.IOException;
 
 /**
@@ -38,21 +40,33 @@ public class JettyServerManager {
     private Server server;
 
     /**
-     * Starts the Jetty server on the given port with the specified handler.
+     * Starts the Jetty server on the given port with plain HTTP.
      *
      * @param port    the port to listen on (0 for OS-assigned)
      * @param handler the request handler
      * @throws IllegalStateException if the server is already running
      */
-    @SuppressWarnings("java:S2147") // Jetty LifeCycle.start() declares 'throws Exception'
     public void start(int port, Handler handler) {
+        start(port, handler, null);
+    }
+
+    /**
+     * Starts the Jetty server on the given port with the specified handler.
+     * Uses HTTPS when an {@link SSLContext} is provided, plain HTTP otherwise.
+     *
+     * @param port       the port to listen on (0 for OS-assigned)
+     * @param handler    the request handler
+     * @param sslContext the SSL context for HTTPS, or {@code null} for HTTP
+     * @throws IllegalStateException if the server is already running
+     */
+    @SuppressWarnings("java:S2147") // Jetty LifeCycle.start() declares 'throws Exception'
+    public void start(int port, Handler handler, @Nullable SSLContext sslContext) {
         if (isRunning()) {
             throw new IllegalStateException("Server is already running on port " + getPort());
         }
 
         server = new Server();
-        ServerConnector connector = new ServerConnector(server);
-        connector.setPort(port);
+        ServerConnector connector = createConnector(server, port, sslContext);
         server.addConnector(connector);
         server.setHandler(handler);
 
@@ -73,6 +87,27 @@ public class JettyServerManager {
             server = null;
             throw new IllegalStateException("Failed to start Jetty server on port " + port, e);
         }
+    }
+
+    private static ServerConnector createConnector(
+            Server server, int port, @Nullable SSLContext sslContext) {
+        if (sslContext == null) {
+            ServerConnector connector = new ServerConnector(server);
+            connector.setPort(port);
+            return connector;
+        }
+
+        SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
+        sslContextFactory.setSslContext(sslContext);
+
+        HttpConfiguration httpsConfig = new HttpConfiguration();
+        httpsConfig.addCustomizer(new SecureRequestCustomizer());
+
+        ServerConnector connector = new ServerConnector(server,
+                new SslConnectionFactory(sslContextFactory, HttpVersion.HTTP_1_1.asString()),
+                new HttpConnectionFactory(httpsConfig));
+        connector.setPort(port);
+        return connector;
     }
 
     /**

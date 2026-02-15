@@ -199,6 +199,12 @@
                 <artifactId>nifi-utils</artifactId>
                 <version>${version.nifi}</version>
             </dependency>
+            <dependency>
+                <groupId>org.apache.nifi</groupId>
+                <artifactId>nifi-ssl-context-service-api</artifactId>
+                <version>${version.nifi}</version>
+                <scope>provided</scope>
+            </dependency>
             <!-- CUI-OSS -->
             <dependency>
                 <groupId>de.cuioss</groupId>

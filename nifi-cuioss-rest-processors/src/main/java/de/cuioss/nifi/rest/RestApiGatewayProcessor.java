@@ -37,8 +37,11 @@ import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
+import org.apache.nifi.ssl.SSLContextProvider;
 
 import java.util.*;
+
+import javax.net.ssl.SSLContext;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
@@ -63,6 +66,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
     private static final List<PropertyDescriptor> STATIC_PROPERTIES = List.of(
             RestApiGatewayConstants.Properties.LISTENING_PORT,
             RestApiGatewayConstants.Properties.JWT_ISSUER_CONFIG_SERVICE,
+            RestApiGatewayConstants.Properties.SSL_CONTEXT_SERVICE,
             RestApiGatewayConstants.Properties.MAX_REQUEST_SIZE,
             RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE,
             RestApiGatewayConstants.Properties.CORS_ALLOWED_ORIGINS);
@@ -129,7 +133,13 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
         Set<String> corsOrigins = parseCorsOrigins(context);
         var handler = new GatewayRequestHandler(routes, configService, requestQueue, maxRequestSize, corsOrigins);
-        serverManager.start(port, handler);
+
+        // Resolve optional SSL context for HTTPS
+        SSLContextProvider sslProvider = context.getProperty(
+                RestApiGatewayConstants.Properties.SSL_CONTEXT_SERVICE)
+                .asControllerService(SSLContextProvider.class);
+        SSLContext sslContext = (sslProvider != null) ? sslProvider.createContext() : null;
+        serverManager.start(port, handler, sslContext);
 
         LOGGER.info(RestApiLogMessages.INFO.PROCESSOR_INITIALIZED);
     }

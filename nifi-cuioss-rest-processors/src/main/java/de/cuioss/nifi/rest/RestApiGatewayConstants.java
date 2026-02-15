@@ -21,6 +21,7 @@ import lombok.experimental.UtilityClass;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.util.StandardValidators;
+import org.apache.nifi.ssl.SSLContextProvider;
 
 /**
  * DSL-style nested constants for the RestApiGateway processor configuration.
@@ -73,6 +74,15 @@ public final class RestApiGatewayConstants {
                 .required(true)
                 .defaultValue("50")
                 .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
+                .build();
+
+        public static final PropertyDescriptor SSL_CONTEXT_SERVICE = new PropertyDescriptor.Builder()
+                .name("rest.gateway.ssl.context.service")
+                .displayName("SSL Context Service")
+                .description("The SSL Context Service to use for HTTPS. "
+                        + "When configured, the embedded server uses HTTPS instead of HTTP.")
+                .required(false)
+                .identifiesControllerService(SSLContextProvider.class)
                 .build();
 
         public static final PropertyDescriptor CORS_ALLOWED_ORIGINS = new PropertyDescriptor.Builder()
