@@ -185,20 +185,14 @@ It implements a JWT authentication gateway: incoming HTTP requests are validated
 |===
 |Property |Value
 
-|Token Location
-|`AUTHORIZATION_HEADER`
+|JWT Issuer Config Service
+|`jwt-config-service` (Controller Service reference)
 
-|Token Header
-|`Authorization`
-
-|Bearer Token Prefix
-|`Bearer`
+|Token Attribute
+|`jwt.token` (default)
 
 |Require Valid Token
 |`true`
-
-|Require HTTPS for JWKS
-|`false` (Keycloak runs HTTP in Docker)
 
 |`issuer.keycloak.jwks-type`
 |`url`

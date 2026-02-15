@@ -14,7 +14,8 @@ import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 import { CONSTANTS } from "../utils/constants.js";
 
-test.describe("Self-Test: Processor Advanced Configuration", () => {
+// Skip: processor custom UI removed — re-enable after #137 UI migration
+test.describe.skip("Self-Test: Processor Advanced Configuration", () => {
     test.beforeEach(async ({ page, processorManager }, testInfo) => {
         const authService = new AuthService(page);
         await authService.ensureReady();

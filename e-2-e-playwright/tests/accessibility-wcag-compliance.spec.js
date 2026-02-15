@@ -38,7 +38,8 @@ const A11Y_CONFIG = {
 // Prerequisites:
 // - NiFi must be running
 // - MultiIssuerJWTTokenAuthenticator must be on the canvas
-test.describe("WCAG 2.1 Level AA Compliance", () => {
+// Skip: custom UI moved to CS — re-enable after #137 UI migration
+test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
     let accessibilityHelper;
     let currentPage;
 

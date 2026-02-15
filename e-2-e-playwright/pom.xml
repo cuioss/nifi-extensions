@@ -84,7 +84,30 @@
                 </executions>
             </plugin>
             
-            <!-- Exec Maven Plugin for container management -->
+            <!-- Ensure report directories exist for CI report assembly (even when tests are skipped) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>create-report-dirs</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <mkdir dir="${selftests.output.dir}"/>
+                                <mkdir dir="${functional.output.dir}"/>
+                                <mkdir dir="${accessibility.output.dir}"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Exec Maven Plugin for container management — Docker executions use
+                 skip.docker.deployment; test executions use skipPlaywrightTests -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
@@ -110,7 +133,7 @@
                                 <successCode>0</successCode>
                                 <successCode>1</successCode>
                             </successCodes>
-                            <skip>${skipPlaywrightTests}</skip>
+                            <skip>${skip.docker.deployment}</skip>
                         </configuration>
                     </execution>
                     <!-- pre-integration-test: deploy NAR + start + wait -->
@@ -129,11 +152,11 @@
                             <environmentVariables>
                                 <PROJECT_ROOT>${maven.multiModuleProjectDirectory}</PROJECT_ROOT>
                             </environmentVariables>
-                            <skip>${skipPlaywrightTests}</skip>
+                            <skip>${skip.docker.deployment}</skip>
                         </configuration>
                     </execution>
 
-                    <!-- Run self-tests -->
+                    <!-- Run self-tests — requires Docker containers running -->
                     <execution>
                         <id>run-selftests</id>
                         <goals>
@@ -158,11 +181,11 @@
                                 <PLAYWRIGHT_REPORT_DIR>${selftests.output.dir}/playwright-report</PLAYWRIGHT_REPORT_DIR>
                                 <PW_TEST_HTML_REPORT_OPEN>never</PW_TEST_HTML_REPORT_OPEN>
                             </environmentVariables>
-                            <skip>${skipPlaywrightTests}</skip>
+                            <skip>${skip.docker.deployment}</skip>
                         </configuration>
                     </execution>
-                    
-                    <!-- Run functional tests -->
+
+                    <!-- Run functional tests — requires Docker containers running -->
                     <execution>
                         <id>run-functional-tests</id>
                         <goals>
@@ -188,11 +211,11 @@
                                 <PLAYWRIGHT_REPORT_DIR>${functional.output.dir}/playwright-report</PLAYWRIGHT_REPORT_DIR>
                                 <PW_TEST_HTML_REPORT_OPEN>never</PW_TEST_HTML_REPORT_OPEN>
                             </environmentVariables>
-                            <skip>${skipPlaywrightTests}</skip>
+                            <skip>${skip.docker.deployment}</skip>
                         </configuration>
                     </execution>
-                    
-                    <!-- Run accessibility tests -->
+
+                    <!-- Run accessibility tests — requires Docker containers running -->
                     <execution>
                         <id>run-accessibility-tests</id>
                         <goals>
@@ -217,7 +240,7 @@
                                 <PLAYWRIGHT_REPORT_DIR>${accessibility.output.dir}/playwright-report</PLAYWRIGHT_REPORT_DIR>
                                 <PW_TEST_HTML_REPORT_OPEN>never</PW_TEST_HTML_REPORT_OPEN>
                             </environmentVariables>
-                            <skip>${skipPlaywrightTests}</skip>
+                            <skip>${skip.docker.deployment}</skip>
                         </configuration>
                     </execution>
                     
@@ -241,7 +264,7 @@
                                 <successCode>0</successCode>
                                 <successCode>1</successCode>
                             </successCodes>
-                            <skip>${skipPlaywrightTests}</skip>
+                            <skip>${skip.docker.deployment}</skip>
                         </configuration>
                     </execution>
                 </executions>

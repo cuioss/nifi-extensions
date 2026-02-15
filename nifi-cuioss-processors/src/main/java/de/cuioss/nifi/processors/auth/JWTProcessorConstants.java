@@ -16,7 +16,9 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import de.cuioss.sheriff.oauth.core.security.SignatureAlgorithmPreferences;
+import de.cuioss.nifi.jwt.JWTAttributes;
+import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
+import de.cuioss.nifi.jwt.util.AuthorizationRequirements;
 import lombok.experimental.UtilityClass;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.processor.Relationship;
@@ -24,114 +26,18 @@ import org.apache.nifi.processor.util.StandardValidators;
 
 /**
  * DSL-style nested constants for JWT processor configuration.
- * This class organizes all JWT processor-related constants in a hierarchical structure
- * for better discoverability and type safety.
+ * <p>
+ * Contains only processor-specific constants (relationships, processor-level properties).
+ * Shared JWT constants are in {@link de.cuioss.nifi.jwt.JwtConstants} in the common module.
  *
+ * @see de.cuioss.nifi.jwt.JwtConstants
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration.adoc">Configuration Specification</a>
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration-ui.adoc">UI Configuration Specification</a>
  */
 @UtilityClass
 public final class JWTProcessorConstants {
 
-    /**
-     * Issuer prefix for dynamic properties.
-     */
-    public static final String ISSUER_PREFIX = "issuer.";
-
-    /**
-     * Log metrics interval - log metrics every 100 flow files.
-     */
-    public static final long LOG_METRICS_INTERVAL = 100;
-
-    /**
-     * Token location values.
-     */
-    @UtilityClass
-    public static final class TokenLocation {
-        /**
-         * Extract token from Authorization header.
-         */
-        public static final String AUTHORIZATION_HEADER = "AUTHORIZATION_HEADER";
-
-        /**
-         * Extract token from custom header.
-         */
-        public static final String CUSTOM_HEADER = "CUSTOM_HEADER";
-
-        /**
-         * Extract token from flow file content.
-         */
-        public static final String FLOW_FILE_CONTENT = "FLOW_FILE_CONTENT";
-    }
-
-    /**
-     * HTTP related constants.
-     */
-    @UtilityClass
-    public static final class Http {
-        /**
-         * Prefix for HTTP headers in flow file attributes.
-         */
-        public static final String HEADERS_PREFIX = "http.headers.";
-
-        /**
-         * Default Authorization header name.
-         */
-        public static final String AUTHORIZATION_HEADER = "Authorization";
-
-        /**
-         * Bearer token prefix.
-         */
-        public static final String BEARER_PREFIX = "Bearer ";
-
-        /**
-         * HTTP protocol prefix.
-         */
-        public static final String HTTP_PROTOCOL = "http://";
-
-        /**
-         * HTTPS protocol prefix.
-         */
-        public static final String HTTPS_PROTOCOL = "https://";
-    }
-
-    /**
-     * Error related constants.
-     */
-    @UtilityClass
-    public static final class Error {
-        /**
-         * Error codes.
-         */
-        @UtilityClass
-        public static final class Code {
-            /**
-             * No token found error code.
-             */
-            public static final String NO_TOKEN_FOUND = "AUTH-001";
-
-            /**
-             * Unknown error code.
-             */
-            public static final String UNKNOWN = "AUTH-999";
-        }
-
-        /**
-         * Error categories.
-         */
-        @UtilityClass
-        public static final class Category {
-            /**
-             * Extraction error category.
-             */
-            public static final String EXTRACTION_ERROR = "EXTRACTION_ERROR";
-
-            /**
-             * Processing error category.
-             */
-            public static final String PROCESSING_ERROR = "PROCESSING_ERROR";
-        }
-    }
+    /** Default FlowFile attribute name for the raw JWT token. */
+    public static final String DEFAULT_TOKEN_ATTRIBUTE = "jwt.token";
 
     /**
      * Processor relationships.
@@ -153,153 +59,59 @@ public final class JWTProcessorConstants {
                 .name("authentication-failed")
                 .description("FlowFiles with invalid tokens will be routed to this relationship")
                 .build();
-
-        /**
-         * FlowFiles with extraction failures will be routed to this relationship.
-         */
-        public static final Relationship FAILURE = new Relationship.Builder()
-                .name("failure")
-                .description("FlowFiles with extraction failures will be routed to this relationship")
-                .build();
     }
 
     /**
      * Property descriptors for processor configuration.
+     * <p>
+     * The processor reads a raw JWT token from a FlowFile attribute (default: {@code jwt.token}).
+     * Issuer-related properties (JWKS refresh, allowed algorithms, HTTPS requirement,
+     * connection timeout) are managed by the {@link JwtIssuerConfigService} Controller Service.
      */
     @UtilityClass
     public static final class Properties {
         /**
-         * Defines where to extract the token from.
+         * Reference to the JwtIssuerConfigService Controller Service.
          */
-        public static final PropertyDescriptor TOKEN_LOCATION = new PropertyDescriptor.Builder()
-                .name(JWTAttributes.Properties.Validation.TOKEN_LOCATION)
-                .displayName("Token Location")
-                .description("Defines where to extract the token from")
+        public static final PropertyDescriptor JWT_ISSUER_CONFIG_SERVICE = new PropertyDescriptor.Builder()
+                .name("jwt.issuer.config.service")
+                .displayName("JWT Issuer Config Service")
+                .description("The Controller Service that provides JWT issuer configuration and token validation")
                 .required(true)
-                .allowableValues(TokenLocation.AUTHORIZATION_HEADER, TokenLocation.CUSTOM_HEADER, TokenLocation.FLOW_FILE_CONTENT)
-                .defaultValue(TokenLocation.AUTHORIZATION_HEADER)
+                .identifiesControllerService(JwtIssuerConfigService.class)
                 .build();
 
         /**
-         * The header name containing the token when using AUTHORIZATION_HEADER.
+         * The FlowFile attribute name containing the raw JWT token.
          */
-        public static final PropertyDescriptor TOKEN_HEADER = new PropertyDescriptor.Builder()
-                .name(JWTAttributes.Properties.Validation.TOKEN_HEADER)
-                .displayName("Token Header")
-                .description("The header name containing the token when using AUTHORIZATION_HEADER")
-                .required(false)
-                .defaultValue(Http.AUTHORIZATION_HEADER)
-                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-                .build();
-
-        /**
-         * The custom header name when using CUSTOM_HEADER.
-         */
-        public static final PropertyDescriptor CUSTOM_HEADER_NAME = new PropertyDescriptor.Builder()
-                .name(JWTAttributes.Properties.Validation.CUSTOM_HEADER_NAME)
-                .displayName("Custom Header Name")
-                .description("The custom header name when using CUSTOM_HEADER")
-                .required(false)
-                .defaultValue("X-Authorization")
-                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-                .build();
-
-        /**
-         * The prefix to strip from the token (e.g., "Bearer ").
-         */
-        public static final PropertyDescriptor BEARER_TOKEN_PREFIX = new PropertyDescriptor.Builder()
-                .name(JWTAttributes.Properties.Validation.BEARER_TOKEN_PREFIX)
-                .displayName("Bearer Token Prefix")
-                .description("The prefix to strip from the token (e.g., \"Bearer \")")
-                .required(false)
-                .defaultValue("Bearer")
+        public static final PropertyDescriptor TOKEN_ATTRIBUTE = new PropertyDescriptor.Builder()
+                .name(JWTAttributes.Properties.Validation.TOKEN_ATTRIBUTE)
+                .displayName("Token Attribute")
+                .description("The FlowFile attribute name containing the raw JWT token")
+                .required(true)
+                .defaultValue(DEFAULT_TOKEN_ATTRIBUTE)
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
 
         /**
          * Whether to require a valid token for processing.
+         * Delegates to shared {@link AuthorizationRequirements#REQUIRE_VALID_TOKEN}.
          */
-        public static final PropertyDescriptor REQUIRE_VALID_TOKEN = new PropertyDescriptor.Builder()
-                .name(JWTAttributes.Properties.Validation.REQUIRE_VALID_TOKEN)
-                .displayName("Require Valid Token")
-                .description("Whether to require a valid token for processing")
-                .required(true)
-                .defaultValue("true")
-                .allowableValues("true", "false")
-                .build();
+        public static final PropertyDescriptor REQUIRE_VALID_TOKEN =
+                AuthorizationRequirements.REQUIRE_VALID_TOKEN;
 
         /**
-         * Interval in seconds for refreshing JWKS keys.
+         * Comma-separated list of required roles.
+         * Delegates to shared {@link AuthorizationRequirements#REQUIRED_ROLES}.
          */
-        public static final PropertyDescriptor JWKS_REFRESH_INTERVAL = new PropertyDescriptor.Builder()
-                .name(JWTAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL)
-                .displayName("JWKS Refresh Interval")
-                .description("Interval in seconds for refreshing JWKS keys")
-                .required(true)
-                .defaultValue("3600")
-                .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
-                .build();
+        public static final PropertyDescriptor REQUIRED_ROLES =
+                AuthorizationRequirements.REQUIRED_ROLES;
 
         /**
-         * Maximum token size in bytes.
+         * Comma-separated list of required scopes.
+         * Delegates to shared {@link AuthorizationRequirements#REQUIRED_SCOPES}.
          */
-        public static final PropertyDescriptor MAXIMUM_TOKEN_SIZE = new PropertyDescriptor.Builder()
-                .name(JWTAttributes.Properties.Validation.MAXIMUM_TOKEN_SIZE)
-                .displayName("Maximum Token Size")
-                .description("Maximum token size in bytes")
-                .required(true)
-                .defaultValue("16384")
-                .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
-                .build();
-
-        /**
-         * Comma-separated list of allowed JWT signing algorithms.
-         */
-        public static final PropertyDescriptor ALLOWED_ALGORITHMS = new PropertyDescriptor.Builder()
-                .name(JWTAttributes.Properties.Validation.ALLOWED_ALGORITHMS)
-                .displayName("Allowed Algorithms")
-                .description("Comma-separated list of allowed JWT signing algorithms. " +
-                        "Uses secure defaults from SignatureAlgorithmPreferences if not specified. " +
-                        "The 'none' algorithm and weak HMAC algorithms are never allowed regardless of this setting.")
-                .required(false)
-                .defaultValue(String.join(",", SignatureAlgorithmPreferences.getDefaultPreferredAlgorithms()))
-                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-                .build();
-
-        /**
-         * Whether to require HTTPS for JWKS URLs.
-         */
-        public static final PropertyDescriptor REQUIRE_HTTPS_FOR_JWKS = new PropertyDescriptor.Builder()
-                .name(JWTAttributes.Properties.Validation.REQUIRE_HTTPS_FOR_JWKS)
-                .displayName("Require HTTPS for JWKS URLs")
-                .description("Whether to require HTTPS for JWKS URLs. Strongly recommended for production environments.")
-                .required(true)
-                .defaultValue("true")
-                .allowableValues("true", "false")
-                .build();
-
-        /**
-         * Timeout in seconds for JWKS endpoint connections.
-         */
-        public static final PropertyDescriptor JWKS_CONNECTION_TIMEOUT = new PropertyDescriptor.Builder()
-                .name(JWTAttributes.Properties.Validation.JWKS_CONNECTION_TIMEOUT)
-                .displayName("JWKS Connection Timeout")
-                .description("Timeout in seconds for JWKS endpoint connections")
-                .required(true)
-                .defaultValue("10")
-                .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
-                .build();
-
-        /**
-         * JWKS source type for issuers (URL, file, memory).
-         */
-        public static final PropertyDescriptor JWKS_SOURCE_TYPE = new PropertyDescriptor.Builder()
-                .name("jwks.source.type")
-                .displayName("JWKS Source Type")
-                .description("Default JWKS source type for issuers. Can be overridden per issuer.")
-                .required(true)
-                .defaultValue("url")
-                .allowableValues("url", "file", "memory")
-                .build();
+        public static final PropertyDescriptor REQUIRED_SCOPES =
+                AuthorizationRequirements.REQUIRED_SCOPES;
     }
 }

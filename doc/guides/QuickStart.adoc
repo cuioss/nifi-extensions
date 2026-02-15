@@ -51,7 +51,7 @@ image::ui-configuration-tab.png[Configuration Tab - Issuer Configuration]
 
 == Step 3: Connect Relationships
 
-Connect all three relationships to downstream processors:
+Connect both relationships to downstream processors:
 
 [cols="1,3"]
 |===
@@ -61,16 +61,13 @@ Connect all three relationships to downstream processors:
 |Your normal processing flow (token is valid)
 
 |`authentication-failed`
-|Error handling for rejected tokens (expired, wrong issuer, bad signature)
-
-|`failure`
-|Error handling for extraction failures (no token found, processing error)
+|Error handling for rejected tokens (expired, wrong issuer, bad signature, missing token)
 |===
 
 == Step 4: Start the Processor
 
 . Right-click the processor and select **Start**.
-. Send a FlowFile with an `Authorization: Bearer <token>` header through the processor.
+. Send a FlowFile with a `jwt.token` attribute containing the raw JWT token.
 . Verify that valid tokens route to `success` and invalid tokens route to `authentication-failed`.
 
 [#processor-properties]
@@ -80,30 +77,39 @@ Connect all three relationships to downstream processors:
 |===
 |Property |Default |Required |Description
 
-|Token Location
-|`AUTHORIZATION_HEADER`
+|JWT Issuer Config Service
+|--
 |Yes
-|Where to extract the JWT. Values: `AUTHORIZATION_HEADER`, `CUSTOM_HEADER`, `FLOW_FILE_CONTENT`
+|Reference to the `JwtIssuerConfigService` Controller Service that manages issuer configuration and token validation
 
-|Token Header
-|`Authorization`
-|No
-|Header name when using `AUTHORIZATION_HEADER`
-
-|Custom Header Name
-|`X-Authorization`
-|No
-|Header name when using `CUSTOM_HEADER`
-
-|Bearer Token Prefix
-|`Bearer`
-|No
-|Prefix stripped before token parsing
+|Token Attribute
+|`jwt.token`
+|Yes
+|The FlowFile attribute name containing the raw JWT token
 
 |Require Valid Token
 |`true`
 |Yes
 |When `true`, missing or invalid tokens route to `authentication-failed`
+
+|Required Roles
+|--
+|No
+|Comma-separated list of roles the token must contain for authorization
+
+|Required Scopes
+|--
+|No
+|Comma-separated list of scopes the token must contain for authorization
+|===
+
+== Controller Service Properties
+
+The `JwtIssuerConfigService` manages issuer configuration, JWKS key management, and token validation settings:
+
+[cols="2,1,1,4"]
+|===
+|Property |Default |Required |Description
 
 |JWKS Refresh Interval
 |`3600`
@@ -129,16 +135,11 @@ Connect all three relationships to downstream processors:
 |`true`
 |Yes
 |Enforces HTTPS for JWKS endpoint URLs. Disable only for development.
-
-|JWKS Source Type
-|`url`
-|Yes
-|How JWKS keys are loaded. Values: `url` (HTTP endpoint), `file` (local file), `memory` (inline content)
 |===
 
-== Issuer Configuration (Dynamic Properties)
+== Issuer Configuration (CS Dynamic Properties)
 
-Each identity provider is configured through dynamic properties with the prefix `issuer.<N>.`:
+Each identity provider is configured as dynamic properties on the `JwtIssuerConfigService` Controller Service with the prefix `issuer.<N>.`:
 
 [cols="2,3,1"]
 |===
@@ -224,7 +225,7 @@ On successful validation the processor sets these attributes on the FlowFile:
 
 == Static Configuration Files
 
-For container or automated deployments, place a configuration file in one of these locations (checked in order):
+For container or automated deployments, the Controller Service can load configuration from a file in one of these locations (checked in order):
 
 . Path from JVM system property `jwt.config.path`
 . Path from environment variable `JWT_CONFIG_PATH`
@@ -233,8 +234,6 @@ For container or automated deployments, place a configuration file in one of the
 .Example: `jwt-validation.properties`
 [source,properties]
 ----
-jwt.validation.token.location=AUTHORIZATION_HEADER
-jwt.validation.bearer.token.prefix=Bearer
 jwt.validation.require.valid.token=true
 jwt.validation.jwks.refresh.interval=3600
 
@@ -245,7 +244,6 @@ jwt.validation.issuer.1.enabled=true
 jwt.validation.issuer.2.jwksUrl=https://auth2.example.com/.well-known/jwks.json
 jwt.validation.issuer.2.audience=api://my-service
 jwt.validation.issuer.2.enabled=true
-jwt.validation.issuer.2.scopes=read,write
 ----
 
 .Example: `jwt-validation.yml`
@@ -275,18 +273,6 @@ For Kubernetes and Docker deployments, core settings can also be provided throug
 [cols="2,1,3"]
 |===
 |Variable |Type |Description
-
-|`JWT_TOKEN_LOCATION`
-|String
-|`AUTHORIZATION_HEADER`, `CUSTOM_HEADER`, or `FLOW_FILE_CONTENT`
-
-|`JWT_TOKEN_HEADER_NAME`
-|String
-|Header name when Token Location is `AUTHORIZATION_HEADER`
-
-|`JWT_CUSTOM_HEADER_NAME`
-|String
-|Header name when Token Location is `CUSTOM_HEADER`
 
 |`JWT_JWKS_REFRESH_INTERVAL`
 |Duration
@@ -319,8 +305,6 @@ spec:
       - name: nifi
         image: apache/nifi:2.7.2
         env:
-        - name: JWT_TOKEN_LOCATION
-          value: "AUTHORIZATION_HEADER"
         - name: JWT_ISSUER_KEYCLOAK_JWKS_URL
           value: "https://keycloak.internal/realms/myapp/protocol/openid-connect/certs"
 ----

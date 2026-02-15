@@ -36,13 +36,9 @@ This guide provides detailed instructions for working with the MultiIssuerJWTTok
 * Set run schedule (e.g., "1 sec")
 . In the "Properties" tab:
 * Configure basic properties:
-** Token Location: AUTHORIZATION_HEADER (default)
-** Token Header: Authorization (default)
+** JWT Issuer Config Service: reference to a configured JwtIssuerConfigService Controller Service
+** Token Attribute: jwt.token (default)
 ** Require Valid Token: true (default)
-** JWKS Refresh Interval: 3600 (default)
-** Maximum Token Size: 16384 (default)
-** Allowed Algorithms: RS256,RS384,RS512,ES256,ES384,ES512,PS256,PS384,PS512 (default)
-** Require HTTPS for JWKS URLs: true (default)
 
 === Configuring Issuer Properties
 
@@ -98,8 +94,8 @@ If the custom tab is not visible or not functioning properly, you can configure 
 * Add a GenerateFlowFile processor
 * Connect it to the MultiIssuerJWTTokenAuthenticator
 * Configure GenerateFlowFile to add the token as an attribute:
-** Property name: `http.headers.authorization`
-** Property value: `Bearer <token>` (replace `<token>` with the access_token value from the Keycloak response)
+** Property name: `jwt.token`
+** Property value: the access_token value from the Keycloak response
 . Start the flow and observe the results
 
 == Troubleshooting

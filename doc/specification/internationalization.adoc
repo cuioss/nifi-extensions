@@ -14,12 +14,12 @@ The MultiIssuerJWTTokenAuthenticator implements comprehensive internationalizati
 == Implementation Status
 
 === Implementation Classes
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/i18n/NiFiI18nResolver.java[NiFiI18nResolver] -- NiFi-specific resource bundle resolution
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/i18n/I18nResolver.java[I18nResolver] -- Interface for internationalized message resolution
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTTranslationKeys.java[JWTTranslationKeys] -- Centralized translation key constants
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/i18n/NiFiI18nResolver.java[NiFiI18nResolver] -- NiFi-specific resource bundle resolution
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/i18n/I18nResolver.java[I18nResolver] -- Interface for internationalized message resolution
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/JWTTranslationKeys.java[JWTTranslationKeys] -- Centralized translation key constants
 
 === Verification
-* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/i18n/NiFiI18nResolverTest.java[NiFiI18nResolverTest]
+* link:../../nifi-cuioss-common/src/test/java/de/cuioss/nifi/jwt/i18n/NiFiI18nResolverTest.java[NiFiI18nResolverTest]
 * link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorI18nTest.java[MultiIssuerJWTTokenAuthenticatorI18nTest]
 
 == I18n Framework Integration
@@ -27,7 +27,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internatio
 
 === NiFi I18n Framework
 
-The processor integrates with NiFi's built-in internationalization framework using the link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/i18n/I18nResolver.java[I18nResolver] API, implemented by link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/i18n/NiFiI18nResolver.java[NiFiI18nResolver] for resource bundle loading and message resolution.
+The processor integrates with NiFi's built-in internationalization framework using the link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/i18n/I18nResolver.java[I18nResolver] API, implemented by link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/i18n/NiFiI18nResolver.java[NiFiI18nResolver] for resource bundle loading and message resolution.
 
 === Resource Bundle Structure
 
@@ -132,15 +132,13 @@ The English resource bundle includes base translations for all keys used in the 
 [source,properties]
 ----
 # Property descriptors
-property.token.header.name=Token Header
-property.token.header.description=The header name containing the token when using AUTHORIZATION_HEADER
-property.jwks.refresh.interval.name=JWKS Refresh Interval
-property.jwks.refresh.interval.description=Interval in seconds for refreshing JWKS keys
+property.token.attribute.name=Token Attribute
+property.token.attribute.description=The FlowFile attribute name containing the raw JWT token
 property.require.valid.token.name=Require Valid Token
 property.require.valid.token.description=Whether to require a valid token for processing
 
 # Error messages
-error.no.token.found=No token found in the specified location: {0}
+error.no.token.found=No token found in attribute: {0}
 error.token.size.limit=Token exceeds maximum size limit of {0} bytes
 error.token.malformed=Token is malformed (missing segments)
 
@@ -157,13 +155,13 @@ The German resource bundle provides translations for German-speaking users:
 [source,properties]
 ----
 # Property descriptors
-property.token.header.name=Token-Header
-property.token.header.description=Der Header-Name, der das Token enthält, wenn AUTHORIZATION_HEADER verwendet wird
-property.jwks.refresh.interval.name=JWKS-Aktualisierungsintervall
-property.jwks.refresh.interval.description=Intervall in Sekunden für die Aktualisierung der JWKS-Schlüssel
+property.token.attribute.name=Token-Attribut
+property.token.attribute.description=Der FlowFile-Attributname, der das rohe JWT-Token enthält
+property.require.valid.token.name=Gültiges Token erforderlich
+property.require.valid.token.description=Ob ein gültiges Token für die Verarbeitung erforderlich ist
 
 # Error messages
-error.no.token.found=Kein Token an der angegebenen Position gefunden: {0}
+error.no.token.found=Kein Token im Attribut gefunden: {0}
 error.token.size.limit=Token überschreitet die maximale Größenbeschränkung von {0} Bytes
 error.token.malformed=Token ist fehlerhaft formatiert (fehlende Segmente)
 
@@ -185,7 +183,7 @@ The processor uses NiFi's locale resolution approach:
 
 === Message Formatting
 
-For messages requiring parameter substitution, the processor uses the standard Java `MessageFormat` approach via link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/i18n/NiFiI18nResolver.java[NiFiI18nResolver].
+For messages requiring parameter substitution, the processor uses the standard Java `MessageFormat` approach via link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/i18n/NiFiI18nResolver.java[NiFiI18nResolver].
 
 === Key Management
 

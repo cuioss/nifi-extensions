@@ -4,13 +4,18 @@ This document supplements `CLAUDE.md` with detailed architecture, how-to tasks, 
 
 ## Module Architecture
 
+### nifi-cuioss-common (JAR)
+- Shared JWT infrastructure: Controller Service interface, configuration, utilities
+- Key packages:
+  - `de.cuioss.nifi.jwt` — JWTAttributes, JwtConstants, JWTPropertyKeys, JWTTranslationKeys
+  - `de.cuioss.nifi.jwt.config` — JwtIssuerConfigService, StandardJwtIssuerConfigService, ConfigurationManager, IssuerConfigurationParser
+  - `de.cuioss.nifi.jwt.util` — AuthorizationValidator, AuthorizationRequirements, ProcessingError, ErrorContext
+  - `de.cuioss.nifi.jwt.i18n` — I18nResolver, NiFiI18nResolver
+
 ### nifi-cuioss-processors (JAR)
 - Main processor: `MultiIssuerJWTTokenAuthenticator`
 - Key packages:
-  - `de.cuioss.nifi.processors.auth` — Main processor classes
-  - `de.cuioss.nifi.processors.auth.config` — Configuration management
-  - `de.cuioss.nifi.processors.auth.util` — Utility classes
-  - `de.cuioss.nifi.processors.auth.i18n` — Internationalization
+  - `de.cuioss.nifi.processors.auth` — Main processor class, AuthLogMessages, JWTProcessorConstants
 
 ### nifi-cuioss-ui (WAR)
 - Java servlets: `JwtVerificationServlet`, `JwksValidationServlet`, `MetricsServlet`, `ApiKeyAuthenticationFilter`
@@ -119,7 +124,8 @@ docker compose logs -f nifi keycloak    # View logs
 
 **Core processor logic**:
 - `nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java`
-- `nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/config/ConfigurationManager.java`
+- `nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/StandardJwtIssuerConfigService.java`
+- `nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/ConfigurationManager.java`
 
 **UI configuration**:
 - `nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/JwtVerificationServlet.java`

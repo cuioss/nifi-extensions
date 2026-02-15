@@ -19,22 +19,28 @@ image::../plantuml/configuration-overview.png[Configuration Overview Diagram, al
 == Implementation Status
 
 === Implementation Classes
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTProcessorConstants.java[JWTProcessorConstants] -- Property definitions, relationships, and processor constants
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTPropertyKeys.java[JWTPropertyKeys] -- Property key constants for issuer configuration
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] -- Main processor with configuration handling
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTProcessorConstants.java[JWTProcessorConstants] -- Processor property definitions and relationships
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/JwtIssuerConfigService.java[JwtIssuerConfigService] -- Controller Service interface for JWT issuer configuration
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/StandardJwtIssuerConfigService.java[StandardJwtIssuerConfigService] -- Controller Service implementation
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] -- Main processor
 
 === Verification
 * link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorTest.java[MultiIssuerJWTTokenAuthenticatorTest]
 
-=== Configuration Methods
+=== Configuration Architecture
 
-The processor supports three configuration methods:
+Configuration is split between the **processor** and a **Controller Service (CS)**:
+
+* **Processor** -- token reading, authorization requirements, and CS reference
+* **JwtIssuerConfigService CS** -- issuer configuration, JWKS settings, token validation, and performance tuning
+
+The CS supports three configuration methods:
 
 1. **UI Configuration** - Interactive configuration through the NiFi Web UI
 2. **Static Configuration Files** - Configuration through properties or YAML files
 3. **Environment Variables** - Configuration through environment variables for containerized environments
 
-== Configuration Properties
+== Processor Properties
 
 === Core Properties
 _See Requirement xref:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Validation Configuration]_
@@ -43,36 +49,45 @@ _See Requirement xref:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Va
 |===
 |Property |Default |Description |Required
 
-|jwt.validation.token.location
-|AUTHORIZATION_HEADER
-|Defines where to extract the token from (AUTHORIZATION_HEADER, CUSTOM_HEADER, FLOW_FILE_CONTENT)
+|jwt.issuer.config.service
+|--
+|Reference to the JwtIssuerConfigService Controller Service that provides JWT issuer configuration and token validation
 |Yes
 
-|jwt.validation.token.header
-|Authorization
-|The header name containing the token when using AUTHORIZATION_HEADER
-|No
-
-|jwt.validation.custom.header.name
-|X-Authorization
-|The custom header name when using CUSTOM_HEADER
-|No
-
-|jwt.validation.bearer.token.prefix
-|Bearer
-|The prefix to strip from the token (e.g., "Bearer ")
-|No
+|jwt.validation.token.attribute
+|jwt.token
+|The FlowFile attribute name containing the raw JWT token
+|Yes
 
 |jwt.validation.require.valid.token
 |true
-|Whether to require a valid token for processing
+|Whether to require a valid token for processing. When false, FlowFiles without a token are routed to success.
 |Yes
 |===
 
 === Authorization Properties
 _See Requirement xref:../Requirements.adoc#NIFI-AUTH-7.4[NIFI-AUTH-7.4: Authorization Configuration]_
 
-Note: The audience, scopes, and roles authorization settings have been moved to issuer-specific configurations.
+Authorization is configured at the processor level:
+
+[cols="1,1,3,1"]
+|===
+|Property |Default |Description |Required
+
+|jwt.validation.required.roles
+|--
+|Comma-separated list of roles required for authorization
+|No
+
+|jwt.validation.required.scopes
+|--
+|Comma-separated list of scopes required for authorization
+|No
+|===
+
+== Controller Service Properties
+
+The `JwtIssuerConfigService` manages issuer configuration and token validation settings.
 
 === Performance Properties
 _See Requirement xref:../Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Performance Requirements]_
@@ -86,16 +101,31 @@ _See Requirement xref:../Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Performance 
 |Interval in seconds for refreshing JWKS keys
 |Yes
 
+|jwt.validation.jwks.connection.timeout
+|10
+|Seconds before a JWKS endpoint request times out
+|Yes
+
 |jwt.validation.maximum.token.size
 |16384
 |Maximum token size in bytes
+|Yes
+
+|jwt.validation.allowed.algorithms
+|Secure defaults
+|Comma-separated list of permitted signing algorithms (RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512). The `none` algorithm and weak HMAC algorithms are always blocked.
+|No
+
+|jwt.validation.require.https.for.jwks
+|true
+|Enforces HTTPS for JWKS endpoint URLs. Disable only for development.
 |Yes
 |===
 
 === Dynamic Properties (Issuers)
 _See Requirement xref:../Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
 
-The processor supports multiple issuers through NiFi dynamic properties. In the NiFi UI, issuer properties use the prefix `issuer.<N>.<property>`:
+The Controller Service supports multiple issuers through NiFi dynamic properties. Issuer properties use the prefix `issuer.<N>.<property>`:
 
 [cols="1,3,1"]
 |===
@@ -112,14 +142,6 @@ The processor supports multiple issuers through NiFi dynamic properties. In the 
 |issuer.<N>.audience
 |Required audience for this specific issuer
 |api://my-service
-
-|issuer.<N>.scopes
-|Comma-separated list of scopes required for this issuer
-|read,write
-
-|issuer.<N>.roles
-|Comma-separated list of roles required for this issuer
-|admin,user
 |===
 
 NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<N>.<property>` (see xref:configuration-static.adoc[Static Configuration]).
@@ -165,14 +187,11 @@ For detailed information about environment variable configuration, see xref:conf
 
 [source,properties]
 ----
-# Static properties
-jwt.validation.token.location = AUTHORIZATION_HEADER
-jwt.validation.token.header = Authorization
-jwt.validation.bearer.token.prefix = Bearer
+# Controller Service properties
 jwt.validation.require.valid.token = true
 jwt.validation.jwks.refresh.interval = 3600
 
-# Issuer configuration (static config file prefix)
+# Issuer configuration (on CS)
 jwt.validation.issuer.1.jwks-url = https://auth-server.example.com/.well-known/jwks.json
 jwt.validation.issuer.1.audience = api://my-service
 ----
@@ -181,17 +200,13 @@ jwt.validation.issuer.1.audience = api://my-service
 
 [source,properties]
 ----
-# Static properties
-jwt.validation.token.location = AUTHORIZATION_HEADER
-jwt.validation.token.header = Authorization
-jwt.validation.bearer.token.prefix = Bearer
+# Controller Service properties
 jwt.validation.require.valid.token = true
 jwt.validation.jwks.refresh.interval = 1800
 
-# Issuer configuration (static config file prefix)
+# Issuer configuration (on CS)
 jwt.validation.issuer.1.jwks-url = https://auth.example.com/.well-known/jwks.json
 jwt.validation.issuer.1.audience = api://my-service-prod
-jwt.validation.issuer.1.scopes = read,write
 
 jwt.validation.issuer.2.jwks-url = https://auth-test.example.com/.well-known/jwks.json
 jwt.validation.issuer.2.audience = api://my-service-test

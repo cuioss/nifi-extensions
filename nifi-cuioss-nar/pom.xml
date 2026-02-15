@@ -37,6 +37,10 @@
     <dependencies>
         <dependency>
             <groupId>de.cuioss.nifi</groupId>
+            <artifactId>nifi-cuioss-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>de.cuioss.nifi</groupId>
             <artifactId>nifi-cuioss-processors</artifactId>
         </dependency>
         <dependency>

@@ -11,7 +11,7 @@ link:../Specification.adoc[Back to Main Specification]
 
 === Implementation Classes
 * link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] -- Main processor with token validation
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/util/AuthorizationValidator.java[AuthorizationValidator] -- Scope and role validation
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/util/AuthorizationValidator.java[AuthorizationValidator] -- Scope and role validation
 * link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/service/JwtValidationService.java[JwtValidationService] -- UI token verification service
 
 === Verification
@@ -29,14 +29,14 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Valida
 .Token Validation Architecture
 image::token-validation-flow.png[Token Validation Flow]
 
-=== Token Extraction
+=== Token Reading
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requirements]_
 
-The processor extracts JWT tokens from flow files based on the configured token location. There are multiple possible token locations: Authorization header, custom header, or flow file content.
+The processor reads the raw JWT token from a configurable FlowFile attribute (default: `jwt.token`). The attribute name is configured via the `Token Attribute` property.
 
-Token extraction is implemented in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] (`onTrigger` method), which delegates to `extractTokenFromHeader` and `extractTokenFromContent` based on the configured token location. See also link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTTokenAuthenticator.java[JWTTokenAuthenticator] for the simplified extraction-only processor.
+Token reading is implemented in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] (`onTrigger` method), which reads the token via `flowFile.getAttribute(tokenAttributeName)`.
 
-For more information about token location configuration, see link:configuration.adoc#token-location[Token Location Configuration].
+For more information about token attribute configuration, see link:configuration.adoc[Configuration].
 
 == Integration with OAuth-Sheriff Library
 
@@ -111,7 +111,7 @@ For detailed implementation of this lifecycle management, see link:technical-com
 
 While the OAuth-Sheriff library handles basic token validation including issuer, expiration, and audience checks, the processor adds additional authorization checks for specific NiFi use cases:
 
-Authorization checking is implemented in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/util/AuthorizationValidator.java[AuthorizationValidator], which validates scopes and roles using configurable AND/OR logic with optional case-insensitive matching and explicit bypass support. The processor invokes `AuthorizationValidator.validate()` with an `AuthorizationConfig` and `AccessTokenContent`.
+Authorization checking is implemented in link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/util/AuthorizationValidator.java[AuthorizationValidator], which validates scopes and roles using configurable AND/OR logic with optional case-insensitive matching and explicit bypass support. The processor invokes `AuthorizationValidator.validate()` with an `AuthorizationConfig` and `AccessTokenContent`.
 
 For more information on authorization configuration, see link:configuration.adoc#authorization-configuration[Authorization Configuration].
 
@@ -119,7 +119,7 @@ For more information on authorization configuration, see link:configuration.adoc
 
 After token validation, the processor extracts token claims and adds them to the flow file's attributes, using a simplified consistent approach:
 
-Flow file attribute generation is implemented in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] (`onTrigger` method), using attribute key constants from link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTAttributes.java[JWTAttributes].
+Flow file attribute generation is implemented in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] (`onTrigger` method), using attribute key constants from link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/JWTAttributes.java[JWTAttributes].
 
 This approach:
 

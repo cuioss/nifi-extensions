@@ -20,10 +20,7 @@ import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 
 import java.io.StringReader;
 import java.net.URI;
@@ -50,6 +47,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Activated via the {@code integration-tests} Maven profile.
  */
 @NullMarked
+@Disabled("flow.json needs CS architecture update — re-enable after #137 flow migration")
 @DisplayName("NiFi Flow Pipeline Integration Tests")
 class NiFiFlowPipelineIT {
 

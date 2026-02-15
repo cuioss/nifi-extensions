@@ -28,6 +28,10 @@
 
     <dependencies>
         <dependency>
+            <groupId>de.cuioss.nifi</groupId>
+            <artifactId>nifi-cuioss-common</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
         </dependency>
@@ -36,14 +40,15 @@
             <artifactId>jspecify</artifactId>
         </dependency>
         <dependency>
-            <groupId>de.cuioss</groupId>
-            <artifactId>cui-java-tools</artifactId>
+            <groupId>org.apache.nifi</groupId>
+            <artifactId>nifi-api</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>de.cuioss.sheriff.oauth</groupId>
-            <artifactId>oauth-sheriff-core</artifactId>
-            <scope>compile</scope>
+            <groupId>org.apache.nifi</groupId>
+            <artifactId>nifi-mock</artifactId>
         </dependency>
+        <!-- Required by oauth-sheriff-core generators for JWT token creation in tests -->
         <dependency>
             <groupId>de.cuioss.sheriff.oauth</groupId>
             <artifactId>oauth-sheriff-core</artifactId>
@@ -60,7 +65,6 @@
             <artifactId>cui-test-juli-logger</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- Required by oauth-sheriff-core generators for JWT token creation in tests -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -75,27 +79,6 @@
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-jackson</artifactId>
             <scope>test</scope>
-        </dependency>
-        <!-- Implementation of jakarta.json-api: Used for oauth-sheriff-core
-             Required by oauth-sheriff-core even though token validation is not fully implemented yet -->
-        <dependency>
-            <groupId>org.eclipse.parsson</groupId>
-            <artifactId>parsson</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <!-- YAML parsing support -->
-        <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.nifi</groupId>
-            <artifactId>nifi-api</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.nifi</groupId>
-            <artifactId>nifi-mock</artifactId>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -126,12 +109,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <configuration>
-                    <ignoredDependencies>
-                        <!-- Required by oauth-sheriff-core at runtime but not directly referenced in code -->
-                        <ignoredDependency>org.eclipse.parsson:parsson</ignoredDependency>
-                    </ignoredDependencies>
-                </configuration>
             </plugin>
         </plugins>
     </build>
