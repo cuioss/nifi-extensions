@@ -44,6 +44,7 @@
     <modules>
         <module>nifi-cuioss-common</module>
         <module>nifi-cuioss-processors</module>
+        <module>nifi-cuioss-rest-processors</module>
         <module>nifi-cuioss-ui</module>
         <module>nifi-cuioss-nar</module>
         <module>integration-testing</module>
@@ -324,7 +325,19 @@
             </dependency>
             <dependency>
                 <groupId>de.cuioss.nifi</groupId>
+                <artifactId>nifi-cuioss-common</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>de.cuioss.nifi</groupId>
                 <artifactId>nifi-cuioss-processors</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>de.cuioss.nifi</groupId>
+                <artifactId>nifi-cuioss-rest-processors</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -487,6 +500,7 @@
             <modules>
                 <module>nifi-cuioss-common</module>
                 <module>nifi-cuioss-processors</module>
+                <module>nifi-cuioss-rest-processors</module>
                 <module>nifi-cuioss-ui</module>
                 <module>nifi-cuioss-nar</module>
                 <module>integration-testing</module>
