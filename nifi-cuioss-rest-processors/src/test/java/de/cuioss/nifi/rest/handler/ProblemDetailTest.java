@@ -109,6 +109,19 @@ class ProblemDetailTest {
         }
 
         @Test
+        @DisplayName("Should escape all JSON control characters")
+        void shouldEscapeAllJsonControlCharacters() {
+            // Arrange — includes backspace, form feed, and other control chars
+            String input = "a\bb\fc\u0001d";
+
+            // Act
+            String escaped = ProblemDetail.escapeJson(input);
+
+            // Assert
+            assertEquals("a\\bb\\fc\\u0001d", escaped);
+        }
+
+        @Test
         @DisplayName("Should produce valid RFC 9457 content type")
         void shouldProduceValidRfc9457ContentType() {
             assertEquals("application/problem+json", ProblemDetail.CONTENT_TYPE);

@@ -62,7 +62,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
     private final JettyServerManager serverManager = new JettyServerManager();
     private volatile LinkedBlockingQueue<HttpRequestContainer> requestQueue;
-    private volatile Set<Relationship> dynamicRelationships = Set.of();
+    private volatile Map<String, Relationship> dynamicRelationshipsByName = Map.of();
     private volatile List<RouteConfiguration> currentRoutes = List.of();
 
     @Override
@@ -83,15 +83,8 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
     }
 
     @Override
-    public void onPropertyModified(PropertyDescriptor descriptor, String oldValue, String newValue) {
-        if (descriptor.isDynamic()) {
-            recalculateRoutes();
-        }
-    }
-
-    @Override
     public Set<Relationship> getRelationships() {
-        Set<Relationship> relationships = new HashSet<>(dynamicRelationships);
+        Set<Relationship> relationships = new HashSet<>(dynamicRelationshipsByName.values());
         relationships.add(RestApiGatewayConstants.Relationships.FAILURE);
         return relationships;
     }
@@ -171,10 +164,11 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                 flowFile = session.write(flowFile, out -> out.write(container.body()));
             }
 
-            // Route to the named relationship
-            Relationship target = new Relationship.Builder()
-                    .name(container.routeName())
-                    .build();
+            // Route to the named relationship (reuse pre-built instance)
+            Relationship target = dynamicRelationshipsByName.get(container.routeName());
+            if (target == null) {
+                target = new Relationship.Builder().name(container.routeName()).build();
+            }
             session.transfer(flowFile, target);
 
             LOGGER.info(RestApiLogMessages.INFO.FLOWFILE_CREATED, container.routeName(), container.body().length);
@@ -199,11 +193,6 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         LOGGER.info(RestApiLogMessages.INFO.PROCESSOR_STOPPED, drained);
     }
 
-    private void recalculateRoutes() {
-        // This is called during property modification — we recalculate on next @OnScheduled
-        // Dynamic relationships are updated based on current known routes
-    }
-
     private static Set<String> parseCorsOrigins(ProcessContext context) {
         var property = context.getProperty(RestApiGatewayConstants.Properties.CORS_ALLOWED_ORIGINS);
         if (!property.isSet()) {
@@ -220,12 +209,11 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
     }
 
     private void updateDynamicRelationships(List<RouteConfiguration> routes) {
-        Set<Relationship> newRelationships = routes.stream()
+        dynamicRelationshipsByName = routes.stream()
                 .map(route -> new Relationship.Builder()
                         .name(route.name())
                         .description("Requests matching route '%s' (path: %s)".formatted(route.name(), route.path()))
                         .build())
-                .collect(Collectors.toSet());
-        dynamicRelationships = newRelationships;
+                .collect(Collectors.toMap(Relationship::getName, r -> r));
     }
 }

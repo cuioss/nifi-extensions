@@ -17,6 +17,7 @@
 package de.cuioss.nifi.rest;
 
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
+import de.cuioss.nifi.rest.server.JettyServerManager;
 import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
 import de.cuioss.sheriff.oauth.core.test.generator.TestTokenGenerators;
 import de.cuioss.test.juli.LogAsserts;
@@ -293,7 +294,7 @@ class RestApiGatewayProcessorTest {
         try {
             var field = RestApiGatewayProcessor.class.getDeclaredField("serverManager");
             field.setAccessible(true);
-            var mgr = (de.cuioss.nifi.rest.server.JettyServerManager) field.get(processor);
+            var mgr = (JettyServerManager) field.get(processor);
             return mgr.getPort();
         } catch (Exception e) {
             throw new RuntimeException("Could not get server port", e);

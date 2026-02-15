@@ -258,23 +258,23 @@ public class GatewayRequestHandler extends Handler.Abstract {
         return token.isEmpty() ? null : token;
     }
 
-    private static byte[] readBody(Request request) throws Exception {
+    private byte[] readBody(Request request) throws Exception {
         try (var inputStream = Content.Source.asInputStream(request)) {
-            return inputStream.readAllBytes();
+            // Read with size limit to prevent OOM from oversized requests.
+            // We read up to maxRequestSize + 1 so exceeding the limit is
+            // detected without allocating an unbounded buffer.
+            return inputStream.readNBytes(maxRequestSize + 1);
         }
     }
 
     private static Map<String, String> parseQueryParameters(Request request) {
-        String query = request.getHttpURI().getQuery();
-        if (query == null || query.isEmpty()) {
+        var fields = Request.extractQueryParameters(request);
+        if (fields.isEmpty()) {
             return Map.of();
         }
         Map<String, String> params = new LinkedHashMap<>();
-        for (String pair : query.split("&")) {
-            int eq = pair.indexOf('=');
-            if (eq > 0) {
-                params.put(pair.substring(0, eq), pair.substring(eq + 1));
-            }
+        for (String name : fields.getNames()) {
+            params.put(name, fields.getValue(name));
         }
         return params;
     }

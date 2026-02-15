@@ -95,10 +95,18 @@ public record ProblemDetail(
             switch (c) {
                 case '"' -> sb.append("\\\"");
                 case '\\' -> sb.append("\\\\");
+                case '\b' -> sb.append("\\b");
+                case '\f' -> sb.append("\\f");
                 case '\n' -> sb.append("\\n");
                 case '\r' -> sb.append("\\r");
                 case '\t' -> sb.append("\\t");
-                default -> sb.append(c);
+                default -> {
+                    if (c < ' ') {
+                        sb.append("\\u%04x".formatted((int) c));
+                    } else {
+                        sb.append(c);
+                    }
+                }
             }
         }
         return sb.toString();

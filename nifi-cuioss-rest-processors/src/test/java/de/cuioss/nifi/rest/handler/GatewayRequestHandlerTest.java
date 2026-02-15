@@ -57,6 +57,9 @@ class GatewayRequestHandlerTest {
         queue = new LinkedBlockingQueue<>(50);
         mockConfigService = new TestJwtIssuerConfigService();
         tokenHolder = TestTokenGenerators.accessTokens().next();
+        // Remove roles and scopes to ensure deterministic authorization behavior
+        tokenHolder.withoutClaim("roles");
+        tokenHolder.withoutClaim("scope");
         mockConfigService.configureValidToken(tokenHolder.asAccessTokenContent());
 
         List<RouteConfiguration> routes = List.of(
