@@ -20,7 +20,9 @@ import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import lombok.NonNull;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Immutable container bridging an incoming HTTP request from the Jetty handler
@@ -66,5 +68,34 @@ public record HttpRequestContainer(
     @Override
     public byte[] body() {
         return body.clone();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof HttpRequestContainer that)) return false;
+        return Objects.equals(routeName, that.routeName)
+                && Objects.equals(method, that.method)
+                && Objects.equals(requestUri, that.requestUri)
+                && Objects.equals(queryParameters, that.queryParameters)
+                && Objects.equals(headers, that.headers)
+                && Objects.equals(remoteHost, that.remoteHost)
+                && Arrays.equals(body, that.body)
+                && Objects.equals(contentType, that.contentType)
+                && Objects.equals(token, that.token);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Objects.hash(routeName, method, requestUri, queryParameters,
+                headers, remoteHost, contentType, token);
+        result = 31 * result + Arrays.hashCode(body);
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "HttpRequestContainer[routeName=%s, method=%s, requestUri=%s, bodyLength=%d]"
+                .formatted(routeName, method, requestUri, body.length);
     }
 }
