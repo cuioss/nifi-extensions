@@ -115,6 +115,18 @@ public record ProblemDetail(
     // --- Convenience factory methods ---
 
     /**
+     * Creates a 400 Bad Request problem detail.
+     */
+    public static ProblemDetail badRequest(String detail) {
+        return ProblemDetail.builder()
+                .type("about:blank")
+                .title("Bad Request")
+                .status(400)
+                .detail(detail)
+                .build();
+    }
+
+    /**
      * Creates a 401 Unauthorized problem detail.
      */
     public static ProblemDetail unauthorized(String detail) {

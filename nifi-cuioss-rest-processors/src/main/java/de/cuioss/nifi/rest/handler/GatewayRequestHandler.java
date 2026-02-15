@@ -16,6 +16,11 @@
  */
 package de.cuioss.nifi.rest.handler;
 
+import de.cuioss.http.security.config.SecurityConfiguration;
+import de.cuioss.http.security.exceptions.UrlSecurityException;
+import de.cuioss.http.security.monitoring.SecurityEventCounter;
+import de.cuioss.http.security.pipeline.PipelineFactory;
+import de.cuioss.http.security.pipeline.PipelineFactory.PipelineSet;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
 import de.cuioss.nifi.jwt.util.AuthorizationValidator;
 import de.cuioss.nifi.rest.RestApiLogMessages;
@@ -85,6 +90,8 @@ public class GatewayRequestHandler extends Handler.Abstract {
     private final BlockingQueue<HttpRequestContainer> queue;
     private final int maxRequestSize;
     private final Set<String> corsAllowedOrigins;
+    private final PipelineSet securityPipelines;
+    private final SecurityEventCounter securityEventCounter;
 
     /**
      * Creates a new handler with CORS disabled.
@@ -122,8 +129,13 @@ public class GatewayRequestHandler extends Handler.Abstract {
         this.queue = Objects.requireNonNull(queue);
         this.maxRequestSize = maxRequestSize;
         this.corsAllowedOrigins = Set.copyOf(corsAllowedOrigins);
+        this.securityEventCounter = new SecurityEventCounter();
+        this.securityPipelines = PipelineFactory.createCommonPipelines(
+                SecurityConfiguration.defaults(), securityEventCounter);
     }
 
+    @SuppressWarnings("java:S3516")
+    // Always returns true — this handler handles all requests per Jetty contract
     @Override
     public boolean handle(Request request, Response response, Callback callback) {
         if (handleCorsPreflight(request, response, callback)) {
@@ -158,6 +170,11 @@ public class GatewayRequestHandler extends Handler.Abstract {
         String path = request.getHttpURI().getPath();
         String method = request.getMethod();
         String remoteHost = Request.getRemoteAddr(request);
+
+        // 0. Input security validation
+        if (!validateInput(request, response, callback, method, path, remoteHost)) {
+            return;
+        }
 
         // 1. Route matching
         RouteConfiguration route = matchRoute(path, method, response, callback);
@@ -272,6 +289,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
         if (authResult.isAuthorized()) {
             return true;
         }
+        //noinspection DataFlowIssue
         LOGGER.warn(RestApiLogMessages.WARN.AUTHZ_FAILED, method, path, remoteHost, authResult.getReason());
         if (!authResult.getMissingScopes().isEmpty()) {
             response.getHeaders().put(WWW_AUTHENTICATE,
@@ -284,6 +302,34 @@ public class GatewayRequestHandler extends Handler.Abstract {
                     ProblemDetail.forbidden("Insufficient roles: " + authResult.getReason()));
         }
         return false;
+    }
+
+    /**
+     * Validates path, query parameters, and headers against security attack patterns.
+     *
+     * @return {@code true} if input is safe, {@code false} if an error response was sent
+     */
+    private boolean validateInput(
+            Request request, Response response, Callback callback,
+            String method, String path, String remoteHost) {
+        try {
+            securityPipelines.urlPathPipeline().validate(path);
+            var queryParams = Request.extractQueryParameters(request);
+            for (String name : queryParams.getNames()) {
+                securityPipelines.urlParameterPipeline().validate(queryParams.getValue(name));
+            }
+            for (HttpField field : request.getHeaders()) {
+                if (!HttpHeader.AUTHORIZATION.is(field.getName())) {
+                    securityPipelines.headerValuePipeline().validate(field.getValue());
+                }
+            }
+            return true;
+        } catch (UrlSecurityException e) {
+            LOGGER.warn(RestApiLogMessages.WARN.SECURITY_VIOLATION, method, path, remoteHost, e.getMessage());
+            sendProblemResponse(response, callback,
+                    ProblemDetail.badRequest("Request rejected: " + e.getFailureType().getDescription()));
+            return false;
+        }
     }
 
     private void sendSuccessResponse(Request request, Response response, Callback callback, String method) {

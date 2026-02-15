@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.rest.handler;
 
+import de.cuioss.http.security.database.*;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
@@ -28,6 +29,8 @@ import de.cuioss.test.juli.junit5.EnableTestLogger;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -535,6 +538,146 @@ class GatewayRequestHandlerTest {
                 assertTrue(response.body().contains("Payload Too Large"));
             } finally {
                 smallServer.stop();
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Input Security Validation")
+    class InputSecurityValidation {
+
+        @Test
+        @DisplayName("Should reject path traversal attack")
+        void shouldRejectPathTraversal() throws Exception {
+            // Raw ../.. is normalized by Jetty, but still rejected (either by Jetty or handler)
+            var response = httpClient.send(
+                    requestBuilder("/api/health/../../../etc/passwd").GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertNotEquals(200, response.statusCode());
+        }
+
+        @Test
+        @DisplayName("Should reject encoded path traversal")
+        void shouldRejectEncodedPathTraversal() throws Exception {
+            var response = httpClient.send(
+                    requestBuilder("/api/health/%2e%2e/%2e%2e/etc/passwd").GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertNotEquals(200, response.statusCode());
+        }
+
+        @Test
+        @DisplayName("Should reject null byte injection in path")
+        void shouldRejectNullByteInjection() throws Exception {
+            var response = httpClient.send(
+                    requestBuilder("/api/health%00.html").GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertNotEquals(200, response.statusCode());
+        }
+
+        @Test
+        @DisplayName("Should accept legitimate paths")
+        void shouldAcceptLegitimatePaths() throws Exception {
+            var response = httpClient.send(
+                    requestBuilder("/api/health").GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(200, response.statusCode());
+        }
+    }
+
+    @Nested
+    @DisplayName("Attack Pattern Detection — OWASP Top 10")
+    class OWASPAttackPatterns {
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(OWASPTop10AttackDatabase.ArgumentsProvider.class)
+        @DisplayName("Should reject OWASP Top 10 path attack")
+        void shouldRejectOWASPAttack(AttackTestCase testCase) throws Exception {
+            assertAttackRejected(testCase);
+        }
+    }
+
+    @Nested
+    @DisplayName("Attack Pattern Detection — Apache CVE")
+    class ApacheCVEAttackPatterns {
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(ApacheCVEAttackDatabase.ArgumentsProvider.class)
+        @DisplayName("Should reject Apache CVE path attack")
+        void shouldRejectApacheCVEAttack(AttackTestCase testCase) throws Exception {
+            assertAttackRejected(testCase);
+        }
+    }
+
+    @Nested
+    @DisplayName("Attack Pattern Detection — ModSecurity CRS")
+    class ModSecurityAttackPatterns {
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(ModSecurityCRSAttackDatabase.ArgumentsProvider.class)
+        @DisplayName("Should reject ModSecurity CRS attack")
+        void shouldRejectModSecurityAttack(AttackTestCase testCase) throws Exception {
+            assertAttackRejected(testCase);
+        }
+    }
+
+    /**
+     * Sends an attack string as path suffix and asserts it does not succeed (HTTP 200).
+     * Attack strings containing characters illegal for Java's URI parser (backslashes,
+     * CRLF, malformed percent-encoding) are blocked at the transport level, which counts
+     * as a successful rejection.
+     */
+    private void assertAttackRejected(AttackTestCase testCase) throws Exception {
+        String attackUrl = "http://localhost:" + port + "/api/health" + testCase.attackString();
+        try {
+            var request = HttpRequest.newBuilder(URI.create(attackUrl))
+                    .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                    .GET().build();
+            var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            assertNotEquals(200, response.statusCode(),
+                    "Expected rejection for: " + testCase.attackDescription());
+        } catch (IllegalArgumentException e) {
+            // Attack string contains characters illegal for URI — rejected at transport level
+        }
+    }
+
+    @Nested
+    @DisplayName("Legitimate Path Patterns")
+    class LegitimatePatterns {
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(LegitimatePathPatternsDatabase.ArgumentsProvider.class)
+        @DisplayName("Should accept legitimate path pattern")
+        void shouldAcceptLegitimatePattern(LegitimateTestCase testCase) throws Exception {
+            // Configure a wildcard-like route for the legitimate path
+            var handler = new GatewayRequestHandler(
+                    List.of(new RouteConfiguration("test", testCase.legitimatePattern(),
+                            Set.of("GET"), Set.of(), Set.of(), null)),
+                    mockConfigService, new LinkedBlockingQueue<>(50), 1_048_576);
+
+            Server testServer = new Server();
+            ServerConnector connector = new ServerConnector(testServer);
+            connector.setPort(0);
+            testServer.addConnector(connector);
+            testServer.setHandler(handler);
+            testServer.start();
+            int testPort = connector.getLocalPort();
+
+            try {
+                var response = httpClient.send(
+                        HttpRequest.newBuilder(URI.create("http://localhost:" + testPort + testCase.legitimatePattern()))
+                                .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                                .GET().build(),
+                        HttpResponse.BodyHandlers.ofString());
+
+                // Should NOT be 400 — legitimate patterns must pass security validation
+                assertNotEquals(400, response.statusCode(),
+                        "False positive: rejected legitimate pattern: " + testCase.description());
+            } finally {
+                testServer.stop();
             }
         }
     }

@@ -156,6 +156,12 @@ public final class RestApiLogMessages {
                 .identifier(108)
                 .template("Invalid route configuration, route '%s' has no path")
                 .build();
+
+        public static final LogRecord SECURITY_VIOLATION = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(109)
+                .template("Security violation detected for %s %s from %s: %s")
+                .build();
     }
 
     @UtilityClass
