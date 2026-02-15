@@ -172,28 +172,29 @@ public class GatewayRequestHandler extends Handler.Abstract {
         String remoteHost = Request.getRemoteAddr(request);
 
         // 0. Security validation + normalization
-        SanitizedRequest sanitized = validateAndSanitizeInput(
+        Optional<SanitizedRequest> sanitized = validateAndSanitizeInput(
                 request, response, callback, method, rawPath, remoteHost);
-        if (sanitized == null) {
+        if (sanitized.isEmpty()) {
             return;
         }
-        String path = sanitized.path();
+        String path = sanitized.get().path();
 
         // 1. Route matching (uses normalized path)
-        RouteConfiguration route = matchRoute(path, method, response, callback);
-        if (route == null) {
+        Optional<RouteConfiguration> route = matchRoute(path, method, response, callback);
+        if (route.isEmpty()) {
             return;
         }
-        LOGGER.info(RestApiLogMessages.INFO.ROUTE_MATCHED, method, path, route.name());
+        LOGGER.info(RestApiLogMessages.INFO.ROUTE_MATCHED, method, path, route.get().name());
 
         // 2. Authentication
-        AccessTokenContent token = authenticateRequest(request, response, callback, method, path, remoteHost);
-        if (token == null) {
+        Optional<AccessTokenContent> token = authenticateRequest(
+                request, response, callback, method, path, remoteHost);
+        if (token.isEmpty()) {
             return;
         }
 
         // 3. Authorization
-        if (!authorizeRequest(token, route, response, callback, method, path, remoteHost)) {
+        if (!authorizeRequest(token.get(), route.get(), response, callback, method, path, remoteHost)) {
             return;
         }
         LOGGER.info(RestApiLogMessages.INFO.AUTH_SUCCESSFUL, method, path, remoteHost);
@@ -210,9 +211,9 @@ public class GatewayRequestHandler extends Handler.Abstract {
 
         // 5. Enqueue for FlowFile creation (uses sanitized query params and headers)
         var container = new HttpRequestContainer(
-                route.name(), method, path,
-                sanitized.queryParameters(), sanitized.headers(), remoteHost,
-                body, request.getHeaders().get(HttpHeader.CONTENT_TYPE), token);
+                route.get().name(), method, path,
+                sanitized.get().queryParameters(), sanitized.get().headers(), remoteHost,
+                body, request.getHeaders().get(HttpHeader.CONTENT_TYPE), token.get());
 
         if (!queue.offer(container)) {
             LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, method, path, remoteHost);
@@ -222,30 +223,32 @@ public class GatewayRequestHandler extends Handler.Abstract {
         }
 
         // 6. Success response
-        LOGGER.info(RestApiLogMessages.INFO.REQUEST_PROCESSED, route.name(), method, path, remoteHost);
+        LOGGER.info(RestApiLogMessages.INFO.REQUEST_PROCESSED, route.get().name(), method, path, remoteHost);
         sendSuccessResponse(request, response, callback, method);
     }
 
     /**
      * Matches route by path and HTTP method.
      *
-     * @return the matched route, or {@code null} if an error response was sent
+     * @return the matched route, or empty if an error response was sent
      */
-    private RouteConfiguration matchRoute(String path, String method, Response response, Callback callback) {
-        RouteConfiguration route = findRoute(path);
-        if (route == null) {
+    private Optional<RouteConfiguration> matchRoute(
+            String path, String method, Response response, Callback callback) {
+        Optional<RouteConfiguration> route = findRoute(path);
+        if (route.isEmpty()) {
             LOGGER.warn(RestApiLogMessages.WARN.ROUTE_NOT_FOUND, path);
             sendProblemResponse(response, callback,
                     ProblemDetail.notFound("No route configured for path: " + path));
-            return null;
+            return Optional.empty();
         }
-        if (!route.methods().contains(method.toUpperCase(Locale.ROOT))) {
-            LOGGER.warn(RestApiLogMessages.WARN.METHOD_NOT_ALLOWED, method, route.name(), path);
-            response.getHeaders().put(HEADER_ALLOW, String.join(", ", route.methods()));
+        if (!route.get().methods().contains(method.toUpperCase(Locale.ROOT))) {
+            LOGGER.warn(RestApiLogMessages.WARN.METHOD_NOT_ALLOWED, method, route.get().name(), path);
+            response.getHeaders().put(HEADER_ALLOW, String.join(", ", route.get().methods()));
             sendProblemResponse(response, callback,
                     ProblemDetail.methodNotAllowed(
-                            "Method %s not allowed on %s. Allowed: %s".formatted(method, path, route.methods())));
-            return null;
+                            "Method %s not allowed on %s. Allowed: %s".formatted(
+                                    method, path, route.get().methods())));
+            return Optional.empty();
         }
         return route;
     }
@@ -253,27 +256,27 @@ public class GatewayRequestHandler extends Handler.Abstract {
     /**
      * Extracts and validates the Bearer token.
      *
-     * @return the validated token, or {@code null} if an error response was sent
+     * @return the validated token, or empty if an error response was sent
      */
-    private AccessTokenContent authenticateRequest(
+    private Optional<AccessTokenContent> authenticateRequest(
             Request request, Response response, Callback callback,
             String method, String path, String remoteHost) {
-        String rawToken = extractBearerToken(request);
-        if (rawToken == null) {
+        Optional<String> rawToken = extractBearerToken(request);
+        if (rawToken.isEmpty()) {
             LOGGER.warn(RestApiLogMessages.WARN.MISSING_BEARER_TOKEN, method, path, remoteHost);
             response.getHeaders().put(WWW_AUTHENTICATE, BEARER_CHALLENGE);
             sendProblemResponse(response, callback,
                     ProblemDetail.unauthorized("Missing or malformed Authorization header"));
-            return null;
+            return Optional.empty();
         }
         try {
-            return configService.validateToken(rawToken);
+            return Optional.of(configService.validateToken(rawToken.get()));
         } catch (TokenValidationException e) {
             LOGGER.warn(RestApiLogMessages.WARN.AUTH_FAILED, method, path, remoteHost, e.getMessage());
             response.getHeaders().put(WWW_AUTHENTICATE, BEARER_INVALID_TOKEN);
             sendProblemResponse(response, callback,
                     ProblemDetail.unauthorized("Token validation failed: " + e.getMessage()));
-            return null;
+            return Optional.empty();
         }
     }
 
@@ -312,9 +315,9 @@ public class GatewayRequestHandler extends Handler.Abstract {
      * security pipelines. Each component is checked for attack patterns and returned
      * in its normalized form.
      *
-     * @return the sanitized request components, or {@code null} if an error response was sent
+     * @return the sanitized request components, or empty if an error response was sent
      */
-    private SanitizedRequest validateAndSanitizeInput(
+    private Optional<SanitizedRequest> validateAndSanitizeInput(
             Request request, Response response, Callback callback,
             String method, String path, String remoteHost) {
         try {
@@ -343,12 +346,12 @@ public class GatewayRequestHandler extends Handler.Abstract {
                 }
             }
 
-            return new SanitizedRequest(sanitizedPath, sanitizedParams, sanitizedHeaders);
+            return Optional.of(new SanitizedRequest(sanitizedPath, sanitizedParams, sanitizedHeaders));
         } catch (UrlSecurityException e) {
             LOGGER.warn(RestApiLogMessages.WARN.SECURITY_VIOLATION, method, path, remoteHost, e.getMessage());
             sendProblemResponse(response, callback,
                     ProblemDetail.badRequest("Request rejected: " + e.getFailureType().getDescription()));
-            return null;
+            return Optional.empty();
         }
     }
 
@@ -366,22 +369,22 @@ public class GatewayRequestHandler extends Handler.Abstract {
 
     // --- Utility methods ---
 
-    private RouteConfiguration findRoute(String path) {
+    private Optional<RouteConfiguration> findRoute(String path) {
         for (RouteConfiguration route : routes) {
             if (route.path().equals(path)) {
-                return route;
+                return Optional.of(route);
             }
         }
-        return null;
+        return Optional.empty();
     }
 
-    private static String extractBearerToken(Request request) {
+    private static Optional<String> extractBearerToken(Request request) {
         String authHeader = request.getHeaders().get(HttpHeader.AUTHORIZATION);
         if (authHeader == null || !authHeader.regionMatches(true, 0, "Bearer ", 0, BEARER_PREFIX_LENGTH)) {
-            return null;
+            return Optional.empty();
         }
         String token = authHeader.substring(BEARER_PREFIX_LENGTH).trim();
-        return token.isEmpty() ? null : token;
+        return token.isEmpty() ? Optional.empty() : Optional.of(token);
     }
 
     private byte[] readBody(Request request) throws IOException {
