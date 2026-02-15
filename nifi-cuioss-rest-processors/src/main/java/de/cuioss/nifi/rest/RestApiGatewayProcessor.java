@@ -34,6 +34,7 @@ import org.apache.nifi.processor.*;
 
 import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
@@ -61,9 +62,8 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             RestApiGatewayConstants.Properties.CORS_ALLOWED_ORIGINS);
 
     private final JettyServerManager serverManager = new JettyServerManager();
-    private volatile LinkedBlockingQueue<HttpRequestContainer> requestQueue;
-    private volatile Map<String, Relationship> dynamicRelationshipsByName = Map.of();
-    private volatile List<RouteConfiguration> currentRoutes = List.of();
+    private final AtomicReference<LinkedBlockingQueue<HttpRequestContainer>> requestQueueRef = new AtomicReference<>();
+    private final AtomicReference<Map<String, Relationship>> dynamicRelationshipsRef = new AtomicReference<>(Map.of());
 
     @Override
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
@@ -84,7 +84,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
     @Override
     public Set<Relationship> getRelationships() {
-        Set<Relationship> relationships = new HashSet<>(dynamicRelationshipsByName.values());
+        Set<Relationship> relationships = new HashSet<>(dynamicRelationshipsRef.get().values());
         relationships.add(RestApiGatewayConstants.Relationships.FAILURE);
         return relationships;
     }
@@ -92,25 +92,26 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
     @OnScheduled
     public void onScheduled(ProcessContext context) {
         int queueSize = context.getProperty(RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE).asInteger();
-        requestQueue = new LinkedBlockingQueue<>(queueSize);
+        var queue = new LinkedBlockingQueue<HttpRequestContainer>(queueSize);
+        requestQueueRef.set(queue);
 
         // Parse routes from dynamic properties
         Map<String, String> allProperties = new HashMap<>();
         context.getProperties().forEach((key, value) -> allProperties.put(key.getName(), value));
-        currentRoutes = RouteConfigurationParser.parse(allProperties);
+        List<RouteConfiguration> routes = RouteConfigurationParser.parse(allProperties);
 
-        if (currentRoutes.isEmpty()) {
+        if (routes.isEmpty()) {
             LOGGER.warn(RestApiLogMessages.WARN.INVALID_ROUTE_CONFIG, "(none)");
             return;
         }
 
-        String routeNames = currentRoutes.stream()
+        String routeNames = routes.stream()
                 .map(RouteConfiguration::name)
                 .collect(Collectors.joining(", "));
-        LOGGER.info(RestApiLogMessages.INFO.ROUTES_CONFIGURED, currentRoutes.size(), routeNames);
+        LOGGER.info(RestApiLogMessages.INFO.ROUTES_CONFIGURED, routes.size(), routeNames);
 
         // Update dynamic relationships
-        updateDynamicRelationships(currentRoutes);
+        updateDynamicRelationships(routes);
 
         // Start Jetty
         JwtIssuerConfigService configService = context.getProperty(
@@ -120,7 +121,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         int port = context.getProperty(RestApiGatewayConstants.Properties.LISTENING_PORT).asInteger();
 
         Set<String> corsOrigins = parseCorsOrigins(context);
-        var handler = new GatewayRequestHandler(currentRoutes, configService, requestQueue, maxRequestSize, corsOrigins);
+        var handler = new GatewayRequestHandler(routes, configService, queue, maxRequestSize, corsOrigins);
         serverManager.start(port, handler);
 
         LOGGER.info(RestApiLogMessages.INFO.PROCESSOR_INITIALIZED);
@@ -128,7 +129,13 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
     @Override
     public void onTrigger(ProcessContext context, ProcessSession session) {
-        HttpRequestContainer container = requestQueue.poll();
+        var queue = requestQueueRef.get();
+        if (queue == null) {
+            context.yield();
+            return;
+        }
+
+        HttpRequestContainer container = queue.poll();
         if (container == null) {
             context.yield();
             return;
@@ -165,7 +172,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             }
 
             // Route to the named relationship (reuse pre-built instance)
-            Relationship target = dynamicRelationshipsByName.get(container.routeName());
+            Relationship target = dynamicRelationshipsRef.get().get(container.routeName());
             if (target == null) {
                 target = new Relationship.Builder().name(container.routeName()).build();
             }
@@ -186,9 +193,10 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         serverManager.stop();
 
         int drained = 0;
-        if (requestQueue != null) {
-            drained = requestQueue.size();
-            requestQueue.clear();
+        var queue = requestQueueRef.getAndSet(null);
+        if (queue != null) {
+            drained = queue.size();
+            queue.clear();
         }
         LOGGER.info(RestApiLogMessages.INFO.PROCESSOR_STOPPED, drained);
     }
@@ -209,11 +217,11 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
     }
 
     private void updateDynamicRelationships(List<RouteConfiguration> routes) {
-        dynamicRelationshipsByName = routes.stream()
+        dynamicRelationshipsRef.set(routes.stream()
                 .map(route -> new Relationship.Builder()
                         .name(route.name())
                         .description("Requests matching route '%s' (path: %s)".formatted(route.name(), route.path()))
                         .build())
-                .collect(Collectors.toMap(Relationship::getName, r -> r));
+                .collect(Collectors.toMap(Relationship::getName, r -> r)));
     }
 }
