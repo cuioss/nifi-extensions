@@ -29,7 +29,7 @@ class RestApiAttributesTest {
 
     @Test
     @DisplayName("Should have non-null and non-blank constants")
-    void shouldHaveNonNullConstants() throws IllegalAccessException {
+    void shouldHaveNonNullConstants() throws Exception {
         for (Field field : RestApiAttributes.class.getDeclaredFields()) {
             if (Modifier.isStatic(field.getModifiers()) && field.getType() == String.class) {
                 String value = (String) field.get(null);

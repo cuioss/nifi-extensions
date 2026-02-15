@@ -29,12 +29,10 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.junit.jupiter.api.*;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -102,7 +100,7 @@ class GatewayRequestHandlerTest {
 
         @Test
         @DisplayName("Should return 404 for unknown path")
-        void shouldReturn404ForUnknownPath() throws IOException, InterruptedException {
+        void shouldReturn404ForUnknownPath() throws Exception {
             var response = httpClient.send(
                     requestBuilder("/unknown").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -115,7 +113,7 @@ class GatewayRequestHandlerTest {
 
         @Test
         @DisplayName("Should return 405 for disallowed method")
-        void shouldReturn405ForDisallowedMethod() throws IOException, InterruptedException {
+        void shouldReturn405ForDisallowedMethod() throws Exception {
             var response = httpClient.send(
                     requestBuilder("/api/health")
                             .POST(HttpRequest.BodyPublishers.ofString("{}"))
@@ -130,7 +128,7 @@ class GatewayRequestHandlerTest {
 
         @Test
         @DisplayName("Should match exact path")
-        void shouldMatchExactPath() throws IOException, InterruptedException {
+        void shouldMatchExactPath() throws Exception {
             var response = httpClient.send(
                     requestBuilder("/api/health").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -147,7 +145,7 @@ class GatewayRequestHandlerTest {
 
         @Test
         @DisplayName("Should return 401 when no Authorization header")
-        void shouldReturn401WhenNoAuthorizationHeader() throws IOException, InterruptedException {
+        void shouldReturn401WhenNoAuthorizationHeader() throws Exception {
             var response = httpClient.send(
                     HttpRequest.newBuilder(uri("/api/health")).GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -158,7 +156,7 @@ class GatewayRequestHandlerTest {
 
         @Test
         @DisplayName("Should return 401 when token is invalid")
-        void shouldReturn401WhenTokenInvalid() throws IOException, InterruptedException {
+        void shouldReturn401WhenTokenInvalid() throws Exception {
             mockConfigService.configureValidationFailure(
                     new TokenValidationException(SecurityEventCounter.EventType.FAILED_TO_DECODE_JWT,
                             "Invalid token"));
@@ -173,7 +171,7 @@ class GatewayRequestHandlerTest {
 
         @Test
         @DisplayName("Should return 401 for malformed Bearer header")
-        void shouldReturn401ForMalformedBearerHeader() throws IOException, InterruptedException {
+        void shouldReturn401ForMalformedBearerHeader() throws Exception {
             var response = httpClient.send(
                     HttpRequest.newBuilder(uri("/api/health"))
                             .header("Authorization", "Bearer ")
@@ -185,7 +183,7 @@ class GatewayRequestHandlerTest {
 
         @Test
         @DisplayName("Should accept valid token")
-        void shouldAcceptValidToken() throws IOException, InterruptedException {
+        void shouldAcceptValidToken() throws Exception {
             var response = httpClient.send(
                     requestBuilder("/api/health").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -200,7 +198,7 @@ class GatewayRequestHandlerTest {
 
         @Test
         @DisplayName("Should return 403 when roles are missing")
-        void shouldReturn403WhenRolesMissing() throws IOException, InterruptedException {
+        void shouldReturn403WhenRolesMissing() throws Exception {
             // users route requires ADMIN role — default test token doesn't have it
             var response = httpClient.send(
                     requestBuilder("/api/users").GET().build(),
@@ -212,7 +210,7 @@ class GatewayRequestHandlerTest {
 
         @Test
         @DisplayName("Should return 401 step-up when scopes are missing")
-        void shouldReturn401StepUpWhenScopesMissing() throws IOException, InterruptedException {
+        void shouldReturn401StepUpWhenScopesMissing() throws Exception {
             // data route requires READ scope
             var response = httpClient.send(
                     requestBuilder("/api/data").GET().build(),
@@ -226,7 +224,7 @@ class GatewayRequestHandlerTest {
 
         @Test
         @DisplayName("Should pass when no auth requirements")
-        void shouldPassWhenNoAuthRequirements() throws IOException, InterruptedException {
+        void shouldPassWhenNoAuthRequirements() throws Exception {
             // health route has no roles/scopes requirements
             var response = httpClient.send(
                     requestBuilder("/api/health").GET().build(),
@@ -242,7 +240,7 @@ class GatewayRequestHandlerTest {
 
         @Test
         @DisplayName("Should enqueue successful GET request")
-        void shouldEnqueueSuccessfulGetRequest() throws IOException, InterruptedException {
+        void shouldEnqueueSuccessfulGetRequest() throws Exception {
             httpClient.send(
                     requestBuilder("/api/health").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -257,7 +255,7 @@ class GatewayRequestHandlerTest {
 
         @Test
         @DisplayName("Should enqueue successful POST request")
-        void shouldEnqueueSuccessfulPostRequest() throws IOException, InterruptedException {
+        void shouldEnqueueSuccessfulPostRequest() throws Exception {
             // Use health route with POST — but health only allows GET, so use a fresh handler
             // Actually, let's test against data route which allows POST
             // But data requires READ scope. Let's make a minimal setup.
@@ -272,7 +270,7 @@ class GatewayRequestHandlerTest {
 
         @Test
         @DisplayName("Should set correct response status for GET")
-        void shouldSetCorrectResponseStatusForGet() throws IOException, InterruptedException {
+        void shouldSetCorrectResponseStatusForGet() throws Exception {
             var response = httpClient.send(
                     requestBuilder("/api/health").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -332,7 +330,7 @@ class GatewayRequestHandlerTest {
 
         @Test
         @DisplayName("Should log route matched")
-        void shouldLogRouteMatched() throws IOException, InterruptedException {
+        void shouldLogRouteMatched() throws Exception {
             httpClient.send(
                     requestBuilder("/api/health").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -342,7 +340,7 @@ class GatewayRequestHandlerTest {
 
         @Test
         @DisplayName("Should log auth failure")
-        void shouldLogAuthFailure() throws IOException, InterruptedException {
+        void shouldLogAuthFailure() throws Exception {
             mockConfigService.configureValidationFailure(
                     new TokenValidationException(SecurityEventCounter.EventType.FAILED_TO_DECODE_JWT,
                             "bad token"));
@@ -490,7 +488,7 @@ class GatewayRequestHandlerTest {
 
         @Test
         @DisplayName("Should not add CORS headers when CORS is disabled")
-        void shouldNotAddCorsHeadersWhenDisabled() throws IOException, InterruptedException {
+        void shouldNotAddCorsHeadersWhenDisabled() throws Exception {
             // Default handler has no CORS origins configured
             var response = httpClient.send(
                     requestBuilder("/api/health")
