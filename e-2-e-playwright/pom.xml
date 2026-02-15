@@ -134,7 +134,7 @@
                         </configuration>
                     </execution>
 
-                    <!-- Run self-tests -->
+                    <!-- Run self-tests — requires Docker containers running -->
                     <execution>
                         <id>run-selftests</id>
                         <goals>
@@ -159,11 +159,11 @@
                                 <PLAYWRIGHT_REPORT_DIR>${selftests.output.dir}/playwright-report</PLAYWRIGHT_REPORT_DIR>
                                 <PW_TEST_HTML_REPORT_OPEN>never</PW_TEST_HTML_REPORT_OPEN>
                             </environmentVariables>
-                            <skip>${skipPlaywrightTests}</skip>
+                            <skip>${skip.docker.deployment}</skip>
                         </configuration>
                     </execution>
-                    
-                    <!-- Run functional tests -->
+
+                    <!-- Run functional tests — requires Docker containers running -->
                     <execution>
                         <id>run-functional-tests</id>
                         <goals>
@@ -189,11 +189,11 @@
                                 <PLAYWRIGHT_REPORT_DIR>${functional.output.dir}/playwright-report</PLAYWRIGHT_REPORT_DIR>
                                 <PW_TEST_HTML_REPORT_OPEN>never</PW_TEST_HTML_REPORT_OPEN>
                             </environmentVariables>
-                            <skip>${skipPlaywrightTests}</skip>
+                            <skip>${skip.docker.deployment}</skip>
                         </configuration>
                     </execution>
-                    
-                    <!-- Run accessibility tests -->
+
+                    <!-- Run accessibility tests — requires Docker containers running -->
                     <execution>
                         <id>run-accessibility-tests</id>
                         <goals>
@@ -218,7 +218,7 @@
                                 <PLAYWRIGHT_REPORT_DIR>${accessibility.output.dir}/playwright-report</PLAYWRIGHT_REPORT_DIR>
                                 <PW_TEST_HTML_REPORT_OPEN>never</PW_TEST_HTML_REPORT_OPEN>
                             </environmentVariables>
-                            <skip>${skipPlaywrightTests}</skip>
+                            <skip>${skip.docker.deployment}</skip>
                         </configuration>
                     </execution>
                     
