@@ -28,6 +28,7 @@ import de.cuioss.nifi.rest.config.RouteConfiguration;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.tools.logging.CuiLogger;
+import lombok.Getter;
 import org.eclipse.jetty.http.HttpField;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.io.Content;
@@ -91,7 +92,10 @@ public class GatewayRequestHandler extends Handler.Abstract {
     private final int maxRequestSize;
     private final Set<String> corsAllowedOrigins;
     private final PipelineSet securityPipelines;
-    private final SecurityEventCounter securityEventCounter;
+    /** Transport-level HTTP security event counters from cui-http. */
+    @Getter private final SecurityEventCounter httpSecurityEvents;
+    /** Application-level gateway security event counters. */
+    @Getter private final GatewaySecurityEvents gatewaySecurityEvents;
 
     /**
      * Creates a new handler with CORS disabled.
@@ -129,10 +133,12 @@ public class GatewayRequestHandler extends Handler.Abstract {
         this.queue = Objects.requireNonNull(queue);
         this.maxRequestSize = maxRequestSize;
         this.corsAllowedOrigins = Set.copyOf(corsAllowedOrigins);
-        this.securityEventCounter = new SecurityEventCounter();
+        this.httpSecurityEvents = new SecurityEventCounter();
+        this.gatewaySecurityEvents = new GatewaySecurityEvents();
         this.securityPipelines = PipelineFactory.createCommonPipelines(
-                SecurityConfiguration.defaults(), securityEventCounter);
+                SecurityConfiguration.defaults(), httpSecurityEvents);
     }
+
 
     @SuppressWarnings("java:S3516")
     // Always returns true — this handler handles all requests per Jetty contract
@@ -202,6 +208,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
         // 4. Read and validate body
         byte[] body = readBody(request);
         if (body.length > maxRequestSize) {
+            gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.BODY_TOO_LARGE);
             LOGGER.warn(RestApiLogMessages.WARN.BODY_TOO_LARGE, body.length, maxRequestSize, method, path);
             sendProblemResponse(response, callback,
                     ProblemDetail.payloadTooLarge(
@@ -216,6 +223,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
                 body, request.getHeaders().get(HttpHeader.CONTENT_TYPE), token.get());
 
         if (!queue.offer(container)) {
+            gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.QUEUE_FULL);
             LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, method, path, remoteHost);
             sendProblemResponse(response, callback,
                     ProblemDetail.serviceUnavailable("Server is at capacity, please retry later"));
@@ -236,12 +244,14 @@ public class GatewayRequestHandler extends Handler.Abstract {
             String path, String method, Response response, Callback callback) {
         Optional<RouteConfiguration> route = findRoute(path);
         if (route.isEmpty()) {
+            gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.ROUTE_NOT_FOUND);
             LOGGER.warn(RestApiLogMessages.WARN.ROUTE_NOT_FOUND, path);
             sendProblemResponse(response, callback,
                     ProblemDetail.notFound("No route configured for path: " + path));
             return Optional.empty();
         }
         if (!route.get().methods().contains(method.toUpperCase(Locale.ROOT))) {
+            gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.METHOD_NOT_ALLOWED);
             LOGGER.warn(RestApiLogMessages.WARN.METHOD_NOT_ALLOWED, method, route.get().name(), path);
             response.getHeaders().put(HEADER_ALLOW, String.join(", ", route.get().methods()));
             sendProblemResponse(response, callback,
@@ -263,6 +273,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
             String method, String path, String remoteHost) {
         Optional<String> rawToken = extractBearerToken(request);
         if (rawToken.isEmpty()) {
+            gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.MISSING_BEARER_TOKEN);
             LOGGER.warn(RestApiLogMessages.WARN.MISSING_BEARER_TOKEN, method, path, remoteHost);
             response.getHeaders().put(WWW_AUTHENTICATE, BEARER_CHALLENGE);
             sendProblemResponse(response, callback,
@@ -272,6 +283,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
         try {
             return Optional.of(configService.validateToken(rawToken.get()));
         } catch (TokenValidationException e) {
+            gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.AUTH_FAILED);
             LOGGER.warn(RestApiLogMessages.WARN.AUTH_FAILED, method, path, remoteHost, e.getMessage());
             response.getHeaders().put(WWW_AUTHENTICATE, BEARER_INVALID_TOKEN);
             sendProblemResponse(response, callback,
@@ -298,12 +310,14 @@ public class GatewayRequestHandler extends Handler.Abstract {
         //noinspection DataFlowIssue
         LOGGER.warn(RestApiLogMessages.WARN.AUTHZ_FAILED, method, path, remoteHost, authResult.getReason());
         if (!authResult.getMissingScopes().isEmpty()) {
+            gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.AUTHZ_SCOPE_DENIED);
             response.getHeaders().put(WWW_AUTHENTICATE,
                     BEARER_INSUFFICIENT_SCOPE_TEMPLATE
                             .formatted(String.join(" ", route.requiredScopes())));
             sendProblemResponse(response, callback,
                     ProblemDetail.unauthorized("Insufficient scopes: " + authResult.getReason()));
         } else {
+            gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.AUTHZ_ROLE_DENIED);
             sendProblemResponse(response, callback,
                     ProblemDetail.forbidden("Insufficient roles: " + authResult.getReason()));
         }

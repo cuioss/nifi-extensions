@@ -19,6 +19,7 @@ package de.cuioss.nifi.rest.handler;
 import de.cuioss.http.security.database.*;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
+import de.cuioss.nifi.rest.handler.GatewaySecurityEvents.EventType;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
 import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
@@ -48,6 +49,7 @@ class GatewayRequestHandlerTest {
     private HttpClient httpClient;
     private LinkedBlockingQueue<HttpRequestContainer> queue;
     private TestJwtIssuerConfigService mockConfigService;
+    private GatewayRequestHandler handler;
     private int port;
     private TestTokenHolder tokenHolder;
 
@@ -66,7 +68,7 @@ class GatewayRequestHandlerTest {
                 new RouteConfiguration("users", "/api/users", Set.of("GET", "POST"), Set.of("ADMIN"), Set.of(), null),
                 new RouteConfiguration("data", "/api/data", Set.of("GET", "POST"), Set.of(), Set.of("READ"), null));
 
-        var handler = new GatewayRequestHandler(routes, mockConfigService, queue, 1_048_576);
+        handler = new GatewayRequestHandler(routes, mockConfigService, queue, 1_048_576);
 
         server = new Server();
         ServerConnector connector = new ServerConnector(server);
@@ -110,6 +112,7 @@ class GatewayRequestHandlerTest {
             assertTrue(response.body().contains("Not Found"));
             assertTrue(response.headers().firstValue("Content-Type")
                     .orElse("").contains("application/problem+json"));
+            assertEquals(1L, handler.getGatewaySecurityEvents().getCount(EventType.ROUTE_NOT_FOUND));
         }
 
         @Test
@@ -125,6 +128,7 @@ class GatewayRequestHandlerTest {
             assertEquals(405, response.statusCode());
             assertTrue(response.body().contains("Method Not Allowed"));
             assertTrue(response.headers().firstValue("Allow").isPresent());
+            assertEquals(1L, handler.getGatewaySecurityEvents().getCount(EventType.METHOD_NOT_ALLOWED));
         }
 
         @Test
@@ -137,6 +141,7 @@ class GatewayRequestHandlerTest {
             assertEquals(200, response.statusCode());
             assertFalse(queue.isEmpty());
             assertEquals("health", queue.poll().routeName());
+            assertEquals(0L, handler.getGatewaySecurityEvents().getTotalCount());
         }
     }
 
@@ -153,6 +158,7 @@ class GatewayRequestHandlerTest {
 
             assertEquals(401, response.statusCode());
             assertTrue(response.headers().firstValue("WWW-Authenticate").isPresent());
+            assertEquals(1L, handler.getGatewaySecurityEvents().getCount(EventType.MISSING_BEARER_TOKEN));
         }
 
         @Test
@@ -168,6 +174,7 @@ class GatewayRequestHandlerTest {
 
             assertEquals(401, response.statusCode());
             assertTrue(response.body().contains("Token validation failed"));
+            assertEquals(1L, handler.getGatewaySecurityEvents().getCount(EventType.AUTH_FAILED));
         }
 
         @Test
@@ -180,6 +187,7 @@ class GatewayRequestHandlerTest {
                     HttpResponse.BodyHandlers.ofString());
 
             assertEquals(401, response.statusCode());
+            assertEquals(1L, handler.getGatewaySecurityEvents().getCount(EventType.MISSING_BEARER_TOKEN));
         }
 
         @Test
@@ -190,6 +198,7 @@ class GatewayRequestHandlerTest {
                     HttpResponse.BodyHandlers.ofString());
 
             assertEquals(200, response.statusCode());
+            assertEquals(0L, handler.getGatewaySecurityEvents().getTotalCount());
         }
     }
 
@@ -207,6 +216,7 @@ class GatewayRequestHandlerTest {
 
             assertEquals(403, response.statusCode());
             assertTrue(response.body().contains("Forbidden") || response.body().contains("roles"));
+            assertEquals(1L, handler.getGatewaySecurityEvents().getCount(EventType.AUTHZ_ROLE_DENIED));
         }
 
         @Test
@@ -221,6 +231,7 @@ class GatewayRequestHandlerTest {
             assertEquals(401, response.statusCode());
             assertTrue(response.headers().firstValue("WWW-Authenticate")
                     .orElse("").contains("insufficient_scope"));
+            assertEquals(1L, handler.getGatewaySecurityEvents().getCount(EventType.AUTHZ_SCOPE_DENIED));
         }
 
         @Test
@@ -232,6 +243,7 @@ class GatewayRequestHandlerTest {
                     HttpResponse.BodyHandlers.ofString());
 
             assertEquals(200, response.statusCode());
+            assertEquals(0L, handler.getGatewaySecurityEvents().getTotalCount());
         }
     }
 
@@ -289,7 +301,7 @@ class GatewayRequestHandlerTest {
         void shouldReturn503WhenQueueFull() throws Exception {
             // Create a handler with a tiny queue
             var tinyQueue = new LinkedBlockingQueue<HttpRequestContainer>(1);
-            var handler = new GatewayRequestHandler(
+            var tinyHandler = new GatewayRequestHandler(
                     List.of(new RouteConfiguration("health", "/api/health", Set.of("GET"), Set.of(), Set.of(), null)),
                     mockConfigService, tinyQueue, 1_048_576);
 
@@ -297,7 +309,7 @@ class GatewayRequestHandlerTest {
             ServerConnector connector = new ServerConnector(tinyServer);
             connector.setPort(0);
             tinyServer.addConnector(connector);
-            tinyServer.setHandler(handler);
+            tinyServer.setHandler(tinyHandler);
             tinyServer.start();
 
             int tinyPort = connector.getLocalPort();
@@ -319,6 +331,7 @@ class GatewayRequestHandlerTest {
 
                 assertEquals(503, response.statusCode());
                 assertTrue(response.body().contains("Service Unavailable"));
+                assertEquals(1L, tinyHandler.getGatewaySecurityEvents().getCount(EventType.QUEUE_FULL));
             } finally {
                 tinyServer.stop();
             }
@@ -337,6 +350,7 @@ class GatewayRequestHandlerTest {
                     HttpResponse.BodyHandlers.ofString());
 
             assertEquals(200, response.statusCode());
+            assertEquals(0L, handler.getGatewaySecurityEvents().getTotalCount());
         }
 
         @Test
@@ -353,6 +367,7 @@ class GatewayRequestHandlerTest {
             assertEquals(401, response.statusCode());
             assertEquals(ProblemDetail.CONTENT_TYPE,
                     response.headers().firstValue("Content-Type").orElse(""));
+            assertEquals(1L, handler.getGatewaySecurityEvents().getCount(EventType.AUTH_FAILED));
         }
     }
 
@@ -512,7 +527,7 @@ class GatewayRequestHandlerTest {
         @DisplayName("Should return 413 for oversized body")
         void shouldReturn413ForOversizedBody() throws Exception {
             // Create handler with tiny max body size
-            var handler = new GatewayRequestHandler(
+            var smallHandler = new GatewayRequestHandler(
                     List.of(new RouteConfiguration("data", "/api/data",
                             Set.of("POST"), Set.of(), Set.of(), null)),
                     mockConfigService, queue, 10); // 10 bytes max
@@ -521,7 +536,7 @@ class GatewayRequestHandlerTest {
             ServerConnector connector = new ServerConnector(smallServer);
             connector.setPort(0);
             smallServer.addConnector(connector);
-            smallServer.setHandler(handler);
+            smallServer.setHandler(smallHandler);
             smallServer.start();
 
             int smallPort = connector.getLocalPort();
@@ -536,6 +551,7 @@ class GatewayRequestHandlerTest {
 
                 assertEquals(413, response.statusCode());
                 assertTrue(response.body().contains("Payload Too Large"));
+                assertEquals(1L, smallHandler.getGatewaySecurityEvents().getCount(EventType.BODY_TOO_LARGE));
             } finally {
                 smallServer.stop();
             }
