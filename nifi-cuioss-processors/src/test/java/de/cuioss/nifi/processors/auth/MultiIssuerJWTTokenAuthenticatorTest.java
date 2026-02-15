@@ -260,6 +260,8 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.setProperty(Properties.REQUIRED_ROLES, "admin");
 
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
+            // Remove roles claim to ensure the token never has "admin"
+            tokenHolder.withoutClaim("roles");
             mockConfigService.configureValidToken(tokenHolder.asAccessTokenContent());
 
             enqueueWithToken(tokenHolder.getRawToken());
