@@ -5,7 +5,6 @@
  */
 
 import {expect} from '@playwright/test';
-import {CONSTANTS} from './constants.js';
 import { testLogger } from './test-logger.js';
 
 /**
@@ -369,7 +368,7 @@ export class ProcessorService {
     // Wait for iframe to exist in DOM
     try {
       await this.page.waitForSelector('iframe', { timeout: 5000 });
-    } catch (error) {
+    } catch (_error) {
       testLogger.error('Processor',"No iframe found in advanced page");
       return null;
     }

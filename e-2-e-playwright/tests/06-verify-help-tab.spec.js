@@ -164,7 +164,7 @@ test.describe("Help Tab", () => {
 
         // Verify each example has a code block
         for (let i = 0; i < Math.min(exampleConfigs.length, 3); i++) {
-            // eslint-disable-next-line security/detect-object-injection
+             
             const example = exampleConfigs[i];
             await expect(example).toBeVisible();
 
@@ -188,9 +188,7 @@ test.describe("Help Tab", () => {
         const customUIFrame = await processorService.getAdvancedUIFrame();
         await processorService.clickTab(customUIFrame, "Help");
 
-        const codeBlocks = customUIFrame.locator(
-            '[data-testid="code-block"]',
-        );
+        const codeBlocks = customUIFrame.locator('[data-testid="code-block"]');
         const blockCount = await codeBlocks.count();
 
         if (blockCount > 0) {
@@ -303,9 +301,7 @@ test.describe("Help Tab", () => {
         }
 
         // Check for collapsible sections as interactive elements
-        const collapsibleHeaders = customUIFrame.locator(
-            ".collapsible-header",
-        );
+        const collapsibleHeaders = customUIFrame.locator(".collapsible-header");
         const headerCount = await collapsibleHeaders.count();
         expect(headerCount).toBeGreaterThan(0);
     });

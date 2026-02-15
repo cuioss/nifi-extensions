@@ -5,7 +5,7 @@
  */
 
 import { testLogger } from './test-logger.js';
-import { CONSTANTS } from './constants.js';
+
 
 /**
  * API-based Processor Manager for MultiIssuerJWTTokenAuthenticator
@@ -527,7 +527,8 @@ export class ProcessorApiManager {
       throw new Error(
         'PRECONDITION FAILED: Cannot ensure MultiIssuerJWTTokenAuthenticator is on canvas. ' +
         'The processor must be deployed in NiFi for tests to run. ' +
-        `Details: ${error.message}`
+        `Details: ${error.message}`,
+        { cause: error },
       );
     }
   }

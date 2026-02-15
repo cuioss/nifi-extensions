@@ -256,7 +256,7 @@ test.describe("JWKS Validation", () => {
             await verificationResult.textContent({
                 timeout: 1000,
             });
-        } catch (e) {
+        } catch (_e) {
             // Ignore timeout
         }
 

@@ -93,7 +93,7 @@ test.describe("Token Verification Tab", () => {
         let validToken = CONSTANTS.TEST_TOKENS.VALID;
         try {
             validToken = await getValidAccessToken();
-        } catch (error) {
+        } catch (_error) {
             // Keycloak not available, using test token
         }
 
