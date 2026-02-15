@@ -84,7 +84,8 @@
                 </executions>
             </plugin>
             
-            <!-- Exec Maven Plugin for container management -->
+            <!-- Exec Maven Plugin for container management — Docker executions use
+                 skip.docker.deployment; test executions use skipPlaywrightTests -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
@@ -110,7 +111,7 @@
                                 <successCode>0</successCode>
                                 <successCode>1</successCode>
                             </successCodes>
-                            <skip>${skipPlaywrightTests}</skip>
+                            <skip>${skip.docker.deployment}</skip>
                         </configuration>
                     </execution>
                     <!-- pre-integration-test: deploy NAR + start + wait -->
@@ -129,7 +130,7 @@
                             <environmentVariables>
                                 <PROJECT_ROOT>${maven.multiModuleProjectDirectory}</PROJECT_ROOT>
                             </environmentVariables>
-                            <skip>${skipPlaywrightTests}</skip>
+                            <skip>${skip.docker.deployment}</skip>
                         </configuration>
                     </execution>
 
@@ -241,7 +242,7 @@
                                 <successCode>0</successCode>
                                 <successCode>1</successCode>
                             </successCodes>
-                            <skip>${skipPlaywrightTests}</skip>
+                            <skip>${skip.docker.deployment}</skip>
                         </configuration>
                     </execution>
                 </executions>

@@ -64,7 +64,8 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- Container lifecycle management -->
+            <!-- Container lifecycle management — uses skip.docker.deployment (not skipITs)
+                 so Docker is only started when flow.json is compatible with current architecture -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
@@ -90,7 +91,7 @@
                                 <successCode>0</successCode>
                                 <successCode>1</successCode>
                             </successCodes>
-                            <skip>${skipITs}</skip>
+                            <skip>${skip.docker.deployment}</skip>
                         </configuration>
                     </execution>
                     <!-- pre-integration-test: deploy NAR + start + wait -->
@@ -109,7 +110,7 @@
                             <environmentVariables>
                                 <PROJECT_ROOT>${maven.multiModuleProjectDirectory}</PROJECT_ROOT>
                             </environmentVariables>
-                            <skip>${skipITs}</skip>
+                            <skip>${skip.docker.deployment}</skip>
                         </configuration>
                     </execution>
                     <!-- post-integration-test: collect logs + stop -->
@@ -132,7 +133,7 @@
                                 <successCode>0</successCode>
                                 <successCode>1</successCode>
                             </successCodes>
-                            <skip>${skipITs}</skip>
+                            <skip>${skip.docker.deployment}</skip>
                         </configuration>
                     </execution>
                 </executions>
