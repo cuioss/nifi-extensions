@@ -17,6 +17,13 @@
 package de.cuioss.nifi.jwt.util;
 
 import org.apache.nifi.components.PropertyDescriptor;
+import org.apache.nifi.processor.AbstractProcessor;
+import org.apache.nifi.processor.ProcessContext;
+import org.apache.nifi.processor.ProcessSession;
+import org.apache.nifi.processor.Relationship;
+import org.apache.nifi.processor.exception.ProcessException;
+import org.apache.nifi.util.TestRunner;
+import org.apache.nifi.util.TestRunners;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -29,6 +36,26 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("AuthorizationRequirements")
 class AuthorizationRequirementsTest {
+
+    /**
+     * Minimal test processor that includes the authorization property descriptors.
+     */
+    public static class TestProcessor extends AbstractProcessor {
+        @Override
+        protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
+            return AuthorizationRequirements.getPropertyDescriptors();
+        }
+
+        @Override
+        public void onTrigger(ProcessContext context, ProcessSession session) throws ProcessException {
+            // No-op for testing
+        }
+
+        @Override
+        public Set<Relationship> getRelationships() {
+            return Set.of();
+        }
+    }
 
     @Nested
     @DisplayName("Constructor and Defensive Copying")
@@ -379,6 +406,146 @@ class AuthorizationRequirementsTest {
             // Assert
             assertNotNull(toString, "toString should not be null");
             assertFalse(toString.isEmpty(), "toString should not be empty");
+        }
+    }
+
+    @Nested
+    @DisplayName("from(ProcessContext) and parseCommaSeparated()")
+    class FromProcessContextTests {
+
+        @Test
+        @DisplayName("Should parse roles and scopes correctly from ProcessContext")
+        void shouldParseRolesAndScopes() {
+            // Arrange
+            TestRunner runner = TestRunners.newTestRunner(new TestProcessor());
+            runner.setProperty(AuthorizationRequirements.REQUIRE_VALID_TOKEN, "true");
+            runner.setProperty(AuthorizationRequirements.REQUIRED_ROLES, "admin, user");
+            runner.setProperty(AuthorizationRequirements.REQUIRED_SCOPES, "read,write");
+
+            // Act
+            AuthorizationRequirements requirements =
+                    AuthorizationRequirements.from(runner.getProcessContext());
+
+            // Assert
+            assertTrue(requirements.requireValidToken(), "Should require valid token");
+            assertEquals(2, requirements.requiredRoles().size(), "Should have 2 roles");
+            assertTrue(requirements.requiredRoles().contains("admin"), "Should contain 'admin' role");
+            assertTrue(requirements.requiredRoles().contains("user"), "Should contain 'user' role");
+            assertEquals(2, requirements.requiredScopes().size(), "Should have 2 scopes");
+            assertTrue(requirements.requiredScopes().contains("read"), "Should contain 'read' scope");
+            assertTrue(requirements.requiredScopes().contains("write"), "Should contain 'write' scope");
+        }
+
+        @Test
+        @DisplayName("Should return empty sets when properties are not set")
+        void shouldReturnEmptySetsWhenPropertiesNotSet() {
+            // Arrange
+            TestRunner runner = TestRunners.newTestRunner(new TestProcessor());
+            runner.setProperty(AuthorizationRequirements.REQUIRE_VALID_TOKEN, "true");
+            // Don't set REQUIRED_ROLES or REQUIRED_SCOPES
+
+            // Act
+            AuthorizationRequirements requirements =
+                    AuthorizationRequirements.from(runner.getProcessContext());
+
+            // Assert
+            assertTrue(requirements.requireValidToken(), "Should require valid token");
+            assertTrue(requirements.requiredRoles().isEmpty(), "Roles should be empty");
+            assertTrue(requirements.requiredScopes().isEmpty(), "Scopes should be empty");
+            assertFalse(requirements.hasAuthorizationRequirements(),
+                    "Should not have authorization requirements");
+        }
+
+        @Test
+        @DisplayName("Should respect requireValidToken=false")
+        void shouldRespectRequireValidTokenFalse() {
+            // Arrange
+            TestRunner runner = TestRunners.newTestRunner(new TestProcessor());
+            runner.setProperty(AuthorizationRequirements.REQUIRE_VALID_TOKEN, "false");
+            runner.setProperty(AuthorizationRequirements.REQUIRED_ROLES, "admin");
+
+            // Act
+            AuthorizationRequirements requirements =
+                    AuthorizationRequirements.from(runner.getProcessContext());
+
+            // Assert
+            assertFalse(requirements.requireValidToken(), "Should not require valid token");
+            assertEquals(1, requirements.requiredRoles().size(), "Should still have roles");
+            assertTrue(requirements.requiredRoles().contains("admin"), "Should contain 'admin' role");
+        }
+
+        @Test
+        @DisplayName("Should trim whitespace and filter empty strings")
+        void shouldTrimWhitespaceAndFilterEmpty() {
+            // Arrange
+            TestRunner runner = TestRunners.newTestRunner(new TestProcessor());
+            runner.setProperty(AuthorizationRequirements.REQUIRE_VALID_TOKEN, "true");
+            runner.setProperty(AuthorizationRequirements.REQUIRED_ROLES, " admin , user , ");
+            runner.setProperty(AuthorizationRequirements.REQUIRED_SCOPES, "  read  ,  write  ,  ,  ");
+
+            // Act
+            AuthorizationRequirements requirements =
+                    AuthorizationRequirements.from(runner.getProcessContext());
+
+            // Assert
+            assertEquals(2, requirements.requiredRoles().size(),
+                    "Should have 2 roles (whitespace trimmed, empty filtered)");
+            assertTrue(requirements.requiredRoles().contains("admin"), "Should contain trimmed 'admin'");
+            assertTrue(requirements.requiredRoles().contains("user"), "Should contain trimmed 'user'");
+            assertEquals(2, requirements.requiredScopes().size(),
+                    "Should have 2 scopes (whitespace trimmed, empty filtered)");
+            assertTrue(requirements.requiredScopes().contains("read"), "Should contain trimmed 'read'");
+            assertTrue(requirements.requiredScopes().contains("write"), "Should contain trimmed 'write'");
+        }
+
+        @Test
+        @DisplayName("Should handle single value without commas")
+        void shouldHandleSingleValue() {
+            // Arrange
+            TestRunner runner = TestRunners.newTestRunner(new TestProcessor());
+            runner.setProperty(AuthorizationRequirements.REQUIRE_VALID_TOKEN, "true");
+            runner.setProperty(AuthorizationRequirements.REQUIRED_ROLES, "admin");
+
+            // Act
+            AuthorizationRequirements requirements =
+                    AuthorizationRequirements.from(runner.getProcessContext());
+
+            // Assert
+            assertEquals(1, requirements.requiredRoles().size(), "Should have 1 role");
+            assertTrue(requirements.requiredRoles().contains("admin"), "Should contain 'admin'");
+        }
+
+        @Test
+        @DisplayName("Should handle empty string as empty set")
+        void shouldHandleEmptyStringAsEmptySet() {
+            // Arrange
+            TestRunner runner = TestRunners.newTestRunner(new TestProcessor());
+            runner.setProperty(AuthorizationRequirements.REQUIRE_VALID_TOKEN, "true");
+            runner.setProperty(AuthorizationRequirements.REQUIRED_ROLES, "");
+
+            // Act
+            AuthorizationRequirements requirements =
+                    AuthorizationRequirements.from(runner.getProcessContext());
+
+            // Assert
+            assertTrue(requirements.requiredRoles().isEmpty(), "Empty string should result in empty set");
+        }
+
+        @Test
+        @DisplayName("Should handle whitespace-only string as empty set")
+        void shouldHandleWhitespaceOnlyStringAsEmptySet() {
+            // Arrange
+            TestRunner runner = TestRunners.newTestRunner(new TestProcessor());
+            runner.setProperty(AuthorizationRequirements.REQUIRE_VALID_TOKEN, "true");
+            runner.setProperty(AuthorizationRequirements.REQUIRED_ROLES, "   ");
+
+            // Act
+            AuthorizationRequirements requirements =
+                    AuthorizationRequirements.from(runner.getProcessContext());
+
+            // Assert
+            assertTrue(requirements.requiredRoles().isEmpty(),
+                    "Whitespace-only string should result in empty set");
         }
     }
 }

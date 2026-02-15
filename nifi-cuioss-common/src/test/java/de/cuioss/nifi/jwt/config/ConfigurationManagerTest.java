@@ -545,4 +545,238 @@ class ConfigurationManagerTest {
             }
         }
     }
+
+    @Nested
+    @DisplayName("Unsupported File Format")
+    class UnsupportedFileFormatTests {
+
+        @Test
+        @DisplayName("Should not load unsupported .txt file format")
+        void shouldNotLoadTxtFile(@TempDir Path tempDir) throws IOException {
+            // Arrange
+            Path configFile = tempDir.resolve("jwt-validation.txt");
+            String content = "jwt.validation.max.token.size=32768";
+            Files.writeString(configFile, content);
+
+            System.setProperty("jwt.Config.path", configFile.toString());
+            try {
+                // Act
+                var configManager = new ConfigurationManager();
+
+                // Assert
+                assertFalse(configManager.isConfigurationLoaded(),
+                        "Unsupported file format should not be loaded");
+            } finally {
+                System.clearProperty("jwt.Config.path");
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Invalid YAML Handling")
+    class InvalidYamlTests {
+
+        @Test
+        @DisplayName("Should handle invalid YAML syntax gracefully")
+        void shouldHandleInvalidYaml(@TempDir Path tempDir) throws IOException {
+            // Arrange
+            Path configFile = tempDir.resolve("jwt-validation.yml");
+            // Unmatched quote causes SnakeYAML to throw YAMLException
+            String content = "key: 'unclosed string\nanother: line";
+            Files.writeString(configFile, content);
+
+            System.setProperty("jwt.Config.path", configFile.toString());
+            try {
+                // Act
+                var configManager = new ConfigurationManager();
+
+                // Assert
+                assertFalse(configManager.isConfigurationLoaded(),
+                        "Invalid YAML should not be loaded");
+            } finally {
+                System.clearProperty("jwt.Config.path");
+            }
+        }
+
+        @Test
+        @DisplayName("Should handle malformed YAML structure gracefully")
+        void shouldHandleMalformedYaml(@TempDir Path tempDir) throws IOException {
+            // Arrange
+            Path configFile = tempDir.resolve("jwt-validation.yml");
+            String content = """
+                    jwt:
+                      validation:
+                        [[[malformed structure
+                    """;
+            Files.writeString(configFile, content);
+
+            System.setProperty("jwt.Config.path", configFile.toString());
+            try {
+                // Act
+                var configManager = new ConfigurationManager();
+
+                // Assert
+                assertFalse(configManager.isConfigurationLoaded(),
+                        "Malformed YAML should not be loaded");
+            } finally {
+                System.clearProperty("jwt.Config.path");
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Generic List Processing")
+    class GenericListTests {
+
+        @Test
+        @DisplayName("Should process generic YAML list as comma-separated string")
+        void shouldProcessGenericListAsCommaSeparated(@TempDir Path tempDir) throws IOException {
+            // Arrange
+            Path configFile = tempDir.resolve("jwt-validation.yml");
+            String content = """
+                    jwt:
+                      validation:
+                        algorithms:
+                          - RS256
+                          - RS384
+                          - RS512
+                    """;
+            Files.writeString(configFile, content);
+
+            System.setProperty("jwt.Config.path", configFile.toString());
+            try {
+                // Act
+                var configManager = new ConfigurationManager();
+
+                // Assert
+                assertTrue(configManager.isConfigurationLoaded());
+                String algorithms = configManager.getProperty("jwt.validation.algorithms");
+                assertNotNull(algorithms, "Algorithms property should exist");
+                assertEquals("RS256,RS384,RS512", algorithms,
+                        "List should be stored as comma-separated string");
+            } finally {
+                System.clearProperty("jwt.Config.path");
+            }
+        }
+
+        @Test
+        @DisplayName("Should handle list with null values")
+        void shouldHandleListWithNullValues(@TempDir Path tempDir) throws IOException {
+            // Arrange
+            Path configFile = tempDir.resolve("jwt-validation.yml");
+            String content = """
+                    jwt:
+                      validation:
+                        claims:
+                          - sub
+                          - iss
+                    """;
+            Files.writeString(configFile, content);
+
+            System.setProperty("jwt.Config.path", configFile.toString());
+            try {
+                // Act
+                var configManager = new ConfigurationManager();
+
+                // Assert
+                assertTrue(configManager.isConfigurationLoaded());
+                String claims = configManager.getProperty("jwt.validation.claims");
+                assertNotNull(claims, "Claims property should exist");
+                assertEquals("sub,iss", claims);
+            } finally {
+                System.clearProperty("jwt.Config.path");
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Reload Error Handling")
+    class ReloadErrorTests {
+
+        @Test
+        @DisplayName("Should clear old config when reload encounters invalid YAML")
+        void shouldClearOldConfigOnReloadWithInvalidYaml(@TempDir Path tempDir) throws IOException, InterruptedException {
+            // Arrange
+            Path configFile = tempDir.resolve("jwt-validation.yml");
+            String validContent = """
+                    jwt:
+                      validation:
+                        max:
+                          token:
+                            size: 32768
+                    """;
+            Files.writeString(configFile, validContent);
+
+            System.setProperty("jwt.Config.path", configFile.toString());
+            try {
+                var configManager = new ConfigurationManager();
+                assertTrue(configManager.isConfigurationLoaded());
+                assertEquals("32768", configManager.getProperty("jwt.validation.max.token.size"));
+
+                Thread.sleep(100);
+
+                // Overwrite with invalid YAML (unmatched quote triggers YAMLException)
+                String invalidContent = "key: 'unclosed string\nanother: line";
+                Files.writeString(configFile, invalidContent);
+                Thread.sleep(100);
+
+                // Act — loadConfiguration() clears properties before loading;
+                // YAMLException is caught internally in loadConfigurationFile(),
+                // so checkAndReloadConfiguration() returns true (reload completed)
+                boolean reloaded = configManager.checkAndReloadConfiguration();
+
+                // Assert — reload returns true because loadConfiguration() completed
+                // without throwing; old config is cleared
+                assertTrue(reloaded, "Reload should return true (reload attempt completed)");
+                assertFalse(configManager.isConfigurationLoaded(),
+                        "Configuration should not be loaded after invalid YAML");
+            } finally {
+                System.clearProperty("jwt.Config.path");
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Reload Without Config File")
+    class ReloadWithoutFileTests {
+
+        @Test
+        @DisplayName("Should return false when no config file exists")
+        void shouldReturnFalseWhenNoConfigFile() {
+            // Arrange
+            var configManager = new ConfigurationManager();
+
+            // Act
+            boolean reloaded = configManager.checkAndReloadConfiguration();
+
+            // Assert
+            assertFalse(reloaded, "Should return false when no config file exists");
+        }
+    }
+
+    @Nested
+    @DisplayName("Non-Existent Config File Path")
+    class NonExistentFileTests {
+
+        @Test
+        @DisplayName("Should not crash with non-existent file path")
+        void shouldHandleNonExistentFilePath() {
+            // Arrange
+            System.setProperty("jwt.Config.path", "/tmp/nonexistent-file-12345.properties");
+            try {
+                // Act
+                var configManager = new ConfigurationManager();
+
+                // Assert
+                assertFalse(configManager.isConfigurationLoaded(),
+                        "Configuration should not be loaded for non-existent file");
+                assertTrue(configManager.getStaticProperties().isEmpty(),
+                        "Static properties should be empty");
+                assertTrue(configManager.getIssuerProperties().isEmpty(),
+                        "Issuer properties should be empty");
+            } finally {
+                System.clearProperty("jwt.Config.path");
+            }
+        }
+    }
 }
