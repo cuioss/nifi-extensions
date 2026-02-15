@@ -23,8 +23,6 @@ import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
 import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
 import de.cuioss.sheriff.oauth.core.test.generator.TestTokenGenerators;
-import de.cuioss.test.juli.LogAsserts;
-import de.cuioss.test.juli.TestLogLevel;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
@@ -332,27 +330,29 @@ class GatewayRequestHandlerTest {
     class Logging {
 
         @Test
-        @DisplayName("Should log route matched")
-        void shouldLogRouteMatched() throws Exception {
-            httpClient.send(
+        @DisplayName("Should return 200 when route is matched")
+        void shouldReturn200WhenRouteMatched() throws Exception {
+            var response = httpClient.send(
                     requestBuilder("/api/health").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
-            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, "REST-3");
+            assertEquals(200, response.statusCode());
         }
 
         @Test
-        @DisplayName("Should log auth failure")
-        void shouldLogAuthFailure() throws Exception {
+        @DisplayName("Should return 401 with problem detail on auth failure")
+        void shouldReturn401OnAuthFailure() throws Exception {
             mockConfigService.configureValidationFailure(
                     new TokenValidationException(SecurityEventCounter.EventType.FAILED_TO_DECODE_JWT,
                             "bad token"));
 
-            httpClient.send(
+            var response = httpClient.send(
                     requestBuilder("/api/health").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
-            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "REST-100:");
+            assertEquals(401, response.statusCode());
+            assertEquals(ProblemDetail.CONTENT_TYPE,
+                    response.headers().firstValue("Content-Type").orElse(""));
         }
     }
 

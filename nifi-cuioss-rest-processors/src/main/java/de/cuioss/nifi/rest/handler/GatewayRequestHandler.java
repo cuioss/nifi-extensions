@@ -167,16 +167,19 @@ public class GatewayRequestHandler extends Handler.Abstract {
     }
 
     private void processRequest(Request request, Response response, Callback callback) throws IOException {
-        String path = request.getHttpURI().getPath();
+        String rawPath = request.getHttpURI().getPath();
         String method = request.getMethod();
         String remoteHost = Request.getRemoteAddr(request);
 
-        // 0. Input security validation
-        if (!validateInput(request, response, callback, method, path, remoteHost)) {
+        // 0. Security validation + normalization
+        SanitizedRequest sanitized = validateAndSanitizeInput(
+                request, response, callback, method, rawPath, remoteHost);
+        if (sanitized == null) {
             return;
         }
+        String path = sanitized.path();
 
-        // 1. Route matching
+        // 1. Route matching (uses normalized path)
         RouteConfiguration route = matchRoute(path, method, response, callback);
         if (route == null) {
             return;
@@ -205,10 +208,10 @@ public class GatewayRequestHandler extends Handler.Abstract {
             return;
         }
 
-        // 5. Enqueue for FlowFile creation
+        // 5. Enqueue for FlowFile creation (uses sanitized query params and headers)
         var container = new HttpRequestContainer(
                 route.name(), method, path,
-                parseQueryParameters(request), extractHeaders(request), remoteHost,
+                sanitized.queryParameters(), sanitized.headers(), remoteHost,
                 body, request.getHeaders().get(HttpHeader.CONTENT_TYPE), token);
 
         if (!queue.offer(container)) {
@@ -305,30 +308,47 @@ public class GatewayRequestHandler extends Handler.Abstract {
     }
 
     /**
-     * Validates path, query parameters, and headers against security attack patterns.
+     * Validates and normalizes path, query parameters, and headers through cui-http
+     * security pipelines. Each component is checked for attack patterns and returned
+     * in its normalized form.
      *
-     * @return {@code true} if input is safe, {@code false} if an error response was sent
+     * @return the sanitized request components, or {@code null} if an error response was sent
      */
-    private boolean validateInput(
+    private SanitizedRequest validateAndSanitizeInput(
             Request request, Response response, Callback callback,
             String method, String path, String remoteHost) {
         try {
-            securityPipelines.urlPathPipeline().validate(path);
+            // Normalize path
+            String sanitizedPath = securityPipelines.urlPathPipeline().validate(path)
+                    .orElse(path);
+
+            // Normalize query parameters
             var queryParams = Request.extractQueryParameters(request);
+            Map<String, String> sanitizedParams = new LinkedHashMap<>();
             for (String name : queryParams.getNames()) {
-                securityPipelines.urlParameterPipeline().validate(queryParams.getValue(name));
+                String sanitizedValue = securityPipelines.urlParameterPipeline()
+                        .validate(queryParams.getValue(name))
+                        .orElse(queryParams.getValue(name));
+                sanitizedParams.put(name, sanitizedValue);
             }
+
+            // Normalize headers (excluding Authorization)
+            Map<String, String> sanitizedHeaders = new LinkedHashMap<>();
             for (HttpField field : request.getHeaders()) {
                 if (!HttpHeader.AUTHORIZATION.is(field.getName())) {
-                    securityPipelines.headerValuePipeline().validate(field.getValue());
+                    String sanitizedValue = securityPipelines.headerValuePipeline()
+                            .validate(field.getValue())
+                            .orElse(field.getValue());
+                    sanitizedHeaders.put(field.getName(), sanitizedValue);
                 }
             }
-            return true;
+
+            return new SanitizedRequest(sanitizedPath, sanitizedParams, sanitizedHeaders);
         } catch (UrlSecurityException e) {
             LOGGER.warn(RestApiLogMessages.WARN.SECURITY_VIOLATION, method, path, remoteHost, e.getMessage());
             sendProblemResponse(response, callback,
                     ProblemDetail.badRequest("Request rejected: " + e.getFailureType().getDescription()));
-            return false;
+            return null;
         }
     }
 
@@ -371,28 +391,6 @@ public class GatewayRequestHandler extends Handler.Abstract {
             // detected without allocating an unbounded buffer.
             return inputStream.readNBytes(maxRequestSize + 1);
         }
-    }
-
-    private static Map<String, String> parseQueryParameters(Request request) {
-        var fields = Request.extractQueryParameters(request);
-        if (fields.isEmpty()) {
-            return Map.of();
-        }
-        Map<String, String> params = new LinkedHashMap<>();
-        for (String name : fields.getNames()) {
-            params.put(name, fields.getValue(name));
-        }
-        return params;
-    }
-
-    private static Map<String, String> extractHeaders(Request request) {
-        Map<String, String> headers = new LinkedHashMap<>();
-        for (HttpField field : request.getHeaders()) {
-            if (!HttpHeader.AUTHORIZATION.is(field.getName())) {
-                headers.put(field.getName(), field.getValue());
-            }
-        }
-        return headers;
     }
 
     private static boolean isBodyMethod(String method) {
