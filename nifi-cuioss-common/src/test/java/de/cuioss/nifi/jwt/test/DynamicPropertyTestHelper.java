@@ -70,7 +70,7 @@ public class DynamicPropertyTestHelper {
      * @param issuerProperties Map of issuer properties (without prefix)
      */
     public static void setIssuerProperties(TestRunner testRunner, String issuerName,
-            Map<String, String> issuerProperties) {
+                                           Map<String, String> issuerProperties) {
         String prefix = "issuer." + issuerName + ".";
         setDynamicProperties(testRunner, prefix, issuerProperties);
     }

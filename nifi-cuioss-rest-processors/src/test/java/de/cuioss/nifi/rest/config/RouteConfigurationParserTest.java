@@ -116,8 +116,8 @@ class RouteConfigurationParserTest {
 
             // Assert
             RouteConfiguration route = routes.getFirst();
-            assertEquals(Set.of("ADMIN", "USER"), route.requiredRoles());
-            assertEquals(Set.of("READ", "WRITE"), route.requiredScopes());
+            assertEquals(Set.of("admin", "user"), route.requiredRoles());
+            assertEquals(Set.of("read", "write"), route.requiredScopes());
         }
 
         @Test

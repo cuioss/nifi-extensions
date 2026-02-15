@@ -24,6 +24,7 @@ import de.cuioss.nifi.rest.handler.GatewayRequestHandler;
 import de.cuioss.nifi.rest.handler.HttpRequestContainer;
 import de.cuioss.nifi.rest.server.JettyServerManager;
 import de.cuioss.tools.logging.CuiLogger;
+import de.cuioss.tools.string.Splitter;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
@@ -34,6 +35,7 @@ import org.apache.nifi.processor.AbstractProcessor;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.Relationship;
+import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
 
 import java.util.*;
@@ -179,7 +181,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
             LOGGER.info(RestApiLogMessages.INFO.FLOWFILE_CREATED, container.routeName(), container.body().length);
 
-        } catch (Exception e) {
+        } catch (ProcessException e) {
             LOGGER.error(e, RestApiLogMessages.ERROR.FLOWFILE_CREATION_FAILED, container.routeName(), e.getMessage());
             FlowFile errorFile = session.create();
             errorFile = session.putAttribute(errorFile, "error.message", e.getMessage());
@@ -208,10 +210,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         if (value.isEmpty()) {
             return Set.of();
         }
-        return Arrays.stream(value.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toUnmodifiableSet());
+        return Set.copyOf(Splitter.on(',').trimResults().omitEmptyStrings().splitToList(value));
     }
 
     private void updateDynamicRelationships(List<RouteConfiguration> routes) {

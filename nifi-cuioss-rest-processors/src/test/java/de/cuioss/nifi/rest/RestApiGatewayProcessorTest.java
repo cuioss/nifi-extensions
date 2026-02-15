@@ -297,8 +297,8 @@ class RestApiGatewayProcessorTest {
             field.setAccessible(true);
             var mgr = (JettyServerManager) field.get(processor);
             return mgr.getPort();
-        } catch (Exception e) {
-            throw new RuntimeException("Could not get server port", e);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("Could not get server port", e);
         }
     }
 }

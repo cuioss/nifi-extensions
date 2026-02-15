@@ -31,6 +31,7 @@ import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.util.Callback;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -52,6 +53,32 @@ import java.util.concurrent.BlockingQueue;
 public class GatewayRequestHandler extends Handler.Abstract {
 
     private static final CuiLogger LOGGER = new CuiLogger(GatewayRequestHandler.class);
+
+    // HTTP header constants
+    private static final String WWW_AUTHENTICATE = "WWW-Authenticate";
+    private static final String HEADER_ALLOW = "Allow";
+    private static final String HEADER_ORIGIN = "Origin";
+    private static final String HEADER_VARY = "Vary";
+
+    // CORS header constants
+    private static final String CORS_ALLOW_ORIGIN = "Access-Control-Allow-Origin";
+    private static final String CORS_ALLOW_CREDENTIALS = "Access-Control-Allow-Credentials";
+    private static final String CORS_ALLOW_METHODS = "Access-Control-Allow-Methods";
+    private static final String CORS_ALLOW_HEADERS = "Access-Control-Allow-Headers";
+    private static final String CORS_MAX_AGE = "Access-Control-Max-Age";
+    private static final String CORS_ALLOWED_METHODS_VALUE = "GET, POST, PUT, DELETE, PATCH, OPTIONS";
+    private static final String CORS_ALLOWED_HEADERS_VALUE = "Authorization, Content-Type";
+    private static final String CORS_MAX_AGE_VALUE = "3600";
+
+    // Auth challenge constants
+    private static final String BEARER_CHALLENGE = "Bearer";
+    private static final String BEARER_INVALID_TOKEN = "Bearer error=\"invalid_token\"";
+    private static final String BEARER_INSUFFICIENT_SCOPE_TEMPLATE = "Bearer error=\"insufficient_scope\", scope=\"%s\"";
+
+    // Response body
+    private static final byte[] ACCEPTED_RESPONSE = "{\"status\":\"accepted\"}".getBytes(StandardCharsets.UTF_8);
+    private static final String METHOD_OPTIONS = "OPTIONS";
+    private static final int BEARER_PREFIX_LENGTH = 7;
 
     private final List<RouteConfiguration> routes;
     private final JwtIssuerConfigService configService;
@@ -98,147 +125,180 @@ public class GatewayRequestHandler extends Handler.Abstract {
     }
 
     @Override
-    public boolean handle(Request request, Response response, Callback callback) throws Exception {
+    public boolean handle(Request request, Response response, Callback callback) {
+        if (handleCorsPreflight(request, response, callback)) {
+            return true;
+        }
+        try {
+            processRequest(request, response, callback);
+        } catch (IOException e) {
+            LOGGER.error(e, RestApiLogMessages.ERROR.HANDLER_ERROR, e.getMessage());
+            sendProblemResponse(response, callback, ProblemDetail.internalError());
+        }
+        return true;
+    }
+
+    private boolean handleCorsPreflight(Request request, Response response, Callback callback) {
+        String origin = request.getHeaders().get(HEADER_ORIGIN);
+        if (!isCorsEnabled() || !METHOD_OPTIONS.equalsIgnoreCase(request.getMethod())
+                || origin == null || !isOriginAllowed(origin)) {
+            return false;
+        }
+        LOGGER.info(RestApiLogMessages.INFO.CORS_PREFLIGHT, origin);
+        setCorsHeaders(response, origin);
+        response.getHeaders().put(CORS_ALLOW_METHODS, CORS_ALLOWED_METHODS_VALUE);
+        response.getHeaders().put(CORS_ALLOW_HEADERS, CORS_ALLOWED_HEADERS_VALUE);
+        response.getHeaders().put(CORS_MAX_AGE, CORS_MAX_AGE_VALUE);
+        response.setStatus(204);
+        response.write(true, ByteBuffer.allocate(0), callback);
+        return true;
+    }
+
+    private void processRequest(Request request, Response response, Callback callback) throws IOException {
         String path = request.getHttpURI().getPath();
         String method = request.getMethod();
         String remoteHost = Request.getRemoteAddr(request);
-        String origin = request.getHeaders().get("Origin");
 
-        // CORS preflight handling
-        if (isCorsEnabled() && "OPTIONS".equalsIgnoreCase(method) && origin != null) {
-            if (isOriginAllowed(origin)) {
-                LOGGER.info(RestApiLogMessages.INFO.CORS_PREFLIGHT, origin);
-                setCorsHeaders(response, origin);
-                response.getHeaders().put("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
-                response.getHeaders().put("Access-Control-Allow-Headers", "Authorization, Content-Type");
-                response.getHeaders().put("Access-Control-Max-Age", "3600");
-                response.setStatus(204);
-                response.write(true, ByteBuffer.allocate(0), callback);
-                return true;
-            }
+        // 1. Route matching
+        RouteConfiguration route = matchRoute(path, method, response, callback);
+        if (route == null) {
+            return;
+        }
+        LOGGER.info(RestApiLogMessages.INFO.ROUTE_MATCHED, method, path, route.name());
+
+        // 2. Authentication
+        AccessTokenContent token = authenticateRequest(request, response, callback, method, path, remoteHost);
+        if (token == null) {
+            return;
         }
 
-        try {
-            // 1. Route matching
-            RouteConfiguration matchedRoute = findRoute(path);
-            if (matchedRoute == null) {
-                LOGGER.warn(RestApiLogMessages.WARN.ROUTE_NOT_FOUND, path);
-                sendProblemResponse(response, callback,
-                        ProblemDetail.notFound("No route configured for path: " + path));
-                return true;
-            }
+        // 3. Authorization
+        if (!authorizeRequest(token, route, response, callback, method, path, remoteHost)) {
+            return;
+        }
+        LOGGER.info(RestApiLogMessages.INFO.AUTH_SUCCESSFUL, method, path, remoteHost);
 
-            // 2. Method check
-            if (!matchedRoute.methods().contains(method.toUpperCase(Locale.ROOT))) {
-                LOGGER.warn(RestApiLogMessages.WARN.METHOD_NOT_ALLOWED, method, matchedRoute.name(), path);
-                response.getHeaders().put("Allow", String.join(", ", matchedRoute.methods()));
-                sendProblemResponse(response, callback,
-                        ProblemDetail.methodNotAllowed(
-                                "Method %s not allowed on %s. Allowed: %s".formatted(
-                                        method, path, matchedRoute.methods())));
-                return true;
-            }
-
-            LOGGER.info(RestApiLogMessages.INFO.ROUTE_MATCHED, method, path, matchedRoute.name());
-
-            // 3. Authentication
-            String rawToken = extractBearerToken(request);
-            if (rawToken == null) {
-                LOGGER.warn(RestApiLogMessages.WARN.MISSING_BEARER_TOKEN, method, path, remoteHost);
-                response.getHeaders().put("WWW-Authenticate", "Bearer");
-                sendProblemResponse(response, callback,
-                        ProblemDetail.unauthorized("Missing or malformed Authorization header"));
-                return true;
-            }
-
-            AccessTokenContent token;
-            try {
-                token = configService.validateToken(rawToken);
-            } catch (TokenValidationException e) {
-                LOGGER.warn(RestApiLogMessages.WARN.AUTH_FAILED, method, path, remoteHost, e.getMessage());
-                response.getHeaders().put("WWW-Authenticate", "Bearer error=\"invalid_token\"");
-                sendProblemResponse(response, callback,
-                        ProblemDetail.unauthorized("Token validation failed: " + e.getMessage()));
-                return true;
-            }
-
-            // 4. Authorization
-            if (matchedRoute.hasAuthorizationRequirements()) {
-                var authResult = AuthorizationValidator.validate(token, matchedRoute.toAuthorizationRequirements());
-                if (!authResult.isAuthorized()) {
-                    LOGGER.warn(RestApiLogMessages.WARN.AUTHZ_FAILED, method, path, remoteHost, authResult.getReason());
-                    if (!authResult.getMissingScopes().isEmpty()) {
-                        response.getHeaders().put("WWW-Authenticate",
-                                "Bearer error=\"insufficient_scope\", scope=\"%s\""
-                                        .formatted(String.join(" ", matchedRoute.requiredScopes())));
-                        sendProblemResponse(response, callback,
-                                ProblemDetail.unauthorized("Insufficient scopes: " + authResult.getReason()));
-                    } else {
-                        sendProblemResponse(response, callback,
-                                ProblemDetail.forbidden("Insufficient roles: " + authResult.getReason()));
-                    }
-                    return true;
-                }
-            }
-
-            LOGGER.info(RestApiLogMessages.INFO.AUTH_SUCCESSFUL, method, path, remoteHost);
-
-            // 5. Read body
-            byte[] body = readBody(request);
-            if (body.length > maxRequestSize) {
-                LOGGER.warn(RestApiLogMessages.WARN.BODY_TOO_LARGE, body.length, maxRequestSize, method, path);
-                sendProblemResponse(response, callback,
-                        ProblemDetail.payloadTooLarge(
-                                "Request body size %d exceeds maximum %d bytes"
-                                        .formatted(body.length, maxRequestSize)));
-                return true;
-            }
-
-            // 6. Build container and enqueue
-            String contentType = Optional.ofNullable(request.getHeaders().get(HttpHeader.CONTENT_TYPE)).orElse(null);
-            Map<String, String> queryParams = parseQueryParameters(request);
-            Map<String, String> headers = extractHeaders(request);
-
-            var container = new HttpRequestContainer(
-                    matchedRoute.name(), method, path,
-                    queryParams, headers, remoteHost,
-                    body, contentType, token);
-
-            if (!queue.offer(container)) {
-                LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, method, path, remoteHost);
-                sendProblemResponse(response, callback,
-                        ProblemDetail.serviceUnavailable("Server is at capacity, please retry later"));
-                return true;
-            }
-
-            // 7. Success response
-            LOGGER.info(RestApiLogMessages.INFO.REQUEST_PROCESSED, matchedRoute.name(), method, path, remoteHost);
-
-            // Add CORS headers if origin is allowed
-            if (isCorsEnabled() && origin != null && isOriginAllowed(origin)) {
-                setCorsHeaders(response, origin);
-            }
-
-            int statusCode = isBodyMethod(method) ? 202 : 200;
-            response.setStatus(statusCode);
-            response.getHeaders().put(HttpHeader.CONTENT_TYPE, "application/json");
-            byte[] responseBody = "{\"status\":\"accepted\"}".getBytes(StandardCharsets.UTF_8);
-            response.getHeaders().put(HttpHeader.CONTENT_LENGTH, responseBody.length);
-            response.write(true, ByteBuffer.wrap(responseBody), callback);
-            return true;
-
-        } catch (Exception e) {
-            LOGGER.error(e, RestApiLogMessages.ERROR.HANDLER_ERROR, e.getMessage());
+        // 4. Read and validate body
+        byte[] body = readBody(request);
+        if (body.length > maxRequestSize) {
+            LOGGER.warn(RestApiLogMessages.WARN.BODY_TOO_LARGE, body.length, maxRequestSize, method, path);
             sendProblemResponse(response, callback,
-                    ProblemDetail.builder()
-                            .type("about:blank")
-                            .title("Internal Server Error")
-                            .status(500)
-                            .detail("An unexpected error occurred")
-                            .build());
-            return true;
+                    ProblemDetail.payloadTooLarge(
+                            "Request body size %d exceeds maximum %d bytes".formatted(body.length, maxRequestSize)));
+            return;
+        }
+
+        // 5. Enqueue for FlowFile creation
+        var container = new HttpRequestContainer(
+                route.name(), method, path,
+                parseQueryParameters(request), extractHeaders(request), remoteHost,
+                body, request.getHeaders().get(HttpHeader.CONTENT_TYPE), token);
+
+        if (!queue.offer(container)) {
+            LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, method, path, remoteHost);
+            sendProblemResponse(response, callback,
+                    ProblemDetail.serviceUnavailable("Server is at capacity, please retry later"));
+            return;
+        }
+
+        // 6. Success response
+        LOGGER.info(RestApiLogMessages.INFO.REQUEST_PROCESSED, route.name(), method, path, remoteHost);
+        sendSuccessResponse(request, response, callback, method);
+    }
+
+    /**
+     * Matches route by path and HTTP method.
+     *
+     * @return the matched route, or {@code null} if an error response was sent
+     */
+    private RouteConfiguration matchRoute(String path, String method, Response response, Callback callback) {
+        RouteConfiguration route = findRoute(path);
+        if (route == null) {
+            LOGGER.warn(RestApiLogMessages.WARN.ROUTE_NOT_FOUND, path);
+            sendProblemResponse(response, callback,
+                    ProblemDetail.notFound("No route configured for path: " + path));
+            return null;
+        }
+        if (!route.methods().contains(method.toUpperCase(Locale.ROOT))) {
+            LOGGER.warn(RestApiLogMessages.WARN.METHOD_NOT_ALLOWED, method, route.name(), path);
+            response.getHeaders().put(HEADER_ALLOW, String.join(", ", route.methods()));
+            sendProblemResponse(response, callback,
+                    ProblemDetail.methodNotAllowed(
+                            "Method %s not allowed on %s. Allowed: %s".formatted(method, path, route.methods())));
+            return null;
+        }
+        return route;
+    }
+
+    /**
+     * Extracts and validates the Bearer token.
+     *
+     * @return the validated token, or {@code null} if an error response was sent
+     */
+    private AccessTokenContent authenticateRequest(
+            Request request, Response response, Callback callback,
+            String method, String path, String remoteHost) {
+        String rawToken = extractBearerToken(request);
+        if (rawToken == null) {
+            LOGGER.warn(RestApiLogMessages.WARN.MISSING_BEARER_TOKEN, method, path, remoteHost);
+            response.getHeaders().put(WWW_AUTHENTICATE, BEARER_CHALLENGE);
+            sendProblemResponse(response, callback,
+                    ProblemDetail.unauthorized("Missing or malformed Authorization header"));
+            return null;
+        }
+        try {
+            return configService.validateToken(rawToken);
+        } catch (TokenValidationException e) {
+            LOGGER.warn(RestApiLogMessages.WARN.AUTH_FAILED, method, path, remoteHost, e.getMessage());
+            response.getHeaders().put(WWW_AUTHENTICATE, BEARER_INVALID_TOKEN);
+            sendProblemResponse(response, callback,
+                    ProblemDetail.unauthorized("Token validation failed: " + e.getMessage()));
+            return null;
         }
     }
+
+    /**
+     * Checks role/scope authorization for the given route.
+     *
+     * @return {@code true} if authorized, {@code false} if an error response was sent
+     */
+    private boolean authorizeRequest(
+            AccessTokenContent token, RouteConfiguration route, Response response, Callback callback,
+            String method, String path, String remoteHost) {
+        if (!route.hasAuthorizationRequirements()) {
+            return true;
+        }
+        var authResult = AuthorizationValidator.validate(token, route.toAuthorizationRequirements());
+        if (authResult.isAuthorized()) {
+            return true;
+        }
+        LOGGER.warn(RestApiLogMessages.WARN.AUTHZ_FAILED, method, path, remoteHost, authResult.getReason());
+        if (!authResult.getMissingScopes().isEmpty()) {
+            response.getHeaders().put(WWW_AUTHENTICATE,
+                    BEARER_INSUFFICIENT_SCOPE_TEMPLATE
+                            .formatted(String.join(" ", route.requiredScopes())));
+            sendProblemResponse(response, callback,
+                    ProblemDetail.unauthorized("Insufficient scopes: " + authResult.getReason()));
+        } else {
+            sendProblemResponse(response, callback,
+                    ProblemDetail.forbidden("Insufficient roles: " + authResult.getReason()));
+        }
+        return false;
+    }
+
+    private void sendSuccessResponse(Request request, Response response, Callback callback, String method) {
+        String origin = request.getHeaders().get(HEADER_ORIGIN);
+        if (isCorsEnabled() && origin != null && isOriginAllowed(origin)) {
+            setCorsHeaders(response, origin);
+        }
+        int statusCode = isBodyMethod(method) ? 202 : 200;
+        response.setStatus(statusCode);
+        response.getHeaders().put(HttpHeader.CONTENT_TYPE, "application/json");
+        response.getHeaders().put(HttpHeader.CONTENT_LENGTH, ACCEPTED_RESPONSE.length);
+        response.write(true, ByteBuffer.wrap(ACCEPTED_RESPONSE), callback);
+    }
+
+    // --- Utility methods ---
 
     private RouteConfiguration findRoute(String path) {
         for (RouteConfiguration route : routes) {
@@ -251,14 +311,14 @@ public class GatewayRequestHandler extends Handler.Abstract {
 
     private static String extractBearerToken(Request request) {
         String authHeader = request.getHeaders().get(HttpHeader.AUTHORIZATION);
-        if (authHeader == null || !authHeader.regionMatches(true, 0, "Bearer ", 0, 7)) {
+        if (authHeader == null || !authHeader.regionMatches(true, 0, "Bearer ", 0, BEARER_PREFIX_LENGTH)) {
             return null;
         }
-        String token = authHeader.substring(7).trim();
+        String token = authHeader.substring(BEARER_PREFIX_LENGTH).trim();
         return token.isEmpty() ? null : token;
     }
 
-    private byte[] readBody(Request request) throws Exception {
+    private byte[] readBody(Request request) throws IOException {
         try (var inputStream = Content.Source.asInputStream(request)) {
             // Read with size limit to prevent OOM from oversized requests.
             // We read up to maxRequestSize + 1 so exceeding the limit is
@@ -282,7 +342,6 @@ public class GatewayRequestHandler extends Handler.Abstract {
     private static Map<String, String> extractHeaders(Request request) {
         Map<String, String> headers = new LinkedHashMap<>();
         for (HttpField field : request.getHeaders()) {
-            // Skip sensitive Authorization header from FlowFile attributes
             if (!HttpHeader.AUTHORIZATION.is(field.getName())) {
                 headers.put(field.getName(), field.getValue());
             }
@@ -305,9 +364,9 @@ public class GatewayRequestHandler extends Handler.Abstract {
     }
 
     private static void setCorsHeaders(Response response, String origin) {
-        response.getHeaders().put("Access-Control-Allow-Origin", origin);
-        response.getHeaders().put("Access-Control-Allow-Credentials", "true");
-        response.getHeaders().put("Vary", "Origin");
+        response.getHeaders().put(CORS_ALLOW_ORIGIN, origin);
+        response.getHeaders().put(CORS_ALLOW_CREDENTIALS, "true");
+        response.getHeaders().put(HEADER_VARY, HEADER_ORIGIN);
     }
 
     private static void sendProblemResponse(Response response, Callback callback, ProblemDetail problem) {

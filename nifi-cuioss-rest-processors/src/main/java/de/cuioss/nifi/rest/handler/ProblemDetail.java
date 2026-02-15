@@ -197,4 +197,16 @@ public record ProblemDetail(
                 .detail(detail)
                 .build();
     }
+
+    /**
+     * Creates a 500 Internal Server Error problem detail.
+     */
+    public static ProblemDetail internalError() {
+        return ProblemDetail.builder()
+                .type("about:blank")
+                .title("Internal Server Error")
+                .status(500)
+                .detail("An unexpected error occurred")
+                .build();
+    }
 }

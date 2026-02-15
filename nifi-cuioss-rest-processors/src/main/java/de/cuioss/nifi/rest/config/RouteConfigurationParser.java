@@ -18,6 +18,7 @@ package de.cuioss.nifi.rest.config;
 
 import de.cuioss.nifi.jwt.util.DynamicPropertyGroupParser;
 import de.cuioss.tools.logging.CuiLogger;
+import de.cuioss.tools.string.Splitter;
 import lombok.experimental.UtilityClass;
 
 import java.util.*;
@@ -79,7 +80,7 @@ public class RouteConfigurationParser {
                 continue;
             }
 
-            Set<String> methods = parseCommaSeparated(routeProps.get(METHODS_KEY));
+            Set<String> methods = parseHttpMethods(routeProps.get(METHODS_KEY));
             Set<String> roles = parseCommaSeparated(routeProps.get(REQUIRED_ROLES_KEY));
             Set<String> scopes = parseCommaSeparated(routeProps.get(REQUIRED_SCOPES_KEY));
             String schema = routeProps.get(SCHEMA_KEY);
@@ -91,14 +92,20 @@ public class RouteConfigurationParser {
         return Collections.unmodifiableList(routes);
     }
 
+    private static Set<String> parseHttpMethods(String value) {
+        if (value == null || value.isBlank()) {
+            return Set.of();
+        }
+        return Splitter.on(',').trimResults().omitEmptyStrings().splitToList(value)
+                .stream()
+                .map(String::toUpperCase)
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
     private static Set<String> parseCommaSeparated(String value) {
         if (value == null || value.isBlank()) {
             return Set.of();
         }
-        return Arrays.stream(value.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .map(String::toUpperCase)
-                .collect(Collectors.toSet());
+        return Set.copyOf(Splitter.on(',').trimResults().omitEmptyStrings().splitToList(value));
     }
 }

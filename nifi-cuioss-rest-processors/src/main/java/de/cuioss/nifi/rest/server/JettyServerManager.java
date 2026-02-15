@@ -22,6 +22,8 @@ import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 
+import java.io.IOException;
+
 /**
  * Manages the lifecycle of an embedded Jetty {@link Server} instance.
  * <p>
@@ -42,6 +44,7 @@ public class JettyServerManager {
      * @param handler the request handler
      * @throws IllegalStateException if the server is already running
      */
+    @SuppressWarnings("java:S2147") // Jetty LifeCycle.start() declares 'throws Exception'
     public void start(int port, Handler handler) {
         if (isRunning()) {
             throw new IllegalStateException("Server is already running on port " + getPort());
@@ -56,6 +59,15 @@ public class JettyServerManager {
         try {
             server.start();
             LOGGER.info(RestApiLogMessages.INFO.SERVER_STARTED, getPort());
+        } catch (IOException e) {
+            LOGGER.error(e, RestApiLogMessages.ERROR.SERVER_START_FAILED, port, e.getMessage());
+            server = null;
+            throw new IllegalStateException("Failed to start Jetty server on port " + port, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.error(e, RestApiLogMessages.ERROR.SERVER_START_FAILED, port, e.getMessage());
+            server = null;
+            throw new IllegalStateException("Jetty server start interrupted on port " + port, e);
         } catch (Exception e) {
             LOGGER.error(e, RestApiLogMessages.ERROR.SERVER_START_FAILED, port, e.getMessage());
             server = null;
@@ -66,6 +78,7 @@ public class JettyServerManager {
     /**
      * Gracefully stops the Jetty server.
      */
+    @SuppressWarnings("java:S2147") // Jetty LifeCycle.stop() declares 'throws Exception'
     public void stop() {
         if (server == null) {
             return;
@@ -73,6 +86,11 @@ public class JettyServerManager {
         try {
             server.stop();
             LOGGER.info(RestApiLogMessages.INFO.SERVER_STOPPED);
+        } catch (IOException e) {
+            LOGGER.error(e, RestApiLogMessages.ERROR.SERVER_STOP_FAILED, e.getMessage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.error(e, RestApiLogMessages.ERROR.SERVER_STOP_FAILED, e.getMessage());
         } catch (Exception e) {
             LOGGER.error(e, RestApiLogMessages.ERROR.SERVER_STOP_FAILED, e.getMessage());
         } finally {
