@@ -57,9 +57,10 @@ public class GatewayRequestHandler extends Handler.Abstract {
     private final JwtIssuerConfigService configService;
     private final BlockingQueue<HttpRequestContainer> queue;
     private final int maxRequestSize;
+    private final Set<String> corsAllowedOrigins;
 
     /**
-     * Creates a new handler.
+     * Creates a new handler with CORS disabled.
      *
      * @param routes         the configured routes
      * @param configService  the JWT issuer config service for token validation
@@ -71,10 +72,29 @@ public class GatewayRequestHandler extends Handler.Abstract {
             JwtIssuerConfigService configService,
             BlockingQueue<HttpRequestContainer> queue,
             int maxRequestSize) {
+        this(routes, configService, queue, maxRequestSize, Set.of());
+    }
+
+    /**
+     * Creates a new handler.
+     *
+     * @param routes              the configured routes
+     * @param configService       the JWT issuer config service for token validation
+     * @param queue               the queue for passing requests to the NiFi processor
+     * @param maxRequestSize      maximum allowed request body size in bytes
+     * @param corsAllowedOrigins  allowed CORS origins; use {@code Set.of("*")} for all; empty to disable
+     */
+    public GatewayRequestHandler(
+            List<RouteConfiguration> routes,
+            JwtIssuerConfigService configService,
+            BlockingQueue<HttpRequestContainer> queue,
+            int maxRequestSize,
+            Set<String> corsAllowedOrigins) {
         this.routes = List.copyOf(routes);
         this.configService = Objects.requireNonNull(configService);
         this.queue = Objects.requireNonNull(queue);
         this.maxRequestSize = maxRequestSize;
+        this.corsAllowedOrigins = Set.copyOf(corsAllowedOrigins);
     }
 
     @Override
@@ -82,6 +102,21 @@ public class GatewayRequestHandler extends Handler.Abstract {
         String path = request.getHttpURI().getPath();
         String method = request.getMethod();
         String remoteHost = Request.getRemoteAddr(request);
+        String origin = request.getHeaders().get("Origin");
+
+        // CORS preflight handling
+        if (isCorsEnabled() && "OPTIONS".equalsIgnoreCase(method) && origin != null) {
+            if (isOriginAllowed(origin)) {
+                LOGGER.info(RestApiLogMessages.INFO.CORS_PREFLIGHT, origin);
+                setCorsHeaders(response, origin);
+                response.getHeaders().put("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+                response.getHeaders().put("Access-Control-Allow-Headers", "Authorization, Content-Type");
+                response.getHeaders().put("Access-Control-Max-Age", "3600");
+                response.setStatus(204);
+                response.write(true, ByteBuffer.allocate(0), callback);
+                return true;
+            }
+        }
 
         try {
             // 1. Route matching
@@ -178,6 +213,12 @@ public class GatewayRequestHandler extends Handler.Abstract {
 
             // 7. Success response
             LOGGER.info(RestApiLogMessages.INFO.REQUEST_PROCESSED, matchedRoute.name(), method, path, remoteHost);
+
+            // Add CORS headers if origin is allowed
+            if (isCorsEnabled() && origin != null && isOriginAllowed(origin)) {
+                setCorsHeaders(response, origin);
+            }
+
             int statusCode = isBodyMethod(method) ? 202 : 200;
             response.setStatus(statusCode);
             response.getHeaders().put(HttpHeader.CONTENT_TYPE, "application/json");
@@ -253,6 +294,20 @@ public class GatewayRequestHandler extends Handler.Abstract {
         return "POST".equalsIgnoreCase(method)
                 || "PUT".equalsIgnoreCase(method)
                 || "PATCH".equalsIgnoreCase(method);
+    }
+
+    private boolean isCorsEnabled() {
+        return !corsAllowedOrigins.isEmpty();
+    }
+
+    private boolean isOriginAllowed(String origin) {
+        return corsAllowedOrigins.contains("*") || corsAllowedOrigins.contains(origin);
+    }
+
+    private static void setCorsHeaders(Response response, String origin) {
+        response.getHeaders().put("Access-Control-Allow-Origin", origin);
+        response.getHeaders().put("Access-Control-Allow-Credentials", "true");
+        response.getHeaders().put("Vary", "Origin");
     }
 
     private static void sendProblemResponse(Response response, Callback callback, ProblemDetail problem) {

@@ -353,6 +353,154 @@ class GatewayRequestHandlerTest {
     }
 
     @Nested
+    @DisplayName("CORS")
+    class Cors {
+
+        @Test
+        @DisplayName("Should return 204 for OPTIONS preflight request with allowed origin")
+        void shouldReturn204ForOptionsPreflightRequest() throws Exception {
+            var corsHandler = new GatewayRequestHandler(
+                    List.of(new RouteConfiguration("health", "/api/health", Set.of("GET"), Set.of(), Set.of(), null)),
+                    mockConfigService, queue, 1_048_576,
+                    Set.of("http://example.com"));
+
+            Server corsServer = new Server();
+            ServerConnector connector = new ServerConnector(corsServer);
+            connector.setPort(0);
+            corsServer.addConnector(connector);
+            corsServer.setHandler(corsHandler);
+            corsServer.start();
+            int corsPort = connector.getLocalPort();
+
+            try {
+                var response = httpClient.send(
+                        HttpRequest.newBuilder(URI.create("http://localhost:" + corsPort + "/api/health"))
+                                .header("Origin", "http://example.com")
+                                .method("OPTIONS", HttpRequest.BodyPublishers.noBody())
+                                .build(),
+                        HttpResponse.BodyHandlers.ofString());
+
+                assertEquals(204, response.statusCode());
+                assertEquals("http://example.com",
+                        response.headers().firstValue("Access-Control-Allow-Origin").orElse(""));
+                assertTrue(response.headers().firstValue("Access-Control-Allow-Methods").isPresent());
+                assertTrue(response.headers().firstValue("Access-Control-Allow-Headers").isPresent());
+            } finally {
+                corsServer.stop();
+            }
+        }
+
+        @Test
+        @DisplayName("Should include CORS headers on normal response when origin is allowed")
+        void shouldIncludeCorsHeadersOnNormalResponse() throws Exception {
+            var corsHandler = new GatewayRequestHandler(
+                    List.of(new RouteConfiguration("health", "/api/health", Set.of("GET"), Set.of(), Set.of(), null)),
+                    mockConfigService, new LinkedBlockingQueue<>(50), 1_048_576,
+                    Set.of("http://example.com"));
+
+            Server corsServer = new Server();
+            ServerConnector connector = new ServerConnector(corsServer);
+            connector.setPort(0);
+            corsServer.addConnector(connector);
+            corsServer.setHandler(corsHandler);
+            corsServer.start();
+            int corsPort = connector.getLocalPort();
+
+            try {
+                var response = httpClient.send(
+                        HttpRequest.newBuilder(URI.create("http://localhost:" + corsPort + "/api/health"))
+                                .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                                .header("Origin", "http://example.com")
+                                .GET().build(),
+                        HttpResponse.BodyHandlers.ofString());
+
+                assertEquals(200, response.statusCode());
+                assertEquals("http://example.com",
+                        response.headers().firstValue("Access-Control-Allow-Origin").orElse(""));
+            } finally {
+                corsServer.stop();
+            }
+        }
+
+        @Test
+        @DisplayName("Should not add CORS headers for disallowed origin")
+        void shouldNotAddCorsHeadersForDisallowedOrigin() throws Exception {
+            var corsHandler = new GatewayRequestHandler(
+                    List.of(new RouteConfiguration("health", "/api/health", Set.of("GET"), Set.of(), Set.of(), null)),
+                    mockConfigService, new LinkedBlockingQueue<>(50), 1_048_576,
+                    Set.of("http://example.com"));
+
+            Server corsServer = new Server();
+            ServerConnector connector = new ServerConnector(corsServer);
+            connector.setPort(0);
+            corsServer.addConnector(connector);
+            corsServer.setHandler(corsHandler);
+            corsServer.start();
+            int corsPort = connector.getLocalPort();
+
+            try {
+                var response = httpClient.send(
+                        HttpRequest.newBuilder(URI.create("http://localhost:" + corsPort + "/api/health"))
+                                .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                                .header("Origin", "http://evil.com")
+                                .GET().build(),
+                        HttpResponse.BodyHandlers.ofString());
+
+                assertEquals(200, response.statusCode());
+                assertTrue(response.headers().firstValue("Access-Control-Allow-Origin").isEmpty());
+            } finally {
+                corsServer.stop();
+            }
+        }
+
+        @Test
+        @DisplayName("Should allow wildcard origin")
+        void shouldAllowWildcardOrigin() throws Exception {
+            var corsHandler = new GatewayRequestHandler(
+                    List.of(new RouteConfiguration("health", "/api/health", Set.of("GET"), Set.of(), Set.of(), null)),
+                    mockConfigService, new LinkedBlockingQueue<>(50), 1_048_576,
+                    Set.of("*"));
+
+            Server corsServer = new Server();
+            ServerConnector connector = new ServerConnector(corsServer);
+            connector.setPort(0);
+            corsServer.addConnector(connector);
+            corsServer.setHandler(corsHandler);
+            corsServer.start();
+            int corsPort = connector.getLocalPort();
+
+            try {
+                var response = httpClient.send(
+                        HttpRequest.newBuilder(URI.create("http://localhost:" + corsPort + "/api/health"))
+                                .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                                .header("Origin", "http://any-origin.com")
+                                .GET().build(),
+                        HttpResponse.BodyHandlers.ofString());
+
+                assertEquals(200, response.statusCode());
+                assertEquals("http://any-origin.com",
+                        response.headers().firstValue("Access-Control-Allow-Origin").orElse(""));
+            } finally {
+                corsServer.stop();
+            }
+        }
+
+        @Test
+        @DisplayName("Should not add CORS headers when CORS is disabled")
+        void shouldNotAddCorsHeadersWhenDisabled() throws IOException, InterruptedException {
+            // Default handler has no CORS origins configured
+            var response = httpClient.send(
+                    requestBuilder("/api/health")
+                            .header("Origin", "http://example.com")
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(200, response.statusCode());
+            assertTrue(response.headers().firstValue("Access-Control-Allow-Origin").isEmpty());
+        }
+    }
+
+    @Nested
     @DisplayName("Body Size Limit")
     class BodySizeLimit {
 

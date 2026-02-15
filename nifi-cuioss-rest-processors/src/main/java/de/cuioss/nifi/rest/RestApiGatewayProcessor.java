@@ -57,7 +57,8 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             RestApiGatewayConstants.Properties.LISTENING_PORT,
             RestApiGatewayConstants.Properties.JWT_ISSUER_CONFIG_SERVICE,
             RestApiGatewayConstants.Properties.MAX_REQUEST_SIZE,
-            RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE);
+            RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE,
+            RestApiGatewayConstants.Properties.CORS_ALLOWED_ORIGINS);
 
     private final JettyServerManager serverManager = new JettyServerManager();
     private volatile LinkedBlockingQueue<HttpRequestContainer> requestQueue;
@@ -125,7 +126,8 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         int maxRequestSize = context.getProperty(RestApiGatewayConstants.Properties.MAX_REQUEST_SIZE).asInteger();
         int port = context.getProperty(RestApiGatewayConstants.Properties.LISTENING_PORT).asInteger();
 
-        var handler = new GatewayRequestHandler(currentRoutes, configService, requestQueue, maxRequestSize);
+        Set<String> corsOrigins = parseCorsOrigins(context);
+        var handler = new GatewayRequestHandler(currentRoutes, configService, requestQueue, maxRequestSize, corsOrigins);
         serverManager.start(port, handler);
 
         LOGGER.info(RestApiLogMessages.INFO.PROCESSOR_INITIALIZED);
@@ -200,6 +202,21 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
     private void recalculateRoutes() {
         // This is called during property modification — we recalculate on next @OnScheduled
         // Dynamic relationships are updated based on current known routes
+    }
+
+    private static Set<String> parseCorsOrigins(ProcessContext context) {
+        var property = context.getProperty(RestApiGatewayConstants.Properties.CORS_ALLOWED_ORIGINS);
+        if (!property.isSet()) {
+            return Set.of();
+        }
+        String value = property.getValue().trim();
+        if (value.isEmpty()) {
+            return Set.of();
+        }
+        return Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     private void updateDynamicRelationships(List<RouteConfiguration> routes) {
