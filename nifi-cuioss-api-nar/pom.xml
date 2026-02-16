@@ -23,13 +23,13 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>nifi-cuioss-nar</artifactId>
-    <name>nifi-cuioss-nar</name>
+    <artifactId>nifi-cuioss-api-nar</artifactId>
+    <name>nifi-cuioss-api-nar</name>
     <version>1.0-SNAPSHOT</version>
     <packaging>nar</packaging>
+    <description>NAR bundle for Controller Service API interfaces (NiFi 2.x requires API interfaces in a separate NAR from implementations)</description>
 
     <properties>
-        <!-- Enforcer plugin configuration will be handled by parent -->
         <maven.source.skip>true</maven.source.skip>
         <maven.javadoc.skip>true</maven.javadoc.skip>
     </properties>
@@ -37,27 +37,13 @@
     <dependencies>
         <dependency>
             <groupId>de.cuioss.nifi</groupId>
-            <artifactId>nifi-cuioss-common</artifactId>
+            <artifactId>nifi-cuioss-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>de.cuioss.nifi</groupId>
-            <artifactId>nifi-cuioss-processors</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>de.cuioss.nifi</groupId>
-            <artifactId>nifi-cuioss-rest-processors</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>de.cuioss.nifi</groupId>
-            <artifactId>nifi-cuioss-ui</artifactId>
-            <type>war</type>
-        </dependency>
-        <dependency>
-            <groupId>de.cuioss.nifi</groupId>
-            <artifactId>nifi-cuioss-api-nar</artifactId>
+            <groupId>org.apache.nifi</groupId>
+            <artifactId>nifi-standard-services-api-nar</artifactId>
             <type>nar</type>
         </dependency>
     </dependencies>
-
 
 </project>

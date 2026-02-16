@@ -115,7 +115,7 @@
         },
         "properties": {
           "jwt.issuer.config.service": "svc-jwt-issuer-config-001",
-          "jwt.token.attribute": "jwt.token",
+          "jwt.validation.token.attribute": "jwt.token",
           "jwt.validation.require.valid.token": "true",
           "jwt.authorization.required.roles": "read"
         },
@@ -125,8 +125,8 @@
             "identifiesControllerService": true,
             "sensitive": false
           },
-          "jwt.token.attribute": {
-            "name": "jwt.token.attribute",
+          "jwt.validation.token.attribute": {
+            "name": "jwt.validation.token.attribute",
             "identifiesControllerService": false,
             "sensitive": false
           },
@@ -1118,7 +1118,7 @@
             "type": "de.cuioss.nifi.jwt.config.JwtIssuerConfigService",
             "bundle": {
               "group": "de.cuioss.nifi",
-              "artifact": "nifi-cuioss-nar",
+              "artifact": "nifi-cuioss-api-nar",
               "version": "1.0-SNAPSHOT"
             }
           }
