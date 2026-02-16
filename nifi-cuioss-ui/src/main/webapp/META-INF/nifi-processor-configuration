@@ -1,1 +1,3 @@
 de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator:de.cuioss.nifi:nifi-cuioss-nar:1.0-SNAPSHOT
+de.cuioss.nifi.jwt.config.StandardJwtIssuerConfigService:de.cuioss.nifi:nifi-cuioss-nar:1.0-SNAPSHOT
+de.cuioss.nifi.rest.RestApiGatewayProcessor:de.cuioss.nifi:nifi-cuioss-nar:1.0-SNAPSHOT
