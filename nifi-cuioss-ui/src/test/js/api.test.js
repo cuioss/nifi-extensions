@@ -6,7 +6,7 @@ import {
     getProcessorProperties, updateProcessorProperties,
     getComponentProperties, updateComponentProperties,
     getComponentId, detectComponentType, resetComponentCache,
-    fetchGatewayApi, COMPONENT_TYPES
+    fetchGatewayApi, sendGatewayTestRequest, COMPONENT_TYPES
 } from '../../main/webapp/js/api.js';
 
 // ---------------------------------------------------------------------------
@@ -322,6 +322,22 @@ describe('fetchGatewayApi', () => {
         expect(globalThis.fetch.mock.calls[0][0]).toBe(
             'nifi-api/processors/jwt/gateway/metrics'
         );
+    });
+});
+
+describe('sendGatewayTestRequest', () => {
+    test('should POST to gateway test endpoint', async () => {
+        globalThis.jwtAuthConfig = { processorId: 'gw-proc-id' };
+        mockJsonResponse({ status: 200, body: '{"ok":true}', headers: {} });
+
+        const payload = { path: '/api/users', method: 'GET', headers: {}, body: null };
+        const result = await sendGatewayTestRequest(payload);
+
+        expect(globalThis.fetch.mock.calls[0][0]).toBe(
+            'nifi-api/processors/jwt/gateway/test'
+        );
+        expect(globalThis.fetch.mock.calls[0][1].method).toBe('POST');
+        expect(result.status).toBe(200);
     });
 });
 

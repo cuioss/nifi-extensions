@@ -153,6 +153,77 @@ describe('rest-endpoint-config', () => {
         expect(container.textContent).toContain('*');
     });
 
+    it('should display N/A for missing config fields', async () => {
+        api.fetchGatewayApi.mockResolvedValue({
+            component: null,
+            port: null,
+            maxRequestBodySize: null,
+            queueSize: null,
+            ssl: false,
+            corsAllowedOrigins: null,
+            routes: []
+        });
+
+        await init(container);
+
+        const settingsTable = container.querySelector('.global-settings');
+        expect(settingsTable.textContent).toContain('N/A');
+    });
+
+    it('should display "none" for routes without roles or scopes', async () => {
+        api.fetchGatewayApi.mockResolvedValue({
+            ...SAMPLE_CONFIG,
+            routes: [
+                {
+                    name: 'open',
+                    path: '/api/open',
+                    methods: ['GET'],
+                    requiredRoles: [],
+                    requiredScopes: []
+                }
+            ]
+        });
+
+        await init(container);
+
+        const rows = container.querySelectorAll('.routes-table tbody tr');
+        expect(rows.length).toBe(1);
+        expect(rows[0].innerHTML).toContain('none');
+    });
+
+    it('should format small byte values correctly', async () => {
+        api.fetchGatewayApi.mockResolvedValue({
+            ...SAMPLE_CONFIG,
+            maxRequestBodySize: 512
+        });
+
+        await init(container);
+
+        expect(container.textContent).toContain('512 B');
+    });
+
+    it('should format KB values correctly', async () => {
+        api.fetchGatewayApi.mockResolvedValue({
+            ...SAMPLE_CONFIG,
+            maxRequestBodySize: 10240
+        });
+
+        await init(container);
+
+        expect(container.textContent).toContain('10.0 KB');
+    });
+
+    it('should display "None" for empty CORS origins', async () => {
+        api.fetchGatewayApi.mockResolvedValue({
+            ...SAMPLE_CONFIG,
+            corsAllowedOrigins: []
+        });
+
+        await init(container);
+
+        expect(container.textContent).toContain('None');
+    });
+
     it('should call cleanup without error', () => {
         expect(() => cleanup()).not.toThrow();
     });

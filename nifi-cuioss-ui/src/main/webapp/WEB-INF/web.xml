@@ -97,4 +97,13 @@
         <url-pattern>/nifi-api/processors/jwt/metrics</url-pattern>
     </servlet-mapping>
 
+    <servlet>
+        <servlet-name>GatewayProxyServlet</servlet-name>
+        <servlet-class>de.cuioss.nifi.ui.servlets.GatewayProxyServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>GatewayProxyServlet</servlet-name>
+        <url-pattern>/nifi-api/processors/jwt/gateway/*</url-pattern>
+    </servlet-mapping>
+
 </web-app>

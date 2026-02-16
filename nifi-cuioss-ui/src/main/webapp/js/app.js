@@ -12,6 +12,8 @@
 import { init as initIssuerConfig } from './issuer-config.js';
 import { init as initTokenVerifier } from './token-verifier.js';
 import { init as initMetrics, cleanup as cleanupMetrics } from './metrics.js';
+import { init as initEndpointConfig } from './rest-endpoint-config.js';
+import { init as initEndpointTester } from './endpoint-tester.js';
 import { getComponentId, detectComponentType } from './api.js';
 import { log } from './utils.js';
 
@@ -120,11 +122,11 @@ const initComponents = async () => {
     configureTabsForType(isGateway);
 
     if (isGateway) {
-        // Gateway-specific initialisation (modules loaded in later commits)
         const endpointConfigEl = document.getElementById('endpoint-config');
+        if (endpointConfigEl) initEndpointConfig(endpointConfigEl);
+
         const endpointTesterEl = document.getElementById('endpoint-tester');
-        if (endpointConfigEl) endpointConfigEl.innerHTML = '<p>Endpoint configuration loading...</p>';
-        if (endpointTesterEl) endpointTesterEl.innerHTML = '<p>Endpoint tester loading...</p>';
+        if (endpointTesterEl) initEndpointTester(endpointTesterEl);
     } else {
         const issuerEl = document.getElementById('issuer-config');
         if (issuerEl) initIssuerConfig(issuerEl);

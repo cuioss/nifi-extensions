@@ -179,6 +179,15 @@ export const updateComponentProperties = async (componentId, properties) => {
 export const fetchGatewayApi = (path) =>
     request('GET', `${BASE_URL}/gateway${path}`);
 
+/**
+ * Send a test request to the gateway via proxy servlet.
+ *
+ * @param {Object} payload  test request payload: {path, method, headers, body}
+ * @returns {Promise<Object>}  wrapped gateway response: {status, headers, body}
+ */
+export const sendGatewayTestRequest = (payload) =>
+    request('POST', `${BASE_URL}/gateway/test`, payload);
+
 // Backward-compatible aliases
 /** @deprecated Use getComponentProperties instead */
 export const getProcessorProperties = (processorId) =>

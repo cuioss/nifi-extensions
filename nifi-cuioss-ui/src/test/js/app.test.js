@@ -16,6 +16,12 @@ jest.mock('../../main/webapp/js/metrics.js', () => ({
     init: jest.fn(),
     cleanup: jest.fn()
 }));
+jest.mock('../../main/webapp/js/rest-endpoint-config.js', () => ({
+    init: jest.fn()
+}));
+jest.mock('../../main/webapp/js/endpoint-tester.js', () => ({
+    init: jest.fn()
+}));
 jest.mock('../../main/webapp/js/api.js', () => ({
     getComponentId: jest.fn().mockReturnValue(''),
     detectComponentType: jest.fn().mockResolvedValue({ type: 'PROCESSOR', componentClass: '' })
@@ -121,6 +127,30 @@ describe('app.js', () => {
         expect(header).not.toBeNull();
         const content = header.nextElementSibling;
         expect(content.classList.contains('collapsible-content')).toBe(true);
+    });
+
+    it('should toggle collapsible content on click', async () => {
+        await import('../../main/webapp/js/app.js');
+        document.dispatchEvent(new Event('DOMContentLoaded'));
+
+        const header = document.querySelector('.collapsible-header');
+        const content = header.nextElementSibling;
+        const icon = header.querySelector('i.fa');
+
+        // Initially active and shown
+        expect(header.classList.contains('active')).toBe(true);
+        expect(content.classList.contains('show')).toBe(true);
+
+        // Click to collapse
+        header.click();
+        expect(header.classList.contains('active')).toBe(false);
+        expect(content.classList.contains('show')).toBe(false);
+        expect(icon.classList.contains('fa-chevron-right')).toBe(true);
+
+        // Click to expand
+        header.click();
+        expect(header.classList.contains('active')).toBe(true);
+        expect(content.classList.contains('show')).toBe(true);
     });
 
     it('should expose jwtUICleanup on globalThis', async () => {

@@ -126,6 +126,12 @@ public final class UILogMessages {
                 .identifier(111)
                 .template("Path security violation for JWKS file: %s - %s")
                 .build();
+
+        public static final LogRecord GATEWAY_PROXY_PATH_REJECTED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(112)
+                .template("Rejected non-whitelisted gateway proxy path: %s")
+                .build();
     }
 
     public static final class ERROR {
@@ -222,6 +228,18 @@ public final class UILogMessages {
                 .prefix(PREFIX)
                 .identifier(214)
                 .template("Unexpected error during token validation for processor %s")
+                .build();
+
+        public static final LogRecord GATEWAY_PROXY_FAILED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(215)
+                .template("Gateway proxy request failed for processor %s")
+                .build();
+
+        public static final LogRecord GATEWAY_PORT_RESOLUTION_FAILED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(216)
+                .template("Failed to resolve gateway port for processor %s")
                 .build();
     }
 }
