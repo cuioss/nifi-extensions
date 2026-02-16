@@ -28,6 +28,7 @@ import de.cuioss.sheriff.oauth.core.security.SignatureAlgorithmPreferences;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.EqualsAndHashCode;
 import org.apache.nifi.annotation.behavior.RequiresInstanceClassLoading;
+import org.apache.nifi.annotation.behavior.SupportsSensitiveDynamicProperties;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.annotation.lifecycle.OnDisabled;
@@ -63,6 +64,7 @@ import java.util.*;
 @CapabilityDescription("Provides shared JWT issuer configuration and token validation. " +
         "Manages JWKS key retrieval, issuer configuration, and token validation lifecycle " +
         "so that multiple processors can share the same JWT configuration.")
+@SupportsSensitiveDynamicProperties
 @RequiresInstanceClassLoading
 @EqualsAndHashCode(callSuper = true)
 public class StandardJwtIssuerConfigService extends AbstractControllerService implements JwtIssuerConfigService {
