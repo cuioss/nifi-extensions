@@ -156,8 +156,8 @@ class ManagementEndpointHandlerTest {
             assertTrue(body.contains("nifi_jwt_validations_total"));
             assertTrue(body.contains("nifi_gateway_http_security_events_total"));
             assertTrue(body.contains("nifi_gateway_events_total"));
-            assertTrue(body.contains("ROUTE_NOT_FOUND"));
-            assertTrue(body.contains("AUTH_FAILED"));
+            assertTrue(body.contains("route_not_found"));
+            assertTrue(body.contains("auth_failed"));
         }
 
         @Test

@@ -466,12 +466,29 @@ const handleGatewayExport = (format) => {
         }
         case 'prometheus': {
             let output = '';
-            for (const [category, counters] of Object.entries(data)) {
-                if (typeof counters !== 'object' || counters === null) continue;
-                for (const [key, value] of Object.entries(counters)) {
-                    const name = `nifi_gateway_${category}_${key}`.toLowerCase();
-                    output += `# TYPE ${name} counter\n${name} ${value}\n`;
+            if (data.tokenValidation) {
+                output += '# HELP nifi_jwt_validations_total Token validation events (oauth-sheriff)\n';
+                output += '# TYPE nifi_jwt_validations_total counter\n';
+                for (const [key, value] of Object.entries(data.tokenValidation)) {
+                    output += `nifi_jwt_validations_total{result="${sanitizeHtml(key)}"} ${value}\n`;
                 }
+                output += '\n';
+            }
+            if (data.httpSecurity) {
+                output += '# HELP nifi_gateway_http_security_events_total Transport-level security events (cui-http)\n';
+                output += '# TYPE nifi_gateway_http_security_events_total counter\n';
+                for (const [key, value] of Object.entries(data.httpSecurity)) {
+                    output += `nifi_gateway_http_security_events_total{type="${sanitizeHtml(key)}"} ${value}\n`;
+                }
+                output += '\n';
+            }
+            if (data.gatewayEvents) {
+                output += '# HELP nifi_gateway_events_total Application-level gateway events\n';
+                output += '# TYPE nifi_gateway_events_total counter\n';
+                for (const [key, value] of Object.entries(data.gatewayEvents)) {
+                    output += `nifi_gateway_events_total{type="${sanitizeHtml(key)}"} ${value}\n`;
+                }
+                output += '\n';
             }
             content = output;
             mimeType = 'text/plain';
