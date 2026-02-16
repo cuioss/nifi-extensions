@@ -33,10 +33,13 @@ import java.util.Map;
  * Servlet for retrieving JWT authentication security metrics.
  * <p>
  * Returns metrics from the {@code JwtIssuerConfigService}'s
- * {@code SecurityEventCounter} — the single source of truth for validation
- * metrics. Wiring to the Controller Service will be completed in PR 3;
- * until then this endpoint returns empty metrics.
+ * {@code SecurityEventCounter} for processor and controller service
+ * component types.
+ * <p>
+ * Gateway metrics are served via {@link GatewayProxyServlet} which
+ * proxies to the gateway's embedded Jetty management API.
  *
+ * @see GatewayProxyServlet
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/observability.adoc">Observability Specification</a>
  */
@@ -52,8 +55,6 @@ public class MetricsServlet extends HttpServlet {
         LOGGER.debug("Received metrics request");
 
         try {
-            // TODO (PR 3): Wire to JwtIssuerConfigService.getSecurityEventCounter()
-            //  and read counters directly from the TokenValidator's SecurityEventCounter.
             JsonObject responseJson = buildEmptyMetricsResponse();
 
             resp.setContentType("application/json");

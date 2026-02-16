@@ -36,6 +36,7 @@ import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.util.Callback;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -96,6 +97,8 @@ public class GatewayRequestHandler extends Handler.Abstract {
     @Getter private final SecurityEventCounter httpSecurityEvents;
     /** Application-level gateway security event counters. */
     @Getter private final GatewaySecurityEvents gatewaySecurityEvents;
+    /** Handler for reserved management endpoints (/metrics, /config). */
+    @Getter @Nullable private ManagementEndpointHandler managementHandler;
 
     /**
      * Creates a new handler with CORS disabled.
@@ -139,6 +142,20 @@ public class GatewayRequestHandler extends Handler.Abstract {
                 SecurityConfiguration.defaults(), httpSecurityEvents);
     }
 
+    /**
+     * Configures management endpoints ({@code /metrics}, {@code /config}) on this handler.
+     * Must be called after construction to enable management API access.
+     *
+     * @param port       the listening port (reported in /config)
+     * @param queueSize  the queue capacity (reported in /config)
+     * @param sslEnabled whether SSL/TLS is enabled (reported in /config)
+     */
+    public void configureManagementEndpoints(int port, int queueSize, boolean sslEnabled) {
+        this.managementHandler = new ManagementEndpointHandler(
+                routes, configService, httpSecurityEvents, gatewaySecurityEvents,
+                port, maxRequestSize, queueSize, sslEnabled, corsAllowedOrigins);
+    }
+
 
     @SuppressWarnings("java:S3516")
     // Always returns true — this handler handles all requests per Jetty contract
@@ -147,6 +164,17 @@ public class GatewayRequestHandler extends Handler.Abstract {
         if (handleCorsPreflight(request, response, callback)) {
             return true;
         }
+
+        // Management endpoints bypass the entire auth + security pipeline
+        if (managementHandler != null) {
+            String rawPath = request.getHttpURI().getPath();
+            String accept = request.getHeaders().get("Accept");
+            if (managementHandler.handleIfManagement(rawPath, request.getMethod(), accept,
+                    response, callback)) {
+                return true;
+            }
+        }
+
         try {
             processRequest(request, response, callback);
         } catch (IOException e) {

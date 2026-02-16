@@ -36,7 +36,7 @@ import java.util.UUID;
  * the JWT validation endpoints.
  *
  * The filter intercepts requests to /nifi-api/processors/jwt/* and validates:
- * 1. X-Processor-Id header is present (required for tracking)
+ * 1. X-Processor-Id or X-Component-Id header is present (required for tracking)
  *
  * Since the custom UI runs within an authenticated NiFi session (iframe),
  * this provides a minimal security layer by ensuring requests include
@@ -51,8 +51,9 @@ public class ApiKeyAuthenticationFilter implements Filter {
     private static final CuiLogger LOGGER = new CuiLogger(ApiKeyAuthenticationFilter.class);
     private static final JsonWriterFactory JSON_WRITER = Json.createWriterFactory(Map.of());
 
-    // Headers
+    // Headers — accept both legacy and generic component ID headers
     private static final String PROCESSOR_ID_HEADER = "X-Processor-Id";
+    private static final String COMPONENT_ID_HEADER = "X-Component-Id";
 
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
@@ -71,8 +72,11 @@ public class ApiKeyAuthenticationFilter implements Filter {
 
         LOGGER.debug("Processing request: %s %s", method, requestPath);
 
-        // Extract processor ID from headers
+        // Extract component ID from headers (X-Processor-Id or X-Component-Id)
         String processorId = httpRequest.getHeader(PROCESSOR_ID_HEADER);
+        if (processorId == null || processorId.trim().isEmpty()) {
+            processorId = httpRequest.getHeader(COMPONENT_ID_HEADER);
+        }
 
         // Validate processor ID header is present and is a valid UUID
         if (processorId == null || processorId.trim().isEmpty()) {

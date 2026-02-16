@@ -2,6 +2,7 @@
 
 /**
  * Application entry point — tab switching, component initialisation, loading state.
+ * Detects component type and shows the appropriate tab set.
  *
  * Loaded as <script type="module"> from index.html.
  *
@@ -11,6 +12,9 @@
 import { init as initIssuerConfig } from './issuer-config.js';
 import { init as initTokenVerifier } from './token-verifier.js';
 import { init as initMetrics, cleanup as cleanupMetrics } from './metrics.js';
+import { init as initEndpointConfig } from './rest-endpoint-config.js';
+import { init as initEndpointTester } from './endpoint-tester.js';
+import { getComponentId, detectComponentType } from './api.js';
 import { log } from './utils.js';
 
 // ---------------------------------------------------------------------------
@@ -43,7 +47,7 @@ const initTabs = () => {
             e.preventDefault();
             const target = link.getAttribute('href');
 
-            // Deactivate all
+            // Deactivate all visible tabs and panes
             for (const item of document.querySelectorAll('.tabs .tab-item')) {
                 item.classList.remove('active');
             }
@@ -58,18 +62,89 @@ const initTabs = () => {
 };
 
 // ---------------------------------------------------------------------------
+// Tab visibility by component type
+// ---------------------------------------------------------------------------
+
+/**
+ * Shows/hides tabs based on detected component type.
+ * JWT tabs for CS/Processor, gateway tabs for RestApiGateway.
+ *
+ * @param {boolean} isGateway  true if component is RestApiGatewayProcessor
+ */
+const configureTabsForType = (isGateway) => {
+    const jwtElements = document.querySelectorAll('.jwt-tab');
+    const gatewayElements = document.querySelectorAll('.gateway-tab');
+
+    if (isGateway) {
+        // Hide JWT tabs, show gateway tabs
+        for (const el of jwtElements) {
+            el.classList.add('hidden');
+            el.classList.remove('active');
+        }
+        for (const el of gatewayElements) {
+            el.classList.remove('hidden');
+        }
+        // Activate first gateway tab
+        const firstGwTab = document.querySelector('.tab-item.gateway-tab');
+        const firstGwPane = document.getElementById('endpoint-config');
+        if (firstGwTab) firstGwTab.classList.add('active');
+        if (firstGwPane) firstGwPane.classList.add('active');
+    } else {
+        // Show JWT tabs (default), hide gateway tabs
+        for (const el of jwtElements) {
+            el.classList.remove('hidden');
+        }
+        for (const el of gatewayElements) {
+            el.classList.add('hidden');
+            el.classList.remove('active');
+        }
+    }
+
+    // Toggle help sections by component type
+    for (const el of document.querySelectorAll('.jwt-help')) {
+        el.style.display = isGateway ? 'none' : '';
+    }
+    for (const el of document.querySelectorAll('.gateway-help')) {
+        el.style.display = isGateway ? '' : 'none';
+    }
+};
+
+// ---------------------------------------------------------------------------
 // Component initialisation
 // ---------------------------------------------------------------------------
 
-const initComponents = () => {
-    const issuerEl = document.getElementById('issuer-config');
-    if (issuerEl) initIssuerConfig(issuerEl);
+const initComponents = async () => {
+    const componentId = getComponentId();
+    let isGateway = false;
 
-    const tokenEl = document.getElementById('token-verification');
-    if (tokenEl) initTokenVerifier(tokenEl);
+    if (componentId) {
+        try {
+            const { componentClass } = await detectComponentType(componentId);
+            isGateway = componentClass?.includes('RestApiGateway') || false;
+            log.info(`Detected component type: ${isGateway ? 'Gateway' : 'JWT'}`);
+        } catch (err) {
+            log.warn('Component type detection failed, defaulting to JWT view:', err.message);
+        }
+    }
+
+    configureTabsForType(isGateway);
+
+    if (isGateway) {
+        const endpointConfigEl = document.getElementById('endpoint-config');
+        if (endpointConfigEl) initEndpointConfig(endpointConfigEl);
+
+        const endpointTesterEl = document.getElementById('endpoint-tester');
+        if (endpointTesterEl) initEndpointTester(endpointTesterEl);
+    } else {
+        const issuerEl = document.getElementById('issuer-config');
+        if (issuerEl) initIssuerConfig(issuerEl);
+
+        const tokenEl = document.getElementById('token-verification');
+        if (tokenEl) initTokenVerifier(tokenEl);
+    }
 
     const metricsEl = document.getElementById('metrics');
-    if (metricsEl) initMetrics(metricsEl);
+    if (metricsEl) initMetrics(metricsEl, isGateway);
 
     // Help tab is static HTML in index.html — nothing to initialise.
 };
@@ -93,13 +168,16 @@ const hideLoading = () => {
 // ---------------------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', () => {
-    log.info('JWT UI initialising…');
+    log.info('Component UI initialising...');
     hideLoading();
     initTabs();
     initCollapsibles();
     initComponents();
-    log.info('JWT UI ready');
+    log.info('Component UI ready');
 });
 
 // Expose cleanup for potential NiFi lifecycle
 globalThis.jwtUICleanup = () => { cleanupMetrics(); };
+
+// Expose for testing
+export { configureTabsForType, initComponents };

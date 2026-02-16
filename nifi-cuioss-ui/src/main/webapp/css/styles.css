@@ -18,6 +18,8 @@
 @import url('modules/metrics.css');
 @import url('modules/issuerConfigEditor.css');
 @import url('modules/help.css');
+@import url('modules/endpointConfig.css');
+@import url('modules/endpointTester.css');
 
 /* Utility classes */
 .sr-only {

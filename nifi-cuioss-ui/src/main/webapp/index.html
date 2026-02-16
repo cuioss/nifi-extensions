@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MultiIssuerJWTTokenAuthenticator UI</title>
+    <title>NiFi Component UI</title>
     <link rel="stylesheet" href="css/styles.css">
 
     <!-- Load FontAwesome CSS - we need our own copy because:
@@ -25,26 +25,40 @@
 <body>
     <div id="jwt-validator-container" data-testid="jwt-customizer-container">
         <!-- This container will be populated by the JavaScript UI components -->
-        <h1 class="sr-only">JWT Token Authenticator Configuration</h1>
-        <div id="loading-indicator">Loading JWT Validator UI...</div>
+        <h1 class="sr-only">NiFi Component Configuration</h1>
+        <div id="loading-indicator">Loading Component UI...</div>
 
-        <!-- Tab structure for JWT configuration -->
+        <!-- Tab structure — all tabs present, JS shows/hides based on component type -->
         <main id="jwt-validator-tabs" class="jwt-tabs-container hidden">
             <div class="jwt-tabs-header" data-testid="jwt-config-tabs">
                 <div class="tabs" role="tablist">
-                    <a href="#issuer-config" class="tab-item active" role="tab" data-toggle="tab">Configuration</a>
-                    <a href="#token-verification" class="tab-item" role="tab" data-toggle="tab">Token Verification</a>
+                    <!-- JWT issuer tabs (CS + processor) -->
+                    <a href="#issuer-config" class="tab-item active jwt-tab" role="tab" data-toggle="tab">Configuration</a>
+                    <a href="#token-verification" class="tab-item jwt-tab" role="tab" data-toggle="tab">Token Verification</a>
+                    <!-- Gateway tabs -->
+                    <a href="#endpoint-config" class="tab-item gateway-tab hidden" role="tab" data-toggle="tab">Endpoint Configuration</a>
+                    <a href="#endpoint-tester" class="tab-item gateway-tab hidden" role="tab" data-toggle="tab">Endpoint Tester</a>
+                    <!-- Shared tabs -->
                     <a href="#metrics" class="tab-item" role="tab" data-toggle="tab">Metrics</a>
                     <a href="#help" class="tab-item" role="tab" data-toggle="tab">Help</a>
                 </div>
             </div>
             <div class="jwt-tabs-content">
-                <div id="issuer-config" class="tab-pane active" role="tabpanel" data-testid="issuer-config-panel">
+                <!-- JWT issuer panes -->
+                <div id="issuer-config" class="tab-pane active jwt-tab" role="tabpanel" data-testid="issuer-config-panel">
                     <!-- Issuer configuration content will be injected here -->
                 </div>
-                <div id="token-verification" class="tab-pane" role="tabpanel">
+                <div id="token-verification" class="tab-pane jwt-tab" role="tabpanel">
                     <!-- Token verification content will be injected here -->
                 </div>
+                <!-- Gateway panes -->
+                <div id="endpoint-config" class="tab-pane gateway-tab hidden" role="tabpanel" data-testid="endpoint-config-panel">
+                    <!-- Endpoint configuration content will be injected here -->
+                </div>
+                <div id="endpoint-tester" class="tab-pane gateway-tab hidden" role="tabpanel" data-testid="endpoint-tester-panel">
+                    <!-- Endpoint tester content will be injected here -->
+                </div>
+                <!-- Shared panes -->
                 <div id="metrics" class="tab-pane" role="tabpanel">
                     <!-- Metrics content will be injected here -->
                 </div>
@@ -52,11 +66,40 @@
                     <!-- Help tab: static content, no JS needed -->
                     <div id="jwt-help-content" class="jwt-tab-content help-tab" data-testid="help-tab-content">
                         <div class="help-header">
-                            <h2>JWT Authenticator Help</h2>
+                            <h2>Component Help</h2>
                         </div>
 
                         <div class="help-sections">
-                            <div class="help-section" data-testid="help-accordion-item">
+                            <!-- Gateway-specific help sections -->
+                            <div class="help-section gateway-help" data-testid="help-accordion-item">
+                                <h4 class="collapsible-header active" data-testid="accordion-toggle">
+                                    <i class="fa fa-chevron-down"></i> REST API Gateway
+                                </h4>
+                                <div class="collapsible-content show" data-testid="accordion-content">
+                                    <p>The RestApiGatewayProcessor provides a secure REST API gateway with
+                                    JWT authentication and route-based access control.</p>
+                                    <h5>Key Features</h5>
+                                    <ul>
+                                        <li>Embedded HTTPS/HTTP server with configurable port</li>
+                                        <li>Route-based request matching with path patterns</li>
+                                        <li>Per-route role and scope requirements</li>
+                                        <li>CORS support with configurable allowed origins</li>
+                                        <li>Request body size limits and queue management</li>
+                                    </ul>
+                                    <h5>Tabs</h5>
+                                    <ul>
+                                        <li><strong>Endpoint Configuration:</strong> View active routes, global
+                                        settings, and security configuration</li>
+                                        <li><strong>Endpoint Tester:</strong> Send test requests to verify
+                                        route access and authentication</li>
+                                        <li><strong>Metrics:</strong> Monitor token validation, HTTP security
+                                        events, and gateway activity</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- JWT-specific help sections -->
+                            <div class="help-section jwt-help" data-testid="help-accordion-item">
                                 <h4 class="collapsible-header active" data-testid="accordion-toggle">
                                     <i class="fa fa-chevron-down"></i> Getting Started
                                 </h4>
@@ -72,7 +115,7 @@
                                 </div>
                             </div>
 
-                            <div class="help-section" data-testid="help-accordion-item">
+                            <div class="help-section jwt-help" data-testid="help-accordion-item">
                                 <h4 class="collapsible-header" data-testid="accordion-toggle">
                                     <i class="fa fa-chevron-right"></i> Issuer Configuration
                                 </h4>
@@ -103,7 +146,7 @@
                                 </div>
                             </div>
 
-                            <div class="help-section" data-testid="help-accordion-item">
+                            <div class="help-section jwt-help" data-testid="help-accordion-item">
                                 <h4 class="collapsible-header" data-testid="accordion-toggle">
                                     <i class="fa fa-chevron-right"></i> Authorization Rules
                                 </h4>
@@ -130,7 +173,7 @@
                                 </div>
                             </div>
 
-                            <div class="help-section" data-testid="help-accordion-item">
+                            <div class="help-section jwt-help" data-testid="help-accordion-item">
                                 <h4 class="collapsible-header" data-testid="accordion-toggle">
                                     <i class="fa fa-chevron-right"></i> Token Verification
                                 </h4>

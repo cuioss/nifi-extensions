@@ -2,117 +2,164 @@
 
 /**
  * Metrics dashboard tab component.
+ * Supports both JWT/CS metrics and gateway metrics (3-category display).
  *
  * @module js/metrics
  */
 
-import { getSecurityMetrics } from './api.js';
+import { getSecurityMetrics, fetchGatewayApi } from './api.js';
 import { sanitizeHtml, formatNumber, formatDate, t, log } from './utils.js';
 
 let lastMetricsData = null;
 let metricsInterval = null;
 let metricsEndpointAvailable = true;
+let _isGateway = false;
+
+// ---------------------------------------------------------------------------
+// Templates
+// ---------------------------------------------------------------------------
+
+const metricsHeaderHtml = (title) => `
+    <div class="metrics-header">
+        <h2>${title}</h2>
+        <div class="metrics-actions">
+            <button id="refresh-metrics-btn" class="btn btn-small"
+                    data-testid="refresh-metrics-button">
+                <i class="fa fa-refresh"></i> Refresh
+            </button>
+            <button id="export-metrics-btn" class="btn btn-small"
+                    data-testid="export-metrics-button">
+                <i class="fa fa-download"></i> Export
+            </button>
+        </div>
+    </div>`;
+
+const metricsFooterHtml = () => `
+    <div class="metrics-footer">
+        <span class="last-updated" data-testid="last-updated"
+              aria-live="polite" role="status">Last updated: Never</span>
+        <span class="refresh-indicator hidden" data-testid="refresh-indicator"
+              aria-live="polite">
+            <i class="fa fa-spinner fa-spin"></i> Refreshing...
+        </span>
+    </div>
+    <div id="export-options" class="export-options" data-testid="export-options">
+        <h5>Export Format:</h5>
+        <button class="btn btn-small" data-format="csv"
+                data-testid="export-csv">CSV</button>
+        <button class="btn btn-small" data-format="json"
+                data-testid="export-json">JSON</button>
+        <button class="btn btn-small" data-format="prometheus"
+                data-testid="export-prometheus">Prometheus</button>
+    </div>`;
+
+const buildJwtTemplate = () => `
+    <div id="jwt-metrics-content" class="jwt-tab-content" data-testid="metrics-tab-content">
+        ${metricsHeaderHtml(t('jwt.validator.metrics.title'))}
+
+        <div class="metrics-summary" data-testid="validation-metrics">
+            <h4>Validation Metrics</h4>
+            <div class="metrics-grid">
+                <div class="metric-card"><h5>Total Validations</h5>
+                    <div class="metric-value" id="total-validations"
+                         data-testid="total-validations">0</div></div>
+                <div class="metric-card"><h5>Success Rate</h5>
+                    <div class="metric-value" id="success-rate"
+                         data-testid="success-rate">0%</div></div>
+                <div class="metric-card"><h5>Failure Rate</h5>
+                    <div class="metric-value" id="failure-rate"
+                         data-testid="failure-rate">0%</div></div>
+                <div class="metric-card"><h5>Active Issuers</h5>
+                    <div class="metric-value" id="active-issuers">0</div></div>
+            </div>
+        </div>
+
+        <div class="performance-metrics" data-testid="performance-metrics">
+            <h4>Performance Metrics</h4>
+            <div class="metrics-grid">
+                <div class="metric-card"><h5>Average Response Time</h5>
+                    <div class="metric-value" id="avg-response-time"
+                         data-testid="avg-response-time">0 ms</div></div>
+                <div class="metric-card"><h5>Min Response Time</h5>
+                    <div class="metric-value" id="min-response-time"
+                         data-testid="min-response-time">0 ms</div></div>
+                <div class="metric-card"><h5>Max Response Time</h5>
+                    <div class="metric-value" id="max-response-time"
+                         data-testid="max-response-time">0 ms</div></div>
+                <div class="metric-card"><h5>P95 Response Time</h5>
+                    <div class="metric-value" id="p95-response-time"
+                         data-testid="p95-response-time">0 ms</div></div>
+            </div>
+        </div>
+
+        <div class="issuer-metrics" data-testid="issuer-metrics">
+            <h4>Issuer-Specific Metrics</h4>
+            <div class="issuer-metrics-container">
+                <table class="issuer-metrics-table" data-testid="issuer-metrics-table">
+                    <thead><tr>
+                        <th>Issuer</th><th>Total Requests</th><th>Success</th>
+                        <th>Failed</th><th>Success Rate</th><th>Avg Response Time</th>
+                    </tr></thead>
+                    <tbody id="issuer-metrics-list">
+                        <tr><td colspan="6" class="metrics-loading">Loading metrics...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="error-metrics" data-testid="error-metrics">
+            <h4>Recent Errors</h4>
+            <div id="error-metrics-list" class="metrics-list"
+                 data-testid="error-metrics-list">
+                <div class="no-errors">No recent errors</div>
+            </div>
+        </div>
+
+        ${metricsFooterHtml()}
+    </div>`;
+
+const buildGatewayTemplate = () => `
+    <div id="jwt-metrics-content" class="jwt-tab-content" data-testid="metrics-tab-content">
+        ${metricsHeaderHtml('Gateway Metrics')}
+
+        <div class="gateway-metrics-section" data-testid="token-validation-metrics">
+            <h4>Token Validation</h4>
+            <div class="metrics-grid" id="token-validation-grid">
+                <div class="no-data">Loading...</div>
+            </div>
+        </div>
+
+        <div class="gateway-metrics-section" data-testid="http-security-metrics">
+            <h4>HTTP Security</h4>
+            <div class="metrics-grid" id="http-security-grid">
+                <div class="no-data">Loading...</div>
+            </div>
+        </div>
+
+        <div class="gateway-metrics-section" data-testid="gateway-events-metrics">
+            <h4>Gateway Events</h4>
+            <div class="metrics-grid" id="gateway-events-grid">
+                <div class="no-data">Loading...</div>
+            </div>
+        </div>
+
+        ${metricsFooterHtml()}
+    </div>`;
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
 /**
  * Initialise the Metrics tab inside the given container element.
  * @param {HTMLElement} container  the #metrics pane
+ * @param {boolean} [isGateway=false]  whether to show gateway metrics
  */
-export const init = (container) => {
+export const init = (container, isGateway = false) => {
     if (!container || container.querySelector('#jwt-metrics-content')) return;
+    _isGateway = isGateway;
 
-    container.innerHTML = `
-        <div id="jwt-metrics-content" class="jwt-tab-content" data-testid="metrics-tab-content">
-            <div class="metrics-header">
-                <h2>${t('jwt.validator.metrics.title')}</h2>
-                <div class="metrics-actions">
-                    <button id="refresh-metrics-btn" class="btn btn-small"
-                            data-testid="refresh-metrics-button">
-                        <i class="fa fa-refresh"></i> Refresh
-                    </button>
-                    <button id="export-metrics-btn" class="btn btn-small"
-                            data-testid="export-metrics-button">
-                        <i class="fa fa-download"></i> Export
-                    </button>
-                </div>
-            </div>
-
-            <div class="metrics-summary" data-testid="validation-metrics">
-                <h4>Validation Metrics</h4>
-                <div class="metrics-grid">
-                    <div class="metric-card"><h5>Total Validations</h5>
-                        <div class="metric-value" id="total-validations"
-                             data-testid="total-validations">0</div></div>
-                    <div class="metric-card"><h5>Success Rate</h5>
-                        <div class="metric-value" id="success-rate"
-                             data-testid="success-rate">0%</div></div>
-                    <div class="metric-card"><h5>Failure Rate</h5>
-                        <div class="metric-value" id="failure-rate"
-                             data-testid="failure-rate">0%</div></div>
-                    <div class="metric-card"><h5>Active Issuers</h5>
-                        <div class="metric-value" id="active-issuers">0</div></div>
-                </div>
-            </div>
-
-            <div class="performance-metrics" data-testid="performance-metrics">
-                <h4>Performance Metrics</h4>
-                <div class="metrics-grid">
-                    <div class="metric-card"><h5>Average Response Time</h5>
-                        <div class="metric-value" id="avg-response-time"
-                             data-testid="avg-response-time">0 ms</div></div>
-                    <div class="metric-card"><h5>Min Response Time</h5>
-                        <div class="metric-value" id="min-response-time"
-                             data-testid="min-response-time">0 ms</div></div>
-                    <div class="metric-card"><h5>Max Response Time</h5>
-                        <div class="metric-value" id="max-response-time"
-                             data-testid="max-response-time">0 ms</div></div>
-                    <div class="metric-card"><h5>P95 Response Time</h5>
-                        <div class="metric-value" id="p95-response-time"
-                             data-testid="p95-response-time">0 ms</div></div>
-                </div>
-            </div>
-
-            <div class="issuer-metrics" data-testid="issuer-metrics">
-                <h4>Issuer-Specific Metrics</h4>
-                <div class="issuer-metrics-container">
-                    <table class="issuer-metrics-table" data-testid="issuer-metrics-table">
-                        <thead><tr>
-                            <th>Issuer</th><th>Total Requests</th><th>Success</th>
-                            <th>Failed</th><th>Success Rate</th><th>Avg Response Time</th>
-                        </tr></thead>
-                        <tbody id="issuer-metrics-list">
-                            <tr><td colspan="6" class="metrics-loading">Loading metrics...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="error-metrics" data-testid="error-metrics">
-                <h4>Recent Errors</h4>
-                <div id="error-metrics-list" class="metrics-list"
-                     data-testid="error-metrics-list">
-                    <div class="no-errors">No recent errors</div>
-                </div>
-            </div>
-
-            <div class="metrics-footer">
-                <span class="last-updated" data-testid="last-updated"
-                      aria-live="polite" role="status">Last updated: Never</span>
-                <span class="refresh-indicator hidden" data-testid="refresh-indicator"
-                      aria-live="polite">
-                    <i class="fa fa-spinner fa-spin"></i> Refreshing...
-                </span>
-            </div>
-
-            <div id="export-options" class="export-options" data-testid="export-options">
-                <h5>Export Format:</h5>
-                <button class="btn btn-small" data-format="csv"
-                        data-testid="export-csv">CSV</button>
-                <button class="btn btn-small" data-format="json"
-                        data-testid="export-json">JSON</button>
-                <button class="btn btn-small" data-format="prometheus"
-                        data-testid="export-prometheus">Prometheus</button>
-            </div>
-        </div>`;
+    container.innerHTML = isGateway ? buildGatewayTemplate() : buildJwtTemplate();
 
     // Bind event handlers
     container.querySelector('#refresh-metrics-btn')
@@ -141,6 +188,8 @@ export const init = (container) => {
 
 export const cleanup = () => {
     if (metricsInterval) { clearInterval(metricsInterval); metricsInterval = null; }
+    metricsEndpointAvailable = true;
+    _isGateway = false;
 };
 
 // ---------------------------------------------------------------------------
@@ -164,20 +213,25 @@ const handleRefresh = async () => {
 const refreshMetrics = async () => {
     if (!metricsEndpointAvailable) return;
     try {
-        const raw = await getSecurityMetrics();
-        const data = {
-            totalValidations: raw.totalTokensValidated || 0,
-            successCount: raw.validTokens || 0,
-            failureCount: raw.invalidTokens || 0,
-            avgResponseTime: raw.averageResponseTime || 0,
-            minResponseTime: raw.minResponseTime || 0,
-            maxResponseTime: raw.maxResponseTime || 0,
-            p95ResponseTime: raw.p95ResponseTime || 0,
-            activeIssuers: raw.activeIssuers || 0,
-            issuerMetrics: raw.issuerMetrics || [],
-            recentErrors: raw.topErrors || []
-        };
-        updateDisplay(data);
+        if (_isGateway) {
+            const raw = await fetchGatewayApi('/metrics');
+            updateGatewayDisplay(raw);
+        } else {
+            const raw = await getSecurityMetrics();
+            const data = {
+                totalValidations: raw.totalTokensValidated || 0,
+                successCount: raw.validTokens || 0,
+                failureCount: raw.invalidTokens || 0,
+                avgResponseTime: raw.averageResponseTime || 0,
+                minResponseTime: raw.minResponseTime || 0,
+                maxResponseTime: raw.maxResponseTime || 0,
+                p95ResponseTime: raw.p95ResponseTime || 0,
+                activeIssuers: raw.activeIssuers || 0,
+                issuerMetrics: raw.issuerMetrics || [],
+                recentErrors: raw.topErrors || []
+            };
+            updateDisplay(data);
+        }
     } catch (error) {
         log.error('Failed to refresh metrics:', error);
         if (error.status === 404) {
@@ -188,6 +242,10 @@ const refreshMetrics = async () => {
         }
     }
 };
+
+// ---------------------------------------------------------------------------
+// JWT display
+// ---------------------------------------------------------------------------
 
 const updateDisplay = (d) => {
     lastMetricsData = d;
@@ -239,6 +297,46 @@ const updateDisplay = (d) => {
     if (lu) lu.textContent = `Last updated: ${formatDate(new Date())}`;
 };
 
+// ---------------------------------------------------------------------------
+// Gateway display
+// ---------------------------------------------------------------------------
+
+const formatCounterName = (key) =>
+    key.replace(/[_-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+const renderCounterGrid = (containerId, counters) => {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const entries = Object.entries(counters);
+    if (entries.length === 0) {
+        container.innerHTML = '<div class="no-data">No data available</div>';
+        return;
+    }
+
+    container.innerHTML = entries.map(([key, value]) =>
+        `<div class="metric-card">
+            <h5>${sanitizeHtml(formatCounterName(key))}</h5>
+            <div class="metric-value">${formatNumber(value)}</div>
+        </div>`
+    ).join('');
+};
+
+const updateGatewayDisplay = (data) => {
+    lastMetricsData = data;
+
+    renderCounterGrid('token-validation-grid', data.tokenValidation || {});
+    renderCounterGrid('http-security-grid', data.httpSecurity || {});
+    renderCounterGrid('gateway-events-grid', data.gatewayEvents || {});
+
+    const lu = document.querySelector('[data-testid="last-updated"]');
+    if (lu) lu.textContent = `Last updated: ${formatDate(new Date())}`;
+};
+
+// ---------------------------------------------------------------------------
+// Status banners
+// ---------------------------------------------------------------------------
+
 const showStatusBanner = (el, className, html) => {
     // Insert a banner at the top of the dashboard without destroying the structure
     const existing = el.querySelector('.metrics-status-banner');
@@ -268,7 +366,28 @@ const showNotAvailable = () => {
     cleanup();
 };
 
+// ---------------------------------------------------------------------------
+// Export
+// ---------------------------------------------------------------------------
+
 const handleExport = (format) => {
+    if (_isGateway) {
+        handleGatewayExport(format);
+        return;
+    }
+    handleJwtExport(format);
+};
+
+const triggerDownload = (content, mimeType, filename) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = globalThis.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    globalThis.URL.revokeObjectURL(url);
+};
+
+const handleJwtExport = (format) => {
     const m = {
         timestamp: new Date().toISOString(),
         totalValidations: document.getElementById('total-validations')?.textContent || '0',
@@ -318,10 +437,67 @@ const handleExport = (format) => {
             return;
     }
 
-    const blob = new Blob([content], { type: mimeType });
-    const url = globalThis.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click(); a.remove();
-    globalThis.URL.revokeObjectURL(url);
+    triggerDownload(content, mimeType, filename);
+};
+
+const handleGatewayExport = (format) => {
+    const data = lastMetricsData || {};
+    const ts = new Date().toISOString();
+
+    let content, mimeType, filename;
+    switch (format) {
+        case 'json':
+            content = JSON.stringify({ timestamp: ts, ...data }, null, 2);
+            mimeType = 'application/json';
+            filename = `gateway-metrics-${Date.now()}.json`;
+            break;
+        case 'csv': {
+            let csv = 'Category,Metric,Value\n';
+            for (const [category, counters] of Object.entries(data)) {
+                if (typeof counters !== 'object' || counters === null) continue;
+                for (const [key, value] of Object.entries(counters)) {
+                    csv += `${category},${key},${value}\n`;
+                }
+            }
+            content = csv;
+            mimeType = 'text/csv';
+            filename = `gateway-metrics-${Date.now()}.csv`;
+            break;
+        }
+        case 'prometheus': {
+            let output = '';
+            if (data.tokenValidation) {
+                output += '# HELP nifi_jwt_validations_total Token validation events (oauth-sheriff)\n';
+                output += '# TYPE nifi_jwt_validations_total counter\n';
+                for (const [key, value] of Object.entries(data.tokenValidation)) {
+                    output += `nifi_jwt_validations_total{result="${sanitizeHtml(key)}"} ${value}\n`;
+                }
+                output += '\n';
+            }
+            if (data.httpSecurity) {
+                output += '# HELP nifi_gateway_http_security_events_total Transport-level security events (cui-http)\n';
+                output += '# TYPE nifi_gateway_http_security_events_total counter\n';
+                for (const [key, value] of Object.entries(data.httpSecurity)) {
+                    output += `nifi_gateway_http_security_events_total{type="${sanitizeHtml(key)}"} ${value}\n`;
+                }
+                output += '\n';
+            }
+            if (data.gatewayEvents) {
+                output += '# HELP nifi_gateway_events_total Application-level gateway events\n';
+                output += '# TYPE nifi_gateway_events_total counter\n';
+                for (const [key, value] of Object.entries(data.gatewayEvents)) {
+                    output += `nifi_gateway_events_total{type="${sanitizeHtml(key)}"} ${value}\n`;
+                }
+                output += '\n';
+            }
+            content = output;
+            mimeType = 'text/plain';
+            filename = `gateway-metrics-${Date.now()}.txt`;
+            break;
+        }
+        default:
+            return;
+    }
+
+    triggerDownload(content, mimeType, filename);
 };

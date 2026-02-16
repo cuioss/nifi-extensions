@@ -16,69 +16,63 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.junit.jupiter.api.BeforeEach;
+import jakarta.servlet.DispatcherType;
+import org.eclipse.jetty.ee11.servlet.ServletHolder;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.easymock.EasyMock.*;
+import java.util.EnumSet;
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.equalTo;
 
 /**
- * Tests for {@link SecurityHeadersFilter}.
+ * Tests for {@link SecurityHeadersFilter} using embedded Jetty + REST Assured.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
  */
 @DisplayName("Security Headers Filter Tests")
 class SecurityHeadersFilterTest {
 
-    private SecurityHeadersFilter filter;
-    private HttpServletRequest mockRequest;
-    private HttpServletResponse mockResponse;
-    private FilterChain mockChain;
+    @BeforeAll
+    static void startServer() throws Exception {
+        EmbeddedServletTestSupport.startServer(ctx -> {
+            ctx.addFilter(SecurityHeadersFilter.class, "/*",
+                    EnumSet.of(DispatcherType.REQUEST));
+            ctx.addServlet(new ServletHolder(new EmbeddedServletTestSupport.PassthroughServlet()), "/*");
+        });
+    }
 
-    @BeforeEach
-    void setUp() {
-        filter = new SecurityHeadersFilter();
-        mockRequest = createMock(HttpServletRequest.class);
-        mockResponse = createMock(HttpServletResponse.class);
-        mockChain = createMock(FilterChain.class);
+    @AfterAll
+    static void stopServer() throws Exception {
+        EmbeddedServletTestSupport.stopServer();
     }
 
     @Test
-    @DisplayName("Should set X-Content-Type-Options header")
-    void shouldSetXContentTypeOptionsHeader() throws Exception {
-        mockResponse.setHeader("X-Content-Type-Options", "nosniff");
-        expectLastCall().once();
-        mockResponse.setHeader("X-Frame-Options", "SAMEORIGIN");
-        expectLastCall().once();
-        mockResponse.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-        expectLastCall().once();
-        mockResponse.setHeader(eq("Content-Security-Policy"), anyString());
-        expectLastCall().once();
-        mockChain.doFilter(mockRequest, mockResponse);
-        expectLastCall().once();
-
-        replay(mockRequest, mockResponse, mockChain);
-
-        filter.doFilter(mockRequest, mockResponse, mockChain);
-
-        verify(mockRequest, mockResponse, mockChain);
+    @DisplayName("Should set all security headers on response")
+    void shouldSetAllSecurityHeaders() {
+        given()
+                .when()
+                .get("/test")
+                .then()
+                .statusCode(200)
+                .header("X-Content-Type-Options", "nosniff")
+                .header("X-Frame-Options", "SAMEORIGIN")
+                .header("Referrer-Policy", "strict-origin-when-cross-origin")
+                .header("Content-Security-Policy", containsString("default-src 'self'"));
     }
 
     @Test
     @DisplayName("Should continue filter chain after setting headers")
-    void shouldContinueFilterChain() throws Exception {
-        mockResponse.setHeader(anyString(), anyString());
-        expectLastCall().anyTimes();
-        mockChain.doFilter(mockRequest, mockResponse);
-        expectLastCall().once();
-
-        replay(mockRequest, mockResponse, mockChain);
-
-        filter.doFilter(mockRequest, mockResponse, mockChain);
-
-        verify(mockChain);
+    void shouldContinueFilterChain() {
+        given()
+                .when()
+                .get("/test")
+                .then()
+                .statusCode(200)
+                .body(equalTo("OK"));
     }
 }
