@@ -282,7 +282,7 @@ class ComponentConfigReaderTest {
                             "{ invalid json structure without proper closing",
                             "test-processor-id"));
 
-            assertTrue(exception.getMessage().contains("Failed to parse processor response JSON"));
+            assertTrue(exception.getMessage().contains("Failed to parse component response JSON"));
         }
 
         @Test

@@ -203,42 +203,7 @@ public class ComponentConfigReader {
 
     Map<String, String> parseProcessorResponse(String responseBody, String processorId)
             throws IOException {
-        try (JsonReader reader = JSON_READER_FACTORY.createReader(new StringReader(responseBody))) {
-            JsonObject root = reader.readObject();
-
-            if (!root.containsKey("component")) {
-                throw new IOException("Invalid processor response format: missing 'component' field");
-            }
-
-            JsonObject component = root.getJsonObject("component");
-            if (!component.containsKey("config")) {
-                throw new IOException("Invalid processor response format: missing 'config' field");
-            }
-
-            JsonObject config = component.getJsonObject("config");
-            if (!config.containsKey("properties")) {
-                throw new IOException("Invalid processor response format: missing 'properties' field");
-            }
-
-            JsonObject properties = config.getJsonObject("properties");
-
-            Map<String, String> propertyMap = new HashMap<>();
-            for (String key : properties.keySet()) {
-                String value = properties.getString(key, null);
-                if (value != null) {
-                    propertyMap.put(key, value);
-                }
-            }
-
-            LOGGER.debug("Successfully parsed %d properties for processor %s",
-                    propertyMap.size(), processorId);
-            return propertyMap;
-
-        } catch (JsonException e) {
-            throw new IOException("Failed to parse processor response JSON: " + e.getMessage(), e);
-        } catch (ClassCastException e) {
-            throw new IOException("Invalid JSON structure in processor response: " + e.getMessage(), e);
-        }
+        return parseComponentResponse(responseBody, processorId, ComponentType.PROCESSOR).properties();
     }
 
     // -----------------------------------------------------------------------
