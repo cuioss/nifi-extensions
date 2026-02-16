@@ -22,7 +22,6 @@ import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -54,7 +53,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Activated via the {@code integration-tests} Maven profile.
  */
 @NullMarked
-@Disabled("flow.json needs CS architecture update — re-enable after #137 flow migration")
 @DisplayName("NiFi Processor Metrics Integration Tests")
 class NiFiProcessorMetricsIT {
 

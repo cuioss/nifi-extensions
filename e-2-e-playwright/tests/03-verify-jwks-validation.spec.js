@@ -12,8 +12,7 @@ import {
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 
-// Skip: JWKS validation moved to CS — re-enable after #137 UI migration
-test.describe.skip("JWKS Validation", () => {
+test.describe("JWKS Validation", () => {
     test.beforeEach(async ({ page, processorManager }, testInfo) => {
         const authService = new AuthService(page);
         await authService.ensureReady();

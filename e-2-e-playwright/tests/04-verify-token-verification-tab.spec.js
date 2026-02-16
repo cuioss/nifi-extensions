@@ -17,8 +17,7 @@ import {
     getInvalidAccessToken,
 } from "../utils/keycloak-token-service.js";
 
-// Skip: token verification moved to CS — re-enable after #137 UI migration
-test.describe.skip("Token Verification Tab", () => {
+test.describe("Token Verification Tab", () => {
     test.beforeEach(async ({ page, processorManager }, testInfo) => {
         const authService = new AuthService(page);
         await authService.ensureReady();

@@ -11,8 +11,7 @@ import {
 import { ProcessorApiManager } from "../utils/processor-api-manager.js";
 import { AuthService } from "../utils/auth-service.js";
 
-// Skip: flow.json needs CS architecture update — re-enable after #137 flow migration
-test.describe.skip("ProcessorApiManager Self-Test", () => {
+test.describe("ProcessorApiManager Self-Test", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await takeStartScreenshot(page, testInfo);
     });

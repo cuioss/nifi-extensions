@@ -18,8 +18,7 @@ import {
     globalCriticalErrorDetector,
 } from "../utils/critical-error-detector.js";
 
-// Skip: references processor custom UI — re-enable after #137 UI migration
-test.describe.skip("Self-Test: Critical Error Detection", () => {
+test.describe("Self-Test: Critical Error Detection", () => {
     test.beforeEach(async ({ page, processorManager }, testInfo) => {
         // Authenticate first
         const authService = new AuthService(page);

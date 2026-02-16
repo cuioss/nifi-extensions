@@ -6,6 +6,7 @@ services:
     ports:
       - "9095:8443"
       - "7777:7777"
+      - "9443:9443"
     environment:
       - NIFI_WEB_HTTP_PORT=
       - NIFI_WEB_HTTP_HOST=
