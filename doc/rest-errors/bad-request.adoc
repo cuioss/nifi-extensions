@@ -1,0 +1,50 @@
+= 400 Bad Request
+:sectnums:
+
+link:index.adoc[Back to Error Reference]
+
+== Summary
+
+[cols="1,3"]
+|===
+| Status | `400`
+| Title | Bad Request
+| Produced by | `ProblemDetail.badRequest()`
+|===
+
+== Description
+
+The request was rejected because it contains malformed or potentially dangerous input.
+The gateway validates all incoming HTTP request components (path, query parameters, headers)
+through the https://github.com/cuioss/cui-http[cui-http] security pipelines before processing.
+
+== Common Causes
+
+* Path traversal attempts (e.g., `/../`, `/./`)
+* SQL injection patterns in query parameters
+* Cross-site scripting (XSS) payloads in headers or parameters
+* Null bytes or other control characters in request components
+* Malformed URL encoding
+
+== Example Response
+
+[source,json]
+----
+{
+  "type": "https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/bad-request.adoc",
+  "title": "Bad Request",
+  "status": 400,
+  "detail": "Request rejected: POTENTIAL_ATTACK_DETECTED"
+}
+----
+
+== Resolution
+
+Ensure the request does not contain special characters or patterns that could be
+interpreted as injection attacks. Review the `detail` field for the specific
+validation failure type.
+
+== See Also
+
+* link:index.adoc[Error Reference Index]
+* link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/GatewayRequestHandler.java[GatewayRequestHandler] -- Request validation logic

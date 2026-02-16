@@ -1,0 +1,80 @@
+= REST API Gateway Error Reference
+:toc:
+:toclevels: 2
+:toc-title: Error Types
+:sectnums:
+
+link:../Specification.adoc[Back to Main Specification]
+
+== Overview
+
+The REST API Gateway processor returns error responses conforming to
+https://www.rfc-editor.org/rfc/rfc9457[RFC 9457 — Problem Details for HTTP APIs].
+
+Every error response includes a `type` URI that links to the corresponding
+documentation page below, enabling API consumers to look up error details
+programmatically or manually.
+
+.Example error response
+[source,json]
+----
+{
+  "type": "https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/unauthorized.adoc",
+  "title": "Unauthorized",
+  "status": 401,
+  "detail": "Missing or malformed Authorization header"
+}
+----
+
+== Error Types
+
+[cols="1,1,3"]
+|===
+| Status | Type | Description
+
+| 400
+| link:bad-request.adoc[Bad Request]
+| The request was rejected due to malformed input or security validation failure
+
+| 401
+| link:unauthorized.adoc[Unauthorized]
+| Authentication is required or the provided credentials are invalid
+
+| 403
+| link:forbidden.adoc[Forbidden]
+| The authenticated user lacks the required roles for this route
+
+| 404
+| link:not-found.adoc[Not Found]
+| No route is configured for the requested path
+
+| 405
+| link:method-not-allowed.adoc[Method Not Allowed]
+| The HTTP method is not permitted on the matched route
+
+| 413
+| link:payload-too-large.adoc[Payload Too Large]
+| The request body exceeds the configured size limit
+
+| 422
+| link:validation-error.adoc[Unprocessable Content]
+| The request body failed JSON Schema validation
+
+| 500
+| link:internal-error.adoc[Internal Server Error]
+| An unexpected error occurred during request processing
+
+| 503
+| link:service-unavailable.adoc[Service Unavailable]
+| The server is at capacity and cannot accept new requests
+|===
+
+== Implementation
+
+Error responses are produced by the
+link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/ProblemDetail.java[ProblemDetail]
+record, which provides factory methods for each error type.
+
+== Content Type
+
+All error responses use the content type `application/problem+json` as specified by RFC 9457.

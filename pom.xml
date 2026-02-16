@@ -44,6 +44,7 @@
     <modules>
         <module>nifi-cuioss-common</module>
         <module>nifi-cuioss-processors</module>
+        <module>nifi-cuioss-rest-processors</module>
         <module>nifi-cuioss-ui</module>
         <module>nifi-cuioss-nar</module>
         <module>integration-testing</module>
@@ -142,7 +143,7 @@
         <version.cui.test.value.objects>2.0.1</version.cui.test.value.objects>
         <version.cui.test.mockwebserver>1.5.0</version.cui.test.mockwebserver>
         <version.cui.java.tools>2.6.2</version.cui.java.tools>
-        <version.cui.http>0.3.0</version.cui.http>
+        <version.cui.http>1.3.6</version.cui.http>
         <version.oauth-sheriff>0.3.1</version.oauth-sheriff>
         <version.cui.test.keycloak.integration>1.0.1</version.cui.test.keycloak.integration>
         <version.jjwt>0.13.0</version.jjwt>
@@ -198,6 +199,12 @@
                 <artifactId>nifi-utils</artifactId>
                 <version>${version.nifi}</version>
             </dependency>
+            <dependency>
+                <groupId>org.apache.nifi</groupId>
+                <artifactId>nifi-ssl-context-service-api</artifactId>
+                <version>${version.nifi}</version>
+                <scope>provided</scope>
+            </dependency>
             <!-- CUI-OSS -->
             <dependency>
                 <groupId>de.cuioss</groupId>
@@ -210,6 +217,13 @@
                 <artifactId>cui-http</artifactId>
                 <version>${version.cui.http}</version>
                 <scope>compile</scope>
+            </dependency>
+            <dependency>
+                <groupId>de.cuioss</groupId>
+                <artifactId>cui-http</artifactId>
+                <version>${version.cui.http}</version>
+                <classifier>generators</classifier>
+                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>de.cuioss.test</groupId>
@@ -324,7 +338,19 @@
             </dependency>
             <dependency>
                 <groupId>de.cuioss.nifi</groupId>
+                <artifactId>nifi-cuioss-common</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>de.cuioss.nifi</groupId>
                 <artifactId>nifi-cuioss-processors</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>de.cuioss.nifi</groupId>
+                <artifactId>nifi-cuioss-rest-processors</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -487,6 +513,7 @@
             <modules>
                 <module>nifi-cuioss-common</module>
                 <module>nifi-cuioss-processors</module>
+                <module>nifi-cuioss-rest-processors</module>
                 <module>nifi-cuioss-ui</module>
                 <module>nifi-cuioss-nar</module>
                 <module>integration-testing</module>

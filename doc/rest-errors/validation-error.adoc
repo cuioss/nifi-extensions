@@ -1,0 +1,49 @@
+= 422 Unprocessable Content
+:sectnums:
+
+link:index.adoc[Back to Error Reference]
+
+== Summary
+
+[cols="1,3"]
+|===
+| Status | `422`
+| Title | Unprocessable Content
+| Produced by | `ProblemDetail.validationError()`
+|===
+
+== Description
+
+The request body was syntactically valid but failed semantic validation
+against the JSON Schema configured for this route. Schema validation is
+optional and only performed when a route has a `restapi.<name>.schema`
+property configured.
+
+== Common Causes
+
+* Missing required fields in the JSON body
+* Field values with incorrect types (e.g., string where number expected)
+* Values outside allowed ranges or pattern constraints
+* Additional properties when `additionalProperties: false` is set
+
+== Example Response
+
+[source,json]
+----
+{
+  "type": "https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/validation-error.adoc",
+  "title": "Unprocessable Content",
+  "status": 422,
+  "detail": "Schema validation failed"
+}
+----
+
+== Resolution
+
+Ensure the request body conforms to the JSON Schema configured for the target route.
+Review the `detail` field for specific validation errors.
+
+== See Also
+
+* link:bad-request.adoc[400 Bad Request] -- For syntactically malformed requests
+* link:index.adoc[Error Reference Index]

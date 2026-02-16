@@ -1,0 +1,48 @@
+= 403 Forbidden
+:sectnums:
+
+link:index.adoc[Back to Error Reference]
+
+== Summary
+
+[cols="1,3"]
+|===
+| Status | `403`
+| Title | Forbidden
+| Produced by | `ProblemDetail.forbidden()`
+|===
+
+== Description
+
+The authenticated user does not have the required roles to access this route.
+Authentication succeeded (the JWT token is valid), but the token's claims
+do not satisfy the route's authorization requirements.
+
+== Common Causes
+
+* The JWT token lacks one or more roles required by the route configuration
+  (configured via `restapi.<name>.roles`)
+* The user's account has been assigned insufficient privileges
+
+== Example Response
+
+[source,json]
+----
+{
+  "type": "https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/forbidden.adoc",
+  "title": "Forbidden",
+  "status": 403,
+  "detail": "Insufficient roles: missing [admin]"
+}
+----
+
+== Resolution
+
+Ensure the JWT token contains the roles required by the route.
+Route role requirements are configured via the `restapi.<name>.roles`
+dynamic property on the processor.
+
+== See Also
+
+* link:unauthorized.adoc[401 Unauthorized] -- When authentication itself fails
+* link:index.adoc[Error Reference Index]

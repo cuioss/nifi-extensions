@@ -20,6 +20,7 @@ import de.cuioss.nifi.jwt.JWTAttributes;
 import de.cuioss.nifi.jwt.JWTPropertyKeys;
 import de.cuioss.nifi.jwt.JwtConstants;
 import de.cuioss.nifi.jwt.JwtLogMessages;
+import de.cuioss.nifi.jwt.util.DynamicPropertyGroupParser;
 import de.cuioss.nifi.jwt.util.ErrorContext;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
@@ -112,27 +113,19 @@ public class IssuerConfigurationParser {
 
     private static void loadUIConfigurations(Map<String, String> properties,
             Map<String, Map<String, String>> issuerPropertiesMap) {
-        for (Map.Entry<String, String> entry : properties.entrySet()) {
-            String propertyName = entry.getKey();
-            String propertyValue = entry.getValue();
-            if (propertyName.startsWith(JwtConstants.ISSUER_PREFIX)) {
-                parseIssuerProperty(propertyName, propertyValue, issuerPropertiesMap);
+        Map<String, Map<String, String>> groups = DynamicPropertyGroupParser.parse(
+                JwtConstants.ISSUER_PREFIX, properties);
+        for (Map.Entry<String, Map<String, String>> groupEntry : groups.entrySet()) {
+            String issuerId = groupEntry.getKey();
+            Map<String, String> groupProps = groupEntry.getValue();
+            Map<String, String> issuerProps = issuerPropertiesMap.computeIfAbsent(issuerId, k -> new HashMap<>());
+            issuerProps.putAll(groupProps);
+            for (Map.Entry<String, String> propEntry : groupProps.entrySet()) {
+                LOGGER.debug("Parsed UI property for issuer %s: %s = %s", sanitizeLogValue(issuerId),
+                        sanitizeLogValue(propEntry.getKey()),
+                        SENSITIVE_KEYS.contains(propEntry.getKey()) ? "***"
+                                : sanitizeLogValue(propEntry.getValue()));
             }
-        }
-    }
-
-    private static void parseIssuerProperty(String propertyName, String propertyValue,
-            Map<String, Map<String, String>> issuerPropertiesMap) {
-        String issuerPart = propertyName.substring(JwtConstants.ISSUER_PREFIX.length());
-        int dotIndex = issuerPart.indexOf('.');
-        if (dotIndex > 0) {
-            String issuerIndex = issuerPart.substring(0, dotIndex);
-            String property = issuerPart.substring(dotIndex + 1);
-            Map<String, String> issuerProps = issuerPropertiesMap.computeIfAbsent(issuerIndex, k -> new HashMap<>());
-            issuerProps.put(property, propertyValue);
-            LOGGER.debug("Parsed UI property for issuer %s: %s = %s", sanitizeLogValue(issuerIndex),
-                    sanitizeLogValue(property),
-                    SENSITIVE_KEYS.contains(property) ? "***" : sanitizeLogValue(propertyValue));
         }
     }
 

@@ -189,7 +189,7 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
                     .build();
 
             LOGGER.info(JwtLogMessages.INFO.CONTROLLER_SERVICE_ENABLED, issuerConfigs.size());
-        } catch (Exception e) {
+        } catch (IllegalStateException | IllegalArgumentException | NullPointerException e) {
             LOGGER.error(e, JwtLogMessages.ERROR.CONTROLLER_SERVICE_ENABLE_FAILED, e.getMessage());
             throw new IllegalStateException("Failed to enable JwtIssuerConfigService", e);
         } finally {
