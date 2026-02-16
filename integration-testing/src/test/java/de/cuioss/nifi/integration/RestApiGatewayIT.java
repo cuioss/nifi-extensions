@@ -83,14 +83,14 @@ class RestApiGatewayIT {
     class HealthEndpointTests {
 
         @Test
-        @DisplayName("should return 202 Accepted for GET /api/health with valid JWT")
+        @DisplayName("should return 200 OK for GET /api/health with valid JWT")
         void shouldAcceptHealthRequestWithValidJwt() throws Exception {
             String token = fetchToken();
 
             HttpResponse<String> response = sendGet(HEALTH_ENDPOINT, token);
 
-            assertEquals(202, response.statusCode(),
-                    "GET /api/health with valid JWT should return 202. Response: " + response.body());
+            assertEquals(200, response.statusCode(),
+                    "GET /api/health with valid JWT should return 200. Response: " + response.body());
         }
 
         @Test
@@ -138,14 +138,14 @@ class RestApiGatewayIT {
     class DataEndpointTests {
 
         @Test
-        @DisplayName("should return 202 Accepted for GET /api/data with valid JWT")
+        @DisplayName("should return 200 OK for GET /api/data with valid JWT")
         void shouldAcceptDataGetWithValidJwt() throws Exception {
             String token = fetchToken();
 
             HttpResponse<String> response = sendGet(DATA_ENDPOINT, token);
 
-            assertEquals(202, response.statusCode(),
-                    "GET /api/data with valid JWT should return 202. Response: " + response.body());
+            assertEquals(200, response.statusCode(),
+                    "GET /api/data with valid JWT should return 200. Response: " + response.body());
         }
 
         @Test
