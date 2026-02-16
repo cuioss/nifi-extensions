@@ -77,7 +77,7 @@ test.describe("Help Tab", () => {
         await processorService.clickTab(customUIFrame, "Help");
 
         const accordionItems = customUIFrame.locator(
-            '[data-testid="help-accordion-item"]',
+            '[data-testid="help-accordion-item"]:visible',
         );
         const itemCount = await accordionItems.count();
 

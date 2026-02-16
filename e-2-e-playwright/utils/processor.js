@@ -477,7 +477,7 @@ export class ProcessorService {
     // Ensure frame is stable before interaction
     await this.waitForFrameStability(customUIFrame);
     
-    const tab = customUIFrame.locator(`[role="tab"]:has-text("${tabName}")`);
+    const tab = customUIFrame.getByRole("tab", { name: tabName, exact: true });
     await tab.click();
     await this.page.waitForTimeout(1000);
     testLogger.info('Processor',`Clicked ${tabName} tab`);

@@ -169,7 +169,7 @@ test.describe("JWT Custom UI Tabs Verification", () => {
         const helpTitleText = await helpTitle.textContent();
         expect(helpTitleText).not.toContain("jwt.validator.help.title");
         expect(helpTitleText).toMatch(
-            /JWT Authenticator Help|JWT-Authentifikator-Hilfe/,
+            /Component Help|JWT Authenticator Help|JWT-Authentifikator-Hilfe/,
         );
 
         // Go back to Metrics tab to verify its title

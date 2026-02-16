@@ -71,8 +71,7 @@ test.describe("Configuration Tab", () => {
         const tabs = ["Configuration", "Token Verification", "Metrics", "Help"];
 
         for (const tabName of tabs) {
-            const tabSelector = `[role="tab"]:has-text("${tabName}")`;
-            const tab = customUIFrame.locator(tabSelector);
+            const tab = customUIFrame.getByRole("tab", { name: tabName, exact: true });
             await expect(tab).toBeVisible({ timeout: 5000 });
         }
     });
