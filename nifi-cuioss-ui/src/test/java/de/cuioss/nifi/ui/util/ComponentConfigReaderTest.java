@@ -468,4 +468,204 @@ class ComponentConfigReaderTest {
                     "Exception message should indicate missing properties field");
         }
     }
+
+    @Nested
+    @DisplayName("parseComponentResponse Tests")
+    class ParseComponentResponseTests {
+
+        private ComponentConfigReader.ComponentConfig invokeParseComponentResponse(
+                String json, String componentId, ComponentConfigReader.ComponentType type) throws Throwable {
+            java.lang.reflect.Method parseMethod = ComponentConfigReader.class
+                    .getDeclaredMethod("parseComponentResponse",
+                            String.class, String.class, ComponentConfigReader.ComponentType.class);
+            parseMethod.setAccessible(true);
+            try {
+                return (ComponentConfigReader.ComponentConfig)
+                        parseMethod.invoke(reader, json, componentId, type);
+            } catch (java.lang.reflect.InvocationTargetException e) {
+                throw e.getCause();
+            }
+        }
+
+        @Test
+        @DisplayName("Should parse valid processor response with config.properties path")
+        void shouldParseValidProcessorResponse() throws Throwable {
+            String json = """
+                    {
+                        "revision": {"version": 1},
+                        "component": {
+                            "type": "de.cuioss.nifi.rest.RestApiGatewayProcessor",
+                            "config": {
+                                "properties": {
+                                    "rest.gateway.listening.port": "9443",
+                                    "rest.gateway.ssl.enabled": "false"
+                                }
+                            }
+                        }
+                    }
+                    """;
+
+            ComponentConfigReader.ComponentConfig config = invokeParseComponentResponse(
+                    json, "test-id", ComponentConfigReader.ComponentType.PROCESSOR);
+
+            assertEquals(ComponentConfigReader.ComponentType.PROCESSOR, config.type());
+            assertEquals("de.cuioss.nifi.rest.RestApiGatewayProcessor", config.componentClass());
+            assertEquals("9443", config.properties().get("rest.gateway.listening.port"));
+            assertEquals("false", config.properties().get("rest.gateway.ssl.enabled"));
+            assertEquals(2, config.properties().size());
+            assertNotNull(config.revision());
+        }
+
+        @Test
+        @DisplayName("Should parse valid controller service response with component.properties path")
+        void shouldParseValidControllerServiceResponse() throws Throwable {
+            String json = """
+                    {
+                        "revision": {"version": 2},
+                        "component": {
+                            "type": "de.cuioss.nifi.jwt.StandardJwtIssuerConfigService",
+                            "properties": {
+                                "jwt.issuer.url": "https://keycloak.example.com/realms/test",
+                                "jwt.issuer.jwks.url": "https://keycloak.example.com/certs"
+                            }
+                        }
+                    }
+                    """;
+
+            ComponentConfigReader.ComponentConfig config = invokeParseComponentResponse(
+                    json, "test-id", ComponentConfigReader.ComponentType.CONTROLLER_SERVICE);
+
+            assertEquals(ComponentConfigReader.ComponentType.CONTROLLER_SERVICE, config.type());
+            assertEquals("de.cuioss.nifi.jwt.StandardJwtIssuerConfigService", config.componentClass());
+            assertEquals(2, config.properties().size());
+            assertEquals("https://keycloak.example.com/realms/test",
+                    config.properties().get("jwt.issuer.url"));
+            assertNotNull(config.revision());
+        }
+
+        @Test
+        @DisplayName("Should throw IOException for missing component field")
+        void shouldThrowForMissingComponentField() {
+            String json = """
+                    {"id": "some-id", "status": "Running"}
+                    """;
+
+            IOException exception = assertThrows(IOException.class,
+                    () -> invokeParseComponentResponse(json, "test-id",
+                            ComponentConfigReader.ComponentType.PROCESSOR));
+            assertTrue(exception.getMessage().contains("missing 'component' field"));
+        }
+
+        @Test
+        @DisplayName("Should throw IOException for missing config field in PROCESSOR type")
+        void shouldThrowForMissingConfigField() {
+            String json = """
+                    {"component": {"type": "SomeProcessor"}}
+                    """;
+
+            IOException exception = assertThrows(IOException.class,
+                    () -> invokeParseComponentResponse(json, "test-id",
+                            ComponentConfigReader.ComponentType.PROCESSOR));
+            assertTrue(exception.getMessage().contains("missing 'config' field"));
+        }
+
+        @Test
+        @DisplayName("Should throw IOException for missing properties field in PROCESSOR type")
+        void shouldThrowForMissingPropertiesFieldProcessor() {
+            String json = """
+                    {"component": {"type": "SomeProcessor", "config": {"scheduling": "TIMER"}}}
+                    """;
+
+            IOException exception = assertThrows(IOException.class,
+                    () -> invokeParseComponentResponse(json, "test-id",
+                            ComponentConfigReader.ComponentType.PROCESSOR));
+            assertTrue(exception.getMessage().contains("missing 'properties' field"));
+        }
+
+        @Test
+        @DisplayName("Should throw IOException for missing properties field in CONTROLLER_SERVICE type")
+        void shouldThrowForMissingPropertiesFieldCS() {
+            String json = """
+                    {"component": {"type": "SomeCS"}}
+                    """;
+
+            IOException exception = assertThrows(IOException.class,
+                    () -> invokeParseComponentResponse(json, "test-id",
+                            ComponentConfigReader.ComponentType.CONTROLLER_SERVICE));
+            assertTrue(exception.getMessage().contains("missing 'properties' field"));
+        }
+
+        @Test
+        @DisplayName("Should throw IOException for malformed JSON")
+        void shouldThrowForMalformedJson() {
+            String json = "{ invalid json }";
+
+            IOException exception = assertThrows(IOException.class,
+                    () -> invokeParseComponentResponse(json, "test-id",
+                            ComponentConfigReader.ComponentType.PROCESSOR));
+            assertTrue(exception.getMessage().contains("Failed to parse component response JSON"));
+        }
+
+        @Test
+        @DisplayName("Should throw IOException for wrong type structure (ClassCastException)")
+        void shouldThrowForWrongTypeStructure() {
+            String json = """
+                    {"component": ["not an object"]}
+                    """;
+
+            IOException exception = assertThrows(IOException.class,
+                    () -> invokeParseComponentResponse(json, "test-id",
+                            ComponentConfigReader.ComponentType.PROCESSOR));
+            assertTrue(exception.getMessage().contains("Invalid JSON structure"));
+        }
+
+        @Test
+        @DisplayName("Should handle response without revision field")
+        void shouldHandleNullRevision() throws Throwable {
+            String json = """
+                    {
+                        "component": {
+                            "type": "SomeProcessor",
+                            "config": {
+                                "properties": {"key": "value"}
+                            }
+                        }
+                    }
+                    """;
+
+            ComponentConfigReader.ComponentConfig config = invokeParseComponentResponse(
+                    json, "test-id", ComponentConfigReader.ComponentType.PROCESSOR);
+
+            assertNull(config.revision());
+            assertEquals(1, config.properties().size());
+            assertEquals("value", config.properties().get("key"));
+        }
+
+        @Test
+        @DisplayName("Should skip null property values")
+        void shouldSkipNullPropertyValues() throws Throwable {
+            String json = """
+                    {
+                        "component": {
+                            "type": "SomeProcessor",
+                            "config": {
+                                "properties": {
+                                    "key1": "value1",
+                                    "key2": null,
+                                    "key3": "value3"
+                                }
+                            }
+                        }
+                    }
+                    """;
+
+            ComponentConfigReader.ComponentConfig config = invokeParseComponentResponse(
+                    json, "test-id", ComponentConfigReader.ComponentType.PROCESSOR);
+
+            assertEquals(2, config.properties().size());
+            assertEquals("value1", config.properties().get("key1"));
+            assertEquals("value3", config.properties().get("key3"));
+            assertFalse(config.properties().containsKey("key2"));
+        }
+    }
 }

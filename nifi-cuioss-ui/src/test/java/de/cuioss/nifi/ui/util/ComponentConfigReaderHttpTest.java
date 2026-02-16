@@ -76,6 +76,32 @@ class ComponentConfigReaderHttpTest {
 
     private static final String NIFI_API_PATH = "/nifi-api/processors/";
 
+    private static final String VALID_PROCESSOR_COMPONENT_RESPONSE = """
+            {
+                "revision": {"version": 1},
+                "component": {
+                    "type": "de.cuioss.nifi.rest.RestApiGatewayProcessor",
+                    "config": {
+                        "properties": {
+                            "rest.gateway.listening.port": "9443"
+                        }
+                    }
+                }
+            }
+            """;
+
+    private static final String VALID_CS_COMPONENT_RESPONSE = """
+            {
+                "revision": {"version": 2},
+                "component": {
+                    "type": "de.cuioss.nifi.jwt.StandardJwtIssuerConfigService",
+                    "properties": {
+                        "jwt.issuer.url": "https://keycloak.example.com/realms/test"
+                    }
+                }
+            }
+            """;
+
     private ComponentConfigReader reader;
 
     @BeforeEach
@@ -386,6 +412,179 @@ class ComponentConfigReaderHttpTest {
             // Assert
             assertNotNull(properties, "Properties should not be null");
             assertTrue(properties.isEmpty(), "Properties should be empty for empty object");
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // getComponentConfig — auto-detection tests
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("getComponentConfig — processor found on first try")
+    @ModuleDispatcher
+    class GetComponentConfigProcessorFound {
+
+        public ModuleDispatcherElement getModuleDispatcher() {
+            return new ModuleDispatcherElement() {
+                @Override
+                public String getBaseUrl() {
+                    return "/nifi-api/";
+                }
+
+                @Override
+                public Optional<mockwebserver3.MockResponse> handleGet(RecordedRequest request) {
+                    String target = request.getTarget();
+                    if (target != null && target.contains("/processors/")) {
+                        return Optional.of(new mockwebserver3.MockResponse.Builder()
+                                .code(200)
+                                .addHeader("Content-Type", "application/json")
+                                .body(VALID_PROCESSOR_COMPONENT_RESPONSE)
+                                .build());
+                    }
+                    return Optional.of(new mockwebserver3.MockResponse.Builder()
+                            .code(404)
+                            .body("Not found")
+                            .build());
+                }
+
+                @Override
+                public Set<HttpMethodMapper> supportedMethods() {
+                    return Set.of(HttpMethodMapper.GET);
+                }
+            };
+        }
+
+        @Test
+        @DisplayName("Should return PROCESSOR type config when processor API returns 200")
+        void shouldFindProcessorOnFirstTry() throws Exception {
+            ComponentConfigReader.ComponentConfig config = reader.getComponentConfig(PROCESSOR_ID);
+
+            assertEquals(ComponentConfigReader.ComponentType.PROCESSOR, config.type());
+            assertEquals("de.cuioss.nifi.rest.RestApiGatewayProcessor", config.componentClass());
+            assertEquals("9443", config.properties().get("rest.gateway.listening.port"));
+            assertNotNull(config.revision());
+        }
+    }
+
+    @Nested
+    @DisplayName("getComponentConfig — fallback to controller service")
+    @ModuleDispatcher
+    class GetComponentConfigFallbackToCS {
+
+        public ModuleDispatcherElement getModuleDispatcher() {
+            return new ModuleDispatcherElement() {
+                @Override
+                public String getBaseUrl() {
+                    return "/nifi-api/";
+                }
+
+                @Override
+                public Optional<mockwebserver3.MockResponse> handleGet(RecordedRequest request) {
+                    String target = request.getTarget();
+                    if (target != null && target.contains("/controller-services/")) {
+                        return Optional.of(new mockwebserver3.MockResponse.Builder()
+                                .code(200)
+                                .addHeader("Content-Type", "application/json")
+                                .body(VALID_CS_COMPONENT_RESPONSE)
+                                .build());
+                    }
+                    // Processor API returns 404
+                    return Optional.of(new mockwebserver3.MockResponse.Builder()
+                            .code(404)
+                            .body("Not found")
+                            .build());
+                }
+
+                @Override
+                public Set<HttpMethodMapper> supportedMethods() {
+                    return Set.of(HttpMethodMapper.GET);
+                }
+            };
+        }
+
+        @Test
+        @DisplayName("Should fallback to CS when processor returns 404")
+        void shouldFallbackToControllerService() throws Exception {
+            ComponentConfigReader.ComponentConfig config = reader.getComponentConfig(PROCESSOR_ID);
+
+            assertEquals(ComponentConfigReader.ComponentType.CONTROLLER_SERVICE, config.type());
+            assertEquals("de.cuioss.nifi.jwt.StandardJwtIssuerConfigService",
+                    config.componentClass());
+            assertEquals("https://keycloak.example.com/realms/test",
+                    config.properties().get("jwt.issuer.url"));
+        }
+    }
+
+    @Nested
+    @DisplayName("getComponentConfig — both not found")
+    @ModuleDispatcher
+    class GetComponentConfigBothNotFound {
+
+        public ModuleDispatcherElement getModuleDispatcher() {
+            return new ModuleDispatcherElement() {
+                @Override
+                public String getBaseUrl() {
+                    return "/nifi-api/";
+                }
+
+                @Override
+                public Optional<mockwebserver3.MockResponse> handleGet(RecordedRequest request) {
+                    return Optional.of(new mockwebserver3.MockResponse.Builder()
+                            .code(404)
+                            .body("Not found")
+                            .build());
+                }
+
+                @Override
+                public Set<HttpMethodMapper> supportedMethods() {
+                    return Set.of(HttpMethodMapper.GET);
+                }
+            };
+        }
+
+        @Test
+        @DisplayName("Should throw IllegalArgumentException when both APIs return 404")
+        void shouldThrowWhenBothNotFound() {
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                    () -> reader.getComponentConfig(PROCESSOR_ID));
+            assertTrue(ex.getMessage().contains("Component not found"));
+            assertTrue(ex.getMessage().contains("tried both"));
+        }
+    }
+
+    @Nested
+    @DisplayName("getComponentConfig — server error")
+    @ModuleDispatcher
+    class GetComponentConfigServerError {
+
+        public ModuleDispatcherElement getModuleDispatcher() {
+            return new ModuleDispatcherElement() {
+                @Override
+                public String getBaseUrl() {
+                    return "/nifi-api/";
+                }
+
+                @Override
+                public Optional<mockwebserver3.MockResponse> handleGet(RecordedRequest request) {
+                    return Optional.of(new mockwebserver3.MockResponse.Builder()
+                            .code(500)
+                            .body("Internal Server Error")
+                            .build());
+                }
+
+                @Override
+                public Set<HttpMethodMapper> supportedMethods() {
+                    return Set.of(HttpMethodMapper.GET);
+                }
+            };
+        }
+
+        @Test
+        @DisplayName("Should throw IOException when server returns 500")
+        void shouldThrowIOExceptionForServerError() {
+            IOException ex = assertThrows(IOException.class,
+                    () -> reader.getComponentConfig(PROCESSOR_ID));
+            assertTrue(ex.getMessage().contains("HTTP 500"));
         }
     }
 }
