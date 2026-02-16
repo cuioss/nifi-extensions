@@ -68,25 +68,25 @@ public class GatewayProxyServlet extends HttpServlet {
     private final Map<String, Integer> portCache = new ConcurrentHashMap<>();
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        String pathInfo = req.getPathInfo();
-
-        if (pathInfo == null || !ALLOWED_MANAGEMENT_PATHS.contains(pathInfo)) {
-            LOGGER.warn(UILogMessages.WARN.GATEWAY_PROXY_PATH_REJECTED,
-                    pathInfo != null ? pathInfo : "null");
-            sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
-                    "Invalid management path");
-            return;
-        }
-
-        String processorId = req.getHeader(PROCESSOR_ID_HEADER);
-        if (processorId == null || processorId.isBlank()) {
-            sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
-                    "Missing processor ID");
-            return;
-        }
-
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
         try {
+            String pathInfo = req.getPathInfo();
+
+            if (pathInfo == null || !ALLOWED_MANAGEMENT_PATHS.contains(pathInfo)) {
+                LOGGER.warn(UILogMessages.WARN.GATEWAY_PROXY_PATH_REJECTED,
+                        pathInfo != null ? pathInfo : "null");
+                sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
+                        "Invalid management path");
+                return;
+            }
+
+            String processorId = req.getHeader(PROCESSOR_ID_HEADER);
+            if (processorId == null || processorId.isBlank()) {
+                sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
+                        "Missing processor ID");
+                return;
+            }
+
             int port = resolveGatewayPort(processorId);
             String gatewayUrl = "http://localhost:" + port + pathInfo;
             String gatewayResponse = executeGatewayGet(gatewayUrl, "application/json");
@@ -99,32 +99,32 @@ public class GatewayProxyServlet extends HttpServlet {
         } catch (IllegalArgumentException e) {
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
         } catch (Exception e) {
-            LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, processorId);
+            LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, "unknown");
             sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
                     "Gateway unavailable");
         }
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        String pathInfo = req.getPathInfo();
-
-        if (!"/test".equals(pathInfo)) {
-            LOGGER.warn(UILogMessages.WARN.GATEWAY_PROXY_PATH_REJECTED,
-                    pathInfo != null ? pathInfo : "null");
-            sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
-                    "Invalid path for POST");
-            return;
-        }
-
-        String processorId = req.getHeader(PROCESSOR_ID_HEADER);
-        if (processorId == null || processorId.isBlank()) {
-            sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
-                    "Missing processor ID");
-            return;
-        }
-
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
         try {
+            String pathInfo = req.getPathInfo();
+
+            if (!"/test".equals(pathInfo)) {
+                LOGGER.warn(UILogMessages.WARN.GATEWAY_PROXY_PATH_REJECTED,
+                        pathInfo != null ? pathInfo : "null");
+                sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
+                        "Invalid path for POST");
+                return;
+            }
+
+            String processorId = req.getHeader(PROCESSOR_ID_HEADER);
+            if (processorId == null || processorId.isBlank()) {
+                sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
+                        "Missing processor ID");
+                return;
+            }
+
             JsonObject testRequest;
             try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
                 testRequest = reader.readObject();
@@ -189,7 +189,7 @@ public class GatewayProxyServlet extends HttpServlet {
         } catch (IllegalArgumentException e) {
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
         } catch (Exception e) {
-            LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, processorId);
+            LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, "unknown");
             sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
                     "Gateway unavailable");
         }
