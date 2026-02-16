@@ -145,8 +145,8 @@ public class ComponentConfigReader {
         return parseComponentResponse(response.body(), componentId, type);
     }
 
-    private ComponentConfig parseComponentResponse(String responseBody, String componentId,
-                                                   ComponentType type) throws IOException {
+    ComponentConfig parseComponentResponse(String responseBody, String componentId,
+                                           ComponentType type) throws IOException {
         try (JsonReader reader = JSON_READER_FACTORY.createReader(new StringReader(responseBody))) {
             JsonObject root = reader.readObject();
 
@@ -201,7 +201,7 @@ public class ComponentConfigReader {
     // Internal — backward-compatible processor parsing
     // -----------------------------------------------------------------------
 
-    private Map<String, String> parseProcessorResponse(String responseBody, String processorId)
+    Map<String, String> parseProcessorResponse(String responseBody, String processorId)
             throws IOException {
         try (JsonReader reader = JSON_READER_FACTORY.createReader(new StringReader(responseBody))) {
             JsonObject root = reader.readObject();

@@ -28,15 +28,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit tests for {@link ComponentConfigReader}.
- *
- * Note: This class creates HttpHandler internally without dependency injection,
- * which limits testability. Tests focus on input validation and behavior
- * that can be verified without mocking HTTP clients. Full HTTP communication
- * testing would require either:
- * 1. Refactoring to use dependency injection (out of scope for coverage improvement)
- * 2. Integration tests with actual NiFi instance (belongs in *IT.java tests)
- *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
+ * Parsing methods are tested directly (package-private access);
+ * HTTP communication is covered by {@link ComponentConfigReaderHttpTest}.
  */
 @DisplayName("Component Config Reader Tests")
 class ComponentConfigReaderTest {
@@ -278,194 +271,70 @@ class ComponentConfigReaderTest {
     }
 
     @Nested
-    @DisplayName("JSON Parsing Exception Tests")
-    class JsonParsingExceptionTests {
+    @DisplayName("parseProcessorResponse Tests")
+    class ParseProcessorResponseTests {
 
-        /**
-         * Tests that JsonException is properly handled when parsing malformed JSON.
-         * This uses reflection to test the parseProcessorResponse method directly.
-         */
         @Test
         @DisplayName("Should handle malformed JSON response gracefully")
-        void shouldHandleMalformedJsonResponse() throws Exception {
-            // Arrange
-            String malformedJson = "{ invalid json structure without proper closing";
-            String processorId = "test-processor-id";
+        void shouldHandleMalformedJsonResponse() {
+            IOException exception = assertThrows(IOException.class,
+                    () -> reader.parseProcessorResponse(
+                            "{ invalid json structure without proper closing",
+                            "test-processor-id"));
 
-            // Use reflection to access private method
-            java.lang.reflect.Method parseMethod = ComponentConfigReader.class
-                    .getDeclaredMethod("parseProcessorResponse", String.class, String.class);
-            parseMethod.setAccessible(true);
-
-            // Act & Assert
-            IOException exception = assertThrows(
-                    IOException.class,
-                    () -> {
-                        try {
-                            parseMethod.invoke(reader, malformedJson, processorId);
-                        } catch (java.lang.reflect.InvocationTargetException e) {
-                            throw e.getCause();
-                        }
-                    },
-                    "Should throw IOException for malformed JSON"
-            );
-
-            assertTrue(exception.getMessage().contains("Failed to parse processor response JSON"),
-                    "Exception message should indicate JSON parsing failure");
+            assertTrue(exception.getMessage().contains("Failed to parse processor response JSON"));
         }
 
-        /**
-         * Tests that ClassCastException is properly handled when JSON structure has wrong types.
-         * For example, when 'component' is an array instead of an object.
-         */
         @Test
         @DisplayName("Should handle JSON with wrong type structure")
-        void shouldHandleJsonWithWrongTypeStructure() throws Exception {
-            // Arrange - 'component' is an array instead of object
-            String invalidStructureJson = """
-                {
-                    "component": [
-                        "this should be an object, not an array"
-                    ]
-                }
-                """;
-            String processorId = "test-processor-id";
+        void shouldHandleJsonWithWrongTypeStructure() {
+            String json = """
+                    {"component": ["this should be an object, not an array"]}
+                    """;
 
-            // Use reflection to access private method
-            java.lang.reflect.Method parseMethod = ComponentConfigReader.class
-                    .getDeclaredMethod("parseProcessorResponse", String.class, String.class);
-            parseMethod.setAccessible(true);
+            IOException exception = assertThrows(IOException.class,
+                    () -> reader.parseProcessorResponse(json, "test-processor-id"));
 
-            // Act & Assert
-            IOException exception = assertThrows(
-                    IOException.class,
-                    () -> {
-                        try {
-                            parseMethod.invoke(reader, invalidStructureJson, processorId);
-                        } catch (java.lang.reflect.InvocationTargetException e) {
-                            throw e.getCause();
-                        }
-                    },
-                    "Should throw IOException for invalid JSON structure"
-            );
-
-            assertTrue(exception.getMessage().contains("Invalid JSON structure"),
-                    "Exception message should indicate invalid JSON structure");
+            assertTrue(exception.getMessage().contains("Invalid JSON structure"));
         }
 
-        /**
-         * Tests that missing 'component' field is handled properly.
-         */
         @Test
         @DisplayName("Should handle JSON response missing component field")
-        void shouldHandleJsonMissingComponentField() throws Exception {
-            // Arrange - valid JSON but missing required 'component' field
-            String jsonMissingComponent = """
-                {
-                    "id": "some-processor-id",
-                    "status": "Running"
-                }
-                """;
-            String processorId = "test-processor-id";
+        void shouldHandleJsonMissingComponentField() {
+            String json = """
+                    {"id": "some-processor-id", "status": "Running"}
+                    """;
 
-            // Use reflection to access private method
-            java.lang.reflect.Method parseMethod = ComponentConfigReader.class
-                    .getDeclaredMethod("parseProcessorResponse", String.class, String.class);
-            parseMethod.setAccessible(true);
+            IOException exception = assertThrows(IOException.class,
+                    () -> reader.parseProcessorResponse(json, "test-processor-id"));
 
-            // Act & Assert
-            IOException exception = assertThrows(
-                    IOException.class,
-                    () -> {
-                        try {
-                            parseMethod.invoke(reader, jsonMissingComponent, processorId);
-                        } catch (java.lang.reflect.InvocationTargetException e) {
-                            throw e.getCause();
-                        }
-                    },
-                    "Should throw IOException for missing component field"
-            );
-
-            assertTrue(exception.getMessage().contains("missing 'component' field"),
-                    "Exception message should indicate missing component field");
+            assertTrue(exception.getMessage().contains("missing 'component' field"));
         }
 
-        /**
-         * Tests that missing 'config' field is handled properly.
-         */
         @Test
         @DisplayName("Should handle JSON response missing config field")
-        void shouldHandleJsonMissingConfigField() throws Exception {
-            // Arrange - has component but missing 'config'
-            String jsonMissingConfig = """
-                {
-                    "component": {
-                        "id": "some-processor-id"
-                    }
-                }
-                """;
-            String processorId = "test-processor-id";
+        void shouldHandleJsonMissingConfigField() {
+            String json = """
+                    {"component": {"id": "some-processor-id"}}
+                    """;
 
-            // Use reflection to access private method
-            java.lang.reflect.Method parseMethod = ComponentConfigReader.class
-                    .getDeclaredMethod("parseProcessorResponse", String.class, String.class);
-            parseMethod.setAccessible(true);
+            IOException exception = assertThrows(IOException.class,
+                    () -> reader.parseProcessorResponse(json, "test-processor-id"));
 
-            // Act & Assert
-            IOException exception = assertThrows(
-                    IOException.class,
-                    () -> {
-                        try {
-                            parseMethod.invoke(reader, jsonMissingConfig, processorId);
-                        } catch (java.lang.reflect.InvocationTargetException e) {
-                            throw e.getCause();
-                        }
-                    },
-                    "Should throw IOException for missing config field"
-            );
-
-            assertTrue(exception.getMessage().contains("missing 'config' field"),
-                    "Exception message should indicate missing config field");
+            assertTrue(exception.getMessage().contains("missing 'config' field"));
         }
 
-        /**
-         * Tests that missing 'properties' field is handled properly.
-         */
         @Test
         @DisplayName("Should handle JSON response missing properties field")
-        void shouldHandleJsonMissingPropertiesField() throws Exception {
-            // Arrange - has component and config but missing 'properties'
-            String jsonMissingProperties = """
-                {
-                    "component": {
-                        "config": {
-                            "schedulingStrategy": "TIMER_DRIVEN"
-                        }
-                    }
-                }
-                """;
-            String processorId = "test-processor-id";
+        void shouldHandleJsonMissingPropertiesField() {
+            String json = """
+                    {"component": {"config": {"schedulingStrategy": "TIMER_DRIVEN"}}}
+                    """;
 
-            // Use reflection to access private method
-            java.lang.reflect.Method parseMethod = ComponentConfigReader.class
-                    .getDeclaredMethod("parseProcessorResponse", String.class, String.class);
-            parseMethod.setAccessible(true);
+            IOException exception = assertThrows(IOException.class,
+                    () -> reader.parseProcessorResponse(json, "test-processor-id"));
 
-            // Act & Assert
-            IOException exception = assertThrows(
-                    IOException.class,
-                    () -> {
-                        try {
-                            parseMethod.invoke(reader, jsonMissingProperties, processorId);
-                        } catch (java.lang.reflect.InvocationTargetException e) {
-                            throw e.getCause();
-                        }
-                    },
-                    "Should throw IOException for missing properties field"
-            );
-
-            assertTrue(exception.getMessage().contains("missing 'properties' field"),
-                    "Exception message should indicate missing properties field");
+            assertTrue(exception.getMessage().contains("missing 'properties' field"));
         }
     }
 
@@ -473,23 +342,9 @@ class ComponentConfigReaderTest {
     @DisplayName("parseComponentResponse Tests")
     class ParseComponentResponseTests {
 
-        private ComponentConfigReader.ComponentConfig invokeParseComponentResponse(
-                String json, String componentId, ComponentConfigReader.ComponentType type) throws Throwable {
-            java.lang.reflect.Method parseMethod = ComponentConfigReader.class
-                    .getDeclaredMethod("parseComponentResponse",
-                            String.class, String.class, ComponentConfigReader.ComponentType.class);
-            parseMethod.setAccessible(true);
-            try {
-                return (ComponentConfigReader.ComponentConfig)
-                        parseMethod.invoke(reader, json, componentId, type);
-            } catch (java.lang.reflect.InvocationTargetException e) {
-                throw e.getCause();
-            }
-        }
-
         @Test
         @DisplayName("Should parse valid processor response with config.properties path")
-        void shouldParseValidProcessorResponse() throws Throwable {
+        void shouldParseValidProcessorResponse() throws IOException {
             String json = """
                     {
                         "revision": {"version": 1},
@@ -505,7 +360,7 @@ class ComponentConfigReaderTest {
                     }
                     """;
 
-            ComponentConfigReader.ComponentConfig config = invokeParseComponentResponse(
+            ComponentConfigReader.ComponentConfig config = reader.parseComponentResponse(
                     json, "test-id", ComponentConfigReader.ComponentType.PROCESSOR);
 
             assertEquals(ComponentConfigReader.ComponentType.PROCESSOR, config.type());
@@ -518,7 +373,7 @@ class ComponentConfigReaderTest {
 
         @Test
         @DisplayName("Should parse valid controller service response with component.properties path")
-        void shouldParseValidControllerServiceResponse() throws Throwable {
+        void shouldParseValidControllerServiceResponse() throws IOException {
             String json = """
                     {
                         "revision": {"version": 2},
@@ -532,7 +387,7 @@ class ComponentConfigReaderTest {
                     }
                     """;
 
-            ComponentConfigReader.ComponentConfig config = invokeParseComponentResponse(
+            ComponentConfigReader.ComponentConfig config = reader.parseComponentResponse(
                     json, "test-id", ComponentConfigReader.ComponentType.CONTROLLER_SERVICE);
 
             assertEquals(ComponentConfigReader.ComponentType.CONTROLLER_SERVICE, config.type());
@@ -551,7 +406,7 @@ class ComponentConfigReaderTest {
                     """;
 
             IOException exception = assertThrows(IOException.class,
-                    () -> invokeParseComponentResponse(json, "test-id",
+                    () -> reader.parseComponentResponse(json, "test-id",
                             ComponentConfigReader.ComponentType.PROCESSOR));
             assertTrue(exception.getMessage().contains("missing 'component' field"));
         }
@@ -564,7 +419,7 @@ class ComponentConfigReaderTest {
                     """;
 
             IOException exception = assertThrows(IOException.class,
-                    () -> invokeParseComponentResponse(json, "test-id",
+                    () -> reader.parseComponentResponse(json, "test-id",
                             ComponentConfigReader.ComponentType.PROCESSOR));
             assertTrue(exception.getMessage().contains("missing 'config' field"));
         }
@@ -577,7 +432,7 @@ class ComponentConfigReaderTest {
                     """;
 
             IOException exception = assertThrows(IOException.class,
-                    () -> invokeParseComponentResponse(json, "test-id",
+                    () -> reader.parseComponentResponse(json, "test-id",
                             ComponentConfigReader.ComponentType.PROCESSOR));
             assertTrue(exception.getMessage().contains("missing 'properties' field"));
         }
@@ -590,7 +445,7 @@ class ComponentConfigReaderTest {
                     """;
 
             IOException exception = assertThrows(IOException.class,
-                    () -> invokeParseComponentResponse(json, "test-id",
+                    () -> reader.parseComponentResponse(json, "test-id",
                             ComponentConfigReader.ComponentType.CONTROLLER_SERVICE));
             assertTrue(exception.getMessage().contains("missing 'properties' field"));
         }
@@ -601,7 +456,7 @@ class ComponentConfigReaderTest {
             String json = "{ invalid json }";
 
             IOException exception = assertThrows(IOException.class,
-                    () -> invokeParseComponentResponse(json, "test-id",
+                    () -> reader.parseComponentResponse(json, "test-id",
                             ComponentConfigReader.ComponentType.PROCESSOR));
             assertTrue(exception.getMessage().contains("Failed to parse component response JSON"));
         }
@@ -614,14 +469,14 @@ class ComponentConfigReaderTest {
                     """;
 
             IOException exception = assertThrows(IOException.class,
-                    () -> invokeParseComponentResponse(json, "test-id",
+                    () -> reader.parseComponentResponse(json, "test-id",
                             ComponentConfigReader.ComponentType.PROCESSOR));
             assertTrue(exception.getMessage().contains("Invalid JSON structure"));
         }
 
         @Test
         @DisplayName("Should handle response without revision field")
-        void shouldHandleNullRevision() throws Throwable {
+        void shouldHandleNullRevision() throws IOException {
             String json = """
                     {
                         "component": {
@@ -633,7 +488,7 @@ class ComponentConfigReaderTest {
                     }
                     """;
 
-            ComponentConfigReader.ComponentConfig config = invokeParseComponentResponse(
+            ComponentConfigReader.ComponentConfig config = reader.parseComponentResponse(
                     json, "test-id", ComponentConfigReader.ComponentType.PROCESSOR);
 
             assertNull(config.revision());
@@ -643,7 +498,7 @@ class ComponentConfigReaderTest {
 
         @Test
         @DisplayName("Should skip null property values")
-        void shouldSkipNullPropertyValues() throws Throwable {
+        void shouldSkipNullPropertyValues() throws IOException {
             String json = """
                     {
                         "component": {
@@ -659,7 +514,7 @@ class ComponentConfigReaderTest {
                     }
                     """;
 
-            ComponentConfigReader.ComponentConfig config = invokeParseComponentResponse(
+            ComponentConfigReader.ComponentConfig config = reader.parseComponentResponse(
                     json, "test-id", ComponentConfigReader.ComponentType.PROCESSOR);
 
             assertEquals(2, config.properties().size());
