@@ -16,7 +16,7 @@
  */
 package de.cuioss.nifi.ui.service;
 
-import de.cuioss.nifi.ui.util.ProcessorConfigReader;
+import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
@@ -41,7 +41,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * Tests cover:
  * - TokenValidationResult data class functionality
- * - verifyToken method via dependency injection of ProcessorConfigReader
+ * - verifyToken method via dependency injection of ComponentConfigReader
  * - Error handling and edge cases
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
@@ -345,12 +345,12 @@ class JwtValidationServiceTest {
     @DisplayName("verifyToken Tests")
     class VerifyTokenTests {
 
-        private ProcessorConfigReader mockConfigReader;
+        private ComponentConfigReader mockConfigReader;
         private JwtValidationService serviceWithMock;
 
         @BeforeEach
         void setUp() {
-            mockConfigReader = createMock(ProcessorConfigReader.class);
+            mockConfigReader = createMock(ComponentConfigReader.class);
             serviceWithMock = new JwtValidationService(mockConfigReader);
         }
 

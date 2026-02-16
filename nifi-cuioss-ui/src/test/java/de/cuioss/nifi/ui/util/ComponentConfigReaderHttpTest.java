@@ -34,15 +34,15 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * HTTP integration tests for {@link ProcessorConfigReader} using MockWebServer.
+ * HTTP integration tests for {@link ComponentConfigReader} using MockWebServer.
  * These tests exercise the full HTTP communication path by pointing the reader's
  * System property-based URL building at a local MockWebServer instance.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
  */
 @EnableMockWebServer
-@DisplayName("ProcessorConfigReader HTTP Tests")
-class ProcessorConfigReaderHttpTest {
+@DisplayName("ComponentConfigReader HTTP Tests")
+class ComponentConfigReaderHttpTest {
 
     private static final String PROCESSOR_ID = UUID.randomUUID().toString();
 
@@ -76,11 +76,11 @@ class ProcessorConfigReaderHttpTest {
 
     private static final String NIFI_API_PATH = "/nifi-api/processors/";
 
-    private ProcessorConfigReader reader;
+    private ComponentConfigReader reader;
 
     @BeforeEach
     void setUp(MockWebServer server) {
-        reader = new ProcessorConfigReader();
+        reader = new ComponentConfigReader();
         // Clear HTTPS properties to force HTTP path
         System.clearProperty("nifi.web.https.host");
         System.clearProperty("nifi.web.https.port");

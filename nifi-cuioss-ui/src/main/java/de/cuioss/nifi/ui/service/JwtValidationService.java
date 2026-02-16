@@ -19,7 +19,7 @@ package de.cuioss.nifi.ui.service;
 import de.cuioss.nifi.jwt.config.ConfigurationManager;
 import de.cuioss.nifi.jwt.config.IssuerConfigurationParser;
 import de.cuioss.nifi.ui.UILogMessages;
-import de.cuioss.nifi.ui.util.ProcessorConfigReader;
+import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
 import de.cuioss.sheriff.oauth.core.TokenValidator;
@@ -47,14 +47,14 @@ public class JwtValidationService {
     private static final String CLAIM_ROLES = "roles";
     private static final String CLAIM_SCOPES = "scopes";
 
-    private final ProcessorConfigReader configReader;
+    private final ComponentConfigReader configReader;
 
     public JwtValidationService() {
-        this.configReader = new ProcessorConfigReader();
+        this.configReader = new ComponentConfigReader();
     }
 
     // For testing - allows injection of config reader
-    JwtValidationService(ProcessorConfigReader configReader) {
+    JwtValidationService(ComponentConfigReader configReader) {
         this.configReader = configReader;
     }
 

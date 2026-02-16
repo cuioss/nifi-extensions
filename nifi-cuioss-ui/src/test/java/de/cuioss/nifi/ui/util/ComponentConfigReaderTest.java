@@ -27,7 +27,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit tests for {@link ProcessorConfigReader}.
+ * Unit tests for {@link ComponentConfigReader}.
  *
  * Note: This class creates HttpHandler internally without dependency injection,
  * which limits testability. Tests focus on input validation and behavior
@@ -38,14 +38,14 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
  */
-@DisplayName("Processor Config Reader Tests")
-class ProcessorConfigReaderTest {
+@DisplayName("Component Config Reader Tests")
+class ComponentConfigReaderTest {
 
-    private ProcessorConfigReader reader;
+    private ComponentConfigReader reader;
 
     @BeforeEach
     void setUp() {
-        reader = new ProcessorConfigReader();
+        reader = new ComponentConfigReader();
     }
 
     @Nested
@@ -206,7 +206,7 @@ class ProcessorConfigReaderTest {
         @DisplayName("Should create reader instance successfully")
         void shouldCreateReaderInstanceSuccessfully() {
             // Arrange & Act
-            ProcessorConfigReader newReader = new ProcessorConfigReader();
+            ComponentConfigReader newReader = new ComponentConfigReader();
 
             // Assert
             assertNotNull(newReader, "Reader instance should be created successfully");
@@ -293,7 +293,7 @@ class ProcessorConfigReaderTest {
             String processorId = "test-processor-id";
 
             // Use reflection to access private method
-            java.lang.reflect.Method parseMethod = ProcessorConfigReader.class
+            java.lang.reflect.Method parseMethod = ComponentConfigReader.class
                     .getDeclaredMethod("parseProcessorResponse", String.class, String.class);
             parseMethod.setAccessible(true);
 
@@ -332,7 +332,7 @@ class ProcessorConfigReaderTest {
             String processorId = "test-processor-id";
 
             // Use reflection to access private method
-            java.lang.reflect.Method parseMethod = ProcessorConfigReader.class
+            java.lang.reflect.Method parseMethod = ComponentConfigReader.class
                     .getDeclaredMethod("parseProcessorResponse", String.class, String.class);
             parseMethod.setAccessible(true);
 
@@ -369,7 +369,7 @@ class ProcessorConfigReaderTest {
             String processorId = "test-processor-id";
 
             // Use reflection to access private method
-            java.lang.reflect.Method parseMethod = ProcessorConfigReader.class
+            java.lang.reflect.Method parseMethod = ComponentConfigReader.class
                     .getDeclaredMethod("parseProcessorResponse", String.class, String.class);
             parseMethod.setAccessible(true);
 
@@ -407,7 +407,7 @@ class ProcessorConfigReaderTest {
             String processorId = "test-processor-id";
 
             // Use reflection to access private method
-            java.lang.reflect.Method parseMethod = ProcessorConfigReader.class
+            java.lang.reflect.Method parseMethod = ComponentConfigReader.class
                     .getDeclaredMethod("parseProcessorResponse", String.class, String.class);
             parseMethod.setAccessible(true);
 
@@ -447,7 +447,7 @@ class ProcessorConfigReaderTest {
             String processorId = "test-processor-id";
 
             // Use reflection to access private method
-            java.lang.reflect.Method parseMethod = ProcessorConfigReader.class
+            java.lang.reflect.Method parseMethod = ComponentConfigReader.class
                     .getDeclaredMethod("parseProcessorResponse", String.class, String.class);
             parseMethod.setAccessible(true);
 
