@@ -39,9 +39,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for {@link MetricsServlet}.
- * <p>
- * The servlet currently returns empty metrics until PR 3 wires it to
- * {@code JwtIssuerConfigService.getSecurityEventCounter()}.
  */
 @EnableGeneratorController
 @EnableTestLogger
