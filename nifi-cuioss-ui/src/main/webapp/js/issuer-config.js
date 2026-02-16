@@ -12,6 +12,9 @@ import {
     validateIssuerConfig, validateProcessorIdFromUrl, log
 } from './utils.js';
 
+// Note: validateProcessorIdFromUrl is kept for backward compatibility —
+// NiFi passes the component ID via ?id= regardless of component type.
+
 // Counter for unique form field IDs
 let formCounter = 0;
 
@@ -36,7 +39,7 @@ const SAMPLE = {
 export const init = async (element) => {
     if (!element || element.querySelector('.issuer-config-editor')) return;
 
-    const processorId = getProcessorIdFromUrl(globalThis.location.href);
+    const componentId = getComponentIdFromUrl(globalThis.location.href);
     const container = document.createElement('div');
     container.className = 'issuer-config-editor';
     element.appendChild(container);
@@ -57,12 +60,12 @@ export const init = async (element) => {
     addBtn.textContent = 'Add Issuer';
     addBtn.addEventListener('click', () => {
         addIssuerForm(issuersContainer, `${SAMPLE.name}-${Date.now()}`,
-            SAMPLE.props, processorId);
+            SAMPLE.props, componentId);
     });
     container.appendChild(addBtn);
 
     // Load existing issuers
-    await loadExistingIssuers(issuersContainer, processorId);
+    await loadExistingIssuers(issuersContainer, componentId);
 };
 
 export const cleanup = () => { /* no persistent resources */ };
@@ -71,7 +74,7 @@ export const cleanup = () => { /* no persistent resources */ };
 // Helpers
 // ---------------------------------------------------------------------------
 
-const getProcessorIdFromUrl = (url) => {
+const getComponentIdFromUrl = (url) => {
     const r = validateProcessorIdFromUrl(url);
     return r.isValid ? r.sanitizedValue : '';
 };
@@ -90,20 +93,20 @@ const parseIssuerProperties = (properties) => {
     return out;
 };
 
-const loadExistingIssuers = async (container, processorId) => {
-    if (!processorId) {
-        addIssuerForm(container, SAMPLE.name, SAMPLE.props, processorId);
+const loadExistingIssuers = async (container, componentId) => {
+    if (!componentId) {
+        addIssuerForm(container, SAMPLE.name, SAMPLE.props, componentId);
         return;
     }
     try {
-        const res = await api.getProcessorProperties(processorId);
+        const res = await api.getComponentProperties(componentId);
         const props = res.properties || {};
         const issuers = parseIssuerProperties(props);
         for (const name of Object.keys(issuers)) {
-            addIssuerForm(container, name, issuers[name], processorId);
+            addIssuerForm(container, name, issuers[name], componentId);
         }
     } catch {
-        addIssuerForm(container, SAMPLE.name, SAMPLE.props, processorId);
+        addIssuerForm(container, SAMPLE.name, SAMPLE.props, componentId);
     }
 };
 
@@ -111,7 +114,7 @@ const loadExistingIssuers = async (container, processorId) => {
 // Form creation
 // ---------------------------------------------------------------------------
 
-const addIssuerForm = (container, issuerName, properties, processorId) => {
+const addIssuerForm = (container, issuerName, properties, componentId) => {
     const idx = formCounter++;
     const form = document.createElement('div');
     form.className = 'issuer-form';
@@ -229,7 +232,7 @@ const addIssuerForm = (container, issuerName, properties, processorId) => {
     saveBtn.textContent = 'Save Issuer';
     saveBtn.addEventListener('click', () => {
         errorContainer.innerHTML = '';
-        saveIssuer(form, errorContainer, processorId);
+        saveIssuer(form, errorContainer, componentId);
     });
     form.appendChild(saveBtn);
 
@@ -348,14 +351,14 @@ const buildPropertyUpdates = (name, f) => {
     return u;
 };
 
-const saveIssuer = async (form, errEl, processorId) => {
+const saveIssuer = async (form, errEl, componentId) => {
     const f = extractFormFields(form);
     const v = validateFormData(f);
     if (!v.isValid) { displayUiError(errEl, v.error, {}, 'issuerConfigEditor.error.title'); return; }
     const updates = buildPropertyUpdates(f.issuerName, f);
-    if (processorId) {
+    if (componentId) {
         try {
-            await api.updateProcessorProperties(processorId, updates);
+            await api.updateComponentProperties(componentId, updates);
             displayUiSuccess(errEl, 'Issuer configuration saved successfully.');
         } catch (error) {
             displayUiError(errEl, error, {}, 'issuerConfigEditor.error.saveFailedTitle');
@@ -365,26 +368,26 @@ const saveIssuer = async (form, errEl, processorId) => {
     }
 };
 
-const clearIssuerProperties = async (processorId, issuerName) => {
-    const res = await api.getProcessorProperties(processorId);
+const clearIssuerProperties = async (componentId, issuerName) => {
+    const res = await api.getComponentProperties(componentId);
     const props = res.properties || {};
     const updates = {};
     for (const key of Object.keys(props)) {
         if (key.startsWith(`issuer.${issuerName}.`)) updates[key] = null;
     }
     if (Object.keys(updates).length > 0) {
-        await api.updateProcessorProperties(processorId, updates);
+        await api.updateComponentProperties(componentId, updates);
     }
 };
 
 const removeIssuer = async (form, issuerName) => {
     form.remove();
-    const processorId = getProcessorIdFromUrl(globalThis.location.href);
+    const componentId = getComponentIdFromUrl(globalThis.location.href);
     const globalErr = document.querySelector('.global-error-messages');
 
-    if (issuerName && processorId) {
+    if (issuerName && componentId) {
         try {
-            await clearIssuerProperties(processorId, issuerName);
+            await clearIssuerProperties(componentId, issuerName);
             if (globalErr) {
                 displayUiSuccess(globalErr, `Issuer "${issuerName}" removed successfully.`);
                 globalErr.classList.remove('hidden');

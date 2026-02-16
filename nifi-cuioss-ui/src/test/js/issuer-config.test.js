@@ -74,7 +74,7 @@ describe('issuer-config', () => {
 
     it('should load existing issuers when processor ID is present', async () => {
         globalThis.location = { href: 'http://localhost:8080/nifi-cuioss-ui/?id=test-processor-123' };
-        api.getProcessorProperties.mockResolvedValue({
+        api.getComponentProperties.mockResolvedValue({
             properties: {
                 'issuer.keycloak.issuer': 'https://kc.example.com',
                 'issuer.keycloak.jwks-url': 'https://kc.example.com/jwks',
@@ -92,7 +92,7 @@ describe('issuer-config', () => {
 
     it('should fall back to sample issuer when API fails', async () => {
         globalThis.location = { href: 'http://localhost:8080/nifi-cuioss-ui/?id=test-processor-123' };
-        api.getProcessorProperties.mockRejectedValue(new Error('API error'));
+        api.getComponentProperties.mockRejectedValue(new Error('API error'));
 
         await init(container);
         await new Promise((r) => setTimeout(r, 10));
@@ -178,8 +178,8 @@ describe('issuer-config', () => {
 
     it('should save issuer via API when processor ID is present', async () => {
         globalThis.location = { href: 'http://localhost:8080/nifi-cuioss-ui/?id=test-processor-123' };
-        api.getProcessorProperties.mockResolvedValue({ properties: {} });
-        api.updateProcessorProperties.mockResolvedValue({});
+        api.getComponentProperties.mockResolvedValue({ properties: {} });
+        api.updateComponentProperties.mockResolvedValue({});
 
         await init(container);
         await new Promise((r) => setTimeout(r, 10));
@@ -195,7 +195,7 @@ describe('issuer-config', () => {
         form.querySelector('.save-issuer-button').click();
         await new Promise((r) => setTimeout(r, 10));
 
-        expect(api.updateProcessorProperties).toHaveBeenCalledWith(
+        expect(api.updateComponentProperties).toHaveBeenCalledWith(
             'test-processor-123',
             expect.objectContaining({
                 'issuer.my-issuer.jwks-type': 'url',
@@ -283,8 +283,8 @@ describe('issuer-config', () => {
 
     it('should show error when save via API fails', async () => {
         globalThis.location = { href: 'http://localhost:8080/nifi-cuioss-ui/?id=test-processor-123' };
-        api.getProcessorProperties.mockResolvedValue({ properties: {} });
-        api.updateProcessorProperties.mockRejectedValue(new Error('Save failed'));
+        api.getComponentProperties.mockResolvedValue({ properties: {} });
+        api.updateComponentProperties.mockRejectedValue(new Error('Save failed'));
 
         await init(container);
         await new Promise((r) => setTimeout(r, 10));
@@ -318,13 +318,13 @@ describe('issuer-config', () => {
 
     it('should remove issuer and clear API properties when processor ID is present', async () => {
         globalThis.location = { href: 'http://localhost:8080/nifi-cuioss-ui/?id=test-processor-123' };
-        api.getProcessorProperties.mockResolvedValue({
+        api.getComponentProperties.mockResolvedValue({
             properties: {
                 'issuer.keycloak.issuer': 'https://kc.example.com',
                 'issuer.keycloak.jwks-url': 'https://kc.example.com/jwks'
             }
         });
-        api.updateProcessorProperties.mockResolvedValue({});
+        api.updateComponentProperties.mockResolvedValue({});
 
         await init(container);
         await new Promise((r) => setTimeout(r, 10));
@@ -335,7 +335,7 @@ describe('issuer-config', () => {
         form.querySelector('.remove-issuer-button').click();
         await new Promise((r) => setTimeout(r, 10));
 
-        expect(api.updateProcessorProperties).toHaveBeenCalledWith(
+        expect(api.updateComponentProperties).toHaveBeenCalledWith(
             'test-processor-123',
             expect.objectContaining({
                 'issuer.keycloak.issuer': null,
