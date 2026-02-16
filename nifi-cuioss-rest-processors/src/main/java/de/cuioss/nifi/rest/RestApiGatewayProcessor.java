@@ -70,7 +70,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE,
             RestApiGatewayConstants.Properties.CORS_ALLOWED_ORIGINS);
 
-    private final JettyServerManager serverManager = new JettyServerManager();
+    final JettyServerManager serverManager = new JettyServerManager();
     /** Thread-safe queue — shared between Jetty handler threads and NiFi trigger threads. */
     private LinkedBlockingQueue<HttpRequestContainer> requestQueue;
     /** Thread-safe map — getRelationships() can be called from any NiFi framework thread. */

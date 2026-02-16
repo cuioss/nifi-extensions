@@ -312,7 +312,7 @@ class ComponentConfigReaderHttpTest {
                     () -> reader.getProcessorProperties(PROCESSOR_ID),
                     "Should throw IOException for malformed JSON"
             );
-            assertTrue(exception.getMessage().contains("Failed to parse processor response JSON"),
+            assertTrue(exception.getMessage().contains("Failed to parse component response JSON"),
                     "Exception message should indicate JSON parsing failure");
         }
 
