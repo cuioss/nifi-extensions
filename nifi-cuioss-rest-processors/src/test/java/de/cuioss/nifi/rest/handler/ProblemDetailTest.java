@@ -16,9 +16,13 @@
  */
 package de.cuioss.nifi.rest.handler;
 
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import java.io.StringReader;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -32,99 +36,104 @@ class ProblemDetailTest {
         @Test
         @DisplayName("Should serialize minimal problem detail")
         void shouldSerializeMinimalProblemDetail() {
-            // Act
             var problem = ProblemDetail.builder()
                     .title("Not Found")
                     .status(404)
                     .build();
-            String json = problem.toJson();
 
-            // Assert
-            assertTrue(json.contains("\"title\":\"Not Found\""));
-            assertTrue(json.contains("\"status\":404"));
+            JsonObject json = parseJson(problem.toJson());
+
+            assertEquals("Not Found", json.getString("title"));
+            assertEquals(404, json.getInt("status"));
+            assertFalse(json.containsKey("type"));
+            assertFalse(json.containsKey("detail"));
         }
 
         @Test
-        @DisplayName("Should serialize with detail field")
-        void shouldSerializeWithDetail() {
-            // Act
+        @DisplayName("Should serialize with all fields")
+        void shouldSerializeWithAllFields() {
             var problem = ProblemDetail.builder()
                     .type("about:blank")
                     .title("Unauthorized")
                     .status(401)
                     .detail("Token has expired")
                     .build();
-            String json = problem.toJson();
 
-            // Assert
-            assertTrue(json.contains("\"type\":\"about:blank\""));
-            assertTrue(json.contains("\"detail\":\"Token has expired\""));
+            JsonObject json = parseJson(problem.toJson());
+
+            assertEquals("about:blank", json.getString("type"));
+            assertEquals("Unauthorized", json.getString("title"));
+            assertEquals(401, json.getInt("status"));
+            assertEquals("Token has expired", json.getString("detail"));
         }
 
         @Test
         @DisplayName("Should serialize with extensions")
         void shouldSerializeWithExtensions() {
-            // Act
             var problem = ProblemDetail.builder()
                     .title("Forbidden")
                     .status(403)
                     .extension("required_roles", "admin,user")
                     .build();
-            String json = problem.toJson();
 
-            // Assert
-            assertTrue(json.contains("\"required_roles\":\"admin,user\""));
+            JsonObject json = parseJson(problem.toJson());
+
+            assertEquals("admin,user", json.getString("required_roles"));
         }
 
         @Test
-        @DisplayName("Should serialize numeric extension values without quotes")
+        @DisplayName("Should serialize numeric extension values as numbers")
         void shouldSerializeNumericExtensionValues() {
-            // Act
             var problem = ProblemDetail.builder()
                     .title("Payload Too Large")
                     .status(413)
                     .extension("max_bytes", 1048576)
                     .build();
-            String json = problem.toJson();
 
-            // Assert
-            assertTrue(json.contains("\"max_bytes\":1048576"));
-            assertFalse(json.contains("\"max_bytes\":\"1048576\""));
+            JsonObject json = parseJson(problem.toJson());
+
+            assertEquals(1048576, json.getInt("max_bytes"));
         }
 
         @Test
-        @DisplayName("Should escape special characters in JSON")
-        void shouldEscapeSpecialCharactersInJson() {
-            // Act
+        @DisplayName("Should handle special characters in detail")
+        void shouldHandleSpecialCharactersInDetail() {
             var problem = ProblemDetail.builder()
                     .title("Error")
                     .status(400)
                     .detail("Invalid \"token\" with\\backslash")
                     .build();
-            String json = problem.toJson();
 
-            // Assert
-            assertTrue(json.contains("\\\"token\\\""));
-            assertTrue(json.contains("with\\\\backslash"));
+            // Parse round-trips through Jakarta JSON — verifies escaping is correct
+            JsonObject json = parseJson(problem.toJson());
+
+            assertEquals("Invalid \"token\" with\\backslash", json.getString("detail"));
         }
 
         @Test
-        @DisplayName("Should escape all JSON control characters")
-        void shouldEscapeAllJsonControlCharacters() {
-            // Arrange — includes backspace, form feed, and other control chars
-            String input = "a\bb\fc\u0001d";
+        @DisplayName("Should handle control characters in detail")
+        void shouldHandleControlCharactersInDetail() {
+            var problem = ProblemDetail.builder()
+                    .title("Error")
+                    .status(400)
+                    .detail("line1\nline2\ttab")
+                    .build();
 
-            // Act
-            String escaped = ProblemDetail.escapeJson(input);
+            JsonObject json = parseJson(problem.toJson());
 
-            // Assert
-            assertEquals("a\\bb\\fc\\u0001d", escaped);
+            assertEquals("line1\nline2\ttab", json.getString("detail"));
         }
 
         @Test
         @DisplayName("Should produce valid RFC 9457 content type")
         void shouldProduceValidRfc9457ContentType() {
             assertEquals("application/problem+json", ProblemDetail.CONTENT_TYPE);
+        }
+
+        private static JsonObject parseJson(String json) {
+            try (var reader = Json.createReader(new StringReader(json))) {
+                return reader.readObject();
+            }
         }
     }
 

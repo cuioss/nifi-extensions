@@ -16,6 +16,8 @@
  */
 package de.cuioss.nifi.rest.handler;
 
+import jakarta.json.Json;
+import jakarta.json.JsonObjectBuilder;
 import lombok.Builder;
 import lombok.Singular;
 import org.jspecify.annotations.Nullable;
@@ -25,9 +27,8 @@ import java.util.Map;
 /**
  * RFC 9457 Problem Details response body builder.
  * <p>
- * Generates JSON responses for HTTP error conditions without requiring
- * Jackson or Gson dependencies. The JSON is produced manually to keep
- * the dependency footprint minimal.
+ * Generates JSON responses for HTTP error conditions using the
+ * Jakarta JSON Processing API ({@code jakarta.json}).
  *
  * @param type       a URI reference identifying the problem type
  * @param title      a short human-readable summary
@@ -53,63 +54,28 @@ public record ProblemDetail(
      * @return the JSON representation
      */
     public String toJson() {
-        var sb = new StringBuilder(256);
-        sb.append('{');
+        JsonObjectBuilder builder = Json.createObjectBuilder();
         if (type != null) {
-            appendField(sb, "type", type);
-            sb.append(',');
+            builder.add("type", type);
         }
-        appendField(sb, "title", title);
-        sb.append(',');
-        sb.append("\"status\":").append(status);
+        builder.add("title", title);
+        builder.add("status", status);
         if (detail != null) {
-            sb.append(',');
-            appendField(sb, "detail", detail);
+            builder.add("detail", detail);
         }
         if (extensions != null && !extensions.isEmpty()) {
             for (Map.Entry<String, Object> entry : extensions.entrySet()) {
-                sb.append(',');
                 Object value = entry.getValue();
-                if (value instanceof Number) {
-                    sb.append('"').append(escapeJson(entry.getKey())).append("\":").append(value);
-                } else {
-                    appendField(sb, entry.getKey(), String.valueOf(value));
+                switch (value) {
+                    case Number n when n instanceof Integer || n instanceof Long ->
+                        builder.add(entry.getKey(), n.longValue());
+                    case Number n -> builder.add(entry.getKey(), n.doubleValue());
+                    case Boolean b -> builder.add(entry.getKey(), b);
+                    default -> builder.add(entry.getKey(), String.valueOf(value));
                 }
             }
         }
-        sb.append('}');
-        return sb.toString();
-    }
-
-    private static void appendField(StringBuilder sb, String key, String value) {
-        sb.append('"').append(escapeJson(key)).append("\":\"").append(escapeJson(value)).append('"');
-    }
-
-    static String escapeJson(String value) {
-        if (value == null) {
-            return "";
-        }
-        var sb = new StringBuilder(value.length());
-        for (int i = 0; i < value.length(); i++) {
-            char c = value.charAt(i);
-            switch (c) {
-                case '"' -> sb.append("\\\"");
-                case '\\' -> sb.append("\\\\");
-                case '\b' -> sb.append("\\b");
-                case '\f' -> sb.append("\\f");
-                case '\n' -> sb.append("\\n");
-                case '\r' -> sb.append("\\r");
-                case '\t' -> sb.append("\\t");
-                default -> {
-                    if (c < ' ') {
-                        sb.append("\\u%04x".formatted((int) c));
-                    } else {
-                        sb.append(c);
-                    }
-                }
-            }
-        }
-        return sb.toString();
+        return builder.build().toString();
     }
 
     // --- Convenience factory methods ---
