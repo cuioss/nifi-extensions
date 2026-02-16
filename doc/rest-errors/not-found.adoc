@@ -1,0 +1,49 @@
+= 404 Not Found
+:sectnums:
+
+link:index.adoc[Back to Error Reference]
+
+== Summary
+
+[cols="1,3"]
+|===
+| Status | `404`
+| Title | Not Found
+| Produced by | `ProblemDetail.notFound()`
+|===
+
+== Description
+
+No route is configured for the requested URL path.
+The gateway matches incoming request paths against configured routes
+(`restapi.<name>.path` dynamic properties). If no route matches,
+the request is rejected with a 404 response.
+
+== Common Causes
+
+* The URL path does not match any configured route
+* A route was removed or renamed without updating API consumers
+* Typo in the request URL
+
+== Example Response
+
+[source,json]
+----
+{
+  "type": "https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/not-found.adoc",
+  "title": "Not Found",
+  "status": 404,
+  "detail": "No route configured for path: /api/unknown"
+}
+----
+
+== Resolution
+
+Verify the request URL matches one of the configured routes.
+Routes are defined via `restapi.<name>.path` dynamic properties
+on the RestApiGateway processor.
+
+== See Also
+
+* link:method-not-allowed.adoc[405 Method Not Allowed] -- When the route exists but the method is not permitted
+* link:index.adoc[Error Reference Index]

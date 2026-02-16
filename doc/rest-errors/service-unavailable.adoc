@@ -1,0 +1,54 @@
+= 503 Service Unavailable
+:sectnums:
+
+link:index.adoc[Back to Error Reference]
+
+== Summary
+
+[cols="1,3"]
+|===
+| Status | `503`
+| Title | Service Unavailable
+| Produced by | `ProblemDetail.serviceUnavailable()`
+|===
+
+== Description
+
+The server cannot accept new requests because its internal request queue is full.
+The gateway uses a bounded `LinkedBlockingQueue` to buffer authenticated requests
+between the embedded Jetty HTTP server and the NiFi `onTrigger()` processing loop.
+When this queue reaches capacity, new requests are rejected with a 503 response.
+
+== Common Causes
+
+* NiFi is not scheduling the processor frequently enough to drain the queue
+* A burst of incoming requests exceeds the processing capacity
+* Downstream NiFi flow is blocked, preventing the processor from being triggered
+
+== Example Response
+
+[source,json]
+----
+{
+  "type": "https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/service-unavailable.adoc",
+  "title": "Service Unavailable",
+  "status": 503,
+  "detail": "Server is at capacity, please retry later"
+}
+----
+
+== Configuration
+
+The queue capacity is configured via the `Request Queue Size` property
+on the RestApiGateway processor. The default is `50`.
+
+== Resolution
+
+* Increase the `Request Queue Size` property
+* Increase the processor's scheduling frequency
+* Ensure downstream NiFi flows are not blocked
+* Implement client-side retry with exponential backoff
+
+== See Also
+
+* link:index.adoc[Error Reference Index]

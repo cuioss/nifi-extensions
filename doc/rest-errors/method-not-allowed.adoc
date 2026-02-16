@@ -1,0 +1,47 @@
+= 405 Method Not Allowed
+:sectnums:
+
+link:index.adoc[Back to Error Reference]
+
+== Summary
+
+[cols="1,3"]
+|===
+| Status | `405`
+| Title | Method Not Allowed
+| Produced by | `ProblemDetail.methodNotAllowed()`
+|===
+
+== Description
+
+The request matched a configured route, but the HTTP method is not
+in the route's allowed methods list. Each route specifies which HTTP
+methods it accepts via the `restapi.<name>.methods` dynamic property.
+
+== Common Causes
+
+* Sending a POST request to a GET-only route
+* Sending a DELETE request to a route that only allows GET and POST
+* Missing `restapi.<name>.methods` configuration (defaults to GET, POST, PUT, DELETE)
+
+== Example Response
+
+[source,json]
+----
+{
+  "type": "https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/method-not-allowed.adoc",
+  "title": "Method Not Allowed",
+  "status": 405,
+  "detail": "Method POST is not allowed on route 'health'. Allowed methods: [GET]"
+}
+----
+
+== Resolution
+
+Use one of the HTTP methods allowed by the route configuration.
+Check the `detail` field for the list of allowed methods.
+
+== See Also
+
+* link:not-found.adoc[404 Not Found] -- When no route matches the path at all
+* link:index.adoc[Error Reference Index]

@@ -1,0 +1,47 @@
+= 500 Internal Server Error
+:sectnums:
+
+link:index.adoc[Back to Error Reference]
+
+== Summary
+
+[cols="1,3"]
+|===
+| Status | `500`
+| Title | Internal Server Error
+| Produced by | `ProblemDetail.internalError()`
+|===
+
+== Description
+
+An unexpected error occurred during request processing. This indicates
+a bug or an unhandled edge case in the gateway's request handler.
+The error is logged with full stack trace via `CuiLogger` for debugging.
+
+== Common Causes
+
+* Unexpected `NullPointerException` or `IllegalStateException` in the handler
+* I/O errors reading the request body
+* Jetty framework errors
+
+== Example Response
+
+[source,json]
+----
+{
+  "type": "https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/internal-error.adoc",
+  "title": "Internal Server Error",
+  "status": 500,
+  "detail": "An unexpected error occurred"
+}
+----
+
+== Resolution
+
+Check the NiFi application logs for the full error stack trace.
+The log entry will include the `REST-200:` prefix from `RestApiLogMessages`.
+Report the issue if it is reproducible.
+
+== See Also
+
+* link:index.adoc[Error Reference Index]

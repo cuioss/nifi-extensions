@@ -1,0 +1,50 @@
+= 413 Payload Too Large
+:sectnums:
+
+link:index.adoc[Back to Error Reference]
+
+== Summary
+
+[cols="1,3"]
+|===
+| Status | `413`
+| Title | Payload Too Large
+| Produced by | `ProblemDetail.payloadTooLarge()`
+|===
+
+== Description
+
+The request body exceeds the maximum allowed size configured on the processor.
+The gateway enforces a configurable body size limit to prevent memory exhaustion
+from oversized payloads.
+
+== Common Causes
+
+* Uploading a file or payload larger than the configured limit
+* Sending a large JSON document that exceeds the threshold
+
+== Example Response
+
+[source,json]
+----
+{
+  "type": "https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/payload-too-large.adoc",
+  "title": "Payload Too Large",
+  "status": 413,
+  "detail": "Request body of 2097152 bytes exceeds maximum allowed size of 1048576 bytes"
+}
+----
+
+== Configuration
+
+The maximum request body size is configured via the `Max Request Body Size`
+property on the RestApiGateway processor. The default is `1048576` bytes (1 MB).
+
+== Resolution
+
+Reduce the request body size to be within the configured limit, or increase the
+`Max Request Body Size` property on the processor.
+
+== See Also
+
+* link:index.adoc[Error Reference Index]
