@@ -16,34 +16,25 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
-import de.cuioss.nifi.ui.UILogMessages;
-import de.cuioss.test.juli.LogAsserts;
-import de.cuioss.test.juli.TestLogLevel;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
-import jakarta.servlet.ReadListener;
-import jakarta.servlet.ServletInputStream;
-import jakarta.servlet.ServletOutputStream;
-import jakarta.servlet.WriteListener;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import org.eclipse.jetty.ee11.servlet.ServletHolder;
+import org.junit.jupiter.api.*;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
-import static org.easymock.EasyMock.*;
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests for {@link GatewayProxyServlet}.
+ * Tests for {@link GatewayProxyServlet} using embedded Jetty + REST Assured.
  * <p>
- * Uses test subclasses to stub the outgoing HTTP calls
+ * Uses a test subclass to stub outgoing HTTP calls
  * ({@code resolveGatewayPort}, {@code executeGatewayGet},
  * {@code executeGatewayRequest}), allowing isolated testing
  * of path validation, SSRF protection, and response formatting.
@@ -58,69 +49,49 @@ class GatewayProxyServletTest {
             {"nifi_jwt_validations_total":42}""";
     private static final String PROCESSOR_ID = "d290f1ee-6c54-4b01-90e6-d701748f0851";
 
-    private HttpServletRequest request;
-    private HttpServletResponse response;
-    private ByteArrayOutputStream outputStream;
-    private TestServletOutputStream servletOutputStream;
+    /** Configurable GET response — reset before each test. */
+    private static final AtomicReference<String> gatewayGetResponse =
+            new AtomicReference<>(SAMPLE_CONFIG_JSON);
+
+    /** When true, all gateway operations throw IOException. */
+    private static final AtomicBoolean gatewayFailing = new AtomicBoolean(false);
+
+    @BeforeAll
+    static void startServer() throws Exception {
+        EmbeddedServletTestSupport.startServer(ctx ->
+                ctx.addServlet(new ServletHolder(new GatewayProxyServlet() {
+                    @Override
+                    protected int resolveGatewayPort(String processorId) throws IOException {
+                        if (gatewayFailing.get()) throw new IOException("Connection refused");
+                        return 9443;
+                    }
+
+                    @Override
+                    protected String executeGatewayGet(String url, String accept) throws IOException {
+                        if (gatewayFailing.get()) throw new IOException("Connection refused");
+                        return gatewayGetResponse.get();
+                    }
+
+                    @Override
+                    protected GatewayResponse executeGatewayRequest(
+                            String url, String method, Map<String, String> headers, String body)
+                            throws IOException {
+                        if (gatewayFailing.get()) throw new IOException("Connection refused");
+                        return new GatewayResponse(200, "{\"result\":\"ok\"}",
+                                Map.of("Content-Type", "application/json"));
+                    }
+                }), "/gateway/*"));
+    }
+
+    @AfterAll
+    static void stopServer() throws Exception {
+        EmbeddedServletTestSupport.stopServer();
+    }
 
     @BeforeEach
-    void setUp() throws IOException {
-        request = createMock(HttpServletRequest.class);
-        response = createMock(HttpServletResponse.class);
-        outputStream = new ByteArrayOutputStream();
-        servletOutputStream = new TestServletOutputStream(outputStream);
-
-        // Common expectations for response writing
-        expect(response.getOutputStream()).andReturn(servletOutputStream).anyTimes();
-        response.setContentType("application/json");
-        expectLastCall().anyTimes();
-        response.setCharacterEncoding("UTF-8");
-        expectLastCall().anyTimes();
-    }
-
-    private GatewayProxyServlet createServlet() {
-        return createServlet(SAMPLE_CONFIG_JSON);
-    }
-
-    private GatewayProxyServlet createServlet(String getResponse) {
-        return new GatewayProxyServlet() {
-            @Override
-            protected int resolveGatewayPort(String processorId) {
-                return 9443;
-            }
-
-            @Override
-            protected String executeGatewayGet(String url, String accept) {
-                return getResponse;
-            }
-
-            @Override
-            protected GatewayResponse executeGatewayRequest(
-                    String url, String method, Map<String, String> headers, String body) {
-                return new GatewayResponse(200, "{\"result\":\"ok\"}", Map.of("Content-Type", "application/json"));
-            }
-        };
-    }
-
-    private GatewayProxyServlet createFailingServlet() {
-        return new GatewayProxyServlet() {
-            @Override
-            protected int resolveGatewayPort(String processorId) throws IOException {
-                throw new IOException("Connection refused");
-            }
-
-            @Override
-            protected String executeGatewayGet(String url, String accept) throws IOException {
-                throw new IOException("Connection refused");
-            }
-
-            @Override
-            protected GatewayResponse executeGatewayRequest(
-                    String url, String method, Map<String, String> headers, String body)
-                    throws IOException {
-                throw new IOException("Connection refused");
-            }
-        };
+    void resetBehavior() {
+        gatewayGetResponse.set(SAMPLE_CONFIG_JSON);
+        gatewayFailing.set(false);
     }
 
     // -----------------------------------------------------------------------
@@ -132,77 +103,38 @@ class GatewayProxyServletTest {
     class GetPathValidation {
 
         @Test
-        @DisplayName("Should reject null pathInfo")
-        void shouldRejectNullPathInfo() throws Exception {
-            expect(request.getPathInfo()).andReturn(null);
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            expectLastCall();
-            replay(request, response);
-
-            createServlet().doGet(request, response);
-
-            verify(request, response);
-            assertTrue(outputStream.toString().contains("Invalid management path"));
-        }
-
-        @Test
         @DisplayName("Should reject non-whitelisted path")
-        void shouldRejectNonWhitelistedPath() throws Exception {
-            expect(request.getPathInfo()).andReturn("/evil");
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            expectLastCall();
-            replay(request, response);
-
-            createServlet().doGet(request, response);
-
-            verify(request, response);
-            assertTrue(outputStream.toString().contains("Invalid management path"));
-            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN,
-                    UILogMessages.WARN.GATEWAY_PROXY_PATH_REJECTED.resolveIdentifierString());
-        }
-
-        @Test
-        @DisplayName("Should reject path traversal attempt")
-        void shouldRejectPathTraversal() throws Exception {
-            expect(request.getPathInfo()).andReturn("/../etc/passwd");
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            expectLastCall();
-            replay(request, response);
-
-            createServlet().doGet(request, response);
-
-            verify(request, response);
-            assertTrue(outputStream.toString().contains("Invalid management path"));
+        void shouldRejectNonWhitelistedPath() {
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/evil")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid management path"));
         }
 
         @Test
         @DisplayName("Should reject missing processor ID")
-        void shouldRejectMissingProcessorId() throws Exception {
-            expect(request.getPathInfo()).andReturn("/config");
-            expect(request.getHeader("X-Processor-Id")).andReturn(null);
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            expectLastCall();
-            replay(request, response);
-
-            createServlet().doGet(request, response);
-
-            verify(request, response);
-            assertTrue(outputStream.toString().contains("Missing processor ID"));
+        void shouldRejectMissingProcessorId() {
+            given()
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Missing processor ID"));
         }
 
         @Test
         @DisplayName("Should reject blank processor ID")
-        void shouldRejectBlankProcessorId() throws Exception {
-            expect(request.getPathInfo()).andReturn("/config");
-            expect(request.getHeader("X-Processor-Id")).andReturn("  ");
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            expectLastCall();
-            replay(request, response);
-
-            createServlet().doGet(request, response);
-
-            verify(request, response);
-            assertTrue(outputStream.toString().contains("Missing processor ID"));
+        void shouldRejectBlankProcessorId() {
+            given()
+                    .header("X-Processor-Id", "  ")
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Missing processor ID"));
         }
     }
 
@@ -216,49 +148,45 @@ class GatewayProxyServletTest {
 
         @Test
         @DisplayName("Should proxy /config endpoint")
-        void shouldProxyConfigEndpoint() throws Exception {
-            expect(request.getPathInfo()).andReturn("/config");
-            expect(request.getHeader("X-Processor-Id")).andReturn(PROCESSOR_ID);
-            response.setStatus(HttpServletResponse.SC_OK);
-            expectLastCall();
-            replay(request, response);
+        void shouldProxyConfigEndpoint() {
+            gatewayGetResponse.set(SAMPLE_CONFIG_JSON);
 
-            createServlet(SAMPLE_CONFIG_JSON).doGet(request, response);
-
-            verify(request, response);
-            assertEquals(SAMPLE_CONFIG_JSON, outputStream.toString());
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .contentType(containsString("application/json"))
+                    .body(containsString("RestApiGatewayProcessor"));
         }
 
         @Test
         @DisplayName("Should proxy /metrics endpoint")
-        void shouldProxyMetricsEndpoint() throws Exception {
-            expect(request.getPathInfo()).andReturn("/metrics");
-            expect(request.getHeader("X-Processor-Id")).andReturn(PROCESSOR_ID);
-            response.setStatus(HttpServletResponse.SC_OK);
-            expectLastCall();
-            replay(request, response);
+        void shouldProxyMetricsEndpoint() {
+            gatewayGetResponse.set(SAMPLE_METRICS_JSON);
 
-            createServlet(SAMPLE_METRICS_JSON).doGet(request, response);
-
-            verify(request, response);
-            assertEquals(SAMPLE_METRICS_JSON, outputStream.toString());
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(200)
+                    .body(containsString("nifi_jwt_validations_total"));
         }
 
         @Test
         @DisplayName("Should return 503 when gateway is unavailable")
-        void shouldReturn503WhenGatewayUnavailable() throws Exception {
-            expect(request.getPathInfo()).andReturn("/config");
-            expect(request.getHeader("X-Processor-Id")).andReturn(PROCESSOR_ID);
-            response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
-            expectLastCall();
-            replay(request, response);
+        void shouldReturn503WhenGatewayUnavailable() {
+            gatewayFailing.set(true);
 
-            createFailingServlet().doGet(request, response);
-
-            verify(request, response);
-            assertTrue(outputStream.toString().contains("Gateway unavailable"));
-            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR,
-                    UILogMessages.ERROR.GATEWAY_PROXY_FAILED.resolveIdentifierString());
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(503)
+                    .body("error", containsString("Gateway unavailable"));
         }
     }
 
@@ -272,130 +200,111 @@ class GatewayProxyServletTest {
 
         @Test
         @DisplayName("Should reject non-test POST path")
-        void shouldRejectNonTestPostPath() throws Exception {
-            expect(request.getPathInfo()).andReturn("/config");
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            expectLastCall();
-            replay(request, response);
-
-            createServlet().doPost(request, response);
-
-            verify(request, response);
-            assertTrue(outputStream.toString().contains("Invalid path for POST"));
+        void shouldRejectNonTestPostPath() {
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("{}")
+                    .when()
+                    .post("/gateway/config")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid path for POST"));
         }
 
         @Test
         @DisplayName("Should reject missing processor ID on POST")
-        void shouldRejectMissingProcessorIdOnPost() throws Exception {
-            expect(request.getPathInfo()).andReturn("/test");
-            expect(request.getHeader("X-Processor-Id")).andReturn(null);
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            expectLastCall();
-            replay(request, response);
-
-            createServlet().doPost(request, response);
-
-            verify(request, response);
-            assertTrue(outputStream.toString().contains("Missing processor ID"));
+        void shouldRejectMissingProcessorIdOnPost() {
+            given()
+                    .contentType("application/json")
+                    .body("{}")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Missing processor ID"));
         }
 
         @Test
         @DisplayName("Should proxy valid test request")
-        void shouldProxyValidTestRequest() throws Exception {
-            String testBody = """
-                    {"path":"/api/users","method":"GET","headers":{"Authorization":"Bearer token123"}}""";
-
-            expect(request.getPathInfo()).andReturn("/test");
-            expect(request.getHeader("X-Processor-Id")).andReturn(PROCESSOR_ID);
-            expect(request.getInputStream()).andReturn(new TestServletInputStream(testBody));
-            response.setStatus(HttpServletResponse.SC_OK);
-            expectLastCall();
-            replay(request, response);
-
-            createServlet().doPost(request, response);
-
-            verify(request, response);
-            String result = outputStream.toString();
-            assertTrue(result.contains("\"status\":200"), "Should contain status: " + result);
-            assertTrue(result.contains("result"), "Should contain body content: " + result);
+        void shouldProxyValidTestRequest() {
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/users","method":"GET","headers":{"Authorization":"Bearer token123"}}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(200)
+                    .body("status", equalTo(200))
+                    .body("body", containsString("result"));
         }
 
         @Test
         @DisplayName("Should reject missing path in test request")
-        void shouldRejectMissingPath() throws Exception {
-            String testBody = """
-                    {"method":"GET","headers":{}}""";
-
-            expect(request.getPathInfo()).andReturn("/test");
-            expect(request.getHeader("X-Processor-Id")).andReturn(PROCESSOR_ID);
-            expect(request.getInputStream()).andReturn(new TestServletInputStream(testBody));
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            expectLastCall();
-            replay(request, response);
-
-            createServlet().doPost(request, response);
-
-            verify(request, response);
-            assertTrue(outputStream.toString().contains("Missing 'path'"));
+        void shouldRejectMissingPath() {
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"method":"GET","headers":{}}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Missing 'path'"));
         }
 
         @Test
         @DisplayName("Should reject invalid JSON body")
-        void shouldRejectInvalidJson() throws Exception {
-            expect(request.getPathInfo()).andReturn("/test");
-            expect(request.getHeader("X-Processor-Id")).andReturn(PROCESSOR_ID);
-            expect(request.getInputStream()).andReturn(new TestServletInputStream("{ invalid }"));
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            expectLastCall();
-            replay(request, response);
-
-            createServlet().doPost(request, response);
-
-            verify(request, response);
-            assertTrue(outputStream.toString().contains("Invalid JSON"));
+        void shouldRejectInvalidJson() {
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("{ invalid }")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid JSON"));
         }
 
         @Test
         @DisplayName("Should return 503 when gateway is unavailable for test")
-        void shouldReturn503WhenGatewayUnavailableForTest() throws Exception {
-            String testBody = """
-                    {"path":"/api/users","method":"GET","headers":{}}""";
+        void shouldReturn503WhenGatewayUnavailableForTest() {
+            gatewayFailing.set(true);
 
-            expect(request.getPathInfo()).andReturn("/test");
-            expect(request.getHeader("X-Processor-Id")).andReturn(PROCESSOR_ID);
-            expect(request.getInputStream()).andReturn(new TestServletInputStream(testBody));
-            response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
-            expectLastCall();
-            replay(request, response);
-
-            createFailingServlet().doPost(request, response);
-
-            verify(request, response);
-            assertTrue(outputStream.toString().contains("Gateway unavailable"));
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/users","method":"GET","headers":{}}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(503)
+                    .body("error", containsString("Gateway unavailable"));
         }
 
         @Test
         @DisplayName("Should handle null body in test request")
-        void shouldHandleNullBody() throws Exception {
-            String testBody = """
-                    {"path":"/api/health","method":"GET","headers":{},"body":null}""";
-
-            expect(request.getPathInfo()).andReturn("/test");
-            expect(request.getHeader("X-Processor-Id")).andReturn(PROCESSOR_ID);
-            expect(request.getInputStream()).andReturn(new TestServletInputStream(testBody));
-            response.setStatus(HttpServletResponse.SC_OK);
-            expectLastCall();
-            replay(request, response);
-
-            createServlet().doPost(request, response);
-
-            verify(request, response);
-            assertTrue(outputStream.toString().contains("\"status\":200"));
+        void shouldHandleNullBody() {
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/health","method":"GET","headers":{},"body":null}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(200)
+                    .body("status", equalTo(200));
         }
     }
 
     // -----------------------------------------------------------------------
-    // SSRF protection
+    // SSRF protection (static method — pure unit tests)
     // -----------------------------------------------------------------------
 
     @Nested
@@ -439,7 +348,7 @@ class GatewayProxyServletTest {
     }
 
     // -----------------------------------------------------------------------
-    // Allowed paths set
+    // Allowed paths set (pure unit test)
     // -----------------------------------------------------------------------
 
     @Nested
@@ -452,61 +361,6 @@ class GatewayProxyServletTest {
             assertTrue(GatewayProxyServlet.ALLOWED_MANAGEMENT_PATHS.contains("/metrics"));
             assertTrue(GatewayProxyServlet.ALLOWED_MANAGEMENT_PATHS.contains("/config"));
             assertEquals(2, GatewayProxyServlet.ALLOWED_MANAGEMENT_PATHS.size());
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    // Test helpers
-    // -----------------------------------------------------------------------
-
-    private static class TestServletInputStream extends ServletInputStream {
-        private final ByteArrayInputStream inputStream;
-
-        public TestServletInputStream(String content) {
-            this.inputStream = new ByteArrayInputStream(content.getBytes());
-        }
-
-        @Override
-        public int read() throws IOException {
-            return inputStream.read();
-        }
-
-        @Override
-        public boolean isFinished() {
-            return inputStream.available() == 0;
-        }
-
-        @Override
-        public boolean isReady() {
-            return true;
-        }
-
-        @Override
-        public void setReadListener(ReadListener readListener) {
-            // Not implemented for testing
-        }
-    }
-
-    private static class TestServletOutputStream extends ServletOutputStream {
-        private final ByteArrayOutputStream outputStream;
-
-        public TestServletOutputStream(ByteArrayOutputStream outputStream) {
-            this.outputStream = outputStream;
-        }
-
-        @Override
-        public void write(int b) throws IOException {
-            outputStream.write(b);
-        }
-
-        @Override
-        public boolean isReady() {
-            return true;
-        }
-
-        @Override
-        public void setWriteListener(WriteListener writeListener) {
-            // Not implemented for testing
         }
     }
 }

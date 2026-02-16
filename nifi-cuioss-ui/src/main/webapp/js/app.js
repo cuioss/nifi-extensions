@@ -99,6 +99,14 @@ const configureTabsForType = (isGateway) => {
             el.classList.remove('active');
         }
     }
+
+    // Toggle help sections by component type
+    for (const el of document.querySelectorAll('.jwt-help')) {
+        el.style.display = isGateway ? 'none' : '';
+    }
+    for (const el of document.querySelectorAll('.gateway-help')) {
+        el.style.display = isGateway ? '' : 'none';
+    }
 };
 
 // ---------------------------------------------------------------------------

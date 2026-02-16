@@ -66,11 +66,40 @@
                     <!-- Help tab: static content, no JS needed -->
                     <div id="jwt-help-content" class="jwt-tab-content help-tab" data-testid="help-tab-content">
                         <div class="help-header">
-                            <h2>JWT Authenticator Help</h2>
+                            <h2>Component Help</h2>
                         </div>
 
                         <div class="help-sections">
-                            <div class="help-section" data-testid="help-accordion-item">
+                            <!-- Gateway-specific help sections -->
+                            <div class="help-section gateway-help" data-testid="help-accordion-item">
+                                <h4 class="collapsible-header active" data-testid="accordion-toggle">
+                                    <i class="fa fa-chevron-down"></i> REST API Gateway
+                                </h4>
+                                <div class="collapsible-content show" data-testid="accordion-content">
+                                    <p>The RestApiGatewayProcessor provides a secure REST API gateway with
+                                    JWT authentication and route-based access control.</p>
+                                    <h5>Key Features</h5>
+                                    <ul>
+                                        <li>Embedded HTTPS/HTTP server with configurable port</li>
+                                        <li>Route-based request matching with path patterns</li>
+                                        <li>Per-route role and scope requirements</li>
+                                        <li>CORS support with configurable allowed origins</li>
+                                        <li>Request body size limits and queue management</li>
+                                    </ul>
+                                    <h5>Tabs</h5>
+                                    <ul>
+                                        <li><strong>Endpoint Configuration:</strong> View active routes, global
+                                        settings, and security configuration</li>
+                                        <li><strong>Endpoint Tester:</strong> Send test requests to verify
+                                        route access and authentication</li>
+                                        <li><strong>Metrics:</strong> Monitor token validation, HTTP security
+                                        events, and gateway activity</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- JWT-specific help sections -->
+                            <div class="help-section jwt-help" data-testid="help-accordion-item">
                                 <h4 class="collapsible-header active" data-testid="accordion-toggle">
                                     <i class="fa fa-chevron-down"></i> Getting Started
                                 </h4>
@@ -86,7 +115,7 @@
                                 </div>
                             </div>
 
-                            <div class="help-section" data-testid="help-accordion-item">
+                            <div class="help-section jwt-help" data-testid="help-accordion-item">
                                 <h4 class="collapsible-header" data-testid="accordion-toggle">
                                     <i class="fa fa-chevron-right"></i> Issuer Configuration
                                 </h4>
@@ -117,7 +146,7 @@
                                 </div>
                             </div>
 
-                            <div class="help-section" data-testid="help-accordion-item">
+                            <div class="help-section jwt-help" data-testid="help-accordion-item">
                                 <h4 class="collapsible-header" data-testid="accordion-toggle">
                                     <i class="fa fa-chevron-right"></i> Authorization Rules
                                 </h4>
@@ -144,7 +173,7 @@
                                 </div>
                             </div>
 
-                            <div class="help-section" data-testid="help-accordion-item">
+                            <div class="help-section jwt-help" data-testid="help-accordion-item">
                                 <h4 class="collapsible-header" data-testid="accordion-toggle">
                                     <i class="fa fa-chevron-right"></i> Token Verification
                                 </h4>

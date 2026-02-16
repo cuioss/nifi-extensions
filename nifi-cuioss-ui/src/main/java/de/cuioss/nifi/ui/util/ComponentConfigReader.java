@@ -64,7 +64,8 @@ public class ComponentConfigReader {
             ComponentType type,
             String componentClass,
             Map<String, String> properties,
-            JsonObject revision) {}
+            JsonObject revision) {
+    }
 
     /**
      * Auto-detects the component type and retrieves its configuration.

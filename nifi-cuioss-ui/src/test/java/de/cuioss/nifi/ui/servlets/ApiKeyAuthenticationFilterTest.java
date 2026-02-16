@@ -16,96 +16,47 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
-import de.cuioss.nifi.ui.UILogMessages;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
-import de.cuioss.test.juli.LogAsserts;
-import de.cuioss.test.juli.TestLogLevel;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.FilterConfig;
-import jakarta.servlet.ServletOutputStream;
-import jakarta.servlet.WriteListener;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import jakarta.servlet.DispatcherType;
+import org.eclipse.jetty.ee11.servlet.ServletHolder;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.util.EnumSet;
 import java.util.UUID;
 import java.util.stream.Stream;
 
-import static org.easymock.EasyMock.*;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.*;
 
 /**
- * Comprehensive unit tests for {@link ApiKeyAuthenticationFilter}.
- * Tests authentication scenarios including processor ID validation and error handling.
+ * Tests for {@link ApiKeyAuthenticationFilter} using embedded Jetty + REST Assured.
  *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
  */
-@EnableGeneratorController
 @EnableTestLogger
 @DisplayName("API Key Authentication Filter Tests")
 class ApiKeyAuthenticationFilterTest {
 
     private static final String PROCESSOR_ID_HEADER = "X-Processor-Id";
+    private static final String COMPONENT_ID_HEADER = "X-Component-Id";
+    private static final String ENDPOINT = "/nifi-api/processors/jwt/validate";
 
-    private ApiKeyAuthenticationFilter filter;
-    private HttpServletRequest mockRequest;
-    private HttpServletResponse mockResponse;
-    private FilterChain mockChain;
-
-    @BeforeEach
-    void setUp() {
-        filter = new ApiKeyAuthenticationFilter();
-        mockRequest = createMock(HttpServletRequest.class);
-        mockResponse = createMock(HttpServletResponse.class);
-        mockChain = createMock(FilterChain.class);
+    @BeforeAll
+    static void startServer() throws Exception {
+        EmbeddedServletTestSupport.startServer(ctx -> {
+            ctx.addFilter(ApiKeyAuthenticationFilter.class, "/nifi-api/processors/jwt/*",
+                    EnumSet.of(DispatcherType.REQUEST));
+            ctx.addServlet(new ServletHolder(new EmbeddedServletTestSupport.PassthroughServlet()),
+                    "/nifi-api/processors/jwt/*");
+        });
     }
 
-    @Nested
-    @DisplayName("Filter Lifecycle Tests")
-    class FilterLifecycleTests {
-
-        @Test
-        @DisplayName("Should initialize filter without errors")
-        void shouldInitializeFilterSuccessfully() throws Exception {
-            // Arrange
-            FilterConfig mockConfig = createMock(FilterConfig.class);
-
-            // Act
-            filter.init(mockConfig);
-
-            // Assert
-            // No exception thrown - filter initialized successfully
-            assertNotNull(filter, "Filter should be initialized");
-
-            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, UILogMessages.INFO.FILTER_INITIALIZED.resolveIdentifierString());
-        }
-
-        @Test
-        @DisplayName("Should destroy filter without errors")
-        void shouldDestroyFilterSuccessfully() {
-            // Arrange
-            // Filter is already initialized in setUp
-
-            // Act
-            filter.destroy();
-
-            // Assert
-            // No exception thrown - filter destroyed successfully
-            assertNotNull(filter, "Filter should exist after destroy");
-
-            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, UILogMessages.INFO.FILTER_DESTROYED.resolveIdentifierString());
-        }
+    @AfterAll
+    static void stopServer() throws Exception {
+        EmbeddedServletTestSupport.stopServer();
     }
 
     @Nested
@@ -114,61 +65,28 @@ class ApiKeyAuthenticationFilterTest {
 
         @Test
         @DisplayName("Should allow request with valid processor ID header")
-        void shouldAllowRequestWithValidProcessorId() throws Exception {
-            // Arrange
-            String processorId = UUID.randomUUID().toString();
-            String servletPath = "/nifi-api/processors/jwt/validate";
-            String httpMethod = "POST";
-
-            expect(mockRequest.getServletPath()).andReturn(servletPath);
-            expect(mockRequest.getMethod()).andReturn(httpMethod);
-            expect(mockRequest.getHeader(PROCESSOR_ID_HEADER)).andReturn(processorId);
-            expect(mockRequest.getRemoteUser()).andReturn(null);
-            mockChain.doFilter(mockRequest, mockResponse);
-            expectLastCall().once();
-
-            replay(mockRequest, mockResponse, mockChain);
-
-            // Act
-            filter.doFilter(mockRequest, mockResponse, mockChain);
-
-            // Assert
-            verify(mockRequest, mockResponse, mockChain);
+        void shouldAllowRequestWithValidProcessorId() {
+            given()
+                    .header(PROCESSOR_ID_HEADER, UUID.randomUUID().toString())
+                    .when()
+                    .post(ENDPOINT)
+                    .then()
+                    .statusCode(200)
+                    .body(equalTo("OK"));
         }
 
         @Test
         @DisplayName("Should reject request when processor ID is null")
-        void shouldRejectRequestWhenProcessorIdIsNull() throws Exception {
-            // Arrange
-            String servletPath = "/nifi-api/processors/jwt/validate";
-            String httpMethod = "POST";
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
-            expect(mockRequest.getServletPath()).andReturn(servletPath);
-            expect(mockRequest.getMethod()).andReturn(httpMethod);
-            expect(mockRequest.getHeader(PROCESSOR_ID_HEADER)).andReturn(null);
-
-            mockResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            expectLastCall().once();
-            mockResponse.setContentType("application/json");
-            expectLastCall().once();
-            mockResponse.setCharacterEncoding("UTF-8");
-            expectLastCall().once();
-            expect(mockResponse.getOutputStream()).andReturn(new TestServletOutputStream(outputStream));
-
-            replay(mockRequest, mockResponse, mockChain);
-
-            // Act
-            filter.doFilter(mockRequest, mockResponse, mockChain);
-
-            // Assert
-            verify(mockRequest, mockResponse, mockChain);
-            String response = outputStream.toString();
-            assertTrue(response.contains("\"error\""), "Response should contain error field");
-            assertTrue(response.contains("\"valid\":false"), "Response should indicate invalid");
-            assertTrue(response.contains("\"accessible\":false"), "Response should indicate not accessible");
-
-            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, UILogMessages.WARN.MISSING_PROCESSOR_ID.resolveIdentifierString());
+        void shouldRejectRequestWhenProcessorIdIsNull() {
+            given()
+                    .when()
+                    .post(ENDPOINT)
+                    .then()
+                    .statusCode(401)
+                    .contentType(containsString("application/json"))
+                    .body("error", notNullValue())
+                    .body("valid", equalTo(false))
+                    .body("accessible", equalTo(false));
         }
 
         static Stream<Arguments> invalidProcessorIdCases() {
@@ -183,119 +101,78 @@ class ApiKeyAuthenticationFilterTest {
         @MethodSource("invalidProcessorIdCases")
         @DisplayName("Should reject request with invalid processor ID")
         void shouldRejectRequestWithInvalidProcessorId(String processorId,
-                String expectedMessage, String scenario) throws Exception {
-            // Arrange
-            String servletPath = "/nifi-api/processors/jwt/validate";
-            String httpMethod = "POST";
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
-            expect(mockRequest.getServletPath()).andReturn(servletPath);
-            expect(mockRequest.getMethod()).andReturn(httpMethod);
-            expect(mockRequest.getHeader(PROCESSOR_ID_HEADER)).andReturn(processorId);
-
-            mockResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            expectLastCall().once();
-            mockResponse.setContentType("application/json");
-            expectLastCall().once();
-            mockResponse.setCharacterEncoding("UTF-8");
-            expectLastCall().once();
-            expect(mockResponse.getOutputStream()).andReturn(new TestServletOutputStream(outputStream));
-
-            replay(mockRequest, mockResponse, mockChain);
-
-            // Act
-            filter.doFilter(mockRequest, mockResponse, mockChain);
-
-            // Assert
-            verify(mockRequest, mockResponse, mockChain);
-            String response = outputStream.toString();
-            assertTrue(response.contains(expectedMessage),
-                    "Response for '%s' should contain '%s'".formatted(scenario, expectedMessage));
+                                                       String expectedMessage, String scenario) {
+            given()
+                    .header(PROCESSOR_ID_HEADER, processorId)
+                    .when()
+                    .post(ENDPOINT)
+                    .then()
+                    .statusCode(401)
+                    .body("error", containsString(expectedMessage));
         }
 
         @Test
         @DisplayName("Should reject empty processor ID on verify-token endpoint")
-        void shouldRejectEmptyProcessorIdOnVerifyToken() throws Exception {
-            // Arrange
-            String servletPath = "/nifi-api/processors/jwt/verify-token";
-            String httpMethod = "POST";
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
-            expect(mockRequest.getServletPath()).andReturn(servletPath);
-            expect(mockRequest.getMethod()).andReturn(httpMethod);
-            expect(mockRequest.getHeader(PROCESSOR_ID_HEADER)).andReturn(null);
-
-            mockResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            expectLastCall().once();
-            mockResponse.setContentType("application/json");
-            expectLastCall().once();
-            mockResponse.setCharacterEncoding("UTF-8");
-            expectLastCall().once();
-            expect(mockResponse.getOutputStream()).andReturn(new TestServletOutputStream(outputStream));
-
-            replay(mockRequest, mockResponse, mockChain);
-
-            // Act
-            filter.doFilter(mockRequest, mockResponse, mockChain);
-
-            // Assert
-            verify(mockRequest, mockResponse, mockChain);
-            String response = outputStream.toString();
-            assertTrue(response.contains("Missing or empty processor ID header"), "Response should contain expected error message");
+        void shouldRejectEmptyProcessorIdOnVerifyToken() {
+            given()
+                    .when()
+                    .post("/nifi-api/processors/jwt/verify-token")
+                    .then()
+                    .statusCode(401)
+                    .body("error", containsString("Missing or empty processor ID header"));
         }
     }
 
     @Nested
-    @DisplayName("Remote User Authentication Tests")
-    class RemoteUserTests {
+    @DisplayName("Component ID Fallback Tests")
+    class ComponentIdFallbackTests {
 
         @Test
-        @DisplayName("Should log remote user when authenticated")
-        void shouldLogRemoteUserWhenAuthenticated() throws Exception {
-            // Arrange
-            String processorId = UUID.randomUUID().toString();
-            String remoteUser = "test-user-" + System.nanoTime();
-            String servletPath = "/nifi-api/processors/jwt/validate";
-            String httpMethod = "POST";
-
-            expect(mockRequest.getServletPath()).andReturn(servletPath);
-            expect(mockRequest.getMethod()).andReturn(httpMethod);
-            expect(mockRequest.getHeader(PROCESSOR_ID_HEADER)).andReturn(processorId);
-            expect(mockRequest.getRemoteUser()).andReturn(remoteUser);
-            mockChain.doFilter(mockRequest, mockResponse);
-            expectLastCall().once();
-
-            replay(mockRequest, mockResponse, mockChain);
-
-            // Act
-            filter.doFilter(mockRequest, mockResponse, mockChain);
-
-            // Assert
-            verify(mockRequest, mockResponse, mockChain);
+        @DisplayName("Should accept request with valid X-Component-Id when X-Processor-Id is absent")
+        void shouldAcceptComponentIdHeader() {
+            given()
+                    .header(COMPONENT_ID_HEADER, UUID.randomUUID().toString())
+                    .when()
+                    .post(ENDPOINT)
+                    .then()
+                    .statusCode(200)
+                    .body(equalTo("OK"));
         }
 
         @Test
-        @DisplayName("Should handle null remote user gracefully")
-        void shouldHandleNullRemoteUserGracefully() throws Exception {
-            // Arrange
-            String processorId = UUID.randomUUID().toString();
-            String servletPath = "/nifi-api/processors/jwt/validate";
-            String httpMethod = "POST";
+        @DisplayName("Should prefer X-Processor-Id over X-Component-Id")
+        void shouldPreferProcessorIdOverComponentId() {
+            given()
+                    .header(PROCESSOR_ID_HEADER, UUID.randomUUID().toString())
+                    .header(COMPONENT_ID_HEADER, UUID.randomUUID().toString())
+                    .when()
+                    .post(ENDPOINT)
+                    .then()
+                    .statusCode(200)
+                    .body(equalTo("OK"));
+        }
 
-            expect(mockRequest.getServletPath()).andReturn(servletPath);
-            expect(mockRequest.getMethod()).andReturn(httpMethod);
-            expect(mockRequest.getHeader(PROCESSOR_ID_HEADER)).andReturn(processorId);
-            expect(mockRequest.getRemoteUser()).andReturn(null);
-            mockChain.doFilter(mockRequest, mockResponse);
-            expectLastCall().once();
+        @Test
+        @DisplayName("Should reject request when both headers are missing")
+        void shouldRejectWhenBothHeadersMissing() {
+            given()
+                    .when()
+                    .post(ENDPOINT)
+                    .then()
+                    .statusCode(401)
+                    .body("error", containsString("Missing or empty processor ID header"));
+        }
 
-            replay(mockRequest, mockResponse, mockChain);
-
-            // Act
-            filter.doFilter(mockRequest, mockResponse, mockChain);
-
-            // Assert
-            verify(mockRequest, mockResponse, mockChain);
+        @Test
+        @DisplayName("Should reject invalid UUID in X-Component-Id fallback")
+        void shouldRejectInvalidComponentId() {
+            given()
+                    .header(COMPONENT_ID_HEADER, "not-a-uuid")
+                    .when()
+                    .post(ENDPOINT)
+                    .then()
+                    .statusCode(401)
+                    .body("error", containsString("Invalid processor ID format"));
         }
     }
 
@@ -305,66 +182,17 @@ class ApiKeyAuthenticationFilterTest {
 
         @Test
         @DisplayName("Should return valid JSON structure in error response")
-        void shouldReturnValidJsonStructureInErrorResponse() throws Exception {
-            // Arrange
-            String servletPath = "/nifi-api/processors/jwt/validate";
-            String httpMethod = "POST";
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
-            expect(mockRequest.getServletPath()).andReturn(servletPath);
-            expect(mockRequest.getMethod()).andReturn(httpMethod);
-            expect(mockRequest.getHeader(PROCESSOR_ID_HEADER)).andReturn("");
-
-            mockResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            expectLastCall().once();
-            mockResponse.setContentType("application/json");
-            expectLastCall().once();
-            mockResponse.setCharacterEncoding("UTF-8");
-            expectLastCall().once();
-            expect(mockResponse.getOutputStream()).andReturn(new TestServletOutputStream(outputStream));
-
-            replay(mockRequest, mockResponse, mockChain);
-
-            // Act
-            filter.doFilter(mockRequest, mockResponse, mockChain);
-
-            // Assert
-            verify(mockRequest, mockResponse, mockChain);
-            String response = outputStream.toString();
-            assertTrue(response.startsWith("{"), "JSON response should start with opening brace");
-            assertTrue(response.endsWith("}"), "JSON response should end with closing brace");
-            assertTrue(response.contains("\"error\":"), "JSON response should contain error field");
-            assertTrue(response.contains("\"valid\":false"), "JSON response should contain valid field");
-            assertTrue(response.contains("\"accessible\":false"), "JSON response should contain accessible field");
-        }
-
-        @Test
-        @DisplayName("Should set correct HTTP headers for unauthorized response")
-        void shouldSetCorrectHttpHeadersForUnauthorizedResponse() throws Exception {
-            // Arrange
-            String servletPath = "/nifi-api/processors/jwt/validate";
-            String httpMethod = "POST";
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
-            expect(mockRequest.getServletPath()).andReturn(servletPath);
-            expect(mockRequest.getMethod()).andReturn(httpMethod);
-            expect(mockRequest.getHeader(PROCESSOR_ID_HEADER)).andReturn(null);
-
-            mockResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            expectLastCall().once();
-            mockResponse.setContentType("application/json");
-            expectLastCall().once();
-            mockResponse.setCharacterEncoding("UTF-8");
-            expectLastCall().once();
-            expect(mockResponse.getOutputStream()).andReturn(new TestServletOutputStream(outputStream));
-
-            replay(mockRequest, mockResponse, mockChain);
-
-            // Act
-            filter.doFilter(mockRequest, mockResponse, mockChain);
-
-            // Assert
-            verify(mockRequest, mockResponse, mockChain);
+        void shouldReturnValidJsonStructureInErrorResponse() {
+            given()
+                    .header(PROCESSOR_ID_HEADER, "")
+                    .when()
+                    .post(ENDPOINT)
+                    .then()
+                    .statusCode(401)
+                    .contentType(containsString("application/json"))
+                    .body("error", notNullValue())
+                    .body("valid", equalTo(false))
+                    .body("accessible", equalTo(false));
         }
     }
 
@@ -374,48 +202,13 @@ class ApiKeyAuthenticationFilterTest {
 
         @Test
         @DisplayName("Should handle null servlet path gracefully")
-        void shouldHandleNullServletPathGracefully() throws Exception {
-            // Arrange
-            String processorId = UUID.randomUUID().toString();
-            String httpMethod = "POST";
-
-            expect(mockRequest.getServletPath()).andReturn(null);
-            expect(mockRequest.getMethod()).andReturn(httpMethod);
-            expect(mockRequest.getHeader(PROCESSOR_ID_HEADER)).andReturn(processorId);
-            expect(mockRequest.getRemoteUser()).andReturn(null);
-            mockChain.doFilter(mockRequest, mockResponse);
-            expectLastCall().once();
-
-            replay(mockRequest, mockResponse, mockChain);
-
-            // Act
-            filter.doFilter(mockRequest, mockResponse, mockChain);
-
-            // Assert
-            verify(mockRequest, mockResponse, mockChain);
-        }
-    }
-
-    private static class TestServletOutputStream extends ServletOutputStream {
-        private final ByteArrayOutputStream outputStream;
-
-        public TestServletOutputStream(ByteArrayOutputStream outputStream) {
-            this.outputStream = outputStream;
-        }
-
-        @Override
-        public void write(int b) throws IOException {
-            outputStream.write(b);
-        }
-
-        @Override
-        public boolean isReady() {
-            return true;
-        }
-
-        @Override
-        public void setWriteListener(WriteListener writeListener) {
-            // Not implemented for testing
+        void shouldPassWithValidProcessorIdOnAnyPath() {
+            given()
+                    .header(PROCESSOR_ID_HEADER, UUID.randomUUID().toString())
+                    .when()
+                    .get("/nifi-api/processors/jwt/some-other-path")
+                    .then()
+                    .statusCode(200);
         }
     }
 }

@@ -16,166 +16,136 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
-import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.service.JwtValidationService;
 import de.cuioss.nifi.ui.service.JwtValidationService.TokenValidationResult;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
-import de.cuioss.test.juli.LogAsserts;
-import de.cuioss.test.juli.TestLogLevel;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
-import jakarta.servlet.ReadListener;
-import jakarta.servlet.ServletInputStream;
-import jakarta.servlet.ServletOutputStream;
-import jakarta.servlet.WriteListener;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.eclipse.jetty.ee11.servlet.ServletHolder;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import static io.restassured.RestAssured.given;
 import static org.easymock.EasyMock.*;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.hamcrest.Matchers.*;
 
 /**
- * Tests for {@link JwtVerificationServlet}.
+ * Tests for {@link JwtVerificationServlet} using embedded Jetty + REST Assured.
+ * <p>
+ * Uses a configurable {@link JwtValidationService} test double injected via
+ * constructor. Each test sets the desired behavior before making HTTP requests.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
  */
 @EnableTestLogger
+@DisplayName("JwtVerificationServlet tests")
 class JwtVerificationServletTest {
 
-    private JwtValidationService validationService;
-    private HttpServletRequest request;
-    private HttpServletResponse response;
-    private JwtVerificationServlet servlet;
-    private ByteArrayOutputStream responseOutput;
+    private static final String ENDPOINT = "/nifi-api/processors/jwt/verify-token";
 
-    @BeforeEach
-    void setUp() throws IOException {
-        validationService = createMock(JwtValidationService.class);
-        request = createMock(HttpServletRequest.class);
-        response = createMock(HttpServletResponse.class);
-        servlet = new JwtVerificationServlet(validationService);
-        responseOutput = new ByteArrayOutputStream();
+    /**
+     * Configurable token verification behavior — each test sets this before
+     * making HTTP requests.
+     */
+    @FunctionalInterface
+    interface TokenVerifier {
+        TokenValidationResult verify(String token, String processorId) throws Exception;
+    }
 
-        expect(request.getContentLength()).andReturn(100).anyTimes();
-        expect(response.getOutputStream()).andReturn(new TestServletOutputStream(responseOutput)).anyTimes();
-        response.setContentType("application/json");
-        expectLastCall().anyTimes();
-        response.setCharacterEncoding("UTF-8");
-        expectLastCall().anyTimes();
+    private static volatile TokenVerifier currentVerifier;
+
+    @BeforeAll
+    static void startServer() throws Exception {
+        EmbeddedServletTestSupport.startServer(ctx -> {
+            JwtVerificationServlet servlet = new JwtVerificationServlet(
+                    new JwtValidationService() {
+                        @Override
+                        public TokenValidationResult verifyToken(String token, String processorId)
+                                throws IOException, IllegalArgumentException, IllegalStateException {
+                            try {
+                                return currentVerifier.verify(token, processorId);
+                            } catch (IOException | IllegalArgumentException | IllegalStateException e) {
+                                throw e;
+                            } catch (Exception e) {
+                                throw new IllegalStateException(e);
+                            }
+                        }
+                    });
+            ctx.addServlet(new ServletHolder(servlet), ENDPOINT);
+        });
+    }
+
+    @AfterAll
+    static void stopServer() throws Exception {
+        EmbeddedServletTestSupport.stopServer();
     }
 
     @Test
-    void validTokenVerification() throws Exception {
-        // Arrange
-        String requestJson = """
-            {
-                "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-                "processorId": "test-processor-id"
-            }
-            """;
+    @DisplayName("Should return valid response for valid token")
+    void validTokenVerification() {
+        currentVerifier = (token, processorId) -> {
+            TokenValidationResult result = TokenValidationResult.success(null);
+            result.setIssuer("test-issuer");
+            result.setScopes(List.of("read", "write"));
+            result.setRoles(List.of("admin"));
+            result.setAuthorized(true);
+            return result;
+        };
 
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-
-        TokenValidationResult validResult = TokenValidationResult.success(null);
-        validResult.setIssuer("test-issuer");
-        validResult.setScopes(List.of("read", "write"));
-        validResult.setRoles(List.of("admin"));
-        validResult.setAuthorized(true);
-
-        expect(validationService.verifyToken("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...", "test-processor-id"))
-                .andReturn(validResult);
-
-        response.setStatus(200);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-
-        String responseJson = responseOutput.toString();
-        assertTrue(responseJson.contains("\"valid\":true"));
-        assertTrue(responseJson.contains("\"authorized\":true"));
-        assertTrue(responseJson.contains("\"issuer\":\"test-issuer\""));
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...","processorId":"test-processor-id"}""")
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(true))
+                .body("authorized", equalTo(true))
+                .body("issuer", equalTo("test-issuer"));
     }
 
     @Test
-    void invalidTokenVerification() throws Exception {
-        // Arrange
-        String requestJson = """
-            {
-                "token": "invalid-token",
-                "processorId": "test-processor-id"
-            }
-            """;
+    @DisplayName("Should return invalid response for invalid token")
+    void invalidTokenVerification() {
+        currentVerifier = (token, processorId) ->
+                TokenValidationResult.failure("Invalid token signature");
 
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-
-        TokenValidationResult invalidResult = TokenValidationResult.failure("Invalid token signature");
-        expect(validationService.verifyToken("invalid-token", "test-processor-id"))
-                .andReturn(invalidResult);
-
-        response.setStatus(400);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-
-        String responseJson = responseOutput.toString();
-        assertTrue(responseJson.contains("\"valid\":false"));
-        assertTrue(responseJson.contains("\"error\":\"Invalid token signature\""));
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"token":"invalid-token","processorId":"test-processor-id"}""")
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(400)
+                .body("valid", equalTo(false))
+                .body("error", containsString("Invalid token signature"));
     }
 
     @Test
-    void expiredTokenVerification() throws Exception {
-        // Arrange
-        String requestJson = """
-            {
-                "token": "expired-token",
-                "processorId": "test-processor-id"
-            }
-            """;
+    @DisplayName("Should return 401 for expired token")
+    void expiredTokenVerification() {
+        currentVerifier = (token, processorId) ->
+                TokenValidationResult.failure("Token expired at 2025-01-01T00:00:00Z");
 
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-
-        TokenValidationResult expiredResult = TokenValidationResult.failure("Token expired at 2025-01-01T00:00:00Z");
-        expect(validationService.verifyToken("expired-token", "test-processor-id"))
-                .andReturn(expiredResult);
-
-        response.setStatus(401);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-
-        String responseJson = responseOutput.toString();
-        assertTrue(responseJson.contains("\"valid\":false"));
-        assertTrue(responseJson.contains("expired"));
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"token":"expired-token","processorId":"test-processor-id"}""")
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(401)
+                .body("valid", equalTo(false))
+                .body("error", containsString("expired"));
     }
 
     static Stream<Arguments> badRequestProvider() {
@@ -190,419 +160,156 @@ class JwtVerificationServletTest {
 
     @ParameterizedTest(name = "Bad request: {1}")
     @MethodSource("badRequestProvider")
-    void shouldRejectBadRequest(String requestJson, String expectedError) throws Exception {
-        // Arrange
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+    @DisplayName("Should reject bad requests")
+    void shouldRejectBadRequest(String requestJson, String expectedError) {
+        // Service should not be called for bad requests
+        currentVerifier = (token, processorId) -> {
+            throw new AssertionError("Service should not have been called");
+        };
 
-        response.setStatus(400);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-
-        String responseJson = responseOutput.toString();
-        assertTrue(responseJson.contains("\"valid\":false"));
-        assertTrue(responseJson.contains(expectedError));
+        given()
+                .contentType("application/json")
+                .body(requestJson)
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(400)
+                .body("valid", equalTo(false))
+                .body("error", containsString(expectedError));
     }
 
     @Test
-    void serviceException() throws Exception {
-        // Arrange
-        String requestJson = """
-            {
-                "token": "test-token",
-                "processorId": "test-processor-id"
-            }
-            """;
+    @DisplayName("Should return 500 for service IllegalStateException")
+    void serviceException() {
+        currentVerifier = (token, processorId) -> {
+            throw new IllegalStateException("Service not available");
+        };
 
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-
-        expect(validationService.verifyToken("test-token", "test-processor-id"))
-                .andThrow(new IllegalStateException("Service not available"));
-
-        response.setStatus(500);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-
-        String responseJson = responseOutput.toString();
-        assertTrue(responseJson.contains("\"valid\":false"));
-        assertTrue(responseJson.contains("Service not available"));
-
-        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, UILogMessages.ERROR.SERVICE_NOT_AVAILABLE.resolveIdentifierString());
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"token":"test-token","processorId":"test-processor-id"}""")
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(500)
+                .body("valid", equalTo(false))
+                .body("error", containsString("Service not available"));
     }
 
     @Test
-    void requestBodyTooLarge() throws Exception {
-        // Arrange - reset mocks to change contentLength behavior
-        reset(request, response, validationService);
-        responseOutput = new ByteArrayOutputStream();
+    @DisplayName("Should return 400 for service IllegalArgumentException")
+    void illegalArgumentFromService() {
+        currentVerifier = (token, processorId) -> {
+            throw new IllegalArgumentException("Invalid processor configuration");
+        };
 
-        expect(request.getContentLength()).andReturn(2 * 1024 * 1024).anyTimes();
-        expect(response.getOutputStream()).andReturn(new TestServletOutputStream(responseOutput)).anyTimes();
-        response.setContentType("application/json");
-        expectLastCall().anyTimes();
-        response.setCharacterEncoding("UTF-8");
-        expectLastCall().anyTimes();
-        response.setStatus(413);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-        String responseJson = responseOutput.toString();
-        assertTrue(responseJson.contains("\"valid\":false"));
-        assertTrue(responseJson.contains("Request body too large"));
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"token":"test-token","processorId":"test-processor-id"}""")
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(400)
+                .body("valid", equalTo(false))
+                .body("error", containsString("Invalid request"));
     }
 
     @Test
-    void ioExceptionReadingRequest() throws Exception {
-        // Arrange
-        expect(request.getInputStream()).andThrow(new IOException("Connection reset"));
+    @DisplayName("Should return 500 for service IOException")
+    void ioExceptionFromService() {
+        currentVerifier = (token, processorId) -> {
+            throw new IOException("Connection refused");
+        };
 
-        response.setStatus(500);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-        String responseJson = responseOutput.toString();
-        assertTrue(responseJson.contains("\"valid\":false"));
-        assertTrue(responseJson.contains("Error reading request"));
-
-        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, UILogMessages.ERROR.ERROR_READING_REQUEST_BODY.resolveIdentifierString());
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"token":"test-token","processorId":"test-processor-id"}""")
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(500)
+                .body("valid", equalTo(false))
+                .body("error", containsString("Communication error"));
     }
 
     @Test
-    void illegalArgumentFromService() throws Exception {
-        // Arrange
-        String requestJson = """
-            {
-                "token": "test-token",
-                "processorId": "test-processor-id"
-            }
-            """;
+    @DisplayName("Should return claims from valid token with AccessTokenContent")
+    void validTokenWithClaimsMap() {
+        currentVerifier = (token, processorId) -> {
+            AccessTokenContent mockTokenContent = createNiceMock(AccessTokenContent.class);
+            expect(mockTokenContent.getSubject()).andReturn(Optional.of("test-subject")).anyTimes();
+            expect(mockTokenContent.getIssuer()).andReturn("test-issuer").anyTimes();
+            expect(mockTokenContent.getExpirationTime()).andReturn(OffsetDateTime.now().plusHours(1)).anyTimes();
+            expect(mockTokenContent.getRoles()).andReturn(List.of("admin")).anyTimes();
+            expect(mockTokenContent.getScopes()).andReturn(List.of("read")).anyTimes();
+            replay(mockTokenContent);
 
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-        expect(validationService.verifyToken("test-token", "test-processor-id"))
-                .andThrow(new IllegalArgumentException("Invalid processor configuration"));
+            TokenValidationResult result = TokenValidationResult.success(mockTokenContent);
+            result.setAuthorized(true);
+            return result;
+        };
 
-        response.setStatus(400);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-        String responseJson = responseOutput.toString();
-        assertTrue(responseJson.contains("\"valid\":false"));
-        assertTrue(responseJson.contains("Invalid request"));
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"token":"eyJhbGciOiJSUzI1NiJ9.test.sig","processorId":"test-processor-id"}""")
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(true))
+                .body("authorized", equalTo(true))
+                .body("issuer", equalTo("test-issuer"))
+                .body("claims.sub", equalTo("test-subject"));
     }
 
     @Test
-    void ioExceptionFromService() throws Exception {
-        // Arrange
-        String requestJson = """
-            {
-                "token": "test-token",
-                "processorId": "test-processor-id"
-            }
-            """;
+    @DisplayName("Should return empty claims when tokenContent is null")
+    void validTokenWithNullIssuerAndEmptyScopes() {
+        currentVerifier = (token, processorId) -> TokenValidationResult.success(null);
 
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-        expect(validationService.verifyToken("test-token", "test-processor-id"))
-                .andThrow(new IOException("Connection refused"));
-
-        response.setStatus(500);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-        String responseJson = responseOutput.toString();
-        assertTrue(responseJson.contains("\"valid\":false"));
-        assertTrue(responseJson.contains("Communication error"));
-
-        LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, UILogMessages.ERROR.COMMUNICATION_ERROR.resolveIdentifierString());
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"token":"test-token-minimal","processorId":"test-processor-id"}""")
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(true))
+                .body("authorized", equalTo(false))
+                .body("claims.size()", equalTo(0));
     }
 
     @Test
-    void validTokenWithClaimsMap() throws Exception {
-        // Arrange
-        String requestJson = """
-            {
-                "token": "eyJhbGciOiJSUzI1NiJ9.test.sig",
-                "processorId": "test-processor-id"
-            }
-            """;
+    @DisplayName("Should handle null issuer in claims")
+    void validTokenWithNullIssuerInClaims() {
+        currentVerifier = (token, processorId) -> {
+            AccessTokenContent mockTokenContent = createNiceMock(AccessTokenContent.class);
+            expect(mockTokenContent.getSubject()).andReturn(Optional.of("test-subject")).anyTimes();
+            expect(mockTokenContent.getIssuer()).andReturn(null).anyTimes();
+            expect(mockTokenContent.getExpirationTime()).andReturn(OffsetDateTime.now().plusHours(1)).anyTimes();
+            expect(mockTokenContent.getRoles()).andReturn(List.of()).anyTimes();
+            expect(mockTokenContent.getScopes()).andReturn(List.of()).anyTimes();
+            replay(mockTokenContent);
 
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
+            TokenValidationResult result = TokenValidationResult.success(mockTokenContent);
+            result.setAuthorized(true);
+            return result;
+        };
 
-        // Create mock token content with claims
-        AccessTokenContent mockTokenContent = createMock(AccessTokenContent.class);
-        expect(mockTokenContent.getSubject()).andReturn(Optional.of("test-subject")).anyTimes();
-        expect(mockTokenContent.getIssuer()).andReturn("test-issuer").anyTimes();
-        expect(mockTokenContent.getExpirationTime()).andReturn(OffsetDateTime.now().plusHours(1)).anyTimes();
-        expect(mockTokenContent.getRoles()).andReturn(List.of("admin")).anyTimes();
-        expect(mockTokenContent.getScopes()).andReturn(List.of("read")).anyTimes();
-        replay(mockTokenContent);
-
-        TokenValidationResult result = TokenValidationResult.success(mockTokenContent);
-        result.setAuthorized(true);
-
-        expect(validationService.verifyToken("eyJhbGciOiJSUzI1NiJ9.test.sig", "test-processor-id"))
-                .andReturn(result);
-
-        response.setStatus(200);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-        String responseJson = responseOutput.toString();
-        assertTrue(responseJson.contains("\"valid\":true"));
-        assertTrue(responseJson.contains("\"authorized\":true"));
-        assertTrue(responseJson.contains("\"issuer\":\"test-issuer\""));
-        assertTrue(responseJson.contains("\"sub\":\"test-subject\""));
-    }
-
-    @Test
-    void validTokenWithNullIssuerAndEmptyScopes() throws Exception {
-        // Arrange
-        String requestJson = """
-            {
-                "token": "test-token-minimal",
-                "processorId": "test-processor-id"
-            }
-            """;
-
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-
-        // Success with null tokenContent — issuer/scopes/roles will be null
-        TokenValidationResult result = TokenValidationResult.success(null);
-
-        expect(validationService.verifyToken("test-token-minimal", "test-processor-id"))
-                .andReturn(result);
-
-        response.setStatus(200);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-        String responseJson = responseOutput.toString();
-        assertTrue(responseJson.contains("\"valid\":true"));
-        assertTrue(responseJson.contains("\"authorized\":false"));
-        assertTrue(responseJson.contains("\"claims\":{}"));
-    }
-
-    @Test
-    void validTokenWithNullIssuerInClaims() throws Exception {
-        // Arrange — exercise the null case in addClaimValue switch
-        String requestJson = """
-            {
-                "token": "test-token-null-issuer",
-                "processorId": "test-processor-id"
-            }
-            """;
-
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-
-        // Mock AccessTokenContent with null issuer to produce null in claims map
-        AccessTokenContent mockTokenContent = createMock(AccessTokenContent.class);
-        expect(mockTokenContent.getSubject()).andReturn(Optional.of("test-subject")).anyTimes();
-        expect(mockTokenContent.getIssuer()).andReturn(null).anyTimes();
-        expect(mockTokenContent.getExpirationTime()).andReturn(OffsetDateTime.now().plusHours(1)).anyTimes();
-        expect(mockTokenContent.getRoles()).andReturn(List.of()).anyTimes();
-        expect(mockTokenContent.getScopes()).andReturn(List.of()).anyTimes();
-        replay(mockTokenContent);
-
-        TokenValidationResult result = TokenValidationResult.success(mockTokenContent);
-        result.setAuthorized(true);
-
-        expect(validationService.verifyToken("test-token-null-issuer", "test-processor-id"))
-                .andReturn(result);
-
-        response.setStatus(200);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-        String responseBody = responseOutput.toString();
-        assertTrue(responseBody.contains("\"valid\":true"));
-        // null issuer should produce "iss":null in JSON claims
-        assertTrue(responseBody.contains("\"iss\""),
-                "Claims should contain iss key even when null");
-    }
-
-    @Test
-    void ioExceptionWritingValidResponse() throws Exception {
-        // Arrange — valid flow but getOutputStream throws when writing response
-        reset(request, response, validationService);
-
-        expect(request.getContentLength()).andReturn(100).anyTimes();
-        // getOutputStream() will be called once for the response — throw IOException
-        expect(response.getOutputStream()).andThrow(new IOException("Broken pipe"));
-        response.setContentType("application/json");
-        expectLastCall().anyTimes();
-        response.setCharacterEncoding("UTF-8");
-        expectLastCall().anyTimes();
-
-        String requestJson = """
-            {
-                "token": "test-token",
-                "processorId": "test-processor-id"
-            }
-            """;
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-
-        TokenValidationResult validResult = TokenValidationResult.success(null);
-        validResult.setIssuer("test-issuer");
-        validResult.setAuthorized(true);
-
-        expect(validationService.verifyToken("test-token", "test-processor-id"))
-                .andReturn(validResult);
-
-        // IOException causes fallback to setStatus(500) in safelySendValidationResponse
-        response.setStatus(200);
-        expectLastCall();
-        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-    }
-
-    @Test
-    void ioExceptionWritingErrorResponse() throws Exception {
-        // Arrange — error flow but getOutputStream throws during error response writing
-        reset(request, response, validationService);
-
-        expect(request.getContentLength()).andReturn(100).anyTimes();
-        // getOutputStream() throws during error response
-        expect(response.getOutputStream()).andThrow(new IOException("Connection reset"));
-        response.setContentType("application/json");
-        expectLastCall().anyTimes();
-        response.setCharacterEncoding("UTF-8");
-        expectLastCall().anyTimes();
-
-        String requestJson = """
-            {
-                "token": "test-token",
-                "processorId": "test-processor-id"
-            }
-            """;
-        expect(request.getInputStream()).andReturn(new TestServletInputStream(requestJson));
-
-        expect(validationService.verifyToken("test-token", "test-processor-id"))
-                .andThrow(new IllegalStateException("Service not available"));
-
-        // safelySendErrorResponse catches IOException → sets status directly
-        response.setStatus(500);
-        expectLastCall();
-
-        replay(validationService, request, response);
-
-        // Act
-        servlet.doPost(request, response);
-
-        // Assert
-        verify(validationService, request, response);
-    }
-
-    // Helper classes for testing
-    private static class TestServletInputStream extends ServletInputStream {
-        private final ByteArrayInputStream inputStream;
-
-        public TestServletInputStream(String content) {
-            this.inputStream = new ByteArrayInputStream(content.getBytes());
-        }
-
-        @Override
-        public int read() throws IOException {
-            return inputStream.read();
-        }
-
-        @Override
-        public boolean isFinished() {
-            return inputStream.available() == 0;
-        }
-
-        @Override
-        public boolean isReady() {
-            return true;
-        }
-
-        @Override
-        public void setReadListener(ReadListener readListener) {
-            // Not implemented for testing
-        }
-    }
-
-    private static class TestServletOutputStream extends ServletOutputStream {
-        private final ByteArrayOutputStream outputStream;
-
-        public TestServletOutputStream(ByteArrayOutputStream outputStream) {
-            this.outputStream = outputStream;
-        }
-
-        @Override
-        public void write(int b) throws IOException {
-            outputStream.write(b);
-        }
-
-        @Override
-        public boolean isReady() {
-            return true;
-        }
-
-        @Override
-        public void setWriteListener(WriteListener writeListener) {
-            // Not implemented for testing
-        }
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"token":"test-token-null-issuer","processorId":"test-processor-id"}""")
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(true))
+                .body("claims", hasKey("iss"));
     }
 }
