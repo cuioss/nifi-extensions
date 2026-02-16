@@ -42,8 +42,6 @@
     </developers>
 
     <modules>
-        <module>nifi-cuioss-api</module>
-        <module>nifi-cuioss-api-nar</module>
         <module>nifi-cuioss-common</module>
         <module>nifi-cuioss-processors</module>
         <module>nifi-cuioss-rest-processors</module>
@@ -335,17 +333,6 @@
             <!-- outgoing-->
             <dependency>
                 <groupId>de.cuioss.nifi</groupId>
-                <artifactId>nifi-cuioss-api</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>de.cuioss.nifi</groupId>
-                <artifactId>nifi-cuioss-api-nar</artifactId>
-                <version>${project.version}</version>
-                <type>nar</type>
-            </dependency>
-            <dependency>
-                <groupId>de.cuioss.nifi</groupId>
                 <artifactId>nifi-cuioss-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -519,79 +506,11 @@
                 </plugin>
             </plugins>
         </pluginManagement>
-        <!-- Override NiFi parent enforcer to allow SNAPSHOT deps between project modules -->
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-enforcer-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>enforce-maven-version</id>
-                        <configuration>
-                            <rules combine.children="override">
-                                <banDuplicatePomDependencyVersions />
-                                <requireSameVersions>
-                                    <plugins>
-                                        <plugin>org.apache.maven.plugins:maven-surefire-plugin</plugin>
-                                        <plugin>org.apache.maven.plugins:maven-failsafe-plugin</plugin>
-                                        <plugin>org.apache.maven.plugins:maven-surefire-report-plugin</plugin>
-                                    </plugins>
-                                </requireSameVersions>
-                                <requireMavenVersion>
-                                    <version>3.9.6</version>
-                                </requireMavenVersion>
-                                <requireReleaseDeps>
-                                    <message>Dependencies outside of Apache NiFi must not use SNAPSHOT versions</message>
-                                    <failWhenParentIsSnapshot>false</failWhenParentIsSnapshot>
-                                    <excludes>
-                                        <exclude>org.apache.nifi:*</exclude>
-                                        <exclude>org.apache.nifi.minifi:*</exclude>
-                                        <exclude>org.apache.nifi.registry:*</exclude>
-                                        <exclude>de.cuioss.nifi:*</exclude>
-                                        <exclude>de.cuioss:*</exclude>
-                                        <exclude>de.cuioss.jwt:*</exclude>
-                                    </excludes>
-                                </requireReleaseDeps>
-                                <bannedDependencies>
-                                    <excludes>
-                                        <exclude>org.testng:testng</exclude>
-                                        <exclude>org.json:json:(,20240303):compile</exclude>
-                                        <exclude>c3p0:c3p0:*:*:compile</exclude>
-                                        <exclude>com.google.code.findbugs:annotations:*</exclude>
-                                        <exclude>org.hibernate.common:hibernate-commons-annotations:[,7.0.0]</exclude>
-                                        <exclude>org.hibernate.orm:hibernate-core:*</exclude>
-                                        <exclude>org.hibernate:hibernate-entitymanager:*</exclude>
-                                        <exclude>com.google.code.findbugs:jsr305:[,3.0.0]:compile</exclude>
-                                        <exclude>org.slf4j:slf4j-log4j12</exclude>
-                                        <exclude>org.slf4j:slf4j-reload4j</exclude>
-                                        <exclude>log4j:log4j:*</exclude>
-                                        <exclude>org.apache.logging.log4j:log4j-core:*</exclude>
-                                        <exclude>commons-logging:commons-logging:*</exclude>
-                                        <exclude>xalan:xalan</exclude>
-                                        <exclude>org.bouncycastle:bcprov-jdk15on</exclude>
-                                        <exclude>org.bouncycastle:bcpg-jdk15on</exclude>
-                                        <exclude>org.bouncycastle:bcpkix-jdk15on</exclude>
-                                        <exclude>org.bouncycastle:bcutil-jdk15on</exclude>
-                                        <exclude>org.bouncycastle:bcmail-jdk15on</exclude>
-                                        <exclude>org.apache.sshd:*:[,2.9.1]</exclude>
-                                        <exclude>org.spockframework:*</exclude>
-                                        <exclude>org.apache.groovy:groovy-test</exclude>
-                                        <exclude>org.hamcrest:hamcrest</exclude>
-                                    </excludes>
-                                </bannedDependencies>
-                            </rules>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
     </build>
     <profiles>
         <profile>
             <id>sonar</id>
             <modules>
-                <module>nifi-cuioss-api</module>
-                <module>nifi-cuioss-api-nar</module>
                 <module>nifi-cuioss-common</module>
                 <module>nifi-cuioss-processors</module>
                 <module>nifi-cuioss-rest-processors</module>

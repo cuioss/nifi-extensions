@@ -1118,7 +1118,7 @@
             "type": "de.cuioss.nifi.jwt.config.JwtIssuerConfigService",
             "bundle": {
               "group": "de.cuioss.nifi",
-              "artifact": "nifi-cuioss-api-nar",
+              "artifact": "nifi-cuioss-nar",
               "version": "1.0-SNAPSHOT"
             }
           }
