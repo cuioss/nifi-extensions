@@ -138,6 +138,10 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                 RestApiGatewayConstants.Properties.SSL_CONTEXT_SERVICE)
                 .asControllerService(SSLContextProvider.class);
         SSLContext sslContext = (sslProvider != null) ? sslProvider.createContext() : null;
+
+        // Enable management endpoints (/metrics, /config)
+        handler.configureManagementEndpoints(port, queueSize, sslContext != null);
+
         serverManager.start(port, handler, sslContext);
 
         LOGGER.info(RestApiLogMessages.INFO.PROCESSOR_INITIALIZED);
