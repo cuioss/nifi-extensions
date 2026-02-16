@@ -27,6 +27,11 @@
     <packaging>jar</packaging>
     <description>Controller Service API interfaces for NiFi JWT authentication (must be in a separate NAR from implementations per NiFi 2.x requirements)</description>
 
+    <properties>
+        <!-- API module contains only interfaces and records — no testable logic -->
+        <sonar.coverage.exclusions>**/*</sonar.coverage.exclusions>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.apache.nifi</groupId>
