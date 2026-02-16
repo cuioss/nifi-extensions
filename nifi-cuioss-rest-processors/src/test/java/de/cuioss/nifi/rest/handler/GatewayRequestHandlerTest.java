@@ -436,6 +436,9 @@ class GatewayRequestHandlerTest {
                 assertEquals(200, response.statusCode());
                 assertEquals("http://example.com",
                         response.headers().firstValue("Access-Control-Allow-Origin").orElse(""));
+                // Specific trusted origin should include Allow-Credentials
+                assertEquals("true",
+                        response.headers().firstValue("Access-Control-Allow-Credentials").orElse(""));
             } finally {
                 corsServer.stop();
             }
@@ -499,6 +502,9 @@ class GatewayRequestHandlerTest {
                 assertEquals(200, response.statusCode());
                 assertEquals("http://any-origin.com",
                         response.headers().firstValue("Access-Control-Allow-Origin").orElse(""));
+                // Wildcard origin must NOT set Allow-Credentials (CORS spec security requirement)
+                assertTrue(response.headers().firstValue("Access-Control-Allow-Credentials").isEmpty(),
+                        "Wildcard origin must not set Access-Control-Allow-Credentials");
             } finally {
                 corsServer.stop();
             }

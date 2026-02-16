@@ -424,9 +424,13 @@ public class GatewayRequestHandler extends Handler.Abstract {
         return corsAllowedOrigins.contains("*") || corsAllowedOrigins.contains(origin);
     }
 
-    private static void setCorsHeaders(Response response, String origin) {
+    private void setCorsHeaders(Response response, String origin) {
         response.getHeaders().put(CORS_ALLOW_ORIGIN, origin);
-        response.getHeaders().put(CORS_ALLOW_CREDENTIALS, "true");
+        // Only set Allow-Credentials for specific trusted origins, never for wildcard.
+        // Per CORS spec, credentials + wildcard origin is a security misconfiguration.
+        if (!corsAllowedOrigins.contains("*")) {
+            response.getHeaders().put(CORS_ALLOW_CREDENTIALS, "true");
+        }
         response.getHeaders().put(HEADER_VARY, HEADER_ORIGIN);
     }
 

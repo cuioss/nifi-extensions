@@ -184,7 +184,9 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             // Route to the named relationship (reuse pre-built instance)
             Relationship target = dynamicRelationships.get(container.routeName());
             if (target == null) {
-                target = new Relationship.Builder().name(container.routeName()).build();
+                throw new ProcessException(
+                        "No relationship found for route '%s' — this indicates an internal state inconsistency"
+                                .formatted(container.routeName()));
             }
             session.transfer(flowFile, target);
 
