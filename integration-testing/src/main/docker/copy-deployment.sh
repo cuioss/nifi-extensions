@@ -9,7 +9,6 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 NAR_TARGET_DIR="${PROJECT_ROOT}/nifi-cuioss-nar/target"
-API_NAR_TARGET_DIR="${PROJECT_ROOT}/nifi-cuioss-api-nar/target"
 DEPLOY_DIR="${PROJECT_ROOT}/target/nifi-deploy"
 
 # Navigate to the project root to run Maven
@@ -31,9 +30,8 @@ if [ ! -d "${DEPLOY_DIR}" ]; then
   mkdir -p "${DEPLOY_DIR}"
 fi
 
-# Copy the NAR files to the target directory
-echo "Copying NAR files to target directory..."
-cp "${API_NAR_TARGET_DIR}/nifi-cuioss-api-nar-1.0-SNAPSHOT.nar" "${DEPLOY_DIR}/"
+# Copy the NAR file to the target directory
+echo "Copying NAR file to target directory..."
 cp "${NAR_TARGET_DIR}/nifi-cuioss-nar-1.0-SNAPSHOT.nar" "${DEPLOY_DIR}/"
 
-echo "NAR files have been built and copied to the deployment location."
+echo "NAR file has been built and copied to the deployment location."
