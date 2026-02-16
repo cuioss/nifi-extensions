@@ -14,7 +14,7 @@
   limitations under the License.
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -22,42 +22,25 @@
         <artifactId>nifi-extensions</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
-
-    <artifactId>nifi-cuioss-nar</artifactId>
-    <name>nifi-cuioss-nar</name>
-    <version>1.0-SNAPSHOT</version>
-    <packaging>nar</packaging>
+    <artifactId>nifi-cuioss-api</artifactId>
+    <name>nifi-cuioss-api</name>
+    <packaging>jar</packaging>
 
     <properties>
-        <!-- Enforcer plugin configuration will be handled by parent -->
-        <maven.source.skip>true</maven.source.skip>
-        <maven.javadoc.skip>true</maven.javadoc.skip>
+        <!-- Interface-only module, no testable logic -->
+        <sonar.skip>true</sonar.skip>
     </properties>
 
     <dependencies>
         <dependency>
-            <groupId>de.cuioss.nifi</groupId>
-            <artifactId>nifi-cuioss-common</artifactId>
+            <groupId>org.apache.nifi</groupId>
+            <artifactId>nifi-api</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>de.cuioss.nifi</groupId>
-            <artifactId>nifi-cuioss-processors</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>de.cuioss.nifi</groupId>
-            <artifactId>nifi-cuioss-rest-processors</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>de.cuioss.nifi</groupId>
-            <artifactId>nifi-cuioss-ui</artifactId>
-            <type>war</type>
-        </dependency>
-        <dependency>
-            <groupId>de.cuioss.nifi</groupId>
-            <artifactId>nifi-cuioss-api-nar</artifactId>
-            <type>nar</type>
+            <groupId>de.cuioss.sheriff.oauth</groupId>
+            <artifactId>oauth-sheriff-core</artifactId>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
-
-
 </project>

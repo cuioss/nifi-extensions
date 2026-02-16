@@ -32,8 +32,6 @@ import java.util.Optional;
  * Exposes oauth-sheriff's {@link AccessTokenContent} directly — no wrapping.
  * Metrics are exposed via the library's own {@link SecurityEventCounter} — no
  * intermediate data structures.
- *
- * @see StandardJwtIssuerConfigService
  */
 public interface JwtIssuerConfigService extends ControllerService {
 
