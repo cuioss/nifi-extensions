@@ -317,18 +317,21 @@ public class GatewayProxyServlet extends HttpServlet {
                 || "::1".equals(normalizedHost);
     }
 
-    private void sendErrorResponse(HttpServletResponse resp, int status, String message)
-            throws IOException {
-        resp.setStatus(status);
-        resp.setContentType("application/json");
-        resp.setCharacterEncoding("UTF-8");
+    private void sendErrorResponse(HttpServletResponse resp, int status, String message) {
+        try {
+            resp.setStatus(status);
+            resp.setContentType("application/json");
+            resp.setCharacterEncoding("UTF-8");
 
-        JsonObject errorJson = Json.createObjectBuilder()
-                .add("error", message)
-                .build();
+            JsonObject errorJson = Json.createObjectBuilder()
+                    .add("error", message)
+                    .build();
 
-        try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
-            writer.writeObject(errorJson);
+            try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
+                writer.writeObject(errorJson);
+            }
+        } catch (IOException e) {
+            LOGGER.warn("Failed to send error response (status %s): %s", status, e.getMessage());
         }
     }
 }

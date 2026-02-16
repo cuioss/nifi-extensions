@@ -207,8 +207,9 @@ public class ManagementEndpointHandler {
             sb.append("nifi_gateway_events_total 0\n");
         } else {
             for (var entry : counts.entrySet()) {
-                sb.append("nifi_gateway_events_total{type=\"%s\"} %d\n"
-                        .formatted(entry.getKey().name().toLowerCase(), entry.getValue()));
+                sb.append("nifi_gateway_events_total{type=\"")
+                        .append(entry.getKey().name().toLowerCase())
+                        .append("\"} ").append(entry.getValue()).append('\n');
             }
         }
         sb.append('\n');
