@@ -119,13 +119,14 @@ class RestApiGatewayIT {
 
             // Verify RFC 9457 problem detail response
             String contentType = response.headers().firstValue("Content-Type").orElse("");
-            if (contentType.contains("application/problem+json")) {
-                JsonObject problem = Json.createReader(new StringReader(response.body())).readObject();
-                assertTrue(problem.containsKey("type"),
-                        "RFC 9457 problem detail should contain 'type'");
-                assertTrue(problem.containsKey("status"),
-                        "RFC 9457 problem detail should contain 'status'");
-            }
+            assertTrue(contentType.contains("application/problem+json"),
+                    "Content-Type should be application/problem+json. Actual: " + contentType);
+
+            JsonObject problem = Json.createReader(new StringReader(response.body())).readObject();
+            assertTrue(problem.containsKey("type"),
+                    "RFC 9457 problem detail should contain 'type'");
+            assertTrue(problem.containsKey("status"),
+                    "RFC 9457 problem detail should contain 'status'");
         }
     }
 
