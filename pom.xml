@@ -613,6 +613,7 @@
                 <!-- Enable Failsafe integration tests and Playwright E2E tests -->
                 <skipITs>false</skipITs>
                 <skipPlaywrightTests>false</skipPlaywrightTests>
+                <skip.docker.deployment>false</skip.docker.deployment>
             </properties>
         </profile>
         <profile>

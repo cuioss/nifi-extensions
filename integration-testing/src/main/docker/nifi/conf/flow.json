@@ -65,6 +65,45 @@
         "maxBackoffPeriod": "10 mins"
       },
       {
+        "identifier": "proc-extract-token-001",
+        "instanceIdentifier": "proc-extract-token-inst-001",
+        "name": "UpdateAttribute (Extract Token)",
+        "type": "org.apache.nifi.processors.attributes.UpdateAttribute",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-update-attribute-nar",
+          "version": "2.4.0"
+        },
+        "properties": {
+          "jwt.token": "${http.headers.Authorization:replaceFirst('Bearer ', '')}"
+        },
+        "propertyDescriptors": {
+          "jwt.token": {
+            "name": "jwt.token",
+            "identifiesControllerService": false,
+            "sensitive": false
+          }
+        },
+        "scheduledState": "RUNNING",
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runDurationMillis": 0,
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": [],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "root-group-id-001",
+        "position": { "x": 200, "y": 300 },
+        "style": {},
+        "retriedRelationships": [],
+        "retryCount": 0,
+        "executionNode": "ALL",
+        "backoffMechanism": "PENALIZE_FLOWFILE",
+        "maxBackoffPeriod": "10 mins"
+      },
+      {
         "identifier": "proc-jwt-auth-001",
         "instanceIdentifier": "proc-jwt-auth-inst-001",
         "name": "MultiIssuerJWTTokenAuthenticator",
@@ -75,59 +114,29 @@
           "version": "1.0-SNAPSHOT"
         },
         "properties": {
-          "Token Location": "AUTHORIZATION_HEADER",
-          "Token Header": "Authorization",
-          "Bearer Token Prefix": "Bearer",
-          "Require Valid Token": "true",
-          "Require HTTPS for JWKS": "false",
-          "issuer.keycloak.jwks-type": "url",
-          "issuer.keycloak.jwks-url": "http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs",
-          "issuer.keycloak.issuer": "http://keycloak:8080/realms/oauth_integration_tests",
-          "issuer.keycloak.required-roles": "read"
+          "jwt.issuer.config.service": "svc-jwt-issuer-config-001",
+          "jwt.token.attribute": "jwt.token",
+          "jwt.validation.require.valid.token": "true",
+          "jwt.authorization.required.roles": "read"
         },
         "propertyDescriptors": {
-          "Token Location": {
-            "name": "Token Location",
+          "jwt.issuer.config.service": {
+            "name": "jwt.issuer.config.service",
+            "identifiesControllerService": true,
+            "sensitive": false
+          },
+          "jwt.token.attribute": {
+            "name": "jwt.token.attribute",
             "identifiesControllerService": false,
             "sensitive": false
           },
-          "Token Header": {
-            "name": "Token Header",
+          "jwt.validation.require.valid.token": {
+            "name": "jwt.validation.require.valid.token",
             "identifiesControllerService": false,
             "sensitive": false
           },
-          "Bearer Token Prefix": {
-            "name": "Bearer Token Prefix",
-            "identifiesControllerService": false,
-            "sensitive": false
-          },
-          "Require Valid Token": {
-            "name": "Require Valid Token",
-            "identifiesControllerService": false,
-            "sensitive": false
-          },
-          "Require HTTPS for JWKS": {
-            "name": "Require HTTPS for JWKS",
-            "identifiesControllerService": false,
-            "sensitive": false
-          },
-          "issuer.keycloak.jwks-type": {
-            "name": "issuer.keycloak.jwks-type",
-            "identifiesControllerService": false,
-            "sensitive": false
-          },
-          "issuer.keycloak.jwks-url": {
-            "name": "issuer.keycloak.jwks-url",
-            "identifiesControllerService": false,
-            "sensitive": false
-          },
-          "issuer.keycloak.issuer": {
-            "name": "issuer.keycloak.issuer",
-            "identifiesControllerService": false,
-            "sensitive": false
-          },
-          "issuer.keycloak.required-roles": {
-            "name": "issuer.keycloak.required-roles",
+          "jwt.authorization.required.roles": {
+            "name": "jwt.authorization.required.roles",
             "identifiesControllerService": false,
             "sensitive": false
           }
@@ -510,20 +519,219 @@
         "executionNode": "ALL",
         "backoffMechanism": "PENALIZE_FLOWFILE",
         "maxBackoffPeriod": "10 mins"
+      },
+      {
+        "identifier": "proc-rest-gateway-001",
+        "instanceIdentifier": "proc-rest-gateway-inst-001",
+        "name": "RestApiGateway",
+        "type": "de.cuioss.nifi.rest.RestApiGatewayProcessor",
+        "bundle": {
+          "group": "de.cuioss.nifi",
+          "artifact": "nifi-cuioss-nar",
+          "version": "1.0-SNAPSHOT"
+        },
+        "properties": {
+          "rest.gateway.listening.port": "9443",
+          "rest.gateway.jwt.config.service": "svc-jwt-issuer-config-001",
+          "rest.gateway.max.request.size": "1048576",
+          "rest.gateway.request.queue.size": "50",
+          "restapi.health.path": "/api/health",
+          "restapi.health.methods": "GET",
+          "restapi.data.path": "/api/data",
+          "restapi.data.methods": "GET,POST"
+        },
+        "propertyDescriptors": {
+          "rest.gateway.listening.port": {
+            "name": "rest.gateway.listening.port",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "rest.gateway.jwt.config.service": {
+            "name": "rest.gateway.jwt.config.service",
+            "identifiesControllerService": true,
+            "sensitive": false
+          },
+          "rest.gateway.max.request.size": {
+            "name": "rest.gateway.max.request.size",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "rest.gateway.request.queue.size": {
+            "name": "rest.gateway.request.queue.size",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "restapi.health.path": {
+            "name": "restapi.health.path",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "restapi.health.methods": {
+            "name": "restapi.health.methods",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "restapi.data.path": {
+            "name": "restapi.data.path",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "restapi.data.methods": {
+            "name": "restapi.data.methods",
+            "identifiesControllerService": false,
+            "sensitive": false
+          }
+        },
+        "scheduledState": "RUNNING",
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runDurationMillis": 0,
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": ["failure"],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "root-group-id-001",
+        "position": { "x": 800, "y": 200 },
+        "style": {},
+        "retriedRelationships": [],
+        "retryCount": 0,
+        "executionNode": "ALL",
+        "backoffMechanism": "PENALIZE_FLOWFILE",
+        "maxBackoffPeriod": "10 mins"
+      },
+      {
+        "identifier": "proc-log-gateway-health-001",
+        "instanceIdentifier": "proc-log-gateway-health-inst-001",
+        "name": "LogAttribute (gateway-health)",
+        "type": "org.apache.nifi.processors.standard.LogAttribute",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "2.4.0"
+        },
+        "properties": {
+          "Log Level": "info",
+          "Log prefix": "gateway-health"
+        },
+        "propertyDescriptors": {
+          "Log Level": {
+            "name": "Log Level",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "Log prefix": {
+            "name": "Log prefix",
+            "identifiesControllerService": false,
+            "sensitive": false
+          }
+        },
+        "scheduledState": "RUNNING",
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runDurationMillis": 0,
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": ["success"],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "root-group-id-001",
+        "position": { "x": 800, "y": 400 },
+        "style": {},
+        "retriedRelationships": [],
+        "retryCount": 0,
+        "executionNode": "ALL",
+        "backoffMechanism": "PENALIZE_FLOWFILE",
+        "maxBackoffPeriod": "10 mins"
+      },
+      {
+        "identifier": "proc-log-gateway-data-001",
+        "instanceIdentifier": "proc-log-gateway-data-inst-001",
+        "name": "LogAttribute (gateway-data)",
+        "type": "org.apache.nifi.processors.standard.LogAttribute",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "2.4.0"
+        },
+        "properties": {
+          "Log Level": "info",
+          "Log prefix": "gateway-data"
+        },
+        "propertyDescriptors": {
+          "Log Level": {
+            "name": "Log Level",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "Log prefix": {
+            "name": "Log prefix",
+            "identifiesControllerService": false,
+            "sensitive": false
+          }
+        },
+        "scheduledState": "RUNNING",
+        "schedulingPeriod": "0 sec",
+        "schedulingStrategy": "TIMER_DRIVEN",
+        "penaltyDuration": "30 sec",
+        "yieldDuration": "1 sec",
+        "bulletinLevel": "WARN",
+        "runDurationMillis": 0,
+        "concurrentlySchedulableTaskCount": 1,
+        "autoTerminatedRelationships": ["success"],
+        "componentType": "PROCESSOR",
+        "groupIdentifier": "root-group-id-001",
+        "position": { "x": 1000, "y": 400 },
+        "style": {},
+        "retriedRelationships": [],
+        "retryCount": 0,
+        "executionNode": "ALL",
+        "backoffMechanism": "PENALIZE_FLOWFILE",
+        "maxBackoffPeriod": "10 mins"
       }
     ],
     "inputPorts": [],
     "outputPorts": [],
     "connections": [
       {
-        "identifier": "conn-request-to-jwt-001",
-        "instanceIdentifier": "conn-request-to-jwt-inst-001",
-        "name": "HandleHttpRequest → JWT Auth",
+        "identifier": "conn-request-to-extract-001",
+        "instanceIdentifier": "conn-request-to-extract-inst-001",
+        "name": "HandleHttpRequest → Extract Token",
         "source": {
           "id": "proc-http-request-001",
           "type": "PROCESSOR",
           "groupId": "root-group-id-001",
           "name": "HandleHttpRequest"
+        },
+        "destination": {
+          "id": "proc-extract-token-001",
+          "type": "PROCESSOR",
+          "groupId": "root-group-id-001",
+          "name": "UpdateAttribute (Extract Token)"
+        },
+        "selectedRelationships": ["success"],
+        "backPressureObjectThreshold": 10000,
+        "backPressureDataSizeThreshold": "1 GB",
+        "flowFileExpiration": "0 sec",
+        "prioritizers": [],
+        "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+        "loadBalanceCompression": "DO_NOT_COMPRESS",
+        "componentType": "CONNECTION",
+        "groupIdentifier": "root-group-id-001",
+        "labelIndex": 1,
+        "zIndex": 0
+      },
+      {
+        "identifier": "conn-extract-to-jwt-001",
+        "instanceIdentifier": "conn-extract-to-jwt-inst-001",
+        "name": "Extract Token → JWT Auth",
+        "source": {
+          "id": "proc-extract-token-001",
+          "type": "PROCESSOR",
+          "groupId": "root-group-id-001",
+          "name": "UpdateAttribute (Extract Token)"
         },
         "destination": {
           "id": "proc-jwt-auth-001",
@@ -766,6 +974,62 @@
         "groupIdentifier": "root-group-id-001",
         "labelIndex": 1,
         "zIndex": 0
+      },
+      {
+        "identifier": "conn-gateway-health-001",
+        "instanceIdentifier": "conn-gateway-health-inst-001",
+        "name": "RestApiGateway health → LogAttribute",
+        "source": {
+          "id": "proc-rest-gateway-001",
+          "type": "PROCESSOR",
+          "groupId": "root-group-id-001",
+          "name": "RestApiGateway"
+        },
+        "destination": {
+          "id": "proc-log-gateway-health-001",
+          "type": "PROCESSOR",
+          "groupId": "root-group-id-001",
+          "name": "LogAttribute (gateway-health)"
+        },
+        "selectedRelationships": ["health"],
+        "backPressureObjectThreshold": 10000,
+        "backPressureDataSizeThreshold": "1 GB",
+        "flowFileExpiration": "0 sec",
+        "prioritizers": [],
+        "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+        "loadBalanceCompression": "DO_NOT_COMPRESS",
+        "componentType": "CONNECTION",
+        "groupIdentifier": "root-group-id-001",
+        "labelIndex": 1,
+        "zIndex": 0
+      },
+      {
+        "identifier": "conn-gateway-data-001",
+        "instanceIdentifier": "conn-gateway-data-inst-001",
+        "name": "RestApiGateway data → LogAttribute",
+        "source": {
+          "id": "proc-rest-gateway-001",
+          "type": "PROCESSOR",
+          "groupId": "root-group-id-001",
+          "name": "RestApiGateway"
+        },
+        "destination": {
+          "id": "proc-log-gateway-data-001",
+          "type": "PROCESSOR",
+          "groupId": "root-group-id-001",
+          "name": "LogAttribute (gateway-data)"
+        },
+        "selectedRelationships": ["data"],
+        "backPressureObjectThreshold": 10000,
+        "backPressureDataSizeThreshold": "1 GB",
+        "flowFileExpiration": "0 sec",
+        "prioritizers": [],
+        "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+        "loadBalanceCompression": "DO_NOT_COMPRESS",
+        "componentType": "CONNECTION",
+        "groupIdentifier": "root-group-id-001",
+        "labelIndex": 1,
+        "zIndex": 0
       }
     ],
     "labels": [],
@@ -804,6 +1068,58 @@
               "group": "org.apache.nifi",
               "artifact": "nifi-http-context-map-api",
               "version": "2.4.0"
+            }
+          }
+        ],
+        "scheduledState": "ENABLED",
+        "componentType": "CONTROLLER_SERVICE",
+        "groupIdentifier": "root-group-id-001"
+      },
+      {
+        "identifier": "svc-jwt-issuer-config-001",
+        "instanceIdentifier": "svc-jwt-issuer-config-inst-001",
+        "name": "StandardJwtIssuerConfigService",
+        "type": "de.cuioss.nifi.jwt.config.StandardJwtIssuerConfigService",
+        "bundle": {
+          "group": "de.cuioss.nifi",
+          "artifact": "nifi-cuioss-nar",
+          "version": "1.0-SNAPSHOT"
+        },
+        "properties": {
+          "jwt.validation.require.https.for.jwks": "false",
+          "issuer.keycloak.jwks-type": "url",
+          "issuer.keycloak.jwks-url": "http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs",
+          "issuer.keycloak.issuer": "http://keycloak:8080/realms/oauth_integration_tests"
+        },
+        "propertyDescriptors": {
+          "jwt.validation.require.https.for.jwks": {
+            "name": "jwt.validation.require.https.for.jwks",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "issuer.keycloak.jwks-type": {
+            "name": "issuer.keycloak.jwks-type",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "issuer.keycloak.jwks-url": {
+            "name": "issuer.keycloak.jwks-url",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "issuer.keycloak.issuer": {
+            "name": "issuer.keycloak.issuer",
+            "identifiesControllerService": false,
+            "sensitive": false
+          }
+        },
+        "controllerServiceApis": [
+          {
+            "type": "de.cuioss.nifi.jwt.config.JwtIssuerConfigService",
+            "bundle": {
+              "group": "de.cuioss.nifi",
+              "artifact": "nifi-cuioss-nar",
+              "version": "1.0-SNAPSHOT"
             }
           }
         ],

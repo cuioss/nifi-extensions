@@ -12,8 +12,8 @@ ENV NIFI_BOOTSTRAP_JVM_MAX=1g
 # Copy custom configuration files and set proper ownership
 COPY --chown=nifi:nifi nifi/conf/ /opt/nifi/nifi-current/conf/
 
-# Expose HTTP, HTTPS, and flow pipeline ports
-EXPOSE 9094 9095 7777
+# Expose HTTP, HTTPS, flow pipeline, and REST API gateway ports
+EXPOSE 9094 9095 7777 9443
 
 # Add health check
 HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=12 \
