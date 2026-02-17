@@ -101,7 +101,7 @@ class ApiKeyAuthenticationFilterTest {
         @MethodSource("invalidProcessorIdCases")
         @DisplayName("Should reject request with invalid processor ID")
         void shouldRejectRequestWithInvalidProcessorId(String processorId,
-                                                       String expectedMessage, String scenario) {
+                String expectedMessage, String scenario) {
             given()
                     .header(PROCESSOR_ID_HEADER, processorId)
                     .when()

@@ -26,16 +26,18 @@ import de.cuioss.sheriff.oauth.core.TokenValidator;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.tools.logging.CuiLogger;
+import jakarta.servlet.http.HttpServletRequest;
+import org.apache.nifi.web.NiFiWebConfigurationContext;
 
-import java.io.IOException;
 import java.util.*;
 
 import static de.cuioss.nifi.ui.util.TokenMasking.maskToken;
 
 /**
  * Service for JWT token validation using the OAuth-Sheriff library.
- * This service retrieves processor configuration via NiFi's REST API and
- * creates the same TokenValidator instance that the processor uses.
+ * This service retrieves processor configuration via NiFi's internal
+ * {@link NiFiWebConfigurationContext} API and creates the same
+ * TokenValidator instance that the processor uses.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>
@@ -47,40 +49,30 @@ public class JwtValidationService {
     private static final String CLAIM_ROLES = "roles";
     private static final String CLAIM_SCOPES = "scopes";
 
-    private final ComponentConfigReader configReader;
+    private final NiFiWebConfigurationContext configContext;
 
-    public JwtValidationService() {
-        this.configReader = new ComponentConfigReader();
-    }
-
-    // For testing - allows injection of config reader
-    JwtValidationService(ComponentConfigReader configReader) {
-        this.configReader = configReader;
+    public JwtValidationService(NiFiWebConfigurationContext configContext) {
+        this.configContext = Objects.requireNonNull(configContext, "configContext must not be null");
     }
 
     /**
      * Verifies a JWT token using the processor's configuration.
      *
-     * @param token The JWT token to verify (must not be null)
+     * @param token       The JWT token to verify (must not be null)
      * @param processorId The processor ID to get configuration from (must not be null)
+     * @param request     The current HTTP servlet request (for authentication context)
      * @return TokenValidationResult containing validation results (never null)
-     * @throws IOException If unable to fetch processor configuration
      * @throws IllegalArgumentException If processor configuration is invalid
-     * @throws IllegalStateException If processor configuration is not available
+     * @throws IllegalStateException    If processor configuration is not available
      */
-    public TokenValidationResult verifyToken(String token, String processorId)
-            throws IOException, IllegalArgumentException, IllegalStateException {
+    public TokenValidationResult verifyToken(String token, String processorId, HttpServletRequest request)
+            throws IllegalArgumentException, IllegalStateException {
 
         Objects.requireNonNull(processorId, "processorId must not be null");
         LOGGER.debug("verifyToken called with processorId=%s, token=%s", processorId, maskToken(token));
-        Map<String, String> properties;
 
-        try {
-            properties = configReader.getProcessorProperties(processorId);
-        } catch (IOException e) {
-            LOGGER.error(e, UILogMessages.ERROR.FAILED_FETCH_PROCESSOR_CONFIG, processorId);
-            throw new IOException("Failed to fetch processor configuration: " + e.getMessage(), e);
-        }
+        var configReader = new ComponentConfigReader(configContext);
+        Map<String, String> properties = configReader.getProcessorProperties(processorId, request);
 
         // 2. Parse configurations using shared parser (same logic as processor)
         ConfigurationManager configurationManager = new ConfigurationManager();
@@ -230,4 +222,3 @@ public class JwtValidationService {
     }
 
 }
-

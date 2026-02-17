@@ -20,13 +20,17 @@ import de.cuioss.nifi.ui.service.JwtValidationService;
 import de.cuioss.nifi.ui.service.JwtValidationService.TokenValidationResult;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
+import jakarta.servlet.http.HttpServletRequest;
+import org.apache.nifi.web.NiFiWebConfigurationContext;
 import org.eclipse.jetty.ee11.servlet.ServletHolder;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -63,15 +67,19 @@ class JwtVerificationServletTest {
 
     @BeforeAll
     static void startServer() throws Exception {
+        NiFiWebConfigurationContext dummyContext = createNiceMock(NiFiWebConfigurationContext.class);
+        replay(dummyContext);
+
         EmbeddedServletTestSupport.startServer(ctx -> {
             JwtVerificationServlet servlet = new JwtVerificationServlet(
-                    new JwtValidationService() {
+                    new JwtValidationService(dummyContext) {
                         @Override
-                        public TokenValidationResult verifyToken(String token, String processorId)
-                                throws IOException, IllegalArgumentException, IllegalStateException {
+                        public TokenValidationResult verifyToken(String token, String processorId,
+                                HttpServletRequest request)
+                                throws IllegalArgumentException, IllegalStateException {
                             try {
                                 return currentVerifier.verify(token, processorId);
-                            } catch (IOException | IllegalArgumentException | IllegalStateException e) {
+                            } catch (IllegalArgumentException | IllegalStateException e) {
                                 throw e;
                             } catch (Exception e) {
                                 throw new IllegalStateException(e);
@@ -217,10 +225,10 @@ class JwtVerificationServletTest {
     }
 
     @Test
-    @DisplayName("Should return 500 for service IOException")
-    void ioExceptionFromService() {
+    @DisplayName("Should return 500 for service communication error (wrapped as IllegalStateException)")
+    void communicationErrorFromService() {
         currentVerifier = (token, processorId) -> {
-            throw new IOException("Connection refused");
+            throw new IllegalStateException("Connection refused");
         };
 
         given()
@@ -232,7 +240,7 @@ class JwtVerificationServletTest {
                 .then()
                 .statusCode(500)
                 .body("valid", equalTo(false))
-                .body("error", containsString("Communication error"));
+                .body("error", containsString("Service not available"));
     }
 
     @Test

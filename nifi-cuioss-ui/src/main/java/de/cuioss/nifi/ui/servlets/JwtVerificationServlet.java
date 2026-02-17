@@ -25,6 +25,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.nifi.web.NiFiWebConfigurationContext;
 
 import java.io.IOException;
 import java.util.Map;
@@ -66,15 +67,25 @@ public class JwtVerificationServlet extends HttpServlet {
     /** Maximum request body size: 1 MB */
     private static final int MAX_REQUEST_BODY_SIZE = 1024 * 1024;
 
-    private final transient JwtValidationService validationService;
+    private transient JwtValidationService validationService;
 
     public JwtVerificationServlet() {
-        this.validationService = new JwtValidationService();
+        // validationService initialized in init() from ServletContext
     }
 
     // For testing - allows injection of validation service
     public JwtVerificationServlet(JwtValidationService validationService) {
         this.validationService = validationService;
+    }
+
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        if (validationService == null) {
+            NiFiWebConfigurationContext configContext = (NiFiWebConfigurationContext) getServletContext()
+                    .getAttribute("nifi-web-configuration-context");
+            validationService = new JwtValidationService(configContext);
+        }
     }
 
     @Override
@@ -98,6 +109,7 @@ public class JwtVerificationServlet extends HttpServlet {
         // 3. Verify token using service
         TokenValidationResult result = performTokenVerification(
                 verificationRequest,
+                req,
                 resp
         );
         if (result == null) {
@@ -176,17 +188,20 @@ public class JwtVerificationServlet extends HttpServlet {
      * Performs token verification.
      *
      * @param verificationRequest Token verification request parameters
-     * @param resp HTTP response
+     * @param req                 HTTP request (for authentication context)
+     * @param resp                HTTP response
      * @return Token validation result, or null if verification failed (error already sent)
      */
     private TokenValidationResult performTokenVerification(
             TokenVerificationRequest verificationRequest,
+            HttpServletRequest req,
             HttpServletResponse resp) {
 
         try {
             return validationService.verifyToken(
                     verificationRequest.token(),
-                    verificationRequest.processorId()
+                    verificationRequest.processorId(),
+                    req
             );
         } catch (IllegalArgumentException e) {
             LOGGER.warn(UILogMessages.WARN.INVALID_REQUEST,
@@ -198,10 +213,6 @@ public class JwtVerificationServlet extends HttpServlet {
                     verificationRequest.processorId(), e.getMessage());
             safelySendErrorResponse(resp, 500, "Service not available: " + e.getMessage(), false);
             return null;
-        } catch (IOException e) {
-            LOGGER.error(e, UILogMessages.ERROR.COMMUNICATION_ERROR, verificationRequest.processorId());
-            safelySendErrorResponse(resp, 500, "Communication error: " + e.getMessage(), false);
-            return null;
         }
     }
 
@@ -209,7 +220,7 @@ public class JwtVerificationServlet extends HttpServlet {
      * Safely sends error response, handling IOException.
      */
     private void safelySendErrorResponse(HttpServletResponse resp, int statusCode,
-                                         String errorMessage, boolean valid) {
+            String errorMessage, boolean valid) {
         try {
             sendErrorResponse(resp, statusCode, errorMessage, valid);
         } catch (IOException e) {
