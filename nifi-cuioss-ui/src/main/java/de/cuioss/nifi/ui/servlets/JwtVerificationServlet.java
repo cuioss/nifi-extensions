@@ -220,7 +220,7 @@ public class JwtVerificationServlet extends HttpServlet {
      * Safely sends error response, handling IOException.
      */
     private void safelySendErrorResponse(HttpServletResponse resp, int statusCode,
-                                         String errorMessage, boolean valid) {
+            String errorMessage, boolean valid) {
         try {
             sendErrorResponse(resp, statusCode, errorMessage, valid);
         } catch (IOException e) {

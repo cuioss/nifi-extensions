@@ -91,8 +91,8 @@ class IntegrationTestSupport {
      * @return the access token string
      */
     static String fetchKeycloakToken(HttpClient client, String endpoint,
-                                     String clientId, String clientSecret,
-                                     String username, String password) throws Exception {
+            String clientId, String clientSecret,
+            String username, String password) throws Exception {
         String body = formEncode(Map.of(
                 "grant_type", "password",
                 "client_id", clientId,
