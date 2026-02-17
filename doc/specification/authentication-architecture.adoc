@@ -1,0 +1,296 @@
+= Authentication Architecture
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+
+link:../Specification.adoc[Back to Main Specification] | link:security.adoc[Security Specification]
+
+== Overview
+
+This document describes the end-to-end authentication and authorization architecture across all three service layers: the NiFi Web UI servlets, the GatewayProxyServlet, and the REST API Gateway's embedded Jetty server.
+
+== Authentication Layers
+
+Requests flow through up to three authentication layers depending on the target endpoint.
+
+=== Request Flow Diagram
+
+[source]
+----
+                         ┌─────────────────────────────────────────────────────────┐
+                         │                    NiFi Web Container                   │
+                         │                      (Layer 1)                          │
+                         │  ┌───────────────────────────────────────────────────┐  │
+                         │  │              Custom UI WAR (Layer 2)              │  │
+                         │  │                                                   │  │
+  NiFi UI                │  │  SecurityHeadersFilter ──► all responses          │  │
+  (iframe)  ─── HTTPS ──►│  │         │                                         │  │
+                         │  │  ProcessorIdValidationFilter                      │  │
+                         │  │         │  (X-Processor-Id UUID check)            │  │
+                         │  │         │                                         │  │
+                         │  │         ├──► JwtVerificationServlet               │  │
+                         │  │         │       └── ComponentConfigReader ──┐     │  │
+                         │  │         │            (per-component auth)   │     │  │
+                         │  │         │                                   │     │  │
+                         │  │         ├──► JwksValidationServlet          │     │  │
+                         │  │         │       (stateless, no config)      │     │  │
+                         │  │         │                                   │     │  │
+                         │  │         ├──► MetricsServlet                 │     │  │
+                         │  │         │       (stateless, no config)      │     │  │
+                         │  │         │                                   │     │  │
+                         │  │         └──► GatewayProxyServlet ───────────┤     │  │
+                         │  │                 │  (per-component auth)     │     │  │
+                         │  │                 │  (SSRF: localhost only)   │     │  │
+                         │  └─────────────────┼──────────────────────────┼──────┘  │
+                         └────────────────────┼──────────────────────────┼─────────┘
+                                              │                         │
+                           HTTP + X-Api-Key   │    NiFiWebConfiguration │
+                           (localhost:port)   │    Context (reads       │
+                                              ▼    processor config)    │
+                         ┌──────────────────────────────┐               │
+                         │  Gateway Embedded Jetty      │◄───── reads ──┘
+                         │        (Layer 3)             │   port, API key
+                         │                              │
+                         │  GatewayRequestHandler       │
+                         │         │                    │
+  External   ── HTTP ───►│         ├──► /metrics ───────┤
+  Clients                │         │    /config         │
+  (direct)               │         │  ManagementHandler │
+                         │         │  (optional API key)│
+                         │         │                    │
+                         │         └──► /api/** ────────┤
+                         │           AuthorizationPipeline
+                         │           JWT Bearer token   │
+                         │           Role + scope check │
+                         │           cui-http security  │
+                         │           CORS handling      │
+                         └──────────────────────────────┘
+----
+
+Two distinct entry points reach the gateway:
+
+* **NiFi UI path** (top): Browser -> NiFi auth -> ProcessorIdValidationFilter -> GatewayProxyServlet -> Gateway (three-layer auth)
+* **Direct path** (left): External client -> Gateway Jetty (single-layer: JWT Bearer or optional API key)
+
+=== Layer 1: NiFi Container Authentication
+
+All Custom UI endpoints run inside NiFi's web container and are served within an authenticated iframe session. Unauthenticated users cannot reach any Custom UI servlet. This is enforced by NiFi itself -- no custom code required.
+
+=== Layer 2: Custom UI Servlet Filters and Authorization
+
+Requests that reach the Custom UI pass through two filters and then per-servlet authorization:
+
+[cols="1,3"]
+|===
+|Component |Purpose
+
+|`SecurityHeadersFilter`
+|Adds defense-in-depth response headers (`X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`) to all responses.
+
+|`ProcessorIdValidationFilter`
+|Validates the `X-Processor-Id` (or fallback `X-Component-Id`) header as a well-formed UUID. Applied to `/nifi-api/processors/jwt/*`.
+
+|Per-component authorization
+|Servlets that read processor configuration (via `ComponentConfigReader`) trigger `NiFiWebConfigurationContext.getComponentDetails()`, which enforces NiFi's per-component access policy using the HTTP request's security principal.
+|===
+
+=== Layer 3: Gateway Embedded Jetty
+
+The REST API Gateway processor runs its own embedded Jetty server on a configurable port. This server has two categories of endpoints with different authentication:
+
+* **Data routes** -- Full JWT Bearer authentication with role/scope authorization via `cui-http` security pipelines.
+* **Management endpoints** (`/metrics`, `/config`) -- Optional API key authentication (see <<management-endpoint-security>>).
+
+== Endpoint Authorization Matrix
+
+=== Custom UI Endpoints (Layer 2)
+
+[cols="3,1,1,1,2"]
+|===
+|Endpoint |Filter |Per-Component Auth |HTTP Methods |Notes
+
+|`/nifi-api/processors/jwt/verify-token`
+|ProcessorIdValidationFilter
+|Yes (ComponentConfigReader)
+|POST
+|Reads processor config for token validation
+
+|`/nifi-api/processors/jwt/gateway/*`
+|ProcessorIdValidationFilter
+|Yes (ComponentConfigReader)
+|GET, POST
+|Proxies to gateway + SSRF protection
+
+|`/nifi-api/processors/jwt/metrics`
+|ProcessorIdValidationFilter
+|No
+|GET
+|Filter validates UUID but servlet does not use it for config lookup
+
+|`/nifi-api/processors/jwt/validate-jwks-url`
+|ProcessorIdValidationFilter
+|No
+|POST
+|Stateless validation -- no processor config access
+
+|`/nifi-api/processors/jwt/validate-jwks-file`
+|ProcessorIdValidationFilter
+|No
+|POST
+|Stateless validation -- no processor config access
+
+|`/nifi-api/processors/jwt/validate-jwks-content`
+|ProcessorIdValidationFilter
+|No
+|POST
+|Stateless validation -- no processor config access
+|===
+
+Endpoints without per-component authorization are still protected by NiFi container auth (Layer 1) and the ProcessorIdValidationFilter UUID check.
+
+=== Gateway Embedded Jetty Endpoints (Layer 3)
+
+[cols="3,1,1,1,2"]
+|===
+|Endpoint |Authentication |Authorization |HTTP Methods |Notes
+
+|Data routes (`/api/**`)
+|JWT Bearer token
+|Role + scope validation
+|Per-route config
+|Full `cui-http` security pipeline (input sanitization, CORS, rate limiting via queue backpressure)
+
+|`/metrics`
+|Optional API key (`X-Api-Key`)
+|None
+|GET
+|Bypasses JWT auth and security pipelines
+
+|`/config`
+|Optional API key (`X-Api-Key`)
+|None
+|GET
+|Bypasses JWT auth and security pipelines -- exposes route configuration
+|===
+
+[[management-endpoint-security]]
+== Management Endpoint Security
+
+=== API Key Authentication
+
+Management endpoints (`/metrics`, `/config`) support optional API key authentication via the `rest.gateway.management.api-key` processor property:
+
+* **When configured**: Requests must include a matching `X-Api-Key` header. Invalid or missing keys receive a `401 Unauthorized` response.
+* **When not configured**: Management endpoints are accessible without authentication (backward compatible).
+
+The API key is a NiFi sensitive property (masked in UI, encrypted at rest by NiFi).
+
+=== Network Binding
+
+The embedded Jetty server binds to the address specified by `rest.gateway.listening.host`:
+
+* **Default (`0.0.0.0`)**: Listens on all interfaces. Management endpoints are network-accessible.
+* **`127.0.0.1`**: Restricts access to localhost only. Recommended when the GatewayProxyServlet handles all external access.
+
+=== GatewayProxyServlet as Secure Proxy
+
+The `GatewayProxyServlet` provides authenticated proxy access to management endpoints:
+
+1. Authenticated NiFi session required (Layer 1)
+2. `ProcessorIdValidationFilter` validates processor UUID (Layer 2)
+3. `ComponentConfigReader` enforces per-component NiFi authorization
+4. Reads the management API key from processor config and forwards it via `X-Api-Key` header
+5. SSRF protection: only localhost targets allowed
+
+This means users accessing management data through the NiFi UI get full three-layer authentication, even when the gateway's own management endpoints use only API key auth.
+
+== Security Pipeline Comparison
+
+[cols="2,1,1,1,1"]
+|===
+|Capability |Data Routes |Management Endpoints |Custom UI Servlets |GatewayProxyServlet
+
+|NiFi session auth
+|No
+|No
+|Yes
+|Yes
+
+|JWT Bearer auth
+|Yes
+|No
+|No
+|No
+
+|API key auth
+|No
+|Optional
+|No
+|No
+
+|Processor ID validation
+|No
+|No
+|Yes (filter)
+|Yes (filter)
+
+|Per-component NiFi authorization
+|No
+|No
+|Partial (verify-token, gateway)
+|Yes
+
+|`cui-http` input sanitization
+|Yes
+|No
+|Partial (JWKS validation)
+|No
+
+|SSRF protection
+|N/A
+|N/A
+|JWKS URL/file validation
+|Localhost-only targets
+
+|CORS handling
+|Yes (configurable)
+|No
+|No (NiFi iframe)
+|No (NiFi iframe)
+|===
+
+== Implementation Classes
+
+[cols="2,3"]
+|===
+|Class |Role
+
+|link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/SecurityHeadersFilter.java[SecurityHeadersFilter]
+|Defense-in-depth response headers on all Custom UI responses
+
+|link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/ProcessorIdValidationFilter.java[ProcessorIdValidationFilter]
+|UUID validation for `X-Processor-Id` / `X-Component-Id` headers
+
+|link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/util/ComponentConfigReader.java[ComponentConfigReader]
+|Per-component authorization via `NiFiWebConfigurationContext`
+
+|link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/GatewayProxyServlet.java[GatewayProxyServlet]
+|Authenticated proxy to gateway management API with SSRF protection
+
+|link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/GatewayRequestHandler.java[GatewayRequestHandler]
+|Main Jetty request handler -- routes to auth pipeline or management handler
+
+|link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/ManagementEndpointHandler.java[ManagementEndpointHandler]
+|Management endpoint handler with optional API key authentication
+
+|link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/server/JettyServerManager.java[JettyServerManager]
+|Embedded Jetty lifecycle with configurable host binding
+|===
+
+== See Also
+
+* link:security.adoc[Security Specification] -- Token validation security, JWKS protection, runtime security
+* link:jwt-rest-api.adoc[JWT REST API] -- Custom UI endpoint details and request/response formats
+* link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]

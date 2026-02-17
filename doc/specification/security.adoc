@@ -246,6 +246,7 @@ For more details on security testing, see link:testing.adoc[Testing].
 * link:../Requirements.adoc#NIFI-AUTH-8[Security Requirements]
 
 === Related Implementation
+* link:authentication-architecture.adoc[Authentication Architecture] -- End-to-end authentication matrix across all service layers
 * link:token-validation.adoc[Token Validation]
 * link:configuration.adoc[Configuration]
 * link:error-handling.adoc[Error Handling]
