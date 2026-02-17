@@ -45,8 +45,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>Routes configured in flow.json:
  * <ul>
- *   <li>{@code /api/health} — GET only</li>
- *   <li>{@code /api/data} — GET and POST</li>
+ *   <li>{@code /api/health} — GET only (authenticated)</li>
+ *   <li>{@code /api/data} — GET and POST (authenticated)</li>
+ *   <li>{@code /metrics} — GET only (management, no auth required)</li>
+ *   <li>{@code /config} — GET only (management, no auth required)</li>
  * </ul>
  *
  * <p>Requires Docker containers to be running (NiFi on port 9443, Keycloak on 9080).
@@ -59,6 +61,8 @@ class RestApiGatewayIT {
     private static final String GATEWAY_BASE = "http://localhost:9443";
     private static final String HEALTH_ENDPOINT = GATEWAY_BASE + "/api/health";
     private static final String DATA_ENDPOINT = GATEWAY_BASE + "/api/data";
+    private static final String METRICS_ENDPOINT = GATEWAY_BASE + "/metrics";
+    private static final String CONFIG_ENDPOINT = GATEWAY_BASE + "/config";
 
     private static final String KEYCLOAK_TOKEN_ENDPOINT =
             "http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/token";
@@ -66,6 +70,13 @@ class RestApiGatewayIT {
     private static final String CLIENT_SECRET = "yTKslWLtf4giJcWCaoVJ20H8sy6STexM";
     private static final String TEST_USER = "testUser";
     private static final String PASSWORD = "drowssap";
+
+    // Credentials for other_realm (different RSA key pair — signature testing)
+    private static final String OTHER_REALM_TOKEN_ENDPOINT =
+            "http://localhost:9080/realms/other_realm/protocol/openid-connect/token";
+    private static final String OTHER_CLIENT_ID = "other_client";
+    private static final String OTHER_CLIENT_SECRET = "otherClientSecretValue123456789";
+    private static final String OTHER_USER = "otherUser";
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -166,6 +177,124 @@ class RestApiGatewayIT {
             assertEquals(202, response.statusCode(),
                     "POST /api/data with valid JWT should return 202. Response: " + response.body());
         }
+
+        @Test
+        @DisplayName("should return 401 for GET /api/data without JWT")
+        void shouldReturn401ForDataGetWithoutJwt() throws Exception {
+            HttpResponse<String> response = sendGetWithoutAuth(DATA_ENDPOINT);
+
+            assertEquals(401, response.statusCode(),
+                    "GET /api/data without JWT should return 401. Response: " + response.body());
+        }
+
+        @Test
+        @DisplayName("should return 401 for GET /api/data with malformed JWT")
+        void shouldReturn401ForDataGetWithInvalidJwt() throws Exception {
+            HttpResponse<String> response = sendGet(DATA_ENDPOINT, "not-a-valid-jwt");
+
+            assertEquals(401, response.statusCode(),
+                    "GET /api/data with invalid JWT should return 401. Response: " + response.body());
+        }
+
+        @Test
+        @DisplayName("should return 401 for POST /api/data without JWT")
+        void shouldReturn401ForDataPostWithoutJwt() throws Exception {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(DATA_ENDPOINT))
+                    .POST(HttpRequest.BodyPublishers.ofString("{\"key\": \"value\"}"))
+                    .header("Content-Type", "application/json")
+                    .timeout(Duration.ofSeconds(10))
+                    .build();
+
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(401, response.statusCode(),
+                    "POST /api/data without JWT should return 401. Response: " + response.body());
+        }
+    }
+
+    // ── Management Endpoints ────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("Management Endpoints")
+    class ManagementEndpointTests {
+
+        @Test
+        @DisplayName("should return 200 with Prometheus metrics for GET /metrics")
+        void shouldReturnPrometheusMetrics() throws Exception {
+            HttpResponse<String> response = sendGetWithoutAuth(METRICS_ENDPOINT);
+
+            assertEquals(200, response.statusCode(),
+                    "GET /metrics should return 200. Response: " + response.body());
+
+            String contentType = response.headers().firstValue("Content-Type").orElse("");
+            assertTrue(contentType.contains("text/plain"),
+                    "Default /metrics Content-Type should be text/plain (Prometheus). Actual: " + contentType);
+            assertTrue(response.body().contains("nifi_jwt_validations_total"),
+                    "/metrics should contain token validation metrics");
+            assertTrue(response.body().contains("nifi_gateway_events_total"),
+                    "/metrics should contain gateway event metrics");
+        }
+
+        @Test
+        @DisplayName("should return 200 with JSON metrics when Accept: application/json")
+        void shouldReturnJsonMetrics() throws Exception {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(METRICS_ENDPOINT))
+                    .GET()
+                    .header("Accept", "application/json")
+                    .timeout(Duration.ofSeconds(10))
+                    .build();
+
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(200, response.statusCode(),
+                    "GET /metrics with Accept: application/json should return 200. Response: " + response.body());
+
+            String contentType = response.headers().firstValue("Content-Type").orElse("");
+            assertTrue(contentType.contains("application/json"),
+                    "Content-Type should be application/json. Actual: " + contentType);
+
+            JsonObject metrics = Json.createReader(new StringReader(response.body())).readObject();
+            assertTrue(metrics.containsKey("tokenValidation"),
+                    "JSON metrics should contain 'tokenValidation' section");
+            assertTrue(metrics.containsKey("gatewayEvents"),
+                    "JSON metrics should contain 'gatewayEvents' section");
+        }
+
+        @Test
+        @DisplayName("should return 200 with JSON config for GET /config")
+        void shouldReturnConfig() throws Exception {
+            HttpResponse<String> response = sendGetWithoutAuth(CONFIG_ENDPOINT);
+
+            assertEquals(200, response.statusCode(),
+                    "GET /config should return 200. Response: " + response.body());
+
+            JsonObject config = Json.createReader(new StringReader(response.body())).readObject();
+            assertEquals("RestApiGatewayProcessor", config.getString("component"),
+                    "Config should identify the component");
+            assertEquals(9443, config.getInt("port"),
+                    "Config should report the listening port");
+            assertTrue(config.containsKey("routes"),
+                    "Config should contain 'routes' array");
+            assertTrue(config.getJsonArray("routes").size() >= 2,
+                    "Config should have at least 2 routes (health, data)");
+        }
+
+        @Test
+        @DisplayName("should return 405 for POST on /metrics")
+        void shouldReturn405ForPostOnMetrics() throws Exception {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(METRICS_ENDPOINT))
+                    .POST(HttpRequest.BodyPublishers.ofString(""))
+                    .timeout(Duration.ofSeconds(10))
+                    .build();
+
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(405, response.statusCode(),
+                    "POST to /metrics should return 405. Response: " + response.body());
+        }
     }
 
     // ── Error Handling ──────────────────────────────────────────────────
@@ -187,7 +316,7 @@ class RestApiGatewayIT {
 
         @Test
         @DisplayName("should return 405 for unsupported HTTP method on /api/health")
-        void shouldReturn405ForWrongMethod() throws Exception {
+        void shouldReturn405ForPostOnHealth() throws Exception {
             String token = fetchToken();
 
             HttpRequest request = HttpRequest.newBuilder()
@@ -201,6 +330,37 @@ class RestApiGatewayIT {
 
             assertEquals(405, response.statusCode(),
                     "POST to GET-only /api/health should return 405. Response: " + response.body());
+        }
+
+        @Test
+        @DisplayName("should return 405 for DELETE on /api/data")
+        void shouldReturn405ForDeleteOnData() throws Exception {
+            String token = fetchToken();
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(DATA_ENDPOINT))
+                    .DELETE()
+                    .header("Authorization", "Bearer " + token)
+                    .timeout(Duration.ofSeconds(10))
+                    .build();
+
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(405, response.statusCode(),
+                    "DELETE on /api/data should return 405. Response: " + response.body());
+        }
+
+        @Test
+        @DisplayName("should return 401 for token signed by different realm")
+        void shouldReturn401ForTokenFromWrongRealm() throws Exception {
+            String otherToken = IntegrationTestSupport.fetchKeycloakToken(HTTP_CLIENT,
+                    OTHER_REALM_TOKEN_ENDPOINT, OTHER_CLIENT_ID, OTHER_CLIENT_SECRET,
+                    OTHER_USER, PASSWORD);
+
+            HttpResponse<String> response = sendGet(HEALTH_ENDPOINT, otherToken);
+
+            assertEquals(401, response.statusCode(),
+                    "Token from other_realm should return 401 (different RSA key pair). Response: " + response.body());
         }
     }
 
@@ -216,6 +376,16 @@ class RestApiGatewayIT {
                 .uri(URI.create(url))
                 .GET()
                 .header("Authorization", "Bearer " + token)
+                .timeout(Duration.ofSeconds(10))
+                .build();
+
+        return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private static HttpResponse<String> sendGetWithoutAuth(String url) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
                 .timeout(Duration.ofSeconds(10))
                 .build();
 
