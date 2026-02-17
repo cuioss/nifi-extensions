@@ -37,9 +37,6 @@ Requests flow through up to three authentication layers depending on the target 
                          │  │         ├──► JwksValidationServlet          │     │  │
                          │  │         │       (stateless, no config)      │     │  │
                          │  │         │                                   │     │  │
-                         │  │         ├──► MetricsServlet                 │     │  │
-                         │  │         │       (stateless, no config)      │     │  │
-                         │  │         │                                   │     │  │
                          │  │         └──► GatewayProxyServlet ───────────┤     │  │
                          │  │                 │  (per-component auth)     │     │  │
                          │  │                 │  /config: local ─────────►│     │  │
@@ -135,12 +132,6 @@ The REST API Gateway processor runs its own embedded Jetty server on a configura
 |Yes (ComponentConfigReader)
 |POST
 |Proxies test requests to gateway + SSRF protection
-
-|`/nifi-api/processors/jwt/metrics`
-|ProcessorIdValidationFilter
-|No
-|GET
-|Filter validates UUID but servlet does not use it for config lookup
 
 |`/nifi-api/processors/jwt/validate-jwks-url`
 |ProcessorIdValidationFilter

@@ -89,15 +89,6 @@
     </servlet-mapping>
 
     <servlet>
-        <servlet-name>MetricsServlet</servlet-name>
-        <servlet-class>de.cuioss.nifi.ui.servlets.MetricsServlet</servlet-class>
-    </servlet>
-    <servlet-mapping>
-        <servlet-name>MetricsServlet</servlet-name>
-        <url-pattern>/nifi-api/processors/jwt/metrics</url-pattern>
-    </servlet-mapping>
-
-    <servlet>
         <servlet-name>GatewayProxyServlet</servlet-name>
         <servlet-class>de.cuioss.nifi.ui.servlets.GatewayProxyServlet</servlet-class>
     </servlet>

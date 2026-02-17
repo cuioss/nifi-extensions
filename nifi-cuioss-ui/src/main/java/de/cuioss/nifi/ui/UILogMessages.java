@@ -188,24 +188,6 @@ public final class UILogMessages {
                 .template("Failed to write error response")
                 .build();
 
-        public static final LogRecord ERROR_WRITING_METRICS = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(208)
-                .template("Error writing metrics response")
-                .build();
-
-        public static final LogRecord ERROR_COLLECTING_METRICS = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(209)
-                .template("Error collecting metrics")
-                .build();
-
-        public static final LogRecord FAILED_SEND_METRICS_ERROR = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(210)
-                .template("Failed to send error response")
-                .build();
-
         public static final LogRecord FAILED_JWKS_REQUEST = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(211)
