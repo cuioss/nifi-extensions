@@ -24,6 +24,7 @@ This specification is organized into the following documents:
 * xref:specification/error-handling.adoc[Error Handling] - Error handling implementation
 * xref:specification/testing.adoc[Testing] - Unit and integration testing
 * xref:specification/security.adoc[Security] - Security considerations
+* xref:specification/authentication-architecture.adoc[Authentication Architecture] - End-to-end authentication matrix across all service layers
 * xref:specification/integration-patterns.adoc[Integration Patterns] - Integration examples
 * xref:specification/internationalization.adoc[Internationalization] - i18n implementation
 * xref:specification/configuration-ui.adoc[UI Configuration] - UI configuration details
