@@ -107,7 +107,7 @@ public final class RestApiGatewayConstants {
         public static final PropertyDescriptor MANAGEMENT_API_KEY = new PropertyDescriptor.Builder()
                 .name("rest.gateway.management.api-key")
                 .displayName("Management API Key")
-                .description("When set, management endpoints (/metrics, /config) require this key "
+                .description("When set, the /metrics management endpoint requires this key "
                         + "in the X-Api-Key header. Leave empty to allow unauthenticated access.")
                 .required(false)
                 .sensitive(true)

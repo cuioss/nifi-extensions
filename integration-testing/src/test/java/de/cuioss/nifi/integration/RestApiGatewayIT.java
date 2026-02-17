@@ -31,8 +31,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Integration tests for the RestApiGateway processor with embedded Jetty.
@@ -48,7 +47,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *   <li>{@code /api/health} — GET only (authenticated)</li>
  *   <li>{@code /api/data} — GET and POST (authenticated)</li>
  *   <li>{@code /metrics} — GET only (management, no auth required)</li>
- *   <li>{@code /config} — GET only (management, no auth required)</li>
  * </ul>
  *
  * <p>Requires Docker containers to be running (NiFi on port 9443, Keycloak on 9080).
@@ -62,7 +60,7 @@ class RestApiGatewayIT {
     private static final String HEALTH_ENDPOINT = GATEWAY_BASE + "/api/health";
     private static final String DATA_ENDPOINT = GATEWAY_BASE + "/api/data";
     private static final String METRICS_ENDPOINT = GATEWAY_BASE + "/metrics";
-    private static final String CONFIG_ENDPOINT = GATEWAY_BASE + "/config";
+
 
     private static final String KEYCLOAK_TOKEN_ENDPOINT =
             "http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/token";
@@ -260,25 +258,6 @@ class RestApiGatewayIT {
                     "JSON metrics should contain 'tokenValidation' section");
             assertTrue(metrics.containsKey("gatewayEvents"),
                     "JSON metrics should contain 'gatewayEvents' section");
-        }
-
-        @Test
-        @DisplayName("should return 200 with JSON config for GET /config")
-        void shouldReturnConfig() throws Exception {
-            HttpResponse<String> response = sendGetWithoutAuth(CONFIG_ENDPOINT);
-
-            assertEquals(200, response.statusCode(),
-                    "GET /config should return 200. Response: " + response.body());
-
-            JsonObject config = Json.createReader(new StringReader(response.body())).readObject();
-            assertEquals("RestApiGatewayProcessor", config.getString("component"),
-                    "Config should identify the component");
-            assertEquals(9443, config.getInt("port"),
-                    "Config should report the listening port");
-            assertTrue(config.containsKey("routes"),
-                    "Config should contain 'routes' array");
-            assertTrue(config.getJsonArray("routes").size() >= 2,
-                    "Config should have at least 2 routes (health, data)");
         }
 
         @Test
