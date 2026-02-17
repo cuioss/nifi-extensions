@@ -35,16 +35,21 @@ image::doc/plantuml/jwt-token-flow.png[JWT Token Processing Flow]
 
 == Installation
 
-The only artifact you need is the **NAR file** (NiFi Archive). It bundles the processor, the configuration UI, and all dependencies.
+You need **two NAR files** (NiFi Archives):
+
+* **`nifi-cuioss-api-nar`** -- Controller Service API interfaces (required by NiFi 2.x classloader separation)
+* **`nifi-cuioss-nar`** -- Processors, Controller Service implementation, configuration UI, and all dependencies
+
+NiFi 2.x requires that Controller Service API interfaces reside in a separate NAR from their implementations. Both NARs must be deployed together.
 
 === From a Release
 
-. Download `nifi-cuioss-nar-<version>.nar` from https://github.com/cuioss/nifi-extensions/releases[GitHub Releases] or https://search.maven.org/artifact/de.cuioss.nifi/nifi-cuioss-nar[Maven Central].
-. Copy the NAR into your NiFi extensions directory:
+. Download both `nifi-cuioss-api-nar-<version>.nar` and `nifi-cuioss-nar-<version>.nar` from https://github.com/cuioss/nifi-extensions/releases[GitHub Releases] or https://search.maven.org/artifact/de.cuioss.nifi/nifi-cuioss-nar[Maven Central].
+. Copy both NARs into your NiFi extensions directory:
 +
 [source,bash]
 ----
-cp nifi-cuioss-nar-*.nar $NIFI_HOME/extensions/
+cp nifi-cuioss-api-nar-*.nar nifi-cuioss-nar-*.nar $NIFI_HOME/extensions/
 ----
 . Restart NiFi (or wait for NiFi's auto-detection if configured).
 . The processor **MultiIssuerJWTTokenAuthenticator** appears in the "Add Processor" dialog under the tags `jwt`, `oauth`, `authentication`.
@@ -56,12 +61,14 @@ cp nifi-cuioss-nar-*.nar $NIFI_HOME/extensions/
 git clone https://github.com/cuioss/nifi-extensions.git
 cd nifi-extensions
 ./mvnw clean install -DskipTests
-cp nifi-cuioss-nar/target/nifi-cuioss-nar-*.nar $NIFI_HOME/extensions/
+cp nifi-cuioss-api-nar/target/nifi-cuioss-api-nar-*.nar \
+   nifi-cuioss-nar/target/nifi-cuioss-nar-*.nar \
+   $NIFI_HOME/extensions/
 ----
 
 === Docker / Kubernetes
 
-Mount or copy the NAR into the container's extensions directory:
+Mount or copy both NARs into the container's extensions directory:
 
 [source,yaml]
 ----
@@ -70,8 +77,10 @@ services:
   nifi:
     image: apache/nifi:2.7.2
     volumes:
-      - ./nifi-cuioss-nar-1.0-SNAPSHOT.nar:/opt/nifi/nifi-current/extensions/nifi-cuioss-nar.nar:ro
+      - ./nars/:/opt/nifi/nifi-current/extensions/:ro
 ----
+
+The `nars/` directory must contain both `nifi-cuioss-api-nar-<version>.nar` and `nifi-cuioss-nar-<version>.nar`.
 
 == Configuration
 
@@ -117,8 +126,14 @@ See link:integration-testing/doc/flow-pipeline.adoc[Flow Pipeline Design] for th
 |===
 |Module |Purpose
 
+|link:nifi-cuioss-api/[nifi-cuioss-api]
+|Controller Service API interfaces (`JwtIssuerConfigService`, `JwtAuthenticationConfig`)
+
+|link:nifi-cuioss-api-nar/[nifi-cuioss-api-nar]
+|NiFi Archive (NAR) for the API -- required by NiFi 2.x classloader separation
+
 |link:nifi-cuioss-common/[nifi-cuioss-common]
-|Shared JWT infrastructure: Controller Service, configuration, utilities
+|Shared JWT infrastructure: Controller Service implementation, configuration, utilities
 
 |link:nifi-cuioss-processors/README.md[nifi-cuioss-processors]
 |JWT processor implementation
@@ -127,7 +142,7 @@ See link:integration-testing/doc/flow-pipeline.adoc[Flow Pipeline Design] for th
 |Custom NiFi UI with JWKS validation, token verification, and metrics tabs
 
 |link:nifi-cuioss-nar/[nifi-cuioss-nar]
-|NiFi Archive (NAR) -- the deployable artifact bundling processors + UI
+|NiFi Archive (NAR) -- the main deployable artifact bundling processors + UI
 
 |link:integration-testing/README.adoc[integration-testing]
 |Docker-based test environment (NiFi + Keycloak)
