@@ -21,8 +21,6 @@ import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 
@@ -65,23 +63,6 @@ class BackendEndpointsIntegrationTest {
                 .body("valid", notNullValue())
                 .body("error", notNullValue())
                 .body("claims", notNullValue());
-    }
-
-    @Test
-    void metricsEndpointAccessible() {
-        given()
-                .accept(ContentType.JSON)
-                .when()
-                .get("/nifi-api/processors/jwt/metrics")
-                .then()
-                .statusCode(not(equalTo(404))) // Should not be Not Found
-                .contentType(ContentType.JSON)
-                .body("totalTokensValidated", notNullValue())
-                .body("validTokens", notNullValue())
-                .body("invalidTokens", notNullValue())
-                .body("errorRate", notNullValue())
-                .body("lastValidation", notNullValue())
-                .body("topErrors", notNullValue());
     }
 
     @Test
@@ -302,22 +283,6 @@ class BackendEndpointsIntegrationTest {
     }
 
     @Test
-    void metricsEndpointStructure() {
-        given()
-                .accept(ContentType.JSON)
-                .when()
-                .get("/nifi-api/processors/jwt/metrics")
-                .then()
-                .statusCode(anyOf(equalTo(200), equalTo(401), equalTo(403))) // Allow for auth requirements
-                .contentType(ContentType.JSON)
-                .body("totalTokensValidated", isA(Integer.class))
-                .body("validTokens", isA(Integer.class))
-                .body("invalidTokens", isA(Integer.class))
-                .body("errorRate", isA(Number.class))
-                .body("topErrors", isA(List.class));
-    }
-
-    @Test
     void unknownEndpoint() {
         given()
                 .contentType(ContentType.JSON)
@@ -329,26 +294,4 @@ class BackendEndpointsIntegrationTest {
                 .statusCode(anyOf(equalTo(404), equalTo(405))); // Not Found or Method Not Allowed
     }
 
-    @Test
-    void corsHeaders() {
-        given()
-                .header("Origin", "http://localhost:3000")
-                .accept(ContentType.JSON)
-                .when()
-                .get("/nifi-api/processors/jwt/metrics")
-                .then()
-                .statusCode(not(equalTo(404))); // Basic accessibility test
-        // Note: CORS headers would be tested here if configured
-    }
-
-    @Test
-    void endpointResponseTimes() {
-        given()
-                .accept(ContentType.JSON)
-                .when()
-                .get("/nifi-api/processors/jwt/metrics")
-                .then()
-                .statusCode(not(equalTo(404)))
-                .time(lessThan(5000L)); // Response should be under 5 seconds
-    }
 }

@@ -14,11 +14,11 @@ The MultiIssuerJWTTokenAuthenticator implements comprehensive observability feat
 == Implementation Status
 
 === Implementation Classes
-* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/MetricsServlet.java[MetricsServlet] -- REST endpoint for security metrics retrieval
 * link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] -- Token validation with security event tracking
+* link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/ManagementEndpointHandler.java[ManagementEndpointHandler] -- Gateway `/metrics` management endpoint
+* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/GatewayProxyServlet.java[GatewayProxyServlet] -- Proxies `/metrics` from UI to gateway
 
 === Verification
-* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/MetricsServletTest.java[MetricsServletTest]
 * link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorTest.java[MultiIssuerJWTTokenAuthenticatorTest]
 
 == Security Event Metrics

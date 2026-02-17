@@ -2,7 +2,7 @@
 
 import {
     validateJwksUrl, validateJwksFile, validateJwksContent,
-    verifyToken, getSecurityMetrics,
+    verifyToken,
     getProcessorProperties, updateProcessorProperties,
     getComponentProperties, updateComponentProperties,
     getComponentId, detectComponentType, resetComponentCache,
@@ -111,23 +111,6 @@ describe('verifyToken', () => {
         expect(url).toBe('nifi-api/processors/jwt/verify-token');
         expect(JSON.parse(opts.body)).toEqual({ token: 'eyJhbGci...' });
         expect(result.valid).toBe(true);
-    });
-});
-
-// ---------------------------------------------------------------------------
-// getSecurityMetrics
-// ---------------------------------------------------------------------------
-
-describe('getSecurityMetrics', () => {
-    test('sends GET request', async () => {
-        mockJsonResponse({ totalTokensValidated: 100 });
-
-        const result = await getSecurityMetrics();
-
-        const [url, opts] = globalThis.fetch.mock.calls[0];
-        expect(url).toBe('nifi-api/processors/jwt/metrics');
-        expect(opts.method).toBe('GET');
-        expect(result.totalTokensValidated).toBe(100);
     });
 });
 
@@ -349,13 +332,13 @@ describe('error handling', () => {
     test('throws on non-ok response', async () => {
         mockErrorResponse(500, 'Internal Server Error');
 
-        await expect(getSecurityMetrics()).rejects.toThrow('HTTP 500');
+        await expect(verifyToken('test')).rejects.toThrow('HTTP 500');
     });
 
     test('includes status on error', async () => {
         mockErrorResponse(404, 'Not Found');
 
-        const err = await getSecurityMetrics().catch((e) => e);
+        const err = await verifyToken('test').catch((e) => e);
         expect(err.status).toBe(404);
         expect(err.responseText).toBe('Not Found');
     });
@@ -370,7 +353,7 @@ describe('processor ID header', () => {
         globalThis.jwtAuthConfig = { processorId: 'test-proc-id' };
         mockJsonResponse({});
 
-        await getSecurityMetrics();
+        await verifyToken('test');
 
         const headers = globalThis.fetch.mock.calls[0][1].headers;
         expect(headers['X-Processor-Id']).toBe('test-proc-id');
@@ -383,7 +366,7 @@ describe('processor ID header', () => {
         };
         mockJsonResponse({});
 
-        await getSecurityMetrics();
+        await verifyToken('test');
 
         const headers = globalThis.fetch.mock.calls[0][1].headers;
         expect(headers['X-Processor-Id']).toBe('url-proc-id');

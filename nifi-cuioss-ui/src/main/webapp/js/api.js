@@ -139,10 +139,6 @@ export const validateJwksContent = (jwksContent) =>
 export const verifyToken = (token) =>
     request('POST', `${BASE_URL}/verify-token`, { token });
 
-/** Fetch security / validation metrics */
-export const getSecurityMetrics = () =>
-    request('GET', `${BASE_URL}/metrics`);
-
 /**
  * Fetch component configuration using the correct API path for the component type.
  *
