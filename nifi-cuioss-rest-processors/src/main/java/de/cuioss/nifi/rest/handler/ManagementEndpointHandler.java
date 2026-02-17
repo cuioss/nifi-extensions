@@ -24,8 +24,10 @@ import jakarta.json.Json;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObjectBuilder;
 import org.eclipse.jetty.http.HttpHeader;
+import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.util.Callback;
+import org.jspecify.annotations.Nullable;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -58,6 +60,7 @@ public class ManagementEndpointHandler {
     private static final String PROMETHEUS_CONTENT_TYPE = "text/plain; version=0.0.4; charset=utf-8";
     private static final String JSON_CONTENT_TYPE = "application/json";
     private static final String ACCEPT_HEADER = "Accept";
+    private static final String API_KEY_HEADER = "X-Api-Key";
 
     private final List<RouteConfiguration> routes;
     private final JwtIssuerConfigService configService;
@@ -68,6 +71,7 @@ public class ManagementEndpointHandler {
     private final int queueSize;
     private final boolean sslEnabled;
     private final Set<String> corsAllowedOrigins;
+    @Nullable private final String managementApiKey;
 
     /**
      * Creates a new management endpoint handler.
@@ -81,6 +85,7 @@ public class ManagementEndpointHandler {
      * @param queueSize           request queue size
      * @param sslEnabled          whether SSL is enabled
      * @param corsAllowedOrigins  configured CORS origins
+     * @param managementApiKey    API key for management endpoint auth, or {@code null} to allow unauthenticated access
      */
     public ManagementEndpointHandler(
             List<RouteConfiguration> routes,
@@ -91,7 +96,8 @@ public class ManagementEndpointHandler {
             int maxRequestSize,
             int queueSize,
             boolean sslEnabled,
-            Set<String> corsAllowedOrigins) {
+            Set<String> corsAllowedOrigins,
+            @Nullable String managementApiKey) {
         this.routes = List.copyOf(routes);
         this.configService = configService;
         this.httpSecurityEvents = httpSecurityEvents;
@@ -101,6 +107,7 @@ public class ManagementEndpointHandler {
         this.queueSize = queueSize;
         this.sslEnabled = sslEnabled;
         this.corsAllowedOrigins = Set.copyOf(corsAllowedOrigins);
+        this.managementApiKey = managementApiKey;
     }
 
     /**
@@ -109,15 +116,24 @@ public class ManagementEndpointHandler {
      * @param path     the request path
      * @param method   the HTTP method
      * @param accept   the Accept header value (may be null)
+     * @param request  the Jetty request (used to read API key header)
      * @param response the Jetty response
      * @param callback the Jetty callback
      * @return {@code true} if the path was a management endpoint (response was sent),
      *         {@code false} if the path should be processed by the normal pipeline
      */
     public boolean handleIfManagement(String path, String method, String accept,
-                                      Response response, Callback callback) {
+                                      Request request, Response response, Callback callback) {
         if (!isManagementPath(path)) {
             return false;
+        }
+        if (managementApiKey != null && !managementApiKey.isEmpty()) {
+            String providedKey = request.getHeaders().get(API_KEY_HEADER);
+            if (!managementApiKey.equals(providedKey)) {
+                LOGGER.debug("Management endpoint access denied — invalid or missing API key");
+                sendUnauthorized(response, callback);
+                return true;
+            }
         }
         if (!"GET".equalsIgnoreCase(method)) {
             sendMethodNotAllowed(response, callback);
@@ -306,6 +322,16 @@ public class ManagementEndpointHandler {
         response.getHeaders().put(HttpHeader.CONTENT_TYPE, contentType);
         response.getHeaders().put(HttpHeader.CONTENT_LENGTH, bytes.length);
         response.write(true, ByteBuffer.wrap(bytes), callback);
+    }
+
+    private static void sendUnauthorized(Response response, Callback callback) {
+        ProblemDetail problem = ProblemDetail.unauthorized(
+                "Valid API key required in X-Api-Key header");
+        byte[] body = problem.toJson().getBytes(StandardCharsets.UTF_8);
+        response.setStatus(401);
+        response.getHeaders().put(HttpHeader.CONTENT_TYPE, ProblemDetail.CONTENT_TYPE);
+        response.getHeaders().put(HttpHeader.CONTENT_LENGTH, body.length);
+        response.write(true, ByteBuffer.wrap(body), callback);
     }
 
     private static void sendMethodNotAllowed(Response response, Callback callback) {

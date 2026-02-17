@@ -65,7 +65,7 @@ class ManagementEndpointHandlerTest {
                 new RouteConfiguration("users", "/api/users", Set.of("GET", "POST"), Set.of("ADMIN"), Set.of(), null));
 
         handler = new GatewayRequestHandler(routes, mockConfigService, queue, 1_048_576);
-        handler.configureManagementEndpoints(9443, 50, false);
+        handler.configureManagementEndpoints(9443, 50, false, null);
 
         server = new Server();
         ServerConnector connector = new ServerConnector(server);
@@ -275,6 +275,109 @@ class ManagementEndpointHandlerTest {
                     HttpResponse.BodyHandlers.ofString());
 
             assertEquals(200, response.statusCode());
+        }
+    }
+
+    @Nested
+    @DisplayName("Management API key authentication")
+    class ManagementApiKeyAuth {
+
+        private static final String API_KEY = "test-management-secret-key";
+        private Server protectedServer;
+        private int protectedPort;
+
+        @BeforeEach
+        void setUpProtectedServer() throws Exception {
+            LinkedBlockingQueue<HttpRequestContainer> queue = new LinkedBlockingQueue<>(50);
+            TestJwtIssuerConfigService configService = new TestJwtIssuerConfigService();
+            TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
+            tokenHolder.withoutClaim("roles");
+            tokenHolder.withoutClaim("scope");
+            configService.configureValidToken(tokenHolder.asAccessTokenContent());
+
+            var protectedHandler = new GatewayRequestHandler(
+                    List.of(new RouteConfiguration("health", "/api/health", Set.of("GET"), Set.of(), Set.of(), null)),
+                    configService, queue, 1_048_576);
+            protectedHandler.configureManagementEndpoints(9443, 50, false, API_KEY);
+
+            protectedServer = new Server();
+            ServerConnector connector = new ServerConnector(protectedServer);
+            connector.setPort(0);
+            protectedServer.addConnector(connector);
+            protectedServer.setHandler(protectedHandler);
+            protectedServer.start();
+            protectedPort = connector.getLocalPort();
+        }
+
+        @AfterEach
+        void tearDownProtectedServer() throws Exception {
+            if (protectedServer != null && protectedServer.isRunning()) {
+                protectedServer.stop();
+            }
+        }
+
+        private URI protectedUri(String path) {
+            return URI.create("http://localhost:" + protectedPort + path);
+        }
+
+        @Test
+        @DisplayName("Should return 401 for /metrics without API key")
+        void shouldReturn401ForMetricsWithoutApiKey() throws Exception {
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(protectedUri("/metrics")).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(401, response.statusCode());
+            assertTrue(response.body().contains("Unauthorized"));
+        }
+
+        @Test
+        @DisplayName("Should return 401 for /config without API key")
+        void shouldReturn401ForConfigWithoutApiKey() throws Exception {
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(protectedUri("/config")).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(401, response.statusCode());
+            assertTrue(response.body().contains("Unauthorized"));
+        }
+
+        @Test
+        @DisplayName("Should return 401 for wrong API key")
+        void shouldReturn401ForWrongApiKey() throws Exception {
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(protectedUri("/metrics"))
+                            .header("X-Api-Key", "wrong-key")
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(401, response.statusCode());
+        }
+
+        @Test
+        @DisplayName("Should return 200 for /metrics with correct API key")
+        void shouldReturn200ForMetricsWithCorrectApiKey() throws Exception {
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(protectedUri("/metrics"))
+                            .header("X-Api-Key", API_KEY)
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(200, response.statusCode());
+            assertTrue(response.body().contains("nifi_"));
+        }
+
+        @Test
+        @DisplayName("Should return 200 for /config with correct API key")
+        void shouldReturn200ForConfigWithCorrectApiKey() throws Exception {
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(protectedUri("/config"))
+                            .header("X-Api-Key", API_KEY)
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(200, response.statusCode());
+            assertTrue(response.body().contains("RestApiGatewayProcessor"));
         }
     }
 }

@@ -31,24 +31,20 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Authentication filter for JWT API endpoints.
- * This filter ensures that only requests from the custom UI can access
- * the JWT validation endpoints.
- *
- * The filter intercepts requests to /nifi-api/processors/jwt/* and validates:
- * 1. X-Processor-Id or X-Component-Id header is present (required for tracking)
- *
- * Since the custom UI runs within an authenticated NiFi session (iframe),
- * this provides a minimal security layer by ensuring requests include
- * the processor context.
+ * Validates that requests to JWT API endpoints include a valid processor ID header.
+ * <p>
+ * This filter intercepts requests to {@code /nifi-api/processors/jwt/*} and validates
+ * that the {@code X-Processor-Id} or {@code X-Component-Id} header contains a valid UUID.
+ * This ensures requests originate from the custom UI running within an authenticated
+ * NiFi session (iframe).
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
  */
 @WebFilter("/nifi-api/processors/jwt/*")
-public class ApiKeyAuthenticationFilter implements Filter {
+public class ProcessorIdValidationFilter implements Filter {
 
-    private static final CuiLogger LOGGER = new CuiLogger(ApiKeyAuthenticationFilter.class);
+    private static final CuiLogger LOGGER = new CuiLogger(ProcessorIdValidationFilter.class);
     private static final JsonWriterFactory JSON_WRITER = Json.createWriterFactory(Map.of());
 
     // Headers — accept both legacy and generic component ID headers

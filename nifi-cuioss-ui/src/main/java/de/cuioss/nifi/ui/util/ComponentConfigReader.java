@@ -120,7 +120,7 @@ public class ComponentConfigReader {
     // -----------------------------------------------------------------------
 
     private ComponentDetails fetchDetails(String componentId, UiExtensionType extensionType,
-            HttpServletRequest request) {
+                                          HttpServletRequest request) {
         NiFiWebRequestContext requestContext = new HttpServletRequestContext(extensionType, request) {
             @Override
             public String getId() {

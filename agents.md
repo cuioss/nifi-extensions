@@ -18,7 +18,7 @@ This document supplements `CLAUDE.md` with detailed architecture, how-to tasks, 
   - `de.cuioss.nifi.processors.auth` — Main processor class, AuthLogMessages, JWTProcessorConstants
 
 ### nifi-cuioss-ui (WAR)
-- Java servlets: `JwtVerificationServlet`, `JwksValidationServlet`, `MetricsServlet`, `ApiKeyAuthenticationFilter`
+- Java servlets: `JwtVerificationServlet`, `JwksValidationServlet`, `MetricsServlet`, `ProcessorIdValidationFilter`
 - JavaScript components in `src/main/webapp/js/components/`, `services/`, `utils/`
 
 ### nifi-cuioss-nar (NAR)

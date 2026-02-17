@@ -146,14 +146,17 @@ public class GatewayRequestHandler extends Handler.Abstract {
      * Configures management endpoints ({@code /metrics}, {@code /config}) on this handler.
      * Must be called after construction to enable management API access.
      *
-     * @param port       the listening port (reported in /config)
-     * @param queueSize  the queue capacity (reported in /config)
-     * @param sslEnabled whether SSL/TLS is enabled (reported in /config)
+     * @param port              the listening port (reported in /config)
+     * @param queueSize         the queue capacity (reported in /config)
+     * @param sslEnabled        whether SSL/TLS is enabled (reported in /config)
+     * @param managementApiKey  API key for management endpoint auth, or {@code null} for unauthenticated access
      */
-    public void configureManagementEndpoints(int port, int queueSize, boolean sslEnabled) {
+    public void configureManagementEndpoints(int port, int queueSize, boolean sslEnabled,
+                                             @Nullable String managementApiKey) {
         this.managementHandler = new ManagementEndpointHandler(
                 routes, configService, httpSecurityEvents, gatewaySecurityEvents,
-                port, maxRequestSize, queueSize, sslEnabled, corsAllowedOrigins);
+                port, maxRequestSize, queueSize, sslEnabled, corsAllowedOrigins,
+                managementApiKey);
     }
 
 
@@ -170,7 +173,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
             String rawPath = request.getHttpURI().getPath();
             String accept = request.getHeaders().get("Accept");
             if (managementHandler.handleIfManagement(rawPath, request.getMethod(), accept,
-                    response, callback)) {
+                    request, response, callback)) {
                 return true;
             }
         }

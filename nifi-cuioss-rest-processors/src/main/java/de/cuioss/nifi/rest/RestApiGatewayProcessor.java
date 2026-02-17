@@ -64,11 +64,13 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
     private static final List<PropertyDescriptor> STATIC_PROPERTIES = List.of(
             RestApiGatewayConstants.Properties.LISTENING_PORT,
+            RestApiGatewayConstants.Properties.LISTENING_HOST,
             RestApiGatewayConstants.Properties.JWT_ISSUER_CONFIG_SERVICE,
             RestApiGatewayConstants.Properties.SSL_CONTEXT_SERVICE,
             RestApiGatewayConstants.Properties.MAX_REQUEST_SIZE,
             RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE,
-            RestApiGatewayConstants.Properties.CORS_ALLOWED_ORIGINS);
+            RestApiGatewayConstants.Properties.CORS_ALLOWED_ORIGINS,
+            RestApiGatewayConstants.Properties.MANAGEMENT_API_KEY);
 
     final JettyServerManager serverManager = new JettyServerManager();
     /** Thread-safe queue — shared between Jetty handler threads and NiFi trigger threads. */
@@ -139,10 +141,17 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                 .asControllerService(SSLContextProvider.class);
         SSLContext sslContext = (sslProvider != null) ? sslProvider.createContext() : null;
 
-        // Enable management endpoints (/metrics, /config)
-        handler.configureManagementEndpoints(port, queueSize, sslContext != null);
+        // Resolve optional management API key
+        var mgmtApiKeyProp = context.getProperty(RestApiGatewayConstants.Properties.MANAGEMENT_API_KEY);
+        String managementApiKey = mgmtApiKeyProp.isSet() ? mgmtApiKeyProp.getValue() : null;
 
-        serverManager.start(port, handler, sslContext);
+        // Enable management endpoints (/metrics, /config)
+        handler.configureManagementEndpoints(port, queueSize, sslContext != null, managementApiKey);
+
+        // Resolve optional listening host
+        String host = context.getProperty(RestApiGatewayConstants.Properties.LISTENING_HOST).getValue();
+
+        serverManager.start(port, host, handler, sslContext);
 
         LOGGER.info(RestApiLogMessages.INFO.PROCESSOR_INITIALIZED);
     }

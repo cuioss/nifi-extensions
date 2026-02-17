@@ -148,6 +148,44 @@ class JettyServerManagerTest {
     }
 
     @Nested
+    @DisplayName("Host Binding")
+    class HostBinding {
+
+        @Test
+        @DisplayName("Should bind to specified host")
+        void shouldBindToSpecifiedHost() throws Exception {
+            manager.start(0, "127.0.0.1", echoHandler(), null);
+
+            assertTrue(manager.isRunning());
+
+            HttpClient client = HttpClient.newHttpClient();
+            var response = client.send(
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + manager.getPort() + "/test"))
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(200, response.statusCode());
+            assertEquals("OK", response.body());
+        }
+
+        @Test
+        @DisplayName("Should bind to all interfaces when host is null")
+        void shouldBindToAllInterfacesWhenHostIsNull() throws Exception {
+            manager.start(0, null, echoHandler(), null);
+
+            assertTrue(manager.isRunning());
+
+            HttpClient client = HttpClient.newHttpClient();
+            var response = client.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + manager.getPort() + "/test"))
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(200, response.statusCode());
+        }
+    }
+
+    @Nested
     @DisplayName("HTTPS Round-Trip")
     class HttpsRoundTrip {
 

@@ -17,14 +17,14 @@ _See Requirement: link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Re
 * link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/JwksValidationServlet.java[JwksValidationServlet] -- JWKS URL/file/content validation with SSRF and path traversal protection
 * link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/util/ProcessorConfigReader.java[ProcessorConfigReader] -- Secure processor configuration retrieval via NiFi REST API
 * link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/SecurityHeadersFilter.java[SecurityHeadersFilter] -- Defense-in-depth security response headers
-* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/ApiKeyAuthenticationFilter.java[ApiKeyAuthenticationFilter] -- Processor ID validation for API endpoints
+* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/ProcessorIdValidationFilter.java[ProcessorIdValidationFilter] -- Processor ID validation for API endpoints
 * link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/util/TokenMasking.java[TokenMasking] -- Sensitive token masking for log output
 
 === Verification
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/JwksValidationServletTest.java[JwksValidationServletTest]
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/util/ProcessorConfigReaderTest.java[ProcessorConfigReaderTest]
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/SecurityHeadersFilterTest.java[SecurityHeadersFilterTest]
-* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/ApiKeyAuthenticationFilterTest.java[ApiKeyAuthenticationFilterTest]
+* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/ProcessorIdValidationFilterTest.java[ProcessorIdValidationFilterTest]
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/util/TokenMaskingTest.java[TokenMaskingTest]
 
 == Token Validation Security
@@ -119,7 +119,7 @@ The Custom UI exposes these administration endpoints:
 The endpoints are protected through multiple layers:
 
 1. **NiFi Session Authentication**: The Custom UI runs inside NiFi's web container as an iframe within an authenticated NiFi session. Unauthenticated users cannot reach the Custom UI at all.
-2. **Processor ID Validation**: The `ApiKeyAuthenticationFilter` requires an `X-Processor-Id` header on every request. This is a UUID passed to the iframe via URL parameter (`?id=<uuid>`), only available to authenticated NiFi users.
+2. **Processor ID Validation**: The `ProcessorIdValidationFilter` requires an `X-Processor-Id` header on every request. This is a UUID passed to the iframe via URL parameter (`?id=<uuid>`), only available to authenticated NiFi users.
 3. **Security Response Headers**: The `SecurityHeadersFilter` adds defense-in-depth headers (`X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`) to all responses.
 4. **Full Signature Verification**: All token verification uses the processor's real configuration with full cryptographic signature verification. No test or bypass modes exist.
 

@@ -64,10 +64,14 @@ public class GatewayProxyServlet extends HttpServlet {
     static final Set<String> ALLOWED_MANAGEMENT_PATHS = Set.of("/metrics", "/config");
     private static final String PROCESSOR_ID_HEADER = "X-Processor-Id";
     static final String GATEWAY_PORT_PROPERTY = "rest.gateway.listening.port";
+    static final String MANAGEMENT_API_KEY_PROPERTY = "rest.gateway.management.api-key";
+    private static final String API_KEY_HEADER = "X-Api-Key";
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
 
     /** Cached gateway ports by processor ID. */
     private final Map<String, Integer> portCache = new ConcurrentHashMap<>();
+    /** Cached management API keys by processor ID. */
+    private final Map<String, String> apiKeyCache = new ConcurrentHashMap<>();
 
     private transient NiFiWebConfigurationContext configContext;
 
@@ -100,7 +104,8 @@ public class GatewayProxyServlet extends HttpServlet {
 
             int port = resolveGatewayPort(processorId, req);
             String gatewayUrl = "http://localhost:" + port + pathInfo;
-            String gatewayResponse = executeGatewayGet(gatewayUrl, "application/json");
+            String apiKey = apiKeyCache.get(processorId);
+            String gatewayResponse = executeGatewayGet(gatewayUrl, "application/json", apiKey);
 
             resp.setContentType("application/json");
             resp.setCharacterEncoding("UTF-8");
@@ -231,6 +236,13 @@ public class GatewayProxyServlet extends HttpServlet {
         }
         int port = Integer.parseInt(portStr);
         portCache.put(processorId, port);
+
+        // Cache management API key if configured
+        String apiKey = config.properties().get(MANAGEMENT_API_KEY_PROPERTY);
+        if (apiKey != null && !apiKey.isBlank()) {
+            apiKeyCache.put(processorId, apiKey);
+        }
+
         return port;
     }
 
@@ -239,10 +251,11 @@ public class GatewayProxyServlet extends HttpServlet {
      *
      * @param url    full gateway URL
      * @param accept Accept header value
+     * @param apiKey management API key, or {@code null} if not configured
      * @return gateway response body
      * @throws IOException on communication error
      */
-    protected String executeGatewayGet(String url, String accept)
+    protected String executeGatewayGet(String url, String accept, String apiKey)
             throws IOException {
         try (HttpClient client = HttpClient.newBuilder()
                 .connectTimeout(HTTP_TIMEOUT).build()) {
@@ -253,6 +266,9 @@ public class GatewayProxyServlet extends HttpServlet {
                     .GET();
             if (accept != null && !accept.isBlank()) {
                 builder.header("Accept", accept);
+            }
+            if (apiKey != null && !apiKey.isBlank()) {
+                builder.header(API_KEY_HEADER, apiKey);
             }
 
             HttpResponse<String> response = client.send(builder.build(),
@@ -276,7 +292,7 @@ public class GatewayProxyServlet extends HttpServlet {
      * @throws IOException on communication error
      */
     protected GatewayResponse executeGatewayRequest(String url, String method,
-            Map<String, String> headers, String body) throws IOException {
+                                                    Map<String, String> headers, String body) throws IOException {
         try (HttpClient client = HttpClient.newBuilder()
                 .connectTimeout(HTTP_TIMEOUT).build()) {
 

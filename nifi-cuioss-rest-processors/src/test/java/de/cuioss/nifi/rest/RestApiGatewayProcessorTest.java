@@ -88,11 +88,13 @@ class RestApiGatewayProcessorTest {
         void shouldReturnAllStaticProperties() {
             var descriptors = testRunner.getProcessor().getPropertyDescriptors();
             assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.LISTENING_PORT));
+            assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.LISTENING_HOST));
             assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.JWT_ISSUER_CONFIG_SERVICE));
             assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.MAX_REQUEST_SIZE));
             assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE));
             assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.SSL_CONTEXT_SERVICE));
             assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.CORS_ALLOWED_ORIGINS));
+            assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.MANAGEMENT_API_KEY));
         }
 
         @Test
