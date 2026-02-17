@@ -40,7 +40,8 @@ npm run playwright:test                                 # Playwright tests
 
 ## Forbidden Practices
 
-- **No Mockito, PowerMock, Hamcrest** — use CUI test alternatives
+- **No Mockito, PowerMock** — use CUI test alternatives
+- **No direct Hamcrest** — OK as REST Assured transitive dependency; do not use standalone
 - **No log4j, slf4j, System.out/err** — use CuiLogger
 - **No `var`** keyword in JavaScript — use `const`/`let`
 - **No console.log** — use structured logging

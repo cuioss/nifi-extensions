@@ -25,18 +25,12 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import java.io.StringReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 import java.time.Duration;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -57,8 +51,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class NiFiProcessorMetricsIT {
 
     private static final String NIFI_API_BASE = "https://localhost:9095/nifi-api";
-    private static final String NIFI_USERNAME = "testUser";
-    private static final String NIFI_PASSWORD = "drowssap";
 
     // Flow endpoint for triggering traffic before checking metrics
     private static final String FLOW_ENDPOINT = "http://localhost:7777";
@@ -74,9 +66,8 @@ class NiFiProcessorMetricsIT {
 
     @BeforeAll
     static void setUp() throws Exception {
-        SSLContext sslContext = createTrustAllSslContext();
         nifiClient = HttpClient.newBuilder()
-                .sslContext(sslContext)
+                .sslContext(IntegrationTestSupport.createTrustAllSslContext())
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
         plainClient = HttpClient.newBuilder()
@@ -179,23 +170,7 @@ class NiFiProcessorMetricsIT {
     }
 
     private static String authenticateToNifi() throws Exception {
-        String body = IntegrationTestSupport.formEncode(Map.of(
-                "username", NIFI_USERNAME,
-                "password", NIFI_PASSWORD));
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(NIFI_API_BASE + "/access/token"))
-                .POST(HttpRequest.BodyPublishers.ofString(body))
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .timeout(Duration.ofSeconds(10))
-                .build();
-
-        HttpResponse<String> response = nifiClient.send(request, HttpResponse.BodyHandlers.ofString());
-        assertEquals(201, response.statusCode(),
-                "NiFi authentication failed with status %d: %s"
-                        .formatted(response.statusCode(), response.body()));
-
-        return response.body().trim();
+        return IntegrationTestSupport.authenticateToNifi(nifiClient);
     }
 
     private static JsonObject getProcessGroupStatus(String bearerToken) throws Exception {
@@ -227,29 +202,4 @@ class NiFiProcessorMetricsIT {
         return Optional.empty();
     }
 
-    @SuppressWarnings("java:S4830") // Trust-all SSL is intentional for self-signed Docker certs
-    private static SSLContext createTrustAllSslContext() throws Exception {
-        TrustManager[] trustAllManagers = {
-                new X509TrustManager() {
-                    @Override
-                    public void checkClientTrusted(X509Certificate[] chain, String authType) {
-                        // Trust all for Docker self-signed certs
-                    }
-
-                    @Override
-                    public void checkServerTrusted(X509Certificate[] chain, String authType) {
-                        // Trust all for Docker self-signed certs
-                    }
-
-                    @Override
-                    public X509Certificate[] getAcceptedIssuers() {
-                        return new X509Certificate[0];
-                    }
-                }
-        };
-
-        SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(null, trustAllManagers, new SecureRandom());
-        return sslContext;
-    }
 }

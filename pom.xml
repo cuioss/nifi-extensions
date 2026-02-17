@@ -589,7 +589,6 @@
                                         <exclude>org.apache.sshd:*:[,2.9.1]</exclude>
                                         <exclude>org.spockframework:*</exclude>
                                         <exclude>org.apache.groovy:groovy-test</exclude>
-                                        <exclude>org.hamcrest:hamcrest</exclude>
                                     </excludes>
                                 </bannedDependencies>
                             </rules>
