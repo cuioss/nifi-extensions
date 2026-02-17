@@ -65,7 +65,7 @@ class ManagementEndpointHandlerTest {
                 new RouteConfiguration("users", "/api/users", Set.of("GET", "POST"), Set.of("ADMIN"), Set.of(), null));
 
         handler = new GatewayRequestHandler(routes, mockConfigService, queue, 1_048_576);
-        handler.configureManagementEndpoints(9443, 50, false, null);
+        handler.configureManagementEndpoints(null);
 
         server = new Server();
         ServerConnector connector = new ServerConnector(server);
@@ -175,62 +175,6 @@ class ManagementEndpointHandlerTest {
     }
 
     @Nested
-    @DisplayName("/config endpoint")
-    class ConfigEndpoint {
-
-        @Test
-        @DisplayName("Should return gateway config as JSON")
-        void shouldReturnConfigAsJson() throws Exception {
-            var response = httpClient.send(
-                    HttpRequest.newBuilder(uri("/config")).GET().build(),
-                    HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(200, response.statusCode());
-            assertTrue(response.headers().firstValue("Content-Type")
-                    .orElse("").contains("application/json"));
-
-            JsonObject json = Json.createReader(new StringReader(response.body())).readObject();
-            assertEquals("RestApiGatewayProcessor", json.getString("component"));
-            assertEquals(9443, json.getInt("port"));
-            assertEquals(1048576, json.getInt("maxRequestBodySize"));
-            assertEquals(50, json.getInt("queueSize"));
-            assertFalse(json.getBoolean("ssl"));
-            assertFalse(json.getJsonArray("routes").isEmpty());
-        }
-
-        @Test
-        @DisplayName("Should include route details in config")
-        void shouldIncludeRouteDetails() throws Exception {
-            var response = httpClient.send(
-                    HttpRequest.newBuilder(uri("/config")).GET().build(),
-                    HttpResponse.BodyHandlers.ofString());
-
-            JsonObject json = Json.createReader(new StringReader(response.body())).readObject();
-            var routes = json.getJsonArray("routes");
-            assertEquals(2, routes.size());
-
-            JsonObject healthRoute = routes.getJsonObject(0);
-            assertEquals("health", healthRoute.getString("name"));
-            assertEquals("/api/health", healthRoute.getString("path"));
-
-            JsonObject usersRoute = routes.getJsonObject(1);
-            assertEquals("users", usersRoute.getString("name"));
-            assertEquals("/api/users", usersRoute.getString("path"));
-            assertFalse(usersRoute.getJsonArray("requiredRoles").isEmpty());
-        }
-
-        @Test
-        @DisplayName("Should bypass auth for /config — no Bearer token required")
-        void shouldBypassAuthForConfig() throws Exception {
-            var response = httpClient.send(
-                    HttpRequest.newBuilder(uri("/config")).GET().build(),
-                    HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(200, response.statusCode());
-        }
-    }
-
-    @Nested
     @DisplayName("Path isolation")
     class PathIsolation {
 
@@ -248,14 +192,15 @@ class ManagementEndpointHandlerTest {
         }
 
         @Test
-        @DisplayName("Should not match /config as a route")
-        void shouldNotMatchConfigAsRoute() throws Exception {
+        @DisplayName("Should not handle /config — no longer a management endpoint")
+        void shouldNotHandleConfig() throws Exception {
             var response = httpClient.send(
                     HttpRequest.newBuilder(uri("/config")).GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
-            assertEquals(200, response.statusCode());
-            assertTrue(response.body().contains("RestApiGatewayProcessor"));
+            // /config is no longer a management endpoint — gateway returns 401
+            // (no Bearer token) since it falls through to the auth pipeline
+            assertNotEquals(200, response.statusCode());
         }
 
         @Test
@@ -298,7 +243,7 @@ class ManagementEndpointHandlerTest {
             var protectedHandler = new GatewayRequestHandler(
                     List.of(new RouteConfiguration("health", "/api/health", Set.of("GET"), Set.of(), Set.of(), null)),
                     configService, queue, 1_048_576);
-            protectedHandler.configureManagementEndpoints(9443, 50, false, API_KEY);
+            protectedHandler.configureManagementEndpoints(API_KEY);
 
             protectedServer = new Server();
             ServerConnector connector = new ServerConnector(protectedServer);
@@ -332,17 +277,6 @@ class ManagementEndpointHandlerTest {
         }
 
         @Test
-        @DisplayName("Should return 401 for /config without API key")
-        void shouldReturn401ForConfigWithoutApiKey() throws Exception {
-            var response = httpClient.send(
-                    HttpRequest.newBuilder(protectedUri("/config")).GET().build(),
-                    HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(401, response.statusCode());
-            assertTrue(response.body().contains("Unauthorized"));
-        }
-
-        @Test
         @DisplayName("Should return 401 for wrong API key")
         void shouldReturn401ForWrongApiKey() throws Exception {
             var response = httpClient.send(
@@ -367,17 +301,5 @@ class ManagementEndpointHandlerTest {
             assertTrue(response.body().contains("nifi_"));
         }
 
-        @Test
-        @DisplayName("Should return 200 for /config with correct API key")
-        void shouldReturn200ForConfigWithCorrectApiKey() throws Exception {
-            var response = httpClient.send(
-                    HttpRequest.newBuilder(protectedUri("/config"))
-                            .header("X-Api-Key", API_KEY)
-                            .GET().build(),
-                    HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(200, response.statusCode());
-            assertTrue(response.body().contains("RestApiGatewayProcessor"));
-        }
     }
 }

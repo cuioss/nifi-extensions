@@ -46,7 +46,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>Supports three endpoints:
  * <ul>
  *     <li>{@code GET /gateway/metrics} — proxies to gateway's {@code /metrics}</li>
- *     <li>{@code GET /gateway/config} — proxies to gateway's {@code /config}</li>
+ *     <li>{@code GET /gateway/config} — served locally from processor properties</li>
  *     <li>{@code POST /gateway/test} — proxies an arbitrary test request to the gateway</li>
  * </ul>
  *
@@ -61,10 +61,17 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final JsonWriterFactory JSON_WRITER = Json.createWriterFactory(Map.of());
     private static final JsonReaderFactory JSON_READER = Json.createReaderFactory(Map.of());
 
-    static final Set<String> ALLOWED_MANAGEMENT_PATHS = Set.of("/metrics", "/config");
+    static final Set<String> ALLOWED_MANAGEMENT_PATHS = Set.of("/metrics");
+    private static final String CONFIG_PATH = "/config";
     private static final String PROCESSOR_ID_HEADER = "X-Processor-Id";
     static final String GATEWAY_PORT_PROPERTY = "rest.gateway.listening.port";
     static final String MANAGEMENT_API_KEY_PROPERTY = "rest.gateway.management.api-key";
+    private static final String MAX_REQUEST_SIZE_PROPERTY = "rest.gateway.max.request.size";
+    private static final String QUEUE_SIZE_PROPERTY = "rest.gateway.request.queue.size";
+    private static final String SSL_CONTEXT_SERVICE_PROPERTY = "rest.gateway.ssl.context.service";
+    private static final String CORS_ALLOWED_ORIGINS_PROPERTY = "rest.gateway.cors.allowed.origins";
+    private static final String LISTENING_HOST_PROPERTY = "rest.gateway.listening.host";
+    private static final String ROUTE_PREFIX = "restapi.";
     private static final String API_KEY_HEADER = "X-Api-Key";
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
 
@@ -87,18 +94,25 @@ public class GatewayProxyServlet extends HttpServlet {
         try {
             String pathInfo = req.getPathInfo();
 
+            String processorId = req.getHeader(PROCESSOR_ID_HEADER);
+            if (processorId == null || processorId.isBlank()) {
+                sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
+                        "Missing processor ID");
+                return;
+            }
+
+            // Serve /config directly from processor properties
+            if (CONFIG_PATH.equals(pathInfo)) {
+                Map<String, String> props = resolveProcessorProperties(processorId, req);
+                writeConfigResponse(resp, props);
+                return;
+            }
+
             if (pathInfo == null || !ALLOWED_MANAGEMENT_PATHS.contains(pathInfo)) {
                 LOGGER.warn(UILogMessages.WARN.GATEWAY_PROXY_PATH_REJECTED,
                         pathInfo != null ? pathInfo : "null");
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                         "Invalid management path");
-                return;
-            }
-
-            String processorId = req.getHeader(PROCESSOR_ID_HEADER);
-            if (processorId == null || processorId.isBlank()) {
-                sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
-                        "Missing processor ID");
                 return;
             }
 
@@ -247,6 +261,20 @@ public class GatewayProxyServlet extends HttpServlet {
     }
 
     /**
+     * Resolves all processor properties for the given processor ID.
+     *
+     * @param processorId the NiFi processor UUID
+     * @param request     the current HTTP servlet request (for authentication context)
+     * @return the processor properties map
+     * @throws IOException if unable to fetch component config
+     */
+    protected Map<String, String> resolveProcessorProperties(String processorId,
+            HttpServletRequest request) throws IOException {
+        var reader = new ComponentConfigReader(configContext);
+        return reader.getProcessorProperties(processorId, request);
+    }
+
+    /**
      * Executes a GET request to the gateway management API.
      *
      * @param url    full gateway URL
@@ -292,7 +320,7 @@ public class GatewayProxyServlet extends HttpServlet {
      * @throws IOException on communication error
      */
     protected GatewayResponse executeGatewayRequest(String url, String method,
-                                                    Map<String, String> headers, String body) throws IOException {
+            Map<String, String> headers, String body) throws IOException {
         try (HttpClient client = HttpClient.newBuilder()
                 .connectTimeout(HTTP_TIMEOUT).build()) {
 
@@ -332,6 +360,93 @@ public class GatewayProxyServlet extends HttpServlet {
 
     /** Gateway response wrapper for the /test endpoint. */
     record GatewayResponse(int statusCode, String body, Map<String, String> headers) {
+    }
+
+    /**
+     * Builds and writes the /config JSON response from processor properties.
+     */
+    private void writeConfigResponse(HttpServletResponse resp, Map<String, String> props) throws IOException {
+        JsonObjectBuilder root = Json.createObjectBuilder();
+        root.add("component", "RestApiGatewayProcessor");
+        root.add("port", Integer.parseInt(props.getOrDefault(GATEWAY_PORT_PROPERTY, "9443")));
+        root.add("maxRequestBodySize",
+                Integer.parseInt(props.getOrDefault(MAX_REQUEST_SIZE_PROPERTY, "1048576")));
+        root.add("queueSize",
+                Integer.parseInt(props.getOrDefault(QUEUE_SIZE_PROPERTY, "50")));
+        root.add("ssl", props.get(SSL_CONTEXT_SERVICE_PROPERTY) != null
+                && !props.get(SSL_CONTEXT_SERVICE_PROPERTY).isBlank());
+
+        // CORS origins
+        JsonArrayBuilder originsArray = Json.createArrayBuilder();
+        String corsValue = props.get(CORS_ALLOWED_ORIGINS_PROPERTY);
+        if (corsValue != null && !corsValue.isBlank()) {
+            for (String origin : corsValue.split(",")) {
+                String trimmed = origin.trim();
+                if (!trimmed.isEmpty()) {
+                    originsArray.add(trimmed);
+                }
+            }
+        }
+        root.add("corsAllowedOrigins", originsArray);
+
+        // Listening host
+        String host = props.get(LISTENING_HOST_PROPERTY);
+        if (host != null && !host.isBlank()) {
+            root.add("listeningHost", host);
+        }
+
+        // Routes: parse restapi.<name>.* dynamic properties
+        JsonArrayBuilder routesArray = Json.createArrayBuilder();
+        Map<String, Map<String, String>> routeGroups = new HashMap<>();
+        for (Map.Entry<String, String> entry : props.entrySet()) {
+            if (entry.getKey().startsWith(ROUTE_PREFIX)) {
+                String remainder = entry.getKey().substring(ROUTE_PREFIX.length());
+                int dot = remainder.indexOf('.');
+                if (dot > 0) {
+                    String routeName = remainder.substring(0, dot);
+                    String subKey = remainder.substring(dot + 1);
+                    routeGroups.computeIfAbsent(routeName, k -> new HashMap<>())
+                            .put(subKey, entry.getValue());
+                }
+            }
+        }
+        for (Map.Entry<String, Map<String, String>> routeEntry : routeGroups.entrySet()) {
+            Map<String, String> routeProps = routeEntry.getValue();
+            String path = routeProps.get("path");
+            if (path == null || path.isBlank()) {
+                continue;
+            }
+            JsonObjectBuilder routeObj = Json.createObjectBuilder();
+            routeObj.add("name", routeEntry.getKey());
+            routeObj.add("path", path);
+
+            routeObj.add("methods", buildStringArray(routeProps.get("methods")));
+            routeObj.add("requiredRoles", buildStringArray(routeProps.get("required-roles")));
+            routeObj.add("requiredScopes", buildStringArray(routeProps.get("required-scopes")));
+
+            routesArray.add(routeObj);
+        }
+        root.add("routes", routesArray);
+
+        resp.setContentType("application/json");
+        resp.setCharacterEncoding("UTF-8");
+        resp.setStatus(HttpServletResponse.SC_OK);
+        try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
+            writer.writeObject(root.build());
+        }
+    }
+
+    private static JsonArrayBuilder buildStringArray(String commaSeparated) {
+        JsonArrayBuilder array = Json.createArrayBuilder();
+        if (commaSeparated != null && !commaSeparated.isBlank()) {
+            for (String item : commaSeparated.split(",")) {
+                String trimmed = item.trim();
+                if (!trimmed.isEmpty()) {
+                    array.add(trimmed);
+                }
+            }
+        }
+        return array;
     }
 
     static boolean isLocalhostTarget(URI uri) {

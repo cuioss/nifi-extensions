@@ -145,8 +145,8 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         var mgmtApiKeyProp = context.getProperty(RestApiGatewayConstants.Properties.MANAGEMENT_API_KEY);
         String managementApiKey = mgmtApiKeyProp.isSet() ? mgmtApiKeyProp.getValue() : null;
 
-        // Enable management endpoints (/metrics, /config)
-        handler.configureManagementEndpoints(port, queueSize, sslContext != null, managementApiKey);
+        // Enable management endpoint (/metrics)
+        handler.configureManagementEndpoints(managementApiKey);
 
         // Resolve optional listening host
         String host = context.getProperty(RestApiGatewayConstants.Properties.LISTENING_HOST).getValue();

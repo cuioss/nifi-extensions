@@ -43,22 +43,21 @@ Requests flow through up to three authentication layers depending on the target 
                          │  │         └──► GatewayProxyServlet ───────────┤     │  │
                          │  │                 │  (per-component auth)     │     │  │
                          │  │                 │  (SSRF: localhost only)   │     │  │
-                         │  └─────────────────┼──────────────────────────┼──────┘  │
-                         └────────────────────┼──────────────────────────┼─────────┘
-                                              │                         │
-                           HTTP + X-Api-Key   │    NiFiWebConfiguration │
-                           (localhost:port)   │    Context (reads       │
-                                              ▼    processor config)    │
-                         ┌──────────────────────────────┐               │
-                         │  Gateway Embedded Jetty      │◄───── reads ──┘
+                         │  └─────────────────┼───────────────────────────┼─────┘  │
+                         └────────────────────┼───────────────────────────┼────────┘
+                                              │                           │
+                           HTTP + X-Api-Key   │    NiFiWebConfiguration   │
+                           (localhost:port)   │    Context (reads         │
+                                              ▼    processor config)      │
+                         ┌──────────────────────────────┐                 │
+                         │  Gateway Embedded Jetty      │◄───── reads ────┘
                          │        (Layer 3)             │   port, API key
                          │                              │
                          │  GatewayRequestHandler       │
                          │         │                    │
   External   ── HTTP ───►│         ├──► /metrics ───────┤
-  Clients                │         │    /config         │
-  (direct)               │         │  ManagementHandler │
-                         │         │  (optional API key)│
+  Clients                │         │  ManagementHandler │
+  (direct)               │         │  (optional API key)│
                          │         │                    │
                          │         └──► /api/** ────────┤
                          │           AuthorizationPipeline
@@ -101,7 +100,7 @@ Requests that reach the Custom UI pass through two filters and then per-servlet 
 The REST API Gateway processor runs its own embedded Jetty server on a configurable port. This server has two categories of endpoints with different authentication:
 
 * **Data routes** -- Full JWT Bearer authentication with role/scope authorization via `cui-http` security pipelines.
-* **Management endpoints** (`/metrics`, `/config`) -- Optional API key authentication (see <<management-endpoint-security>>).
+* **Management endpoint** (`/metrics`) -- Optional API key authentication (see <<management-endpoint-security>>).
 
 == Endpoint Authorization Matrix
 
@@ -117,11 +116,23 @@ The REST API Gateway processor runs its own embedded Jetty server on a configura
 |POST
 |Reads processor config for token validation
 
-|`/nifi-api/processors/jwt/gateway/*`
+|`/nifi-api/processors/jwt/gateway/config`
 |ProcessorIdValidationFilter
 |Yes (ComponentConfigReader)
-|GET, POST
-|Proxies to gateway + SSRF protection
+|GET
+|Serves config locally from processor properties
+
+|`/nifi-api/processors/jwt/gateway/metrics`
+|ProcessorIdValidationFilter
+|Yes (ComponentConfigReader)
+|GET
+|Proxies to gateway `/metrics`
+
+|`/nifi-api/processors/jwt/gateway/test`
+|ProcessorIdValidationFilter
+|Yes (ComponentConfigReader)
+|POST
+|Proxies test requests to gateway + SSRF protection
 
 |`/nifi-api/processors/jwt/metrics`
 |ProcessorIdValidationFilter
@@ -167,12 +178,6 @@ Endpoints without per-component authorization are still protected by NiFi contai
 |None
 |GET
 |Bypasses JWT auth and security pipelines
-
-|`/config`
-|Optional API key (`X-Api-Key`)
-|None
-|GET
-|Bypasses JWT auth and security pipelines -- exposes route configuration
 |===
 
 [[management-endpoint-security]]
@@ -180,7 +185,7 @@ Endpoints without per-component authorization are still protected by NiFi contai
 
 === API Key Authentication
 
-Management endpoints (`/metrics`, `/config`) support optional API key authentication via the `rest.gateway.management.api-key` processor property:
+The `/metrics` management endpoint supports optional API key authentication via the `rest.gateway.management.api-key` processor property:
 
 * **When configured**: Requests must include a matching `X-Api-Key` header. Invalid or missing keys receive a `401 Unauthorized` response.
 * **When not configured**: Management endpoints are accessible without authentication (backward compatible).
@@ -191,20 +196,21 @@ The API key is a NiFi sensitive property (masked in UI, encrypted at rest by NiF
 
 The embedded Jetty server binds to the address specified by `rest.gateway.listening.host`:
 
-* **Default (`0.0.0.0`)**: Listens on all interfaces. Management endpoints are network-accessible.
+* **Default (`0.0.0.0`)**: Listens on all interfaces. The `/metrics` management endpoint is network-accessible.
 * **`127.0.0.1`**: Restricts access to localhost only. Recommended when the GatewayProxyServlet handles all external access.
 
 === GatewayProxyServlet as Secure Proxy
 
-The `GatewayProxyServlet` provides authenticated proxy access to management endpoints:
+The `GatewayProxyServlet` provides authenticated access to management data:
 
 1. Authenticated NiFi session required (Layer 1)
 2. `ProcessorIdValidationFilter` validates processor UUID (Layer 2)
 3. `ComponentConfigReader` enforces per-component NiFi authorization
-4. Reads the management API key from processor config and forwards it via `X-Api-Key` header
-5. SSRF protection: only localhost targets allowed
+4. `/config` is served locally from processor properties (no gateway round-trip)
+5. `/metrics` is proxied to the gateway with the management API key forwarded via `X-Api-Key` header
+6. SSRF protection on test endpoint: only localhost targets allowed
 
-This means users accessing management data through the NiFi UI get full three-layer authentication, even when the gateway's own management endpoints use only API key auth.
+This means users accessing management data through the NiFi UI get full three-layer authentication, even when the gateway's own `/metrics` endpoint uses only API key auth.
 
 == Security Pipeline Comparison
 
@@ -277,13 +283,13 @@ This means users accessing management data through the NiFi UI get full three-la
 |Per-component authorization via `NiFiWebConfigurationContext`
 
 |link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/GatewayProxyServlet.java[GatewayProxyServlet]
-|Authenticated proxy to gateway management API with SSRF protection
+|Serves `/config` locally from processor properties; proxies `/metrics` to gateway; test endpoint with SSRF protection
 
 |link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/GatewayRequestHandler.java[GatewayRequestHandler]
 |Main Jetty request handler -- routes to auth pipeline or management handler
 
 |link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/ManagementEndpointHandler.java[ManagementEndpointHandler]
-|Management endpoint handler with optional API key authentication
+|`/metrics` endpoint handler with optional API key authentication
 
 |link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/server/JettyServerManager.java[JettyServerManager]
 |Embedded Jetty lifecycle with configurable host binding

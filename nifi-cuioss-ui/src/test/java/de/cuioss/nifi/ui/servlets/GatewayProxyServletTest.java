@@ -23,13 +23,13 @@ import org.junit.jupiter.api.*;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -57,6 +57,25 @@ class GatewayProxyServletTest {
     /** When true, all gateway operations throw IOException. */
     private static final AtomicBoolean gatewayFailing = new AtomicBoolean(false);
 
+    /** Configurable processor properties — reset before each test. */
+    private static final AtomicReference<Map<String, String>> processorProperties =
+            new AtomicReference<>(createDefaultProperties());
+
+    private static Map<String, String> createDefaultProperties() {
+        Map<String, String> props = new HashMap<>();
+        props.put("rest.gateway.listening.port", "9443");
+        props.put("rest.gateway.max.request.size", "1048576");
+        props.put("rest.gateway.request.queue.size", "50");
+        props.put("rest.gateway.cors.allowed.origins", "http://localhost:8443");
+        props.put("rest.gateway.listening.host", "0.0.0.0");
+        props.put("restapi.health.path", "/api/health");
+        props.put("restapi.health.methods", "GET");
+        props.put("restapi.users.path", "/api/users");
+        props.put("restapi.users.methods", "GET,POST");
+        props.put("restapi.users.required-roles", "ADMIN");
+        return props;
+    }
+
     @BeforeAll
     static void startServer() throws Exception {
         EmbeddedServletTestSupport.startServer(ctx ->
@@ -65,6 +84,13 @@ class GatewayProxyServletTest {
                     protected int resolveGatewayPort(String processorId, HttpServletRequest req) throws IOException {
                         if (gatewayFailing.get()) throw new IOException("Connection refused");
                         return 9443;
+                    }
+
+                    @Override
+                    protected Map<String, String> resolveProcessorProperties(
+                            String processorId, HttpServletRequest req) throws IOException {
+                        if (gatewayFailing.get()) throw new IOException("Connection refused");
+                        return processorProperties.get();
                     }
 
                     @Override
@@ -93,6 +119,7 @@ class GatewayProxyServletTest {
     void resetBehavior() {
         gatewayGetResponse.set(SAMPLE_CONFIG_JSON);
         gatewayFailing.set(false);
+        processorProperties.set(createDefaultProperties());
     }
 
     // -----------------------------------------------------------------------
@@ -120,7 +147,7 @@ class GatewayProxyServletTest {
         void shouldRejectMissingProcessorId() {
             given()
                     .when()
-                    .get("/gateway/config")
+                    .get("/gateway/metrics")
                     .then()
                     .statusCode(400)
                     .body("error", containsString("Missing processor ID"));
@@ -132,7 +159,7 @@ class GatewayProxyServletTest {
             given()
                     .header("X-Processor-Id", "  ")
                     .when()
-                    .get("/gateway/config")
+                    .get("/gateway/metrics")
                     .then()
                     .statusCode(400)
                     .body("error", containsString("Missing processor ID"));
@@ -148,10 +175,8 @@ class GatewayProxyServletTest {
     class GetManagementProxy {
 
         @Test
-        @DisplayName("Should proxy /config endpoint")
-        void shouldProxyConfigEndpoint() {
-            gatewayGetResponse.set(SAMPLE_CONFIG_JSON);
-
+        @DisplayName("Should serve /config locally from processor properties")
+        void shouldServeConfigLocally() {
             given()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
@@ -159,7 +184,26 @@ class GatewayProxyServletTest {
                     .then()
                     .statusCode(200)
                     .contentType(containsString("application/json"))
-                    .body(containsString("RestApiGatewayProcessor"));
+                    .body("component", equalTo("RestApiGatewayProcessor"))
+                    .body("port", equalTo(9443))
+                    .body("maxRequestBodySize", equalTo(1048576))
+                    .body("queueSize", equalTo(50))
+                    .body("ssl", equalTo(false))
+                    .body("routes.size()", equalTo(2));
+        }
+
+        @Test
+        @DisplayName("Should include route details in local config")
+        void shouldIncludeRouteDetailsInLocalConfig() {
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .body("routes.find { it.name == 'health' }.path", equalTo("/api/health"))
+                    .body("routes.find { it.name == 'users' }.path", equalTo("/api/users"))
+                    .body("routes.find { it.name == 'users' }.requiredRoles", hasItem("ADMIN"));
         }
 
         @Test
@@ -177,8 +221,22 @@ class GatewayProxyServletTest {
         }
 
         @Test
-        @DisplayName("Should return 503 when gateway is unavailable")
-        void shouldReturn503WhenGatewayUnavailable() {
+        @DisplayName("Should return 503 when gateway is unavailable for metrics")
+        void shouldReturn503WhenGatewayUnavailableForMetrics() {
+            gatewayFailing.set(true);
+
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(503)
+                    .body("error", containsString("Gateway unavailable"));
+        }
+
+        @Test
+        @DisplayName("Should return 503 when config properties unavailable")
+        void shouldReturn503WhenConfigPropertiesUnavailable() {
             gatewayFailing.set(true);
 
             given()
@@ -357,11 +415,11 @@ class GatewayProxyServletTest {
     class AllowedPaths {
 
         @Test
-        @DisplayName("Should contain metrics and config")
+        @DisplayName("Should contain only metrics (config is served locally)")
         void shouldContainExpectedPaths() {
             assertTrue(GatewayProxyServlet.ALLOWED_MANAGEMENT_PATHS.contains("/metrics"));
-            assertTrue(GatewayProxyServlet.ALLOWED_MANAGEMENT_PATHS.contains("/config"));
-            assertEquals(2, GatewayProxyServlet.ALLOWED_MANAGEMENT_PATHS.size());
+            assertFalse(GatewayProxyServlet.ALLOWED_MANAGEMENT_PATHS.contains("/config"));
+            assertEquals(1, GatewayProxyServlet.ALLOWED_MANAGEMENT_PATHS.size());
         }
     }
 }

@@ -18,10 +18,8 @@ package de.cuioss.nifi.rest.handler;
 
 import de.cuioss.http.security.monitoring.SecurityEventCounter;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
-import de.cuioss.nifi.rest.config.RouteConfiguration;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
-import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObjectBuilder;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.server.Request;
@@ -31,17 +29,14 @@ import org.jspecify.annotations.Nullable;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
- * Handles reserved management endpoints ({@code /metrics}, {@code /config})
- * on the gateway's embedded Jetty server.
+ * Handles the reserved {@code /metrics} management endpoint on the gateway's
+ * embedded Jetty server.
  * <p>
- * These endpoints bypass the authentication and authorization pipeline —
- * they are intended for internal consumption by the NiFi UI WAR's
- * {@code GatewayProxyServlet} and external monitoring tools (Prometheus).
+ * This endpoint bypasses the authentication and authorization pipeline —
+ * it is intended for external monitoring tools (Prometheus) and the NiFi UI WAR's
+ * {@code GatewayProxyServlet}.
  * <p>
  * Metrics are aggregated from three sources:
  * <ol>
@@ -55,58 +50,32 @@ public class ManagementEndpointHandler {
     private static final CuiLogger LOGGER = new CuiLogger(ManagementEndpointHandler.class);
 
     static final String METRICS_PATH = "/metrics";
-    static final String CONFIG_PATH = "/config";
 
     private static final String PROMETHEUS_CONTENT_TYPE = "text/plain; version=0.0.4; charset=utf-8";
     private static final String JSON_CONTENT_TYPE = "application/json";
-    private static final String ACCEPT_HEADER = "Accept";
     private static final String API_KEY_HEADER = "X-Api-Key";
 
-    private final List<RouteConfiguration> routes;
     private final JwtIssuerConfigService configService;
     private final SecurityEventCounter httpSecurityEvents;
     private final GatewaySecurityEvents gatewaySecurityEvents;
-    private final int port;
-    private final int maxRequestSize;
-    private final int queueSize;
-    private final boolean sslEnabled;
-    private final Set<String> corsAllowedOrigins;
     @Nullable private final String managementApiKey;
 
     /**
      * Creates a new management endpoint handler.
      *
-     * @param routes              configured routes
-     * @param configService       JWT issuer config service (for token validation metrics)
-     * @param httpSecurityEvents  cui-http transport security event counter
+     * @param configService         JWT issuer config service (for token validation metrics)
+     * @param httpSecurityEvents    cui-http transport security event counter
      * @param gatewaySecurityEvents application-level gateway security events
-     * @param port                listening port
-     * @param maxRequestSize      max request body size
-     * @param queueSize           request queue size
-     * @param sslEnabled          whether SSL is enabled
-     * @param corsAllowedOrigins  configured CORS origins
-     * @param managementApiKey    API key for management endpoint auth, or {@code null} to allow unauthenticated access
+     * @param managementApiKey      API key for management endpoint auth, or {@code null} to allow unauthenticated access
      */
     public ManagementEndpointHandler(
-            List<RouteConfiguration> routes,
             JwtIssuerConfigService configService,
             SecurityEventCounter httpSecurityEvents,
             GatewaySecurityEvents gatewaySecurityEvents,
-            int port,
-            int maxRequestSize,
-            int queueSize,
-            boolean sslEnabled,
-            Set<String> corsAllowedOrigins,
             @Nullable String managementApiKey) {
-        this.routes = List.copyOf(routes);
         this.configService = configService;
         this.httpSecurityEvents = httpSecurityEvents;
         this.gatewaySecurityEvents = gatewaySecurityEvents;
-        this.port = port;
-        this.maxRequestSize = maxRequestSize;
-        this.queueSize = queueSize;
-        this.sslEnabled = sslEnabled;
-        this.corsAllowedOrigins = Set.copyOf(corsAllowedOrigins);
         this.managementApiKey = managementApiKey;
     }
 
@@ -123,8 +92,8 @@ public class ManagementEndpointHandler {
      *         {@code false} if the path should be processed by the normal pipeline
      */
     public boolean handleIfManagement(String path, String method, String accept,
-                                      Request request, Response response, Callback callback) {
-        if (!isManagementPath(path)) {
+            Request request, Response response, Callback callback) {
+        if (!METRICS_PATH.equals(path)) {
             return false;
         }
         if (managementApiKey != null && !managementApiKey.isEmpty()) {
@@ -139,21 +108,9 @@ public class ManagementEndpointHandler {
             sendMethodNotAllowed(response, callback);
             return true;
         }
-        if (METRICS_PATH.equals(path)) {
-            LOGGER.debug("Serving management endpoint: /metrics");
-            writeMetricsResponse(response, callback, accept);
-        } else {
-            LOGGER.debug("Serving management endpoint: /config");
-            writeConfigResponse(response, callback);
-        }
+        LOGGER.debug("Serving management endpoint: /metrics");
+        writeMetricsResponse(response, callback, accept);
         return true;
-    }
-
-    /**
-     * Returns whether the given path is a reserved management path.
-     */
-    public static boolean isManagementPath(String path) {
-        return METRICS_PATH.equals(path) || CONFIG_PATH.equals(path);
     }
 
     // -----------------------------------------------------------------------
@@ -261,62 +218,11 @@ public class ManagementEndpointHandler {
     }
 
     // -----------------------------------------------------------------------
-    // /config endpoint
-    // -----------------------------------------------------------------------
-
-    private void writeConfigResponse(Response response, Callback callback) {
-        JsonObjectBuilder root = Json.createObjectBuilder();
-        root.add("component", "RestApiGatewayProcessor");
-        root.add("port", port);
-        root.add("maxRequestBodySize", maxRequestSize);
-        root.add("queueSize", queueSize);
-        root.add("ssl", sslEnabled);
-
-        // CORS origins
-        JsonArrayBuilder originsArray = Json.createArrayBuilder();
-        for (String origin : corsAllowedOrigins) {
-            originsArray.add(origin);
-        }
-        root.add("corsAllowedOrigins", originsArray);
-
-        // Routes
-        JsonArrayBuilder routesArray = Json.createArrayBuilder();
-        for (RouteConfiguration route : routes) {
-            JsonObjectBuilder routeObj = Json.createObjectBuilder();
-            routeObj.add("name", route.name());
-            routeObj.add("path", route.path());
-
-            JsonArrayBuilder methods = Json.createArrayBuilder();
-            for (String m : route.methods()) {
-                methods.add(m);
-            }
-            routeObj.add("methods", methods);
-
-            JsonArrayBuilder roles = Json.createArrayBuilder();
-            for (String r : route.requiredRoles()) {
-                roles.add(r);
-            }
-            routeObj.add("requiredRoles", roles);
-
-            JsonArrayBuilder scopes = Json.createArrayBuilder();
-            for (String s : route.requiredScopes()) {
-                scopes.add(s);
-            }
-            routeObj.add("requiredScopes", scopes);
-
-            routesArray.add(routeObj);
-        }
-        root.add("routes", routesArray);
-
-        sendResponse(response, callback, JSON_CONTENT_TYPE, root.build().toString());
-    }
-
-    // -----------------------------------------------------------------------
     // Response helpers
     // -----------------------------------------------------------------------
 
     private static void sendResponse(Response response, Callback callback,
-                                     String contentType, String body) {
+            String contentType, String body) {
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         response.setStatus(200);
         response.getHeaders().put(HttpHeader.CONTENT_TYPE, contentType);
