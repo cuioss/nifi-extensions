@@ -68,7 +68,7 @@ class GatewayProxyServletTest {
                     }
 
                     @Override
-                    protected String executeGatewayGet(String url, String accept) throws IOException {
+                    protected String executeGatewayGet(String url, String accept, String apiKey) throws IOException {
                         if (gatewayFailing.get()) throw new IOException("Connection refused");
                         return gatewayGetResponse.get();
                     }

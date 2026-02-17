@@ -19,7 +19,7 @@ The following classes implement this specification:
 * link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/JwtVerificationServlet.java[JwtVerificationServlet]
 * link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/JwksValidationServlet.java[JwksValidationServlet]
 * link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/MetricsServlet.java[MetricsServlet]
-* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/ApiKeyAuthenticationFilter.java[ApiKeyAuthenticationFilter]
+* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/ProcessorIdValidationFilter.java[ProcessorIdValidationFilter]
 * link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/service/JwtValidationService.java[JwtValidationService]
 
 The following tests verify the implementation:
@@ -27,7 +27,7 @@ The following tests verify the implementation:
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/JwtVerificationServletTest.java[JwtVerificationServletTest] -- Token verification endpoint unit tests
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/JwksValidationServletTest.java[JwksValidationServletTest] -- JWKS validation endpoint unit tests
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/MetricsServletTest.java[MetricsServletTest] -- Metrics endpoint unit tests
-* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/ApiKeyAuthenticationFilterTest.java[ApiKeyAuthenticationFilterTest] -- API key authentication filter unit tests
+* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/ProcessorIdValidationFilterTest.java[ProcessorIdValidationFilterTest] -- Processor ID validation filter unit tests
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/service/JwtValidationServiceTest.java[JwtValidationServiceTest] -- JWT validation service unit tests
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/integration/BackendEndpointsIntegrationTest.java[BackendEndpointsIntegrationTest] -- REST Assured integration tests for all endpoints
 * link:../../e-2-e-playwright/tests/04-verify-token-verification-tab.spec.js[E2E Token Verification Tab Test]

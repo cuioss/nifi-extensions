@@ -32,13 +32,13 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 
 /**
- * Tests for {@link ApiKeyAuthenticationFilter} using embedded Jetty + REST Assured.
+ * Tests for {@link ProcessorIdValidationFilter} using embedded Jetty + REST Assured.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
  */
 @EnableTestLogger
-@DisplayName("API Key Authentication Filter Tests")
-class ApiKeyAuthenticationFilterTest {
+@DisplayName("Processor ID Validation Filter Tests")
+class ProcessorIdValidationFilterTest {
 
     private static final String PROCESSOR_ID_HEADER = "X-Processor-Id";
     private static final String COMPONENT_ID_HEADER = "X-Component-Id";
@@ -47,7 +47,7 @@ class ApiKeyAuthenticationFilterTest {
     @BeforeAll
     static void startServer() throws Exception {
         EmbeddedServletTestSupport.startServer(ctx -> {
-            ctx.addFilter(ApiKeyAuthenticationFilter.class, "/nifi-api/processors/jwt/*",
+            ctx.addFilter(ProcessorIdValidationFilter.class, "/nifi-api/processors/jwt/*",
                     EnumSet.of(DispatcherType.REQUEST));
             ctx.addServlet(new ServletHolder(new EmbeddedServletTestSupport.PassthroughServlet()),
                     "/nifi-api/processors/jwt/*");
@@ -101,7 +101,7 @@ class ApiKeyAuthenticationFilterTest {
         @MethodSource("invalidProcessorIdCases")
         @DisplayName("Should reject request with invalid processor ID")
         void shouldRejectRequestWithInvalidProcessorId(String processorId,
-                String expectedMessage, String scenario) {
+                                                       String expectedMessage, String scenario) {
             given()
                     .header(PROCESSOR_ID_HEADER, processorId)
                     .when()

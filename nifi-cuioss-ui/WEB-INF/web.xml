@@ -41,18 +41,18 @@
         <mime-type>image/svg+xml</mime-type>
     </mime-mapping>
 
-    <!-- API Key Authentication Filter -->
+    <!-- Processor ID Validation Filter -->
     <filter>
-        <filter-name>ApiKeyAuthenticationFilter</filter-name>
-        <filter-class>de.cuioss.nifi.ui.servlets.ApiKeyAuthenticationFilter</filter-class>
+        <filter-name>ProcessorIdValidationFilter</filter-name>
+        <filter-class>de.cuioss.nifi.ui.servlets.ProcessorIdValidationFilter</filter-class>
     </filter>
     <filter-mapping>
-        <filter-name>ApiKeyAuthenticationFilter</filter-name>
+        <filter-name>ProcessorIdValidationFilter</filter-name>
         <url-pattern>/nifi-api/processors/jwt/*</url-pattern>
     </filter-mapping>
     <!-- Additional mapping for E2E test compatibility -->
     <filter-mapping>
-        <filter-name>ApiKeyAuthenticationFilter</filter-name>
+        <filter-name>ProcessorIdValidationFilter</filter-name>
         <url-pattern>/api/token/*</url-pattern>
     </filter-mapping>
 

@@ -40,18 +40,18 @@ public class JettyServerManager {
     private Server server;
 
     /**
-     * Starts the Jetty server on the given port with plain HTTP.
+     * Starts the Jetty server on the given port with plain HTTP, binding to all interfaces.
      *
      * @param port    the port to listen on (0 for OS-assigned)
      * @param handler the request handler
      * @throws IllegalStateException if the server is already running
      */
     public void start(int port, Handler handler) {
-        start(port, handler, null);
+        start(port, null, handler, null);
     }
 
     /**
-     * Starts the Jetty server on the given port with the specified handler.
+     * Starts the Jetty server on the given port with the specified handler, binding to all interfaces.
      * Uses HTTPS when an {@link SSLContext} is provided, plain HTTP otherwise.
      *
      * @param port       the port to listen on (0 for OS-assigned)
@@ -59,14 +59,28 @@ public class JettyServerManager {
      * @param sslContext the SSL context for HTTPS, or {@code null} for HTTP
      * @throws IllegalStateException if the server is already running
      */
-    @SuppressWarnings("java:S2147") // Jetty LifeCycle.start() declares 'throws Exception'
     public void start(int port, Handler handler, @Nullable SSLContext sslContext) {
+        start(port, null, handler, sslContext);
+    }
+
+    /**
+     * Starts the Jetty server on the given port and host with the specified handler.
+     * Uses HTTPS when an {@link SSLContext} is provided, plain HTTP otherwise.
+     *
+     * @param port       the port to listen on (0 for OS-assigned)
+     * @param host       the host/IP to bind to, or {@code null} for all interfaces
+     * @param handler    the request handler
+     * @param sslContext the SSL context for HTTPS, or {@code null} for HTTP
+     * @throws IllegalStateException if the server is already running
+     */
+    @SuppressWarnings("java:S2147") // Jetty LifeCycle.start() declares 'throws Exception'
+    public void start(int port, @Nullable String host, Handler handler, @Nullable SSLContext sslContext) {
         if (isRunning()) {
             throw new IllegalStateException("Server is already running on port " + getPort());
         }
 
         server = new Server();
-        ServerConnector connector = createConnector(server, port, sslContext);
+        ServerConnector connector = createConnector(server, port, host, sslContext);
         server.addConnector(connector);
         server.setHandler(handler);
 
@@ -90,10 +104,13 @@ public class JettyServerManager {
     }
 
     private static ServerConnector createConnector(
-            Server server, int port, @Nullable SSLContext sslContext) {
+            Server server, int port, @Nullable String host, @Nullable SSLContext sslContext) {
         if (sslContext == null) {
             ServerConnector connector = new ServerConnector(server);
             connector.setPort(port);
+            if (host != null) {
+                connector.setHost(host);
+            }
             return connector;
         }
 
@@ -107,6 +124,9 @@ public class JettyServerManager {
                 new SslConnectionFactory(sslContextFactory, HttpVersion.HTTP_1_1.asString()),
                 new HttpConnectionFactory(httpsConfig));
         connector.setPort(port);
+        if (host != null) {
+            connector.setHost(host);
+        }
         return connector;
     }
 
