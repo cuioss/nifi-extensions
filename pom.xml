@@ -378,6 +378,18 @@
                 <version>${version.nifi}</version>
                 <type>nar</type>
             </dependency>
+            <dependency>
+                <groupId>org.apache.nifi</groupId>
+                <artifactId>nifi-framework-api</artifactId>
+                <version>${version.nifi}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.nifi</groupId>
+                <artifactId>nifi-custom-ui-utils</artifactId>
+                <version>${version.nifi}</version>
+                <scope>provided</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

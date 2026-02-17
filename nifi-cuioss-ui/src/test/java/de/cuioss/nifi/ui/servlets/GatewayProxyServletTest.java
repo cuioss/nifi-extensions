@@ -17,6 +17,7 @@
 package de.cuioss.nifi.ui.servlets;
 
 import de.cuioss.test.juli.junit5.EnableTestLogger;
+import jakarta.servlet.http.HttpServletRequest;
 import org.eclipse.jetty.ee11.servlet.ServletHolder;
 import org.junit.jupiter.api.*;
 
@@ -61,7 +62,7 @@ class GatewayProxyServletTest {
         EmbeddedServletTestSupport.startServer(ctx ->
                 ctx.addServlet(new ServletHolder(new GatewayProxyServlet() {
                     @Override
-                    protected int resolveGatewayPort(String processorId) throws IOException {
+                    protected int resolveGatewayPort(String processorId, HttpServletRequest req) throws IOException {
                         if (gatewayFailing.get()) throw new IOException("Connection refused");
                         return 9443;
                     }

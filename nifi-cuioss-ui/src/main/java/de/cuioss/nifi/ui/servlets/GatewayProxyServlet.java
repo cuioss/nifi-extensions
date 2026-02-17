@@ -20,9 +20,11 @@ import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.*;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.nifi.web.NiFiWebConfigurationContext;
 
 import java.io.IOException;
 import java.net.URI;
@@ -67,6 +69,15 @@ public class GatewayProxyServlet extends HttpServlet {
     /** Cached gateway ports by processor ID. */
     private final Map<String, Integer> portCache = new ConcurrentHashMap<>();
 
+    private transient NiFiWebConfigurationContext configContext;
+
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        configContext = (NiFiWebConfigurationContext) getServletContext()
+                .getAttribute("nifi-web-configuration-context");
+    }
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
         try {
@@ -87,7 +98,7 @@ public class GatewayProxyServlet extends HttpServlet {
                 return;
             }
 
-            int port = resolveGatewayPort(processorId);
+            int port = resolveGatewayPort(processorId, req);
             String gatewayUrl = "http://localhost:" + port + pathInfo;
             String gatewayResponse = executeGatewayGet(gatewayUrl, "application/json");
 
@@ -141,7 +152,7 @@ public class GatewayProxyServlet extends HttpServlet {
                 return;
             }
 
-            int port = resolveGatewayPort(processorId);
+            int port = resolveGatewayPort(processorId, req);
             String targetUrl = "http://localhost:" + port + path;
 
             // SSRF protection
@@ -203,15 +214,16 @@ public class GatewayProxyServlet extends HttpServlet {
      * Resolves the gateway listening port for the given processor ID.
      *
      * @param processorId the NiFi processor UUID
+     * @param request     the current HTTP servlet request (for authentication context)
      * @return the gateway port
      * @throws IOException if unable to fetch component config
      */
-    protected int resolveGatewayPort(String processorId) throws IOException {
+    protected int resolveGatewayPort(String processorId, HttpServletRequest request) throws IOException {
         Integer cached = portCache.get(processorId);
         if (cached != null) return cached;
 
-        var reader = new ComponentConfigReader();
-        var config = reader.getComponentConfig(processorId);
+        var reader = new ComponentConfigReader(configContext);
+        var config = reader.getComponentConfig(processorId, request);
         String portStr = config.properties().get(GATEWAY_PORT_PROPERTY);
         if (portStr == null) {
             throw new IllegalArgumentException(
@@ -264,7 +276,7 @@ public class GatewayProxyServlet extends HttpServlet {
      * @throws IOException on communication error
      */
     protected GatewayResponse executeGatewayRequest(String url, String method,
-                                                    Map<String, String> headers, String body) throws IOException {
+            Map<String, String> headers, String body) throws IOException {
         try (HttpClient client = HttpClient.newBuilder()
                 .connectTimeout(HTTP_TIMEOUT).build()) {
 

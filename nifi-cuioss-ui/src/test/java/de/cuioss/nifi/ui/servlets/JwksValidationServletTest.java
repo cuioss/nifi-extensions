@@ -24,13 +24,15 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -207,7 +209,7 @@ class JwksValidationServletTest {
     class PathTraversalProtectionTests {
 
         @ParameterizedTest(name = "Should reject path: {0}")
-        @CsvSource({
+        @ValueSource(strings = {
                 "'../../etc/passwd'",
                 "'/etc/shadow'",
                 "'..%2F..%2Fetc%2Fpasswd'"
