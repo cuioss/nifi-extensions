@@ -11,8 +11,11 @@ xref:../Specification.adoc[Back to Main Specification]
 
 === Test Modules
 * link:../../integration-testing/[integration-testing] -- Docker-based integration tests (NiFi + Keycloak)
-* link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/NiFiFlowPipelineIT.java[NiFiFlowPipelineIT] -- Flow pipeline end-to-end tests
-* link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/KeycloakTokenIT.java[KeycloakTokenIT] -- Keycloak token acquisition tests
+* link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/NiFiFlowPipelineIT.java[NiFiFlowPipelineIT] -- Flow pipeline end-to-end tests (port 7777)
+* link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/RestApiGatewayIT.java[RestApiGatewayIT] -- RestApiGateway integration tests (port 9443)
+* link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/KeycloakTokenIT.java[KeycloakTokenIT] -- Keycloak token acquisition tests (port 9080)
+* link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/NiFiProcessorMetricsIT.java[NiFiProcessorMetricsIT] -- NiFi REST API metrics tests (port 9095)
+* link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/IntegrationTestSupport.java[IntegrationTestSupport] -- Shared utilities (endpoint polling, token fetching)
 
 === Configuration Files
 * link:../../integration-testing/src/main/docker/nifi/conf/flow.json[flow.json] -- NiFi flow definition (human-readable source)
@@ -316,15 +319,10 @@ The `@BeforeAll` method `waitForFlowEndpoint()` polls the flow endpoint with a 1
 |===
 |Test |Scenario |Expected |Rationale
 
-|`shouldVerifyFlowEndpointIsListening`
-|Send request without token
-|Non-zero status
-|Verifies the flow pipeline is operational
-
 |`shouldReturn200ForValidJwtWithRequiredRoles`
 |`testUser` token (has `read` role)
 |200
-|Valid authentication and authorization
+|Valid authentication and authorization; verifies jwt attributes in response body
 
 |`shouldReturn401ForTokenSignedByDifferentRealm`
 |Token from `other_realm`
@@ -339,7 +337,7 @@ The `@BeforeAll` method `waitForFlowEndpoint()` polls the flow endpoint with a 1
 |`shouldReturn401WhenNoAuthorizationHeader`
 |No `Authorization` header
 |401
-|Missing token
+|Missing token — expects EXTRACTION_ERROR category
 
 |`shouldReturn401ForMalformedToken`
 |`Bearer not-a-valid-jwt`
@@ -347,11 +345,111 @@ The `@BeforeAll` method `waitForFlowEndpoint()` polls the flow endpoint with a 1
 |Token parsing failure
 |===
 
-==== Helper Methods
+=== RestApiGatewayIT
 
-* `fetchToken(endpoint, clientId, clientSecret, username, password)` -- Acquires an OAuth2 token using the Resource Owner Password grant
-* `sendToFlow(authorizationHeader)` -- Sends an HTTP GET to the flow endpoint with an optional `Authorization` header
-* `formEncode(params)` -- URL-encodes a parameter map for form POST bodies
+**File:** link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/RestApiGatewayIT.java[RestApiGatewayIT.java]
+
+Integration tests for the RestApiGateway processor with embedded Jetty on port 9443.
+Tests exercise JWT authentication, route matching, and HTTP method enforcement.
+
+==== Setup
+
+The `@BeforeAll` method `waitForGateway()` polls the `/api/health` endpoint with a 120-second timeout until the gateway accepts connections.
+
+==== Test Cases
+
+[cols="2,2,1,2"]
+|===
+|Test |Scenario |Expected |Rationale
+
+4+h|Health Endpoint (`/api/health` — GET only)
+
+|`shouldAcceptHealthRequestWithValidJwt`
+|GET with valid JWT
+|200
+|Authentication and routing work
+
+|`shouldRejectHealthRequestWithoutJwt`
+|GET without `Authorization` header
+|401
+|JWT enforcement; verifies `WWW-Authenticate` header
+
+|`shouldRejectHealthRequestWithInvalidJwt`
+|GET with malformed JWT
+|401
+|RFC 9457 problem detail response validation
+
+4+h|Data Endpoint (`/api/data` — GET and POST)
+
+|`shouldAcceptDataGetWithValidJwt`
+|GET with valid JWT
+|200
+|Authenticated GET on data route
+
+|`shouldAcceptDataPostWithValidJwt`
+|POST with valid JWT and JSON body
+|202
+|Authenticated POST on data route
+
+|`shouldReturn401ForDataGetWithoutJwt`
+|GET without JWT
+|401
+|JWT enforcement on data route
+
+|`shouldReturn401ForDataGetWithInvalidJwt`
+|GET with malformed JWT
+|401
+|Token validation on data route
+
+|`shouldReturn401ForDataPostWithoutJwt`
+|POST without JWT
+|401
+|JWT enforcement on POST
+
+4+h|Management Endpoints (`/metrics`, `/config` — no auth required)
+
+|`shouldReturnPrometheusMetrics`
+|GET `/metrics`
+|200
+|Prometheus-format metrics with `text/plain` content type
+
+|`shouldReturnJsonMetrics`
+|GET `/metrics` with `Accept: application/json`
+|200
+|JSON metrics with `tokenValidation` and `gatewayEvents` sections
+
+|`shouldReturnConfig`
+|GET `/config`
+|200
+|JSON config with component, port, and routes
+
+|`shouldReturn405ForPostOnMetrics`
+|POST to `/metrics`
+|405
+|Management endpoints are GET-only
+
+4+h|Error Handling
+
+|`shouldReturn404ForUnknownRoute`
+|GET `/api/nonexistent`
+|404
+|Route not found
+
+|`shouldReturn405ForPostOnHealth`
+|POST to `/api/health`
+|405
+|Method not allowed on GET-only route
+
+|`shouldReturn405ForDeleteOnData`
+|DELETE to `/api/data`
+|405
+|Method not allowed (only GET and POST configured)
+
+|`shouldReturn401ForTokenFromWrongRealm`
+|Token from `other_realm`
+|401
+|Cross-realm signature rejection (different RSA key pair)
+|===
 
 === KeycloakTokenIT
 
@@ -361,9 +459,58 @@ Lower-level integration tests that validate Keycloak token acquisition and JWT s
 
 ==== Test Cases
 
-* Token acquisition from Keycloak via Resource Owner Password grant
-* JWT structure validation (header, payload, signature)
-* Token claims verification (`iss`, `sub`, `aud`, `exp`, `realm_access`)
+[cols="2,2,1,2"]
+|===
+|Test |Scenario |Expected |Rationale
+
+|`shouldFetchValidToken`
+|Password grant with valid credentials
+|3-part JWT
+|Token acquisition works
+
+|`shouldContainRequiredClaims`
+|Decode JWT payload
+|`sub`, `iss`, `exp`, `iat` present
+|JWT structure is valid
+
+|`shouldReturnNonExpiredToken`
+|Check `exp` claim
+|`exp` > now
+|Token is usable
+
+|`shouldRejectInvalidCredentials`
+|Wrong username/password
+|401
+|Error handling for bad credentials
+
+|`shouldFailForUnreachableEndpoint`
+|Connect to port 19999
+|IOException
+|Network error handling
+|===
+
+=== NiFiProcessorMetricsIT
+
+**File:** link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/NiFiProcessorMetricsIT.java[NiFiProcessorMetricsIT.java]
+
+Infrastructure tests that verify NiFi processor metrics via the NiFi REST API (port 9095, HTTPS). Confirms that processors actually processed FlowFiles after traffic is sent through the flow.
+
+==== Test Cases
+
+[cols="2,2,1,2"]
+|===
+|Test |Scenario |Expected |Rationale
+
+|`shouldShowJwtAuthenticatorProcessedFlowFiles`
+|Query processor status for MultiIssuerJWTTokenAuthenticator
+|flowFilesIn > 0, flowFilesOut > 0
+|Processor is operational
+
+|`shouldShowResponseProcessorsProcessedFlowFiles`
+|Query status for HandleHttpResponse (200) and (401)
+|Both have flowFilesIn > 0
+|Both success and failure paths were exercised
+|===
 
 == Test Execution
 
