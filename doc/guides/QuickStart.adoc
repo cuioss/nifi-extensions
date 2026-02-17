@@ -10,7 +10,7 @@ Get the MultiIssuerJWTTokenAuthenticator processor running in under 5 minutes.
 == Prerequisites
 
 * Apache NiFi running and accessible
-* The `nifi-cuioss-nar-<version>.nar` deployed to `$NIFI_HOME/extensions/` (see link:../../README.adoc#installation[Installation])
+* Both `nifi-cuioss-api-nar-<version>.nar` and `nifi-cuioss-nar-<version>.nar` deployed to `$NIFI_HOME/extensions/` (see link:../../README.adoc#installation[Installation])
 * A JWKS endpoint URL from your identity provider (e.g. Keycloak, Entra ID, Auth0)
 
 == Step 1: Add the Processor

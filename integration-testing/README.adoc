@@ -159,7 +159,7 @@ All scripts are in `src/main/docker/`. They can be run from any directory.
 |Rebuilds NAR, copies to deploy dir, restarts NiFi container (`docker compose restart nifi`)
 
 |`copy-deployment.sh`
-|Builds NAR with `./mvnw package -DskipTests -pl '!e-2-e-playwright'` and copies to `target/nifi-deploy/`
+|Builds NARs with `./mvnw package -DskipTests -pl '!e-2-e-playwright'` and copies both `nifi-cuioss-api-nar` and `nifi-cuioss-nar` to `target/nifi-deploy/`
 |===
 
 === Diagnostic Scripts
@@ -323,7 +323,7 @@ docker compose -f integration-testing/src/main/docker/docker-compose.yml logs ke
 |Verify port 9086 is reachable: `curl http://localhost:9086/health/ready`
 
 |NAR not loaded
-|Run `debug-nar-deployment.sh`; verify `target/nifi-deploy/` contains the NAR file
+|Run `debug-nar-deployment.sh`; verify `target/nifi-deploy/` contains both NAR files (`nifi-cuioss-api-nar` and `nifi-cuioss-nar`)
 
 |Certificate errors in browser
 |Expected with self-signed certs — accept the warning. Regenerate with `maintenance/generate-certificates.sh` if expired.

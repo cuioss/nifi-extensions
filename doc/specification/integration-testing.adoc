@@ -370,7 +370,7 @@ Lower-level integration tests that validate Keycloak token acquisition and JWT s
 === Prerequisites
 
 1. Docker containers must be running (NiFi + Keycloak)
-2. The NAR must be built and deployed to `target/nifi-deploy/`
+2. Both NARs (`nifi-cuioss-api-nar` and `nifi-cuioss-nar`) must be built and deployed to `target/nifi-deploy/`
 
 === Running Tests
 
