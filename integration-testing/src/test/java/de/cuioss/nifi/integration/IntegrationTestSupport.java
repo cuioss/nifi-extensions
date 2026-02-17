@@ -20,6 +20,9 @@ import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import lombok.experimental.UtilityClass;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.StringReader;
 import java.net.ConnectException;
 import java.net.URI;
@@ -28,6 +31,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -130,5 +135,69 @@ class IntegrationTestSupport {
                 .map(e -> URLEncoder.encode(e.getKey(), StandardCharsets.UTF_8)
                         + "=" + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
                 .collect(Collectors.joining("&"));
+    }
+
+    private static final String NIFI_API_BASE = "https://localhost:9095/nifi-api";
+    private static final String NIFI_USERNAME = "testUser";
+    private static final String NIFI_PASSWORD = "drowssap";
+
+    /**
+     * Creates an SSLContext that trusts all certificates, suitable for
+     * Docker-based integration tests with self-signed certificates.
+     *
+     * @return an SSLContext configured to trust all certificates
+     */
+    @SuppressWarnings("java:S4830") // Trust-all SSL is intentional for self-signed Docker certs
+    static SSLContext createTrustAllSslContext() throws Exception {
+        TrustManager[] trustAllManagers = {
+                new X509TrustManager() {
+                    @Override
+                    public void checkClientTrusted(X509Certificate[] chain, String authType) {
+                        // Trust all for Docker self-signed certs
+                    }
+
+                    @Override
+                    public void checkServerTrusted(X509Certificate[] chain, String authType) {
+                        // Trust all for Docker self-signed certs
+                    }
+
+                    @Override
+                    public X509Certificate[] getAcceptedIssuers() {
+                        return new X509Certificate[0];
+                    }
+                }
+        };
+
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(null, trustAllManagers, new SecureRandom());
+        return sslContext;
+    }
+
+    /**
+     * Authenticates to NiFi using the built-in single-user credentials and returns
+     * a bearer token string. Posts form-encoded username/password to the NiFi
+     * access token endpoint.
+     *
+     * @param client the HTTPS-capable HTTP client to use
+     * @return the bearer token string
+     */
+    static String authenticateToNifi(HttpClient client) throws Exception {
+        String body = formEncode(Map.of(
+                "username", NIFI_USERNAME,
+                "password", NIFI_PASSWORD));
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(NIFI_API_BASE + "/access/token"))
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .timeout(Duration.ofSeconds(10))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(201, response.statusCode(),
+                "NiFi authentication failed with status %d: %s"
+                        .formatted(response.statusCode(), response.body()));
+
+        return response.body().trim();
     }
 }

@@ -12,16 +12,16 @@
   "reportingTasks": [],
   "templates": [],
   "rootGroup": {
-    "identifier": "root-group-id-001",
-    "instanceIdentifier": "root-group-instance-001",
+    "identifier": "c924c469-532b-5216-89c1-bf34a546abed",
+    "instanceIdentifier": "c10b0bcd-2388-5708-b04a-c9926d254203",
     "name": "NiFi Flow",
     "position": { "x": 0, "y": 0 },
     "processGroups": [],
     "remoteProcessGroups": [],
     "processors": [
       {
-        "identifier": "proc-http-request-001",
-        "instanceIdentifier": "proc-http-request-inst-001",
+        "identifier": "a5155653-5257-5972-b192-df42647b5cc5",
+        "instanceIdentifier": "6efd6c15-02e4-5a4c-8d92-b42f632cb2ca",
         "name": "HandleHttpRequest",
         "type": "org.apache.nifi.processors.standard.HandleHttpRequest",
         "bundle": {
@@ -31,7 +31,7 @@
         },
         "properties": {
           "Listening Port": "7777",
-          "HTTP Context Map": "svc-http-context-map-001"
+          "HTTP Context Map": "1f51a687-f989-53b4-9e99-6303da713b6a"
         },
         "propertyDescriptors": {
           "Listening Port": {
@@ -55,7 +55,7 @@
         "concurrentlySchedulableTaskCount": 1,
         "autoTerminatedRelationships": [],
         "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "position": { "x": 200, "y": 200 },
         "style": {},
         "retriedRelationships": [],
@@ -65,8 +65,8 @@
         "maxBackoffPeriod": "10 mins"
       },
       {
-        "identifier": "proc-extract-token-001",
-        "instanceIdentifier": "proc-extract-token-inst-001",
+        "identifier": "2bc2e54b-3237-5182-8add-376cdb3e8b32",
+        "instanceIdentifier": "8cfca2b6-4a6f-5b39-bcb8-59ccf2a7781a",
         "name": "UpdateAttribute (Extract Token)",
         "type": "org.apache.nifi.processors.attributes.UpdateAttribute",
         "bundle": {
@@ -94,7 +94,7 @@
         "concurrentlySchedulableTaskCount": 1,
         "autoTerminatedRelationships": [],
         "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "position": { "x": 200, "y": 300 },
         "style": {},
         "retriedRelationships": [],
@@ -104,8 +104,8 @@
         "maxBackoffPeriod": "10 mins"
       },
       {
-        "identifier": "proc-jwt-auth-001",
-        "instanceIdentifier": "proc-jwt-auth-inst-001",
+        "identifier": "1c468f03-7c07-56fa-9fcc-fde3121cedec",
+        "instanceIdentifier": "143914df-0581-5ae2-ab51-514a7bc830e6",
         "name": "MultiIssuerJWTTokenAuthenticator",
         "type": "de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator",
         "bundle": {
@@ -114,7 +114,7 @@
           "version": "1.0-SNAPSHOT"
         },
         "properties": {
-          "jwt.issuer.config.service": "svc-jwt-issuer-config-001",
+          "jwt.issuer.config.service": "b731b475-3078-5b65-b962-1e7a286a8f2b",
           "jwt.validation.token.attribute": "jwt.token",
           "jwt.validation.require.valid.token": "true",
           "jwt.authorization.required.roles": "read"
@@ -151,7 +151,7 @@
         "concurrentlySchedulableTaskCount": 1,
         "autoTerminatedRelationships": [],
         "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "position": { "x": 200, "y": 400 },
         "style": {},
         "retriedRelationships": [],
@@ -161,8 +161,8 @@
         "maxBackoffPeriod": "10 mins"
       },
       {
-        "identifier": "proc-log-success-001",
-        "instanceIdentifier": "proc-log-success-inst-001",
+        "identifier": "46774c0b-d633-5368-8055-6abd92e7db8f",
+        "instanceIdentifier": "db296289-62aa-599b-8e5c-bbd28845bee4",
         "name": "LogAttribute (jwt-success)",
         "type": "org.apache.nifi.processors.standard.LogAttribute",
         "bundle": {
@@ -196,7 +196,7 @@
         "concurrentlySchedulableTaskCount": 1,
         "autoTerminatedRelationships": [],
         "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "position": { "x": 0, "y": 600 },
         "style": {},
         "retriedRelationships": [],
@@ -206,8 +206,8 @@
         "maxBackoffPeriod": "10 mins"
       },
       {
-        "identifier": "proc-log-failed-001",
-        "instanceIdentifier": "proc-log-failed-inst-001",
+        "identifier": "5608b6e1-0b5e-57f4-96bd-a2c50272b626",
+        "instanceIdentifier": "87bee289-feb8-5a51-baea-822640aebc77",
         "name": "LogAttribute (jwt-failed)",
         "type": "org.apache.nifi.processors.standard.LogAttribute",
         "bundle": {
@@ -241,7 +241,7 @@
         "concurrentlySchedulableTaskCount": 1,
         "autoTerminatedRelationships": [],
         "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "position": { "x": 400, "y": 600 },
         "style": {},
         "retriedRelationships": [],
@@ -251,8 +251,8 @@
         "maxBackoffPeriod": "10 mins"
       },
       {
-        "identifier": "proc-update-success-001",
-        "instanceIdentifier": "proc-update-success-inst-001",
+        "identifier": "98a0dc6a-2b20-533f-b6de-5932583627d4",
+        "instanceIdentifier": "feb884b7-f613-5658-a19d-5926854aa8c1",
         "name": "UpdateAttribute (200)",
         "type": "org.apache.nifi.processors.attributes.UpdateAttribute",
         "bundle": {
@@ -280,7 +280,7 @@
         "concurrentlySchedulableTaskCount": 1,
         "autoTerminatedRelationships": [],
         "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "position": { "x": 0, "y": 800 },
         "style": {},
         "retriedRelationships": [],
@@ -290,8 +290,8 @@
         "maxBackoffPeriod": "10 mins"
       },
       {
-        "identifier": "proc-update-failed-001",
-        "instanceIdentifier": "proc-update-failed-inst-001",
+        "identifier": "a90c7ab9-95c8-5d0c-9a17-a721adcf31d6",
+        "instanceIdentifier": "b07633d4-6257-5b31-a9b4-2e51ce87bbfe",
         "name": "UpdateAttribute (401)",
         "type": "org.apache.nifi.processors.attributes.UpdateAttribute",
         "bundle": {
@@ -319,7 +319,7 @@
         "concurrentlySchedulableTaskCount": 1,
         "autoTerminatedRelationships": [],
         "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "position": { "x": 400, "y": 800 },
         "style": {},
         "retriedRelationships": [],
@@ -329,8 +329,8 @@
         "maxBackoffPeriod": "10 mins"
       },
       {
-        "identifier": "proc-attrs-to-json-success-001",
-        "instanceIdentifier": "proc-attrs-to-json-success-inst-001",
+        "identifier": "33c9c5e2-5a93-50b2-bed3-eeb834517c91",
+        "instanceIdentifier": "71bcb4e4-a6b0-515e-bda9-dc034504d18e",
         "name": "AttributesToJSON (success)",
         "type": "org.apache.nifi.processors.standard.AttributesToJSON",
         "bundle": {
@@ -370,7 +370,7 @@
         "concurrentlySchedulableTaskCount": 1,
         "autoTerminatedRelationships": ["failure"],
         "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "position": { "x": 0, "y": 900 },
         "style": {},
         "retriedRelationships": [],
@@ -380,8 +380,8 @@
         "maxBackoffPeriod": "10 mins"
       },
       {
-        "identifier": "proc-attrs-to-json-failed-001",
-        "instanceIdentifier": "proc-attrs-to-json-failed-inst-001",
+        "identifier": "10d7e9e2-00d8-5b0f-ae45-83cfa4dec05f",
+        "instanceIdentifier": "56e3712a-ae59-5f91-94c5-d355a3d6c998",
         "name": "AttributesToJSON (failure)",
         "type": "org.apache.nifi.processors.standard.AttributesToJSON",
         "bundle": {
@@ -421,7 +421,7 @@
         "concurrentlySchedulableTaskCount": 1,
         "autoTerminatedRelationships": ["failure"],
         "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "position": { "x": 400, "y": 900 },
         "style": {},
         "retriedRelationships": [],
@@ -431,8 +431,8 @@
         "maxBackoffPeriod": "10 mins"
       },
       {
-        "identifier": "proc-http-response-success-001",
-        "instanceIdentifier": "proc-http-response-success-inst-001",
+        "identifier": "1e413970-8957-590a-9e5e-cd17bed59e62",
+        "instanceIdentifier": "2a1cfede-0ab9-52b8-b252-e94dab7db7e8",
         "name": "HandleHttpResponse (200)",
         "type": "org.apache.nifi.processors.standard.HandleHttpResponse",
         "bundle": {
@@ -442,7 +442,7 @@
         },
         "properties": {
           "HTTP Status Code": "${http.status.code}",
-          "HTTP Context Map": "svc-http-context-map-001"
+          "HTTP Context Map": "1f51a687-f989-53b4-9e99-6303da713b6a"
         },
         "propertyDescriptors": {
           "HTTP Status Code": {
@@ -466,7 +466,7 @@
         "concurrentlySchedulableTaskCount": 1,
         "autoTerminatedRelationships": ["success", "failure"],
         "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "position": { "x": 0, "y": 1100 },
         "style": {},
         "retriedRelationships": [],
@@ -476,8 +476,8 @@
         "maxBackoffPeriod": "10 mins"
       },
       {
-        "identifier": "proc-http-response-failed-001",
-        "instanceIdentifier": "proc-http-response-failed-inst-001",
+        "identifier": "6ad53896-c7b6-5e40-8e2c-aca4bea0954b",
+        "instanceIdentifier": "94566186-44b3-5d5f-a487-ad6e97a88575",
         "name": "HandleHttpResponse (401)",
         "type": "org.apache.nifi.processors.standard.HandleHttpResponse",
         "bundle": {
@@ -487,7 +487,7 @@
         },
         "properties": {
           "HTTP Status Code": "${http.status.code}",
-          "HTTP Context Map": "svc-http-context-map-001"
+          "HTTP Context Map": "1f51a687-f989-53b4-9e99-6303da713b6a"
         },
         "propertyDescriptors": {
           "HTTP Status Code": {
@@ -511,7 +511,7 @@
         "concurrentlySchedulableTaskCount": 1,
         "autoTerminatedRelationships": ["success", "failure"],
         "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "position": { "x": 400, "y": 1100 },
         "style": {},
         "retriedRelationships": [],
@@ -521,8 +521,8 @@
         "maxBackoffPeriod": "10 mins"
       },
       {
-        "identifier": "proc-rest-gateway-001",
-        "instanceIdentifier": "proc-rest-gateway-inst-001",
+        "identifier": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
+        "instanceIdentifier": "d9aed3a4-20a8-5cbf-aa19-13400f8890a3",
         "name": "RestApiGateway",
         "type": "de.cuioss.nifi.rest.RestApiGatewayProcessor",
         "bundle": {
@@ -532,7 +532,7 @@
         },
         "properties": {
           "rest.gateway.listening.port": "9443",
-          "rest.gateway.jwt.config.service": "svc-jwt-issuer-config-001",
+          "rest.gateway.jwt.config.service": "b731b475-3078-5b65-b962-1e7a286a8f2b",
           "rest.gateway.max.request.size": "1048576",
           "rest.gateway.request.queue.size": "50",
           "restapi.health.path": "/api/health",
@@ -592,7 +592,7 @@
         "concurrentlySchedulableTaskCount": 1,
         "autoTerminatedRelationships": ["failure"],
         "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "position": { "x": 800, "y": 200 },
         "style": {},
         "retriedRelationships": [],
@@ -602,8 +602,8 @@
         "maxBackoffPeriod": "10 mins"
       },
       {
-        "identifier": "proc-log-gateway-health-001",
-        "instanceIdentifier": "proc-log-gateway-health-inst-001",
+        "identifier": "e5842c02-def4-500d-94b6-72cd1bcd693c",
+        "instanceIdentifier": "c969f24d-aff9-5e4b-9d66-5f34527e4efb",
         "name": "LogAttribute (gateway-health)",
         "type": "org.apache.nifi.processors.standard.LogAttribute",
         "bundle": {
@@ -637,7 +637,7 @@
         "concurrentlySchedulableTaskCount": 1,
         "autoTerminatedRelationships": ["success"],
         "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "position": { "x": 800, "y": 400 },
         "style": {},
         "retriedRelationships": [],
@@ -647,8 +647,8 @@
         "maxBackoffPeriod": "10 mins"
       },
       {
-        "identifier": "proc-log-gateway-data-001",
-        "instanceIdentifier": "proc-log-gateway-data-inst-001",
+        "identifier": "adc6e973-7cb3-5d42-80af-74ea74eaae97",
+        "instanceIdentifier": "109b5c85-dd1d-5277-9e25-4843ded7b5be",
         "name": "LogAttribute (gateway-data)",
         "type": "org.apache.nifi.processors.standard.LogAttribute",
         "bundle": {
@@ -682,7 +682,7 @@
         "concurrentlySchedulableTaskCount": 1,
         "autoTerminatedRelationships": ["success"],
         "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "position": { "x": 1000, "y": 400 },
         "style": {},
         "retriedRelationships": [],
@@ -696,19 +696,19 @@
     "outputPorts": [],
     "connections": [
       {
-        "identifier": "conn-request-to-extract-001",
-        "instanceIdentifier": "conn-request-to-extract-inst-001",
+        "identifier": "ef96fc35-f2e5-53ac-bc2b-3c794fb41102",
+        "instanceIdentifier": "63164e33-f621-5cc3-b421-da8aa896adee",
         "name": "HandleHttpRequest → Extract Token",
         "source": {
-          "id": "proc-http-request-001",
+          "id": "a5155653-5257-5972-b192-df42647b5cc5",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "HandleHttpRequest"
         },
         "destination": {
-          "id": "proc-extract-token-001",
+          "id": "2bc2e54b-3237-5182-8add-376cdb3e8b32",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "UpdateAttribute (Extract Token)"
         },
         "selectedRelationships": ["success"],
@@ -719,24 +719,24 @@
         "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
         "loadBalanceCompression": "DO_NOT_COMPRESS",
         "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "labelIndex": 1,
         "zIndex": 0
       },
       {
-        "identifier": "conn-extract-to-jwt-001",
-        "instanceIdentifier": "conn-extract-to-jwt-inst-001",
+        "identifier": "1fd53156-fa4d-5acb-b968-5a51fa82074e",
+        "instanceIdentifier": "5e0adb41-5871-5779-96f8-2f96b03ecacc",
         "name": "Extract Token → JWT Auth",
         "source": {
-          "id": "proc-extract-token-001",
+          "id": "2bc2e54b-3237-5182-8add-376cdb3e8b32",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "UpdateAttribute (Extract Token)"
         },
         "destination": {
-          "id": "proc-jwt-auth-001",
+          "id": "1c468f03-7c07-56fa-9fcc-fde3121cedec",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "MultiIssuerJWTTokenAuthenticator"
         },
         "selectedRelationships": ["success"],
@@ -747,24 +747,24 @@
         "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
         "loadBalanceCompression": "DO_NOT_COMPRESS",
         "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "labelIndex": 1,
         "zIndex": 0
       },
       {
-        "identifier": "conn-jwt-to-log-success-001",
-        "instanceIdentifier": "conn-jwt-to-log-success-inst-001",
+        "identifier": "b04f86fd-d3b5-5735-b00d-3de8b3f53412",
+        "instanceIdentifier": "8cd0051f-c576-5aec-892b-01567da8341f",
         "name": "JWT Auth success → LogAttribute",
         "source": {
-          "id": "proc-jwt-auth-001",
+          "id": "1c468f03-7c07-56fa-9fcc-fde3121cedec",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "MultiIssuerJWTTokenAuthenticator"
         },
         "destination": {
-          "id": "proc-log-success-001",
+          "id": "46774c0b-d633-5368-8055-6abd92e7db8f",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "LogAttribute (jwt-success)"
         },
         "selectedRelationships": ["success"],
@@ -775,24 +775,24 @@
         "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
         "loadBalanceCompression": "DO_NOT_COMPRESS",
         "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "labelIndex": 1,
         "zIndex": 0
       },
       {
-        "identifier": "conn-jwt-to-log-failed-001",
-        "instanceIdentifier": "conn-jwt-to-log-failed-inst-001",
+        "identifier": "21166bda-2e14-5efd-b823-62de1a4ad36a",
+        "instanceIdentifier": "66f5e314-af70-542b-9614-d3823367d728",
         "name": "JWT Auth failed → LogAttribute",
         "source": {
-          "id": "proc-jwt-auth-001",
+          "id": "1c468f03-7c07-56fa-9fcc-fde3121cedec",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "MultiIssuerJWTTokenAuthenticator"
         },
         "destination": {
-          "id": "proc-log-failed-001",
+          "id": "5608b6e1-0b5e-57f4-96bd-a2c50272b626",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "LogAttribute (jwt-failed)"
         },
         "selectedRelationships": ["authentication-failed"],
@@ -803,24 +803,24 @@
         "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
         "loadBalanceCompression": "DO_NOT_COMPRESS",
         "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "labelIndex": 1,
         "zIndex": 0
       },
       {
-        "identifier": "conn-log-success-to-update-001",
-        "instanceIdentifier": "conn-log-success-to-update-inst-001",
+        "identifier": "4c722c8c-4b25-5233-a991-092c4795e291",
+        "instanceIdentifier": "19cbe385-7057-5c81-ada1-fbcd486ee768",
         "name": "LogAttribute success → UpdateAttribute 200",
         "source": {
-          "id": "proc-log-success-001",
+          "id": "46774c0b-d633-5368-8055-6abd92e7db8f",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "LogAttribute (jwt-success)"
         },
         "destination": {
-          "id": "proc-update-success-001",
+          "id": "98a0dc6a-2b20-533f-b6de-5932583627d4",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "UpdateAttribute (200)"
         },
         "selectedRelationships": ["success"],
@@ -831,24 +831,24 @@
         "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
         "loadBalanceCompression": "DO_NOT_COMPRESS",
         "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "labelIndex": 1,
         "zIndex": 0
       },
       {
-        "identifier": "conn-log-failed-to-update-001",
-        "instanceIdentifier": "conn-log-failed-to-update-inst-001",
+        "identifier": "b8c43877-4fcd-5920-abf3-c3958098bf22",
+        "instanceIdentifier": "4e0f0848-1d23-565d-a2eb-76d8bf9f5d21",
         "name": "LogAttribute failed → UpdateAttribute 401",
         "source": {
-          "id": "proc-log-failed-001",
+          "id": "5608b6e1-0b5e-57f4-96bd-a2c50272b626",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "LogAttribute (jwt-failed)"
         },
         "destination": {
-          "id": "proc-update-failed-001",
+          "id": "a90c7ab9-95c8-5d0c-9a17-a721adcf31d6",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "UpdateAttribute (401)"
         },
         "selectedRelationships": ["success"],
@@ -859,24 +859,24 @@
         "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
         "loadBalanceCompression": "DO_NOT_COMPRESS",
         "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "labelIndex": 1,
         "zIndex": 0
       },
       {
-        "identifier": "conn-update-success-to-attrs-json-001",
-        "instanceIdentifier": "conn-update-success-to-attrs-json-inst-001",
+        "identifier": "5fb30869-9720-581e-898c-fe4d75c2065b",
+        "instanceIdentifier": "5b4e157d-5ee1-5b74-8283-28be29cbd84d",
         "name": "UpdateAttribute 200 → AttributesToJSON (success)",
         "source": {
-          "id": "proc-update-success-001",
+          "id": "98a0dc6a-2b20-533f-b6de-5932583627d4",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "UpdateAttribute (200)"
         },
         "destination": {
-          "id": "proc-attrs-to-json-success-001",
+          "id": "33c9c5e2-5a93-50b2-bed3-eeb834517c91",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "AttributesToJSON (success)"
         },
         "selectedRelationships": ["success"],
@@ -887,24 +887,24 @@
         "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
         "loadBalanceCompression": "DO_NOT_COMPRESS",
         "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "labelIndex": 1,
         "zIndex": 0
       },
       {
-        "identifier": "conn-attrs-json-success-to-response-001",
-        "instanceIdentifier": "conn-attrs-json-success-to-response-inst-001",
+        "identifier": "82b3631c-6dfe-5fec-a169-bb527ccc77b8",
+        "instanceIdentifier": "1b5cc725-9d77-5bab-bd89-d247bc49d860",
         "name": "AttributesToJSON (success) → HandleHttpResponse (200)",
         "source": {
-          "id": "proc-attrs-to-json-success-001",
+          "id": "33c9c5e2-5a93-50b2-bed3-eeb834517c91",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "AttributesToJSON (success)"
         },
         "destination": {
-          "id": "proc-http-response-success-001",
+          "id": "1e413970-8957-590a-9e5e-cd17bed59e62",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "HandleHttpResponse (200)"
         },
         "selectedRelationships": ["success"],
@@ -915,24 +915,24 @@
         "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
         "loadBalanceCompression": "DO_NOT_COMPRESS",
         "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "labelIndex": 1,
         "zIndex": 0
       },
       {
-        "identifier": "conn-update-failed-to-attrs-json-001",
-        "instanceIdentifier": "conn-update-failed-to-attrs-json-inst-001",
+        "identifier": "9443abb1-bc95-515a-9475-7824d25433a1",
+        "instanceIdentifier": "a20cbfac-2c22-5c55-b2d8-1f340842216f",
         "name": "UpdateAttribute 401 → AttributesToJSON (failure)",
         "source": {
-          "id": "proc-update-failed-001",
+          "id": "a90c7ab9-95c8-5d0c-9a17-a721adcf31d6",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "UpdateAttribute (401)"
         },
         "destination": {
-          "id": "proc-attrs-to-json-failed-001",
+          "id": "10d7e9e2-00d8-5b0f-ae45-83cfa4dec05f",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "AttributesToJSON (failure)"
         },
         "selectedRelationships": ["success"],
@@ -943,24 +943,24 @@
         "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
         "loadBalanceCompression": "DO_NOT_COMPRESS",
         "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "labelIndex": 1,
         "zIndex": 0
       },
       {
-        "identifier": "conn-attrs-json-failed-to-response-001",
-        "instanceIdentifier": "conn-attrs-json-failed-to-response-inst-001",
+        "identifier": "196a796c-29b2-5a50-9f8e-07d6955f6bd7",
+        "instanceIdentifier": "4c76d5de-9dec-5369-89cb-b252c5f46960",
         "name": "AttributesToJSON (failure) → HandleHttpResponse (401)",
         "source": {
-          "id": "proc-attrs-to-json-failed-001",
+          "id": "10d7e9e2-00d8-5b0f-ae45-83cfa4dec05f",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "AttributesToJSON (failure)"
         },
         "destination": {
-          "id": "proc-http-response-failed-001",
+          "id": "6ad53896-c7b6-5e40-8e2c-aca4bea0954b",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "HandleHttpResponse (401)"
         },
         "selectedRelationships": ["success"],
@@ -971,24 +971,24 @@
         "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
         "loadBalanceCompression": "DO_NOT_COMPRESS",
         "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "labelIndex": 1,
         "zIndex": 0
       },
       {
-        "identifier": "conn-gateway-health-001",
-        "instanceIdentifier": "conn-gateway-health-inst-001",
+        "identifier": "c9bcedd1-1006-5354-8085-e3e971e58533",
+        "instanceIdentifier": "6b11e010-3d67-5231-b74d-aa829629b96b",
         "name": "RestApiGateway health → LogAttribute",
         "source": {
-          "id": "proc-rest-gateway-001",
+          "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "RestApiGateway"
         },
         "destination": {
-          "id": "proc-log-gateway-health-001",
+          "id": "e5842c02-def4-500d-94b6-72cd1bcd693c",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "LogAttribute (gateway-health)"
         },
         "selectedRelationships": ["health"],
@@ -999,24 +999,24 @@
         "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
         "loadBalanceCompression": "DO_NOT_COMPRESS",
         "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "labelIndex": 1,
         "zIndex": 0
       },
       {
-        "identifier": "conn-gateway-data-001",
-        "instanceIdentifier": "conn-gateway-data-inst-001",
+        "identifier": "85b994e7-8a48-5514-8d71-6c8cf9af43d6",
+        "instanceIdentifier": "9e2f56a2-d0fb-5aa7-b007-fc8615851bd4",
         "name": "RestApiGateway data → LogAttribute",
         "source": {
-          "id": "proc-rest-gateway-001",
+          "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "RestApiGateway"
         },
         "destination": {
-          "id": "proc-log-gateway-data-001",
+          "id": "adc6e973-7cb3-5d42-80af-74ea74eaae97",
           "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
+          "groupId": "c924c469-532b-5216-89c1-bf34a546abed",
           "name": "LogAttribute (gateway-data)"
         },
         "selectedRelationships": ["data"],
@@ -1027,7 +1027,7 @@
         "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
         "loadBalanceCompression": "DO_NOT_COMPRESS",
         "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed",
         "labelIndex": 1,
         "zIndex": 0
       }
@@ -1036,8 +1036,8 @@
     "funnels": [],
     "controllerServices": [
       {
-        "identifier": "svc-http-context-map-001",
-        "instanceIdentifier": "svc-http-context-map-inst-001",
+        "identifier": "1f51a687-f989-53b4-9e99-6303da713b6a",
+        "instanceIdentifier": "1ea86f29-d3f1-569a-b404-f86cfef61fd0",
         "name": "StandardHttpContextMap",
         "type": "org.apache.nifi.http.StandardHttpContextMap",
         "bundle": {
@@ -1073,11 +1073,11 @@
         ],
         "scheduledState": "ENABLED",
         "componentType": "CONTROLLER_SERVICE",
-        "groupIdentifier": "root-group-id-001"
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed"
       },
       {
-        "identifier": "svc-jwt-issuer-config-001",
-        "instanceIdentifier": "svc-jwt-issuer-config-inst-001",
+        "identifier": "b731b475-3078-5b65-b962-1e7a286a8f2b",
+        "instanceIdentifier": "0770d065-7216-59d8-8f41-560c9e022981",
         "name": "StandardJwtIssuerConfigService",
         "type": "de.cuioss.nifi.jwt.config.StandardJwtIssuerConfigService",
         "bundle": {
@@ -1125,7 +1125,7 @@
         ],
         "scheduledState": "ENABLED",
         "componentType": "CONTROLLER_SERVICE",
-        "groupIdentifier": "root-group-id-001"
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed"
       }
     ],
     "defaultFlowFileExpiration": "0 sec",

@@ -37,6 +37,12 @@
             <artifactId>jspecify</artifactId>
             <scope>provided</scope>
         </dependency>
+        <!-- REST Assured for HTTP endpoint testing -->
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- JSON parsing for token response -->
         <dependency>
             <groupId>jakarta.json</groupId>
