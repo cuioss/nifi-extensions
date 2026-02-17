@@ -42,16 +42,18 @@ Requests flow through up to three authentication layers depending on the target 
                          │  │         │                                   │     │  │
                          │  │         └──► GatewayProxyServlet ───────────┤     │  │
                          │  │                 │  (per-component auth)     │     │  │
-                         │  │                 │  (SSRF: localhost only)   │     │  │
-                         │  └─────────────────┼───────────────────────────┼─────┘  │
-                         └────────────────────┼───────────────────────────┼────────┘
-                                              │                           │
-                           HTTP + X-Api-Key   │    NiFiWebConfiguration   │
-                           (localhost:port)   │    Context (reads         │
-                                              ▼    processor config)      │
-                         ┌──────────────────────────────┐                 │
-                         │  Gateway Embedded Jetty      │◄───── reads ────┘
-                         │        (Layer 3)             │   port, API key
+                         │  │                 │  /config: local ─────────►│     │  │
+                         │  │                 │  /metrics: proxy ──┐     │     │  │
+                         │  │                 │  /test: proxy      │     │     │  │
+                         │  │                 │  (SSRF: localhost) │     │     │  │
+                         │  └─────────────────┼────────────────────┼─────┼─────┘  │
+                         └────────────────────┼────────────────────┼─────┼────────┘
+                                              │  HTTP + X-Api-Key  │     │
+                                              │  (localhost:port)  │     │
+                                              │                    ▼     │
+                         ┌──────────────────────────────┐               │
+                         │  Gateway Embedded Jetty      │◄── reads ─────┘
+                         │        (Layer 3)             │  port, API key
                          │                              │
                          │  GatewayRequestHandler       │
                          │         │                    │
@@ -70,8 +72,8 @@ Requests flow through up to three authentication layers depending on the target 
 
 Two distinct entry points reach the gateway:
 
-* **NiFi UI path** (top): Browser -> NiFi auth -> ProcessorIdValidationFilter -> GatewayProxyServlet -> Gateway (three-layer auth)
-* **Direct path** (left): External client -> Gateway Jetty (single-layer: JWT Bearer or optional API key)
+* **NiFi UI path** (top): Browser -> NiFi auth -> ProcessorIdValidationFilter -> GatewayProxyServlet (serves `/config` locally; proxies `/metrics` and `/test` to gateway)
+* **Direct path** (left): External client -> Gateway Jetty (single-layer: JWT Bearer or optional API key for `/metrics`)
 
 === Layer 1: NiFi Container Authentication
 
