@@ -129,7 +129,8 @@ export const PROCESS_GROUPS = {
  */
 export const PROCESSOR_TYPES = {
   MULTI_ISSUER_JWT_AUTHENTICATOR: 'MultiIssuerJWTTokenAuthenticator',
-  JWT_TOKEN_AUTHENTICATOR: 'JWTTokenAuthenticator'
+  JWT_TOKEN_AUTHENTICATOR: 'JWTTokenAuthenticator',
+  REST_API_GATEWAY: 'RestApiGatewayProcessor'
 };
 
 /**

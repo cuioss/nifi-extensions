@@ -122,5 +122,29 @@ export const accessibilityTest = test.extend({
     },
 });
 
+/**
+ * Extended test with gateway processor fixture
+ */
+export const gatewayTest = test.extend({
+    /**
+     * Auto-setup fixture that ensures the REST API Gateway processor is on canvas
+     * and navigates into the REST API Gateway process group.
+     */
+    withGatewayProcessorOnCanvas: async ({ page, processorManager }, use) => {
+        const ready = await processorManager.ensureGatewayProcessorOnCanvas();
+
+        if (!ready) {
+            throw new Error(
+                "PRECONDITION FAILED: Cannot ensure RestApiGatewayProcessor is on canvas. " +
+                    "The processor must be deployed in NiFi for tests to run.",
+            );
+        }
+
+        testLogger.info("Processor", "Gateway preconditions met");
+
+        await use(page);
+    },
+});
+
 export { expect } from "@playwright/test";
 export { takeStartScreenshot } from "../utils/test-logger.js";

@@ -52,6 +52,7 @@ class CustomUIEndpointsIT {
 
     private static RequestSpecification authSpec;
     private static RequestSpecification sessionOnlySpec;
+    private static RequestSpecification gatewayAuthSpec;
 
     @BeforeAll
     static void setUp() throws Exception {
@@ -78,6 +79,12 @@ class CustomUIEndpointsIT {
                 customUIBase, bearerToken, processorId);
         sessionOnlySpec = CustomUITestSupport.buildSessionOnlySpec(
                 customUIBase, bearerToken);
+
+        // Discover REST API Gateway processor for gateway endpoint tests
+        String gatewayProcessorId = CustomUITestSupport.discoverProcessorId(
+                httpClient, bearerToken, "RestApiGateway");
+        gatewayAuthSpec = CustomUITestSupport.buildAuthSpec(
+                customUIBase, bearerToken, gatewayProcessorId);
     }
 
     // ── Endpoint Accessibility Tests ──────────────────────────────────
@@ -228,6 +235,87 @@ class CustomUIEndpointsIT {
                     .then()
                     .statusCode(200)
                     .contentType(containsString("text/html"));
+        }
+    }
+
+    // ── Component Info Endpoint Tests ────────────────────────────────
+
+    @Nested
+    @DisplayName("Component Info Endpoint")
+    class ComponentInfoEndpoint {
+
+        @Test
+        @DisplayName("should return processor type and class for JWT authenticator")
+        void componentInfoReturnsProcessorType() {
+            given().spec(authSpec)
+                    .when()
+                    .get("/nifi-api/processors/jwt/component-info")
+                    .then()
+                    .statusCode(200)
+                    .contentType(ContentType.JSON)
+                    .body("type", equalTo("PROCESSOR"))
+                    .body("componentClass", containsString("MultiIssuerJWTTokenAuthenticator"));
+        }
+
+        @Test
+        @DisplayName("should return processor type for gateway processor")
+        void componentInfoReturnsGatewayType() {
+            given().spec(gatewayAuthSpec)
+                    .when()
+                    .get("/nifi-api/processors/jwt/component-info")
+                    .then()
+                    .statusCode(200)
+                    .contentType(ContentType.JSON)
+                    .body("type", equalTo("PROCESSOR"))
+                    .body("componentClass", containsString("RestApiGatewayProcessor"));
+        }
+    }
+
+    // ── Gateway Proxy Endpoint Tests ─────────────────────────────────
+
+    @Nested
+    @DisplayName("Gateway Proxy Endpoints")
+    class GatewayProxyEndpoints {
+
+        @Test
+        @DisplayName("should return gateway config with routes and component class")
+        void gatewayConfigReturnsJson() {
+            given().spec(gatewayAuthSpec)
+                    .when()
+                    .get("/nifi-api/processors/jwt/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .contentType(ContentType.JSON)
+                    .body("component", containsString("RestApiGatewayProcessor"))
+                    .body("port", notNullValue());
+        }
+
+        @Test
+        @DisplayName("should return 503 or metrics for gateway metrics endpoint")
+        void gatewayMetricsEndpoint() {
+            // Gateway may not be running, so accept either 200 or 503
+            int status = given().spec(gatewayAuthSpec)
+                    .when()
+                    .get("/nifi-api/processors/jwt/gateway/metrics")
+                    .then()
+                    .extract().statusCode();
+
+            // Either the gateway is running (200) or unavailable (503)
+            org.junit.jupiter.api.Assertions.assertTrue(
+                    status == 200 || status == 503,
+                    "Expected 200 or 503 but got " + status);
+        }
+
+        @Test
+        @DisplayName("should enforce SSRF protection on gateway test endpoint")
+        void gatewayTestSsrfProtection() {
+            given().spec(gatewayAuthSpec)
+                    .body("""
+                            {"path":"http://evil.com/steal","method":"GET","headers":{}}""")
+                    .when()
+                    .post("/nifi-api/processors/jwt/gateway/test")
+                    .then()
+                    .statusCode(anyOf(equalTo(400), equalTo(503)));
         }
     }
 }

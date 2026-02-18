@@ -178,6 +178,77 @@ export class ProcessorApiManager {
   }
 
   /**
+   * Find the REST API Gateway process group and return its id
+   */
+  async getGatewayProcessGroupId() {
+    const groups = await this.getProcessGroups();
+    const gatewayGroup = groups.find(g =>
+      g.component?.name === PROCESS_GROUPS.REST_API_GATEWAY
+    );
+
+    if (gatewayGroup) {
+      testLogger.info('Processor', `Found REST API Gateway group: ${gatewayGroup.id}`);
+      return gatewayGroup.id;
+    }
+
+    testLogger.warn('Processor', 'REST API Gateway process group not found');
+    return null;
+  }
+
+  /**
+   * Find the RestApiGatewayProcessor on the canvas and return its ID.
+   * Searches the REST API Gateway process group first, then falls back to root.
+   */
+  async getGatewayProcessorId() {
+    const gatewayGroupId = await this.getGatewayProcessGroupId();
+    const processors = gatewayGroupId
+      ? await this.getProcessorsOnCanvas(gatewayGroupId)
+      : await this.getProcessorsOnCanvas();
+
+    const found = processors.find(p =>
+      p.component?.type?.includes('RestApiGateway') ||
+      p.component?.name?.includes('RestApiGateway')
+    );
+
+    if (found) {
+      testLogger.info('Processor', `RestApiGatewayProcessor found with ID: ${found.id}`);
+      return found.id;
+    }
+
+    testLogger.warn('Processor', 'RestApiGatewayProcessor NOT found on canvas');
+    return null;
+  }
+
+  /**
+   * Ensure the REST API Gateway processor is on canvas and navigate
+   * into its process group. Returns true on success.
+   */
+  async ensureGatewayProcessorOnCanvas() {
+    try {
+      const gatewayGroupId = await this.getGatewayProcessGroupId();
+      if (!gatewayGroupId) {
+        throw new Error('PRECONDITION FAILED: REST API Gateway process group not found');
+      }
+
+      const processorId = await this.getGatewayProcessorId();
+      if (!processorId) {
+        throw new Error('PRECONDITION FAILED: RestApiGatewayProcessor not found on canvas');
+      }
+
+      await this.navigateToProcessGroup(gatewayGroupId);
+      testLogger.info('Processor', 'Gateway preconditions met');
+      return true;
+    } catch (error) {
+      if (error.message.includes('PRECONDITION FAILED')) throw error;
+      throw new Error(
+        'PRECONDITION FAILED: Cannot ensure RestApiGatewayProcessor is on canvas. ' +
+        `Details: ${error.message}`,
+        { cause: error }
+      );
+    }
+  }
+
+  /**
    * Navigate the browser to a specific process group on the NiFi canvas
    */
   async navigateToProcessGroup(groupId) {

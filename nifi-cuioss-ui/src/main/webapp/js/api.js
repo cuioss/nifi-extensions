@@ -11,8 +11,8 @@ const BASE_URL = 'nifi-api/processors/jwt';
 
 /** Component type definitions with NiFi REST API paths. */
 const COMPONENT_TYPES = {
-    PROCESSOR: { apiPath: 'nifi-api/processors', propsPath: ['config', 'properties'] },
-    CONTROLLER_SERVICE: { apiPath: 'nifi-api/controller-services', propsPath: ['properties'] }
+    PROCESSOR: { apiPath: '/nifi-api/processors', propsPath: ['component', 'config', 'properties'] },
+    CONTROLLER_SERVICE: { apiPath: '/nifi-api/controller-services', propsPath: ['component', 'properties'] }
 };
 
 /** Cached component detection result: { type, componentClass, apiPath, propsPath } */
@@ -83,35 +83,16 @@ const request = async (method, url, body = null) => {
 const detectComponentType = async (componentId) => {
     if (_componentInfo) return _componentInfo;
 
-    // Try processor first
-    try {
-        const data = await request('GET', `${COMPONENT_TYPES.PROCESSOR.apiPath}/${componentId}`);
-        const componentClass = data?.component?.type || '';
-        _componentInfo = {
-            type: 'PROCESSOR',
-            componentClass,
-            ...COMPONENT_TYPES.PROCESSOR
-        };
-        return _componentInfo;
-    } catch (processorErr) {
-        if (processorErr.status !== 404) throw processorErr;
-    }
-
-    // Try controller service
-    try {
-        const data = await request('GET',
-            `${COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath}/${componentId}`);
-        const componentClass = data?.component?.type || '';
-        _componentInfo = {
-            type: 'CONTROLLER_SERVICE',
-            componentClass,
-            ...COMPONENT_TYPES.CONTROLLER_SERVICE
-        };
-        return _componentInfo;
-    } catch (csErr) {
-        if (csErr.status !== 404) throw csErr;
-        throw new Error(`Component not found: ${componentId}`);
-    }
+    // Call WAR servlet — resolves within the WAR context (works both in
+    // NiFi iframe and standalone E2E). The request() function adds the
+    // X-Processor-Id header automatically for URLs containing '/jwt/'.
+    const data = await request('GET', `${BASE_URL}/component-info`);
+    _componentInfo = {
+        type: data.type,
+        componentClass: data.componentClass,
+        ...COMPONENT_TYPES[data.type]
+    };
+    return _componentInfo;
 };
 
 /**
@@ -147,7 +128,11 @@ export const verifyToken = (token) =>
  */
 export const getComponentProperties = async (componentId) => {
     const info = await detectComponentType(componentId);
-    return request('GET', `${info.apiPath}/${componentId}`);
+    const data = await request('GET', `${info.apiPath}/${componentId}`);
+    // Navigate propsPath to extract properties: e.g. ['component', 'config', 'properties']
+    let props = data;
+    for (const key of info.propsPath) { props = props?.[key]; }
+    return { properties: props || {}, revision: data.revision };
 };
 
 /**
@@ -187,12 +172,12 @@ export const sendGatewayTestRequest = (payload) =>
 // Backward-compatible aliases
 /** @deprecated Use getComponentProperties instead */
 export const getProcessorProperties = (processorId) =>
-    request('GET', `nifi-api/processors/${processorId}`);
+    request('GET', `/nifi-api/processors/${processorId}`);
 
 /** @deprecated Use updateComponentProperties instead */
 export const updateProcessorProperties = async (processorId, properties) => {
     const proc = await getProcessorProperties(processorId);
-    return request('PUT', `nifi-api/processors/${processorId}`, {
+    return request('PUT', `/nifi-api/processors/${processorId}`, {
         revision: proc.revision,
         component: { id: processorId, properties }
     });

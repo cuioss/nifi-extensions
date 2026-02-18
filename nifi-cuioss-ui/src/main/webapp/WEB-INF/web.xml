@@ -89,6 +89,15 @@
     </servlet-mapping>
 
     <servlet>
+        <servlet-name>ComponentInfoServlet</servlet-name>
+        <servlet-class>de.cuioss.nifi.ui.servlets.ComponentInfoServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>ComponentInfoServlet</servlet-name>
+        <url-pattern>/nifi-api/processors/jwt/component-info</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
         <servlet-name>GatewayProxyServlet</servlet-name>
         <servlet-class>de.cuioss.nifi.ui.servlets.GatewayProxyServlet</servlet-class>
     </servlet>

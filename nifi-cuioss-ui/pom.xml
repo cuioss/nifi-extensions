@@ -53,11 +53,9 @@
             <artifactId>nifi-framework-api</artifactId>
             <scope>provided</scope>
         </dependency>
-        <dependency>
-            <groupId>org.apache.nifi</groupId>
-            <artifactId>nifi-custom-ui-utils</artifactId>
-            <scope>provided</scope>
-        </dependency>
+        <!-- nifi-custom-ui-utils removed: HttpServletRequestContext is not available
+             in the Custom UI WAR classloader at runtime. NiFiWebRequestContext from
+             nifi-framework-api is implemented directly in ComponentConfigReader. -->
         
         <!-- JWT Validation Dependencies for Servlets -->
         <dependency>
