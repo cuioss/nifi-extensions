@@ -350,17 +350,11 @@ public class JwtVerificationServlet extends HttpServlet {
 
     /**
      * Determines HTTP status code based on validation result.
+     * Well-formed verification requests always return 200; the JSON body
+     * communicates valid/invalid via the "valid" field.
      */
     private int determineStatusCode(TokenValidationResult result) {
-        if (result.isValid()) {
-            return 200;
-        }
-
-        if (result.getError() != null && result.getError().toLowerCase().contains("expired")) {
-            return 401;
-        }
-
-        return 400;
+        return 200;
     }
 
     /**

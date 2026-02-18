@@ -100,7 +100,7 @@ class JwksValidationServletTest {
                 .when()
                 .post(CONTENT_ENDPOINT)
                 .then()
-                .statusCode(400)
+                .statusCode(200)
                 .body("valid", equalTo(false))
                 .body("error", containsString("missing required 'keys' field"));
     }
@@ -117,7 +117,7 @@ class JwksValidationServletTest {
                 .when()
                 .post(CONTENT_ENDPOINT)
                 .then()
-                .statusCode(400)
+                .statusCode(200)
                 .body("valid", equalTo(false))
                 .body("error", containsString("empty 'keys' array"));
     }
@@ -150,13 +150,12 @@ class JwksValidationServletTest {
                 .body("error", containsString("Invalid JSON format"));
     }
 
-    @ParameterizedTest(name = "URL validation: {0}")
+    @ParameterizedTest(name = "URL validation failure: {0}")
     @CsvSource({
             "'not a valid url with spaces', Invalid JWKS URL format",
-            "'ftp://example.com/jwks.json', Invalid URL scheme",
-            "'', JWKS URL cannot be empty"
+            "'ftp://example.com/jwks.json', Invalid URL scheme"
     })
-    @DisplayName("Should reject invalid URLs")
+    @DisplayName("Should return validation failure for invalid URLs")
     void invalidUrlValidation(String jwksUrl, String expectedError) {
         String requestJson = """
                 {"jwksUrl":"%s","processorId":"test-processor-id"}""".formatted(jwksUrl);
@@ -167,7 +166,7 @@ class JwksValidationServletTest {
                 .when()
                 .post(URL_ENDPOINT)
                 .then()
-                .statusCode(400)
+                .statusCode(200)
                 .body("valid", equalTo(false))
                 .body("error", containsString(expectedError));
     }
@@ -178,20 +177,20 @@ class JwksValidationServletTest {
                         CONTENT_ENDPOINT, "Missing required field: jwksContent"),
                 Arguments.of("{\"processorId\": \"test-processor-id\"}",
                         URL_ENDPOINT, "Missing required field: jwksUrl"),
+                Arguments.of("{\"jwksUrl\": \"\", \"processorId\": \"test-processor-id\"}",
+                        URL_ENDPOINT, "JWKS URL cannot be empty"),
                 Arguments.of("{\"jwksContent\": \"\", \"processorId\": \"test-processor-id\"}",
                         CONTENT_ENDPOINT, "JWKS content cannot be empty"),
                 Arguments.of("{\"jwksFilePath\": \"\", \"processorId\": \"test-processor-id\"}",
                         FILE_ENDPOINT, "JWKS file path cannot be empty"),
                 Arguments.of("{\"processorId\": \"test-processor-id\"}",
-                        FILE_ENDPOINT, "Missing required field: jwksFilePath"),
-                Arguments.of("{\"jwksFilePath\": \"/nonexistent/path/to/jwks.json\", \"processorId\": \"test-processor-id\"}",
-                        FILE_ENDPOINT, "File path must be within")
+                        FILE_ENDPOINT, "Missing required field: jwksFilePath")
         );
     }
 
     @ParameterizedTest(name = "Field validation: {2}")
     @MethodSource("missingOrEmptyFieldProvider")
-    @DisplayName("Should reject missing or empty fields")
+    @DisplayName("Should reject missing or empty fields with 400")
     void shouldRejectMissingOrEmptyFields(String requestJson, String endpoint, String expectedError) {
         given()
                 .contentType("application/json")
@@ -202,6 +201,21 @@ class JwksValidationServletTest {
                 .statusCode(400)
                 .body("valid", equalTo(false))
                 .body("error", containsString(expectedError));
+    }
+
+    @Test
+    @DisplayName("Should return validation failure for file path outside allowed base")
+    void filePathOutsideAllowedBase() {
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"jwksFilePath":"/nonexistent/path/to/jwks.json","processorId":"test-processor-id"}""")
+                .when()
+                .post(FILE_ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(false))
+                .body("error", containsString("File path must be within"));
     }
 
     @Nested
@@ -226,7 +240,7 @@ class JwksValidationServletTest {
                     .when()
                     .post(FILE_ENDPOINT)
                     .then()
-                    .statusCode(400)
+                    .statusCode(200)
                     .body("valid", equalTo(false));
         }
     }
@@ -241,7 +255,7 @@ class JwksValidationServletTest {
                 .when()
                 .post(URL_ENDPOINT)
                 .then()
-                .statusCode(400)
+                .statusCode(200)
                 .body("valid", equalTo(false));
     }
 
@@ -255,7 +269,7 @@ class JwksValidationServletTest {
                 .when()
                 .post(URL_ENDPOINT)
                 .then()
-                .statusCode(400)
+                .statusCode(200)
                 .body("valid", equalTo(false));
     }
 
@@ -296,7 +310,7 @@ class JwksValidationServletTest {
                     .when()
                     .post(FILE_ENDPOINT)
                     .then()
-                    .statusCode(400)
+                    .statusCode(200)
                     .body("valid", equalTo(false))
                     .body("error", containsString("does not exist"));
         }

@@ -305,18 +305,32 @@ describe('displayUiError', () => {
         expect(el.innerHTML).toContain('Unknown error');
     });
 
-    test('extracts message from responseJSON', () => {
+    test('extracts message from responseJSON.message', () => {
         document.body.innerHTML = '<div id="err"></div>';
         const el = document.getElementById('err');
         displayUiError(el, { responseJSON: { message: 'JSON error' } });
         expect(el.innerHTML).toContain('JSON error');
     });
 
-    test('extracts message from responseText JSON', () => {
+    test('extracts error from responseJSON.error (servlet validation format)', () => {
+        document.body.innerHTML = '<div id="err"></div>';
+        const el = document.getElementById('err');
+        displayUiError(el, { responseJSON: { valid: false, error: 'Invalid JWKS URL format' } });
+        expect(el.innerHTML).toContain('Invalid JWKS URL format');
+    });
+
+    test('extracts message from responseText JSON with message field', () => {
         document.body.innerHTML = '<div id="err"></div>';
         const el = document.getElementById('err');
         displayUiError(el, { responseText: '{"message":"Parsed error"}' });
         expect(el.innerHTML).toContain('Parsed error');
+    });
+
+    test('extracts error from responseText JSON with error field', () => {
+        document.body.innerHTML = '<div id="err"></div>';
+        const el = document.getElementById('err');
+        displayUiError(el, { responseText: '{"valid":false,"error":"Connection refused"}' });
+        expect(el.innerHTML).toContain('Connection refused');
     });
 
     test('uses responseText directly when not JSON', () => {
@@ -324,6 +338,26 @@ describe('displayUiError', () => {
         const el = document.getElementById('err');
         displayUiError(el, { responseText: 'Plain text error' });
         expect(el.innerHTML).toContain('Plain text error');
+    });
+
+    test('displays user-friendly message for HTML error responses', () => {
+        document.body.innerHTML = '<div id="err"></div>';
+        const el = document.getElementById('err');
+        displayUiError(el, {
+            status: 403,
+            responseText: '<html><body><h1>403 Forbidden</h1></body></html>'
+        });
+        expect(el.textContent).toContain('Server error (HTTP 403)');
+        expect(el.textContent).not.toContain('<html>');
+    });
+
+    test('displays user-friendly message for HTML error with unknown status', () => {
+        document.body.innerHTML = '<div id="err"></div>';
+        const el = document.getElementById('err');
+        displayUiError(el, {
+            responseText: '<!DOCTYPE html><html>Error</html>'
+        });
+        expect(el.textContent).toContain('Server error (HTTP unknown)');
     });
 
     test('handles null element gracefully', () => {

@@ -133,13 +133,13 @@ class CustomUIEndpointsIT {
                     .when()
                     .post("/nifi-api/processors/jwt/validate-jwks-content")
                     .then()
-                    .statusCode(400)
+                    .statusCode(200)
                     .contentType(ContentType.JSON)
                     .body("valid", equalTo(false));
         }
 
         @Test
-        @DisplayName("should return 400 for unreachable JWKS URL")
+        @DisplayName("should return 200 with valid=false for unreachable JWKS URL")
         void jwksUrlValidationWithUnreachableUrl() {
             given().spec(authSpec)
                     .body("""
@@ -148,13 +148,13 @@ class CustomUIEndpointsIT {
                     .when()
                     .post("/nifi-api/processors/jwt/validate-jwks-url")
                     .then()
-                    .statusCode(400)
+                    .statusCode(200)
                     .contentType(ContentType.JSON)
                     .body("valid", equalTo(false));
         }
 
         @Test
-        @DisplayName("should return 400 for nonexistent JWKS file path")
+        @DisplayName("should return 200 with valid=false for nonexistent JWKS file path")
         void jwksFileValidationWithNonexistentPath() {
             given().spec(authSpec)
                     .body("""
@@ -163,7 +163,7 @@ class CustomUIEndpointsIT {
                     .when()
                     .post("/nifi-api/processors/jwt/validate-jwks-file")
                     .then()
-                    .statusCode(400)
+                    .statusCode(200)
                     .contentType(ContentType.JSON)
                     .body("valid", equalTo(false));
         }

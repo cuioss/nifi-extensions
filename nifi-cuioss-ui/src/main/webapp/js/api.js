@@ -31,6 +31,30 @@ const getComponentId = () => {
 };
 
 /**
+ * Extract NiFi's CSRF token from the __Secure-Request-Token cookie.
+ * Tries document.cookie first, then window.parent.document.cookie
+ * (Custom UI runs in an iframe; the cookie path may restrict direct access).
+ * @returns {string|null}
+ */
+const getCsrfToken = () => {
+    const cookieName = '__Secure-Request-Token=';
+    const extract = (cookieString) => {
+        const match = cookieString.split(';')
+            .map(c => c.trim())
+            .find(c => c.startsWith(cookieName));
+        return match ? match.split('=')[1] : null;
+    };
+    try {
+        const token = extract(document.cookie);
+        if (token) return token;
+    } catch { /* no document.cookie access */ }
+    try {
+        return extract(window.parent.document.cookie);
+    } catch { /* cross-origin or no parent */ }
+    return null;
+};
+
+/**
  * Core fetch wrapper with JSON handling, auth headers, and timeout.
  *
  * @param {string} method  HTTP method
@@ -45,6 +69,13 @@ const request = async (method, url, body = null) => {
     if (url.includes('/jwt/')) {
         const pid = getComponentId();
         if (pid) headers['X-Processor-Id'] = pid;
+    }
+
+    // NiFi CSRF protection: double-submit cookie pattern requires
+    // Request-Token header for state-changing methods
+    if (['POST', 'PUT', 'DELETE'].includes(method.toUpperCase())) {
+        const csrfToken = getCsrfToken();
+        if (csrfToken) headers['Request-Token'] = csrfToken;
     }
 
     const opts = { method, headers, credentials: 'same-origin' };
@@ -183,4 +214,4 @@ export const updateProcessorProperties = async (processorId, properties) => {
     });
 };
 
-export { getComponentId, detectComponentType, resetComponentCache, COMPONENT_TYPES };
+export { getComponentId, detectComponentType, resetComponentCache, getCsrfToken, COMPONENT_TYPES };
