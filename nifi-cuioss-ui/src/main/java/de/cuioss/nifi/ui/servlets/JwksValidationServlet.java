@@ -529,7 +529,7 @@ public class JwksValidationServlet extends HttpServlet {
 
         resp.setContentType(CONTENT_TYPE_JSON);
         resp.setCharacterEncoding("UTF-8");
-        resp.setStatus(result.isValid() ? 200 : 400);
+        resp.setStatus(HttpServletResponse.SC_OK);
 
         try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
             writer.writeObject(responseJson);

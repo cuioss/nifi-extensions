@@ -133,13 +133,13 @@ class JwtVerificationServletTest {
                 .when()
                 .post(ENDPOINT)
                 .then()
-                .statusCode(400)
+                .statusCode(200)
                 .body("valid", equalTo(false))
                 .body("error", containsString("Invalid token signature"));
     }
 
     @Test
-    @DisplayName("Should return 401 for expired token")
+    @DisplayName("Should return validation failure for expired token")
     void expiredTokenVerification() {
         currentVerifier = (token, processorId) ->
                 TokenValidationResult.failure("Token expired at 2025-01-01T00:00:00Z");
@@ -151,7 +151,7 @@ class JwtVerificationServletTest {
                 .when()
                 .post(ENDPOINT)
                 .then()
-                .statusCode(401)
+                .statusCode(200)
                 .body("valid", equalTo(false))
                 .body("error", containsString("expired"));
     }

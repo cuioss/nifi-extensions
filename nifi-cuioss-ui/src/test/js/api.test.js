@@ -6,7 +6,7 @@ import {
     getProcessorProperties, updateProcessorProperties,
     getComponentProperties, updateComponentProperties,
     getComponentId, detectComponentType, resetComponentCache,
-    fetchGatewayApi, sendGatewayTestRequest, COMPONENT_TYPES
+    fetchGatewayApi, sendGatewayTestRequest, getCsrfToken, COMPONENT_TYPES
 } from '../../main/webapp/js/api.js';
 
 // ---------------------------------------------------------------------------
@@ -426,5 +426,88 @@ describe('getComponentId', () => {
     test('returns empty string when no ID available', () => {
         globalThis.location = { search: '', href: 'https://nifi:8443' };
         expect(getComponentId()).toBe('');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// CSRF token handling
+// ---------------------------------------------------------------------------
+
+describe('CSRF token handling', () => {
+    let cookieDescriptor;
+
+    beforeEach(() => {
+        cookieDescriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie')
+            || Object.getOwnPropertyDescriptor(HTMLDocument.prototype, 'cookie');
+    });
+
+    afterEach(() => {
+        if (cookieDescriptor) {
+            Object.defineProperty(document, 'cookie', cookieDescriptor);
+        }
+    });
+
+    test('getCsrfToken extracts token from document.cookie', () => {
+        Object.defineProperty(document, 'cookie', {
+            get: () => 'other=val; __Secure-Request-Token=csrf-abc-123; session=xyz',
+            configurable: true
+        });
+        expect(getCsrfToken()).toBe('csrf-abc-123');
+    });
+
+    test('getCsrfToken returns null when cookie is absent', () => {
+        Object.defineProperty(document, 'cookie', {
+            get: () => 'session=xyz; other=val',
+            configurable: true
+        });
+        expect(getCsrfToken()).toBeNull();
+    });
+
+    test('getCsrfToken returns null on empty cookies', () => {
+        Object.defineProperty(document, 'cookie', {
+            get: () => '',
+            configurable: true
+        });
+        expect(getCsrfToken()).toBeNull();
+    });
+
+    test('adds Request-Token header for POST requests when cookie exists', async () => {
+        Object.defineProperty(document, 'cookie', {
+            get: () => '__Secure-Request-Token=test-csrf-token',
+            configurable: true
+        });
+        mockJsonResponse({ valid: true });
+
+        await verifyToken('test');
+
+        const headers = globalThis.fetch.mock.calls[0][1].headers;
+        expect(headers['Request-Token']).toBe('test-csrf-token');
+    });
+
+    test('does not add Request-Token for GET requests', async () => {
+        Object.defineProperty(document, 'cookie', {
+            get: () => '__Secure-Request-Token=test-csrf-token',
+            configurable: true
+        });
+        globalThis.jwtAuthConfig = { processorId: 'comp-123' };
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'Test' });
+
+        await detectComponentType('comp-123');
+
+        const headers = globalThis.fetch.mock.calls[0][1].headers;
+        expect(headers['Request-Token']).toBeUndefined();
+    });
+
+    test('gracefully handles missing CSRF cookie for POST', async () => {
+        Object.defineProperty(document, 'cookie', {
+            get: () => '',
+            configurable: true
+        });
+        mockJsonResponse({ valid: true });
+
+        await verifyToken('test');
+
+        const headers = globalThis.fetch.mock.calls[0][1].headers;
+        expect(headers['Request-Token']).toBeUndefined();
     });
 });
