@@ -104,6 +104,7 @@ export const accessibilityTest = test.extend({
 
     /**
      * Auto-setup fixture that ensures processor is on canvas
+     * and navigates into the JWT Auth Pipeline process group.
      */
     withProcessorOnCanvas: async ({ page, processorManager }, use) => {
         const ready = await processorManager.ensureProcessorOnCanvas();

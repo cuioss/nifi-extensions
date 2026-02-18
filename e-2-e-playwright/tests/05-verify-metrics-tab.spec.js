@@ -1,7 +1,12 @@
 /**
  * @file Metrics Tab Test
- * Verifies the metrics tab functionality in the JWT authenticator UI
- * @version 1.0.0
+ * Verifies the metrics tab functionality in the JWT authenticator UI.
+ *
+ * The JWT authenticator processor uses the non-gateway metrics template which
+ * shows a "Metrics Not Available" banner (metrics are REST API Gateway only).
+ * These tests verify that the metrics tab renders correctly, shows the
+ * not-available banner, and that the refresh/export controls are functional.
+ * @version 1.1.0
  */
 
 import {
@@ -22,7 +27,9 @@ test.describe("Metrics Tab", () => {
         await takeStartScreenshot(page, testInfo);
     });
 
-    test("should display metrics dashboard", async ({ page }, testInfo) => {
+    test("should display metrics tab with not-available banner for JWT processor", async ({
+        page,
+    }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT processor using the verified utility
@@ -41,126 +48,93 @@ test.describe("Metrics Tab", () => {
         const metricsTabContent = customUIFrame.locator("#metrics");
         await expect(metricsTabContent).toBeVisible({ timeout: 5000 });
 
-        // Check for actual metrics content
+        // Check for metrics content container
         const metricsContent = customUIFrame.locator("#jwt-metrics-content");
-
-        // Wait for metrics content to be visible
         await expect(metricsContent).toBeVisible({ timeout: 10000 });
 
-        // Verify metrics sections are present
-        const validationMetrics = customUIFrame.locator(
-            '[data-testid="validation-metrics"]',
+        // JWT authenticator shows "Metrics Not Available" banner
+        const notAvailableBanner = customUIFrame.locator(
+            "text=Metrics Not Available",
         );
-        await expect(validationMetrics).toBeVisible({ timeout: 5000 });
-
-        const performanceMetrics = customUIFrame.locator(
-            '[data-testid="performance-metrics"]',
-        );
-        await expect(performanceMetrics).toBeVisible({ timeout: 5000 });
-
-        const issuerMetrics = customUIFrame.locator(
-            '[data-testid="issuer-metrics"]',
-        );
-        await expect(issuerMetrics).toBeVisible({ timeout: 5000 });
+        await expect(notAvailableBanner).toBeVisible({ timeout: 5000 });
     });
 
-    test("should show validation success and failure rates", async ({
+    test("should show not-available message indicating REST API Gateway requirement", async ({
         page,
     }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
-        // Find JWT processor
         const processor = await processorService.findJwtAuthenticator({
             failIfNotFound: true,
         });
 
-        // Open Advanced UI
         await processorService.openAdvancedUI(processor);
 
-        // Get the custom UI frame
         const customUIFrame = await processorService.getAdvancedUIFrame();
         await processorService.clickTab(customUIFrame, "Metrics");
 
-        // Wait for metrics to load
-        await customUIFrame.waitForTimeout(2000);
-
-        // Check for validation success rate
-        const successRate = customUIFrame.locator(
-            '[data-testid="success-rate"]',
+        // Verify the banner explains that metrics are gateway-only
+        const gatewayMessage = customUIFrame.locator(
+            "text=Metrics are available for REST API Gateway processors only",
         );
-        await expect(successRate).toBeVisible({ timeout: 5000 });
-
-        // Check for failure rate
-        const failureRate = customUIFrame.locator(
-            '[data-testid="failure-rate"]',
-        );
-        await expect(failureRate).toBeVisible({ timeout: 5000 });
+        await expect(gatewayMessage).toBeVisible({ timeout: 5000 });
     });
 
-    test("should display issuer-specific metrics", async ({
+    test("should not display gateway-specific metrics sections for JWT processor", async ({
         page,
     }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
-        // Find JWT processor
         const processor = await processorService.findJwtAuthenticator({
             failIfNotFound: true,
         });
 
-        // Open Advanced UI
         await processorService.openAdvancedUI(processor);
 
-        // Get the custom UI frame
         const customUIFrame = await processorService.getAdvancedUIFrame();
         await processorService.clickTab(customUIFrame, "Metrics");
 
-        // Wait for metrics to load
-        await customUIFrame.waitForTimeout(2000);
-
-        // Check for issuer metrics table
-        const issuerTable = customUIFrame.locator(
-            '[data-testid="issuer-metrics-table"]',
-        );
-        await expect(issuerTable).toBeVisible({ timeout: 5000 });
-    });
-
-    test("should show performance metrics", async ({ page }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        // Find JWT processor
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        // Open Advanced UI
-        await processorService.openAdvancedUI(processor);
-
-        // Get the custom UI frame
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-        await processorService.clickTab(customUIFrame, "Metrics");
-
-        // Wait for metrics to load
-        const metricsContent = customUIFrame.locator("#metrics");
+        // Wait for metrics content to render
+        const metricsContent = customUIFrame.locator("#jwt-metrics-content");
         await expect(metricsContent).toBeVisible({ timeout: 10000 });
 
-        // Check for performance metrics section
-        const performanceSection = customUIFrame.locator(
-            '[data-testid="performance-metrics"]',
+        // Gateway-specific sections should NOT be present for JWT authenticator
+        const tokenValidation = customUIFrame.locator(
+            '[data-testid="token-validation-metrics"]',
         );
-        await expect(performanceSection).toBeVisible({ timeout: 5000 });
+        await expect(tokenValidation).not.toBeVisible();
 
-        // Check for specific performance metrics
-        const metricsElements = [
-            "Average Response Time",
-            "Min Response Time",
-            "Max Response Time",
-            "P95 Response Time",
-        ];
+        const httpSecurity = customUIFrame.locator(
+            '[data-testid="http-security-metrics"]',
+        );
+        await expect(httpSecurity).not.toBeVisible();
 
-        for (const metric of metricsElements) {
-            const metricElement = customUIFrame.locator(`h5:text("${metric}")`);
-            await expect(metricElement).toBeVisible({ timeout: 5000 });
-        }
+        const gatewayEvents = customUIFrame.locator(
+            '[data-testid="gateway-events-metrics"]',
+        );
+        await expect(gatewayEvents).not.toBeVisible();
+    });
+
+    test("should display last-updated status in metrics tab", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+
+        await processorService.openAdvancedUI(processor);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+        await processorService.clickTab(customUIFrame, "Metrics");
+
+        // Verify last-updated status is present
+        const lastUpdated = customUIFrame.locator(
+            '[data-testid="last-updated"]',
+        );
+        await expect(lastUpdated).toBeVisible({ timeout: 5000 });
+        await expect(lastUpdated).toContainText("Last updated:");
     });
 
     test("should refresh metrics data", async ({ page }, testInfo) => {

@@ -117,6 +117,14 @@ export const PAGE_DEFINITIONS = {
 };
 
 /**
+ * Process group name constants
+ */
+export const PROCESS_GROUPS = {
+  JWT_AUTH_PIPELINE: 'JWT Auth Pipeline',
+  REST_API_GATEWAY: 'REST API Gateway'
+};
+
+/**
  * Processor type constants
  */
 export const PROCESSOR_TYPES = {
@@ -182,6 +190,7 @@ export const CONSTANTS = {
   TIMEOUTS,
   SELECTORS,
   PAGE_DEFINITIONS,
+  PROCESS_GROUPS,
   PROCESSOR_TYPES,
   ERROR_PATTERNS,
   TEST_TOKENS

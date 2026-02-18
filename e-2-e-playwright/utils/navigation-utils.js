@@ -5,6 +5,7 @@
 
 import { AuthService } from './auth-service.js';
 import { ProcessorService } from './processor.js';
+import { ProcessorApiManager } from './processor-api-manager.js';
 
 /**
  * Navigate to JWT Authenticator configuration UI
@@ -30,6 +31,13 @@ export async function navigateToJWTAuthenticatorUI(page, testInfo) {
     }
 
     await authService.ensureReady();
+
+    // Navigate into the JWT Auth Pipeline process group so the processor is visible on canvas
+    const apiManager = new ProcessorApiManager(page);
+    const jwtGroupId = await apiManager.getJwtPipelineProcessGroupId();
+    if (jwtGroupId) {
+        await apiManager.navigateToProcessGroup(jwtGroupId);
+    }
 
     const processorService = new ProcessorService(page, testInfo);
 

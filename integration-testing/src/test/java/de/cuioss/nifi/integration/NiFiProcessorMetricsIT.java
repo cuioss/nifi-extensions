@@ -84,13 +84,12 @@ class NiFiProcessorMetricsIT {
         String bearerToken = authenticateToNifi();
         JsonObject status = getProcessGroupStatus(bearerToken);
 
-        JsonArray processorStatuses = status
+        JsonObject aggregateSnapshot = status
                 .getJsonObject("processGroupStatus")
-                .getJsonObject("aggregateSnapshot")
-                .getJsonArray("processorStatusSnapshots");
+                .getJsonObject("aggregateSnapshot");
 
-        // Find the JWT authenticator processor
-        Optional<JsonObject> jwtProcessor = findProcessorByName(processorStatuses,
+        // Find the JWT authenticator processor (may be in a child process group)
+        Optional<JsonObject> jwtProcessor = findProcessorByNameRecursive(aggregateSnapshot,
                 "MultiIssuerJWTTokenAuthenticator");
 
         assertTrue(jwtProcessor.isPresent(),
@@ -112,15 +111,14 @@ class NiFiProcessorMetricsIT {
         String bearerToken = authenticateToNifi();
         JsonObject status = getProcessGroupStatus(bearerToken);
 
-        JsonArray processorStatuses = status
+        JsonObject aggregateSnapshot = status
                 .getJsonObject("processGroupStatus")
-                .getJsonObject("aggregateSnapshot")
-                .getJsonArray("processorStatusSnapshots");
+                .getJsonObject("aggregateSnapshot");
 
-        // Verify both response handlers received FlowFiles
-        Optional<JsonObject> successResponse = findProcessorByName(processorStatuses,
+        // Verify both response handlers received FlowFiles (may be in a child process group)
+        Optional<JsonObject> successResponse = findProcessorByNameRecursive(aggregateSnapshot,
                 "HandleHttpResponse (200)");
-        Optional<JsonObject> failureResponse = findProcessorByName(processorStatuses,
+        Optional<JsonObject> failureResponse = findProcessorByNameRecursive(aggregateSnapshot,
                 "HandleHttpResponse (401)");
 
         assertTrue(successResponse.isPresent(),
@@ -189,16 +187,37 @@ class NiFiProcessorMetricsIT {
         return Json.createReader(new StringReader(response.body())).readObject();
     }
 
-    private static Optional<JsonObject> findProcessorByName(JsonArray processorStatuses, String name) {
-        for (JsonValue value : processorStatuses) {
-            JsonObject processorStatus = value.asJsonObject();
-            String processorName = processorStatus
-                    .getJsonObject("processorStatusSnapshot")
-                    .getString("name");
-            if (processorName.equals(name)) {
-                return Optional.of(processorStatus);
+    /**
+     * Recursively searches for a processor by exact name through the aggregate
+     * snapshot, traversing child process groups.
+     */
+    private static Optional<JsonObject> findProcessorByNameRecursive(JsonObject snapshot, String name) {
+        JsonArray processorStatuses = snapshot.getJsonArray("processorStatusSnapshots");
+        if (processorStatuses != null) {
+            for (JsonValue value : processorStatuses) {
+                JsonObject processorStatus = value.asJsonObject();
+                String processorName = processorStatus
+                        .getJsonObject("processorStatusSnapshot")
+                        .getString("name");
+                if (processorName.equals(name)) {
+                    return Optional.of(processorStatus);
+                }
             }
         }
+
+        // Recurse into child process groups
+        JsonArray childGroups = snapshot.getJsonArray("processGroupStatusSnapshots");
+        if (childGroups != null) {
+            for (JsonValue groupValue : childGroups) {
+                JsonObject childSnapshot = groupValue.asJsonObject()
+                        .getJsonObject("processGroupStatusSnapshot");
+                Optional<JsonObject> result = findProcessorByNameRecursive(childSnapshot, name);
+                if (result.isPresent()) {
+                    return result;
+                }
+            }
+        }
+
         return Optional.empty();
     }
 

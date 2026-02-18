@@ -5,6 +5,7 @@
  */
 
 import { testLogger } from './test-logger.js';
+import { PROCESS_GROUPS, TIMEOUTS } from './constants.js';
 
 
 /**
@@ -139,6 +140,55 @@ export class ProcessorApiManager {
   }
 
   /**
+   * Get child process groups of the root process group
+   */
+  async getProcessGroups() {
+    try {
+      const rootGroupId = await this.getRootProcessGroupId();
+      const result = await this.makeApiCall(`/nifi-api/process-groups/${rootGroupId}/process-groups`);
+
+      if (!result.ok) {
+        testLogger.error('Processor', `Failed to get process groups: ${result.status || result.error}`);
+        return [];
+      }
+
+      return result.data?.processGroups || [];
+    } catch (error) {
+      testLogger.error('Processor', 'Error getting process groups:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Find the JWT Auth Pipeline process group and return its id (instanceIdentifier)
+   */
+  async getJwtPipelineProcessGroupId() {
+    const groups = await this.getProcessGroups();
+    const jwtGroup = groups.find(g =>
+      g.component?.name === PROCESS_GROUPS.JWT_AUTH_PIPELINE
+    );
+
+    if (jwtGroup) {
+      testLogger.info('Processor', `Found JWT Auth Pipeline group: ${jwtGroup.id}`);
+      return jwtGroup.id;
+    }
+
+    testLogger.warn('Processor', 'JWT Auth Pipeline process group not found');
+    return null;
+  }
+
+  /**
+   * Navigate the browser to a specific process group on the NiFi canvas
+   */
+  async navigateToProcessGroup(groupId) {
+    const url = `${this.baseUrl}#/process-groups/${groupId}`;
+    testLogger.info('Processor', `Navigating to process group: ${url}`);
+    await this.page.goto(url, { waitUntil: 'domcontentloaded' });
+    // Wait for canvas to render
+    await this.page.waitForSelector('#canvas-container', { timeout: TIMEOUTS.NAVIGATION });
+  }
+
+  /**
    * Verify if MultiIssuerJWTTokenAuthenticator is deployed (available in the system)
    * This checks if the processor type is available in NiFi
    */
@@ -215,12 +265,13 @@ export class ProcessorApiManager {
   }
 
   /**
-   * Get all processors on the canvas
+   * Get all processors on the canvas.
+   * @param {string} [groupId] - optional process group id; defaults to root
    */
-  async getProcessorsOnCanvas() {
+  async getProcessorsOnCanvas(groupId) {
     try {
-      const rootGroupId = await this.getRootProcessGroupId();
-      const result = await this.makeApiCall(`/nifi-api/process-groups/${rootGroupId}/processors`);
+      const targetGroupId = groupId || await this.getRootProcessGroupId();
+      const result = await this.makeApiCall(`/nifi-api/process-groups/${targetGroupId}/processors`);
       
       if (!result.ok) {
         testLogger.error('Processor',`Failed to get processors: ${result.status || result.error}`);
@@ -235,13 +286,18 @@ export class ProcessorApiManager {
   }
 
   /**
-   * Verify if MultiIssuerJWTTokenAuthenticator is on the canvas
+   * Verify if MultiIssuerJWTTokenAuthenticator is on the canvas.
+   * Searches the JWT Auth Pipeline process group first, then falls back to root.
    */
   async verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas() {
     testLogger.info('Processor','Verifying MultiIssuerJWTTokenAuthenticator is on canvas...');
-    
+
     try {
-      const processors = await this.getProcessorsOnCanvas();
+      // Search in the JWT Pipeline group first
+      const jwtGroupId = await this.getJwtPipelineProcessGroupId();
+      const processors = jwtGroupId
+        ? await this.getProcessorsOnCanvas(jwtGroupId)
+        : await this.getProcessorsOnCanvas();
       
       const found = processors.find(p => 
         p.component?.type === this.processorType ||
@@ -268,16 +324,17 @@ export class ProcessorApiManager {
   }
 
   /**
-   * Stop all processors in the root process group.
+   * Stop all processors in the JWT Pipeline process group (or root as fallback).
    * Required before removing connections between processors.
    */
   async stopAllProcessors() {
-    const rootGroupId = await this.getRootProcessGroupId();
+    const jwtGroupId = await this.getJwtPipelineProcessGroupId();
+    const groupId = jwtGroupId || await this.getRootProcessGroupId();
     const result = await this.makeApiCall(
-      `/nifi-api/flow/process-groups/${rootGroupId}`,
+      `/nifi-api/flow/process-groups/${groupId}`,
       {
         method: 'PUT',
-        body: { id: rootGroupId, state: 'STOPPED' }
+        body: { id: groupId, state: 'STOPPED' }
       }
     );
 
@@ -295,9 +352,10 @@ export class ProcessorApiManager {
    * Drops queued FlowFiles and deletes each connection.
    */
   async removeConnectionsForProcessor(processorId) {
-    const rootGroupId = await this.getRootProcessGroupId();
+    const jwtGroupId = await this.getJwtPipelineProcessGroupId();
+    const groupId = jwtGroupId || await this.getRootProcessGroupId();
     const result = await this.makeApiCall(
-      `/nifi-api/process-groups/${rootGroupId}/connections`
+      `/nifi-api/process-groups/${groupId}/connections`
     );
 
     if (!result.ok || !result.data?.connections) {
@@ -435,8 +493,10 @@ export class ProcessorApiManager {
         return false;
       }
 
-      const rootGroupId = await this.getRootProcessGroupId();
-      
+      // Add to the JWT Pipeline group if it exists, otherwise root
+      const jwtGroupId = await this.getJwtPipelineProcessGroupId();
+      const targetGroupId = jwtGroupId || await this.getRootProcessGroupId();
+
       // Get available processor types to find the exact type and bundle info
       const typesResult = await this.makeApiCall('/nifi-api/flow/processor-types');
 
@@ -455,7 +515,7 @@ export class ProcessorApiManager {
 
       // Create the processor
       const createResult = await this.makeApiCall(
-        `/nifi-api/process-groups/${rootGroupId}/processors`,
+        `/nifi-api/process-groups/${targetGroupId}/processors`,
         {
           method: 'POST',
           body: {
@@ -501,7 +561,7 @@ export class ProcessorApiManager {
   async ensureProcessorOnCanvas() {
     try {
       const { exists } = await this.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
-      
+
       if (!exists) {
         testLogger.info('Processor','Processor not on canvas, adding it...');
         const added = await this.addMultiIssuerJWTTokenAuthenticatorOnCanvas();
@@ -514,7 +574,13 @@ export class ProcessorApiManager {
       } else {
         testLogger.info('Processor','Processor already on canvas');
       }
-      
+
+      // Navigate into the JWT Pipeline process group so the canvas shows only its processors
+      const jwtGroupId = await this.getJwtPipelineProcessGroupId();
+      if (jwtGroupId) {
+        await this.navigateToProcessGroup(jwtGroupId);
+      }
+
       testLogger.info('Processor','All preconditions met');
       return true;
       
