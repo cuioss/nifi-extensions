@@ -80,22 +80,53 @@ class CustomUITestSupport {
                         .formatted(response.statusCode(), response.body()));
 
         JsonObject root = Json.createReader(new StringReader(response.body())).readObject();
-        JsonArray processorStatuses = root
+        JsonObject aggregateSnapshot = root
                 .getJsonObject("processGroupStatus")
-                .getJsonObject("aggregateSnapshot")
-                .getJsonArray("processorStatusSnapshots");
+                .getJsonObject("aggregateSnapshot");
 
-        for (JsonValue value : processorStatuses) {
-            JsonObject snapshot = value.asJsonObject().getJsonObject("processorStatusSnapshot");
-            String name = snapshot.getString("name");
-            if (name.contains(processorNameSubstring)) {
-                return snapshot.getString("id");
-            }
+        String result = findProcessorInSnapshot(aggregateSnapshot, processorNameSubstring);
+        if (result != null) {
+            return result;
         }
 
         fail("No processor found with name containing '%s' in the NiFi flow"
                 .formatted(processorNameSubstring));
         return null; // unreachable
+    }
+
+    /**
+     * Recursively searches for a processor by name in the aggregate snapshot,
+     * traversing child process groups when processors are nested.
+     */
+    private static String findProcessorInSnapshot(JsonObject snapshot,
+            String processorNameSubstring) {
+        // Search processors directly in this group
+        JsonArray processorStatuses = snapshot.getJsonArray("processorStatusSnapshots");
+        if (processorStatuses != null) {
+            for (JsonValue value : processorStatuses) {
+                JsonObject procSnapshot = value.asJsonObject()
+                        .getJsonObject("processorStatusSnapshot");
+                String name = procSnapshot.getString("name");
+                if (name.contains(processorNameSubstring)) {
+                    return procSnapshot.getString("id");
+                }
+            }
+        }
+
+        // Recurse into child process groups
+        JsonArray childGroups = snapshot.getJsonArray("processGroupStatusSnapshots");
+        if (childGroups != null) {
+            for (JsonValue groupValue : childGroups) {
+                JsonObject childSnapshot = groupValue.asJsonObject()
+                        .getJsonObject("processGroupStatusSnapshot");
+                String result = findProcessorInSnapshot(childSnapshot, processorNameSubstring);
+                if (result != null) {
+                    return result;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
