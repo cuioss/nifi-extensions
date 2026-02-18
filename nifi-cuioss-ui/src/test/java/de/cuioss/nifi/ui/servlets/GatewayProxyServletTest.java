@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import jakarta.servlet.http.HttpServletRequest;
 import org.eclipse.jetty.ee11.servlet.ServletHolder;
@@ -91,6 +92,16 @@ class GatewayProxyServletTest {
                             String processorId, HttpServletRequest req) throws IOException {
                         if (gatewayFailing.get()) throw new IOException("Connection refused");
                         return processorProperties.get();
+                    }
+
+                    @Override
+                    protected ComponentConfigReader.ComponentConfig resolveComponentConfig(
+                            String processorId, HttpServletRequest req) throws IOException {
+                        if (gatewayFailing.get()) throw new IOException("Connection refused");
+                        return new ComponentConfigReader.ComponentConfig(
+                                ComponentConfigReader.ComponentType.PROCESSOR,
+                                "de.cuioss.nifi.processors.gateway.RestApiGatewayProcessor",
+                                processorProperties.get());
                     }
 
                     @Override
@@ -184,7 +195,7 @@ class GatewayProxyServletTest {
                     .then()
                     .statusCode(200)
                     .contentType(containsString("application/json"))
-                    .body("component", equalTo("RestApiGatewayProcessor"))
+                    .body("component", equalTo("de.cuioss.nifi.processors.gateway.RestApiGatewayProcessor"))
                     .body("port", equalTo(9443))
                     .body("maxRequestBodySize", equalTo(1048576))
                     .body("queueSize", equalTo(50))

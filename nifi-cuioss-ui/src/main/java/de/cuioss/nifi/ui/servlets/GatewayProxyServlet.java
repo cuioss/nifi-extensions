@@ -103,8 +103,9 @@ public class GatewayProxyServlet extends HttpServlet {
 
             // Serve /config directly from processor properties
             if (CONFIG_PATH.equals(pathInfo)) {
-                Map<String, String> props = resolveProcessorProperties(processorId, req);
-                writeConfigResponse(resp, props);
+                var componentConfig = resolveComponentConfig(processorId, req);
+                writeConfigResponse(resp, componentConfig.properties(),
+                        componentConfig.componentClass());
                 return;
             }
 
@@ -275,6 +276,20 @@ public class GatewayProxyServlet extends HttpServlet {
     }
 
     /**
+     * Resolves full component configuration (type, class, properties) for the given processor ID.
+     *
+     * @param processorId the NiFi processor UUID
+     * @param request     the current HTTP servlet request (for authentication context)
+     * @return the component configuration
+     * @throws IOException if unable to fetch component config
+     */
+    protected ComponentConfigReader.ComponentConfig resolveComponentConfig(String processorId,
+            HttpServletRequest request) throws IOException {
+        var reader = new ComponentConfigReader(configContext);
+        return reader.getComponentConfig(processorId, request);
+    }
+
+    /**
      * Executes a GET request to the gateway management API.
      *
      * @param url    full gateway URL
@@ -365,9 +380,10 @@ public class GatewayProxyServlet extends HttpServlet {
     /**
      * Builds and writes the /config JSON response from processor properties.
      */
-    private void writeConfigResponse(HttpServletResponse resp, Map<String, String> props) throws IOException {
+    private void writeConfigResponse(HttpServletResponse resp, Map<String, String> props,
+            String componentClass) throws IOException {
         JsonObjectBuilder root = Json.createObjectBuilder();
-        root.add("component", "RestApiGatewayProcessor");
+        root.add("component", componentClass);
         root.add("port", Integer.parseInt(props.getOrDefault(GATEWAY_PORT_PROPERTY, "9443")));
         root.add("maxRequestBodySize",
                 Integer.parseInt(props.getOrDefault(MAX_REQUEST_SIZE_PROPERTY, "1048576")));
