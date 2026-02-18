@@ -16,7 +16,7 @@ jobs:
     # Run on push events, OR on pull_request only if from a fork
     # This prevents duplicate runs: push handles internal branches, PR handles forks
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
-    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-build.yml@0cb944fe3797e0bb25e825dbb0433e126762f289 # v0.3.10
+    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-build.yml@89ce95e04b1e15076b0c8d78d8112fa432d9d162 # v0.3.11
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       OSS_SONATYPE_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
