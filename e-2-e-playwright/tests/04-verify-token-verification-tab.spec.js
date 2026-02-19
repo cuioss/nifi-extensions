@@ -2,10 +2,11 @@
  * @file Token Verification Tab Test
  * Verifies the token verification tab functionality in the JWT authenticator UI.
  *
- * Note: The processor may not have issuer configurations in the E2E environment,
- * so token verification may return "Service not available". Tests assert that
- * the UI properly communicates verification results, whether success or error.
- * @version 1.2.0
+ * The processor MUST have issuer configurations in the E2E environment.
+ * Tests assert that actual token verification works end-to-end:
+ * valid tokens produce "valid" results, invalid tokens produce token-level errors.
+ * Infrastructure errors like "Service not available" are treated as test failures.
+ * @version 2.0.0
  */
 
 import {
@@ -88,11 +89,9 @@ test.describe("Token Verification Tab", () => {
             .first();
         await verifyButton.click();
 
-        // Wait for any verification result to appear
+        // Wait for a positive verification result — a valid Keycloak token must succeed
         const verificationResult = customUIFrame
-            .locator(
-                ".verification-status.valid, .verification-status.invalid, .error-message, .token-error, .error-container",
-            )
+            .locator(".verification-status.valid")
             .first();
         await expect(verificationResult).toBeVisible({ timeout: 10000 });
 
@@ -101,11 +100,8 @@ test.describe("Token Verification Tab", () => {
         // Must not be an auth/CSRF infrastructure error
         assertNoAuthError(resultText);
 
-        // Must contain actual verification feedback — either valid, or a service-level error
-        // (e.g., "no issuer configurations found" when processor has no issuers configured)
-        expect(resultText).toMatch(
-            /valid|invalid|expired|error|token|signature|service|issuer/i,
-        );
+        // Must indicate a successful validation outcome
+        expect(resultText).toMatch(/valid/i);
     });
 
     test("should reject invalid JWT token", async ({ page }, testInfo) => {
@@ -147,9 +143,9 @@ test.describe("Token Verification Tab", () => {
         // Must not be an auth/CSRF infrastructure error
         assertNoAuthError(resultText);
 
-        // Must indicate a token-level error or service error
+        // Must indicate a token-level error (not a service/infrastructure error)
         expect(resultText).toMatch(
-            /invalid|error|fail|malformed|signature|service|issuer/i,
+            /invalid|error|fail|malformed|signature/i,
         );
 
         // Must NOT show a successful "valid token" message
@@ -202,9 +198,9 @@ test.describe("Token Verification Tab", () => {
         // Must not be an auth/CSRF infrastructure error
         assertNoAuthError(messageText);
 
-        // Must indicate an error (expired, invalid, service error, etc.)
+        // Must indicate a token-level error (expired or invalid, not a service error)
         expect(messageText).toMatch(
-            /expired|invalid|error|fail|service|issuer/i,
+            /expired|invalid|error|fail/i,
         );
 
         // Must NOT show a successful "valid token" message
@@ -255,9 +251,9 @@ test.describe("Token Verification Tab", () => {
         // Must not be an auth/CSRF infrastructure error
         assertNoAuthError(resultText);
 
-        // Must indicate an error — not even a valid JWT structure
+        // Must indicate a token-level error — not even a valid JWT structure
         expect(resultText).toMatch(
-            /invalid|error|fail|malformed|not.*jwt|service|issuer/i,
+            /invalid|error|fail|malformed|not.*jwt/i,
         );
 
         // Must NOT show a successful "valid token" message

@@ -84,6 +84,22 @@ public class JwtValidationService {
         var configReader = new ComponentConfigReader(configContext);
         Map<String, String> processorProperties = configReader.getProcessorProperties(processorId, request);
 
+        // NiFi's Custom UI internal API redacts controller service reference values
+        // (returns the property key but with an empty value). When this happens,
+        // re-fetch processor properties via the NiFi REST API to get actual CS UUIDs.
+        if (hasEmptyControllerServiceReference(processorProperties)) {
+            LOGGER.debug("Internal API returned empty CS reference for processor %s, "
+                    + "fetching via REST API", processorId);
+            Map<String, String> restProps =
+                    configReader.getProcessorPropertiesViaRest(processorId, request);
+            if (!restProps.isEmpty()) {
+                processorProperties = restProps;
+                LOGGER.debug("REST API returned %s processor properties", processorProperties.size());
+            } else {
+                LOGGER.warn("REST API also returned empty processor properties for %s", processorId);
+            }
+        }
+
         // Resolve controller service properties if the processor references one
         Map<String, String> issuerProperties = resolveIssuerProperties(
                 processorProperties, configReader, request);
@@ -99,7 +115,8 @@ public class JwtValidationService {
                 issuerProperties, configurationManager, parserConfig);
 
         if (issuerConfigs.isEmpty()) {
-            throw new IllegalStateException("No issuer configurations found for processor " + processorId);
+            throw new IllegalStateException("No issuer configurations found for processor " + processorId
+                    + " (properties: " + issuerProperties.keySet() + ")");
         }
 
         // 3. Build TokenValidator exactly as the processor does
@@ -153,16 +170,64 @@ public class JwtValidationService {
                 try {
                     Map<String, String> csProperties =
                             configReader.getComponentConfig(controllerServiceId, request).properties();
-                    LOGGER.debug("Resolved %d properties from controller service %s",
+                    LOGGER.debug("Resolved %s properties from controller service %s",
                             csProperties.size(), controllerServiceId);
-                    return csProperties;
-                } catch (IllegalArgumentException e) {
-                    LOGGER.warn("Failed to resolve controller service %s: %s",
+                    if (!csProperties.isEmpty()) {
+                        return csProperties;
+                    }
+                    // NiFi's Custom UI framework may return empty properties for
+                    // controller services accessed from a processor WAR context.
+                    // Fall through to try the REST API.
+                    LOGGER.warn("Internal API returned empty properties for controller service %s, "
+                            + "trying NiFi REST API fallback", controllerServiceId);
+                } catch (RuntimeException e) {
+                    LOGGER.warn("Internal API failed for controller service %s: %s, "
+                            + "trying NiFi REST API fallback", controllerServiceId, e.getMessage());
+                }
+
+                // Fallback: fetch CS properties via NiFi REST API
+                try {
+                    Map<String, String> restProperties =
+                            configReader.getControllerServicePropertiesViaRest(
+                                    controllerServiceId, request);
+                    if (!restProperties.isEmpty()) {
+                        LOGGER.debug("REST API returned %s properties for controller service %s",
+                                restProperties.size(), controllerServiceId);
+                        return restProperties;
+                    }
+                    LOGGER.warn("REST API also returned empty properties for controller service %s",
+                            controllerServiceId);
+                } catch (RuntimeException e) {
+                    LOGGER.warn("REST API fallback failed for controller service %s: %s",
                             controllerServiceId, e.getMessage());
                 }
+
+                // Both approaches failed — surface a clear error
+                throw new IllegalStateException(
+                        "Failed to resolve properties for controller service "
+                                + controllerServiceId + " referenced by property '" + key + "'");
             }
         }
         return processorProperties;
+    }
+
+    /**
+     * Checks whether any controller service reference property exists but
+     * has an empty or null value. This happens when NiFi's Custom UI
+     * internal API redacts CS references in the processor WAR context.
+     */
+    private static boolean hasEmptyControllerServiceReference(Map<String, String> processorProperties) {
+        for (String key : CONTROLLER_SERVICE_PROPERTY_KEYS) {
+            if (processorProperties.containsKey(key)) {
+                String value = processorProperties.get(key);
+                LOGGER.debug("CS reference property '%s' = '%s'", key,
+                        value == null ? "<null>" : (value.isBlank() ? "<blank>" : value));
+                if (value == null || value.isBlank()) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**

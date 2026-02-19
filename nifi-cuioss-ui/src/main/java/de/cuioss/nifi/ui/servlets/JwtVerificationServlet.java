@@ -221,7 +221,7 @@ public class JwtVerificationServlet extends HttpServlet {
         } catch (IllegalStateException e) {
             LOGGER.error(UILogMessages.ERROR.SERVICE_NOT_AVAILABLE,
                     verificationRequest.processorId(), e.getMessage());
-            safelySendErrorResponse(resp, 500, "Service not available: " + e.getMessage(), false);
+            safelySendErrorResponse(resp, 503, "Service not available: " + e.getMessage(), false);
             return null;
         }
     }

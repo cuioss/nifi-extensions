@@ -16,6 +16,7 @@ export const assertNoAuthError = (resultText) => {
         "Forbidden",
         "API key",
         "Server error",
+        "Service not available",
     ];
     for (const indicator of authIndicators) {
         if (resultText.includes(indicator)) {

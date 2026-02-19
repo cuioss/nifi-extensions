@@ -187,7 +187,7 @@ class JwtVerificationServletTest {
     }
 
     @Test
-    @DisplayName("Should return 500 for service IllegalStateException")
+    @DisplayName("Should return 503 for service IllegalStateException")
     void serviceException() {
         currentVerifier = (token, processorId) -> {
             throw new IllegalStateException("Service not available");
@@ -200,7 +200,7 @@ class JwtVerificationServletTest {
                 .when()
                 .post(ENDPOINT)
                 .then()
-                .statusCode(500)
+                .statusCode(503)
                 .body("valid", equalTo(false))
                 .body("error", containsString("Service not available"));
     }
@@ -225,7 +225,7 @@ class JwtVerificationServletTest {
     }
 
     @Test
-    @DisplayName("Should return 500 for service communication error (wrapped as IllegalStateException)")
+    @DisplayName("Should return 503 for service communication error (wrapped as IllegalStateException)")
     void communicationErrorFromService() {
         currentVerifier = (token, processorId) -> {
             throw new IllegalStateException("Connection refused");
@@ -238,7 +238,7 @@ class JwtVerificationServletTest {
                 .when()
                 .post(ENDPOINT)
                 .then()
-                .statusCode(500)
+                .statusCode(503)
                 .body("valid", equalTo(false))
                 .body("error", containsString("Service not available"));
     }

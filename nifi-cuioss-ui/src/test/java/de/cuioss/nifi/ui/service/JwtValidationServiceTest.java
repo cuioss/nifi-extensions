@@ -508,6 +508,48 @@ class JwtValidationServiceTest {
         }
 
         @Test
+        @DisplayName("Should throw IllegalStateException when controller service lookup fails")
+        void shouldThrowIllegalStateExceptionWhenControllerServiceLookupFails() {
+            // Arrange — processor references a controller service that cannot be resolved
+            String processorId = UUID.randomUUID().toString();
+            String controllerServiceId = UUID.randomUUID().toString();
+
+            Map<String, String> processorProperties = new HashMap<>();
+            processorProperties.put("jwt.issuer.config.service", controllerServiceId);
+
+            ComponentDetails processorDetails = new ComponentDetails.Builder()
+                    .id(processorId)
+                    .type("MultiIssuerJWTTokenAuthenticator")
+                    .properties(processorProperties)
+                    .build();
+
+            // Need server info for REST API fallback URL construction
+            HttpServletRequest serverRequest = createNiceMock(HttpServletRequest.class);
+            expect(serverRequest.getScheme()).andReturn("https").anyTimes();
+            expect(serverRequest.getServerName()).andReturn("localhost").anyTimes();
+            expect(serverRequest.getServerPort()).andReturn(9095).anyTimes();
+            replay(serverRequest);
+
+            JwtValidationService serverService = new JwtValidationService(mockConfigContext);
+
+            // Mock: 1st call returns processor properties, 2nd and 3rd both fail for CS
+            expect(mockConfigContext.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andReturn(processorDetails);
+            expect(mockConfigContext.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andThrow(new ResourceNotFoundException("Not a processor"));
+            expect(mockConfigContext.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andThrow(new ResourceNotFoundException("CS not found"));
+            replay(mockConfigContext);
+
+            // Act & Assert — should throw IllegalStateException (not silently fall back)
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> serverService.verifyToken("some-token", processorId, serverRequest));
+            assertTrue(exception.getMessage().contains("Failed to resolve properties for controller service"),
+                    "Error should indicate controller service resolution failure: " + exception.getMessage());
+            verify(mockConfigContext);
+        }
+
+        @Test
         @DisplayName("Should throw IllegalStateException when TokenValidator build fails")
         void shouldThrowIllegalStateExceptionWhenTokenValidatorBuildFails(@TempDir Path tempDir) throws Exception {
             // Arrange — create an invalid JWKS file to cause TokenValidator build failure
