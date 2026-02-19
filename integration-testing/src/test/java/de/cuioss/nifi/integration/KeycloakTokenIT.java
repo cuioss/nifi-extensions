@@ -24,7 +24,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.io.StringReader;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -124,18 +123,26 @@ class KeycloakTokenIT {
         }
 
         @Test
-        @DisplayName("should fail with connection error for unreachable endpoint")
-        void shouldFailForUnreachableEndpoint() {
+        @DisplayName("should reject request with valid client but wrong grant type")
+        void shouldRejectUnsupportedGrantType() throws Exception {
+            String body = formEncode(Map.of(
+                    "grant_type", "client_credentials",
+                    "client_id", CLIENT_ID,
+                    "client_secret", CLIENT_SECRET));
+
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:19999/realms/test/protocol/openid-connect/token"))
-                    .POST(HttpRequest.BodyPublishers.ofString("grant_type=password"))
+                    .uri(URI.create(TOKEN_ENDPOINT))
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
                     .header("Content-Type", "application/x-www-form-urlencoded")
-                    .timeout(Duration.ofSeconds(5))
+                    .timeout(Duration.ofSeconds(10))
                     .build();
 
-            assertThrows(IOException.class,
-                    () -> httpClient.send(request, HttpResponse.BodyHandlers.ofString()),
-                    "Connection to unreachable endpoint should throw IOException");
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            // test_client has direct access grants enabled but not client_credentials;
+            // Keycloak returns 401 for unsupported grant types on this client
+            assertTrue(response.statusCode() == 400 || response.statusCode() == 401,
+                    "Unsupported grant type should return 400 or 401, got: " + response.statusCode());
         }
     }
 

@@ -146,8 +146,12 @@ class NiFiFlowPipelineIT {
             assertNotNull(body, "Response body should contain JSON with jwt attributes");
             assertTrue(body.containsKey("jwt.error.code"),
                     "jwt.error.code should be present for invalid signature");
+            assertFalse(body.getString("jwt.error.code").isBlank(),
+                    "jwt.error.code should not be blank for cross-realm token");
             assertTrue(body.containsKey("jwt.error.category"),
                     "jwt.error.category should be present for invalid signature");
+            assertNotEquals("EXTRACTION_ERROR", body.getString("jwt.error.category"),
+                    "Cross-realm token should trigger a validation error, not extraction error");
         }
     }
 
@@ -216,8 +220,12 @@ class NiFiFlowPipelineIT {
             assertNotNull(body, "Response body should contain JSON with jwt attributes");
             assertTrue(body.containsKey("jwt.error.code"),
                     "jwt.error.code should be present for malformed token");
+            assertFalse(body.getString("jwt.error.code").isBlank(),
+                    "jwt.error.code should not be blank for malformed token");
             assertTrue(body.containsKey("jwt.error.category"),
                     "jwt.error.category should be present for malformed token");
+            assertFalse(body.getString("jwt.error.category").isBlank(),
+                    "jwt.error.category should not be blank for malformed token");
         }
     }
 

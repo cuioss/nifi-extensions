@@ -139,7 +139,6 @@ class NiFiProcessorMetricsIT {
 
     // ── Helper methods ─────────────────────────────────────────────────
 
-    @SuppressWarnings("java:S2925") // Thread.sleep is the standard retry-delay for NiFi status counter propagation
     private static void ensureFlowHasTraffic() throws Exception {
         // Wait for flow endpoint availability
         IntegrationTestSupport.waitForEndpoint(plainClient, FLOW_ENDPOINT, Duration.ofSeconds(120));
@@ -163,8 +162,41 @@ class NiFiProcessorMetricsIT {
                 .build();
         plainClient.send(validTokenRequest, HttpResponse.BodyHandlers.ofString());
 
-        // Brief pause to let NiFi update its status counters
-        Thread.sleep(2000);
+        // Poll NiFi metrics until the processor reflects the traffic we just sent,
+        // rather than using a fixed Thread.sleep which is fragile on slow CI machines
+        waitForProcessorActivity("MultiIssuerJWTTokenAuthenticator", Duration.ofSeconds(15));
+    }
+
+    /**
+     * Polls the NiFi process group status API until the named processor shows
+     * at least one FlowFile processed, or the timeout expires. This replaces
+     * a fixed {@code Thread.sleep} with a condition-based wait.
+     */
+    @SuppressWarnings("java:S2925") // Thread.sleep is the standard retry-delay for NiFi status polling
+    private static void waitForProcessorActivity(String processorName, Duration timeout)
+            throws Exception {
+        String bearerToken = IntegrationTestSupport.authenticateToNifi(nifiClient);
+        long deadline = System.nanoTime() + timeout.toNanos();
+
+        while (System.nanoTime() < deadline) {
+            JsonObject status = getProcessGroupStatus(bearerToken);
+            JsonObject aggregateSnapshot = status
+                    .getJsonObject("processGroupStatus")
+                    .getJsonObject("aggregateSnapshot");
+
+            Optional<JsonObject> processor = findProcessorByNameRecursive(
+                    aggregateSnapshot, processorName);
+            if (processor.isPresent()) {
+                int flowFilesIn = processor.get()
+                        .getJsonObject("processorStatusSnapshot")
+                        .getInt("flowFilesIn");
+                if (flowFilesIn > 0) {
+                    return;
+                }
+            }
+            Thread.sleep(500);
+        }
+        // Don't fail here — let the actual test assertions report the problem
     }
 
     private static String authenticateToNifi() throws Exception {

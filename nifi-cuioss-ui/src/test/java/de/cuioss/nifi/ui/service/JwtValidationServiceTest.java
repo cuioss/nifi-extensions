@@ -440,6 +440,65 @@ class JwtValidationServiceTest {
         }
 
         @Test
+        @DisplayName("Should resolve controller service properties when processor references one")
+        void shouldResolveControllerServiceProperties(@TempDir Path tempDir) throws Exception {
+            // Arrange — processor references a controller service via jwt.issuer.config.service
+            String processorId = UUID.randomUUID().toString();
+            String controllerServiceId = UUID.randomUUID().toString();
+
+            // Processor properties: only the controller service reference
+            Map<String, String> processorProperties = new HashMap<>();
+            processorProperties.put("jwt.issuer.config.service", controllerServiceId);
+
+            // Controller service properties: actual issuer configurations
+            Path jwksFile = tempDir.resolve("test-jwks.json");
+            Files.writeString(jwksFile, """
+                    {
+                      "keys": [{
+                        "kty": "RSA", "use": "sig", "kid": "test-key-1",
+                        "n": "xGOr-H7A-PWzbJypLqAP1T7oTmPmK0HQonC9DdNf5xHxl8Jfx8N0vHlJ3hQB0z4jGp4Gq5QiC_qRjGJpZ3Sp6kYz9kYWvQ8uL8zJvP3xFp9zJGkP3xFZ9zJGkvP3xFp9zJGkP3xFZ9zJGkKP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zQ",
+                        "e": "AQAB"
+                      }]
+                    }
+                    """);
+            Map<String, String> csProperties = new HashMap<>();
+            csProperties.put("issuer.1.name", "test-issuer");
+            csProperties.put("issuer.1.jwks-file", jwksFile.toAbsolutePath().toString());
+
+            ComponentDetails processorDetails = new ComponentDetails.Builder()
+                    .id(processorId)
+                    .type("MultiIssuerJWTTokenAuthenticator")
+                    .properties(processorProperties)
+                    .build();
+
+            ComponentDetails csDetails = new ComponentDetails.Builder()
+                    .id(controllerServiceId)
+                    .type("StandardJwtIssuerConfigService")
+                    .properties(csProperties)
+                    .build();
+
+            // Mock: 1st call returns processor, 2nd fails (CS UUID as processor),
+            // 3rd returns CS details
+            expect(mockConfigContext.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andReturn(processorDetails);
+            expect(mockConfigContext.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andThrow(new ResourceNotFoundException("Not a processor"));
+            expect(mockConfigContext.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andReturn(csDetails);
+            replay(mockConfigContext);
+
+            // Act — invalid token, but issuer config should be resolved from CS
+            JwtValidationService.TokenValidationResult result =
+                    service.verifyToken("not-a-valid-jwt", processorId, mockRequest);
+
+            // Assert — should get a failure result (not IllegalStateException about missing config)
+            assertNotNull(result, "Result should not be null");
+            assertFalse(result.isValid(), "Result should be invalid for bad token");
+            assertNotNull(result.getError(), "Error message should be present");
+            verify(mockConfigContext);
+        }
+
+        @Test
         @DisplayName("Should reject null processor ID")
         void shouldRejectNullProcessorId() {
             // Arrange & Act & Assert

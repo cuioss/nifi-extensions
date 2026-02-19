@@ -49,6 +49,16 @@ public class JwtValidationService {
     private static final String CLAIM_ROLES = "roles";
     private static final String CLAIM_SCOPES = "scopes";
 
+    /**
+     * Processor property keys that reference a JwtIssuerConfigService controller service.
+     * When one of these is present, the controller service's properties are used
+     * for issuer configuration parsing instead of the processor's own properties.
+     */
+    private static final List<String> CONTROLLER_SERVICE_PROPERTY_KEYS = List.of(
+            "jwt.issuer.config.service",       // MultiIssuerJWTTokenAuthenticator
+            "rest.gateway.jwt.config.service"   // RestApiGatewayProcessor
+    );
+
     private final NiFiWebConfigurationContext configContext;
 
     public JwtValidationService(NiFiWebConfigurationContext configContext) {
@@ -72,12 +82,16 @@ public class JwtValidationService {
         LOGGER.debug("verifyToken called with processorId=%s, token=%s", processorId, maskToken(token));
 
         var configReader = new ComponentConfigReader(configContext);
-        Map<String, String> properties = configReader.getProcessorProperties(processorId, request);
+        Map<String, String> processorProperties = configReader.getProcessorProperties(processorId, request);
+
+        // Resolve controller service properties if the processor references one
+        Map<String, String> issuerProperties = resolveIssuerProperties(
+                processorProperties, configReader, request);
 
         // 2. Parse configurations using shared parser (same logic as processor)
         ConfigurationManager configurationManager = new ConfigurationManager();
-        List<IssuerConfig> issuerConfigs = IssuerConfigurationParser.parseIssuerConfigs(properties, configurationManager);
-        ParserConfig parserConfig = IssuerConfigurationParser.parseParserConfig(properties);
+        List<IssuerConfig> issuerConfigs = IssuerConfigurationParser.parseIssuerConfigs(issuerProperties, configurationManager);
+        ParserConfig parserConfig = IssuerConfigurationParser.parseParserConfig(issuerProperties);
 
         if (issuerConfigs.isEmpty()) {
             throw new IllegalStateException("No issuer configurations found for processor " + processorId);
@@ -107,6 +121,43 @@ public class JwtValidationService {
             LOGGER.error(e, UILogMessages.ERROR.UNEXPECTED_VALIDATION_ERROR, processorId);
             return TokenValidationResult.failure("Unexpected validation error: " + e.getMessage());
         }
+    }
+
+    /**
+     * Resolves the properties to use for issuer configuration parsing.
+     * If the processor properties contain a controller service reference
+     * (e.g., {@code jwt.issuer.config.service}), the controller service's
+     * properties are returned instead, as the issuer configurations are
+     * defined on the controller service rather than the processor itself.
+     *
+     * @param processorProperties the processor's property map
+     * @param configReader        the component config reader
+     * @param request             the HTTP servlet request (for authentication context)
+     * @return the properties to use for issuer config parsing (never null)
+     */
+    private static Map<String, String> resolveIssuerProperties(
+            Map<String, String> processorProperties,
+            ComponentConfigReader configReader,
+            HttpServletRequest request) {
+
+        for (String key : CONTROLLER_SERVICE_PROPERTY_KEYS) {
+            String controllerServiceId = processorProperties.get(key);
+            if (controllerServiceId != null && !controllerServiceId.isBlank()) {
+                LOGGER.debug("Resolving controller service %s from property '%s'",
+                        controllerServiceId, key);
+                try {
+                    Map<String, String> csProperties =
+                            configReader.getComponentConfig(controllerServiceId, request).properties();
+                    LOGGER.debug("Resolved %d properties from controller service %s",
+                            csProperties.size(), controllerServiceId);
+                    return csProperties;
+                } catch (IllegalArgumentException e) {
+                    LOGGER.warn("Failed to resolve controller service %s: %s",
+                            controllerServiceId, e.getMessage());
+                }
+            }
+        }
+        return processorProperties;
     }
 
     /**
