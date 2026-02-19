@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   dependency-review:
-    uses: cuioss/cuioss-organization/.github/workflows/reusable-dependency-review.yml@c4852ae3c12a7adcbddbf140043b832ff5e6bc97 # v0.5.2
+    uses: cuioss/cuioss-organization/.github/workflows/reusable-dependency-review.yml@e48599b588d0cf2652b982de998a52b21d9ae5ac # v0.5.3
     permissions:
       contents: read
       pull-requests: write
