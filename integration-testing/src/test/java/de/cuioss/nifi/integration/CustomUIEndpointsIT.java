@@ -25,8 +25,12 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import javax.net.ssl.SSLContext;
+import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Map;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -55,11 +59,17 @@ class CustomUIEndpointsIT {
             "http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/token";
     private static final String CLIENT_ID = "test_client";
     private static final String CLIENT_SECRET = "yTKslWLtf4giJcWCaoVJ20H8sy6STexM";
+    private static final String TEST_USER = "testUser";
+    private static final String PASSWORD = "drowssap";
+    private static final String KEYCLOAK_JWKS_ENDPOINT =
+            "http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/certs";
+    private static final String GATEWAY_METRICS_ENDPOINT = "http://localhost:9443/metrics";
 
     private static RequestSpecification authSpec;
     private static RequestSpecification sessionOnlySpec;
     private static RequestSpecification gatewayAuthSpec;
     private static String keycloakToken;
+    private static String keycloakJwks;
 
     @BeforeAll
     static void setUp() throws Exception {
@@ -93,6 +103,23 @@ class CustomUIEndpointsIT {
         gatewayAuthSpec = CustomUITestSupport.buildAuthSpec(
                 customUIBase, bearerToken, gatewayProcessorId);
 
+        // Wait for the REST API Gateway's embedded Jetty to be ready
+        IntegrationTestSupport.waitForEndpoint(httpClient,
+                GATEWAY_METRICS_ENDPOINT, Duration.ofSeconds(120));
+
+        // Fetch a Keycloak token for endpoint tests that need a real JWT
+        keycloakToken = IntegrationTestSupport.fetchKeycloakToken(httpClient,
+                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET, TEST_USER, PASSWORD);
+
+        // Fetch JWKS from Keycloak for JWKS content validation tests
+        HttpRequest jwksRequest = HttpRequest.newBuilder()
+                .uri(URI.create(KEYCLOAK_JWKS_ENDPOINT))
+                .GET()
+                .timeout(Duration.ofSeconds(10))
+                .build();
+        HttpResponse<String> jwksResponse = httpClient.send(jwksRequest,
+                HttpResponse.BodyHandlers.ofString());
+        keycloakJwks = jwksResponse.body();
     }
 
     // ── Endpoint Accessibility Tests ──────────────────────────────────
@@ -102,11 +129,23 @@ class CustomUIEndpointsIT {
     class EndpointAccessibility {
 
         @Test
+        @DisplayName("should return valid=true for a real Keycloak JWT")
+        void verifyTokenWithValidKeycloakToken() {
+            given().spec(authSpec)
+                    .body(Map.of("token", keycloakToken))
+                    .when()
+                    .post("/nifi-api/processors/jwt/verify-token")
+                    .then()
+                    .statusCode(200)
+                    .contentType(ContentType.JSON)
+                    .body("valid", equalTo(true))
+                    .body("claims", notNullValue())
+                    .body("issuer", notNullValue());
+        }
+
+        @Test
         @DisplayName("should never report an invalid token as valid")
         void verifyTokenWithInvalidToken() {
-            // The verify-token endpoint may return 400 (invalid token) or 500 (if the
-            // JwtIssuerConfigService is not accessible via the NiFi Web Configuration
-            // Context). In either case, the token must not be reported as valid.
             given().spec(authSpec)
                     .body("""
                             {"token": "test-token"}
@@ -114,6 +153,7 @@ class CustomUIEndpointsIT {
                     .when()
                     .post("/nifi-api/processors/jwt/verify-token")
                     .then()
+                    .statusCode(200)
                     .contentType(ContentType.JSON)
                     .body("valid", equalTo(false));
         }
@@ -138,7 +178,7 @@ class CustomUIEndpointsIT {
         void jwksContentValidationWithEmptyKeys() {
             given().spec(authSpec)
                     .body("""
-                            {"jwksContent": "{\\\\\\\"keys\\\\\\\":[]}"}
+                            {"jwksContent": "{\\"keys\\":[]}"}
                             """)
                     .when()
                     .post("/nifi-api/processors/jwt/validate-jwks-content")
@@ -146,6 +186,21 @@ class CustomUIEndpointsIT {
                     .statusCode(200)
                     .contentType(ContentType.JSON)
                     .body("valid", equalTo(false));
+        }
+
+        @Test
+        @DisplayName("should return valid=true for real Keycloak JWKS content")
+        void jwksContentValidationWithValidKeys() {
+            given().spec(authSpec)
+                    .body(Map.of("jwksContent", keycloakJwks))
+                    .when()
+                    .post("/nifi-api/processors/jwt/validate-jwks-content")
+                    .then()
+                    .statusCode(200)
+                    .contentType(ContentType.JSON)
+                    .body("valid", equalTo(true))
+                    .body("keyCount", greaterThan(0))
+                    .body("algorithms", notNullValue());
         }
 
         @Test
@@ -230,6 +285,27 @@ class CustomUIEndpointsIT {
         }
     }
 
+    // ── Security Header Tests ────────────────────────────────────────
+
+    @Nested
+    @DisplayName("Security Headers")
+    class SecurityHeaderTests {
+
+        @Test
+        @DisplayName("should include standard security headers in responses")
+        void responsesContainSecurityHeaders() {
+            given().spec(authSpec)
+                    .when()
+                    .get("/nifi-api/processors/jwt/component-info")
+                    .then()
+                    .statusCode(200)
+                    .header("X-Content-Type-Options", equalTo("nosniff"))
+                    .header("X-Frame-Options", equalTo("SAMEORIGIN"))
+                    .header("Referrer-Policy", equalTo("strict-origin-when-cross-origin"))
+                    .header("Content-Security-Policy", startsWith("default-src 'self'"));
+        }
+    }
+
     // ── Static Content Tests ──────────────────────────────────────────
 
     @Nested
@@ -297,40 +373,52 @@ class CustomUIEndpointsIT {
                     .statusCode(200)
                     .contentType(ContentType.JSON)
                     .body("component", containsString("RestApiGatewayProcessor"))
-                    .body("port", notNullValue());
+                    .body("port", notNullValue())
+                    .body("routes", notNullValue())
+                    .body("maxRequestBodySize", notNullValue())
+                    .body("queueSize", notNullValue());
         }
 
         @Test
-        @DisplayName("should return 503 or metrics for gateway metrics endpoint")
+        @DisplayName("should return metrics from gateway via Custom UI proxy")
         void gatewayMetricsEndpoint() {
-            // The Custom UI servlet proxies to the RestApiGateway's embedded Jetty on port 9443.
-            // Test execution order is not guaranteed, so the gateway may not be fully
-            // started when CustomUIEndpointsIT runs — accept 200 (running) or 503 (starting).
-            // RestApiGatewayIT.ManagementEndpointTests covers the direct metrics endpoint
-            // with tight assertions.
-            int status = given().spec(gatewayAuthSpec)
+            given().spec(gatewayAuthSpec)
                     .when()
                     .get("/nifi-api/processors/jwt/gateway/metrics")
                     .then()
-                    .extract().statusCode();
-
-            assertTrue(
-                    status == 200 || status == 503,
-                    "Expected 200 (gateway running) or 503 (gateway starting) but got " + status);
+                    .statusCode(200);
         }
 
         @Test
         @DisplayName("should enforce SSRF protection on gateway test endpoint")
         void gatewayTestSsrfProtection() {
-            // 400 = SSRF protection correctly blocked the external URL
-            // 503 = Gateway proxy not yet available (same timing issue as gatewayMetricsEndpoint)
+            // The @-sign in the path creates a URI where the host changes:
+            // http://localhost:<port>@evil.example.com/steal
+            // URI parser interprets "localhost:<port>" as userinfo and
+            // "evil.example.com" as the actual host — a classic SSRF bypass attempt.
             given().spec(gatewayAuthSpec)
                     .body("""
-                            {"path":"http://evil.com/steal","method":"GET","headers":{}}""")
+                            {"path":"@evil.example.com/steal","method":"GET"}""")
                     .when()
                     .post("/nifi-api/processors/jwt/gateway/test")
                     .then()
-                    .statusCode(anyOf(equalTo(400), equalTo(503)));
+                    .statusCode(400);
+        }
+
+        @Test
+        @DisplayName("should successfully proxy a request to the gateway")
+        void gatewayTestHappyPath() {
+            given().spec(gatewayAuthSpec)
+                    .body(Map.of(
+                            "path", "/api/health",
+                            "method", "GET",
+                            "headers", Map.of("Authorization", "Bearer " + keycloakToken)))
+                    .when()
+                    .post("/nifi-api/processors/jwt/gateway/test")
+                    .then()
+                    .statusCode(200)
+                    .contentType(ContentType.JSON)
+                    .body("status", equalTo(200));
         }
     }
 }

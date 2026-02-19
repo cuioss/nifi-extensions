@@ -101,6 +101,8 @@ class RestApiGatewayIT {
 
             assertEquals(200, response.statusCode(),
                     "GET /api/health with valid JWT should return 200. Response: " + response.body());
+            assertTrue(response.body() != null && !response.body().isEmpty(),
+                    "Health endpoint should return a non-empty body");
         }
 
         @Test
@@ -156,6 +158,8 @@ class RestApiGatewayIT {
 
             assertEquals(200, response.statusCode(),
                     "GET /api/data with valid JWT should return 200. Response: " + response.body());
+            assertTrue(response.body() != null && !response.body().isEmpty(),
+                    "Data GET endpoint should return a non-empty body");
         }
 
         @Test
@@ -175,6 +179,8 @@ class RestApiGatewayIT {
 
             assertEquals(202, response.statusCode(),
                     "POST /api/data with valid JWT should return 202. Response: " + response.body());
+            assertTrue(response.body() != null && !response.body().isEmpty(),
+                    "Data POST endpoint should return a non-empty body");
         }
 
         @Test

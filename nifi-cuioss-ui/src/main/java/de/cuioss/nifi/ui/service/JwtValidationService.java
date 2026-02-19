@@ -89,9 +89,14 @@ public class JwtValidationService {
                 processorProperties, configReader, request);
 
         // 2. Parse configurations using shared parser (same logic as processor)
-        ConfigurationManager configurationManager = new ConfigurationManager();
-        List<IssuerConfig> issuerConfigs = IssuerConfigurationParser.parseIssuerConfigs(issuerProperties, configurationManager);
+        // ParserConfig must be created first (on this servlet thread with the correct
+        // classloader) and passed through so HttpJwksLoader reuses it instead of
+        // triggering ServiceLoader on ForkJoinPool threads (OAuthSheriff#212).
         ParserConfig parserConfig = IssuerConfigurationParser.parseParserConfig(issuerProperties);
+        parserConfig.getDslJson(); // Eagerly init DSL-JSON on this thread's classloader
+        ConfigurationManager configurationManager = new ConfigurationManager();
+        List<IssuerConfig> issuerConfigs = IssuerConfigurationParser.parseIssuerConfigs(
+                issuerProperties, configurationManager, parserConfig);
 
         if (issuerConfigs.isEmpty()) {
             throw new IllegalStateException("No issuer configurations found for processor " + processorId);
