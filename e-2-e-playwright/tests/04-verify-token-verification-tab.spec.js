@@ -1,7 +1,7 @@
 /**
  * @file Token Verification Tab Test
  * Verifies the token verification tab functionality in the JWT authenticator UI
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 import {
@@ -16,35 +16,13 @@ import {
     getValidAccessToken,
     getInvalidAccessToken,
 } from "../utils/keycloak-token-service.js";
-
-/**
- * Assert that a verification result does not indicate an infrastructure / auth error.
- * Throws with the actual text for easy debugging.
- */
-const assertNoAuthError = (resultText) => {
-    const authIndicators = [
-        "401",
-        "403",
-        "Unauthorized",
-        "Forbidden",
-        "API key",
-        "Server error",
-    ];
-    for (const indicator of authIndicators) {
-        if (resultText.includes(indicator)) {
-            throw new Error(
-                `Auth/CSRF infrastructure error detected (${indicator}): ${resultText.substring(0, 200)}`,
-            );
-        }
-    }
-};
+import { assertNoAuthError } from "../utils/test-assertions.js";
 
 test.describe("Token Verification Tab", () => {
     test.beforeEach(async ({ page, processorManager }, testInfo) => {
         const authService = new AuthService(page);
         await authService.ensureReady();
 
-        // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
         await processorManager.ensureProcessorOnCanvas();
         await takeStartScreenshot(page, testInfo);
     });
@@ -65,10 +43,7 @@ test.describe("Token Verification Tab", () => {
         const tabPanel = customUIFrame.locator("#token-verification");
         await expect(tabPanel).toBeVisible({ timeout: 5000 });
 
-        await page.waitForTimeout(2000);
-
-        const tabContent = customUIFrame.locator("#token-verification");
-        const contentText = await tabContent.textContent();
+        const contentText = await tabPanel.textContent();
 
         // Token verification tab must have substantial content
         expect(contentText).toBeTruthy();
@@ -88,8 +63,6 @@ test.describe("Token Verification Tab", () => {
 
         await processorService.clickTab(customUIFrame, "Token Verification");
 
-        await page.waitForTimeout(2000);
-
         const tokenVerificationTab = customUIFrame.locator(
             "#token-verification",
         );
@@ -97,6 +70,7 @@ test.describe("Token Verification Tab", () => {
             .locator("#field-token-input")
             .first();
         await expect(tokenInput).toBeVisible({ timeout: 5000 });
+        await expect(tokenInput).toBeEnabled({ timeout: 5000 });
 
         // Try to get a real token from Keycloak, fall back to test token if not available
         let validToken = CONSTANTS.TEST_TOKENS.VALID;
@@ -145,22 +119,19 @@ test.describe("Token Verification Tab", () => {
 
         await processorService.clickTab(customUIFrame, "Token Verification");
 
-        await page.waitForTimeout(2000);
-
         const tokenVerificationTab = customUIFrame.locator(
             "#token-verification",
         );
         const tokenInput = tokenVerificationTab
             .locator("#field-token-input")
             .first();
+        await expect(tokenInput).toBeEnabled({ timeout: 5000 });
         await tokenInput.fill(getInvalidAccessToken());
 
         const verifyButton = tokenVerificationTab
             .locator(".verify-token-button")
             .first();
         await verifyButton.click();
-
-        await page.waitForTimeout(2000);
 
         const errorResult = customUIFrame
             .locator(
@@ -195,29 +166,15 @@ test.describe("Token Verification Tab", () => {
 
         await processorService.clickTab(customUIFrame, "Token Verification");
 
-        await page.waitForTimeout(2000);
-
         const tokenVerificationTab = customUIFrame.locator(
             "#token-verification",
         );
         const tokenInput = tokenVerificationTab
             .locator("#field-token-input")
             .first();
-        try {
-            await tokenInput.fill(CONSTANTS.TEST_TOKENS.EXPIRED, {
-                timeout: 2000,
-            });
-        } catch (error) {
-            if (error.message.includes("disabled")) {
-                await tokenInput.evaluate((input) => {
-                    input.removeAttribute("disabled");
-                    input.disabled = false;
-                });
-                await tokenInput.fill(CONSTANTS.TEST_TOKENS.EXPIRED);
-            } else {
-                throw error;
-            }
-        }
+        await expect(tokenInput).toBeEnabled({ timeout: 5000 });
+
+        await tokenInput.fill(CONSTANTS.TEST_TOKENS.EXPIRED);
 
         const verifyButton = tokenVerificationTab
             .locator(".verify-token-button")
@@ -255,14 +212,13 @@ test.describe("Token Verification Tab", () => {
 
         await processorService.clickTab(customUIFrame, "Token Verification");
 
-        await page.waitForTimeout(2000);
-
         const tokenVerificationTab = customUIFrame.locator(
             "#token-verification",
         );
         const tokenInput = tokenVerificationTab
             .locator("#field-token-input")
             .first();
+        await expect(tokenInput).toBeEnabled({ timeout: 5000 });
         await tokenInput.fill(getInvalidAccessToken());
 
         const verifyButton = tokenVerificationTab

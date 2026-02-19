@@ -17,6 +17,7 @@ import {
     cleanupCriticalErrorDetection,
     globalCriticalErrorDetector,
 } from "../utils/critical-error-detector.js";
+import { testLogger } from "../utils/test-logger.js";
 
 test.describe("Self-Test: Critical Error Detection", () => {
     test.beforeEach(async ({ page, processorManager }, testInfo) => {
@@ -199,7 +200,8 @@ test.describe("Self-Test: Critical Error Detection", () => {
     test("should detect missing processors on canvas", async ({
         page,
     }, testInfo) => {
-        // This test ensures that if processors are expected but missing, it fails
+        // This test ensures that processors are present on canvas
+        // (beforeEach ensures processor via processorManager.ensureProcessorOnCanvas())
 
         const processorService = new ProcessorService(page, testInfo);
 
@@ -208,34 +210,15 @@ test.describe("Self-Test: Critical Error Detection", () => {
             failIfNotFound: false,
         });
 
-        // Check for empty canvas using critical error detector
+        // Check for processors using critical error detector
         const detector = globalCriticalErrorDetector;
         const hasProcessors = await detector.checkForProcessors(page);
 
-        // For this specific test, we'll be more lenient
-        // We'll report the status but not necessarily fail
-        if (!hasProcessors && !processor) {
-            // Verify that the canvas itself exists and is ready
-            const canvasExists = await detector.checkCanvasExists(page);
-            expect(canvasExists, "Canvas should exist even if empty").toBe(
-                true,
-            );
-
-            // Check if this is intentionally empty or a problem
-            const authService = new AuthService(page);
-            await authService.verifyCanvasVisible();
-
-             
-            console.log(
-                "Canvas is empty but functional - this may be expected in some test scenarios",
-            );
-        } else {
-            // Processors were found, which is good
-            expect(
-                hasProcessors,
-                "Processors should be detectable when present",
-            ).toBe(true);
-        }
+        // Processors must be present (ensured by beforeEach)
+        expect(
+            hasProcessors || processor !== null,
+            "Processors should be present on canvas",
+        ).toBe(true);
     });
 
     test("should perform comprehensive critical error validation", async ({
@@ -288,9 +271,6 @@ test.describe("Self-Test: Critical Error Detection", () => {
         const authService = new AuthService(page);
         await authService.verifyCanvasVisible();
 
-         
-        console.log(
-            "Comprehensive critical error validation passed - application is healthy",
-        );
+        testLogger.info("SelfTest", "Comprehensive critical error validation passed - application is healthy");
     });
 });

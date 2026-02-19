@@ -61,57 +61,40 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
     }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
-        // Find existing JWT processor on canvas
+        // Find existing JWT processor on canvas (throws if not found)
         const processor = await processorService.findJwtAuthenticator({
             failIfNotFound: true,
         });
 
-        if (processor) {
-            // Open Advanced UI and verify it works
+        // Right-click to open context menu
+        await processorService.interact(processor, {
+            action: "rightclick",
+        });
 
-            // Right-click to open context menu
-            await processorService.interact(processor, {
-                action: "rightclick",
-            });
+        // Look for configure option
+        const configureOption = page.getByRole("menuitem", {
+            name: /configure/i,
+        });
 
-            // Look for configure option
-            const configureOption = page.getByRole("menuitem", {
-                name: /configure/i,
-            });
+        // If configure option exists, click it
+        if (await configureOption.isVisible({ timeout: 2000 })) {
+            await configureOption.click();
 
-            // If configure option exists, click it
-            if (await configureOption.isVisible({ timeout: 2000 })) {
-                await configureOption.click();
-
-                // Wait for configuration dialog - utility handles NiFi-compatible selectors
-                const dialog = page.locator(
-                    '[role="dialog"], .dialog, .configuration-dialog',
-                );
-                await expect(dialog).toBeVisible({ timeout: 3000 });
-
-                // Close dialog first since Advanced is accessed via right-click
-                await page.keyboard.press("Escape");
-                await expect(dialog).not.toBeVisible({ timeout: 2000 });
-
-                // Now open Advanced UI via right-click menu
-                await processorService.openAdvancedUI(processor);
-
-                // Close using ESC
-                await page.keyboard.press("Escape");
-            }
-
-            // Don't check critical errors here - test handles its own validation
-        } else {
-            // No JWT processor found
-            throw new Error(
-                "CRITICAL ERROR: No JWT processor found for advanced configuration test!\n" +
-                    "This indicates either:\n" +
-                    "1. Empty canvas (no processors deployed)\n" +
-                    "2. JWT processors failed to load\n" +
-                    "3. UI initialization issues\n" +
-                    "Expected: JWT processor should be available for advanced configuration testing.\n" +
-                    "This test is designed to fail when JWT processors are not available.",
+            // Wait for configuration dialog - utility handles NiFi-compatible selectors
+            const dialog = page.locator(
+                '[role="dialog"], .dialog, .configuration-dialog',
             );
+            await expect(dialog).toBeVisible({ timeout: 3000 });
+
+            // Close dialog first since Advanced is accessed via right-click
+            await page.keyboard.press("Escape");
+            await expect(dialog).not.toBeVisible({ timeout: 2000 });
+
+            // Now open Advanced UI via right-click menu
+            await processorService.openAdvancedUI(processor);
+
+            // Close using ESC
+            await page.keyboard.press("Escape");
         }
     });
 
@@ -120,60 +103,54 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
     }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
-        // Find existing JWT processor on canvas
+        // Find existing JWT processor on canvas (throws if not found)
         const processor = await processorService.findJwtAuthenticator({
             failIfNotFound: true,
         });
 
-        if (processor) {
-            // Double-click to open processor details/properties
-            await processorService.interact(processor, {
-                action: "doubleclick",
-            });
+        // Double-click to open processor details/properties
+        await processorService.interact(processor, {
+            action: "doubleclick",
+        });
 
-            // Wait for navigation or modal to appear
-            await page.waitForLoadState("networkidle");
+        // Wait for navigation or modal to appear
+        await page.waitForLoadState("networkidle");
 
-            // Look for "Back to Processor" or similar navigation link
-            const backLinks = [
-                page.getByRole("link", { name: /back to processor/i }),
-                page.getByRole("button", { name: /back to processor/i }),
-                page.getByText(/back to processor/i),
-                page.locator('[href*="processor"]'),
-                page.locator(".back-link, .return-link"),
-            ];
+        // Look for "Back to Processor" or similar navigation link
+        const backLinks = [
+            page.getByRole("link", { name: /back to processor/i }),
+            page.getByRole("button", { name: /back to processor/i }),
+            page.getByText(/back to processor/i),
+            page.locator('[href*="processor"]'),
+            page.locator(".back-link, .return-link"),
+        ];
 
-            let backLinkFound = false;
-            for (const backLink of backLinks) {
-                if (await backLink.isVisible({ timeout: 2000 })) {
-                    // Click the back link
-                    await backLink.click();
-                    await page.waitForLoadState("networkidle");
-
-                    // Verify we're back on main canvas
-                    await expect(
-                        page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS),
-                    ).toBeVisible({ timeout: 3000 });
-
-                    backLinkFound = true;
-                    break;
-                }
-            }
-
-            if (!backLinkFound) {
-                // If no back link found, use browser back
-                await page.goBack();
+        let backLinkFound = false;
+        for (const backLink of backLinks) {
+            if (await backLink.isVisible({ timeout: 2000 })) {
+                // Click the back link
+                await backLink.click();
                 await page.waitForLoadState("networkidle");
 
-                // Should still be on canvas
+                // Verify we're back on main canvas
                 await expect(
                     page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS),
-                ).toBeVisible();
+                ).toBeVisible({ timeout: 3000 });
+
+                backLinkFound = true;
+                break;
             }
-        } else {
-            throw new Error(
-                "Test failed: No processor found for back navigation test",
-            );
+        }
+
+        if (!backLinkFound) {
+            // If no back link found, use browser back
+            await page.goBack();
+            await page.waitForLoadState("networkidle");
+
+            // Should still be on canvas
+            await expect(
+                page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS),
+            ).toBeVisible();
         }
     });
 
@@ -204,36 +181,31 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT authenticator on canvas (specific to avoid matching other flow processors)
+        // Find JWT authenticator on canvas (throws if not found)
         const processor = await processorService.findJwtAuthenticator({
             failIfNotFound: true,
         });
 
-        if (processor) {
-            // Test hover interaction
-            await processorService.interact(processor, { action: "hover" });
+        // Test hover interaction
+        await processorService.interact(processor, { action: "hover" });
 
-            // Verify processor is still visible after interaction
-            // Use processor.locator if available, otherwise use first() to avoid strict mode violation
-            const locator =
-                processor.locator || page.locator(processor.element).first();
-            await expect(locator).toBeVisible({
-                timeout: 5000,
-            });
+        // Verify processor is still visible after interaction
+        // Use processor.locator if available, otherwise use first() to avoid strict mode violation
+        const locator =
+            processor.locator || page.locator(processor.element).first();
+        await expect(locator).toBeVisible({
+            timeout: 5000,
+        });
 
-            // Test click interaction
-            await processorService.interact(processor, { action: "click" });
+        // Test click interaction
+        await processorService.interact(processor, { action: "click" });
 
-            // Should not crash or cause errors
-            await page.waitForLoadState("networkidle");
+        // Should not crash or cause errors
+        await page.waitForLoadState("networkidle");
 
-            // Verify processor is still visible and functional
-            await expect(locator).toBeVisible({
-                timeout: 5000,
-            });
-        } else {
-            throw new Error(
-                "Test failed: No processor found for interaction test",
-            );
-        }
+        // Verify processor is still visible and functional
+        await expect(locator).toBeVisible({
+            timeout: 5000,
+        });
     });
 });

@@ -147,7 +147,6 @@ test.describe("Help Tab", () => {
         );
         if (!isActive) {
             await issuerConfigHeader.click();
-            await customUIFrame.waitForTimeout(500); // Wait for animation
         }
 
         // Look for configuration examples in the help content
@@ -245,7 +244,6 @@ test.describe("Help Tab", () => {
         );
         if (!isActive) {
             await troubleshootingHeader.click();
-            await customUIFrame.waitForTimeout(500);
         }
 
         // Check that troubleshooting content is visible
@@ -267,36 +265,31 @@ test.describe("Help Tab", () => {
         }
     });
 
-    test("should have search functionality", async ({ page }, testInfo) => {
+    test("should contain essential keywords in help content", async ({ page }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
-        // Find JWT processor using the verified utility
         const processor = await processorService.findJwtAuthenticator({
             failIfNotFound: true,
         });
 
-        // Open Advanced UI using the verified utility
         await processorService.openAdvancedUI(processor);
 
-        // Get the custom UI frame
         const customUIFrame = await processorService.getAdvancedUIFrame();
         await processorService.clickTab(customUIFrame, "Help");
 
-        // The help tab doesn't have search functionality, but we can verify
-        // that the content is searchable by checking for keywords
         const helpContent = customUIFrame.locator("#help");
         await expect(helpContent).toBeVisible({ timeout: 5000 });
 
         const helpText = await helpContent.textContent();
 
-        // Verify content contains searchable keywords
-        const searchableKeywords = [
+        // Verify content contains essential domain keywords
+        const essentialKeywords = [
             "Token Verification",
             "JWT",
             "JWKS",
             "issuer",
         ];
-        for (const keyword of searchableKeywords) {
+        for (const keyword of essentialKeywords) {
             expect(helpText.toLowerCase()).toContain(keyword.toLowerCase());
         }
 

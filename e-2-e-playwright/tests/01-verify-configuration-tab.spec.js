@@ -1,7 +1,7 @@
 /**
  * @file Configuration Tab Test
  * Verifies the configuration tab structure and issuer management in the JWT authenticator UI
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 import {
@@ -67,12 +67,24 @@ test.describe("Configuration Tab", () => {
             await expect(el).toBeVisible({ timeout: 5000 });
         }
 
-        // Verify all four tab names are present
-        const tabs = ["Configuration", "Token Verification", "Metrics", "Help"];
+        // Verify all four tabs with href links and click navigation
+        const expectedTabs = [
+            { name: "Configuration", href: "#issuer-config" },
+            { name: "Token Verification", href: "#token-verification" },
+            { name: "Metrics", href: "#metrics" },
+            { name: "Help", href: "#help" },
+        ];
 
-        for (const tabName of tabs) {
-            const tab = customUIFrame.getByRole("tab", { name: tabName, exact: true });
-            await expect(tab).toBeVisible({ timeout: 5000 });
+        for (const tab of expectedTabs) {
+            const tabElement = customUIFrame.getByRole("tab", {
+                name: tab.name,
+                exact: true,
+            });
+            await expect(tabElement).toBeVisible({ timeout: 5000 });
+
+            // Verify tab href link exists
+            const tabLink = customUIFrame.locator(`a[href="${tab.href}"]`);
+            await expect(tabLink).toBeVisible({ timeout: 5000 });
         }
     });
 
@@ -104,20 +116,11 @@ test.describe("Configuration Tab", () => {
         await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
         await addIssuerButton.click();
 
-        // Wait for form to render
-        await page.waitForTimeout(1000);
+        // Wait for issuer name input to render (replaces waitForTimeout)
+        const lastInput = customUIFrame.locator("input.issuer-name").last();
+        await expect(lastInput).toBeVisible({ timeout: 5000 });
 
-        // Verify issuer name input appeared
-        const issuerInputCount = await customUIFrame
-            .locator("input.issuer-name")
-            .count();
-
-        if (issuerInputCount > 0) {
-            const lastInput = customUIFrame.locator("input.issuer-name").last();
-            if (await lastInput.isVisible()) {
-                await lastInput.fill("test-issuer");
-            }
-        }
+        await lastInput.fill("test-issuer");
     });
 
     test("should handle issuer configuration interactions", async ({
@@ -148,9 +151,6 @@ test.describe("Configuration Tab", () => {
 
         await addIssuerButton.click();
 
-        // Wait for form to be fully enabled
-        await page.waitForTimeout(2000);
-
         const issuerFormFields = [
             {
                 selector: 'input[placeholder="e.g., keycloak"]',
@@ -178,15 +178,7 @@ test.describe("Configuration Tab", () => {
                 input = customUIFrame.locator(field.selector).first();
             }
             await expect(input).toBeVisible({ timeout: 5000 });
-
-            // Verify input is enabled
-            const isEnabled = await input.isEnabled();
-            if (!isEnabled) {
-                throw new Error(
-                    `TEST FAILURE: ${field.description} input is disabled when it should be enabled. ` +
-                        `This indicates a UI state issue that needs to be resolved in the application code.`,
-                );
-            }
+            await expect(input).toBeEnabled({ timeout: 5000 });
 
             await input.fill(field.value);
         }
@@ -197,26 +189,19 @@ test.describe("Configuration Tab", () => {
         await expect(saveButton).toBeVisible({ timeout: 5000 });
         await saveButton.click();
 
-        // Check if issuer was saved
-        try {
-            const savedIssuer = customUIFrame
-                .locator(
-                    'text="test-issuer", [value="test-issuer"], .issuer-name',
-                )
-                .first();
-            await expect(savedIssuer).toBeVisible({ timeout: 5000 });
-        } catch (_error) {
-            // If not immediately visible, verify the save button worked
-            try {
-                const addAnotherButton = customUIFrame.getByRole("button", {
-                    name: "Add Issuer",
-                });
-                await expect(addAnotherButton).toBeVisible({
-                    timeout: 5000,
-                });
-            } catch (_e) {
-                // Issuer configuration operation completed
-            }
-        }
+        // Verify issuer was saved — look for the saved name or the Add Issuer button (indicating form reset)
+        const savedIssuer = customUIFrame
+            .locator(
+                'text="test-issuer", [value="test-issuer"], .issuer-name',
+            )
+            .first();
+        const addAnotherButton = customUIFrame.getByRole("button", {
+            name: "Add Issuer",
+        });
+
+        // Either the saved issuer is visible or the form reset to show Add Issuer again
+        await expect(
+            savedIssuer.or(addAnotherButton),
+        ).toBeVisible({ timeout: 5000 });
     });
 });
