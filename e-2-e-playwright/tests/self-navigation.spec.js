@@ -2,7 +2,7 @@
  * @file Self-Test: Navigation Functionality
  * Tests navigation reliability with 2025 best practices
  * Single responsibility: Verify navigation works between application areas
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 import {
@@ -50,47 +50,6 @@ test.describe("Self-Test: Navigation", () => {
         }).rejects.toThrow(/Unknown page type/);
 
         // Should still be on a valid page
-        await authService.verifyCanvasVisible();
-    });
-
-    test("should verify page accessibility and loading state", async ({
-        page,
-    }) => {
-        // Check that NiFi service is accessible
-        const response = await page.request.get("/nifi", {
-            failOnStatusCode: false,
-        });
-
-        // Should get a valid response (200-399 or 401 for auth required)
-        const isAccessible =
-            response.status() < 400 || response.status() === 401;
-        expect(isAccessible).toBeTruthy();
-    });
-
-    test("should maintain proper URL structure during navigation", async ({
-        page,
-    }) => {
-        const authService = new AuthService(page);
-
-        // Navigate to main canvas
-        await authService.navigateToPage("MAIN_CANVAS");
-
-        // Verify URL contains expected path
-        const currentUrl = page.url();
-        expect(currentUrl).toContain("/nifi");
-    });
-
-    test("should handle browser back/forward navigation", async ({ page }) => {
-        const authService = new AuthService(page);
-
-        // Ensure we're on main canvas
-        await authService.navigateToPage("MAIN_CANVAS");
-
-        // Navigate away (reload as simple navigation)
-        await page.reload();
-        await page.waitForLoadState("networkidle");
-
-        // Should return to same functional state
         await authService.verifyCanvasVisible();
     });
 

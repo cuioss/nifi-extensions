@@ -1,7 +1,7 @@
 /**
  * @file Configuration Tab Test
  * Verifies the configuration tab structure and issuer management in the JWT authenticator UI
- * @version 1.1.0
+ * @version 1.2.0
  */
 
 import {
@@ -88,41 +88,6 @@ test.describe("Configuration Tab", () => {
         }
     });
 
-    test("should add issuer and verify form fields", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        const advancedOpened = await processorService.openAdvancedUI(processor);
-
-        if (!advancedOpened) {
-            throw new Error("Failed to open Advanced UI via right-click menu");
-        }
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Could not find custom UI iframe");
-        }
-
-        // Click Add Issuer button
-        const addIssuerButton = customUIFrame.locator(
-            'button:has-text("Add Issuer")',
-        );
-        await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
-        await addIssuerButton.click();
-
-        // Wait for issuer name input to render (replaces waitForTimeout)
-        const lastInput = customUIFrame.locator("input.issuer-name").last();
-        await expect(lastInput).toBeVisible({ timeout: 5000 });
-
-        await lastInput.fill("test-issuer");
-    });
-
     test("should handle issuer configuration interactions", async ({
         page,
     }, testInfo) => {
@@ -189,19 +154,91 @@ test.describe("Configuration Tab", () => {
         await expect(saveButton).toBeVisible({ timeout: 5000 });
         await saveButton.click();
 
-        // Verify issuer was saved — look for the saved name or the Add Issuer button (indicating form reset)
-        const savedIssuer = customUIFrame
-            .locator(
-                'text="test-issuer", [value="test-issuer"], .issuer-name',
-            )
+        // Verify issuer was saved — the issuer name must appear in an input field value
+        // (The UI keeps issuers in editable form, not as collapsed text)
+        const issuerNameInput = customUIFrame
+            .locator('input.issuer-name[value="test-issuer"], input[placeholder="e.g., keycloak"]')
             .first();
-        const addAnotherButton = customUIFrame.getByRole("button", {
-            name: "Add Issuer",
+        await expect(issuerNameInput).toHaveValue("test-issuer", {
+            timeout: 5000,
+        });
+    });
+
+    test("should delete an existing issuer", async ({ page }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
         });
 
-        // Either the saved issuer is visible or the form reset to show Add Issuer again
-        await expect(
-            savedIssuer.or(addAnotherButton),
-        ).toBeVisible({ timeout: 5000 });
+        const advancedOpened = await processorService.openAdvancedUI(processor);
+
+        if (!advancedOpened) {
+            throw new Error("Failed to open Advanced UI via right-click menu");
+        }
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Could not find custom UI iframe");
+        }
+
+        // First, add an issuer to delete
+        const addIssuerButton = customUIFrame.getByRole("button", {
+            name: "Add Issuer",
+        });
+        await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
+        await addIssuerButton.click();
+
+        const issuerNameInput = customUIFrame
+            .locator('input[placeholder="e.g., keycloak"]')
+            .first();
+        await expect(issuerNameInput).toBeVisible({ timeout: 5000 });
+        await issuerNameInput.fill("delete-me-issuer");
+
+        const jwksUrlInput = customUIFrame
+            .locator('input[name="jwks-url"]')
+            .first();
+        await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
+        await jwksUrlInput.fill("https://example.com/.well-known/jwks.json");
+
+        const saveButton = customUIFrame
+            .getByRole("button", { name: "Save Issuer" })
+            .first();
+        await expect(saveButton).toBeVisible({ timeout: 5000 });
+        await saveButton.click();
+
+        // Verify issuer was saved (name appears in input field)
+        await expect(issuerNameInput).toHaveValue("delete-me-issuer", {
+            timeout: 5000,
+        });
+
+        // Find and click the Remove button for this issuer
+        // The Remove button is adjacent to the issuer name input in the same form section
+        const removeButton = customUIFrame
+            .getByRole("button", { name: "Remove" })
+            .first();
+        await expect(removeButton).toBeVisible({ timeout: 5000 });
+        await removeButton.click();
+
+        // Handle confirmation dialog if it appears
+        const confirmButton = customUIFrame
+            .locator(
+                '.confirmation-dialog .confirm-button, button:has-text("Confirm"), button:has-text("Yes")',
+            )
+            .first();
+        if (await confirmButton.isVisible({ timeout: 2000 })) {
+            await confirmButton.click();
+        }
+
+        // Verify the issuer name "delete-me-issuer" is no longer in any input field
+        const remainingInputs = customUIFrame.locator(
+            'input[placeholder="e.g., keycloak"]',
+        );
+        const count = await remainingInputs.count();
+        for (let i = 0; i < count; i++) {
+            const value = await remainingInputs.nth(i).inputValue();
+            expect(value).not.toBe("delete-me-issuer");
+        }
     });
 });

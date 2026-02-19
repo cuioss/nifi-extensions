@@ -141,6 +141,11 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
     });
 
     test("Component-level accessibility checks", async ({ page }, testInfo) => {
+        // KNOWN ISSUE: Configuration Form has a pre-existing accessibility violation.
+        // Previously silently swallowed via expect(true).toBe(true).
+        // Now properly asserted — remove test.fail() when the issue is resolved.
+        test.fail();
+
         // Get the custom UI frame once
         const customUIFrame = await navigateToJWTAuthenticatorUI(
             page,
@@ -149,48 +154,39 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
 
         for (const [key, component] of Object.entries(A11Y_CONFIG.components)) {
             await test.step(`Check ${component.name} accessibility`, async () => {
-                try {
-                    // For the tabs component, it should always be visible
-                    if (key === "tabs") {
-                        const tabsExist =
-                            (await customUIFrame
-                                .locator(component.selector)
-                                .count()) > 0;
-                        expect(tabsExist).toBe(true);
-                        return; // Skip detailed check for tabs
-                    }
-
-                    // For configForm, check if it's visible (default tab)
-                    if (key === "configForm") {
-                        const configFormVisible = await customUIFrame
+                // For the tabs component, it should always be visible
+                if (key === "tabs") {
+                    const tabsExist =
+                        (await customUIFrame
                             .locator(component.selector)
-                            .isVisible();
-                        expect(configFormVisible).toBe(true);
+                            .count()) > 0;
+                    expect(tabsExist).toBe(true);
+                    return; // Skip detailed check for tabs
+                }
 
-                        // Run basic accessibility check
-                        const helper =
-                            await ensureValidAccessibilityHelper(testInfo);
-                        const result = await helper.checkComponent(
-                            component.selector,
-                            component.name,
-                        );
+                // For configForm, check if it's visible (default tab)
+                if (key === "configForm") {
+                    const configFormVisible = await customUIFrame
+                        .locator(component.selector)
+                        .isVisible();
+                    expect(configFormVisible).toBe(true);
 
-                        expect(result.passed).toBe(true);
-
-                        if (!result.passed) {
-                            console.log(
-                                `${component.name} accessibility issues:`,
-                                result,
-                            );
-                        }
-                    }
-                } catch (error) {
-                    console.error(
-                        `Error checking ${component.name}:`,
-                        error.message,
+                    // Run accessibility check — let failures propagate
+                    const helper =
+                        await ensureValidAccessibilityHelper(testInfo);
+                    const result = await helper.checkComponent(
+                        component.selector,
+                        component.name,
                     );
-                    // Don't fail the entire test suite for component-level issues
-                    expect(true).toBe(true);
+
+                    if (!result.passed) {
+                        console.warn(
+                            `ACCESSIBILITY: ${component.name} issues:`,
+                            JSON.stringify(result, null, 2),
+                        );
+                    }
+
+                    expect(result.passed).toBe(true);
                 }
             });
         }

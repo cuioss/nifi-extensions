@@ -1,7 +1,11 @@
 /**
  * @file JWKS Validation Test
- * Verifies the JWKS validation button functionality in the JWT authenticator UI
- * @version 1.1.0
+ * Verifies the JWKS validation button functionality in the JWT authenticator UI.
+ *
+ * Note: SSRF protection blocks private/loopback addresses (including localhost),
+ * so the real Keycloak JWKS URL cannot be validated through the UI. Instead,
+ * we test that SSRF protection works correctly and that invalid URLs are rejected.
+ * @version 1.2.0
  */
 
 import {
@@ -22,7 +26,7 @@ test.describe("JWKS Validation", () => {
         await takeStartScreenshot(page, testInfo);
     });
 
-    test("should validate JWKS URL successfully", async ({
+    test("should block private/loopback JWKS URLs via SSRF protection", async ({
         page,
     }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
@@ -52,7 +56,10 @@ test.describe("JWKS Validation", () => {
         await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
         await expect(jwksUrlInput).toBeEnabled({ timeout: 5000 });
 
-        await jwksUrlInput.fill("https://example.com/.well-known/jwks.json");
+        // Use localhost Keycloak JWKS URL — SSRF protection should block this
+        await jwksUrlInput.fill(
+            "http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/certs",
+        );
 
         const validateButton = customUIFrame
             .getByRole("button", { name: "Test Connection" })
@@ -64,10 +71,9 @@ test.describe("JWKS Validation", () => {
             .locator(".verification-result")
             .first();
 
-        // Wait for actual validation content (not just element visibility —
-        // the element is always in DOM but empty until the POST completes)
+        // Wait for SSRF error
         await expect(verificationResult).toContainText(
-            /Error|error|invalid|fail|OK|Valid|JWKS|connection|unreachable|resolve/i,
+            /private|loopback|address/i,
             { timeout: 30000 },
         );
 
@@ -75,6 +81,12 @@ test.describe("JWKS Validation", () => {
 
         // Must not be an auth/CSRF infrastructure error
         assertNoAuthError(resultText);
+
+        // Must indicate SSRF block — not a generic error
+        expect(resultText).toMatch(/private|loopback/i);
+
+        // Must NOT show as a success
+        expect(resultText).not.toMatch(/^\s*OK\b/);
     });
 
     test("should handle invalid JWKS URL", async ({ page }, testInfo) => {
@@ -182,5 +194,8 @@ test.describe("JWKS Validation", () => {
 
         // Must not be an auth/CSRF infrastructure error
         assertNoAuthError(resultText);
+
+        // File path must not show as a success
+        expect(resultText).not.toMatch(/^\s*OK\b/);
     });
 });

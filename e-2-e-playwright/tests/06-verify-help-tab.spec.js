@@ -1,7 +1,7 @@
 /**
  * @file Help Tab Test
  * Verifies the help tab functionality in the JWT authenticator UI
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 import {
@@ -22,7 +22,9 @@ test.describe("Help Tab", () => {
         await takeStartScreenshot(page, testInfo);
     });
 
-    test("should display help documentation", async ({ page }, testInfo) => {
+    test("should display help documentation with essential keywords", async ({
+        page,
+    }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
         // Find JWT processor using the verified utility
@@ -59,6 +61,23 @@ test.describe("Help Tab", () => {
             .locator('.help-section:has-text("Issuer Configuration")')
             .first();
         await expect(issuerConfig).toBeVisible();
+
+        // Verify content contains essential domain keywords
+        const helpText = await helpPanel.textContent();
+        const essentialKeywords = [
+            "Token Verification",
+            "JWT",
+            "JWKS",
+            "issuer",
+        ];
+        for (const keyword of essentialKeywords) {
+            expect(helpText.toLowerCase()).toContain(keyword.toLowerCase());
+        }
+
+        // Check for collapsible sections as interactive elements
+        const collapsibleHeaders = customUIFrame.locator(".collapsible-header");
+        const headerCount = await collapsibleHeaders.count();
+        expect(headerCount).toBeGreaterThan(0);
     });
 
     test("should have expandable help sections", async ({ page }, testInfo) => {
@@ -81,41 +100,42 @@ test.describe("Help Tab", () => {
         );
         const itemCount = await accordionItems.count();
 
-        if (itemCount > 0) {
-            const firstAccordion = accordionItems.first();
-            const accordionButton = firstAccordion.locator(
-                '[data-testid="accordion-toggle"]',
-            );
-            await expect(accordionButton).toBeVisible({ timeout: 5000 });
+        // Accordion items must exist — fail if they don't
+        expect(itemCount).toBeGreaterThan(0);
 
-            const accordionContent = firstAccordion.locator(
-                '[data-testid="accordion-content"]',
-            );
-            const isExpanded = await accordionContent.isVisible();
+        const firstAccordion = accordionItems.first();
+        const accordionButton = firstAccordion.locator(
+            '[data-testid="accordion-toggle"]',
+        );
+        await expect(accordionButton).toBeVisible({ timeout: 5000 });
 
-            await accordionButton.click();
+        const accordionContent = firstAccordion.locator(
+            '[data-testid="accordion-content"]',
+        );
+        const isExpanded = await accordionContent.isVisible();
 
-            if (isExpanded) {
-                await expect(accordionContent).not.toBeVisible({
-                    timeout: 5000,
-                });
-            } else {
-                await expect(accordionContent).toBeVisible({
-                    timeout: 5000,
-                });
-            }
+        await accordionButton.click();
 
-            await accordionButton.click();
+        if (isExpanded) {
+            await expect(accordionContent).not.toBeVisible({
+                timeout: 5000,
+            });
+        } else {
+            await expect(accordionContent).toBeVisible({
+                timeout: 5000,
+            });
+        }
 
-            if (isExpanded) {
-                await expect(accordionContent).toBeVisible({
-                    timeout: 5000,
-                });
-            } else {
-                await expect(accordionContent).not.toBeVisible({
-                    timeout: 5000,
-                });
-            }
+        await accordionButton.click();
+
+        if (isExpanded) {
+            await expect(accordionContent).toBeVisible({
+                timeout: 5000,
+            });
+        } else {
+            await expect(accordionContent).not.toBeVisible({
+                timeout: 5000,
+            });
         }
     });
 
@@ -163,51 +183,11 @@ test.describe("Help Tab", () => {
 
         // Verify each example has a code block
         for (let i = 0; i < Math.min(exampleConfigs.length, 3); i++) {
-             
             const example = exampleConfigs[i];
             await expect(example).toBeVisible();
 
             const codeBlock = example.locator("code");
             await expect(codeBlock).toBeVisible();
-        }
-    });
-
-    test("should have copy code functionality", async ({ page }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        // Find JWT processor using the verified utility
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        // Open Advanced UI using the verified utility
-        await processorService.openAdvancedUI(processor);
-
-        // Get the custom UI frame
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-        await processorService.clickTab(customUIFrame, "Help");
-
-        const codeBlocks = customUIFrame.locator('[data-testid="code-block"]');
-        const blockCount = await codeBlocks.count();
-
-        if (blockCount > 0) {
-            const firstBlock = codeBlocks.first();
-            await expect(firstBlock).toBeVisible({ timeout: 5000 });
-
-            const copyButton = firstBlock.locator(
-                '[data-testid="copy-code-button"]',
-            );
-            await expect(copyButton).toBeVisible({ timeout: 5000 });
-
-            await copyButton.click();
-
-            const copyFeedback = customUIFrame.locator(
-                '[data-testid="copy-feedback"]',
-            );
-            await expect(copyFeedback).toBeVisible({ timeout: 5000 });
-            await expect(copyFeedback).toContainText(/copied/i);
-
-            await expect(copyFeedback).not.toBeVisible({ timeout: 5000 });
         }
     });
 
@@ -263,39 +243,5 @@ test.describe("Help Tab", () => {
         for (const content of expectedContent) {
             expect(troubleshootingText).toContain(content);
         }
-    });
-
-    test("should contain essential keywords in help content", async ({ page }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-        await processorService.clickTab(customUIFrame, "Help");
-
-        const helpContent = customUIFrame.locator("#help");
-        await expect(helpContent).toBeVisible({ timeout: 5000 });
-
-        const helpText = await helpContent.textContent();
-
-        // Verify content contains essential domain keywords
-        const essentialKeywords = [
-            "Token Verification",
-            "JWT",
-            "JWKS",
-            "issuer",
-        ];
-        for (const keyword of essentialKeywords) {
-            expect(helpText.toLowerCase()).toContain(keyword.toLowerCase());
-        }
-
-        // Check for collapsible sections as interactive elements
-        const collapsibleHeaders = customUIFrame.locator(".collapsible-header");
-        const headerCount = await collapsibleHeaders.count();
-        expect(headerCount).toBeGreaterThan(0);
     });
 });

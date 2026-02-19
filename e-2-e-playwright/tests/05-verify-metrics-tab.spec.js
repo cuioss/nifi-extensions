@@ -6,7 +6,7 @@
  * shows a "Metrics Not Available" banner (metrics are REST API Gateway only).
  * These tests verify that the metrics tab renders correctly, shows the
  * not-available banner, and that the refresh/export controls are functional.
- * @version 1.1.0
+ * @version 1.2.0
  */
 
 import {
@@ -27,7 +27,7 @@ test.describe("Metrics Tab", () => {
         await takeStartScreenshot(page, testInfo);
     });
 
-    test("should display metrics tab with not-available banner for JWT processor", async ({
+    test("should display not-available banner with gateway requirement message", async ({
         page,
     }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
@@ -57,21 +57,6 @@ test.describe("Metrics Tab", () => {
             "text=Metrics Not Available",
         );
         await expect(notAvailableBanner).toBeVisible({ timeout: 5000 });
-    });
-
-    test("should show not-available message indicating REST API Gateway requirement", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-        await processorService.clickTab(customUIFrame, "Metrics");
 
         // Verify the banner explains that metrics are gateway-only
         const gatewayMessage = customUIFrame.locator(
