@@ -163,7 +163,7 @@ export async function interactWithProcessor(page, processor, options = {}) {
 
     await page.waitForLoadState('networkidle', { timeout: 5000 });
   } catch (error) {
-    console.error(`Processor interaction failed (${action}):`, error.message);
+    testLogger.warn('Processor', `Processor interaction failed (${action}): ${error.message}`);
 
     // Take screenshot on failure for debugging
     if (takeScreenshot) {
@@ -265,7 +265,7 @@ export async function configureProcessor(page, processorIdentifier, options = {}
 
     return dialog;
   } catch (error) {
-    console.error('Configure processor failed:', error.message);
+    testLogger.warn('Processor', `Configure processor failed: ${error.message}`);
     throw error;
   }
 }

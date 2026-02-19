@@ -166,6 +166,11 @@ export class CriticalErrorDetector {
                 )
                     return;
 
+                // Skip token verification endpoint errors — the verify-token
+                // API returns 4xx/5xx for invalid tokens or when the processor
+                // has no issuer configuration. Tests validate results directly.
+                if (url.includes("/jwt/verify-token")) return;
+
                 this.addCriticalError("HTTP_ERROR", message, testInfo);
             }
         });
