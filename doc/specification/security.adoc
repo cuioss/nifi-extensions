@@ -134,6 +134,22 @@ JWKS file validation uses a two-layer defense against path traversal:
 
 JWKS URL validation uses the `cui-http` library's `HttpHandler` for secure HTTP communication with built-in timeouts and URL structure validation via `PipelineFactory.createUrlPathPipeline()`.
 
+==== SSRF Protection
+
+By default, JWKS URLs that resolve to private, loopback, link-local, or any-local addresses are blocked to prevent Server-Side Request Forgery (SSRF) attacks. This protection can be disabled when the Identity Provider (IdP) runs on an internal network.
+
+[cols="1,3"]
+|===
+|Property |Description
+
+|`jwt.validation.jwks.allow.private.network.addresses`
+|When set to `true` on the `StandardJwtIssuerConfigService` controller service, allows JWKS URLs that resolve to private/loopback network addresses. Default: `false`.
+|===
+
+**Use case:** Enterprise deployments where Keycloak or another IdP runs on a site-local address (e.g., `10.x.x.x`, `172.16.x.x`, `192.168.x.x`).
+
+WARNING: Only enable this setting in trusted network environments where the NiFi instance and IdP are on the same private network. Disabling SSRF protection in untrusted environments exposes the system to internal network scanning attacks.
+
 === Design Decisions
 
 * No test or E2E bypass endpoints exist in production deployments

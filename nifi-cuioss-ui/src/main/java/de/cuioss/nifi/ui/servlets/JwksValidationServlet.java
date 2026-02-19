@@ -22,13 +22,17 @@ import de.cuioss.http.security.core.HttpSecurityValidator;
 import de.cuioss.http.security.exceptions.UrlSecurityException;
 import de.cuioss.http.security.monitoring.SecurityEventCounter;
 import de.cuioss.http.security.pipeline.PipelineFactory;
+import de.cuioss.nifi.jwt.JWTAttributes;
 import de.cuioss.nifi.ui.UILogMessages;
+import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.*;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.nifi.web.NiFiWebConfigurationContext;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -65,6 +69,15 @@ public class JwksValidationServlet extends HttpServlet {
     private static final JsonReaderFactory JSON_READER = Json.createReaderFactory(Map.of());
     private static final JsonWriterFactory JSON_WRITER = Json.createWriterFactory(Map.of());
     private static final String JWKS_VALIDATION_FAILED_MSG = "JWKS URL validation failed: %s - %s";
+    private static final String PROCESSOR_ID_HEADER = "X-Processor-Id";
+
+    /**
+     * Processor property keys that reference a JwtIssuerConfigService controller service.
+     */
+    private static final List<String> CONTROLLER_SERVICE_PROPERTY_KEYS = List.of(
+            "jwt.issuer.config.service",
+            "rest.gateway.jwt.config.service"
+    );
 
     /** Maximum request body size: 1 MB */
     private static final int MAX_REQUEST_BODY_SIZE = 1024 * 1024;
@@ -72,6 +85,15 @@ public class JwksValidationServlet extends HttpServlet {
     /** Default base path for JWKS files when no NiFi properties are available. */
     @SuppressWarnings("java:S1075") // Intentional NiFi deployment default constant
     private static final String DEFAULT_JWKS_BASE_PATH = "/opt/nifi/nifi-current/conf";
+
+    @Nullable private transient NiFiWebConfigurationContext configContext;
+
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        configContext = (NiFiWebConfigurationContext) getServletContext()
+                .getAttribute("nifi-web-configuration-context");
+    }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
@@ -117,8 +139,11 @@ public class JwksValidationServlet extends HttpServlet {
 
         LOGGER.debug("Validating JWKS URL: %s", jwksUrl);
 
+        // Check if private network addresses are allowed via controller service config
+        boolean allowPrivateAddresses = resolveAllowPrivateAddresses(req);
+
         // Validate JWKS URL using HttpJwksLoader
-        JwksValidationResult result = validateJwksUrl(jwksUrl);
+        JwksValidationResult result = validateJwksUrl(jwksUrl, allowPrivateAddresses);
         sendValidationResponse(resp, result);
     }
 
@@ -182,8 +207,11 @@ public class JwksValidationServlet extends HttpServlet {
 
     /**
      * Validates a JWKS URL using cui-http's HttpHandler for secure HTTP communication.
+     *
+     * @param jwksUrl              the JWKS URL to validate
+     * @param allowPrivateAddresses when true, skip SSRF checks for private/loopback addresses
      */
-    private JwksValidationResult validateJwksUrl(String jwksUrl) {
+    private JwksValidationResult validateJwksUrl(String jwksUrl, boolean allowPrivateAddresses) {
         try {
             // Validate URL format
             URI uri = validateUrlScheme(jwksUrl);
@@ -198,16 +226,24 @@ public class JwksValidationServlet extends HttpServlet {
             }
 
             // SSRF protection: resolve DNS once and validate all resolved addresses.
-            // The resolved IP is used directly for the HTTP request to prevent
-            // DNS rebinding TOCTOU attacks.
-            InetAddress resolvedAddress = resolveAndValidateAddress(uri.getHost());
+            InetAddress resolvedAddress = resolveAndValidateAddress(uri.getHost(), allowPrivateAddresses);
             if (resolvedAddress == null) {
                 LOGGER.warn(UILogMessages.WARN.SSRF_BLOCKED, jwksUrl);
                 return JwksValidationResult.failure("URL must not point to a private or loopback address");
             }
 
-            // Fetch JWKS content using the resolved IP to prevent DNS rebinding
-            String content = fetchJwksContentByResolvedAddress(jwksUrl, uri, resolvedAddress);
+            // Fetch JWKS content.
+            // When private addresses are allowed, use the original hostname directly.
+            // IP-based fetch (for DNS rebinding TOCTOU protection) fails with virtual-hosted
+            // services because Java's HttpClient restricts the Host header, so the server
+            // receives the IP as hostname instead of the original. Since the admin has
+            // explicitly trusted private addresses, DNS rebinding protection is unnecessary.
+            String content;
+            if (allowPrivateAddresses) {
+                content = fetchJwksContentByOriginalUrl(jwksUrl);
+            } else {
+                content = fetchJwksContentByResolvedAddress(jwksUrl, uri, resolvedAddress);
+            }
             if (content == null) {
                 return JwksValidationResult.failure("Failed to fetch JWKS content");
             }
@@ -230,22 +266,25 @@ public class JwksValidationServlet extends HttpServlet {
      * Returns the first resolved address if all pass validation, or null if any are private.
      * This performs DNS resolution once to prevent DNS rebinding TOCTOU attacks.
      *
-     * @param host hostname to resolve and validate
-     * @return the first resolved InetAddress if all are public, null otherwise
+     * @param host                  hostname to resolve and validate
+     * @param allowPrivateAddresses when true, skip checks for private/loopback addresses
+     * @return the first resolved InetAddress if all pass validation, null otherwise
      */
-    private InetAddress resolveAndValidateAddress(String host) {
+    InetAddress resolveAndValidateAddress(String host, boolean allowPrivateAddresses) {
         if (host == null || host.isEmpty()) {
             return null;
         }
         try {
             InetAddress[] addresses = InetAddress.getAllByName(host);
-            for (InetAddress address : addresses) {
-                if (address.isLoopbackAddress()
-                        || address.isSiteLocalAddress()
-                        || address.isLinkLocalAddress()
-                        || address.isAnyLocalAddress()) {
-                    LOGGER.debug("Private/loopback address detected for host %s: %s", host, address);
-                    return null;
+            if (!allowPrivateAddresses) {
+                for (InetAddress address : addresses) {
+                    if (address.isLoopbackAddress()
+                            || address.isSiteLocalAddress()
+                            || address.isLinkLocalAddress()
+                            || address.isAnyLocalAddress()) {
+                        LOGGER.debug("Private/loopback address detected for host %s: %s", host, address);
+                        return null;
+                    }
                 }
             }
             return addresses[0];
@@ -253,6 +292,63 @@ public class JwksValidationServlet extends HttpServlet {
             LOGGER.debug("Cannot resolve host for SSRF check: %s", host);
             return null;
         }
+    }
+
+    /**
+     * Resolves the "allow private network addresses" setting from the controller service
+     * configuration referenced by the processor identified via the X-Processor-Id header.
+     *
+     * @param req the HTTP servlet request (contains processor ID header and auth context)
+     * @return true if private addresses should be allowed, false otherwise (default)
+     */
+    private boolean resolveAllowPrivateAddresses(HttpServletRequest req) {
+        if (configContext == null) {
+            return false;
+        }
+
+        String processorId = req.getHeader(PROCESSOR_ID_HEADER);
+        if (processorId == null || processorId.isBlank()) {
+            return false;
+        }
+
+        try {
+            var configReader = new ComponentConfigReader(configContext);
+            Map<String, String> processorProperties = configReader.getProcessorProperties(processorId, req);
+
+            // Find the controller service ID from processor properties
+            Map<String, String> csProperties = resolveControllerServiceProperties(
+                    processorProperties, configReader, req);
+
+            String value = csProperties.get(
+                    JWTAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES);
+            return "true".equalsIgnoreCase(value);
+        } catch (IllegalArgumentException e) {
+            LOGGER.debug("Could not resolve allow-private-addresses config: %s", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Resolves controller service properties from processor properties.
+     * If the processor references a JwtIssuerConfigService, returns that service's properties.
+     */
+    private static Map<String, String> resolveControllerServiceProperties(
+            Map<String, String> processorProperties,
+            ComponentConfigReader configReader,
+            HttpServletRequest request) {
+
+        for (String key : CONTROLLER_SERVICE_PROPERTY_KEYS) {
+            String controllerServiceId = processorProperties.get(key);
+            if (controllerServiceId != null && !controllerServiceId.isBlank()) {
+                try {
+                    return configReader.getComponentConfig(controllerServiceId, request).properties();
+                } catch (IllegalArgumentException e) {
+                    LOGGER.debug("Failed to resolve controller service %s: %s",
+                            controllerServiceId, e.getMessage());
+                }
+            }
+        }
+        return processorProperties;
     }
 
     /**
@@ -304,6 +400,42 @@ public class JwksValidationServlet extends HttpServlet {
             HttpRequest request = httpHandler.requestBuilder()
                     .header("Accept", CONTENT_TYPE_JSON)
                     .header("Host", originalUri.getHost())
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() != 200) {
+                String error = "JWKS URL returned status %d".formatted(response.statusCode());
+                LOGGER.debug(JWKS_VALIDATION_FAILED_MSG, jwksUrl, error);
+                return null;
+            }
+
+            return response.body();
+        }
+    }
+
+    /**
+     * Fetches JWKS content using the original URL directly.
+     * Used when private addresses are allowed, bypassing IP-based fetch since
+     * DNS rebinding protection is unnecessary when private addresses are trusted.
+     *
+     * @param jwksUrl Original JWKS URL
+     * @return JWKS content, or null if fetch failed
+     * @throws IOException if HTTP request fails
+     * @throws InterruptedException if HTTP request is interrupted
+     */
+    private String fetchJwksContentByOriginalUrl(String jwksUrl)
+            throws IOException, InterruptedException {
+        HttpHandler httpHandler = HttpHandler.builder()
+                .uri(jwksUrl)
+                .connectionTimeoutSeconds(5)
+                .readTimeoutSeconds(10)
+                .build();
+
+        try (HttpClient httpClient = httpHandler.createHttpClient()) {
+            HttpRequest request = httpHandler.requestBuilder()
+                    .header("Accept", CONTENT_TYPE_JSON)
                     .GET()
                     .build();
 

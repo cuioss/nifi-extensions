@@ -234,6 +234,41 @@ class CustomUIEndpointsIT {
         }
 
         @Test
+        @DisplayName("should return valid=true for JWKS file in NiFi conf directory")
+        void jwksFileValidationWithValidFile() {
+            // test-jwks.json is copied to /opt/nifi/nifi-current/conf/ by Dockerfile
+            given().spec(authSpec)
+                    .body("""
+                            {"jwksFilePath": "/opt/nifi/nifi-current/conf/test-jwks.json"}
+                            """)
+                    .when()
+                    .post("/nifi-api/processors/jwt/validate-jwks-file")
+                    .then()
+                    .statusCode(200)
+                    .contentType(ContentType.JSON)
+                    .body("valid", equalTo(true))
+                    .body("keyCount", greaterThan(0));
+        }
+
+        @Test
+        @DisplayName("should return valid=true for Keycloak JWKS URL (allow-private-addresses enabled)")
+        void jwksUrlValidationWithKeycloakUrl() {
+            // The Keycloak hostname resolves to a Docker network IP (site-local) inside NiFi.
+            // With jwt.validation.jwks.allow.private.network.addresses=true in flow.json,
+            // the SSRF check permits this.
+            given().spec(authSpec)
+                    .body(Map.of("jwksUrl",
+                            "http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs"))
+                    .when()
+                    .post("/nifi-api/processors/jwt/validate-jwks-url")
+                    .then()
+                    .statusCode(200)
+                    .contentType(ContentType.JSON)
+                    .body("valid", equalTo(true))
+                    .body("keyCount", greaterThan(0));
+        }
+
+        @Test
         @DisplayName("should return 405 for unknown endpoint (no servlet mapped)")
         void unknownEndpointReturns405() {
             given().spec(authSpec)

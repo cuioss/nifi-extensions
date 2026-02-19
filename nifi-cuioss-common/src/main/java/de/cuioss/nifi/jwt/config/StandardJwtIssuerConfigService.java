@@ -120,12 +120,24 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
             .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
             .build();
 
+    static final PropertyDescriptor JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES = new PropertyDescriptor.Builder()
+            .name(JWTAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES)
+            .displayName("Allow Private Network Addresses for JWKS")
+            .description("When true, allows JWKS URLs that resolve to private/loopback network addresses. "
+                    + "Enable this when the IdP (e.g. Keycloak) runs on an internal network. "
+                    + "Default: false (blocks private addresses for SSRF protection).")
+            .required(true)
+            .defaultValue("false")
+            .allowableValues("true", "false")
+            .build();
+
     private static final List<PropertyDescriptor> PROPERTY_DESCRIPTORS = List.of(
             JWKS_REFRESH_INTERVAL,
             MAXIMUM_TOKEN_SIZE,
             ALLOWED_ALGORITHMS,
             REQUIRE_HTTPS_FOR_JWKS,
-            JWKS_CONNECTION_TIMEOUT
+            JWKS_CONNECTION_TIMEOUT,
+            JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES
     );
 
     // --- Internal State ---

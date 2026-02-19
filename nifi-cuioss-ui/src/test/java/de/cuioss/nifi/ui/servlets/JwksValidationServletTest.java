@@ -33,7 +33,11 @@ import java.util.stream.Stream;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
+import java.net.InetAddress;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for {@link JwksValidationServlet} using embedded Jetty + REST Assured.
@@ -271,6 +275,64 @@ class JwksValidationServletTest {
                 .then()
                 .statusCode(200)
                 .body("valid", equalTo(false));
+    }
+
+    @Nested
+    @DisplayName("Configurable SSRF Protection Tests")
+    class ConfigurableSsrfProtectionTests {
+
+        @Test
+        @DisplayName("Should block private address by default (allowPrivateAddresses=false)")
+        void defaultBlocksPrivateAddress() {
+            // Arrange
+            JwksValidationServlet servlet = new JwksValidationServlet();
+
+            // Act — default is false, so private addresses should be blocked
+            InetAddress result = servlet.resolveAndValidateAddress("127.0.0.1", false);
+
+            // Assert
+            assertEquals(null, result, "Private address should be blocked when allowPrivateAddresses=false");
+        }
+
+        @Test
+        @DisplayName("Should allow loopback address when allowPrivateAddresses=true")
+        void allowsLoopbackWhenEnabled() {
+            // Arrange
+            JwksValidationServlet servlet = new JwksValidationServlet();
+
+            // Act
+            InetAddress result = servlet.resolveAndValidateAddress("127.0.0.1", true);
+
+            // Assert
+            assertNotNull(result, "Loopback address should be allowed when allowPrivateAddresses=true");
+            assertTrue(result.isLoopbackAddress());
+        }
+
+        @Test
+        @DisplayName("Should return null for empty host regardless of allowPrivateAddresses")
+        void returnsNullForEmptyHost() {
+            // Arrange
+            JwksValidationServlet servlet = new JwksValidationServlet();
+
+            // Act & Assert
+            assertEquals(null, servlet.resolveAndValidateAddress("", true));
+            assertEquals(null, servlet.resolveAndValidateAddress(null, true));
+            assertEquals(null, servlet.resolveAndValidateAddress("", false));
+            assertEquals(null, servlet.resolveAndValidateAddress(null, false));
+        }
+
+        @Test
+        @DisplayName("Should return null for unresolvable host regardless of allowPrivateAddresses")
+        void returnsNullForUnresolvableHost() {
+            // Arrange
+            JwksValidationServlet servlet = new JwksValidationServlet();
+
+            // Act & Assert
+            assertEquals(null, servlet.resolveAndValidateAddress(
+                    "this.host.definitely.does.not.exist.invalid", true));
+            assertEquals(null, servlet.resolveAndValidateAddress(
+                    "this.host.definitely.does.not.exist.invalid", false));
+        }
     }
 
     @Test

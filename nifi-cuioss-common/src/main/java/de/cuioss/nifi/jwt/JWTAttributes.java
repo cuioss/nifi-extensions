@@ -208,6 +208,12 @@ public final class JWTAttributes {
              * Timeout in seconds for JWKS endpoint connections.
              */
             public static final String JWKS_CONNECTION_TIMEOUT = "jwt.validation.jwks.connection.timeout";
+
+            /**
+             * Whether to allow JWKS URLs that resolve to private/loopback network addresses.
+             * When true, disables SSRF protection for private addresses (e.g., when IdP runs on an internal network).
+             */
+            public static final String JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES = "jwt.validation.jwks.allow.private.network.addresses";
         }
     }
 }

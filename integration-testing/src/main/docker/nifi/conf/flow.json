@@ -957,10 +957,15 @@
               "rest.gateway.jwt.config.service": "b731b475-3078-5b65-b962-1e7a286a8f2b",
               "rest.gateway.max.request.size": "1048576",
               "rest.gateway.request.queue.size": "50",
+              "rest.gateway.cors.allowed.origins": "http://localhost:3000",
+              "rest.gateway.management.api-key": "integration-test-api-key",
               "restapi.health.path": "/api/health",
               "restapi.health.methods": "GET",
               "restapi.data.path": "/api/data",
-              "restapi.data.methods": "GET,POST"
+              "restapi.data.methods": "GET,POST",
+              "restapi.admin.path": "/api/admin",
+              "restapi.admin.methods": "GET",
+              "restapi.admin.required-roles": "ADMIN"
             },
             "propertyDescriptors": {
               "rest.gateway.listening.port": {
@@ -983,6 +988,16 @@
                 "identifiesControllerService": false,
                 "sensitive": false
               },
+              "rest.gateway.cors.allowed.origins": {
+                "name": "rest.gateway.cors.allowed.origins",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "rest.gateway.management.api-key": {
+                "name": "rest.gateway.management.api-key",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
               "restapi.health.path": {
                 "name": "restapi.health.path",
                 "identifiesControllerService": false,
@@ -1000,6 +1015,21 @@
               },
               "restapi.data.methods": {
                 "name": "restapi.data.methods",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.admin.path": {
+                "name": "restapi.admin.path",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.admin.methods": {
+                "name": "restapi.admin.methods",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.admin.required-roles": {
+                "name": "restapi.admin.required-roles",
                 "identifiesControllerService": false,
                 "sensitive": false
               }
@@ -1191,6 +1221,36 @@
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "labelIndex": 1,
             "zIndex": 0
+          },
+          {
+            "identifier": "a1b2c3d4-5678-5901-abcd-ef0123456789",
+            "instanceIdentifier": "b2c3d4e5-6789-5012-bcde-f01234567890",
+            "name": "RestApiGateway admin \u2192 LogAttribute",
+            "source": {
+              "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "RestApiGateway"
+            },
+            "destination": {
+              "id": "e5842c02-def4-500d-94b6-72cd1bcd693c",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "LogAttribute (gateway-health)"
+            },
+            "selectedRelationships": [
+              "admin"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
           }
         ],
         "labels": [],
@@ -1224,6 +1284,7 @@
         },
         "properties": {
           "jwt.validation.require.https.for.jwks": "false",
+          "jwt.validation.jwks.allow.private.network.addresses": "true",
           "issuer.keycloak.jwks-type": "url",
           "issuer.keycloak.jwks-url": "http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs",
           "issuer.keycloak.issuer": "http://keycloak:8080/realms/oauth_integration_tests"
@@ -1231,6 +1292,11 @@
         "propertyDescriptors": {
           "jwt.validation.require.https.for.jwks": {
             "name": "jwt.validation.require.https.for.jwks",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "jwt.validation.jwks.allow.private.network.addresses": {
+            "name": "jwt.validation.jwks.allow.private.network.addresses",
             "identifiesControllerService": false,
             "sensitive": false
           },

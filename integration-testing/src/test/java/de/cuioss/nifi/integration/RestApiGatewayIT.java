@@ -60,7 +60,9 @@ class RestApiGatewayIT {
     private static final String GATEWAY_BASE = "http://localhost:9443";
     private static final String HEALTH_ENDPOINT = GATEWAY_BASE + "/api/health";
     private static final String DATA_ENDPOINT = GATEWAY_BASE + "/api/data";
+    private static final String ADMIN_ENDPOINT = GATEWAY_BASE + "/api/admin";
     private static final String METRICS_ENDPOINT = GATEWAY_BASE + "/metrics";
+    private static final String MANAGEMENT_API_KEY = "integration-test-api-key";
 
 
     private static final String KEYCLOAK_TOKEN_ENDPOINT =
@@ -225,9 +227,9 @@ class RestApiGatewayIT {
     class ManagementEndpointTests {
 
         @Test
-        @DisplayName("should return 200 with Prometheus metrics for GET /metrics")
+        @DisplayName("should return 200 with Prometheus metrics for GET /metrics with API key")
         void shouldReturnPrometheusMetrics() throws Exception {
-            HttpResponse<String> response = sendGetWithoutAuth(METRICS_ENDPOINT);
+            HttpResponse<String> response = sendGetWithApiKey(METRICS_ENDPOINT);
 
             assertEquals(200, response.statusCode(),
                     "GET /metrics should return 200. Response: " + response.body());
@@ -248,6 +250,7 @@ class RestApiGatewayIT {
                     .uri(URI.create(METRICS_ENDPOINT))
                     .GET()
                     .header("Accept", "application/json")
+                    .header("X-Api-Key", MANAGEMENT_API_KEY)
                     .timeout(Duration.ofSeconds(10))
                     .build();
 
@@ -273,6 +276,7 @@ class RestApiGatewayIT {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(METRICS_ENDPOINT))
                     .POST(HttpRequest.BodyPublishers.ofString(""))
+                    .header("X-Api-Key", MANAGEMENT_API_KEY)
                     .timeout(Duration.ofSeconds(10))
                     .build();
 
@@ -280,6 +284,31 @@ class RestApiGatewayIT {
 
             assertEquals(405, response.statusCode(),
                     "POST to /metrics should return 405. Response: " + response.body());
+        }
+
+        @Test
+        @DisplayName("should return 401 for GET /metrics without API key")
+        void shouldReturn401ForMetricsWithoutApiKey() throws Exception {
+            HttpResponse<String> response = sendGetWithoutAuth(METRICS_ENDPOINT);
+
+            assertEquals(401, response.statusCode(),
+                    "GET /metrics without API key should return 401. Response: " + response.body());
+        }
+
+        @Test
+        @DisplayName("should return 401 for GET /metrics with wrong API key")
+        void shouldReturn401ForMetricsWithWrongApiKey() throws Exception {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(METRICS_ENDPOINT))
+                    .GET()
+                    .header("X-Api-Key", "wrong-api-key")
+                    .timeout(Duration.ofSeconds(10))
+                    .build();
+
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(401, response.statusCode(),
+                    "GET /metrics with wrong API key should return 401. Response: " + response.body());
         }
     }
 
@@ -348,6 +377,119 @@ class RestApiGatewayIT {
             assertEquals(401, response.statusCode(),
                     "Token from other_realm should return 401 (different RSA key pair). Response: " + response.body());
         }
+
+        @Test
+        @DisplayName("should return 413 for oversized request body")
+        void shouldReturn413ForOversizedBody() throws Exception {
+            String token = fetchToken();
+
+            // Create a body larger than 1MB (max request size = 1048576 bytes)
+            String oversizedBody = "x".repeat(1_048_577);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(DATA_ENDPOINT))
+                    .POST(HttpRequest.BodyPublishers.ofString(oversizedBody))
+                    .header("Authorization", "Bearer " + token)
+                    .header("Content-Type", "application/json")
+                    .timeout(Duration.ofSeconds(10))
+                    .build();
+
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(413, response.statusCode(),
+                    "POST with body > 1MB should return 413. Response: " + response.body());
+        }
+    }
+
+    // ── Authorization Tests ──────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("Authorization")
+    class AuthorizationTests {
+
+        @Test
+        @DisplayName("should return 403 when token lacks required ADMIN role")
+        void shouldReturn403WhenTokenLacksRequiredRole() throws Exception {
+            // testUser has 'read' role but NOT 'ADMIN' role
+            String token = fetchToken();
+
+            HttpResponse<String> response = sendGet(ADMIN_ENDPOINT, token);
+
+            assertEquals(403, response.statusCode(),
+                    "GET /api/admin without ADMIN role should return 403. Response: " + response.body());
+
+            String contentType = response.headers().firstValue("Content-Type").orElse("");
+            assertTrue(contentType.contains("application/problem+json"),
+                    "403 response Content-Type should be application/problem+json. Actual: " + contentType);
+        }
+    }
+
+    // ── CORS Tests ───────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("CORS")
+    class CorsTests {
+
+        @Test
+        @DisplayName("should return 204 for preflight with allowed origin")
+        void shouldReturn204ForPreflightWithAllowedOrigin() throws Exception {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(HEALTH_ENDPOINT))
+                    .method("OPTIONS", HttpRequest.BodyPublishers.noBody())
+                    .header("Origin", "http://localhost:3000")
+                    .header("Access-Control-Request-Method", "GET")
+                    .timeout(Duration.ofSeconds(10))
+                    .build();
+
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(204, response.statusCode(),
+                    "OPTIONS preflight should return 204. Response: " + response.body());
+            assertTrue(response.headers().firstValue("Access-Control-Allow-Origin").isPresent(),
+                    "Preflight response should include Access-Control-Allow-Origin");
+        }
+
+        @Test
+        @DisplayName("should include CORS headers for allowed origin")
+        void shouldIncludeCorsHeadersForAllowedOrigin() throws Exception {
+            String token = fetchToken();
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(HEALTH_ENDPOINT))
+                    .GET()
+                    .header("Authorization", "Bearer " + token)
+                    .header("Origin", "http://localhost:3000")
+                    .timeout(Duration.ofSeconds(10))
+                    .build();
+
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(200, response.statusCode(),
+                    "GET /api/health with allowed origin should return 200. Response: " + response.body());
+            assertTrue(response.headers().firstValue("Access-Control-Allow-Origin").isPresent(),
+                    "Response should include Access-Control-Allow-Origin for allowed origin");
+        }
+
+        @Test
+        @DisplayName("should not include CORS headers for disallowed origin")
+        void shouldNotIncludeCorsHeadersForDisallowedOrigin() throws Exception {
+            String token = fetchToken();
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(HEALTH_ENDPOINT))
+                    .GET()
+                    .header("Authorization", "Bearer " + token)
+                    .header("Origin", "http://evil.com")
+                    .timeout(Duration.ofSeconds(10))
+                    .build();
+
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(200, response.statusCode(),
+                    "GET /api/health with disallowed origin should still return 200. Response: " + response.body());
+            assertTrue(response.headers().firstValue("Access-Control-Allow-Origin").isEmpty(),
+                    "Response should NOT include Access-Control-Allow-Origin for disallowed origin");
+        }
     }
 
     // ── Helper methods ──────────────────────────────────────────────────
@@ -372,6 +514,17 @@ class RestApiGatewayIT {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .GET()
+                .timeout(Duration.ofSeconds(10))
+                .build();
+
+        return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private static HttpResponse<String> sendGetWithApiKey(String url) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .header("X-Api-Key", MANAGEMENT_API_KEY)
                 .timeout(Duration.ofSeconds(10))
                 .build();
 
