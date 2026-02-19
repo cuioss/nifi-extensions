@@ -101,7 +101,7 @@ public class JwtVerificationServlet extends HttpServlet {
         }
 
         // 2. Validate and extract request parameters
-        TokenVerificationRequest verificationRequest = extractVerificationRequest(requestJson, resp);
+        TokenVerificationRequest verificationRequest = extractVerificationRequest(requestJson, req, resp);
         if (verificationRequest == null) {
             return; // Error already handled
         }
@@ -147,13 +147,18 @@ public class JwtVerificationServlet extends HttpServlet {
 
     /**
      * Extracts and validates token verification request parameters.
+     * The processor ID is read from the JSON body first, falling back to the
+     * {@code X-Processor-Id} header (set by the client and already validated
+     * by {@link ProcessorIdValidationFilter}).
      *
      * @param requestJson Parsed JSON request
+     * @param req HTTP request (for header fallback)
      * @param resp HTTP response
      * @return Token verification request, or null if validation failed (error already sent)
      */
     private TokenVerificationRequest extractVerificationRequest(
             JsonObject requestJson,
+            HttpServletRequest req,
             HttpServletResponse resp) {
 
         // Validate required fields
@@ -169,8 +174,13 @@ public class JwtVerificationServlet extends HttpServlet {
             return null;
         }
 
+        // Read processorId from body first, fall back to X-Processor-Id header
+        // (the header is already validated by ProcessorIdValidationFilter)
         String processorId = requestJson.containsKey("processorId") ?
                 requestJson.getString("processorId") : null;
+        if (processorId == null || processorId.trim().isEmpty()) {
+            processorId = req.getHeader("X-Processor-Id");
+        }
 
         LOGGER.debug("Request received - processorId: %s, token: %s", processorId, maskToken(token));
 

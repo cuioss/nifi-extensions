@@ -293,6 +293,27 @@ class JwtVerificationServletTest {
     }
 
     @Test
+    @DisplayName("Should read processorId from X-Processor-Id header when missing in body")
+    void processorIdFromHeader() {
+        currentVerifier = (token, processorId) -> {
+            TokenValidationResult result = TokenValidationResult.success(null);
+            result.setAuthorized(false);
+            return result;
+        };
+
+        given()
+                .contentType("application/json")
+                .header("X-Processor-Id", "header-processor-id")
+                .body("""
+                        {"token":"test-token"}""")
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(true));
+    }
+
+    @Test
     @DisplayName("Should handle null issuer in claims")
     void validTokenWithNullIssuerInClaims() {
         currentVerifier = (token, processorId) -> {
