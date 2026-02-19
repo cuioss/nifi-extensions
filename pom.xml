@@ -103,7 +103,7 @@
         <maven.gpg.plugin.version>3.2.8</maven.gpg.plugin.version>
         <maven.exec.plugin.version>3.6.2</maven.exec.plugin.version>
         <central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
-        <sonar.maven.plugin.version>5.2.0.4988</sonar.maven.plugin.version>
+        <sonar.maven.plugin.version>5.5.0.6356</sonar.maven.plugin.version>
         <jacoco.maven.plugin.version>0.8.14</jacoco.maven.plugin.version>
         <!-- Sonatype -->
 
