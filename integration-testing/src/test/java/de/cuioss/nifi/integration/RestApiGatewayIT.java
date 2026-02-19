@@ -16,23 +16,21 @@
  */
 package de.cuioss.nifi.integration;
 
-import jakarta.json.Json;
-import jakarta.json.JsonObject;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.http.ContentType;
+import io.restassured.specification.RequestSpecification;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.io.StringReader;
-import java.net.URI;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static de.cuioss.nifi.integration.IntegrationTestSupport.*;
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.*;
 
 /**
  * Integration tests for the RestApiGateway processor with embedded Jetty.
@@ -47,7 +45,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <ul>
  *   <li>{@code /api/health} — GET only (authenticated)</li>
  *   <li>{@code /api/data} — GET and POST (authenticated)</li>
- *   <li>{@code /metrics} — GET only (management, no auth required)</li>
+ *   <li>{@code /api/admin} — GET only (requires ADMIN role)</li>
+ *   <li>{@code /metrics} — GET only (management, API key required)</li>
  * </ul>
  *
  * <p>Requires Docker containers to be running (NiFi on port 9443, Keycloak on 9080).
@@ -57,35 +56,35 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @DisplayName("RestApiGateway Integration Tests")
 class RestApiGatewayIT {
 
-    private static final String GATEWAY_BASE = "http://localhost:9443";
-    private static final String HEALTH_ENDPOINT = GATEWAY_BASE + "/api/health";
-    private static final String DATA_ENDPOINT = GATEWAY_BASE + "/api/data";
-    private static final String ADMIN_ENDPOINT = GATEWAY_BASE + "/api/admin";
-    private static final String METRICS_ENDPOINT = GATEWAY_BASE + "/metrics";
-    private static final String MANAGEMENT_API_KEY = "integration-test-api-key";
-
-
-    private static final String KEYCLOAK_TOKEN_ENDPOINT =
-            "http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/token";
-    private static final String CLIENT_ID = "test_client";
-    private static final String CLIENT_SECRET = "yTKslWLtf4giJcWCaoVJ20H8sy6STexM";
-    private static final String TEST_USER = "testUser";
-    private static final String PASSWORD = "drowssap";
-
-    // Credentials for other_realm (different RSA key pair — signature testing)
-    private static final String OTHER_REALM_TOKEN_ENDPOINT =
-            "http://localhost:9080/realms/other_realm/protocol/openid-connect/token";
-    private static final String OTHER_CLIENT_ID = "other_client";
-    private static final String OTHER_CLIENT_SECRET = "otherClientSecretValue123456789";
-    private static final String OTHER_USER = "otherUser";
-
-    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
+    private static RequestSpecification authSpec;
+    private static RequestSpecification noAuthSpec;
+    private static RequestSpecification apiKeySpec;
 
     @BeforeAll
-    static void waitForGateway() throws Exception {
-        IntegrationTestSupport.waitForEndpoint(HTTP_CLIENT, HEALTH_ENDPOINT, Duration.ofSeconds(120));
+    static void setUp() throws Exception {
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
+
+        waitForEndpoint(httpClient, GATEWAY_BASE + "/api/health", Duration.ofSeconds(120));
+
+        String token = fetchKeycloakToken(httpClient,
+                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET, TEST_USER, PASSWORD);
+
+        authSpec = new RequestSpecBuilder()
+                .setBaseUri(GATEWAY_BASE)
+                .addHeader("Authorization", "Bearer " + token)
+                .setContentType(ContentType.JSON)
+                .build();
+
+        noAuthSpec = new RequestSpecBuilder()
+                .setBaseUri(GATEWAY_BASE)
+                .build();
+
+        apiKeySpec = new RequestSpecBuilder()
+                .setBaseUri(GATEWAY_BASE)
+                .addHeader("X-Api-Key", MANAGEMENT_API_KEY)
+                .build();
     }
 
     // ── Health Endpoint ─────────────────────────────────────────────────
@@ -96,52 +95,38 @@ class RestApiGatewayIT {
 
         @Test
         @DisplayName("should return 200 OK for GET /api/health with valid JWT")
-        void shouldAcceptHealthRequestWithValidJwt() throws Exception {
-            String token = fetchToken();
-
-            HttpResponse<String> response = sendGet(HEALTH_ENDPOINT, token);
-
-            assertEquals(200, response.statusCode(),
-                    "GET /api/health with valid JWT should return 200. Response: " + response.body());
-            assertTrue(response.body() != null && !response.body().isEmpty(),
-                    "Health endpoint should return a non-empty body");
+        void shouldAcceptHealthRequestWithValidJwt() {
+            given().spec(authSpec)
+                    .when()
+                    .get("/api/health")
+                    .then()
+                    .statusCode(200)
+                    .body(not(emptyString()));
         }
 
         @Test
         @DisplayName("should return 401 for GET /api/health without JWT")
-        void shouldRejectHealthRequestWithoutJwt() throws Exception {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(HEALTH_ENDPOINT))
-                    .GET()
-                    .timeout(Duration.ofSeconds(10))
-                    .build();
-
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(401, response.statusCode(),
-                    "GET /api/health without JWT should return 401. Response: " + response.body());
-            assertTrue(response.headers().firstValue("WWW-Authenticate").isPresent(),
-                    "401 response should include WWW-Authenticate header");
+        void shouldRejectHealthRequestWithoutJwt() {
+            given().spec(noAuthSpec)
+                    .when()
+                    .get("/api/health")
+                    .then()
+                    .statusCode(401)
+                    .header("WWW-Authenticate", notNullValue());
         }
 
         @Test
         @DisplayName("should return 401 with RFC 9457 problem detail for invalid JWT")
-        void shouldRejectHealthRequestWithInvalidJwt() throws Exception {
-            HttpResponse<String> response = sendGet(HEALTH_ENDPOINT, "not-a-valid-jwt");
-
-            assertEquals(401, response.statusCode(),
-                    "GET /api/health with invalid JWT should return 401. Response: " + response.body());
-
-            // Verify RFC 9457 problem detail response
-            String contentType = response.headers().firstValue("Content-Type").orElse("");
-            assertTrue(contentType.contains("application/problem+json"),
-                    "Content-Type should be application/problem+json. Actual: " + contentType);
-
-            JsonObject problem = Json.createReader(new StringReader(response.body())).readObject();
-            assertTrue(problem.containsKey("type"),
-                    "RFC 9457 problem detail should contain 'type'");
-            assertTrue(problem.containsKey("status"),
-                    "RFC 9457 problem detail should contain 'status'");
+        void shouldRejectHealthRequestWithInvalidJwt() {
+            given().spec(noAuthSpec)
+                    .header("Authorization", "Bearer not-a-valid-jwt")
+                    .when()
+                    .get("/api/health")
+                    .then()
+                    .statusCode(401)
+                    .contentType(containsString("application/problem+json"))
+                    .body("type", notNullValue())
+                    .body("status", notNullValue());
         }
     }
 
@@ -153,70 +138,58 @@ class RestApiGatewayIT {
 
         @Test
         @DisplayName("should return 200 OK for GET /api/data with valid JWT")
-        void shouldAcceptDataGetWithValidJwt() throws Exception {
-            String token = fetchToken();
-
-            HttpResponse<String> response = sendGet(DATA_ENDPOINT, token);
-
-            assertEquals(200, response.statusCode(),
-                    "GET /api/data with valid JWT should return 200. Response: " + response.body());
-            assertTrue(response.body() != null && !response.body().isEmpty(),
-                    "Data GET endpoint should return a non-empty body");
+        void shouldAcceptDataGetWithValidJwt() {
+            given().spec(authSpec)
+                    .when()
+                    .get("/api/data")
+                    .then()
+                    .statusCode(200)
+                    .body(not(emptyString()));
         }
 
         @Test
         @DisplayName("should return 202 Accepted for POST /api/data with valid JWT and body")
-        void shouldAcceptDataPostWithValidJwt() throws Exception {
-            String token = fetchToken();
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(DATA_ENDPOINT))
-                    .POST(HttpRequest.BodyPublishers.ofString("{\"key\": \"value\"}"))
-                    .header("Authorization", "Bearer " + token)
-                    .header("Content-Type", "application/json")
-                    .timeout(Duration.ofSeconds(10))
-                    .build();
-
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(202, response.statusCode(),
-                    "POST /api/data with valid JWT should return 202. Response: " + response.body());
-            assertTrue(response.body() != null && !response.body().isEmpty(),
-                    "Data POST endpoint should return a non-empty body");
+        void shouldAcceptDataPostWithValidJwt() {
+            given().spec(authSpec)
+                    .body("{\"key\": \"value\"}")
+                    .when()
+                    .post("/api/data")
+                    .then()
+                    .statusCode(202)
+                    .body(not(emptyString()));
         }
 
         @Test
         @DisplayName("should return 401 for GET /api/data without JWT")
-        void shouldReturn401ForDataGetWithoutJwt() throws Exception {
-            HttpResponse<String> response = sendGetWithoutAuth(DATA_ENDPOINT);
-
-            assertEquals(401, response.statusCode(),
-                    "GET /api/data without JWT should return 401. Response: " + response.body());
+        void shouldReturn401ForDataGetWithoutJwt() {
+            given().spec(noAuthSpec)
+                    .when()
+                    .get("/api/data")
+                    .then()
+                    .statusCode(401);
         }
 
         @Test
         @DisplayName("should return 401 for GET /api/data with malformed JWT")
-        void shouldReturn401ForDataGetWithInvalidJwt() throws Exception {
-            HttpResponse<String> response = sendGet(DATA_ENDPOINT, "not-a-valid-jwt");
-
-            assertEquals(401, response.statusCode(),
-                    "GET /api/data with invalid JWT should return 401. Response: " + response.body());
+        void shouldReturn401ForDataGetWithInvalidJwt() {
+            given().spec(noAuthSpec)
+                    .header("Authorization", "Bearer not-a-valid-jwt")
+                    .when()
+                    .get("/api/data")
+                    .then()
+                    .statusCode(401);
         }
 
         @Test
         @DisplayName("should return 401 for POST /api/data without JWT")
-        void shouldReturn401ForDataPostWithoutJwt() throws Exception {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(DATA_ENDPOINT))
-                    .POST(HttpRequest.BodyPublishers.ofString("{\"key\": \"value\"}"))
-                    .header("Content-Type", "application/json")
-                    .timeout(Duration.ofSeconds(10))
-                    .build();
-
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(401, response.statusCode(),
-                    "POST /api/data without JWT should return 401. Response: " + response.body());
+        void shouldReturn401ForDataPostWithoutJwt() {
+            given().spec(noAuthSpec)
+                    .contentType(ContentType.JSON)
+                    .body("{\"key\": \"value\"}")
+                    .when()
+                    .post("/api/data")
+                    .then()
+                    .statusCode(401);
         }
     }
 
@@ -228,87 +201,60 @@ class RestApiGatewayIT {
 
         @Test
         @DisplayName("should return 200 with Prometheus metrics for GET /metrics with API key")
-        void shouldReturnPrometheusMetrics() throws Exception {
-            HttpResponse<String> response = sendGetWithApiKey(METRICS_ENDPOINT);
-
-            assertEquals(200, response.statusCode(),
-                    "GET /metrics should return 200. Response: " + response.body());
-
-            String contentType = response.headers().firstValue("Content-Type").orElse("");
-            assertTrue(contentType.contains("text/plain"),
-                    "Default /metrics Content-Type should be text/plain (Prometheus). Actual: " + contentType);
-            assertTrue(response.body().contains("nifi_jwt_validations_total"),
-                    "/metrics should contain token validation metrics");
-            assertTrue(response.body().contains("nifi_gateway_events_total"),
-                    "/metrics should contain gateway event metrics");
+        void shouldReturnPrometheusMetrics() {
+            given().spec(apiKeySpec)
+                    .when()
+                    .get("/metrics")
+                    .then()
+                    .statusCode(200)
+                    .contentType(containsString("text/plain"))
+                    .body(containsString("nifi_jwt_validations_total"))
+                    .body(containsString("nifi_gateway_events_total"));
         }
 
         @Test
         @DisplayName("should return 200 with JSON metrics when Accept: application/json")
-        void shouldReturnJsonMetrics() throws Exception {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(METRICS_ENDPOINT))
-                    .GET()
-                    .header("Accept", "application/json")
-                    .header("X-Api-Key", MANAGEMENT_API_KEY)
-                    .timeout(Duration.ofSeconds(10))
-                    .build();
-
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(200, response.statusCode(),
-                    "GET /metrics with Accept: application/json should return 200. Response: " + response.body());
-
-            String contentType = response.headers().firstValue("Content-Type").orElse("");
-            assertTrue(contentType.contains("application/json"),
-                    "Content-Type should be application/json. Actual: " + contentType);
-
-            JsonObject metrics = Json.createReader(new StringReader(response.body())).readObject();
-            assertTrue(metrics.containsKey("tokenValidation"),
-                    "JSON metrics should contain 'tokenValidation' section");
-            assertTrue(metrics.containsKey("gatewayEvents"),
-                    "JSON metrics should contain 'gatewayEvents' section");
+        void shouldReturnJsonMetrics() {
+            given().spec(apiKeySpec)
+                    .accept(ContentType.JSON)
+                    .when()
+                    .get("/metrics")
+                    .then()
+                    .statusCode(200)
+                    .contentType(containsString("application/json"))
+                    .body("tokenValidation", notNullValue())
+                    .body("gatewayEvents", notNullValue());
         }
 
         @Test
         @DisplayName("should return 405 for POST on /metrics")
-        void shouldReturn405ForPostOnMetrics() throws Exception {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(METRICS_ENDPOINT))
-                    .POST(HttpRequest.BodyPublishers.ofString(""))
-                    .header("X-Api-Key", MANAGEMENT_API_KEY)
-                    .timeout(Duration.ofSeconds(10))
-                    .build();
-
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(405, response.statusCode(),
-                    "POST to /metrics should return 405. Response: " + response.body());
+        void shouldReturn405ForPostOnMetrics() {
+            given().spec(apiKeySpec)
+                    .when()
+                    .post("/metrics")
+                    .then()
+                    .statusCode(405);
         }
 
         @Test
         @DisplayName("should return 401 for GET /metrics without API key")
-        void shouldReturn401ForMetricsWithoutApiKey() throws Exception {
-            HttpResponse<String> response = sendGetWithoutAuth(METRICS_ENDPOINT);
-
-            assertEquals(401, response.statusCode(),
-                    "GET /metrics without API key should return 401. Response: " + response.body());
+        void shouldReturn401ForMetricsWithoutApiKey() {
+            given().spec(noAuthSpec)
+                    .when()
+                    .get("/metrics")
+                    .then()
+                    .statusCode(401);
         }
 
         @Test
         @DisplayName("should return 401 for GET /metrics with wrong API key")
-        void shouldReturn401ForMetricsWithWrongApiKey() throws Exception {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(METRICS_ENDPOINT))
-                    .GET()
+        void shouldReturn401ForMetricsWithWrongApiKey() {
+            given().spec(noAuthSpec)
                     .header("X-Api-Key", "wrong-api-key")
-                    .timeout(Duration.ofSeconds(10))
-                    .build();
-
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(401, response.statusCode(),
-                    "GET /metrics with wrong API key should return 401. Response: " + response.body());
+                    .when()
+                    .get("/metrics")
+                    .then()
+                    .statusCode(401);
         }
     }
 
@@ -320,84 +266,65 @@ class RestApiGatewayIT {
 
         @Test
         @DisplayName("should return 404 for non-existent route")
-        void shouldReturn404ForUnknownRoute() throws Exception {
-            String token = fetchToken();
-
-            HttpResponse<String> response = sendGet(GATEWAY_BASE + "/api/nonexistent", token);
-
-            assertEquals(404, response.statusCode(),
-                    "Request to non-existent route should return 404. Response: " + response.body());
+        void shouldReturn404ForUnknownRoute() {
+            given().spec(authSpec)
+                    .when()
+                    .get("/api/nonexistent")
+                    .then()
+                    .statusCode(404);
         }
 
         @Test
         @DisplayName("should return 405 for unsupported HTTP method on /api/health")
-        void shouldReturn405ForPostOnHealth() throws Exception {
-            String token = fetchToken();
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(HEALTH_ENDPOINT))
-                    .POST(HttpRequest.BodyPublishers.ofString(""))
-                    .header("Authorization", "Bearer " + token)
-                    .timeout(Duration.ofSeconds(10))
-                    .build();
-
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(405, response.statusCode(),
-                    "POST to GET-only /api/health should return 405. Response: " + response.body());
+        void shouldReturn405ForPostOnHealth() {
+            given().spec(authSpec)
+                    .when()
+                    .post("/api/health")
+                    .then()
+                    .statusCode(405);
         }
 
         @Test
         @DisplayName("should return 405 for DELETE on /api/data")
-        void shouldReturn405ForDeleteOnData() throws Exception {
-            String token = fetchToken();
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(DATA_ENDPOINT))
-                    .DELETE()
-                    .header("Authorization", "Bearer " + token)
-                    .timeout(Duration.ofSeconds(10))
-                    .build();
-
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(405, response.statusCode(),
-                    "DELETE on /api/data should return 405. Response: " + response.body());
+        void shouldReturn405ForDeleteOnData() {
+            given().spec(authSpec)
+                    .when()
+                    .delete("/api/data")
+                    .then()
+                    .statusCode(405);
         }
 
         @Test
         @DisplayName("should return 401 for token signed by different realm")
         void shouldReturn401ForTokenFromWrongRealm() throws Exception {
-            String otherToken = IntegrationTestSupport.fetchKeycloakToken(HTTP_CLIENT,
+            HttpClient httpClient = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
+            String otherToken = fetchKeycloakToken(httpClient,
                     OTHER_REALM_TOKEN_ENDPOINT, OTHER_CLIENT_ID, OTHER_CLIENT_SECRET,
                     OTHER_USER, PASSWORD);
 
-            HttpResponse<String> response = sendGet(HEALTH_ENDPOINT, otherToken);
-
-            assertEquals(401, response.statusCode(),
-                    "Token from other_realm should return 401 (different RSA key pair). Response: " + response.body());
+            given().spec(noAuthSpec)
+                    .header("Authorization", "Bearer " + otherToken)
+                    .when()
+                    .get("/api/health")
+                    .then()
+                    .statusCode(401);
         }
 
         @Test
         @DisplayName("should return 413 for oversized request body")
-        void shouldReturn413ForOversizedBody() throws Exception {
-            String token = fetchToken();
-
+        void shouldReturn413ForOversizedBody() {
             // Create a body larger than 1MB (max request size = 1048576 bytes)
             String oversizedBody = "x".repeat(1_048_577);
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(DATA_ENDPOINT))
-                    .POST(HttpRequest.BodyPublishers.ofString(oversizedBody))
-                    .header("Authorization", "Bearer " + token)
-                    .header("Content-Type", "application/json")
-                    .timeout(Duration.ofSeconds(10))
-                    .build();
-
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(413, response.statusCode(),
-                    "POST with body > 1MB should return 413. Response: " + response.body());
+            given().spec(authSpec)
+                    .contentType(ContentType.JSON)
+                    .body(oversizedBody)
+                    .when()
+                    .post("/api/data")
+                    .then()
+                    .statusCode(413);
         }
     }
 
@@ -409,18 +336,14 @@ class RestApiGatewayIT {
 
         @Test
         @DisplayName("should return 403 when token lacks required ADMIN role")
-        void shouldReturn403WhenTokenLacksRequiredRole() throws Exception {
+        void shouldReturn403WhenTokenLacksRequiredRole() {
             // testUser has 'read' role but NOT 'ADMIN' role
-            String token = fetchToken();
-
-            HttpResponse<String> response = sendGet(ADMIN_ENDPOINT, token);
-
-            assertEquals(403, response.statusCode(),
-                    "GET /api/admin without ADMIN role should return 403. Response: " + response.body());
-
-            String contentType = response.headers().firstValue("Content-Type").orElse("");
-            assertTrue(contentType.contains("application/problem+json"),
-                    "403 response Content-Type should be application/problem+json. Actual: " + contentType);
+            given().spec(authSpec)
+                    .when()
+                    .get("/api/admin")
+                    .then()
+                    .statusCode(403)
+                    .contentType(containsString("application/problem+json"));
         }
     }
 
@@ -432,102 +355,39 @@ class RestApiGatewayIT {
 
         @Test
         @DisplayName("should return 204 for preflight with allowed origin")
-        void shouldReturn204ForPreflightWithAllowedOrigin() throws Exception {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(HEALTH_ENDPOINT))
-                    .method("OPTIONS", HttpRequest.BodyPublishers.noBody())
+        void shouldReturn204ForPreflightWithAllowedOrigin() {
+            given().spec(noAuthSpec)
                     .header("Origin", "http://localhost:3000")
                     .header("Access-Control-Request-Method", "GET")
-                    .timeout(Duration.ofSeconds(10))
-                    .build();
-
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(204, response.statusCode(),
-                    "OPTIONS preflight should return 204. Response: " + response.body());
-            assertTrue(response.headers().firstValue("Access-Control-Allow-Origin").isPresent(),
-                    "Preflight response should include Access-Control-Allow-Origin");
+                    .when()
+                    .options("/api/health")
+                    .then()
+                    .statusCode(204)
+                    .header("Access-Control-Allow-Origin", notNullValue());
         }
 
         @Test
         @DisplayName("should include CORS headers for allowed origin")
-        void shouldIncludeCorsHeadersForAllowedOrigin() throws Exception {
-            String token = fetchToken();
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(HEALTH_ENDPOINT))
-                    .GET()
-                    .header("Authorization", "Bearer " + token)
+        void shouldIncludeCorsHeadersForAllowedOrigin() {
+            given().spec(authSpec)
                     .header("Origin", "http://localhost:3000")
-                    .timeout(Duration.ofSeconds(10))
-                    .build();
-
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(200, response.statusCode(),
-                    "GET /api/health with allowed origin should return 200. Response: " + response.body());
-            assertTrue(response.headers().firstValue("Access-Control-Allow-Origin").isPresent(),
-                    "Response should include Access-Control-Allow-Origin for allowed origin");
+                    .when()
+                    .get("/api/health")
+                    .then()
+                    .statusCode(200)
+                    .header("Access-Control-Allow-Origin", notNullValue());
         }
 
         @Test
         @DisplayName("should not include CORS headers for disallowed origin")
-        void shouldNotIncludeCorsHeadersForDisallowedOrigin() throws Exception {
-            String token = fetchToken();
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(HEALTH_ENDPOINT))
-                    .GET()
-                    .header("Authorization", "Bearer " + token)
+        void shouldNotIncludeCorsHeadersForDisallowedOrigin() {
+            given().spec(authSpec)
                     .header("Origin", "http://evil.com")
-                    .timeout(Duration.ofSeconds(10))
-                    .build();
-
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(200, response.statusCode(),
-                    "GET /api/health with disallowed origin should still return 200. Response: " + response.body());
-            assertTrue(response.headers().firstValue("Access-Control-Allow-Origin").isEmpty(),
-                    "Response should NOT include Access-Control-Allow-Origin for disallowed origin");
+                    .when()
+                    .get("/api/health")
+                    .then()
+                    .statusCode(200)
+                    .header("Access-Control-Allow-Origin", nullValue());
         }
-    }
-
-    // ── Helper methods ──────────────────────────────────────────────────
-
-    private static String fetchToken() throws Exception {
-        return IntegrationTestSupport.fetchKeycloakToken(HTTP_CLIENT,
-                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET, TEST_USER, PASSWORD);
-    }
-
-    private static HttpResponse<String> sendGet(String url, String token) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .GET()
-                .header("Authorization", "Bearer " + token)
-                .timeout(Duration.ofSeconds(10))
-                .build();
-
-        return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-    }
-
-    private static HttpResponse<String> sendGetWithoutAuth(String url) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .GET()
-                .timeout(Duration.ofSeconds(10))
-                .build();
-
-        return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-    }
-
-    private static HttpResponse<String> sendGetWithApiKey(String url) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .GET()
-                .header("X-Api-Key", MANAGEMENT_API_KEY)
-                .timeout(Duration.ofSeconds(10))
-                .build();
-
-        return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
     }
 }

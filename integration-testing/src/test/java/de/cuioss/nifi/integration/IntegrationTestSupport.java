@@ -17,7 +17,9 @@
 package de.cuioss.nifi.integration;
 
 import jakarta.json.Json;
+import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
+import jakarta.json.JsonValue;
 import lombok.experimental.UtilityClass;
 
 import javax.net.ssl.SSLContext;
@@ -35,17 +37,52 @@ import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Shared utilities for integration tests. Centralizes common patterns like
- * endpoint polling, token fetching, and URL form encoding to avoid duplication
- * across IT classes.
+ * Shared utilities and constants for integration tests. Centralizes common
+ * patterns like endpoint polling, token fetching, URL form encoding, and
+ * processor discovery to avoid duplication across IT classes.
  */
 @UtilityClass
 class IntegrationTestSupport {
+
+    // ── Keycloak: oauth_integration_tests realm ────────────────────────
+    static final String KEYCLOAK_BASE = "http://localhost:9080";
+    static final String KEYCLOAK_TOKEN_ENDPOINT = KEYCLOAK_BASE
+            + "/realms/oauth_integration_tests/protocol/openid-connect/token";
+    static final String KEYCLOAK_JWKS_ENDPOINT = KEYCLOAK_BASE
+            + "/realms/oauth_integration_tests/protocol/openid-connect/certs";
+    static final String CLIENT_ID = "test_client";
+    static final String CLIENT_SECRET = "yTKslWLtf4giJcWCaoVJ20H8sy6STexM";
+    static final String TEST_USER = "testUser";
+    static final String LIMITED_USER = "limitedUser";
+    static final String PASSWORD = "drowssap";
+
+    // ── Keycloak: other_realm (different RSA key pair for signature tests) ──
+    static final String OTHER_REALM_TOKEN_ENDPOINT = KEYCLOAK_BASE
+            + "/realms/other_realm/protocol/openid-connect/token";
+    static final String OTHER_CLIENT_ID = "other_client";
+    static final String OTHER_CLIENT_SECRET = "otherClientSecretValue123456789";
+    static final String OTHER_USER = "otherUser";
+
+    // ── NiFi ───────────────────────────────────────────────────────────
+    static final String NIFI_API_BASE = "https://localhost:9095/nifi-api";
+    static final String NIFI_BASE = "https://localhost:9095";
+    static final String FLOW_ENDPOINT = "http://localhost:7777";
+    static final String GATEWAY_BASE = "http://localhost:9443";
+
+    // Expected issuer value (as seen by NiFi inside Docker network)
+    static final String EXPECTED_ISSUER = "http://keycloak:8080/realms/oauth_integration_tests";
+
+    // Gateway management
+    static final String MANAGEMENT_API_KEY = "integration-test-api-key";
+
+    private static final String NIFI_USERNAME = "testUser";
+    private static final String NIFI_PASSWORD = "drowssap";
 
     /**
      * Polls the given endpoint until it accepts connections or the timeout expires.
@@ -137,10 +174,6 @@ class IntegrationTestSupport {
                 .collect(Collectors.joining("&"));
     }
 
-    private static final String NIFI_API_BASE = "https://localhost:9095/nifi-api";
-    private static final String NIFI_USERNAME = "testUser";
-    private static final String NIFI_PASSWORD = "drowssap";
-
     /**
      * Creates an SSLContext that trusts all certificates, suitable for
      * Docker-based integration tests with self-signed certificates.
@@ -199,5 +232,46 @@ class IntegrationTestSupport {
                         .formatted(response.statusCode(), response.body()));
 
         return response.body().trim();
+    }
+
+    /**
+     * Recursively searches for a processor by name in a process group aggregate
+     * snapshot, traversing child process groups. Returns the full processor status
+     * object (containing {@code processorStatusSnapshot}).
+     *
+     * @param snapshot              the aggregate snapshot to search
+     * @param processorNameSubstring substring to match in processor names
+     * @return the processor status object, or empty if not found
+     */
+    static Optional<JsonObject> findProcessorInSnapshot(JsonObject snapshot,
+            String processorNameSubstring) {
+        JsonArray processorStatuses = snapshot.getJsonArray("processorStatusSnapshots");
+        if (processorStatuses != null) {
+            for (JsonValue value : processorStatuses) {
+                JsonObject processorStatus = value.asJsonObject();
+                String name = processorStatus
+                        .getJsonObject("processorStatusSnapshot")
+                        .getString("name");
+                if (name.contains(processorNameSubstring)) {
+                    return Optional.of(processorStatus);
+                }
+            }
+        }
+
+        // Recurse into child process groups
+        JsonArray childGroups = snapshot.getJsonArray("processGroupStatusSnapshots");
+        if (childGroups != null) {
+            for (JsonValue groupValue : childGroups) {
+                JsonObject childSnapshot = groupValue.asJsonObject()
+                        .getJsonObject("processGroupStatusSnapshot");
+                Optional<JsonObject> result = findProcessorInSnapshot(childSnapshot,
+                        processorNameSubstring);
+                if (result.isPresent()) {
+                    return result;
+                }
+            }
+        }
+
+        return Optional.empty();
     }
 }

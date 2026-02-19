@@ -22,9 +22,7 @@ import io.restassured.config.SSLConfig;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import jakarta.json.Json;
-import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
-import jakarta.json.JsonValue;
 import lombok.experimental.UtilityClass;
 
 import java.io.StringReader;
@@ -52,9 +50,6 @@ import static org.junit.jupiter.api.Assertions.fail;
 @UtilityClass
 class CustomUITestSupport {
 
-    private static final String NIFI_API_BASE = "https://localhost:9095/nifi-api";
-    private static final String NIFI_BASE = "https://localhost:9095";
-
     /**
      * Discovers a processor ID from the NiFi flow by processor name substring.
      * Queries the process group status API recursively and returns the UUID of
@@ -68,7 +63,8 @@ class CustomUITestSupport {
     static String discoverProcessorId(HttpClient client, String bearerToken,
             String processorNameSubstring) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(NIFI_API_BASE + "/flow/process-groups/root/status?recursive=true"))
+                .uri(URI.create(IntegrationTestSupport.NIFI_API_BASE
+                        + "/flow/process-groups/root/status?recursive=true"))
                 .GET()
                 .header("Authorization", "Bearer " + bearerToken)
                 .timeout(Duration.ofSeconds(15))
@@ -84,49 +80,13 @@ class CustomUITestSupport {
                 .getJsonObject("processGroupStatus")
                 .getJsonObject("aggregateSnapshot");
 
-        String result = findProcessorInSnapshot(aggregateSnapshot, processorNameSubstring);
-        if (result != null) {
-            return result;
-        }
-
-        fail("No processor found with name containing '%s' in the NiFi flow"
-                .formatted(processorNameSubstring));
-        return null; // unreachable
-    }
-
-    /**
-     * Recursively searches for a processor by name in the aggregate snapshot,
-     * traversing child process groups when processors are nested.
-     */
-    private static String findProcessorInSnapshot(JsonObject snapshot,
-            String processorNameSubstring) {
-        // Search processors directly in this group
-        JsonArray processorStatuses = snapshot.getJsonArray("processorStatusSnapshots");
-        if (processorStatuses != null) {
-            for (JsonValue value : processorStatuses) {
-                JsonObject procSnapshot = value.asJsonObject()
-                        .getJsonObject("processorStatusSnapshot");
-                String name = procSnapshot.getString("name");
-                if (name.contains(processorNameSubstring)) {
-                    return procSnapshot.getString("id");
-                }
-            }
-        }
-
-        // Recurse into child process groups
-        JsonArray childGroups = snapshot.getJsonArray("processGroupStatusSnapshots");
-        if (childGroups != null) {
-            for (JsonValue groupValue : childGroups) {
-                JsonObject childSnapshot = groupValue.asJsonObject()
-                        .getJsonObject("processGroupStatusSnapshot");
-                String result = findProcessorInSnapshot(childSnapshot, processorNameSubstring);
-                if (result != null) {
-                    return result;
-                }
-            }
-        }
-
-        return null;
+        return IntegrationTestSupport.findProcessorInSnapshot(aggregateSnapshot, processorNameSubstring)
+                .map(proc -> proc.getJsonObject("processorStatusSnapshot").getString("id"))
+                .orElseGet(() -> {
+                    fail("No processor found with name containing '%s' in the NiFi flow"
+                            .formatted(processorNameSubstring));
+                    return null; // unreachable
+                });
     }
 
     /**
@@ -143,7 +103,7 @@ class CustomUITestSupport {
     static String discoverCustomUIBasePath(HttpClient client, String bearerToken,
             String processorId) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(NIFI_API_BASE + "/processors/" + processorId))
+                .uri(URI.create(IntegrationTestSupport.NIFI_API_BASE + "/processors/" + processorId))
                 .GET()
                 .header("Authorization", "Bearer " + bearerToken)
                 .timeout(Duration.ofSeconds(15))
@@ -159,7 +119,7 @@ class CustomUITestSupport {
         String version = component.getJsonObject("bundle").getString("version");
 
         // WAR context path follows NiFi convention: /{warArtifactId}-{version}
-        return NIFI_BASE + "/nifi-cuioss-ui-" + version;
+        return IntegrationTestSupport.NIFI_BASE + "/nifi-cuioss-ui-" + version;
     }
 
     /**

@@ -32,9 +32,9 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
 
+import static de.cuioss.nifi.integration.IntegrationTestSupport.*;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Integration tests for the Custom UI WAR endpoints deployed inside NiFi.
@@ -55,16 +55,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @DisplayName("Custom UI WAR Endpoint Integration Tests")
 class CustomUIEndpointsIT {
 
-    private static final String KEYCLOAK_TOKEN_ENDPOINT =
-            "http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/token";
-    private static final String CLIENT_ID = "test_client";
-    private static final String CLIENT_SECRET = "yTKslWLtf4giJcWCaoVJ20H8sy6STexM";
-    private static final String TEST_USER = "testUser";
-    private static final String PASSWORD = "drowssap";
-    private static final String KEYCLOAK_JWKS_ENDPOINT =
-            "http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/certs";
-    private static final String GATEWAY_METRICS_ENDPOINT = "http://localhost:9443/metrics";
-
     private static RequestSpecification authSpec;
     private static RequestSpecification sessionOnlySpec;
     private static RequestSpecification gatewayAuthSpec;
@@ -73,7 +63,7 @@ class CustomUIEndpointsIT {
 
     @BeforeAll
     static void setUp() throws Exception {
-        SSLContext sslContext = IntegrationTestSupport.createTrustAllSslContext();
+        SSLContext sslContext = createTrustAllSslContext();
 
         HttpClient httpClient = HttpClient.newBuilder()
                 .sslContext(sslContext)
@@ -81,11 +71,10 @@ class CustomUIEndpointsIT {
                 .build();
 
         // Wait for NiFi to be ready
-        IntegrationTestSupport.waitForEndpoint(httpClient,
-                "https://localhost:9095/nifi/", Duration.ofSeconds(120));
+        waitForEndpoint(httpClient, NIFI_BASE + "/nifi/", Duration.ofSeconds(120));
 
         // Obtain bearer token — used as Authorization header only (no cookies)
-        String bearerToken = IntegrationTestSupport.authenticateToNifi(httpClient);
+        String bearerToken = authenticateToNifi(httpClient);
 
         String processorId = CustomUITestSupport.discoverProcessorId(
                 httpClient, bearerToken, "MultiIssuerJWT");
@@ -104,11 +93,10 @@ class CustomUIEndpointsIT {
                 customUIBase, bearerToken, gatewayProcessorId);
 
         // Wait for the REST API Gateway's embedded Jetty to be ready
-        IntegrationTestSupport.waitForEndpoint(httpClient,
-                GATEWAY_METRICS_ENDPOINT, Duration.ofSeconds(120));
+        waitForEndpoint(httpClient, GATEWAY_BASE + "/metrics", Duration.ofSeconds(120));
 
         // Fetch a Keycloak token for endpoint tests that need a real JWT
-        keycloakToken = IntegrationTestSupport.fetchKeycloakToken(httpClient,
+        keycloakToken = fetchKeycloakToken(httpClient,
                 KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET, TEST_USER, PASSWORD);
 
         // Fetch JWKS from Keycloak for JWKS content validation tests
@@ -204,8 +192,8 @@ class CustomUIEndpointsIT {
         }
 
         @Test
-        @DisplayName("should return 200 with valid=false for unreachable JWKS URL")
-        void jwksUrlValidationWithUnreachableUrl() {
+        @DisplayName("should return valid=false for URL returning non-JWKS content")
+        void jwksUrlValidationWithNonJwksUrl() {
             given().spec(authSpec)
                     .body("""
                             {"jwksUrl": "https://example.com/.well-known/jwks.json"}
@@ -269,8 +257,10 @@ class CustomUIEndpointsIT {
         }
 
         @Test
-        @DisplayName("should return 405 for unknown endpoint (no servlet mapped)")
+        @DisplayName("should return 405 for unknown endpoint (all requests route to single servlet)")
         void unknownEndpointReturns405() {
+            // Returns 405 (not 404) because all /nifi-api/processors/jwt/* requests
+            // route to a single servlet that rejects unmapped operations
             given().spec(authSpec)
                     .body("""
                             {"test": "data"}

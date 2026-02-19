@@ -17,9 +17,7 @@
 package de.cuioss.nifi.integration;
 
 import jakarta.json.Json;
-import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
-import jakarta.json.JsonValue;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -33,6 +31,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Optional;
 
+import static de.cuioss.nifi.integration.IntegrationTestSupport.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -50,24 +49,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @DisplayName("NiFi Processor Metrics Integration Tests")
 class NiFiProcessorMetricsIT {
 
-    private static final String NIFI_API_BASE = "https://localhost:9095/nifi-api";
-
-    // Flow endpoint for triggering traffic before checking metrics
-    private static final String FLOW_ENDPOINT = "http://localhost:7777";
-
-    // Keycloak token endpoint for getting a valid JWT
-    private static final String KEYCLOAK_TOKEN_ENDPOINT =
-            "http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/token";
-    private static final String CLIENT_ID = "test_client";
-    private static final String CLIENT_SECRET = "yTKslWLtf4giJcWCaoVJ20H8sy6STexM";
-
     private static HttpClient nifiClient;
     private static HttpClient plainClient;
 
     @BeforeAll
     static void setUp() throws Exception {
         nifiClient = HttpClient.newBuilder()
-                .sslContext(IntegrationTestSupport.createTrustAllSslContext())
+                .sslContext(createTrustAllSslContext())
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
         plainClient = HttpClient.newBuilder()
@@ -81,7 +69,7 @@ class NiFiProcessorMetricsIT {
     @Test
     @DisplayName("should show JWT authenticator processor has processed FlowFiles")
     void shouldShowJwtAuthenticatorProcessedFlowFiles() throws Exception {
-        String bearerToken = authenticateToNifi();
+        String bearerToken = authenticateToNifi(nifiClient);
         JsonObject status = getProcessGroupStatus(bearerToken);
 
         JsonObject aggregateSnapshot = status
@@ -89,7 +77,7 @@ class NiFiProcessorMetricsIT {
                 .getJsonObject("aggregateSnapshot");
 
         // Find the JWT authenticator processor (may be in a child process group)
-        Optional<JsonObject> jwtProcessor = findProcessorByNameRecursive(aggregateSnapshot,
+        Optional<JsonObject> jwtProcessor = findProcessorInSnapshot(aggregateSnapshot,
                 "MultiIssuerJWTTokenAuthenticator");
 
         assertTrue(jwtProcessor.isPresent(),
@@ -108,7 +96,7 @@ class NiFiProcessorMetricsIT {
     @Test
     @DisplayName("should show HandleHttpResponse processors have processed FlowFiles")
     void shouldShowResponseProcessorsProcessedFlowFiles() throws Exception {
-        String bearerToken = authenticateToNifi();
+        String bearerToken = authenticateToNifi(nifiClient);
         JsonObject status = getProcessGroupStatus(bearerToken);
 
         JsonObject aggregateSnapshot = status
@@ -116,9 +104,9 @@ class NiFiProcessorMetricsIT {
                 .getJsonObject("aggregateSnapshot");
 
         // Verify both response handlers received FlowFiles (may be in a child process group)
-        Optional<JsonObject> successResponse = findProcessorByNameRecursive(aggregateSnapshot,
+        Optional<JsonObject> successResponse = findProcessorInSnapshot(aggregateSnapshot,
                 "HandleHttpResponse (200)");
-        Optional<JsonObject> failureResponse = findProcessorByNameRecursive(aggregateSnapshot,
+        Optional<JsonObject> failureResponse = findProcessorInSnapshot(aggregateSnapshot,
                 "HandleHttpResponse (401)");
 
         assertTrue(successResponse.isPresent(),
@@ -141,7 +129,7 @@ class NiFiProcessorMetricsIT {
 
     private static void ensureFlowHasTraffic() throws Exception {
         // Wait for flow endpoint availability
-        IntegrationTestSupport.waitForEndpoint(plainClient, FLOW_ENDPOINT, Duration.ofSeconds(120));
+        waitForEndpoint(plainClient, FLOW_ENDPOINT, Duration.ofSeconds(120));
 
         // Send a request without a token (triggers failure path)
         HttpRequest noTokenRequest = HttpRequest.newBuilder()
@@ -152,8 +140,8 @@ class NiFiProcessorMetricsIT {
         plainClient.send(noTokenRequest, HttpResponse.BodyHandlers.ofString());
 
         // Send a request with a valid token (triggers success path)
-        String token = IntegrationTestSupport.fetchKeycloakToken(plainClient,
-                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET, "testUser", "drowssap");
+        String token = fetchKeycloakToken(plainClient,
+                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET, TEST_USER, PASSWORD);
         HttpRequest validTokenRequest = HttpRequest.newBuilder()
                 .uri(URI.create(FLOW_ENDPOINT))
                 .GET()
@@ -175,7 +163,7 @@ class NiFiProcessorMetricsIT {
     @SuppressWarnings("java:S2925") // Thread.sleep is the standard retry-delay for NiFi status polling
     private static void waitForProcessorActivity(String processorName, Duration timeout)
             throws Exception {
-        String bearerToken = IntegrationTestSupport.authenticateToNifi(nifiClient);
+        String bearerToken = authenticateToNifi(nifiClient);
         long deadline = System.nanoTime() + timeout.toNanos();
 
         while (System.nanoTime() < deadline) {
@@ -184,7 +172,7 @@ class NiFiProcessorMetricsIT {
                     .getJsonObject("processGroupStatus")
                     .getJsonObject("aggregateSnapshot");
 
-            Optional<JsonObject> processor = findProcessorByNameRecursive(
+            Optional<JsonObject> processor = findProcessorInSnapshot(
                     aggregateSnapshot, processorName);
             if (processor.isPresent()) {
                 int flowFilesIn = processor.get()
@@ -197,10 +185,6 @@ class NiFiProcessorMetricsIT {
             Thread.sleep(500);
         }
         // Don't fail here — let the actual test assertions report the problem
-    }
-
-    private static String authenticateToNifi() throws Exception {
-        return IntegrationTestSupport.authenticateToNifi(nifiClient);
     }
 
     private static JsonObject getProcessGroupStatus(String bearerToken) throws Exception {
@@ -218,39 +202,4 @@ class NiFiProcessorMetricsIT {
 
         return Json.createReader(new StringReader(response.body())).readObject();
     }
-
-    /**
-     * Recursively searches for a processor by exact name through the aggregate
-     * snapshot, traversing child process groups.
-     */
-    private static Optional<JsonObject> findProcessorByNameRecursive(JsonObject snapshot, String name) {
-        JsonArray processorStatuses = snapshot.getJsonArray("processorStatusSnapshots");
-        if (processorStatuses != null) {
-            for (JsonValue value : processorStatuses) {
-                JsonObject processorStatus = value.asJsonObject();
-                String processorName = processorStatus
-                        .getJsonObject("processorStatusSnapshot")
-                        .getString("name");
-                if (processorName.equals(name)) {
-                    return Optional.of(processorStatus);
-                }
-            }
-        }
-
-        // Recurse into child process groups
-        JsonArray childGroups = snapshot.getJsonArray("processGroupStatusSnapshots");
-        if (childGroups != null) {
-            for (JsonValue groupValue : childGroups) {
-                JsonObject childSnapshot = groupValue.asJsonObject()
-                        .getJsonObject("processGroupStatusSnapshot");
-                Optional<JsonObject> result = findProcessorByNameRecursive(childSnapshot, name);
-                if (result.isPresent()) {
-                    return result;
-                }
-            }
-        }
-
-        return Optional.empty();
-    }
-
 }
