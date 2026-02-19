@@ -138,7 +138,7 @@
         <version.jakarta.servlet-api>6.1.0</version.jakarta.servlet-api>
         <version.webjars.font-awesome>7.1.0</version.webjars.font-awesome>
         <!-- CUI-OSS -->
-        <version.cui.test.juli.logger>2.0.1</version.cui.test.juli.logger>
+        <version.cui.test.juli.logger>2.1.2</version.cui.test.juli.logger>
         <version.cui.test.generator>2.5.2</version.cui.test.generator>
         <version.cui.test.value.objects>2.0.1</version.cui.test.value.objects>
         <version.cui.test.mockwebserver>1.5.0</version.cui.test.mockwebserver>
