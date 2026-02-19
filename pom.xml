@@ -120,7 +120,7 @@
 
         <!-- WebJars Dependencies -->
         <version.jquery>4.0.0</version.jquery>
-        <version.jquery-ui>1.14.1</version.jquery-ui>
+        <version.jquery-ui>1.14.2</version.jquery-ui>
 
 
         <!-- Logging Dependencies -->
