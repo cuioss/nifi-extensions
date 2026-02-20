@@ -31,7 +31,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -75,7 +77,7 @@ class JwtVerificationServletTest {
                     new JwtValidationService(dummyContext) {
                         @Override
                         public TokenValidationResult verifyToken(String token, String processorId,
-                                HttpServletRequest request)
+                                                                 HttpServletRequest request)
                                 throws IllegalArgumentException, IllegalStateException {
                             try {
                                 return currentVerifier.verify(token, processorId);
@@ -409,5 +411,82 @@ class JwtVerificationServletTest {
                 .body("valid", equalTo(false))
                 .body("error", containsString("Signature verification"))
                 .body("claims.size()", equalTo(0));
+    }
+
+    @Test
+    @DisplayName("Should include decoded JWT header and payload for valid token")
+    void validTokenWithDecodedParts() {
+        // Build a syntactically valid JWT (header.payload.signature)
+        String header = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                """
+                {"alg":"RS256","typ":"JWT","kid":"test-key-id"}"""
+                        .getBytes(StandardCharsets.UTF_8));
+        String payload = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                """
+                {"sub":"decoded-user","iss":"https://example.com","exp":9999999999,"iat":1000000000,"custom":"value"}"""
+                        .getBytes(StandardCharsets.UTF_8));
+        String rawToken = header + "." + payload + ".fake-signature";
+
+        currentVerifier = (token, processorId) -> {
+            AccessTokenContent mockTokenContent = createNiceMock(AccessTokenContent.class);
+            expect(mockTokenContent.getSubject()).andReturn(Optional.of("decoded-user")).anyTimes();
+            expect(mockTokenContent.getIssuer()).andReturn("https://example.com").anyTimes();
+            expect(mockTokenContent.getExpirationTime()).andReturn(OffsetDateTime.now().plusHours(1)).anyTimes();
+            expect(mockTokenContent.getRoles()).andReturn(List.of("admin")).anyTimes();
+            expect(mockTokenContent.getScopes()).andReturn(List.of("openid")).anyTimes();
+            expect(mockTokenContent.getRawToken()).andReturn(rawToken).anyTimes();
+            replay(mockTokenContent);
+
+            TokenValidationResult result = TokenValidationResult.success(mockTokenContent);
+            result.setAuthorized(true);
+            return result;
+        };
+
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"token":"test-token","processorId":"test-processor-id"}""")
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(true))
+                .body("decoded.header.alg", equalTo("RS256"))
+                .body("decoded.header.typ", equalTo("JWT"))
+                .body("decoded.header.kid", equalTo("test-key-id"))
+                .body("decoded.payload.sub", equalTo("decoded-user"))
+                .body("decoded.payload.iss", equalTo("https://example.com"));
+    }
+
+    @Test
+    @DisplayName("Should handle malformed JWT in decoded token gracefully")
+    void malformedJwtInDecodedToken() {
+        currentVerifier = (token, processorId) -> {
+            AccessTokenContent mockTokenContent = createNiceMock(AccessTokenContent.class);
+            expect(mockTokenContent.getSubject()).andReturn(Optional.of("test")).anyTimes();
+            expect(mockTokenContent.getIssuer()).andReturn("test-issuer").anyTimes();
+            expect(mockTokenContent.getExpirationTime()).andReturn(OffsetDateTime.now().plusHours(1)).anyTimes();
+            expect(mockTokenContent.getRoles()).andReturn(List.of()).anyTimes();
+            expect(mockTokenContent.getScopes()).andReturn(List.of()).anyTimes();
+            // Return a malformed token that cannot be decoded
+            expect(mockTokenContent.getRawToken()).andReturn("not-a-valid-jwt").anyTimes();
+            replay(mockTokenContent);
+
+            TokenValidationResult result = TokenValidationResult.success(mockTokenContent);
+            result.setAuthorized(true);
+            return result;
+        };
+
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"token":"test-token","processorId":"test-processor-id"}""")
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(true))
+                // decoded field should be absent when JWT parsing fails
+                .body("$", not(hasKey("decoded")));
     }
 }
